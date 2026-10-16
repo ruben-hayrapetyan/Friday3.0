@@ -38,9 +38,11 @@ prompts, and the first few minutes. Needs macOS 14 or later.
 | **Chroma** | [github.com/ruben-hayrapetyan/chroma](https://github.com/ruben-hayrapetyan/chroma) | The calendar: EventKit, per-event colour, category rules, day/week/month/year, Ask Claude |
 | **Todo List** | [github.com/ruben-hayrapetyan/ToDo](https://github.com/ruben-hayrapetyan/ToDo) | The tasks: short and long term, the Due page, due dates and countdowns, progress in quarters |
 
-Built from the general releases of both — **Chroma 1.0.1** (`main`,
-758bab8) and **Todo List 1.0.1** (`main`, c8f4caf) — not from anyone's
-personal branch. Friday works on the same files as both apps (see
+Built from the general versions of both, not from anyone's personal
+branch: **Todo List 1.0.2** (`main`, cd3ecd8), and **Chroma 1.0.1**
+(`main`, 758bab8) with the fixes from Chroma's whole-app review (`main`,
+4b5d995). Chroma's Google Calendar source isn't part of Friday; it reads
+calendars through macOS. Friday works on the same files as both apps (see
 [Your data](#your-data)), so either can be used alongside it, one at a time.
 
 ## Build, test, look
@@ -217,7 +219,7 @@ quit it. They also hold the same global shortcuts.
 
 ## What hasn't been checked yet
 
-The build, the 29 tests, and the rendered snapshots (light and dark, day,
+The build, the 31 tests, and the rendered snapshots (light and dark, day,
 week and month, drawer open and closed, the notebook's three pages, the
 new-event form, at the smallest window size and on a large display) all
 pass. What a snapshot can't show hasn't been exercised
