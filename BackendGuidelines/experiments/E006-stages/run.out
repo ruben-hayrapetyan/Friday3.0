@@ -122,3 +122,17 @@ cornell-s5 tiered lex=(0, 625, 28434) viol=0 8.9s
 cornell-s5 tiered_tol5 lex=(0, 650, 30068) viol=0 8.7s
 cornell-s5 weighted_1 lex=(0, 2925, 24867) viol=0 9.6s
 cornell-s5 weighted_3 lex=(0, 800, 25978) viol=0 9.1s
+cornell-s5 weighted_10 lex=(0, 625, 27205) viol=0 8.7s
+cornell-s5 weighted_30 lex=(0, 625, 28253) viol=0 8.4s
+cornell-s5 weighted_100 lex=(0, 625, 30355) viol=0 8.5s
+cornell-s5 weighted_1000 lex=(0, 625, 36273) viol=0 8.2s
+cornell-s6 tiered lex=(0, 6700, 142859) viol=0 6.9s
+cornell-s6 tiered_tol5 lex=(0, 7025, 301198) viol=0 6.9s
+cornell-s6 weighted_1 lex=(0, 12137, 24481) viol=0 8.3s
+cornell-s6 weighted_3 lex=(0, 7425, 29140) viol=0 7.0s
+cornell-s6 weighted_10 lex=(0, 6775, 30644) viol=0 7.0s
+cornell-s6 weighted_30 lex=(0, 6700, 33035) viol=0 7.3s
+cornell-s6 weighted_100 lex=(0, 6700, 33837) viol=0 7.2s
+cornell-s6 weighted_1000 lex=(0, 6700, 40143) viol=0 8.2s
+cornell-s7 tiered lex=(0, 1537, 50213) viol=0 4.1s
+cornell-s7 tiered_tol5 lex=(0, 1612, 29581) viol=0 7.9s

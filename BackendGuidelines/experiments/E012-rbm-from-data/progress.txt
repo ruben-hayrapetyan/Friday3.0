@@ -1,0 +1,3 @@
+user 0: week 0 collected
+user 0: week 10 collected
+user 0: week 20 collected

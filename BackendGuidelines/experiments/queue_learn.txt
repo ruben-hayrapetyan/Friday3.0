@@ -9,3 +9,5 @@
 14:20:33 start E016-active-queries
 14:29:05 end E016-active-queries (0)
 14:29:05 start E015-soften-walls
+14:30:58 end E015-soften-walls (0)
+14:30:58 start E012-rbm-from-data

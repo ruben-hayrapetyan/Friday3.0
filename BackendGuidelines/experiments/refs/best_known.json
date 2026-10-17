@@ -43,17 +43,17 @@
   "lex": [
    0,
    625,
-   28434
+   27205
   ],
-  "source": "E006/tiered"
+  "source": "E006/weighted_10"
  },
  "cornell-s6": {
   "lex": [
    0,
    6700,
-   173378
+   33035
   ],
-  "source": "E004/wall_sa"
+  "source": "E006/weighted_30"
  },
  "cornell-s7": {
   "lex": [
