@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-import cvxpy as cp
 import numpy as np
 
 from ..sim.user import LEARNABLE
@@ -27,6 +26,8 @@ def ranking_qp(theta_c: np.ndarray, rankings: list[Ranking], theta0: np.ndarray,
                cap: float = 0.5, margin: float = 0.02, extra_dims: int = 0) -> tuple[np.ndarray, float]:
     """argmin |t - theta_c|^2 + mu |t - theta0|^2 + C sum(xi)  s.t.  t . d_k / |d_k|_1 <= -margin + xi_k, xi >= 0,
     t >= THETA_MIN, |t - theta_c| <= cap.  Returns (theta, total slack)."""
+    import cvxpy as cp  # after OR-Tools: both bundle HiGHS, and whichever loads second must not win (see fr/__init__)
+
     if not rankings:
         return theta_c.copy(), 0.0
     Dm = np.array([r.diff() for r in rankings])
@@ -158,6 +159,33 @@ class Combined(ContrastiveDivergence):
         self.history.append(self.theta.copy())
 
 
+class BradleyTerry(Learner):
+    """Round 2 (after E011): a likelihood over rankings instead of hard constraints. Each ranking is a noisy vote,
+    drags (revealed behaviour) count `drag_weight` times; Gaussian prior toward the hand-set weights."""
+
+    def __init__(self, drag_weight: float = 3.0, sigma: float = 1.0, cd_eta: float = 0.0, name: str = "bt"):
+        super().__init__(name)
+        self.rankings: list[Ranking] = []
+        self.drag_weight, self.sigma = drag_weight, sigma
+        self.cd = ContrastiveDivergence(eta=cd_eta) if cd_eta else None
+
+    def update(self, week, u, seed):
+        from ..supervisor.discover import bt_fit
+
+        self.rankings += week.rankings
+        prior = self.theta0.copy()
+        if self.cd is not None:  # the likelihood of lived weeks moves the prior's centre
+            self.cd.theta = self.theta.copy()
+            self.cd.update(week, u, seed)
+            prior = self.cd.theta
+        X = np.array([r.diff() / max(np.abs(r.diff()).sum(), 1e-12) for r in self.rankings])
+        w = np.array([self.drag_weight if r.kind == "drag" else 1.0 for r in self.rankings])
+        th = bt_fit(X, prior, np.full(D, self.sigma), np.full(D, THETA_MIN), w)
+        self.theta = th * (self.theta0.sum() / th.sum())  # direction is what is learned; the scale is the temperature
+        self.history.append(self.theta.copy())
+
+
 def make_learner(name: str) -> Learner:
     return {"none": NoLearning, "v2_moves": V2Moves, "rank_qp": RankingQP, "cd": ContrastiveDivergence,
-            "pcd": lambda: ContrastiveDivergence(persistent=True, name="pcd"), "combined": Combined}[name]()
+            "pcd": lambda: ContrastiveDivergence(persistent=True, name="pcd"), "combined": Combined,
+            "bt": BradleyTerry, "bt_cd": lambda: BradleyTerry(cd_eta=0.15, name="bt_cd")}[name]()

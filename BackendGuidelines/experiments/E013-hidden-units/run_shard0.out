@@ -47,3 +47,8 @@ easy-1 wk13 mood=normal pace=None none:0.015/n dial:0.035/n dial+free:0.076/n fr
 easy-1 wk14 mood=normal pace=None none:0.003/n dial:0.076/n dial+free:0.012/n free:0.033/n oracle:0.018/n
 easy-1 wk15 mood=normal pace=None none:-0.037/n dial:-0.000/n dial+free:0.004/n free:0.036/n oracle:-0.050/n
 noisy-0 wk0 mood=normal pace=None none:0.110/n dial:0.096/t dial+free:0.096/t free:0.110/n oracle:0.110/n
+noisy-0 wk1 mood=normal pace=None none:0.119/n dial:0.032/n dial+free:0.049/n free:0.024/n oracle:0.188/n
+noisy-0 wk2 mood=normal pace=None none:0.351/n dial:0.186/n dial+free:0.227/n free:0.211/n oracle:0.213/n
+noisy-0 wk3 mood=normal pace=None none:0.268/n dial:0.399/n dial+free:0.082/n free:0.133/n oracle:0.087/n
+noisy-0 wk4 mood=tired pace=None none:0.412/n dial:0.365/t dial+free:0.038/t free:0.103/n oracle:0.078/t
+noisy-0 wk5 mood=tired pace=tired none:0.205/n dial:0.485/n dial+free:0.127/n free:0.076/n oracle:0.202/t

@@ -24,12 +24,14 @@ def design(rankings: list[Ranking], cands: list[str]) -> tuple[np.ndarray, np.nd
     return lib / n, ext / n
 
 
-def bt_fit(X: np.ndarray, prior: np.ndarray, sig: np.ndarray, lo: np.ndarray) -> np.ndarray:
-    """MAP of P(winner) = sigmoid(-theta . x / SCALE), Gaussian prior, lower bounds."""
+def bt_fit(X: np.ndarray, prior: np.ndarray, sig: np.ndarray, lo: np.ndarray, w: np.ndarray | None = None) -> np.ndarray:
+    """MAP of P(winner) = sigmoid(-theta . x / SCALE), Gaussian prior, lower bounds, optional per-ranking weights."""
+    w = np.ones(len(X)) if w is None else w
+
     def f(th):
         z = -(X @ th) / SCALE
-        nll = np.logaddexp(0, -z).sum() + 0.5 * np.sum(((th - prior) / sig) ** 2)
-        g = (X.T @ ((1 - 1 / (1 + np.exp(-z))) / SCALE)) + (th - prior) / sig ** 2
+        nll = (w * np.logaddexp(0, -z)).sum() + 0.5 * np.sum(((th - prior) / sig) ** 2)
+        g = (X.T @ (w * (1 - 1 / (1 + np.exp(-z))) / SCALE)) + (th - prior) / sig ** 2
         return nll, g
     res = minimize(f, prior.copy(), jac=True, method="L-BFGS-B", bounds=[(l, None) for l in lo])
     return res.x
