@@ -539,3 +539,5 @@ coefficient for open_value/open_value:item:82@d12 rounds to 0; using 1
 coefficient for open_value/open_value:item:82@d12 rounds to 0; using 1
 coefficient for open_value/open_value:item:82@d13 rounds to 0; using 1
 coefficient for open_value/open_value:item:82@d13 rounds to 0; using 1
+noisy-2 wk15 mood=normal pace=None none:0.080/n dial:-0.014/n dial+free:0.014/n free:-0.035/n oracle:0.050/n
+done

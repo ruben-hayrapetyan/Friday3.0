@@ -319,3 +319,83 @@ noisy,0,12,oracle,normal,normal,0.00 0.00 0.00 0.00
 noisy,0,13,oracle,normal,normal,0.00 0.00 0.00 0.00
 noisy,0,14,oracle,normal,normal,0.00 0.00 0.00 0.00
 noisy,0,15,oracle,normal,normal,0.00 0.00 0.00 0.00
+noisy,2,0,none,normal,normal,
+noisy,2,1,none,normal,normal,
+noisy,2,2,none,motivated,normal,
+noisy,2,3,none,motivated,normal,
+noisy,2,4,none,normal,normal,
+noisy,2,5,none,normal,normal,
+noisy,2,6,none,normal,normal,
+noisy,2,7,none,normal,normal,
+noisy,2,8,none,normal,normal,
+noisy,2,9,none,tired,normal,
+noisy,2,10,none,tired,normal,
+noisy,2,11,none,tired,normal,
+noisy,2,12,none,normal,normal,
+noisy,2,13,none,normal,normal,
+noisy,2,14,none,normal,normal,
+noisy,2,15,none,normal,normal,
+noisy,2,0,dial,normal,normal,-0.05 -0.11 0.01 -0.05
+noisy,2,1,dial,normal,tired,0.01 -0.06 -0.30 -0.65
+noisy,2,2,dial,motivated,normal,0.00 0.00 0.00 0.00
+noisy,2,3,dial,motivated,normal,0.00 0.00 0.00 0.00
+noisy,2,4,dial,normal,normal,0.40 -0.12 0.30 -0.64
+noisy,2,5,dial,normal,normal,-0.72 -0.62 -0.18 -0.24
+noisy,2,6,dial,normal,normal,0.37 0.23 0.43 -0.36
+noisy,2,7,dial,normal,normal,-0.34 -0.12 0.13 0.17
+noisy,2,8,dial,normal,normal,0.19 -0.01 -0.10 -0.35
+noisy,2,9,dial,tired,tired,-1.17 0.09 -0.20 -0.47
+noisy,2,10,dial,tired,normal,0.00 0.00 0.00 0.00
+noisy,2,11,dial,tired,tired,-0.35 0.40 -0.08 0.02
+noisy,2,12,dial,normal,motivated,0.39 -0.40 0.43 0.34
+noisy,2,13,dial,normal,normal,0.26 0.44 -0.12 -0.05
+noisy,2,14,dial,normal,motivated,0.05 0.09 0.28 0.89
+noisy,2,15,dial,normal,normal,-0.21 -0.12 0.59 0.38
+noisy,2,0,dial+free,normal,normal,0.16 0.23 0.09 0.01 -0.12 0.12
+noisy,2,1,dial+free,normal,tired,0.02 0.66 -0.11 -0.18 -0.03 0.03
+noisy,2,2,dial+free,motivated,normal,0.00 0.00 0.00 0.00 0.51 -0.51
+noisy,2,3,dial+free,motivated,normal,0.00 0.00 0.00 0.00 -0.20 0.20
+noisy,2,4,dial+free,normal,normal,0.37 0.32 0.26 -0.18 -0.09 0.09
+noisy,2,5,dial+free,normal,normal,-0.03 -0.05 0.01 -0.04 -0.05 0.05
+noisy,2,6,dial+free,normal,normal,0.10 -0.11 0.08 -0.23 0.08 -0.08
+noisy,2,7,dial+free,normal,normal,-0.04 -0.11 -0.04 -0.07 -0.04 0.04
+noisy,2,8,dial+free,normal,normal,-0.48 -0.36 -0.05 0.31 0.34 -0.34
+noisy,2,9,dial+free,tired,tired,-0.23 0.26 -0.14 -0.29 -0.12 0.12
+noisy,2,10,dial+free,tired,normal,0.00 0.00 0.00 0.00 -0.02 0.02
+noisy,2,11,dial+free,tired,tired,-0.51 0.27 -0.02 -0.18 -0.02 0.02
+noisy,2,12,dial+free,normal,motivated,0.51 0.12 0.12 0.27 0.13 -0.13
+noisy,2,13,dial+free,normal,normal,-0.32 -0.18 -0.16 0.41 0.23 -0.23
+noisy,2,14,dial+free,normal,normal,-0.08 0.11 -0.01 0.23 0.05 -0.05
+noisy,2,15,dial+free,normal,normal,-0.18 -0.30 0.16 -0.42 0.01 -0.01
+noisy,2,0,free,normal,normal,0.11 -0.11 -0.11 -0.12
+noisy,2,1,free,normal,normal,0.15 -0.15 -0.15 -0.12
+noisy,2,2,free,motivated,normal,0.02 -0.02 -0.02 -0.48
+noisy,2,3,free,motivated,normal,0.21 -0.21 -0.21 -0.40
+noisy,2,4,free,normal,normal,-0.18 0.18 0.18 -0.02
+noisy,2,5,free,normal,normal,0.18 -0.18 -0.18 -0.33
+noisy,2,6,free,normal,normal,-0.12 0.12 0.12 -0.11
+noisy,2,7,free,normal,normal,-0.05 0.05 0.06 0.36
+noisy,2,8,free,normal,normal,0.04 -0.04 -0.04 0.11
+noisy,2,9,free,tired,normal,0.41 -0.41 -0.41 -0.68
+noisy,2,10,free,tired,normal,0.34 -0.34 -0.34 -0.49
+noisy,2,11,free,tired,normal,0.12 -0.12 -0.12 0.28
+noisy,2,12,free,normal,normal,-0.31 0.31 0.31 0.36
+noisy,2,13,free,normal,normal,0.14 -0.14 -0.14 0.11
+noisy,2,14,free,normal,normal,0.13 -0.13 -0.13 0.01
+noisy,2,15,free,normal,normal,-0.22 0.22 0.22 0.17
+noisy,2,0,oracle,normal,normal,0.00 0.00 0.00 0.00
+noisy,2,1,oracle,normal,normal,0.00 0.00 0.00 0.00
+noisy,2,2,oracle,motivated,motivated,1.00 -1.00 0.00 1.00
+noisy,2,3,oracle,motivated,motivated,1.00 -1.00 0.00 1.00
+noisy,2,4,oracle,normal,normal,0.00 0.00 0.00 0.00
+noisy,2,5,oracle,normal,normal,0.00 0.00 0.00 0.00
+noisy,2,6,oracle,normal,normal,0.00 0.00 0.00 0.00
+noisy,2,7,oracle,normal,normal,0.00 0.00 0.00 0.00
+noisy,2,8,oracle,normal,normal,0.00 0.00 0.00 0.00
+noisy,2,9,oracle,tired,tired,-1.00 1.00 0.00 -1.00
+noisy,2,10,oracle,tired,tired,-1.00 1.00 0.00 -1.00
+noisy,2,11,oracle,tired,tired,-1.00 1.00 0.00 -1.00
+noisy,2,12,oracle,normal,normal,0.00 0.00 0.00 0.00
+noisy,2,13,oracle,normal,normal,0.00 0.00 0.00 0.00
+noisy,2,14,oracle,normal,normal,0.00 0.00 0.00 0.00
+noisy,2,15,oracle,normal,normal,0.00 0.00 0.00 0.00

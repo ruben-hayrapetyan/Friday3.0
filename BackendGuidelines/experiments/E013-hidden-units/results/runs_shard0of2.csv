@@ -394,3 +394,8 @@ noisy,2,14,normal,,normal,dial,11.34,0.0258,-5.8802,motivated,0.97,0.05 0.06 0.3
 noisy,2,14,normal,,normal,dial+free,21.02,0.0479,-0.3667,normal,0.209,-0.07 0.09 0.00 0.18 0.02 -0.02
 noisy,2,14,normal,,normal,free,16.44,0.0375,-2.343,normal,0.228,0.13 -0.13 -0.13 0.02
 noisy,2,14,normal,,normal,oracle,15.89,0.0362,-18.95,normal,0.0,0.00 0.00 0.00 0.00
+noisy,2,15,normal,,normal,none,36.1,0.0798,-5.7444,normal,0.0,
+noisy,2,15,normal,,normal,dial,-6.21,-0.0137,-1.0732,normal,0.743,-0.21 -0.12 0.59 0.38
+noisy,2,15,normal,,normal,dial+free,6.49,0.0143,-1.5786,normal,0.567,-0.18 -0.30 0.16 -0.42 0.01 -0.01
+noisy,2,15,normal,,normal,free,-15.71,-0.0347,-0.9854,normal,0.418,-0.22 0.22 0.22 0.17
+noisy,2,15,normal,,normal,oracle,22.53,0.0498,-3.4461,normal,0.0,0.00 0.00 0.00 0.00

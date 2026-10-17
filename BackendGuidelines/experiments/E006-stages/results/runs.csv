@@ -1,0 +1,9 @@
+instance,kind,seed,variant,seconds,violations,late,wellbeing,preferences
+ref-n40-s0,ref40,0,tiered,6.34,0,0,100,284440
+ref-n40-s0,ref40,0,tiered_tol5,8.25,0,0,75,181257
+ref-n40-s0,ref40,0,weighted_1,7.45,0,0,3975,123238
+ref-n40-s0,ref40,0,weighted_3,7.82,0,0,600,125786
+ref-n40-s0,ref40,0,weighted_10,7.49,0,0,250,128837
+ref-n40-s0,ref40,0,weighted_30,6.83,0,0,100,131765
+ref-n40-s0,ref40,0,weighted_100,6.75,0,0,100,133925
+ref-n40-s0,ref40,0,weighted_1000,6.44,0,0,75,140414

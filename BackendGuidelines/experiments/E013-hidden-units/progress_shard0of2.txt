@@ -77,3 +77,5 @@ noisy-2 wk11 mood=tired pace=None none:0.035/n dial:0.076/t dial+free:0.087/t fr
 noisy-2 wk12 mood=normal pace=None none:0.008/n dial:0.084/m dial+free:0.084/m free:0.017/n oracle:0.077/n
 noisy-2 wk13 mood=normal pace=None none:0.083/n dial:-0.010/n dial+free:0.014/n free:-0.052/n oracle:0.012/n
 noisy-2 wk14 mood=normal pace=None none:0.110/n dial:0.026/m dial+free:0.048/n free:0.037/n oracle:0.036/n
+noisy-2 wk15 mood=normal pace=None none:0.080/n dial:-0.014/n dial+free:0.014/n free:-0.035/n oracle:0.050/n
+done
