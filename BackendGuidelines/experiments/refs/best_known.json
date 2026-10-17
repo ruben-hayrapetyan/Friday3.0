@@ -242,50 +242,50 @@
  "ref-n40-s7": {
   "lex": [
    44999,
-   22136,
-   82926
+   21698,
+   113392
   ],
-  "source": "E006/weighted_1000"
+  "source": "E007/ms8"
  },
  "ref-n40-s8": {
   "lex": [
    375,
    17023,
-   125376
+   122425
   ],
-  "source": "E006/weighted_1000"
+  "source": "E007/pa8"
  },
  "ref-n40-s9": {
   "lex": [
    0,
    275,
-   132676
+   107935
   ],
-  "source": "E006/tiered"
+  "source": "E007/pt8"
  },
  "ref-n60-s0": {
   "lex": [
    0,
    1300,
-   1432735
+   981296
   ],
-  "source": "E004/wall_sa"
+  "source": "E007/pa8"
  },
  "ref-n60-s1": {
   "lex": [
    0,
-   1637,
-   621363
+   1150,
+   482708
   ],
-  "source": "E004/wall_sa"
+  "source": "E007/pt8"
  },
  "ref-n60-s2": {
   "lex": [
    0,
-   650,
-   1401905
+   425,
+   1085848
   ],
-  "source": "E004/potts_penalty"
+  "source": "E007/pt8"
  },
  "ref-n60-s3": {
   "lex": [
