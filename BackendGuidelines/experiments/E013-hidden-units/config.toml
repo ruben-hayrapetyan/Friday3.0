@@ -1,5 +1,5 @@
 kinds = ["moody", "easy", "noisy"]
-users = 5
+users = 3
 weeks = 16
 modes = ["none", "dial", "dial+free", "free", "oracle"]
 plan_steps = 300000

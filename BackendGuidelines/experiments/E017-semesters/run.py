@@ -25,6 +25,9 @@ if "--smoke" in sys.argv:
 (HERE / "results").mkdir(exist_ok=True)
 LOG = (HERE / "progress.txt").open("a")
 CANDS = candidates()
+_thr = Path(__file__).parent.parent / "E014-missing-features" / "results" / "threshold.txt"
+if _thr.exists():  # the threshold tuned on E014's tuning users
+    cfg["threshold"] = float(_thr.read_text().strip())
 
 
 def log(m: str) -> None:

@@ -1,4 +1,28 @@
 {
+ "deps-s0": {
+  "lex": [
+   0,
+   3750,
+   25786
+  ],
+  "source": "E018/v3_nocp"
+ },
+ "overload-s0": {
+  "lex": [
+   59970671,
+   72348,
+   2325291
+  ],
+  "source": "E018/v3"
+ },
+ "pins-s0": {
+  "lex": [
+   0,
+   7337,
+   192627
+  ],
+  "source": "E018/v3"
+ },
  "ref-n20-s0": {
   "lex": [
    0,
@@ -102,5 +126,53 @@
    28818
   ],
   "source": "E004/wall_sa"
+ },
+ "ref-n40-s3": {
+  "lex": [
+   0,
+   75,
+   709209
+  ],
+  "source": "E004/wall_sa"
+ },
+ "ref-n40-s4": {
+  "lex": [
+   0,
+   8250,
+   150881
+  ],
+  "source": "E004/potts_penalty"
+ },
+ "ref-n40-s5": {
+  "lex": [
+   0,
+   3650,
+   513630
+  ],
+  "source": "E004/skeleton_hybrid"
+ },
+ "stress-n150-s0": {
+  "lex": [
+   0,
+   3700,
+   6834312
+  ],
+  "source": "E018/v3"
+ },
+ "tight-bigchunk-s0": {
+  "lex": [
+   122008,
+   8311,
+   4203
+  ],
+  "source": "E018/v3"
+ },
+ "tight-onesit-s0": {
+  "lex": [
+   972000,
+   11349,
+   3753
+  ],
+  "source": "E018/v3"
  }
 }

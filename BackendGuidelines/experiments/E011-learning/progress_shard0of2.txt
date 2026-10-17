@@ -1,0 +1,2 @@
+easy-0 wk0 mood=normal none:0.61/0.089 v2_moves:0.61/0.089 rank_qp:0.66/0.089 cd:0.64/0.089 pcd:0.59/0.089 combined:0.66/0.089
+easy-0 wk1 mood=normal none:0.61/0.058 v2_moves:0.61/0.058 rank_qp:0.66/0.015 cd:0.69/0.065 pcd:0.66/0.025 combined:0.84/-0.010

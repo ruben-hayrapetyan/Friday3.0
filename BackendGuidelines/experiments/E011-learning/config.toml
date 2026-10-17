@@ -1,5 +1,5 @@
 kinds = ["easy", "noisy", "moody", "missing", "adversarial"]
-users = 5
+users = 3
 weeks = 12
 learners = ["none", "v2_moves", "rank_qp", "cd", "pcd", "combined"]
 plan_steps = 300000
