@@ -40,6 +40,7 @@ class SAResult:
     t0: float
     t1: float
     best_step: int
+    final: np.ndarray | None = None  # the chain's last state (what a sampler at T > 0 returns as a sample)
 
 
 def protected(c: Compiled, owner: np.ndarray) -> np.ndarray:
@@ -98,4 +99,4 @@ def anneal(c: Compiled, owner0: np.ndarray | None = None, cfg: SAConfig | None =
     bst = new_state(c.m)
     init_state(c.m, bst, best)
     return SAResult(best, tuple(int(x) for x in bst.sv), float(info[0]), int(total_violations(c.m, bst)), dt, stats,
-                    float(t0), float(t1), int(info[1]) if np.isfinite(info[1]) else -1)
+                    float(t0), float(t1), int(info[1]) if np.isfinite(info[1]) else -1, st.owner.copy())
