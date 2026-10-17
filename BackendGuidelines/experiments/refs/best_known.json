@@ -599,11 +599,67 @@
   ],
   "source": "E018/v3"
  },
+ "tight-bigchunk-s1": {
+  "lex": [
+   87012,
+   7286,
+   4192
+  ],
+  "source": "E018/v3"
+ },
+ "tight-bigchunk-s2": {
+  "lex": [
+   139004,
+   7699,
+   3991
+  ],
+  "source": "E018/v3"
+ },
  "tight-onesit-s0": {
   "lex": [
    972000,
    11349,
    3753
+  ],
+  "source": "E018/v3"
+ },
+ "tight-onesit-s1": {
+  "lex": [
+   0,
+   12511,
+   4638
+  ],
+  "source": "E018/cpsat30"
+ },
+ "tight-onesit-s2": {
+  "lex": [
+   0,
+   9886,
+   4305
+  ],
+  "source": "E018/v3"
+ },
+ "tight-onesit-s3": {
+  "lex": [
+   0,
+   9386,
+   4221
+  ],
+  "source": "E018/cpsat30"
+ },
+ "tight-onesit-s4": {
+  "lex": [
+   336008,
+   12761,
+   4322
+  ],
+  "source": "E018/v3"
+ },
+ "tight-onesit-s5": {
+  "lex": [
+   637172,
+   11136,
+   4141
   ],
   "source": "E018/v3"
  }

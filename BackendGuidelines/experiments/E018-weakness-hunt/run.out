@@ -1,0 +1,26 @@
+tight-onesit-s0 v3 lex=(972000, 11349, 3753) viol=0 misses=2 9.2s {'repair_stage': 'cpsat', 'repair_late': 972000}
+tight-onesit-s0 v3_nocp lex=(1800000, 4312, 2502) viol=0 misses=3 8.9s {'repair_stage': 'sampler', 'repair_late': 1800000}
+tight-onesit-s0 cpsat30 lex=(972000, 11349, 3753) viol=0 misses=2 0.8s {'status': 'OPTIMAL/OPTIMAL/OPTIMAL'}
+tight-onesit-s1 v3 lex=(0, 12786, 4638) viol=0 misses=0 9.1s {'repair_stage': 'cpsat', 'repair_late': 0}
+tight-onesit-s1 v3_nocp lex=(432000, 6049, 3453) viol=0 misses=1 12.0s {'repair_stage': 'sampler', 'repair_late': 432000}
+tight-onesit-s1 cpsat30 lex=(0, 12511, 4638) viol=0 misses=0 12.9s {'status': 'OPTIMAL/OPTIMAL/OPTIMAL'}
+tight-onesit-s2 v3 lex=(0, 9886, 4305) viol=0 misses=0 9.5s {'repair_stage': 'cpsat', 'repair_late': 0}
+tight-onesit-s2 v3_nocp lex=(912000, 5074, 3096) viol=0 misses=1 10.1s {'repair_stage': 'sampler', 'repair_late': 912000}
+tight-onesit-s2 cpsat30 lex=(0, 9886, 4305) viol=0 misses=0 15.5s {'status': 'OPTIMAL/OPTIMAL/OPTIMAL'}
+tight-onesit-s3 v3 lex=(0, 9386, 4246) viol=0 misses=0 9.6s {'repair_stage': 'cpsat', 'repair_late': 0}
+tight-onesit-s3 v3_nocp lex=(1020000, 4524, 3062) viol=0 misses=1 9.6s {'repair_stage': 'sampler', 'repair_late': 1020000}
+tight-onesit-s3 cpsat30 lex=(0, 9386, 4221) viol=0 misses=0 18.4s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE'}
+tight-onesit-s4 v3 lex=(336008, 12761, 4322) viol=0 misses=3 9.4s {'repair_stage': 'cpsat', 'repair_late': 336008}
+tight-onesit-s4 v3_nocp lex=(768008, 9649, 3699) viol=0 misses=3 9.4s {'repair_stage': 'sampler', 'repair_late': 768008}
+tight-onesit-s4 cpsat30 lex=(336008, 12761, 4322) viol=0 misses=3 1.0s {'status': 'OPTIMAL/OPTIMAL/OPTIMAL'}
+tight-onesit-s5 v3 lex=(637172, 11136, 4141) viol=0 misses=2 9.5s {'repair_stage': 'cpsat', 'repair_late': 637172}
+tight-onesit-s5 v3_nocp lex=(1260000, 7861, 3978) viol=0 misses=2 9.8s {'repair_stage': 'sampler', 'repair_late': 1260000}
+tight-onesit-s5 cpsat30 lex=(637172, 11136, 4141) viol=0 misses=2 0.5s {'status': 'OPTIMAL/OPTIMAL/OPTIMAL'}
+tight-bigchunk-s0 v3 lex=(122008, 8311, 4203) viol=0 misses=3 8.9s {'repair_stage': 'cpsat', 'repair_late': 122008}
+tight-bigchunk-s0 v3_nocp lex=(180000, 8311, 4203) viol=0 misses=3 10.3s {'repair_stage': 'sampler', 'repair_late': 180000}
+tight-bigchunk-s0 cpsat30 lex=(122008, 8311, 4203) viol=0 misses=3 30.2s {'status': 'FEASIBLE/FEASIBLE/FEASIBLE'}
+tight-bigchunk-s1 v3 lex=(87012, 7286, 4192) viol=0 misses=2 8.3s {'repair_stage': 'cpsat', 'repair_late': 87012}
+tight-bigchunk-s1 v3_nocp lex=(132000, 7286, 4192) viol=0 misses=2 9.9s {'repair_stage': 'sampler', 'repair_late': 132000}
+tight-bigchunk-s1 cpsat30 lex=(87012, 7286, 4192) viol=0 misses=2 30.4s {'status': 'FEASIBLE/FEASIBLE/FEASIBLE'}
+tight-bigchunk-s2 v3 lex=(139004, 7699, 3991) viol=0 misses=4 8.9s {'repair_stage': 'cpsat', 'repair_late': 139004}
+tight-bigchunk-s2 v3_nocp lex=(204000, 7749, 3966) viol=0 misses=4 9.1s {'repair_stage': 'sampler', 'repair_late': 204000}
