@@ -74,3 +74,4 @@ construct_late,construct_s,demoted,edf_feasible,family,items,penalty_late,penalt
 0,0.0004,0,True,ref20,20,0,False,0,0,0.0,construct,0,0.0,0,0,0.0,0,12.52,OPTIMAL,0,False,0
 0,0.0005,0,True,ref20,20,0,False,0,0,0.0,construct,0,0.0,1,0,0.0,0,8.8,OPTIMAL,0,False,0
 0,0.0002,1,True,ref20,20,0,False,0,0,0.0,construct,0,0.0,2,0,,,0.45,FAIL:ModelInfeasible,0,False,0
+0,0.0003,0,True,ref20,20,0,False,0,0,0.0,construct,0,0.0,3,0,0.0,0,6.19,OPTIMAL,0,False,0

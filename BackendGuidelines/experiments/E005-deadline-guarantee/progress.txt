@@ -73,3 +73,4 @@ pins-11: truth=FEASIBLE/4600313 edf=False construct=30687 repair=15625 repair+cp
 ref20-0: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
 ref20-1: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
 ref20-2: truth=FAIL:ModelInfeasible/None edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+ref20-3: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0

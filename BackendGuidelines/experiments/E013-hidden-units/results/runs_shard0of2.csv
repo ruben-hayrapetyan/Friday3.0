@@ -234,3 +234,13 @@ easy,1,14,normal,,normal,dial,21.19,0.0765,-0.0007,normal,0.117,0.01 -0.07 0.05 
 easy,1,14,normal,,normal,dial+free,3.23,0.0117,-0.0855,normal,0.124,0.06 -0.02 0.02 -0.10 0.03 0.03
 easy,1,14,normal,,normal,free,9.15,0.033,-0.0775,normal,0.023,0.01 0.01 -0.01 0.01
 easy,1,14,normal,,normal,oracle,4.99,0.018,-0.0225,normal,0.0,0.00 0.00 0.00 0.00
+easy,1,15,normal,,normal,none,-11.95,-0.0371,-0.9441,normal,0.0,
+easy,1,15,normal,,normal,dial,-0.05,-0.0002,-1.2322,normal,0.331,0.11 0.12 -0.28 -0.06
+easy,1,15,normal,,normal,dial+free,1.37,0.0043,-0.1551,normal,0.121,0.03 0.05 0.04 0.08 0.04 0.04
+easy,1,15,normal,,normal,free,11.66,0.0362,-0.043,normal,0.151,0.09 0.08 -0.02 0.09
+easy,1,15,normal,,normal,oracle,-16.14,-0.0501,-0.8426,normal,0.0,0.00 0.00 0.00 0.00
+noisy,0,0,normal,,tired,none,44.05,0.1104,-0.9502,normal,0.0,
+noisy,0,0,normal,,tired,dial,38.34,0.096,-8.8827,tired,0.708,-0.63 0.14 0.00 -0.28
+noisy,0,0,normal,,tired,dial+free,38.34,0.096,-0.3313,tired,0.593,-0.23 0.47 0.00 -0.27 0.00 -0.00
+noisy,0,0,normal,,tired,free,44.05,0.1104,-2.1108,normal,0.0,0.00 -0.00 -0.00 -0.00
+noisy,0,0,normal,,tired,oracle,44.05,0.1104,-1.9819,normal,0.0,0.00 0.00 0.00 0.00

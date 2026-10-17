@@ -159,3 +159,83 @@ moody,2,12,oracle,normal,normal,0.00 0.00 0.00 0.00
 moody,2,13,oracle,normal,normal,0.00 0.00 0.00 0.00
 moody,2,14,oracle,normal,normal,0.00 0.00 0.00 0.00
 moody,2,15,oracle,motivated,motivated,1.00 -1.00 0.00 1.00
+easy,1,0,none,normal,normal,
+easy,1,1,none,normal,normal,
+easy,1,2,none,normal,normal,
+easy,1,3,none,normal,normal,
+easy,1,4,none,normal,normal,
+easy,1,5,none,normal,normal,
+easy,1,6,none,normal,normal,
+easy,1,7,none,normal,normal,
+easy,1,8,none,normal,normal,
+easy,1,9,none,normal,normal,
+easy,1,10,none,normal,normal,
+easy,1,11,none,normal,normal,
+easy,1,12,none,normal,normal,
+easy,1,13,none,normal,normal,
+easy,1,14,none,normal,normal,
+easy,1,15,none,normal,normal,
+easy,1,0,dial,normal,motivated,0.07 -0.48 -0.06 0.31
+easy,1,1,dial,normal,normal,0.01 -0.09 -0.02 -0.13
+easy,1,2,dial,normal,normal,-0.33 -0.30 0.04 0.09
+easy,1,3,dial,normal,normal,-0.00 -0.04 0.08 -0.04
+easy,1,4,dial,normal,tired,-0.33 0.80 -0.02 0.17
+easy,1,5,dial,normal,normal,0.01 -0.14 -0.00 -0.04
+easy,1,6,dial,normal,normal,-0.06 0.10 0.26 0.16
+easy,1,7,dial,normal,normal,-0.05 0.05 0.27 0.21
+easy,1,8,dial,normal,normal,0.15 0.07 -0.06 0.01
+easy,1,9,dial,normal,normal,0.17 -0.05 0.10 -0.04
+easy,1,10,dial,normal,normal,-0.03 -0.01 -0.13 0.15
+easy,1,11,dial,normal,normal,-0.38 -0.16 -0.08 0.30
+easy,1,12,dial,normal,normal,-0.07 -0.08 0.12 -0.01
+easy,1,13,dial,normal,normal,-0.05 -0.02 -0.00 -0.07
+easy,1,14,dial,normal,normal,0.00 -0.03 0.09 -0.03
+easy,1,15,dial,normal,normal,0.11 0.12 -0.28 -0.06
+easy,1,0,dial+free,normal,motivated,0.02 -0.49 0.00 0.30 0.01 0.01
+easy,1,1,dial+free,normal,normal,0.05 -0.06 0.09 -0.07 0.09 0.09
+easy,1,2,dial+free,normal,normal,0.23 0.17 -0.00 -0.13 0.03 0.03
+easy,1,3,dial+free,normal,normal,0.09 0.01 -0.02 -0.09 0.00 0.00
+easy,1,4,dial+free,normal,tired,-0.41 0.25 -0.06 -0.27 -0.06 -0.06
+easy,1,5,dial+free,normal,normal,-0.02 -0.10 0.09 -0.03 0.08 0.08
+easy,1,6,dial+free,normal,normal,-0.05 -0.16 -0.12 -0.22 -0.13 -0.13
+easy,1,7,dial+free,normal,normal,-0.46 -0.56 -0.03 -0.02 -0.08 -0.08
+easy,1,8,dial+free,normal,normal,-0.19 0.03 -0.02 0.16 0.03 0.03
+easy,1,9,dial+free,normal,normal,-0.06 -0.10 0.04 -0.10 0.06 0.06
+easy,1,10,dial+free,normal,normal,-0.01 -0.05 0.02 -0.09 0.04 0.04
+easy,1,11,dial+free,normal,normal,-0.10 -0.02 -0.15 0.21 -0.25 -0.25
+easy,1,12,dial+free,normal,normal,-0.05 -0.10 0.01 0.03 0.01 0.01
+easy,1,13,dial+free,normal,normal,-0.05 -0.06 0.05 -0.07 0.09 0.09
+easy,1,14,dial+free,normal,normal,0.05 -0.03 0.01 -0.11 0.01 0.01
+easy,1,15,dial+free,normal,normal,0.03 0.05 0.04 0.08 0.04 0.04
+easy,1,0,free,normal,normal,0.02 0.25 0.52 0.02
+easy,1,1,free,normal,normal,0.08 0.08 -0.00 0.08
+easy,1,2,free,normal,normal,0.07 0.05 -0.06 0.07
+easy,1,3,free,normal,normal,-0.01 0.02 0.07 -0.01
+easy,1,4,free,normal,normal,-0.17 -0.25 -0.16 -0.17
+easy,1,5,free,normal,normal,0.04 0.12 0.18 0.04
+easy,1,6,free,normal,normal,-0.01 0.01 0.04 -0.01
+easy,1,7,free,normal,normal,-0.24 -0.15 0.22 -0.24
+easy,1,8,free,normal,normal,0.02 -0.04 -0.13 0.02
+easy,1,9,free,normal,normal,0.00 -0.00 -0.01 0.00
+easy,1,10,free,normal,normal,0.04 -0.08 -0.27 0.04
+easy,1,11,free,normal,normal,0.00 -0.01 -0.04 0.00
+easy,1,12,free,normal,normal,0.08 -0.16 -0.53 0.07
+easy,1,13,free,normal,normal,0.04 0.04 -0.00 0.04
+easy,1,14,free,normal,normal,0.01 0.00 -0.01 0.01
+easy,1,15,free,normal,normal,0.09 0.08 -0.02 0.09
+easy,1,0,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,1,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,2,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,3,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,4,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,5,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,6,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,7,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,8,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,9,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,10,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,11,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,12,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,13,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,14,oracle,normal,normal,0.00 0.00 0.00 0.00
+easy,1,15,oracle,normal,normal,0.00 0.00 0.00 0.00

@@ -157,3 +157,17 @@ easy-2 wk11 mood=motivated pace=motivated none:0.049/n dial:0.397/n dial+free:0.
 easy-2 wk12 mood=motivated pace=motivated none:0.031/n dial:0.202/n dial+free:0.222/n free:0.077/n oracle:0.251/m
 easy-2 wk13 mood=motivated pace=None none:0.081/n dial:0.102/m dial+free:0.134/m free:-0.013/n oracle:0.174/m
 easy-2 wk14 mood=motivated pace=motivated none:-0.038/n dial:0.101/n dial+free:0.152/n free:-0.012/n oracle:0.106/m
+coefficient for open_value/open_value:item:80@d0 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d1 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d2 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d3 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d4 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d5 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d6 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d7 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d8 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d9 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d10 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d11 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d12 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d13 rounds to 0; using 1

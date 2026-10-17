@@ -42,5 +42,7 @@ Stability (mean |change of theta| per week, last 4 weeks): QP 0.02-0.08, combine
 
 Rankings are the fastest teacher but must not be trusted blindly: weight them by how consistent they are (slack history),
 keep the likelihood term as a regulariser, and treat drags (revealed behaviour) as the most reliable evidence. With three
-users per type the confidence intervals are wide (see `analyze.py`); the ordering QP > others on easy users and
-combined >= QP on noisy/missing/adversarial users is consistent across all three users of each type.
+users per type the confidence intervals are wide (see `analyze.py`). Per user (mean accuracy, weeks 8-11): combined beats
+the QP for all 3 noisy users (0.82/0.87/0.87 vs 0.78/0.72/0.74); on easy users the QP is best or within 0.01 for all 3; on
+missing-feature users the QP falls below no-learning for 2 of 3 users; v2's drags beat the QP for all 3 adversarial users.
+The per-type averages are therefore driven by consistent per-user effects, not by one outlier, but n = 3 is small.
