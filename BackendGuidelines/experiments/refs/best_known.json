@@ -1,4 +1,84 @@
 {
+ "cornell-s0": {
+  "lex": [
+   0,
+   100,
+   34720
+  ],
+  "source": "E004/potts_penalty"
+ },
+ "cornell-s1": {
+  "lex": [
+   0,
+   712,
+   83495
+  ],
+  "source": "E004/wall_sa"
+ },
+ "cornell-s2": {
+  "lex": [
+   0,
+   100,
+   86660
+  ],
+  "source": "E004/wall_sa"
+ },
+ "cornell-s3": {
+  "lex": [
+   0,
+   175,
+   33736
+  ],
+  "source": "E004/potts_penalty"
+ },
+ "cornell-s4": {
+  "lex": [
+   0,
+   0,
+   35368
+  ],
+  "source": "E004/wall_sa"
+ },
+ "cornell-s5": {
+  "lex": [
+   0,
+   625,
+   32274
+  ],
+  "source": "E004/potts_penalty"
+ },
+ "cornell-s6": {
+  "lex": [
+   0,
+   6700,
+   173378
+  ],
+  "source": "E004/wall_sa"
+ },
+ "cornell-s7": {
+  "lex": [
+   0,
+   1537,
+   32250
+  ],
+  "source": "E004/wall_sa"
+ },
+ "cornell-s8": {
+  "lex": [
+   0,
+   0,
+   98189
+  ],
+  "source": "E004/potts_penalty"
+ },
+ "cornell-s9": {
+  "lex": [
+   0,
+   250,
+   38532
+  ],
+  "source": "E004/sa_lns"
+ },
  "deps-s0": {
   "lex": [
    0,
@@ -172,6 +252,94 @@
    375,
    17924,
    136282
+  ],
+  "source": "E004/wall_sa"
+ },
+ "ref-n40-s9": {
+  "lex": [
+   0,
+   300,
+   127200
+  ],
+  "source": "E004/potts_penalty"
+ },
+ "ref-n60-s0": {
+  "lex": [
+   0,
+   1300,
+   1432735
+  ],
+  "source": "E004/wall_sa"
+ },
+ "ref-n60-s1": {
+  "lex": [
+   0,
+   1637,
+   621363
+  ],
+  "source": "E004/wall_sa"
+ },
+ "ref-n60-s2": {
+  "lex": [
+   0,
+   650,
+   1401905
+  ],
+  "source": "E004/potts_penalty"
+ },
+ "ref-n60-s3": {
+  "lex": [
+   0,
+   462,
+   1540588
+  ],
+  "source": "E004/wall_sa"
+ },
+ "ref-n60-s4": {
+  "lex": [
+   0,
+   50,
+   753930
+  ],
+  "source": "E004/potts_penalty"
+ },
+ "ref-n60-s5": {
+  "lex": [
+   0,
+   1413,
+   971291
+  ],
+  "source": "E004/sa_lns"
+ },
+ "ref-n60-s6": {
+  "lex": [
+   0,
+   1225,
+   1857859
+  ],
+  "source": "E004/potts_penalty"
+ },
+ "ref-n60-s7": {
+  "lex": [
+   125,
+   13924,
+   736401
+  ],
+  "source": "E004/sa_lns"
+ },
+ "ref-n60-s8": {
+  "lex": [
+   0,
+   13449,
+   212692
+  ],
+  "source": "E004/wall_sa"
+ },
+ "ref-n60-s9": {
+  "lex": [
+   0,
+   850,
+   635785
   ],
   "source": "E004/wall_sa"
  },

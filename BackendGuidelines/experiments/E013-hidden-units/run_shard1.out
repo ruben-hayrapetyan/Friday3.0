@@ -1,0 +1,159 @@
+moody-1 wk0 mood=motivated pace=None none:0.308/n dial:0.135/m dial+free:0.135/m free:0.308/n oracle:0.168/m
+moody-1 wk1 mood=motivated pace=None none:0.074/n dial:0.126/m dial+free:0.126/m free:0.074/n oracle:0.020/m
+moody-1 wk2 mood=normal pace=None none:0.111/n dial:0.132/n dial+free:0.132/n free:0.111/n oracle:0.057/n
+moody-1 wk3 mood=normal pace=None none:-0.033/n dial:0.055/n dial+free:0.055/n free:-0.033/n oracle:0.058/n
+moody-1 wk4 mood=normal pace=None none:0.057/n dial:0.105/n dial+free:0.127/n free:0.057/n oracle:0.087/n
+moody-1 wk5 mood=normal pace=None none:0.023/n dial:0.046/n dial+free:0.052/n free:0.063/n oracle:0.076/n
+moody-1 wk6 mood=normal pace=None none:0.093/n dial:-0.018/n dial+free:-0.002/n free:0.015/n oracle:-0.007/n
+moody-1 wk7 mood=normal pace=None none:0.004/n dial:-0.011/n dial+free:0.055/n free:0.049/n oracle:0.043/n
+moody-1 wk8 mood=normal pace=None none:0.106/n dial:0.039/t dial+free:0.188/t free:0.009/n oracle:0.071/n
+moody-1 wk9 mood=normal pace=None none:0.070/n dial:0.061/t dial+free:0.153/t free:0.077/n oracle:0.162/n
+moody-1 wk10 mood=tired pace=tired none:0.261/n dial:0.068/n dial+free:0.106/n free:0.238/n oracle:0.089/t
+moody-1 wk11 mood=tired pace=None none:0.106/n dial:0.073/t dial+free:-0.007/t free:0.114/n oracle:-0.010/t
+coefficient for open_value/open_value:item:87@d0 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d0 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d1 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d1 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d2 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d2 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d3 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d3 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d4 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d4 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d5 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d5 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d6 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d6 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d7 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d7 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d8 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d8 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d9 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d9 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d10 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d10 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d11 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d11 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d12 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d12 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d13 rounds to 0; using 1
+coefficient for open_value/open_value:item:87@d13 rounds to 0; using 1
+moody-1 wk12 mood=normal pace=None none:0.108/n dial:0.136/n dial+free:0.208/n free:0.131/n oracle:0.101/n
+coefficient for open_value/open_value:item:81@d0 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d0 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d1 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d1 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d2 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d2 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d3 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d3 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d4 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d4 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d5 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d5 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d6 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d6 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d7 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d7 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d8 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d8 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d9 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d9 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d10 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d10 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d11 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d11 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d12 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d12 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d13 rounds to 0; using 1
+coefficient for open_value/open_value:item:81@d13 rounds to 0; using 1
+moody-1 wk13 mood=tired pace=None none:0.190/n dial:0.359/n dial+free:0.293/n free:0.275/n oracle:0.195/t
+coefficient for open_value/open_value:item:82@d0 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d0 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d1 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d1 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d2 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d2 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d3 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d3 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d4 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d4 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d5 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d5 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d6 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d6 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d7 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d7 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d8 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d8 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d9 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d9 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d10 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d10 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d11 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d11 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d12 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d12 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d13 rounds to 0; using 1
+coefficient for open_value/open_value:item:82@d13 rounds to 0; using 1
+moody-1 wk14 mood=tired pace=None none:0.428/n dial:0.153/t dial+free:0.149/t free:0.613/n oracle:0.039/t
+coefficient for open_value/open_value:item:86@d0 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d0 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d1 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d1 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d2 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d2 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d3 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d3 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d4 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d4 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d5 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d5 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d6 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d6 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d7 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d7 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d8 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d8 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d9 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d9 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d10 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d10 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d11 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d11 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d12 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d12 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d13 rounds to 0; using 1
+coefficient for open_value/open_value:item:86@d13 rounds to 0; using 1
+moody-1 wk15 mood=tired pace=None none:0.173/n dial:0.251/n dial+free:0.198/t free:0.261/n oracle:0.126/t
+easy-0 wk0 mood=normal pace=None none:-0.015/n dial:0.019/n dial+free:0.019/n free:-0.015/n oracle:-0.015/n
+easy-0 wk1 mood=normal pace=None none:0.086/n dial:0.023/n dial+free:0.045/n free:0.086/n oracle:0.086/n
+easy-0 wk2 mood=normal pace=None none:0.148/n dial:0.073/n dial+free:0.169/n free:0.148/n oracle:0.148/n
+easy-0 wk3 mood=normal pace=None none:0.081/n dial:0.179/n dial+free:0.248/n free:0.123/n oracle:0.081/n
+easy-0 wk4 mood=normal pace=None none:0.039/n dial:0.066/n dial+free:0.060/n free:0.010/n oracle:0.039/n
+easy-0 wk5 mood=normal pace=None none:0.112/n dial:0.030/n dial+free:0.018/n free:-0.034/n oracle:0.112/n
+easy-0 wk6 mood=normal pace=None none:0.125/n dial:0.198/n dial+free:0.149/n free:0.149/n oracle:0.125/n
+easy-0 wk7 mood=tired pace=None none:-0.034/n dial:-0.039/t dial+free:-0.050/t free:-0.076/n oracle:-0.078/t
+easy-0 wk8 mood=normal pace=None none:0.208/n dial:0.128/n dial+free:0.108/n free:0.105/n oracle:0.137/n
+easy-0 wk9 mood=normal pace=None none:0.013/n dial:0.217/n dial+free:0.107/n free:0.115/n oracle:0.122/n
+easy-0 wk10 mood=normal pace=None none:0.040/n dial:0.112/m dial+free:0.229/m free:0.035/n oracle:0.038/n
+easy-0 wk11 mood=normal pace=None none:0.015/n dial:0.149/m dial+free:0.167/m free:0.029/n oracle:0.063/n
+easy-0 wk12 mood=normal pace=None none:0.118/n dial:0.150/m dial+free:0.252/m free:0.111/n oracle:0.130/n
+easy-0 wk13 mood=normal pace=None none:0.098/n dial:0.043/n dial+free:0.161/n free:0.115/n oracle:0.221/n
+easy-0 wk14 mood=normal pace=None none:0.146/n dial:0.034/n dial+free:-0.021/n free:0.180/n oracle:0.042/n
+easy-0 wk15 mood=normal pace=None none:0.058/n dial:0.057/n dial+free:0.082/n free:0.005/n oracle:0.117/n
+easy-2 wk0 mood=normal pace=None none:-0.025/n dial:0.006/n dial+free:0.006/n free:-0.025/n oracle:-0.025/n
+easy-2 wk1 mood=normal pace=None none:0.087/n dial:0.164/t dial+free:0.147/t free:0.087/n oracle:0.087/n
+easy-2 wk2 mood=normal pace=None none:0.214/n dial:0.093/t dial+free:0.026/t free:0.098/n oracle:0.186/n
+easy-2 wk3 mood=normal pace=None none:0.170/n dial:0.131/n dial+free:0.028/n free:0.260/n oracle:0.251/n
+easy-2 wk4 mood=normal pace=None none:0.103/n dial:0.096/n dial+free:-0.001/n free:0.128/n oracle:0.120/n
+easy-2 wk5 mood=normal pace=None none:0.044/n dial:0.094/n dial+free:0.032/n free:0.026/n oracle:0.067/n
+easy-2 wk6 mood=normal pace=None none:-0.007/n dial:0.132/n dial+free:0.060/n free:0.081/n oracle:0.037/n
+easy-2 wk7 mood=normal pace=None none:0.040/n dial:0.274/n dial+free:0.092/n free:0.294/n oracle:0.207/n
+easy-2 wk8 mood=normal pace=None none:0.047/n dial:0.063/t dial+free:0.005/t free:0.073/n oracle:0.052/n
+easy-2 wk9 mood=normal pace=None none:-0.039/n dial:0.025/n dial+free:0.011/n free:0.011/n oracle:0.085/n
+easy-2 wk10 mood=normal pace=None none:0.089/n dial:0.101/n dial+free:0.021/n free:0.116/n oracle:0.062/n
+easy-2 wk11 mood=motivated pace=motivated none:0.049/n dial:0.397/n dial+free:0.300/n free:-0.036/n oracle:0.304/m
+easy-2 wk12 mood=motivated pace=motivated none:0.031/n dial:0.202/n dial+free:0.222/n free:0.077/n oracle:0.251/m
+easy-2 wk13 mood=motivated pace=None none:0.081/n dial:0.102/m dial+free:0.134/m free:-0.013/n oracle:0.174/m
+easy-2 wk14 mood=motivated pace=motivated none:-0.038/n dial:0.101/n dial+free:0.152/n free:-0.012/n oracle:0.106/m
