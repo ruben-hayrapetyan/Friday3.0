@@ -1,3 +1,22 @@
 user 0: week 0 collected
 user 0: week 10 collected
 user 0: week 20 collected
+user 0: week 30 collected
+user 0: week 40 collected
+user 0: week 50 collected
+user 0: {'user': 0, 'recon_first': 0.1097, 'recon_last': 0.0785, 'fe_lived_mean': -34.44, 'fe_friday_mean': -35.7, 'lived_lower_share': 0.4} {'user': 0, 'acc_rbm': 0.615, 'acc_rules': 0.855, 'pairs': 200} {'user': 0, 'sample_work_h_mean': 64.9, 'lived_work_h_mean': 69.4, 'needed_work_h_two_weeks_mean': 97.0, 'sample_night_hours_mean': 0.24}
+user 1: week 0 collected
+user 1: week 10 collected
+user 1: week 20 collected
+user 1: week 30 collected
+user 1: week 40 collected
+user 1: week 50 collected
+user 1: {'user': 1, 'recon_first': 0.1036, 'recon_last': 0.0782, 'fe_lived_mean': -37.83, 'fe_friday_mean': -41.22, 'lived_lower_share': 0.2} {'user': 1, 'acc_rbm': 0.64, 'acc_rules': 0.865, 'pairs': 200} {'user': 1, 'sample_work_h_mean': 64.2, 'lived_work_h_mean': 68.4, 'needed_work_h_two_weeks_mean': 97.6, 'sample_night_hours_mean': 0.46}
+user 2: week 0 collected
+user 2: week 10 collected
+user 2: week 20 collected
+user 2: week 30 collected
+user 2: week 40 collected
+user 2: week 50 collected
+user 2: {'user': 2, 'recon_first': 0.1056, 'recon_last': 0.0775, 'fe_lived_mean': -35.74, 'fe_friday_mean': -40.07, 'lived_lower_share': 0.2} {'user': 2, 'acc_rbm': 0.63, 'acc_rules': 0.795, 'pairs': 200} {'user': 2, 'sample_work_h_mean': 64.7, 'lived_work_h_mean': 70.0, 'needed_work_h_two_weeks_mean': 97.4, 'sample_night_hours_mean': 0.22}
+done

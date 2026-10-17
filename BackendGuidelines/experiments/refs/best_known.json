@@ -59,17 +59,17 @@
   "lex": [
    0,
    1537,
-   32250
+   29130
   ],
-  "source": "E004/wall_sa"
+  "source": "E006/weighted_30"
  },
  "cornell-s8": {
   "lex": [
    0,
    0,
-   98189
+   50079
   ],
-  "source": "E004/potts_penalty"
+  "source": "E006/weighted_30"
  },
  "cornell-s9": {
   "lex": [
