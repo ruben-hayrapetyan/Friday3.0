@@ -14,3 +14,12 @@ easy,0,3,normal,,v2,16.16,OPTIMAL/OPTIMAL/FEASIBLE,0,0,0,882.54,2.152,0.9245,,Fa
 easy,0,4,normal,,v3,1.32,sampler,0,0,0,76.48,0.1762,0.9497,,False,0,0
 easy,0,4,normal,,v3_lex,0.76,sampler,0,0,0,1500.99,3.4572,0.9772,,False,0,0
 easy,0,4,normal,,v2,15.83,OPTIMAL/OPTIMAL/FEASIBLE,0,0,0,411.11,0.9469,0.9245,,False,0,0
+easy,0,5,normal,,v3,1.24,sampler,0,0,0,17.18,0.0445,0.9719,,False,0,0
+easy,0,5,normal,,v3_lex,0.82,sampler,0,0,0,230.93,0.598,0.9742,,False,0,0
+easy,0,5,normal,,v2,21.23,OPTIMAL/OPTIMAL/FEASIBLE,0,0,0,2447.23,6.3371,0.9245,,False,0,0
+easy,0,6,normal,,v3,1.2,sampler,0,0,0,36.09,0.0955,0.9717,,False,0,0
+easy,0,6,normal,,v3_lex,0.79,sampler,0,0,0,1641.13,4.3419,0.9742,,False,0,0
+easy,0,6,normal,,v2,16.21,OPTIMAL/OPTIMAL/FEASIBLE,0,0,0,724.54,1.9169,0.9245,,False,0,0
+easy,0,7,normal,,v3,1.73,sampler,0,0,0,-2.43,-0.0053,0.9731,,False,0,0
+easy,0,7,normal,,v3_lex,0.79,sampler,0,0,0,405.21,0.8794,0.9794,,False,0,0
+easy,0,7,normal,,v2,19.97,OPTIMAL/OPTIMAL/FEASIBLE,0,0,0,895.67,1.9438,0.9245,,False,0,0
