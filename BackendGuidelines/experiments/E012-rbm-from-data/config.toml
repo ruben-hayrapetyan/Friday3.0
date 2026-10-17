@@ -1,0 +1,6 @@
+users = 3
+weeks = 60
+train = 50
+hidden = 32
+epochs = 300
+lr = 0.05

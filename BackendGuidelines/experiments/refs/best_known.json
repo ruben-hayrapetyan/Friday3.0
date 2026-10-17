@@ -15,6 +15,46 @@
   ],
   "source": "E004/sa_lns"
  },
+ "ref-n20-s2": {
+  "lex": [
+   0,
+   1800,
+   23386
+  ],
+  "source": "E004/wall_sa"
+ },
+ "ref-n20-s3": {
+  "lex": [
+   0,
+   487,
+   37508
+  ],
+  "source": "E004/skeleton_hybrid"
+ },
+ "ref-n20-s4": {
+  "lex": [
+   0,
+   250,
+   47649
+  ],
+  "source": "E004/sa_lns"
+ },
+ "ref-n20-s5": {
+  "lex": [
+   0,
+   3225,
+   39320
+  ],
+  "source": "E004/potts_penalty"
+ },
+ "ref-n20-s6": {
+  "lex": [
+   0,
+   50,
+   21978
+  ],
+  "source": "E004/wall_sa"
+ },
  "ref-n40-s0": {
   "lex": [
    0,

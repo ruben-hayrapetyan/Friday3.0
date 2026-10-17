@@ -65,7 +65,7 @@ def _tier(pr: Prepared, owner: np.ndarray, prot, spec: Spec, method: str, steps:
 
 def solve_sampler(pr: Prepared, budget_s: float, method: str = "sa_geo", seed: int = 0, start: np.ndarray | None = None,
                   split: float = 0.35, steps_per_s: float | None = None, probs: np.ndarray | None = None,
-                  prot: np.ndarray | None = None) -> tuple[np.ndarray, dict]:
+                  prot: np.ndarray | None = None, t0s: float = 0.1, t1s: float = 0.003) -> tuple[np.ndarray, dict]:
     """`steps` are sized for single-thread wall clock; the 8-thread methods use 8x the steps in the same time."""
     t = time.perf_counter()
     owner = pr.owner if start is None else start
@@ -74,9 +74,9 @@ def solve_sampler(pr: Prepared, budget_s: float, method: str = "sa_geo", seed: i
     r = steps_per_s or rate(pr, prot, seed)
     left = max(0.05, budget_s - (time.perf_counter() - t)) * 0.85  # calibration of each tier takes a little
     n1, n2 = int(r * left * split), int(r * left * (1 - split))
-    o1 = _tier(pr, owner, prot, Spec(np.array([W_DEADLINE, 1.0, 0.0]), **kw), method, n1, seed)
+    o1 = _tier(pr, owner, prot, Spec(np.array([W_DEADLINE, 1.0, 0.0]), **kw), method, n1, seed, t0s, t1s)
     wb = int(_stage(pr, o1, 1))
-    o2 = _tier(pr, o1, prot, Spec(np.array([W_DEADLINE, 0.0, 1.0]), cap=(-1, wb, -1), **kw), method, n2, seed + 1)
+    o2 = _tier(pr, o1, prot, Spec(np.array([W_DEADLINE, 0.0, 1.0]), cap=(-1, wb, -1), **kw), method, n2, seed + 1, t0s, t1s)
     return o2, dict(rate=r, steps=(n1, n2), seconds=time.perf_counter() - t)
 
 
