@@ -43,9 +43,9 @@
   "lex": [
    0,
    100,
-   50912
+   42946
   ],
-  "source": "E009/cpsat_warm"
+  "source": "E009/warm_lexpolish"
  },
  "cornell-s3": {
   "lex": [
@@ -75,9 +75,9 @@
   "lex": [
    0,
    25,
-   39098
+   38548
   ],
-  "source": "E009/cpsat_warm"
+  "source": "E009/warm_lexpolish"
  },
  "cornell-s5": {
   "lex": [
@@ -107,9 +107,9 @@
   "lex": [
    0,
    6825,
-   182828
+   127906
   ],
-  "source": "E009/sampler_cold"
+  "source": "E009/warm_tiered"
  },
  "cornell-s7": {
   "lex": [
@@ -123,9 +123,9 @@
   "lex": [
    0,
    1537,
-   35841
+   30605
   ],
-  "source": "E009/cpsat_warm"
+  "source": "E009/warm_lexpolish"
  },
  "cornell-s8": {
   "lex": [
@@ -139,9 +139,9 @@
   "lex": [
    0,
    0,
-   36590
+   35034
   ],
-  "source": "E009/sampler_cold"
+  "source": "E009/warm_lexpolish"
  },
  "cornell-s9": {
   "lex": [
@@ -155,9 +155,9 @@
   "lex": [
    0,
    250,
-   54085
+   39766
   ],
-  "source": "E009/cpsat_warm"
+  "source": "E009/warm_lexpolish"
  },
  "deps-s0": {
   "lex": [
@@ -499,9 +499,9 @@
   "lex": [
    0,
    0,
-   300996
+   152097
   ],
-  "source": "E009/cpsat_warm"
+  "source": "E009/warm_lexpolish"
  },
  "ref-n60-s5": {
   "lex": [
@@ -515,9 +515,9 @@
   "lex": [
    0,
    2663,
-   904029
+   881045
   ],
-  "source": "E009/sampler_warm"
+  "source": "E009/warm_tiered"
  },
  "ref-n60-s6": {
   "lex": [
