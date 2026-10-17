@@ -34,8 +34,8 @@ class State(NamedTuple):
     ctr: np.ndarray  # [0]=log length, [1]=sum of vitem
 
 
-N_MOVES = 10
-MOVE_NAMES = ("shift", "swap", "grow", "shrink", "transfer", "split", "merge", "far", "insert", "drop")
+N_MOVES = 11
+MOVE_NAMES = ("shift", "swap", "grow", "shrink", "transfer", "split", "merge", "far", "insert", "drop", "eject")
 
 
 def new_state(M: Model) -> State:
@@ -579,7 +579,55 @@ def propose(M, st, prot, kind_ix, touched):
         clear_range(M, st, a, b)
         touched[0] = i
         return 1
+    if kind_ix == 10:
+        return eject(M, st, prot, i, a, b, touched)
     return 0
+
+
+@njit(cache=True, _nrt=False)
+def eject(M, st, prot, i, a, b, touched):
+    """Ejection chain of length two: move i's chunk onto a place held by one chunk of another item j, and move that
+    chunk to a random free place in j's window (or into the space i left)."""
+    U = run_units(M, a, b)
+    c = np.random.randint(M.lo[i], M.hi[i] + 1)
+    j = -1
+    u = 0
+    t = c
+    while u < U:  # the target range: free, i's own chunk, or a single other item's unlocked slots
+        if t >= M.S or not ok_slot(M, prot, i, t):
+            return 0
+        o = st.owner[t]
+        if o != -1 and not (a <= t <= b):
+            if M.locked[o, t] or (j != -1 and o != j) or o == i:
+                return 0
+            j = o
+        u += M.units[t]
+        t += 1
+    e = t - 1
+    if u != U or j < 0:
+        return 0
+    # j's chunk that overlaps the target (the whole run moves)
+    s_j = c
+    while st.owner[s_j] != j:
+        s_j += 1
+    c2, d2 = run_around(M, st, s_j)
+    if c2 < c and M.locked[j, c2]:
+        return 0
+    for q in range(c, e + 1):  # all of j inside the target must belong to that one run
+        if st.owner[q] == j and not (c2 <= q <= d2):
+            return 0
+    U2 = run_units(M, c2, d2)
+    tgt = a if np.random.random() < 0.5 else np.random.randint(M.lo[j], M.hi[j] + 1)
+    e2 = fits(M, st, prot, j, tgt, U2, a, b, c2, d2)
+    if e2 < 0 or not (e2 < c or tgt > e):  # j's new place must not collide with i's new place
+        return 0
+    clear_range(M, st, a, b)
+    clear_range(M, st, c2, d2)
+    fill_range(M, st, i, c, e)
+    fill_range(M, st, j, tgt, e2)
+    touched[0] = i
+    touched[1] = j
+    return 2
 
 
 @njit(cache=True, _nrt=False)

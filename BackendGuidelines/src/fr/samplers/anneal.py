@@ -10,7 +10,7 @@ from ..engines.compile import Compiled
 from ..engines.construct import construct
 from ..engines.kernel import N_MOVES, init_state, new_state, run_chain, sample_deltas, seed_rng, total_violations
 
-DEFAULT_PROBS = np.array([3.0, 1.0, 1.0, 0.5, 1.0, 1.0, 1.0, 1.5, 1.0, 0.3])
+DEFAULT_PROBS = np.array([3.0, 1.0, 1.0, 0.5, 1.0, 1.0, 1.0, 1.5, 1.0, 0.3, 0.5])
 LEX = np.array([1e6, 1e3, 1.0])  # deadlines >> wellbeing >> preferences, as plain weights
 
 

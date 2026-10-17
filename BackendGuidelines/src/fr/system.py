@@ -136,7 +136,7 @@ class V2System:
     def theta(self) -> np.ndarray:
         th = self.L.theta.copy()
         if self.pace is not None:  # a pace is v2's own hidden unit, set by the user
-            th = np.maximum(th + PACE_H[self.pace] @ U_DIAL, 0.02)
+            th = th * np.exp(PACE_H[self.pace] @ U_DIAL)
         return th
 
     def plan(self, u: Universe, seed: int) -> tuple[np.ndarray, float, str]:

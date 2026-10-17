@@ -1,2 +1,16 @@
 easy-0 wk0 mood=normal none:0.61/0.089 v2_moves:0.61/0.089 rank_qp:0.66/0.089 cd:0.64/0.089 pcd:0.59/0.089 combined:0.66/0.089
 easy-0 wk1 mood=normal none:0.61/0.058 v2_moves:0.61/0.058 rank_qp:0.66/0.015 cd:0.69/0.065 pcd:0.66/0.025 combined:0.84/-0.010
+easy-0 wk2 mood=normal none:0.61/0.124 v2_moves:0.61/0.124 rank_qp:0.81/0.049 cd:0.70/0.093 pcd:0.65/0.111 combined:0.83/0.104
+easy-0 wk3 mood=normal none:0.61/0.133 v2_moves:0.61/0.133 rank_qp:0.84/-0.011 cd:0.65/0.033 pcd:0.64/-0.020 combined:0.81/-0.030
+easy-0 wk4 mood=normal none:0.61/0.057 v2_moves:0.61/0.057 rank_qp:0.84/0.075 cd:0.65/0.018 pcd:0.68/0.121 combined:0.80/0.101
+easy-0 wk5 mood=normal none:0.61/0.150 v2_moves:0.61/0.150 rank_qp:0.83/0.017 cd:0.62/0.028 pcd:0.60/0.090 combined:0.79/0.027
+easy-0 wk6 mood=normal none:0.61/0.027 v2_moves:0.61/0.027 rank_qp:0.80/0.058 cd:0.57/0.013 pcd:0.62/0.012 combined:0.84/-0.018
+easy-0 wk7 mood=normal none:0.61/0.129 v2_moves:0.61/0.129 rank_qp:0.80/0.083 cd:0.60/0.190 pcd:0.61/0.166 combined:0.79/0.153
+easy-0 wk8 mood=normal none:0.61/0.137 v2_moves:0.81/0.137 rank_qp:0.87/0.062 cd:0.61/0.056 pcd:0.60/0.056 combined:0.84/0.080
+easy-0 wk9 mood=motivated none:0.61/0.126 v2_moves:0.81/-0.030 rank_qp:0.84/0.043 cd:0.62/0.125 pcd:0.60/0.021 combined:0.87/0.051
+easy-0 wk10 mood=motivated none:0.61/0.096 v2_moves:0.81/0.097 rank_qp:0.86/0.038 cd:0.66/0.086 pcd:0.67/0.081 combined:0.89/0.052
+easy-0 wk11 mood=motivated none:0.61/0.157 v2_moves:0.81/0.152 rank_qp:0.86/-0.016 cd:0.63/0.090 pcd:0.57/0.045 combined:0.90/0.109
+easy-2 wk0 mood=normal none:0.76/0.052 v2_moves:0.76/0.052 rank_qp:0.76/0.052 cd:0.74/0.052 pcd:0.76/0.052 combined:0.73/0.052
+easy-2 wk1 mood=normal none:0.76/0.102 v2_moves:0.76/0.102 rank_qp:0.72/0.102 cd:0.77/0.115 pcd:0.71/0.058 combined:0.72/0.142
+easy-2 wk2 mood=normal none:0.76/-0.054 v2_moves:0.76/-0.054 rank_qp:0.69/-0.031 cd:0.75/-0.047 pcd:0.71/-0.113 combined:0.72/-0.067
+easy-2 wk3 mood=normal none:0.76/0.001 v2_moves:0.76/0.001 rank_qp:0.65/0.080 cd:0.77/0.027 pcd:0.73/-0.048 combined:0.71/-0.044

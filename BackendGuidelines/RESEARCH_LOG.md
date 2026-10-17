@@ -89,6 +89,13 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
 20. **Determinism needs a step budget, not a time budget.** Sizing steps from measured speed makes runs depend on load; the
     production profile must fix step counts per instance size (E009 measures both).
 
+21. **Hidden units act multiplicatively**: theta_eff = theta * exp(U h). The additive form E = sum (w + U h) phi lets theta's
+    scale and the state trade off (found by a planted-state unit test); multiplicative keeps "state = relative change".
+22. **Ejection move** (11th move, round 2 of P4): move a chunk onto one other item's chunk and re-place that chunk.
+    Added before E007; E004-E006 ran with the first 10 moves.
+23. **Skeleton hybrid keeps the better start** (construct vs time-limited CP-SAT stage 1): E004 showed the 3 s skeleton can be
+    later than construction. Applies to runs after E004.
+
 ## Findings so far
 
 - **EDF exactness is about feasibility.** When jobs cannot all finish, `L_max` depends on a convention for unfinished jobs, so only

@@ -56,6 +56,8 @@ class HiddenLearner:
     scale: float = 0.05  # Bradley-Terry temperature on normalised differences
     sigma_theta: float = 1.0
     sigma_u: float = 0.5
+    center: float = 0.0
+    link: str = "mult"  # "mult": theta * exp(U h) (state rescales weights); "add": theta + U h, as first written
     theta: np.ndarray = field(default_factory=lambda: np.ones(D))
     weeks: list[WeekEvidence] = field(default_factory=list)
     h: list[np.ndarray] = field(default_factory=list)
@@ -80,10 +82,13 @@ class HiddenLearner:
             return np.vstack([U_DIAL, self.U_free]) if len(self.U_free) else U_DIAL
         return self.U_free
 
-    def theta_eff(self, h: np.ndarray) -> np.ndarray:
+    def theta_eff(self, h: np.ndarray, theta: np.ndarray | None = None) -> np.ndarray:
+        th = self.theta if theta is None else theta
         if self.K == 0:
-            return np.maximum(self.theta, 0.02)
-        return np.maximum(self.theta + h @ self.U(), 0.02)
+            return np.maximum(th, 0.02)
+        if self.link == "mult":
+            return th * np.exp(np.clip(h @ self.U(), -5, 5))
+        return np.maximum(th + h @ self.U(), 0.02)
 
     def _checkin_ll(self, h: np.ndarray, c: str | None) -> float:
         if c is None or self.mode not in ("dial", "dial+free"):
@@ -111,7 +116,7 @@ class HiddenLearner:
         return h
 
     def week_ll(self, x_theta: np.ndarray, h: np.ndarray, ev: WeekEvidence) -> float:
-        te = np.maximum(x_theta + (h @ self.U() if self.K else 0.0), 0.02)
+        te = self.theta_eff(h, x_theta)
         ll = 0.0
         if len(ev.diffs):
             z = -(ev.diffs @ te) / self.scale
@@ -149,6 +154,8 @@ class HiddenLearner:
             th, hs, uf, sl = unpack(x)
             self.U_free, self.skip_link = uf, sl
             nll = 0.5 * np.sum((th - 1.0) ** 2) / self.sigma_theta ** 2 + 0.5 * np.sum(uf ** 2) / self.sigma_u ** 2
+            if K and W > 1:  # theta and the average state are confounded: most weeks are ordinary, so centre the units
+                nll += 0.5 * self.center * W * np.sum(hs.mean(axis=0) ** 2)
             for w, ev in enumerate(self.weeks):
                 h = hs[w] if K else np.zeros(0)
                 if self.mode == "oracle":

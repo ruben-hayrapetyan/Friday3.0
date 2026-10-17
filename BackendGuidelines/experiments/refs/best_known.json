@@ -18,10 +18,10 @@
  "pins-s0": {
   "lex": [
    0,
-   7337,
-   192627
+   7212,
+   139020
   ],
-  "source": "E018/v3"
+  "source": "E018/v3_nocp"
  },
  "ref-n20-s0": {
   "lex": [
@@ -151,13 +151,37 @@
   ],
   "source": "E004/skeleton_hybrid"
  },
+ "ref-n40-s6": {
+  "lex": [
+   0,
+   2100,
+   613393
+  ],
+  "source": "E004/wall_sa"
+ },
+ "ref-n40-s7": {
+  "lex": [
+   44999,
+   22411,
+   255402
+  ],
+  "source": "E004/wall_sa"
+ },
+ "ref-n40-s8": {
+  "lex": [
+   375,
+   17924,
+   136282
+  ],
+  "source": "E004/wall_sa"
+ },
  "stress-n150-s0": {
   "lex": [
    0,
-   3700,
-   6834312
+   2812,
+   6589600
   ],
-  "source": "E018/v3"
+  "source": "E018/v3_nocp"
  },
  "tight-bigchunk-s0": {
   "lex": [

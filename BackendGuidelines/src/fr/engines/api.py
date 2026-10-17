@@ -106,8 +106,12 @@ def run_skeleton_hybrid(p: Problem, pr: Prepared, budget_s: float, seed: int = 0
     info: dict = {}
     try:
         res = GridModel(p).solve(stages=["deadlines"], time_limit_s=skeleton_s, workers=workers, seed=seed)
-        start = pr.c.owner_from_plan(res.plan)
+        cand = pr.c.owner_from_plan(res.plan)
         info["skeleton_late"] = res.evaluation.stage_values["deadlines"]
+        # a time-limited skeleton can be later than the construction (E004): keep the better start
+        from .repair import late_value
+
+        start = cand if late_value(pr, cand) < late_value(pr, pr.owner) else pr.owner
     except (SolveTimeout, ModelInfeasible):
         start = pr.owner
         info["skeleton_late"] = None
