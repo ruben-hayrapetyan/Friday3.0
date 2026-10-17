@@ -32,7 +32,8 @@ def summarize() -> pd.DataFrame:
             row[f"{s}_wall_med"] = g[f"{s}_wall_s"].median()
             row[f"{s}_optimal"] = float((g[f"{s}_status"] == "OPTIMAL").mean())
             row[f"{s}_gap_med"] = g[f"{s}_gap"].median()
-        row["guarantee_rate"] = float(g.guarantee_ok.mean())
+        row["zero_late"] = float(g.zero_late.mean())
+        row["edf_optimistic"] = float(g.edf_optimistic.mean())
         row["edf_feasible"] = float(g.edf_feasible.mean())
         row["overflow_h_med"] = g.overflow_h.median()
         rows.append(row)
@@ -97,7 +98,7 @@ if __name__ == "__main__":
     if len(rep):
         v = rep.groupby("seed").total_s.agg(["min", "median", "max"])
         print("\ntiming repeats (n=60, cold): total_s per seed\n", v.round(2).to_string())
-    print("\nguarantee violations:", int((~runs.guarantee_ok).sum()), "of", len(runs))
+    print("\nEDF said feasible but the proven deadlines optimum was > 0:", int(runs.edf_optimistic.sum()), "of", len(runs))
     cold = runs[runs["mode"] == "cold"]
     print("deterministic check (repeat vs first cold, preferences value):")
     for seed in rep.seed.unique() if len(rep) else []:

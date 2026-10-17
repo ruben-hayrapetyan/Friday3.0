@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 
 from fr.baseline.allocator import allocate
-from fr.baseline.cpsat import GridModel
+from fr.baseline.cpsat import solve
 from fr.core.edf import deadline_feasible
 from fr.core.generate import cornell_semester, reference_instance, warm_variant
 
@@ -45,8 +45,7 @@ def solve_row(sc, mode: str, hint=None, current=None, repeat: int = 0):
     sc.settings.det_time = tuple(cfg["det_time"])
     p = sc.build(current=current)
     edf = deadline_feasible(p)
-    model = GridModel(p)
-    res = model.solve(hint=hint, trace=True)
+    res = solve(p, hint=hint, trace=True)
     ev = res.evaluation
     row = dict(instance=sc.name, n=sc.meta["n"], seed=sc.meta["seed"], mode=mode, repeat=repeat,
                items=len(p.items), slots=p.grid.S, build_s=round(res.build_s, 3), total_s=round(res.total_s, 3),
@@ -54,7 +53,8 @@ def solve_row(sc, mode: str, hint=None, current=None, repeat: int = 0):
                deadlines=ev.stage_values["deadlines"], wellbeing=ev.stage_values["wellbeing"],
                preferences=ev.stage_values["preferences"], overflow_h=ev.overflow_hours, late_h=round(ev.late_hours, 2),
                misses=len(ev.deadline_misses),
-               guarantee_ok=(not edf.feasible) or ev.stage_values["deadlines"] == 0)
+               demoted_locks=len(res.demoted_locks), zero_late=ev.stage_values["deadlines"] == 0,
+               edf_optimistic=edf.feasible and ev.stage_values["deadlines"] > 0)
     traces = []
     for sr in res.stages:
         gap = (sr.true_value - sr.bound) / max(1.0, abs(sr.true_value)) if sr.bound is not None else float("nan")

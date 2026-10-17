@@ -13,7 +13,8 @@ Output: one `REPORT.md` with an engine spec precise enough to write a v3 design 
 
 ## Status
 
-- **Session 1** (2026-10-17): P0 done, P1 done, P2 started. See "Next steps".
+- **Session 1** (2026-10-17): P0 done, P1 done, P2 done (baseline built, scenario tests pass, E001 run). 138 tests pass.
+  Baseline misses its own speed targets (see E001). Next: E002 baseline tuning, then P3.
 - Branch: `rhayrapetyan/backend` (off `main`). Project root: `BackendGuidelines/`.
 
 ## Hardware (P0)
@@ -28,7 +29,7 @@ Laptop timings vary with power and thermals: repeat 3x, report variance (RESEARC
 | --- | --- | --- |
 | P0 Setup | 0.1 session | done |
 | P1 Problem core | 1 session | done (see below) |
-| P2 Baseline (v2 CP-SAT grid, staged) + quality-vs-time curves | 1-2 sessions | in progress |
+| P2 Baseline (v2 CP-SAT grid, staged) + quality-vs-time curves | 1-2 sessions | done (E001); E002 tunes it for fairness |
 | P3 Representations + hard constraints (RQ1-3) | 3 sessions | |
 | P4 Samplers + speed (RQ4, RQ9, RQ10) | 3 sessions | |
 | P5 Simulated users + learning (RQ5) | 2 sessions | |
@@ -45,7 +46,8 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
 `direct` (a second evaluator from slot arrays, no `Lin`) · `builder` (facet specs, presets, pins, lock repair, pruning) ·
 `edf` (executor: exact feasibility, latest starts) · `brute` (exhaustive solver for tiny instances) · `generate`
 (reference benchmark, Cornell semester, stress to 150 items, 6 adversarial families, tiny) · `plans` (random plans).
-`tests/`: 84 tests, ~10 s. Run: `cd BackendGuidelines && uv run pytest`.
+`src/fr/baseline/`: `cpsat` (staged GridModel, lock-core repair), `allocator`, `whatif`.
+`tests/`: 138 tests, ~4 min (CP-SAT scenario and fuzz tests dominate). Run: `cd BackendGuidelines && uv run pytest`.
 
 ## Decisions and assumptions
 
@@ -63,6 +65,10 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
 7. **Energy map** (the reference gives none): deep-work price by local hour, 0 at 10-12, 3 at night. Starting value.
 8. **target_shortfall** under dials: weight and target amount use the mean growth over the window's days with allowed slots.
 9. **Tie-breaking.** Rules never read a clock or RNG; brute-force ties are returned as a list.
+11. **C2 tightened:** `need + 1` units only when a coarse slot is used (reference allows it always; that made replans churn at equal cost). Checker matches.
+12. **Lock repair generalised:** a lock overrides dependency ordering; if locks still contradict the hard rules, `solve` takes the CP-SAT unsat core over per-item lock literals and demotes those items' locks to preferred pins (reported in `SolveResult.demoted_locks`). Also demotes locked runs that break chunk limits and cannot grow.
+13. **Allocator tie-break:** default `pace` (as late as pacing allows) instead of the reference's epsilon-earlier, which front-loads (scenario 19 expects a linear share).
+14. **Default hint** = locks-only plan. Pins in generators are placed inside the item's window.
 10. Commits go on branch `rhayrapetyan/backend` in the outer Friday repo (the research prompt asks for commits after every step).
 
 ## Findings so far
@@ -76,13 +82,18 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
 
 ## Experiments
 
-(none yet; E001 = v2 baseline matrix is next)
+| ID | Question | Finding |
+| --- | --- | --- |
+| E001-v2-baseline | How fast / good is faithful v2 on the reference benchmark? | Misses every speed target: cold p90 20-31 s (target 10), warm p90 18-26 s (target 3). Preferences stage never proven optimal (gap 63-94% at 9 s). Not deterministic with 8 workers (up to 2x spread). EDF optimistic in 6/69 runs. Executor 0.1 ms, allocator 0.13 s are fine. |
+
+- **E001 findings in one line each:** time-limited quality is the baseline at n>=40; v2 determinism needs 1 worker; stage-1 can
+  freeze a bad plan (n=40 seed 1: 606 h late, FEASIBLE only); EDF is a one-directional certificate; overflow is large at 45% load.
 
 ## Next steps
 
-1. P2: faithful staged CP-SAT grid model (`src/fr/baseline/cpsat.py`): x, over, start, cum, any_of; C1-C8; staged lexicographic
-   solve with deterministic time limits; score every plan with the shared evaluator.
-2. Reference scenario tests 1-9, 11-24 against the baseline (12.1). Compare CP-SAT optimum to brute force on tiny instances.
-3. Allocator (section 8) so `quota` and weekly pacing exist; `what_if`.
-4. E001: baseline matrix (20/40/60 items, seeds 0-9 tune / 1000-1009 report), cold and warm, quality-vs-time curves.
-5. Then P3.
+1. E002: tune the baseline fairly (horizon/fine days, slot length, stage budgets, 1 vs 8 workers, hints) so v3 is not beaten
+   against a straw man; fix the baseline's "best known" reference values per instance for gap metrics (long runs, 10 min).
+2. P3: representations. Start with strict QUBO / Hopfield (deliberate failure: penalty scale vs feasibility), then Potts slot
+   model, chunk-level with walls, and the CP-SAT/EDF-skeleton + sampler hybrid. Walls first: move sets that never leave the feasible set.
+3. Open from P1/P2: reference scenario #10 (DST) untested; safe swaps (9.4) not built; allocator day-level dependencies lightly tested.
+4. Investigate the zero_late < 1 instances at n=40 (dependency/cap chains?) to separate real overload from model artefacts.

@@ -152,15 +152,19 @@ def _scale_load(sc: Scenario, load: float, cap_hours: int = 12) -> None:
 
 
 def _add_pins(rng: np.random.Generator, sc: Scenario, n: int, kinds=("locked", "preferred")) -> None:
+    """Pins inside each item's own window (before its due date), so a pin never forces lateness by itself."""
     cands = [s for s in sc.specs if s.when != "fixed" and s.amount == "fixed" and s.duration_min >= 30]
     if not cands:
         return
     for _ in range(n):
         s = cands[int(rng.integers(0, len(cands)))]
-        d = sc.now // 1440 + int(rng.integers(0, 6))
-        hour = int(rng.integers(8, 21))
-        start = at(d, f"{hour:02d}:{int(rng.choice([0, 15, 30, 45])):02d}")
-        sc.pins.append(Pin(s.id, start, start + 30 + 15 * int(rng.integers(0, 4)), str(rng.choice(kinds))))
+        length = 30 + 15 * int(rng.integers(0, 4))
+        lo = max(sc.now + 60, s.release or 0)
+        hi = min(sc.now + 6 * 1440, (s.due or sc.now + 6 * 1440) - length - 60)
+        if hi <= lo:
+            continue
+        start = int(rng.integers(lo // 15, hi // 15)) * 15
+        sc.pins.append(Pin(s.id, start, start + length, str(rng.choice(kinds))))
 
 
 def _add_deps(rng: np.random.Generator, sc: Scenario, n: int) -> None:

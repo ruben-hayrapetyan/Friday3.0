@@ -1,0 +1,70 @@
+n=20 seed=0 cold total=20.347s lex=0,0,35121 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=20 seed=0 warm total=17.633s lex=0,0,52222
+n=20 seed=1 cold total=17.854s lex=0,3550,67678 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=20 seed=1 warm total=17.147s lex=0,3650,40854
+n=20 seed=2 cold total=19.083s lex=0,1800,27406 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=20 seed=2 warm total=18.053s lex=0,2775,28515
+n=20 seed=3 cold total=15.503s lex=0,487,43986 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=20 seed=3 warm total=15.798s lex=0,537,46029
+n=20 seed=4 cold total=18.704s lex=0,250,73868 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=20 seed=4 warm total=15.861s lex=0,0,55133
+n=20 seed=5 cold total=13.85s lex=0,3225,34822 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=20 seed=5 warm total=15.41s lex=0,3225,76237
+n=20 seed=6 cold total=16.234s lex=0,50,27865 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=20 seed=6 warm total=14.936s lex=0,150,29663
+n=20 seed=7 cold total=21.609s lex=0,12125,352582 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=20 seed=7 warm total=17.68s lex=0,11950,601498
+n=20 seed=8 cold total=19.288s lex=5368508,5600,1558441 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=20 seed=8 warm total=17.386s lex=5368508,5575,97433
+n=20 seed=9 cold total=17.045s lex=0,1225,23845 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=20 seed=9 warm total=14.394s lex=0,1225,24882
+n=40 seed=0 cold total=26.025s lex=0,100,1346346 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=40 seed=0 warm total=23.193s lex=0,75,1041366
+n=40 seed=1 cold total=30.771s lex=866450,12237,716980 status=FEASIBLE/FEASIBLE/FEASIBLE
+n=40 seed=1 warm total=24.632s lex=0,10750,54270
+n=40 seed=2 cold total=27.338s lex=0,550,159029 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=40 seed=2 warm total=24.119s lex=0,975,280310
+n=40 seed=3 cold total=22.577s lex=0,75,897205 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=40 seed=3 warm total=19.283s lex=0,50,1198829
+n=40 seed=4 cold total=30.098s lex=0,8200,181555 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=40 seed=4 warm total=23.192s lex=0,8225,191759
+n=40 seed=5 cold total=25.357s lex=0,2337,850207 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=40 seed=5 warm total=25.674s lex=0,4800,808903
+n=40 seed=6 cold total=23.598s lex=0,1050,822444 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=40 seed=6 warm total=19.053s lex=0,2275,872863
+n=40 seed=7 cold total=26.882s lex=44999,22548,87606 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=40 seed=7 warm total=23.213s lex=44999,21548,109062
+n=40 seed=8 cold total=29.238s lex=375,17973,155806 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=40 seed=8 warm total=21.644s lex=375,16898,161546
+n=40 seed=9 cold total=22.21s lex=0,275,186035 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=40 seed=9 warm total=19.245s lex=0,275,115132
+n=60 seed=0 cold total=27.693s lex=0,1325,1650303 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=60 seed=0 warm total=24.54s lex=0,1325,3029236
+n=60 seed=1 cold total=30.687s lex=0,1550,614018 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=60 seed=1 warm total=22.876s lex=0,875,483035
+n=60 seed=2 cold total=29.234s lex=0,762,2064900 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=60 seed=2 warm total=26.055s lex=0,1350,2050092
+n=60 seed=3 cold total=30.98s lex=0,212,1533746 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=60 seed=3 warm total=24.497s lex=0,37,1723664
+n=60 seed=4 cold total=28.919s lex=0,50,891564 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=60 seed=4 warm total=21.289s lex=0,0,305196
+n=60 seed=5 cold total=27.438s lex=0,763,1463028 status=OPTIMAL/OPTIMAL/FEASIBLE
+n=60 seed=5 warm total=27.934s lex=0,2763,1500213
+n=60 seed=6 cold total=27.293s lex=0,1024,2347537 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=60 seed=6 warm total=25.254s lex=0,912,2488599
+n=60 seed=7 cold total=30.552s lex=0,14573,1469170 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=60 seed=7 warm total=25.66s lex=0,14198,1502385
+n=60 seed=8 cold total=29.42s lex=0,10647,745215 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=60 seed=8 warm total=24.649s lex=0,8762,934228
+n=60 seed=9 cold total=30.043s lex=0,100,597261 status=OPTIMAL/FEASIBLE/FEASIBLE
+n=60 seed=9 warm total=25.197s lex=0,75,390567
+repeat n=60 seed=0 r=1 total=26.979s
+repeat n=60 seed=0 r=2 total=27.435s
+repeat n=60 seed=0 r=3 total=25.167s
+repeat n=60 seed=1 r=1 total=29.969s
+repeat n=60 seed=1 r=2 total=30.353s
+repeat n=60 seed=1 r=3 total=30.49s
+repeat n=60 seed=2 r=1 total=31.164s
+repeat n=60 seed=2 r=2 total=29.686s
+repeat n=60 seed=2 r=3 total=30.757s
+done
