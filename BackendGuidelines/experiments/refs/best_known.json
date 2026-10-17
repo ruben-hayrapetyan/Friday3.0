@@ -3,49 +3,49 @@
   "lex": [
    0,
    100,
-   34720
+   32792
   ],
-  "source": "E004/potts_penalty"
+  "source": "E006/weighted_100"
  },
  "cornell-s1": {
   "lex": [
    0,
    712,
-   83495
+   32428
   ],
-  "source": "E004/wall_sa"
+  "source": "E006/weighted_100"
  },
  "cornell-s2": {
   "lex": [
    0,
    100,
-   86660
+   31352
   ],
-  "source": "E004/wall_sa"
+  "source": "E006/weighted_100"
  },
  "cornell-s3": {
   "lex": [
    0,
    175,
-   33736
+   31116
   ],
-  "source": "E004/potts_penalty"
+  "source": "E006/weighted_30"
  },
  "cornell-s4": {
   "lex": [
    0,
    0,
-   35368
+   33103
   ],
-  "source": "E004/wall_sa"
+  "source": "E006/weighted_100"
  },
  "cornell-s5": {
   "lex": [
    0,
    625,
-   32274
+   28434
   ],
-  "source": "E004/potts_penalty"
+  "source": "E006/tiered"
  },
  "cornell-s6": {
   "lex": [
@@ -250,18 +250,18 @@
  "ref-n40-s8": {
   "lex": [
    375,
-   17924,
-   136282
+   17023,
+   125376
   ],
-  "source": "E004/wall_sa"
+  "source": "E006/weighted_1000"
  },
  "ref-n40-s9": {
   "lex": [
    0,
-   300,
-   127200
+   275,
+   132676
   ],
-  "source": "E004/potts_penalty"
+  "source": "E006/tiered"
  },
  "ref-n60-s0": {
   "lex": [
