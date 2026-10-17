@@ -24,8 +24,9 @@ def reference_valid(p, plan) -> bool:
             return False
         if any(s in it.locked and not b[s] for s in range(n)):  # C4
             return False
-        if it.amount == "fixed" and placed > it.need + 1:  # C2
-            return False
+        if it.amount == "fixed" and placed > it.need:  # C2 (tightened: +1 only through a coarse slot)
+            if placed > it.need + 1 or not any(g.units[s] > 1 for s in range(n) if b[s]):
+                return False
         if it.amount == "elastic" and placed > it.max:
             return False
         if it.amount == "target" and placed > it.cap:

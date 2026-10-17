@@ -376,3 +376,20 @@ def tiny(seed: int, n_slots: int = 8, n_items: int = 2) -> Scenario:
         else:
             specs.append(spec(kind, ids(), kind, ceiling_min=45, min_chunk_min=15))
     return Scenario(f"tiny-s{seed}", specs, [], now, st, end=end, meta=dict(seed=seed))
+
+
+def warm_variant(sc: Scenario, seed: int, added: int = 2, removed: int = 1) -> Scenario:
+    """The reference warm start: the same snapshot with `added` new items and `removed` flexible items gone."""
+    rng = np.random.default_rng(seed + 10_000)
+    out = sc.copy()
+    flex = [s for s in out.specs if s.when != "fixed" and s.amount == "fixed"]
+    drop = {flex[int(i)].id for i in rng.choice(len(flex), size=min(removed, len(flex)), replace=False)}
+    out.specs = [s for s in out.specs if s.id not in drop]
+    out.pins = [p for p in out.pins if p.item_id not in drop]
+    for s in out.specs:
+        s.deps = tuple(d for d in s.deps if d[0] not in drop)
+    ids = _Ids()
+    ids.n = max(s.id for s in out.specs) + 100
+    out.specs += _random_flexible(rng, ids, added, out.now, 13)
+    out.name = sc.name + "-warm"
+    return out

@@ -247,7 +247,39 @@ def build_problem(
     for r in problem.rules:
         r.prepare(problem)
     prune(problem)
+    if _demote_unusable_locks(problem):
+        prune(problem)
     return problem
+
+
+def _demote_unusable_locks(problem: Problem) -> bool:
+    """A locked run that breaks the item's own chunk rules and cannot grow becomes a preferred pin
+    (the reference only covers one-sitting locks, 8.1; the same contradiction exists for chunk limits)."""
+    g, changed = problem.grid, False
+    for it in problem.items.values():
+        if not it.locked:
+            continue
+        keep, demote = set(it.locked), set()
+        run: list[int] = []
+        for s in sorted(it.locked) + [None]:
+            if run and (s is None or s != run[-1] + 1):
+                units = sum(int(g.units[x]) for x in run)
+                can_grow = any(n in it.allowed_set and n not in it.locked
+                               for n in (run[0] - 1, run[-1] + 1))
+                too_short = units < it.min_chunk and not can_grow
+                too_long = it.max_chunk is not None and units > it.max_chunk
+                if too_short or too_long:
+                    demote.update(run)
+                run = []
+            if s is not None:
+                run.append(s)
+        if demote:
+            it.locked = frozenset(keep - demote)
+            it.preferred = frozenset(it.preferred | demote)
+            changed = True
+    if changed:
+        problem.lock_owner = {s: it.key for it in problem.items.values() for s in it.locked}
+    return changed
 
 
 def prune(problem: Problem) -> None:

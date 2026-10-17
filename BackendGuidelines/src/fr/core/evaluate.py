@@ -197,8 +197,10 @@ def check(problem: Problem, plan: Plan) -> list[Violation]:
             out.append(Violation("lock_dropped", k, f"{sorted(miss)}"))
 
         placed = sol.placed(k)
-        if it.amount == "fixed" and placed > it.need + 1:
-            out.append(Violation("over_placed", k, f"{placed} > {it.need}+1"))
+        if it.amount == "fixed" and placed > it.need:
+            # one extra unit is allowed only to fill a coarse slot (see RESEARCH_LOG: tightened C2)
+            if placed > it.need + 1 or not any(u[s] > 1 for s in slots):
+                out.append(Violation("over_placed", k, f"{placed} > {it.need}"))
         if it.amount == "elastic" and placed > it.max:
             out.append(Violation("over_max", k, f"{placed} > {it.max}"))
         if it.amount == "target" and placed > it.cap:
@@ -229,6 +231,8 @@ def check(problem: Problem, plan: Plan) -> list[Violation]:
                 continue
             pre = sol.prefix(dep.key)
             for s in slots:
+                if s in it.locked:
+                    continue
                 t = lag_slot(problem, s, dep.lag_min)
                 done = 0 if t <= 0 else int(pre[t])
                 if done < need:

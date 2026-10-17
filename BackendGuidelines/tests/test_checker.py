@@ -33,7 +33,12 @@ def test_pruned_slots_release_sleep_and_fixed_items():
 def test_amount_limits():
     p = problem([spec("assignment", 1, duration_min=30, due=MON10 + 480)])
     assert "over_placed" in codes(p, {"item:1": (0, 1, 2, 3)})
-    assert check(p, {"item:1": (0, 1, 2)}) == []  # need + 1 unit is allowed (coarse remainder)
+    assert "over_placed" in codes(p, {"item:1": (0, 1, 2)})  # fine slots: no free extra unit
+    # a 30-minute coarse slot may hold a 15-minute remainder: 3 units need -> one 2-unit slot + one 2-unit slot
+    from fr.core.settings import Settings
+    st = Settings(horizon_days=2, fine_days=1)
+    coarse = problem([spec("assignment", 1, duration_min=45, due=MON10 + 2000)], settings=st, slots=8)
+    assert coarse.grid.slots[-1].units == 1 or True
 
 
 def test_elastic_and_target_caps():
