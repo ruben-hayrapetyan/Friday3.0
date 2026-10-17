@@ -31,6 +31,15 @@ change nothing, plus check-ins that report those moods, so any state read for th
 - Moody users' moods read right in 67% of weeks (normal 22/27, motivated 6/10, tired 4/11): tired weeks are mostly read as
   normal, which errs on the safe side (planning a normal week for a tired user) and is where the check-in and pace help.
 
-**Recommendation.** Dial-seeded units, multiplicative, gated per user by the predictive test (2 nats); a picked pace always
-clamps them; free units only after the seeded ones are on and only if they pass the same test. Learning hidden units with
-no dial seeding (section 8 of the prompt) is a dead end for a product: no nameable state, slower, no gain.
+**Gating, rounds 2 and 3 (E013b, E013c).** With the multiplicative link the simple gate ("units predict 2 nats better than
+taste") opened for one easy and two noisy users: the units can win by shrinking the weights, which softens predictions and
+fits noisy answers, without any state. Comparing instead with taste-only at its best answer temperature closed that loophole:
+outside pace weeks the gated units cost mood-free users nothing (easy 0.069 vs 0.066, noisy 0.167 vs 0.167), but they recovered
+only a quarter of always-on units' gain for moody users (0.119 vs 0.079 always-on vs 0.133 none): with 6 rankings a week the units
+need many weeks to prove themselves. Always-on units replicated their E013 effect (moody 0.106 -> 0.065, easy 0.050 -> 0.095).
+
+**Recommendation.** Dial-seeded units, multiplicative. Use them without proof only on explicit signals (a picked pace clamps
+them; a one-tap check-in nudges them); automatic inference stays behind the calibrated gate (2 nats over taste at its best
+temperature). This trades some regret for moody users for no harm to everyone else, which is the right default for a product.
+Free units only after the seeded ones are on and pass the same test. Learning hidden units with no dial seeding (section 8 of
+the prompt) is a dead end for a product: no nameable state, slower, no gain. Figure: `report/figures/hidden_units.png`.

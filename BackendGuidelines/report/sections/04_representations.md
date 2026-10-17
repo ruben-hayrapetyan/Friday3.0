@@ -29,8 +29,13 @@ A Hopfield-style descent (T = 0) is no better. Figure: `report/figures/qubo_feas
 | staged CP-SAT, 30 s budget (ran 61 s median) | 97% | 30% | 0.000 (8 comparable) | 0.42 (6) |
 
 Penalties failed exactly where the start plan was itself late: walls let an unprotected late item only improve, while the
-penalty chain spent its time in infeasible states and its best feasible state stayed late. E004b sweeps penalty scales and
-an empty start (section 4.3).
+penalty chain spent its time in infeasible states and its best feasible state stayed late.
+
+**Penalty scale on the full model (E004b, 20 instances, 5 s).** From the constructed start, walls were deadline-safe on 100%;
+penalties of 0.1-1x the median move delta were cheated (wellbeing 2-7x worse, 95% safe); 10-100x behaved like walls on wellbeing
+but left preferences 15-30% worse; deadlines as an ordinary weight (1x wellbeing) left avoidable lateness on 25% of instances.
+From an empty plan every penalty variant missed 4.5-7 hard items (median) against 1 for walls: penalties neither keep nor find
+feasibility reliably, which is the QUBO finding again on the full model. Figure: `report/figures/representations.png`.
 
 **The deadline guarantee (E005, 100 instances incl. adversarial families and stress).** Zero late work was known possible on
 72 of them. EDF-order construction honouring every hard rule reached zero on 69/72 in under 32 ms; a short sampler repair on

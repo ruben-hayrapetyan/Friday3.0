@@ -1,0 +1,13 @@
+kind,user,week,mood,pace,system,plan_s,status,violations,late,misses,regret,regret_rel,cos,rules,units_on,proposals_refused,rules_correct
+easy,0,0,normal,,v3,1.15,sampler,0,0,0,4.15,0.0092,0.9437,,False,0,0
+easy,0,0,normal,,v3_lex,0.75,sampler,0,0,0,1021.33,2.2626,0.9529,,False,0,0
+easy,0,0,normal,,v2,18.49,OPTIMAL/OPTIMAL/FEASIBLE,0,0,0,1989.29,4.407,0.9245,,False,0,0
+easy,0,1,normal,,v3,1.04,sampler,0,0,0,21.92,0.0545,0.927,,False,0,0
+easy,0,1,normal,,v3_lex,0.72,sampler,0,0,0,1120.3,2.7849,0.949,,False,0,0
+easy,0,1,normal,,v2,17.13,OPTIMAL/OPTIMAL/FEASIBLE,0,0,0,619.23,1.5393,0.9245,,False,0,0
+easy,0,2,normal,,v3,1.11,sampler,0,0,0,61.51,0.1438,0.9359,,False,0,0
+easy,0,2,normal,,v3_lex,0.78,sampler,0,0,0,336.89,0.7878,0.9593,,False,0,0
+easy,0,2,normal,,v2,20.83,OPTIMAL/OPTIMAL/FEASIBLE,0,0,0,3943.41,9.2213,0.9245,,False,0,0
+easy,0,3,normal,,v3,1.04,sampler,0,0,0,4.33,0.0106,0.9542,,False,0,0
+easy,0,3,normal,,v3_lex,0.68,sampler,0,0,0,1214.59,2.9617,0.9759,,False,0,0
+easy,0,3,normal,,v2,16.16,OPTIMAL/OPTIMAL/FEASIBLE,0,0,0,882.54,2.152,0.9245,,False,0,0

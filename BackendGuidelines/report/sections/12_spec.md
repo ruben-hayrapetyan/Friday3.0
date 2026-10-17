@@ -63,7 +63,8 @@ breaks elastic, target and open items (E008).
   deltas sets T ~ 10^9).
 - **Stage handling ("lexpolish", E006)**: 60% of the steps on E = 10^6 D + 1000 W + P, then 40% on 10^6 D + P with W capped at the
   value reached (moves raising wellbeing are rejected). This is lexicographic for wellbeing at the end and searches like a
-  weighted sum; strictly tiered annealing left preferences 3x worse (E006). Measured in E006b.
+  weighted sum; strictly tiered annealing left preferences 3x worse (E006). E006b: same median wellbeing as tiered, preferences
+  2.3x better, better than tiered and than the pure weighted search on 95% of instances; wellbeing a few percent worse on 20%.
 - **Parallelism**: independent chains from the same start on all idle performance cores, best result wins (multi-start was as
   good as parallel tempering in E007); a short tabu finish (20% of steps, 25 candidates, tenure 8) when the budget exceeds ~5 s.
 - **Budgets and determinism**: a *step* budget per instance size, not a time budget (E009): ~0.5-1 M proposals per chain for a
@@ -73,8 +74,10 @@ breaks elastic, target and open items (E008).
 
 ### 12.7 Warm replans
 
-Start from the previous plan (construct with `base`), protect what is on time, anneal from a low temperature (T0 = 0.01 x
-median |delta|) with the reference's `minimize_changes` rule active. Measured in E009 (sections 5, 9).
+Start from the previous plan (construct with `base`), repair if late, protect what is on time, anneal with lexpolish from a
+low temperature (T0 = 0.01 x median |delta|) with the reference's `minimize_changes` rule active. E009/E009b: 0.9 s (p90 0.94 s)
+for a 1 s replan, 2.7 s for a 3 s one, against 24 s for CP-SAT warm; churn 38.6 h median at 3 s (CP-SAT-30: 37.6 h); zero late
+on every instance where any engine reaches zero.
 
 ### 12.8 Explanations
 

@@ -1,0 +1,5 @@
+easy-1 wk0 mood=normal v3:0.034/1.12s/m0/v0 v3_lex:2.997/0.81s/m0/v0 v2:23.714/18.2s/m0/v0
+easy-1 wk1 mood=normal v3:0.151/1.31s/m0/v0 v3_lex:12.258/0.72s/m0/v0 v2:42.595/19.58s/m0/v0
+easy-1 wk2 mood=normal v3:0.060/0.88s/m0/v0 v3_lex:4.520/0.67s/m0/v0 v2:0.341/16.58s/m0/v0
+easy-1 wk3 mood=tired v3:0.040/1.12s/m0/v0 v3_lex:0.087/0.73s/m0/v0 v2:0.280/15.34s/m0/v0
+easy-1 wk4 mood=tired v3:0.000/1.13s/m0/v0 v3_lex:0.171/0.8s/m0/v0 v2:0.472/19.26s/m0/v0
