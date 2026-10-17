@@ -191,6 +191,14 @@
   ],
   "source": "E006/weighted_1000"
  },
+ "ref-n40-s0-warm": {
+  "lex": [
+   0,
+   100,
+   454692
+  ],
+  "source": "E009/sampler_cold"
+ },
  "ref-n40-s1": {
   "lex": [
    0,

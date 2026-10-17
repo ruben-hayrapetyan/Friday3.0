@@ -1,0 +1,6 @@
+ref-n40-s0-warm sampler_warm@0.5 lex=(0, 200, 808374) churn=50.0 0.32s {'identical_rerun': True}
+ref-n40-s0-warm sampler_cold@0.5 lex=(0, 550, 807314) churn=70.5 0.35s {'identical_rerun': True}
+ref-n40-s0-warm sampler_warm@1 lex=(0, 100, 479422) churn=39.75 0.73s {'identical_rerun': True}
+ref-n40-s0-warm sampler_cold@1 lex=(0, 375, 331367) churn=70.5 0.65s {'identical_rerun': True}
+ref-n40-s0-warm sampler_warm@3 lex=(0, 100, 457194) churn=55.25 1.93s {'identical_rerun': True}
+ref-n40-s0-warm sampler_cold@3 lex=(0, 100, 454692) churn=61.75 1.99s {'identical_rerun': True}
