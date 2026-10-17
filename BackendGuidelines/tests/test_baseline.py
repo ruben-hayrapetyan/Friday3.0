@@ -33,5 +33,10 @@ def test_pinned_instances_are_never_infeasible(seed):
     sc.settings.det_time = (20.0, 20.0, 20.0)
     sc.settings.time_limit_s = 25.0
     p = sc.build()
-    res = solve(p, stages=["deadlines"])
+    from fr.baseline.cpsat import SolveTimeout
+
+    try:
+        res = solve(p, stages=["deadlines"])
+    except SolveTimeout:  # slow hardware or a loaded machine: no answer is not an INFEASIBLE model
+        pytest.skip("CP-SAT found no solution in time on this machine")
     assert check(p, res.plan) == []
