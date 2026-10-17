@@ -11,7 +11,7 @@ import pandas as pd
 from fr.bench import boot_ci
 
 HERE = Path(__file__).parent
-d = pd.read_csv(HERE / "results" / "runs.csv")
+d = pd.concat([pd.read_csv(f) for f in sorted((HERE / "results").glob("runs*.csv"))])
 rows = []
 for (k, s), x in d.groupby(["kind", "system"]):
     rows.append(dict(kind=k, system=s, weeks=len(x), regret_rel_med=x.regret_rel.median(),

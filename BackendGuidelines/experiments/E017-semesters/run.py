@@ -11,6 +11,7 @@ import numpy as np
 from fr.core.evaluate import check, evaluate
 from fr.core.generate import cornell_semester
 from fr.engines.api import warmup
+from fr.shard import mine, suffix
 from fr.sim.user import MISSING_RULE, SimUser
 from fr.sim.world import Universe, live_week, true_energy
 from fr.supervisor.grammar import candidates, matches_truth
@@ -23,7 +24,7 @@ if "--smoke" in sys.argv:
     HERE = HERE / "smoke"
     HERE.mkdir(exist_ok=True)
 (HERE / "results").mkdir(exist_ok=True)
-LOG = (HERE / "progress.txt").open("a")
+LOG = (HERE / f"progress{suffix()}.txt").open("a")
 CANDS = candidates()
 _thr = Path(__file__).parent.parent / "E014-missing-features" / "results" / "threshold.txt"
 if _thr.exists():  # the threshold tuned on E014's tuning users
@@ -41,6 +42,8 @@ def main() -> None:
     rows = []
     for kind in cfg["kinds"]:
         for uid in range(cfg["users"]):
+            if not mine(cfg["kinds"].index(kind) * cfg["users"] + uid):
+                continue
             user = SimUser.make(kind, 20000 + 100 * cfg["kinds"].index(kind) + uid)
             rng = np.random.default_rng(20000 + uid)
             names = [c["name"] for c in CANDS]
@@ -80,7 +83,7 @@ def main() -> None:
                                      rules_correct=sum(matches_truth(r) for r in getattr(sysm, "extra_w", {}))))
                 log(f"{kind}-{uid} wk{wk} mood={mood} " + " ".join(
                     f"{r['system']}:{r['regret_rel']:.3f}/{r['plan_s']}s/m{r['misses']}/v{r['violations']}" for r in rows[-len(systems):]))
-                with (HERE / "results" / "runs.csv").open("w", newline="") as f:
+                with (HERE / "results" / f"runs{suffix()}.csv").open("w", newline="") as f:
                     w = csv.DictWriter(f, fieldnames=list(rows[0]))
                     w.writeheader()
                     w.writerows(rows)
