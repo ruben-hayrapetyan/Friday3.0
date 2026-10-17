@@ -7,3 +7,5 @@
 16:12:57 start E010-diversity-calibration load: 12.27 11.34 10.91
 16:16:55 end E010-diversity-calibration (0)
 16:16:57 start E004b-penalty-scale load: 8.94 9.81 10.30
+16:38:34 end E004b-penalty-scale (0)
+16:38:58 start E006b-stage-polish load: 8.34 7.03 7.62
