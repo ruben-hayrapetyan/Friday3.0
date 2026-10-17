@@ -28,3 +28,4 @@ tight-bigchunk-s2 cpsat30 lex=(139004, 7699, 3991) viol=0 misses=4 30.2s {'statu
 tight-bigchunk-s3 v3 lex=(52016, 8174, 4032) viol=0 misses=2 9.3s {'repair_stage': 'cpsat', 'repair_late': 52016}
 tight-bigchunk-s3 v3_nocp lex=(192000, 8324, 4007) viol=0 misses=1 23.5s {'repair_stage': 'sampler', 'repair_late': 192000}
 tight-bigchunk-s3 cpsat30 lex=(52016, 8324, 4007) viol=0 misses=1 30.7s {'status': 'FEASIBLE/FEASIBLE/FEASIBLE'}
+tight-bigchunk-s4 v3 lex=(340016, 10999, 3998) viol=0 misses=4 9.8s {'repair_stage': 'cpsat', 'repair_late': 340016}

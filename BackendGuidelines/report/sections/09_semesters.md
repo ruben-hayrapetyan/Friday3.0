@@ -27,6 +27,4 @@ on average 0.3-2 rule questions per user over the semester and never added a wro
 
 ![Semester regret](report/figures/semester_regret.png)
 
-Figure: `report/figures/semester_regret.png`.
-
 **Weakness hunt (E018).** See below.

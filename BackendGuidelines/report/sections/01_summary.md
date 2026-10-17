@@ -33,3 +33,18 @@ preference polish that cannot raise wellbeing).
 **What failed** (section 10): the strict QUBO/Boltzmann machine (never deadline-safe at any penalty scale; it cheats or freezes),
 penalties instead of walls, an RBM learned from lived weeks without rules, learning from likelihood alone, always-on hidden units,
 and asking noisy users many questions.
+
+**Answers to the research questions** (details in the sections named):
+
+| RQ | answer | where |
+| --- | --- | --- |
+| RQ1 representation | Slot assignment (Potts) with chunk-level moves and walls. The strict QUBO cannot express most rules and fails on the rest; penalties on the full model cheat or cost quality; CP-SAT hybrids (skeleton, LNS) cost more time than they save | 4 |
+| RQ2 hard constraints | Walls + EDF-order construction + sampler repair + CP-SAT fallback: zero late on 72/72 instances where possible and every evaluation week; EDF alone is a one-directional test; overload goes through the same three steps, with CP-SAT exact on proven cases | 4 |
+| RQ3 stages | Weighted 1:1-10:1 disagrees with the lexicographic answer on 85-100% of instances; 1000:1 on 20% (by <= 3%); strict tiers lose 3x on preferences; recommended: weighted 1000:1 search + capped preference polish | 5 |
+| RQ4 samplers and speed | Geometric Metropolis SA with 11 chunk moves (split essential), multi-start on idle cores (as good as PT), tabu finish; 550k moves/s; 2 s matches CP-SAT-30 s; warm replans < 1 s | 5 |
+| RQ5 learning | Bradley-Terry likelihood over rankings and drags (drags x3) beats the ranking QP, CD, PCD and v2's moves-only max-margin on average and under deliberate inconsistency; likelihood from lived weeks alone barely learns | 6 |
+| RQ6 hidden units | Dial-seeded, multiplicative units; they help moody users (-30-40% regret) and hurt the rest (+30-60%) when always on; use on explicit signals (paces) and behind a temperature-calibrated gate | 7 |
+| RQ7 mood vs taste | Decide per user, not per week (single weeks: 23-42% false attribution); the decisive evidence is predictive likelihood of new rankings against a baseline at the user's own answer temperature; without that calibration units win by softening predictions | 7 |
+| RQ8 supervisor | Missing rules: found for all tested users by week 4-6; propose, add on yes (no wrong rule accepted). Walls: never soften silently; ask once. Queries: QBC/uncertainty halve questions for consistent users; stop asking noisy users | 8 |
+| RQ9 guarantees | Determinism with a fixed step budget (all warm reruns identical; independent of thread count); exact per-rule explanations and "why not elsewhere" (tested to equal the evaluator); churn about equal to CP-SAT-30 s with the recommended stage scheme | 5 |
+| RQ10 diversity and calibration | T > 0 samples are different plans (66-71% of work slots differ); item-day probabilities calibrated (ECE 0.003-0.009) when T matches the user's noise; but under walls the chain covers only the region reachable from its start (~20% of all valid plans on tiny instances), so it is not a full posterior | 5 |
