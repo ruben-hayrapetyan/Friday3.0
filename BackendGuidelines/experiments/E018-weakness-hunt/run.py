@@ -67,7 +67,7 @@ FAMILIES = {
 def v3(p, pr, budget, seed, use_cp):
     t = time.perf_counter()
     rep = ensure_deadlines(pr, seed=seed, use_cpsat=use_cp)
-    plan, info = tiered_budget(pr, max(0.5, budget - (time.perf_counter() - t)), seed, start=rep.owner)
+    plan, info = tiered_budget(pr, max(0.5, budget - (time.perf_counter() - t)), seed, start=rep.owner, stages="lexpolish")
     return plan, time.perf_counter() - t, dict(repair_stage=rep.stage, repair_late=rep.late)
 
 

@@ -5,7 +5,7 @@ Each family targets one assumption: tight one-sitting packing (construction is g
 2-hour minimum chunks (fragmentation), a 30-item dependency chain, 40 pins (locks everywhere), 2.2x overload (lateness is
 unavoidable: quality of the overload path), and 150 items (speed).
 
-**Engines.** `v3` (repair with CP-SAT fallback 5 s, then 5 s wall sampler), `v3_nocp` (repair by the sampler only), `cpsat30`.
+**Engines.** `v3` (repair with CP-SAT fallback 5 s, then the wall sampler with E006's weighted search + capped polish), `v3_nocp` (repair by the sampler only), `cpsat30`.
 Six seeds per family (tuning range), shared evaluator and checker.
 
 **Metrics.** valid, late (vs best known), deadline-safe (zero late when zero is known possible), wellbeing/preferences gaps,

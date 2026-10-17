@@ -50,8 +50,9 @@ def _rate(c, owner, prot, seed: int = 0, probe: int = 60_000) -> float:
 
 def tiered_budget(pr: Prepared, budget_s: float, seed: int, wall: bool = True, split: float = 0.35,
                   start: np.ndarray | None = None, lam: float = 1e6, t0_scale: float = 0.1, t1_scale: float = 0.003,
-                  probs: np.ndarray | None = None):
-    """Tiered annealing (wellbeing, then preferences under a wellbeing cap) for about `budget_s` seconds."""
+                  probs: np.ndarray | None = None, stages: str = "tiered"):
+    """Tiered annealing (wellbeing, then preferences under a wellbeing cap) for about `budget_s` seconds.
+    stages="lexpolish": a weighted search first (E006), then the same capped preference polish."""
     t0 = time.perf_counter()
     c = pr.c
     owner = pr.owner if start is None else start
@@ -62,7 +63,12 @@ def tiered_budget(pr: Prepared, budget_s: float, seed: int, wall: bool = True, s
     base = SAConfig(wall=wall, seed=seed, lam=lam, t0_scale=t0_scale, t1_scale=t1_scale)
     if probs is not None:
         base = replace(base, probs=probs)
-    r1 = anneal(c, owner, replace(base, steps=max(n1, 1000), wts=np.array([W_DEADLINE, 1.0, 0.0])), prot)
+    if stages == "lexpolish":  # E006: search one weighted energy (stage ratio 1000), then polish under a wellbeing cap
+        n1, n2 = int(rate * left * 0.6 * 0.9), int(rate * left * 0.4 * 0.9)
+        w1 = np.array([W_DEADLINE, 1000.0, 1.0])
+    else:
+        w1 = np.array([W_DEADLINE, 1.0, 0.0])
+    r1 = anneal(c, owner, replace(base, steps=max(n1, 1000), wts=w1), prot)
     cap = (-1, r1.sv[1], -1)
     r2 = anneal(c, r1.owner, replace(base, steps=max(n2, 1000), wts=np.array([W_DEADLINE, 0.0, 1.0]), cap=cap,
                                      seed=seed + 1), prot)

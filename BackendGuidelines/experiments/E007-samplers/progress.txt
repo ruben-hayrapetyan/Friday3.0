@@ -1,0 +1,3 @@
+cold JIT (empty numba cache, fresh process) 66.4s
+ref-n40-s0 sa_geo@2s lex=(0, 250, 280280) viol=0 1.08s
+ref-n40-s0 sa_lin@2s lex=(0, 375, 383961) viol=0 1.01s
