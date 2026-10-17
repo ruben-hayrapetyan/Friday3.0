@@ -47,6 +47,7 @@ class WeekEvidence:
     blocks: int
     checkin: str | None
     pace: str | None  # a pace the user picked this week (clamps the dial units), or None
+    weights: np.ndarray | None = None  # per ranking; drags (revealed behaviour) count more (E011)
 
 
 @dataclass
@@ -57,6 +58,7 @@ class HiddenLearner:
     sigma_theta: float = 1.0
     sigma_u: float = 0.5
     center: float = 0.0
+    drag_weight: float = 3.0
     link: str = "mult"  # "mult": theta * exp(U h) (state rescales weights); "add": theta + U h, as first written
     theta: np.ndarray = field(default_factory=lambda: np.ones(D))
     weeks: list[WeekEvidence] = field(default_factory=list)
@@ -120,7 +122,8 @@ class HiddenLearner:
         ll = 0.0
         if len(ev.diffs):
             z = -(ev.diffs @ te) / self.scale
-            ll += float(-np.logaddexp(0, -z).sum())
+            w = ev.weights if ev.weights is not None else np.ones(len(z))
+            ll += float(-(w * np.logaddexp(0, -z)).sum())
         if self.K and ev.blocks:
             p = 1 / (1 + np.exp(-(self.skip_link[0] + self.skip_link[1:] @ h)))
             p = np.clip(p, 1e-6, 1 - 1e-6)
@@ -130,7 +133,8 @@ class HiddenLearner:
 
     def add_week(self, week: Week, pace: str | None = None) -> None:
         diffs = np.array([_norm_diff(r) for r in week.rankings]) if week.rankings else np.zeros((0, D))
-        self.weeks.append(WeekEvidence(diffs, week.skips, week.blocks, week.checkin, pace))
+        w = np.array([self.drag_weight if r.kind == "drag" else 1.0 for r in week.rankings])
+        self.weeks.append(WeekEvidence(diffs, week.skips, week.blocks, week.checkin, pace, w))
         self.h.append(np.zeros(self.K))
         self.fit(true_moods=None)
 

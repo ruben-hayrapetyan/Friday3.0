@@ -51,3 +51,4 @@ noisy-1 wk1 mood=normal pace=None none:0.323/n dial:0.361/n dial+free:0.361/n fr
 noisy-1 wk2 mood=normal pace=None none:0.329/n dial:0.374/m dial+free:0.374/m free:0.562/n oracle:0.629/n
 noisy-1 wk3 mood=normal pace=None none:0.551/n dial:0.382/m dial+free:0.382/n free:0.368/n oracle:0.135/n
 noisy-1 wk4 mood=normal pace=None none:0.500/n dial:0.367/n dial+free:0.416/n free:0.368/n oracle:0.329/n
+noisy-1 wk5 mood=normal pace=None none:0.374/n dial:0.326/n dial+free:0.387/n free:0.299/n oracle:0.201/n
