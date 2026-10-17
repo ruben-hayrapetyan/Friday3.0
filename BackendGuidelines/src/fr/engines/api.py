@@ -145,13 +145,21 @@ ENGINES = {
 }
 
 
-def run_v3(p: Problem, pr: Prepared, budget_s: float, seed: int = 0, fallback_s: float = 5.0) -> EngineResult:
+def run_v3(p: Problem, pr: Prepared, budget_s: float, seed: int = 0, fallback_s: float = 5.0,
+           small_items: int = 60) -> EngineResult:
     """The recommended pipeline after E018: construction -> sampler repair -> the wall sampler (lexpolish) for the budget;
     only if lateness is left, CP-SAT's deadline stage hinted with that plan, then a short polish of whichever is less late.
-    (E018's first version ran CP-SAT before annealing; on 150-item instances it used the whole budget and helped nothing.)"""
+    (E018's first version ran CP-SAT before annealing; on 150-item instances it used the whole budget and helped nothing.
+    E018b: on small packed instances the opposite order is better, so instances up to `small_items` items run CP-SAT first.)"""
     from .repair import ensure_deadlines, late_value
 
     t = time.perf_counter()
+    if len(p.items) <= small_items:  # E018b: on small packed instances an exact deadline solve first is best
+        rep = ensure_deadlines(pr, seed=seed, use_cpsat=True, cpsat_s=fallback_s)
+        plan, info = tiered_budget(pr, max(0.5, budget_s - (time.perf_counter() - t)), seed, start=rep.owner,
+                                   stages="lexpolish")
+        info.update(repair_late=rep.late, fallback=f"first:{rep.stage}")
+        return EngineResult(plan, time.perf_counter() - t, info)
     rep = ensure_deadlines(pr, seed=seed, use_cpsat=False)
     plan, info = tiered_budget(pr, max(0.5, budget_s - (time.perf_counter() - t)), seed, start=rep.owner, stages="lexpolish")
     owner = pr.c.owner_from_plan(plan)
