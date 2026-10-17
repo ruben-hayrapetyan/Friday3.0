@@ -24,21 +24,22 @@ def design(rankings: list[Ranking], cands: list[str]) -> tuple[np.ndarray, np.nd
     return lib / n, ext / n
 
 
-def bt_fit(X: np.ndarray, prior: np.ndarray, sig: np.ndarray, lo: np.ndarray, w: np.ndarray | None = None) -> np.ndarray:
-    """MAP of P(winner) = sigmoid(-theta . x / SCALE), Gaussian prior, lower bounds, optional per-ranking weights."""
+def bt_fit(X: np.ndarray, prior: np.ndarray, sig: np.ndarray, lo: np.ndarray, w: np.ndarray | None = None,
+           scale: float = SCALE) -> np.ndarray:
+    """MAP of P(winner) = sigmoid(-theta . x / scale), Gaussian prior, lower bounds, optional per-ranking weights."""
     w = np.ones(len(X)) if w is None else w
 
     def f(th):
-        z = -(X @ th) / SCALE
+        z = -(X @ th) / scale
         nll = (w * np.logaddexp(0, -z)).sum() + 0.5 * np.sum(((th - prior) / sig) ** 2)
-        g = (X.T @ (w * (1 - 1 / (1 + np.exp(-z))) / SCALE)) + (th - prior) / sig ** 2
+        g = (X.T @ (w * (1 - 1 / (1 + np.exp(-z))) / scale)) + (th - prior) / sig ** 2
         return nll, g
     res = minimize(f, prior.copy(), jac=True, method="L-BFGS-B", bounds=[(l, None) for l in lo])
     return res.x
 
 
-def loglik(X: np.ndarray, th: np.ndarray) -> np.ndarray:
-    z = -(X @ th) / SCALE
+def loglik(X: np.ndarray, th: np.ndarray, scale: float = SCALE) -> np.ndarray:
+    z = -(X @ th) / scale
     return -np.logaddexp(0, -z)
 
 
@@ -78,3 +79,23 @@ def fitted_weight(rankings: list[Ranking], cand: str) -> tuple[np.ndarray, float
     X = np.hstack([lib, ext])
     th = bt_fit(X, np.append(np.ones(D), 0.0), np.append(np.ones(D), 2.0), np.append(np.full(D, 0.02), 0.0))
     return th[:D], float(th[D])
+
+
+def answer_scale(X: np.ndarray, prior: np.ndarray, w: np.ndarray | None = None,
+                 grid=(0.02, 0.05, 0.1, 0.2, 0.5), folds: int = 3, seed: int = 0) -> float:
+    """The user's answer noise as a Bradley-Terry temperature, chosen by cross-validated log-likelihood."""
+    n, D = X.shape
+    if n < 12:
+        return SCALE
+    rng = np.random.default_rng(seed)
+    parts = np.array_split(rng.permutation(n), folds)
+    best, best_ll = SCALE, -np.inf
+    for s in grid:
+        ll = 0.0
+        for te in parts:
+            tr = np.setdiff1d(np.arange(n), te)
+            th = bt_fit(X[tr], prior, np.ones(D), np.full(D, 0.02), None if w is None else w[tr], scale=s)
+            ll += loglik(X[te], th, s).sum()
+        if ll > best_ll:
+            best, best_ll = s, ll
+    return best

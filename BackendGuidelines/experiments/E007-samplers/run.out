@@ -130,3 +130,7 @@ ref-n40-s6 pa8@2s lex=(0, 2075, 659611) viol=0 2.00s
 ref-n40-s6 ms8@2s lex=(0, 1525, 500972) viol=0 1.80s
 ref-n40-s6 sa_tabu@2s lex=(0, 2175, 692266) viol=0 1.96s
 ref-n40-s6 sa_geo@8s lex=(0, 1050, 635554) viol=0 6.01s
+ref-n40-s6 sa_lin@8s lex=(0, 1050, 526471) viol=0 6.44s
+ref-n40-s6 fixed_T@8s lex=(0, 1575, 660347) viol=0 6.39s
+ref-n40-s6 greedy@8s lex=(0, 1575, 682959) viol=0 6.48s
+ref-n40-s6 heatbath@8s lex=(0, 1050, 656835) viol=0 7.09s

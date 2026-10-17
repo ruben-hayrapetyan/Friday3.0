@@ -163,14 +163,16 @@ class BradleyTerry(Learner):
     """Round 2 (after E011): a likelihood over rankings instead of hard constraints. Each ranking is a noisy vote,
     drags (revealed behaviour) count `drag_weight` times; Gaussian prior toward the hand-set weights."""
 
-    def __init__(self, drag_weight: float = 3.0, sigma: float = 1.0, cd_eta: float = 0.0, name: str = "bt"):
+    def __init__(self, drag_weight: float = 3.0, sigma: float = 1.0, cd_eta: float = 0.0, name: str = "bt",
+                 auto_scale: bool = False):
         super().__init__(name)
         self.rankings: list[Ranking] = []
-        self.drag_weight, self.sigma = drag_weight, sigma
+        self.drag_weight, self.sigma, self.auto_scale = drag_weight, sigma, auto_scale
+        self.scale = 0.05
         self.cd = ContrastiveDivergence(eta=cd_eta) if cd_eta else None
 
     def update(self, week, u, seed):
-        from ..supervisor.discover import bt_fit
+        from ..supervisor.discover import answer_scale, bt_fit
 
         self.rankings += week.rankings
         prior = self.theta0.copy()
@@ -180,7 +182,9 @@ class BradleyTerry(Learner):
             prior = self.cd.theta
         X = np.array([r.diff() / max(np.abs(r.diff()).sum(), 1e-12) for r in self.rankings])
         w = np.array([self.drag_weight if r.kind == "drag" else 1.0 for r in self.rankings])
-        th = bt_fit(X, prior, np.full(D, self.sigma), np.full(D, THETA_MIN), w)
+        if self.auto_scale:  # round 3: fit the user's answer noise (E011b: a fixed temperature overfits noisy users)
+            self.scale = answer_scale(X, prior, w, seed=len(self.rankings))
+        th = bt_fit(X, prior, np.full(D, self.sigma), np.full(D, THETA_MIN), w, scale=self.scale)
         self.theta = th * (self.theta0.sum() / th.sum())  # direction is what is learned; the scale is the temperature
         self.history.append(self.theta.copy())
 
@@ -188,4 +192,5 @@ class BradleyTerry(Learner):
 def make_learner(name: str) -> Learner:
     return {"none": NoLearning, "v2_moves": V2Moves, "rank_qp": RankingQP, "cd": ContrastiveDivergence,
             "pcd": lambda: ContrastiveDivergence(persistent=True, name="pcd"), "combined": Combined,
-            "bt": BradleyTerry, "bt_cd": lambda: BradleyTerry(cd_eta=0.15, name="bt_cd")}[name]()
+            "bt": BradleyTerry, "bt_cd": lambda: BradleyTerry(cd_eta=0.15, name="bt_cd"),
+            "bt_auto": lambda: BradleyTerry(auto_scale=True, name="bt_auto")}[name]()
