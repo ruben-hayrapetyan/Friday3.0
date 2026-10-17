@@ -194,10 +194,10 @@
  "ref-n40-s1": {
   "lex": [
    0,
-   14613,
-   55959
+   14250,
+   43122
   ],
-  "source": "E004/potts_penalty"
+  "source": "E006/weighted_10"
  },
  "ref-n40-s2": {
   "lex": [

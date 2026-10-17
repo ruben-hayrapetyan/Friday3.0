@@ -1,3 +1,6 @@
 missing-1 wk4: best=cand:weekdays:late:any gain=0.0508 correct=False
 missing-1 wk6: best=cand:fri_sat:late:any gain=0.1326 correct=True
 missing-1 wk8: best=cand:fri_sat:late:any gain=0.1720 correct=True
+missing-1 wk10: best=cand:fri_sat:late:any gain=0.2598 correct=True
+missing-1 wk12: best=cand:fri_sat:late:any gain=0.2690 correct=True
+missing-3 wk4: best=cand:weekend:late:any gain=0.3175 correct=False

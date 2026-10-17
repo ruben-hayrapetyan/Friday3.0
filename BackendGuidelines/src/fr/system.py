@@ -73,18 +73,32 @@ class V3System:
     stages: str = "weighted"
     name: str = "v3"
 
+    gate: float = 2.0  # E013: units are used only once they predict rankings this many nats better than taste alone
+
     def __post_init__(self):
         self.L = HiddenLearner(self.hidden_mode)
+        self.L0 = HiddenLearner("none")
         self.extra_w: dict[str, float] = {}
         self.rankings = []
         self.h = np.zeros(self.L.K)
+        self.gain = 0.0
+        self._pace_week = False
         self.log: list[str] = []
 
+    @property
+    def units_on(self) -> bool:
+        return self.gain > self.gate
+
     def start_week(self, checkin: str | None, pace: str | None) -> None:
+        self._pace_week = pace is not None
         self.h = self.L.predict_h(checkin, pace)
+        if pace is not None and self.L.K:  # a picked pace always clamps the dial units
+            self.h[:4] = PACE_H[pace]
 
     def theta(self) -> np.ndarray:
-        return self.L.theta_eff(self.h)
+        if self.units_on or self._pace_week:
+            return self.L.theta_eff(self.h)
+        return self.L0.theta_eff(np.zeros(0))
 
     def plan(self, u: Universe, seed: int) -> tuple[np.ndarray, float, str]:
         owner, dt = plan_sampler(u, self.theta(), self.extra_w, self.budget_s, seed, self.method, self.stages)
@@ -108,7 +122,14 @@ class V3System:
         return pick
 
     def end_week(self, week: Week, pace: str | None, wk: int) -> None:
+        from .learn.hidden import WeekEvidence, _norm_diff
+
+        if week.rankings:  # predictive check, before learning from this week
+            X = np.array([_norm_diff(r) for r in week.rankings])
+            ev = WeekEvidence(X, 0, 0, None, None)
+            self.gain += self.L.week_ll(self.L.theta, self.h, ev) - self.L0.week_ll(self.L0.theta, np.zeros(0), ev)
         self.L.add_week(week, pace=pace)
+        self.L0.add_week(week, pace=pace)
         self.rankings += week.rankings
         if self.candidates and wk + 1 >= self.discover_from and (wk + 1 - self.discover_from) % self.discover_every == 0:
             cands = [c for c in self.candidates if c not in self.extra_w]

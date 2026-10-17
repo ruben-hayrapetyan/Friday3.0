@@ -8,3 +8,6 @@ ref-n40-s0 weighted_100 lex=(0, 100, 133925) viol=0 6.8s
 ref-n40-s0 weighted_1000 lex=(0, 75, 140414) viol=0 6.4s
 ref-n40-s1 tiered lex=(0, 15137, 41840) viol=0 14.9s
 ref-n40-s1 tiered_tol5 lex=(0, 16625, 40017) viol=0 5.5s
+ref-n40-s1 weighted_1 lex=(0, 20424, 34574) viol=0 9.0s
+ref-n40-s1 weighted_3 lex=(0, 15725, 39328) viol=0 6.0s
+ref-n40-s1 weighted_10 lex=(0, 14250, 43122) viol=0 9.1s
