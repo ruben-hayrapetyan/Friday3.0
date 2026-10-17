@@ -23,3 +23,9 @@ ref-n40-s1 construct wD1 lex=(0, 17512, 45712) misses=0 viol=0
 ref-n40-s1 construct wD10 lex=(0, 15624, 49115) misses=0 viol=0
 ref-n40-s1 construct wD100 lex=(0, 15525, 57029) misses=0 viol=0
 ref-n40-s1 empty wall lex=(0, 14325, 54537) misses=0 viol=0
+ref-n40-s1 empty lam0.1 lex=(0, 14750, 52283) misses=0 viol=0
+ref-n40-s1 empty lam1 lex=(40663073, 10450, 1084331) misses=18 viol=0
+ref-n40-s1 empty lam10 lex=(40663073, 10450, 1084331) misses=18 viol=0
+ref-n40-s1 empty lam100 lex=(26414164, 10450, 603165) misses=16 viol=0
+ref-n40-s1 empty wD1 lex=(0, 14325, 70229) misses=0 viol=0
+ref-n40-s1 empty wD10 lex=(0, 15150, 41269) misses=0 viol=0
