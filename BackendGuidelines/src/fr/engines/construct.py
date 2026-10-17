@@ -89,9 +89,32 @@ def _slot_lists(M, i, strict: bool):
     return [s for s in range(M.lo[i], M.hi[i] + 1) if ok[s]]
 
 
+def _extend_locked(M, owner, dayu, placed, i, remaining) -> int:
+    """A one-sitting item with locked slots must grow out of the locked run, not start a second chunk."""
+    held = [s for s in range(M.lo[i], M.hi[i] + 1) if owner[s] == i]
+    lo, hi = held[0], held[-1]
+    got = 0
+    for step, rng in ((1, range(hi + 1, M.S)), (-1, range(lo - 1, -1, -1))):
+        for s in rng:
+            if got >= remaining or owner[s] != -1:
+                break
+            if not M.allowed[i, s] or dayu[M.day[s]] + M.units[s] > M.day_cap[M.day[s]]:
+                break
+            owner[s] = i
+            dayu[M.day[s]] += M.units[s]
+            placed[i] += M.units[s]
+            got += int(M.units[s])
+        if got >= remaining:
+            break
+    return got
+
+
 def _place(M, owner, dayu, placed, i) -> None:
     remaining = int(M.need[i] - placed[i])
     if remaining <= 0:
+        return
+    if M.one_sit[i] and placed[i] > 0:
+        _extend_locked(M, owner, dayu, placed, i, remaining)
         return
     conds = _ready_slot_ok(M, owner, i)
     if conds is None:

@@ -397,3 +397,33 @@ def warm_variant(sc: Scenario, seed: int, added: int = 2, removed: int = 1) -> S
     out.specs += _random_flexible(rng, ids, added, out.now, 13)
     out.name = sc.name + "-warm"
     return out
+
+
+# ---------------------------------------------------------------- the price-only slice (QUBO-expressible)
+
+
+PRICE_ONLY_RULES = ["late_work", "late_night", "energy", "soft_late", "unscheduled"]
+
+
+def price_only(seed: int, n: int = 8, days: int = 2) -> Scenario:
+    """Fixed-amount split items with one-unit chunks and price rules only: the slice a pairwise QUBO can express."""
+    from .defaults import REFERENCE_RULES
+
+    rng = np.random.default_rng(seed)
+    ids = _Ids()
+    now = at(MONDAY_WEEK1, "08:00")
+    st = Settings(horizon_days=days, fine_days=days, workers=1)
+    specs: list[ItemSpec] = []
+    d0 = MONDAY_WEEK1
+    for k in range(int(rng.integers(1, 3))):  # a couple of classes block part of the days
+        day = d0 + int(rng.integers(0, days))
+        hh = int(rng.choice([9, 11, 13]))
+        specs.append(spec("class", ids(), f"class{k}", start=at(day, f"{hh:02d}:00"), end=at(day, f"{hh + 1:02d}:30")))
+    for _ in range(n):
+        kind = str(rng.choice(["assignment", "reading", "exam_prep"]))
+        due = now + int(rng.integers(8, days * 24 - 2)) * 60
+        specs.append(spec(kind, ids(), kind, duration_min=int(rng.integers(2, 9)) * 30, due=due, min_chunk_min=15,
+                          chunk_cost=0.0, spread="none", importance=int(rng.integers(1, 6)),
+                          firmness=str(rng.choice(["hard", "soft"], p=[0.6, 0.4]))))
+    rules = [dict(d) for d in REFERENCE_RULES if d["name"] in PRICE_ONLY_RULES]
+    return Scenario(f"price-only-n{n}-s{seed}", specs, [], now, st, rule_specs=rules, meta=dict(seed=seed, n=n))

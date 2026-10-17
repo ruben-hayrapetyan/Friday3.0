@@ -57,3 +57,32 @@ class Timer:
 
     def __exit__(self, *a):
         self.s = time.perf_counter() - self.t
+
+
+def update_best(name: str, lex: tuple[int, int, int], source: str) -> bool:
+    """Record `lex` as the best known value of instance `name` if it beats the stored one (lexicographic)."""
+    refs = load_refs("best_known")
+    cur = refs.get(name)
+    if cur is None or tuple(lex) < tuple(cur["lex"]):
+        refs[name] = dict(lex=[int(v) for v in lex], source=source)
+        save_refs("best_known", refs)
+        return True
+    return False
+
+
+def best_known(name: str) -> tuple[int, int, int] | None:
+    cur = load_refs("best_known").get(name)
+    return None if cur is None else tuple(cur["lex"])
+
+
+def lex_gaps(lex: tuple[int, int, int], best: tuple[int, int, int]) -> dict:
+    """Per-stage gaps in lexicographic reading: a stage is only compared when the stages before it match the best.
+
+    Returns late_gap (absolute scaled points), wellbeing_gap and preferences_gap (relative, floor 1000), the last two
+    NaN when an earlier stage is already worse (the comparison would not mean anything).
+    """
+    nan = float("nan")
+    late_gap = lex[0] - best[0]
+    w = gap(lex[1], best[1]) if lex[0] <= best[0] else nan
+    p = gap(lex[2], best[2]) if (lex[0] <= best[0] and lex[1] <= best[1]) else nan
+    return dict(late_gap=late_gap, wellbeing_gap=w, preferences_gap=p)
