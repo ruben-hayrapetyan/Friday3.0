@@ -7,7 +7,8 @@
 | Huge penalty weights on the full model (Potts state, chunk moves) | 95% deadline-safe instead of 100% | From a late start the chain explores infeasible states and its best feasible state stays late | E004, E004b |
 | Pure weighted stages, ratio 1-10 | Wellbeing worse on 85-100% of instances (4x at ratio 1) | The ratio decides the trade; a small one is not "wellbeing first" | E006 |
 | Strictly tiered annealing (wellbeing with preferences switched off, then preferences under a cap) | Preferences 3x worse than a weighted search at ratio 1000, wellbeing no better on 80% | Optimising one stage alone leaves the next in a state the cap forbids repairing | E006 |
-| A fixed moderate temperature with no annealing | see E007 | | E007 |
+| A fixed moderate temperature with no annealing | Worse than annealing given time (mean rank 7.0 vs 6.1 at 8 s) and no better than zero-temperature descent | With no cooling the chain neither explores early nor settles late; from a good start, plain descent does as well | E007 |
+| Parallel tempering on a single core | Worst sampler at both budgets (beaten by single-chain SA on 25/30) | 8 replicas share one core, each gets 1/8 of the steps; replica exchange adds nothing over restarts here | E007 |
 | CP-SAT deadline skeleton for every instance | Hurt quality and missed deadlines twice | A 3 s CP-SAT stage-1 solution is often later than the 1 ms construction | E004 |
 | CP-SAT large-neighbourhood polish at a 10 s budget | Worse wellbeing than pure annealing | Each neighbourhood solve pays model build + presolve (1-2 s): too few exact moves per second | E004 |
 | An RBM trained on lived weeks, no rules | Ranks plans at 0.62-0.64 vs 0.80-0.87 for the rules; samples are not schedules | An occupancy picture cannot see items, amounts or deadlines; lived weeks are Friday's plan plus a small drift | E012 |

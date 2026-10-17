@@ -18,6 +18,8 @@ penalty itself. Plans were 25-200x the optimum. Everything else in the rule set 
 items, dependencies, the daily cap) needs helper registers per measure (hundreds per instance) with the same problem.
 A Hopfield-style descent (T = 0) is no better. Figure: `report/figures/qubo_feasibility_vs_penalty.png`.
 
+![QUBO](report/figures/qubo_feasibility_vs_penalty.png)
+
 **Walls win on the guarantee; quality is close (E004, E005).** With the same moves and the same energy:
 
 | 40 instances, 10 s | valid | deadline-safe | wellbeing gap (median) | preferences gap (median) |
@@ -36,6 +38,8 @@ penalties of 0.1-1x the median move delta were cheated (wellbeing 2-7x worse, 95
 but left preferences 15-30% worse; deadlines as an ordinary weight (1x wellbeing) left avoidable lateness on 25% of instances.
 From an empty plan every penalty variant missed 4.5-7 hard items (median) against 1 for walls: penalties neither keep nor find
 feasibility reliably, which is the QUBO finding again on the full model. Figure: `report/figures/representations.png`.
+
+![Deadline guarantee](report/figures/deadline_guarantee.png)
 
 **The deadline guarantee (E005, 100 instances incl. adversarial families and stress).** Zero late work was known possible on
 72 of them. EDF-order construction honouring every hard rule reached zero on 69/72 in under 32 ms; a short sampler repair on

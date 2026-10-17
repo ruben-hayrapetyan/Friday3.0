@@ -25,6 +25,8 @@ in all 288 v3 plans. Hidden units never switched on by themselves in 12 weeks (t
 helped in the weeks they picked a pace, and their regret (0.070) stayed close to consistent users' (0.057). The supervisor asked
 on average 0.3-2 rule questions per user over the semester and never added a wrong rule.
 
+![Semester regret](report/figures/semester_regret.png)
+
 Figure: `report/figures/semester_regret.png`.
 
 **Weakness hunt (E018).** See below.

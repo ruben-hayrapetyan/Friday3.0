@@ -24,6 +24,8 @@ Each learner has its own trajectory; 3 users per type, 12 weeks; three replicate
 | BT + CD | - | 0.828 | - |
 | BT with fitted answer temperature | - | - | 0.858 |
 
+![Learning curves](report/figures/learning_curves_E011b.png)
+
 **Findings.**
 - **Rankings teach fastest; how they are used decides robustness.** The QP (constraints with slack) learned fastest on easy
   users (0.92 in replicate 1, settled in 5 weeks) but fell *below* no learning on noisy, missing-feature and adversarial users in

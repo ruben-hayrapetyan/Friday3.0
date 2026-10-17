@@ -39,6 +39,8 @@ outside pace weeks the gated units cost mood-free users nothing (easy 0.069 vs 0
 only a quarter of always-on units' gain for moody users (0.119 vs 0.079 always-on vs 0.133 none): with 6 rankings a week the units
 need many weeks to prove themselves. Always-on units replicated their E013 effect (moody 0.106 -> 0.065, easy 0.050 -> 0.095).
 
+![Hidden units](report/figures/hidden_units.png)
+
 **Recommendation.** Dial-seeded units, multiplicative. Use them without proof only on explicit signals (a picked pace clamps
 them; a one-tap check-in nudges them); automatic inference stays behind the calibrated gate (2 nats over taste at its best
 temperature). This trades some regret for moody users for no harm to everyone else, which is the right default for a product.

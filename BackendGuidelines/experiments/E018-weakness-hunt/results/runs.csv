@@ -26,3 +26,6 @@ demoted,edf_feasible,engine,family,instance,items,late,late_h,misses,preferences
 0,True,v3,tight_bigchunk,tight-bigchunk-s2,10,139004,0.0,4,3991,139004,cpsat,8.89,2,0,,0,7699
 0,True,v3_nocp,tight_bigchunk,tight-bigchunk-s2,10,204000,0.0,4,3966,204000,sampler,9.11,2,0,,0,7749
 0,True,cpsat30,tight_bigchunk,tight-bigchunk-s2,10,139004,0.0,4,3991,,,30.2,2,0,FEASIBLE/FEASIBLE/FEASIBLE,0,7699
+0,True,v3,tight_bigchunk,tight-bigchunk-s3,10,52016,0.0,2,4032,52016,cpsat,9.29,3,0,,0,8174
+0,True,v3_nocp,tight_bigchunk,tight-bigchunk-s3,10,192000,0.0,1,4007,192000,sampler,23.54,3,0,,0,8324
+0,True,cpsat30,tight_bigchunk,tight-bigchunk-s3,10,52016,0.0,1,4007,,,30.74,3,0,FEASIBLE/FEASIBLE/FEASIBLE,0,8324

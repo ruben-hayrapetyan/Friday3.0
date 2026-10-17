@@ -24,6 +24,8 @@ Multi-core methods beat a single chain on 25-29 of 30 instances; replica exchang
 at these budgets; parallel tempering on one core is the worst (its replicas share the core). Heat-bath and Metropolis are
 equivalent. A fixed temperature is no better than descent and worse than annealing given time (prompt section 8).
 
+![Samplers](report/figures/samplers.png)
+
 **Moves (E008).** Split (cut a legal-size piece and move it) is essential: without it wellbeing is 3x worse on every instance,
 because walls forbid breaking long runs one slot at a time. Insert, drop and shrink are essential for elastic, target and open
 items (they start empty). Far shift and swap matter; transfer, merge, ejection, grow and small shifts are near neutral.
@@ -31,6 +33,8 @@ items (they start empty). Far shift and swap matter; transfer, merge, ejection, 
 **Stage handling (E006, E006b).** One weighted energy with a 1000:1 ratio between stages matched strictly tiered annealing on
 wellbeing for 80% of instances and gave 3x better preferences; lower ratios trade wellbeing away (ratio 1: 4x worse
 wellbeing). The recommended scheme searches the 1000:1 energy and then polishes preferences with wellbeing capped (E006b).
+
+![Stages](report/figures/stages.png)
 
 **Against CP-SAT on equal time.** At 2 s every sampler above already matches or beats the staged CP-SAT given 30 s on every
 comparable stage (E004), and is valid and deadline-safe on every instance where CP-SAT often is not.

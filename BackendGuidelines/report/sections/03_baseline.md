@@ -19,6 +19,8 @@ The preferences stage was never proven optimal (bound gap 63-94% at its time lim
 10% of runs; repeated solves of one instance with 8 workers differed by up to 2x in the preferences value, so the reference's
 "same input, same plan" holds only with one worker; one n=40 run froze a stage-1 plan with 606 hours of lateness.
 
+![Baseline time](report/figures/baseline_time.png)
+
 **E002: tuning it at 10 s.** Six fair variants (fewer fine days, a shorter horizon, one worker, a zero-late constructive plan
 as the hint, different stage shares): every variant either timed out (the stage limits double once, so "10 s" took 20-25 s) or
 returned hundreds of late hours. Even with a zero-late hint, 7/10 runs timed out: the hint is feasible (fixing variables to it

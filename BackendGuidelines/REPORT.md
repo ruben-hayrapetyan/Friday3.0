@@ -97,6 +97,8 @@ The preferences stage was never proven optimal (bound gap 63-94% at its time lim
 10% of runs; repeated solves of one instance with 8 workers differed by up to 2x in the preferences value, so the reference's
 "same input, same plan" holds only with one worker; one n=40 run froze a stage-1 plan with 606 hours of lateness.
 
+![Baseline time](report/figures/baseline_time.png)
+
 **E002: tuning it at 10 s.** Six fair variants (fewer fine days, a shorter horizon, one worker, a zero-late constructive plan
 as the hint, different stage shares): every variant either timed out (the stage limits double once, so "10 s" took 20-25 s) or
 returned hundreds of late hours. Even with a zero-late hint, 7/10 runs timed out: the hint is feasible (fixing variables to it
@@ -128,6 +130,8 @@ penalty itself. Plans were 25-200x the optimum. Everything else in the rule set 
 items, dependencies, the daily cap) needs helper registers per measure (hundreds per instance) with the same problem.
 A Hopfield-style descent (T = 0) is no better. Figure: `report/figures/qubo_feasibility_vs_penalty.png`.
 
+![QUBO](report/figures/qubo_feasibility_vs_penalty.png)
+
 **Walls win on the guarantee; quality is close (E004, E005).** With the same moves and the same energy:
 
 | 40 instances, 10 s | valid | deadline-safe | wellbeing gap (median) | preferences gap (median) |
@@ -146,6 +150,8 @@ penalties of 0.1-1x the median move delta were cheated (wellbeing 2-7x worse, 95
 but left preferences 15-30% worse; deadlines as an ordinary weight (1x wellbeing) left avoidable lateness on 25% of instances.
 From an empty plan every penalty variant missed 4.5-7 hard items (median) against 1 for walls: penalties neither keep nor find
 feasibility reliably, which is the QUBO finding again on the full model. Figure: `report/figures/representations.png`.
+
+![Deadline guarantee](report/figures/deadline_guarantee.png)
 
 **The deadline guarantee (E005, 100 instances incl. adversarial families and stress).** Zero late work was known possible on
 72 of them. EDF-order construction honouring every hard rule reached zero on 69/72 in under 32 ms; a short sampler repair on
@@ -189,6 +195,8 @@ Multi-core methods beat a single chain on 25-29 of 30 instances; replica exchang
 at these budgets; parallel tempering on one core is the worst (its replicas share the core). Heat-bath and Metropolis are
 equivalent. A fixed temperature is no better than descent and worse than annealing given time (prompt section 8).
 
+![Samplers](report/figures/samplers.png)
+
 **Moves (E008).** Split (cut a legal-size piece and move it) is essential: without it wellbeing is 3x worse on every instance,
 because walls forbid breaking long runs one slot at a time. Insert, drop and shrink are essential for elastic, target and open
 items (they start empty). Far shift and swap matter; transfer, merge, ejection, grow and small shifts are near neutral.
@@ -196,6 +204,8 @@ items (they start empty). Far shift and swap matter; transfer, merge, ejection, 
 **Stage handling (E006, E006b).** One weighted energy with a 1000:1 ratio between stages matched strictly tiered annealing on
 wellbeing for 80% of instances and gave 3x better preferences; lower ratios trade wellbeing away (ratio 1: 4x worse
 wellbeing). The recommended scheme searches the 1000:1 energy and then polishes preferences with wellbeing capped (E006b).
+
+![Stages](report/figures/stages.png)
 
 **Against CP-SAT on equal time.** At 2 s every sampler above already matches or beats the staged CP-SAT given 30 s on every
 comparable stage (E004), and is valid and deadline-safe on every instance where CP-SAT often is not.
@@ -243,6 +253,8 @@ Each learner has its own trajectory; 3 users per type, 12 weeks; three replicate
 | Bradley-Terry likelihood (drags x3, prior) | - | **0.853** | **0.873** |
 | BT + CD | - | 0.828 | - |
 | BT with fitted answer temperature | - | - | 0.858 |
+
+![Learning curves](report/figures/learning_curves_E011b.png)
 
 **Findings.**
 - **Rankings teach fastest; how they are used decides robustness.** The QP (constraints with slack) learned fastest on easy
@@ -308,6 +320,8 @@ outside pace weeks the gated units cost mood-free users nothing (easy 0.069 vs 0
 only a quarter of always-on units' gain for moody users (0.119 vs 0.079 always-on vs 0.133 none): with 6 rankings a week the units
 need many weeks to prove themselves. Always-on units replicated their E013 effect (moody 0.106 -> 0.065, easy 0.050 -> 0.095).
 
+![Hidden units](report/figures/hidden_units.png)
+
 **Recommendation.** Dial-seeded units, multiplicative. Use them without proof only on explicit signals (a picked pace clamps
 them; a one-tap check-in nudges them); automatic inference stays behind the calibrated gate (2 nats over taste at its best
 temperature). This trades some regret for moody users for no harm to everyone else, which is the right default for a product.
@@ -342,6 +356,8 @@ two-week plan, ~3% of a plan's energy). Over 12 weeks: ask once at the first con
 user); soften after 3 events in 3 distinct weeks within 6, regret 50 and no questions; soften after 1 event, regret 94 (every
 one-off user loses their wall); never soften, regret 114. A wall never softens silently.
 
+![Active queries](report/figures/active_queries.png)
+
 **Active queries (E016).** For consistent users, query-by-committee (6 bootstrap fits) or uncertainty sampling reach 90%
 held-out ranking accuracy in 10-12 questions vs 25 for random pairs. For noisy users every strategy first *loses* accuracy
 against the hand-set prior (0.82 -> 0.74-0.80 over 20-60 answers); QBC loses least and recovers to the prior by 60. Policy:
@@ -375,6 +391,8 @@ in all 288 v3 plans. Hidden units never switched on by themselves in 12 weeks (t
 helped in the weeks they picked a pace, and their regret (0.070) stayed close to consistent users' (0.057). The supervisor asked
 on average 0.3-2 rule questions per user over the semester and never added a wrong rule.
 
+![Semester regret](report/figures/semester_regret.png)
+
 Figure: `report/figures/semester_regret.png`.
 
 **Weakness hunt (E018).** See below.
@@ -388,7 +406,8 @@ Figure: `report/figures/semester_regret.png`.
 | Huge penalty weights on the full model (Potts state, chunk moves) | 95% deadline-safe instead of 100% | From a late start the chain explores infeasible states and its best feasible state stays late | E004, E004b |
 | Pure weighted stages, ratio 1-10 | Wellbeing worse on 85-100% of instances (4x at ratio 1) | The ratio decides the trade; a small one is not "wellbeing first" | E006 |
 | Strictly tiered annealing (wellbeing with preferences switched off, then preferences under a cap) | Preferences 3x worse than a weighted search at ratio 1000, wellbeing no better on 80% | Optimising one stage alone leaves the next in a state the cap forbids repairing | E006 |
-| A fixed moderate temperature with no annealing | see E007 | | E007 |
+| A fixed moderate temperature with no annealing | Worse than annealing given time (mean rank 7.0 vs 6.1 at 8 s) and no better than zero-temperature descent | With no cooling the chain neither explores early nor settles late; from a good start, plain descent does as well | E007 |
+| Parallel tempering on a single core | Worst sampler at both budgets (beaten by single-chain SA on 25/30) | 8 replicas share one core, each gets 1/8 of the steps; replica exchange adds nothing over restarts here | E007 |
 | CP-SAT deadline skeleton for every instance | Hurt quality and missed deadlines twice | A 3 s CP-SAT stage-1 solution is often later than the 1 ms construction | E004 |
 | CP-SAT large-neighbourhood polish at a 10 s budget | Worse wellbeing than pure annealing | Each neighbourhood solve pays model build + presolve (1-2 s): too few exact moves per second | E004 |
 | An RBM trained on lived weeks, no rules | Ranks plans at 0.62-0.64 vs 0.80-0.87 for the rules; samples are not schedules | An occupancy picture cannot see items, amounts or deadlines; lived weeks are Friday's plan plus a small drift | E012 |

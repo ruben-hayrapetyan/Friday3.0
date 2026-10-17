@@ -26,6 +26,8 @@ two-week plan, ~3% of a plan's energy). Over 12 weeks: ask once at the first con
 user); soften after 3 events in 3 distinct weeks within 6, regret 50 and no questions; soften after 1 event, regret 94 (every
 one-off user loses their wall); never soften, regret 114. A wall never softens silently.
 
+![Active queries](report/figures/active_queries.png)
+
 **Active queries (E016).** For consistent users, query-by-committee (6 bootstrap fits) or uncertainty sampling reach 90%
 held-out ranking accuracy in 10-12 questions vs 25 for random pairs. For noisy users every strategy first *loses* accuracy
 against the hand-set prior (0.82 -> 0.74-0.80 over 20-60 answers); QBC loses least and recovers to the prior by 60. Policy:
