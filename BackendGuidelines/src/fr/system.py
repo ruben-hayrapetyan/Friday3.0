@@ -65,7 +65,8 @@ class V3System:
     budget_s: float = 2.0
     method: str = "sa_geo"
     discover_every: int = 2
-    discover_from: int = 4
+    discover_from: int = 6  # E014: earlier proposals are often false
+    confirm: object = None  # callable(rule name) -> bool: the user's answer to "add this rule?" (None: auto-add)
     threshold: float = 0.05
     candidates: list[str] = field(default_factory=list)
     hidden_mode: str = "dial"
@@ -134,6 +135,10 @@ class V3System:
         if self.candidates and wk + 1 >= self.discover_from and (wk + 1 - self.discover_from) % self.discover_every == 0:
             cands = [c for c in self.candidates if c not in self.extra_w]
             best, gain, _ = propose(self.rankings, cands, self.threshold, seed=wk)
+            if best is not None and self.confirm is not None and not self.confirm(best):
+                self.log.append(f"week {wk}: proposed {best} (gain {gain:.3f}); the user said no")
+                self.candidates = [c for c in self.candidates if c != best]
+                best = None
             if best is not None:
                 th_lib, w = fitted_weight(self.rankings, best)
                 self.extra_w[best] = max(w, 0.0) * float(np.mean(self.L.theta) / max(np.mean(th_lib), 1e-9))

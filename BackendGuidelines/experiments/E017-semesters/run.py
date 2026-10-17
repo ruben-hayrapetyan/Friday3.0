@@ -44,9 +44,10 @@ def main() -> None:
             user = SimUser.make(kind, 20000 + 100 * cfg["kinds"].index(kind) + uid)
             rng = np.random.default_rng(20000 + uid)
             names = [c["name"] for c in CANDS]
-            systems = [V3System(budget_s=cfg["v3_budget_s"], threshold=cfg["threshold"], candidates=names),
-                       V3System(budget_s=cfg["v3_budget_s"], threshold=cfg["threshold"], candidates=names,
-                                stages="tiered", name="v3_lex"),
+            confirm = (lambda r: matches_truth(r)) if user.kind.missing_weight else (lambda r: False)
+            systems = [V3System(budget_s=cfg["v3_budget_s"], threshold=cfg["threshold"], candidates=names, confirm=confirm),
+                       V3System(budget_s=cfg["v3_budget_s"], threshold=cfg["threshold"], candidates=list(names),
+                                stages="tiered", name="v3_lex", confirm=confirm),
                        V2System(budget_s=cfg["v2_budget_s"])]
             for wk in range(cfg["weeks"]):
                 mood = user.step_mood()
@@ -74,6 +75,8 @@ def main() -> None:
                                      misses=len(ev.deadline_misses), regret=round(e - e_star, 2),
                                      regret_rel=round((e - e_star) / max(abs(e_star), 1), 4), cos=round(cos, 4),
                                      rules=";".join(getattr(sysm, "extra_w", {}).keys()),
+                                     units_on=bool(getattr(sysm, "units_on", False)),
+                                     proposals_refused=sum("said no" in m for m in sysm.log),
                                      rules_correct=sum(matches_truth(r) for r in getattr(sysm, "extra_w", {}))))
                 log(f"{kind}-{uid} wk{wk} mood={mood} " + " ".join(
                     f"{r['system']}:{r['regret_rel']:.3f}/{r['plan_s']}s/m{r['misses']}/v{r['violations']}" for r in rows[-len(systems):]))

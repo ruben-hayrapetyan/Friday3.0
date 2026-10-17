@@ -61,3 +61,4 @@ ref-n40-s7 weighted_3 lex=(44999, 26136, 26346) viol=0 7.1s
 ref-n40-s7 weighted_10 lex=(44999, 23598, 25076) viol=0 7.3s
 ref-n40-s7 weighted_30 lex=(44999, 24411, 46984) viol=0 7.6s
 ref-n40-s7 weighted_100 lex=(44999, 23099, 131457) viol=0 8.0s
+ref-n40-s7 weighted_1000 lex=(44999, 22136, 82926) viol=0 9.6s
