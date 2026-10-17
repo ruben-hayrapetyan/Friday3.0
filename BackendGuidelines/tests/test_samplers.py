@@ -72,3 +72,18 @@ def test_why_not_is_the_exact_evaluator_difference():
             assert w.valid == (check(p, pr.c.plan_from_owner(st.owner)) == [])
             checked += 1
     assert checked >= 10
+
+
+def test_parallel_runs_do_not_depend_on_thread_count():
+    from fr.samplers.chains import Spec, multistart, parallel_tempering
+
+    pr = prepare(reference_instance(20, 6).build())
+    prot = protected(pr.c, pr.owner)
+    spec = Spec(np.array([1e6, 1.0, 0.0]))
+    temps = np.array([2.0, 6.0, 20.0, 60.0])
+    a = parallel_tempering(pr.c, pr.owner, prot, spec, temps, 5, 2000, seed=3, threads=1)[0]
+    b = parallel_tempering(pr.c, pr.owner, prot, spec, temps, 5, 2000, seed=3, threads=4)[0]
+    assert (a == b).all()
+    c = multistart(pr.c, pr.owner, prot, spec, 4, 5000, 50.0, 1.0, seed=3, threads=1)[0]
+    d = multistart(pr.c, pr.owner, prot, spec, 4, 5000, 50.0, 1.0, seed=3, threads=4)[0]
+    assert (c == d).all()
