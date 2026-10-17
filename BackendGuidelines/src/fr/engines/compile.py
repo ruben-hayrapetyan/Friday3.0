@@ -39,6 +39,7 @@ class Model(NamedTuple):
     need: np.ndarray  # [I] fixed: need; elastic: max; target: cap; open: 0
     amount_cap: np.ndarray  # [I] hard ceiling on placed units (fixed: need, elastic: max, target: cap, open: big)
     one_sit: np.ndarray  # [I] bool
+    ins_units: np.ndarray  # [I] units a fresh chunk of this item gets when inserted
     min_chunk: np.ndarray  # [I]
     max_chunk: np.ndarray  # [I] -1 = none
     ceil0: np.ndarray  # [I] open: day-0 ceiling
@@ -110,6 +111,7 @@ def compile_problem(problem: Problem) -> "Compiled":
     need = np.zeros(I, dtype=np.int64)
     amount_cap = np.zeros(I, dtype=np.int64)
     one_sit = np.zeros(I, dtype=bool)
+    ins_units = np.ones(I, dtype=np.int64)
     min_chunk = np.ones(I, dtype=np.int64)
     max_chunk = np.full(I, -1, dtype=np.int64)
     ceil0 = np.zeros(I, dtype=np.int64)
@@ -126,6 +128,12 @@ def compile_problem(problem: Problem) -> "Compiled":
         need[i] = {"fixed": it.need, "elastic": it.max, "target": it.cap, "open": 0}[it.amount]
         amount_cap[i] = {"fixed": it.need, "elastic": it.max, "target": it.cap, "open": 10**6}[it.amount]
         one_sit[i] = it.shape == "one_sitting"
+        if it.amount == "fixed":
+            ins_units[i] = max(1, it.need - it.progress * 0) if one_sit[i] else it.min_chunk
+        elif it.amount == "elastic":
+            ins_units[i] = max(it.min_chunk, it.ideal) if one_sit[i] else it.min_chunk
+        else:
+            ins_units[i] = it.min_chunk
         min_chunk[i] = it.min_chunk
         max_chunk[i] = -1 if it.max_chunk is None else it.max_chunk
         ceil0[i] = it.daily_ceiling - it.progress_today
@@ -237,7 +245,7 @@ def compile_problem(problem: Problem) -> "Compiled":
     a = lambda v: np.array(v, dtype=np.int64)  # noqa: E731
     model = Model(
         I, S, D, n_m, G, g.units.astype(np.int64), g.day.astype(np.int64), a(problem.day_caps),
-        kind, need, amount_cap, one_sit, min_chunk, max_chunk, ceil0, ceil, lo, hi, allowed, locked, wall_ok,
+        kind, need, amount_cap, one_sit, ins_units, min_chunk, max_chunk, ceil0, ceil, lo, hi, allowed, locked, wall_ok,
         hard_due, dep_ptr, dep_src, dep_req, dep_lag, dnt_ptr, dnt_dst, price, over_cost,
         a(m_stage), a(m_const), a(h_ptr), a(h_dir), a(h_theta), a(h_coef),
         x_ptr, x_m, x_c, st_ptr, st_m, st_c, ov_ptr, ov_m, ov_c, ag_ptr, ag_g, any_ptr, any_m, any_c,

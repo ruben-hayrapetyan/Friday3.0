@@ -34,8 +34,8 @@ class State(NamedTuple):
     ctr: np.ndarray  # [0]=log length, [1]=sum of vitem
 
 
-N_MOVES = 8
-MOVE_NAMES = ("shift", "swap", "grow", "shrink", "transfer", "split", "merge", "far")
+N_MOVES = 10
+MOVE_NAMES = ("shift", "swap", "grow", "shrink", "transfer", "split", "merge", "far", "insert", "drop")
 
 
 def new_state(M: Model) -> State:
@@ -50,7 +50,18 @@ def new_state(M: Model) -> State:
 # ------------------------------------------------------------------ energy bookkeeping
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
+def copy_into(dst, src):
+    for q in range(dst.shape[0]):
+        dst[q] = src[q]
+
+
+@njit(cache=True, _nrt=False)
+def seed_rng(x):
+    np.random.seed(x)
+
+
+@njit(cache=True, _nrt=False)
 def mcost(M, m, v):
     c = 0
     for h in range(M.h_ptr[m], M.h_ptr[m + 1]):
@@ -60,7 +71,7 @@ def mcost(M, m, v):
     return c
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def bump(M, st, m, dv):
     if dv == 0:
         return
@@ -70,7 +81,7 @@ def bump(M, st, m, dv):
     st.sv[M.m_stage[m]] += mcost(M, m, new) - mcost(M, m, old)
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def start_val(M, owner, i, t):
     if i < 0 or t < 0 or t >= M.S:
         return 0
@@ -81,14 +92,14 @@ def start_val(M, owner, i, t):
     return 1
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def _over(M, i, placed):
     if M.kind[i] != 0:
         return 0
     return max(0, M.need[i] - placed)
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def _placed_changed(M, st, i, old_placed, new_placed):
     do = _over(M, i, new_placed) - _over(M, i, old_placed)
     if do == 0:
@@ -99,7 +110,7 @@ def _placed_changed(M, st, i, old_placed, new_placed):
         bump(M, st, M.ov_m[e], M.ov_c[e] * do)
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def _x_off(M, st, i, s):
     """Item i leaves slot s (owner[s] is updated by the caller)."""
     W = M.S + 1
@@ -121,7 +132,7 @@ def _x_off(M, st, i, s):
     st.dayu[M.day[s]] -= u
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def _x_on(M, st, i, s):
     W = M.S + 1
     idx = i * W + s
@@ -142,7 +153,7 @@ def _x_on(M, st, i, s):
     st.dayu[M.day[s]] += u
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def _apply_start(M, st, i, t, before, after):
     if before == after or i < 0 or t < 0 or t >= M.S:
         return
@@ -151,7 +162,7 @@ def _apply_start(M, st, i, t, before, after):
         bump(M, st, M.st_m[e], (after - before) * M.st_c[e])
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def set_owner(M, st, s, new):
     """Give slot s to item `new` (-1 frees it), keep every running total exact, and log the change."""
     old = st.owner[s]
@@ -176,7 +187,7 @@ def set_owner(M, st, s, new):
     _apply_start(M, st, new, s + 1, b_new_n, start_val(M, st.owner, new, s + 1))
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def undo(M, st):
     n = st.ctr[0]
     while n > 0:
@@ -190,7 +201,7 @@ def undo(M, st):
     st.ctr[0] = 0
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def init_state(M, st, owner):
     """Empty state -> the plan in `owner`, built slot by slot."""
     st.owner[:] = -1
@@ -220,7 +231,7 @@ def init_state(M, st, owner):
 # ------------------------------------------------------------------ hard-rule violations (same count as check())
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def item_viol(M, st, i):
     owner = st.owner
     v = 0
@@ -299,7 +310,7 @@ def item_viol(M, st, i):
     return v
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def day_viol(M, st):
     v = 0
     for d in range(M.D):
@@ -308,7 +319,7 @@ def day_viol(M, st):
     return v
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def recompute_violations(M, st):
     tot = 0
     for i in range(M.I):
@@ -317,7 +328,7 @@ def recompute_violations(M, st):
     st.ctr[1] = tot
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def total_violations(M, st):
     return st.ctr[1] + day_viol(M, st)
 
@@ -325,7 +336,7 @@ def total_violations(M, st):
 # ------------------------------------------------------------------ move helpers
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def ok_slot(M, prot, i, t):
     if t < 0 or t >= M.S:
         return False
@@ -334,7 +345,7 @@ def ok_slot(M, prot, i, t):
     return M.allowed[i, t]
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def pick_slot(M, st):
     for _ in range(40):
         s = np.random.randint(0, M.S)
@@ -344,7 +355,7 @@ def pick_slot(M, st):
     return -1
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def run_around(M, st, s):
     i = st.owner[s]
     a = s
@@ -356,60 +367,126 @@ def run_around(M, st, s):
     return a, b
 
 
-@njit(cache=True)
-def free_for(M, st, prot, i, a, b, c, d):
-    """May item i occupy slots c..d, given it currently holds a..b (which it vacates)?"""
-    for t in range(c, d + 1):
-        if not ok_slot(M, prot, i, t):
-            return False
+@njit(cache=True, _nrt=False)
+def run_units(M, a, b):
+    u = 0
+    for t in range(a, b + 1):
+        u += M.units[t]
+    return u
+
+
+@njit(cache=True, _nrt=False)
+def fits(M, st, prot, i, c, U, va, vb, vc, vd):
+    """Last slot e such that c..e holds exactly U units that item i may take, or -1.
+
+    A slot is available when it is free or lies in a vacated range (va..vb or vc..vd).
+    """
+    u = 0
+    t = c
+    while u < U:
+        if t >= M.S or t < 0 or not ok_slot(M, prot, i, t):
+            return -1
         o = st.owner[t]
-        if o != -1 and not (a <= t <= b and o == i):
-            return False
-    return True
+        if o != -1 and not (va <= t <= vb) and not (vc <= t <= vd):
+            return -1
+        u += M.units[t]
+        t += 1
+    if u != U:
+        return -1
+    return t - 1
 
 
-@njit(cache=True)
-def move_slots(M, st, i, a, b, c):
-    """Move item i's slots a..b so that they start at c."""
+@njit(cache=True, _nrt=False)
+def start_before(M, e, U):
+    """First slot b such that b..e holds exactly U units, or -1."""
+    u = 0
+    t = e
+    while u < U:
+        if t < 0:
+            return -1
+        u += M.units[t]
+        t -= 1
+    if u != U:
+        return -1
+    return t + 1
+
+
+@njit(cache=True, _nrt=False)
+def cut_end(M, a, b, k, at_end):
+    """The slots at one end of chunk a..b that hold exactly k units, or (-1, -1)."""
+    if at_end:
+        ca = start_before(M, b, k)
+        if ca < a:
+            return -1, -1
+        return ca, b
+    u = 0
+    t = a
+    while u < k and t <= b:
+        u += M.units[t]
+        t += 1
+    if u != k:
+        return -1, -1
+    return a, t - 1
+
+
+@njit(cache=True, _nrt=False)
+def clear_range(M, st, a, b):
     for t in range(a, b + 1):
         set_owner(M, st, t, -1)
-    for t in range(b - a + 1):
-        set_owner(M, st, c + t, i)
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
+def fill_range(M, st, i, a, b):
+    for t in range(a, b + 1):
+        set_owner(M, st, t, i)
+
+
+@njit(cache=True, _nrt=False)
+def relocate(M, st, prot, i, a, b, c, touched):
+    """Move item i's chunk a..b so that it starts at c, keeping its units. Returns 1 when done, else 0."""
+    e = fits(M, st, prot, i, c, run_units(M, a, b), a, b, 1, 0)
+    if e < 0 or c == a:
+        return 0
+    clear_range(M, st, a, b)
+    fill_range(M, st, i, c, e)
+    touched[0] = i
+    return 1
+
+
+@njit(cache=True, _nrt=False)
+def insert_chunk(M, st, prot, touched):
+    """Open a new chunk of a random item that has room: ins_units units starting at a random free slot."""
+    i = np.random.randint(0, M.I)
+    if st.placed[i] >= M.amount_cap[i] or M.hi[i] <= M.lo[i]:
+        return 0
+    t = np.random.randint(M.lo[i], M.hi[i] + 1)
+    e = fits(M, st, prot, i, t, M.ins_units[i], 1, 0, 1, 0)
+    if e < 0:
+        return 0
+    fill_range(M, st, i, t, e)
+    touched[0] = i
+    return 1
+
+
+@njit(cache=True, _nrt=False)
 def propose(M, st, prot, kind_ix, touched):
     """Apply one random move of the given type. Returns the number of touched items (0 = nothing proposed)."""
     S = M.S
+    if kind_ix == 8:
+        return insert_chunk(M, st, prot, touched)
     s = pick_slot(M, st)
     if s < 0:
         return 0
     i = st.owner[s]
     a, b = run_around(M, st, s)
-    L = b - a + 1
-    nt = 0
     if kind_ix == 0:  # shift a chunk by a few slots
         dlt = np.random.randint(1, 5)
         if np.random.random() < 0.5:
             dlt = -dlt
-        c = a + dlt
-        if c < 0 or c + L - 1 >= S or not free_for(M, st, prot, i, a, b, c, c + L - 1):
-            return 0
-        move_slots(M, st, i, a, b, c)
-        touched[0] = i
-        return 1
+        return relocate(M, st, prot, i, a, b, a + dlt, touched)
     if kind_ix == 7:  # far shift: a uniformly random start inside the item's window
-        lo = M.lo[i]
-        hi = M.hi[i] - L + 1
-        if hi < lo:
-            return 0
-        c = np.random.randint(lo, hi + 1)
-        if c == a or not free_for(M, st, prot, i, a, b, c, c + L - 1):
-            return 0
-        move_slots(M, st, i, a, b, c)
-        touched[0] = i
-        return 1
-    if kind_ix == 1:  # swap two chunks of equal length
+        return relocate(M, st, prot, i, a, b, np.random.randint(M.lo[i], M.hi[i] + 1), touched)
+    if kind_ix == 1:  # swap two chunks that hold the same units
         s2 = pick_slot(M, st)
         if s2 < 0:
             return 0
@@ -417,17 +494,19 @@ def propose(M, st, prot, kind_ix, touched):
         if j == i:
             return 0
         c, d = run_around(M, st, s2)
-        if d - c != b - a:
+        U = run_units(M, a, b)
+        if run_units(M, c, d) != U:
             return 0
-        for t in range(L):
-            if not ok_slot(M, prot, i, c + t) or not ok_slot(M, prot, j, a + t):
-                return 0
-        for t in range(L):
-            set_owner(M, st, a + t, -1)
-            set_owner(M, st, c + t, -1)
-        for t in range(L):
-            set_owner(M, st, a + t, j)
-            set_owner(M, st, c + t, i)
+        e1 = fits(M, st, prot, i, c, U, a, b, c, d)  # i takes j's place
+        e2 = fits(M, st, prot, j, a, U, a, b, c, d)  # j takes i's place
+        if e1 < 0 or e2 < 0:
+            return 0
+        if not (e2 < c or e1 < a):  # the two new ranges would collide
+            return 0
+        clear_range(M, st, a, b)
+        clear_range(M, st, c, d)
+        fill_range(M, st, i, c, e1)
+        fill_range(M, st, j, a, e2)
         touched[0] = i
         touched[1] = j
         return 2
@@ -441,42 +520,47 @@ def propose(M, st, prot, kind_ix, touched):
         set_owner(M, st, t, i)
         touched[0] = i
         return 1
-    if kind_ix == 3:  # shrink a chunk by one slot (the item loses a unit)
+    if kind_ix == 3:  # shrink a chunk by one slot (the item loses its units)
         t = a if np.random.random() < 0.5 else b
-        if prot[i] and M.hard_due[i] and st.placed[i] - M.units[t] < M.need[i]:
-            return 0
         set_owner(M, st, t, -1)
         touched[0] = i
         return 1
-    if kind_ix == 4:  # move one slot between two chunks of the same item (amount is kept when units match)
-        t1 = a if np.random.random() < 0.5 else b
+    if kind_ix == 4:  # move k units from the end of one chunk next to another chunk of the same item
+        U = run_units(M, a, b)
+        k = np.random.randint(1, 5)
+        if k >= U:
+            return 0
+        ca, cb = cut_end(M, a, b, k, np.random.random() < 0.5)
+        if ca < 0:
+            return 0
         for _ in range(12):
             s2 = np.random.randint(M.lo[i], M.hi[i] + 1)
             if st.owner[s2] != i or M.locked[i, s2] or (a <= s2 <= b):
                 continue
             c, d = run_around(M, st, s2)
-            t2 = c - 1 if np.random.random() < 0.5 else d + 1
-            if t2 < 0 or t2 >= S or st.owner[t2] != -1 or not ok_slot(M, prot, i, t2):
+            tgt = d + 1 if np.random.random() < 0.5 else start_before(M, c - 1, k)
+            if tgt < 0:
                 continue
-            if M.units[t2] != M.units[t1]:
+            e = fits(M, st, prot, i, tgt, k, ca, cb, 1, 0)
+            if e < 0:
                 continue
-            set_owner(M, st, t1, -1)
-            set_owner(M, st, t2, i)
+            clear_range(M, st, ca, cb)
+            fill_range(M, st, i, tgt, e)
             touched[0] = i
             return 1
         return 0
-    if kind_ix == 5:  # split: lift one end slot to a random free place
-        t1 = a if np.random.random() < 0.5 else b
-        for _ in range(8):
-            t2 = np.random.randint(M.lo[i], M.hi[i] + 1)
-            if st.owner[t2] != -1 or not ok_slot(M, prot, i, t2) or M.units[t2] != M.units[t1]:
-                continue
-            set_owner(M, st, t1, -1)
-            set_owner(M, st, t2, i)
-            touched[0] = i
-            return 1
-        return 0
+    if kind_ix == 5:  # split: cut a legal-size piece off a chunk and put it somewhere else
+        U = run_units(M, a, b)
+        mn = M.min_chunk[i]
+        if U < 2 * mn:
+            return 0
+        k = np.random.randint(mn, U - mn + 1)
+        ca, cb = cut_end(M, a, b, k, np.random.random() < 0.5)
+        if ca < 0:
+            return 0
+        return relocate(M, st, prot, i, ca, cb, np.random.randint(M.lo[i], M.hi[i] + 1), touched)
     if kind_ix == 6:  # merge: move the chunk next to another chunk of the same item
+        U = run_units(M, a, b)
         for _ in range(12):
             s2 = np.random.randint(M.lo[i], M.hi[i] + 1)
             if st.owner[s2] != i or (a <= s2 <= b):
@@ -485,19 +569,20 @@ def propose(M, st, prot, kind_ix, touched):
             if np.random.random() < 0.5:
                 tgt = d + 1
             else:
-                tgt = c - L
-            if tgt < 0 or tgt + L - 1 >= S or tgt == a:
+                tgt = start_before(M, c - 1, U)
+            if tgt < 0:
                 continue
-            if not free_for(M, st, prot, i, a, b, tgt, tgt + L - 1):
-                continue
-            move_slots(M, st, i, a, b, tgt)
-            touched[0] = i
-            return 1
+            if relocate(M, st, prot, i, a, b, tgt, touched):
+                return 1
         return 0
-    return nt
+    if kind_ix == 9:  # drop a whole chunk
+        clear_range(M, st, a, b)
+        touched[0] = i
+        return 1
+    return 0
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def add_touched_dependents(M, touched, n):
     """Items that wait on a touched item need their violations re-checked too."""
     m = n
@@ -515,7 +600,7 @@ def add_touched_dependents(M, touched, n):
     return m
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def violation_delta(M, st, touched, n, newv):
     """Recompute violations of the touched items; returns the change in the total (items only)."""
     delta = 0
@@ -527,13 +612,13 @@ def violation_delta(M, st, touched, n, newv):
     return delta
 
 
-@njit(cache=True)
+@njit(cache=True, _nrt=False)
 def scalar(sv, wts):
     return wts[0] * sv[0] + wts[1] * sv[1] + wts[2] * sv[2]
 
 
-@njit(cache=True)
-def run_chain(M, st, prot, wts, probs, n_steps, T0, T1, wall, lam, seed, best_owner, stats, best_info):
+@njit(cache=True, _nrt=False)
+def run_chain(M, st, prot, wts, cap, cum, touched, newv, n_steps, T0, T1, wall, lam, seed, best_owner, stats, best_info):
     """Metropolis chain with a geometric schedule T0 -> T1.
 
     wall = 1: reject every move that leaves the hard-feasible set (the state starts feasible).
@@ -541,14 +626,11 @@ def run_chain(M, st, prot, wts, probs, n_steps, T0, T1, wall, lam, seed, best_ow
     stats[k] = (proposed, accepted, rejected_hard); best_info = (best energy, step of best, violations of best).
     """
     np.random.seed(seed)
-    touched = np.zeros(64, dtype=np.int64)
-    newv = np.zeros(64, dtype=np.int64)
-    cum = np.cumsum(probs)
     e_cur = scalar(st.sv, wts) + lam * total_violations(M, st)
     best_e = 1e300
     if total_violations(M, st) == 0:
         best_e = scalar(st.sv, wts)
-        best_owner[:] = st.owner
+        copy_into(best_owner, st.owner)
         best_info[0] = best_e
         best_info[1] = 0
     ratio = (T1 / T0) if T0 > 0 else 1.0
@@ -584,6 +666,11 @@ def run_chain(M, st, prot, wts, probs, n_steps, T0, T1, wall, lam, seed, best_ow
                         stats[kx, 2] += 1
                         break
         if not reject:
+            for k in range(3):
+                if cap[k] >= 0 and st.sv[k] > cap[k]:
+                    reject = True
+                    stats[kx, 2] += 1
+        if not reject:
             e_new = wts[0] * st.sv[0] + wts[1] * st.sv[1] + wts[2] * st.sv[2] + lam * vtot_new
             d = e_new - e_cur
             if d <= 0.0:
@@ -602,7 +689,7 @@ def run_chain(M, st, prot, wts, probs, n_steps, T0, T1, wall, lam, seed, best_ow
                     e_s = scalar(st.sv, wts)
                     if e_s < best_e - 1e-9:
                         best_e = e_s
-                        best_owner[:] = st.owner
+                        copy_into(best_owner, st.owner)
                         best_info[0] = e_s
                         best_info[1] = step
                 st.ctr[0] = 0
@@ -614,3 +701,33 @@ def run_chain(M, st, prot, wts, probs, n_steps, T0, T1, wall, lam, seed, best_ow
         st.ctr[0] = 0
     best_info[2] = total_violations(M, st)
     return e_cur
+
+
+@njit(cache=True, _nrt=False)
+def sample_deltas(M, st, prot, wts, cum, touched, newv, n, seed, out):
+    """Energy change of n random valid moves from the current state (every move is undone). Returns how many."""
+    np.random.seed(seed)
+    k = 0
+    for _ in range(n):
+        r = np.random.random() * cum[cum.shape[0] - 1]
+        kx = 0
+        while kx < cum.shape[0] - 1 and r > cum[kx]:
+            kx += 1
+        st.ctr[0] = 0
+        o0 = st.sv[0]
+        o1 = st.sv[1]
+        o2 = st.sv[2]
+        nt = propose(M, st, prot, kx, touched)
+        if nt == 0:
+            st.ctr[0] = 0
+            continue
+        nt = add_touched_dependents(M, touched, nt)
+        dv = violation_delta(M, st, touched, nt, newv)
+        if st.ctr[1] + dv + day_viol(M, st) == 0:
+            out[k, 0] = st.sv[0] - o0
+            out[k, 1] = st.sv[1] - o1
+            out[k, 2] = st.sv[2] - o2
+            k += 1
+        undo(M, st)
+        st.ctr[0] = 0
+    return k
