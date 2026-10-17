@@ -143,3 +143,32 @@ ENGINES = {
     "skeleton_hybrid": run_skeleton_hybrid,
     "sa_lns": run_sa_then_lns,
 }
+
+
+def run_v3(p: Problem, pr: Prepared, budget_s: float, seed: int = 0, fallback_s: float = 5.0) -> EngineResult:
+    """The recommended pipeline after E018: construction -> sampler repair -> the wall sampler (lexpolish) for the budget;
+    only if lateness is left, CP-SAT's deadline stage hinted with that plan, then a short polish of whichever is less late.
+    (E018's first version ran CP-SAT before annealing; on 150-item instances it used the whole budget and helped nothing.)"""
+    from .repair import ensure_deadlines, late_value
+
+    t = time.perf_counter()
+    rep = ensure_deadlines(pr, seed=seed, use_cpsat=False)
+    plan, info = tiered_budget(pr, max(0.5, budget_s - (time.perf_counter() - t)), seed, start=rep.owner, stages="lexpolish")
+    owner = pr.c.owner_from_plan(plan)
+    late = late_value(pr, owner)
+    info.update(repair_late=rep.late, after_sampler_late=late, fallback="none")
+    if late > 0:
+        try:
+            p.settings.workers = 8
+            p.settings.det_time = (fallback_s * 3,) * 3
+            res = GridModel(p).solve(stages=["deadlines"], time_limit_s=fallback_s / 0.4, workers=8, hint=plan, seed=seed)
+            cand = pr.c.owner_from_plan(res.plan)
+            if late_value(pr, cand) < late:
+                plan, _ = tiered_budget(pr, 1.0, seed + 1, start=cand, stages="lexpolish")
+                info["fallback"] = "cpsat"
+        except (SolveTimeout, ModelInfeasible):
+            info["fallback"] = "cpsat-failed"
+    return EngineResult(plan, time.perf_counter() - t, info)
+
+
+ENGINES["v3"] = run_v3

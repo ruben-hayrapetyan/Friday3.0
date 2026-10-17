@@ -30,3 +30,80 @@ tight-bigchunk-s3 v3_nocp lex=(192000, 8324, 4007) viol=0 misses=1 23.5s {'repai
 tight-bigchunk-s3 cpsat30 lex=(52016, 8324, 4007) viol=0 misses=1 30.7s {'status': 'FEASIBLE/FEASIBLE/FEASIBLE'}
 tight-bigchunk-s4 v3 lex=(340016, 10999, 3998) viol=0 misses=4 9.8s {'repair_stage': 'cpsat', 'repair_late': 340016}
 tight-bigchunk-s4 v3_nocp lex=(600000, 9849, 4150) viol=0 misses=3 8.8s {'repair_stage': 'sampler', 'repair_late': 600000}
+tight-bigchunk-s4 cpsat30 lex=(241028, 11774, 4124) viol=0 misses=4 30.8s {'status': 'FEASIBLE/FEASIBLE/FEASIBLE'}
+tight-bigchunk-s5 v3 lex=(86008, 5511, 3950) viol=0 misses=2 10.2s {'repair_stage': 'cpsat', 'repair_late': 86008}
+tight-bigchunk-s5 v3_nocp lex=(120000, 5511, 3950) viol=0 misses=2 9.8s {'repair_stage': 'sampler', 'repair_late': 120000}
+tight-bigchunk-s5 cpsat30 lex=(86008, 5511, 3950) viol=0 misses=2 30.8s {'status': 'FEASIBLE/FEASIBLE/FEASIBLE'}
+deps-s0 v3 lex=(0, 2425, 23975) viol=0 misses=0 9.2s {'repair_stage': 'construct', 'repair_late': 0}
+deps-s0 v3_nocp lex=(0, 450, 22564) viol=0 misses=0 10.5s {'repair_stage': 'construct', 'repair_late': 0}
+deps-s0 cpsat30 lex=(24997092, 0, 750964) viol=0 misses=35 37.1s {'status': 'FAIL:SolveTimeout'}
+deps-s1 v3 lex=(0, 5112, 39142) viol=0 misses=0 8.9s {'repair_stage': 'construct', 'repair_late': 0}
+deps-s1 v3_nocp lex=(0, 5362, 40106) viol=0 misses=0 8.1s {'repair_stage': 'construct', 'repair_late': 0}
+deps-s1 cpsat30 lex=(46538976, 0, 9446) viol=0 misses=34 39.2s {'status': 'FAIL:SolveTimeout'}
+deps-s2 v3 lex=(0, 1050, 21186) viol=0 misses=0 12.3s {'repair_stage': 'construct', 'repair_late': 0}
+deps-s2 v3_nocp lex=(0, 750, 20270) viol=0 misses=0 10.0s {'repair_stage': 'construct', 'repair_late': 0}
+deps-s2 cpsat30 lex=(36201416, 0, 259866) viol=0 misses=34 39.0s {'status': 'FAIL:SolveTimeout'}
+deps-s3 v3 lex=(0, 887, 34489) viol=0 misses=0 11.1s {'repair_stage': 'construct', 'repair_late': 0}
+deps-s3 v3_nocp lex=(0, 1150, 34081) viol=0 misses=0 8.9s {'repair_stage': 'construct', 'repair_late': 0}
+deps-s3 cpsat30 lex=(49639279, 0, 249666) viol=0 misses=35 43.2s {'status': 'FAIL:SolveTimeout'}
+deps-s4 v3 lex=(0, 3850, 62118) viol=0 misses=0 6.8s {'repair_stage': 'construct', 'repair_late': 0}
+deps-s4 v3_nocp lex=(0, 2975, 86810) viol=0 misses=0 9.7s {'repair_stage': 'construct', 'repair_late': 0}
+deps-s4 cpsat30 lex=(42369410, 0, 873784) viol=0 misses=37 35.1s {'status': 'FAIL:SolveTimeout'}
+deps-s5 v3 lex=(0, 6912, 30511) viol=0 misses=0 7.6s {'repair_stage': 'construct', 'repair_late': 0}
+deps-s5 v3_nocp lex=(0, 4025, 30443) viol=0 misses=0 11.9s {'repair_stage': 'construct', 'repair_late': 0}
+deps-s5 cpsat30 lex=(42883088, 0, 118716) viol=0 misses=34 38.6s {'status': 'FAIL:SolveTimeout'}
+pins-s0 v3 lex=(0, 7112, 152613) viol=0 misses=0 12.9s {'repair_stage': 'construct', 'repair_late': 0}
+pins-s0 v3_nocp lex=(0, 7112, 134620) viol=0 misses=0 9.8s {'repair_stage': 'construct', 'repair_late': 0}
+pins-s0 cpsat30 lex=(27609873, 7087, 1951541) viol=0 misses=11 65.9s {'status': 'FAIL:SolveTimeout'}
+pins-s1 v3 lex=(0, 31212, 35550) viol=0 misses=0 7.8s {'repair_stage': 'construct', 'repair_late': 0}
+pins-s1 v3_nocp lex=(0, 31237, 36263) viol=0 misses=0 8.4s {'repair_stage': 'construct', 'repair_late': 0}
+pins-s1 cpsat30 lex=(35812365, 27762, 183662) viol=0 misses=15 63.0s {'status': 'FAIL:SolveTimeout'}
+pins-s2 v3 lex=(0, 12850, 25335) viol=0 misses=0 9.8s {'repair_stage': 'construct', 'repair_late': 0}
+pins-s2 v3_nocp lex=(0, 12887, 24313) viol=0 misses=0 9.6s {'repair_stage': 'construct', 'repair_late': 0}
+pins-s2 cpsat30 lex=(37620250, 12400, 841428) viol=0 misses=11 61.2s {'status': 'FAIL:SolveTimeout'}
+pins-s3 v3 lex=(0, 21674, 37778) viol=0 misses=0 9.6s {'repair_stage': 'construct', 'repair_late': 0}
+pins-s3 v3_nocp lex=(0, 21774, 36261) viol=0 misses=0 10.1s {'repair_stage': 'construct', 'repair_late': 0}
+pins-s3 cpsat30 lex=(40373481, 21599, 2139717) viol=0 misses=12 63.5s {'status': 'FAIL:SolveTimeout'}
+pins-s4 v3 lex=(0, 2650, 33701) viol=0 misses=0 10.8s {'repair_stage': 'construct', 'repair_late': 0}
+pins-s4 v3_nocp lex=(0, 2625, 42956) viol=0 misses=0 11.2s {'repair_stage': 'construct', 'repair_late': 0}
+pins-s4 cpsat30 lex=(41916620, 2525, 744953) viol=0 misses=14 65.7s {'status': 'FAIL:SolveTimeout'}
+pins-s5 v3 lex=(0, 11462, 274779) viol=0 misses=0 5.6s {'repair_stage': 'construct', 'repair_late': 0}
+pins-s5 v3_nocp lex=(0, 11062, 281324) viol=0 misses=0 9.1s {'repair_stage': 'construct', 'repair_late': 0}
+pins-s5 cpsat30 lex=(31900207, 8337, 832356) viol=0 misses=10 68.3s {'status': 'FAIL:SolveTimeout'}
+overload-s0 v3 lex=(59970671, 72497, 2319189) viol=0 misses=8 18.4s {'repair_stage': 'cpsat', 'repair_late': 59970671}
+overload-s0 v3_nocp lex=(59970671, 71110, 2321730) viol=0 misses=8 10.1s {'repair_stage': 'sampler', 'repair_late': 59970671}
+overload-s0 cpsat30 lex=(145616396, 0, 2189736) viol=0 misses=11 35.0s {'status': 'FAIL:SolveTimeout'}
+overload-s1 v3 lex=(140878930, 70411, 513712) viol=0 misses=16 22.6s {'repair_stage': 'cpsat', 'repair_late': 140878930}
+overload-s1 v3_nocp lex=(140878930, 70411, 513712) viol=0 misses=16 12.0s {'repair_stage': 'sampler', 'repair_late': 140878930}
+overload-s1 cpsat30 lex=(216068233, 0, 392822) viol=0 misses=16 64.3s {'status': 'FAIL:SolveTimeout'}
+overload-s2 v3 lex=(70217306, 70535, 1117348) viol=0 misses=11 19.4s {'repair_stage': 'cpsat', 'repair_late': 70217306}
+overload-s2 v3_nocp lex=(70217306, 70235, 1117285) viol=0 misses=11 10.4s {'repair_stage': 'sampler', 'repair_late': 70217306}
+overload-s2 cpsat30 lex=(205705486, 0, 987440) viol=0 misses=11 63.1s {'status': 'FAIL:SolveTimeout'}
+overload-s3 v3 lex=(102323286, 74971, 2344412) viol=0 misses=10 23.0s {'repair_stage': 'cpsat', 'repair_late': 102323286}
+overload-s3 v3_nocp lex=(102323286, 75034, 2344425) viol=0 misses=10 12.0s {'repair_stage': 'sampler', 'repair_late': 102323286}
+overload-s3 cpsat30 lex=(217728417, 37, 2208019) viol=0 misses=12 64.0s {'status': 'FAIL:SolveTimeout'}
+overload-s4 v3 lex=(125212231, 65197, 1007577) viol=0 misses=13 15.2s {'repair_stage': 'cpsat', 'repair_late': 125212231}
+overload-s4 v3_nocp lex=(124156356, 62585, 1010976) viol=0 misses=13 9.3s {'repair_stage': 'sampler', 'repair_late': 125212231}
+overload-s4 cpsat30 lex=(230784106, 0, 886345) viol=0 misses=14 56.0s {'status': 'FAIL:SolveTimeout'}
+overload-s5 v3 lex=(82781313, 71397, 1631213) viol=0 misses=10 15.8s {'repair_stage': 'cpsat', 'repair_late': 82781313}
+overload-s5 v3_nocp lex=(82571033, 71147, 1630961) viol=0 misses=10 9.2s {'repair_stage': 'sampler', 'repair_late': 82781313}
+overload-s5 cpsat30 lex=(155329490, 0, 1466677) viol=0 misses=10 93.3s {'status': 'FAIL:SolveTimeout'}
+stress-n150-s0 v3 lex=(0, 1950, 4986607) viol=0 misses=0 11.6s {'repair_stage': 'construct', 'repair_late': 0}
+stress-n150-s0 v3_nocp lex=(0, 2225, 4467945) viol=0 misses=0 11.7s {'repair_stage': 'construct', 'repair_late': 0}
+stress-n150-s0 cpsat30 lex=(52917437, 1525, 7739273) viol=0 misses=58 49.2s {'status': 'FAIL:SolveTimeout'}
+stress-n150-s1 v3 lex=(329063, 27647, 3426265) viol=0 misses=2 28.2s {'repair_stage': 'cpsat', 'repair_late': 329063}
+stress-n150-s1 v3_nocp lex=(44000, 4412, 3598314) viol=0 misses=1 11.3s {'repair_stage': 'sampler', 'repair_late': 329063}
+stress-n150-s1 cpsat30 lex=(54230964, 0, 5655193) viol=0 misses=61 48.9s {'status': 'FAIL:SolveTimeout'}
+stress-n150-s2 v3 lex=(676283, 15048, 5571255) viol=0 misses=5 27.2s {'repair_stage': 'cpsat', 'repair_late': 676283}
+stress-n150-s2 v3_nocp lex=(675783, 1450, 4806408) viol=0 misses=5 9.2s {'repair_stage': 'sampler', 'repair_late': 676283}
+stress-n150-s2 cpsat30 lex=(48596361, 0, 6632222) viol=0 misses=73 48.9s {'status': 'FAIL:SolveTimeout'}
+stress-n150-s3 v3 lex=(188066, 12273, 4816046) viol=0 misses=2 25.0s {'repair_stage': 'cpsat', 'repair_late': 206066}
+stress-n150-s3 v3_nocp lex=(172066, 6500, 4734905) viol=0 misses=2 9.7s {'repair_stage': 'sampler', 'repair_late': 206066}
+stress-n150-s3 cpsat30 lex=(56491864, 0, 6534210) viol=0 misses=72 50.4s {'status': 'FAIL:SolveTimeout'}
+stress-n150-s4 v3 lex=(460300, 18836, 5280822) viol=0 misses=3 23.9s {'repair_stage': 'cpsat', 'repair_late': 460300}
+stress-n150-s4 v3_nocp lex=(460300, 2850, 4788625) viol=0 misses=3 8.7s {'repair_stage': 'sampler', 'repair_late': 460300}
+stress-n150-s4 cpsat30 lex=(60078951, 0, 6108408) viol=0 misses=63 53.8s {'status': 'FAIL:SolveTimeout'}
+stress-n150-s5 v3 lex=(183017, 14724, 3653571) viol=0 misses=3 26.0s {'repair_stage': 'cpsat', 'repair_late': 183017}
+stress-n150-s5 v3_nocp lex=(182517, 6925, 3431042) viol=0 misses=3 13.3s {'repair_stage': 'sampler', 'repair_late': 183017}
+stress-n150-s5 cpsat30 lex=(54534856, 3625, 4773871) viol=0 misses=78 50.7s {'status': 'FAIL:SolveTimeout'}
+done
