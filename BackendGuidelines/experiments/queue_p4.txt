@@ -3,3 +3,5 @@
 15:15:54 start E008-move-ablation load: 11.30 12.26 14.60
 15:30:33 end E008-move-ablation (0)
 15:30:33 start E009-warm-determinism load: 18.13 12.72 12.95
+16:12:57 end E009-warm-determinism (0)
+16:12:57 start E010-diversity-calibration load: 12.27 11.34 10.91
