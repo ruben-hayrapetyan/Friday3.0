@@ -27,17 +27,17 @@
   "lex": [
    0,
    175,
-   31116
+   30588
   ],
-  "source": "E006/weighted_30"
+  "source": "E007/greedy"
  },
  "cornell-s4": {
   "lex": [
    0,
    0,
-   33103
+   32139
   ],
-  "source": "E006/weighted_100"
+  "source": "E007/ms8"
  },
  "cornell-s5": {
   "lex": [
@@ -338,10 +338,10 @@
  "ref-n60-s9": {
   "lex": [
    0,
-   75,
-   467501
+   50,
+   281824
   ],
-  "source": "E007/pt8"
+  "source": "E007/pa8"
  },
  "stress-n150-s0": {
   "lex": [

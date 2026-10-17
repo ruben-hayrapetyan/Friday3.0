@@ -83,6 +83,8 @@ class V3System:
         self.rankings = []
         self.h = np.zeros(self.L.K)
         self.gain = 0.0
+        self.ll_units = 0.0
+        self.ll_taste = {s: 0.0 for s in (0.02, 0.05, 0.1, 0.2, 0.5)}
         self._pace_week = False
         self.log: list[str] = []
 
@@ -148,10 +150,14 @@ class V3System:
     def end_week(self, week: Week, pace: str | None, wk: int) -> None:
         from .learn.hidden import WeekEvidence, _norm_diff
 
-        if week.rankings:  # predictive check, before learning from this week
+        if week.rankings:  # predictive check, before learning from this week (E013c: against a calibrated baseline)
             X = np.array([_norm_diff(r) for r in week.rankings])
             ev = WeekEvidence(X, 0, 0, None, None)
-            self.gain += self.L.week_ll(self.L.theta, self.h, ev) - self.L0.week_ll(self.L0.theta, np.zeros(0), ev)
+            self.ll_units += self.L.week_ll(self.L.theta, self.h, ev)
+            for s in self.ll_taste:
+                z = -(X @ self.L0.theta_eff(np.zeros(0))) / s
+                self.ll_taste[s] += float(-np.logaddexp(0, -z).sum())
+            self.gain = self.ll_units - max(self.ll_taste.values())
         self.L.add_week(week, pace=pace)
         self.L0.add_week(week, pace=pace)
         self.rankings += week.rankings
