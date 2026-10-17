@@ -290,58 +290,58 @@
  "ref-n60-s3": {
   "lex": [
    0,
-   462,
-   1540588
+   162,
+   1041290
   ],
-  "source": "E004/wall_sa"
+  "source": "E007/pa8"
  },
  "ref-n60-s4": {
   "lex": [
    0,
-   50,
-   753930
+   25,
+   369493
   ],
-  "source": "E004/potts_penalty"
+  "source": "E007/pa8"
  },
  "ref-n60-s5": {
   "lex": [
    0,
-   1413,
-   971291
+   763,
+   788671
   ],
-  "source": "E004/sa_lns"
+  "source": "E007/pt8"
  },
  "ref-n60-s6": {
   "lex": [
    0,
-   1225,
-   1857859
+   550,
+   1866395
   ],
-  "source": "E004/potts_penalty"
+  "source": "E007/pt8"
  },
  "ref-n60-s7": {
   "lex": [
    125,
-   13924,
-   736401
+   12998,
+   352434
   ],
-  "source": "E004/sa_lns"
+  "source": "E007/ms8"
  },
  "ref-n60-s8": {
   "lex": [
    0,
-   13449,
-   212692
+   10610,
+   111753
   ],
-  "source": "E004/wall_sa"
+  "source": "E007/ms8"
  },
  "ref-n60-s9": {
   "lex": [
    0,
-   850,
-   635785
+   75,
+   467501
   ],
-  "source": "E004/wall_sa"
+  "source": "E007/pt8"
  },
  "stress-n150-s0": {
   "lex": [
