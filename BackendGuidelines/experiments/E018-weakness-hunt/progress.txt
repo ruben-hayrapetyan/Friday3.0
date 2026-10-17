@@ -24,3 +24,7 @@ tight-bigchunk-s1 v3_nocp lex=(132000, 7286, 4192) viol=0 misses=2 9.9s {'repair
 tight-bigchunk-s1 cpsat30 lex=(87012, 7286, 4192) viol=0 misses=2 30.4s {'status': 'FEASIBLE/FEASIBLE/FEASIBLE'}
 tight-bigchunk-s2 v3 lex=(139004, 7699, 3991) viol=0 misses=4 8.9s {'repair_stage': 'cpsat', 'repair_late': 139004}
 tight-bigchunk-s2 v3_nocp lex=(204000, 7749, 3966) viol=0 misses=4 9.1s {'repair_stage': 'sampler', 'repair_late': 204000}
+tight-bigchunk-s2 cpsat30 lex=(139004, 7699, 3991) viol=0 misses=4 30.2s {'status': 'FEASIBLE/FEASIBLE/FEASIBLE'}
+tight-bigchunk-s3 v3 lex=(52016, 8174, 4032) viol=0 misses=2 9.3s {'repair_stage': 'cpsat', 'repair_late': 52016}
+17:41:16 E018 moved to background QoS (taskpolicy -b) at a peer session's request; timings after this line run on efficiency cores
+tight-bigchunk-s3 v3_nocp lex=(192000, 8324, 4007) viol=0 misses=1 23.5s {'repair_stage': 'sampler', 'repair_late': 192000}
