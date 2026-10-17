@@ -1,0 +1,17 @@
+instance,kind,seed,start,variant,seconds,violations,late,wellbeing,preferences,misses,overflow_h
+ref-n40-s0,ref40,0,construct,wall,2.67,0,0,125,245026,0,9.25
+ref-n40-s0,ref40,0,construct,lam0.1,2.97,0,0,75,2280952,0,16.5
+ref-n40-s0,ref40,0,construct,lam1,2.64,0,0,100,2315731,0,16.0
+ref-n40-s0,ref40,0,construct,lam10,2.6,0,0,200,2014981,0,14.25
+ref-n40-s0,ref40,0,construct,lam100,2.66,0,0,200,1848821,0,14.0
+ref-n40-s0,ref40,0,construct,wD1,2.9,0,34750,200,287643,1,9.5
+ref-n40-s0,ref40,0,construct,wD10,2.91,0,0,200,289957,0,9.25
+ref-n40-s0,ref40,0,construct,wD100,2.89,0,0,200,289957,0,9.25
+ref-n40-s0,ref40,0,empty,wall,2.79,0,0,700,311851,0,9.25
+ref-n40-s0,ref40,0,empty,lam0.1,2.77,0,0,75,2904534,0,17.25
+ref-n40-s0,ref40,0,empty,lam1,2.76,0,0,75,2229618,0,17.5
+ref-n40-s0,ref40,0,empty,lam10,2.71,0,0,175,2016123,0,14.75
+ref-n40-s0,ref40,0,empty,lam100,2.88,0,0,175,1958109,0,14.5
+ref-n40-s0,ref40,0,empty,wD1,2.7,0,0,125,244255,0,10.25
+ref-n40-s0,ref40,0,empty,wD10,2.84,0,0,225,510972,0,9.25
+ref-n40-s0,ref40,0,empty,wD100,2.76,0,0,175,274341,0,9.5

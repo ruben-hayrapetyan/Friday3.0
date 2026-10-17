@@ -36,3 +36,52 @@ B ref40-1 T=0.003 diff=0.305 patterns=2.10 excess=-79pts
 B ref40-1 T=0.01 diff=0.325 patterns=1.93 excess=-83pts
 B ref40-1 T=0.03 diff=0.368 patterns=2.12 excess=-86pts
 B ref40-1 T=0.1 diff=0.490 patterns=2.52 excess=-83pts
+B ref40-2 T=0.003 diff=0.511 patterns=3.02 excess=-27pts
+B ref40-2 T=0.01 diff=0.496 patterns=3.08 excess=-28pts
+B ref40-2 T=0.03 diff=0.518 patterns=3.02 excess=-25pts
+B ref40-2 T=0.1 diff=0.618 patterns=3.67 excess=-33pts
+B ref40-3 T=0.003 diff=0.705 patterns=5.17 excess=-6996pts
+B ref40-3 T=0.01 diff=0.706 patterns=5.30 excess=-6993pts
+B ref40-3 T=0.03 diff=0.713 patterns=5.05 excess=-6997pts
+B ref40-3 T=0.1 diff=0.730 patterns=5.47 excess=-6997pts
+B ref40-4 T=0.003 diff=0.670 patterns=5.00 excess=-1788pts
+B ref40-4 T=0.01 diff=0.663 patterns=5.10 excess=-1787pts
+B ref40-4 T=0.03 diff=0.672 patterns=5.05 excess=-1789pts
+B ref40-4 T=0.1 diff=0.712 patterns=4.83 excess=-1793pts
+C easy-0 week 0 done
+C easy-0 week 1 done
+C easy-0 week 2 done
+C easy-0 week 3 done
+C easy-0 week 4 done
+C easy-0 week 5 done
+C easy-1 week 0 done
+C easy-1 week 1 done
+C easy-1 week 2 done
+C easy-1 week 3 done
+C easy-1 week 4 done
+C easy-1 week 5 done
+C easy-2 week 0 done
+C easy-2 week 1 done
+C easy-2 week 2 done
+C easy-2 week 3 done
+C easy-2 week 4 done
+C easy-2 week 5 done
+C noisy-0 week 0 done
+C noisy-0 week 1 done
+C noisy-0 week 2 done
+C noisy-0 week 3 done
+C noisy-0 week 4 done
+C noisy-0 week 5 done
+C noisy-1 week 0 done
+C noisy-1 week 1 done
+C noisy-1 week 2 done
+C noisy-1 week 3 done
+C noisy-1 week 4 done
+C noisy-1 week 5 done
+C noisy-2 week 0 done
+C noisy-2 week 1 done
+C noisy-2 week 2 done
+C noisy-2 week 3 done
+C noisy-2 week 4 done
+C noisy-2 week 5 done
+done
