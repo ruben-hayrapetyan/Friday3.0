@@ -63,3 +63,16 @@ ref-n40-s0 wall_sa@10s viol=0 lex=(0, 100, 294996) t=7.0
 ref-n40-s0 potts_penalty@10s viol=0 lex=(0, 175, 306068) t=6.9
 ref-n40-s0 skeleton_hybrid@10s viol=0 lex=(0, 275, 380228) t=8.7
 ref-n40-s0 sa_lns@10s viol=0 lex=(0, 275, 219503) t=9.7
+ref-n40-s0 cpsat@10s viol=0 lex=(38205836, 0, 3333812) t=12.8
+ref-n40-s0 cpsat@30s viol=0 lex=(26793517, 0, 2051450) t=63.2
+ref-n40-s1 wall_sa@10s viol=0 lex=(0, 15287, 43843) t=9.0
+ref-n40-s1 potts_penalty@10s viol=0 lex=(0, 14613, 55959) t=8.8
+ref-n40-s1 skeleton_hybrid@10s viol=0 lex=(0, 19612, 33915) t=9.5
+ref-n40-s1 sa_lns@10s viol=0 lex=(0, 18061, 55604) t=10.2
+ref-n40-s1 cpsat@10s viol=0 lex=(52427437, 10450, 1293803) t=14.3
+ref-n40-s1 cpsat@30s viol=0 lex=(52427437, 10450, 1293803) t=66.3
+ref-n40-s2 wall_sa@10s viol=0 lex=(0, 912, 28818) t=5.8
+ref-n40-s2 potts_penalty@10s viol=0 lex=(0, 1975, 23761) t=8.7
+ref-n40-s2 skeleton_hybrid@10s viol=0 lex=(0, 1850, 147659) t=9.1
+ref-n40-s2 sa_lns@10s viol=0 lex=(0, 2700, 142436) t=9.3
+ref-n40-s2 cpsat@10s viol=0 lex=(41302543, 0, 1231790) t=12.9

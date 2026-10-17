@@ -59,3 +59,15 @@ budget_s,demoted,engine,instance,kind,late,late_h,misses,n,overflow_h,preference
 10.0,0,sa_lns,ref-n20-s9,ref,0,0.0,0,20,1.0,19590,11.0,9,0,,0,6937
 10.0,0,cpsat,ref-n20-s9,ref,32878844,0.0,8,20,75.0,652324,21.2,9,0,FAIL:SolveTimeout,0,0
 30.0,0,cpsat,ref-n20-s9,ref,1199805,347.5,6,20,10.25,709578,65.44,9,0,FEASIBLE/FEASIBLE/FEASIBLE,0,50
+10.0,0,wall_sa,ref-n40-s0,ref,0,0.0,0,40,9.5,294996,6.98,0,0,,0,100
+10.0,0,potts_penalty,ref-n40-s0,ref,0,0.0,0,40,9.25,306068,6.94,0,0,,0,175
+10.0,0,skeleton_hybrid,ref-n40-s0,ref,0,0.0,0,40,9.25,380228,8.71,0,0,,0,275
+10.0,0,sa_lns,ref-n40-s0,ref,0,0.0,0,40,10.0,219503,9.67,0,0,,0,275
+10.0,0,cpsat,ref-n40-s0,ref,38205836,0.0,14,40,105.25,3333812,12.77,0,0,FAIL:SolveTimeout,0,0
+30.0,0,cpsat,ref-n40-s0,ref,26793517,407.5,13,40,74.0,2051450,63.24,0,0,FEASIBLE/OPTIMAL/FEASIBLE,0,0
+10.0,0,wall_sa,ref-n40-s1,ref,0,0.0,0,40,1.75,43843,8.99,1,0,,0,15287
+10.0,0,potts_penalty,ref-n40-s1,ref,0,0.0,0,40,1.75,55959,8.76,1,0,,0,14613
+10.0,0,skeleton_hybrid,ref-n40-s1,ref,0,0.0,0,40,1.75,33915,9.52,1,0,,0,19612
+10.0,0,sa_lns,ref-n40-s1,ref,0,0.0,0,40,1.75,55604,10.23,1,0,,0,18061
+10.0,0,cpsat,ref-n40-s1,ref,52427437,0.0,19,40,102.0,1293803,14.29,1,0,FAIL:SolveTimeout,0,10450
+30.0,0,cpsat,ref-n40-s1,ref,52427437,0.0,19,40,102.0,1293803,66.34,1,0,FAIL:SolveTimeout,0,10450

@@ -172,7 +172,8 @@ def move_scale(u: Universe, c, owner: np.ndarray, seed: int = 0) -> float:
 
 
 def live_week(u: Universe, user: SimUser, friday: np.ndarray, theta_friday: np.ndarray, week: int, seed: int,
-              chain_steps: int = 4000, n_pool: int = 6, n_pairs: int = 6, pool_steps: int = 4000) -> Week:
+              chain_steps: int = 4000, n_pool: int = 6, n_pairs: int = 6, pool_steps: int = 4000,
+              select=None) -> Week:
     """The user lives Friday's plan for a week.
 
     Day to day they drift from it by local choices in proportion to exp(-E_true / tau): a short Metropolis chain under the
@@ -193,8 +194,10 @@ def live_week(u: Universe, user: SimUser, friday: np.ndarray, theta_friday: np.n
     t_f = move_scale(u, c_f, friday, seed + 1)
     pool = [friday] + [u.sample_c(c_f, friday, t_f, pool_steps, int(rng.integers(1 << 30))) for _ in range(n_pool)]
     e_pool = [true_energy(u, user, x) for x in pool]
-    for _ in range(n_pairs):
-        i, j = rng.choice(len(pool), size=2, replace=False)
+    # `select(phis, n)` lets an active learner choose which pairs to ask; default: random pairs
+    chosen = select([u.phi(x) for x in pool], n_pairs) if select is not None else \
+        [tuple(rng.choice(len(pool), size=2, replace=False)) for _ in range(n_pairs)]
+    for i, j in chosen:
         rankings.append(Ranking(u.phi(pool[i]), u.phi(pool[j]), user.rank(e_pool[i], e_pool[j], scale), "pair", week,
                                 _extra(u, pool[i]), _extra(u, pool[j])))
     return Week(week, user.mood, friday, lived, u.phi(friday), u.phi(lived), rankings, skips, blocks,

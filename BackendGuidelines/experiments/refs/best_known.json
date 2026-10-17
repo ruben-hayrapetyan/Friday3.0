@@ -86,5 +86,21 @@
    294996
   ],
   "source": "E004/wall_sa"
+ },
+ "ref-n40-s1": {
+  "lex": [
+   0,
+   14613,
+   55959
+  ],
+  "source": "E004/potts_penalty"
+ },
+ "ref-n40-s2": {
+  "lex": [
+   0,
+   912,
+   28818
+  ],
+  "source": "E004/wall_sa"
  }
 }

@@ -11,6 +11,7 @@ import numpy as np
 
 from fr.core.generate import cornell_semester
 from fr.engines.api import warmup
+from fr.shard import mine, suffix
 from fr.learn.methods import make_learner
 from fr.sim.user import LEARNABLE, MISSING_RULE, SimUser
 from fr.sim.world import Universe, live_week, true_energy
@@ -22,7 +23,7 @@ if "--smoke" in sys.argv:
     HERE = HERE / "smoke"
     HERE.mkdir(exist_ok=True)
 (HERE / "results").mkdir(exist_ok=True)
-LOG = (HERE / "progress.txt").open("a")
+LOG = (HERE / f"progress{suffix()}.txt").open("a")
 
 
 def log(m: str) -> None:
@@ -63,6 +64,8 @@ def main() -> None:
     rows = []
     for kind in cfg["kinds"]:
         for uid in range(cfg["users"]):
+            if not mine(cfg["kinds"].index(kind) * cfg["users"] + uid):
+                continue
             user = SimUser.make(kind, 1000 * (1 + cfg["kinds"].index(kind)) + uid)
             pairs = heldout(user, cfg["heldout_pairs"], uid)
             learners = {name: make_learner(name) for name in cfg["learners"]}
@@ -88,7 +91,7 @@ def main() -> None:
                                      theta=" ".join(f"{v:.3f}" for v in L.theta)))
                 log(f"{kind}-{uid} wk{wk} mood={mood} " + " ".join(
                     f"{r['learner']}:{r['heldout_acc']:.2f}/{r['regret_rel']:.3f}" for r in rows[-len(learners):]))
-                with (HERE / "results" / "runs.csv").open("w", newline="") as f:
+                with (HERE / "results" / f"runs{suffix()}.csv").open("w", newline="") as f:
                     w = csv.DictWriter(f, fieldnames=list(rows[0]))
                     w.writeheader()
                     w.writerows(rows)

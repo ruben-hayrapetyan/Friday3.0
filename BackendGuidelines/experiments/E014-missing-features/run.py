@@ -10,6 +10,7 @@ import numpy as np
 
 from fr.core.generate import cornell_semester
 from fr.engines.api import warmup
+from fr.shard import mine, suffix
 from fr.learn.methods import RankingQP
 from fr.sim.user import LEARNABLE, MISSING_RULE, SimUser
 from fr.sim.world import Universe, live_week, true_energy
@@ -23,7 +24,7 @@ if "--smoke" in sys.argv:
     HERE = HERE / "smoke"
     HERE.mkdir(exist_ok=True)
 (HERE / "results").mkdir(exist_ok=True)
-LOG = (HERE / "progress.txt").open("a")
+LOG = (HERE / f"progress{suffix()}.txt").open("a")
 CANDS = candidates()
 CAND_NAMES = [c["name"] for c in CANDS]
 
@@ -39,6 +40,8 @@ def main() -> None:
     rows, regret_rows = [], []
     for kind in ("missing", "easy"):
         for uid in range(cfg["users_per_type"]):
+            if not mine((kind == "easy") * cfg["users_per_type"] + uid):
+                continue
             user = SimUser.make(kind, 9000 + 100 * (kind == "easy") + uid)
             L = RankingQP()
             rankings = []
@@ -78,7 +81,7 @@ def main() -> None:
                                         rule_weight=round(w_new, 4), gain=round(gain, 5), regret=round(e - e_star, 2),
                                         regret_rel=round((e - e_star) / max(abs(e_star), 1), 4)))
             for name, rs in (("checkpoints", rows), ("regret", regret_rows)):
-                with (HERE / "results" / f"{name}.csv").open("w", newline="") as f:
+                with (HERE / "results" / f"{name}{suffix()}.csv").open("w", newline="") as f:
                     w = csv.DictWriter(f, fieldnames=list(rs[0]))
                     w.writeheader()
                     w.writerows(rs)

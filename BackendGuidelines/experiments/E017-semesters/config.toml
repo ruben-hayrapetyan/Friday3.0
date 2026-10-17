@@ -1,0 +1,7 @@
+kinds = ["easy", "moody", "missing", "noisy"]
+users = 3
+weeks = 12
+v3_budget_s = 2.0
+v2_budget_s = 30.0
+threshold = 0.05
+pace_p = 0.3
