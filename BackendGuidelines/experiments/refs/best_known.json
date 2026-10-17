@@ -55,12 +55,36 @@
   ],
   "source": "E004/wall_sa"
  },
+ "ref-n20-s7": {
+  "lex": [
+   0,
+   12125,
+   77761
+  ],
+  "source": "E004/potts_penalty"
+ },
+ "ref-n20-s8": {
+  "lex": [
+   5368508,
+   5600,
+   97087
+  ],
+  "source": "E004/sa_lns"
+ },
+ "ref-n20-s9": {
+  "lex": [
+   0,
+   1225,
+   24904
+  ],
+  "source": "E004/potts_penalty"
+ },
  "ref-n40-s0": {
   "lex": [
    0,
-   225,
-   379697
+   100,
+   294996
   ],
-  "source": "E007/pt8"
+  "source": "E004/wall_sa"
  }
 }

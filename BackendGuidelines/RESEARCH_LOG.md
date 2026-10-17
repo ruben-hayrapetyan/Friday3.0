@@ -15,7 +15,12 @@ Output: one `REPORT.md` with an engine spec precise enough to write a v3 design 
 
 - **Session 1** (2026-10-17): P0 done, P1 done, P2 done (baseline built, scenario tests pass, E001 run). 138 tests pass.
   Baseline misses its own speed targets (see E001). Next: E002 baseline tuning, then P3.
+- **Session 2** (2026-10-17): P3-P7 built. Compiled energy kernel (numba) exact against the evaluator/checker; wall sampler;
+  QUBO, LNS, PT, population annealing, tabu; simulated users; learners; hidden units; supervisor (discovery, softening,
+  active queries). E002-E003 done; E004-E016 queued (`experiments/queue_*.sh`, progress in `queue_*.txt`).
 - Branch: `rhayrapetyan/backend` (off `main`). Project root: `BackendGuidelines/`.
+- **Machine is shared** from session 2: a trading bot runs on it (load average 30-45 on 16 cores). All jobs run at
+  `nice -n 19` (asked by that session). Timing numbers from E004 on carry this load; each queue logs the load at start.
 
 ## Hardware (P0)
 
@@ -71,6 +76,19 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
 14. **Default hint** = locks-only plan. Pins in generators are placed inside the item's window.
 10. Commits go on branch `rhayrapetyan/backend` in the outer Friday repo (the research prompt asks for commits after every step).
 
+15. **Energy kernel.** Numba functions with `_nrt=False`: passing the 50-array model tuple to helpers cost ~100 ns per call in
+    reference counting otherwise (measured), 10-15x slower moves. Never allocate inside the kernel; work arrays are passed in.
+16. **Moves are unit-aware.** A chunk moved between the 15-min and 30-min zones keeps its units, not its slot count (the first
+    version kept slot counts and silently trapped all work in the first week).
+17. **Temperature calibration** uses the median |delta| of random valid moves that leave the walled stage unchanged (a first
+    version let deadline-weighted deltas set T ~ 1e9: a random walk). Defaults: T0 = 0.1, T1 = 0.003 x median, geometric.
+18. **Deadline wall** = a hard item that is complete and on time in the start plan ("protected") may only use on-time slots and
+    may never lose units. Items late at the start are not protected; their lateness is just the heaviest energy term.
+19. **Learning features** phi_r = rule r's cost at its reference weight, in points; theta = multipliers (1 = hand-set).
+    Likelihood learning cannot fix theta's scale (it is the temperature), so CD keeps sum(theta) fixed.
+20. **Determinism needs a step budget, not a time budget.** Sizing steps from measured speed makes runs depend on load; the
+    production profile must fix step counts per instance size (E009 measures both).
+
 ## Findings so far
 
 - **EDF exactness is about feasibility.** When jobs cannot all finish, `L_max` depends on a convention for unfinished jobs, so only
@@ -85,6 +103,8 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
 | ID | Question | Finding |
 | --- | --- | --- |
 | E001-v2-baseline | How fast / good is faithful v2 on the reference benchmark? | Misses every speed target: cold p90 20-31 s (target 10), warm p90 18-26 s (target 3). Preferences stage never proven optimal (gap 63-94% at 9 s). Not deterministic with 8 workers (up to 2x spread). EDF optimistic in 6/69 runs. Executor 0.1 ms, allocator 0.13 s are fine. |
+| E002-baseline-tuning | Can v2 work at a 10 s budget with fair tuning? | No: every variant times out (stage limits double) or returns hundreds of late hours; even a zero-late hint fails 7/10 (presolve > stage share). Fair baseline = v2 at 30 s. |
+| E003-strict-qubo | Pairwise QUBO with penalties, price-only slice | Dead end: never meets hard deadlines (0-5%) at any penalty scale; alpha < 3 cheats, alpha >= 3 freezes (slack bits absorb unplaced work); 25-200x worse than optimum. Hopfield descent same. |
 
 - **E001 findings in one line each:** time-limited quality is the baseline at n>=40; v2 determinism needs 1 worker; stage-1 can
   freeze a bad plan (n=40 seed 1: 606 h late, FEASIBLE only); EDF is a one-directional certificate; overflow is large at 45% load.

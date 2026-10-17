@@ -1,0 +1,6 @@
+users_per_type = 12
+tuning_users = 6
+weeks = 12
+pairs_per_week = 10
+checkpoints = [4, 6, 8, 10, 12]
+plan_steps = 300000

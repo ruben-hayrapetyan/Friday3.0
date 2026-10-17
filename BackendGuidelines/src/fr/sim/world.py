@@ -26,7 +26,8 @@ class Universe:
     def __init__(self, sc: Scenario, extra_rules: list[dict] | None = None):
         self.sc = sc
         self.extra = [dict(r) for r in (extra_rules or [])]
-        self.p = sc.build(rules=build_rules(None, self.extra))
+        self.fixed = [dict(r) for r in sc.extra_rules]  # the user's own fixed rules (e.g. walls); never learned
+        self.p = sc.build(rules=build_rules(None, self.fixed + self.extra))
         self.pr = prepare(self.p)
         self.c = self.pr.c
         self.names = self.c.rule_names
@@ -65,6 +66,7 @@ class Universe:
             if d["name"] in LEARNABLE:
                 d["weight"] = float(d.get("weight", 1.0) * theta[LEARNABLE.index(d["name"])])
             specs.append(d)
+        specs += [dict(r) for r in self.fixed]
         for r in self.extra:
             w = (extra_w or {}).get(r["name"], 0.0)
             if w > 0:
@@ -200,4 +202,7 @@ def live_week(u: Universe, user: SimUser, friday: np.ndarray, theta_friday: np.n
 
 
 def _extra(u: Universe, owner: np.ndarray) -> dict:
-    return {name: u.phi_extra(owner, name) for name in u.extra_ix}
+    if not u.extra_ix:
+        return {}
+    t = u.totals(owner)
+    return {name: float(t[k]) for name, k in u.extra_ix.items()}
