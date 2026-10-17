@@ -35,13 +35,13 @@ Laptop timings vary with power and thermals: repeat 3x, report variance (RESEARC
 | P0 Setup | 0.1 session | done |
 | P1 Problem core | 1 session | done (see below) |
 | P2 Baseline (v2 CP-SAT grid, staged) + quality-vs-time curves | 1-2 sessions | done (E001); E002 tunes it for fairness |
-| P3 Representations + hard constraints (RQ1-3) | 3 sessions | |
-| P4 Samplers + speed (RQ4, RQ9, RQ10) | 3 sessions | |
-| P5 Simulated users + learning (RQ5) | 2 sessions | |
-| P6 Hidden units (RQ6, RQ7) | 2 sessions | |
-| P7 Supervisor (RQ8) | 2 sessions | |
-| P8 Integration + weakness hunt | 2 sessions | |
-| P9 Report | 1 session | |
+| P3 Representations + hard constraints (RQ1-3) | 3 sessions | done: E003-E006b; shortlist = walls (+ CP-SAT fallback) |
+| P4 Samplers + speed (RQ4, RQ9, RQ10) | 3 sessions | done: E007-E010, E009b |
+| P5 Simulated users + learning (RQ5) | 2 sessions | done: E011-E012, E011b, E011c (3 rounds) |
+| P6 Hidden units (RQ6, RQ7) | 2 sessions | done: E013, E013b, E013c (3 rounds) |
+| P7 Supervisor (RQ8) | 2 sessions | done: E014-E016 (+ policies wired into fr/system.py) |
+| P8 Integration + weakness hunt | 2 sessions | E017 done; E018 running |
+| P9 Report | 1 session | REPORT.md assembled from report/sections; waits for E018 |
 
 ## What exists (P1)
 
@@ -138,9 +138,6 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
 
 ## Next steps
 
-1. E002: tune the baseline fairly (horizon/fine days, slot length, stage budgets, 1 vs 8 workers, hints) so v3 is not beaten
-   against a straw man; fix the baseline's "best known" reference values per instance for gap metrics (long runs, 10 min).
-2. P3: representations. Start with strict QUBO / Hopfield (deliberate failure: penalty scale vs feasibility), then Potts slot
-   model, chunk-level with walls, and the CP-SAT/EDF-skeleton + sampler hybrid. Walls first: move sets that never leave the feasible set.
-3. Open from P1/P2: reference scenario #10 (DST) untested; safe swaps (9.4) not built; allocator day-level dependencies lightly tested.
-4. Investigate the zero_late < 1 instances at n=40 (dependency/cap chains?) to separate real overload from model artefacts.
+1. When E018 finishes: notes, failure catalogue into report section 9, fix-and-rerun anything it breaks, re-assemble REPORT.md.
+2. Open questions carried into the report (section 11): per-user answer temperature inside the fit; faster state detection;
+   a "rebuild item" move for full reachability at T > 0; interval CP-SAT (6A.9) never built; DST scenario untested.
