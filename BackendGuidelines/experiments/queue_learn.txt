@@ -13,3 +13,4 @@
 14:30:58 start E012-rbm-from-data
 14:33:17 end E012-rbm-from-data (0)
 14:33:28 start E011b-learning-round2 x2
+14:42:58 end E011b-learning-round2

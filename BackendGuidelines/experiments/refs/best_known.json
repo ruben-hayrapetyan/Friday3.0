@@ -194,42 +194,42 @@
  "ref-n40-s1": {
   "lex": [
    0,
-   14225,
-   36535
+   14200,
+   35417
   ],
-  "source": "E006/weighted_30"
+  "source": "E007/pt8"
  },
  "ref-n40-s2": {
   "lex": [
    0,
    400,
-   21728
+   19716
   ],
-  "source": "E006/weighted_100"
+  "source": "E007/pa8"
  },
  "ref-n40-s3": {
   "lex": [
    0,
    75,
-   453019
+   396316
   ],
-  "source": "E006/tiered_tol5"
+  "source": "E007/pa8"
  },
  "ref-n40-s4": {
   "lex": [
    0,
    8175,
-   280032
+   136137
   ],
-  "source": "E006/tiered"
+  "source": "E007/pt8"
  },
  "ref-n40-s5": {
   "lex": [
    0,
    2275,
-   425054
+   401508
   ],
-  "source": "E006/tiered"
+  "source": "E007/pt8"
  },
  "ref-n40-s6": {
   "lex": [
