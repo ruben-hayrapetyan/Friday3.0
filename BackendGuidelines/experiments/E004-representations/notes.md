@@ -31,7 +31,7 @@ earlier stages tie the best known value; "comparable" counts those runs.
 3. **Wrong:** the CP-SAT skeleton hurt. A 3 s stage-1 solve is often *later* than construction (ref-n40-s7: 45k late), and the
    hybrid used it blindly; on 2 instances it ended late. Fixed after this run (keep the better start, decision 23).
 4. **Confirmed and stronger than expected.** At 10 s the wall sampler ties or beats CP-SAT-30 s on every comparable stage, and
-   CP-SAT is deadline-safe on only 30% at "30 s" under this load (E001, unloaded: 80-90%). CP-SAT also overran its budget
+   CP-SAT is deadline-safe on only 30% at "30 s" under this load (E001, idle: 70-100% zero late). CP-SAT also overran its budget
    (median 61 s for "30 s": the stage limits double when a stage finds nothing).
 5. **Wrong:** LNS polish did not help at 10 s; each neighbourhood solve pays CP-SAT model build and presolve (~1-2 s), so it
    replaces ~40% of annealing with a handful of exact moves. Wellbeing gap 0.05 vs 0.

@@ -22,6 +22,6 @@ control grid and scored by the shared evaluator/checker. `results/runs.csv`.
 2. **A good hint does not rescue it.** With a zero-late constructive plan as the hint, CP-SAT still times out in 7/10 runs:
    the hint is feasible (verified: fixing variables to it solves in 0.12 s, and the model's stage values equal the evaluator's
    exactly), but the preferences stage cannot finish presolve inside its 3 s share, so the hinted solution is never reported.
-3. The fair baseline is therefore **v2 at its own 30 s budget** (E001: zero late in 80-90% of cold runs), and at equal wall
+3. The fair baseline is therefore **v2 at its own 30 s budget** (E001: zero late in 70-100% of cold runs), and at equal wall
    clock (10 s) v2 is simply not competitive. Later experiments compare against both: CP-SAT-30 s (quality reference) and
    CP-SAT-10 s (equal time).
