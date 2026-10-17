@@ -114,7 +114,16 @@ add it only on the user's yes. Walls never soften silently: one question at the 
 off, propose softening as a price after 3 events in 3 distinct weeks within 6). Active queries: query-by-committee (6 bootstrap
 fits), at most ~10 questions in the first weeks, stop when committee disagreement < 20% or the answer noise is high.
 
-### 12.12 Expected performance (laptop, single core per chain)
+### 12.12 Expected performance (laptop, single core per chain; measured under load, so conservative)
 
-See sections 5 and 9 for the measured numbers: valid and deadline-safe on 100% of the evaluation instances; cold plans in 1-2 s
-and warm replans well under the 3 s target; quality at or above v2-CP-SAT at 30 s on every comparable stage.
+| quantity | measured | reference target |
+| --- | --- | --- |
+| hard-rule violations | 0 in every v3 plan of every experiment (thousands of plans) | 0 |
+| avoidable lateness | 0 on 72/72 (E005), 36/36 adversarial (E018), 288/288 semester plans (E017) | 0 |
+| cold plan, 40-60 items | 1.3 s median, 2.9 s p90 (E017, 2 s step budget) | p90 <= 10 s |
+| warm replan | 0.9 s median / 0.94 s p90 at a 1 s budget; 2.7 s at 3 s (E009b) | p90 <= 3 s |
+| construction (the deadline-feasible start) | 0.7 ms median, 32 ms max at 150 items (E005) | (deadline stage <= 3 s) |
+| move proposals | ~550k per second per core (E007) | - |
+| quality vs v2 at 30 s | ties or beats on every comparable stage at 2-10 s (E004, E007); behind on tight 2 h-chunk overload packing (E018d) | - |
+| determinism | identical plan for the same input, seed, profile and step budget, any thread count | same input -> same plan |
+| JIT | ~66 s cold, ~1 s from the shipped cache | - |

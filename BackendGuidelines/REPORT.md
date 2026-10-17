@@ -21,7 +21,7 @@ comparisons to ask. Section 12 specifies it.
 | claim | evidence | confidence |
 | --- | --- | --- |
 | v3 never breaks a hard rule and never misses an avoidable deadline; v2 does both | E017: 0/288 vs 5/144 weeks with a miss or an invalid plan; E005: zero late on 72/72 instances where possible (v2's deadline stage alone 51%); E004: 100% vs 30% deadline-safe | high |
-| v3 is 10-25x faster | weekly plan 1.3 s vs 19.8 s median (E017); warm replan 0.9-2.7 s vs 24 s (E009b); meets the reference's cold (<= 10 s) and warm (<= 3 s) p90 targets, which v2 misses by 2-9x (E001) | high (absolute times measured on a loaded laptop, pessimistic for both) |
+| v3 is about 15x faster on weekly plans and 9-27x on warm replans | weekly plan 1.3 s vs 19.8 s median (E017); warm replan 0.9-2.7 s vs 24 s (E009b); meets the reference's cold (<= 10 s) and warm (<= 3 s) p90 targets, which v2 misses by 2-9x (E001) | high (absolute times measured on a loaded laptop, pessimistic for both) |
 | v3's plans are better | regret 0.087 vs 6.13, lower in 144/144 user-weeks (E017); with v2's own lexicographic stage policy still better in 78% of weeks; ties or beats CP-SAT-30 s on every comparable stage at 2-10 s (E004, E007) | high for the engine; the size of the gap depends on the stage policy (below) |
 | v3 learns preferences better | learned-weight cosine 0.955 vs 0.866 (E017); held-out ranking accuracy 0.85-0.87 vs 0.82 for v2-style learning, but replicates vary by up to 0.1 (E011-E011c) | medium |
 | v3 finds preferences the rule library lacks; v2 cannot | right rule for 6/6 evaluation users by week 4 (E014) and 3/3 semester users (E017); no wrong rule accepted when proposals need the user's yes | medium (one kind of missing rule tested) |
@@ -89,9 +89,10 @@ held-out ranking accuracy, weight recovery (cosine), stability, state-inference 
 Statistics: medians with IQR and 95% bootstrap confidence intervals; at least 10 seeds per cell for engine comparisons.
 
 **Hardware and a caveat on timings.** Apple M3 Max (12 performance + 4 efficiency cores, 64 GB). From session 2 on, the
-laptop was shared with a live service (load average 30-190 on 16 cores); all experiment jobs ran at `nice 19` with BLAS
+laptop was shared with a live service (load average 10-190 on 16 cores); all experiment jobs ran at `nice 19` with BLAS
 threads limited to 1. Every timing comparison in this report ran engines interleaved on the same instances under the same
 load, so ratios are fair, but absolute seconds are pessimistic for both v2 and v3. CP-SAT was run with 8 workers (its design).
+Most of E018 and all of E018b-d ran at background QoS (efficiency cores) at the co-tenant's request; their times are slow for every engine.
 
 ## 3. Baseline results (v2: staged CP-SAT on the slot grid)
 
@@ -323,14 +324,14 @@ change nothing, plus check-ins that report those moods, so any state read for th
 - **Pace clamping is the biggest single gain**: when the user names their state, regret halves.
 - **Mood vs taste (RQ7).** A per-user test, "do the units predict next week's rankings at least 2 nats better (cumulatively)
   than taste alone?", called 8 of 9 users right in E013 (3/3 easy and 3/3 noisy as noise, 2/3 moody as state), but only 5 of 9
-  in the replicate with the multiplicative link (E013b), for the reason given below. Single-week readings are unreliable
+  in the replicate E013b (which also weighted drags 3x), for the reason given below. Single-week readings are unreliable
   (false attribution 23% of weeks for easy users, 42% for noisy ones).
   Evidence that separates them: predictive likelihood of new rankings (the decisive one), consistency of contradictions with
   check-ins and skip counts, and clustering of contradictions in time; noise is uncorrelated with all of them.
 - Moody users' moods read right in 67% of weeks (normal 22/27, motivated 6/10, tired 4/11): tired weeks are mostly read as
   normal, which errs on the safe side (planning a normal week for a tired user) and is where the check-in and pace help.
 
-**Gating, rounds 2 and 3 (E013b, E013c).** With the multiplicative link the simple gate ("units predict 2 nats better than
+**Gating, rounds 2 and 3 (E013b, E013c).** In a second replicate the simple gate ("units predict 2 nats better than
 taste") opened for one easy and two noisy users: the units can win by shrinking the weights, which softens predictions and
 fits noisy answers, without any state. Comparing instead with taste-only at its best answer temperature closed that loophole:
 outside pace weeks the gated units cost mood-free users nothing (easy 0.069 vs 0.066, noisy 0.167 vs 0.167), but they recovered
@@ -339,11 +340,11 @@ need many weeks to prove themselves. Always-on units replicated their E013 effec
 
 ![Hidden units](report/figures/hidden_units.png)
 
-**Recommendation.** Dial-seeded units, multiplicative. Use them without proof only on explicit signals (a picked pace clamps
-them; a one-tap check-in nudges them); automatic inference stays behind the calibrated gate (2 nats over taste at its best
+**Recommendation.** Dial-seeded units, multiplicative. Use them without proof only on an explicit signal (a picked pace clamps
+them); check-ins and skips feed the units' inference, which stays behind the calibrated gate (2 nats over taste at its best
 temperature). This trades some regret for moody users for no harm to everyone else, which is the right default for a product.
 Free units only after the seeded ones are on and pass the same test. Learning hidden units with no dial seeding (section 8 of
-the prompt) is a dead end for a product: no nameable state, slower, no gain. Figure: `report/figures/hidden_units.png`.
+the prompt) is a dead end for a product: no nameable state, slower, no gain.
 
 ## 8. The supervisor: routing feedback, missing features, softening walls, active queries (RQ8)
 
@@ -605,10 +606,19 @@ add it only on the user's yes. Walls never soften silently: one question at the 
 off, propose softening as a price after 3 events in 3 distinct weeks within 6). Active queries: query-by-committee (6 bootstrap
 fits), at most ~10 questions in the first weeks, stop when committee disagreement < 20% or the answer noise is high.
 
-### 12.12 Expected performance (laptop, single core per chain)
+### 12.12 Expected performance (laptop, single core per chain; measured under load, so conservative)
 
-See sections 5 and 9 for the measured numbers: valid and deadline-safe on 100% of the evaluation instances; cold plans in 1-2 s
-and warm replans well under the 3 s target; quality at or above v2-CP-SAT at 30 s on every comparable stage.
+| quantity | measured | reference target |
+| --- | --- | --- |
+| hard-rule violations | 0 in every v3 plan of every experiment (thousands of plans) | 0 |
+| avoidable lateness | 0 on 72/72 (E005), 36/36 adversarial (E018), 288/288 semester plans (E017) | 0 |
+| cold plan, 40-60 items | 1.3 s median, 2.9 s p90 (E017, 2 s step budget) | p90 <= 10 s |
+| warm replan | 0.9 s median / 0.94 s p90 at a 1 s budget; 2.7 s at 3 s (E009b) | p90 <= 3 s |
+| construction (the deadline-feasible start) | 0.7 ms median, 32 ms max at 150 items (E005) | (deadline stage <= 3 s) |
+| move proposals | ~550k per second per core (E007) | - |
+| quality vs v2 at 30 s | ties or beats on every comparable stage at 2-10 s (E004, E007); behind on tight 2 h-chunk overload packing (E018d) | - |
+| determinism | identical plan for the same input, seed, profile and step budget, any thread count | same input -> same plan |
+| JIT | ~66 s cold, ~1 s from the shipped cache | - |
 
 ## 13. Appendix
 

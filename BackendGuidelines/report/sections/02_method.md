@@ -30,6 +30,7 @@ held-out ranking accuracy, weight recovery (cosine), stability, state-inference 
 Statistics: medians with IQR and 95% bootstrap confidence intervals; at least 10 seeds per cell for engine comparisons.
 
 **Hardware and a caveat on timings.** Apple M3 Max (12 performance + 4 efficiency cores, 64 GB). From session 2 on, the
-laptop was shared with a live service (load average 30-190 on 16 cores); all experiment jobs ran at `nice 19` with BLAS
+laptop was shared with a live service (load average 10-190 on 16 cores); all experiment jobs ran at `nice 19` with BLAS
 threads limited to 1. Every timing comparison in this report ran engines interleaved on the same instances under the same
 load, so ratios are fair, but absolute seconds are pessimistic for both v2 and v3. CP-SAT was run with 8 workers (its design).
+Most of E018 and all of E018b-d ran at background QoS (efficiency cores) at the co-tenant's request; their times are slow for every engine.

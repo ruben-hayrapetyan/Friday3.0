@@ -18,6 +18,9 @@ Output: one `REPORT.md` with an engine spec precise enough to write a v3 design 
 - **Session 2** (2026-10-17): P3-P7 built. Compiled energy kernel (numba) exact against the evaluator/checker; wall sampler;
   QUBO, LNS, PT, population annealing, tabu; simulated users; learners; hidden units; supervisor (discovery, softening,
   active queries). E002-E003 done; E004-E016 queued (`experiments/queue_*.sh`, progress in `queue_*.txt`).
+- **Session 2, end**: all phases done (P0-P9); `REPORT.md` complete (assembled from `report/sections/` by
+  `report/assemble.py`; figures by `report/make_figures.py`). 25 experiment folders (E001-E018d). Recommendation: slot-state
+  energy sampler with walls + construction/repair/CP-SAT fallback; BT ranking learning; gated dial units; supervisor policies.
 - Branch: `rhayrapetyan/backend` (off `main`). Project root: `BackendGuidelines/`.
 - **Machine is shared** from session 2: a trading bot runs on it (load average 30-45 on 16 cores). All jobs run at
   `nice -n 19` (asked by that session). Timing numbers from E004 on carry this load; each queue logs the load at start.
@@ -137,8 +140,8 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
 - **E001 findings in one line each:** time-limited quality is the baseline at n>=40; v2 determinism needs 1 worker; stage-1 can
   freeze a bad plan (n=40 seed 1: 606 h late, FEASIBLE only); EDF is a one-directional certificate; overflow is large at 45% load.
 
-## Next steps
+## Next steps (if the program continues)
 
-1. When E018 finishes: notes, failure catalogue into report section 9, fix-and-rerun anything it breaks, re-assemble REPORT.md.
-2. Open questions carried into the report (section 11): per-user answer temperature inside the fit; faster state detection;
-   a "rebuild item" move for full reachability at T > 0; interval CP-SAT (6A.9) never built; DST scenario untested.
+1. Re-measure speed on an idle machine (all session-2 timings ran under a co-tenant's load).
+2. Open questions (REPORT section 11): answer temperature inside the fit; faster state detection; a "rebuild item" move for
+   reachability at T > 0; a tuned size threshold for the deadline pipeline; interval CP-SAT (6A.9); DST scenario.

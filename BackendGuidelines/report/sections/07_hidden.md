@@ -25,14 +25,14 @@ change nothing, plus check-ins that report those moods, so any state read for th
 - **Pace clamping is the biggest single gain**: when the user names their state, regret halves.
 - **Mood vs taste (RQ7).** A per-user test, "do the units predict next week's rankings at least 2 nats better (cumulatively)
   than taste alone?", called 8 of 9 users right in E013 (3/3 easy and 3/3 noisy as noise, 2/3 moody as state), but only 5 of 9
-  in the replicate with the multiplicative link (E013b), for the reason given below. Single-week readings are unreliable
+  in the replicate E013b (which also weighted drags 3x), for the reason given below. Single-week readings are unreliable
   (false attribution 23% of weeks for easy users, 42% for noisy ones).
   Evidence that separates them: predictive likelihood of new rankings (the decisive one), consistency of contradictions with
   check-ins and skip counts, and clustering of contradictions in time; noise is uncorrelated with all of them.
 - Moody users' moods read right in 67% of weeks (normal 22/27, motivated 6/10, tired 4/11): tired weeks are mostly read as
   normal, which errs on the safe side (planning a normal week for a tired user) and is where the check-in and pace help.
 
-**Gating, rounds 2 and 3 (E013b, E013c).** With the multiplicative link the simple gate ("units predict 2 nats better than
+**Gating, rounds 2 and 3 (E013b, E013c).** In a second replicate the simple gate ("units predict 2 nats better than
 taste") opened for one easy and two noisy users: the units can win by shrinking the weights, which softens predictions and
 fits noisy answers, without any state. Comparing instead with taste-only at its best answer temperature closed that loophole:
 outside pace weeks the gated units cost mood-free users nothing (easy 0.069 vs 0.066, noisy 0.167 vs 0.167), but they recovered
@@ -41,8 +41,8 @@ need many weeks to prove themselves. Always-on units replicated their E013 effec
 
 ![Hidden units](report/figures/hidden_units.png)
 
-**Recommendation.** Dial-seeded units, multiplicative. Use them without proof only on explicit signals (a picked pace clamps
-them; a one-tap check-in nudges them); automatic inference stays behind the calibrated gate (2 nats over taste at its best
+**Recommendation.** Dial-seeded units, multiplicative. Use them without proof only on an explicit signal (a picked pace clamps
+them); check-ins and skips feed the units' inference, which stays behind the calibrated gate (2 nats over taste at its best
 temperature). This trades some regret for moody users for no harm to everyone else, which is the right default for a product.
 Free units only after the seeded ones are on and pass the same test. Learning hidden units with no dial seeding (section 8 of
-the prompt) is a dead end for a product: no nameable state, slower, no gain. Figure: `report/figures/hidden_units.png`.
+the prompt) is a dead end for a product: no nameable state, slower, no gain.

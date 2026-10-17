@@ -1,6 +1,6 @@
 # E013b notes — gating hidden units per user (round 2)
 
-Run: E013 protocol with the multiplicative link and drags x3, modes none / dial (always on) / gated (dial units only after a
+Run: E013 protocol (multiplicative link, as E013) with drags x3, modes none / dial (always on) / gated (dial units only after a
 cumulative predictive gain > 2 nats over taste-only, or in pace weeks), 2 shards, 2026-10-17 14:52-15:01.
 
 | regret, median (mean) | none | dial | gated |
@@ -18,6 +18,7 @@ Per-user "state or noise" over all 16 weeks: easy 2/3 noise, moody 2/3 state, no
 2. **The gate failed.** It opened for one easy user and two noisy users. Cause, on inspection of the test: the units can win the
    predictive comparison without any state, by shrinking the effective weights and so *softening* predictions, which fits a
    noisy user's answers better. The test compares "units" with "taste at a fixed answer temperature", so it partly measures
-   temperature, not state. E013's 8/9 was with the additive link, where this shrinkage was weaker.
+   temperature, not state. (Correction: E013 already used the multiplicative link; the difference between E013's 8/9 and this
+   run's 5/9 is a different replicate plus drags counted 3x here. The mechanism above explains why the test is fragile either way.)
 3. Round 3 (E013c): compare the units against taste-only at its best-fitting answer temperature (E011c's noise estimate), so
    that softening alone cannot open the gate.
