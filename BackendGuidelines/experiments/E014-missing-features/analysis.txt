@@ -1,0 +1,24 @@
+tuning easy users' max gains: [0.0321 0.0378 0.0478 0.0921 0.1141 0.273 ] -> threshold 0.1141
+
+easy (evaluation users):
+  week  4: proposed 0.33  correct 0.17  median rank of the true rule 46
+  week  6: proposed 0.17  correct 0.00  median rank of the true rule 48
+  week  8: proposed 0.17  correct 0.00  median rank of the true rule 8
+  week 10: proposed 0.00  correct 0.00  median rank of the true rule 6
+  week 12: proposed 0.00  correct 0.00  median rank of the true rule 5
+
+missing (evaluation users):
+  week  4: proposed 1.00  correct 1.00  median rank of the true rule 1
+  week  6: proposed 0.83  correct 0.83  median rank of the true rule 1
+  week  8: proposed 1.00  correct 1.00  median rank of the true rule 1
+  week 10: proposed 0.83  correct 0.83  median rank of the true rule 1
+  week 12: proposed 1.00  correct 1.00  median rank of the true rule 1
+
+regret at week 12 (all users), relative, median:
+kind     policy     
+easy     auto_add       0.027
+         flag_only      0.063
+         oracle_rule    0.063
+missing  auto_add       0.122
+         flag_only      0.029
+         oracle_rule    0.046

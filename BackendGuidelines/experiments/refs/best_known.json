@@ -194,58 +194,58 @@
  "ref-n40-s1": {
   "lex": [
    0,
-   14250,
-   43122
+   14225,
+   36535
   ],
-  "source": "E006/weighted_10"
+  "source": "E006/weighted_30"
  },
  "ref-n40-s2": {
   "lex": [
    0,
-   912,
-   28818
+   400,
+   21728
   ],
-  "source": "E004/wall_sa"
+  "source": "E006/weighted_100"
  },
  "ref-n40-s3": {
   "lex": [
    0,
    75,
-   709209
+   453019
   ],
-  "source": "E004/wall_sa"
+  "source": "E006/tiered_tol5"
  },
  "ref-n40-s4": {
   "lex": [
    0,
-   8250,
-   150881
+   8175,
+   280032
   ],
-  "source": "E004/potts_penalty"
+  "source": "E006/tiered"
  },
  "ref-n40-s5": {
   "lex": [
    0,
-   3650,
-   513630
+   2275,
+   425054
   ],
-  "source": "E004/skeleton_hybrid"
+  "source": "E006/tiered"
  },
  "ref-n40-s6": {
   "lex": [
    0,
-   2100,
-   613393
+   1050,
+   495737
   ],
-  "source": "E004/wall_sa"
+  "source": "E006/weighted_1000"
  },
  "ref-n40-s7": {
   "lex": [
    44999,
-   22411,
-   255402
+   22136,
+   135870
   ],
-  "source": "E004/wall_sa"
+  "source": "E006/tiered"
  },
  "ref-n40-s8": {
   "lex": [
