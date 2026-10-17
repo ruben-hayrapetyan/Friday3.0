@@ -28,6 +28,9 @@ Cold numba compilation takes ~66 s; a shipped engine must ship its compiled cach
 - The kernel's exactness is enforced by tests against the shared evaluator; any new rule type must come with the same
   differential test or the guarantee "explanations are exact" breaks silently.
 - DST is simplified away (a planning day is always 24 h).
+- A bug found late (E018d): the deadline fallback passed its 5 s as the total CP-SAT limit, so the deadline stage got 2 s. E005's
+  fallback results (exact on 5/5 proven overloads) were obtained with 2 s; the fix only gives the fallback more time.
+- The size threshold (60 items) that orders CP-SAT-first vs annealing-first is a heuristic from 36 adversarial instances, not tuned.
 
 **Open questions.**
 - Per-user answer temperature: it detects noise (E011c) but using it inside the fit hurt moody users; a joint model of noise and

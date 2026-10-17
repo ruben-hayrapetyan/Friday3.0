@@ -29,7 +29,9 @@ comparisons to ask. Section 12 specifies it.
 
 **Where v2 is still better.** Given its full 30 s and a good hint, CP-SAT finds lower wellbeing on more warm replans (about 60%
 of instances in E009/E009b) and v2's warm replans moved slightly less work before v3's stage scheme was fixed. v2's plans are
-optimal for its deadline stage when CP-SAT proves optimality (overload): v3 keeps CP-SAT for exactly that case.
+optimal for its deadline stage when CP-SAT proves optimality (overload): v3 keeps CP-SAT for exactly that case. And on tight
+overload weeks packed with 2-hour minimum chunks, CP-SAT at 30 s on 8 fast cores still finds less lateness (best on 6/6 vs 3/6
+for v3's 5 s fallback on efficiency cores, E018d); v3 should give its fallback more time in an overload week.
 
 **The biggest open decision is not the engine but the stage policy.** Strict "wellbeing first, then preferences" costs simulated
 users far more than the engine choice does (v3 lexicographic 1.6 vs weighted 0.09 regret); real users may want it anyway. v3
@@ -475,6 +477,9 @@ Cold numba compilation takes ~66 s; a shipped engine must ship its compiled cach
 - The kernel's exactness is enforced by tests against the shared evaluator; any new rule type must come with the same
   differential test or the guarantee "explanations are exact" breaks silently.
 - DST is simplified away (a planning day is always 24 h).
+- A bug found late (E018d): the deadline fallback passed its 5 s as the total CP-SAT limit, so the deadline stage got 2 s. E005's
+  fallback results (exact on 5/5 proven overloads) were obtained with 2 s; the fix only gives the fallback more time.
+- The size threshold (60 items) that orders CP-SAT-first vs annealing-first is a heuristic from 36 adversarial instances, not tuned.
 
 **Open questions.**
 - Per-user answer temperature: it detects noise (E011c) but using it inside the fit hurt moody users; a joint model of noise and

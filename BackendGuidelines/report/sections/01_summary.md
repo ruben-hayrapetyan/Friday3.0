@@ -23,7 +23,9 @@ comparisons to ask. Section 12 specifies it.
 
 **Where v2 is still better.** Given its full 30 s and a good hint, CP-SAT finds lower wellbeing on more warm replans (about 60%
 of instances in E009/E009b) and v2's warm replans moved slightly less work before v3's stage scheme was fixed. v2's plans are
-optimal for its deadline stage when CP-SAT proves optimality (overload): v3 keeps CP-SAT for exactly that case.
+optimal for its deadline stage when CP-SAT proves optimality (overload): v3 keeps CP-SAT for exactly that case. And on tight
+overload weeks packed with 2-hour minimum chunks, CP-SAT at 30 s on 8 fast cores still finds less lateness (best on 6/6 vs 3/6
+for v3's 5 s fallback on efficiency cores, E018d); v3 should give its fallback more time in an overload week.
 
 **The biggest open decision is not the engine but the stage policy.** Strict "wellbeing first, then preferences" costs simulated
 users far more than the engine choice does (v3 lexicographic 1.6 vs weighted 0.09 regret); real users may want it anyway. v3
