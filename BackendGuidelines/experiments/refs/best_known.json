@@ -3,9 +3,9 @@
   "lex": [
    0,
    100,
-   32792
+   32119
   ],
-  "source": "E006/weighted_100"
+  "source": "E006b/lexpolish"
  },
  "cornell-s0-warm": {
   "lex": [
@@ -51,9 +51,9 @@
   "lex": [
    0,
    175,
-   30588
+   30578
   ],
-  "source": "E007/greedy"
+  "source": "E006b/lexpolish"
  },
  "cornell-s3-warm": {
   "lex": [
@@ -67,9 +67,9 @@
   "lex": [
    0,
    0,
-   32139
+   31456
   ],
-  "source": "E007/ms8"
+  "source": "E006b/lexpolish"
  },
  "cornell-s4-warm": {
   "lex": [
@@ -115,9 +115,9 @@
   "lex": [
    0,
    1537,
-   29130
+   28271
   ],
-  "source": "E006/weighted_30"
+  "source": "E006b/lexpolish"
  },
  "cornell-s7-warm": {
   "lex": [
@@ -267,9 +267,9 @@
   "lex": [
    0,
    75,
-   140414
+   139627
   ],
-  "source": "E006/weighted_1000"
+  "source": "E006b/weighted_1000"
  },
  "ref-n40-s0-warm": {
   "lex": [
@@ -306,10 +306,10 @@
  "ref-n40-s2-warm": {
   "lex": [
    0,
-   250,
-   41279
+   200,
+   23871
   ],
-  "source": "E009/sampler_warm"
+  "source": "E009/warm_lexpolish"
  },
  "ref-n40-s3": {
   "lex": [
@@ -371,9 +371,9 @@
   "lex": [
    0,
    2275,
-   825808
+   794778
   ],
-  "source": "E009/cpsat_warm"
+  "source": "E009/warm_tiered"
  },
  "ref-n40-s7": {
   "lex": [
@@ -411,9 +411,9 @@
   "lex": [
    0,
    275,
-   107935
+   59885
   ],
-  "source": "E007/pt8"
+  "source": "E006b/weighted_1000"
  },
  "ref-n40-s9-warm": {
   "lex": [
@@ -435,9 +435,9 @@
   "lex": [
    0,
    1300,
-   3127423
+   2521241
   ],
-  "source": "E009/cpsat_warm"
+  "source": "E009/warm_tiered"
  },
  "ref-n60-s1": {
   "lex": [
