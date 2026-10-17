@@ -4,3 +4,17 @@ missing-0 wk8: best=cand:fri_sat:late:any gain=0.3650 correct=True
 missing-0 wk10: best=cand:fri_sat:late:any gain=0.4155 correct=True
 missing-0 wk12: best=cand:fri_sat:late:any gain=0.4001 correct=True
 missing-2 wk4: best=cand:all:night:any gain=0.5045 correct=False
+coefficient for open_value/open_value:item:80@d0 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d1 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d2 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d3 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d4 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d5 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d6 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d7 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d8 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d9 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d10 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d11 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d12 rounds to 0; using 1
+coefficient for open_value/open_value:item:80@d13 rounds to 0; using 1

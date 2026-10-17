@@ -144,3 +144,4 @@ coefficient for open_value/open_value:item:85@d12 rounds to 0; using 1
 coefficient for open_value/open_value:item:85@d13 rounds to 0; using 1
 coefficient for open_value/open_value:item:85@d13 rounds to 0; using 1
 missing-3 wk4: best=cand:weekend:late:any gain=0.3175 correct=False
+missing-3 wk6: best=cand:weekend:late:any gain=0.4980 correct=False
