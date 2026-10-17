@@ -32,7 +32,8 @@ def _ready_slot_ok(M, owner, i):
     return conds
 
 
-def construct(c: Compiled, order: str = "edf") -> np.ndarray:
+def construct(c: Compiled, order: str = "edf", base: np.ndarray | None = None) -> np.ndarray:
+    """With `base` (a previous plan, as owners), keep what it places where still allowed and only add what is missing."""
     M, p = c.m, c.problem
     ix = {k: i for i, k in enumerate(c.keys)}
     owner = np.full(M.S, -1, dtype=np.int16)
@@ -42,6 +43,14 @@ def construct(c: Compiled, order: str = "edf") -> np.ndarray:
         owner[s] = ix[k]
         dayu[M.day[s]] += M.units[s]
         placed[ix[k]] += M.units[s]
+    if base is not None:
+        for s in range(M.S):
+            i = int(base[s])
+            if i >= 0 and owner[s] == -1 and M.allowed[i, s] and placed[i] + M.units[s] <= max(M.need[i], M.amount_cap[i]) \
+                    and dayu[M.day[s]] + M.units[s] <= M.day_cap[M.day[s]]:
+                owner[s] = i
+                dayu[M.day[s]] += M.units[s]
+                placed[i] += M.units[s]
 
     due = np.array([p.items[k].due if p.items[k].due is not None else 10**12 for k in c.keys], dtype=np.float64)
     eff = due.copy()

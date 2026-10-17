@@ -1,0 +1,12 @@
+numba warm-up (JIT) 0.8s
+ref-n20-s0 wall_sa@10s viol=0 lex=(0, 0, 26902) t=10.8
+ref-n20-s0 potts_penalty@10s viol=0 lex=(0, 0, 27921) t=9.4
+ref-n20-s0 skeleton_hybrid@10s viol=0 lex=(0, 0, 25903) t=10.2
+ref-n20-s0 sa_lns@10s viol=0 lex=(0, 0, 25461) t=10.4
+ref-n20-s0 cpsat@10s viol=0 lex=(9938649, 0, 57735) t=20.8
+ref-n20-s0 cpsat@30s viol=0 lex=(0, 0, 49182) t=21.9
+ref-n20-s1 wall_sa@10s viol=0 lex=(0, 3550, 39793) t=7.7
+ref-n20-s1 potts_penalty@10s viol=0 lex=(0, 3550, 38930) t=7.6
+ref-n20-s1 skeleton_hybrid@10s viol=0 lex=(0, 3550, 39659) t=8.4
+ref-n20-s1 sa_lns@10s viol=0 lex=(0, 3550, 38062) t=9.5
+ref-n20-s1 cpsat@10s viol=0 lex=(15229451, 6325, 335265) t=16.8

@@ -1,0 +1,4 @@
+suites = [["ref", 40], ["ref", 60], ["cornell", 0]]
+seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+budgets_s = [2.0, 8.0]
+methods = ["sa_geo", "sa_lin", "fixed_T", "greedy", "heatbath", "pt1", "pt8", "pa8", "ms8", "sa_tabu"]

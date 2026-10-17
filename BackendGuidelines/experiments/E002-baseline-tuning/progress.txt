@@ -41,3 +41,21 @@
 {'seed': 6, 'variant': 'E', 'total_s': 21.57, 'late': 15687896, 'wellbeing': 0, 'preferences': 721188, 'violations': 0, 'late_h': np.float64(6.5), 'misses': 7, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
 {'seed': 6, 'variant': 'F', 'total_s': 30.1, 'late': 16226306, 'wellbeing': 0, 'preferences': 948346, 'violations': 0, 'late_h': np.float64(434.1), 'misses': 15, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
 {'seed': 7, 'variant': 'A', 'total_s': 21.51, 'late': 62609907, 'wellbeing': 3025, 'preferences': 1055201, 'violations': 0, 'late_h': np.float64(376.5), 'misses': 18, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+{'seed': 7, 'variant': 'B', 'total_s': 20.97, 'late': 28333089, 'wellbeing': 3025, 'preferences': 831269, 'violations': 1, 'late_h': np.float64(1739.1), 'misses': 16, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+{'seed': 7, 'variant': 'C', 'total_s': 20.53, 'late': 62020567, 'wellbeing': 3025, 'preferences': 1120584, 'violations': 0, 'late_h': np.float64(417.0), 'misses': 17, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+{'seed': 7, 'variant': 'D', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 7, 'variant': 'E', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 7, 'variant': 'F', 'total_s': 20.61, 'late': 51315531, 'wellbeing': 3025, 'preferences': 1898114, 'violations': 0, 'late_h': np.float64(799.1), 'misses': 18, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+{'seed': 8, 'variant': 'A', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 8, 'variant': 'B', 'total_s': 20.47, 'late': 19175408, 'wellbeing': 0, 'preferences': 522095, 'violations': 1, 'late_h': np.float64(1009.6), 'misses': 14, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+{'seed': 8, 'variant': 'C', 'total_s': 21.54, 'late': 19548520, 'wellbeing': 0, 'preferences': 1322439, 'violations': 0, 'late_h': np.float64(665.1), 'misses': 16, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+{'seed': 8, 'variant': 'D', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 8, 'variant': 'E', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 8, 'variant': 'F', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 9, 'variant': 'A', 'total_s': 21.1, 'late': 21432283, 'wellbeing': 0, 'preferences': 642493, 'violations': 0, 'late_h': np.float64(1074.3), 'misses': 13, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+{'seed': 9, 'variant': 'B', 'total_s': 20.48, 'late': 26901779, 'wellbeing': 0, 'preferences': 294561, 'violations': 0, 'late_h': np.float64(1091.0), 'misses': 16, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+{'seed': 9, 'variant': 'C', 'total_s': 21.8, 'late': 20346032, 'wellbeing': 0, 'preferences': 540488, 'violations': 0, 'late_h': np.float64(157.3), 'misses': 14, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+{'seed': 9, 'variant': 'D', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 9, 'variant': 'E', 'total_s': 22.43, 'late': 13514473, 'wellbeing': 0, 'preferences': 1236284, 'violations': 0, 'late_h': np.float64(259.8), 'misses': 10, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+{'seed': 9, 'variant': 'F', 'total_s': 29.9, 'late': 23665108, 'wellbeing': 0, 'preferences': 121410, 'violations': 0, 'late_h': np.float64(148.0), 'misses': 13, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+done

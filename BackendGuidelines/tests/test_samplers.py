@@ -44,3 +44,31 @@ def test_same_seed_same_plan_and_other_seed_other_plan():
     c = tiered(pr.c, pr.owner, steps=(20_000, 40_000), seed=8)
     assert (a.owner == b.owner).all()
     assert not (a.owner == c.owner).all()
+
+
+def test_why_not_is_the_exact_evaluator_difference():
+    from fr.engines.explain import per_rule, why_not
+
+    p = reference_instance(20, 1).build()
+    pr = prepare(p)
+    owner = pr.owner
+    ev0 = evaluate(p, pr.c.plan_from_owner(owner))
+    assert per_rule(pr.c, owner) == {k: ev0.rule_totals.get(k, 0) for k in pr.c.rule_names}
+    slots = [s for s in range(len(owner)) if owner[s] >= 0 and not pr.c.m.locked[owner[s], s]]
+    checked = 0
+    for s in slots[:: max(1, len(slots) // 60)]:
+        for shift in (-8, 4, 40, 300):
+            w = why_not(pr.c, owner, s, s + shift)
+            if not w.delta:
+                continue
+            from fr.engines.kernel import init_state, new_state, relocate, run_around
+            st = new_state(pr.c.m)
+            init_state(pr.c.m, st, owner)
+            i = int(owner[s])
+            a, b = run_around(pr.c.m, st, s)
+            relocate(pr.c.m, st, np.zeros(pr.c.m.I, dtype=bool), i, a, b, s + shift, np.zeros(64, dtype=np.int64))
+            ev1 = evaluate(p, pr.c.plan_from_owner(st.owner))
+            assert w.total == ev1.total - ev0.total
+            assert w.valid == (check(p, pr.c.plan_from_owner(st.owner)) == [])
+            checked += 1
+    assert checked >= 10

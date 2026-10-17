@@ -96,10 +96,11 @@ def run_potts_penalty(p: Problem, pr: Prepared, budget_s: float, seed: int = 0, 
     return EngineResult(plan, time.perf_counter() - t, info)
 
 
-def run_skeleton_hybrid(p: Problem, pr: Prepared, budget_s: float, seed: int = 0, skeleton_s: float = 3.0,
+def run_skeleton_hybrid(p: Problem, pr: Prepared, budget_s: float, seed: int = 0, skeleton_s: float | None = None,
                         workers: int = 8) -> EngineResult:
     """CP-SAT solves the deadline stage only (the feasibility skeleton), the sampler does wellbeing and preferences."""
     t = time.perf_counter()
+    skeleton_s = min(3.0, 0.3 * budget_s) if skeleton_s is None else skeleton_s
     p.settings.workers = workers
     p.settings.det_time = (skeleton_s * 3,) * 3
     info: dict = {}

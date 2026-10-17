@@ -1,7 +1,0 @@
-accepted,alpha,double_booked,dyn_range,late,misses,mode,n,opt_late,opt_misses,opt_preferences,opt_total,opt_wellbeing,over_placed,preferences,qubo_energy,seconds,seed,t0_over_p0,total,vars,violations,wellbeing
-173,1,0,128.0,59250,3,sa,6,0,0,1063,1063,0,2,80656,81618.0,0.42,0,0.05,142368,744,2,2462
-78,10,0,128.0,371437,3,sa,6,0,0,1063,1063,0,0,80394,453607.0,0.0,0,0.05,453607,744,0,1776
-,1,0,,165062,3,hopfield-empty,6,0,0,,1063,,2,21721,,,0,0.0,188508,744,2,1725
-,1,0,,126625,3,hopfield-random,6,0,0,,1063,,2,27360,,,0,0.0,155598,744,2,1613
-,10,0,,214874,3,hopfield-empty,6,0,0,,1063,,0,21584,,,0,0.0,237846,744,0,1388
-,10,0,,190126,3,hopfield-random,6,0,0,,1063,,0,27197,,,0,0.0,218623,744,0,1300

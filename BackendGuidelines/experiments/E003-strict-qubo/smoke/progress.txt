@@ -1,3 +1,0 @@
-n=6 seed=0 alpha=1 done (1 rows)
-n=6 seed=0 alpha=10 done (2 rows)
-done

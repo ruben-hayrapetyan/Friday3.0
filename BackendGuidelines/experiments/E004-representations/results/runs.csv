@@ -1,0 +1,7 @@
+budget_s,demoted,engine,instance,kind,late,late_h,misses,n,overflow_h,preferences,seconds,seed,start_violations,status,violations,wellbeing
+10.0,0,wall_sa,ref-n20-s0,ref,0,0.0,0,20,4.0,26902,10.79,0,0,,0,0
+10.0,0,potts_penalty,ref-n20-s0,ref,0,0.0,0,20,4.0,27921,9.39,0,0,,0,0
+10.0,0,skeleton_hybrid,ref-n20-s0,ref,0,0.0,0,20,4.0,25903,10.23,0,0,,0,0
+10.0,0,sa_lns,ref-n20-s0,ref,0,0.0,0,20,4.0,25461,10.41,0,0,,0,0
+10.0,0,cpsat,ref-n20-s0,ref,9938649,47.0,5,20,33.75,57735,20.81,0,0,FEASIBLE/OPTIMAL/FEASIBLE,0,0
+30.0,0,cpsat,ref-n20-s0,ref,0,0.0,0,20,2.0,49182,21.89,0,0,OPTIMAL/OPTIMAL/FEASIBLE,0,0
