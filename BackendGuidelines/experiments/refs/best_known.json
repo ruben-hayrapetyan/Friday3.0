@@ -186,10 +186,10 @@
  "ref-n40-s0": {
   "lex": [
    0,
-   100,
-   294996
+   75,
+   181257
   ],
-  "source": "E004/wall_sa"
+  "source": "E006/tiered_tol5"
  },
  "ref-n40-s1": {
   "lex": [

@@ -52,3 +52,14 @@ noisy-1 wk2 mood=normal pace=None none:0.329/n dial:0.374/m dial+free:0.374/m fr
 noisy-1 wk3 mood=normal pace=None none:0.551/n dial:0.382/m dial+free:0.382/n free:0.368/n oracle:0.135/n
 noisy-1 wk4 mood=normal pace=None none:0.500/n dial:0.367/n dial+free:0.416/n free:0.368/n oracle:0.329/n
 noisy-1 wk5 mood=normal pace=None none:0.374/n dial:0.326/n dial+free:0.387/n free:0.299/n oracle:0.201/n
+noisy-1 wk6 mood=normal pace=None none:0.589/n dial:0.351/n dial+free:0.329/n free:0.293/n oracle:0.141/n
+noisy-1 wk7 mood=normal pace=None none:0.209/n dial:0.364/m dial+free:0.463/n free:0.330/n oracle:0.153/n
+noisy-1 wk8 mood=normal pace=None none:0.083/n dial:0.221/m dial+free:0.331/n free:0.206/n oracle:0.051/n
+noisy-1 wk9 mood=normal pace=None none:0.277/n dial:0.128/n dial+free:0.435/n free:0.283/n oracle:0.214/n
+noisy-1 wk10 mood=normal pace=None none:0.182/n dial:0.230/n dial+free:0.345/m free:0.293/n oracle:0.056/n
+noisy-1 wk11 mood=tired pace=None none:0.163/n dial:0.018/m dial+free:0.242/m free:0.121/n oracle:0.221/t
+noisy-1 wk12 mood=tired pace=None none:0.239/n dial:-0.016/m dial+free:0.207/m free:0.244/n oracle:0.310/t
+noisy-1 wk13 mood=tired pace=tired none:0.252/n dial:0.323/n dial+free:0.397/n free:0.201/n oracle:0.207/t
+noisy-1 wk14 mood=normal pace=None none:0.187/n dial:0.061/m dial+free:0.394/m free:0.091/n oracle:0.028/n
+noisy-1 wk15 mood=motivated pace=None none:0.241/n dial:0.044/m dial+free:0.294/m free:0.138/n oracle:0.275/m
+done

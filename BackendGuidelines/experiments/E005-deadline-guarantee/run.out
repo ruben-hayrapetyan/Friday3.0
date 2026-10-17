@@ -78,3 +78,24 @@ ref20-4: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) wa
 ref20-5: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
 ref40-0: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
 ref40-1: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+ref40-2: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+ref40-3: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+ref40-4: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+ref40-5: truth=FAIL:ModelInfeasible/None edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+ref60-0: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+ref60-1: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+ref60-2: truth=FEASIBLE/67188 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+ref60-3: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+ref60-4: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+ref60-5: truth=OPTIMAL/0 edf=True construct=483750 repair=0 repair+cp=0(sampler) walls=0 penalty=0
+cornell-0: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+cornell-1: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+cornell-2: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+cornell-3: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+cornell-4: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+cornell-5: truth=OPTIMAL/0 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+stress100-0: truth=FEASIBLE/4508024 edf=True construct=18000 repair=0 repair+cp=0(sampler) walls=0 penalty=0
+stress100-1: truth=FEASIBLE/14978487 edf=True construct=78876 repair=0 repair+cp=0(sampler) walls=0 penalty=0
+stress150-0: truth=FEASIBLE/22872383 edf=True construct=0 repair=0 repair+cp=0(construct) walls=0 penalty=0
+stress150-1: truth=FEASIBLE/31452568 edf=True construct=329063 repair=329063 repair+cp=329063(cpsat) walls=329063 penalty=329063
+done

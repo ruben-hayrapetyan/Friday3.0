@@ -111,6 +111,9 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
 | --- | --- | --- |
 | E001-v2-baseline | How fast / good is faithful v2 on the reference benchmark? | Misses every speed target: cold p90 20-31 s (target 10), warm p90 18-26 s (target 3). Preferences stage never proven optimal (gap 63-94% at 9 s). Not deterministic with 8 workers (up to 2x spread). EDF optimistic in 6/69 runs. Executor 0.1 ms, allocator 0.13 s are fine. |
 | E002-baseline-tuning | Can v2 work at a 10 s budget with fair tuning? | No: every variant times out (stage limits double) or returns hundreds of late hours; even a zero-late hint fails 7/10 (presolve > stage share). Fair baseline = v2 at 30 s. |
+| E004-representations | Which representation, on equal budgets? | Wall sampler: 100% valid and deadline-safe, best W/P at 7 s; penalties 95% safe; skeleton hybrid hurt (bad 3 s skeletons); LNS too slow per neighbourhood; CP-SAT-30 s only 30% deadline-safe under load. Shortlist: walls (+ CP-SAT fallback). |
+| E005-deadline-guarantee | Do walls deliver zero late whenever possible? | Construction 95.8%, + sampler repair 100% (72/72), CP-SAT alone 51%. Overload: CP-SAT hinted with the repaired plan is exact on 5/5 proven cases; on unproven overload the sampler beats CP-SAT-15 s on 20/23. EDF optimistic on 5/5 overloads. |
+| E011-learning | Which learner? | Ranking QP best on easy users (0.92 acc) but bends to noise/mood/missing/adversarial; drags most reliable; CD alone weak; combined robust. Round 2: Bradley-Terry likelihood (E011b). |
 | E003-strict-qubo | Pairwise QUBO with penalties, price-only slice | Dead end: never meets hard deadlines (0-5%) at any penalty scale; alpha < 3 cheats, alpha >= 3 freezes (slack bits absorb unplaced work); 25-200x worse than optimum. Hopfield descent same. |
 
 - **E001 findings in one line each:** time-limited quality is the baseline at n>=40; v2 determinism needs 1 worker; stage-1 can
