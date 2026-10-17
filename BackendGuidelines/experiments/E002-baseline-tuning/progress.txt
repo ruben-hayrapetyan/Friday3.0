@@ -14,3 +14,17 @@
 {'seed': 2, 'variant': 'B', 'total_s': 20.09, 'late': 15724707, 'wellbeing': 0, 'preferences': 548236, 'violations': 0, 'late_h': np.float64(1034.1), 'misses': 15, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
 {'seed': 2, 'variant': 'C', 'total_s': 21.15, 'late': 7390026, 'wellbeing': 0, 'preferences': 550257, 'violations': 0, 'late_h': np.float64(356.8), 'misses': 16, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
 {'seed': 2, 'variant': 'D', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 2, 'variant': 'E', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 2, 'variant': 'F', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 3, 'variant': 'A', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 3, 'variant': 'B', 'total_s': 20.36, 'late': 11152979, 'wellbeing': 0, 'preferences': 1758592, 'violations': 0, 'late_h': np.float64(607.3), 'misses': 15, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+{'seed': 3, 'variant': 'C', 'total_s': 20.54, 'late': 20698765, 'wellbeing': 0, 'preferences': 2079638, 'violations': 0, 'late_h': np.float64(164.8), 'misses': 14, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+{'seed': 3, 'variant': 'D', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 3, 'variant': 'E', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 3, 'variant': 'F', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 4, 'variant': 'A', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 4, 'variant': 'B', 'total_s': 21.55, 'late': 20777185, 'wellbeing': 6750, 'preferences': 545873, 'violations': 2, 'late_h': np.float64(1294.0), 'misses': 15, 'statuses': 'FEASIBLE/OPTIMAL/FEASIBLE'}
+{'seed': 4, 'variant': 'C', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 4, 'variant': 'D', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 4, 'variant': 'E', 'total_s': -1, 'late': -1, 'wellbeing': -1, 'preferences': -1, 'violations': -1, 'late_h': -1, 'misses': -1, 'statuses': 'FAIL:SolveTimeout'}
+{'seed': 4, 'variant': 'F', 'total_s': 20.83, 'late': 15045139, 'wellbeing': 8325, 'preferences': 897081, 'violations': 0, 'late_h': np.float64(703.8), 'misses': 10, 'statuses': 'FEASIBLE/FEASIBLE/FEASIBLE'}

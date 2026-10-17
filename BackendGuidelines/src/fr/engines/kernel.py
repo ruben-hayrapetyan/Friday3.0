@@ -731,3 +731,48 @@ def sample_deltas(M, st, prot, wts, cum, touched, newv, n, seed, out):
         undo(M, st)
         st.ctr[0] = 0
     return k
+
+
+@njit(cache=True, _nrt=False)
+def rule_totals(M, owner, out, mv, cnt, placed):
+    """Every rule's cost of the plan in `owner`, from scratch (out[R]); equals evaluate().rule_totals.
+
+    mv[M], cnt[G], placed[I] are work arrays.
+    """
+    W = M.S + 1
+    for r in range(M.R):
+        out[r] = 0
+    for m in range(M.M):
+        mv[m] = M.m_const[m]
+    for g in range(M.G):
+        cnt[g] = 0
+    for i in range(M.I):
+        placed[i] = 0
+    for s in range(M.S):
+        i = owner[s]
+        if i < 0:
+            continue
+        idx = i * W + s
+        placed[i] += M.units[s]
+        for r in range(M.R):
+            out[r] += M.rprice[r, i, s]
+        for e in range(M.x_ptr[idx], M.x_ptr[idx + 1]):
+            mv[M.x_m[e]] += M.x_c[e]
+        if s == 0 or owner[s - 1] != i:
+            for e in range(M.st_ptr[idx], M.st_ptr[idx + 1]):
+                mv[M.st_m[e]] += M.st_c[e]
+        for e in range(M.ag_ptr[idx], M.ag_ptr[idx + 1]):
+            cnt[M.ag_g[e]] += 1
+    for g in range(M.G):
+        if cnt[g] > 0:
+            for f in range(M.any_ptr[g], M.any_ptr[g + 1]):
+                mv[M.any_m[f]] += M.any_c[f]
+    for i in range(M.I):
+        o = _over(M, i, placed[i])
+        if o != 0:
+            for r in range(M.R):
+                out[r] += M.rover[r, i] * o
+            for e in range(M.ov_ptr[i], M.ov_ptr[i + 1]):
+                mv[M.ov_m[e]] += M.ov_c[e] * o
+    for m in range(M.M):
+        out[M.m_rule[m]] += mcost(M, m, mv[m])

@@ -81,6 +81,11 @@ class Model(NamedTuple):
     any_ptr: np.ndarray  # [G+1] group -> measures
     any_m: np.ndarray
     any_c: np.ndarray
+    # per-rule decomposition (features for learning and explanations)
+    R: int
+    rprice: np.ndarray  # [R, I, S+1]
+    rover: np.ndarray  # [R, I]
+    m_rule: np.ndarray  # [M]
 
 
 def _csr(n: int, entries: list[tuple[int, int, int]]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -180,6 +185,11 @@ def compile_problem(problem: Problem) -> "Compiled":
     # prices
     price = np.zeros((3, I, S + 1), dtype=np.int64)
     over_cost = np.zeros((3, I), dtype=np.int64)
+    rule_names = list(dict.fromkeys(r.name for r in problem.rules))
+    rix = {n: k for k, n in enumerate(rule_names)}
+    R = len(rule_names)
+    rprice = np.zeros((R, I, S + 1), dtype=np.int64)
+    rover = np.zeros((R, I), dtype=np.int64)
     for rule in problem.rules:
         if not rule.has_price:
             continue
@@ -190,13 +200,15 @@ def compile_problem(problem: Problem) -> "Compiled":
             row = price_row(problem, rule, it)
             i = ix[it.key]
             price[sx, i, : S + 1] += row
+            rprice[rix[rule.name], i, :S] += row[:S]
             if it.amount == "fixed":
                 over_cost[sx, i] += row[S]
+                rover[rix[rule.name], i] += row[S]
     price[:, :, S] = 0  # column S is the overflow price, kept in over_cost
 
     # measures
     ctx = BuildContext(problem)
-    m_stage, m_const = [], []
+    m_stage, m_const, m_rule = [], [], []
     h_ptr, h_dir, h_theta, h_coef = [0], [], [], []
     xs: list[tuple[int, int, int]] = []
     sts: list[tuple[int, int, int]] = []
@@ -224,6 +236,7 @@ def compile_problem(problem: Problem) -> "Compiled":
             else:
                 raise NotImplementedError(f"measure variable {kd} in {rule.name}")
         m_stage.append(stage_ix[rule.stage])
+        m_rule.append(rix[rule.name])
         m_const.append(m.expr.const)
         for h in m.curve:
             h_dir.append(0 if h.direction == "above" else 1)
@@ -249,8 +262,9 @@ def compile_problem(problem: Problem) -> "Compiled":
         hard_due, dep_ptr, dep_src, dep_req, dep_lag, dnt_ptr, dnt_dst, price, over_cost,
         a(m_stage), a(m_const), a(h_ptr), a(h_dir), a(h_theta), a(h_coef),
         x_ptr, x_m, x_c, st_ptr, st_m, st_c, ov_ptr, ov_m, ov_c, ag_ptr, ag_g, any_ptr, any_m, any_c,
+        R, rprice, rover, a(m_rule),
     )
-    return Compiled(problem, model, keys)
+    return Compiled(problem, model, keys, tuple(rule_names))
 
 
 @dataclass
@@ -258,6 +272,7 @@ class Compiled:
     problem: Problem
     m: Model
     keys: tuple
+    rule_names: tuple = ()
 
     def owner_from_plan(self, plan) -> np.ndarray:
         owner = np.full(self.m.S, -1, dtype=np.int16)
