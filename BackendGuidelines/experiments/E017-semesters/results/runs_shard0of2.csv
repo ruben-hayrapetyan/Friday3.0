@@ -11,3 +11,6 @@ easy,0,2,normal,,v2,20.83,OPTIMAL/OPTIMAL/FEASIBLE,0,0,0,3943.41,9.2213,0.9245,,
 easy,0,3,normal,,v3,1.04,sampler,0,0,0,4.33,0.0106,0.9542,,False,0,0
 easy,0,3,normal,,v3_lex,0.68,sampler,0,0,0,1214.59,2.9617,0.9759,,False,0,0
 easy,0,3,normal,,v2,16.16,OPTIMAL/OPTIMAL/FEASIBLE,0,0,0,882.54,2.152,0.9245,,False,0,0
+easy,0,4,normal,,v3,1.32,sampler,0,0,0,76.48,0.1762,0.9497,,False,0,0
+easy,0,4,normal,,v3_lex,0.76,sampler,0,0,0,1500.99,3.4572,0.9772,,False,0,0
+easy,0,4,normal,,v2,15.83,OPTIMAL/OPTIMAL/FEASIBLE,0,0,0,411.11,0.9469,0.9245,,False,0,0

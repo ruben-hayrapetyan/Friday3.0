@@ -24,8 +24,9 @@ change nothing, plus check-ins that report those moods, so any state read for th
   as non-normal) and regret rises from 0.049 to 0.085. So units must be switched on per user by evidence.
 - **Pace clamping is the biggest single gain**: when the user names their state, regret halves.
 - **Mood vs taste (RQ7).** A per-user test, "do the units predict next week's rankings at least 2 nats better (cumulatively)
-  than taste alone?", called 8 of 9 users right (3/3 easy and 3/3 noisy as noise, 2/3 moody as state). Single-week readings
-  are unreliable (false attribution 23% of weeks for easy users, 42% for noisy ones); the per-user decision is reliable.
+  than taste alone?", called 8 of 9 users right in E013 (3/3 easy and 3/3 noisy as noise, 2/3 moody as state), but only 5 of 9
+  in the replicate with the multiplicative link (E013b), for the reason given below. Single-week readings are unreliable
+  (false attribution 23% of weeks for easy users, 42% for noisy ones).
   Evidence that separates them: predictive likelihood of new rankings (the decisive one), consistency of contradictions with
   check-ins and skip counts, and clustering of contradictions in time; noise is uncorrelated with all of them.
 - Moody users' moods read right in 67% of weeks (normal 22/27, motivated 6/10, tired 4/11): tired weeks are mostly read as
