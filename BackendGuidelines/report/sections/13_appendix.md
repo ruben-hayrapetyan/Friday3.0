@@ -27,8 +27,11 @@
 | E014 | Missing-feature detection | `E014-missing-features` | Right rule for 6/6 by week 4; false proposals 33% -> 0% by week 10; propose, add on yes |
 | E015 | Softening walls | `E015-soften-walls` | Ask once at the first contradicting event; never soften silently |
 | E016 | Active querying | `E016-active-queries` | QBC/uncertainty halve the questions for consistent users; noisy users: asking hurts |
-| E017 | End-to-end semesters, v3 vs v2 | `E017-semesters` | section 9 |
-| E018 | Weakness hunt | `E018-weakness-hunt` | section 9 |
+| E017 | End-to-end semesters, v3 vs v2 | `E017-semesters` | Report seeds: v3 0 misses / 0 invalid in 288 plans, 1.3 s vs 19.8 s, lower regret in 144/144 weeks |
+| E018 | Weakness hunt | `E018-weakness-hunt` | v3 deadline-safe 36/36 (CP-SAT 64%); two v3 failures found (packing without CP-SAT; fallback eating the budget) |
+| E018b | Fix: anneal before CP-SAT | `E018b-weakness-fix` | 150 items fixed (5/6 at best lateness); small packed instances worse |
+| E018c | Fix: order by size | `E018c-size-rule` | keeps both gains; tight 2 h-chunk packing still behind CP-SAT-30 |
+| E018d | The fallback's time | `E018d-fallback-time` | 5 s on efficiency cores: 3/6 at best (P-cores: 5/6) |
 
 ### 13.2 How to reproduce
 

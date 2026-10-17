@@ -43,9 +43,13 @@ other stages, so moves can only shorten it.
    demoted to preferred pins (as v2's repair) and construction reruns.
 2. **Repair** (`engines/repair.py`) if the start is late: the sampler on the deadline stage alone, hard rules as penalties
    (lambda 10^9), 400k proposals, best violation-free state.
-3. **Exact fallback** if lateness remains: CP-SAT deadline stage hinted with the repaired plan, 5 s; keep the better plan.
+3. **Exact fallback**, only while lateness remains, ordered by size (`engines/api.run_v3`, E018-E018d): up to 60 flexible items,
+   CP-SAT's deadline stage first (hinted with the repaired plan, 5 s for the stage, longer in an overload week), then the wall
+   sampler; above 60 items, the wall sampler first for the budget, then CP-SAT hinted with its plan. Every step keeps the less
+   late plan.
 Measured: zero late on 72/72 instances where it is possible (construction alone 69/72); on proven overload the fallback reached
-the optimum on 5/5; on unproven overload the sampler path beat CP-SAT-15 s on 20/23 (E005). Remaining lateness is reported per item.
+the optimum on 5/5; on unproven overload the sampler path beat CP-SAT-15 s on 20/23 (E005); deadline-safe on 36/36 adversarial
+instances (E018). Remaining lateness is reported per item.
 
 ### 12.5 Move set (11 moves, `engines/kernel.py`)
 

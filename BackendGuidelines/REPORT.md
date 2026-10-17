@@ -51,7 +51,7 @@ and asking noisy users many questions.
 | RQ5 learning | Bradley-Terry likelihood over rankings and drags (drags x3) beats the ranking QP, CD, PCD and v2's moves-only max-margin on average and under deliberate inconsistency; likelihood from lived weeks alone barely learns | 6 |
 | RQ6 hidden units | Dial-seeded, multiplicative units; they help moody users (-30-40% regret) and hurt the rest (+30-60%) when always on; use on explicit signals (paces) and behind a temperature-calibrated gate | 7 |
 | RQ7 mood vs taste | Decide per user, not per week (single weeks: 23-42% false attribution); the decisive evidence is predictive likelihood of new rankings against a baseline at the user's own answer temperature; without that calibration units win by softening predictions | 7 |
-| RQ8 supervisor | Missing rules: found for all tested users by week 4-6; propose, add on yes (no wrong rule accepted). Walls: never soften silently; ask once. Queries: QBC/uncertainty halve questions for consistent users; stop asking noisy users | 8 |
+| RQ8 supervisor | Missing rules: the right rule is the top candidate for every tested user by week 12 (6/6 evaluation users already at week 4); propose, add on yes (no wrong rule accepted). Walls: never soften silently; ask once. Queries: QBC/uncertainty halve questions for consistent users; stop asking noisy users | 8 |
 | RQ9 guarantees | Determinism with a fixed step budget (all warm reruns identical; independent of thread count); exact per-rule explanations and "why not elsewhere" (tested to equal the evaluator); churn about equal to CP-SAT-30 s with the recommended stage scheme | 5 |
 | RQ10 diversity and calibration | T > 0 samples are different plans (66-71% of work slots differ); item-day probabilities calibrated (ECE 0.003-0.009) when T matches the user's noise; but under walls the chain covers only the region reachable from its start (~20% of all valid plans on tiny instances), so it is not a full posterior | 5 |
 
@@ -408,7 +408,20 @@ on average 0.3-2 rule questions per user over the semester and never added a wro
 
 ![Semester regret](report/figures/semester_regret.png)
 
-**Weakness hunt (E018).** See below.
+**Weakness hunt (E018, E018b-d).** Six adversarial families x 6 seeds, built to break one assumption each. All plans from every
+engine were valid. v3 was deadline-safe on every instance; CP-SAT-30 s on 64% (it found no deadline-feasible plan on any
+30-item dependency chain or 40-pin instance, and missed 67 hard items on median at 150 items). The hunt broke v3 twice and
+both were fixed and re-run:
+
+| failure | evidence | fix |
+| --- | --- | --- |
+| Without CP-SAT the sampler stays 2-6x later than the optimum on tight one-sitting packing (coordinated moves of whole one-sitting items are rarely accepted under walls) | E018: at best lateness 0/6 vs CP-SAT 6/6 | keep the exact CP-SAT deadline fallback |
+| The fallback ran before annealing and on 150 items ate the whole budget, improving nothing | E018: 150 items at best lateness 1/6 (v3) vs 3/6 without CP-SAT | anneal first on large instances: 5/6 (E018b) |
+| Annealing first loses on small packed instances | E018b: tight + 2 h chunks 3/6 vs 5/6 | order by size: CP-SAT first up to 60 items (E018c-d) |
+
+**What still stands against v3:** tight overload packing with 2-hour minimum chunks, where CP-SAT at 30 s on 8 performance cores
+reaches the best lateness on 6/6 and v3's 5 s fallback on efficiency cores on 3/6 (1-21% more lateness on the others; 5/6 when
+the same path ran on performance cores). In an overload week a longer fallback (10-30 s) is acceptable and closes most of it.
 
 ## 10. Dead ends (what failed and why)
 
@@ -516,9 +529,13 @@ other stages, so moves can only shorten it.
    demoted to preferred pins (as v2's repair) and construction reruns.
 2. **Repair** (`engines/repair.py`) if the start is late: the sampler on the deadline stage alone, hard rules as penalties
    (lambda 10^9), 400k proposals, best violation-free state.
-3. **Exact fallback** if lateness remains: CP-SAT deadline stage hinted with the repaired plan, 5 s; keep the better plan.
+3. **Exact fallback**, only while lateness remains, ordered by size (`engines/api.run_v3`, E018-E018d): up to 60 flexible items,
+   CP-SAT's deadline stage first (hinted with the repaired plan, 5 s for the stage, longer in an overload week), then the wall
+   sampler; above 60 items, the wall sampler first for the budget, then CP-SAT hinted with its plan. Every step keeps the less
+   late plan.
 Measured: zero late on 72/72 instances where it is possible (construction alone 69/72); on proven overload the fallback reached
-the optimum on 5/5; on unproven overload the sampler path beat CP-SAT-15 s on 20/23 (E005). Remaining lateness is reported per item.
+the optimum on 5/5; on unproven overload the sampler path beat CP-SAT-15 s on 20/23 (E005); deadline-safe on 36/36 adversarial
+instances (E018). Remaining lateness is reported per item.
 
 ### 12.5 Move set (11 moves, `engines/kernel.py`)
 
@@ -617,8 +634,11 @@ and warm replans well under the 3 s target; quality at or above v2-CP-SAT at 30 
 | E014 | Missing-feature detection | `E014-missing-features` | Right rule for 6/6 by week 4; false proposals 33% -> 0% by week 10; propose, add on yes |
 | E015 | Softening walls | `E015-soften-walls` | Ask once at the first contradicting event; never soften silently |
 | E016 | Active querying | `E016-active-queries` | QBC/uncertainty halve the questions for consistent users; noisy users: asking hurts |
-| E017 | End-to-end semesters, v3 vs v2 | `E017-semesters` | section 9 |
-| E018 | Weakness hunt | `E018-weakness-hunt` | section 9 |
+| E017 | End-to-end semesters, v3 vs v2 | `E017-semesters` | Report seeds: v3 0 misses / 0 invalid in 288 plans, 1.3 s vs 19.8 s, lower regret in 144/144 weeks |
+| E018 | Weakness hunt | `E018-weakness-hunt` | v3 deadline-safe 36/36 (CP-SAT 64%); two v3 failures found (packing without CP-SAT; fallback eating the budget) |
+| E018b | Fix: anneal before CP-SAT | `E018b-weakness-fix` | 150 items fixed (5/6 at best lateness); small packed instances worse |
+| E018c | Fix: order by size | `E018c-size-rule` | keeps both gains; tight 2 h-chunk packing still behind CP-SAT-30 |
+| E018d | The fallback's time | `E018d-fallback-time` | 5 s on efficiency cores: 3/6 at best (P-cores: 5/6) |
 
 ### 13.2 How to reproduce
 

@@ -40,8 +40,8 @@ Laptop timings vary with power and thermals: repeat 3x, report variance (RESEARC
 | P5 Simulated users + learning (RQ5) | 2 sessions | done: E011-E012, E011b, E011c (3 rounds) |
 | P6 Hidden units (RQ6, RQ7) | 2 sessions | done: E013, E013b, E013c (3 rounds) |
 | P7 Supervisor (RQ8) | 2 sessions | done: E014-E016 (+ policies wired into fr/system.py) |
-| P8 Integration + weakness hunt | 2 sessions | E017 done; E018 running |
-| P9 Report | 1 session | REPORT.md assembled from report/sections; waits for E018 |
+| P8 Integration + weakness hunt | 2 sessions | done: E017, E018-E018d |
+| P9 Report | 1 session | done: REPORT.md (report/sections + report/figures) |
 
 ## What exists (P1)
 
@@ -125,6 +125,7 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
 | E006b-stage-polish | Weighted search + capped polish? | lexpolish: same median wellbeing, preferences 2.3x better than tiered and 19% better than weighted-1000 (better on 95% of instances); wellbeing slightly worse on 20% (p90 +5.5%). Recommended stage policy. |
 | E009b-warm-churn | Does lexpolish cut warm churn? | Yes, 9-12% (to 38.6 h at 3 s, ~CP-SAT-30's 37.6 h) with half the preference cost; with repair, zero late matches CP-SAT (93%). CP-SAT-30 still has lower wellbeing on ~63% (approximate pairing). v3 warm is 9-27x faster. |
 | E017-semesters | v3 vs v2 over semesters (report seeds) | v3: 0 misses, 0 invalid in 288 plans, 1.3 s vs 19.8 s, regret 0.087 vs 6.13 (beats v2 every week); v3_lex (same stage policy as v2) beats v2 in 78% of weeks; v2: 3 weeks with misses, 2 invalid. Right rule added for 3/3 missing-feature users, no wrong rules. Units never auto-on (gate slow). |
+| E018-E018d weakness hunt | Break v3 | v3 deadline-safe 36/36 (CP-SAT 64%). Failures: packing without CP-SAT; the fallback ate the budget on 150 items. Fixed: size-ordered pipeline (CP-SAT first <= 60 items). Still behind CP-SAT-30 on tight 2 h-chunk packing (3/6 vs 6/6 at best lateness on E-cores). Bug: the fallback stage got 2 s, not 5 s (fixed). |
 | E006-stages | Lexicographic vs weighted vs tiered? | Weighted r<=10 sacrifices wellbeing; r=1000 matches tiered wellbeing on 80% and has 3x better preferences: plain tiered search is the weak one. Round 2 (E006b): weighted-1000 search + capped preference polish. |
 | E012-rbm-from-data | RBM from lived weeks only | Dead end as a scheduler: cannot tell lived weeks from Friday's (lower F for Friday's 60-80%), ranking acc 0.62-0.64 vs rules 0.80-0.87, samples ignore amounts. |
 | E013-hidden-units | Hidden units for mood? | Dial-seeded units cut moody users' regret by a third but cost easy users (false attribution 23-42% of weeks); a per-user predictive test separates state from noise for 8/9 users -> gate the units. Pace clamping helps most. |

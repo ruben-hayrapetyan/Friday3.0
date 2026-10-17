@@ -45,7 +45,8 @@ def ensure_deadlines(pr: Prepared, seed: int = 0, steps: int = 400_000, cpsat_s:
         p = pr.c.problem
         p.settings.workers = workers
         p.settings.det_time = (cpsat_s * 3,) * 3
-        res = GridModel(p).solve(stages=["deadlines"], time_limit_s=cpsat_s, workers=workers, hint=pr.c.plan_from_owner(owner))
+        res = GridModel(p).solve(stages=["deadlines"], time_limit_s=cpsat_s / 0.4, workers=workers,
+                                hint=pr.c.plan_from_owner(owner))  # the deadline stage gets 40% of the limit: give it cpsat_s
         cand = pr.c.owner_from_plan(res.plan)
         cl = late_value(pr, cand)
         if cl < late:

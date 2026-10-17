@@ -282,18 +282,18 @@
  "pins-s3": {
   "lex": [
    0,
-   21649,
-   41650
+   21624,
+   37419
   ],
-  "source": "E018b/v3_fixed"
+  "source": "E018b/v3_size_rule"
  },
  "pins-s4": {
   "lex": [
    0,
    2625,
-   42956
+   39020
   ],
-  "source": "E018/v3_nocp"
+  "source": "E018b/v3_size_rule"
  },
  "pins-s5": {
   "lex": [
@@ -706,42 +706,42 @@
  "stress-n150-s0": {
   "lex": [
    0,
-   1950,
-   4986607
+   1800,
+   4966936
   ],
-  "source": "E018/v3"
+  "source": "E018b/v3_size_rule"
  },
  "stress-n150-s1": {
   "lex": [
    44000,
-   4412,
-   3598314
+   4137,
+   3884863
   ],
-  "source": "E018/v3_nocp"
+  "source": "E018b/v3_size_rule"
  },
  "stress-n150-s2": {
   "lex": [
    675533,
-   2000,
-   4639313
+   1350,
+   4588152
   ],
-  "source": "E018b/v3_fixed"
+  "source": "E018b/v3_size_rule"
  },
  "stress-n150-s3": {
   "lex": [
-   172066,
-   6150,
-   4692717
+   170066,
+   6300,
+   4652145
   ],
-  "source": "E018b/v3_fixed"
+  "source": "E018b/v3_size_rule"
  },
  "stress-n150-s4": {
   "lex": [
    460050,
-   4550,
-   4932667
+   3575,
+   4808453
   ],
-  "source": "E018b/v3_fixed"
+  "source": "E018b/v3_size_rule"
  },
  "stress-n150-s5": {
   "lex": [
