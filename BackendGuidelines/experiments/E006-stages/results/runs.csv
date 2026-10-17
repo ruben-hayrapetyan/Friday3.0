@@ -151,3 +151,11 @@ cornell-s8,cornell,8,weighted_10,8.81,0,0,50,48251
 cornell-s8,cornell,8,weighted_30,7.29,0,0,0,50079
 cornell-s8,cornell,8,weighted_100,8.04,0,0,0,52180
 cornell-s8,cornell,8,weighted_1000,8.08,0,0,0,59978
+cornell-s9,cornell,9,tiered,6.98,0,0,250,44746
+cornell-s9,cornell,9,tiered_tol5,7.56,0,0,250,73612
+cornell-s9,cornell,9,weighted_1,11.04,0,0,8487,22040
+cornell-s9,cornell,9,weighted_3,6.98,0,0,650,28981
+cornell-s9,cornell,9,weighted_10,8.83,0,0,300,30208
+cornell-s9,cornell,9,weighted_30,7.98,0,0,250,33388
+cornell-s9,cornell,9,weighted_100,12.6,0,0,250,33038
+cornell-s9,cornell,9,weighted_1000,4.54,0,0,250,43951

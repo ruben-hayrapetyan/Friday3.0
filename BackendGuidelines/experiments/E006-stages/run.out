@@ -153,3 +153,9 @@ cornell-s8 weighted_1000 lex=(0, 0, 59978) viol=0 8.1s
 cornell-s9 tiered lex=(0, 250, 44746) viol=0 7.0s
 cornell-s9 tiered_tol5 lex=(0, 250, 73612) viol=0 7.6s
 cornell-s9 weighted_1 lex=(0, 8487, 22040) viol=0 11.0s
+cornell-s9 weighted_3 lex=(0, 650, 28981) viol=0 7.0s
+cornell-s9 weighted_10 lex=(0, 300, 30208) viol=0 8.8s
+cornell-s9 weighted_30 lex=(0, 250, 33388) viol=0 8.0s
+cornell-s9 weighted_100 lex=(0, 250, 33038) viol=0 12.6s
+cornell-s9 weighted_1000 lex=(0, 250, 43951) viol=0 4.5s
+done
