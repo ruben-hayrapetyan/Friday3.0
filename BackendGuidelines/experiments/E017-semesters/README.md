@@ -6,7 +6,7 @@ the v2 baseline (staged CP-SAT at its 30 s budget, v2's max-margin learning from
 
 **Setup.** Report seeds only (instances from seed 10000, users from seed 20000; never used for tuning). User types easy, moody,
 missing-feature, noisy; 3 users each; 12 weeks; a fresh Cornell-style two-week instance per week. Each system keeps its own
-trajectory: it plans, the user lives the plan, drags, answers 6 pairs (chosen by the system: v3 picks by uncertainty, v2 has no
+trajectory: it plans, the user lives the plan, drags, answers 6 pairs (chosen by the system: v3 picks by query-by-committee, v2 has no
 query policy so pairs are random), picks a pace in 30% of non-normal weeks, and the system learns. The v3 discovery threshold
 comes from E014's tuning users.
 

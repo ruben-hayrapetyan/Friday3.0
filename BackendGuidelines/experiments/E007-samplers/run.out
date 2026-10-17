@@ -1,3 +1,18 @@
 cold JIT (empty numba cache, fresh process) 66.4s
 ref-n40-s0 sa_geo@2s lex=(0, 250, 280280) viol=0 1.08s
 ref-n40-s0 sa_lin@2s lex=(0, 375, 383961) viol=0 1.01s
+ref-n40-s0 fixed_T@2s lex=(0, 150, 281558) viol=0 1.02s
+ref-n40-s0 greedy@2s lex=(0, 225, 374592) viol=0 1.11s
+ref-n40-s0 heatbath@2s lex=(0, 250, 573861) viol=0 1.09s
+ref-n40-s0 pt1@2s lex=(0, 1787, 494159) viol=0 1.28s
+ref-n40-s0 pt8@2s lex=(0, 75, 195224) viol=0 1.45s
+ref-n40-s0 pa8@2s lex=(0, 275, 272363) viol=0 1.50s
+ref-n40-s0 ms8@2s lex=(0, 150, 230546) viol=0 1.40s
+ref-n40-s0 sa_tabu@2s lex=(0, 225, 563876) viol=0 1.31s
+ref-n40-s0 sa_geo@8s lex=(0, 100, 200572) viol=0 4.33s
+ref-n40-s0 sa_lin@8s lex=(0, 200, 255495) viol=0 3.95s
+ref-n40-s0 fixed_T@8s lex=(0, 75, 262844) viol=0 3.99s
+ref-n40-s0 greedy@8s lex=(0, 100, 241047) viol=0 4.14s
+ref-n40-s0 heatbath@8s lex=(0, 200, 267600) viol=0 4.38s
+ref-n40-s0 pt1@8s lex=(0, 175, 294751) viol=0 4.31s
+ref-n40-s0 pt8@8s lex=(0, 75, 146015) viol=0 5.60s

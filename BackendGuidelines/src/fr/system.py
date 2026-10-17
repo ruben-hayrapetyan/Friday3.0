@@ -110,17 +110,40 @@ class V3System:
             return None
         th = self.theta()
 
+        committee = self._committee()
+
         def pick(phis, n):
+            """Query-by-committee (E016): the pairs the bootstrap fits disagree on most; before there is enough data,
+            uncertainty sampling (the pairs closest to a tie)."""
             pairs = []
             for i in range(len(phis)):
                 for j in range(i + 1, len(phis)):
                     d = phis[i] - phis[j]
                     s = np.abs(d).sum()
-                    if s > 1e-9:
-                        pairs.append((abs(th @ d) / s, i, j))
+                    if s <= 1e-9:
+                        continue
+                    if committee:
+                        p = np.mean([(c @ d) < 0 for c in committee])
+                        pairs.append((-p * (1 - p), abs(th @ d) / s, i, j))
+                    else:
+                        pairs.append((0.0, abs(th @ d) / s, i, j))
             pairs.sort()
-            return [(i, j) for _, i, j in pairs[:n]]
+            return [(i, j) for _, _, i, j in pairs[:n]]
         return pick
+
+    def _committee(self, k: int = 6) -> list[np.ndarray]:
+        from .supervisor.discover import bt_fit
+
+        if len(self.rankings) < 10:
+            return []
+        rng = np.random.default_rng(len(self.rankings))
+        X = np.array([r.diff() / max(np.abs(r.diff()).sum(), 1e-12) for r in self.rankings])
+        D = X.shape[1]
+        out = []
+        for _ in range(k):
+            idx = rng.integers(0, len(X), size=len(X))
+            out.append(bt_fit(X[idx], np.ones(D), np.ones(D), np.full(D, 0.02)))
+        return out
 
     def end_week(self, week: Week, pace: str | None, wk: int) -> None:
         from .learn.hidden import WeekEvidence, _norm_diff
