@@ -232,6 +232,16 @@ class DailyBreak(_Base):
     _c = field_validator("start", "end")(classmethod(lambda cls, v: _clock_ok(v)))
 
 
+class ExamFocus(_Base):
+    """Before each exam on the calendar, concentrate on that course: in the `days_before` days before it, other work
+    whose deadline is after the exam waits until the exam is over (when there is still time to do it after)."""
+
+    kind: Literal["exam_focus"] = "exam_focus"
+    days_before: float = Field(3, gt=0, le=14, description="how many days before each exam to focus on it")
+    words: list[str] = Field(default_factory=lambda: ["exam", "prelim", "midterm", "final"],
+                             description="words in a calendar event's title that mark it as an exam")
+
+
 class Order(_Base):
     """Finish `first` before starting `then` (title substrings of two tasks)."""
 
@@ -241,7 +251,7 @@ class Order(_Base):
 
 
 Constraint = Annotated[Union[SleepC, AvoidTime, PreferTime, Commitment, DailyLimit, KeepFree, SessionLength, OneSitting,
-                             Pacing, FinishEarly, Buffer, Order, DailyBreak], Field(discriminator="kind")]
+                             Pacing, FinishEarly, Buffer, Order, DailyBreak, ExamFocus], Field(discriminator="kind")]
 
 
 class Unsupported(BaseModel):
@@ -291,6 +301,7 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
         return dict(tags=[name])
 
     breaks: list = []
+    user_buffers: set[str] = set()
     for k, c in enumerate(constraints):
         name = f"user:{k}:{c.kind}"
         if isinstance(c, SleepC):
@@ -387,12 +398,17 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
                 rules.append(dict(type="finish_early", name=name, weight=WEIGHT[c.strength], scope=scope(c.target, name),
                                   params=dict(days=c.days)))
         elif isinstance(c, Buffer):
+            # the user's own buffer replaces Friday's default for that kind of event (stacked, "15 minutes between
+            # commitments" kept 25 clear between two classes); several of the user's own for one kind combine
             b = dict(out.settings.buffers)
-            old = b.get(c.event_kind, (0, 0))
+            old = b.get(c.event_kind, (0, 0)) if c.event_kind in user_buffers else (0, 0)
             b[c.event_kind] = (max(old[0], c.before_min), max(old[1], c.after_min))
+            user_buffers.add(c.event_kind)
             out.settings = replace(out.settings, buffers=b)
         elif isinstance(c, DailyBreak):
             breaks.append((name, c))
+        elif isinstance(c, ExamFocus):
+            notes += _exam_focus(out, c)
         elif isinstance(c, Order):
             a = [s for s in flexible if c.first.lower() in s.title.lower()]
             b = [s for s in flexible if c.then.lower() in s.title.lower()]
@@ -406,13 +422,49 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
     return out, notes
 
 
+def _course(title: str, area: str | None) -> str:
+    """A course to match an exam with its work: the course code when there is one ("CHEM 2090"), else the title's
+    first word ("Chem"), lower case."""
+    m = re.search(r"\b([A-Za-z]{2,5})\s?(\d{4})\b", title)
+    if area:
+        return area.lower()
+    if m:
+        return m.group(1).lower()
+    return (title.split() or [""])[0].lower()
+
+
+def _exam_focus(out: Scenario, c: "ExamFocus") -> list[str]:
+    rx = re.compile(r"\b(" + "|".join(re.escape(w) for w in c.words) + r")s?\b", re.I)
+    exams = [sp for sp in out.specs if sp.when == "fixed" and sp.start is not None and sp.end > out.now
+             and rx.search(sp.title)]
+    notes = []
+    for ex in sorted(exams, key=lambda sp: sp.start):
+        course = _course(ex.title, None)
+        focus_from = ex.start - int(c.days_before * 1440)
+        waiting = []
+        for sp in out.specs:
+            if sp.when == "fixed" or sp.due is None or sp.due <= ex.end:
+                continue  # events, undated work and work due by the exam keep their place
+            if _course(sp.title, None) == course or (sp.area and sp.area.lower().startswith(course)):
+                continue  # this exam's own course
+            if (sp.release or out.now) >= ex.end or focus_from > (sp.due - sp.duration_min):
+                continue
+            if sp.due - ex.end < 1440 + sp.duration_min * 1.5:
+                continue  # no room after (a night is mostly sleep): it may run through the focus days
+            sp.release = ex.end
+            waiting.append(sp.title)
+        if waiting:
+            notes.append(f"Before {ex.title}: {len(waiting)} other tasks wait until after it")
+    return notes
+
+
 def _pin_breaks(out: Scenario, c: "DailyBreak", ids: int) -> list[str]:
     """Each day, the break goes in the free spot of its window nearest the window's middle: clear of fixed events and
     their buffers. It becomes a fixed event, so no deadline can push it out (as a flexible item, an overloaded week
     skipped it). Days with no room get a note."""
     s0, e0 = _mins(c.start), _mins(c.end)
     e0 = e0 + 1440 if e0 <= s0 else e0
-    length = int(math.ceil((c.minutes + c.travel_min) / 15) * 15)
+    length = c.minutes + c.travel_min  # exact, to the 5 minutes: a fixed event needn't sit on the 15-minute grid
     busy = []
     for sp in out.specs:
         if sp.when == "fixed" and sp.blocks_time and sp.start is not None:
@@ -422,11 +474,11 @@ def _pin_breaks(out: Scenario, c: "DailyBreak", ids: int) -> list[str]:
     for d in range(first, first + out.settings.horizon_days + 1):
         if d % 7 not in _days(c.days):
             continue
-        lo, hi = max(d * 1440 + s0, -(-out.now // 15) * 15), d * 1440 + e0
+        lo, hi = max(d * 1440 + s0, -(-out.now // 5) * 5), d * 1440 + e0
         if hi - lo < length:
             continue
         mid = (d * 1440 + s0 + d * 1440 + e0 - length) / 2
-        free = [t for t in range(lo, hi - length + 1, 15) if all(t + length <= a or t >= b for a, b in busy)]
+        free = [t for t in range(lo, hi - length + 1, 5) if all(t + length <= a or t >= b for a, b in busy)]
         if not free:
             notes.append(f"No room for {c.title.lower()} on {clock.iso(d * 1440)[:10]} between {c.start} and {c.end}")
             continue

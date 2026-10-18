@@ -156,3 +156,28 @@ def test_one_sitting_soft_strengths_set_which_tasks_split_first():
     assert cost["Chem HW 5 evens"] == cost["Chem Probelm set 7 odds"] == C.SITTING["mild"]
     assert cost["Chem make study guide"] == cost["Chem lab report"] == C.SITTING["medium"]
     assert C.OneSitting(target=C.Target()).strength == "hard"  # replies from before strengths still mean never split
+
+
+def test_exam_focus_holds_other_work_until_after_the_exam_and_buffers_replace_defaults():
+    from datetime import datetime
+
+    from fr.product import adapter, clock
+
+    now = datetime(2026, 10, 19, 8, 0)
+
+    def t(i, title, due):
+        return dict(id=f"x{i}", title=title, bucket="assignments", isDone=False, dueDate=due)
+    tasks = adapter.tasks_from([t(1, "Chem make study guide", "2026-10-22T18:00:00"),
+                                t(2, "CS essay draft", "2026-10-25T23:59:00"),
+                                t(3, "Math HW 9", "2026-10-21T23:59:00"),
+                                t(4, "Psych write-up", "2026-10-23T09:00:00")])
+    exam = dict(title="Chem 2090 Exam 2", start="2026-10-22T19:30:00", end="2026-10-22T21:00:00", isAllDay=False)
+    sc, ids = adapter.scenario(now, tasks, {x.id: 180 for x in tasks}, [exam])
+    sc2, notes = C.apply(sc, [C.ExamFocus(days_before=3), C.Buffer(event_kind="class", after_min=15)])
+    rel = {ids[s.id]: s.release for s in sc2.specs if s.id in ids}
+    end = clock.to_minutes(datetime(2026, 10, 22, 21, 0))
+    assert rel["x2"] == end  # other course, due Sunday: after the exam
+    assert rel["x1"] < end and rel["x3"] < end  # the exam's own course, and work due before the exam, stay
+    assert rel["x4"] < end  # due 12 h after it with 3 h to do: no room after, so it may run through
+    assert notes == ["Before Chem 2090 Exam 2: 1 other tasks wait until after it"]
+    assert sc2.settings.buffers["class"] == (0, 15)  # the user's buffer replaces Friday's 10 minutes before classes

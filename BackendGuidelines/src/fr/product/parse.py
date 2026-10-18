@@ -64,7 +64,10 @@ GUIDE3 = GUIDE2 + """
   split, soft ("if possible", "I like to", "I'd rather") otherwise. A preference for which tasks to split first is two
   one_sitting constraints: a weaker strength for the ones that may be split, a stronger one for the rest.
 - A break taken every day at a flexible time (lunch, dinner) is daily_break: its length in minutes, travel_min for
-  getting there, and the window it must fit in (ask for the window if none is given)."""
+  getting there, and the window it must fit in (ask for the window if none is given).
+- Wanting to concentrate on an exam's course before the exam and leave other work for after it is exam_focus, with
+  days_before. If no number of days is given, use 3, say "3 days" in the paraphrase and ask in "questions" whether 3
+  is right. Add "quiz" to words only if they include quizzes."""
 GUIDES = {0: None, 1: GUIDE, 2: GUIDE2, 3: GUIDE3}
 
 

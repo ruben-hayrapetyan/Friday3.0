@@ -192,6 +192,14 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
     discussions, exam, quiz, PE), 8 likely (own clubs, the Citadel dinner, a Chem workshop), 46 optional (office
     hours, conversation hours, talks). Also: fr-serve's plan defaulted to "thompson", not the shipped
     "thompson+post" ranking (E022 round 2), whenever the app sent no method, as it never does; fixed.
+41. **(After program 2, from use, 2026-10-18) Buffers replace defaults; lunch exact; exam focus.** The user's Tuesday
+    11:25-12:20 gap had no lunch: Friday's default 10 min before classes stacked on the user's "15 minutes between
+    commitments" (25 min kept clear between two classes, every class, every day), and lunch was rounded to 30 min on the
+    quarter hour. Now a user buffer replaces the default for that kind of event, and breaks are pinned at their exact
+    length on 5-minute steps (user's fortnight: lunch every day; Tue 11:55-12:20). New constraint exam_focus: in the
+    days_before days before an exam on the calendar (title words exam/prelim/midterm/final), work for other courses due
+    after the exam waits until it ends, when there is a day plus 1.5x its length left after; Claude proposes 3 days
+    and asks.
 
 ## Findings so far
 
