@@ -18,8 +18,7 @@ import numpy as np
 from scipy.stats import norm
 
 from ..core.evaluate import check
-from ..engines.repair import ensure_deadlines
-from ..samplers.anneal import SAConfig, anneal
+from ..engines.repair import ensure_deadlines, late_value
 from ..sim.user import LEARNABLE
 from ..sim.world import Universe
 from . import adapter, clock
@@ -73,9 +72,10 @@ def _now(params: dict) -> datetime:
     return adapter.local(params["now"]) if params.get("now") else datetime.now().replace(second=0, microsecond=0)
 
 
-def edf_start(p, keys: tuple) -> np.ndarray:
+def edf_start(p, keys: tuple, how: str = "mdd") -> np.ndarray:
     """A start for an overloaded week: dated work by modified due date from now, then work with no due date
-    (decision 39): nothing due today is left for Friday, and short tasks aren't left far behind long ones. Built from whole sessions (never shorter than the task's minimum, one sitting where asked), within
+    (decision 39): nothing due today is left for Friday, and short tasks aren't left far behind long ones. `how`:
+    modified due date ("mdd") or plain earliest deadline first ("edf"). Built from whole sessions (never shorter than the task's minimum, one sitting where asked), within
     the daily caps, each task after what it depends on; locked slots stay."""
     g = p.grid
     ix = {k: i for i, k in enumerate(keys)}
@@ -113,6 +113,8 @@ def edf_start(p, keys: tuple) -> np.ndarray:
         it = p.items[k]
         least = it.need if it.shape == "one_sitting" else max(1, it.min_chunk)
         most = it.max_chunk or 10 ** 9
+        if any(left.get(dp.key, 0) > 0 for dp in it.depends_on):
+            return  # what it waits for didn't fit in the horizon, so neither does it
         after = max((done_at.get(dp.key, -1) for dp in it.depends_on), default=-1)
         for run in runs(k, after + 1):
             if left[k] <= 0:
@@ -135,7 +137,9 @@ def edf_start(p, keys: tuple) -> np.ndarray:
                 left[k] -= int(g.units[sl])
                 done_at[k] = max(done_at.get(k, -1), sl)
 
-    for k in best_order(p, dated, left, used, owner, pos):
+    order = (sorted(dated, key=lambda k: (p.items[k].due, pos[k])) if how == "edf"
+             else mdd_order(p, dated, left, owner, pos))
+    for k in order:
         place(k)
     for k in undated:
         place(k)
@@ -143,86 +147,30 @@ def edf_start(p, keys: tuple) -> np.ndarray:
     return owner
 
 
-def best_order(p, dated: list[str], left: dict, used: dict, owner: np.ndarray, pos: dict, steps: int = 20_000,
-               seed: int = 0) -> list[str]:
-    """The order to do the dated work in, searched on the free-time line (each task after the one before, no gaps) with
-    the engine's own deadline costs: hours late (late_work), hours late squared / square_hours and a fixed cost per late
-    task (late_tasks). Starts from the modified due date order (smallest max(due, now + length): earliest deadline first
-    while there's time, short tasks first once work will be late); then moves one task at a time, keeping prerequisites
-    first, accepting worse orders less as it cools (decision 39)."""
-    from ..core.rules import LateTasks
-
-    g = p.grid
-    prm = LateTasks.Params()
-    # the free-time line: the end time of each 15-minute unit any of this work may use, within the daily caps
-    times: list[int] = []
-    room = dict(used)
-    for sl in sorted(set().union(*(p.items[k].allowed_set for k in dated)) if dated else ()):
-        if sl >= g.S or owner[sl] >= 0:
-            continue
-        d = int(g.day[sl])
-        u = min(int(g.units[sl]), p.day_caps[d] - room.get(d, 0))
-        if u > 0:
-            room[d] = room.get(d, 0) + u
-            times += [int(g.end[sl])] * u
-    line = np.array(times + [g.horizon_end + 48 * 60] * max(0, sum(left[k] for k in dated)), dtype=np.float64)
-    need = {k: left[k] for k in dated}
-    due = {k: p.items[k].due for k in dated}
-    imp = {k: p.items[k].importance for k in dated}
+def mdd_order(p, dated: list[str], left: dict, owner: np.ndarray, pos: dict) -> list[str]:
+    """Modified due date, prerequisites first: next, the task with the smallest max(due, now + its length). Earliest
+    deadline first while there is time; once work will be late, short tasks before long ones (decision 39)."""
     deps = {k: {dp.key for dp in p.items[k].depends_on} & set(dated) for k in dated}
-
-    def cost(order: list[str]) -> float:
-        at, total = 0, 0.0
-        for k in order:
-            h = np.maximum(0.0, line[at:at + need[k]] - due[k]) / 60
-            at += need[k]
-            if h.any():
-                total += imp[k] * (h.sum() + (h * h).sum() / prm.square_hours + prm.hours)
-        return total
-
-    def valid(order: list[str]) -> bool:
-        seen: set[str] = set()
-        for k in order:
-            if deps[k] - seen:
-                return False
-            seen.add(k)
-        return True
-
+    free = np.flatnonzero(owner[:p.grid.S] < 0)
+    t = int(p.grid.start[free[0]]) if len(free) else p.grid.now
     order, rest = [], list(dated)
-    t = int(line[0]) if len(line) else g.now
-    while rest:  # modified due date, prerequisites first
+    while rest:
         ready = [k for k in rest if not deps[k] & set(rest)] or rest
-        k = min(ready, key=lambda k: (max(due[k], t + need[k] * 15), due[k], pos[k]))
+        k = min(ready, key=lambda k: (max(p.items[k].due, t + left[k] * 15), p.items[k].due, pos[k]))
         rest.remove(k)
         order.append(k)
-        t += need[k] * 15
-    best, best_c = list(order), cost(order)
-    cur, cur_c = list(order), best_c
-    rng = np.random.default_rng(seed)
-    n = len(cur)
-    for step in range(steps if n > 1 else 0):
-        temp = max(best_c, 1.0) * 0.002 * (1 - step / steps) + 1e-9
-        i, j = int(rng.integers(n)), int(rng.integers(n))
-        if i == j:
-            continue
-        cand = list(cur)
-        cand.insert(j, cand.pop(i))
-        if not valid(cand):
-            continue
-        c = cost(cand)
-        if c <= cur_c or rng.random() < math.exp((cur_c - c) / temp):
-            cur, cur_c = cand, c
-            if c < best_c:
-                best, best_c = list(cand), c
-    return best
+        t += left[k] * 15
+    return order
 
 
 def overload(p) -> str | None:
-    """When the work due by some deadline needs more time than is free before it, say so, for the first such deadline.
-    Free time is every slot some of that work may use (no events, sleep or forbidden windows), at most the daily cap."""
+    """When the work due by some deadline needs more time than is free before it, say so, for the deadline where the
+    gap is widest. Free time is every slot some of that work may use (no events, sleep or forbidden windows), at most
+    the daily cap."""
     g = p.grid
     hard = sorted((it for it in p.items.values() if it.firmness == "hard" and it.due is not None
-                   and it.amount == "fixed" and it.need > 0), key=lambda it: it.due)
+                   and it.amount == "fixed" and it.need > 0 and "break" not in it.tags), key=lambda it: it.due)
+    worst = None
     for i, it in enumerate(hard):
         if i + 1 < len(hard) and hard[i + 1].due == it.due:
             continue
@@ -233,12 +181,15 @@ def overload(p) -> str | None:
             if sl < g.S and g.end[sl] <= it.due:
                 per_day[int(g.day[sl])] = per_day.get(int(g.day[sl]), 0) + int(g.units[sl])
         free = sum(min(v, p.day_caps[d]) for d, v in per_day.items())
-        if need > free:
-            when = datetime.fromisoformat(clock.iso(it.due)).strftime("%a %-d %b %H:%M")
-            return (f"More is due than fits: {len(group)} tasks due by {when} need {need / 4:.0f} h with Friday's margin, and your rules "
-                    f"and calendar leave {free / 4:.0f} h before then. Some work will be late; Friday keeps it as little "
-                    f"as it can.")
-    return None
+        if need > free and (worst is None or need - free > worst[0]):
+            worst = (need - free, it.due, len(group), need, free)
+    if worst is None:
+        return None
+    _, due, n, need, free = worst
+    when = datetime.fromisoformat(clock.iso(due)).strftime("%a %-d %b %H:%M")
+    return (f"More is due than fits: {n} tasks due by {when} need {need / 4:.0f} h with Friday's margin, and your rules "
+            f"and calendar leave {free / 4:.0f} h before then. Some work will be late; Friday keeps it as little as it "
+            f"can.")
 
 
 class Engine:
@@ -405,13 +356,13 @@ class Engine:
             notes = [over] + notes
         # every option starts from (and its deadline walls protect) the repaired zero-late start, not raw construction
         rep = ensure_deadlines(u.pr, seed=0, use_cpsat=len(u.p.items) <= 60, cpsat_s=2.0)
-        if over:  # also from earliest-deadline-first, made valid by the same deadline-only search; keep the less late
-            cfg = SAConfig(steps=400_000, wall=False, lam=1e9, wts=np.array([1.0, 0.0, 0.0]), t0_scale=0.3,
-                           t1_scale=0.003, seed=0)
-            start = edf_start(u.p, u.pr.c.keys)
-            r = anneal(u.pr.c, start, cfg, np.zeros(u.pr.c.m.I, dtype=bool))
-            if r.violations == 0 and r.sv[0] < rep.late:
-                rep = replace(rep, owner=r.owner, late=int(r.sv[0]))
+        if over:  # also from ordered starts (decision 39); keep the least late that breaks no rule
+            for how in ("mdd", "edf"):
+                start = edf_start(u.p, u.pr.c.keys, how)
+                if not check(u.p, u.pr.c.plan_from_owner(start)):
+                    late = late_value(u.pr, start)
+                    if late < rep.late:
+                        rep = replace(rep, owner=start, late=int(late))
         u.pr = replace(u.pr, owner=rep.owner)
         breaks = adapter.break_blocks(sc)
         L = self._learner()
@@ -422,11 +373,22 @@ class Engine:
             plan = u.c.plan_from_owner(owner)
             late = [ids.get(int(key.split(":")[1])) for key, it in u.p.items.items()
                     if it.due is not None and any(u.p.grid.end[s] > it.due for s in plan.get(key, ()) if s < u.p.grid.S)]
+            # "doesn't fit": due within the planning window and not all of it scheduled; work due later, or never, isn't
+            # a problem when it waits
             unplaced = [ids.get(int(key.split(":")[1])) for key, it in u.p.items.items()
-                        if it.amount == "fixed" and sum(int(u.p.grid.units[s]) for s in plan.get(key, ())) < it.need]
+                        if it.amount == "fixed" and it.due is not None and it.due <= u.p.grid.horizon_end
+                        and sum(int(u.p.grid.units[s]) for s in plan.get(key, ())) < it.need]
+            finish = {ids.get(int(key.split(":")[1])): max((int(u.p.grid.end[s]) for s in plan.get(key, ())
+                                                             if s < u.p.grid.S), default=None)
+                      for key, it in u.p.items.items() if it.due is not None}
+            due_of = {ids.get(int(key.split(":")[1])): it.due for key, it in u.p.items.items() if it.due is not None}
             out.append(dict(option=k, label=opts.labels[k], summary=self._summary(phis[0], phis[k], L.theta) if k else
                             "Friday's recommendation", blocks=sorted(adapter.blocks(u.c, owner, ids) + breaks, key=lambda b: b["start"]),
                             late_tasks=[t for t in late if t], unplaced_tasks=[t for t in unplaced if t],
+                            late_detail=[dict(task_id=t, due=clock.iso(due_of[t]),
+                                              finish=clock.iso(finish[t]) if finish.get(t) else None,
+                                              hours_late=round((finish[t] - due_of[t]) / 60, 1) if finish.get(t) else None)
+                                         for t in dict.fromkeys([x for x in late + unplaced if x])],
                             valid=not check(u.p, plan)))
         pid = uuid.uuid4().hex[:12]
         self.s["plans"][pid] = dict(at=clock.iso(clock.to_minutes(now)), phis=[p.tolist() for p in phis])
