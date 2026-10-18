@@ -89,7 +89,7 @@ def test_recorded_lengths_move_predictions(tmp_path):
         eng.record_actual(t, 240, at=f"2026-09-{11 + k:02d}T12:00")
     after = eng.predict(todos, NOW)[a4]
     assert after["p50"] > 180 and after["similar_recorded"] == 6
-    q = eng.questions(todos, NOW, min_spread=0.0)
+    q = eng.questions(todos, NOW, min_saving=0.0)
     assert any(x["task_id"] == todos[5]["id"] for x in q["actuals"])  # the finished A3 was never timed
 
 

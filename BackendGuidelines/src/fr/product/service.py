@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import tempfile
 import uuid
@@ -31,13 +32,26 @@ DEFAULT_DIR = Path.home() / "Library/Application Support/Friday/engine"
 DURATION_MODEL = "hier_fused_drift_fa3_recal"  # E020 round 3
 OPTION_METHOD = "thompson"  # E022 (provisional until E022 reports; see RESEARCH_LOG)
 Q_HARD, Q_FLEX = 0.8, 0.5  # E021
+ASK_SAVING = 60.0  # minutes of padding an answer must save (E024)
+Z80 = 0.8416
+# how an option differs, rule by rule: (when the option is better on it, when it is worse)
 PHRASES = {
-    "late_night": "late-night work", "deep_run": "long unbroken focus runs", "weekday_evenings": "busy weekday evenings",
-    "weekends": "busy weekends", "daily_load": "heavy days", "even_load": "uneven days",
-    "energy": "hard work at low-energy hours", "soft_late": "late soft deadlines", "unscheduled": "unscheduled tasks",
-    "chunk_cost": "many short sessions", "spread": "cramming", "cluster": "scattered project time",
-    "target_shortfall": "weekly goals left short", "elastic_shortfall": "routines cut short",
-    "open_value": "little side-project time"}
+    "late_night": ("less late-night work", "more late-night work"),
+    "deep_run": ("shorter focus runs", "longer unbroken focus runs"),
+    "weekday_evenings": ("freer weekday evenings", "busier weekday evenings"),
+    "weekends": ("freer weekends", "busier weekends"),
+    "daily_load": ("no very heavy days", "heavier days"),
+    "even_load": ("more even days", "less even days"),
+    "energy": ("hard work at better hours", "hard work at low-energy hours"),
+    "soft_late": ("soft deadlines met sooner", "soft deadlines met later"),
+    "unscheduled": ("more tasks scheduled", "some tasks left unscheduled"),
+    "chunk_cost": ("fewer, longer sessions", "more short sessions"),
+    "spread": ("less cramming", "more cramming"),
+    "cluster": ("project time grouped", "project time scattered"),
+    "target_shortfall": ("weekly goals closer to done", "weekly goals further behind"),
+    "elastic_shortfall": ("routines kept whole", "routines cut short"),
+    "open_value": ("more side-project time", "less side-project time"),
+}
 
 
 def _now(params: dict) -> datetime:
@@ -101,17 +115,27 @@ class Engine:
         return out
 
     def questions(self, todos: list[dict], now: datetime, max_estimates: int = 2, max_actuals: int = 3,
-                  min_spread: float = 0.45) -> dict:
-        """What Friday would like to ask: estimates for open tasks it is unsure about (highest spread first, hard
-        deadlines first), and lengths of finished tasks nobody recorded."""
-        pred = self.predict(todos, now)
-        open_ = [(tid, p) for tid, p in pred.items() if p["estimate"] is None and tid not in self.s["asked"]
-                 and p["spread"] >= min_spread]
-        open_.sort(key=lambda x: (-int(x[1]["quantile"] == Q_HARD), -x[1]["spread"]))
+                  min_saving: float = ASK_SAVING) -> dict:
+        """What Friday would like to ask (E024): an estimate for an open hard-deadline task without one, only when an
+        answer would cut the time the plan reserves for it by at least `min_saving` minutes (largest saving first);
+        and lengths of finished tasks nobody recorded."""
+        tasks = adapter.tasks_from(todos)
+        mdl = self._model({t.course for t in tasks if t.course})
+        week = clock.to_minutes(now) / 10080
+        cands = []
+        for t in tasks:
+            if not t.hard or t.id in self.s["estimates"] or t.id in self.s["asked"]:
+                continue
+            m, s0 = mdl.predict(t.course, t.kind, None, week)
+            _, s1 = mdl.predict(t.course, t.kind, math.exp(m), week)  # the spread an answer would leave
+            saving = math.exp(m) * (math.exp(Z80 * s0) - math.exp(Z80 * s1)) * (1 - t.progress)
+            if saving >= min_saving:
+                cands.append((saving, t, round(math.exp(m))))
+        cands.sort(key=lambda x: -x[0])
         done = [t for t in todos if t.get("isDone") and str(t["id"]) not in self.s["actuals"]
                 and str(t["id"]) not in self.s["asked"]]
-        return dict(estimates=[dict(task_id=tid, title=next(t["title"] for t in todos if str(t["id"]) == tid),
-                                    guess_minutes=p["p50"]) for tid, p in open_[:max_estimates]],
+        return dict(estimates=[dict(task_id=t.id, title=t.title, guess_minutes=g, saves_minutes=round(sv))
+                               for sv, t, g in cands[:max_estimates]],
                     actuals=[dict(task_id=str(t["id"]), title=t["title"]) for t in done[:max_actuals]])
 
     def mark_asked(self, task_id: str) -> dict:
@@ -209,15 +233,14 @@ class Engine:
         return dict(plan_id=pid, options=out, notes=notes, minutes={k: v["plan_minutes"] for k, v in pred.items()})
 
     def _summary(self, phi0: np.ndarray, phik: np.ndarray, theta: np.ndarray) -> str:
+        """'Freer weekday evenings and less late-night work; busier weekends.' (weighted by the learned weights)"""
         d = (phik - phi0) * theta
-        better = [PHRASES[LEARNABLE[i]] for i in np.argsort(d)[:2] if d[i] < -0.05]
-        worse = [PHRASES[LEARNABLE[i]] for i in np.argsort(-d)[:1] if d[i] > 0.05]
-        parts = []
-        if better:
-            parts.append("Less " + " and less ".join(better))
+        better = [PHRASES[LEARNABLE[i]][0] for i in np.argsort(d)[:2] if d[i] < -0.05]
+        worse = [PHRASES[LEARNABLE[i]][1] for i in np.argsort(-d)[:1] if d[i] > 0.05]
+        text = " and ".join(better)
         if worse:
-            parts.append("more " + worse[0])
-        return (", ".join(parts) + ".").capitalize() if parts else "A different arrangement of similar quality."
+            text = f"{text}; {worse[0]}" if text else worse[0]
+        return (text[0].upper() + text[1:] + ".") if text else "A different arrangement of similar quality."
 
     def pick(self, plan_id: str, option: int) -> dict:
         p = self.s["plans"][plan_id]

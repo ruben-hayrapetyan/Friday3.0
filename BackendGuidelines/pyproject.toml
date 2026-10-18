@@ -15,6 +15,7 @@ dependencies = [
 
 [project.scripts]
 fr-serve = "fr.product.serve:main"
+fr-demo = "fr.product.demo:main"
 
 [dependency-groups]
 dev = ["pytest", "hypothesis", "cvxpy", "osqp"]
