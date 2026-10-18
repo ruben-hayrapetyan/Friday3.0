@@ -24,6 +24,8 @@ from ..sim.world import Universe
 from . import adapter, clock
 from . import constraints as C
 from .durations import POPULATION, Obs, make, quantile
+from .events import key as ev_key
+from .events import rate as rate_events
 from .options import three
 from .picks import Choice, ChoiceLearner
 
@@ -163,10 +165,10 @@ def mdd_order(p, dated: list[str], left: dict, owner: np.ndarray, pos: dict) -> 
     return order
 
 
-def overload(p) -> str | None:
-    """When the work due by some deadline needs more time than is free before it, say so, for the deadline where the
-    gap is widest. Free time is every slot some of that work may use (no events, sleep or forbidden windows), at most
-    the daily cap."""
+def shortfall(p) -> dict | None:
+    """The deadline where the work due by it most exceeds the free time before it: {due (wall clock), tasks, need_h,
+    free_h}, or None when everything fits. Free time is every slot some of that work may use (no events, sleep or
+    forbidden windows), at most the daily cap."""
     g = p.grid
     hard = sorted((it for it in p.items.values() if it.firmness == "hard" and it.due is not None
                    and it.amount == "fixed" and it.need > 0 and "break" not in it.tags), key=lambda it: it.due)
@@ -186,19 +188,28 @@ def overload(p) -> str | None:
     if worst is None:
         return None
     _, due, n, need, free = worst
-    when = datetime.fromisoformat(clock.iso(due)).strftime("%a %-d %b %H:%M")
-    return (f"More is due than fits: {n} tasks due by {when} need {need / 4:.0f} h with Friday's margin, and your rules "
-            f"and calendar leave {free / 4:.0f} h before then. Some work will be late; Friday keeps it as little as it "
-            f"can.")
+    return dict(due=clock.iso(due)[:16], tasks=n, need_h=round(need / 4, 1), free_h=round(free / 4, 1))
+
+
+def overload(p) -> str | None:
+    """The shortfall, in words."""
+    s = shortfall(p)
+    if s is None:
+        return None
+    when = datetime.fromisoformat(s["due"]).strftime("%a %-d %b %H:%M")
+    return (f"More is due than fits: {s['tasks']} tasks due by {when} need {s['need_h']:.0f} h with Friday's margin, "
+            f"and your rules and calendar leave {s['free_h']:.0f} h before then. Some work will be late; Friday keeps "
+            f"it as little as it can.")
 
 
 class Engine:
-    def __init__(self, data_dir: str | Path | None = None, steps: int = 300_000, parser=None):
+    def __init__(self, data_dir: str | Path | None = None, steps: int = 300_000, parser=None, rater=None):
         self.dir = Path(data_dir or os.environ.get("FRIDAY_ENGINE_DIR") or DEFAULT_DIR)
         self.dir.mkdir(parents=True, exist_ok=True)
         self.path = self.dir / "engine.json"
         self.steps = steps
         self.parser = parser  # callable(text, context) -> fr.product.parse.Result; None = the Claude CLI
+        self.rater = rater  # callable(titles) -> {key: {level, reason}}; None = events.rate (the Claude CLI)
         self.s = json.loads(self.path.read_text()) if self.path.exists() else dict(
             version=1, estimates={}, actuals={}, constraints=[], pending={}, choices=[], plans={}, asked={})
 
@@ -346,12 +357,15 @@ class Engine:
         return L
 
     def plan(self, todos: list[dict], events: list[dict], now: datetime, method: str = OPTION_METHOD) -> dict:
+        skipped = {(ev_key(x["title"]), x["start"][:16]) for x in self.s.get("skipped", [])}
+        events = [e for e in events if (ev_key(e.get("title", "")), str(e.get("start", ""))[:16]) not in skipped]
         tasks = adapter.tasks_from(todos)
         pred = self.predict(todos, now)
         sc, ids = adapter.scenario(now, tasks, {k: v["plan_minutes"] for k, v in pred.items()}, events)
         sc, notes = C.apply(sc, self._constraints())
         u = Universe(sc)
         over = overload(u.p)
+        self.s["shortfall"] = shortfall(u.p)  # for suggest_skips
         if over:
             notes = [over] + notes
         # every option starts from (and its deadline walls protect) the repaired zero-late start, not raw construction
@@ -397,6 +411,59 @@ class Engine:
                 del self.s["plans"][old]
         self.save()
         return dict(plan_id=pid, options=out, notes=notes, minutes={k: v["plan_minutes"] for k, v in pred.items()})
+
+    # ---------------------------------------------------------------- events you might skip
+    def suggest_skips(self, events: list[dict], now: datetime, limit: int = 6) -> dict:
+        """In a week with more due than fits (as the last plan found), the events before that deadline that matter
+        least, each with the time skipping it frees: {deadline, suggestions: [{title, start, end, level, reason,
+        frees_minutes}], skipped: [{title, start}]}. Claude rates new titles once; "keep" answers are never asked again."""
+        out = dict(deadline=None, suggestions=[], skipped=self.s.get("skipped", []))
+        short = self.s.get("shortfall")
+        if not short:
+            return out
+        out["deadline"] = short["due"]
+        kept = set(self.s.get("kept_events", []))
+        skipped = {(ev_key(x["title"]), x["start"][:16]) for x in self.s.get("skipped", [])}
+        start_s = now.strftime("%Y-%m-%dT%H:%M")
+        cands = [e for e in events if not e.get("isAllDay") and str(e["start"])[:16] >= start_s
+                 and str(e["end"])[:16] <= short["due"] and ev_key(e["title"]) not in kept
+                 and (ev_key(e["title"]), str(e["start"])[:16]) not in skipped]
+        ratings = self.s.setdefault("event_ratings", {})
+        new = sorted({e["title"] for e in cands if ev_key(e["title"]) not in ratings})
+        if new:
+            ratings.update((self.rater or rate_events)(new))
+            self.save()
+        after = {c.event_kind: c.before_min + c.after_min for c in self._constraints() if isinstance(c, C.Buffer)}
+        rows = []
+        for e in cands:
+            r = ratings.get(ev_key(e["title"]), {"level": "likely", "reason": ""})
+            if r["level"] == "required":
+                continue
+            kind = "class" if adapter.COURSE.search(e["title"]) else "other"
+            mins = (datetime.fromisoformat(str(e["end"])[:16]) - datetime.fromisoformat(str(e["start"])[:16])).seconds / 60
+            rows.append(dict(title=e["title"], start=str(e["start"])[:16], end=str(e["end"])[:16], level=r["level"],
+                             reason=r["reason"], frees_minutes=round(mins + after.get(kind, 0))))
+        rows.sort(key=lambda x: (x["level"] != "optional", -x["frees_minutes"], x["start"]))
+        out["suggestions"] = rows[:limit]
+        return out
+
+    def decide_event(self, title: str, start: str, decision: str) -> dict:
+        """skip: this occurrence stops blocking time in plans; unskip: undo; keep: never suggest this title again."""
+        sk = self.s.setdefault("skipped", [])
+        if decision == "skip":
+            if not any(ev_key(x["title"]) == ev_key(title) and x["start"][:16] == start[:16] for x in sk):
+                sk.append(dict(title=title, start=start[:16]))
+        elif decision == "unskip":
+            self.s["skipped"] = [x for x in sk if not (ev_key(x["title"]) == ev_key(title) and x["start"][:16] == start[:16])]
+        elif decision == "keep":
+            kept = self.s.setdefault("kept_events", [])
+            if ev_key(title) not in kept:
+                kept.append(ev_key(title))
+            self.s.setdefault("event_ratings", {})[ev_key(title)] = dict(level="required", reason="you go to these")
+        else:
+            raise ValueError(f"unknown decision {decision!r}")
+        self.save()
+        return dict(ok=True, skipped=len(self.s.get("skipped", [])))
 
     def _summary(self, phi0: np.ndarray, phik: np.ndarray, theta: np.ndarray) -> str:
         """'Freer weekday evenings and less late-night work; busier weekends.' (weighted by the learned weights)"""

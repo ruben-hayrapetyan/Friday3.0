@@ -12,7 +12,7 @@ import sys
 import time
 import traceback
 
-from .service import Engine, _now
+from .service import OPTION_METHOD, Engine, _now
 
 VERSION = 1
 
@@ -39,7 +39,11 @@ def handle(eng: Engine, method: str, p: dict):
     if method == "remove_constraint":
         return eng.remove_constraint(p["id"])
     if method == "plan":
-        return eng.plan(p["todos"], p.get("events", []), _now(p), p.get("method", "thompson"))
+        return eng.plan(p["todos"], p.get("events", []), _now(p), p.get("method", OPTION_METHOD))
+    if method == "suggest_skips":
+        return eng.suggest_skips(p.get("events", []), _now(p))
+    if method == "decide_event":
+        return eng.decide_event(p["title"], p["start"], p["decision"])
     if method == "pick":
         return eng.pick(p["plan_id"], int(p["option"]))
     raise ValueError(f"unknown method {method!r}")

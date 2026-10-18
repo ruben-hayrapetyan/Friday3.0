@@ -239,3 +239,34 @@ def test_far_off_work_waits_and_lunch_fits_every_day(tmp_path):
         assert len(days) >= 13  # one a day (today's window is still ahead at 08:00)
         for b in lunches:
             assert "11:30" <= b["start"][11:16] and b["end"][11:16] <= "14:30"
+
+
+def test_an_overloaded_week_suggests_the_least_important_events_to_skip(tmp_path, monkeypatch):
+    from fr.product import adapter, events
+
+    def rater(titles):
+        out = {events.key(t): events.fallback(t) for t in titles}
+        out[events.key("club meeting")] = dict(level="likely", reason="your own club")
+        return out
+    evs = _events() + [dict(title="CS 2110 office hours", start="2026-10-19T14:00:00", end="2026-10-19T16:00:00",
+                            isAllDay=False)]
+    eng = Engine(tmp_path, steps=40_000, rater=rater)
+    todos = [dict(id=f"o{i}", title=f"PHYS 2213 lab report {i}", bucket="assignments", isDone=False,
+                  dueDate="2026-10-20T23:59:00") for i in range(4)]
+    for t in todos:
+        eng.set_estimate(t["id"], 8 * 60)  # 32 h of labs by tomorrow night: more than fits
+    eng.plan(todos, evs, NOW)
+    r = eng.suggest_skips(evs, NOW)
+    titles = [x["title"] for x in r["suggestions"]]
+    assert r["deadline"] and titles[0] == "CS 2110 office hours"  # optional first, the most time freed first
+    assert "club meeting" in titles and "CS 2110 lecture" not in titles  # likely after optional; classes never
+    eng.decide_event("CS 2110 office hours", "2026-10-19T14:00", "skip")
+    eng.decide_event("club meeting", "2026-10-20T19:00", "keep")
+    assert eng.suggest_skips(evs, NOW)["suggestions"] == []
+    seen = {}
+    real = adapter.scenario
+    monkeypatch.setattr(adapter, "scenario", lambda now, t, m, e, *a: seen.setdefault("e", e) and real(now, t, m, e, *a))
+    eng.plan(todos, evs, NOW)
+    assert not [e for e in seen["e"] if e["title"] == "CS 2110 office hours"]  # skipped: no longer blocks time
+    eng.decide_event("CS 2110 office hours", "2026-10-19T14:00", "unskip")
+    assert eng.s["skipped"] == []

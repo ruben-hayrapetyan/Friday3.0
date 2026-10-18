@@ -183,6 +183,15 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
     travel), pinned each day as a fixed event in the free spot of its window nearest the middle (as a flexible item, an
     overloaded week skipped it: 3 lunches in 14 days); blocks come out as "break:<title>"; a day with no room gets a
     note. User's fortnight: lunch on 13 of 14 days (Tue 20 has none free 11:30-14:30). Not run in simulation.
+40. **(After program 2, from use, 2026-10-18) Events you could skip.** The user: some calendar events needn't be
+    attended; prompt by least important. `events.rate` has Claude rate each new title once (required / likely /
+    optional, a short reason; a title-keyword fallback without the CLI); `suggest_skips` offers non-required events
+    before the widest-shortfall deadline (from the last plan), optional first, then by time freed (length plus the
+    user's buffers); `decide_event` records skip (that occurrence stops blocking time; the calendar is untouched),
+    unskip, keep (never suggested again, rated required). On the user's 67 titles: 13 required (lectures, labs,
+    discussions, exam, quiz, PE), 8 likely (own clubs, the Citadel dinner, a Chem workshop), 46 optional (office
+    hours, conversation hours, talks). Also: fr-serve's plan defaulted to "thompson", not the shipped
+    "thompson+post" ranking (E022 round 2), whenever the app sent no method, as it never does; fixed.
 
 ## Findings so far
 
