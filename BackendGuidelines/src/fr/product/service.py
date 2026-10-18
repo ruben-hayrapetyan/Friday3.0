@@ -6,16 +6,17 @@ from __future__ import annotations
 
 import json
 import logging
-import math
 import os
 import tempfile
 import uuid
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 
 from ..core.evaluate import check
+from ..engines.repair import ensure_deadlines
 from ..sim.user import LEARNABLE
 from ..sim.world import Universe
 from . import adapter, clock
@@ -182,6 +183,9 @@ class Engine:
         sc, ids = adapter.scenario(now, tasks, {k: v["plan_minutes"] for k, v in pred.items()}, events)
         sc, notes = C.apply(sc, self._constraints())
         u = Universe(sc)
+        # every option starts from (and its deadline walls protect) the repaired zero-late start, not raw construction
+        rep = ensure_deadlines(u.pr, seed=0, use_cpsat=len(u.p.items) <= 60, cpsat_s=2.0)
+        u.pr = replace(u.pr, owner=rep.owner)
         L = self._learner()
         opts = three(u, L, method, steps=self.steps, seed=0)
         phis = [u.phi(x) for x in opts.plans]
