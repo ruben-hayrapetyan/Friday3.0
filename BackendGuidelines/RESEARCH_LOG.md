@@ -180,7 +180,9 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
     the line model gives 16 late, 47.0 task-days late, worst 5.5 days, CATC on time, against 11 / 42.1 / 8.5 / CATC
     a day late for counting late tasks only; the engine's plan: 18 late, worst 5.6, CATC 12:45-15:15. Tasks due far
     off start a week (plus a day per 2 h of work) before their due date. New constraint daily_break (window, minutes,
-    travel), compiled to one hard-deadline item a day; blocks come out as "break:<title>". Not run in simulation.
+    travel), pinned each day as a fixed event in the free spot of its window nearest the middle (as a flexible item, an
+    overloaded week skipped it: 3 lunches in 14 days); blocks come out as "break:<title>"; a day with no room gets a
+    note. User's fortnight: lunch on 13 of 14 days (Tue 20 has none free 11:30-14:30). Not run in simulation.
 
 ## Findings so far
 

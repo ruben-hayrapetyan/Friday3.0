@@ -290,6 +290,7 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
                 sp.tags = tuple(sp.tags) + (name,)
         return dict(tags=[name])
 
+    breaks: list = []
     for k, c in enumerate(constraints):
         name = f"user:{k}:{c.kind}"
         if isinstance(c, SleepC):
@@ -390,20 +391,7 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
             b[c.event_kind] = (max(old[0], c.before_min), max(old[1], c.after_min))
             out.settings = replace(out.settings, buffers=b)
         elif isinstance(c, DailyBreak):
-            s0, e0 = _mins(c.start), _mins(c.end)
-            e0 = e0 + 1440 if e0 <= s0 else e0
-            length = c.minutes + c.travel_min
-            wds = _days(c.days)
-            first = out.now // 1440
-            for d in range(first, first + out.settings.horizon_days + 1):
-                if d % 7 not in wds:
-                    continue
-                lo, hi = max(d * 1440 + s0, out.now), d * 1440 + e0
-                if hi - lo < length:  # today's window has passed
-                    continue
-                ids += 1
-                out.specs.append(make_spec("errand", ids, c.title, duration_min=int(math.ceil(length / 15) * 15),
-                                           release=lo, due=hi, firmness="hard", energy="light", tags=("break",)))
+            breaks.append((name, c))
         elif isinstance(c, Order):
             a = [s for s in flexible if c.first.lower() in s.title.lower()]
             b = [s for s in flexible if c.then.lower() in s.title.lower()]
@@ -411,4 +399,39 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
                 notes.append(f"{name}: '{c.first}' matches {len(a)} tasks and '{c.then}' {len(b)}; need exactly one each")
             elif a[0].id != b[0].id and not any(d[0] == a[0].id for d in b[0].deps):
                 b[0].deps = b[0].deps + ((a[0].id, 1.0, 0),)
+    for name, c in breaks:  # last, so they fit around every commitment the other constraints added
+        notes += _pin_breaks(out, c, ids)
+        ids += 1000
     return out, notes
+
+
+def _pin_breaks(out: Scenario, c: "DailyBreak", ids: int) -> list[str]:
+    """Each day, the break goes in the free spot of its window nearest the window's middle: clear of fixed events and
+    their buffers. It becomes a fixed event, so no deadline can push it out (as a flexible item, an overloaded week
+    skipped it). Days with no room get a note."""
+    s0, e0 = _mins(c.start), _mins(c.end)
+    e0 = e0 + 1440 if e0 <= s0 else e0
+    length = int(math.ceil((c.minutes + c.travel_min) / 15) * 15)
+    busy = []
+    for sp in out.specs:
+        if sp.when == "fixed" and sp.blocks_time and sp.start is not None:
+            before, after = out.settings.buffers.get(sp.event_kind, (0, 0))
+            busy.append((sp.start - before, sp.end + after))
+    notes, first = [], out.now // 1440
+    for d in range(first, first + out.settings.horizon_days + 1):
+        if d % 7 not in _days(c.days):
+            continue
+        lo, hi = max(d * 1440 + s0, -(-out.now // 15) * 15), d * 1440 + e0
+        if hi - lo < length:
+            continue
+        mid = (d * 1440 + s0 + d * 1440 + e0 - length) / 2
+        free = [t for t in range(lo, hi - length + 1, 15) if all(t + length <= a or t >= b for a, b in busy)]
+        if not free:
+            notes.append(f"No room for {c.title.lower()} on {clock.iso(d * 1440)[:10]} between {c.start} and {c.end}")
+            continue
+        t = min(free, key=lambda t: abs(t - mid))
+        ids += 1
+        out.specs.append(make_spec("commitment", ids, c.title, start=t, end=t + length, event_kind="break",
+                                   tags=("break",)))
+        busy.append((t, t + length))
+    return notes

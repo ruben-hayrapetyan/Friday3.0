@@ -413,6 +413,7 @@ class Engine:
             if r.violations == 0 and r.sv[0] < rep.late:
                 rep = replace(rep, owner=r.owner, late=int(r.sv[0]))
         u.pr = replace(u.pr, owner=rep.owner)
+        breaks = adapter.break_blocks(sc)
         L = self._learner()
         opts = three(u, L, method, steps=self.steps, seed=0)
         phis = [u.phi(x) for x in opts.plans]
@@ -424,7 +425,7 @@ class Engine:
             unplaced = [ids.get(int(key.split(":")[1])) for key, it in u.p.items.items()
                         if it.amount == "fixed" and sum(int(u.p.grid.units[s]) for s in plan.get(key, ())) < it.need]
             out.append(dict(option=k, label=opts.labels[k], summary=self._summary(phis[0], phis[k], L.theta) if k else
-                            "Friday's recommendation", blocks=adapter.blocks(u.c, owner, ids),
+                            "Friday's recommendation", blocks=sorted(adapter.blocks(u.c, owner, ids) + breaks, key=lambda b: b["start"]),
                             late_tasks=[t for t in late if t], unplaced_tasks=[t for t in unplaced if t],
                             valid=not check(u.p, plan)))
         pid = uuid.uuid4().hex[:12]
