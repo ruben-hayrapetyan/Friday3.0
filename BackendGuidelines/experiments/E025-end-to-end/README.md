@@ -26,3 +26,8 @@ weight cosine; median planning seconds.
 
 **Expectation.** Constraints remove habit conflicts almost entirely (lost time falls), duration learning removes most
 misses for biased estimators, options and picks lower the regret of what the user lives.
+
+**Changes before running** (after E021 round 2 and E024 round 1): systems plan hard deadlines at the shipped quantile
+(`q_hard`, p95) — except `v3_built`, which takes estimates as given (the median), as program 1's v3 did; `full` may ask
+for actual lengths of unrecorded finished tasks (`ask_actual`, E024), answered from memory (rougher than a timer).
+`full - durations` keeps p95 padding but uses estimates as given and asks nothing, so it isolates learning.

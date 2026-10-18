@@ -110,10 +110,11 @@ class Hier(Model):
 
     def __init__(self, kinds, courses, levels=("kind", "course", "ck"), fuse=False, half_life=None, bias_prior=0.0,
                  tau_bias=(0.5, 0.3, 0.2, 0.15), tau_len=(0.3, 0.5, 0.3, 0.2), sigma0=0.35, trend=False,
-                 tau_trend=0.05, fuse_after=0, name=None):
+                 tau_trend=0.05, fuse_after=0, fuse_rho=0.0, name=None):
         self.kinds, self.courses = list(kinds), list(courses) + [None]
         self.trend = trend
         self.fuse_after = fuse_after  # E020 round 3: fuse only once this many lengths are recorded (cold start = estimate)
+        self.fuse_rho = fuse_rho  # assumed correlation of the ratio and length errors (0 = shipped; see E024 notes)
         self.levels = tuple(levels)
         self.len_levels = tuple(sorted(set(levels) | {"kind"}, key=["kind", "course", "ck"].index))
         self.fuse, self.half_life = fuse, half_life
@@ -176,8 +177,13 @@ class Hier(Model):
         mr += math.log(est)
         if not self.fuse or len(self.length.y) < self.fuse_after:
             return mr, sr
-        wr, wl = 1 / sr ** 2, 1 / sl ** 2
-        return (wr * mr + wl * ml) / (wr + wl), math.sqrt(1 / (wr + wl))
+        # best linear combination of two predictions whose errors correlate rho (both see the task's own noise);
+        # rho = 0 is the precision-weighted mean, which is overconfident when they share error (E024)
+        c = self.fuse_rho * sr * sl
+        den = sr ** 2 + sl ** 2 - 2 * c
+        wr = min(1.0, max(0.0, (sl ** 2 - c) / den))
+        var = (wr * sr) ** 2 + ((1 - wr) * sl) ** 2 + 2 * wr * (1 - wr) * c
+        return wr * mr + (1 - wr) * ml, math.sqrt(var)
 
 
 class Oracle(Model):
@@ -289,6 +295,11 @@ def make(name: str, kinds, courses) -> Model:
         return Hier(kinds, courses, fuse=True, half_life=4.0, trend=True, name=name)
     if name.endswith("_recal"):
         return Recalibrated(make(name[: -len("_recal")], kinds, courses), name=name)
+    m = re.fullmatch(r"(.+)_rho(\d+)", name)
+    if m:  # fused with an assumed error correlation of 0.N between the ratio and length predictions
+        inner = make(m.group(1), kinds, courses)
+        inner.fuse_rho, inner.name = int(m.group(2)) / 10, name
+        return inner
     m = re.fullmatch(r"(.+)_fa(\d+)", name)
     if m:  # fuse only after n recorded lengths
         inner = make(m.group(1), kinds, courses)

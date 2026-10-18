@@ -24,3 +24,8 @@
   questions a week; two a week gives a third of that gain. This matches the user's own phrasing ("ask me for more
   assignment lengths").
 - Round 2 repeats the comparison at p95, the quantile the product now uses.
+
+Scratch follow-up (same coverage check): fusing with an assumed error correlation rho between the ratio and length
+predictions (`durations.make("..._rhoN_recal")`, rho = N/10) moves p80 coverage with every estimate given from 74% to
+76% (rho 0.5) and 78% (rho 0.7); p95 coverage is 94-96% for all. Part of the gap is a median bias (z mean +0.14) from
+the ratio prior shrinking toward the optimistic estimate. Not adopted: small gain, and at p95 coverage is near nominal.

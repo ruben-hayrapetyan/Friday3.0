@@ -43,11 +43,13 @@ def people() -> list[Person]:
 
 
 def systems() -> list[System]:
-    full = dict(options=CFG["options"], ask=CFG["ask"], mode=CFG["mode"])
-    return [System("v3_built", durations="as_given", ask="never", options=None, mode="pairs_only", constraints=False),
+    full = dict(options=CFG["options"], ask=CFG["ask"], ask_actual=CFG["ask_actual"], mode=CFG["mode"],
+                q_hard=CFG["q_hard"])
+    return [System("v3_built", durations="as_given", ask="never", options=None, mode="pairs_only", constraints=False,
+                   q_hard=0.5),
             System("full", **full),
             System("full-constraints", **full, constraints=False),
-            System("full-durations", **dict(full, ask="never"), durations="as_given"),
+            System("full-durations", **dict(full, ask="never", ask_actual="never"), durations="as_given"),
             System("full-options", **dict(full, options=None, mode="pairs_only"))]
 
 

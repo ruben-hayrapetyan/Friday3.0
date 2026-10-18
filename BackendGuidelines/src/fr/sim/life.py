@@ -14,6 +14,7 @@ import time
 from dataclasses import dataclass, replace
 
 import numpy as np
+from scipy.stats import norm
 
 from ..core.builder import spec
 from ..core.generate import Scenario
@@ -29,14 +30,14 @@ from .term import HARD, fixed_events
 from .user import LEARNABLE, MISSING_RULE, SimUser
 from .world import Universe, live_week, move_scale, true_energy
 
-Z80 = 0.8416
-
 
 @dataclass
 class System:
     name: str
     durations: str = "hier_fused_drift_fa3_recal"
     ask: str = "never"  # never | voi60 | always (estimate questions)
+    ask_actual: str = "never"  # never | always | budgetN (lengths of finished tasks nobody recorded, at most N a week)
+    q_hard: float = 0.95  # planning quantile for hard deadlines (E021); flexible tasks at the median
     options: str | None = "thompson"  # None = one plan
     mode: str = "mnl"  # mnl | pairs_only | none
     constraints: bool = True  # are the user's parsed constraints applied?
@@ -54,19 +55,20 @@ class Person:
     load: float = 1.3
 
 
-def _asker(name: str):
+def _asker(name: str, q_hard: float):
     if name == "never":
         return None
     if name == "always":
         return lambda it, model, week: True
     need = float(name[3:])
+    z = float(norm.ppf(q_hard))
 
     def voi(it, model, week):
         if it.kind not in HARD:
             return False
         m, s0 = model.predict(it.course, it.kind, None, week)
         _, s1 = model.predict(it.course, it.kind, math.exp(m), week)
-        return math.exp(m) * (math.exp(Z80 * s0) - math.exp(Z80 * s1)) >= need
+        return math.exp(m) * (math.exp(z * s0) - math.exp(z * s1)) >= need
     return voi
 
 
@@ -78,7 +80,10 @@ def live(person: Person, sysm: System, weeks: int = 6) -> dict:
     model = make(sysm.durations, ["pset", "reading", "essay", "lab", "exam_prep", "project"],
                  ["CS 2110", "MATH 2940", "PHYS 2213", "ENGL 1170"])
     L = ChoiceLearner(len(LEARNABLE), mode="mnl" if sysm.mode == "pairs_only" else sysm.mode)
-    asker = _asker(sysm.ask)
+    asker = _asker(sysm.ask, sysm.q_hard)
+    cap_actual = None if sysm.ask_actual == "never" else 10 ** 6 if sysm.ask_actual == "always" else \
+        int(sysm.ask_actual[6:])
+    asked_actual: dict[int, int] = {}
     fixed = fixed_events(person.seed, weeks)
     extra = [MISSING_RULE] if user.kind.missing_weight else []
     extra_true = {"missing:fri_sat_evening": user.kind.missing_weight} if user.kind.missing_weight else {}
@@ -106,7 +111,7 @@ def live(person: Person, sysm: System, weeks: int = 6) -> dict:
         specs = []
         for it in active:
             m, s = model.predict(it.course, it.kind, known_est[it.id], week)
-            rem = remaining(m, s, 0.8 if it.kind in HARD else 0.5, worked[it.id])
+            rem = remaining(m, s, sysm.q_hard if it.kind in HARD else 0.5, worked[it.id])
             dur = int(max(15, math.ceil(rem / 15) * 15))
             specs.append(spec(it.preset, it.id, it.title, area=it.course, duration_min=dur, due=it.due,
                               release=max(it.release, now), firmness="hard" if it.kind in HARD else "soft",
@@ -173,6 +178,10 @@ def live(person: Person, sysm: System, weeks: int = 6) -> dict:
             if worked[it.id] >= it.true_min - 1e-9:
                 finish[it.id] = int(g.start[s] + need)
                 rec = it.record()
+                if rec is None and cap_actual is not None and asked_actual.get(int(week), 0) < cap_actual:
+                    rec = it.answer_actual()  # "how long did it take?", answered from memory
+                    asked_actual[int(week)] = asked_actual.get(int(week), 0) + 1
+                    log["questions"] += 1
                 if rec is not None:
                     model.observe(Obs(it.course, it.kind, known_est[it.id], rec, (finish[it.id] / 1440 - MONDAY0) / 7))
     hard = [it for it in items if it.kind in HARD and it.due <= end]
