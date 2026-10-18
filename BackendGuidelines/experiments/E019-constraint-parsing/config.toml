@@ -1,0 +1,18 @@
+workers = 4
+
+[variants.bare]          # role + schema only
+guide = false
+enforce_schema = true
+
+[variants.guide]         # + translation guide (hard/soft words, night windows, sleep nights, ask / unsupported)
+guide = true
+enforce_schema = true
+
+[variants.guide_text]    # guide, schema in the prompt instead of the CLI's structured output
+guide = true
+enforce_schema = false
+
+[rounds.r1]
+variants = ["bare", "guide", "guide_text"]
+split = "tune"
+reps = 1
