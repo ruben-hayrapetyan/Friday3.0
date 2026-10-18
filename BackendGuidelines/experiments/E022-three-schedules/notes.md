@@ -28,3 +28,25 @@ Paired by user-week, pick regret minus thompson's: seeds -0.007 +- 0.009, qbc +0
 - seeds is as good as thompson here and more distinct (0.72 vs 0.42), but costs three full plans and its options have
   no meaning to show ("seed 2"); thompson's options are each optimal for a plausible version of the user, which the
   app describes rule by rule.
+
+## Round 2 (ranking the three; same users and weeks; report_r2.txt)
+
+| method | regret of the recommended | regret of the pick | recommended picked (weeks 0-4 / 5-9) | distinct | cosine at end |
+| --- | --- | --- | --- | --- | --- |
+| thompson (round 1) | 0.135 | 0.093 | 27% (31 / 24) | 0.42 | 0.852 |
+| thompson+map | 0.108 | 0.091 | 58% (56 / 60) | 0.42 | 0.876 |
+| **thompson+post** | **0.100** | **0.088** | **63% (64 / 61)** | 0.43 | 0.867 |
+| seeds+map | 0.102 | 0.094 | 69% (68 / 71) | 0.72 | 0.855 |
+| qbc+map | 0.115 | 0.104 | 55% (56 / 53) | 0.32 | 0.885 |
+
+- Ranking more than doubles how often the user takes the recommended option (thompson 27% -> 63%, paired +35 +- 5
+  points) and lowers the regret of the recommended plan by a quarter, with the regret of what the user lives unchanged
+  (paired difference -0.004 +- 0.008): the same kind of plans are shown, the label now means something.
+- By user kind (thompson+post): easy 77%, adversarial 70%, moody 63%, noisy 53%, missing rule 50%. The ceiling is the
+  ~90% of weeks users pick their truly best plan.
+- seeds+map labels slightly better (69%) because its options are equally good plans that differ a lot, so Friday's
+  weights decide; but it costs three full plans and its options carry no meaning.
+- **Decision:** `thompson+post` (`service.OPTION_METHOD`). It is best or tied on every metric that matters to the user,
+  and each alternative is "the best week for a plausible you", which the summaries describe.
+- The rate does not rise within 10 weeks (64% then 61%): weights improve slowly (cosine 0.875 -> 0.867 on average; up for
+  easy, moody and noisy users, down for missing-rule and adversarial users). E023 looks at learning from the pick.

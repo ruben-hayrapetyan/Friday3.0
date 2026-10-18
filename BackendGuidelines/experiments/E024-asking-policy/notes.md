@@ -29,3 +29,23 @@ Scratch follow-up (same coverage check): fusing with an assumed error correlatio
 predictions (`durations.make("..._rhoN_recal")`, rho = N/10) moves p80 coverage with every estimate given from 74% to
 76% (rho 0.5) and 78% (rho 0.7); p95 coverage is 94-96% for all. Part of the gap is a median bias (z mean +0.14) from
 the ratio prior shrinking toward the optimistic estimate. Not adopted: small gain, and at p95 coverage is near nominal.
+
+## Round 2 (p95 for hard deadlines; same 18 students; results/runs_r2_*.csv, report_r2.txt)
+
+| asks for | questions / week | hard tasks late | change vs never (paired) | hours late | unused h/day (paired change) |
+| --- | --- | --- | --- | --- | --- |
+| nothing | 0 | 2.9% | | 14.9 | 2.42 |
+| estimates, always | 6.1 | 3.9% | +1.0 +- 0.8 | 14.0 | 2.06 (-0.36 +- 0.10) |
+| estimates, voi60 | 3.1 | 3.4% | +0.5 +- 0.8 | 13.3 | 2.07 (-0.35 +- 0.12) |
+| actual lengths, always | 3.8 | 0.4% | -2.5 +- 0.9 | 0.9 | 2.35 (-0.07) |
+| **actual lengths, 2 a week** | 2.0 | **0.2%** | **-2.7 +- 1.0** | 0.5 | 2.27 (-0.15 +- 0.08) |
+| actual lengths, 4 a week | 3.1 | 0.2% | -2.7 +- 1.0 | 0.6 | 2.33 (-0.10) |
+
+- At p95 the sparse students miss 2.9% of hard deadlines with no questions at all (12.5% at p80): the quantile does
+  most of the work.
+- **Asking for actual lengths nearly removes the rest**: two questions a week take misses to 0.2% and hours late from
+  15 to 0.5 per term; more questions add nothing.
+- **Asking for estimates is now a padding trade, not a loss**: voi60 frees 0.35 h/day of reserved time (21 minutes)
+  for +0.5 points of misses (not significant), with half the questions of "always".
+- **Decision:** ask for at most two actual lengths a week (`service.ACTUALS_PER_WEEK`), and keep the voi60 rule for
+  estimates (`service.ASK_SAVING`, padding measured at p95). The combination is tested end to end in E025.
