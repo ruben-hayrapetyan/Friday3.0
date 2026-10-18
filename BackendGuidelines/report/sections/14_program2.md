@@ -72,4 +72,27 @@ recent tasks; online recalibration from the model's own one-step-ahead errors.
   on day one. The shipped model uses the user's estimate (times the learned ratio) until three lengths are recorded; after
   week 2 the two are identical.
 
-E021_PLACEHOLDER
+**Downstream (E021).** What matters for the user is missed deadlines, not prediction scores. A term simulator replans
+every morning with v3 at a fixed step budget, reserving for each open task a quantile of its predicted remaining length
+(p50 for flexible tasks, a higher quantile for hard deadlines); work proceeds on the true lengths. 24 students on report
+seeds, 8 weeks, a heavy load (1.5x).
+
+| hard-deadline tasks late / reserved-but-unused h per day | p50 | p80 | p90 | p95 |
+| --- | --- | --- | --- | --- |
+| estimate as given | 67.9% / 0.64 | 36.5% / 1.08 | 20.5% / 1.31 | 9.8% / 1.49 |
+| one personal bias | 41.9% / 0.91 | 10.9% / 1.42 | 5.6% / 1.62 | 3.6% / 1.84 |
+| **shipped model** | 46.8% / 0.79 | 15.1% / 1.18 | 8.4% / 1.49 | **4.3% / 1.57** |
+| true lengths (reference) | | 0% / 0.13 | | |
+
+- Learning lengths cuts missed hard deadlines by 2-4x at every quantile.
+- Round 1 compared models at p80 only, and the single-bias model looked better downstream (10.9% vs 15.1%) despite
+  predicting worse: its wider spreads buy more padding. Along the whole frontier (round 2; figure
+  `experiments/E021-durations-downstream/figures/frontier.png`) the shipped model misses fewer deadlines for the same
+  unused time at every point, so E020's choice stands.
+- **The quantile matters more than the model.** p80 -> p95 cuts misses from 15.1% to 4.3% and hours late from 116 to 34
+  per student-term, for 23 more minutes a day of reserved time that ends up unused. The product plans hard deadlines at
+  p95.
+- Readings and other flexible tasks finish late often (59-63%; 35% even with true lengths): the planner trades soft
+  lateness against wellbeing, as designed.
+
+E024_PLACEHOLDER

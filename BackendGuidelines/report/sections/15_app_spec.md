@@ -35,9 +35,12 @@ SPEC_OPTIONS_PLACEHOLDER
 - Constraints are the user's own rules: they are never learned or softened by Friday (section 8's wall policy applies:
   if one makes the week impossible, ask once).
 
-### 15.5 What the app must build (frontend)
+### 15.5 The app side (built)
 
-A field or timer to record how long a task took (`record_actual`), a "how long?" field when adding a task
-(`set_estimate`), a once-a-day question card (`questions`), a "plan my week" view showing three options side by side with
-their labels and summaries (`plan`, `pick`), and a "tell Friday about your week" box with a confirmation sheet
-(`parse_constraints`, `confirm_constraints`). `fr-demo` prints the whole flow on sample data.
+The Friday app has a Planner page, toggled from the calendar's title row or with Control-Command-P (branch
+`rhayrapetyan/planner-tab` of the app, `UI/Sources/Planner/`). It starts `fr-serve` on first use and keeps it running,
+and has three sections: **Plan** (three options side by side with labels and summaries; picking one calls `pick`),
+**Lengths** (a "how long?" field per open task, "it took me..." on finishing, and Friday's questions), and **Rules**
+(free text -> Claude's paraphrases with checkboxes -> confirm; the stored rules with remove buttons). Settings ›
+Planner sets the engine's path. Picked plans are shown, not yet written into the calendar. `fr-demo` prints the same
+flow on sample data.
