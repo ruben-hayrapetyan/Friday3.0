@@ -119,6 +119,45 @@ clicking any deadline turns the drawer to that task.
 calendar access, or before a main calendar is chosen, the Tasks button and
 the drawer already work.
 
+## The Planner
+
+**Planner** in the calendar's title row — or `⌃⌘P` — turns the page from the
+calendar to the Planner, and **Calendar** in its title row turns it back. The
+sidebar stays where it is. Three sections:
+
+- **plan** — *Plan my week* makes three schedules for the next two weeks from
+  your open tasks, your calendar, how long things take you and your rules:
+  the one Friday recommends, and two that differ in ways it isn't sure you'd
+  like ("Freer weekday evenings and less late-night work; busier weekends").
+  Every option keeps your events, your sleep and every deadline that can be
+  met. Pick one, and the next recommendation leans toward what you picked.
+- **lengths** — your estimate for each task ("you said"), what Friday expects
+  from it and from how long similar tasks really took you, and a field for
+  how long a finished task took (saving it ticks the task off). Now and then
+  a card asks for an estimate or a length — only when the answer would change
+  the plan by an hour or more.
+- **rules** — tell Friday about your week in your own words ("No work after
+  11pm. Gym MWF 7–8:30am. I can't focus for more than 90 minutes"). Claude
+  translates it into rules; you tick the ones it got right, and only those
+  are kept. Claude never plans; the engine does.
+
+The planning itself is the Friday engine — `fr-serve`, from
+[`BackendGuidelines/`](BackendGuidelines) on the `rhayrapetyan/backend`
+branch (its `PROTOCOL.md` and `REPORT.md` sections 14–15). Friday starts it
+the first time the Planner needs it and keeps it running. Set it up once:
+
+```bash
+cd BackendGuidelines && uv sync
+ln -s "$PWD/.venv/bin/fr-serve" ~/.local/bin/fr-serve   # or choose it in Settings › Planner
+```
+
+The engine's first start compiles the scheduler (about a minute); later
+starts take a few seconds and a plan about three. It keeps estimates,
+recorded lengths, rules and picks in
+`~/Library/Application Support/Friday/engine/` — never in `todos.json`,
+which Todo List would strip. If the engine lives under `~/Downloads`, macOS
+asks once whether Friday may open files there.
+
 ## The icon counts down to Friday
 
 <p align="center">
@@ -181,6 +220,7 @@ part of the same planner rather than a second app.
 | `⌘F` | Search events and tasks |
 | `⌘T`, `⌘←` `⌘→` | Today, previous, next |
 | `⌃⌘S`, `⌃⌘T` | Show or hide the sidebar, the tasks drawer |
+| `⌃⌘P` | Calendar ↔ Planner |
 | `⇧⌘O`, `⌥⌘1`–`⌥⌘9`, `⇧⌘K` | Filtered events, connected calendars, assign categories |
 
 **Changed from Todo List:** its add-task shortcuts move from `⌘1`–`⌘4` and
@@ -196,6 +236,8 @@ Friday works on the same files as Todo List and Chroma, so nothing moves:
 - Tasks: `~/Documents/Todo List/todos.json`
 - Event colours and category rules: `~/Library/Application Support/Chroma/`
 - Events: the calendars macOS already syncs, through EventKit
+- The Planner's estimates, lengths, rules and picks:
+  `~/Library/Application Support/Friday/engine/`
 
 The first time it runs, Friday copies over the main calendar, connected
 calendars and filter setting chosen in Chroma, and the tab last used in Todo
@@ -214,6 +256,7 @@ quit it. They also hold the same global shortcuts.
 | `UI/Sources/Shell/` | The window and its drawer, the calendar page, the sidebar and agenda, and `Deadlines.swift` — tasks on the calendar |
 | `UI/Sources/Calendar/` | Chroma: EventKit store, categories and colours, the grids, inspector, Ask Claude, Settings |
 | `UI/Sources/Tasks/` | Todo List: the model, the store, selection, keyboard, the notebook page |
+| `UI/Sources/Planner/` | The Planner page, its model, and the client that runs the engine (`fr-serve`) |
 | `UI/Tests/main.swift` | Store, file-format and calendar-bridge tests, run by `test.sh` |
 | `UI/tools/` | The icon renderer (`MakeIcon/`, also `--week` for the strip above), and the snapshot renderer used for the images here |
 
@@ -225,4 +268,6 @@ new-event form, at the smallest window size and on a large display) all
 pass. What a snapshot can't show hasn't been exercised
 in a running copy yet: the three global shortcuts, dragging a task onto the
 calendar, resizing the drawer by its edge, and the Dock icon updating
-through the week.
+through the week. The Planner has been rendered from canned engine replies
+and its engine client tested against a real `fr-serve` (start, plan, predict,
+error replies), but not yet clicked through in a running copy.
