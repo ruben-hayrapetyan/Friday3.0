@@ -36,6 +36,18 @@ Q_HARD, Q_FLEX = 0.95, 0.5  # E021 round 2: p80 -> p95 cut hard misses 15% -> 4%
 ASK_SAVING = 60.0  # minutes of padding an estimate must save (E024: voi60 is neutral on misses, frees ~20 min/day)
 ACTUALS_PER_WEEK = 2  # "how long did it take?" questions (E024 round 2: hard misses 2.9% -> 0.2% at p95)
 Z_HARD = float(norm.ppf(Q_HARD))
+# The p95 cushion is at most this many times the expected length (decision 37). E021 measured p95 with a spread the
+# model had learned; with no recorded lengths the spread is the prior's, and p95 came to 3.3x the user's own estimate
+# (2 h -> 6 h 35 m), more than fit before the deadlines, so plans went late. Until TRUSTED lengths of that kind of task
+# are recorded: your estimate + 25%, or Friday's guess + 50%; after that the learned p95, at most double.
+CUSHION_ESTIMATE, CUSHION_GUESS, CUSHION_MAX, TRUSTED = 1.25, 1.5, 2.0, 3
+
+
+def cushion(has_estimate: bool, recorded: int) -> float:
+    """The most the plan reserves for a hard-deadline task, as a multiple of its expected length."""
+    if recorded >= TRUSTED:
+        return CUSHION_MAX
+    return CUSHION_ESTIMATE if has_estimate else CUSHION_GUESS
 # how an option differs, rule by rule: (when the option is better on it, when it is worse)
 PHRASES = {
     "late_night": ("less late-night work", "more late-night work"),
@@ -58,6 +70,30 @@ PHRASES = {
 
 def _now(params: dict) -> datetime:
     return adapter.local(params["now"]) if params.get("now") else datetime.now().replace(second=0, microsecond=0)
+
+
+def overload(p) -> str | None:
+    """When the work due by some deadline needs more time than is free before it, say so, for the first such deadline.
+    Free time is every slot some of that work may use (no events, sleep or forbidden windows), at most the daily cap."""
+    g = p.grid
+    hard = sorted((it for it in p.items.values() if it.firmness == "hard" and it.due is not None
+                   and it.amount == "fixed" and it.need > 0), key=lambda it: it.due)
+    for i, it in enumerate(hard):
+        if i + 1 < len(hard) and hard[i + 1].due == it.due:
+            continue
+        group = hard[:i + 1]
+        need = sum(x.need for x in group)
+        per_day: dict[int, int] = {}
+        for sl in set().union(*(x.allowed_set for x in group)):
+            if sl < g.S and g.end[sl] <= it.due:
+                per_day[int(g.day[sl])] = per_day.get(int(g.day[sl]), 0) + int(g.units[sl])
+        free = sum(min(v, p.day_caps[d]) for d, v in per_day.items())
+        if need > free:
+            when = datetime.fromisoformat(clock.iso(it.due)).strftime("%a %-d %b %H:%M")
+            return (f"More is due than fits: {len(group)} tasks due by {when} need {need / 4:.0f} h with Friday's margin, and your rules "
+                    f"and calendar leave {free / 4:.0f} h before then. Some work will be late; Friday keeps it as little "
+                    f"as it can.")
+    return None
 
 
 class Engine:
@@ -110,7 +146,8 @@ class Engine:
             est = self.s["estimates"].get(t.id, {}).get("minutes")
             m, s = mdl.predict(t.course, t.kind, est, week)
             q = Q_HARD if t.hard else Q_FLEX
-            plan_min = quantile(m, s, q) * (1 - t.progress)
+            n = n_same.get((t.course, t.kind), 0)
+            plan_min = min(quantile(m, s, q), cushion(est is not None, n) * quantile(m, s, 0.5)) * (1 - t.progress)
             out[t.id] = dict(p50=round(quantile(m, s, 0.5)), p80=round(quantile(m, s, 0.8)), plan_minutes=round(plan_min),
                              quantile=q, estimate=est, similar_recorded=n_same.get((t.course, t.kind), 0),
                              kind=t.kind, course=t.course, spread=round(s, 3))
@@ -124,13 +161,19 @@ class Engine:
         tasks = adapter.tasks_from(todos)
         mdl = self._model({t.course for t in tasks if t.course})
         week = clock.to_minutes(now) / 10080
+        recorded: dict = {}
+        for a in self.s["actuals"].values():
+            recorded[(a.get("course"), a["kind"])] = recorded.get((a.get("course"), a["kind"]), 0) + 1
         cands = []
         for t in tasks:
             if not t.hard or t.id in self.s["estimates"] or t.id in self.s["asked"]:
                 continue
             m, s0 = mdl.predict(t.course, t.kind, None, week)
             _, s1 = mdl.predict(t.course, t.kind, math.exp(m), week)  # the spread an answer would leave
-            saving = math.exp(m) * (math.exp(Z_HARD * s0) - math.exp(Z_HARD * s1)) * (1 - t.progress)
+            n = recorded.get((t.course, t.kind), 0)
+            pad0 = min(math.exp(Z_HARD * s0), cushion(False, n))
+            pad1 = min(math.exp(Z_HARD * s1), cushion(True, n))
+            saving = math.exp(m) * (pad0 - pad1) * (1 - t.progress)
             if saving >= min_saving:
                 cands.append((saving, t, round(math.exp(m))))
         cands.sort(key=lambda x: -x[0])
@@ -212,6 +255,9 @@ class Engine:
         sc, ids = adapter.scenario(now, tasks, {k: v["plan_minutes"] for k, v in pred.items()}, events)
         sc, notes = C.apply(sc, self._constraints())
         u = Universe(sc)
+        over = overload(u.p)
+        if over:
+            notes = [over] + notes
         # every option starts from (and its deadline walls protect) the repaired zero-late start, not raw construction
         rep = ensure_deadlines(u.pr, seed=0, use_cpsat=len(u.p.items) <= 60, cpsat_s=2.0)
         u.pr = replace(u.pr, owner=rep.owner)

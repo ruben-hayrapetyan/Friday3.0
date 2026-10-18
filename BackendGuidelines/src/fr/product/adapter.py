@@ -126,7 +126,9 @@ def scenario(now: datetime, tasks: list[Task], minutes: dict[str, float], events
         dur = int(max(15, math.ceil(left / 15) * 15))
         preset = PRESET[t.kind]
         over = dict(area=t.course, duration_min=dur, due=t.due, release=t0, tags=(f"type:{t.type}",),
-                    firmness="hard" if t.hard else ("soft" if t.due is not None else "none"))
+                    # every due date is a deadline at the top of the order (decision 37): a reading due today is
+                    # not traded away to make an essay due Friday a little less late
+                    firmness="hard" if t.due is not None else "none")
         if preset in ("assignment", "reading", "exam_prep", "project"):
             over["min_chunk_min"] = min(60 if preset == "project" else 30, dur)
         specs.append(spec(preset, n, t.title, **over))

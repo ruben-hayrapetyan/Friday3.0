@@ -145,7 +145,7 @@ def test_soft_one_sitting_means_fewer_sessions(tmp_path):
 
     def sessions(eng):
         for t in todos:
-            eng.set_estimate(t["id"], 150)
+            eng.set_estimate(t["id"], 400)  # long enough that the plan splits them unless told not to
         out = eng.plan(todos, _events(), NOW)
         return len(out["options"][0]["blocks"])
 
@@ -155,3 +155,31 @@ def test_soft_one_sitting_means_fewer_sessions(tmp_path):
     assert r["constraints"][0]["hard"] is False
     eng.confirm_constraints(r["pending_id"], [0])
     assert sessions(eng) < before
+
+
+def test_cushion_stays_near_your_estimate_until_lengths_are_recorded(tmp_path):
+    from fr.product.service import CUSHION_ESTIMATE, CUSHION_GUESS
+
+    eng = Engine(tmp_path)
+    todos = _todos()
+    a4, lab = todos[0]["id"], todos[3]["id"]  # hard deadlines
+    eng.set_estimate(a4, 120)
+    p = eng.predict(todos, NOW)
+    assert p[a4]["plan_minutes"] == round(120 * CUSHION_ESTIMATE)  # 2 h -> 2 h 30 m, not p95's ~6 h 35 m
+    assert p[lab]["plan_minutes"] <= round(p[lab]["p50"] * CUSHION_GUESS) + 1
+
+
+def test_overload_is_explained_and_every_due_date_is_a_deadline(tmp_path):
+    from fr.product import adapter
+
+    todos = _todos()
+    reading = adapter.tasks_from(todos)[2]
+    assert reading.type == "reading" and not reading.hard  # no p95 cushion for a reading...
+    sc, _ = adapter.scenario(NOW, [reading], {reading.id: 60}, [])
+    assert sc.specs[0].firmness == "hard"  # ...but its due date is still a deadline
+    eng = Engine(tmp_path, steps=40_000)
+    for t in todos:
+        eng.set_estimate(t["id"], 1200)  # 20 h each: far more than fits before Thursday
+    out = eng.plan(todos, _events(), NOW)
+    assert out["notes"] and out["notes"][0].startswith("More is due than fits")
+    assert not Engine(tmp_path / "light", steps=40_000).plan(todos, _events(), NOW)["notes"]

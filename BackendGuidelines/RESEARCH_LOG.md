@@ -149,6 +149,16 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
     measured on guide2 and the old schema, not re-run. Live check: Sonnet 5.5 turns the sentence into one_sitting mild
     for problem sets + medium for everything else. Engine check: a strong soft one sitting takes the test week's
     sessions from 2-3 per task to 1.
+37. **(After program 2, from use, 2026-10-18) A capped cushion, every due date a deadline, and saying when a week does
+    not fit.** On the user's real week (51 estimates, 0 recorded lengths) p95 reserved 3.3x each estimate (CATC: 2 h
+    -> 6 h 35 m, due in 3.4 h) and 14 tasks came out late. E021's p95 assumed a learned spread; with none recorded the
+    spread is the prior's. Now the cushion is at most 1.25x the user's estimate (1.5x Friday's guess) until 3 lengths of
+    that kind are recorded, then at most 2x; `questions` measures savings with the same caps. Readings and emails with
+    a due date were soft (soft_late, weight 3) and were the first pushed late in an overloaded week ("Math read 16.2",
+    1 h, due today); every due date is now firmness hard, in the deadline stage (weight 1e6, as late_work already was).
+    Same week, no events: 14 late -> 7. The rest is real overload (76 h due by Thursday night, 60 h free under the
+    user's 10:00-23:30 rule and the 12 h daily cap), which the plan's notes now say. Not re-run in simulation: E021 and
+    E025's miss rates were measured at uncapped p95 with soft readings.
 
 ## Findings so far
 
