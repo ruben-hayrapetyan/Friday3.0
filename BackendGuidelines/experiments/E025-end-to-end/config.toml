@@ -12,3 +12,8 @@ ask = "voi60"
 ask_actual = "budget2"
 q_hard = 0.95
 mode = "mnl"
+
+[rounds.r2]
+# added after round 1 and E023: the app as built collects picks only (no pairs or drags), and E023 found picks alone
+# learn as well or better. The shipped system, same 12 people.
+systems.full-picks = { pairs = false }

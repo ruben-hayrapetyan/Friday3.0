@@ -1,0 +1,17 @@
+                             rec_picked  regret_rec   step  rec_picked_wk8plus  regret_rec_wk8plus  cos_end
+cond                                                                                                       
+none                              0.678       0.110  0.000               0.867               0.122    0.875
+mnl+feedback lean0.3              0.711       0.098  0.029               0.833               0.084    0.873
+pairs_only+feedback lean0.3       0.739       0.134  0.025               0.783               0.103    0.832
+mnl                               0.667       0.082  0.008               0.667               0.086    0.904
+mnl+feedback                      0.633       0.094  0.023               0.650               0.088    0.875
+rankbreak+feedback                0.633       0.091  0.028               0.650               0.090    0.854
+rankbreak                         0.600       0.086  0.009               0.617               0.090    0.887
+pairs_only+feedback               0.578       0.130  0.022               0.533               0.114    0.859
+cond          mnl  mnl+feedback  mnl+feedback lean0.3  none  pairs_only+feedback  pairs_only+feedback lean0.3  rankbreak  rankbreak+feedback
+kind                                                                                                                                        
+adversarial  0.83          0.50                  0.83  0.92                 0.58                         0.75       0.42                0.50
+easy         0.75          0.92                  0.92  0.92                 0.58                         0.83       0.67                0.92
+missing      0.67          0.75                  0.92  0.75                 0.25                         0.75       0.42                0.42
+moody        0.50          0.67                  0.83  0.83                 0.92                         1.00       0.75                0.83
+noisy        0.58          0.42                  0.67  0.92                 0.33                         0.58       0.83                0.58

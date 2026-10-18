@@ -1,4 +1,4 @@
-"""E025. Usage: uv run python experiments/E025-end-to-end/run.py <shard> <n_shards> | report"""
+"""E025. Usage: uv run python experiments/E025-end-to-end/run.py <round> <shard> <n_shards> | report"""
 from __future__ import annotations
 
 import json
@@ -42,7 +42,7 @@ def people() -> list[Person]:
     return out
 
 
-def systems() -> list[System]:
+def systems(rnd: str = "r1") -> list[System]:
     full = dict(options=CFG["options"], ask=CFG["ask"], ask_actual=CFG["ask_actual"], mode=CFG["mode"],
                 q_hard=CFG["q_hard"])
     return [System("v3_built", durations="as_given", ask="never", options=None, mode="pairs_only", constraints=False,
@@ -50,28 +50,29 @@ def systems() -> list[System]:
             System("full", **full),
             System("full-constraints", **full, constraints=False),
             System("full-durations", **dict(full, ask="never", ask_actual="never"), durations="as_given"),
-            System("full-options", **dict(full, options=None, mode="pairs_only"))]
+            System("full-options", **dict(full, options=None, mode="pairs_only"))] if rnd == "r1" else \
+        [System(name, **dict(full, **CFG["rounds"][rnd]["systems"][name])) for name in CFG["rounds"][rnd]["systems"]]
 
 
 def main() -> None:
     if sys.argv[1] == "report":
         report()
         return
-    k, n = int(sys.argv[1]), int(sys.argv[2])
+    rnd, k, n = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
     RES.mkdir(exist_ok=True)
     rows = []
-    jobs = [(p, s) for p in people() for s in systems()]
+    jobs = [(p, s) for p in people() for s in systems(rnd)]
     for j, (p, s) in enumerate(jobs):
         if j % n != k:
             continue
         r = live(p, s, CFG["weeks"])
         rows.append(r)
         print({k2: (round(v, 3) if isinstance(v, float) else v) for k2, v in r.items()}, flush=True)
-        pd.DataFrame(rows).to_csv(RES / f"runs_{k}.csv", index=False)
+        pd.DataFrame(rows).to_csv(RES / f"runs_{rnd}_{k}.csv", index=False)
 
 
 def report() -> None:
-    d = pd.concat([pd.read_csv(f) for f in sorted(RES.glob("runs_*.csv"))])
+    d = pd.concat([pd.read_csv(f) for f in sorted(RES.glob("runs_*.csv"))])  # rounds share people; systems differ by name
     g = d.groupby("system").agg(people=("person", "size"), hard_late=("hard_late", "mean"), late_h=("late_h", "mean"),
                                 conflict_h_week=("conflict_h_week", "mean"), questions_week=("questions_week", "mean"),
                                 regret_rec=("regret_rec", "mean"), regret_pick=("regret_pick", "mean"),

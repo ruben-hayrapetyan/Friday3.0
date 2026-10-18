@@ -40,6 +40,7 @@ class System:
     q_hard: float = 0.95  # planning quantile for hard deadlines (E021); flexible tasks at the median
     options: str | None = "thompson"  # None = one plan
     mode: str = "mnl"  # mnl | pairs_only | none
+    pairs: bool = True  # also learn from the usual pairs and drags (the app as built collects picks only)
     constraints: bool = True  # are the user's parsed constraints applied?
     steps: tuple[int, int] = (150_000, 100_000)
 
@@ -79,7 +80,7 @@ def live(person: Person, sysm: System, weeks: int = 6) -> dict:
     rng = np.random.default_rng(person.seed + 99)
     model = make(sysm.durations, ["pset", "reading", "essay", "lab", "exam_prep", "project"],
                  ["CS 2110", "MATH 2940", "PHYS 2213", "ENGL 1170"])
-    L = ChoiceLearner(len(LEARNABLE), mode="mnl" if sysm.mode == "pairs_only" else sysm.mode)
+    L = ChoiceLearner(len(LEARNABLE), mode="mnl" if sysm.mode == "pairs_only" else sysm.mode, use_pairs=sysm.pairs)
     asker = _asker(sysm.ask, sysm.q_hard)
     cap_actual = None if sysm.ask_actual == "never" else 10 ** 6 if sysm.ask_actual == "always" else \
         int(sysm.ask_actual[6:])
@@ -143,7 +144,7 @@ def live(person: Person, sysm: System, weeks: int = 6) -> dict:
             log["regret_rec"].append((E[0] - e_star) / rel)
             log["regret_pick"].append((E[k] - e_star) / rel)
             rankings = live_week(u, user, plans[k], L.theta, int(week), seed=day * 31 + person.seed).rankings \
-                if sysm.mode != "none" else []
+                if sysm.mode != "none" and sysm.pairs else []
             choices = [Choice(np.stack([u.phi(x) for x in plans]), k, int(week))] \
                 if len(plans) > 1 and sysm.mode not in ("none", "pairs_only") else []
             L.add(choices, rankings)

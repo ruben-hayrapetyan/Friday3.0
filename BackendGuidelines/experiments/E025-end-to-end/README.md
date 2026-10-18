@@ -31,3 +31,9 @@ misses for biased estimators, options and picks lower the regret of what the use
 (`q_hard`, p95) — except `v3_built`, which takes estimates as given (the median), as program 1's v3 did; `full` may ask
 for actual lengths of unrecorded finished tasks (`ask_actual`, E024), answered from memory (rougher than a timer).
 `full - durations` keeps p95 padding but uses estimates as given and asks nothing, so it isolates learning.
+
+## Round 2 (added after round 1, before running)
+
+Round 1's `full` learned from picks *and* the pairs and drags of program 1; the app as built (the Planner page) collects
+only picks, and E023 found picks alone learn as well or better. Round 2 runs `full-picks` (= full, picks only) on the
+same 12 people: the system exactly as shipped. Usage: `run.py r2 <shard> <n_shards>`.
