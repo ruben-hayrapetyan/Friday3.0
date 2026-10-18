@@ -1,5 +1,5 @@
 policy,students,hard_late,late_h,soft_late,idle_h_day,planned_h_day
-as_given@p50/p80,10,0.279,179.895,0.753,1.068,6.282
-global_bias_recal@p50/p80,11,0.09,70.159,0.607,1.367,6.602
-hier_fused_drift_recal@p50/p80,9,0.127,120.778,0.581,1.145,6.516
-oracle@p50/p80,12,0.0,0.0,0.346,0.129,5.687
+as_given@p50/p80,24,0.365,262.074,0.751,1.084,6.424
+global_bias_recal@p50/p80,24,0.109,88.922,0.642,1.42,6.822
+hier_fused_drift_recal@p50/p80,24,0.145,113.404,0.618,1.245,6.657
+oracle@p50/p80,24,0.0,0.0,0.346,0.129,5.687
