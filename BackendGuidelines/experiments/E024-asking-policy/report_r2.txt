@@ -1,0 +1,15 @@
+                               students  hard_late  late_h  idle_h_day  questions_per_week
+round ask_estimate ask_actual                                                             
+r1    always       never             18      0.170  89.307       1.606               6.083
+      never        always            18      0.084  30.711       1.784               3.826
+                   budget2           18      0.112  40.077       1.801               1.951
+                   never             18      0.125  54.562       1.886               0.000
+      spread       never             18      0.170  83.745       1.619               4.375
+      voi30        never             18      0.150  70.110       1.631               3.083
+      voi60        never             18      0.132  51.650       1.711               2.306
+r2    always       never             18      0.039  13.975       2.059               6.083
+      never        always            18      0.004   0.876       2.347               3.833
+                   budget2           18      0.002   0.510       2.266               1.958
+                   budget4           18      0.002   0.580       2.325               3.118
+                   never             18      0.029  14.862       2.420               0.000
+      voi60        never             18      0.034  13.343       2.074               3.083

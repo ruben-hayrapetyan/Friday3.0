@@ -15,3 +15,6 @@ consecutive weeks; a single odd pick should not flip the recommendation).
 
 **Expectation.** Picks alone learn slower than pairs + drags (one bit-ish per week vs six pairs and a drag), but add to
 them; MNL and rank breaking are close; a status-quo lean slows learning but does not bias it.
+
+**Generator** (set after E022 round 2, before running): `thompson+post`: Thompson alternatives, the three ranked so that
+option 0 has the highest posterior-mean pick probability.

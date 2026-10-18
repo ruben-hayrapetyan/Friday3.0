@@ -3,7 +3,7 @@ users = 3
 weeks = 12
 steps = 300000
 star_steps = 600000
-method = "thompson"   # E022's choice (update if E022 picks another)
+method = "thompson+post"   # E022 round 2: Thompson alternatives, ranked by posterior pick probability
 alt_frac = 0.5
 lam_scale = 1.0
 

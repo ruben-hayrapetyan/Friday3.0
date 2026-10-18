@@ -7,8 +7,8 @@ duration_kinds = ["calibrated", "optimist", "noisy", "kind_biased", "drifting", 
 # habit profiles: E019 case ids (person i gets profile i % len)
 profiles = [[0, 8, 26], [61, 35], [5, 13, 27], [62, 98, 42], [2, 11, 30], [96, 10, 33, 37]]
 # filled from E022 / E023 / E024 decisions
-options = "thompson"
+options = "thompson+post"
 ask = "voi60"
-ask_actual = "never"
+ask_actual = "budget2"
 q_hard = 0.95
 mode = "mnl"
