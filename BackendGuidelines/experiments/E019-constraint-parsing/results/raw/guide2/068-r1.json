@@ -1,0 +1,22 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "How long can you work before you need a break (for example, no more than 90 minutes in one sitting)?",
+   "Do you want a break around your classes and meetings, and if so, how many minutes? Or do you want certain times of day kept free?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "How long can you work before you need a break (for example, no more than 90 minutes in one sitting)?",
+   "Do you want a break around your classes and meetings, and if so, how many minutes? Or do you want certain times of day kept free?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0030673000000000002,
+ "seconds": 3.4387388749746606,
+ "calls": 1
+}

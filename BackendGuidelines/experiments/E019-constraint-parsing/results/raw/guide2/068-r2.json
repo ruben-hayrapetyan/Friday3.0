@@ -1,0 +1,20 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What kind of breaks do you need? For example, a maximum length for a single work session, a gap of a certain number of minutes after classes or meetings, a free window each day, or a lighter day each week?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What kind of breaks do you need? For example, a maximum length for a single work session, a gap of a certain number of minutes after classes or meetings, a free window each day, or a lighter day each week?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0028473000000000005,
+ "seconds": 3.5614142089616507,
+ "calls": 1
+}

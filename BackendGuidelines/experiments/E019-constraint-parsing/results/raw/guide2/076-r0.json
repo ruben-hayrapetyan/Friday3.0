@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Prioritize whichever class I'm doing worst in.",
+    "reason": "Friday has no way to rank courses by priority or know your grades, so this can't be expressed as a constraint."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Prioritize whichever class I'm doing worst in.",
+    "reason": "Friday has no way to rank courses by priority or know your grades, so this can't be expressed as a constraint."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.007431500000000001,
+ "seconds": 2.912712375051342,
+ "calls": 1
+}

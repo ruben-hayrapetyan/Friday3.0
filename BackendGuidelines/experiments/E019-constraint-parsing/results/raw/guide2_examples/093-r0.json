@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Groceries need to happen before Wednesday.",
+    "reason": "Friday can't set a deadline for a single task from text. A due date belongs on the task itself, and the constraint types here can't express 'done before Wednesday' without blocking every later Wednesday as well."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Groceries need to happen before Wednesday.",
+    "reason": "Friday can't set a deadline for a single task from text. A due date belongs on the task itself, and the constraint types here can't express 'done before Wednesday' without blocking every later Wednesday as well."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.010836699999999998,
+ "seconds": 5.560689208097756,
+ "calls": 1
+}

@@ -1,0 +1,20 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What time counts as \"late\" on Fridays? For example, no work after 8pm, 10pm, or midnight?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What time counts as \"late\" on Fridays? For example, no work after 8pm, 10pm, or midnight?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0086047,
+ "seconds": 3.9856182500952855,
+ "calls": 1
+}

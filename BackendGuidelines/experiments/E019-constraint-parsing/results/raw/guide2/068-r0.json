@@ -1,0 +1,20 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "How do you want breaks built in? For example, a maximum length for one work session (like 90 minutes), a daily cap on work hours, or some time kept clear around classes and meetings. If you pick one, tell me the number of minutes or hours too."
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "How do you want breaks built in? For example, a maximum length for one work session (like 90 minutes), a daily cap on work hours, or some time kept clear around classes and meetings. If you pick one, tell me the number of minutes or hours too."
+  ]
+ },
+ "error": null,
+ "cost": 0.0080035,
+ "seconds": 3.655277332989499,
+ "calls": 1
+}

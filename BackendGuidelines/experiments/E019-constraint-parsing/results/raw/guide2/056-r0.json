@@ -1,0 +1,34 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "buffer",
+    "event_kind": "meeting",
+    "before_min": 10,
+    "after_min": 0,
+    "source": "Give me 10 minutes before meetings to prepare.",
+    "paraphrase": "Keep 10 minutes clear before meetings."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Give me 10 minutes before meetings to prepare.",
+    "paraphrase": "Keep 10 minutes clear before meetings.",
+    "kind": "buffer",
+    "event_kind": "meeting",
+    "before_min": 10,
+    "after_min": 0
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.007601500000000001,
+ "seconds": 3.176390916109085,
+ "calls": 1
+}

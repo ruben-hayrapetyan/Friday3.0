@@ -1,0 +1,49 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "prefer_time",
+    "target": {
+     "titles": [
+      "ENGL 1170 essay draft"
+     ]
+    },
+    "start": "13:00",
+    "end": "17:00",
+    "days": null,
+    "strength": "strong",
+    "source": "I strongly prefer to do the essay in the afternoons, 1-5.",
+    "paraphrase": "Strongly prefer working on the ENGL 1170 essay draft from 1pm to 5pm every day."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I strongly prefer to do the essay in the afternoons, 1-5.",
+    "paraphrase": "Strongly prefer working on the ENGL 1170 essay draft from 1pm to 5pm every day.",
+    "days": null,
+    "start": "13:00",
+    "end": "17:00",
+    "kind": "prefer_time",
+    "strength": "strong",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "ENGL 1170 essay draft"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0081555,
+ "seconds": 3.2393129999982193,
+ "calls": 1
+}

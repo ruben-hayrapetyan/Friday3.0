@@ -1,0 +1,43 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "start": "02:00",
+    "end": "04:00",
+    "days": null,
+    "strength": "hard",
+    "target": {},
+    "source": "no work between 2 and 4am",
+    "paraphrase": "Never schedule any work between 2:00 and 4:00 am."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "no work between 2 and 4am",
+    "paraphrase": "Never schedule any work between 2:00 and 4:00 am.",
+    "days": null,
+    "start": "02:00",
+    "end": "04:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0076847,
+ "seconds": 3.0195657500298694,
+ "calls": 1
+}

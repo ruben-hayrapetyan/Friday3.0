@@ -1,0 +1,45 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "sleep",
+    "nights": [
+     "sun",
+     "mon",
+     "tue",
+     "wed",
+     "thu"
+    ],
+    "wake": "06:45",
+    "source": "I wake up at 6:45 on weekdays.",
+    "paraphrase": "You wake at 6:45 on weekday mornings."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I wake up at 6:45 on weekdays.",
+    "paraphrase": "You wake at 6:45 on weekday mornings.",
+    "kind": "sleep",
+    "nights": [
+     "sun",
+     "mon",
+     "tue",
+     "wed",
+     "thu"
+    ],
+    "bedtime": null,
+    "wake": "06:45"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0096007,
+ "seconds": 4.606089625041932,
+ "calls": 1
+}

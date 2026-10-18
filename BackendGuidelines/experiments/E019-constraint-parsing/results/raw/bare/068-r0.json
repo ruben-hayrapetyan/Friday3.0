@@ -1,0 +1,22 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What kind of breaks do you mean? For example: a cap on how long you work in one sitting (say, no more than 2 hours at a time), a gap after classes or meetings, or some free time each day or on certain days?",
+   "If you want a cap on sitting length or daily workload, roughly how many hours would feel right?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What kind of breaks do you mean? For example: a cap on how long you work in one sitting (say, no more than 2 hours at a time), a gap after classes or meetings, or some free time each day or on certain days?",
+   "If you want a cap on sitting length or daily workload, roughly how many hours would feel right?"
+  ]
+ },
+ "error": null,
+ "cost": 0.008294900000000001,
+ "seconds": 3.8454827920068055,
+ "calls": 1
+}

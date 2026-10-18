@@ -1,0 +1,47 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "daily_limit",
+    "hours": 2,
+    "days": null,
+    "target": {
+     "kinds": [
+      "reading"
+     ]
+    },
+    "strength": "hard",
+    "source": "No more than 2 hours of reading a day.",
+    "paraphrase": "At most 2 hours of reading work per day."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "No more than 2 hours of reading a day.",
+    "paraphrase": "At most 2 hours of reading work per day.",
+    "kind": "daily_limit",
+    "hours": 2.0,
+    "days": null,
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": [
+      "reading"
+     ],
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.008115500000000001,
+ "seconds": 3.3281899580033496,
+ "calls": 1
+}

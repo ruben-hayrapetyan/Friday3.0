@@ -1,0 +1,49 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {
+     "courses": [
+      "MATH 2940"
+     ]
+    },
+    "days": null,
+    "start": "20:00",
+    "end": "07:00",
+    "strength": "hard",
+    "source": "Don't make me do math after 8pm",
+    "paraphrase": "Never schedule MATH 2940 work after 8pm."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Don't make me do math after 8pm",
+    "paraphrase": "Never schedule MATH 2940 work after 8pm.",
+    "days": null,
+    "start": "20:00",
+    "end": "07:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": [
+      "MATH 2940"
+     ],
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0092175,
+ "seconds": 4.050751290982589,
+ "calls": 1
+}

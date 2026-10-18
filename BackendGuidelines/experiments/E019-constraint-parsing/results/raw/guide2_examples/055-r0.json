@@ -1,0 +1,34 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "buffer",
+    "event_kind": "class",
+    "before_min": 0,
+    "after_min": 15,
+    "source": "I need 15 minutes after each class to walk back.",
+    "paraphrase": "Keep 15 minutes clear after each class to walk back."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I need 15 minutes after each class to walk back.",
+    "paraphrase": "Keep 15 minutes clear after each class to walk back.",
+    "kind": "buffer",
+    "event_kind": "class",
+    "before_min": 0,
+    "after_min": 15
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.007630700000000001,
+ "seconds": 3.012276832945645,
+ "calls": 1
+}

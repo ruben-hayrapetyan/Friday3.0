@@ -1,0 +1,42 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "keep_free",
+    "days": [
+     "sat",
+     "sun"
+    ],
+    "hours": 2,
+    "strength": "medium",
+    "source": "Leave me a couple of free hours each weekend day.",
+    "paraphrase": "Keep at least 2 hours free of scheduled work on both Saturday and Sunday."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Leave me a couple of free hours each weekend day.",
+    "paraphrase": "Keep at least 2 hours free of scheduled work on both Saturday and Sunday.",
+    "kind": "keep_free",
+    "days": [
+     "sat",
+     "sun"
+    ],
+    "start": null,
+    "end": null,
+    "hours": 2.0,
+    "strength": "medium"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0076489,
+ "seconds": 2.964504541014321,
+ "calls": 1
+}

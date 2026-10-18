@@ -1,0 +1,22 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours count as your evenings (for example 18:00 to 22:00), and should that be every day or only certain days?",
+   "Is this a firm rule (never schedule work then) or a preference (avoid it if possible)?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours count as your evenings (for example 18:00 to 22:00), and should that be every day or only certain days?",
+   "Is this a firm rule (never schedule work then) or a preference (avoid it if possible)?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0094155,
+ "seconds": 4.708847959060222,
+ "calls": 1
+}

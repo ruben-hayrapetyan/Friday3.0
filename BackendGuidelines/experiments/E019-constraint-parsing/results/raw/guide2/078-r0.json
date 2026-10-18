@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Alternate between math and English every hour.",
+    "reason": "Friday can't express interleaving or alternating specific courses in hourly blocks, and approximating it with another constraint would mean something different."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Alternate between math and English every hour.",
+    "reason": "Friday can't express interleaving or alternating specific courses in hourly blocks, and approximating it with another constraint would mean something different."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0074275,
+ "seconds": 3.1692254580557346,
+ "calls": 1
+}

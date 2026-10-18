@@ -1,0 +1,47 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "commitment",
+    "title": "Gym",
+    "start": "07:00",
+    "end": "08:30",
+    "event_kind": "other",
+    "days": [
+     "mon",
+     "wed",
+     "fri"
+    ],
+    "source": "I go to the gym Monday, Wednesday and Friday from 7 to 8:30 am.",
+    "paraphrase": "Gym every Monday, Wednesday and Friday, 7:00\u20138:30 am."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I go to the gym Monday, Wednesday and Friday from 7 to 8:30 am.",
+    "paraphrase": "Gym every Monday, Wednesday and Friday, 7:00\u20138:30 am.",
+    "kind": "commitment",
+    "title": "Gym",
+    "days": [
+     "mon",
+     "wed",
+     "fri"
+    ],
+    "dates": null,
+    "start": "07:00",
+    "end": "08:30",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0081035,
+ "seconds": 3.0383868330391124,
+ "calls": 1
+}

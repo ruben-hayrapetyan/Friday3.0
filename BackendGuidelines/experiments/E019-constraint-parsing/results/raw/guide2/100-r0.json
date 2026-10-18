@@ -1,0 +1,39 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "finish_early",
+    "days": 0.0833,
+    "strength": "medium",
+    "target": {},
+    "source": "If something is due at midnight I want to submit it by 10pm.",
+    "paraphrase": "Finish work about 2 hours before its midnight deadline, so it's submitted by 10pm."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "If something is due at midnight I want to submit it by 10pm.",
+    "paraphrase": "Finish work about 2 hours before its midnight deadline, so it's submitted by 10pm.",
+    "kind": "finish_early",
+    "days": 0.0833,
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0102995,
+ "seconds": 4.863606791943312,
+ "calls": 1
+}

@@ -1,0 +1,51 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": [
+     "sat"
+    ],
+    "start": null,
+    "end": null,
+    "strength": "medium",
+    "source": "Saturdays are for resting, try to keep them light.",
+    "paraphrase": "Try to keep work off Saturdays so they stay restful."
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "How much work is okay on a Saturday? For example, a cap of 2 hours, or only light tasks like laundry and groceries?"
+  ]
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Saturdays are for resting, try to keep them light.",
+    "paraphrase": "Try to keep work off Saturdays so they stay restful.",
+    "days": [
+     "sat"
+    ],
+    "start": null,
+    "end": null,
+    "kind": "avoid_time",
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "How much work is okay on a Saturday? For example, a cap of 2 hours, or only light tasks like laundry and groceries?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0116347,
+ "seconds": 6.0743581670103595,
+ "calls": 1
+}

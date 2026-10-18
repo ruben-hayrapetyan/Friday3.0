@@ -1,0 +1,32 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Make sure I study with Sam on Thursdays when he's free.",
+    "reason": "Friday can't see Sam's calendar or coordinate with another person. It can only block or prefer time windows that you give it."
+   }
+  ],
+  "questions": [
+   "What times on Thursdays is Sam usually free? If you give me a window, I can set it as a preferred study time.",
+   "Which course or tasks do you want to study with Sam? For example, CS 2110, MATH 2940, or PHYS 2213 prelim 2 prep."
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Make sure I study with Sam on Thursdays when he's free.",
+    "reason": "Friday can't see Sam's calendar or coordinate with another person. It can only block or prefer time windows that you give it."
+   }
+  ],
+  "questions": [
+   "What times on Thursdays is Sam usually free? If you give me a window, I can set it as a preferred study time.",
+   "Which course or tasks do you want to study with Sam? For example, CS 2110, MATH 2940, or PHYS 2213 prelim 2 prep."
+  ]
+ },
+ "error": null,
+ "cost": 0.0096049,
+ "seconds": 4.301247916999273,
+ "calls": 1
+}

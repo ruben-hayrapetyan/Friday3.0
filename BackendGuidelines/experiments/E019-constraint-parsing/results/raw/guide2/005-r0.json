@@ -1,0 +1,34 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "sleep",
+    "bedtime": "23:00",
+    "wake": "07:00",
+    "nights": null,
+    "source": "I need 8 hours of sleep and I have to be up at 7 every day.",
+    "paraphrase": "Asleep by 11pm and up at 7am every day, for 8 hours of sleep."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I need 8 hours of sleep and I have to be up at 7 every day.",
+    "paraphrase": "Asleep by 11pm and up at 7am every day, for 8 hours of sleep.",
+    "kind": "sleep",
+    "nights": null,
+    "bedtime": "23:00",
+    "wake": "07:00"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0084455,
+ "seconds": 3.4819181250641122,
+ "calls": 1
+}

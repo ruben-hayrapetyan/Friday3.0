@@ -1,0 +1,45 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "finish_early",
+    "days": 2,
+    "strength": "medium",
+    "target": {
+     "titles": [
+      "essay"
+     ]
+    },
+    "source": "Try to finish essays two days early so I can proofread.",
+    "paraphrase": "Aim to finish essay work 2 days before it's due, leaving time to proofread."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Try to finish essays two days early so I can proofread.",
+    "paraphrase": "Aim to finish essay work 2 days before it's due, leaving time to proofread.",
+    "kind": "finish_early",
+    "days": 2.0,
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "essay"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0076489,
+ "seconds": 3.064833791926503,
+ "calls": 1
+}

@@ -1,0 +1,104 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "commitment",
+    "title": "Shifts",
+    "days": [
+     "mon",
+     "wed"
+    ],
+    "start": "17:00",
+    "end": "21:00",
+    "event_kind": "other",
+    "source": "Never schedule during my shifts (Mon/Wed 5-9pm)",
+    "paraphrase": "You have shifts Mon and Wed 5-9pm, so no work is scheduled then."
+   },
+   {
+    "kind": "session_length",
+    "target": {
+     "courses": [
+      "CS 2110"
+     ]
+    },
+    "max_hours": 1.5,
+    "strength": "hard",
+    "source": "max 90 min per sitting for CS",
+    "paraphrase": "CS 2110 work sessions are at most 90 minutes."
+   },
+   {
+    "kind": "prefer_time",
+    "target": {
+     "titles": [
+      "laundry"
+     ]
+    },
+    "days": [
+     "sun"
+    ],
+    "strength": "medium",
+    "source": "do laundry on Sundays",
+    "paraphrase": "You prefer to do laundry on Sundays."
+   }
+  ]
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Never schedule during my shifts (Mon/Wed 5-9pm)",
+    "paraphrase": "You have shifts Mon and Wed 5-9pm, so no work is scheduled then.",
+    "kind": "commitment",
+    "title": "Shifts",
+    "days": [
+     "mon",
+     "wed"
+    ],
+    "dates": null,
+    "start": "17:00",
+    "end": "21:00",
+    "event_kind": "other"
+   },
+   {
+    "source": "max 90 min per sitting for CS",
+    "paraphrase": "CS 2110 work sessions are at most 90 minutes.",
+    "kind": "session_length",
+    "min_hours": null,
+    "max_hours": 1.5,
+    "strength": "hard",
+    "target": {
+     "courses": [
+      "CS 2110"
+     ],
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "source": "do laundry on Sundays",
+    "paraphrase": "You prefer to do laundry on Sundays.",
+    "days": [
+     "sun"
+    ],
+    "start": null,
+    "end": null,
+    "kind": "prefer_time",
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "laundry"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0112227,
+ "seconds": 4.873505791067146,
+ "calls": 1
+}

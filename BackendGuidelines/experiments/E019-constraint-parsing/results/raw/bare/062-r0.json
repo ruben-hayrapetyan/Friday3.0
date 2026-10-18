@@ -1,0 +1,97 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": null,
+    "start": null,
+    "end": "10:00",
+    "strength": "hard",
+    "source": "Mornings before 10 are sacred",
+    "paraphrase": "Don't schedule any work before 10:00 AM, any day."
+   },
+   {
+    "kind": "daily_limit",
+    "target": {},
+    "days": null,
+    "hours": 7,
+    "strength": "strong",
+    "source": "I don't want more than 7 hours of work on any day",
+    "paraphrase": "No more than 7 hours of work on any day."
+   },
+   {
+    "kind": "prefer_time",
+    "target": {
+     "kinds": [
+      "reading"
+     ]
+    },
+    "days": null,
+    "start": "20:00",
+    "end": "00:00",
+    "strength": "mild",
+    "source": "Readings are fine at night",
+    "paraphrase": "Readings are fine in the evening (8 PM to midnight)."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Mornings before 10 are sacred",
+    "paraphrase": "Don't schedule any work before 10:00 AM, any day.",
+    "days": null,
+    "start": null,
+    "end": "10:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "source": "I don't want more than 7 hours of work on any day",
+    "paraphrase": "No more than 7 hours of work on any day.",
+    "kind": "daily_limit",
+    "hours": 7.0,
+    "days": null,
+    "strength": "strong",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "source": "Readings are fine at night",
+    "paraphrase": "Readings are fine in the evening (8 PM to midnight).",
+    "days": null,
+    "start": "20:00",
+    "end": "00:00",
+    "kind": "prefer_time",
+    "strength": "mild",
+    "target": {
+     "courses": null,
+     "kinds": [
+      "reading"
+     ],
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0129169,
+ "seconds": 6.438353374949656,
+ "calls": 1
+}

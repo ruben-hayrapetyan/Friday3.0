@@ -1,0 +1,34 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "an A in every class",
+    "reason": "A grade goal isn't a scheduling constraint, so Friday can't act on it."
+   },
+   {
+    "source": "be done with homework by the end of the semester",
+    "reason": "No semester end date is given, and Friday has no constraint for an overall deadline. Deadlines come from the tasks themselves."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "an A in every class",
+    "reason": "A grade goal isn't a scheduling constraint, so Friday can't act on it."
+   },
+   {
+    "source": "be done with homework by the end of the semester",
+    "reason": "No semester end date is given, and Friday has no constraint for an overall deadline. Deadlines come from the tasks themselves."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0029089,
+ "seconds": 3.3850582919549197,
+ "calls": 1
+}

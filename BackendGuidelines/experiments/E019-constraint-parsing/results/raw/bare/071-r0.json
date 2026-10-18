@@ -1,0 +1,20 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours do you work on Saturdays and Sundays (start and end times)? Are they the same both days, and do they change from week to week?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours do you work on Saturdays and Sundays (start and end times)? Are they the same both days, and do they change from week to week?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0075549,
+ "seconds": 2.9018242500023916,
+ "calls": 1
+}

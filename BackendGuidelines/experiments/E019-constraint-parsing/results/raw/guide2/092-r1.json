@@ -1,0 +1,47 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "daily_limit",
+    "hours": 4,
+    "days": null,
+    "strength": "hard",
+    "target": {
+     "energy": [
+      "deep"
+     ]
+    },
+    "source": "Don't let any single day have more than 4 hours of deep work.",
+    "paraphrase": "No more than 4 hours of deep work on any single day."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Don't let any single day have more than 4 hours of deep work.",
+    "paraphrase": "No more than 4 hours of deep work on any single day.",
+    "kind": "daily_limit",
+    "hours": 4.0,
+    "days": null,
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": [
+      "deep"
+     ]
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0077395,
+ "seconds": 2.9387177909957245,
+ "calls": 1
+}

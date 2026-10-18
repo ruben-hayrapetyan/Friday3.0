@@ -1,0 +1,41 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "one_sitting",
+    "target": {
+     "kinds": [
+      "chore"
+     ]
+    },
+    "source": "Never split chores across days.",
+    "paraphrase": "Each chore gets done in a single sitting, never split across days."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Never split chores across days.",
+    "paraphrase": "Each chore gets done in a single sitting, never split across days.",
+    "kind": "one_sitting",
+    "target": {
+     "courses": null,
+     "kinds": [
+      "chore"
+     ],
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0034875,
+ "seconds": 3.8635782500496134,
+ "calls": 1
+}

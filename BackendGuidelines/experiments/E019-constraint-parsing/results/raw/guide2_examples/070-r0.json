@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Do the important stuff first.",
+    "reason": "Friday has no notion of task importance or priority, so it can't order work by it. Name specific tasks and I can set an order between them."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Do the important stuff first.",
+    "reason": "Friday has no notion of task importance or priority, so it can't order work by it. Name specific tasks and I can set an order between them."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0074227,
+ "seconds": 3.159407416009344,
+ "calls": 1
+}

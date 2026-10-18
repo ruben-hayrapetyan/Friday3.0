@@ -1,0 +1,47 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": null,
+    "start": "22:00",
+    "end": null,
+    "strength": "medium",
+    "source": "Don't make me work too late.",
+    "paraphrase": "Prefer not to schedule any work after 10 pm."
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "What time counts as 'too late' for you? I assumed 10 pm. Is that right, and does it change on weekends?"
+  ]
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Don't make me work too late.",
+    "paraphrase": "Prefer not to schedule any work after 10 pm.",
+    "days": null,
+    "start": "22:00",
+    "end": null,
+    "kind": "avoid_time",
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "What time counts as 'too late' for you? I assumed 10 pm. Is that right, and does it change on weekends?"
+  ]
+ },
+ "error": null,
+ "cost": 0.009276900000000001,
+ "seconds": 4.517115707974881,
+ "calls": 1
+}

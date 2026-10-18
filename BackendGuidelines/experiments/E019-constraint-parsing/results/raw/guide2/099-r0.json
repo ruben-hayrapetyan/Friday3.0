@@ -1,0 +1,38 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "keep_free",
+    "hours": 1,
+    "start": "12:00",
+    "end": "14:00",
+    "days": null,
+    "strength": "medium",
+    "source": "Leave at least an hour free around lunchtime each day.",
+    "paraphrase": "Keep at least 1 hour free of scheduled work between 12:00 and 14:00 every day."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Leave at least an hour free around lunchtime each day.",
+    "paraphrase": "Keep at least 1 hour free of scheduled work between 12:00 and 14:00 every day.",
+    "kind": "keep_free",
+    "days": null,
+    "start": "12:00",
+    "end": "14:00",
+    "hours": 1.0,
+    "strength": "medium"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0103315,
+ "seconds": 4.962150749983266,
+ "calls": 1
+}

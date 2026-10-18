@@ -1,0 +1,22 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "How many hours of work per day would feel like too much in the days before an exam?",
+   "Which exam or days do you mean (for example, the days before PHYS 2213 prelim 2), and how many days ahead should the lighter load start?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "How many hours of work per day would feel like too much in the days before an exam?",
+   "Which exam or days do you mean (for example, the days before PHYS 2213 prelim 2), and how many days ahead should the lighter load start?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0081995,
+ "seconds": 3.681898499955423,
+ "calls": 1
+}

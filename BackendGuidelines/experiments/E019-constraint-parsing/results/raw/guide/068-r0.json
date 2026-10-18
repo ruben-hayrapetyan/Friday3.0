@@ -1,0 +1,20 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What kind of breaks do you need? For example, a cap on how long one study session can run (and how long), a gap of some minutes around classes or meetings, or some free time during a certain part of the day?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What kind of breaks do you need? For example, a cap on how long one study session can run (and how long), a gap of some minutes around classes or meetings, or some free time during a certain part of the day?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0077994,
+ "seconds": 3.5204051670152694,
+ "calls": 1
+}

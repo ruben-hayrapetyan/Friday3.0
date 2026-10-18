@@ -1,0 +1,49 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "prefer_time",
+    "target": {
+     "energy": [
+      "deep"
+     ]
+    },
+    "start": "08:00",
+    "end": "12:00",
+    "days": null,
+    "strength": "medium",
+    "source": "I focus best in the morning, put hard stuff between 8 and noon when you can.",
+    "paraphrase": "Prefer to do focused, deep work between 8:00 and 12:00."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I focus best in the morning, put hard stuff between 8 and noon when you can.",
+    "paraphrase": "Prefer to do focused, deep work between 8:00 and 12:00.",
+    "days": null,
+    "start": "08:00",
+    "end": "12:00",
+    "kind": "prefer_time",
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": [
+      "deep"
+     ]
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0079594,
+ "seconds": 3.1362372499424964,
+ "calls": 1
+}
