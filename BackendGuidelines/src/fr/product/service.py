@@ -404,6 +404,12 @@ class Engine:
                                               hours_late=round((finish[t] - due_of[t]) / 60, 1) if finish.get(t) else None)
                                          for t in dict.fromkeys([x for x in late + unplaced if x])],
                             valid=not check(u.p, plan)))
+        # whenever an option runs late, skips are worth proposing up to the latest deadline it misses
+        dues = [d["due"] for o in out for d in o["late_detail"]]
+        if dues and not self.s.get("shortfall"):
+            self.s["shortfall"] = dict(due=max(dues)[:16])
+        elif dues:
+            self.s["shortfall"]["due"] = max(self.s["shortfall"]["due"], max(dues)[:16])
         pid = uuid.uuid4().hex[:12]
         self.s["plans"][pid] = dict(at=clock.iso(clock.to_minutes(now)), phis=[p.tolist() for p in phis])
         if len(self.s["plans"]) > 10:
@@ -414,8 +420,8 @@ class Engine:
 
     # ---------------------------------------------------------------- events you might skip
     def suggest_skips(self, events: list[dict], now: datetime, limit: int = 6) -> dict:
-        """In a week with more due than fits (as the last plan found), the events before that deadline that matter
-        least, each with the time skipping it frees: {deadline, suggestions: [{title, start, end, level, reason,
+        """When the last plan ran late (more due than fits, or any task late), the events before the latest deadline
+        it missed that matter least, each with the time skipping it frees: {deadline, suggestions: [{title, start, end, level, reason,
         frees_minutes}], skipped: [{title, start}]}. Claude rates new titles once; "keep" answers are never asked again."""
         out = dict(deadline=None, suggestions=[], skipped=self.s.get("skipped", []))
         short = self.s.get("shortfall")
