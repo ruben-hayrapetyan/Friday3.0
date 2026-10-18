@@ -43,7 +43,6 @@ def main() -> None:
 
 def report() -> None:
     d = pd.concat([pd.read_csv(f) for f in sorted(RES.glob("weeks_*.csv"))])
-    d["cond"] = d["mode"] + ("+fb" if True else "")
     d["cond"] = d["mode"] + d.feedback.map({True: "+feedback", False: ""}) + d.p_default.map(lambda x: f" lean{x}" if x else "")
     late = d[d.week >= 8]
     g = d.groupby("cond").agg(rec_picked=("rec_picked", "mean"), regret_rec=("regret_rec", "mean"),

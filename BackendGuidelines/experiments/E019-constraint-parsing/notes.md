@@ -1,7 +1,7 @@
 # E019 notes
 
 All calls: `claude -p --model claude-sonnet-5-5 --tools "" --strict-mcp-config --no-session-persistence`, system prompt
-replaced, one fixed context. Replies cached in `results/raw/`. Total cost about $3.70 (list price) for 571 calls.
+replaced, one fixed context. Replies cached in `results/raw/`. Total cost about $4.10 (list price, as the CLI reports it) for 505 calls.
 
 ## Round 1 (tuning split, 68 cases; results/cases_r1.csv)
 
