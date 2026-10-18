@@ -13,6 +13,9 @@ dependencies = [
   "pydantic>=2",
 ]
 
+[project.scripts]
+fr-serve = "fr.product.serve:main"
+
 [dependency-groups]
 dev = ["pytest", "hypothesis", "cvxpy", "osqp"]
 

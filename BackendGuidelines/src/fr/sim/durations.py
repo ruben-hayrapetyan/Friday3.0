@@ -95,11 +95,12 @@ class Student:
 
     @staticmethod
     def make(kind: str | StudentType, seed: int, item_sigma: float = 0.3, drift_sd: float = 0.05,
-             load: float = 1.0) -> "Student":
-        """`load` scales every true length (and so the estimates): 1.5 = a heavier term."""
+             load: float = 1.0, pop_sd: float = 0.2) -> "Student":
+        """`load` scales every true length (and so the estimates): 1.5 = a heavier term. `pop_sd`: how far this
+        student's typical lengths sit from the population defaults (log sd; E020 round 3 uses 0.5)."""
         k = STUDENT_TYPES[kind] if isinstance(kind, str) else kind
         rng = np.random.default_rng(seed)
-        base = {kd: float(np.log(m * load) + rng.normal(0, 0.2)) for kd, (_, m) in KINDS.items()}
+        base = {kd: float(np.log(m * load) + rng.normal(0, pop_sd)) for kd, (_, m) in KINDS.items()}
         course = {c: float(rng.normal(0, 0.3)) for c in COURSES}
         ck = {(c, kd): float(rng.normal(0, 0.15)) for c in COURSES for kd in KINDS}
         s = Student(k, seed, base, course, ck, drift_sd, rng)

@@ -9,6 +9,7 @@ habit is followed. With no data every model returns the user's own estimate: the
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -16,7 +17,7 @@ from scipy.stats import norm
 
 # population defaults (minutes) Friday ships with, for tasks with no estimate and no history
 POPULATION = {"pset": 240.0, "reading": 80.0, "essay": 300.0, "lab": 180.0, "exam_prep": 360.0, "project": 600.0,
-              "other": 90.0}
+              "email": 15.0, "other": 90.0}
 
 
 @dataclass
@@ -109,9 +110,10 @@ class Hier(Model):
 
     def __init__(self, kinds, courses, levels=("kind", "course", "ck"), fuse=False, half_life=None, bias_prior=0.0,
                  tau_bias=(0.5, 0.3, 0.2, 0.15), tau_len=(0.3, 0.5, 0.3, 0.2), sigma0=0.35, trend=False,
-                 tau_trend=0.05, name=None):
+                 tau_trend=0.05, fuse_after=0, name=None):
         self.kinds, self.courses = list(kinds), list(courses) + [None]
         self.trend = trend
+        self.fuse_after = fuse_after  # E020 round 3: fuse only once this many lengths are recorded (cold start = estimate)
         self.levels = tuple(levels)
         self.len_levels = tuple(sorted(set(levels) | {"kind"}, key=["kind", "course", "ck"].index))
         self.fuse, self.half_life = fuse, half_life
@@ -172,7 +174,7 @@ class Hier(Model):
             return ml, sl
         mr, sr = self.ratio.predict(self.x(course, kind, self.levels), week, self.half_life)
         mr += math.log(est)
-        if not self.fuse:
+        if not self.fuse or len(self.length.y) < self.fuse_after:
             return mr, sr
         wr, wl = 1 / sr ** 2, 1 / sl ** 2
         return (wr * mr + wl * ml) / (wr + wl), math.sqrt(1 / (wr + wl))
@@ -287,4 +289,9 @@ def make(name: str, kinds, courses) -> Model:
         return Hier(kinds, courses, fuse=True, half_life=4.0, trend=True, name=name)
     if name.endswith("_recal"):
         return Recalibrated(make(name[: -len("_recal")], kinds, courses), name=name)
+    m = re.fullmatch(r"(.+)_fa(\d+)", name)
+    if m:  # fuse only after n recorded lengths
+        inner = make(m.group(1), kinds, courses)
+        inner.fuse_after, inner.name = int(m.group(2)), name
+        return inner
     raise KeyError(name)

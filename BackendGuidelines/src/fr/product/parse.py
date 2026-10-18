@@ -157,3 +157,6 @@ def parse_text(text: str, context: dict, prompt: Prompt, model: str = MODEL, cal
             user = (user_message(text, context) + f"\n\nYour previous reply was not valid:\n{err}\n"
                     "Reply again with a corrected JSON object.")
     return Result(None, raw, err, cost, secs, 1 + prompt.retries)
+
+
+DEFAULT = Prompt("guide2", guide=2)  # E019: 99.0% on the held-out split

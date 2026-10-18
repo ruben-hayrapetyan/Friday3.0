@@ -1,0 +1,225 @@
+"""What the Friday app calls (Q0; protocol in PROTOCOL.md). State lives in one JSON file in Friday's own folder, never
+in todos.json (Todo List drops unknown keys). Every operation is deterministic given the stored state and the snapshot,
+except `parse_constraints`, which asks Claude and only stores a *pending* parse until the user confirms it.
+"""
+from __future__ import annotations
+
+import json
+import logging
+import math
+import os
+import tempfile
+import uuid
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+
+from ..core.evaluate import check
+from ..sim.user import LEARNABLE
+from ..sim.world import Universe
+from . import adapter, clock
+from . import constraints as C
+from .durations import POPULATION, Obs, make, quantile
+from .options import three
+from .picks import Choice, ChoiceLearner
+
+logging.getLogger("fr.core.pwl").setLevel(logging.ERROR)
+
+DEFAULT_DIR = Path.home() / "Library/Application Support/Friday/engine"
+DURATION_MODEL = "hier_fused_drift_fa3_recal"  # E020 round 3
+OPTION_METHOD = "thompson"  # E022 (provisional until E022 reports; see RESEARCH_LOG)
+Q_HARD, Q_FLEX = 0.8, 0.5  # E021
+PHRASES = {
+    "late_night": "late-night work", "deep_run": "long unbroken focus runs", "weekday_evenings": "busy weekday evenings",
+    "weekends": "busy weekends", "daily_load": "heavy days", "even_load": "uneven days",
+    "energy": "hard work at low-energy hours", "soft_late": "late soft deadlines", "unscheduled": "unscheduled tasks",
+    "chunk_cost": "many short sessions", "spread": "cramming", "cluster": "scattered project time",
+    "target_shortfall": "weekly goals left short", "elastic_shortfall": "routines cut short",
+    "open_value": "little side-project time"}
+
+
+def _now(params: dict) -> datetime:
+    return adapter.local(params["now"]) if params.get("now") else datetime.now().replace(second=0, microsecond=0)
+
+
+class Engine:
+    def __init__(self, data_dir: str | Path | None = None, steps: int = 300_000, parser=None):
+        self.dir = Path(data_dir or os.environ.get("FRIDAY_ENGINE_DIR") or DEFAULT_DIR)
+        self.dir.mkdir(parents=True, exist_ok=True)
+        self.path = self.dir / "engine.json"
+        self.steps = steps
+        self.parser = parser  # callable(text, context) -> fr.product.parse.Result; None = the Claude CLI
+        self.s = json.loads(self.path.read_text()) if self.path.exists() else dict(
+            version=1, estimates={}, actuals={}, constraints=[], pending={}, choices=[], plans={}, asked={})
+
+    # ---------------------------------------------------------------- storage
+    def save(self) -> None:
+        fd, tmp = tempfile.mkstemp(dir=self.dir, suffix=".tmp")
+        with os.fdopen(fd, "w") as f:
+            json.dump(self.s, f, indent=1)
+        os.replace(tmp, self.path)
+
+    # ---------------------------------------------------------------- durations
+    def _model(self, courses: set[str]):
+        seen = {a.get("course") for a in self.s["actuals"].values()} | courses
+        mdl = make(DURATION_MODEL, list(POPULATION), sorted(c for c in seen if c))
+        for a in sorted(self.s["actuals"].values(), key=lambda a: a["at"]):
+            mdl.observe(Obs(a.get("course"), a["kind"], a.get("estimate"), a["minutes"], clock.parse(a["at"]) / 10080))
+        return mdl
+
+    def set_estimate(self, task_id: str, minutes: float, at: str | None = None) -> dict:
+        self.s["estimates"][task_id] = dict(minutes=float(minutes), at=at or clock.iso(clock.to_minutes(datetime.now())))
+        self.save()
+        return dict(ok=True)
+
+    def record_actual(self, task: dict, minutes: float, at: str | None = None) -> dict:
+        t = adapter.tasks_from([dict(task, isDone=False)])[0]
+        est = self.s["estimates"].get(t.id, {}).get("minutes")
+        self.s["actuals"][t.id] = dict(minutes=float(minutes), kind=t.kind, course=t.course, estimate=est,
+                                       at=at or clock.iso(clock.to_minutes(datetime.now())))
+        self.save()
+        return dict(ok=True, recorded=len(self.s["actuals"]))
+
+    def predict(self, todos: list[dict], now: datetime) -> dict[str, dict]:
+        tasks = adapter.tasks_from(todos)
+        mdl = self._model({t.course for t in tasks if t.course})
+        week = clock.to_minutes(now) / 10080
+        n_same = {}
+        for a in self.s["actuals"].values():
+            n_same[(a.get("course"), a["kind"])] = n_same.get((a.get("course"), a["kind"]), 0) + 1
+        out = {}
+        for t in tasks:
+            est = self.s["estimates"].get(t.id, {}).get("minutes")
+            m, s = mdl.predict(t.course, t.kind, est, week)
+            q = Q_HARD if t.hard else Q_FLEX
+            plan_min = quantile(m, s, q) * (1 - t.progress)
+            out[t.id] = dict(p50=round(quantile(m, s, 0.5)), p80=round(quantile(m, s, 0.8)), plan_minutes=round(plan_min),
+                             quantile=q, estimate=est, similar_recorded=n_same.get((t.course, t.kind), 0),
+                             kind=t.kind, course=t.course, spread=round(s, 3))
+        return out
+
+    def questions(self, todos: list[dict], now: datetime, max_estimates: int = 2, max_actuals: int = 3,
+                  min_spread: float = 0.45) -> dict:
+        """What Friday would like to ask: estimates for open tasks it is unsure about (highest spread first, hard
+        deadlines first), and lengths of finished tasks nobody recorded."""
+        pred = self.predict(todos, now)
+        open_ = [(tid, p) for tid, p in pred.items() if p["estimate"] is None and tid not in self.s["asked"]
+                 and p["spread"] >= min_spread]
+        open_.sort(key=lambda x: (-int(x[1]["quantile"] == Q_HARD), -x[1]["spread"]))
+        done = [t for t in todos if t.get("isDone") and str(t["id"]) not in self.s["actuals"]
+                and str(t["id"]) not in self.s["asked"]]
+        return dict(estimates=[dict(task_id=tid, title=next(t["title"] for t in todos if str(t["id"]) == tid),
+                                    guess_minutes=p["p50"]) for tid, p in open_[:max_estimates]],
+                    actuals=[dict(task_id=str(t["id"]), title=t["title"]) for t in done[:max_actuals]])
+
+    def mark_asked(self, task_id: str) -> dict:
+        self.s["asked"][task_id] = clock.iso(clock.to_minutes(datetime.now()))
+        self.save()
+        return dict(ok=True)
+
+    # ---------------------------------------------------------------- constraints
+    def context(self, todos: list[dict], events: list[dict], now: datetime) -> dict:
+        tasks = adapter.tasks_from(todos)
+        return dict(today=now.strftime("%Y-%m-%d (%A)"), courses=sorted({t.course for t in tasks if t.course}),
+                    tasks=[dict(title=t.title, course=t.course, kind=adapter.PRESET[t.kind] if t.kind not in
+                                ("pset", "essay", "lab") else "assignment", energy=None) for t in tasks],
+                    events=sorted({e.get("title", "") for e in events})[:40])
+
+    def parse_constraints(self, text: str, todos: list[dict], events: list[dict], now: datetime) -> dict:
+        from .parse import DEFAULT, parse_text
+
+        ctx = self.context(todos, events, now)
+        r = self.parser(text, ctx) if self.parser else parse_text(text, ctx, DEFAULT)
+        if r.parse is None:
+            return dict(ok=False, error=r.error)
+        pid = uuid.uuid4().hex[:12]
+        self.s["pending"][pid] = dict(text=text, parse=r.parse.model_dump(mode="json"), at=clock.iso(clock.to_minutes(now)))
+        self.save()
+        p = r.parse
+        return dict(ok=True, pending_id=pid,
+                    constraints=[dict(index=i, kind=c.kind, paraphrase=c.paraphrase,
+                                      hard=getattr(c, "strength", "hard") == "hard") for i, c in enumerate(p.constraints)],
+                    questions=p.questions, unsupported=[u.model_dump() for u in p.unsupported])
+
+    def confirm_constraints(self, pending_id: str, accept: list[int]) -> dict:
+        pend = self.s["pending"].pop(pending_id)
+        parse = C.Parse.model_validate(pend["parse"])
+        added = []
+        for i in accept:
+            cid = uuid.uuid4().hex[:12]
+            self.s["constraints"].append(dict(id=cid, text=pend["text"], constraint=parse.constraints[i].model_dump(mode="json"),
+                                              added=pend["at"]))
+            added.append(cid)
+        self.save()
+        return dict(ok=True, added=added)
+
+    def list_constraints(self) -> list[dict]:
+        out = []
+        for c in self.s["constraints"]:
+            con = C.Parse.model_validate(dict(constraints=[c["constraint"]])).constraints[0]
+            out.append(dict(id=c["id"], paraphrase=con.paraphrase, kind=con.kind, text=c["text"]))
+        return out
+
+    def remove_constraint(self, cid: str) -> dict:
+        self.s["constraints"] = [c for c in self.s["constraints"] if c["id"] != cid]
+        self.save()
+        return dict(ok=True)
+
+    def _constraints(self) -> list:
+        return list(C.Parse.model_validate(dict(constraints=[c["constraint"] for c in self.s["constraints"]])).constraints)
+
+    # ---------------------------------------------------------------- plans and picks
+    def _learner(self) -> ChoiceLearner:
+        L = ChoiceLearner(len(LEARNABLE))
+        if self.s["choices"]:
+            L.add([Choice(np.array(c["phis"]), c["chosen"], i) for i, c in enumerate(self.s["choices"])])
+        return L
+
+    def plan(self, todos: list[dict], events: list[dict], now: datetime, method: str = OPTION_METHOD) -> dict:
+        tasks = adapter.tasks_from(todos)
+        pred = self.predict(todos, now)
+        sc, ids = adapter.scenario(now, tasks, {k: v["plan_minutes"] for k, v in pred.items()}, events)
+        sc, notes = C.apply(sc, self._constraints())
+        u = Universe(sc)
+        L = self._learner()
+        opts = three(u, L, method, steps=self.steps, seed=0)
+        phis = [u.phi(x) for x in opts.plans]
+        out = []
+        for k, owner in enumerate(opts.plans):
+            plan = u.c.plan_from_owner(owner)
+            late = [ids.get(int(key.split(":")[1])) for key, it in u.p.items.items()
+                    if it.due is not None and any(u.p.grid.end[s] > it.due for s in plan.get(key, ()) if s < u.p.grid.S)]
+            unplaced = [ids.get(int(key.split(":")[1])) for key, it in u.p.items.items()
+                        if it.amount == "fixed" and sum(int(u.p.grid.units[s]) for s in plan.get(key, ())) < it.need]
+            out.append(dict(option=k, label=opts.labels[k], summary=self._summary(phis[0], phis[k], L.theta) if k else
+                            "Friday's recommendation", blocks=adapter.blocks(u.c, owner, ids),
+                            late_tasks=[t for t in late if t], unplaced_tasks=[t for t in unplaced if t],
+                            valid=not check(u.p, plan)))
+        pid = uuid.uuid4().hex[:12]
+        self.s["plans"][pid] = dict(at=clock.iso(clock.to_minutes(now)), phis=[p.tolist() for p in phis])
+        if len(self.s["plans"]) > 10:
+            for old in sorted(self.s["plans"], key=lambda k: self.s["plans"][k]["at"])[:-10]:
+                del self.s["plans"][old]
+        self.save()
+        return dict(plan_id=pid, options=out, notes=notes, minutes={k: v["plan_minutes"] for k, v in pred.items()})
+
+    def _summary(self, phi0: np.ndarray, phik: np.ndarray, theta: np.ndarray) -> str:
+        d = (phik - phi0) * theta
+        better = [PHRASES[LEARNABLE[i]] for i in np.argsort(d)[:2] if d[i] < -0.05]
+        worse = [PHRASES[LEARNABLE[i]] for i in np.argsort(-d)[:1] if d[i] > 0.05]
+        parts = []
+        if better:
+            parts.append("Less " + " and less ".join(better))
+        if worse:
+            parts.append("more " + worse[0])
+        return (", ".join(parts) + ".").capitalize() if parts else "A different arrangement of similar quality."
+
+    def pick(self, plan_id: str, option: int) -> dict:
+        p = self.s["plans"][plan_id]
+        self.s["choices"].append(dict(phis=p["phis"], chosen=int(option), at=p["at"]))
+        self.save()
+        L = self._learner()
+        return dict(ok=True, picks=len(self.s["choices"]),
+                    weights={r: round(float(w), 3) for r, w in zip(LEARNABLE, L.theta)})
+

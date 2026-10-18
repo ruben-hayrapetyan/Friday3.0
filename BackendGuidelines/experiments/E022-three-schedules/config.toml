@@ -1,0 +1,12 @@
+kinds = ["easy", "noisy", "moody", "missing", "adversarial"]
+users = 3          # tuning seeds: user seed = 100 * kind index + uid
+weeks = 10
+steps = 300000
+star_steps = 600000
+
+[rounds.r1]
+methods = ["seeds", "temperature", "diverse", "thompson", "archetype", "qbc"]
+mode = "mnl"
+feedback = true
+alt_frac = 0.5
+lam_scale = 1.0

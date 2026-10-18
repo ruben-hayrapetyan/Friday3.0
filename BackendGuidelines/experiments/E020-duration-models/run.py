@@ -28,8 +28,8 @@ def crps_normal(y: float, m: float, s: float) -> float:
     return s * (z * (2 * norm.cdf(z) - 1) + 2 * norm.pdf(z) - 1 / math.sqrt(math.pi))
 
 
-def run_student(kind: str, seed: int, models: list[str], weeks: int) -> list[dict]:
-    st = Student.make(kind, seed)
+def run_student(kind: str, seed: int, models: list[str], weeks: int, pop_sd: float = 0.2) -> list[dict]:
+    st = Student.make(kind, seed, pop_sd=pop_sd)
     items = term(st, weeks)
     events = sorted([(it.release, 0, it) for it in items] + [(it.due, 1, it) for it in items], key=lambda e: (e[0], e[1], e[2].id))
     zoo = {m: make(m, KINDS, COURSES) for m in models}
@@ -55,7 +55,10 @@ def main() -> None:
     rows = []
     for kind in CFG["types"]:
         for seed in CFG["seeds"]:
-            rows += run_student(kind, seed, CFG["models"], CFG["weeks"])
+            for pop_sd in CFG.get("pop_sd", [0.2]):
+                for r in run_student(kind, seed, CFG["models"], CFG["weeks"], pop_sd):
+                    r["pop_sd"] = pop_sd
+                    rows.append(r)
     df = pd.DataFrame(rows)
     (HERE / "results").mkdir(exist_ok=True)
     df.to_csv(HERE / "results" / f"predictions{TAG}.csv.gz", index=False)
@@ -67,6 +70,11 @@ def main() -> None:
                                         cov80=("cover80", "mean")).round(3).sort_values("crps")
     overall.to_csv(HERE / "results" / f"overall{TAG}.csv")
     print(overall.to_string())
+    if "pop_sd" in df and df.pop_sd.nunique() > 1:
+        for (ps, cold), x in df.assign(cold=df.week < 2).groupby(["pop_sd", "cold"]):
+            print(f"pop_sd={ps} {'weeks 0-1' if cold else 'weeks 2+'}:")
+            print(x.groupby("model").agg(mae=("abs_log_err", "median"), crps=("crps", "mean"),
+                                         cov80=("cover80", "mean")).round(3).sort_values("crps").to_string())
     print(t.unstack("model")["crps"].round(3).to_string())
     # figures
     fig, ax = plt.subplots(figsize=(6.5, 3.6))
