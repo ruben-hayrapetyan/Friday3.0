@@ -21,6 +21,9 @@ Output: one `REPORT.md` with an engine spec precise enough to write a v3 design 
 - **Session 2, end**: all phases done (P0-P9); `REPORT.md` complete (assembled from `report/sections/` by
   `report/assemble.py`; figures by `report/make_figures.py`). 25 experiment folders (E001-E018d). Recommendation: slot-state
   energy sampler with walls + construction/repair/CP-SAT fallback; BT ranking learning; gated dial units; supervisor policies.
+- **Session 3** (2026-10-17): program 2 started (`RESEARCH_PROMPT_2.md`, phases Q0-Q7, RQ11-RQ17): duration
+  prediction from estimates + recorded actuals, three schedules to pick from, learning from picks, constraints parsed from
+  text by Sonnet 5.5 via the `claude` CLI. Consumer: the Friday app (`../UI`).
 - Branch: `rhayrapetyan/backend` (off `main`). Project root: `BackendGuidelines/`.
 - **Machine is shared** from session 2: a trading bot runs on it (load average 30-45 on 16 cores). All jobs run at
   `nice -n 19` (asked by that session). Timing numbers from E004 on carry this load; each queue logs the load at start.
@@ -98,6 +101,14 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
     Added before E007; E004-E006 ran with the first 10 moves.
 23. **Skeleton hybrid keeps the better start** (construct vs time-limited CP-SAT stage 1): E004 showed the 3 s skeleton can be
     later than construction. Applies to runs after E004.
+
+24. **(Program 2) LLM = Sonnet 5.5 through the `claude` CLI** in print mode with no tools, as the Friday app already runs
+    it (`UI/Sources/Calendar/ClaudePanel.swift`): no API key, the user's own sign-in. Only for text -> typed constraints,
+    confirmed by the user and stored; never on the planning path.
+25. **(Program 2) Sidecar store, not `todos.json`.** Todo List drops unknown keys, so estimates, actuals, picks, constraints
+    and the learned profile live in Friday's own files (`~/Library/Application Support/Friday/engine/`), keyed by task UUID.
+26. **(Program 2) Bridge = `fr serve`**, JSON lines over stdio, launched by the app the way it launches the `claude` CLI
+    (no port, no HTTP stack; one long-lived process keeps numba's compiled code warm). Swift changes are out of scope.
 
 ## Findings so far
 
