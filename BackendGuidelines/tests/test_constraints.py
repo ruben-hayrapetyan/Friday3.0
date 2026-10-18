@@ -114,3 +114,45 @@ def test_soft_constraints_become_rules_that_build():
     names = {r.name for r in p.rules}
     assert {"user:0:prefer_time:outside", "user:1:daily_limit", "user:2:keep_free", "user:3:pacing",
             "user:4:finish_early", "user:6:avoid_time"} <= names
+
+
+def _friday_tasks():
+    from fr.product import adapter
+
+    def t(i, title, due, bucket="assignments"):
+        return dict(id=f"id-{i}", title=title, horizon="shortTerm", bucket=bucket, isDone=False, isStarred=False,
+                    createdAt="2026-10-15T12:00:00Z", progress=0, dueDate=due)
+    todos = [t(1, "Chem HW 5 evens", "2026-10-23T23:59:00"), t(2, "Chem Probelm set 7 odds", "2026-10-24T23:59:00"),
+             t(3, "Chem make study guide", "2026-10-23T23:59:00"), t(4, "Psych pedagogy statement", "2026-10-24T23:59:00"),
+             t(5, "Chem lab report", "2026-10-22T23:59:00"), t(6, "Chem chapter 8", "2026-10-22T23:59:00", "readings")]
+    return adapter, adapter.tasks_from(todos)
+
+
+def test_task_types_come_from_titles_and_exclusions_leave_tasks_out():
+    from datetime import datetime
+
+    adapter, tasks = _friday_tasks()
+    assert [t.type for t in tasks] == ["problem_set", "problem_set", "other", "other", "lab", "reading"]
+    sc, _ = adapter.scenario(datetime(2026, 10, 19, 8, 0), tasks, {t.id: 180 for t in tasks}, [])
+    c = C.AvoidTime(days=["mon", "tue"], strength="hard", target=C.Target(exclude_types=["problem_set"]))
+    sc2, notes = C.apply(sc, [c])
+    assert not notes
+    p, plan = _plan(sc2)
+    assert check(p, plan) == []
+    early = _work_minutes(p, plan, lambda sl: sl.weekday in (0, 1))
+    assert early and all("type:problem_set" in p.items[k].tags for k, _ in early)  # only problem sets on Mon/Tue
+
+
+def test_one_sitting_soft_strengths_set_which_tasks_split_first():
+    from datetime import datetime
+
+    adapter, tasks = _friday_tasks()
+    sc, _ = adapter.scenario(datetime(2026, 10, 19, 8, 0), tasks, {t.id: 180 for t in tasks}, [])
+    reply = {"constraints": [
+        {"kind": "one_sitting", "strength": "mild", "target": {"types": ["problem_set"]}},
+        {"kind": "one_sitting", "strength": "medium", "target": {"exclude_types": ["problem_set"]}}]}
+    sc2, _ = C.apply(sc, C.Parse.model_validate(reply).constraints)
+    cost = {s.title: s.chunk_cost for s in sc2.specs}
+    assert cost["Chem HW 5 evens"] == cost["Chem Probelm set 7 odds"] == C.SITTING["mild"]
+    assert cost["Chem make study guide"] == cost["Chem lab report"] == C.SITTING["medium"]
+    assert C.OneSitting(target=C.Target()).strength == "hard"  # replies from before strengths still mean never split

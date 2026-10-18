@@ -55,7 +55,15 @@ GUIDE2 = GUIDE + """
 - A request that is not a constraint at all (a question about the schedule, an action such as sending an email or
   setting an alarm, a goal about grades) goes to "unsupported" with a short reason, so the user hears that Friday did
   not act on it."""
-GUIDES = {0: None, 1: GUIDE, 2: GUIDE2}
+# After E019, from use: the schema gained task types, exclusions and a soft one sitting (decision 36)
+GUIDE3 = GUIDE2 + """
+- Each task in the context has a "type" (problem_set, essay, lab, reading, exam_prep, project, email, other), finer
+  than its kind. Use target.types for "problem sets", "essays", "labs"; use exclude_types / exclude_titles for "other
+  than", "except", "as opposed to".
+- Wanting tasks done in one go, in one sitting, without breaking them up is one_sitting: hard if they must never be
+  split, soft ("if possible", "I like to", "I'd rather") otherwise. A preference for which tasks to split first is two
+  one_sitting constraints: a weaker strength for the ones that may be split, a stronger one for the rest."""
+GUIDES = {0: None, 1: GUIDE, 2: GUIDE2, 3: GUIDE3}
 
 
 @dataclass
@@ -159,4 +167,4 @@ def parse_text(text: str, context: dict, prompt: Prompt, model: str = MODEL, cal
     return Result(None, raw, err, cost, secs, 1 + prompt.retries)
 
 
-DEFAULT = Prompt("guide2", guide=2)  # E019: 99.0% on the held-out split
+DEFAULT = Prompt("guide3", guide=3)  # guide2 scored 99.0% on E019's held-out split; guide3 only adds lines for new types

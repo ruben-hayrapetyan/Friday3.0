@@ -136,3 +136,22 @@ def test_server_round_trip(tmp_path):
             assert reply["error"]["type"] == "ValueError"
     p.stdin.close()
     p.wait(timeout=30)
+
+
+def test_soft_one_sitting_means_fewer_sessions(tmp_path):
+    reply = {"constraints": [{"kind": "one_sitting", "strength": "strong", "paraphrase": "Do things in one go."}],
+             "unsupported": [], "questions": []}
+    todos = [t for t in _todos() if not t["isDone"]]
+
+    def sessions(eng):
+        for t in todos:
+            eng.set_estimate(t["id"], 150)
+        out = eng.plan(todos, _events(), NOW)
+        return len(out["options"][0]["blocks"])
+
+    before = sessions(Engine(tmp_path / "a", steps=60_000))
+    eng = Engine(tmp_path / "b", steps=60_000, parser=_fake_parser(reply))
+    r = eng.parse_constraints("I like to do things in one go", todos, _events(), NOW)
+    assert r["constraints"][0]["hard"] is False
+    eng.confirm_constraints(r["pending_id"], [0])
+    assert sessions(eng) < before

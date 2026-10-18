@@ -153,7 +153,7 @@ class Engine:
         tasks = adapter.tasks_from(todos)
         return dict(today=now.strftime("%Y-%m-%d (%A)"), courses=sorted({t.course for t in tasks if t.course}),
                     tasks=[dict(title=t.title, course=t.course, kind=adapter.PRESET[t.kind] if t.kind not in
-                                ("pset", "essay", "lab") else "assignment", energy=None) for t in tasks],
+                                ("pset", "essay", "lab") else "assignment", type=t.type, energy=None) for t in tasks],
                     events=sorted({e.get("title", "") for e in events})[:40])
 
     def parse_constraints(self, text: str, todos: list[dict], events: list[dict], now: datetime) -> dict:

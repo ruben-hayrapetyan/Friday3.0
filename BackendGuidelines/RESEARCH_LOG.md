@@ -140,6 +140,15 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
     and hurt missing-rule / adversarial users. Matches what the app collects.
 35. **(Program 2) Questions** (E024 round 2): at most two "how long did it take?" a week (misses 2.9% -> 0.2% at p95);
     estimates only when one saves >= 60 min of p95 padding (neutral on misses, frees ~20 min/day).
+36. **(After program 2, from use, 2026-10-18) Schema: task types, exclusions, soft one sitting.** The user's "I like to
+    do things in one go, but split problem sets rather than other assignments" came back unsupported: one_sitting was
+    hard only, and a target could neither name problem sets (kind "assignment" covers them) nor leave tasks out. Added
+    `Target.types` (from the title: `adapter.type_of`; a task in Assignments must say "problem set", "HW", ... to be
+    one), `exclude_types`, `exclude_titles` (compiled by tagging matched items, since rule scopes have no negation), and
+    `OneSitting.strength` (soft = chunk_cost 0.2 / 0.4 / 0.8). Prompt guide3 = guide2 plus three lines; E019's 99.0% was
+    measured on guide2 and the old schema, not re-run. Live check: Sonnet 5.5 turns the sentence into one_sitting mild
+    for problem sets + medium for everything else. Engine check: a strong soft one sitting takes the test week's
+    sessions from 2-3 per task to 1.
 
 ## Findings so far
 

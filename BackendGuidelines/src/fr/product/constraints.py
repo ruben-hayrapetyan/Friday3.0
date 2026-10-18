@@ -22,11 +22,15 @@ Day = Literal["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 Strength = Literal["hard", "strong", "medium", "mild"]
 Kind = Literal["assignment", "reading", "project", "exam_prep", "errand", "chore", "routine", "habit", "goal",
                "side_project"]
+TaskType = Literal["problem_set", "essay", "lab", "reading", "exam_prep", "project", "email", "other"]
 _CLOCK = re.compile(r"^([01]?\d|2[0-4]):[0-5]\d$")
 
 # Soft strengths, in points per hour (prices) or as weights (measures). The reference's own soft rules sit at 1-10.
 PRICE = {"mild": 1.0, "medium": 3.0, "strong": 8.0}
 WEIGHT = {"mild": 1.0, "medium": 3.0, "strong": 8.0}
+# A soft one sitting raises the item's cost per extra session (chunk_cost; the default rule charges 10 x this x the
+# item's hours for each session after the first). Presets start at 0.05-0.1, so mild already more than doubles it.
+SITTING = {"mild": 0.2, "medium": 0.4, "strong": 0.8}
 
 
 def _clock_ok(v: str | None) -> str | None:
@@ -42,25 +46,41 @@ class _Base(BaseModel):
 
 
 class Target(BaseModel):
-    """Which flexible items a constraint is about. Every field empty = all flexible work."""
+    """Which flexible items a constraint is about. Every field empty = all flexible work. The include fields narrow it
+    down (all must hold); the exclude fields then leave tasks out."""
 
     model_config = ConfigDict(extra="forbid")
     courses: list[str] | None = Field(None, description="course / area names exactly as listed in the context")
     kinds: list[Kind] | None = None
+    types: list[TaskType] | None = Field(None, description="task types as listed in the context (finer than kinds)")
     titles: list[str] | None = Field(None, description="case-insensitive substrings of task titles")
     energy: list[Literal["deep", "light", "physical"]] | None = None
+    exclude_types: list[TaskType] | None = Field(None, description="leave out tasks of these types")
+    exclude_titles: list[str] | None = Field(None, description="leave out tasks whose title contains one of these")
 
     def is_all(self) -> bool:
-        return not (self.courses or self.kinds or self.titles or self.energy)
+        return not (self.courses or self.kinds or self.types or self.titles or self.energy or self.exclude_types
+                    or self.exclude_titles)
+
+    def needs_tags(self) -> bool:
+        """The engine's rule scopes have no task types and no exclusions; such a target is compiled by tagging."""
+        return bool(self.types or self.exclude_types or self.exclude_titles)
 
     def matches(self, s: ItemSpec) -> bool:
+        types = [t[5:] for t in s.tags if t.startswith("type:")]
         if self.courses and s.area not in self.courses:
             return False
         if self.kinds and s.preset not in self.kinds:
             return False
+        if self.types and not any(t in self.types for t in types):
+            return False
         if self.titles and not any(t.lower() in s.title.lower() for t in self.titles):
             return False
         if self.energy and s.energy not in self.energy:
+            return False
+        if self.exclude_types and any(t in self.exclude_types for t in types):
+            return False
+        if self.exclude_titles and any(t.lower() in s.title.lower() for t in self.exclude_titles):
             return False
         return True
 
@@ -162,8 +182,12 @@ class SessionLength(_Base):
 
 
 class OneSitting(_Base):
+    """Do each of the target's tasks in one go. hard: never split; soft: split only when one sitting doesn't fit, and
+    the stronger, the more it takes. Different strengths for different tasks say which to split first."""
+
     kind: Literal["one_sitting"] = "one_sitting"
-    target: Target
+    strength: Strength = "hard"
+    target: Target = Field(default_factory=Target)
 
 
 class Pacing(_Base):
@@ -242,6 +266,14 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
     rules = out.extra_rules
     ids = max((s.id for s in out.specs), default=0)
     flexible = [s for s in out.specs if s.when != "fixed"]
+    def scope(target: Target, name: str) -> dict | None:
+        if not target.needs_tags():
+            return target.scope()
+        for sp in flexible:
+            if target.matches(sp) and name not in sp.tags:
+                sp.tags = tuple(sp.tags) + (name,)
+        return dict(tags=[name])
+
     for k, c in enumerate(constraints):
         name = f"user:{k}:{c.kind}"
         if isinstance(c, SleepC):
@@ -256,15 +288,15 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
         elif isinstance(c, (AvoidTime, PreferTime)):
             if isinstance(c, AvoidTime):
                 price = "forbid" if c.strength == "hard" else PRICE[c.strength]
-                rules.append(dict(type="time_preference", name=name, stage="preferences", scope=c.target.scope(),
+                rules.append(dict(type="time_preference", name=name, stage="preferences", scope=scope(c.target, name),
                                   params=dict(days=c.days, start=c.start, end=c.end, price=price)))
             else:  # everything outside the window costs a little
                 if c.start or c.end:
-                    rules.append(dict(type="time_preference", name=name + ":outside", scope=c.target.scope(),
+                    rules.append(dict(type="time_preference", name=name + ":outside", scope=scope(c.target, name),
                                       params=dict(days=c.days, start=c.end or "00:00", end=c.start or "24:00",
                                                   price=PRICE[c.strength])))
                 if c.days:
-                    rules.append(dict(type="time_preference", name=name + ":other_days", scope=c.target.scope(),
+                    rules.append(dict(type="time_preference", name=name + ":other_days", scope=scope(c.target, name),
                                       params=dict(days_except=c.days, price=PRICE[c.strength])))
         elif isinstance(c, Commitment):
             s0, e0 = _mins(c.start), _mins(c.end)
@@ -286,7 +318,7 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
             else:
                 if c.strength == "hard":
                     notes.append(f"{name}: a hard limit on part of the work or some days is applied as a strong preference")
-                rules.append(dict(type="daily_load", name=name, scope=c.target.scope(),
+                rules.append(dict(type="daily_load", name=name, scope=scope(c.target, name),
                                   weight=WEIGHT["strong" if c.strength == "hard" else c.strength],
                                   params=dict(threshold=_units(c.hours))))
                 if c.days:
@@ -306,7 +338,7 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
                         if s.max_chunk_min:
                             s.max_chunk_min = max(s.max_chunk_min, s.min_chunk_min)
             elif c.max_hours:
-                rules.append(dict(type="deep_run", name=name, weight=WEIGHT[c.strength], scope=c.target.scope() or {},
+                rules.append(dict(type="deep_run", name=name, weight=WEIGHT[c.strength], scope=scope(c.target, name) or {},
                                   params=dict(threshold=_units(c.max_hours))))
             if c.strength != "hard" and c.min_hours:
                 for s in hit:
@@ -317,10 +349,13 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
         elif isinstance(c, OneSitting):
             for s in flexible:
                 if c.target.matches(s) and s.amount == "fixed":
-                    s.shape = "one_sitting"
+                    if c.strength == "hard":
+                        s.shape = "one_sitting"
+                    else:
+                        s.chunk_cost = max(s.chunk_cost, SITTING[c.strength])
         elif isinstance(c, Pacing):
             if c.style == "batch_by_course":
-                rules.append(dict(type="batch_by_day", name=name, weight=2.0, scope=c.target.scope(), params=dict(by="area")))
+                rules.append(dict(type="batch_by_day", name=name, weight=2.0, scope=scope(c.target, name), params=dict(by="area")))
             else:
                 for s in flexible:
                     if c.target.matches(s) and s.amount == "fixed":
@@ -331,7 +366,7 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
                     if c.target.matches(s) and s.due is not None:
                         s.due = s.due - int(c.days * 1440)
             else:
-                rules.append(dict(type="finish_early", name=name, weight=WEIGHT[c.strength], scope=c.target.scope(),
+                rules.append(dict(type="finish_early", name=name, weight=WEIGHT[c.strength], scope=scope(c.target, name),
                                   params=dict(days=c.days)))
         elif isinstance(c, Buffer):
             b = dict(out.settings.buffers)

@@ -25,6 +25,10 @@ KIND_WORDS = [  # first match wins
     ("lab", re.compile(r"\blab\b", re.I)),
     ("reading", re.compile(r"\b(read|reading|chapter|ch\.)", re.I)),
 ]
+# What a task is, finer than the engine's presets, for constraints that name it ("split problem sets first"). Read from
+# the title alone, so a task in the Assignments list that never says so ("make study guide") is not a problem set.
+PROBLEM_SET = re.compile(r"\b(prob\w*\s*sets?|p-?sets?|hw\s*\d*|homework|ps\s*\d+|worksheets?|exercises?)\b", re.I)
+TYPES = ("problem_set", "essay", "lab", "reading", "exam_prep", "project", "email", "other")
 PRESET = {"pset": "assignment", "essay": "assignment", "lab": "assignment", "reading": "reading",
           "exam_prep": "exam_prep", "project": "project", "email": "errand", "other": "assignment"}
 HARD_KINDS = {"pset", "essay", "lab", "exam_prep", "project"}
@@ -55,6 +59,14 @@ def kind_of(task: dict) -> str:
     return "other"
 
 
+def type_of(task: dict) -> str:
+    """One of TYPES. Unlike kind_of, which feeds the duration model, a problem set needs the title to say so."""
+    if task.get("bucket") != "emails" and PROBLEM_SET.search(task.get("title", "")):
+        return "problem_set"
+    kind = kind_of(task)
+    return kind if kind in TYPES else "other"
+
+
 @dataclass
 class Task:
     """One open task as the engine sees it."""
@@ -65,6 +77,10 @@ class Task:
     due: int | None  # engine minutes
     progress: float  # 0..1 from the quarters slider
     raw: dict
+
+    @property
+    def type(self) -> str:
+        return type_of(self.raw)
 
     @property
     def hard(self) -> bool:
@@ -109,7 +125,7 @@ def scenario(now: datetime, tasks: list[Task], minutes: dict[str, float], events
         ids[n] = t.id
         dur = int(max(15, math.ceil(left / 15) * 15))
         preset = PRESET[t.kind]
-        over = dict(area=t.course, duration_min=dur, due=t.due, release=t0,
+        over = dict(area=t.course, duration_min=dur, due=t.due, release=t0, tags=(f"type:{t.type}",),
                     firmness="hard" if t.hard else ("soft" if t.due is not None else "none"))
         if preset in ("assignment", "reading", "exam_prep", "project"):
             over["min_chunk_min"] = min(60 if preset == "project" else 30, dur)
