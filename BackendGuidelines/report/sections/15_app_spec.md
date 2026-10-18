@@ -18,7 +18,20 @@ Additions to section 12, all implemented in `src/fr/product/` and exposed to the
 
 ### 15.2 Durations
 
-SPEC_DURATIONS_PLACEHOLDER
+- **Model** `hier_fused_drift_fa3_recal` (E020): log-normal predictive distribution. Two Bayesian ridge regressions
+  over (all, kind, course, course x kind): log(actual / estimate) and log length (prior: population defaults per
+  kind). With an estimate and fewer than three recorded lengths, the prediction is the estimate times the learned ratio
+  (the user's numbers first); after that the two predictions are fused by precision. Observations fade with a 4-week
+  half-life. Online recalibration shifts medians and scales spreads from the model's own one-step-ahead errors.
+- **What the plan reserves** (E021): the remaining-work quantile (D given D > time already worked) at **p95 for hard
+  deadlines** and the median for flexible tasks, times the share not yet done (Todo List's quarters).
+- **Recording**: `record_actual` stores the length with the estimate that was in force; recorded lengths of tasks
+  without an estimate still train the length model.
+- **Questions** (E024): finished tasks nobody timed, **at most two in any 7 days**; an estimate for an open
+  hard-deadline task only when one would cut its p95 padding by at least 60 minutes (at most two at a time). Asked
+  tasks are never asked again (`mark_asked`).
+- Known limit: the fused prediction is overconfident when every task has an estimate (p80 covers 74%); at p95 coverage
+  is 94-96%. Fusing with a correlation term (`_rhoN`) helps a little and is not shipped.
 
 ### 15.3 Three schedules and learning from the pick
 
