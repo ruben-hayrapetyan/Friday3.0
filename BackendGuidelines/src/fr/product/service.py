@@ -31,9 +31,10 @@ logging.getLogger("fr.core.pwl").setLevel(logging.ERROR)
 
 DEFAULT_DIR = Path.home() / "Library/Application Support/Friday/engine"
 DURATION_MODEL = "hier_fused_drift_fa3_recal"  # E020 round 3
-OPTION_METHOD = "thompson"  # E022 (provisional until E022 reports; see RESEARCH_LOG)
+OPTION_METHOD = "thompson+post"  # E022 round 2: Thompson alternatives, ranked so option 0 is the likeliest pick
 Q_HARD, Q_FLEX = 0.95, 0.5  # E021 round 2: p80 -> p95 cut hard misses 15% -> 4% for ~23 min/day of slack
-ASK_SAVING = 60.0  # minutes of padding an answer must save (E024)
+ASK_SAVING = 60.0  # minutes of padding an estimate must save (E024: voi60 is neutral on misses, frees ~20 min/day)
+ACTUALS_PER_WEEK = 2  # "how long did it take?" questions (E024 round 2: hard misses 2.9% -> 0.2% at p95)
 Z_HARD = float(norm.ppf(Q_HARD))
 # how an option differs, rule by rule: (when the option is better on it, when it is worse)
 PHRASES = {
@@ -115,11 +116,11 @@ class Engine:
                              kind=t.kind, course=t.course, spread=round(s, 3))
         return out
 
-    def questions(self, todos: list[dict], now: datetime, max_estimates: int = 2, max_actuals: int = 3,
+    def questions(self, todos: list[dict], now: datetime, max_estimates: int = 2, max_actuals: int = ACTUALS_PER_WEEK,
                   min_saving: float = ASK_SAVING) -> dict:
         """What Friday would like to ask (E024): an estimate for an open hard-deadline task without one, only when an
         answer would cut the time the plan reserves for it by at least `min_saving` minutes (largest saving first);
-        and lengths of finished tasks nobody recorded."""
+        and lengths of finished tasks nobody recorded, at most `max_actuals` asked in any 7 days."""
         tasks = adapter.tasks_from(todos)
         mdl = self._model({t.course for t in tasks if t.course})
         week = clock.to_minutes(now) / 10080
@@ -133,11 +134,14 @@ class Engine:
             if saving >= min_saving:
                 cands.append((saving, t, round(math.exp(m))))
         cands.sort(key=lambda x: -x[0])
+        done_ids = {str(t["id"]) for t in todos if t.get("isDone")}
+        week_ago = clock.to_minutes(now) - 7 * 1440
+        asked_lately = sum(1 for tid, at in self.s["asked"].items() if tid in done_ids and clock.parse(at) >= week_ago)
         done = [t for t in todos if t.get("isDone") and str(t["id"]) not in self.s["actuals"]
-                and str(t["id"]) not in self.s["asked"]]
+                and str(t["id"]) not in self.s["asked"]][:max(0, max_actuals - asked_lately)]
         return dict(estimates=[dict(task_id=t.id, title=t.title, guess_minutes=g, saves_minutes=round(sv))
                                for sv, t, g in cands[:max_estimates]],
-                    actuals=[dict(task_id=str(t["id"]), title=t["title"]) for t in done[:max_actuals]])
+                    actuals=[dict(task_id=str(t["id"]), title=t["title"]) for t in done])
 
     def mark_asked(self, task_id: str) -> dict:
         self.s["asked"][task_id] = clock.iso(clock.to_minutes(datetime.now()))

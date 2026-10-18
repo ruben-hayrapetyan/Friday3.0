@@ -91,6 +91,12 @@ def test_recorded_lengths_move_predictions(tmp_path):
     assert after["p50"] > 180 and after["similar_recorded"] == 6
     q = eng.questions(todos, NOW, min_saving=0.0)
     assert any(x["task_id"] == todos[5]["id"] for x in q["actuals"])  # the finished A3 was never timed
+    # at most two "how long did it take?" questions a week (E024)
+    done = [dict(id=f"untimed-{k}", title=f"MATH 2940 PS{k}", bucket="assignments", isDone=True) for k in range(4)]
+    assert len(eng.questions(todos + done, NOW)["actuals"]) == 2
+    eng.mark_asked(done[0]["id"])
+    eng.mark_asked(done[1]["id"])
+    assert eng.questions(todos + done, NOW)["actuals"] == []
 
 
 def test_constraints_need_confirmation_and_then_bind(tmp_path):

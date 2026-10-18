@@ -40,13 +40,13 @@ The app launches one long-lived child process, the way it already launches the `
 | `set_estimate` | `task_id`, `minutes` | `{ok}`: the user's preliminary estimate for one task |
 | `record_actual` | `task` (a todo), `minutes` | `{ok, recorded}`: how long a finished task really took (from a timer or the user) |
 | `predict` | `todos`, `now?` | per open task id: `p50`, `p80` (minutes), `plan_minutes` (what the plan reserves: the p50 for flexible tasks, the p95 for hard deadlines (E021), times the share not yet done), `estimate`, `similar_recorded`, `kind`, `course`, `spread` |
-| `questions` | `todos`, `now?` | `{estimates: [{task_id, title, guess_minutes}], actuals: [{task_id, title}]}`: at most two estimates Friday wants (unsure, hard deadline first) and at most three finished tasks nobody timed. After asking, call `mark_asked` so it is not asked again. |
+| `questions` | `todos`, `now?` | `{estimates: [{task_id, title, guess_minutes}], actuals: [{task_id, title}]}`: at most two estimates Friday wants (unsure, hard deadline first) and finished tasks nobody timed, at most two asked in any 7 days (E024). After asking, call `mark_asked` so it is not asked again. |
 | `mark_asked` | `task_id` | `{ok}` |
 | `parse_constraints` | `text`, `todos?`, `events?`, `now?` | `{ok, pending_id, constraints: [{index, kind, paraphrase, hard}], questions, unsupported: [{source, reason}]}`. Calls Claude (Sonnet 5.5 via the `claude` CLI, no tools, ~3 s). **Nothing applies yet.** Show each paraphrase with a checkbox; show `questions` and `unsupported` as they are. |
 | `confirm_constraints` | `pending_id`, `accept` (list of indexes) | `{ok, added: [ids]}`: only accepted constraints are stored |
 | `list_constraints` | - | `[{id, paraphrase, kind, text}]` |
 | `remove_constraint` | `id` | `{ok}` |
-| `plan` | `todos`, `events`, `now?`, `method?` | `{plan_id, options: [3 x {option, label, summary, blocks: [{task_id, start, end}], late_tasks, unplaced_tasks, valid}], notes, minutes}`. Option 0 is the recommended plan. `summary` says how an option differs ("Less late-night work, more busy weekends."). Blocks cover the next 14 days. |
+| `plan` | `todos`, `events`, `now?`, `method?` | `{plan_id, options: [3 x {option, label, summary, blocks: [{task_id, start, end}], late_tasks, unplaced_tasks, valid}], notes, minutes}`. Option 0 is the recommended plan: of the three, the one Friday expects you to pick (E022). `summary` says how an option differs ("Less late-night work, more busy weekends."). Blocks cover the next 14 days. |
 | `pick` | `plan_id`, `option` | `{ok, picks, weights}`: the user chose this option; Friday learns from it |
 
 ## What the app needs to add (frontend, not built here)
@@ -55,7 +55,7 @@ The app launches one long-lived child process, the way it already launches the `
    to tasks once there is history ("Friday thinks 3 h 20 m, you said 2 h").
 2. **Recording**: a start / stop timer or a "took me ..." prompt when a task is ticked, then `record_actual`. Ticking
    without a time is fine; `questions.actuals` will ask later for a few.
-3. **Asking**: at most once a day, show `questions` (two estimates, three lengths); then `mark_asked`.
+3. **Asking**: at most once a day, show `questions` (up to two estimates, up to two lengths a week); then `mark_asked`.
 4. **Three schedules**: a "Plan my week" action calls `plan`; show the three options side by side on the calendar
    (blocks as tentative events), with `label` and `summary`; on choosing, call `pick` and write that option's blocks.
 5. **Constraints**: a text box ("Tell Friday about your week"), `parse_constraints`, a confirmation sheet, then
