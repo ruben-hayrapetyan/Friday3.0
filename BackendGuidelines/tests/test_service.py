@@ -279,3 +279,15 @@ def test_keep_can_be_undone(tmp_path):
     assert eng.s["kept_titles"] == ["Chess Club"] and eng.s["event_ratings"]["chess club"]["level"] == "required"
     eng.decide_event("Chess Club", "2026-10-23T18:00", "unkeep")
     assert eng.s["kept_events"] == [] and eng.s["kept_titles"] == [] and "chess club" not in eng.s["event_ratings"]
+
+
+def test_one_timed_task_does_not_double_every_estimate(tmp_path):
+    eng = Engine(tmp_path)
+    todos = _todos()
+    eng.set_estimate(todos[0]["id"], 720)
+    eng.set_estimate(todos[3]["id"], 240)
+    done = dict(id="catc", title="CATC quant strategy", bucket="assignments", isDone=True)
+    eng.set_estimate("catc", 60)
+    eng.record_actual(done, 128)  # took twice the estimate, once
+    p = eng.predict(todos, NOW)
+    assert p[todos[0]["id"]]["p50"] == 720 and p[todos[3]["id"]]["p50"] == 240

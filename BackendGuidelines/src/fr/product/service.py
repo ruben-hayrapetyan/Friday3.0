@@ -254,6 +254,10 @@ class Engine:
             m, s = mdl.predict(t.course, t.kind, est, week)
             q = Q_HARD if t.hard else Q_FLEX
             n = n_same.get((t.course, t.kind), 0)
+            if est is not None and n < TRUSTED:
+                # your estimate stands until TRUSTED lengths of that kind are timed, as the Lengths page says: one timed
+                # task that ran 2x made the model double every estimate, of every kind (decision 43)
+                m = math.log(est)
             plan_min = min(quantile(m, s, q), cushion(est is not None, n) * quantile(m, s, 0.5)) * (1 - t.progress)
             out[t.id] = dict(p50=round(quantile(m, s, 0.5)), p80=round(quantile(m, s, 0.8)), plan_minutes=round(plan_min),
                              quantile=q, estimate=est, similar_recorded=n_same.get((t.course, t.kind), 0),

@@ -207,6 +207,12 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
     Sunday; the window now ends when the latest late work is done (on the user's week: Thu 23:59 -> Sun 12:00, and
     table tennis, chess, poker and a climbing session are offered). The user's exam rule had been refused only because
     it was sent before exam_focus went live; it now parses (3 days, with a question).
+43. **(After program 2, from use, 2026-10-18) Estimates stand until three lengths of that kind are timed.** The user
+    timed one task (CATC: estimate 60 min, took 128) and the duration model then expected twice every estimate, of
+    every kind (CS A3 720 -> 1492 min, quiz prep 240 -> 420): 95 h due by Sunday against the user's 48 h, 16 tasks
+    late. The Lengths page has always said the estimate is the prediction until three lengths are recorded; predict()
+    now does that (log-mean = the estimate while fewer than TRUSTED of that course and kind are timed). Same week: 16
+    late -> 3, CS A3 on time.
 
 ## Findings so far
 
