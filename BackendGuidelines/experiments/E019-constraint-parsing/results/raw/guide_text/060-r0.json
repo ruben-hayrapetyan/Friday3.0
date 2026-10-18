@@ -1,0 +1,32 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "source": "Read section 4.3 before doing problem set 7.",
+    "paraphrase": "Finish the MATH 2940 reading 4.3 before starting MATH 2940 problem set 7.",
+    "kind": "order",
+    "first": "MATH 2940 reading 4.3",
+    "then": "MATH 2940 problem set 7"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Read section 4.3 before doing problem set 7.",
+    "paraphrase": "Finish the MATH 2940 reading 4.3 before starting MATH 2940 problem set 7.",
+    "kind": "order",
+    "first": "MATH 2940 reading 4.3",
+    "then": "MATH 2940 problem set 7"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0067462,
+ "seconds": 2.8258374170400202,
+ "calls": 1
+}

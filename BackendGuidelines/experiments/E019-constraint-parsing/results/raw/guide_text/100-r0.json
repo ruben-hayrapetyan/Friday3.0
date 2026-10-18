@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "If something is due at midnight I want to submit it by 10pm.",
+    "reason": "Friday can only finish work a number of days before a deadline, and it can't apply a rule that depends on a task's due time. A 2-hour buffer for midnight deadlines can't be expressed without changing its meaning."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "If something is due at midnight I want to submit it by 10pm.",
+    "reason": "Friday can only finish work a number of days before a deadline, and it can't apply a rule that depends on a task's due time. A 2-hour buffer for midnight deadlines can't be expressed without changing its meaning."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0110482,
+ "seconds": 6.060779792023823,
+ "calls": 1
+}

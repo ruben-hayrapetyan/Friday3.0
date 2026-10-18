@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Schedule my work around the weather, I like studying when it rains.",
+    "reason": "Friday has no access to weather and can't schedule based on rain or other conditions."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Schedule my work around the weather, I like studying when it rains.",
+    "reason": "Friday has no access to weather and can't schedule based on rain or other conditions."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.007365399999999999,
+ "seconds": 2.8804724171059206,
+ "calls": 1
+}

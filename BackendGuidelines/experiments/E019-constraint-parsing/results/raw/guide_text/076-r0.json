@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Prioritize whichever class I'm doing worst in.",
+    "reason": "Friday has no way to rank or weight courses against each other, and it doesn't know which class is going worst. Nothing in the available constraint types would capture this without changing its meaning."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Prioritize whichever class I'm doing worst in.",
+    "reason": "Friday has no way to rank or weight courses against each other, and it doesn't know which class is going worst. Nothing in the available constraint types would capture this without changing its meaning."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0083002,
+ "seconds": 3.7210782079491764,
+ "calls": 1
+}

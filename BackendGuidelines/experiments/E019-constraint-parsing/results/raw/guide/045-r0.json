@@ -1,0 +1,41 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "one_sitting",
+    "target": {
+     "titles": [
+      "PHYS 2213 lab report"
+     ]
+    },
+    "source": "Do the lab report in one go.",
+    "paraphrase": "Do the PHYS 2213 lab report in a single sitting."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Do the lab report in one go.",
+    "paraphrase": "Do the PHYS 2213 lab report in a single sitting.",
+    "kind": "one_sitting",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "PHYS 2213 lab report"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.007535400000000001,
+ "seconds": 2.8867340829456225,
+ "calls": 1
+}

@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Schedule my work around the weather, I like studying when it rains.",
+    "reason": "Friday's constraint types can't depend on weather or rain conditions, so this can't be expressed as a time-based constraint."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Schedule my work around the weather, I like studying when it rains.",
+    "reason": "Friday's constraint types can't depend on weather or rain conditions, so this can't be expressed as a time-based constraint."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.006408199999999999,
+ "seconds": 2.6040305419592187,
+ "calls": 1
+}

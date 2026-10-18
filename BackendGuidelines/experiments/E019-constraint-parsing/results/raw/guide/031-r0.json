@@ -1,0 +1,44 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "commitment",
+    "title": "Flying home",
+    "start": "14:00",
+    "end": "23:00",
+    "event_kind": "other",
+    "dates": [
+     "2026-10-26"
+    ],
+    "days": null,
+    "source": "I'm flying home on the 26th, I'm busy from 2pm until 11pm that day.",
+    "paraphrase": "You're busy flying home on Oct 26 from 14:00 to 23:00."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I'm flying home on the 26th, I'm busy from 2pm until 11pm that day.",
+    "paraphrase": "You're busy flying home on Oct 26 from 14:00 to 23:00.",
+    "kind": "commitment",
+    "title": "Flying home",
+    "days": null,
+    "dates": [
+     "2026-10-26"
+    ],
+    "start": "14:00",
+    "end": "23:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.008095399999999999,
+ "seconds": 3.0899756249273196,
+ "calls": 1
+}

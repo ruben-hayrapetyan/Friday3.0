@@ -1,0 +1,44 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "source": "Every Saturday I volunteer at the shelter 9 to 1.",
+    "paraphrase": "Volunteering at the shelter every Saturday from 09:00 to 13:00.",
+    "kind": "commitment",
+    "title": "Volunteer at the shelter",
+    "days": [
+     "sat"
+    ],
+    "dates": null,
+    "start": "09:00",
+    "end": "13:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Every Saturday I volunteer at the shelter 9 to 1.",
+    "paraphrase": "Volunteering at the shelter every Saturday from 09:00 to 13:00.",
+    "kind": "commitment",
+    "title": "Volunteer at the shelter",
+    "days": [
+     "sat"
+    ],
+    "dates": null,
+    "start": "09:00",
+    "end": "13:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0069502,
+ "seconds": 2.7021830420708284,
+ "calls": 1
+}

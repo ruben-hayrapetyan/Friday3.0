@@ -1,0 +1,41 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "one_sitting",
+    "target": {
+     "titles": [
+      "PHYS 2213 lab report"
+     ]
+    },
+    "source": "Do the lab report in one go.",
+    "paraphrase": "Schedule the PHYS 2213 lab report as a single uninterrupted session."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Do the lab report in one go.",
+    "paraphrase": "Schedule the PHYS 2213 lab report as a single uninterrupted session.",
+    "kind": "one_sitting",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "PHYS 2213 lab report"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0075309,
+ "seconds": 3.018572041997686,
+ "calls": 1
+}

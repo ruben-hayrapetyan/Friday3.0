@@ -1,0 +1,92 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "source": "I go to bed at 12:30 and get up at 8:30.",
+    "paraphrase": "You usually sleep at 00:30 and wake at 08:30 every night.",
+    "kind": "sleep",
+    "nights": null,
+    "bedtime": "00:30",
+    "wake": "08:30"
+   },
+   {
+    "source": "No work after 11 though, I need time to wind down.",
+    "paraphrase": "Never schedule any work between 23:00 and the morning.",
+    "days": null,
+    "start": "23:00",
+    "end": "07:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "source": "I'm at the gym Tue/Thu 6-7pm.",
+    "paraphrase": "You have the gym every Tuesday and Thursday from 18:00 to 19:00.",
+    "kind": "commitment",
+    "title": "Gym",
+    "days": [
+     "tue",
+     "thu"
+    ],
+    "dates": null,
+    "start": "18:00",
+    "end": "19:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I go to bed at 12:30 and get up at 8:30.",
+    "paraphrase": "You usually sleep at 00:30 and wake at 08:30 every night.",
+    "kind": "sleep",
+    "nights": null,
+    "bedtime": "00:30",
+    "wake": "08:30"
+   },
+   {
+    "source": "No work after 11 though, I need time to wind down.",
+    "paraphrase": "Never schedule any work between 23:00 and the morning.",
+    "days": null,
+    "start": "23:00",
+    "end": "07:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "source": "I'm at the gym Tue/Thu 6-7pm.",
+    "paraphrase": "You have the gym every Tuesday and Thursday from 18:00 to 19:00.",
+    "kind": "commitment",
+    "title": "Gym",
+    "days": [
+     "tue",
+     "thu"
+    ],
+    "dates": null,
+    "start": "18:00",
+    "end": "19:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0118342,
+ "seconds": 5.105776167009026,
+ "calls": 1
+}

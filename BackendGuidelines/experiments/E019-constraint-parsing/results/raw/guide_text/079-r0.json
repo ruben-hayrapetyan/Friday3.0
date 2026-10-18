@@ -1,0 +1,30 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Wake me up at 7 with an alarm.",
+    "reason": "Friday only builds plans from constraints. It can't set alarms or send wake-up notifications."
+   }
+  ],
+  "questions": [
+   "Is 7:00 your usual wake time, so that nothing gets planned before then? If so, does that apply every day or only on certain days, such as weekdays?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Wake me up at 7 with an alarm.",
+    "reason": "Friday only builds plans from constraints. It can't set alarms or send wake-up notifications."
+   }
+  ],
+  "questions": [
+   "Is 7:00 your usual wake time, so that nothing gets planned before then? If so, does that apply every day or only on certain days, such as weekdays?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0099782,
+ "seconds": 5.14712366706226,
+ "calls": 1
+}

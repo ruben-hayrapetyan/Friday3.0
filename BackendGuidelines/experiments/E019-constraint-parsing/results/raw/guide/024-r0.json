@@ -1,0 +1,49 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "prefer_time",
+    "target": {
+     "titles": [
+      "guitar practice"
+     ]
+    },
+    "start": "19:00",
+    "end": "21:00",
+    "days": null,
+    "strength": "medium",
+    "source": "Guitar should happen after dinner, around 7 to 9.",
+    "paraphrase": "You'd prefer to practice guitar between 7pm and 9pm."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Guitar should happen after dinner, around 7 to 9.",
+    "paraphrase": "You'd prefer to practice guitar between 7pm and 9pm.",
+    "days": null,
+    "start": "19:00",
+    "end": "21:00",
+    "kind": "prefer_time",
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "guitar practice"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.008285399999999998,
+ "seconds": 3.1578481670003384,
+ "calls": 1
+}

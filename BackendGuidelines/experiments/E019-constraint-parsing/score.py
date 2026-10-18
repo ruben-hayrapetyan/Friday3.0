@@ -104,6 +104,8 @@ def score(case: dict, parse: Parse | None) -> dict:
     cons_ok, k, extra, misses, want = results[0]
     if case["ask"] == "must" and not case["want"]:
         cons_ok = cons_ok or (asked and extra == 0)
+    if case["ask"] == "ok" and asked and not got:  # "a question or one of the readings is fine"
+        cons_ok = True
     ask_ok = {"must": asked, "no": not asked, "ok": True}[case["ask"]]
     if case["unsup"]:
         unsup_ok = flagged or (asked and case["ask"] != "no") or (cons_ok and any(r[0] for r in results[1:]))

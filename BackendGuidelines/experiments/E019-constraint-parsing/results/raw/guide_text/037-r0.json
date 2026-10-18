@@ -1,0 +1,52 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "source": "On weekends, at most 3 hours of work.",
+    "paraphrase": "No more than 3 hours of work per day on Saturday and Sunday.",
+    "kind": "daily_limit",
+    "hours": 3,
+    "days": [
+     "sat",
+     "sun"
+    ],
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "On weekends, at most 3 hours of work.",
+    "paraphrase": "No more than 3 hours of work per day on Saturday and Sunday.",
+    "kind": "daily_limit",
+    "hours": 3.0,
+    "days": [
+     "sat",
+     "sun"
+    ],
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0075682,
+ "seconds": 3.015711458050646,
+ "calls": 1
+}

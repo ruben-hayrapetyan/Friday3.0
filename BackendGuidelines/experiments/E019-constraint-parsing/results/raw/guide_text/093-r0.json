@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Groceries need to happen before Wednesday.",
+    "reason": "This is a deadline on one task. Constraints can't set or change a task's due date, and avoiding weekdays would mean something different. Set the due date on the groceries task itself."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Groceries need to happen before Wednesday.",
+    "reason": "This is a deadline on one task. Constraints can't set or change a task's due date, and avoiding weekdays would mean something different. Set the due date on the groceries task itself."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.011438199999999999,
+ "seconds": 6.303873541997746,
+ "calls": 1
+}

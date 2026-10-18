@@ -1,0 +1,4 @@
+round,variant,split,n,correct,cons_ok,ask_ok,unsup_ok,valid,compiles,extra,cost,sec
+r1,bare,tune,68,0.912,0.971,0.941,0.985,1.0,1.0,2,0.59,3.541
+r1,guide,tune,68,0.971,0.985,1.0,0.985,1.0,1.0,1,0.607,3.509
+r1,guide_text,tune,68,0.897,0.941,0.926,0.971,1.0,1.0,0,0.567,3.664

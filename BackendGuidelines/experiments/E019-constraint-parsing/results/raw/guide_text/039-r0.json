@@ -1,0 +1,38 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "source": "I want at least 3 free hours every evening after 6.",
+    "paraphrase": "Keep at least 3 hours free of scheduled work every day between 6pm and the end of the day.",
+    "kind": "keep_free",
+    "days": null,
+    "start": "18:00",
+    "end": null,
+    "hours": 3,
+    "strength": "medium"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I want at least 3 free hours every evening after 6.",
+    "paraphrase": "Keep at least 3 hours free of scheduled work every day between 6pm and the end of the day.",
+    "kind": "keep_free",
+    "days": null,
+    "start": "18:00",
+    "end": null,
+    "hours": 3.0,
+    "strength": "medium"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0093562,
+ "seconds": 4.820678957970813,
+ "calls": 1
+}

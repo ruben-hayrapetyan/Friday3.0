@@ -1,0 +1,55 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "commitment",
+    "title": "Practice",
+    "start": "17:30",
+    "end": "19:00",
+    "event_kind": "other",
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "source": "Practice is 5:30 to 7 every weekday.",
+    "paraphrase": "Practice is a fixed block from 5:30 to 7:00 pm every weekday."
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "Is \"practice\" a fixed outside commitment (like a team or band practice), or do you mean your guitar practice that Friday should schedule for you at 5:30 to 7 on weekdays?"
+  ]
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Practice is 5:30 to 7 every weekday.",
+    "paraphrase": "Practice is a fixed block from 5:30 to 7:00 pm every weekday.",
+    "kind": "commitment",
+    "title": "Practice",
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "dates": null,
+    "start": "17:30",
+    "end": "19:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "Is \"practice\" a fixed outside commitment (like a team or band practice), or do you mean your guitar practice that Friday should schedule for you at 5:30 to 7 on weekdays?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0109129,
+ "seconds": 5.410748124937527,
+ "calls": 1
+}

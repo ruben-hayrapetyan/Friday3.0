@@ -1,0 +1,50 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "sleep",
+    "bedtime": null,
+    "wake": "06:45",
+    "nights": [
+     "sun",
+     "mon",
+     "tue",
+     "wed",
+     "thu"
+    ],
+    "source": "I wake up at 6:45 on weekdays.",
+    "paraphrase": "You wake up at 6:45 on weekday mornings (Mon\u2013Fri)."
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "What time do you usually go to bed on weeknights, and when do you wake up on weekends?"
+  ]
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I wake up at 6:45 on weekdays.",
+    "paraphrase": "You wake up at 6:45 on weekday mornings (Mon\u2013Fri).",
+    "kind": "sleep",
+    "nights": [
+     "sun",
+     "mon",
+     "tue",
+     "wed",
+     "thu"
+    ],
+    "bedtime": null,
+    "wake": "06:45"
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "What time do you usually go to bed on weeknights, and when do you wake up on weekends?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0093449,
+ "seconds": 4.383806292084046,
+ "calls": 1
+}

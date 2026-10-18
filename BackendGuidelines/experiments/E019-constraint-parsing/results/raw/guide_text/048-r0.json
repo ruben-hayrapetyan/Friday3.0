@@ -1,0 +1,50 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "source": "Spread my prelim studying out over several days, don't cram.",
+    "paraphrase": "Spread prelim prep over several days instead of cramming it.",
+    "kind": "pacing",
+    "style": "spread",
+    "target": {
+     "courses": null,
+     "kinds": [
+      "exam_prep"
+     ],
+     "titles": [
+      "prelim"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Spread my prelim studying out over several days, don't cram.",
+    "paraphrase": "Spread prelim prep over several days instead of cramming it.",
+    "kind": "pacing",
+    "style": "spread",
+    "target": {
+     "courses": null,
+     "kinds": [
+      "exam_prep"
+     ],
+     "titles": [
+      "prelim"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0084342,
+ "seconds": 3.8459769579349086,
+ "calls": 1
+}

@@ -1,0 +1,49 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "prefer_time",
+    "target": {
+     "kinds": [
+      "reading"
+     ]
+    },
+    "start": "18:00",
+    "end": "22:00",
+    "days": null,
+    "strength": "medium",
+    "source": "I like doing readings in the evening.",
+    "paraphrase": "Prefer to do readings in the evening (6\u201310 pm)."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I like doing readings in the evening.",
+    "paraphrase": "Prefer to do readings in the evening (6\u201310 pm).",
+    "days": null,
+    "start": "18:00",
+    "end": "22:00",
+    "kind": "prefer_time",
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": [
+      "reading"
+     ],
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0083549,
+ "seconds": 3.5005943330470473,
+ "calls": 1
+}

@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "What does my Tuesday look like?",
+    "reason": "This is a question about viewing the schedule, not a scheduling preference or constraint. I only translate constraints and can't show or describe a schedule."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "What does my Tuesday look like?",
+    "reason": "This is a question about viewing the schedule, not a scheduling preference or constraint. I only translate constraints and can't show or describe a schedule."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0073749,
+ "seconds": 2.941633375012316,
+ "calls": 1
+}

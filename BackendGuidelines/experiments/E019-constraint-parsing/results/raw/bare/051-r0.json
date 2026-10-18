@@ -1,0 +1,72 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "pacing",
+    "style": "spread",
+    "target": {
+     "titles": [
+      "guitar practice"
+     ]
+    },
+    "source": "A little bit of guitar every day.",
+    "paraphrase": "Spread guitar practice out with a bit every day."
+   },
+   {
+    "kind": "daily_limit",
+    "hours": 1,
+    "strength": "mild",
+    "target": {
+     "titles": [
+      "guitar practice"
+     ]
+    },
+    "days": null,
+    "source": "A little bit of guitar",
+    "paraphrase": "Keep guitar practice short, about an hour at most per day."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "A little bit of guitar every day.",
+    "paraphrase": "Spread guitar practice out with a bit every day.",
+    "kind": "pacing",
+    "style": "spread",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "guitar practice"
+     ],
+     "energy": null
+    }
+   },
+   {
+    "source": "A little bit of guitar",
+    "paraphrase": "Keep guitar practice short, about an hour at most per day.",
+    "kind": "daily_limit",
+    "hours": 1.0,
+    "days": null,
+    "strength": "mild",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "guitar practice"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0082749,
+ "seconds": 3.303901541978121,
+ "calls": 1
+}

@@ -1,0 +1,30 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Don't schedule CS right after physics, I need a mental break between them.",
+    "reason": "Friday can't keep a gap between two specific courses. Buffers apply to every event of a kind (all classes or all meetings), not to one course followed by another. Pacing can't separate CS 2110 work from PHYS 2213 work either."
+   }
+  ],
+  "questions": [
+   "Do you want a break after every class or meeting, not just physics? Friday could add a buffer for that, for example 30 minutes after classes. Or is the break only about physics and CS?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Don't schedule CS right after physics, I need a mental break between them.",
+    "reason": "Friday can't keep a gap between two specific courses. Buffers apply to every event of a kind (all classes or all meetings), not to one course followed by another. Pacing can't separate CS 2110 work from PHYS 2213 work either."
+   }
+  ],
+  "questions": [
+   "Do you want a break after every class or meeting, not just physics? Friday could add a buffer for that, for example 30 minutes after classes. Or is the break only about physics and CS?"
+  ]
+ },
+ "error": null,
+ "cost": 0.011168899999999999,
+ "seconds": 5.5613275829236954,
+ "calls": 1
+}

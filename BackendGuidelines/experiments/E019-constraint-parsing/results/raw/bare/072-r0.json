@@ -1,0 +1,51 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "days": [
+     "fri"
+    ],
+    "start": "20:00",
+    "end": null,
+    "strength": "strong",
+    "target": {},
+    "paraphrase": "No work on Friday evenings from 8 PM onward.",
+    "source": "no work late on fridays"
+   }
+  ],
+  "questions": [
+   "What time counts as \"late\" on Fridays? I assumed 8 PM onward, so tell me if you meant earlier or later."
+  ],
+  "unsupported": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "no work late on fridays",
+    "paraphrase": "No work on Friday evenings from 8 PM onward.",
+    "days": [
+     "fri"
+    ],
+    "start": "20:00",
+    "end": null,
+    "kind": "avoid_time",
+    "strength": "strong",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "What time counts as \"late\" on Fridays? I assumed 8 PM onward, so tell me if you meant earlier or later."
+  ]
+ },
+ "error": null,
+ "cost": 0.0094389,
+ "seconds": 4.348301250021905,
+ "calls": 1
+}

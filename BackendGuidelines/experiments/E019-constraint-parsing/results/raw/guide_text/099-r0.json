@@ -1,0 +1,20 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours do you count as lunchtime (for example 12:00 to 14:00)? I'll keep at least an hour of that window free each day."
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours do you count as lunchtime (for example 12:00 to 14:00)? I'll keep at least an hour of that window free each day."
+  ]
+ },
+ "error": null,
+ "cost": 0.0083202,
+ "seconds": 4.368924833019264,
+ "calls": 1
+}

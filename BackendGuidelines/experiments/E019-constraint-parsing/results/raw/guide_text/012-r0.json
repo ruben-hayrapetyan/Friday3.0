@@ -1,0 +1,20 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "You'd like Saturdays to be light. What's the most scheduled work you'd accept on a Saturday, in hours (for example 2 hours)? Or should Saturdays only have light tasks like reading, laundry and groceries, with no focused work?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "You'd like Saturdays to be light. What's the most scheduled work you'd accept on a Saturday, in hours (for example 2 hours)? Or should Saturdays only have light tasks like reading, laundry and groceries, with no focused work?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0089062,
+ "seconds": 4.667875249986537,
+ "calls": 1
+}

@@ -48,11 +48,20 @@ GUIDE = """How to translate:
   constraint.
 - Each constraint gets "source" (the words it comes from) and "paraphrase" (one short sentence the user will confirm)."""
 
+# E019 round 2: additions after round 1's errors on the tuning split
+GUIDE2 = GUIDE + """
+- Saying something is useless, impossible or unbearable ("blocks under 45 minutes are useless to me", "I can't focus
+  longer than 90 minutes") is a hard constraint.
+- A request that is not a constraint at all (a question about the schedule, an action such as sending an email or
+  setting an alarm, a goal about grades) goes to "unsupported" with a short reason, so the user hears that Friday did
+  not act on it."""
+GUIDES = {0: None, 1: GUIDE, 2: GUIDE2}
+
 
 @dataclass
 class Prompt:
     name: str
-    guide: bool = True
+    guide: int = 1  # 0 = none, 1 = GUIDE, 2 = GUIDE2
     examples: list[dict] = field(default_factory=list)  # [{"text":..., "reply": {...}}]
     enforce_schema: bool = True  # pass the JSON schema to the CLI (structured output)
     retries: int = 1  # re-ask once with the validation error
@@ -60,7 +69,7 @@ class Prompt:
     def system(self) -> str:
         parts = [ROLE]
         if self.guide:
-            parts.append(GUIDE)
+            parts.append(GUIDES[int(self.guide)])
         if not self.enforce_schema:
             parts.append("JSON schema of the reply:\n" + json.dumps(schema()))
         if self.examples:

@@ -1,0 +1,59 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "session_length",
+    "target": {
+     "courses": [
+      "MATH 2940",
+      "ENGL 1170"
+     ]
+    },
+    "max_hours": 1,
+    "min_hours": null,
+    "strength": "medium",
+    "source": "every hour",
+    "paraphrase": "Keep each MATH 2940 and ENGL 1170 work session to about an hour at most."
+   }
+  ],
+  "unsupported": [
+   {
+    "source": "Alternate between math and English",
+    "reason": "Friday can't force a strict back-and-forth order between two courses. The closest option is to cap math and English sessions at 1 hour, but the engine won't guarantee they alternate."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "every hour",
+    "paraphrase": "Keep each MATH 2940 and ENGL 1170 work session to about an hour at most.",
+    "kind": "session_length",
+    "min_hours": null,
+    "max_hours": 1.0,
+    "strength": "medium",
+    "target": {
+     "courses": [
+      "MATH 2940",
+      "ENGL 1170"
+     ],
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [
+   {
+    "source": "Alternate between math and English",
+    "reason": "Friday can't force a strict back-and-forth order between two courses. The closest option is to cap math and English sessions at 1 hour, but the engine won't guarantee they alternate."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.011508899999999999,
+ "seconds": 5.7574512920109555,
+ "calls": 1
+}

@@ -1,0 +1,47 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": null,
+    "start": "18:00",
+    "end": "22:00",
+    "strength": "strong",
+    "source": "Keep my evenings free.",
+    "paraphrase": "Avoid scheduling any work between 6 pm and 10 pm every day."
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "What hours count as your evening (I assumed 6 pm to 10 pm)? Does that apply every day or only some days?"
+  ]
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Keep my evenings free.",
+    "paraphrase": "Avoid scheduling any work between 6 pm and 10 pm every day.",
+    "days": null,
+    "start": "18:00",
+    "end": "22:00",
+    "kind": "avoid_time",
+    "strength": "strong",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "What hours count as your evening (I assumed 6 pm to 10 pm)? Does that apply every day or only some days?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0093469,
+ "seconds": 4.552805999992415,
+ "calls": 1
+}

@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Wake me up at 7 with an alarm.",
+    "reason": "Friday only builds schedules and can't set alarms or send wake-up notifications. Use your phone's alarm for this."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Wake me up at 7 with an alarm.",
+    "reason": "Friday only builds schedules and can't set alarms or send wake-up notifications. Use your phone's alarm for this."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.009915399999999998,
+ "seconds": 4.598011584021151,
+ "calls": 1
+}

@@ -1,0 +1,30 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "It's ok to schedule reading right before bed.",
+    "reason": "This only gives permission and doesn't ask for anything. Friday has no 'allow' constraint, and reading isn't blocked before bed unless some other rule does that. So I added no constraint."
+   }
+  ],
+  "questions": [
+   "Do you want reading to be preferred in the hour or two before bed, or is it just fine there if that's where it fits? If you'd like it preferred, what time do you usually go to bed?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "It's ok to schedule reading right before bed.",
+    "reason": "This only gives permission and doesn't ask for anything. Friday has no 'allow' constraint, and reading isn't blocked before bed unless some other rule does that. So I added no constraint."
+   }
+  ],
+  "questions": [
+   "Do you want reading to be preferred in the hour or two before bed, or is it just fine there if that's where it fits? If you'd like it preferred, what time do you usually go to bed?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0103309,
+ "seconds": 5.246875833021477,
+ "calls": 1
+}

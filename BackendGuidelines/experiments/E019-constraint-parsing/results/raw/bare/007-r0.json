@@ -1,0 +1,32 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "I sleep badly.",
+    "reason": "This describes sleep quality, not a schedulable constraint. Without usual bedtime and wake times, Friday can't set a sleep window."
+   }
+  ],
+  "questions": [
+   "What time do you usually go to bed and wake up? Friday can protect that window.",
+   "Is there a time of day you'd like to avoid working, such as late at night, because of your sleep?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "I sleep badly.",
+    "reason": "This describes sleep quality, not a schedulable constraint. Without usual bedtime and wake times, Friday can't set a sleep window."
+   }
+  ],
+  "questions": [
+   "What time do you usually go to bed and wake up? Friday can protect that window.",
+   "Is there a time of day you'd like to avoid working, such as late at night, because of your sleep?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0078689,
+ "seconds": 3.5852643749676645,
+ "calls": 1
+}

@@ -1,0 +1,46 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "session_length",
+    "source": "I can't focus for more than 90 minutes at a time.",
+    "paraphrase": "Keep any single work session to at most 1.5 hours.",
+    "min_hours": null,
+    "max_hours": 1.5,
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I can't focus for more than 90 minutes at a time.",
+    "paraphrase": "Keep any single work session to at most 1.5 hours.",
+    "kind": "session_length",
+    "min_hours": null,
+    "max_hours": 1.5,
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0068602,
+ "seconds": 2.741180833079852,
+ "calls": 1
+}
