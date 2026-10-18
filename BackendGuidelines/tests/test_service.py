@@ -270,3 +270,11 @@ def test_an_overloaded_week_suggests_the_least_important_events_to_skip(tmp_path
     assert not [e for e in seen["e"] if e["title"] == "CS 2110 office hours"]  # skipped: no longer blocks time
     eng.decide_event("CS 2110 office hours", "2026-10-19T14:00", "unskip")
     assert eng.s["skipped"] == []
+
+
+def test_keep_can_be_undone(tmp_path):
+    eng = Engine(tmp_path, rater=lambda titles: {})
+    eng.decide_event("Chess Club", "2026-10-23T18:00", "keep")
+    assert eng.s["kept_titles"] == ["Chess Club"] and eng.s["event_ratings"]["chess club"]["level"] == "required"
+    eng.decide_event("Chess Club", "2026-10-23T18:00", "unkeep")
+    assert eng.s["kept_events"] == [] and eng.s["kept_titles"] == [] and "chess club" not in eng.s["event_ratings"]

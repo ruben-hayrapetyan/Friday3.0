@@ -423,12 +423,15 @@ class Engine:
         """When the last plan ran late (more due than fits, or any task late), the events before the latest deadline
         it missed that matter least, each with the time skipping it frees: {deadline, suggestions: [{title, start, end, level, reason,
         frees_minutes}], skipped: [{title, start}]}. Claude rates new titles once; "keep" answers are never asked again."""
-        out = dict(deadline=None, suggestions=[], skipped=self.s.get("skipped", []))
+        kept = set(self.s.get("kept_events", []))
+        named = {ev_key(t): t for t in self.s.get("kept_titles", [])}
+        named.update({ev_key(e["title"]): e["title"] for e in events if ev_key(e["title"]) in kept})
+        out = dict(deadline=None, suggestions=[], skipped=self.s.get("skipped", []),
+                   kept=sorted(named.get(k, k) for k in kept))  # answers from before kept_titles: names from events
         short = self.s.get("shortfall")
         if not short:
             return out
         out["deadline"] = short["due"]
-        kept = set(self.s.get("kept_events", []))
         skipped = {(ev_key(x["title"]), x["start"][:16]) for x in self.s.get("skipped", [])}
         start_s = now.strftime("%Y-%m-%dT%H:%M")
         cands = [e for e in events if not e.get("isAllDay") and str(e["start"])[:16] >= start_s
@@ -454,7 +457,8 @@ class Engine:
         return out
 
     def decide_event(self, title: str, start: str, decision: str) -> dict:
-        """skip: this occurrence stops blocking time in plans; unskip: undo; keep: never suggest this title again."""
+        """skip: this occurrence stops blocking time in plans; unskip: undo; keep: never suggest this title again;
+        unkeep: undo keep."""
         sk = self.s.setdefault("skipped", [])
         if decision == "skip":
             if not any(ev_key(x["title"]) == ev_key(title) and x["start"][:16] == start[:16] for x in sk):
@@ -465,7 +469,12 @@ class Engine:
             kept = self.s.setdefault("kept_events", [])
             if ev_key(title) not in kept:
                 kept.append(ev_key(title))
+                self.s.setdefault("kept_titles", []).append(title)
             self.s.setdefault("event_ratings", {})[ev_key(title)] = dict(level="required", reason="you go to these")
+        elif decision == "unkeep":  # suggest it again: forget the answer, and Claude rates it afresh
+            self.s["kept_events"] = [k for k in self.s.get("kept_events", []) if k != ev_key(title)]
+            self.s["kept_titles"] = [t for t in self.s.get("kept_titles", []) if ev_key(t) != ev_key(title)]
+            self.s.get("event_ratings", {}).pop(ev_key(title), None)
         else:
             raise ValueError(f"unknown decision {decision!r}")
         self.save()

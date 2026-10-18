@@ -48,7 +48,7 @@ The app launches one long-lived child process, the way it already launches the `
 | `remove_constraint` | `id` | `{ok}` |
 | `plan` | `todos`, `events`, `now?`, `method?` | `{plan_id, options: [3 x {option, label, summary, blocks: [{task_id, start, end}], late_tasks, unplaced_tasks, late_detail: [{task_id, due, finish, hours_late}], valid}], notes, minutes}`. `unplaced_tasks`: due within the 14 days and not all of it fits (work with no due date, or due later, may wait); `late_detail` covers both, `finish` null when it doesn't fit. Blocks with task_id `break:<title>` are daily breaks from the user's rules. Option 0 is the recommended plan: of the three, the one Friday expects you to pick (E022). `summary` says how an option differs ("Less late-night work, more busy weekends."). Blocks cover the next 14 days. |
 | `suggest_skips` | `events`, `now?` | `{deadline, suggestions: [{title, start, end, level, reason, frees_minutes}], skipped: [{title, start}]}`: after a plan that found more due than fits, the events before that deadline that matter least (Claude rates each new title once: required / likely / optional; required are never offered), optional first, then by time freed |
-| `decide_event` | `title`, `start`, `decision` | `{ok, skipped}`. `skip`: that occurrence no longer blocks time in plans (the calendar is untouched); `unskip`; `keep`: never suggest this title again |
+| `decide_event` | `title`, `start`, `decision` | `{ok, skipped}`. `skip`: that occurrence no longer blocks time in plans (the calendar is untouched); `unskip`; `keep`: never suggest this title again; `unkeep` |
 | `pick` | `plan_id`, `option` | `{ok, picks, weights}`: the user chose this option; Friday learns from it |
 
 ## What the app needs to add (frontend, not built here)
