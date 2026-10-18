@@ -80,6 +80,22 @@ def report() -> None:
                                 plan_s=("plan_s_median", "median")).round(3)
     print(g.to_string())
     g.to_csv(RES / "summary.csv")
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    g = g.sort_values("hard_late")
+    fig, axes = plt.subplots(1, 3, figsize=(10, 3.2))
+    for ax, (col, label) in zip(axes, [("hard_late", "hard-deadline tasks late (%)"),
+                                       ("conflict_h_week", "work against a real habit (h/week)"),
+                                       ("regret_pick", "regret of the lived plan")]):
+        ax.barh(g.index, g[col] * (100 if col == "hard_late" else 1), color="tab:blue")
+        ax.set_xlabel(label, fontsize=8)
+        if ax is not axes[0]:
+            ax.set_yticklabels([])
+    fig.suptitle("End to end (E025, 12 people x 6 weeks, report seeds)", fontsize=9)
+    fig.tight_layout()
+    (HERE / "figures").mkdir(exist_ok=True)
+    fig.savefig(HERE / "figures" / "systems.png", dpi=130)
 
 
 if __name__ == "__main__":
