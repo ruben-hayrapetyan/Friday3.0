@@ -183,3 +183,40 @@ def test_overload_is_explained_and_every_due_date_is_a_deadline(tmp_path):
     out = eng.plan(todos, _events(), NOW)
     assert out["notes"] and out["notes"][0].startswith("More is due than fits")
     assert not Engine(tmp_path / "light", steps=40_000).plan(todos, _events(), NOW)["notes"]
+
+
+def test_parts_of_a_set_go_one_after_the_other():
+    from fr.product import adapter
+
+    def t(i, title):
+        return dict(id=f"p{i}", title=title, bucket="assignments", isDone=False, dueDate="2026-10-23T23:59:00")
+    tasks = adapter.tasks_from([t(1, "Chem Problem set 7 odds"), t(2, "Chem Probelm set 7 evens"), t(3, "Math HW 8")])
+    sc, ids = adapter.scenario(NOW, tasks, {x.id: 120 for x in tasks}, [])
+    by = {ids[s.id]: s for s in sc.specs if s.id in ids}
+    assert by["p2"].deps == ((by["p1"].id, 1.0, 0),)  # evens waits for odds
+    assert by["p3"].deps == () and by["p1"].deps == ()  # another course is not tied
+    assert any(r["type"] == "late_tasks" for r in sc.extra_rules)
+
+
+def test_an_overloaded_week_makes_few_tasks_late(tmp_path):
+    from fr.product import adapter
+    from fr.product.service import fewest_late
+    from fr.sim.world import Universe
+
+    # one 12 h task and six 1 h tasks, all due tonight: only one way to have a single late task
+    def t(i, title, due="2026-10-19T23:59:00"):
+        return dict(id=f"o{i}", title=title, bucket="assignments", isDone=False, dueDate=due)
+    todos = [t(0, "PHYS 2213 big project report")] + [t(i, f"CS 2110 quiz {i}") for i in range(1, 7)]
+    eng = Engine(tmp_path, steps=40_000)
+    eng.set_estimate("o0", 12 * 60)
+    for i in range(1, 7):
+        eng.set_estimate(f"o{i}", 60)
+    tasks = adapter.tasks_from(todos)
+    pred = eng.predict(todos, NOW)
+    sc, ids = adapter.scenario(NOW, tasks, {k: v["plan_minutes"] for k, v in pred.items()}, _events())
+    p = Universe(sc).p
+    assert [ids[int(k.split(":")[1])] for k in fewest_late(p)] == ["o0"]
+    out = eng.plan(todos, _events(), NOW)
+    assert out["notes"][0].startswith("More is due than fits")
+    for opt in out["options"]:
+        assert opt["valid"] and set(opt["late_tasks"]) | set(opt["unplaced_tasks"]) <= {"o0"}

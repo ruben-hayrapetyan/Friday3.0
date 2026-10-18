@@ -224,6 +224,34 @@ class LateWork(Rule):
         return _lateness_price(self, item, s, self.p.overflow_extra_hours)
 
 
+@rule_type("late_tasks")
+class LateTasks(Rule):
+    """A fixed cost for each task that is late at all, on top of late_work's cost per unit and hour late. late_work alone
+    prefers many tasks a little late to one task late; people count late tasks. Not in the reference rule set: the
+    Friday app adds it (decision 38). `hours`: what a late task costs, in hours late of one unit of its work."""
+
+    default_stage = "deadlines"
+    applies_to = {"fixed"}
+
+    class Params(Rule.Params):
+        hours: float = 192
+
+    def _extra(self, item):
+        return item.firmness == "hard" and item.due is not None
+
+    def measures(self, ctx):
+        g = ctx.grid
+        for it in self.scoped_items():
+            late = [(it.key, s) for s in it.allowed if s < g.S and g.end[s] > it.due]
+            expr = ctx.any_of(f"lt:{it.key}", late)
+            if not expr.is_const():
+                yield Measure(f"{self.name}:{it.key}", expr, "count", (Hinge("above", 0, it.importance * self.p.hours),))
+            # work left unplaced is late too: each unit costs as much as a late task, so leaving it off the plan never
+            # dodges the count
+            yield Measure(f"{self.name}:{it.key}:over", ctx.over(it.key), "units",
+                          (Hinge("above", 0, 4 * it.importance * self.p.hours),))
+
+
 @rule_type("quota")
 class Quota(Rule):
     default_stage = "deadlines"

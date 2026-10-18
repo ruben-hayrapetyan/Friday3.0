@@ -32,6 +32,8 @@ TYPES = ("problem_set", "essay", "lab", "reading", "exam_prep", "project", "emai
 PRESET = {"pset": "assignment", "essay": "assignment", "lab": "assignment", "reading": "reading",
           "exam_prep": "exam_prep", "project": "project", "email": "errand", "other": "assignment"}
 HARD_KINDS = {"pset", "essay", "lab", "exam_prep", "project"}
+# A fixed cost per late task, so a few big tasks slip rather than many small ones (decision 38)
+LATE_TASKS = dict(type="late_tasks", name="late_tasks", weight=10)
 
 
 def local(ts: str) -> datetime:
@@ -117,6 +119,7 @@ def scenario(now: datetime, tasks: list[Task], minutes: dict[str, float], events
             or COURSE.search(ev.get("title", "")) else "other"
         specs.append(spec("commitment", n, ev.get("title", "event"), start=s, end=e, event_kind=kind,
                           area=course_of(ev.get("title", ""))))
+    sibling: dict[int, Task] = {}
     for t in tasks:
         left = minutes.get(t.id)
         if left is None or left <= 0:
@@ -132,7 +135,27 @@ def scenario(now: datetime, tasks: list[Task], minutes: dict[str, float], events
         if preset in ("assignment", "reading", "exam_prep", "project"):
             over["min_chunk_min"] = min(60 if preset == "project" else 30, dur)
         specs.append(spec(preset, n, t.title, **over))
-    return Scenario("friday", specs, [], t0, settings or Settings()), ids
+        sibling[n] = t
+    _one_half_then_the_other(specs, sibling)
+    return Scenario("friday", specs, [], t0, settings or Settings(), extra_rules=[dict(LATE_TASKS)]), ids
+
+
+def _one_half_then_the_other(specs: list[ItemSpec], tasks: dict[int, "Task"]) -> None:
+    """Tasks of one course, type and due date ("Chem Problem set 7 odds" / "... evens", "Chem HW 5" / "Chem HW 6",
+    chapters 5-9): nothing tied them, so plans alternated between them. Each now waits for the one before it in the
+    list. The course is the title's first word when no course code was found."""
+    groups: dict[tuple, list[ItemSpec]] = {}
+    for sp in specs:
+        t = tasks.get(sp.id)
+        if t is None or t.due is None:
+            continue
+        words = t.title.lower().split()
+        if not words:
+            continue
+        groups.setdefault((t.course or words[0], t.type, t.due), []).append(sp)
+    for parts in groups.values():
+        for before, after in zip(parts, parts[1:]):
+            after.deps = after.deps + ((before.id, 1.0, 0),)
 
 
 def blocks(c, owner, ids: dict[int, str]) -> list[dict]:

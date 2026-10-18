@@ -159,6 +159,18 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
     Same week, no events: 14 late -> 7. The rest is real overload (76 h due by Thursday night, 60 h free under the
     user's 10:00-23:30 rule and the 12 h daily cap), which the plan's notes now say. Not re-run in simulation: E021 and
     E025's miss rates were measured at uncapped p95 with soft readings.
+38. **(After program 2, from use, 2026-10-18) Fewest late tasks, and parts of a set in order.** On the user's real week
+    (82 calendar events, office hours and room bookings not busy) the plan had 21 late tasks; an earliest-deadline
+    bound on the same free time was also late on ~20, but Moore-Hodgson on the free-time line shows 6 is possible
+    (128 h of dated work, 129 h free before the last deadline: the overload is front-loaded). late_work prices units x
+    hours late, which prefers many tasks a little late; people count late tasks. Added: rule `late_tasks` (product only,
+    deadline stage: a fixed cost per late task, unplaced work costing at least as much); `fewest_late` picks the tasks to
+    slip (biggest first, the later part on ties, dependants follow) and gives them importance 1; `edf_start` builds an
+    alternative start (on-time work as late as its deadline allows, slipped work forward into the earliest free time,
+    whole sessions, caps, dependencies), kept when the deadline-only search leaves it valid and less late. And tasks of
+    one course, type and due date are ordered (the user saw "odds / evens / odds / evens"): each waits for the one before.
+    User's week: 21 late -> 7 (6 slipped + one part waiting on a slipped part). Price: a slipped task can slip far (one
+    half problem set to Oct 31). Not run in simulation.
 
 ## Findings so far
 
