@@ -198,25 +198,44 @@ def test_parts_of_a_set_go_one_after_the_other():
     assert any(r["type"] == "late_tasks" for r in sc.extra_rules)
 
 
-def test_an_overloaded_week_makes_few_tasks_late(tmp_path):
-    from fr.product import adapter
-    from fr.product.service import fewest_late
-    from fr.sim.world import Universe
-
-    # one 12 h task and six 1 h tasks, all due tonight: only one way to have a single late task
+def test_an_overloaded_week_does_urgent_work_first(tmp_path):
+    # a 12 h report and six 1 h quizzes, all due tonight, and one 2 h task due at 3 pm: the 3 pm task goes first
     def t(i, title, due="2026-10-19T23:59:00"):
         return dict(id=f"o{i}", title=title, bucket="assignments", isDone=False, dueDate=due)
-    todos = [t(0, "PHYS 2213 big project report")] + [t(i, f"CS 2110 quiz {i}") for i in range(1, 7)]
+    todos = ([t(0, "PHYS 2213 big project report"), t(9, "CATC quant strategy", "2026-10-19T15:00:00")]
+             + [t(i, f"CS 2110 quiz {i}") for i in range(1, 7)])
     eng = Engine(tmp_path, steps=40_000)
     eng.set_estimate("o0", 12 * 60)
+    eng.set_estimate("o9", 120)
     for i in range(1, 7):
         eng.set_estimate(f"o{i}", 60)
-    tasks = adapter.tasks_from(todos)
-    pred = eng.predict(todos, NOW)
-    sc, ids = adapter.scenario(NOW, tasks, {k: v["plan_minutes"] for k, v in pred.items()}, _events())
-    p = Universe(sc).p
-    assert [ids[int(k.split(":")[1])] for k in fewest_late(p)] == ["o0"]
     out = eng.plan(todos, _events(), NOW)
     assert out["notes"][0].startswith("More is due than fits")
     for opt in out["options"]:
-        assert opt["valid"] and set(opt["late_tasks"]) | set(opt["unplaced_tasks"]) <= {"o0"}
+        assert opt["valid"]
+        first = min(b["start"] for b in opt["blocks"] if b["task_id"] == "o9")
+        assert first < "2026-10-19T12:00"  # not left for later in the week
+        assert "o9" not in opt["late_tasks"]
+
+
+def test_far_off_work_waits_and_lunch_fits_every_day(tmp_path):
+    from fr.product import adapter
+
+    assert adapter.release(0, 30 * 1440, 15) == (30 - 8) * 1440  # 15 min due in a month: from a week (and a day) before
+    assert adapter.release(0, 3 * 1440, 600) == 0  # due soon: now
+    reply = {"constraints": [{"kind": "daily_break", "title": "Lunch", "minutes": 15, "travel_min": 10,
+                              "start": "11:30", "end": "14:30", "paraphrase": "Lunch every day."}],
+             "unsupported": [], "questions": []}
+    eng = Engine(tmp_path, steps=60_000, parser=_fake_parser(reply))
+    r = eng.parse_constraints("15 minute lunch each day, 10 minutes to get there", _todos(), _events(), NOW)
+    eng.confirm_constraints(r["pending_id"], [0])
+    todos = _todos() + [dict(id="far", title="Sprint classes", bucket="assignments", isDone=False,
+                             dueDate="2026-11-17T23:59:00")]
+    out = eng.plan(todos, _events(), NOW)
+    for opt in out["options"]:
+        assert not [b for b in opt["blocks"] if b["task_id"] == "far"]  # not this fortnight's work
+        lunches = [b for b in opt["blocks"] if b["task_id"] == "break:Lunch"]
+        days = {b["start"][:10] for b in lunches}
+        assert len(days) >= 13  # one a day (today's window is still ahead at 08:00)
+        for b in lunches:
+            assert "11:30" <= b["start"][11:16] and b["end"][11:16] <= "14:30"

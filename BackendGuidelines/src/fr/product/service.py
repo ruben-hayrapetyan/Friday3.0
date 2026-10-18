@@ -73,62 +73,16 @@ def _now(params: dict) -> datetime:
     return adapter.local(params["now"]) if params.get("now") else datetime.now().replace(second=0, microsecond=0)
 
 
-def fewest_late(p) -> set[str]:
-    """Moore-Hodgson on the free-time line: the item keys to let slip so the fewest tasks are late (decision 38). Exact
-    when all the work may use the same slots; the line is every slot some dated work may use, within the daily cap."""
-    g = p.grid
-    jobs = sorted((it for it in p.items.values() if it.firmness == "hard" and it.due is not None
-                   and it.amount == "fixed" and it.need > 0), key=lambda it: it.due)
-    used: dict[int, int] = {}
-    line: list[tuple[int, int]] = []
-    total = 0
-    for sl in sorted(set().union(*(it.allowed_set for it in jobs)) if jobs else ()):
-        if sl >= g.S:
-            continue
-        d = int(g.day[sl])
-        take = min(int(g.units[sl]), p.day_caps[d] - used.get(d, 0))
-        if take > 0:
-            used[d] = used.get(d, 0) + take
-            total += take
-            line.append((int(g.end[sl]), total))
-    ends = [e for e, _ in line]
-    import bisect
-
-    def free_by(t: int) -> int:
-        i = bisect.bisect_right(ends, t)
-        return line[i - 1][1] if i else 0
-
-    waits_for = {it.key: {dp.key for dp in it.depends_on} for it in p.items.values()}
-    kept, need, slip = [], 0, set()
-    for it in jobs:
-        kept.append(it)
-        need += it.need
-        if need > free_by(it.due):
-            # the biggest; among equals, one nothing kept waits for (the later part of a set)
-            big = max(kept, key=lambda x: (x.need, not any(x.key in waits_for[o.key] for o in kept)))
-            kept.remove(big)
-            need -= big.need
-            slip.add(big.key)
-    grew = True
-    while grew:  # what waits for a slipped task slips with it
-        more = {k for k, deps in waits_for.items() if deps & slip and k not in slip and k in {j.key for j in jobs}}
-        slip |= more
-        grew = bool(more)
-    return slip
-
-
-def edf_start(p, keys: tuple, last: set[str]) -> np.ndarray:
-    """A start for an overloaded week: the on-time work as late as its deadlines allow (latest deadline first, backwards
-    from it), then the `last` (slipped) tasks and undated work forward into the earliest free time, so what slips slips
-    as little as possible. Built from whole sessions (never shorter than the task's minimum, one sitting where asked),
-    within the daily caps, each task after what it depends on; locked slots stay. The search then moves on-time work
-    earlier where preferences ask, without making anything later."""
+def edf_start(p, keys: tuple) -> np.ndarray:
+    """A start for an overloaded week: dated work by modified due date from now, then work with no due date
+    (decision 39): nothing due today is left for Friday, and short tasks aren't left far behind long ones. Built from whole sessions (never shorter than the task's minimum, one sitting where asked), within
+    the daily caps, each task after what it depends on; locked slots stay."""
     g = p.grid
     ix = {k: i for i, k in enumerate(keys)}
     owner = np.full(g.S + 1, -1, dtype=np.int64)
     left = {k: it.need for k, it in p.items.items() if it.amount == "fixed" and it.need > 0}
     used: dict[int, int] = {}
-    done_at: dict[str, int] = {}  # last slot of each item placed so far
+    done_at: dict[str, int] = {}
     for k, it in p.items.items():
         for sl in it.locked:
             if sl < g.S:
@@ -137,12 +91,11 @@ def edf_start(p, keys: tuple, last: set[str]) -> np.ndarray:
                 used[int(g.day[sl])] = used.get(int(g.day[sl]), 0) + int(g.units[sl])
                 done_at[k] = max(done_at.get(k, -1), sl)
 
-    def runs(k: str, slots) -> list[list[int]]:
-        """Maximal runs of consecutive free slots `k` may use, in the order `slots` gives (one day each)."""
+    def runs(k: str, first: int) -> list[list[int]]:
         out, cur = [], []
-        for sl in slots:
+        for sl in range(first, g.S):
             ok = owner[sl] < 0 and sl in p.items[k].allowed_set
-            if ok and cur and abs(sl - cur[-1]) == 1 and g.day[sl] == g.day[cur[-1]]:
+            if ok and cur and sl == cur[-1] + 1 and g.day[sl] == g.day[cur[-1]]:
                 cur.append(sl)
             else:
                 if cur:
@@ -152,20 +105,22 @@ def edf_start(p, keys: tuple, last: set[str]) -> np.ndarray:
             out.append(cur)
         return out
 
-    def fill(k: str, slots) -> None:
+    pos = {k: n for n, k in enumerate(keys)}
+    dated = [k for k in left if left[k] > 0 and p.items[k].due is not None]
+    undated = sorted((k for k in left if left[k] > 0 and p.items[k].due is None), key=lambda k: pos[k])
+
+    def place(k: str) -> None:
         it = p.items[k]
         least = it.need if it.shape == "one_sitting" else max(1, it.min_chunk)
         most = it.max_chunk or 10 ** 9
-        for run in runs(k, slots):
+        after = max((done_at.get(dp.key, -1) for dp in it.depends_on), default=-1)
+        for run in runs(k, after + 1):
             if left[k] <= 0:
-                return
+                break
             d = int(g.day[run[0]])
-            room = min(sum(int(g.units[sl]) for sl in run), p.day_caps[d] - used.get(d, 0), most)
-            take = min(left[k], room)
+            take = min(left[k], sum(int(g.units[sl]) for sl in run), p.day_caps[d] - used.get(d, 0), most)
             if 0 < left[k] - take < least:  # never strand a remainder shorter than a session
                 take = left[k] - least
-            if take < least:
-                continue
             piece, units = [], 0
             for sl in run:  # slots are 15 min in the first week and longer after; count units, not slots
                 if units + int(g.units[sl]) > take:
@@ -179,22 +134,87 @@ def edf_start(p, keys: tuple, last: set[str]) -> np.ndarray:
                 used[d] = used.get(d, 0) + int(g.units[sl])
                 left[k] -= int(g.units[sl])
                 done_at[k] = max(done_at.get(k, -1), sl)
-                start_at[k] = min(start_at.get(k, g.S), sl)
 
-    pos = {k: n for n, k in enumerate(keys)}
-    start_at: dict[str, int] = {}
-    needed_by = {k: [o for o, it in p.items.items() if any(dp.key == k for dp in it.depends_on)] for k in p.items}
-    on_time = sorted((k for k in left if p.items[k].due is not None and k not in last),
-                     key=lambda k: (-p.items[k].due, -pos[k]))
-    for k in on_time:  # backwards from its deadline, and before anything placed that waits for it
-        before = min((start_at.get(o, g.S) for o in needed_by[k]), default=g.S)
-        fill(k, [sl for sl in range(min(before, g.S) - 1, -1, -1) if g.end[sl] <= p.items[k].due])
-    rest = sorted((k for k in left if left[k] > 0), key=lambda k: (p.items[k].due is None, p.items[k].due or 0, pos[k]))
-    for k in rest:
-        after = max((done_at.get(dp.key, -1) for dp in p.items[k].depends_on), default=-1)
-        fill(k, range(after + 1, g.S))
+    for k in best_order(p, dated, left, used, owner, pos):
+        place(k)
+    for k in undated:
+        place(k)
     owner[g.S] = -1
     return owner
+
+
+def best_order(p, dated: list[str], left: dict, used: dict, owner: np.ndarray, pos: dict, steps: int = 20_000,
+               seed: int = 0) -> list[str]:
+    """The order to do the dated work in, searched on the free-time line (each task after the one before, no gaps) with
+    the engine's own deadline costs: hours late (late_work), hours late squared / square_hours and a fixed cost per late
+    task (late_tasks). Starts from the modified due date order (smallest max(due, now + length): earliest deadline first
+    while there's time, short tasks first once work will be late); then moves one task at a time, keeping prerequisites
+    first, accepting worse orders less as it cools (decision 39)."""
+    from ..core.rules import LateTasks
+
+    g = p.grid
+    prm = LateTasks.Params()
+    # the free-time line: the end time of each 15-minute unit any of this work may use, within the daily caps
+    times: list[int] = []
+    room = dict(used)
+    for sl in sorted(set().union(*(p.items[k].allowed_set for k in dated)) if dated else ()):
+        if sl >= g.S or owner[sl] >= 0:
+            continue
+        d = int(g.day[sl])
+        u = min(int(g.units[sl]), p.day_caps[d] - room.get(d, 0))
+        if u > 0:
+            room[d] = room.get(d, 0) + u
+            times += [int(g.end[sl])] * u
+    line = np.array(times + [g.horizon_end + 48 * 60] * max(0, sum(left[k] for k in dated)), dtype=np.float64)
+    need = {k: left[k] for k in dated}
+    due = {k: p.items[k].due for k in dated}
+    imp = {k: p.items[k].importance for k in dated}
+    deps = {k: {dp.key for dp in p.items[k].depends_on} & set(dated) for k in dated}
+
+    def cost(order: list[str]) -> float:
+        at, total = 0, 0.0
+        for k in order:
+            h = np.maximum(0.0, line[at:at + need[k]] - due[k]) / 60
+            at += need[k]
+            if h.any():
+                total += imp[k] * (h.sum() + (h * h).sum() / prm.square_hours + prm.hours)
+        return total
+
+    def valid(order: list[str]) -> bool:
+        seen: set[str] = set()
+        for k in order:
+            if deps[k] - seen:
+                return False
+            seen.add(k)
+        return True
+
+    order, rest = [], list(dated)
+    t = int(line[0]) if len(line) else g.now
+    while rest:  # modified due date, prerequisites first
+        ready = [k for k in rest if not deps[k] & set(rest)] or rest
+        k = min(ready, key=lambda k: (max(due[k], t + need[k] * 15), due[k], pos[k]))
+        rest.remove(k)
+        order.append(k)
+        t += need[k] * 15
+    best, best_c = list(order), cost(order)
+    cur, cur_c = list(order), best_c
+    rng = np.random.default_rng(seed)
+    n = len(cur)
+    for step in range(steps if n > 1 else 0):
+        temp = max(best_c, 1.0) * 0.002 * (1 - step / steps) + 1e-9
+        i, j = int(rng.integers(n)), int(rng.integers(n))
+        if i == j:
+            continue
+        cand = list(cur)
+        cand.insert(j, cand.pop(i))
+        if not valid(cand):
+            continue
+        c = cost(cand)
+        if c <= cur_c or rng.random() < math.exp((cur_c - c) / temp):
+            cur, cur_c = cand, c
+            if c < best_c:
+                best, best_c = list(cand), c
+    return best
 
 
 def overload(p) -> str | None:
@@ -381,20 +401,15 @@ class Engine:
         sc, notes = C.apply(sc, self._constraints())
         u = Universe(sc)
         over = overload(u.p)
-        slip = fewest_late(u.p) if over else set()
         if over:
             notes = [over] + notes
-        if slip:  # plan with those as the ones to be late: the search can't find that set by moving 15 minutes at a time
-            for spec in sc.specs:
-                if f"item:{spec.id}" in slip:
-                    spec.importance = 1
-            u = Universe(sc)
         # every option starts from (and its deadline walls protect) the repaired zero-late start, not raw construction
         rep = ensure_deadlines(u.pr, seed=0, use_cpsat=len(u.p.items) <= 60, cpsat_s=2.0)
-        if over:  # also from edf_start, made valid by the same deadline-only search; keep it when valid and less late
+        if over:  # also from earliest-deadline-first, made valid by the same deadline-only search; keep the less late
             cfg = SAConfig(steps=400_000, wall=False, lam=1e9, wts=np.array([1.0, 0.0, 0.0]), t0_scale=0.3,
                            t1_scale=0.003, seed=0)
-            r = anneal(u.pr.c, edf_start(u.p, u.pr.c.keys, slip), cfg, np.zeros(u.pr.c.m.I, dtype=bool))
+            start = edf_start(u.p, u.pr.c.keys)
+            r = anneal(u.pr.c, start, cfg, np.zeros(u.pr.c.m.I, dtype=bool))
             if r.violations == 0 and r.sv[0] < rep.late:
                 rep = replace(rep, owner=r.owner, late=int(r.sv[0]))
         u.pr = replace(u.pr, owner=rep.owner)

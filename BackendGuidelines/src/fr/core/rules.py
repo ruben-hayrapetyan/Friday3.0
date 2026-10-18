@@ -234,10 +234,22 @@ class LateTasks(Rule):
     applies_to = {"fixed"}
 
     class Params(Rule.Params):
-        hours: float = 192
+        hours: float = 48
+        # on top of late_work's cost per hour late, one that grows with the square, h^2 / square_hours per unit: four
+        # days late costs twice what late_work alone charges, twelve days four times (0 = off). Chosen on the user's
+        # week (decision 39): the latest task no later than it must be, urgent work first, total lateness near the least
+        square_hours: float = 96
 
     def _extra(self, item):
         return item.firmness == "hard" and item.due is not None
+
+    def price(self, item, s):
+        if not self.p.square_hours or item.due is None:
+            return 0.0
+        g = self.problem.grid
+        end = g.horizon_end + 48 * 60 if s == g.S else g.end[s]  # unplaced: as late as the horizon and two days more
+        h = max(0.0, (end - item.due) / 60)
+        return item.importance * h * h / self.p.square_hours
 
     def measures(self, ctx):
         g = ctx.grid

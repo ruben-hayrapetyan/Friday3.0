@@ -171,6 +171,16 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
     one course, type and due date are ordered (the user saw "odds / evens / odds / evens"): each waits for the one before.
     User's week: 21 late -> 7 (6 slipped + one part waiting on a slipped part). Price: a slipped task can slip far (one
     half problem set to Oct 31). Not run in simulation.
+39. **(After program 2, from use, 2026-10-18) Lateness that grows, urgent work first, far-off work later, a daily
+    break.** Decision 38's fewest-late start sent CATC (due today 15:00, 2.5 h) to Friday: a slipped task waited for
+    the whole crunch. The user: "the more late something is the more it should be penalized". Now: late_tasks adds
+    h^2 / square_hours per unit late (square_hours 96) and a smaller fixed cost (48 h); fewest_late is gone; the
+    alternative start orders dated work by a short search on the free-time line with these same costs, from the
+    modified-due-date order. On the user's week (513 units of work for 512 free over two weeks: every order fills it)
+    the line model gives 16 late, 47.0 task-days late, worst 5.5 days, CATC on time, against 11 / 42.1 / 8.5 / CATC
+    a day late for counting late tasks only; the engine's plan: 18 late, worst 5.6, CATC 12:45-15:15. Tasks due far
+    off start a week (plus a day per 2 h of work) before their due date. New constraint daily_break (window, minutes,
+    travel), compiled to one hard-deadline item a day; blocks come out as "break:<title>". Not run in simulation.
 
 ## Findings so far
 

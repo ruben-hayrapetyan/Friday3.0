@@ -7,6 +7,7 @@ become rule weights at three strengths.
 """
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import replace
 from typing import Annotated, Literal, Union
@@ -216,6 +217,21 @@ class Buffer(_Base):
     after_min: int = Field(0, ge=0, le=180)
 
 
+class DailyBreak(_Base):
+    """A break every day (lunch, dinner, a walk): `minutes` long plus `travel_min` to get there, anywhere between `start`
+    and `end`. Friday fits it around events each day and never plans work over it."""
+
+    kind: Literal["daily_break"] = "daily_break"
+    title: str = Field("Break", description="short name: Lunch, Dinner, Walk")
+    minutes: int = Field(gt=0, le=240)
+    travel_min: int = Field(0, ge=0, le=120, description="minutes to get there, added before the break")
+    days: list[Day] | None = Field(None, description="null = every day")
+    start: str = Field(description="earliest the break may begin, HH:MM")
+    end: str = Field(description="latest it may end, HH:MM")
+
+    _c = field_validator("start", "end")(classmethod(lambda cls, v: _clock_ok(v)))
+
+
 class Order(_Base):
     """Finish `first` before starting `then` (title substrings of two tasks)."""
 
@@ -225,7 +241,7 @@ class Order(_Base):
 
 
 Constraint = Annotated[Union[SleepC, AvoidTime, PreferTime, Commitment, DailyLimit, KeepFree, SessionLength, OneSitting,
-                             Pacing, FinishEarly, Buffer, Order], Field(discriminator="kind")]
+                             Pacing, FinishEarly, Buffer, Order, DailyBreak], Field(discriminator="kind")]
 
 
 class Unsupported(BaseModel):
@@ -373,6 +389,21 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
             old = b.get(c.event_kind, (0, 0))
             b[c.event_kind] = (max(old[0], c.before_min), max(old[1], c.after_min))
             out.settings = replace(out.settings, buffers=b)
+        elif isinstance(c, DailyBreak):
+            s0, e0 = _mins(c.start), _mins(c.end)
+            e0 = e0 + 1440 if e0 <= s0 else e0
+            length = c.minutes + c.travel_min
+            wds = _days(c.days)
+            first = out.now // 1440
+            for d in range(first, first + out.settings.horizon_days + 1):
+                if d % 7 not in wds:
+                    continue
+                lo, hi = max(d * 1440 + s0, out.now), d * 1440 + e0
+                if hi - lo < length:  # today's window has passed
+                    continue
+                ids += 1
+                out.specs.append(make_spec("errand", ids, c.title, duration_min=int(math.ceil(length / 15) * 15),
+                                           release=lo, due=hi, firmness="hard", energy="light", tags=("break",)))
         elif isinstance(c, Order):
             a = [s for s in flexible if c.first.lower() in s.title.lower()]
             b = [s for s in flexible if c.then.lower() in s.title.lower()]

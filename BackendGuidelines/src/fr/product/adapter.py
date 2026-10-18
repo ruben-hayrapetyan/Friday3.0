@@ -128,7 +128,7 @@ def scenario(now: datetime, tasks: list[Task], minutes: dict[str, float], events
         ids[n] = t.id
         dur = int(max(15, math.ceil(left / 15) * 15))
         preset = PRESET[t.kind]
-        over = dict(area=t.course, duration_min=dur, due=t.due, release=t0, tags=(f"type:{t.type}",),
+        over = dict(area=t.course, duration_min=dur, due=t.due, release=release(t0, t.due, dur), tags=(f"type:{t.type}",),
                     # every due date is a deadline at the top of the order (decision 37): a reading due today is
                     # not traded away to make an essay due Friday a little less late
                     firmness="hard" if t.due is not None else "none")
@@ -138,6 +138,15 @@ def scenario(now: datetime, tasks: list[Task], minutes: dict[str, float], events
         sibling[n] = t
     _one_half_then_the_other(specs, sibling)
     return Scenario("friday", specs, [], t0, settings or Settings(), extra_rules=[dict(LATE_TASKS)]), ids
+
+
+def release(now: int, due: int | None, minutes: int) -> int:
+    """When work on a task may start: now, unless it is due far off. Then a week before its due date and a day more for
+    every two hours of work, so a 15-minute task due in a month isn't done this week (decision 39)."""
+    if due is None:
+        return now
+    lead = 7 * 1440 + math.ceil(minutes / 120) * 1440
+    return max(now, due - lead)
 
 
 def _one_half_then_the_other(specs: list[ItemSpec], tasks: dict[int, "Task"]) -> None:
@@ -159,7 +168,8 @@ def _one_half_then_the_other(specs: list[ItemSpec], tasks: dict[int, "Task"]) ->
 
 
 def blocks(c, owner, ids: dict[int, str]) -> list[dict]:
-    """Owner array -> [{task_id, start, end}] with contiguous slots merged, ISO local times."""
+    """Owner array -> [{task_id, start, end}] with contiguous slots merged, ISO local times. Daily breaks come out as
+    task_id "break:<title>"."""
     g = c.problem.grid
     out = []
     cur = None
@@ -167,6 +177,8 @@ def blocks(c, owner, ids: dict[int, str]) -> list[dict]:
         o = int(owner[s])
         key = c.keys[o] if o >= 0 else None
         tid = ids.get(int(key.split(":")[1])) if key else None
+        if tid is None and key and "break" in c.problem.items[key].tags:  # a daily break the user asked for
+            tid = "break:" + c.problem.items[key].title
         if cur is not None and (tid != cur["task_id"] or g.start[s] != cur["_end"]):
             out.append(cur)
             cur = None

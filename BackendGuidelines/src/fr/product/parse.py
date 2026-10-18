@@ -62,7 +62,9 @@ GUIDE3 = GUIDE2 + """
   than", "except", "as opposed to".
 - Wanting tasks done in one go, in one sitting, without breaking them up is one_sitting: hard if they must never be
   split, soft ("if possible", "I like to", "I'd rather") otherwise. A preference for which tasks to split first is two
-  one_sitting constraints: a weaker strength for the ones that may be split, a stronger one for the rest."""
+  one_sitting constraints: a weaker strength for the ones that may be split, a stronger one for the rest.
+- A break taken every day at a flexible time (lunch, dinner) is daily_break: its length in minutes, travel_min for
+  getting there, and the window it must fit in (ask for the window if none is given)."""
 GUIDES = {0: None, 1: GUIDE, 2: GUIDE2, 3: GUIDE3}
 
 
