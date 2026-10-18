@@ -13,7 +13,10 @@ release (no foresight). Report seeds (10000-10003) per type, 6 types = 24 studen
 
 Round 1: models `oracle` (true lengths: the floor), `as_given`, `global_bias_recal`, `hier_fused_drift_recal` (E020's
 choice) at the reference quantiles (p50 for flexible items, p80 for hard-deadline items).
-Round 2 (RQ12): quantile policies p50/p50, p50/p80, p70/p90, p80/p95 with the chosen model.
+Round 2 (RQ12, revised before running after round 1's partial results showed the learned model's tighter spreads
+missing more often than the fixed-spread estimate for calibrated students): a frontier of misses vs unused reserved time
+as the hard-deadline quantile rises (p50, p80, p90, p95; flexible tasks at p50), for `as_given` and the shipped
+`hier_fused_drift_fa3_recal`.
 
 **Metrics.** Share of hard-deadline tasks finished late, hours late (sum), late readings, reserved-but-unused hours per
 day (idle), planned hours per day.
