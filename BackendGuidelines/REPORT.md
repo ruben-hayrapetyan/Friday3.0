@@ -3,6 +3,9 @@
 A research program on rebuilding Friday's scheduling engine around an energy-based (Boltzmann) model with a logical supervisor,
 tested against a faithful build of the v2 CP-SAT engine on one shared evaluator. Everything here traces to an experiment folder
 (`experiments/E###-*/`, index in section 13); figures are in `report/figures/`; the code is in `src/fr/`.
+Sections 14-15 report program 2 (`RESEARCH_PROMPT_2.md`): task lengths learned from estimates and recorded times, three
+schedules to pick from, learning from the pick, and constraints parsed from plain language, with the app contract
+(`PROTOCOL.md`).
 
 ## 1. Summary and recommendation
 
@@ -56,6 +59,13 @@ and asking noisy users many questions.
 | RQ8 supervisor | Missing rules: the right rule is the top candidate for every tested user by week 12 (6/6 evaluation users already at week 4); propose, add on yes (no wrong rule accepted). Walls: never soften silently; ask once. Queries: QBC/uncertainty halve questions for consistent users; stop asking noisy users | 8 |
 | RQ9 guarantees | Determinism with a fixed step budget (all warm reruns identical; independent of thread count); exact per-rule explanations and "why not elsewhere" (tested to equal the evaluator); churn about equal to CP-SAT-30 s with the recommended stage scheme | 5 |
 | RQ10 diversity and calibration | T > 0 samples are different plans (66-71% of work slots differ); item-day probabilities calibrated (ECE 0.003-0.009) when T matches the user's noise; but under walls the chain covers only the region reachable from its start (~20% of all valid plans on tiny instances), so it is not a full posterior | 5 |
+
+**Program 2** (section 14; spec in 15): the engine behind the Friday app's Planner page. As shipped, it learns task lengths
+from the user's estimates and recorded times, plans hard deadlines at the 95th percentile, asks at most two "how long did
+it take?" questions a week, offers three schedules ranked so that the recommended one is the likeliest pick, learns from
+the pick, and takes constraints in plain language through Claude Sonnet 5.5 (99% of held-out texts read right). In a
+simulated six-week term it misses 8.8% of hard deadlines vs 67.5% for v3 as built, and schedules almost no work
+against the person's real habits (0.08 vs 7.8 h a week).
 
 ## 2. The problem and how engines were evaluated
 
@@ -654,13 +664,20 @@ fits), at most ~10 questions in the first weeks, stop when committee disagreemen
 | E018b | Fix: anneal before CP-SAT | `E018b-weakness-fix` | 150 items fixed (5/6 at best lateness); small packed instances worse |
 | E018c | Fix: order by size | `E018c-size-rule` | keeps both gains; tight 2 h-chunk packing still behind CP-SAT-30 |
 | E018d | The fallback's time | `E018d-fallback-time` | 5 s on efficiency cores: 3/6 at best (P-cores: 5/6) |
+| E019 | Constraints from text (program 2) | `E019-constraint-parsing` | Sonnet 5.5 + guide v2 + structured output: 99.0% of held-out texts fully right (3 runs); no guide 87.9% |
+| E020 | Duration models | `E020-duration-models` | Hierarchical fused + fading memory + recalibration: CRPS 0.187 vs 0.290 as given; user's estimate first until 3 recordings |
+| E021 | Durations downstream | `E021-durations-downstream` | Learning cuts hard misses 2-4x; p95 for hard deadlines: 4.3% late for 23 min/day unused |
+| E022 | Three schedules | `E022-three-schedules` | Thompson alternatives ranked by posterior pick probability: recommended picked 63% (from 27%), lived regret unchanged |
+| E023 | Learning from the pick | `E023-pick-learning` | Picks alone (MNL): -25% regret; adding pairs and drags hurts missing-rule and adversarial users |
+| E024 | When to ask | `E024-asking-policy` | Two "how long did it take?" a week: misses 2.9% -> 0.2% at p95; estimates only trade padding |
+| E025 | The whole loop | `E025-end-to-end` | As shipped vs v3 as built: hard misses 8.8% vs 67.5%, habit conflicts 0.08 vs 7.8 h/week |
 
 ### 13.2 How to reproduce
 
 ```
 cd BackendGuidelines
 uv sync                                  # Python 3.12, numpy, numba, OR-Tools 9.15, scipy, cvxpy, pandas, matplotlib
-uv run pytest                            # 173 tests: evaluator, checker, EDF, kernel exactness, walls, determinism, learning
+uv run pytest                            # 195 tests: evaluator, checker, EDF, kernel exactness, walls, determinism, learning, product
 cd experiments/E004-representations && uv run python run.py && uv run python analyze.py   # any experiment the same way
 uv run python report/make_figures.py     # rebuilds report/figures from the results
 ```
@@ -676,3 +693,287 @@ best valid value any engine found per instance (all gaps are measured against it
 Apple M3 Max, 16 cores (12 performance, 4 efficiency), 64 GB RAM, macOS 26.6, Python 3.12 via uv, numba 0.68, OR-Tools 9.15.
 Session 1 ran on an idle machine (E001); from session 2 the machine was shared with a live service (load average 10-190), all
 jobs at `nice 19`, BLAS/OpenMP threads at 1 (see section 2 on what that means for timings).
+
+## 14. Program 2: durations, three schedules, picks and constraints from text
+
+Program 2 (`RESEARCH_PROMPT_2.md`, experiments E019-E025) answers what the Friday app needs on top of the v3 engine, as the
+user asked for it: (1) start from the user's own estimates of how long assignments take, record how long they really took,
+predict future lengths from that, and occasionally ask for more lengths; (2) offer three schedules to pick from; (3) learn
+from the pick so the recommended schedule becomes the one the user would pick; (4) accept many constraints written in plain
+language (sleep habits, no work after a time, commitments, limits), parsed by an LLM. Same rules as program 1: one shared
+evaluator, tuning seeds vs report seeds, at least two improvement rounds per main question, everything reported.
+
+### 14.1 Constraints from text (RQ16, E019)
+
+**Design.** The LLM never plans. It translates text into twelve typed constraint kinds (`src/fr/product/constraints.py`):
+sleep, avoid a window, prefer a window, commitment, daily limit, keep time free, session length, one sitting, pacing,
+finish early, buffer around events, order of two tasks; plus "questions" (ask instead of guessing) and "unsupported"
+(report what cannot be expressed). Each constraint carries the words it came from and a one-line paraphrase the user
+confirms; only confirmed constraints are stored. Compilation into the engine is deterministic: hard constraints become
+walls (forbidden slots, chunk limits, earlier deadlines, the daily cap, fixed events, sleep core), soft ones become rule
+weights at three strengths. Claude Sonnet 5.5 runs through the `claude` CLI exactly as the Friday app already runs it (no
+tools, no MCP servers, no saved session), with the CLI's structured output.
+
+**Evaluation.** 101 hand-labelled texts written before any model call (sleep, windows, commitments, limits, sessions,
+pacing, buffers, ordering, multi-constraint paragraphs, ambiguous texts that require a question, unsupported requests,
+chatter and permissions); every third held out. A case counts only if the stored constraints equal the labelled reading
+(or a listed alternative) with nothing extra, a question is asked exactly when required, and unsupported requests are
+reported. Targets are compared by the tasks they select.
+
+| prompt | tuning (68) | held out (33) |
+| --- | --- | --- |
+| role + schema only | 91.2% | 87.9% |
+| + translation guide (round 1) | 97.1% | 97.0% |
+| guide with the schema in the prompt instead of structured output | 89.7% | - |
+| **guide v2** (round 2: "useless / impossible" = hard; non-constraint requests are reported) | 98.5% | **99.0%** (3 runs; 32/33 right every time) |
+| guide v2 + six worked examples | 98.5% | - |
+
+- Every reply was valid and compiled; no invented constraints on the held-out split. Median 3.3 s per text, about
+  $0.006 at list price.
+- Without the guide, the model asks needless questions and turns unsupported requests into something else (alternating
+  subjects became "spread out"). Passing the schema in the prompt made it ask about every missing optional field.
+- The one held-out miss reported "sessions of about 2 hours" as inexpressible (true: the schema has no target length)
+  instead of reading it as a 1-2 hour range.
+- Limits: one context, 101 texts by one author, English, typed. Real users will be more varied; the confirmation step is
+  the safety net (figure: `experiments/E019-constraint-parsing/figures/accuracy.png`).
+
+### 14.2 Predicting how long tasks take (RQ11, RQ12, E020, E021)
+
+**Simulated students** (`src/fr/sim/durations.py`): a term of four courses (problem sets, readings, labs, essays, two
+prelim preps, a project). True length = kind base x course difficulty x course-kind effect x a drift over the term x item
+noise. The student's preliminary estimate sees the expected length and part of the item's own noise, shifted by a
+personal bias and estimate noise; six types: calibrated, optimist (estimates ~64% of the truth), noisy, kind-biased
+(underestimates problem sets and essays only), drifting (bias grows 6% a week), sparse (estimates 30% of tasks, records
+half). Recorded lengths carry a little noise and are sometimes missing.
+
+**Models** (`src/fr/product/durations.py`): estimate as given; one personal bias; per-kind bias; the hierarchical
+log-normal of ENGINE_REFERENCE section 11 (two Bayesian ridge regressions over all / kind / course / course x kind: one for
+log(actual / estimate), one for log length) with or without fusing the two; fading memory (4-week half-life); nearest
+recent tasks; online recalibration from the model's own one-step-ahead errors.
+
+| E020 (60 students, weeks 2-9) | CRPS (log min) | median abs log error | p50 / p80 coverage |
+| --- | --- | --- | --- |
+| estimate as given | 0.290 | 0.338 | 0.27 / 0.55 |
+| one personal bias | 0.218 | 0.248 | 0.47 / 0.79 |
+| hierarchical, not fused | 0.223 | 0.250 | 0.47 / 0.77 |
+| hierarchical, fused, fading memory | 0.186 | 0.219 | 0.44 / 0.75 |
+| **+ recalibration (chosen; fused after 3 recordings)** | 0.187 | 0.217 | 0.47-0.48 / 0.80 |
+
+- The planning fallacy is mostly one number per person: a single bias multiplier removes most of an optimist's error
+  (0.333 -> 0.178). Fusing the estimate with the student's own history is what helps noisy estimators (0.318 -> 0.215).
+- Calibrated students lose a little with any learning (0.143 -> 0.155): their estimates were already right.
+- Round 3 checked two things. Students whose typical lengths sit far from Friday's population defaults (0.5 log sd) do not
+  change the ranking. And the user asked for their own estimates to be the starting point: fusing with population defaults
+  from the first task predicts better in the first two weeks (CRPS 0.236 vs 0.267), but turns "I think 2 h" into 2 h 40 m
+  on day one. The shipped model uses the user's estimate (times the learned ratio) until three lengths are recorded; after
+  week 2 the two are identical.
+
+**Downstream (E021).** What matters for the user is missed deadlines, not prediction scores. A term simulator replans
+every morning with v3 at a fixed step budget, reserving for each open task a quantile of its predicted remaining length
+(p50 for flexible tasks, a higher quantile for hard deadlines); work proceeds on the true lengths. 24 students on report
+seeds, 8 weeks, a heavy load (1.5x).
+
+| hard-deadline tasks late / reserved-but-unused h per day | p50 | p80 | p90 | p95 |
+| --- | --- | --- | --- | --- |
+| estimate as given | 67.9% / 0.64 | 36.5% / 1.08 | 20.5% / 1.31 | 9.8% / 1.49 |
+| one personal bias | 41.9% / 0.91 | 10.9% / 1.42 | 5.6% / 1.62 | 3.6% / 1.84 |
+| **shipped model** | 46.8% / 0.79 | 15.1% / 1.18 | 8.4% / 1.49 | **4.3% / 1.57** |
+| true lengths (reference) | | 0% / 0.13 | | |
+
+- Learning lengths cuts missed hard deadlines by 2-4x at every quantile.
+- Round 1 compared models at p80 only, and the single-bias model looked better downstream (10.9% vs 15.1%) despite
+  predicting worse: its wider spreads buy more padding. Along the whole frontier (round 2; figure
+  `experiments/E021-durations-downstream/figures/frontier.png`) the shipped model misses fewer deadlines for the same
+  unused time at every point, so E020's choice stands.
+- **The quantile matters more than the model.** p80 -> p95 cuts misses from 15.1% to 4.3% and hours late from 116 to 34
+  per student-term, for 23 more minutes a day of reserved time that ends up unused. The product plans hard deadlines at
+  p95.
+- Readings and other flexible tasks finish late often (59-63%; 35% even with true lengths): the planner trades soft
+  lateness against wellbeing, as designed.
+
+**When to ask (RQ13, E024).** The user asked that Friday "occasionally, if needed" ask for more lengths. Two kinds of
+question: an estimate for a new task, and the actual length of a finished task nobody recorded (answered from memory,
+so rougher than a timer). 18 "sparse" students (estimates for 30% of tasks, half the lengths recorded), 8 weeks.
+
+| asks for (p95 planning) | questions / week | hard tasks late | hours late per term | unused h/day |
+| --- | --- | --- | --- | --- |
+| nothing | 0 | 2.9% | 14.9 | 2.42 |
+| estimates, when one would save >= 60 min of padding | 3.1 | 3.4% | 13.3 | 2.07 |
+| estimates, always | 6.1 | 3.9% | 14.0 | 2.06 |
+| **actual lengths, at most 2 a week** | 2.0 | **0.2%** | **0.5** | 2.27 |
+| actual lengths, always | 3.8 | 0.4% | 0.9 | 2.35 |
+
+- Asking how long finished tasks took is the question that pays: two a week remove nearly all remaining misses.
+- Asking for estimates does not reduce misses. At p80 it even raised them (12.5% -> 17.0% when always asking): an
+  estimate narrows the prediction, and the fused prediction is overconfident once one is in (its p80 covers 74% of tasks
+  when every task has an estimate, 82% without). At p95 the effect is small, and estimates mostly buy back reserved
+  time (21 minutes a day). Friday keeps asking for an estimate only when it would save an hour of padding on a hard
+  deadline.
+
+### 14.3 Three schedules to pick from (RQ14, E022)
+
+Option 0 is the recommended plan. Six ways to make options 1 and 2 (`src/fr/product/options.py`), all starting from the
+repaired zero-late plan so none is later than it on a hard deadline: other random seeds; samples at a temperature;
+"diverse" (a price on every task-slot an earlier option used); Thompson (plans for two weight vectors drawn from the
+learner's posterior); archetypes (a "lighter" and a "push" week); and query-by-committee (the pair of posterior plans
+whose pick is most informative). Simulated users from section 6 (easy, noisy, moody, missing rule, adversarial), 3 per
+type, 10 weeks, a new semester instance each week; the user picks by true energy with their own noise and Friday learns
+from the pick.
+
+| tuning users, 10 weeks | regret of the recommended | regret of the pick | recommended picked | distinct | cosine at end |
+| --- | --- | --- | --- | --- | --- |
+| seeds | 0.140 | 0.086 | 33% | 0.72 | 0.858 |
+| temperature | 0.139 | 0.136 | 88% | 0.69 | 0.858 |
+| diverse | 0.136 | 0.124 | 71% | 0.87 | 0.878 |
+| Thompson | 0.135 | 0.093 | 27% | 0.42 | 0.852 |
+| archetype | 0.137 | 0.102 | 21% | 0.40 | 0.849 |
+| query-by-committee | 0.114 | 0.100 | 37% | 0.31 | 0.859 |
+| **Thompson, ranked by posterior pick probability (round 2)** | **0.100** | **0.088** | **63%** | 0.43 | 0.867 |
+
+- Every option of every method kept every avoidable deadline. Users pick their truly best option ~90% of the time, so
+  the plan they live is the best of the three: good alternatives matter more than different ones. Temperature and
+  "diverse" alternatives are worse plans (pick regret +0.03-0.04).
+- **"How often is the recommended option picked" misleads on its own.** Temperature and diverse score highest only
+  because their alternatives are worse. For seeds and Thompson the recommended plan was the user's best less often than
+  chance, because the alternatives start from it and get extra annealing steps.
+- **Ranking the three after making them** (option 0 = the highest posterior-mean pick probability) more than doubles
+  the pick rate of the recommended option (27% -> 63%; 77% for easy users, 50% for users with a missing rule) and cuts
+  its regret by a quarter, with the regret of what the user lives unchanged. Shipped.
+- The generator does not change how fast Friday learns the user's weights over 10 weeks (end cosine 0.85-0.89).
+
+### 14.4 Learning from the pick (RQ15, E023)
+
+A pick is a choice among three plans: P(pick k) is a softmax of -theta . phi_k over the three (multinomial logit, with
+the same scale normalisation as the Bradley-Terry pairs of E011b), fitted as a MAP with a Gaussian prior toward the
+hand-set weights; a Laplace approximation gives the posterior that Thompson sampling and the ranking use
+(`src/fr/product/picks.py`). 15 tuning users, 12 weeks, options from the shipped generator.
+
+| learning | regret of the recommended | regret of the pick | cosine at end |
+| --- | --- | --- | --- |
+| none | 0.110 | 0.098 | 0.875 |
+| **picks (multinomial logit)** | **0.082** | **0.075** | **0.904** |
+| picks (rank breaking: the pick beats each other option) | 0.086 | 0.077 | 0.887 |
+| picks + pairs and drags | 0.094 | 0.083 | 0.875 |
+| pairs and drags only | 0.130 | 0.112 | 0.859 |
+
+- Picks alone cut the regret of the recommended plan and of the lived plan by a quarter (paired -0.028 +- 0.007).
+- Pairs and drags do not add to picks on average: they help users who answer consistently and hurt users with a missing
+  rule or adversarial answers (end cosine 0.80 and 0.73 vs 0.93 and 0.85 with picks alone). That is fortunate, because
+  the app collects picks only.
+- A user who takes the recommended option out of habit 30% of the time slows learning but does not bias it.
+- A single week moves the weights little (1 - cosine 0.008), so one odd pick does not flip the recommendation
+  (figure: `experiments/E023-pick-learning/figures/regret_by_week.png`).
+
+### 14.5 The whole loop (RQ17, E025)
+
+`src/fr/sim/life.py`: 12 simulated people on report seeds, each a preference type x a duration type, a heavier load
+(1.3x), estimates for 60% of tasks, and 2-4 real habits written as text (sleep, no-work windows, a recurring
+commitment, a daily limit, a session limit; E019 cases). The person's habits are the labelled readings; Friday sees what
+Sonnet 5.5 parsed from the same text. 6 weeks, a replan every morning, three options on Mondays. Work planned against a
+real habit is not done.
+
+| system | hard tasks late | hours late per term | work against a real habit (h/week) | regret of the lived plan |
+| --- | --- | --- | --- | --- |
+| v3 as built in program 1 (estimates as given, one plan, no constraints) | 67.5% | 1098 | 7.83 | 0.039 |
+| **Friday as shipped** (picks only) | **8.8%** | **52** | **0.08** | **0.014** |
+| shipped + pairs and drags | 8.2% | 49 | 0.08 | 0.020 |
+| without constraints | 16.4% | 82 | 11.73 | 0.019 |
+| without duration learning (estimates as given, p95, no questions) | 10.4% | 65 | 0.05 | 0.021 |
+| without options (one plan, pairs and drags) | 7.5% | 52 | 0.10 | 0.093 |
+
+- The shipped system is better than v3 as built for every one of the 12 people, on misses and on habit conflicts.
+- Constraints from text carry the habit result (without them ~12 h a week of planned work is lost and misses double).
+  The 5 minutes a week left come from one reading ("Friday evenings are off limits" read as from 18:00, labelled 17:00)
+  that the user would see in the paraphrase.
+- Options and pick learning carry the regret result (0.093 -> 0.014).
+- Duration learning is not significant end to end (10.4% vs 8.8%, +2.2 +- 2.5 points over 12 people and 6 weeks): p95
+  padding covers most of the bias at this load. E021 is the cleaner test (4.3% vs 9.8% at p95).
+- One person (no work before 10, at most 7 h a day, 90-minute sessions, underestimates problem sets) misses 28-36%
+  under every system: the habits leave less room than the work needs. The app shows late and unplaced tasks per option.
+
+### 14.6 Program 2 in brief
+
+| question | answer | evidence |
+| --- | --- | --- |
+| RQ11 predict lengths | a hierarchical log-normal over the user's ratio actual/estimate and their lengths, the user's estimate first until 3 lengths are recorded, fading memory, recalibration; CRPS 0.187 vs 0.290 for estimates as given | E020 |
+| RQ12 plan with uncertainty | reserve the p95 of the remaining work for hard deadlines, the median for flexible tasks: 4.3% of hard deadlines missed vs 36.5% planning on the estimates' p80 | E021 |
+| RQ13 when to ask | how long finished tasks took, at most two a week (misses 2.9% -> 0.2%); an estimate only when it saves an hour of padding | E024 |
+| RQ14 three schedules | Thompson alternatives, ranked by posterior pick probability: the recommended one is picked 63% of weeks (from 27%), lived regret 0.088 | E022 |
+| RQ15 learning from picks | multinomial logit over picks alone: -25% regret; pairs and drags not needed | E023 |
+| RQ16 constraints from text | Sonnet 5.5 + a translation guide + structured output: 99.0% of held-out texts fully right, nothing invented; the user confirms each paraphrase | E019 |
+| RQ17 the whole loop | vs v3 as built: hard misses 67.5% -> 8.8%, habit conflicts 7.8 -> 0.08 h/week | E025 |
+
+Limits: every result except E019 comes from simulated students and users whose behaviour I designed; the parsing test
+has one author's texts. The app's Planner page was checked by compiling, snapshots, and a live round trip with the
+engine, not by a real term of use.
+
+## 15. Program 2 specification: the engine behind the Friday app
+
+Additions to section 12, all implemented in `src/fr/product/` and exposed to the app by `fr-serve` (`PROTOCOL.md`).
+
+### 15.1 Contract with the app
+
+- **Process**: the app starts `fr-serve` once and keeps it running (as it already runs the `claude` CLI): JSON lines over
+  stdin / stdout, one reply per request, a `ready` line after warm-up. No port, no HTTP stack, no network.
+- **Inputs**: Todo List's own task records (`todos.json` entries: id, title, bucket, due date, progress in quarters, done)
+  and EventKit events (title, start, end, all-day). Course from a course code in the title; task kind from the bucket and
+  title words (problem set, reading, essay, lab, exam prep, project, email, other).
+- **State**: one JSON file in `~/Library/Application Support/Friday/engine/` (estimates, recorded lengths, confirmed and
+  pending constraints, picks, the last plans). Never `todos.json`: Todo List drops keys it does not know.
+- **Methods**: `set_estimate`, `record_actual`, `predict`, `questions` / `mark_asked`, `parse_constraints` /
+  `confirm_constraints` / `list_constraints` / `remove_constraint`, `plan`, `pick` (table in `PROTOCOL.md`).
+- **Determinism**: everything but `parse_constraints` is a function of the stored state and the snapshot (fixed step
+  budgets, seeded chains).
+
+### 15.2 Durations
+
+- **Model** `hier_fused_drift_fa3_recal` (E020): log-normal predictive distribution. Two Bayesian ridge regressions
+  over (all, kind, course, course x kind): log(actual / estimate) and log length (prior: population defaults per
+  kind). With an estimate and fewer than three recorded lengths, the prediction is the estimate times the learned ratio
+  (the user's numbers first); after that the two predictions are fused by precision. Observations fade with a 4-week
+  half-life. Online recalibration shifts medians and scales spreads from the model's own one-step-ahead errors.
+- **What the plan reserves** (E021): the remaining-work quantile (D given D > time already worked) at **p95 for hard
+  deadlines** and the median for flexible tasks, times the share not yet done (Todo List's quarters).
+- **Recording**: `record_actual` stores the length with the estimate that was in force; recorded lengths of tasks
+  without an estimate still train the length model.
+- **Questions** (E024): finished tasks nobody timed, **at most two in any 7 days**; an estimate for an open
+  hard-deadline task only when one would cut its p95 padding by at least 60 minutes (at most two at a time). Asked
+  tasks are never asked again (`mark_asked`).
+- Known limit: the fused prediction is overconfident when every task has an estimate (p80 covers 74%); at p95 coverage
+  is 94-96%. Fusing with a correlation term (`_rhoN`) helps a little and is not shipped.
+
+### 15.3 Three schedules and learning from the pick
+
+- **Options** (E022): option 0 is the plan optimised for the learned weights (fixed step budget); options 1 and 2 are
+  plans for two weight vectors drawn from the posterior (Thompson), each starting from option 0 with half its steps.
+  All three start from the repaired zero-late plan and share its deadline walls. The three are then **ranked**: the one
+  with the highest posterior-mean pick probability (64 posterior draws) is shown first as "recommended".
+- **Summaries**: each alternative is described against the recommended plan by the two learned-weight-scaled rule
+  differences it improves most and the one it worsens most ("Freer weekday evenings and less late-night work; busier
+  weekends.").
+- **Learning** (E023): every pick is stored with the three plans' rule features; the weights are refitted from all picks
+  (multinomial logit, MAP with a Gaussian prior toward the hand-set weights, sigma 1, weights >= 0.02). No pairs or
+  drags are needed.
+- **Cost**: three options take about two single-plan budgets (~1.3 s in E022 under load; 2.9 s for a real week in the
+  app including repair and compilation).
+
+### 15.4 Constraints from text
+
+- Claude Sonnet 5.5 via `claude -p --model claude-sonnet-5-5 --tools "" --strict-mcp-config --no-session-persistence
+  --system-prompt <guide v2> --json-schema <Parse schema>`; one retry with the validation error if a reply does not
+  validate (never needed in E019).
+- Twelve constraint kinds + questions + unsupported (section 14.1). The user confirms each paraphrase; only then is it
+  stored. Stored constraints compile on every plan: hard -> walls, soft -> weighted rules (mild 1, medium 3, strong 8
+  points per hour or weight multiplier).
+- Constraints are the user's own rules: they are never learned or softened by Friday (section 8's wall policy applies:
+  if one makes the week impossible, ask once).
+
+### 15.5 The app side (built)
+
+The Friday app has a Planner page, toggled from the calendar's title row or with Control-Command-P (branch
+`rhayrapetyan/planner-tab` of the app, `UI/Sources/Planner/`). It starts `fr-serve` on first use and keeps it running,
+and has three sections: **Plan** (three options side by side with labels and summaries; picking one calls `pick`),
+**Lengths** (a "how long?" field per open task, "it took me..." on finishing, and Friday's questions), and **Rules**
+(free text -> Claude's paraphrases with checkboxes -> confirm; the stored rules with remove buttons). Settings ›
+Planner sets the engine's path. Picked plans are shown, not yet written into the calendar. `fr-demo` prints the same
+flow on sample data.

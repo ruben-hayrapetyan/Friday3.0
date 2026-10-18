@@ -32,13 +32,20 @@
 | E018b | Fix: anneal before CP-SAT | `E018b-weakness-fix` | 150 items fixed (5/6 at best lateness); small packed instances worse |
 | E018c | Fix: order by size | `E018c-size-rule` | keeps both gains; tight 2 h-chunk packing still behind CP-SAT-30 |
 | E018d | The fallback's time | `E018d-fallback-time` | 5 s on efficiency cores: 3/6 at best (P-cores: 5/6) |
+| E019 | Constraints from text (program 2) | `E019-constraint-parsing` | Sonnet 5.5 + guide v2 + structured output: 99.0% of held-out texts fully right (3 runs); no guide 87.9% |
+| E020 | Duration models | `E020-duration-models` | Hierarchical fused + fading memory + recalibration: CRPS 0.187 vs 0.290 as given; user's estimate first until 3 recordings |
+| E021 | Durations downstream | `E021-durations-downstream` | Learning cuts hard misses 2-4x; p95 for hard deadlines: 4.3% late for 23 min/day unused |
+| E022 | Three schedules | `E022-three-schedules` | Thompson alternatives ranked by posterior pick probability: recommended picked 63% (from 27%), lived regret unchanged |
+| E023 | Learning from the pick | `E023-pick-learning` | Picks alone (MNL): -25% regret; adding pairs and drags hurts missing-rule and adversarial users |
+| E024 | When to ask | `E024-asking-policy` | Two "how long did it take?" a week: misses 2.9% -> 0.2% at p95; estimates only trade padding |
+| E025 | The whole loop | `E025-end-to-end` | As shipped vs v3 as built: hard misses 8.8% vs 67.5%, habit conflicts 0.08 vs 7.8 h/week |
 
 ### 13.2 How to reproduce
 
 ```
 cd BackendGuidelines
 uv sync                                  # Python 3.12, numpy, numba, OR-Tools 9.15, scipy, cvxpy, pandas, matplotlib
-uv run pytest                            # 173 tests: evaluator, checker, EDF, kernel exactness, walls, determinism, learning
+uv run pytest                            # 195 tests: evaluator, checker, EDF, kernel exactness, walls, determinism, learning, product
 cd experiments/E004-representations && uv run python run.py && uv run python analyze.py   # any experiment the same way
 uv run python report/make_figures.py     # rebuilds report/figures from the results
 ```

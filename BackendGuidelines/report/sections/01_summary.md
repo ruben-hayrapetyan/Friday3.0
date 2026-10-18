@@ -50,3 +50,11 @@ and asking noisy users many questions.
 | RQ8 supervisor | Missing rules: the right rule is the top candidate for every tested user by week 12 (6/6 evaluation users already at week 4); propose, add on yes (no wrong rule accepted). Walls: never soften silently; ask once. Queries: QBC/uncertainty halve questions for consistent users; stop asking noisy users | 8 |
 | RQ9 guarantees | Determinism with a fixed step budget (all warm reruns identical; independent of thread count); exact per-rule explanations and "why not elsewhere" (tested to equal the evaluator); churn about equal to CP-SAT-30 s with the recommended stage scheme | 5 |
 | RQ10 diversity and calibration | T > 0 samples are different plans (66-71% of work slots differ); item-day probabilities calibrated (ECE 0.003-0.009) when T matches the user's noise; but under walls the chain covers only the region reachable from its start (~20% of all valid plans on tiny instances), so it is not a full posterior | 5 |
+
+**Program 2** (section 14; spec in 15): the engine behind the Friday app's Planner page. As shipped, it learns task lengths
+from the user's estimates and recorded times, plans hard deadlines at the 95th percentile, asks at most two "how long did
+it take?" questions a week, offers three schedules ranked so that the recommended one is the likeliest pick, learns from
+the pick, and takes constraints in plain language through Claude Sonnet 5.5 (99% of held-out texts read right). In a
+simulated six-week term it misses 8.8% of hard deadlines vs 67.5% for v3 as built, and schedules almost no work
+against the person's real habits (0.08 vs 7.8 h a week).
+

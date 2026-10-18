@@ -20,7 +20,8 @@ full - durations +2.2 +- 2.5 points (not significant); full - options +0.079 +- 
   estimates themselves, and these people underestimate.
 - **Constraints carry the habit result**: without them ~12 hours a week of planned work fall inside someone's real
   sleep, commitments or limits and are lost, and misses double. With Sonnet's parses (E019) almost nothing is lost (5
-  minutes a week, from parses that were slightly off).
+  minutes a week, all from one reading: "Friday evenings are off limits" became "from 18:00" where the labelled
+  reading says 17:00; the paraphrase shows the hour, so a real user could correct it before confirming).
 - **Options and picks carry the regret result**: one plan with pairs and drags lives 0.093 regret vs 0.014-0.020 with
   three options and pick learning.
 - **Duration learning is not significant here** (10.4% vs 8.2-8.8%, 12 people, 6 weeks): the p95 padding already covers

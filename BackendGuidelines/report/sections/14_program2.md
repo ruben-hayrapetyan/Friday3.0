@@ -168,4 +168,45 @@ hand-set weights; a Laplace approximation gives the posterior that Thompson samp
 - A single week moves the weights little (1 - cosine 0.008), so one odd pick does not flip the recommendation
   (figure: `experiments/E023-pick-learning/figures/regret_by_week.png`).
 
-E025_PLACEHOLDER
+### 14.5 The whole loop (RQ17, E025)
+
+`src/fr/sim/life.py`: 12 simulated people on report seeds, each a preference type x a duration type, a heavier load
+(1.3x), estimates for 60% of tasks, and 2-4 real habits written as text (sleep, no-work windows, a recurring
+commitment, a daily limit, a session limit; E019 cases). The person's habits are the labelled readings; Friday sees what
+Sonnet 5.5 parsed from the same text. 6 weeks, a replan every morning, three options on Mondays. Work planned against a
+real habit is not done.
+
+| system | hard tasks late | hours late per term | work against a real habit (h/week) | regret of the lived plan |
+| --- | --- | --- | --- | --- |
+| v3 as built in program 1 (estimates as given, one plan, no constraints) | 67.5% | 1098 | 7.83 | 0.039 |
+| **Friday as shipped** (picks only) | **8.8%** | **52** | **0.08** | **0.014** |
+| shipped + pairs and drags | 8.2% | 49 | 0.08 | 0.020 |
+| without constraints | 16.4% | 82 | 11.73 | 0.019 |
+| without duration learning (estimates as given, p95, no questions) | 10.4% | 65 | 0.05 | 0.021 |
+| without options (one plan, pairs and drags) | 7.5% | 52 | 0.10 | 0.093 |
+
+- The shipped system is better than v3 as built for every one of the 12 people, on misses and on habit conflicts.
+- Constraints from text carry the habit result (without them ~12 h a week of planned work is lost and misses double).
+  The 5 minutes a week left come from one reading ("Friday evenings are off limits" read as from 18:00, labelled 17:00)
+  that the user would see in the paraphrase.
+- Options and pick learning carry the regret result (0.093 -> 0.014).
+- Duration learning is not significant end to end (10.4% vs 8.8%, +2.2 +- 2.5 points over 12 people and 6 weeks): p95
+  padding covers most of the bias at this load. E021 is the cleaner test (4.3% vs 9.8% at p95).
+- One person (no work before 10, at most 7 h a day, 90-minute sessions, underestimates problem sets) misses 28-36%
+  under every system: the habits leave less room than the work needs. The app shows late and unplaced tasks per option.
+
+### 14.6 Program 2 in brief
+
+| question | answer | evidence |
+| --- | --- | --- |
+| RQ11 predict lengths | a hierarchical log-normal over the user's ratio actual/estimate and their lengths, the user's estimate first until 3 lengths are recorded, fading memory, recalibration; CRPS 0.187 vs 0.290 for estimates as given | E020 |
+| RQ12 plan with uncertainty | reserve the p95 of the remaining work for hard deadlines, the median for flexible tasks: 4.3% of hard deadlines missed vs 36.5% planning on the estimates' p80 | E021 |
+| RQ13 when to ask | how long finished tasks took, at most two a week (misses 2.9% -> 0.2%); an estimate only when it saves an hour of padding | E024 |
+| RQ14 three schedules | Thompson alternatives, ranked by posterior pick probability: the recommended one is picked 63% of weeks (from 27%), lived regret 0.088 | E022 |
+| RQ15 learning from picks | multinomial logit over picks alone: -25% regret; pairs and drags not needed | E023 |
+| RQ16 constraints from text | Sonnet 5.5 + a translation guide + structured output: 99.0% of held-out texts fully right, nothing invented; the user confirms each paraphrase | E019 |
+| RQ17 the whole loop | vs v3 as built: hard misses 67.5% -> 8.8%, habit conflicts 7.8 -> 0.08 h/week | E025 |
+
+Limits: every result except E019 comes from simulated students and users whose behaviour I designed; the parsing test
+has one author's texts. The app's Planner page was checked by compiling, snapshots, and a live round trip with the
+engine, not by a real term of use.

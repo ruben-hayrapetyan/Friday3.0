@@ -27,6 +27,9 @@ Output: one `REPORT.md` with an engine spec precise enough to write a v3 design 
 - **Session 3, later** (2026-10-18): on the user's request the engine is wired into the Friday app as a Planner page
   (app branch `rhayrapetyan/planner-tab`, merged into `personal` and installed; not pushed). E021 rounds 1-2, E022
   round 1, E024 round 1 done; E022 round 2 (ranking the three) and E024 round 2 (p95) queued (`queue_p2b.sh`).
+- **Session 3, end** (2026-10-18): program 2 complete. E019-E025 done (E021, E022, E024, E025 in two rounds); report
+  sections 14-15 written, `REPORT.md` reassembled; 195 tests pass. Engine defaults set from the experiments (decisions
+  31-35); the installed app picks them up when it next starts the engine.
 - Branch: `rhayrapetyan/backend` (off `main`). Project root: `BackendGuidelines/`.
 - **Machine is shared** from session 2: a trading bot runs on it (load average 30-45 on 16 cores). All jobs run at
   `nice -n 19` (asked by that session). Timing numbers from E004 on carry this load; each queue logs the load at start.
@@ -131,6 +134,12 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
     plans score highest on it. The product goal is: the user gets a good plan (pick regret), Friday learns (cosine), and
     the recommended label predicts the pick. The label was below chance because alternatives get more annealing than
     the recommended plan; round 2 ranks the three after making them.
+33. **(Program 2) Options = thompson+post** (E022 round 2): Thompson alternatives, then the three ranked by posterior-mean
+    pick probability. Recommended picked 27% -> 63%, its regret 0.135 -> 0.100, lived regret unchanged.
+34. **(Program 2) Learn from picks alone (MNL)** (E023): -25% regret vs no learning; pairs and drags add nothing on average
+    and hurt missing-rule / adversarial users. Matches what the app collects.
+35. **(Program 2) Questions** (E024 round 2): at most two "how long did it take?" a week (misses 2.9% -> 0.2% at p95);
+    estimates only when one saves >= 60 min of p95 padding (neutral on misses, frees ~20 min/day).
 
 ## Findings so far
 
@@ -171,8 +180,10 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
 | E019-constraint-parsing | Text -> typed constraints with Sonnet 5.5 | guide2 prompt: 98.5% tuning, **99.0% held out** (3 runs x 33); round-1 guide 97.0%, no guide 87.9%; structured output beats schema-in-prompt (fewer needless questions); zero invented constraints held out; ~3.3 s, ~$0.006 per text. |
 | E020-duration-models | Which duration model? (prediction) | Estimates as given CRPS 0.29; one personal bias 0.22; hierarchical fused with history 0.19 (noisy estimators 0.35 -> 0.22); recalibration fixes p80 coverage (0.75 -> 0.80); round 3: fusing from day one helps the first 2 weeks even when population defaults are off, but the user asked for their own numbers first -> fa3. |
 | E021-durations-downstream | Do better predictions mean fewer missed deadlines? | Learning cuts hard misses 2-4x at every quantile. At p80 the one-bias model looked better (10.9% vs 15.1%: wider spreads pad more), but along the frontier the shipped model wins at equal unused time; p95: 4.3% late, 1.57 h/day unused. -> plan hard deadlines at p95. |
-| E022-three-schedules | How to make options 1-2? (round 1) | Learning the same for all generators (end cos 0.85-0.88); pick regret seeds 0.086, thompson 0.093, qbc 0.100, archetype 0.102, diverse 0.124, temperature 0.136; recommended plan is the user's best only 23-30% for seeds/thompson (alternatives get extra steps); temperature/diverse "win" the pick rate with worse alternatives. |
-| E024-asking-policy | When to ask for lengths? (round 1, p80) | Asking for estimates raised misses (12.5% -> 17.0% always; voi60 13.2%): the fused prediction gets overconfident (p80 covers 74% with every estimate). Asking for actual lengths of unrecorded finished tasks cut misses to 8.4% (~4 questions/week; 2/week: 11.2%). |
+| E022-three-schedules | How to make options 1-2? | Round 1: learning the same for all generators; pick regret seeds 0.086, thompson 0.093, temperature/diverse worse; recommended = user's best only 23-30% (alternatives get extra steps). Round 2: ranking by posterior pick probability -> recommended picked 63% (from 27%), lived regret 0.088. |
+| E023-pick-learning | How to learn from the pick? | MNL on picks alone: regret of the recommended 0.110 -> 0.082, cosine 0.904; + pairs/drags 0.094 (hurts missing-rule and adversarial users); pairs only 0.130 (worse than none); status-quo lean slows, does not bias. |
+| E024-asking-policy | When to ask for lengths? | p80: estimates raised misses (overconfident fusion, p80 covers 74%); actuals cut them. p95: two actual-length questions a week 2.9% -> 0.2%; estimates trade padding (-21 min/day unused, misses n.s.). |
+| E025-end-to-end | The whole loop | As shipped (picks only) vs v3 as built: hard late 8.8% vs 67.5%, hours late 52 vs 1098, habit conflicts 0.08 vs 7.8 h/week, lived regret 0.014 vs 0.039. Ablations: constraints carry habits (11.7 h/week without), options carry regret (0.093 without), duration learning n.s. here (10.4%). |
 | E003-strict-qubo | Pairwise QUBO with penalties, price-only slice | Dead end: never meets hard deadlines (0-5%) at any penalty scale; alpha < 3 cheats, alpha >= 3 freezes (slack bits absorb unplaced work); 25-200x worse than optimum. Hopfield descent same. |
 
 - **E001 findings in one line each:** time-limited quality is the baseline at n>=40; v2 determinism needs 1 worker; stage-1 can
