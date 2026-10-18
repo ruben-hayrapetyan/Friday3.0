@@ -404,12 +404,14 @@ class Engine:
                                               hours_late=round((finish[t] - due_of[t]) / 60, 1) if finish.get(t) else None)
                                          for t in dict.fromkeys([x for x in late + unplaced if x])],
                             valid=not check(u.p, plan)))
-        # whenever an option runs late, skips are worth proposing up to the latest deadline it misses
-        dues = [d["due"] for o in out for d in o["late_detail"]]
-        if dues and not self.s.get("shortfall"):
-            self.s["shortfall"] = dict(due=max(dues)[:16])
-        elif dues:
-            self.s["shortfall"]["due"] = max(self.s["shortfall"]["due"], max(dues)[:16])
+        # whenever an option runs late, skips are worth proposing until the late work is done: an event the day after a
+        # missed deadline still holds back work that is late (decision 42)
+        late = [d for o in out for d in o["late_detail"]]
+        if late:
+            short = self.s["shortfall"] or dict(due=max(d["due"] for d in late)[:16])
+            ends = [d["finish"] or clock.iso(u.p.grid.horizon_end) for d in late]
+            short["until"] = max(ends)[:16]
+            self.s["shortfall"] = short
         pid = uuid.uuid4().hex[:12]
         self.s["plans"][pid] = dict(at=clock.iso(clock.to_minutes(now)), phis=[p.tolist() for p in phis])
         if len(self.s["plans"]) > 10:
@@ -420,9 +422,9 @@ class Engine:
 
     # ---------------------------------------------------------------- events you might skip
     def suggest_skips(self, events: list[dict], now: datetime, limit: int = 6) -> dict:
-        """When the last plan ran late (more due than fits, or any task late), the events before the latest deadline
-        it missed that matter least, each with the time skipping it frees: {deadline, suggestions: [{title, start, end, level, reason,
-        frees_minutes}], skipped: [{title, start}]}. Claude rates new titles once; "keep" answers are never asked again."""
+        """When the last plan ran late (more due than fits, or any task late), the events that matter least between now
+        and when the late work is done, each with the time skipping it frees: {deadline, until, suggestions: [{title,
+        start, end, level, reason, frees_minutes}], skipped: [{title, start}], kept: [titles]}. Claude rates new titles once; "keep" answers are never asked again."""
         kept = set(self.s.get("kept_events", []))
         named = {ev_key(t): t for t in self.s.get("kept_titles", [])}
         named.update({ev_key(e["title"]): e["title"] for e in events if ev_key(e["title"]) in kept})
@@ -432,10 +434,12 @@ class Engine:
         if not short:
             return out
         out["deadline"] = short["due"]
+        until = short.get("until") or short["due"]
+        out["until"] = until
         skipped = {(ev_key(x["title"]), x["start"][:16]) for x in self.s.get("skipped", [])}
         start_s = now.strftime("%Y-%m-%dT%H:%M")
         cands = [e for e in events if not e.get("isAllDay") and str(e["start"])[:16] >= start_s
-                 and str(e["end"])[:16] <= short["due"] and ev_key(e["title"]) not in kept
+                 and str(e["end"])[:16] <= until and ev_key(e["title"]) not in kept
                  and (ev_key(e["title"]), str(e["start"])[:16]) not in skipped]
         ratings = self.s.setdefault("event_ratings", {})
         new = sorted({e["title"] for e in cands if ev_key(e["title"]) not in ratings})

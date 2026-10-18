@@ -181,3 +181,19 @@ def test_exam_focus_holds_other_work_until_after_the_exam_and_buffers_replace_de
     assert rel["x4"] < end  # due 12 h after it with 3 h to do: no room after, so it may run through
     assert notes == ["Before Chem 2090 Exam 2: 1 other tasks wait until after it"]
     assert sc2.settings.buffers["class"] == (0, 15)  # the user's buffer replaces Friday's 10 minutes before classes
+
+
+def test_priority_sets_what_gives_way_first():
+    from datetime import datetime
+
+    from fr.product import adapter
+
+    def t(i, title, bucket):
+        return dict(id=f"p{i}", title=title, bucket=bucket, isDone=False, dueDate="2026-10-22T23:59:00")
+    tasks = adapter.tasks_from([t(1, "Chem HW 6", "assignments"), t(2, "Chem chapter 8", "readings")])
+    sc, ids = adapter.scenario(datetime(2026, 10, 19, 8, 0), tasks, {x.id: 60 for x in tasks}, [])
+    reply = {"constraints": [{"kind": "priority", "level": "high", "target": {"kinds": ["assignment"]}},
+                             {"kind": "priority", "level": "low", "target": {"types": ["reading"]}}]}
+    sc2, _ = C.apply(sc, C.Parse.model_validate(reply).constraints)
+    imp = {ids[s.id]: s.importance for s in sc2.specs if s.id in ids}
+    assert imp == {"p1": 5, "p2": 1}

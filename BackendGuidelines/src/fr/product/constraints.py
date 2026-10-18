@@ -232,6 +232,15 @@ class DailyBreak(_Base):
     _c = field_validator("start", "end")(classmethod(lambda cls, v: _clock_ok(v)))
 
 
+class Priority(_Base):
+    """Some work matters more than other work. When not everything fits before its deadline, high-priority work is
+    kept on time first and low-priority work gives way first. "X over Y" is two of these: X high, Y low."""
+
+    kind: Literal["priority"] = "priority"
+    level: Literal["high", "low"]
+    target: Target
+
+
 class ExamFocus(_Base):
     """Before each exam on the calendar, concentrate on that course: in the `days_before` days before it, other work
     whose deadline is after the exam waits until the exam is over (when there is still time to do it after)."""
@@ -251,7 +260,8 @@ class Order(_Base):
 
 
 Constraint = Annotated[Union[SleepC, AvoidTime, PreferTime, Commitment, DailyLimit, KeepFree, SessionLength, OneSitting,
-                             Pacing, FinishEarly, Buffer, Order, DailyBreak, ExamFocus], Field(discriminator="kind")]
+                             Pacing, FinishEarly, Buffer, Order, DailyBreak, ExamFocus, Priority],
+                       Field(discriminator="kind")]
 
 
 class Unsupported(BaseModel):
@@ -409,6 +419,11 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
             breaks.append((name, c))
         elif isinstance(c, ExamFocus):
             notes += _exam_focus(out, c)
+        elif isinstance(c, Priority):
+            # importance scales what lateness costs (late_work, late_tasks): 5 or 1 against the default 3
+            for sp in flexible:
+                if c.target.matches(sp):
+                    sp.importance = 5 if c.level == "high" else 1
         elif isinstance(c, Order):
             a = [s for s in flexible if c.first.lower() in s.title.lower()]
             b = [s for s in flexible if c.then.lower() in s.title.lower()]

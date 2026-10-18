@@ -200,6 +200,13 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
     days_before days before an exam on the calendar (title words exam/prelim/midterm/final), work for other courses due
     after the exam waits until it ends, when there is a day plus 1.5x its length left after; Claude proposes 3 days
     and asks.
+42. **(After program 2, from use, 2026-10-18) Priority, and skips until the late work is done.** "Prioritize assignments
+    over readings" came back unsupported; new constraint priority (high / low) sets importance 5 / 1, which scales what
+    lateness costs, so high-priority work is kept on time first. Skip suggestions ran only to the missed deadline
+    (Thursday), so Friday's poker and chess and Saturday's table tennis were never offered though late work ran to
+    Sunday; the window now ends when the latest late work is done (on the user's week: Thu 23:59 -> Sun 12:00, and
+    table tennis, chess, poker and a climbing session are offered). The user's exam rule had been refused only because
+    it was sent before exam_focus went live; it now parses (3 days, with a question).
 
 ## Findings so far
 

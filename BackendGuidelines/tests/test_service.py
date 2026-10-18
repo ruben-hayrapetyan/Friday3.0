@@ -259,6 +259,7 @@ def test_an_overloaded_week_suggests_the_least_important_events_to_skip(tmp_path
     r = eng.suggest_skips(evs, NOW)
     titles = [x["title"] for x in r["suggestions"]]
     assert r["deadline"] and titles[0] == "CS 2110 office hours"  # optional first, the most time freed first
+    assert r["until"] >= r["deadline"]  # until the late work is done, not just to the deadline
     assert "club meeting" in titles and "CS 2110 lecture" not in titles  # likely after optional; classes never
     eng.decide_event("CS 2110 office hours", "2026-10-19T14:00", "skip")
     eng.decide_event("club meeting", "2026-10-20T19:00", "keep")

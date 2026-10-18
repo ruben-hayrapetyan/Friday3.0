@@ -67,7 +67,9 @@ GUIDE3 = GUIDE2 + """
   getting there, and the window it must fit in (ask for the window if none is given).
 - Wanting to concentrate on an exam's course before the exam and leave other work for after it is exam_focus, with
   days_before. If no number of days is given, use 3, say "3 days" in the paraphrase and ask in "questions" whether 3
-  is right. Add "quiz" to words only if they include quizzes."""
+  is right. Add "quiz" to words only if they include quizzes.
+- Saying some work matters more ("prioritize assignments over readings", "problem sets come first") is priority:
+  level high for what comes first, low for what gives way; "X over Y" is two priority constraints."""
 GUIDES = {0: None, 1: GUIDE, 2: GUIDE2, 3: GUIDE3}
 
 
