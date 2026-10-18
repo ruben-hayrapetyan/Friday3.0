@@ -145,4 +145,27 @@ from the pick.
   its regret by a quarter, with the regret of what the user lives unchanged. Shipped.
 - The generator does not change how fast Friday learns the user's weights over 10 weeks (end cosine 0.85-0.89).
 
-E023_PLACEHOLDER
+### 14.4 Learning from the pick (RQ15, E023)
+
+A pick is a choice among three plans: P(pick k) is a softmax of -theta . phi_k over the three (multinomial logit, with
+the same scale normalisation as the Bradley-Terry pairs of E011b), fitted as a MAP with a Gaussian prior toward the
+hand-set weights; a Laplace approximation gives the posterior that Thompson sampling and the ranking use
+(`src/fr/product/picks.py`). 15 tuning users, 12 weeks, options from the shipped generator.
+
+| learning | regret of the recommended | regret of the pick | cosine at end |
+| --- | --- | --- | --- |
+| none | 0.110 | 0.098 | 0.875 |
+| **picks (multinomial logit)** | **0.082** | **0.075** | **0.904** |
+| picks (rank breaking: the pick beats each other option) | 0.086 | 0.077 | 0.887 |
+| picks + pairs and drags | 0.094 | 0.083 | 0.875 |
+| pairs and drags only | 0.130 | 0.112 | 0.859 |
+
+- Picks alone cut the regret of the recommended plan and of the lived plan by a quarter (paired -0.028 +- 0.007).
+- Pairs and drags do not add to picks on average: they help users who answer consistently and hurt users with a missing
+  rule or adversarial answers (end cosine 0.80 and 0.73 vs 0.93 and 0.85 with picks alone). That is fortunate, because
+  the app collects picks only.
+- A user who takes the recommended option out of habit 30% of the time slows learning but does not bias it.
+- A single week moves the weights little (1 - cosine 0.008), so one odd pick does not flip the recommendation
+  (figure: `experiments/E023-pick-learning/figures/regret_by_week.png`).
+
+E025_PLACEHOLDER

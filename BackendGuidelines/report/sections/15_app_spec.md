@@ -35,7 +35,18 @@ Additions to section 12, all implemented in `src/fr/product/` and exposed to the
 
 ### 15.3 Three schedules and learning from the pick
 
-SPEC_OPTIONS_PLACEHOLDER
+- **Options** (E022): option 0 is the plan optimised for the learned weights (fixed step budget); options 1 and 2 are
+  plans for two weight vectors drawn from the posterior (Thompson), each starting from option 0 with half its steps.
+  All three start from the repaired zero-late plan and share its deadline walls. The three are then **ranked**: the one
+  with the highest posterior-mean pick probability (64 posterior draws) is shown first as "recommended".
+- **Summaries**: each alternative is described against the recommended plan by the two learned-weight-scaled rule
+  differences it improves most and the one it worsens most ("Freer weekday evenings and less late-night work; busier
+  weekends.").
+- **Learning** (E023): every pick is stored with the three plans' rule features; the weights are refitted from all picks
+  (multinomial logit, MAP with a Gaussian prior toward the hand-set weights, sigma 1, weights >= 0.02). No pairs or
+  drags are needed.
+- **Cost**: three options take about two single-plan budgets (~1.3 s in E022 under load; 2.9 s for a real week in the
+  app including repair and compilation).
 
 ### 15.4 Constraints from text
 
