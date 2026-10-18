@@ -95,4 +95,54 @@ seeds, 8 weeks, a heavy load (1.5x).
 - Readings and other flexible tasks finish late often (59-63%; 35% even with true lengths): the planner trades soft
   lateness against wellbeing, as designed.
 
-E024_PLACEHOLDER
+**When to ask (RQ13, E024).** The user asked that Friday "occasionally, if needed" ask for more lengths. Two kinds of
+question: an estimate for a new task, and the actual length of a finished task nobody recorded (answered from memory,
+so rougher than a timer). 18 "sparse" students (estimates for 30% of tasks, half the lengths recorded), 8 weeks.
+
+| asks for (p95 planning) | questions / week | hard tasks late | hours late per term | unused h/day |
+| --- | --- | --- | --- | --- |
+| nothing | 0 | 2.9% | 14.9 | 2.42 |
+| estimates, when one would save >= 60 min of padding | 3.1 | 3.4% | 13.3 | 2.07 |
+| estimates, always | 6.1 | 3.9% | 14.0 | 2.06 |
+| **actual lengths, at most 2 a week** | 2.0 | **0.2%** | **0.5** | 2.27 |
+| actual lengths, always | 3.8 | 0.4% | 0.9 | 2.35 |
+
+- Asking how long finished tasks took is the question that pays: two a week remove nearly all remaining misses.
+- Asking for estimates does not reduce misses. At p80 it even raised them (12.5% -> 17.0% when always asking): an
+  estimate narrows the prediction, and the fused prediction is overconfident once one is in (its p80 covers 74% of tasks
+  when every task has an estimate, 82% without). At p95 the effect is small, and estimates mostly buy back reserved
+  time (21 minutes a day). Friday keeps asking for an estimate only when it would save an hour of padding on a hard
+  deadline.
+
+### 14.3 Three schedules to pick from (RQ14, E022)
+
+Option 0 is the recommended plan. Six ways to make options 1 and 2 (`src/fr/product/options.py`), all starting from the
+repaired zero-late plan so none is later than it on a hard deadline: other random seeds; samples at a temperature;
+"diverse" (a price on every task-slot an earlier option used); Thompson (plans for two weight vectors drawn from the
+learner's posterior); archetypes (a "lighter" and a "push" week); and query-by-committee (the pair of posterior plans
+whose pick is most informative). Simulated users from section 6 (easy, noisy, moody, missing rule, adversarial), 3 per
+type, 10 weeks, a new semester instance each week; the user picks by true energy with their own noise and Friday learns
+from the pick.
+
+| tuning users, 10 weeks | regret of the recommended | regret of the pick | recommended picked | distinct | cosine at end |
+| --- | --- | --- | --- | --- | --- |
+| seeds | 0.140 | 0.086 | 33% | 0.72 | 0.858 |
+| temperature | 0.139 | 0.136 | 88% | 0.69 | 0.858 |
+| diverse | 0.136 | 0.124 | 71% | 0.87 | 0.878 |
+| Thompson | 0.135 | 0.093 | 27% | 0.42 | 0.852 |
+| archetype | 0.137 | 0.102 | 21% | 0.40 | 0.849 |
+| query-by-committee | 0.114 | 0.100 | 37% | 0.31 | 0.859 |
+| **Thompson, ranked by posterior pick probability (round 2)** | **0.100** | **0.088** | **63%** | 0.43 | 0.867 |
+
+- Every option of every method kept every avoidable deadline. Users pick their truly best option ~90% of the time, so
+  the plan they live is the best of the three: good alternatives matter more than different ones. Temperature and
+  "diverse" alternatives are worse plans (pick regret +0.03-0.04).
+- **"How often is the recommended option picked" misleads on its own.** Temperature and diverse score highest only
+  because their alternatives are worse. For seeds and Thompson the recommended plan was the user's best less often than
+  chance, because the alternatives start from it and get extra annealing steps.
+- **Ranking the three after making them** (option 0 = the highest posterior-mean pick probability) more than doubles
+  the pick rate of the recommended option (27% -> 63%; 77% for easy users, 50% for users with a missing rule) and cuts
+  its regret by a quarter, with the regret of what the user lives unchanged. Shipped.
+- The generator does not change how fast Friday learns the user's weights over 10 weeks (end cosine 0.85-0.89).
+
+E023_PLACEHOLDER
