@@ -94,10 +94,12 @@ class Student:
     rng: np.random.Generator
 
     @staticmethod
-    def make(kind: str | StudentType, seed: int, item_sigma: float = 0.3, drift_sd: float = 0.05) -> "Student":
+    def make(kind: str | StudentType, seed: int, item_sigma: float = 0.3, drift_sd: float = 0.05,
+             load: float = 1.0) -> "Student":
+        """`load` scales every true length (and so the estimates): 1.5 = a heavier term."""
         k = STUDENT_TYPES[kind] if isinstance(kind, str) else kind
         rng = np.random.default_rng(seed)
-        base = {kd: float(np.log(m) + rng.normal(0, 0.2)) for kd, (_, m) in KINDS.items()}
+        base = {kd: float(np.log(m * load) + rng.normal(0, 0.2)) for kd, (_, m) in KINDS.items()}
         course = {c: float(rng.normal(0, 0.3)) for c in COURSES}
         ck = {(c, kd): float(rng.normal(0, 0.15)) for c in COURSES for kd in KINDS}
         s = Student(k, seed, base, course, ck, drift_sd, rng)

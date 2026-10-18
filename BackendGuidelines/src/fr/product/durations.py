@@ -178,6 +178,16 @@ class Hier(Model):
         return (wr * mr + wl * ml) / (wr + wl), math.sqrt(1 / (wr + wl))
 
 
+class Oracle(Model):
+    """Reference only: the simulator substitutes the true length (see sim.term)."""
+
+    name = "oracle"
+    oracle = True
+
+    def predict(self, course, kind, est, week):
+        raise RuntimeError("the oracle is resolved by the simulator")
+
+
 class Recalibrated(Model):
     """Online recalibration of any model from its own one-step-ahead errors: before each recorded length is learned,
     the model's current prediction for that task is scored; the running mean error shifts later medians and the running
@@ -255,6 +265,8 @@ def make(name: str, kinds, courses) -> Model:
     """The model zoo E020 compares."""
     if name == "as_given":
         return AsGiven()
+    if name == "oracle":
+        return Oracle()
     if name == "global_bias":
         return Hier(kinds, courses, levels=(), name=name)
     if name == "kind_bias":
