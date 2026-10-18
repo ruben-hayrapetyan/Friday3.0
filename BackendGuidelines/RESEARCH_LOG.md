@@ -110,6 +110,18 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
 26. **(Program 2) Bridge = `fr serve`**, JSON lines over stdio, launched by the app the way it launches the `claude` CLI
     (no port, no HTTP stack; one long-lived process keeps numba's compiled code warm). Swift changes are out of scope.
 
+27. **(Program 2) Constraint prompt = guide2** (E019): role + translation guide (hard/soft wording, night windows end in the
+    morning, sleep nights named by the evening, ask instead of guessing, report the inexpressible) with the CLI's
+    structured output; no few-shot examples (they added nothing). 99.0% of held-out cases fully right over 3 runs.
+28. **(Program 2) Duration model = hier_fused_drift_fa3_recal** (E020, 3 rounds): ratio actual/estimate and length, each a
+    Bayesian ridge over (all, kind, course, course x kind), fused once 3 lengths are recorded (before that the user's
+    estimate is the prediction, as the user asked), 4-week half-life, online recalibration. CRPS 0.187 vs 0.290 for
+    estimates as given; p80 covers 80%.
+29. **(Program 2) Fixed-step planner for the product** (`fr.product.planner`, `Engine`): construction -> repair -> (CP-SAT
+    deadline fallback <= 60 items) -> lexpolish with step counts, so the app's plans are deterministic.
+30. **(Program 2) The three options all start from the repaired zero-late plan** and share its deadline walls, so no option
+    is later on a hard deadline than the recommended one (tested per method).
+
 ## Findings so far
 
 - **EDF exactness is about feasibility.** When jobs cannot all finish, `L_max` depends on a convention for unfinished jobs, so only
@@ -146,6 +158,8 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
 | E014-missing-features | Can the supervisor find a missing rule? | Right rule for 6/6 evaluation users by week 4, never a wrong rule for them; false proposals on users without one 33% at week 4 -> 0% by week 10. Regret effect inconclusive (noise). Policy: propose from week 6, add on the user's yes. |
 | E015-soften-walls | Should walls soften? | Ask once at the first contradicting event: regret 15 vs 50 (3 events) vs 94 (auto) vs 114 (never). Never soften silently. |
 | E016-active-queries | Which comparisons to ask? | Easy users: QBC/uncertainty reach 90% in 10-12 questions vs 25 random. Noisy users: every strategy loses accuracy vs the prior for 20-60 answers; QBC degrades least. |
+| E019-constraint-parsing | Text -> typed constraints with Sonnet 5.5 | guide2 prompt: 98.5% tuning, **99.0% held out** (3 runs x 33); round-1 guide 97.0%, no guide 87.9%; structured output beats schema-in-prompt (fewer needless questions); zero invented constraints held out; ~3.3 s, ~$0.006 per text. |
+| E020-duration-models | Which duration model? (prediction) | Estimates as given CRPS 0.29; one personal bias 0.22; hierarchical fused with history 0.19 (noisy estimators 0.35 -> 0.22); recalibration fixes p80 coverage (0.75 -> 0.80); round 3: fusing from day one helps the first 2 weeks even when population defaults are off, but the user asked for their own numbers first -> fa3. |
 | E003-strict-qubo | Pairwise QUBO with penalties, price-only slice | Dead end: never meets hard deadlines (0-5%) at any penalty scale; alpha < 3 cheats, alpha >= 3 freezes (slack bits absorb unplaced work); 25-200x worse than optimum. Hopfield descent same. |
 
 - **E001 findings in one line each:** time-limited quality is the baseline at n>=40; v2 determinism needs 1 worker; stage-1 can
