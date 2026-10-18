@@ -331,7 +331,8 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
                                            event_kind=c.event_kind))
         elif isinstance(c, DailyLimit):
             if c.strength == "hard" and c.target.is_all() and not c.days:
-                out.settings = replace(out.settings, day_cap_units=min(out.settings.day_cap_units, round(c.hours * 4)))
+                # the user's own limit replaces Friday's default of 12 h, lower or higher
+                out.settings = replace(out.settings, day_cap_units=round(c.hours * 4))
             else:
                 if c.strength == "hard":
                     notes.append(f"{name}: a hard limit on part of the work or some days is applied as a strong preference")
