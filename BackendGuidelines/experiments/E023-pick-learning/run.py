@@ -53,6 +53,20 @@ def report() -> None:
     print(g.round(3).sort_values("rec_picked_wk8plus", ascending=False).to_string())
     print(late.pivot_table(index="kind", columns="cond", values="rec_picked").round(2).to_string())
     g.round(4).to_csv(RES / "summary.csv")
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(6.5, 3.6))
+    for cond, x in d[d.p_default == 0].groupby("cond"):
+        c = x.groupby("week").regret_rec.mean().rolling(3, min_periods=1).mean()
+        ax.plot(c.index, c.values, "o-", ms=3, label=cond)
+    ax.set_xlabel("week")
+    ax.set_ylabel("regret of the recommended plan (3-week mean)")
+    ax.legend(fontsize=7)
+    ax.set_title("Learning from the pick (E023, 15 tuning users)", fontsize=9)
+    fig.tight_layout()
+    (HERE / "figures").mkdir(exist_ok=True)
+    fig.savefig(HERE / "figures" / "regret_by_week.png", dpi=130)
 
 
 if __name__ == "__main__":

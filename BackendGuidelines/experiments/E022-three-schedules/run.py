@@ -59,6 +59,22 @@ def report(rnd: str | None) -> None:
     print(d.pivot_table(index="kind", columns="method", values="regret_pick").round(3).to_string())
     print(d.pivot_table(index="kind", columns="method", values="cos", aggfunc="last").round(3).to_string())
     g.round(4).to_csv(RES / "summary.csv")
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    g = g.reset_index().sort_values("regret_pick")
+    fig, axes = plt.subplots(1, 2, figsize=(9, 3.4))
+    axes[0].barh(g.method, g.regret_pick, color="tab:blue", label="the pick")
+    axes[0].plot(g.regret_rec, g.method, "o", color="tab:red", label="the recommended")
+    axes[0].set_xlabel("regret (share of |E*|), lower is better")
+    axes[0].legend(fontsize=7, loc="lower right")
+    axes[1].barh(g.method, 100 * g.rec_picked, color="tab:green")
+    axes[1].set_xlabel("weeks the recommended option was picked (%)")
+    axes[1].set_yticklabels([])
+    fig.suptitle("Three schedules (E022, 15 tuning users x 10 weeks)", fontsize=9)
+    fig.tight_layout()
+    (HERE / "figures").mkdir(exist_ok=True)
+    fig.savefig(HERE / "figures" / "methods.png", dpi=130)
 
 
 if __name__ == "__main__":
