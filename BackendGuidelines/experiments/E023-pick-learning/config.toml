@@ -1,0 +1,12 @@
+kinds = ["easy", "noisy", "moody", "missing", "adversarial"]
+users = 3
+weeks = 12
+steps = 300000
+star_steps = 600000
+method = "thompson"   # E022's choice (update if E022 picks another)
+alt_frac = 0.5
+lam_scale = 1.0
+
+# [mode, feedback, p_default]
+conditions = [["none", false, 0.0], ["pairs_only", true, 0.0], ["rankbreak", false, 0.0], ["mnl", false, 0.0],
+              ["rankbreak", true, 0.0], ["mnl", true, 0.0], ["mnl", true, 0.3], ["pairs_only", true, 0.3]]

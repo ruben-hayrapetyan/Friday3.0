@@ -29,9 +29,10 @@ def pick(user: SimUser, energies: np.ndarray, scale: float, rng: np.random.Gener
 def run_user(kind: str, seed: int, method: str, mode: str = "mnl", weeks: int = 10, feedback: bool = True,
              p_default: float = 0.0, steps: int = 300_000, star_steps: int = 600_000, instance_seed: int | None = None,
              alt_frac: float = 0.5, lam_scale: float = 1.0) -> list[dict]:
+    """mode: none (no learning) | pairs_only (learn from pairs and drags, ignore picks) | rankbreak | mnl."""
     user = SimUser.make(kind, seed)
     rng = np.random.default_rng(seed + 17)
-    L = ChoiceLearner(len(LEARNABLE), mode=mode, use_pairs=feedback)
+    L = ChoiceLearner(len(LEARNABLE), mode="mnl" if mode == "pairs_only" else mode, use_pairs=feedback)
     base = seed * 100 if instance_seed is None else instance_seed
     rows = []
     for wk in range(weeks):
@@ -50,7 +51,8 @@ def run_user(kind: str, seed: int, method: str, mode: str = "mnl", weeks: int = 
         rankings = []
         if feedback:
             rankings = live_week(u, user, opts.plans[k], L.theta, wk, seed=wk * 7919 + seed).rankings
-        choices = [Choice(np.stack([u.phi(x) for x in opts.plans]), k, wk)] if mode != "none" else []
+        choices = [Choice(np.stack([u.phi(x) for x in opts.plans]), k, wk)] if mode not in ("none", "pairs_only") else []
+        prev = L.theta.copy()
         cos = float(L.theta @ user.theta / np.linalg.norm(L.theta) / np.linalg.norm(user.theta))
         d = [distinct(u, opts.plans[i], opts.plans[j]) for i, j in ((0, 1), (0, 2), (1, 2))]
         rel = max(abs(e_star), 1.0)
@@ -61,4 +63,5 @@ def run_user(kind: str, seed: int, method: str, mode: str = "mnl", weeks: int = 
                          cos=cos, seconds=dt, steps=opts.steps, labels="|".join(opts.labels),
                          safe=all(u.deadline_cost(x) <= u.deadline_cost(opts.plans[0]) + 1e-9 for x in opts.plans)))
         L.add(choices, rankings)
+        rows[-1]["step"] = float(1 - L.theta @ prev / np.linalg.norm(L.theta) / np.linalg.norm(prev))  # how far one week moved theta
     return rows

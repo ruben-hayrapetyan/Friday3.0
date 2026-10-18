@@ -48,9 +48,10 @@ def fixed_events(seed: int, weeks: int) -> list:
     return specs
 
 
-def simulate(student: Student, items: list[Item], model: Model, cfg: TermConfig, asker=None) -> TermResult:
-    """`asker(item, model, now) -> "estimate" | None` may ask the student for an estimate of a task without one
-    (policy experiments, E022)."""
+def simulate(student: Student, items: list[Item], model: Model, cfg: TermConfig, asker=None,
+             ask_actual=None) -> TermResult:
+    """`asker(item, model, now, week) -> bool` may ask the student for an estimate of a task without one;
+    `ask_actual(item, model, week) -> bool` may ask how long a finished, unrecorded task took (policy experiment E024)."""
     fixed = fixed_events(cfg.seed, cfg.weeks)
     known_est: dict[int, float | None] = {}
     worked: dict[int, float] = {it.id: 0.0 for it in items}
@@ -65,9 +66,9 @@ def simulate(student: Student, items: list[Item], model: Model, cfg: TermConfig,
         for it in active:
             if it.id not in known_est:
                 known_est[it.id] = it.estimate_min
-                if it.estimate_min is None and asker is not None and asker(it, model, now) == "estimate":
+                if it.estimate_min is None and asker is not None and asker(it, model, now, week):
                     known_est[it.id] = it.answer_estimate()
-                    asked.append(dict(item=it.id, day=day, kind=it.kind))
+                    asked.append(dict(item=it.id, day=day, kind=it.kind, what="estimate"))
         if not active:
             continue
         specs = []
@@ -108,8 +109,12 @@ def simulate(student: Student, items: list[Item], model: Model, cfg: TermConfig,
                 finish[it.id] = int(g.start[s] + need)
                 idle += mins - need
                 rec = it.record()
+                wk_f = (finish[it.id] / 1440 - MONDAY0) / 7
+                if rec is None and ask_actual is not None and ask_actual(it, model, wk_f):
+                    rec = it.answer_actual()
+                    asked.append(dict(item=it.id, day=day, kind=it.kind, what="actual"))
                 if rec is not None:
-                    model.observe(Obs(it.course, it.kind, known_est[it.id], rec, (finish[it.id] / 1440 - MONDAY0) / 7))
+                    model.observe(Obs(it.course, it.kind, known_est[it.id], rec, wk_f))
         days.append(dict(day=day, active=len(active), planned_h=planned / 60, idle_h=idle / 60,
                          repair=info["repair"], repair_late=info["repair_late"]))
     rows = []

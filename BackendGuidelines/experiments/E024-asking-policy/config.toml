@@ -1,0 +1,10 @@
+types = ["calibrated", "optimist", "noisy", "kind_biased", "drifting", "sparse"]
+seeds = [0, 1, 2]
+weeks = 8
+load = 1.5
+p_estimate = 0.3
+p_record = 0.5
+model = "hier_fused_drift_fa3_recal"
+steps = [150000, 100000]
+conditions = [["never", "never"], ["always", "never"], ["spread", "never"], ["voi30", "never"], ["voi60", "never"],
+              ["never", "always"], ["never", "budget2"]]
