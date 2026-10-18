@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+from scipy.stats import norm
 
 from ..core.evaluate import check
 from ..engines.repair import ensure_deadlines
@@ -31,9 +32,9 @@ logging.getLogger("fr.core.pwl").setLevel(logging.ERROR)
 DEFAULT_DIR = Path.home() / "Library/Application Support/Friday/engine"
 DURATION_MODEL = "hier_fused_drift_fa3_recal"  # E020 round 3
 OPTION_METHOD = "thompson"  # E022 (provisional until E022 reports; see RESEARCH_LOG)
-Q_HARD, Q_FLEX = 0.8, 0.5  # E021
+Q_HARD, Q_FLEX = 0.95, 0.5  # E021 round 2: p80 -> p95 cut hard misses 15% -> 4% for ~23 min/day of slack
 ASK_SAVING = 60.0  # minutes of padding an answer must save (E024)
-Z80 = 0.8416
+Z_HARD = float(norm.ppf(Q_HARD))
 # how an option differs, rule by rule: (when the option is better on it, when it is worse)
 PHRASES = {
     "late_night": ("less late-night work", "more late-night work"),
@@ -128,7 +129,7 @@ class Engine:
                 continue
             m, s0 = mdl.predict(t.course, t.kind, None, week)
             _, s1 = mdl.predict(t.course, t.kind, math.exp(m), week)  # the spread an answer would leave
-            saving = math.exp(m) * (math.exp(Z80 * s0) - math.exp(Z80 * s1)) * (1 - t.progress)
+            saving = math.exp(m) * (math.exp(Z_HARD * s0) - math.exp(Z_HARD * s1)) * (1 - t.progress)
             if saving >= min_saving:
                 cands.append((saving, t, round(math.exp(m))))
         cands.sort(key=lambda x: -x[0])

@@ -1,0 +1,2 @@
+round,q_hard,type,seed,ask_estimate,ask_actual,hard_late,late_h,idle_h_day,q_estimates,q_actuals,weeks,seconds
+r2,0.95,calibrated,0,never,never,0.0,0.0,1.6114174722217731,0,0,8,37.10276237502694

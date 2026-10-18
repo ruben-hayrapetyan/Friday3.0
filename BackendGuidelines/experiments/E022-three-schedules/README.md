@@ -22,3 +22,17 @@ cosine with the truth at the end; deadline safety of all three; seconds for thre
 
 **Expectation.** seeds and temperature give options that differ but teach little; diverse gives the most different
 options at some cost in quality; thompson and qbc teach the most; archetype is the easiest to label in the app.
+
+## Round 2 (added after round 1, before running)
+
+Round 1: the generators barely differ in learning (end cosine 0.85-0.88) or in the regret of the pick (seeds 0.086,
+thompson 0.093, qbc 0.100, archetype 0.102; diverse 0.124 and temperature 0.136 are worse). Users pick their true best
+option ~90% of the time, but option 0 is that option only 23-30% of the time for seeds and thompson, below chance:
+the alternatives start from the recommended plan and get extra annealing steps, so they are better plans. temperature
+and diverse show the recommended plan picked 71-88% of the time only because their alternatives are worse.
+
+Round 2 ranks the three after making them (`options.rank`): option 0 is the plan with the lowest energy under the
+learned weights (map), or the highest pick probability averaged over the posterior (post). Methods thompson+map,
+thompson+post, seeds+map, qbc+map; same users and weeks. **Expectation**: the recommended-picked rate rises toward the
+share of weeks where the learned weights order the options correctly (> 50% for easy users), with the pick regret and
+learning unchanged (the same three plans are shown, only the label moves).

@@ -8,3 +8,10 @@ model = "hier_fused_drift_fa3_recal"
 steps = [150000, 100000]
 conditions = [["never", "never"], ["always", "never"], ["spread", "never"], ["voi30", "never"], ["voi60", "never"],
               ["never", "always"], ["never", "budget2"]]
+
+[rounds.r2]
+# added after round 1 and E021 round 2: the shipped quantile for hard deadlines is p95, and at p80 asking for estimates
+# made misses worse (the fused prediction is overconfident once an estimate is in). The same students at p95.
+q_hard = 0.95
+conditions = [["never", "never"], ["always", "never"], ["voi60", "never"], ["never", "always"], ["never", "budget2"],
+              ["never", "budget4"]]

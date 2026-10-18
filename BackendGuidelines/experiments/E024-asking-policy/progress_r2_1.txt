@@ -1,0 +1,1 @@
+{'round': 'r2', 'q_hard': 0.95, 'type': 'calibrated', 'seed': 0, 'ask_estimate': 'always', 'ask_actual': 'never', 'hard_late': np.float64(0.03225806451612903), 'late_h': np.float64(9.75), 'idle_h_day': np.float64(1.8074284633119286), 'q_estimates': 53, 'q_actuals': 0, 'weeks': 8, 'seconds': 39.61179970798548}

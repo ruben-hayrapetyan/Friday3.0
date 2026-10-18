@@ -58,8 +58,29 @@ def _anneal(u: Universe, c, start, steps, seed, T=None) -> np.ndarray:
     return r.owner if T is None else r.final
 
 
+def rank(u: Universe, learner: ChoiceLearner, opts: Options, how: str, seed: int = 0) -> Options:
+    """Reorder the three so that option 0 is the one Friday expects you to pick (E022 round 2). Alternatives start from
+    the recommended plan and get more steps, so they are often better plans than it, even under Friday's own weights.
+    map: lowest energy under the learned weights. post: highest pick probability averaged over the posterior."""
+    phis = np.stack([u.phi(x) for x in opts.plans])
+    if how == "map":
+        score = phis @ learner.theta + 1e4 * np.array([u.deadline_cost(x) for x in opts.plans])
+    elif how == "post":
+        post = learner.sample(64, np.random.default_rng(seed + 11))
+        score = -np.mean([learner.choice_probs(phis, t) for t in post], axis=0)
+    else:
+        raise KeyError(how)
+    order = [int(i) for i in np.argsort(score, kind="stable")]
+    labels = ["recommended" if k == 0 else opts.labels[i] if i else "first draft" for k, i in enumerate(order)]
+    return Options([opts.plans[i] for i in order], [opts.thetas[i] for i in order], labels, opts.steps)
+
+
 def three(u: Universe, learner: ChoiceLearner, method: str, steps: int = 300_000, alt_frac: float = 0.5, seed: int = 0,
           lam_scale: float = 1.0, pool: int = 6, extra_w: dict | None = None) -> Options:
+    """`method` is one of METHODS, optionally with a ranking: "thompson+map" (see rank)."""
+    if "+" in method:
+        base, how = method.split("+")
+        return rank(u, learner, three(u, learner, base, steps, alt_frac, seed, lam_scale, pool, extra_w), how, seed)
     rng = np.random.default_rng(seed)
     th = learner.theta
     rec = u.plan(th, extra_w, steps=steps, seed=seed)

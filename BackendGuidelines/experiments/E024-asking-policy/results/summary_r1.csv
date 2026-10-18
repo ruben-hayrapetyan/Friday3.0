@@ -1,0 +1,8 @@
+ask_estimate,ask_actual,students,hard_late,late_h,idle_h_day,questions_per_week
+always,never,18,0.17,89.307,1.606,6.083
+never,always,18,0.084,30.711,1.784,3.826
+never,budget2,18,0.112,40.077,1.801,1.951
+never,never,18,0.125,54.562,1.886,0.0
+spread,never,18,0.17,83.745,1.619,4.375
+voi30,never,18,0.15,70.11,1.631,3.083
+voi60,never,18,0.132,51.65,1.711,2.306

@@ -39,7 +39,7 @@ The app launches one long-lived child process, the way it already launches the `
 | `hello` | - | `{protocol, data_dir}` |
 | `set_estimate` | `task_id`, `minutes` | `{ok}`: the user's preliminary estimate for one task |
 | `record_actual` | `task` (a todo), `minutes` | `{ok, recorded}`: how long a finished task really took (from a timer or the user) |
-| `predict` | `todos`, `now?` | per open task id: `p50`, `p80` (minutes), `plan_minutes` (what the plan reserves: the p50 for flexible tasks, the p80 for hard deadlines, times the share not yet done), `estimate`, `similar_recorded`, `kind`, `course`, `spread` |
+| `predict` | `todos`, `now?` | per open task id: `p50`, `p80` (minutes), `plan_minutes` (what the plan reserves: the p50 for flexible tasks, the p95 for hard deadlines (E021), times the share not yet done), `estimate`, `similar_recorded`, `kind`, `course`, `spread` |
 | `questions` | `todos`, `now?` | `{estimates: [{task_id, title, guess_minutes}], actuals: [{task_id, title}]}`: at most two estimates Friday wants (unsure, hard deadline first) and at most three finished tasks nobody timed. After asking, call `mark_asked` so it is not asked again. |
 | `mark_asked` | `task_id` | `{ok}` |
 | `parse_constraints` | `text`, `todos?`, `events?`, `now?` | `{ok, pending_id, constraints: [{index, kind, paraphrase, hard}], questions, unsupported: [{source, reason}]}`. Calls Claude (Sonnet 5.5 via the `claude` CLI, no tools, ~3 s). **Nothing applies yet.** Show each paraphrase with a checkbox; show `questions` and `unsupported` as they are. |

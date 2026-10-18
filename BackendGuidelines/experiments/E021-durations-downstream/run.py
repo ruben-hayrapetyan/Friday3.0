@@ -66,6 +66,23 @@ def report() -> None:
     print(g.sort_values("hard_late").to_string())
     print(d.pivot_table(index="type", columns="policy", values="hard_late").round(3).to_string())
     g.to_csv(RES / "summary.csv")
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(6.0, 3.8))
+    for model, x in d.groupby("model"):
+        x = x.groupby("q_hard").agg(late=("hard_late", "mean"), idle=("idle_h_day", "mean")).sort_index()
+        ax.plot(x.idle, 100 * x.late, "o-", ms=4, label=model)
+        for q, r in x.iterrows():
+            ax.annotate(f"p{int(round(100 * q))}", (r.idle, 100 * r.late), fontsize=6, xytext=(3, 3),
+                        textcoords="offset points")
+    ax.set_xlabel("reserved but unused hours per day")
+    ax.set_ylabel("hard-deadline tasks late (%)")
+    ax.set_title("Padding frontier: quantile for hard deadlines (E021, 24 students, 8 weeks)", fontsize=9)
+    ax.legend(fontsize=7)
+    (HERE / "figures").mkdir(exist_ok=True)
+    fig.tight_layout()
+    fig.savefig(HERE / "figures" / "frontier.png", dpi=130)
 
 
 if __name__ == "__main__":

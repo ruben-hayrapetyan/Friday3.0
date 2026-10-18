@@ -18,3 +18,15 @@ p80 padding by at least 30 / 60 minutes). Actual policies (estimate = never): al
 
 **Expectation.** Asking always helps a little per question; value-of-information policies keep most of the gain with
 a fraction of the questions; asking for actuals helps learning more than estimates do.
+
+## Round 2 (added after round 1, before running)
+
+Round 1 (p80): asking for estimates *raised* misses (always: 12.5% -> 17.0%) while lowering reserved-but-unused time
+(1.89 -> 1.61 h/day): an estimate narrows the prediction, so p80 pads less. A coverage check (scratch, see notes) shows
+the fused model's p80 covers only 74% of tasks once every task has an estimate (82% without): fusing the ratio and length
+predictions as if independent is overconfident. Asking for actual lengths lowered misses (8.4%) with ~4 questions a week.
+
+Round 2 repeats the comparison at the shipped quantile for hard deadlines (p95, E021 round 2), with the same 18
+students: never; always (estimates); voi60 (padding measured at p95); always, budget2, budget4 (actual lengths).
+Usage now takes the round: `run.py r2 <shard> <n_shards>`. **Expectation**: at p95 the overconfidence matters less,
+so estimates should be roughly neutral on misses and still save reserved time; actuals still help.
