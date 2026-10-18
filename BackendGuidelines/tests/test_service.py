@@ -127,6 +127,6 @@ def test_server_round_trip(tmp_path):
         if m == "plan":
             assert len(reply["result"]["options"]) == 3
         if m == "nope":
-            assert reply["error"]["type"] == "KeyError"
+            assert reply["error"]["type"] == "ValueError"
     p.stdin.close()
     p.wait(timeout=30)

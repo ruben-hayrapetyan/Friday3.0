@@ -42,7 +42,7 @@ def handle(eng: Engine, method: str, p: dict):
         return eng.plan(p["todos"], p.get("events", []), _now(p), p.get("method", "thompson"))
     if method == "pick":
         return eng.pick(p["plan_id"], int(p["option"]))
-    raise KeyError(f"unknown method {method!r}")
+    raise ValueError(f"unknown method {method!r}")
 
 
 def main(argv: list[str] | None = None) -> None:
