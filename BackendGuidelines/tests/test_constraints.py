@@ -132,7 +132,7 @@ def test_task_types_come_from_titles_and_exclusions_leave_tasks_out():
     from datetime import datetime
 
     adapter, tasks = _friday_tasks()
-    assert [t.type for t in tasks] == ["problem_set", "problem_set", "other", "other", "lab", "reading"]
+    assert [t.type for t in tasks] == ["problem_set", "problem_set", "exam_prep", "other", "lab", "reading"]
     sc, _ = adapter.scenario(datetime(2026, 10, 19, 8, 0), tasks, {t.id: 180 for t in tasks}, [])
     c = C.AvoidTime(days=["mon", "tue"], strength="hard", target=C.Target(exclude_types=["problem_set"]))
     sc2, notes = C.apply(sc, [c])
@@ -197,3 +197,13 @@ def test_priority_sets_what_gives_way_first():
     sc2, _ = C.apply(sc, C.Parse.model_validate(reply).constraints)
     imp = {ids[s.id]: s.importance for s in sc2.specs if s.id in ids}
     assert imp == {"p1": 5, "p2": 1}
+
+
+def test_study_guides_and_review_sheets_are_exam_prep():
+    from fr.product import adapter
+
+    def ty(title):
+        return adapter.type_of(dict(title=title, bucket="assignments"))
+    assert [ty(t) for t in ("Chem make study guide", "Quiz 3 review sheet", "Math prep for quiz",
+                            "Practice prelim 2", "Chem HW 6 evens", "CS A3 Complete")] == \
+        ["exam_prep", "exam_prep", "exam_prep", "exam_prep", "problem_set", "other"]

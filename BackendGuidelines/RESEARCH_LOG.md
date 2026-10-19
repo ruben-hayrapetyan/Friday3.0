@@ -218,6 +218,9 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
     its due; what doesn't fit before is left unplaced, reported as "only Xh of Yh fits before it". On by default for
     exam/quiz prep, whose due moves to the start of the same course's exam or quiz on the calendar within three days
     before it; per task with set_expires (a task's menu: Pointless If Late); by rule with the new no_late constraint.
+45. **Study guides are exam prep.** type_of reads "study guide", "review sheet/packet", "practice exam/prelim/...",
+    "prep for", "study for" as exam_prep, so they are pointless if late without marking each (the user's three study
+    guides and quiz prep), and a study guide is due at its course's exam on the calendar (Chem: Thu 19:30).
 
 ## Findings so far
 

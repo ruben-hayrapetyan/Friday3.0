@@ -61,8 +61,16 @@ def kind_of(task: dict) -> str:
     return "other"
 
 
+# Study for an exam, by another name: pointless once the exam is over, like prep (decision 45)
+STUDY = re.compile(r"\b(study guide|review sheet|review packet|practice (exam|prelim|midterm|test|quiz|final)|"
+                   r"cram|prep (for|quiz|exam|prelim|midterm)|study for)\b", re.I)
+
+
 def type_of(task: dict) -> str:
-    """One of TYPES. Unlike kind_of, which feeds the duration model, a problem set needs the title to say so."""
+    """One of TYPES. Unlike kind_of, which feeds the duration model, a problem set needs the title to say so, and a
+    study guide or review sheet counts as exam prep."""
+    if task.get("bucket") != "emails" and STUDY.search(task.get("title", "")):
+        return "exam_prep"
     if task.get("bucket") != "emails" and PROBLEM_SET.search(task.get("title", "")):
         return "problem_set"
     kind = kind_of(task)
