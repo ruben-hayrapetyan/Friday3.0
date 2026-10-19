@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Don't schedule CS right after physics, I need a mental break between them.",
+    "reason": "Friday can't express a required gap between work or events from two specific courses. A buffer would apply to all events of a kind, not only to CS after physics."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Don't schedule CS right after physics, I need a mental break between them.",
+    "reason": "Friday can't express a required gap between work or events from two specific courses. A buffer would apply to all events of a kind, not only to CS after physics."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0096734,
+ "seconds": 4.628916417015716,
+ "calls": 1
+}

@@ -1,0 +1,4 @@
+users_per_type = 8
+reps = 5
+max_queries = 60
+pool_per_instance = 30

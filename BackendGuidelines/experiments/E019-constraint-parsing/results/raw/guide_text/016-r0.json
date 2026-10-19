@@ -1,0 +1,60 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "source": "Keep my lunch hour, 12 to 1, free every weekday.",
+    "paraphrase": "No work scheduled from 12:00 to 13:00 on weekdays.",
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "start": "12:00",
+    "end": "13:00",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Keep my lunch hour, 12 to 1, free every weekday.",
+    "paraphrase": "No work scheduled from 12:00 to 13:00 on weekdays.",
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "start": "12:00",
+    "end": "13:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.009710199999999999,
+ "seconds": 4.471978583955206,
+ "calls": 1
+}

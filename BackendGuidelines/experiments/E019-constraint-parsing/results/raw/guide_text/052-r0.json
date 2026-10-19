@@ -1,0 +1,44 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "finish_early",
+    "days": 1,
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    },
+    "source": "I want everything done at least a day before it's due.",
+    "paraphrase": "Finish all your work at least 1 day before its due date."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I want everything done at least a day before it's due.",
+    "paraphrase": "Finish all your work at least 1 day before its due date.",
+    "kind": "finish_early",
+    "days": 1.0,
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0080042,
+ "seconds": 3.763177250046283,
+ "calls": 1
+}

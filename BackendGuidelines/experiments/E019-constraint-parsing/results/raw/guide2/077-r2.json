@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "I want to be done with homework by the end of the semester with an A in every class.",
+    "reason": "This is a goal about grades and overall completion, not a scheduling constraint. Friday can't plan for or guarantee an A, so it did nothing with this."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "I want to be done with homework by the end of the semester with an A in every class.",
+    "reason": "This is a goal about grades and overall completion, not a scheduling constraint. Friday can't plan for or guarantee an A, so it did nothing with this."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0040689,
+ "seconds": 4.192024791962467,
+ "calls": 1
+}

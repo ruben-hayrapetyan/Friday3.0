@@ -1,0 +1,20 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours do you work on Saturdays and Sundays? If the hours differ by day, tell me each day's start and end time."
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours do you work on Saturdays and Sundays? If the hours differ by day, tell me each day's start and end time."
+  ]
+ },
+ "error": null,
+ "cost": 0.0074935,
+ "seconds": 3.1615876250434667,
+ "calls": 1
+}

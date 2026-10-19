@@ -1,0 +1,43 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": null,
+    "start": "22:00",
+    "end": "07:00",
+    "strength": "medium",
+    "source": "I'd rather not work after 10 at night if possible.",
+    "paraphrase": "Prefer not to schedule any work between 10pm and 7am."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I'd rather not work after 10 at night if possible.",
+    "paraphrase": "Prefer not to schedule any work between 10pm and 7am.",
+    "days": null,
+    "start": "22:00",
+    "end": "07:00",
+    "kind": "avoid_time",
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0077275,
+ "seconds": 3.0161306250374764,
+ "calls": 1
+}

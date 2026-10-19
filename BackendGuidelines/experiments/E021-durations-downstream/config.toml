@@ -1,0 +1,20 @@
+types = ["calibrated", "optimist", "noisy", "kind_biased", "drifting", "sparse"]
+seeds = [10000, 10001, 10002, 10003]
+weeks = 8
+load = 1.5
+steps = [150000, 100000]
+
+[rounds.r1]
+models = ["oracle", "as_given", "global_bias_recal", "hier_fused_drift_recal"]
+quantiles = [[0.5, 0.8]]
+
+[rounds.r2]
+# RQ12 as a frontier: misses vs reserved-but-unused time as the hard-deadline quantile rises, for the estimate as given
+# and for the shipped model (flexible tasks stay at p50). as_given@p80 is in round 1.
+models = ["as_given", "global_bias_recal", "hier_fused_drift_fa3_recal"]
+quantiles = [[0.5, 0.5], [0.5, 0.9], [0.5, 0.95]]
+
+[rounds.r2b]
+# added after round 1: the global bias model missed fewer deadlines than the hierarchical one despite worse CRPS
+models = ["hier_fused_drift_fa3_recal"]
+quantiles = [[0.5, 0.8]]

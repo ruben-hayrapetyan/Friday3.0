@@ -1,0 +1,9 @@
+guide2 correct 0.985  cost $0.60  failed calls 0
+guide2_examples correct 0.985  cost $0.61  failed calls 0
+                              n  correct  cons_ok  ask_ok  unsup_ok  valid  compiles  extra   cost    sec
+round variant         split                                                                              
+r1    bare            tune   68    0.912    0.971   0.941     0.985    1.0       1.0      2  0.590  3.541
+      guide           tune   68    0.971    0.985   1.000     0.985    1.0       1.0      1  0.607  3.509
+      guide_text      tune   68    0.897    0.941   0.926     0.971    1.0       1.0      0  0.567  3.664
+r2    guide2          tune   68    0.985    0.985   0.985     1.000    1.0       1.0      0  0.600  3.363
+      guide2_examples tune   68    0.985    1.000   0.985     1.000    1.0       1.0      0  0.611  3.566

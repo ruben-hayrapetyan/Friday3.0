@@ -1,0 +1,84 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "sleep",
+    "nights": null,
+    "bedtime": "00:30",
+    "wake": "08:30",
+    "source": "I go to bed at 12:30 and get up at 8:30.",
+    "paraphrase": "You sleep from 12:30am to 8:30am every night."
+   },
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": null,
+    "start": "23:00",
+    "end": "07:00",
+    "strength": "hard",
+    "source": "No work after 11 though, I need time to wind down.",
+    "paraphrase": "No work scheduled after 11pm."
+   },
+   {
+    "kind": "commitment",
+    "title": "Gym",
+    "days": [
+     "tue",
+     "thu"
+    ],
+    "start": "18:00",
+    "end": "19:00",
+    "event_kind": "other",
+    "source": "I'm at the gym Tue/Thu 6-7pm.",
+    "paraphrase": "Gym on Tuesdays and Thursdays from 6pm to 7pm."
+   }
+  ]
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I go to bed at 12:30 and get up at 8:30.",
+    "paraphrase": "You sleep from 12:30am to 8:30am every night.",
+    "kind": "sleep",
+    "nights": null,
+    "bedtime": "00:30",
+    "wake": "08:30"
+   },
+   {
+    "source": "No work after 11 though, I need time to wind down.",
+    "paraphrase": "No work scheduled after 11pm.",
+    "days": null,
+    "start": "23:00",
+    "end": "07:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "source": "I'm at the gym Tue/Thu 6-7pm.",
+    "paraphrase": "Gym on Tuesdays and Thursdays from 6pm to 7pm.",
+    "kind": "commitment",
+    "title": "Gym",
+    "days": [
+     "tue",
+     "thu"
+    ],
+    "dates": null,
+    "start": "18:00",
+    "end": "19:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0116127,
+ "seconds": 5.551723000011407,
+ "calls": 1
+}

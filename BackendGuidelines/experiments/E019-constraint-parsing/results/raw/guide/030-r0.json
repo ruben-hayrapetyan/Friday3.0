@@ -1,0 +1,51 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "commitment",
+    "title": "Practice",
+    "start": "17:30",
+    "end": "19:00",
+    "event_kind": "other",
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "source": "Practice is 5:30 to 7 every weekday.",
+    "paraphrase": "Practice runs 5:30 PM to 7:00 PM every weekday."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Practice is 5:30 to 7 every weekday.",
+    "paraphrase": "Practice runs 5:30 PM to 7:00 PM every weekday.",
+    "kind": "commitment",
+    "title": "Practice",
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "dates": null,
+    "start": "17:30",
+    "end": "19:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0091374,
+ "seconds": 4.088520499994047,
+ "calls": 1
+}

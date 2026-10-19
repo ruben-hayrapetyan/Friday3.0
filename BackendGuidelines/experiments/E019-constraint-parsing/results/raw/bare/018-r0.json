@@ -1,0 +1,61 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {
+     "titles": [
+      "final project"
+     ]
+    },
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "start": null,
+    "end": null,
+    "strength": "hard",
+    "source": "I don't want to work on the CS final project on weekdays.",
+    "paraphrase": "No work on the CS final project on weekdays (Mon\u2013Fri)."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I don't want to work on the CS final project on weekdays.",
+    "paraphrase": "No work on the CS final project on weekdays (Mon\u2013Fri).",
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "start": null,
+    "end": null,
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "final project"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0078829,
+ "seconds": 3.112764917081222,
+ "calls": 1
+}

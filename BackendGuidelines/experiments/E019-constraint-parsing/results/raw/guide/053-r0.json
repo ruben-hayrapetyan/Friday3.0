@@ -1,0 +1,45 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "finish_early",
+    "days": 2,
+    "strength": "medium",
+    "target": {
+     "titles": [
+      "ENGL 1170 essay draft"
+     ]
+    },
+    "source": "Try to finish essays two days early so I can proofread.",
+    "paraphrase": "Try to finish the ENGL 1170 essay draft 2 days before it's due."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Try to finish essays two days early so I can proofread.",
+    "paraphrase": "Try to finish the ENGL 1170 essay draft 2 days before it's due.",
+    "kind": "finish_early",
+    "days": 2.0,
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "ENGL 1170 essay draft"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0078134,
+ "seconds": 3.1498777080560103,
+ "calls": 1
+}

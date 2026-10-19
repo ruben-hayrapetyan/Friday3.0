@@ -1,0 +1,56 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "daily_limit",
+    "hours": 5,
+    "days": null,
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": [
+      "assignment",
+      "reading",
+      "project",
+      "exam_prep"
+     ],
+     "titles": null,
+     "energy": null
+    },
+    "source": "Try to keep each day under 5 hours of studying.",
+    "paraphrase": "Try to keep studying (assignments, readings, projects and exam prep) to 5 hours or less each day."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Try to keep each day under 5 hours of studying.",
+    "paraphrase": "Try to keep studying (assignments, readings, projects and exam prep) to 5 hours or less each day.",
+    "kind": "daily_limit",
+    "hours": 5.0,
+    "days": null,
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": [
+      "assignment",
+      "reading",
+      "project",
+      "exam_prep"
+     ],
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0089362,
+ "seconds": 4.188877500011586,
+ "calls": 1
+}

@@ -1,0 +1,22 @@
+kinds = ["easy", "noisy", "moody", "missing", "adversarial"]
+users = 3          # tuning seeds: user seed = 100 * kind index + uid
+weeks = 10
+steps = 300000
+star_steps = 600000
+
+[rounds.r1]
+methods = ["seeds", "temperature", "diverse", "thompson", "archetype", "qbc"]
+mode = "mnl"
+feedback = true
+alt_frac = 0.5
+lam_scale = 1.0
+
+[rounds.r2]
+# added after round 1, before running: the recommended plan was the user's true best only 23-30% of the time for
+# seeds and thompson (chance is 33%) because the alternatives start from it and get more steps. Rank the three after
+# making them: map = lowest energy under the learned weights; post = highest posterior-mean pick probability.
+methods = ["thompson+map", "thompson+post", "seeds+map", "qbc+map"]
+mode = "mnl"
+feedback = true
+alt_frac = 0.5
+lam_scale = 1.0

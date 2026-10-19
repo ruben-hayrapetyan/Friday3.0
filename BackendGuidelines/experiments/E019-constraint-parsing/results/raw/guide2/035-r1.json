@@ -1,0 +1,46 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "daily_limit",
+    "hours": 6,
+    "days": null,
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "energy": null,
+     "kinds": null,
+     "titles": null
+    },
+    "source": "Never more than 6 hours of work in a day.",
+    "paraphrase": "No more than 6 hours of work on any day."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Never more than 6 hours of work in a day.",
+    "paraphrase": "No more than 6 hours of work on any day.",
+    "kind": "daily_limit",
+    "hours": 6.0,
+    "days": null,
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0028482000000000004,
+ "seconds": 3.143713957979344,
+ "calls": 1
+}

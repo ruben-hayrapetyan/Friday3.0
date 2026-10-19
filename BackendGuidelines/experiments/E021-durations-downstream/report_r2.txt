@@ -1,0 +1,24 @@
+                                    students  hard_late    late_h  soft_late  idle_h_day  planned_h_day
+policy                                                                                                 
+oracle@p50/p80                            24      0.000     0.000      0.346       0.129          5.687
+global_bias_recal@p50/p95                 24      0.036    19.877      0.675       1.842          7.371
+hier_fused_drift_fa3_recal@p50/p95        24      0.043    33.922      0.633       1.568          7.020
+global_bias_recal@p50/p90                 24      0.056    35.144      0.639       1.618          7.088
+hier_fused_drift_fa3_recal@p50/p90        24      0.084    52.835      0.614       1.486          6.881
+as_given@p50/p95                          24      0.098    47.044      0.759       1.491          6.875
+global_bias_recal@p50/p80                 24      0.109    88.922      0.642       1.420          6.822
+hier_fused_drift_recal@p50/p80            24      0.145   113.404      0.618       1.245          6.657
+hier_fused_drift_fa3_recal@p50/p80        24      0.151   115.978      0.615       1.181          6.574
+as_given@p50/p90                          24      0.205   117.028      0.752       1.314          6.668
+as_given@p50/p80                          24      0.365   262.074      0.751       1.084          6.424
+global_bias_recal@p50/p50                 24      0.419   480.547      0.615       0.909          6.310
+hier_fused_drift_fa3_recal@p50/p50        24      0.468   569.856      0.594       0.785          6.158
+as_given@p50/p50                          24      0.679  1108.892      0.731       0.637          5.951
+policy       as_given@p50/p50  as_given@p50/p80  as_given@p50/p90  as_given@p50/p95  global_bias_recal@p50/p50  global_bias_recal@p50/p80  global_bias_recal@p50/p90  global_bias_recal@p50/p95  hier_fused_drift_fa3_recal@p50/p50  hier_fused_drift_fa3_recal@p50/p80  hier_fused_drift_fa3_recal@p50/p90  hier_fused_drift_fa3_recal@p50/p95  hier_fused_drift_recal@p50/p80  oracle@p50/p80
+type                                                                                                                                                                                                                                                                                                                                                                                           
+calibrated              0.380             0.054             0.008             0.000                      0.379                      0.100                      0.038                      0.031                               0.519                               0.140                               0.101                               0.030                           0.115             0.0
+drifting                0.721             0.356             0.162             0.070                      0.480                      0.162                      0.062                      0.047                               0.527                               0.209                               0.100                               0.062                           0.179             0.0
+kind_biased             0.844             0.635             0.402             0.240                      0.596                      0.139                      0.085                      0.054                               0.488                               0.154                               0.100                               0.038                           0.154             0.0
+noisy                   0.572             0.355             0.209             0.085                      0.310                      0.076                      0.046                      0.046                               0.419                               0.124                               0.069                               0.054                           0.125             0.0
+optimist                0.836             0.542             0.302             0.155                      0.334                      0.108                      0.061                      0.023                               0.449                               0.163                               0.093                               0.030                           0.132             0.0
+sparse                  0.721             0.245             0.146             0.038                      0.417                      0.069                      0.046                      0.015                               0.403                               0.115                               0.038                               0.045                           0.162             0.0

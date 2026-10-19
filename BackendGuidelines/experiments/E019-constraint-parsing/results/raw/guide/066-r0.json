@@ -1,0 +1,22 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours count as your evenings (for example 18:00 to 22:00)?",
+   "Should evenings be completely off limits for work, or is it a strong preference that I can break when things get tight?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours count as your evenings (for example 18:00 to 22:00)?",
+   "Should evenings be completely off limits for work, or is it a strong preference that I can break when things get tight?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0098614,
+ "seconds": 4.922506709001027,
+ "calls": 1
+}

@@ -1,0 +1,137 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "sleep",
+    "nights": [
+     "sun",
+     "mon",
+     "tue",
+     "wed",
+     "thu"
+    ],
+    "bedtime": "23:00",
+    "wake": "07:00",
+    "source": "Weekdays I'm up at 7 and asleep by 11.",
+    "paraphrase": "On weeknights you sleep 11pm to 7am."
+   },
+   {
+    "kind": "prefer_time",
+    "target": {
+     "courses": [
+      "MATH 2940"
+     ]
+    },
+    "days": null,
+    "start": "08:00",
+    "end": "12:00",
+    "strength": "medium",
+    "source": "I like math in the morning",
+    "paraphrase": "You prefer to do MATH 2940 work in the morning (8am to noon)."
+   },
+   {
+    "kind": "prefer_time",
+    "target": {
+     "courses": [
+      "ENGL 1170"
+     ]
+    },
+    "days": null,
+    "start": "12:00",
+    "end": "17:00",
+    "strength": "medium",
+    "source": "English in the afternoon",
+    "paraphrase": "You prefer to do ENGL 1170 work in the afternoon (noon to 5pm)."
+   },
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": [
+     "fri"
+    ],
+    "start": "18:00",
+    "end": "05:00",
+    "strength": "hard",
+    "source": "Keep Friday nights free.",
+    "paraphrase": "No work on Friday evenings and nights, from 6pm onward."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Weekdays I'm up at 7 and asleep by 11.",
+    "paraphrase": "On weeknights you sleep 11pm to 7am.",
+    "kind": "sleep",
+    "nights": [
+     "sun",
+     "mon",
+     "tue",
+     "wed",
+     "thu"
+    ],
+    "bedtime": "23:00",
+    "wake": "07:00"
+   },
+   {
+    "source": "I like math in the morning",
+    "paraphrase": "You prefer to do MATH 2940 work in the morning (8am to noon).",
+    "days": null,
+    "start": "08:00",
+    "end": "12:00",
+    "kind": "prefer_time",
+    "strength": "medium",
+    "target": {
+     "courses": [
+      "MATH 2940"
+     ],
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "source": "English in the afternoon",
+    "paraphrase": "You prefer to do ENGL 1170 work in the afternoon (noon to 5pm).",
+    "days": null,
+    "start": "12:00",
+    "end": "17:00",
+    "kind": "prefer_time",
+    "strength": "medium",
+    "target": {
+     "courses": [
+      "ENGL 1170"
+     ],
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "source": "Keep Friday nights free.",
+    "paraphrase": "No work on Friday evenings and nights, from 6pm onward.",
+    "days": [
+     "fri"
+    ],
+    "start": "18:00",
+    "end": "05:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0169647,
+ "seconds": 9.389546749996953,
+ "calls": 1
+}

@@ -1,0 +1,46 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "source": "A little bit of guitar every day.",
+    "paraphrase": "Spread guitar practice out with a little bit every day.",
+    "kind": "pacing",
+    "style": "spread",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "guitar practice"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "A little bit of guitar every day.",
+    "paraphrase": "Spread guitar practice out with a little bit every day.",
+    "kind": "pacing",
+    "style": "spread",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "guitar practice"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0074422,
+ "seconds": 3.24629633303266,
+ "calls": 1
+}

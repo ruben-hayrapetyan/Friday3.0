@@ -1,0 +1,14 @@
+                                students  hard_late   late_h  soft_late  idle_h_day  planned_h_day
+policy                                                                                            
+oracle@p50/p80                        24      0.000    0.000      0.346       0.129          5.687
+global_bias_recal@p50/p80             24      0.109   88.922      0.642       1.420          6.822
+hier_fused_drift_recal@p50/p80        24      0.145  113.404      0.618       1.245          6.657
+as_given@p50/p80                      24      0.365  262.074      0.751       1.084          6.424
+policy       as_given@p50/p80  global_bias_recal@p50/p80  hier_fused_drift_recal@p50/p80  oracle@p50/p80
+type                                                                                                    
+calibrated              0.054                      0.100                           0.115             0.0
+drifting                0.356                      0.162                           0.179             0.0
+kind_biased             0.635                      0.139                           0.154             0.0
+noisy                   0.355                      0.076                           0.125             0.0
+optimist                0.542                      0.108                           0.132             0.0
+sparse                  0.245                      0.069                           0.162             0.0

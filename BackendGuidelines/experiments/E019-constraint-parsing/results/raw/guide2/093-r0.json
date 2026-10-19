@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Groceries need to happen before Wednesday.",
+    "reason": "Friday can't set a custom deadline for a single task. Avoid-time windows repeat weekly by weekday, so they can't express 'done before this Wednesday'."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Groceries need to happen before Wednesday.",
+    "reason": "Friday can't set a custom deadline for a single task. Avoid-time windows repeat weekly by weekday, so they can't express 'done before this Wednesday'."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0103595,
+ "seconds": 5.229197749984451,
+ "calls": 1
+}

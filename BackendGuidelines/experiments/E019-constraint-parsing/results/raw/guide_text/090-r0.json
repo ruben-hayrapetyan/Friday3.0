@@ -1,0 +1,68 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "source": "Physics homework only on weekends.",
+    "paraphrase": "Never schedule PHYS 2213 homework (the lab report) on weekdays; only Saturday and Sunday.",
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "start": null,
+    "end": null,
+    "strength": "hard",
+    "target": {
+     "courses": [
+      "PHYS 2213"
+     ],
+     "kinds": [
+      "assignment"
+     ],
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Physics homework only on weekends.",
+    "paraphrase": "Never schedule PHYS 2213 homework (the lab report) on weekdays; only Saturday and Sunday.",
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "start": null,
+    "end": null,
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": [
+      "PHYS 2213"
+     ],
+     "kinds": [
+      "assignment"
+     ],
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.009192200000000001,
+ "seconds": 4.015491207945161,
+ "calls": 1
+}

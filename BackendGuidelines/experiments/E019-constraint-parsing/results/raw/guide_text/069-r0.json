@@ -1,0 +1,22 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "How many hours of work per day counts as overloaded in the days before an exam (for example, at most 4 hours a day)?",
+   "Which exam do you mean: PHYS 2213 prelim 2, or others too? And how many days before it should the lighter load start?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "How many hours of work per day counts as overloaded in the days before an exam (for example, at most 4 hours a day)?",
+   "Which exam do you mean: PHYS 2213 prelim 2, or others too? And how many days before it should the lighter load start?"
+  ]
+ },
+ "error": null,
+ "cost": 0.007478199999999999,
+ "seconds": 3.293117499910295,
+ "calls": 1
+}

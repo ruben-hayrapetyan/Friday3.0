@@ -1,0 +1,46 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "pacing",
+    "style": "cluster",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "final project"
+     ],
+     "energy": null
+    },
+    "source": "I'd rather knock out the final project in a few long days than a little every day.",
+    "paraphrase": "Prefer to do the final project in a few long days rather than a little each day."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I'd rather knock out the final project in a few long days than a little every day.",
+    "paraphrase": "Prefer to do the final project in a few long days rather than a little each day.",
+    "kind": "pacing",
+    "style": "cluster",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "final project"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0067662,
+ "seconds": 2.7271146660204977,
+ "calls": 1
+}

@@ -1,0 +1,92 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "sleep",
+    "bedtime": "00:30",
+    "wake": "08:30",
+    "nights": null,
+    "source": "I go to bed at 12:30 and get up at 8:30",
+    "paraphrase": "You sleep from 00:30 to 08:30 every night."
+   },
+   {
+    "kind": "avoid_time",
+    "days": null,
+    "start": "23:00",
+    "end": "08:30",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "energy": null,
+     "kinds": null,
+     "titles": null
+    },
+    "source": "No work after 11 though, I need time to wind down.",
+    "paraphrase": "No work from 11pm onward."
+   },
+   {
+    "kind": "commitment",
+    "title": "Gym",
+    "start": "18:00",
+    "end": "19:00",
+    "event_kind": "other",
+    "days": [
+     "tue",
+     "thu"
+    ],
+    "dates": null,
+    "source": "I'm at the gym Tue/Thu 6-7pm.",
+    "paraphrase": "Gym every Tuesday and Thursday, 18:00\u201319:00."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I go to bed at 12:30 and get up at 8:30",
+    "paraphrase": "You sleep from 00:30 to 08:30 every night.",
+    "kind": "sleep",
+    "nights": null,
+    "bedtime": "00:30",
+    "wake": "08:30"
+   },
+   {
+    "source": "No work after 11 though, I need time to wind down.",
+    "paraphrase": "No work from 11pm onward.",
+    "days": null,
+    "start": "23:00",
+    "end": "08:30",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "source": "I'm at the gym Tue/Thu 6-7pm.",
+    "paraphrase": "Gym every Tuesday and Thursday, 18:00\u201319:00.",
+    "kind": "commitment",
+    "title": "Gym",
+    "days": [
+     "tue",
+     "thu"
+    ],
+    "dates": null,
+    "start": "18:00",
+    "end": "19:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.009985500000000001,
+ "seconds": 3.864123082952574,
+ "calls": 1
+}

@@ -1,0 +1,45 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "finish_early",
+    "days": 1,
+    "strength": "hard",
+    "target": {
+     "titles": [
+      "problem set"
+     ]
+    },
+    "source": "Problem sets must be done by the night before.",
+    "paraphrase": "Finish problem sets at least one day before they're due."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Problem sets must be done by the night before.",
+    "paraphrase": "Finish problem sets at least one day before they're due.",
+    "kind": "finish_early",
+    "days": 1.0,
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "problem set"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0087874,
+ "seconds": 3.7897316670278087,
+ "calls": 1
+}

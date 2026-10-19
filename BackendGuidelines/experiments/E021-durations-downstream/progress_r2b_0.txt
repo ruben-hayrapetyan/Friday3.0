@@ -1,0 +1,12 @@
+r2b ('calibrated', 10000, 'hier_fused_drift_fa3_recal', (0.5, 0.8)) late 0.18 idle 0.82 49s
+r2b ('calibrated', 10002, 'hier_fused_drift_fa3_recal', (0.5, 0.8)) late 0.09 idle 1.06 37s
+r2b ('optimist', 10000, 'hier_fused_drift_fa3_recal', (0.5, 0.8)) late 0.18 idle 0.97 52s
+r2b ('optimist', 10002, 'hier_fused_drift_fa3_recal', (0.5, 0.8)) late 0.09 idle 1.31 37s
+r2b ('noisy', 10000, 'hier_fused_drift_fa3_recal', (0.5, 0.8)) late 0.15 idle 1.24 51s
+r2b ('noisy', 10002, 'hier_fused_drift_fa3_recal', (0.5, 0.8)) late 0.12 idle 1.59 38s
+r2b ('kind_biased', 10000, 'hier_fused_drift_fa3_recal', (0.5, 0.8)) late 0.21 idle 1.06 49s
+r2b ('kind_biased', 10002, 'hier_fused_drift_fa3_recal', (0.5, 0.8)) late 0.06 idle 1.30 37s
+r2b ('drifting', 10000, 'hier_fused_drift_fa3_recal', (0.5, 0.8)) late 0.21 idle 0.88 52s
+r2b ('drifting', 10002, 'hier_fused_drift_fa3_recal', (0.5, 0.8)) late 0.12 idle 1.07 40s
+r2b ('sparse', 10000, 'hier_fused_drift_fa3_recal', (0.5, 0.8)) late 0.15 idle 1.43 48s
+r2b ('sparse', 10002, 'hier_fused_drift_fa3_recal', (0.5, 0.8)) late 0.09 idle 1.48 38s

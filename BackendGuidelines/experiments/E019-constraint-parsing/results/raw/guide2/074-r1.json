@@ -1,0 +1,32 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "when he's free",
+    "reason": "Friday can't see Sam's calendar, so it can't follow his availability. A fixed weekly time can work instead."
+   }
+  ],
+  "questions": [
+   "What time on Thursdays do you and Sam usually study together (start and end)? I can block it as a weekly commitment.",
+   "Is the Sam session for a particular course or task, or just general studying?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "when he's free",
+    "reason": "Friday can't see Sam's calendar, so it can't follow his availability. A fixed weekly time can work instead."
+   }
+  ],
+  "questions": [
+   "What time on Thursdays do you and Sam usually study together (start and end)? I can block it as a weekly commitment.",
+   "Is the Sam session for a particular course or task, or just general studying?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0055388,
+ "seconds": 5.405361042008735,
+ "calls": 1
+}

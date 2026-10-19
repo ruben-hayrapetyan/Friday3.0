@@ -1,0 +1,116 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "commitment",
+    "source": "Never schedule during my shifts (Mon/Wed 5-9pm)",
+    "paraphrase": "You have shifts every Monday and Wednesday from 17:00 to 21:00, and no work gets scheduled then.",
+    "title": "Shift",
+    "days": [
+     "mon",
+     "wed"
+    ],
+    "dates": null,
+    "start": "17:00",
+    "end": "21:00",
+    "event_kind": "other"
+   },
+   {
+    "kind": "session_length",
+    "source": "max 90 min per sitting for CS",
+    "paraphrase": "Each CS 2110 work session is at most 1.5 hours.",
+    "min_hours": null,
+    "max_hours": 1.5,
+    "strength": "hard",
+    "target": {
+     "courses": [
+      "CS 2110"
+     ],
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "kind": "prefer_time",
+    "source": "do laundry on Sundays",
+    "paraphrase": "You prefer to do laundry on Sundays.",
+    "days": [
+     "sun"
+    ],
+    "start": null,
+    "end": null,
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "laundry"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Never schedule during my shifts (Mon/Wed 5-9pm)",
+    "paraphrase": "You have shifts every Monday and Wednesday from 17:00 to 21:00, and no work gets scheduled then.",
+    "kind": "commitment",
+    "title": "Shift",
+    "days": [
+     "mon",
+     "wed"
+    ],
+    "dates": null,
+    "start": "17:00",
+    "end": "21:00",
+    "event_kind": "other"
+   },
+   {
+    "source": "max 90 min per sitting for CS",
+    "paraphrase": "Each CS 2110 work session is at most 1.5 hours.",
+    "kind": "session_length",
+    "min_hours": null,
+    "max_hours": 1.5,
+    "strength": "hard",
+    "target": {
+     "courses": [
+      "CS 2110"
+     ],
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "source": "do laundry on Sundays",
+    "paraphrase": "You prefer to do laundry on Sundays.",
+    "days": [
+     "sun"
+    ],
+    "start": null,
+    "end": null,
+    "kind": "prefer_time",
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "laundry"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0143142,
+ "seconds": 6.467932332889177,
+ "calls": 1
+}

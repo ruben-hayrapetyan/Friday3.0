@@ -1,0 +1,56 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "session_length",
+    "target": {
+     "titles": [
+      "problem set"
+     ]
+    },
+    "min_hours": 1,
+    "strength": "medium",
+    "source": "For problem sets I prefer sessions of about 2 hours, not less than 1.",
+    "paraphrase": "Problem set sessions should be at least 1 hour long, if possible."
+   }
+  ],
+  "unsupported": [
+   {
+    "source": "prefer sessions of about 2 hours",
+    "reason": "Friday can set minimum or maximum session lengths but can't aim for a target length of about 2 hours. Only the 1-hour minimum was applied."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "For problem sets I prefer sessions of about 2 hours, not less than 1.",
+    "paraphrase": "Problem set sessions should be at least 1 hour long, if possible.",
+    "kind": "session_length",
+    "min_hours": 1.0,
+    "max_hours": null,
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "problem set"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [
+   {
+    "source": "prefer sessions of about 2 hours",
+    "reason": "Friday can set minimum or maximum session lengths but can't aim for a target length of about 2 hours. Only the 1-hour minimum was applied."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.008349299999999999,
+ "seconds": 7.20042704208754,
+ "calls": 1
+}

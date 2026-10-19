@@ -1,0 +1,56 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "prefer_time",
+    "source": "Laundry is best on Sunday mornings.",
+    "paraphrase": "You'd prefer to do laundry on Sunday mornings, before noon.",
+    "days": [
+     "sun"
+    ],
+    "start": null,
+    "end": "12:00",
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "laundry"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Laundry is best on Sunday mornings.",
+    "paraphrase": "You'd prefer to do laundry on Sunday mornings, before noon.",
+    "days": [
+     "sun"
+    ],
+    "start": null,
+    "end": "12:00",
+    "kind": "prefer_time",
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "laundry"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.009148199999999999,
+ "seconds": 4.322426000027917,
+ "calls": 1
+}

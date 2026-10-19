@@ -1,0 +1,55 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "start": "21:00",
+    "end": "07:00",
+    "strength": "hard",
+    "source": "I want my evenings after 9 for myself on weekdays",
+    "paraphrase": "No work scheduled after 9pm on weekdays."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I want my evenings after 9 for myself on weekdays",
+    "paraphrase": "No work scheduled after 9pm on weekdays.",
+    "days": [
+     "mon",
+     "tue",
+     "wed",
+     "thu",
+     "fri"
+    ],
+    "start": "21:00",
+    "end": "07:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.013497499999999999,
+ "seconds": 7.319944250048138,
+ "calls": 1
+}

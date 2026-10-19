@@ -1,0 +1,30 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "when he's free",
+    "reason": "Friday can't see Sam's calendar, so it can't follow his availability. It needs a fixed time from you."
+   }
+  ],
+  "questions": [
+   "What time on Thursdays do you and Sam study together (start and end)? If it's the same every week, I can add it as a fixed commitment."
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "when he's free",
+    "reason": "Friday can't see Sam's calendar, so it can't follow his availability. It needs a fixed time from you."
+   }
+  ],
+  "questions": [
+   "What time on Thursdays do you and Sam study together (start and end)? If it's the same every week, I can add it as a fixed commitment."
+  ]
+ },
+ "error": null,
+ "cost": 0.0046188,
+ "seconds": 4.564522166037932,
+ "calls": 1
+}

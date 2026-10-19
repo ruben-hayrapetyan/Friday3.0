@@ -1,0 +1,44 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "commitment",
+    "title": "CS 2110 office hours",
+    "start": "15:00",
+    "end": "16:00",
+    "event_kind": "meeting",
+    "days": [
+     "wed"
+    ],
+    "dates": null,
+    "source": "Office hours for CS are Wed 3-4, and I always go.",
+    "paraphrase": "CS 2110 office hours every Wednesday 3:00\u20134:00 pm are blocked off."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Office hours for CS are Wed 3-4, and I always go.",
+    "paraphrase": "CS 2110 office hours every Wednesday 3:00\u20134:00 pm are blocked off.",
+    "kind": "commitment",
+    "title": "CS 2110 office hours",
+    "days": [
+     "wed"
+    ],
+    "dates": null,
+    "start": "15:00",
+    "end": "16:00",
+    "event_kind": "meeting"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.009593500000000001,
+ "seconds": 4.9032970409607515,
+ "calls": 1
+}

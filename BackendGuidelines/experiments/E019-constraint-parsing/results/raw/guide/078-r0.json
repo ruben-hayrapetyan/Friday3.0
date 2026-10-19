@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Alternate between math and English every hour.",
+    "reason": "Friday can't express interleaving or alternating between courses in hour-long blocks. Its pacing options are only spread, cluster and batch by course, and session length can't force a switch."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Alternate between math and English every hour.",
+    "reason": "Friday can't express interleaving or alternating between courses in hour-long blocks. Its pacing options are only spread, cluster and batch by course, and session length can't force a switch."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0075534,
+ "seconds": 3.232722125016153,
+ "calls": 1
+}

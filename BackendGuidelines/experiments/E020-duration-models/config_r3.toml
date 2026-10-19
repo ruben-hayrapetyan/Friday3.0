@@ -1,0 +1,9 @@
+# round 3: (a) the simulator made population defaults too accurate (each student's typical lengths within 0.2 log sd of
+# them); real students differ more -> also pop_sd 0.5. (b) The user asked that their own estimates be the starting
+# point: "_faN" fuses with history only after N recorded lengths (before that, the estimate x the learned ratio).
+types = ["calibrated", "optimist", "noisy", "kind_biased", "drifting", "sparse"]
+seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+weeks = 10
+pop_sd = [0.2, 0.5]
+models = ["as_given", "global_bias_recal", "hier_fused_drift_recal", "hier_fused_drift_fa3_recal",
+          "hier_fused_drift_fa6_recal"]

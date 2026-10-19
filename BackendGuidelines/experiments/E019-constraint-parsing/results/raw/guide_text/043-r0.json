@@ -1,0 +1,46 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "source": "Work blocks shorter than 45 minutes are useless to me.",
+    "paraphrase": "Every work session should be at least 45 minutes long.",
+    "kind": "session_length",
+    "min_hours": 0.75,
+    "max_hours": null,
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Work blocks shorter than 45 minutes are useless to me.",
+    "paraphrase": "Every work session should be at least 45 minutes long.",
+    "kind": "session_length",
+    "min_hours": 0.75,
+    "max_hours": null,
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0087322,
+ "seconds": 4.261566916014999,
+ "calls": 1
+}

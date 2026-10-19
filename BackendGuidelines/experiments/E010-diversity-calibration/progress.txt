@@ -1,0 +1,87 @@
+A tiny-0 T=1.0 plans=25056 tv=0.905 visited=0.08 unvisited mass=0.905
+A tiny-0 T=3.0 plans=25056 tv=0.949 visited=0.06 unvisited mass=0.949
+A tiny-0 T=10.0 plans=25056 tv=0.957 visited=0.05 unvisited mass=0.957
+A tiny-1 T=1.0 plans=8271 tv=0.860 visited=0.16 unvisited mass=0.860
+A tiny-1 T=3.0 plans=8271 tv=0.890 visited=0.12 unvisited mass=0.890
+A tiny-1 T=10.0 plans=8271 tv=0.895 visited=0.11 unvisited mass=0.895
+A tiny-2 T=1.0 plans=1991 tv=0.561 visited=0.24 unvisited mass=0.317
+A tiny-2 T=3.0 plans=1991 tv=0.544 visited=0.24 unvisited mass=0.371
+A tiny-2 T=10.0 plans=1991 tv=0.547 visited=0.25 unvisited mass=0.366
+A tiny-3 T=1.0 plans=19079 tv=0.670 visited=0.02 unvisited mass=0.542
+A tiny-3 T=3.0 plans=19079 tv=0.812 visited=0.03 unvisited mass=0.796
+A tiny-3 T=10.0 plans=19079 tv=0.834 visited=0.05 unvisited mass=0.829
+A tiny-4 T=1.0 plans=3051 tv=0.636 visited=0.38 unvisited mass=0.541
+A tiny-4 T=3.0 plans=3051 tv=0.702 visited=0.33 unvisited mass=0.664
+A tiny-4 T=10.0 plans=3051 tv=0.751 visited=0.29 unvisited mass=0.727
+A tiny-5 T=1.0 plans=10712 tv=0.600 visited=0.04 unvisited mass=0.413
+A tiny-5 T=3.0 plans=10712 tv=0.569 visited=0.04 unvisited mass=0.388
+A tiny-5 T=10.0 plans=10712 tv=0.584 visited=0.04 unvisited mass=0.374
+A tiny-6 T=1.0 plans=3178 tv=0.721 visited=0.40 unvisited mass=0.670
+A tiny-6 T=3.0 plans=3178 tv=0.801 visited=0.25 unvisited mass=0.783
+A tiny-6 T=10.0 plans=3178 tv=0.802 visited=0.22 unvisited mass=0.787
+A tiny-7 T=1.0 plans=1581 tv=0.609 visited=0.23 unvisited mass=0.514
+A tiny-7 T=3.0 plans=1581 tv=0.678 visited=0.37 unvisited mass=0.608
+A tiny-7 T=10.0 plans=1581 tv=0.685 visited=0.39 unvisited mass=0.621
+A tiny-8 T=1.0 plans=3469 tv=0.710 visited=0.40 unvisited mass=0.646
+A tiny-8 T=3.0 plans=3469 tv=0.800 visited=0.24 unvisited mass=0.790
+A tiny-8 T=10.0 plans=3469 tv=0.818 visited=0.20 unvisited mass=0.808
+A tiny-9 T=1.0 plans=257 tv=0.239 visited=0.54 unvisited mass=0.000
+A tiny-9 T=3.0 plans=257 tv=0.319 visited=0.54 unvisited mass=0.000
+A tiny-9 T=10.0 plans=257 tv=0.357 visited=0.54 unvisited mass=0.000
+B ref40-0 T=0.003 diff=0.743 patterns=4.85 excess=-607pts
+B ref40-0 T=0.01 diff=0.723 patterns=4.72 excess=-605pts
+B ref40-0 T=0.03 diff=0.764 patterns=5.05 excess=-603pts
+B ref40-0 T=0.1 diff=0.815 patterns=5.45 excess=-614pts
+B ref40-1 T=0.003 diff=0.305 patterns=2.10 excess=-79pts
+B ref40-1 T=0.01 diff=0.325 patterns=1.93 excess=-83pts
+B ref40-1 T=0.03 diff=0.368 patterns=2.12 excess=-86pts
+B ref40-1 T=0.1 diff=0.490 patterns=2.52 excess=-83pts
+B ref40-2 T=0.003 diff=0.511 patterns=3.02 excess=-27pts
+B ref40-2 T=0.01 diff=0.496 patterns=3.08 excess=-28pts
+B ref40-2 T=0.03 diff=0.518 patterns=3.02 excess=-25pts
+B ref40-2 T=0.1 diff=0.618 patterns=3.67 excess=-33pts
+B ref40-3 T=0.003 diff=0.705 patterns=5.17 excess=-6996pts
+B ref40-3 T=0.01 diff=0.706 patterns=5.30 excess=-6993pts
+B ref40-3 T=0.03 diff=0.713 patterns=5.05 excess=-6997pts
+B ref40-3 T=0.1 diff=0.730 patterns=5.47 excess=-6997pts
+B ref40-4 T=0.003 diff=0.670 patterns=5.00 excess=-1788pts
+B ref40-4 T=0.01 diff=0.663 patterns=5.10 excess=-1787pts
+B ref40-4 T=0.03 diff=0.672 patterns=5.05 excess=-1789pts
+B ref40-4 T=0.1 diff=0.712 patterns=4.83 excess=-1793pts
+C easy-0 week 0 done
+C easy-0 week 1 done
+C easy-0 week 2 done
+C easy-0 week 3 done
+C easy-0 week 4 done
+C easy-0 week 5 done
+C easy-1 week 0 done
+C easy-1 week 1 done
+C easy-1 week 2 done
+C easy-1 week 3 done
+C easy-1 week 4 done
+C easy-1 week 5 done
+C easy-2 week 0 done
+C easy-2 week 1 done
+C easy-2 week 2 done
+C easy-2 week 3 done
+C easy-2 week 4 done
+C easy-2 week 5 done
+C noisy-0 week 0 done
+C noisy-0 week 1 done
+C noisy-0 week 2 done
+C noisy-0 week 3 done
+C noisy-0 week 4 done
+C noisy-0 week 5 done
+C noisy-1 week 0 done
+C noisy-1 week 1 done
+C noisy-1 week 2 done
+C noisy-1 week 3 done
+C noisy-1 week 4 done
+C noisy-1 week 5 done
+C noisy-2 week 0 done
+C noisy-2 week 1 done
+C noisy-2 week 2 done
+C noisy-2 week 3 done
+C noisy-2 week 4 done
+C noisy-2 week 5 done
+done

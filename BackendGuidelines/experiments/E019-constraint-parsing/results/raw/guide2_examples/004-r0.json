@@ -1,0 +1,38 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "sleep",
+    "nights": [
+     "fri"
+    ],
+    "bedtime": "01:00",
+    "wake": null,
+    "source": "On Fridays I go to bed at 1.",
+    "paraphrase": "On Friday nights you go to bed at 1:00 am."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "On Fridays I go to bed at 1.",
+    "paraphrase": "On Friday nights you go to bed at 1:00 am.",
+    "kind": "sleep",
+    "nights": [
+     "fri"
+    ],
+    "bedtime": "01:00",
+    "wake": null
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0144623,
+ "seconds": 4.093216457986273,
+ "calls": 1
+}

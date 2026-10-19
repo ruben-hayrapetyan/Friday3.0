@@ -1,0 +1,20 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours count as \"night\" for your reading? For example, is reading OK from 19:00 onward, or only after 21:00? And should reading stay off-limits all day on weekends too?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours count as \"night\" for your reading? For example, is reading OK from 19:00 onward, or only after 21:00? And should reading stay off-limits all day on weekends too?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0102375,
+ "seconds": 5.04927424993366,
+ "calls": 1
+}

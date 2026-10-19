@@ -1,0 +1,47 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": [
+     "sun"
+    ],
+    "start": "12:00",
+    "end": "17:00",
+    "strength": "medium",
+    "source": "Keep Sunday afternoons mostly free.",
+    "paraphrase": "Prefer not to schedule work on Sunday afternoons (12:00\u201317:00)."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Keep Sunday afternoons mostly free.",
+    "paraphrase": "Prefer not to schedule work on Sunday afternoons (12:00\u201317:00).",
+    "days": [
+     "sun"
+    ],
+    "start": "12:00",
+    "end": "17:00",
+    "kind": "avoid_time",
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0096135,
+ "seconds": 4.156605625059456,
+ "calls": 1
+}

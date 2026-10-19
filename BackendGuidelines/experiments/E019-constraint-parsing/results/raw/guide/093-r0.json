@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Groceries need to happen before Wednesday.",
+    "reason": "Friday can't set a custom deadline for a task. The nearest constraints would block weekdays every week or finish it early relative to a due date, and neither means 'done before this Wednesday'."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Groceries need to happen before Wednesday.",
+    "reason": "Friday can't set a custom deadline for a task. The nearest constraints would block weekdays every week or finish it early relative to a due date, and neither means 'done before this Wednesday'."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0117954,
+ "seconds": 6.3242014170391485,
+ "calls": 1
+}

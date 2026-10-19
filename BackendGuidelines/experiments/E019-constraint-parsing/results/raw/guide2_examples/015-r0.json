@@ -1,0 +1,53 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {
+     "kinds": [
+      "reading"
+     ]
+    },
+    "days": null,
+    "start": "07:00",
+    "end": "18:00",
+    "strength": "hard",
+    "source": "I can't do reading during the day, only at night is fine.",
+    "paraphrase": "Never schedule reading between 07:00 and 18:00; only in the evening/night."
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "What hours count as \"during the day\" for you? I assumed 07:00 to 18:00, so reading would only be placed after 18:00."
+  ]
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I can't do reading during the day, only at night is fine.",
+    "paraphrase": "Never schedule reading between 07:00 and 18:00; only in the evening/night.",
+    "days": null,
+    "start": "07:00",
+    "end": "18:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": [
+      "reading"
+     ],
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "What hours count as \"during the day\" for you? I assumed 07:00 to 18:00, so reading would only be placed after 18:00."
+  ]
+ },
+ "error": null,
+ "cost": 0.010774699999999998,
+ "seconds": 5.616873583057895,
+ "calls": 1
+}

@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Don't schedule CS right after physics, I need a mental break between them.",
+    "reason": "Friday can't keep a gap between two specific courses. Buffers apply to a whole kind of event (class, meeting, other), not to the space between CS and physics."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Don't schedule CS right after physics, I need a mental break between them.",
+    "reason": "Friday can't keep a gap between two specific courses. Buffers apply to a whole kind of event (class, meeting, other), not to the space between CS and physics."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0093547,
+ "seconds": 4.536003249930218,
+ "calls": 1
+}

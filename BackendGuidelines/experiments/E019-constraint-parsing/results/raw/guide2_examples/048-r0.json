@@ -1,0 +1,43 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "pacing",
+    "style": "spread",
+    "target": {
+     "titles": [
+      "PHYS 2213 prelim 2 prep"
+     ]
+    },
+    "source": "Spread my prelim studying out over several days, don't cram.",
+    "paraphrase": "Spread PHYS 2213 prelim 2 prep over several days rather than cramming."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Spread my prelim studying out over several days, don't cram.",
+    "paraphrase": "Spread PHYS 2213 prelim 2 prep over several days rather than cramming.",
+    "kind": "pacing",
+    "style": "spread",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "PHYS 2213 prelim 2 prep"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.007892699999999999,
+ "seconds": 3.139786749961786,
+ "calls": 1
+}

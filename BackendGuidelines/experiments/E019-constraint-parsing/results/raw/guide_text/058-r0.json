@@ -1,0 +1,32 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "order",
+    "source": "Do the Beloved reading before working on the essay draft.",
+    "paraphrase": "Finish the Beloved ch. 4-6 reading before starting the ENGL 1170 essay draft.",
+    "first": "Beloved",
+    "then": "essay draft"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Do the Beloved reading before working on the essay draft.",
+    "paraphrase": "Finish the Beloved ch. 4-6 reading before starting the ENGL 1170 essay draft.",
+    "kind": "order",
+    "first": "Beloved",
+    "then": "essay draft"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0066002,
+ "seconds": 2.6948471249779686,
+ "calls": 1
+}

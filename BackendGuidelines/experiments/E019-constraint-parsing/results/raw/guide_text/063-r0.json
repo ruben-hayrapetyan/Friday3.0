@@ -1,0 +1,118 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "sleep",
+    "source": "Weekdays I'm up at 7 and asleep by 11",
+    "paraphrase": "On weekday nights (Sun-Thu) you go to bed by 23:00 and wake at 07:00.",
+    "nights": [
+     "sun",
+     "mon",
+     "tue",
+     "wed",
+     "thu"
+    ],
+    "bedtime": "23:00",
+    "wake": "07:00"
+   },
+   {
+    "kind": "prefer_time",
+    "source": "I like math in the morning",
+    "paraphrase": "You prefer to do MATH 2940 work in the morning (before 12:00).",
+    "days": null,
+    "start": null,
+    "end": "12:00",
+    "strength": "medium",
+    "target": {
+     "courses": [
+      "MATH 2940"
+     ],
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "kind": "prefer_time",
+    "source": "English in the afternoon",
+    "paraphrase": "You prefer to do ENGL 1170 work in the afternoon (12:00-17:00).",
+    "days": null,
+    "start": "12:00",
+    "end": "17:00",
+    "strength": "medium",
+    "target": {
+     "courses": [
+      "ENGL 1170"
+     ],
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "What hours count as Friday night for you (for example 18:00 to midnight), and should work be completely off limits then or just avoided if possible?"
+  ]
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Weekdays I'm up at 7 and asleep by 11",
+    "paraphrase": "On weekday nights (Sun-Thu) you go to bed by 23:00 and wake at 07:00.",
+    "kind": "sleep",
+    "nights": [
+     "sun",
+     "mon",
+     "tue",
+     "wed",
+     "thu"
+    ],
+    "bedtime": "23:00",
+    "wake": "07:00"
+   },
+   {
+    "source": "I like math in the morning",
+    "paraphrase": "You prefer to do MATH 2940 work in the morning (before 12:00).",
+    "days": null,
+    "start": null,
+    "end": "12:00",
+    "kind": "prefer_time",
+    "strength": "medium",
+    "target": {
+     "courses": [
+      "MATH 2940"
+     ],
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "source": "English in the afternoon",
+    "paraphrase": "You prefer to do ENGL 1170 work in the afternoon (12:00-17:00).",
+    "days": null,
+    "start": "12:00",
+    "end": "17:00",
+    "kind": "prefer_time",
+    "strength": "medium",
+    "target": {
+     "courses": [
+      "ENGL 1170"
+     ],
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "What hours count as Friday night for you (for example 18:00 to midnight), and should work be completely off limits then or just avoided if possible?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0161762,
+ "seconds": 8.414176166057587,
+ "calls": 1
+}

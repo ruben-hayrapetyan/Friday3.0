@@ -1,0 +1,7 @@
+instance 0: A wall cost 31.4, B/C softening cost 30.9
+instance 1: A wall cost 27.9, B/C softening cost 30.6
+instance 2: A wall cost 16.8, B/C softening cost 24.1
+instance 3: A wall cost 42.8, B/C softening cost 24.3
+instance 4: A wall cost 23.1, B/C softening cost 37.8
+costs: A=28.4 BC=29.5
+done

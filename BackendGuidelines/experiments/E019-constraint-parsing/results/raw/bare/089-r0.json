@@ -1,0 +1,43 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "commitment",
+    "title": "Lab",
+    "start": "13:25",
+    "end": "16:25",
+    "event_kind": "class",
+    "days": [
+     "thu"
+    ],
+    "source": "Thursdays I'm in lab all afternoon, 1:25 to 4:25.",
+    "paraphrase": "Lab every Thursday from 1:25 PM to 4:25 PM."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Thursdays I'm in lab all afternoon, 1:25 to 4:25.",
+    "paraphrase": "Lab every Thursday from 1:25 PM to 4:25 PM.",
+    "kind": "commitment",
+    "title": "Lab",
+    "days": [
+     "thu"
+    ],
+    "dates": null,
+    "start": "13:25",
+    "end": "16:25",
+    "event_kind": "class"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0078829,
+ "seconds": 3.33391083299648,
+ "calls": 1
+}

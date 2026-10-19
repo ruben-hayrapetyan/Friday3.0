@@ -1,0 +1,47 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "session_length",
+    "target": {
+     "kinds": [
+      "reading"
+     ]
+    },
+    "max_hours": 0.75,
+    "min_hours": null,
+    "strength": "medium",
+    "source": "Prefer shorter sessions for readings, like 30-45 min max.",
+    "paraphrase": "Keep reading sessions to about 45 minutes at most."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Prefer shorter sessions for readings, like 30-45 min max.",
+    "paraphrase": "Keep reading sessions to about 45 minutes at most.",
+    "kind": "session_length",
+    "min_hours": null,
+    "max_hours": 0.75,
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": [
+      "reading"
+     ],
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.007782900000000001,
+ "seconds": 3.113426291034557,
+ "calls": 1
+}

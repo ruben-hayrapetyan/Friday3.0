@@ -1,0 +1,7 @@
+sizes = [20, 40, 60]
+seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+workers = 8
+time_limit_s = 30.0
+det_time = [20.0, 20.0, 20.0]
+timing_repeats = 3          # extra cold repeats on the first three seeds at the largest size
+edf_items = 100

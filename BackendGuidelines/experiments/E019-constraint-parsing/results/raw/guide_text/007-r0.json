@@ -1,0 +1,20 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "Sleeping badly doesn't tell me a bedtime or wake time. If you'd like Friday to protect your sleep, what time do you usually go to bed and get up, and does it differ on weekends?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "Sleeping badly doesn't tell me a bedtime or wake time. If you'd like Friday to protect your sleep, what time do you usually go to bed and get up, and does it differ on weekends?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0079762,
+ "seconds": 3.837064709048718,
+ "calls": 1
+}

@@ -1,0 +1,46 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "source": "I work at the library Tuesdays and Thursdays 4-8pm.",
+    "paraphrase": "You work at the library every Tuesday and Thursday from 16:00 to 20:00.",
+    "kind": "commitment",
+    "title": "Library job",
+    "days": [
+     "tue",
+     "thu"
+    ],
+    "dates": null,
+    "start": "16:00",
+    "end": "20:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I work at the library Tuesdays and Thursdays 4-8pm.",
+    "paraphrase": "You work at the library every Tuesday and Thursday from 16:00 to 20:00.",
+    "kind": "commitment",
+    "title": "Library job",
+    "days": [
+     "tue",
+     "thu"
+    ],
+    "dates": null,
+    "start": "16:00",
+    "end": "20:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0069342,
+ "seconds": 2.724820000003092,
+ "calls": 1
+}

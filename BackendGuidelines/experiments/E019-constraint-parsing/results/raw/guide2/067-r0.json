@@ -1,0 +1,20 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "Which days of the week is your practice, and what time does it start and end?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "Which days of the week is your practice, and what time does it start and end?"
+  ]
+ },
+ "error": null,
+ "cost": 0.006975500000000001,
+ "seconds": 2.6282256670529023,
+ "calls": 1
+}

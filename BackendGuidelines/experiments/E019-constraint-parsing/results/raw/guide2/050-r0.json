@@ -1,0 +1,42 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "pacing",
+    "style": "batch_by_course",
+    "target": {
+     "courses": null,
+     "energy": null,
+     "kinds": null,
+     "titles": null
+    },
+    "source": "Group work from the same class on the same day.",
+    "paraphrase": "Batch work from the same course onto the same day."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Group work from the same class on the same day.",
+    "paraphrase": "Batch work from the same course onto the same day.",
+    "kind": "pacing",
+    "style": "batch_by_course",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0076475,
+ "seconds": 2.973723915987648,
+ "calls": 1
+}

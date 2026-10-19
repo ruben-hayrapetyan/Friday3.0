@@ -1,0 +1,44 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "commitment",
+    "title": "Dentist appointment",
+    "start": "15:00",
+    "end": "16:00",
+    "event_kind": "other",
+    "dates": [
+     "2026-10-22"
+    ],
+    "days": null,
+    "paraphrase": "Dentist appointment on Oct 22 from 3:00 to 4:00 pm.",
+    "source": "I have a dentist appointment on October 22 at 3pm for an hour."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I have a dentist appointment on October 22 at 3pm for an hour.",
+    "paraphrase": "Dentist appointment on Oct 22 from 3:00 to 4:00 pm.",
+    "kind": "commitment",
+    "title": "Dentist appointment",
+    "days": null,
+    "dates": [
+     "2026-10-22"
+    ],
+    "start": "15:00",
+    "end": "16:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0080069,
+ "seconds": 3.0546907080570236,
+ "calls": 1
+}

@@ -1,0 +1,43 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": null,
+    "start": "23:00",
+    "end": "07:00",
+    "strength": "hard",
+    "source": "Don't schedule any work after 11pm.",
+    "paraphrase": "No work scheduled between 11pm and 7am, any day."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Don't schedule any work after 11pm.",
+    "paraphrase": "No work scheduled between 11pm and 7am, any day.",
+    "days": null,
+    "start": "23:00",
+    "end": "07:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0076655000000000004,
+ "seconds": 3.1394749160390347,
+ "calls": 1
+}

@@ -1,0 +1,241 @@
+ref-n40-s0-warm sampler_warm@0.5 lex=(0, 200, 808374) churn=50.0 0.32s {'identical_rerun': True}
+ref-n40-s0-warm sampler_cold@0.5 lex=(0, 550, 807314) churn=70.5 0.35s {'identical_rerun': True}
+ref-n40-s0-warm sampler_warm@1 lex=(0, 100, 479422) churn=39.75 0.73s {'identical_rerun': True}
+ref-n40-s0-warm sampler_cold@1 lex=(0, 375, 331367) churn=70.5 0.65s {'identical_rerun': True}
+ref-n40-s0-warm sampler_warm@3 lex=(0, 100, 457194) churn=55.25 1.93s {'identical_rerun': True}
+ref-n40-s0-warm sampler_cold@3 lex=(0, 100, 454692) churn=61.75 1.99s {'identical_rerun': True}
+ref-n40-s0-warm cpsat_warm@10 lex=(8412217, 0, 1280001) churn=57.25 22.14s {'status': 'FEASIBLE/OPTIMAL/FEASIBLE', 'identical_rerun': False}
+ref-n40-s0-warm cpsat_warm@30 lex=(0, 100, 219052) churn=41.75 23.58s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE'}
+ref-n40-s1-warm sampler_warm@0.5 lex=(0, 11025, 59145) churn=42.25 0.39s {'identical_rerun': True}
+ref-n40-s1-warm sampler_cold@0.5 lex=(0, 12375, 40330) churn=51.25 0.39s {'identical_rerun': True}
+ref-n40-s1-warm sampler_warm@1 lex=(0, 11025, 36334) churn=36.0 0.79s {'identical_rerun': True}
+ref-n40-s1-warm sampler_cold@1 lex=(0, 11525, 61331) churn=53.5 0.82s {'identical_rerun': True}
+ref-n40-s1-warm sampler_warm@3 lex=(0, 10950, 38949) churn=47.5 2.33s {'identical_rerun': True}
+ref-n40-s1-warm sampler_cold@3 lex=(0, 10850, 38310) churn=43.5 2.30s {'identical_rerun': True}
+ref-n40-s1-warm cpsat_warm@10 lex=(48836187, 10450, 1303969) churn=99.0 22.69s {'status': 'FAIL:SolveTimeout', 'identical_rerun': False}
+ref-n40-s1-warm cpsat_warm@30 lex=(0, 10750, 44170) churn=40.25 24.07s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE'}
+ref-n40-s2-warm sampler_warm@0.5 lex=(0, 300, 294608) churn=44.0 0.34s {'identical_rerun': True}
+ref-n40-s2-warm sampler_cold@0.5 lex=(0, 6712, 91036) churn=66.0 0.45s {'identical_rerun': True}
+ref-n40-s2-warm sampler_warm@1 lex=(0, 337, 155391) churn=35.75 0.71s {'identical_rerun': True}
+ref-n40-s2-warm sampler_cold@1 lex=(0, 1950, 162541) churn=51.5 0.79s {'identical_rerun': True}
+ref-n40-s2-warm sampler_warm@3 lex=(0, 250, 41279) churn=46.75 2.04s {'identical_rerun': True}
+ref-n40-s2-warm sampler_cold@3 lex=(0, 437, 63945) churn=40.75 2.11s {'identical_rerun': True}
+ref-n40-s2-warm cpsat_warm@10 lex=(45944793, 0, 1241811) churn=104.25 27.29s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n40-s2-warm cpsat_warm@30 lex=(0, 250, 118853) churn=25.25 25.06s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE'}
+ref-n40-s3-warm sampler_warm@0.5 lex=(0, 150, 1401168) churn=64.25 0.38s {'identical_rerun': True}
+ref-n40-s3-warm sampler_cold@0.5 lex=(0, 1912, 1541468) churn=85.25 0.45s {'identical_rerun': True}
+ref-n40-s3-warm sampler_warm@1 lex=(0, 150, 1270667) churn=61.75 0.77s {'identical_rerun': True}
+ref-n40-s3-warm sampler_cold@1 lex=(0, 175, 1262499) churn=75.25 0.79s {'identical_rerun': True}
+ref-n40-s3-warm sampler_warm@3 lex=(0, 100, 1304819) churn=56.75 2.47s {'identical_rerun': True}
+ref-n40-s3-warm sampler_cold@3 lex=(0, 175, 1085274) churn=76.0 2.44s {'identical_rerun': True}
+ref-n40-s3-warm cpsat_warm@10 lex=(52492014, 0, 2941956) churn=110.75 27.81s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n40-s3-warm cpsat_warm@30 lex=(0, 50, 1283194) churn=61.75 22.61s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+ref-n40-s4-warm sampler_warm@0.5 lex=(0, 8275, 348491) churn=35.5 0.33s {'identical_rerun': True}
+ref-n40-s4-warm sampler_cold@0.5 lex=(0, 11825, 378235) churn=71.75 0.43s {'identical_rerun': True}
+ref-n40-s4-warm sampler_warm@1 lex=(0, 8300, 319024) churn=35.75 0.65s {'identical_rerun': True}
+ref-n40-s4-warm sampler_cold@1 lex=(0, 8950, 225056) churn=54.0 0.82s {'identical_rerun': True}
+ref-n40-s4-warm sampler_warm@3 lex=(0, 8225, 342904) churn=58.25 2.10s {'identical_rerun': True}
+ref-n40-s4-warm sampler_cold@3 lex=(0, 8275, 253191) churn=54.0 2.15s {'identical_rerun': True}
+ref-n40-s4-warm cpsat_warm@10 lex=(18872727, 8125, 718168) churn=79.75 21.02s {'status': 'FEASIBLE/OPTIMAL/FEASIBLE', 'identical_rerun': False}
+ref-n40-s4-warm cpsat_warm@30 lex=(0, 8225, 146241) churn=25.75 23.78s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE'}
+ref-n40-s5-warm sampler_warm@0.5 lex=(0, 5162, 407026) churn=37.0 0.37s {'identical_rerun': True}
+ref-n40-s5-warm sampler_cold@0.5 lex=(0, 11587, 371472) churn=73.0 0.38s {'identical_rerun': True}
+ref-n40-s5-warm sampler_warm@1 lex=(0, 5250, 364755) churn=31.25 0.75s {'identical_rerun': True}
+ref-n40-s5-warm sampler_cold@1 lex=(750, 8162, 454105) churn=52.75 0.71s {'identical_rerun': True}
+ref-n40-s5-warm sampler_warm@3 lex=(0, 4750, 376828) churn=30.75 2.09s {'identical_rerun': True}
+ref-n40-s5-warm sampler_cold@3 lex=(0, 6087, 389834) churn=43.5 2.27s {'identical_rerun': True}
+ref-n40-s5-warm cpsat_warm@10 lex=(47718502, 0, 1388620) churn=103.25 27.38s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n40-s5-warm cpsat_warm@30 lex=(0, 4750, 809513) churn=36.5 26.02s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE'}
+ref-n40-s6-warm sampler_warm@0.5 lex=(0, 2725, 939187) churn=51.5 0.38s {'identical_rerun': True}
+ref-n40-s6-warm sampler_cold@0.5 lex=(854871, 9461, 646516) churn=63.25 0.41s {'identical_rerun': True}
+ref-n40-s6-warm sampler_warm@1 lex=(0, 2725, 817276) churn=40.25 0.76s {'identical_rerun': True}
+ref-n40-s6-warm sampler_cold@1 lex=(115687, 8787, 778011) churn=59.75 0.98s {'identical_rerun': True}
+ref-n40-s6-warm sampler_warm@3 lex=(0, 2725, 782201) churn=35.25 2.50s {'identical_rerun': True}
+ref-n40-s6-warm sampler_cold@3 lex=(0, 3175, 810711) churn=44.0 2.62s {'identical_rerun': True}
+ref-n40-s6-warm cpsat_warm@10 lex=(52508592, 0, 2172890) churn=99.5 22.78s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n40-s6-warm cpsat_warm@30 lex=(0, 2275, 825808) churn=27.0 20.09s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+ref-n40-s7-warm sampler_warm@0.5 lex=(44999, 22186, 133839) churn=22.5 0.34s {'identical_rerun': True}
+ref-n40-s7-warm sampler_cold@0.5 lex=(44999, 25123, 173004) churn=35.75 0.37s {'identical_rerun': True}
+ref-n40-s7-warm sampler_warm@1 lex=(44999, 22186, 129364) churn=19.25 0.69s {'identical_rerun': True}
+ref-n40-s7-warm sampler_cold@1 lex=(44999, 23211, 132970) churn=26.75 0.76s {'identical_rerun': True}
+ref-n40-s7-warm sampler_warm@3 lex=(44999, 22086, 88047) churn=21.0 2.18s {'identical_rerun': True}
+ref-n40-s7-warm sampler_cold@3 lex=(44999, 21986, 70099) churn=27.25 2.23s {'identical_rerun': True}
+ref-n40-s7-warm cpsat_warm@10 lex=(84129759, 3025, 1440631) churn=102.25 22.46s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n40-s7-warm cpsat_warm@30 lex=(44999, 21548, 98701) churn=32.5 24.04s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+ref-n40-s8-warm sampler_warm@0.5 lex=(375, 18798, 317681) churn=26.75 0.31s {'identical_rerun': True}
+ref-n40-s8-warm sampler_cold@0.5 lex=(375, 20223, 228965) churn=44.75 0.34s {'identical_rerun': True}
+ref-n40-s8-warm sampler_warm@1 lex=(375, 18786, 308245) churn=24.0 0.62s {'identical_rerun': True}
+ref-n40-s8-warm sampler_cold@1 lex=(375, 18136, 380158) churn=22.0 0.64s {'identical_rerun': True}
+ref-n40-s8-warm sampler_warm@3 lex=(375, 17786, 234578) churn=27.5 1.78s {'identical_rerun': True}
+ref-n40-s8-warm sampler_cold@3 lex=(375, 17511, 191834) churn=30.5 1.82s {'identical_rerun': True}
+ref-n40-s8-warm cpsat_warm@10 lex=(48420104, 0, 2511246) churn=110.25 22.57s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n40-s8-warm cpsat_warm@30 lex=(375, 16898, 140779) churn=24.0 22.39s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+ref-n40-s9-warm sampler_warm@0.5 lex=(0, 300, 166663) churn=28.25 0.46s {'identical_rerun': True}
+ref-n40-s9-warm sampler_cold@0.5 lex=(0, 2575, 271384) churn=60.25 0.46s {'identical_rerun': True}
+ref-n40-s9-warm sampler_warm@1 lex=(0, 300, 150747) churn=22.0 0.94s {'identical_rerun': True}
+ref-n40-s9-warm sampler_cold@1 lex=(0, 1225, 159745) churn=58.25 0.92s {'identical_rerun': True}
+ref-n40-s9-warm sampler_warm@3 lex=(0, 275, 276590) churn=31.75 2.80s {'identical_rerun': True}
+ref-n40-s9-warm sampler_cold@3 lex=(0, 350, 166245) churn=43.5 2.59s {'identical_rerun': True}
+ref-n40-s9-warm cpsat_warm@10 lex=(7456240, 74, 1331368) churn=65.75 22.95s {'status': 'FEASIBLE/FEASIBLE/FEASIBLE', 'identical_rerun': False}
+ref-n40-s9-warm cpsat_warm@30 lex=(0, 275, 73784) churn=8.25 20.09s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+ref-n60-s0-warm sampler_warm@0.5 lex=(0, 1500, 2447671) churn=70.25 0.36s {'identical_rerun': True}
+ref-n60-s0-warm sampler_cold@0.5 lex=(0, 2100, 2188785) churn=83.0 0.37s {'identical_rerun': True}
+ref-n60-s0-warm sampler_warm@1 lex=(0, 1475, 1914780) churn=57.25 0.68s {'identical_rerun': True}
+ref-n60-s0-warm sampler_cold@1 lex=(0, 1775, 1234315) churn=76.75 0.70s {'identical_rerun': True}
+ref-n60-s0-warm sampler_warm@3 lex=(0, 1325, 1912606) churn=59.0 2.07s {'identical_rerun': True}
+ref-n60-s0-warm sampler_cold@3 lex=(0, 1450, 1339610) churn=65.75 1.94s {'identical_rerun': True}
+ref-n60-s0-warm cpsat_warm@10 lex=(52044549, 1250, 4404582) churn=109.75 27.88s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n60-s0-warm cpsat_warm@30 lex=(0, 1300, 3127423) churn=36.5 25.28s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE'}
+ref-n60-s1-warm sampler_warm@0.5 lex=(0, 925, 1090548) churn=42.5 0.35s {'identical_rerun': True}
+ref-n60-s1-warm sampler_cold@0.5 lex=(0, 9461, 435581) churn=76.0 0.37s {'identical_rerun': True}
+ref-n60-s1-warm sampler_warm@1 lex=(0, 900, 994700) churn=40.5 0.68s {'identical_rerun': True}
+ref-n60-s1-warm sampler_cold@1 lex=(0, 3725, 224615) churn=57.0 0.72s {'identical_rerun': True}
+ref-n60-s1-warm sampler_warm@3 lex=(0, 875, 807411) churn=46.0 2.04s {'identical_rerun': True}
+ref-n60-s1-warm sampler_cold@3 lex=(0, 1025, 906113) churn=51.75 2.10s {'identical_rerun': True}
+ref-n60-s1-warm cpsat_warm@10 lex=(45617750, 0, 2239321) churn=107.75 21.46s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n60-s1-warm cpsat_warm@30 lex=(0, 875, 1760752) churn=62.0 27.01s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+ref-n60-s2-warm sampler_warm@0.5 lex=(0, 1125, 2169820) churn=67.5 0.33s {'identical_rerun': True}
+ref-n60-s2-warm sampler_cold@0.5 lex=(0, 6999, 1424823) churn=79.0 0.33s {'identical_rerun': True}
+ref-n60-s2-warm sampler_warm@1 lex=(0, 1000, 1447657) churn=67.0 0.69s {'identical_rerun': True}
+ref-n60-s2-warm sampler_cold@1 lex=(0, 3400, 1917529) churn=76.5 0.64s {'identical_rerun': True}
+ref-n60-s2-warm sampler_warm@3 lex=(0, 950, 1934256) churn=53.75 1.97s {'identical_rerun': True}
+ref-n60-s2-warm sampler_cold@3 lex=(0, 1075, 2080882) churn=73.5 1.94s {'identical_rerun': True}
+ref-n60-s2-warm cpsat_warm@10 lex=(46048415, 0, 3732450) churn=110.75 22.37s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n60-s2-warm cpsat_warm@30 lex=(0, 925, 2400161) churn=63.5 31.17s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE'}
+ref-n60-s3-warm sampler_warm@0.5 lex=(0, 549, 2159814) churn=55.0 0.40s {'identical_rerun': True}
+ref-n60-s3-warm sampler_cold@0.5 lex=(0, 2112, 2505493) churn=80.0 0.42s {'identical_rerun': True}
+ref-n60-s3-warm sampler_warm@1 lex=(0, 337, 1962116) churn=59.25 0.78s {'identical_rerun': True}
+ref-n60-s3-warm sampler_cold@1 lex=(0, 1987, 1827851) churn=81.0 0.84s {'identical_rerun': True}
+ref-n60-s3-warm sampler_warm@3 lex=(0, 62, 1804872) churn=71.25 2.37s {'identical_rerun': True}
+ref-n60-s3-warm sampler_cold@3 lex=(0, 137, 1773030) churn=71.5 2.27s {'identical_rerun': True}
+ref-n60-s3-warm cpsat_warm@10 lex=(50666035, 37, 3148154) churn=109.75 30.99s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n60-s3-warm cpsat_warm@30 lex=(0, 37, 1982501) churn=69.25 26.67s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+ref-n60-s4-warm sampler_warm@0.5 lex=(0, 0, 952007) churn=62.5 0.38s {'identical_rerun': True}
+ref-n60-s4-warm sampler_cold@0.5 lex=(0, 625, 459213) churn=69.5 0.41s {'identical_rerun': True}
+ref-n60-s4-warm sampler_warm@1 lex=(0, 0, 891831) churn=57.75 0.76s {'identical_rerun': True}
+ref-n60-s4-warm sampler_cold@1 lex=(0, 0, 820033) churn=72.5 0.75s {'identical_rerun': True}
+ref-n60-s4-warm sampler_warm@3 lex=(0, 0, 873628) churn=55.75 2.29s {'identical_rerun': True}
+ref-n60-s4-warm sampler_cold@3 lex=(0, 0, 736449) churn=60.5 2.32s {'identical_rerun': True}
+ref-n60-s4-warm cpsat_warm@10 lex=(48317079, 0, 2379746) churn=105.25 29.86s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n60-s4-warm cpsat_warm@30 lex=(0, 0, 300996) churn=30.5 23.97s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+ref-n60-s5-warm sampler_warm@0.5 lex=(0, 3088, 1214793) churn=40.5 0.48s {'identical_rerun': True}
+ref-n60-s5-warm sampler_cold@0.5 lex=(204437, 7738, 611364) churn=76.0 0.42s {'identical_rerun': True}
+ref-n60-s5-warm sampler_warm@1 lex=(0, 2788, 1242506) churn=49.75 0.97s {'identical_rerun': True}
+ref-n60-s5-warm sampler_cold@1 lex=(280000, 6300, 693550) churn=69.75 0.87s {'identical_rerun': True}
+ref-n60-s5-warm sampler_warm@3 lex=(0, 2663, 904029) churn=48.5 2.94s {'identical_rerun': True}
+ref-n60-s5-warm sampler_cold@3 lex=(6562, 4563, 801160) churn=59.25 2.93s {'identical_rerun': True}
+ref-n60-s5-warm cpsat_warm@10 lex=(49175427, 88, 2640733) churn=110.25 29.99s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n60-s5-warm cpsat_warm@30 lex=(0, 3113, 1449003) churn=53.75 29.71s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE'}
+ref-n60-s6-warm sampler_warm@0.5 lex=(0, 3400, 2008781) churn=44.5 0.31s {'identical_rerun': True}
+ref-n60-s6-warm sampler_cold@0.5 lex=(97600, 11349, 1303407) churn=76.25 0.38s {'identical_rerun': True}
+ref-n60-s6-warm sampler_warm@1 lex=(0, 3400, 1901995) churn=53.25 0.63s {'identical_rerun': True}
+ref-n60-s6-warm sampler_cold@1 lex=(0, 7937, 1665363) churn=64.0 0.60s {'identical_rerun': True}
+ref-n60-s6-warm sampler_warm@3 lex=(0, 3400, 1770517) churn=36.75 1.81s {'identical_rerun': True}
+ref-n60-s6-warm sampler_cold@3 lex=(0, 4250, 1861369) churn=58.5 1.80s {'identical_rerun': False}
+ref-n60-s6-warm cpsat_warm@10 lex=(54557148, 0, 3666469) churn=110.5 29.89s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n60-s6-warm cpsat_warm@30 lex=(0, 2525, 2395910) churn=58.5 26.12s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE'}
+ref-n60-s7-warm sampler_warm@0.5 lex=(125, 12798, 723807) churn=41.0 0.39s {'identical_rerun': True}
+ref-n60-s7-warm sampler_cold@0.5 lex=(125, 17211, 715870) churn=60.75 0.45s {'identical_rerun': True}
+ref-n60-s7-warm sampler_warm@1 lex=(125, 12873, 824126) churn=48.5 0.79s {'identical_rerun': True}
+ref-n60-s7-warm sampler_cold@1 lex=(125, 14274, 794683) churn=58.75 0.85s {'identical_rerun': True}
+ref-n60-s7-warm sampler_warm@3 lex=(125, 12798, 768873) churn=37.75 2.42s {'identical_rerun': True}
+ref-n60-s7-warm sampler_cold@3 lex=(125, 12761, 612373) churn=48.75 2.37s {'identical_rerun': True}
+ref-n60-s7-warm cpsat_warm@10 lex=(78532622, 0, 3176137) churn=114.25 31.27s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n60-s7-warm cpsat_warm@30 lex=(0, 14273, 884626) churn=69.25 29.12s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE'}
+ref-n60-s8-warm sampler_warm@0.5 lex=(0, 9625, 310822) churn=41.75 0.36s {'identical_rerun': True}
+ref-n60-s8-warm sampler_cold@0.5 lex=(0, 18174, 407910) churn=73.75 0.48s {'identical_rerun': True}
+ref-n60-s8-warm sampler_warm@1 lex=(0, 9137, 178098) churn=43.25 0.71s {'identical_rerun': True}
+ref-n60-s8-warm sampler_cold@1 lex=(0, 13774, 379514) churn=73.25 0.80s {'identical_rerun': True}
+ref-n60-s8-warm sampler_warm@3 lex=(0, 8774, 199968) churn=66.0 2.20s {'identical_rerun': True}
+ref-n60-s8-warm sampler_cold@3 lex=(0, 10324, 537486) churn=65.75 2.35s {'identical_rerun': True}
+ref-n60-s8-warm cpsat_warm@10 lex=(48150531, 0, 3140746) churn=117.75 29.94s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n60-s8-warm cpsat_warm@30 lex=(0, 9273, 1774591) churn=55.75 25.95s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE'}
+ref-n60-s9-warm sampler_warm@0.5 lex=(0, 100, 1081766) churn=47.5 0.38s {'identical_rerun': True}
+ref-n60-s9-warm sampler_cold@0.5 lex=(0, 4824, 600861) churn=77.25 0.45s {'identical_rerun': True}
+ref-n60-s9-warm sampler_warm@1 lex=(0, 100, 1048694) churn=47.25 0.74s {'identical_rerun': True}
+ref-n60-s9-warm sampler_cold@1 lex=(0, 3337, 458596) churn=78.5 0.74s {'identical_rerun': True}
+ref-n60-s9-warm sampler_warm@3 lex=(0, 50, 688671) churn=54.25 2.14s {'identical_rerun': True}
+ref-n60-s9-warm sampler_cold@3 lex=(0, 275, 452050) churn=72.75 2.24s {'identical_rerun': True}
+ref-n60-s9-warm cpsat_warm@10 lex=(47966056, 0, 2352925) churn=110.25 30.57s {'status': 'FAIL:SolveTimeout', 'identical_rerun': True}
+ref-n60-s9-warm cpsat_warm@30 lex=(0, 100, 939276) churn=39.25 26.90s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE'}
+cornell-s0-warm sampler_warm@0.5 lex=(0, 75, 231172) churn=40.75 0.39s {'identical_rerun': True}
+cornell-s0-warm sampler_cold@0.5 lex=(0, 75, 270628) churn=54.0 0.40s {'identical_rerun': True}
+cornell-s0-warm sampler_warm@1 lex=(0, 50, 210752) churn=38.0 0.78s {'identical_rerun': True}
+cornell-s0-warm sampler_cold@1 lex=(0, 50, 166237) churn=42.75 0.76s {'identical_rerun': True}
+cornell-s0-warm sampler_warm@3 lex=(0, 50, 101030) churn=34.0 2.37s {'identical_rerun': True}
+cornell-s0-warm sampler_cold@3 lex=(0, 100, 78670) churn=31.75 2.31s {'identical_rerun': True}
+cornell-s0-warm cpsat_warm@10 lex=(0, 100, 673541) churn=45.0 14.36s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE', 'identical_rerun': False}
+cornell-s0-warm cpsat_warm@30 lex=(0, 50, 46785) churn=23.0 15.67s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+cornell-s1-warm sampler_warm@0.5 lex=(0, 762, 189735) churn=50.75 0.43s {'identical_rerun': True}
+cornell-s1-warm sampler_cold@0.5 lex=(0, 849, 643465) churn=46.25 0.43s {'identical_rerun': True}
+cornell-s1-warm sampler_warm@1 lex=(0, 762, 176442) churn=46.5 0.87s {'identical_rerun': True}
+cornell-s1-warm sampler_cold@1 lex=(0, 762, 335844) churn=48.5 0.85s {'identical_rerun': True}
+cornell-s1-warm sampler_warm@3 lex=(0, 712, 321166) churn=44.75 2.37s {'identical_rerun': True}
+cornell-s1-warm sampler_cold@3 lex=(0, 712, 246698) churn=40.0 2.76s {'identical_rerun': True}
+cornell-s1-warm cpsat_warm@10 lex=(0, 1299, 155947) churn=38.25 15.93s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE', 'identical_rerun': False}
+cornell-s1-warm cpsat_warm@30 lex=(0, 712, 44962) churn=28.25 16.23s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+cornell-s2-warm sampler_warm@0.5 lex=(0, 350, 342748) churn=45.75 0.39s {'identical_rerun': True}
+cornell-s2-warm sampler_cold@0.5 lex=(0, 200, 344676) churn=48.5 0.42s {'identical_rerun': True}
+cornell-s2-warm sampler_warm@1 lex=(0, 200, 319099) churn=45.0 0.77s {'identical_rerun': True}
+cornell-s2-warm sampler_cold@1 lex=(0, 100, 450942) churn=49.5 0.80s {'identical_rerun': True}
+cornell-s2-warm sampler_warm@3 lex=(0, 100, 237198) churn=54.0 2.61s {'identical_rerun': True}
+cornell-s2-warm sampler_cold@3 lex=(0, 100, 130553) churn=57.5 2.52s {'identical_rerun': True}
+cornell-s2-warm cpsat_warm@10 lex=(0, 100, 902742) churn=57.0 9.66s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE', 'identical_rerun': False}
+cornell-s2-warm cpsat_warm@30 lex=(0, 100, 50912) churn=39.25 16.27s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+cornell-s3-warm sampler_warm@0.5 lex=(0, 150, 111296) churn=39.75 0.35s {'identical_rerun': True}
+cornell-s3-warm sampler_cold@0.5 lex=(0, 1650, 59278) churn=50.25 0.35s {'identical_rerun': True}
+cornell-s3-warm sampler_warm@1 lex=(0, 125, 83268) churn=43.0 0.69s {'identical_rerun': True}
+cornell-s3-warm sampler_cold@1 lex=(0, 475, 101186) churn=48.25 0.69s {'identical_rerun': True}
+cornell-s3-warm sampler_warm@3 lex=(0, 125, 62185) churn=36.25 2.04s {'identical_rerun': True}
+cornell-s3-warm sampler_cold@3 lex=(0, 150, 39629) churn=45.0 2.04s {'identical_rerun': True}
+cornell-s3-warm cpsat_warm@10 lex=(0, 5636, 359003) churn=53.5 15.56s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE', 'identical_rerun': False}
+cornell-s3-warm cpsat_warm@30 lex=(0, 125, 43481) churn=35.25 19.41s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+cornell-s4-warm sampler_warm@0.5 lex=(0, 50, 219943) churn=63.0 0.38s {'identical_rerun': True}
+cornell-s4-warm sampler_cold@0.5 lex=(0, 175, 99826) churn=44.75 0.39s {'identical_rerun': True}
+cornell-s4-warm sampler_warm@1 lex=(0, 25, 81406) churn=49.5 0.76s {'identical_rerun': True}
+cornell-s4-warm sampler_cold@1 lex=(0, 50, 124249) churn=56.5 0.76s {'identical_rerun': True}
+cornell-s4-warm sampler_warm@3 lex=(0, 25, 73026) churn=47.25 2.22s {'identical_rerun': True}
+cornell-s4-warm sampler_cold@3 lex=(0, 50, 38675) churn=43.0 2.22s {'identical_rerun': True}
+cornell-s4-warm cpsat_warm@10 lex=(0, 50, 1645649) churn=46.75 9.40s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE', 'identical_rerun': False}
+cornell-s4-warm cpsat_warm@30 lex=(0, 25, 39098) churn=37.0 15.71s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+cornell-s5-warm sampler_warm@0.5 lex=(0, 275, 73786) churn=47.75 0.43s {'identical_rerun': True}
+cornell-s5-warm sampler_cold@0.5 lex=(0, 725, 159558) churn=45.75 0.45s {'identical_rerun': True}
+cornell-s5-warm sampler_warm@1 lex=(0, 275, 53173) churn=46.5 0.82s {'identical_rerun': True}
+cornell-s5-warm sampler_cold@1 lex=(0, 275, 143244) churn=44.75 0.89s {'identical_rerun': True}
+cornell-s5-warm sampler_warm@3 lex=(0, 275, 40347) churn=38.75 2.71s {'identical_rerun': True}
+cornell-s5-warm sampler_cold@3 lex=(0, 275, 59335) churn=53.0 2.59s {'identical_rerun': True}
+cornell-s5-warm cpsat_warm@10 lex=(0, 2299, 179427) churn=68.25 15.25s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE', 'identical_rerun': False}
+cornell-s5-warm cpsat_warm@30 lex=(0, 275, 56408) churn=51.5 15.88s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+cornell-s6-warm sampler_warm@0.5 lex=(0, 6925, 235248) churn=51.25 0.35s {'identical_rerun': True}
+cornell-s6-warm sampler_cold@0.5 lex=(0, 7125, 456833) churn=50.0 0.34s {'identical_rerun': True}
+cornell-s6-warm sampler_warm@1 lex=(0, 6825, 719880) churn=59.75 0.71s {'identical_rerun': True}
+cornell-s6-warm sampler_cold@1 lex=(0, 6850, 247548) churn=53.0 0.66s {'identical_rerun': True}
+cornell-s6-warm sampler_warm@3 lex=(0, 6825, 281601) churn=53.5 1.84s {'identical_rerun': True}
+cornell-s6-warm sampler_cold@3 lex=(0, 6825, 182828) churn=45.0 1.84s {'identical_rerun': True}
+cornell-s6-warm cpsat_warm@10 lex=(0, 14174, 1251409) churn=63.5 16.04s {'status': 'OPTIMAL/FEASIBLE/FEASIBLE', 'identical_rerun': False}
+cornell-s6-warm cpsat_warm@30 lex=(0, 6825, 245411) churn=38.5 18.23s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+cornell-s7-warm sampler_warm@0.5 lex=(0, 1537, 112227) churn=42.5 0.45s {'identical_rerun': True}
+cornell-s7-warm sampler_cold@0.5 lex=(0, 1562, 219325) churn=44.0 0.44s {'identical_rerun': True}
+cornell-s7-warm sampler_warm@1 lex=(0, 1537, 111843) churn=41.5 0.86s {'identical_rerun': True}
+cornell-s7-warm sampler_cold@1 lex=(0, 1687, 66011) churn=44.5 0.82s {'identical_rerun': True}
+cornell-s7-warm sampler_warm@3 lex=(0, 1537, 65980) churn=35.75 2.45s {'identical_rerun': True}
+cornell-s7-warm sampler_cold@3 lex=(0, 1537, 56381) churn=59.0 2.51s {'identical_rerun': True}
+cornell-s7-warm cpsat_warm@10 lex=(0, 1537, 263871) churn=67.25 14.36s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE', 'identical_rerun': False}
+cornell-s7-warm cpsat_warm@30 lex=(0, 1537, 35841) churn=29.5 15.06s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+cornell-s8-warm sampler_warm@0.5 lex=(0, 0, 151932) churn=59.0 0.37s {'identical_rerun': True}
+cornell-s8-warm sampler_cold@0.5 lex=(0, 0, 127737) churn=62.0 0.40s {'identical_rerun': True}
+cornell-s8-warm sampler_warm@1 lex=(0, 0, 95244) churn=45.0 0.73s {'identical_rerun': True}
+cornell-s8-warm sampler_cold@1 lex=(0, 25, 41025) churn=53.25 0.74s {'identical_rerun': True}
+cornell-s8-warm sampler_warm@3 lex=(0, 0, 37379) churn=36.25 2.32s {'identical_rerun': True}
+cornell-s8-warm sampler_cold@3 lex=(0, 0, 36590) churn=32.75 2.36s {'identical_rerun': True}
+cornell-s8-warm cpsat_warm@10 lex=(0, 0, 1510993) churn=66.0 8.78s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE', 'identical_rerun': False}
+cornell-s8-warm cpsat_warm@30 lex=(0, 0, 37083) churn=9.5 14.49s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+cornell-s9-warm sampler_warm@0.5 lex=(0, 250, 275816) churn=37.5 0.42s {'identical_rerun': True}
+cornell-s9-warm sampler_cold@0.5 lex=(0, 262, 267598) churn=53.0 0.44s {'identical_rerun': True}
+cornell-s9-warm sampler_warm@1 lex=(0, 250, 163378) churn=26.0 0.84s {'identical_rerun': True}
+cornell-s9-warm sampler_cold@1 lex=(0, 250, 245123) churn=54.5 0.80s {'identical_rerun': True}
+cornell-s9-warm sampler_warm@3 lex=(0, 250, 122652) churn=25.25 2.56s {'identical_rerun': True}
+cornell-s9-warm sampler_cold@3 lex=(0, 250, 56980) churn=52.0 2.38s {'identical_rerun': True}
+cornell-s9-warm cpsat_warm@10 lex=(0, 250, 776457) churn=10.0 15.85s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE', 'identical_rerun': False}
+cornell-s9-warm cpsat_warm@30 lex=(0, 250, 54085) churn=38.25 15.85s {'status': 'OPTIMAL/OPTIMAL/FEASIBLE'}
+done

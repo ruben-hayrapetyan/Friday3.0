@@ -1,0 +1,32 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "order",
+    "first": "CS 2110 A4",
+    "then": "CS 2110 A5",
+    "source": "I want to finish A4 before starting A5.",
+    "paraphrase": "Finish CS 2110 A4 before starting CS 2110 A5."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I want to finish A4 before starting A5.",
+    "paraphrase": "Finish CS 2110 A4 before starting CS 2110 A5.",
+    "kind": "order",
+    "first": "CS 2110 A4",
+    "then": "CS 2110 A5"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0026681,
+ "seconds": 3.105201166938059,
+ "calls": 1
+}

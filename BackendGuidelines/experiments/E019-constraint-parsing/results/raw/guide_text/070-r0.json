@@ -1,0 +1,30 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Do the important stuff first.",
+    "reason": "Friday has no general priority ranking. It can only order two specific named tasks, one before the other."
+   }
+  ],
+  "questions": [
+   "Which tasks count as important to you? If you name them, such as 'finish the CS 2110 A4 before the final project', I can set up the order for each pair."
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Do the important stuff first.",
+    "reason": "Friday has no general priority ranking. It can only order two specific named tasks, one before the other."
+   }
+  ],
+  "questions": [
+   "Which tasks count as important to you? If you name them, such as 'finish the CS 2110 A4 before the final project', I can set up the order for each pair."
+  ]
+ },
+ "error": null,
+ "cost": 0.009834200000000001,
+ "seconds": 5.44039358291775,
+ "calls": 1
+}

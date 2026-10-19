@@ -1,0 +1,43 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "commitment",
+    "title": "Family dinner",
+    "start": "18:00",
+    "end": "20:00",
+    "event_kind": "other",
+    "days": [
+     "sun"
+    ],
+    "source": "Dinner with my family every Sunday 6 to 8.",
+    "paraphrase": "Family dinner every Sunday from 18:00 to 20:00 is blocked off."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Dinner with my family every Sunday 6 to 8.",
+    "paraphrase": "Family dinner every Sunday from 18:00 to 20:00 is blocked off.",
+    "kind": "commitment",
+    "title": "Family dinner",
+    "days": [
+     "sun"
+    ],
+    "dates": null,
+    "start": "18:00",
+    "end": "20:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0078855,
+ "seconds": 3.1441477079642937,
+ "calls": 1
+}

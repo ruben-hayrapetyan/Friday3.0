@@ -1,0 +1,24 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "When are your exams (for example, the date of PHYS 2213 prelim 2)? I can't see exam dates, so I don't know which days count as 'before exams'.",
+   "What does 'overload' mean for you? Is it a maximum number of work hours per day, or keeping some evenings or time blocks free?",
+   "How many days before an exam should the lighter load start (for example, the 2 days before)?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "When are your exams (for example, the date of PHYS 2213 prelim 2)? I can't see exam dates, so I don't know which days count as 'before exams'.",
+   "What does 'overload' mean for you? Is it a maximum number of work hours per day, or keeping some evenings or time blocks free?",
+   "How many days before an exam should the lighter load start (for example, the 2 days before)?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0094709,
+ "seconds": 4.566610582987778,
+ "calls": 1
+}

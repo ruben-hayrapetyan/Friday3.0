@@ -1,0 +1,47 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "days": [
+     "fri"
+    ],
+    "start": null,
+    "end": null,
+    "strength": "hard",
+    "target": {},
+    "source": "I'm taking Fridays off from now on.",
+    "paraphrase": "No work scheduled on Fridays."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I'm taking Fridays off from now on.",
+    "paraphrase": "No work scheduled on Fridays.",
+    "days": [
+     "fri"
+    ],
+    "start": null,
+    "end": null,
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.008322699999999999,
+ "seconds": 3.3089992500608787,
+ "calls": 1
+}

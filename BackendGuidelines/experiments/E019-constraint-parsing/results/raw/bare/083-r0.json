@@ -1,0 +1,51 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "prefer_time",
+    "target": {},
+    "days": [
+     "fri"
+    ],
+    "start": "21:00",
+    "end": "01:00",
+    "strength": "mild",
+    "source": "I don't mind working late on Fridays.",
+    "paraphrase": "Late Friday evenings are fine for work, so it can be placed there if needed."
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "About how late is okay on Fridays (for example, until midnight or 2am)?"
+  ]
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I don't mind working late on Fridays.",
+    "paraphrase": "Late Friday evenings are fine for work, so it can be placed there if needed.",
+    "days": [
+     "fri"
+    ],
+    "start": "21:00",
+    "end": "01:00",
+    "kind": "prefer_time",
+    "strength": "mild",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "About how late is okay on Fridays (for example, until midnight or 2am)?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0109729,
+ "seconds": 5.66834762506187,
+ "calls": 1
+}

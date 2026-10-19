@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Email my professor if I'm going to miss a deadline.",
+    "reason": "Friday only translates scheduling constraints; it can't send emails or take actions like contacting a professor, or trigger on predicted missed deadlines."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Email my professor if I'm going to miss a deadline.",
+    "reason": "Friday only translates scheduling constraints; it can't send emails or take actions like contacting a professor, or trigger on predicted missed deadlines."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0074929,
+ "seconds": 3.008201166987419,
+ "calls": 1
+}

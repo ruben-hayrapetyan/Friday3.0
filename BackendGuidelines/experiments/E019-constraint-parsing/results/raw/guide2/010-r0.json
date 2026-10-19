@@ -1,0 +1,43 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": null,
+    "start": null,
+    "end": "09:00",
+    "strength": "hard",
+    "source": "Never put anything before 9am.",
+    "paraphrase": "Never schedule any work before 9:00 am."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Never put anything before 9am.",
+    "paraphrase": "Never schedule any work before 9:00 am.",
+    "days": null,
+    "start": null,
+    "end": "09:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.007549500000000001,
+ "seconds": 3.1946225829888135,
+ "calls": 1
+}

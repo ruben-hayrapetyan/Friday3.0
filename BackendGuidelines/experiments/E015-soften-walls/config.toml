@@ -1,0 +1,5 @@
+instances = [0, 1, 2, 3, 4]
+users_per_type = 300
+weeks = 12
+p_event_A = 0.6
+crunch_week_B = 3

@@ -1,0 +1,30 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "when he's free",
+    "reason": "Friday can't see or follow Sam's availability, so it can't schedule around when he is free."
+   }
+  ],
+  "questions": [
+   "What time on Thursdays do you and Sam usually study (start and end), so I can block it as a fixed session?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "when he's free",
+    "reason": "Friday can't see or follow Sam's availability, so it can't schedule around when he is free."
+   }
+  ],
+  "questions": [
+   "What time on Thursdays do you and Sam usually study (start and end), so I can block it as a fixed session?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0089494,
+ "seconds": 4.294067249982618,
+ "calls": 1
+}

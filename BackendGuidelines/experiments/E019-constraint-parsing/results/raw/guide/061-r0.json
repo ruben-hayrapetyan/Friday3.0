@@ -1,0 +1,87 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "sleep",
+    "bedtime": "00:30",
+    "wake": "08:30",
+    "nights": null,
+    "source": "I go to bed at 12:30 and get up at 8:30",
+    "paraphrase": "You sleep from 12:30 am to 8:30 am every night."
+   },
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": null,
+    "start": "23:00",
+    "end": "08:30",
+    "strength": "hard",
+    "source": "No work after 11 though, I need time to wind down",
+    "paraphrase": "No work scheduled after 11 pm, so you can wind down."
+   },
+   {
+    "kind": "commitment",
+    "title": "Gym",
+    "start": "18:00",
+    "end": "19:00",
+    "event_kind": "other",
+    "days": [
+     "tue",
+     "thu"
+    ],
+    "dates": null,
+    "source": "I'm at the gym Tue/Thu 6-7pm",
+    "paraphrase": "You're at the gym Tuesdays and Thursdays from 6 to 7 pm."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I go to bed at 12:30 and get up at 8:30",
+    "paraphrase": "You sleep from 12:30 am to 8:30 am every night.",
+    "kind": "sleep",
+    "nights": null,
+    "bedtime": "00:30",
+    "wake": "08:30"
+   },
+   {
+    "source": "No work after 11 though, I need time to wind down",
+    "paraphrase": "No work scheduled after 11 pm, so you can wind down.",
+    "days": null,
+    "start": "23:00",
+    "end": "08:30",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "source": "I'm at the gym Tue/Thu 6-7pm",
+    "paraphrase": "You're at the gym Tuesdays and Thursdays from 6 to 7 pm.",
+    "kind": "commitment",
+    "title": "Gym",
+    "days": [
+     "tue",
+     "thu"
+    ],
+    "dates": null,
+    "start": "18:00",
+    "end": "19:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0124714,
+ "seconds": 5.579205334070139,
+ "calls": 1
+}

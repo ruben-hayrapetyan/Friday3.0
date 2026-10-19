@@ -1,0 +1,56 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "source": "Friday evenings are off limits",
+    "paraphrase": "No work on Friday evenings, from 6pm onward.",
+    "kind": "avoid_time",
+    "days": [
+     "fri"
+    ],
+    "start": "18:00",
+    "end": null,
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "What time do your Friday evenings start (I assumed 6pm), and is there a time you're usually back when work could resume?"
+  ]
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Friday evenings are off limits",
+    "paraphrase": "No work on Friday evenings, from 6pm onward.",
+    "days": [
+     "fri"
+    ],
+    "start": "18:00",
+    "end": null,
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": [
+   "What time do your Friday evenings start (I assumed 6pm), and is there a time you're usually back when work could resume?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0115882,
+ "seconds": 6.5183400000678375,
+ "calls": 1
+}

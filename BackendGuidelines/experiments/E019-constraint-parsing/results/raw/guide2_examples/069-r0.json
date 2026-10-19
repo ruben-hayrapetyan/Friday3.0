@@ -1,0 +1,22 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "How much is too much before an exam? For example, a maximum number of hours of work per day, or a certain amount of free time kept clear?",
+   "How many days before an exam should this apply, and which exam do you mean (for example, PHYS 2213 prelim 2)?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "How much is too much before an exam? For example, a maximum number of hours of work per day, or a certain amount of free time kept clear?",
+   "How many days before an exam should this apply, and which exam do you mean (for example, PHYS 2213 prelim 2)?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0084867,
+ "seconds": 4.201301458990201,
+ "calls": 1
+}

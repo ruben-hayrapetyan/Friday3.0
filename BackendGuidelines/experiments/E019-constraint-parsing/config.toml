@@ -1,0 +1,44 @@
+workers = 4
+
+[variants.bare]          # role + schema only
+guide = false
+enforce_schema = true
+
+[variants.guide]         # + translation guide (hard/soft words, night windows, sleep nights, ask / unsupported)
+guide = true
+enforce_schema = true
+
+[variants.guide_text]    # guide, schema in the prompt instead of the CLI's structured output
+guide = true
+enforce_schema = false
+
+[rounds.r1]
+variants = ["bare", "guide", "guide_text"]
+split = "tune"
+reps = 1
+
+# round 2 (after r1 errors on the tuning split): guide v2, and v2 with six worked examples from the tuning split
+[variants.guide2]
+guide = 2
+enforce_schema = true
+
+[variants.guide2_examples]
+guide = 2
+enforce_schema = true
+examples = [1, 9, 27, 37, 60, 70]
+
+[rounds.r2]
+variants = ["guide2", "guide2_examples"]
+split = "tune"
+reps = 1
+
+# final: the chosen prompt (guide2: examples added nothing in r2) 3 times on the held-out split, guide v1 once for reference
+[rounds.final]
+variants = ["guide2"]
+split = "test"
+reps = 3
+
+[rounds.final_ref]
+variants = ["guide", "bare"]
+split = "test"
+reps = 1

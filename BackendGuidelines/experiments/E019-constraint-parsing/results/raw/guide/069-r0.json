@@ -1,0 +1,22 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What counts as overloaded before an exam: what's the most hours of work you'd want in a day, for example 3 or 4 hours?",
+   "Which days does this apply to? For example, the day before and the day of PHYS 2213 prelim 2. If so, what date is the prelim?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What counts as overloaded before an exam: what's the most hours of work you'd want in a day, for example 3 or 4 hours?",
+   "Which days does this apply to? For example, the day before and the day of PHYS 2213 prelim 2. If so, what date is the prelim?"
+  ]
+ },
+ "error": null,
+ "cost": 0.008465400000000001,
+ "seconds": 3.9475422920659184,
+ "calls": 1
+}

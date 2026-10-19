@@ -1,0 +1,74 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "session_length",
+    "target": {
+     "titles": [
+      "problem set"
+     ]
+    },
+    "min_hours": 1,
+    "strength": "hard",
+    "source": "not less than 1",
+    "paraphrase": "Problem set sessions should be at least 1 hour."
+   },
+   {
+    "kind": "session_length",
+    "target": {
+     "titles": [
+      "problem set"
+     ]
+    },
+    "max_hours": 2,
+    "strength": "medium",
+    "source": "I prefer sessions of about 2 hours",
+    "paraphrase": "Prefer problem set sessions of about 2 hours at most."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "not less than 1",
+    "paraphrase": "Problem set sessions should be at least 1 hour.",
+    "kind": "session_length",
+    "min_hours": 1.0,
+    "max_hours": null,
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "problem set"
+     ],
+     "energy": null
+    }
+   },
+   {
+    "source": "I prefer sessions of about 2 hours",
+    "paraphrase": "Prefer problem set sessions of about 2 hours at most.",
+    "kind": "session_length",
+    "min_hours": null,
+    "max_hours": 2.0,
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "problem set"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.011449399999999998,
+ "seconds": 5.382371583022177,
+ "calls": 1
+}

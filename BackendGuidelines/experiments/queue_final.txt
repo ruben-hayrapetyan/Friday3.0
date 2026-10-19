@@ -1,0 +1,4 @@
+16:55:31 start E017-semesters x2 load: 12.43 11.51 9.73
+17:35:39 end E017-semesters
+17:35:39 start E018-weakness-hunt load: 53.21 45.47 36.00
+18:18:51 end E018-weakness-hunt (0)

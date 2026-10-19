@@ -1,0 +1,47 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "days": [
+     "mon"
+    ],
+    "start": null,
+    "end": "12:00",
+    "strength": "hard",
+    "target": {},
+    "source": "Not Monday mornings, I always sleep in after the weekend.",
+    "paraphrase": "No work on Monday mornings (before noon)."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Not Monday mornings, I always sleep in after the weekend.",
+    "paraphrase": "No work on Monday mornings (before noon).",
+    "days": [
+     "mon"
+    ],
+    "start": null,
+    "end": "12:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.009996699999999999,
+ "seconds": 4.556820834055543,
+ "calls": 1
+}

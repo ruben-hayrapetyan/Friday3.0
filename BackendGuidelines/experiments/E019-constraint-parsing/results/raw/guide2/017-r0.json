@@ -1,0 +1,55 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {
+     "titles": [
+      "problem set"
+     ]
+    },
+    "days": [
+     "sat",
+     "sun"
+    ],
+    "start": null,
+    "end": null,
+    "strength": "hard",
+    "source": "No problem sets on weekends please",
+    "paraphrase": "Never schedule problem set work on Saturday or Sunday."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "No problem sets on weekends please",
+    "paraphrase": "Never schedule problem set work on Saturday or Sunday.",
+    "days": [
+     "sat",
+     "sun"
+    ],
+    "start": null,
+    "end": null,
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": [
+      "problem set"
+     ],
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0086695,
+ "seconds": 3.9839631249196827,
+ "calls": 1
+}

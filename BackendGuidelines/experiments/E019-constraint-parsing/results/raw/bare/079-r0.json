@@ -1,0 +1,44 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "sleep",
+    "bedtime": null,
+    "wake": "07:00",
+    "nights": null,
+    "source": "Wake me up at 7",
+    "paraphrase": "You usually wake up at 7:00, so no work is scheduled before then."
+   }
+  ],
+  "unsupported": [
+   {
+    "source": "Wake me up at 7 with an alarm.",
+    "reason": "Friday only plans your schedule. It can't set alarms or send wake-up notifications, so you'll need your phone's alarm for that."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Wake me up at 7",
+    "paraphrase": "You usually wake up at 7:00, so no work is scheduled before then.",
+    "kind": "sleep",
+    "nights": null,
+    "bedtime": null,
+    "wake": "07:00"
+   }
+  ],
+  "unsupported": [
+   {
+    "source": "Wake me up at 7 with an alarm.",
+    "reason": "Friday only plans your schedule. It can't set alarms or send wake-up notifications, so you'll need your phone's alarm for that."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.010110899999999999,
+ "seconds": 4.831358166993596,
+ "calls": 1
+}

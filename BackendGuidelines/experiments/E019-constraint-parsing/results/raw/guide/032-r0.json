@@ -1,0 +1,43 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "commitment",
+    "title": "CS office hours",
+    "start": "15:00",
+    "end": "16:00",
+    "event_kind": "meeting",
+    "days": [
+     "wed"
+    ],
+    "source": "Office hours for CS are Wed 3-4, and I always go.",
+    "paraphrase": "CS office hours are every Wednesday 15:00\u201316:00 and are blocked off."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Office hours for CS are Wed 3-4, and I always go.",
+    "paraphrase": "CS office hours are every Wednesday 15:00\u201316:00 and are blocked off.",
+    "kind": "commitment",
+    "title": "CS office hours",
+    "days": [
+     "wed"
+    ],
+    "dates": null,
+    "start": "15:00",
+    "end": "16:00",
+    "event_kind": "meeting"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0079194,
+ "seconds": 3.074138667085208,
+ "calls": 1
+}

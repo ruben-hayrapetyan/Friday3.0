@@ -1,0 +1,7 @@
+kinds = ["easy", "noisy", "moody", "missing", "adversarial"]
+users = 3
+weeks = 12
+learners = ["none", "rank_qp", "combined", "bt", "bt_cd"]
+plan_steps = 300000
+ref_steps = 600000
+heldout_pairs = 200

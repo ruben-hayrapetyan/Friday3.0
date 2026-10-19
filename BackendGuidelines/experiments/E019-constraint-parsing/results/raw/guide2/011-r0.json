@@ -1,0 +1,47 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": [
+     "sun"
+    ],
+    "start": null,
+    "end": null,
+    "strength": "hard",
+    "source": "No work on Sundays.",
+    "paraphrase": "Never schedule any work on Sundays."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "No work on Sundays.",
+    "paraphrase": "Never schedule any work on Sundays.",
+    "days": [
+     "sun"
+    ],
+    "start": null,
+    "end": null,
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.007511500000000001,
+ "seconds": 2.9393293750472367,
+ "calls": 1
+}

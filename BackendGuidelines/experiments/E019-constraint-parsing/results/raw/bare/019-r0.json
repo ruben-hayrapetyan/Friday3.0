@@ -1,0 +1,49 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {
+     "kinds": [
+      "chore"
+     ]
+    },
+    "days": null,
+    "start": null,
+    "end": "12:00",
+    "strength": "medium",
+    "source": "Ideally no chores before noon.",
+    "paraphrase": "Prefer not to schedule chores before 12:00 noon."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Ideally no chores before noon.",
+    "paraphrase": "Prefer not to schedule chores before 12:00 noon.",
+    "days": null,
+    "start": null,
+    "end": "12:00",
+    "kind": "avoid_time",
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": [
+      "chore"
+     ],
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.008884900000000001,
+ "seconds": 4.125642042024992,
+ "calls": 1
+}

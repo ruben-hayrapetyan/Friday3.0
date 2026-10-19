@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Wake me up at 7 with an alarm.",
+    "reason": "Friday can't set alarms or wake you up; it only plans schedules. (If you want 7:00 treated as your usual wake time, tell me which nights.)"
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Wake me up at 7 with an alarm.",
+    "reason": "Friday can't set alarms or wake you up; it only plans schedules. (If you want 7:00 treated as your usual wake time, tell me which nights.)"
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0075595,
+ "seconds": 3.1502485420787707,
+ "calls": 1
+}

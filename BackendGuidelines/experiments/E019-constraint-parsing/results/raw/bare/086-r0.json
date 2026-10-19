@@ -1,0 +1,34 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "sleep",
+    "bedtime": "00:00",
+    "wake": "08:00",
+    "nights": null,
+    "source": "now it's more like midnight, up at 8",
+    "paraphrase": "You usually go to bed around midnight and wake up at 8:00."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "now it's more like midnight, up at 8",
+    "paraphrase": "You usually go to bed around midnight and wake up at 8:00.",
+    "kind": "sleep",
+    "nights": null,
+    "bedtime": "00:00",
+    "wake": "08:00"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0075549,
+ "seconds": 3.2716687499778345,
+ "calls": 1
+}

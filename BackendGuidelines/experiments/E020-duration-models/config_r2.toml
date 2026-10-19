@@ -1,0 +1,8 @@
+# round 2: the fused models under-covered (p80 covered 73-75%) and predicted too short (p50 covered 43-44%):
+# lengths grow over the term (+0.02/week) and fusing two correlated predictions is overconfident.
+types = ["calibrated", "optimist", "noisy", "kind_biased", "drifting", "sparse"]
+seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+weeks = 10
+models = ["as_given", "global_bias", "hier_fused", "hier_fused_drift", "hier_fused_trend", "hier_fused_drift_trend",
+          "hier_fused_recal", "hier_fused_drift_recal", "hier_fused_trend_recal", "hier_fused_drift_trend_recal",
+          "global_bias_recal"]

@@ -1,0 +1,22 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What time on Thursdays are you and Sam meeting to study (start and end)? Friday can't see when Sam is free, so I need a fixed time window.",
+   "Is this every Thursday or only certain ones, and is it for a particular course?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What time on Thursdays are you and Sam meeting to study (start and end)? Friday can't see when Sam is free, so I need a fixed time window.",
+   "Is this every Thursday or only certain ones, and is it for a particular course?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0095335,
+ "seconds": 4.6446382499998435,
+ "calls": 1
+}

@@ -1,0 +1,41 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "one_sitting",
+    "target": {
+     "kinds": [
+      "reading"
+     ]
+    },
+    "source": "I like to do each reading in a single sitting.",
+    "paraphrase": "Each reading task should be done in one single sitting."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I like to do each reading in a single sitting.",
+    "paraphrase": "Each reading task should be done in one single sitting.",
+    "kind": "one_sitting",
+    "target": {
+     "courses": null,
+     "kinds": [
+      "reading"
+     ],
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.007512700000000001,
+ "seconds": 2.9619052909547463,
+ "calls": 1
+}

@@ -1,0 +1,7 @@
+kinds = ["moody", "easy", "noisy"]
+users = 3
+weeks = 16
+modes = ["none", "dial", "dial+free", "free", "oracle"]
+plan_steps = 300000
+ref_steps = 600000
+pace_p = 0.3

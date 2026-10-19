@@ -1,0 +1,47 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "days": [
+     "fri"
+    ],
+    "start": "18:00",
+    "end": null,
+    "strength": "hard",
+    "target": {},
+    "paraphrase": "No work scheduled on Friday evenings (after 6 pm).",
+    "source": "Friday evenings are off limits \u2014 I go out."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Friday evenings are off limits \u2014 I go out.",
+    "paraphrase": "No work scheduled on Friday evenings (after 6 pm).",
+    "days": [
+     "fri"
+    ],
+    "start": "18:00",
+    "end": null,
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0076308999999999995,
+ "seconds": 3.1718435420189053,
+ "calls": 1
+}

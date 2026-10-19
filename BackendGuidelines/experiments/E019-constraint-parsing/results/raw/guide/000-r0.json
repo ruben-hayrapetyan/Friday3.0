@@ -1,0 +1,34 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "sleep",
+    "bedtime": "00:00",
+    "wake": "08:00",
+    "nights": null,
+    "source": "I usually go to bed around midnight and get up at 8.",
+    "paraphrase": "You usually sleep from midnight until 8:00 every night."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I usually go to bed around midnight and get up at 8.",
+    "paraphrase": "You usually sleep from midnight until 8:00 every night.",
+    "kind": "sleep",
+    "nights": null,
+    "bedtime": "00:00",
+    "wake": "08:00"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.007617400000000001,
+ "seconds": 2.9128770410316065,
+ "calls": 1
+}

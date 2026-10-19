@@ -1,0 +1,58 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "source": "Weekend mornings are my productive time for coding.",
+    "paraphrase": "You prefer to do your CS 2110 coding work on weekend mornings (before noon).",
+    "kind": "prefer_time",
+    "days": [
+     "sat",
+     "sun"
+    ],
+    "start": null,
+    "end": "12:00",
+    "strength": "medium",
+    "target": {
+     "courses": [
+      "CS 2110"
+     ],
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Weekend mornings are my productive time for coding.",
+    "paraphrase": "You prefer to do your CS 2110 coding work on weekend mornings (before noon).",
+    "days": [
+     "sat",
+     "sun"
+    ],
+    "start": null,
+    "end": "12:00",
+    "kind": "prefer_time",
+    "strength": "medium",
+    "target": {
+     "courses": [
+      "CS 2110"
+     ],
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0109222,
+ "seconds": 6.283209250075743,
+ "calls": 1
+}

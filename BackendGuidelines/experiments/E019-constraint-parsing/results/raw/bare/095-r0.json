@@ -1,0 +1,43 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "pacing",
+    "style": "cluster",
+    "target": {
+     "kinds": [
+      "errand"
+     ]
+    },
+    "source": "Try to cluster errands together on one day.",
+    "paraphrase": "Group your errands (like groceries) together on a single day."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Try to cluster errands together on one day.",
+    "paraphrase": "Group your errands (like groceries) together on a single day.",
+    "kind": "pacing",
+    "style": "cluster",
+    "target": {
+     "courses": null,
+     "kinds": [
+      "errand"
+     ],
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0082129,
+ "seconds": 4.332802083925344,
+ "calls": 1
+}

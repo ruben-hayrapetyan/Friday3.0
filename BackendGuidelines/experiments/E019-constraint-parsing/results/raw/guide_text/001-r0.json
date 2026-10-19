@@ -1,0 +1,68 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "source": "I sleep from 11:30pm to 7:30am on weeknights",
+    "paraphrase": "On weeknights (Sun-Thu nights) you sleep 23:30 to 07:30.",
+    "kind": "sleep",
+    "nights": [
+     "sun",
+     "mon",
+     "tue",
+     "wed",
+     "thu"
+    ],
+    "bedtime": "23:30",
+    "wake": "07:30"
+   },
+   {
+    "source": "on weekends I stay up till 2 and sleep in till 10",
+    "paraphrase": "On weekend nights (Fri and Sat nights) you sleep 02:00 to 10:00.",
+    "kind": "sleep",
+    "nights": [
+     "fri",
+     "sat"
+    ],
+    "bedtime": "02:00",
+    "wake": "10:00"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "I sleep from 11:30pm to 7:30am on weeknights",
+    "paraphrase": "On weeknights (Sun-Thu nights) you sleep 23:30 to 07:30.",
+    "kind": "sleep",
+    "nights": [
+     "sun",
+     "mon",
+     "tue",
+     "wed",
+     "thu"
+    ],
+    "bedtime": "23:30",
+    "wake": "07:30"
+   },
+   {
+    "source": "on weekends I stay up till 2 and sleep in till 10",
+    "paraphrase": "On weekend nights (Fri and Sat nights) you sleep 02:00 to 10:00.",
+    "kind": "sleep",
+    "nights": [
+     "fri",
+     "sat"
+    ],
+    "bedtime": "02:00",
+    "wake": "10:00"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.009398199999999999,
+ "seconds": 4.436544916941784,
+ "calls": 1
+}

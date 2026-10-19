@@ -1,0 +1,32 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Prioritize whichever class I'm doing worst in.",
+    "reason": "Friday has no way to rank courses by priority, and it doesn't know your grades. I can't work out which class is your weakest."
+   }
+  ],
+  "questions": [
+   "Which class are you doing worst in? If you tell me, I can add a constraint for it, such as preferring its work at your best times of day or finishing its tasks early.",
+   "What would prioritizing that class mean to you? For example: do its work first, finish its tasks days early, or give it your best hours."
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Prioritize whichever class I'm doing worst in.",
+    "reason": "Friday has no way to rank courses by priority, and it doesn't know your grades. I can't work out which class is your weakest."
+   }
+  ],
+  "questions": [
+   "Which class are you doing worst in? If you tell me, I can add a constraint for it, such as preferring its work at your best times of day or finishing its tasks early.",
+   "What would prioritizing that class mean to you? For example: do its work first, finish its tasks days early, or give it your best hours."
+  ]
+ },
+ "error": null,
+ "cost": 0.008322900000000001,
+ "seconds": 3.986912416992709,
+ "calls": 1
+}

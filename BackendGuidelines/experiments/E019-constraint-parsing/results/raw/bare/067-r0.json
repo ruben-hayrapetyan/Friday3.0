@@ -1,0 +1,22 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "Which days of the week is your practice, and what start and end times?",
+   "What kind of practice is it, for example a sport, band, or a team? I want to be sure it's a fixed commitment and not your 'guitar practice' task."
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "Which days of the week is your practice, and what start and end times?",
+   "What kind of practice is it, for example a sport, band, or a team? I want to be sure it's a fixed commitment and not your 'guitar practice' task."
+  ]
+ },
+ "error": null,
+ "cost": 0.007966899999999999,
+ "seconds": 3.5090592079795897,
+ "calls": 1
+}

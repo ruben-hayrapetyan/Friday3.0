@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Groceries need to happen before Wednesday.",
+    "reason": "This is a due date for one task (groceries by Tuesday, Oct 20), not a scheduling rule. Friday can't set deadlines from text. Set the due date on the groceries task itself. An avoid-time rule for Wednesday onward would repeat every week and would also block today."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Groceries need to happen before Wednesday.",
+    "reason": "This is a due date for one task (groceries by Tuesday, Oct 20), not a scheduling rule. Friday can't set deadlines from text. Set the due date on the groceries task itself. An avoid-time rule for Wednesday onward would repeat every week and would also block today."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0114509,
+ "seconds": 5.815185209037736,
+ "calls": 1
+}

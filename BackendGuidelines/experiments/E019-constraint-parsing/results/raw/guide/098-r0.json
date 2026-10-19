@@ -1,0 +1,68 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "commitment",
+    "title": "Tutoring",
+    "start": "20:00",
+    "end": "21:00",
+    "event_kind": "other",
+    "days": [
+     "mon"
+    ],
+    "source": "Tutoring Mon 8-9pm",
+    "paraphrase": "Tutoring every Monday 20:00\u201321:00."
+   },
+   {
+    "kind": "commitment",
+    "title": "Tutoring",
+    "start": "19:00",
+    "end": "20:00",
+    "event_kind": "other",
+    "days": [
+     "wed"
+    ],
+    "source": "Wed 7-8pm",
+    "paraphrase": "Tutoring every Wednesday 19:00\u201320:00."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Tutoring Mon 8-9pm",
+    "paraphrase": "Tutoring every Monday 20:00\u201321:00.",
+    "kind": "commitment",
+    "title": "Tutoring",
+    "days": [
+     "mon"
+    ],
+    "dates": null,
+    "start": "20:00",
+    "end": "21:00",
+    "event_kind": "other"
+   },
+   {
+    "source": "Wed 7-8pm",
+    "paraphrase": "Tutoring every Wednesday 19:00\u201320:00.",
+    "kind": "commitment",
+    "title": "Tutoring",
+    "days": [
+     "wed"
+    ],
+    "dates": null,
+    "start": "19:00",
+    "end": "20:00",
+    "event_kind": "other"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.008645400000000001,
+ "seconds": 3.796324208029546,
+ "calls": 1
+}

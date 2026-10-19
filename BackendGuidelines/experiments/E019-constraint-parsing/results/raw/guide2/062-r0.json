@@ -1,0 +1,66 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": null,
+    "start": null,
+    "end": "10:00",
+    "strength": "hard",
+    "source": "Mornings before 10 are sacred",
+    "paraphrase": "Never schedule work before 10:00 on any day."
+   },
+   {
+    "kind": "daily_limit",
+    "target": {},
+    "days": null,
+    "hours": 7,
+    "strength": "hard",
+    "source": "I don't want more than 7 hours of work on any day",
+    "paraphrase": "No more than 7 hours of work on any day."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Mornings before 10 are sacred",
+    "paraphrase": "Never schedule work before 10:00 on any day.",
+    "days": null,
+    "start": null,
+    "end": "10:00",
+    "kind": "avoid_time",
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   },
+   {
+    "source": "I don't want more than 7 hours of work on any day",
+    "paraphrase": "No more than 7 hours of work on any day.",
+    "kind": "daily_limit",
+    "hours": 7.0,
+    "days": null,
+    "strength": "hard",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0084655,
+ "seconds": 3.469442458008416,
+ "calls": 1
+}

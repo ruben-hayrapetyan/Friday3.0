@@ -1,0 +1,47 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "avoid_time",
+    "target": {},
+    "days": [
+     "sat"
+    ],
+    "start": null,
+    "end": null,
+    "strength": "medium",
+    "source": "Saturdays are for resting, try to keep them light.",
+    "paraphrase": "Try to keep Saturdays mostly free of work, though some light work is okay if needed."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "Saturdays are for resting, try to keep them light.",
+    "paraphrase": "Try to keep Saturdays mostly free of work, though some light work is okay if needed.",
+    "days": [
+     "sat"
+    ],
+    "start": null,
+    "end": null,
+    "kind": "avoid_time",
+    "strength": "medium",
+    "target": {
+     "courses": null,
+     "kinds": null,
+     "titles": null,
+     "energy": null
+    }
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0105089,
+ "seconds": 4.906589374993928,
+ "calls": 1
+}

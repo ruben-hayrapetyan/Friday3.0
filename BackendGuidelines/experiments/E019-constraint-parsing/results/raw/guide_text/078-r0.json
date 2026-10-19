@@ -1,0 +1,26 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Alternate between math and English every hour.",
+    "reason": "Friday has no constraint for interleaving or alternating courses in a set sequence. Pacing can only spread work out, cluster it, or batch it by course, and session length only bounds a single sitting."
+   }
+  ],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [
+   {
+    "source": "Alternate between math and English every hour.",
+    "reason": "Friday has no constraint for interleaving or alternating courses in a set sequence. Pacing can only spread work out, cluster it, or batch it by course, and session length only bounds a single sitting."
+   }
+  ],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0079662,
+ "seconds": 3.664650166989304,
+ "calls": 1
+}

@@ -1,0 +1,24 @@
+{
+ "raw": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours count as your evenings (for example 18:00 to 23:00)?",
+   "Should this apply every day or only some days?",
+   "Is this a firm rule (no work at all in that window) or a strong preference that Friday can bend when a deadline is tight?"
+  ]
+ },
+ "parse": {
+  "constraints": [],
+  "unsupported": [],
+  "questions": [
+   "What hours count as your evenings (for example 18:00 to 23:00)?",
+   "Should this apply every day or only some days?",
+   "Is this a firm rule (no work at all in that window) or a strong preference that Friday can bend when a deadline is tight?"
+  ]
+ },
+ "error": null,
+ "cost": 0.0082742,
+ "seconds": 4.633460249984637,
+ "calls": 1
+}

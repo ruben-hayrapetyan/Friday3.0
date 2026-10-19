@@ -1,0 +1,13 @@
+engine,fallback,family,instance,items,late,misses,preferences,repair_late,seconds,seed,violations,wellbeing
+v3_size_rule_5s,first:cpsat,tight_onesit,tight-onesit-s0,10,972000,2,3753,972000,10.47,0,0,11349
+v3_size_rule_5s,first:cpsat,tight_onesit,tight-onesit-s1,10,0,0,4638,0,9.89,1,0,12536
+v3_size_rule_5s,first:cpsat,tight_onesit,tight-onesit-s2,10,0,0,4305,0,9.44,2,0,9886
+v3_size_rule_5s,first:cpsat,tight_onesit,tight-onesit-s3,10,0,0,4233,0,9.95,3,0,9386
+v3_size_rule_5s,first:cpsat,tight_onesit,tight-onesit-s4,10,336008,3,4322,336008,9.94,4,0,12761
+v3_size_rule_5s,first:cpsat,tight_onesit,tight-onesit-s5,10,637172,2,4141,637172,8.69,5,0,11136
+v3_size_rule_5s,first:cpsat,tight_bigchunk,tight-bigchunk-s0,10,122008,3,4203,122008,11.19,0,0,8311
+v3_size_rule_5s,first:cpsat,tight_bigchunk,tight-bigchunk-s1,10,105012,2,4192,105012,12.66,1,0,7286
+v3_size_rule_5s,first:cpsat,tight_bigchunk,tight-bigchunk-s2,10,163004,4,4004,163004,11.74,2,0,7649
+v3_size_rule_5s,first:cpsat,tight_bigchunk,tight-bigchunk-s3,10,52016,2,4371,52016,12.45,3,0,13461
+v3_size_rule_5s,first:cpsat,tight_bigchunk,tight-bigchunk-s4,10,323020,5,4148,323020,13.56,4,0,9649
+v3_size_rule_5s,first:cpsat,tight_bigchunk,tight-bigchunk-s5,10,86008,2,3950,86008,12.16,5,0,5511

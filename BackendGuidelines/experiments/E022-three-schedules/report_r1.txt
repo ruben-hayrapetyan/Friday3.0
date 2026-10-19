@@ -1,0 +1,22 @@
+                   regret_rec  regret_pick  regret_best  rec_picked  distinct  safe  seconds  cos_end
+round method                                                                                         
+r1    archetype         0.137        0.102        0.097       0.207     0.403   1.0    1.363    0.849
+      diverse           0.136        0.124        0.120       0.707     0.870   1.0    1.232    0.878
+      qbc               0.114        0.100        0.098       0.373     0.314   1.0    1.830    0.859
+      seeds             0.140        0.086        0.081       0.327     0.720   1.0    1.725    0.858
+      temperature       0.139        0.136        0.131       0.880     0.686   1.0    1.153    0.858
+      thompson          0.135        0.093        0.087       0.273     0.422   1.0    1.367    0.852
+method       archetype  diverse    qbc  seeds  temperature  thompson
+kind                                                                
+adversarial      0.151    0.228  0.134  0.139        0.221     0.169
+easy             0.058    0.056  0.062  0.043        0.116     0.042
+missing          0.102    0.152  0.127  0.098        0.140     0.106
+moody            0.105    0.113  0.112  0.069        0.128     0.080
+noisy            0.094    0.073  0.067  0.081        0.077     0.067
+method       archetype  diverse    qbc  seeds  temperature  thompson
+kind                                                                
+adversarial      0.868    0.799  0.796  0.886        0.809     0.780
+easy             0.965    0.948  0.941  0.926        0.952     0.938
+missing          0.965    0.818  0.676  0.711        0.868     0.853
+moody            0.889    0.955  0.866  0.908        0.927     0.923
+noisy            0.838    0.959  0.880  0.887        0.866     0.925

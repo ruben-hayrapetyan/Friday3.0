@@ -1,0 +1,34 @@
+{
+ "raw": {
+  "constraints": [
+   {
+    "kind": "sleep",
+    "bedtime": "22:30",
+    "wake": "06:00",
+    "nights": null,
+    "source": "lights out by 10:30, alarm at 6",
+    "paraphrase": "You sleep from 10:30pm to 6:00am every night."
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "parse": {
+  "constraints": [
+   {
+    "source": "lights out by 10:30, alarm at 6",
+    "paraphrase": "You sleep from 10:30pm to 6:00am every night.",
+    "kind": "sleep",
+    "nights": null,
+    "bedtime": "22:30",
+    "wake": "06:00"
+   }
+  ],
+  "unsupported": [],
+  "questions": []
+ },
+ "error": null,
+ "cost": 0.0075995,
+ "seconds": 3.1888134999899194,
+ "calls": 1
+}
