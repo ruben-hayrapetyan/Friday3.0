@@ -69,7 +69,9 @@ GUIDE3 = GUIDE2 + """
   days_before. If no number of days is given, use 3, say "3 days" in the paraphrase and ask in "questions" whether 3
   is right. Add "quiz" to words only if they include quizzes.
 - Saying some work matters more ("prioritize assignments over readings", "problem sets come first") is priority:
-  level high for what comes first, low for what gives way; "X over Y" is two priority constraints."""
+  level high for what comes first, low for what gives way; "X over Y" is two priority constraints.
+- Saying some work is pointless or useless after its deadline ("no point doing study guides after the exam") is
+  no_late with a target for that work. Prep for exams and quizzes is already treated this way."""
 GUIDES = {0: None, 1: GUIDE, 2: GUIDE2, 3: GUIDE3}
 
 

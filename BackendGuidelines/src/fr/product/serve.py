@@ -42,6 +42,8 @@ def handle(eng: Engine, method: str, p: dict):
         return eng.plan(p["todos"], p.get("events", []), _now(p), p.get("method", OPTION_METHOD))
     if method == "suggest_skips":
         return eng.suggest_skips(p.get("events", []), _now(p))
+    if method == "set_expires":
+        return eng.set_expires(str(p["task_id"]), bool(p["expires"]))
     if method == "decide_event":
         return eng.decide_event(p["title"], p["start"], p["decision"])
     if method == "pick":

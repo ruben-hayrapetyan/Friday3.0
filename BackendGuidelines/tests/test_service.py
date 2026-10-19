@@ -291,3 +291,37 @@ def test_one_timed_task_does_not_double_every_estimate(tmp_path):
     eng.record_actual(done, 128)  # took twice the estimate, once
     p = eng.predict(todos, NOW)
     assert p[todos[0]["id"]]["p50"] == 720 and p[todos[3]["id"]]["p50"] == 240
+
+
+def test_prep_is_due_at_its_quiz_and_never_planned_after(tmp_path):
+    from fr.product import adapter
+
+    quiz = dict(title="Math 1920 Quiz 2", start="2026-10-20T13:25:00", end="2026-10-20T14:15:00", isAllDay=False)
+    todos = [dict(id="prep", title="Math prep for quiz", bucket="assignments", isDone=False,
+                  dueDate="2026-10-20T23:59:00"),
+             dict(id="big", title="PHYS 2213 lab report", bucket="assignments", isDone=False,
+                  dueDate="2026-10-20T12:00:00")]
+    tasks = adapter.tasks_from(todos)
+    sc, ids = adapter.scenario(NOW, tasks, {t.id: 300 for t in tasks}, _events() + [quiz])
+    spec = next(s for s in sc.specs if ids.get(s.id) == "prep")
+    assert spec.hard_window and adapter.local(quiz["start"]) and spec.due == adapter.clock.to_minutes(
+        adapter.local(quiz["start"]))  # due when the quiz starts, not at midnight
+    eng = Engine(tmp_path, steps=40_000)
+    eng.set_estimate("prep", 20 * 60)  # far more prep than fits before the quiz
+    eng.set_estimate("big", 120)
+    out = eng.plan(todos, _events() + [quiz], NOW)
+    for opt in out["options"]:
+        assert opt["valid"]
+        assert all(b["end"] <= "2026-10-20T13:25" for b in opt["blocks"] if b["task_id"] == "prep")  # none after
+        d = next(d for d in opt["late_detail"] if d["task_id"] == "prep")
+        assert d["expires"] and d["hours_late"] is None and 0 < d["placed_h"] < d["need_h"]  # as much as fits
+    assert eng.predict(todos, NOW)["prep"]["expires"]
+    eng.set_expires("big", True)  # anything can be marked pointless if late
+    assert eng.predict(todos, NOW)["big"]["expires"]
+
+
+def test_no_late_rule():
+    from fr.product import constraints as C
+
+    reply = {"constraints": [{"kind": "no_late", "target": {"titles": ["study guide"]}}]}
+    assert C.Parse.model_validate(reply).constraints[0].kind == "no_late"

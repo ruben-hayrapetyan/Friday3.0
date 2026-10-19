@@ -241,6 +241,14 @@ class Priority(_Base):
     target: Target
 
 
+class NoLate(_Base):
+    """Work that is pointless after its due date (prep for something that has happened): never planned after it. When
+    not all of it fits before, Friday plans as much as fits and says so."""
+
+    kind: Literal["no_late"] = "no_late"
+    target: Target
+
+
 class ExamFocus(_Base):
     """Before each exam on the calendar, concentrate on that course: in the `days_before` days before it, other work
     whose deadline is after the exam waits until the exam is over (when there is still time to do it after)."""
@@ -260,7 +268,7 @@ class Order(_Base):
 
 
 Constraint = Annotated[Union[SleepC, AvoidTime, PreferTime, Commitment, DailyLimit, KeepFree, SessionLength, OneSitting,
-                             Pacing, FinishEarly, Buffer, Order, DailyBreak, ExamFocus, Priority],
+                             Pacing, FinishEarly, Buffer, Order, DailyBreak, ExamFocus, Priority, NoLate],
                        Field(discriminator="kind")]
 
 
@@ -419,6 +427,10 @@ def apply(sc: Scenario, constraints: list[Constraint]) -> tuple[Scenario, list[s
             breaks.append((name, c))
         elif isinstance(c, ExamFocus):
             notes += _exam_focus(out, c)
+        elif isinstance(c, NoLate):
+            for sp in flexible:
+                if c.target.matches(sp) and sp.due is not None:
+                    sp.hard_window = True
         elif isinstance(c, Priority):
             # importance scales what lateness costs (late_work, late_tasks): 5 or 1 against the default 3
             for sp in flexible:

@@ -61,6 +61,7 @@ class ItemSpec:
     deps: tuple[tuple[int, float, int], ...] = ()  # (depends_on id, fraction, lag_min)
     progress_min: int = 0
     progress_today_min: int = 0
+    hard_window: bool = False  # never placed after its due (work that is pointless late); off in the reference
 
 
 PRESETS: dict[str, dict] = {
@@ -128,7 +129,7 @@ def _to_item(sp: ItemSpec, grid: Grid, by_id: Mapping[int, ItemSpec], fixed_end:
         release=release, due=due, shape=shape, min_chunk=min_chunk,
         max_chunk=units_of(sp.max_chunk_min) if sp.max_chunk_min else None,
         chunk_cost=sp.chunk_cost, spread=sp.spread, tentative=tentative, progress=progress,
-        window_is_hard=tentative or sp.amount in ("elastic", "target"),
+        window_is_hard=tentative or sp.amount in ("elastic", "target") or sp.hard_window,
     )
     if sp.amount == "fixed":
         it.need = max(0, units_of(sp.duration_min) - progress)

@@ -261,6 +261,7 @@ class Engine:
             plan_min = min(quantile(m, s, q), cushion(est is not None, n) * quantile(m, s, 0.5)) * (1 - t.progress)
             out[t.id] = dict(p50=round(quantile(m, s, 0.5)), p80=round(quantile(m, s, 0.8)), plan_minutes=round(plan_min),
                              quantile=q, estimate=est, similar_recorded=n_same.get((t.course, t.kind), 0),
+                             expires=self.s.get("expires", {}).get(t.id, t.type == "exam_prep"),
                              kind=t.kind, course=t.course, spread=round(s, 3))
         return out
 
@@ -366,6 +367,10 @@ class Engine:
         tasks = adapter.tasks_from(todos)
         pred = self.predict(todos, now)
         sc, ids = adapter.scenario(now, tasks, {k: v["plan_minutes"] for k, v in pred.items()}, events)
+        for spec in sc.specs:  # what you marked pointless if late, and what you said may be late after all
+            tid = ids.get(spec.id)
+            if tid in self.s.get("expires", {}) and spec.due is not None:
+                spec.hard_window = bool(self.s["expires"][tid])
         sc, notes = C.apply(sc, self._constraints())
         u = Universe(sc)
         over = overload(u.p)
@@ -400,12 +405,19 @@ class Engine:
                                                              if s < u.p.grid.S), default=None)
                       for key, it in u.p.items.items() if it.due is not None}
             due_of = {ids.get(int(key.split(":")[1])): it.due for key, it in u.p.items.items() if it.due is not None}
+            expires = {ids.get(int(key.split(":")[1])): it.window_is_hard for key, it in u.p.items.items()}
+            placed = {ids.get(int(key.split(":")[1])): sum(int(u.p.grid.units[s]) for s in plan.get(key, ()) if s < u.p.grid.S)
+                      for key, it in u.p.items.items()}
+            need = {ids.get(int(key.split(":")[1])): it.need for key, it in u.p.items.items()}
             out.append(dict(option=k, label=opts.labels[k], summary=self._summary(phis[0], phis[k], L.theta) if k else
                             "Friday's recommendation", blocks=sorted(adapter.blocks(u.c, owner, ids) + breaks, key=lambda b: b["start"]),
                             late_tasks=[t for t in late if t], unplaced_tasks=[t for t in unplaced if t],
                             late_detail=[dict(task_id=t, due=clock.iso(due_of[t]),
                                               finish=clock.iso(finish[t]) if finish.get(t) else None,
-                                              hours_late=round((finish[t] - due_of[t]) / 60, 1) if finish.get(t) else None)
+                                              hours_late=round((finish[t] - due_of[t]) / 60, 1)
+                                              if finish.get(t) and not expires.get(t) else None,
+                                              expires=bool(expires.get(t)),
+                                              placed_h=round(placed.get(t, 0) / 4, 2), need_h=round(need.get(t, 0) / 4, 2))
                                          for t in dict.fromkeys([x for x in late + unplaced if x])],
                             valid=not check(u.p, plan)))
         # whenever an option runs late, skips are worth proposing until the late work is done: an event the day after a
@@ -463,6 +475,12 @@ class Engine:
         rows.sort(key=lambda x: (x["level"] != "optional", -x["frees_minutes"], x["start"]))
         out["suggestions"] = rows[:limit]
         return out
+
+    def set_expires(self, task_id: str, expires: bool) -> dict:
+        """Mark a task pointless if late (never planned after its due), or not, overriding Friday's own reading."""
+        self.s.setdefault("expires", {})[task_id] = bool(expires)
+        self.save()
+        return dict(ok=True)
 
     def decide_event(self, title: str, start: str, decision: str) -> dict:
         """skip: this occurrence stops blocking time in plans; unskip: undo; keep: never suggest this title again;

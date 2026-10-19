@@ -119,6 +119,7 @@ def scenario(now: datetime, tasks: list[Task], minutes: dict[str, float], events
             or COURSE.search(ev.get("title", "")) else "other"
         specs.append(spec("commitment", n, ev.get("title", "event"), start=s, end=e, event_kind=kind,
                           area=course_of(ev.get("title", ""))))
+    exams = [(sp.title, sp.start) for sp in specs if sp.when == "fixed" and EXAM.search(sp.title)]
     sibling: dict[int, Task] = {}
     for t in tasks:
         left = minutes.get(t.id)
@@ -128,7 +129,10 @@ def scenario(now: datetime, tasks: list[Task], minutes: dict[str, float], events
         ids[n] = t.id
         dur = int(max(15, math.ceil(left / 15) * 15))
         preset = PRESET[t.kind]
-        over = dict(area=t.course, duration_min=dur, due=t.due, release=release(t0, t.due, dur), tags=(f"type:{t.type}",),
+        due = prep_due(t, exams)
+        over = dict(area=t.course, duration_min=dur, due=due, release=release(t0, due, dur), tags=(f"type:{t.type}",),
+                    # prep is pointless once its exam or quiz has happened: never planned after its due (decision 44)
+                    hard_window=t.type == "exam_prep" and due is not None,
                     # every due date is a deadline at the top of the order (decision 37): a reading due today is
                     # not traded away to make an essay due Friday a little less late
                     firmness="hard" if t.due is not None else "none")
@@ -144,6 +148,24 @@ def break_blocks(sc: Scenario) -> list[dict]:
     """The daily breaks pinned by the user's constraints (lunch), as blocks with task_id "break:<title>"."""
     return [dict(task_id="break:" + sp.title, start=clock.iso(sp.start), end=clock.iso(sp.end))
             for sp in sc.specs if sp.when == "fixed" and "break" in sp.tags]
+
+
+EXAM = re.compile(r"\b(exam|prelim|midterm|final|quiz)\b", re.I)
+
+
+def _course_word(title: str) -> str:
+    m = COURSE.search(title) or re.search(r"\b([A-Za-z]{2,5})\s?(\d{4})\b", title)
+    return (m.group(1) if m else (title.split() or [""])[0]).lower()
+
+
+def prep_due(t: "Task", exams: list[tuple[str, int]]) -> int | None:
+    """Prep for an exam or quiz on the calendar is due when it starts: the same course's exam event within three days
+    before the task's due date (a prep task due the evening of the quiz is really due at the quiz)."""
+    if t.type != "exam_prep" or t.due is None:
+        return t.due
+    course = _course_word(t.title)
+    starts = [start for title, start in exams if _course_word(title) == course and t.due - 3 * 1440 <= start <= t.due]
+    return min(starts) if starts else t.due
 
 
 def release(now: int, due: int | None, minutes: int) -> int:

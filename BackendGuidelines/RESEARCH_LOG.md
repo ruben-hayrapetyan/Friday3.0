@@ -213,6 +213,11 @@ rule types: price / forbids / measures) · `context` (BuildContext) · `evaluate
     late. The Lengths page has always said the estimate is the prediction until three lengths are recorded; predict()
     now does that (log-mean = the estimate while fewer than TRUSTED of that course and kind are timed). Same week: 16
     late -> 3, CS A3 on time.
+44. **(After program 2, from use, 2026-10-18) Work that is pointless late.** "Math quiz prep after the quiz is
+    pointless." ItemSpec.hard_window (off in the reference) makes an item's window hard, so it is never placed after
+    its due; what doesn't fit before is left unplaced, reported as "only Xh of Yh fits before it". On by default for
+    exam/quiz prep, whose due moves to the start of the same course's exam or quiz on the calendar within three days
+    before it; per task with set_expires (a task's menu: Pointless If Late); by rule with the new no_late constraint.
 
 ## Findings so far
 
