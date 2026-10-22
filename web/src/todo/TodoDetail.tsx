@@ -1,0 +1,213 @@
+// One to-do's detail (v22 To-do aside): tag, kind, due, how hard the deadline is, the estimate, the sessions planned
+// for it and why, and Start, Done, See on plan, Delete.
+
+import { useState } from "react"
+import { useNavigate } from "react-router"
+import { Icon, Seg } from "@/components/fr/controls"
+import { useCommand } from "@/hooks/useCommand"
+import { useAreas, useItem, useNow, useWhy } from "@/hooks/queries"
+import { dur, weekday, when } from "@/lib/format"
+import { toMin } from "@/lib/time"
+import { useLook } from "@/theme/LookProvider"
+import { useShell } from "@/shell/ShellContext"
+import { usePresets } from "./AddBox"
+import { progress } from "./groups"
+import { DuePicker, LengthPicker, ListPicker } from "./Pickers"
+
+const FIRMNESS = [
+  { value: "hard", label: "Hard" },
+  { value: "soft", label: "Soft" },
+  { value: "none", label: "None" },
+]
+
+export function TodoDetail({ id, onClose }: { id: number; onClose: () => void }) {
+  const { today, select } = useShell()
+  const navigate = useNavigate()
+  const { color } = useLook()
+  const detail = useItem(id).data
+  const now = useNow().data
+  const presets = usePresets()
+  const areas = (useAreas().data ?? []).filter((a) => !a.archived).map((a) => a.name)
+  const [pick, setPick] = useState<"area" | "preset" | "due" | "length" | null>(null)
+  const firstKey = detail?.blocks[0]?.key ?? null
+  const why = useWhy(firstKey).data
+  const edit = useCommand("edit", { label: () => "Saved" })
+  const done = useCommand("done", { label: () => "Done" })
+  const reopen = useCommand("reopen", { label: () => "Open again" })
+  const start = useCommand("start", { label: () => "Started" })
+  const drop = useCommand("drop", { label: () => "Deleted" })
+  const deleteSeries = useCommand("series_delete", { label: (o) => o.result.message ?? "Deleted" })
+  const [asking, setAsking] = useState(false)
+  if (!detail) return <aside />
+  const item = detail.item
+  const p = progress(item)
+  const isDone = item.status === "done"
+  const toggle = (k: typeof pick) => setPick(pick === k ? null : k)
+  const length = item.duration_min
+  const button = (k: typeof pick, content: React.ReactNode) => (
+    <button
+      onClick={() => toggle(k)}
+      className="fr-plain fr-well tnum"
+      style={{ justifySelf: "start", display: "inline-flex", gap: 6, alignItems: "center", padding: "4px 10px", borderRadius: "var(--radius-sm)", fontSize: 12 }}
+    >
+      {content}
+      <Icon name="caret-down" size={10} style={{ opacity: 0.6 }} />
+    </button>
+  )
+  const panel = (content: React.ReactNode) => (
+    <div className="fr-well" style={{ gridColumn: "1 / -1", padding: 12 }}>
+      {content}
+    </div>
+  )
+  return (
+    <aside style={{ overflowY: "auto", minHeight: 0, padding: "20px 22px 140px", boxShadow: "inset 1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 18 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+          <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: color(item.area) }} />
+            {item.area ?? "No tag"}
+          </span>
+          <span className="fr-h" style={{ fontSize: 30, lineHeight: 1 }}>
+            {item.title}
+          </span>
+        </div>
+        <button className="btn btn-icon btn-ghost" onClick={onClose} aria-label="Close" style={{ width: 28, height: 28, color: "var(--color-neutral-400)" }}>
+          <Icon name="x" />
+        </button>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div className="tnum" style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+          <span style={{ color: "var(--color-neutral-300)" }}>{p.text}</span>
+          <span style={{ color: "var(--color-neutral-500)" }}>{item.remaining_min != null ? `${dur(item.remaining_min)} left` : ""}</span>
+        </div>
+        <div style={{ height: 6, borderRadius: 3, background: "color-mix(in srgb, var(--color-text) 8%, transparent)", overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${p.pct}%`, background: color(item.area) }} />
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "96px minmax(0,1fr)", gap: "12px 14px", alignItems: "center" }}>
+        <span className="fr-kicker">Tag</span>
+        {button("area", (
+          <>
+            <span className="fr-swatch" style={{ background: color(item.area) }} />
+            {item.area ?? "No tag"}
+          </>
+        ))}
+        {pick === "area" &&
+          panel(<ListPicker options={[{ value: null as string | null, label: "No tag" }, ...areas.map((a) => ({ value: a as string | null, label: a, swatch: color(a) }))]} value={item.area} onPick={(v) => (edit({ id, area: v }), setPick(null))} />)}
+        <span className="fr-kicker">Kind</span>
+        {button("preset", (
+          <>
+            <Icon name="shapes" size={12} />
+            {item.preset ?? "To-do"}
+          </>
+        ))}
+        {pick === "preset" && panel(<ListPicker options={presets.map((p) => ({ value: p as string | null, label: p }))} value={item.preset} onPick={(v) => (edit({ id, preset: v }), setPick(null))} />)}
+        <span className="fr-kicker">Due</span>
+        {button("due", (
+          <>
+            <Icon name="flag" size={12} />
+            {item.due ? when(item.due, today) : "No due date"}
+          </>
+        ))}
+        {pick === "due" && panel(<DuePicker value={item.due} today={today} onPick={(v) => edit({ id, due: v })} stacked />)}
+        <span className="fr-kicker">Deadline</span>
+        <Seg options={FIRMNESS} value={item.firmness} onPick={(v) => edit({ id, firmness: v as "hard" | "soft" | "none" })} />
+        <span className="fr-kicker">Estimate</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button className="btn btn-icon btn-secondary" disabled={!length} onClick={() => length && edit({ id, duration_min: Math.max(15, length - 15) })} aria-label="Less time" style={{ width: 26, height: 26 }}>
+            <Icon name="minus" />
+          </button>
+          <span className="tnum" style={{ minWidth: 56, textAlign: "center" }}>
+            {length ? dur(length) : "—"}
+          </span>
+          <button className="btn btn-icon btn-secondary" disabled={!length} onClick={() => length && edit({ id, duration_min: length + 15 })} aria-label="More time" style={{ width: 26, height: 26 }}>
+            <Icon name="plus" />
+          </button>
+          {item.estimate && <span className="fr-kicker">Friday’s guess</span>}
+          <button onClick={() => toggle("length")} className="btn btn-ghost" style={{ padding: "2px 8px", fontSize: 12 }}>
+            Set
+          </button>
+        </div>
+        {pick === "length" && panel(<LengthPicker value={length} onPick={(v) => v && edit({ id, duration_min: v })} />)}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <span className="fr-h" style={{ fontSize: 16 }}>
+            Planned sessions
+          </span>
+          <span className="fr-kicker">{detail.blocks.length || ""}</span>
+        </div>
+        {detail.blocks.map((b) => (
+          <button
+            key={b.key}
+            onClick={() => (navigate("/"), select(b))}
+            className="fr-plain"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "72px minmax(0,1fr) auto",
+              gap: 10,
+              alignItems: "center",
+              padding: "8px 10px",
+              borderRadius: "var(--radius-md)",
+              background: "var(--color-bg)",
+              boxShadow: now?.current?.key === b.key ? "inset 0 0 0 1px var(--color-accent)" : undefined,
+            }}
+          >
+            <span className="tnum">
+              {weekday(b.start.slice(0, 10))} {Number(b.start.slice(8, 10))}
+            </span>
+            <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <span className="tnum">
+                {b.start.slice(11, 16)}–{b.end.slice(11, 16)}
+              </span>
+              <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>{b.pinned === "locked" ? "Locked · won’t move" : b.pinned ? "Pinned here · resists moving" : b.tentative ? "Tentative · could fit here" : "Planned · Friday decides"}</span>
+            </span>
+            <span className="tnum" style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>
+              {dur(toMin(b.end) - toMin(b.start))}
+            </span>
+          </button>
+        ))}
+        {!detail.blocks.length && <span className="fr-kicker">Nothing planned. Friday will find time once it has a due date or an estimate.</span>}
+      </div>
+      {why && (
+        <div style={{ padding: 12, borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--color-accent) 8%, var(--color-bg))", display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 12, color: "var(--color-accent-300)" }}>Why these times</span>
+          <span style={{ textWrap: "pretty" }}>{why.sentence}</span>
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {!isDone && item.when !== "fixed" && now?.current?.item_id !== id && (
+          <button className="btn btn-primary" onClick={() => start({ id })}>
+            <Icon name="play" />
+            Start now
+          </button>
+        )}
+        <button className="btn btn-secondary" onClick={() => (isDone ? reopen({ id }) : done({ id }))}>
+          <Icon name="check" />
+          {isDone ? "Open again" : "Mark done"}
+        </button>
+        {detail.blocks[0] && (
+          <button className="btn btn-ghost" onClick={() => (navigate("/"), select(detail.blocks[0]))}>
+            <Icon name="calendar-dots" />
+            See on plan
+          </button>
+        )}
+        {asking && item.series_id != null ? (
+          <span style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+            <button className="btn btn-ghost" onClick={() => (drop({ id }), onClose())}>
+              Just this one
+            </button>
+            <button className="btn btn-ghost" onClick={() => (deleteSeries({ id: item.series_id as number }), onClose())} style={{ color: "var(--fr-due)" }}>
+              Every one
+            </button>
+          </span>
+        ) : (
+          <button className="btn btn-ghost" onClick={() => (item.series_id != null ? setAsking(true) : (drop({ id }), onClose()))} style={{ marginLeft: "auto", color: "var(--fr-due)" }}>
+            <Icon name="trash" />
+            Delete
+          </button>
+        )}
+      </div>
+    </aside>
+  )
+}

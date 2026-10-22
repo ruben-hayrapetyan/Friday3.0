@@ -1,0 +1,145 @@
+// The small controls v22 repeats everywhere (theme/friday.css draws them).
+
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react"
+
+/** A Phosphor icon by name, e.g. `gear-six`; `fill` for the filled set. */
+export function Icon({ name, size, fill, style }: { name: string; size?: number; fill?: boolean; style?: CSSProperties }) {
+  return <i className={`${fill ? "ph-fill" : "ph"} ph-${name}`} style={{ fontSize: size, ...style }} aria-hidden />
+}
+
+export interface Option<T> {
+  value: T
+  label: ReactNode
+}
+
+/** A segmented control: one of a few options. */
+export function Seg<T extends string | number>(props: {
+  options: readonly (Option<T> | T)[]
+  value: T | null
+  onPick: (value: T) => void
+  size?: "small" | "big"
+  onBg?: boolean
+  label?: string
+}) {
+  const { options, value, onPick, size, onBg, label } = props
+  return (
+    <div className={`fr-seg ${size ?? ""} ${onBg ? "on-bg" : ""}`} role="group" aria-label={label}>
+      {options.map((o) => {
+        const option = typeof o === "object" ? o : { value: o, label: String(o) }
+        return (
+          <button key={String(option.value)} aria-pressed={option.value === value} onClick={() => onPick(option.value)}>
+            {option.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** A dropdown: the value on a button, the options in a floating list; Escape or a click elsewhere closes it. */
+export function Menu<T extends string>(props: { options: readonly Option<T>[]; value: T; onPick: (value: T) => void; label: string; disabled?: boolean }) {
+  const { options, value, onPick, label, disabled } = props
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const away = (e: PointerEvent) => box.current && !box.current.contains(e.target as Node) && setOpen(false)
+    const escape = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false)
+    window.addEventListener("pointerdown", away)
+    window.addEventListener("keydown", escape)
+    return () => {
+      window.removeEventListener("pointerdown", away)
+      window.removeEventListener("keydown", escape)
+    }
+  }, [open])
+  return (
+    <div ref={box} className="fr-menu">
+      <button className="fr-menu-button" aria-haspopup="listbox" aria-expanded={open} aria-label={label} disabled={disabled} onClick={() => setOpen(!open)}>
+        <span>{options.find((o) => o.value === value)?.label ?? value}</span>
+        <Icon name="caret-down" size={12} />
+      </button>
+      {open && (
+        <div className="fr-float fr-menu-list" role="listbox" aria-label={label}>
+          {options.map((o) => (
+            <button
+              key={o.value}
+              role="option"
+              aria-selected={o.value === value}
+              onClick={() => {
+                onPick(o.value)
+                setOpen(false)
+              }}
+            >
+              <span>{o.label}</span>
+              {o.value === value && <Icon name="check" size={13} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => void; label: string }) {
+  return (
+    <button
+      className="fr-switch"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      onClick={(e) => {
+        e.stopPropagation()
+        onToggle()
+      }}
+    >
+      <span />
+    </button>
+  )
+}
+
+export function Chip(props: { on?: boolean; swatch?: string; onClick: () => void; children: ReactNode; title?: string }) {
+  return (
+    <button className="fr-chip" aria-pressed={props.on ?? false} onClick={props.onClick} title={props.title}>
+      {props.swatch && <span className="fr-swatch" style={{ background: props.swatch }} />}
+      {props.children}
+    </button>
+  )
+}
+
+/** A round check for to-dos. */
+export function Check({ done, onToggle, small }: { done: boolean; onToggle: () => void; small?: boolean }) {
+  const size = small ? 15 : 18
+  return (
+    <button
+      className="fr-check"
+      role="checkbox"
+      aria-checked={done}
+      aria-label={done ? "Mark not done" : "Mark done"}
+      style={{ width: size, height: size }}
+      onClick={(e) => {
+        e.stopPropagation()
+        onToggle()
+      }}
+    >
+      {done && <Icon name="check" size={small ? 9 : 11} />}
+    </button>
+  )
+}
+
+/** A square check inside a list of choices. */
+export function Box({ on }: { on: boolean }) {
+  return (
+    <span className="fr-box" role="checkbox" aria-checked={on}>
+      {on && <Icon name="check" size={11} />}
+    </span>
+  )
+}
+
+/** A heading in the design's display face. */
+export function H({ size, children, style }: { size: number; children: ReactNode; style?: CSSProperties }) {
+  return (
+    <span className="fr-h" style={{ fontSize: size, lineHeight: size >= 26 ? 1 : 1.2, ...style }}>
+      {children}
+    </span>
+  )
+}
