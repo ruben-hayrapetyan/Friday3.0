@@ -1,0 +1,92 @@
+#!/bin/bash
+# Builds the Mac app around Friday's website (COMBINED.md 1, 5) with the Swift compiler from the Command Line Tools.
+# It reuses the Swift app's hotkeys and live Dock icon from UI/Sources/App rather than copying them.
+#
+#   ./build.sh            build into build/ for this Mac
+#   ./build.sh --install  build, then replace /Applications/Friday.app and launch it (the switch, C11)
+set -euo pipefail
+
+INSTALL=false
+for arg in "$@"; do
+  case "$arg" in
+    --install) INSTALL=true ;;
+    *) echo "usage: $0 [--install]" >&2; exit 2 ;;
+  esac
+done
+
+cd "$(dirname "$0")"
+
+APP_NAME="Friday"
+EXECUTABLE="Friday"
+# Its own id, so it runs beside the Swift app until the switch without sharing its settings or login item.
+BUNDLE_ID="com.rubenhayrapetyan.friday.web"
+VERSION="2.0.0"
+
+BUILD_DIR="build"
+APP="$BUILD_DIR/$APP_NAME.app"
+SHARED="../UI/Sources/App"
+SOURCES=(Sources/*.swift "$SHARED/GlobalHotKey.swift" "$SHARED/FridayIcon.swift" "$SHARED/FridayCountdown.swift")
+SDK="$(xcrun --sdk macosx --show-sdk-path)"
+TARGET="$(uname -m)-apple-macos14.0"
+
+echo "==> Cleaning"
+[ -d "$APP" ] && rm -r "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+
+echo "==> Compiling"
+xcrun swiftc -O -swift-version 5 -target "$TARGET" -sdk "$SDK" \
+  -framework WebKit -framework Carbon -framework UserNotifications -framework ServiceManagement \
+  "${SOURCES[@]}" -o "$APP/Contents/MacOS/$EXECUTABLE"
+
+echo "==> Rendering app icon"
+ICONSET="$BUILD_DIR/AppIcon.iconset"
+xcrun swiftc -swift-version 5 -target "$TARGET" -sdk "$SDK" \
+  ../UI/tools/MakeIcon/main.swift "$SHARED/FridayIcon.swift" "$SHARED/FridayCountdown.swift" -o "$BUILD_DIR/makeicon"
+"$BUILD_DIR/makeicon" "$ICONSET" >/dev/null
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+rm -r "$ICONSET" "$BUILD_DIR/makeicon"
+
+echo "==> Writing Info.plist"
+cat > "$APP/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>              <string>$APP_NAME</string>
+    <key>CFBundleDisplayName</key>       <string>$APP_NAME</string>
+    <key>CFBundleExecutable</key>        <string>$EXECUTABLE</string>
+    <key>CFBundleIdentifier</key>        <string>$BUNDLE_ID</string>
+    <key>CFBundleIconFile</key>          <string>AppIcon</string>
+    <key>CFBundlePackageType</key>       <string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>$VERSION</string>
+    <key>CFBundleVersion</key>           <string>$VERSION</string>
+    <key>LSMinimumSystemVersion</key>    <string>14.0</string>
+    <key>LSApplicationCategoryType</key> <string>public.app-category.productivity</string>
+    <key>NSHighResolutionCapable</key>   <true/>
+    <key>NSAppTransportSecurity</key>
+    <dict><key>NSAllowsLocalNetworking</key><true/></dict>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Friday plans around the calendars on this Mac and adds the events you make to the one you choose.</string>
+</dict>
+</plist>
+PLIST
+printf 'APPL????' > "$APP/Contents/PkgInfo"
+
+echo "==> Signing (ad-hoc)"
+codesign --force --sign - --timestamp=none "$APP"
+touch "$APP"
+echo "==> Built $APP"
+
+if $INSTALL; then
+  echo "==> Installing to /Applications"
+  osascript -e 'tell application id "com.rubenhayrapetyan.friday" to quit' 2>/dev/null || true
+  osascript -e "tell application id \"$BUNDLE_ID\" to quit" 2>/dev/null || true
+  for _ in {1..50}; do
+    pgrep -f "/Applications/$APP_NAME.app/" >/dev/null || break
+    sleep 0.1
+  done
+  [ -d "/Applications/$APP_NAME.app" ] && rm -r "/Applications/$APP_NAME.app"
+  cp -R "$APP" /Applications/
+  open "/Applications/$APP_NAME.app"
+  echo "==> Installed and launched /Applications/$APP_NAME.app"
+fi

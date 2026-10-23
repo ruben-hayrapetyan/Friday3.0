@@ -18,6 +18,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/components/Toasts"
 import { runCommand } from "@/hooks/useCommand"
 import { moveBlock } from "@/hooks/useDrop"
+import { shiftMonth } from "@/shell/host"
 import { useShell, type View } from "@/shell/ShellContext"
 import { DayAside } from "./DayAside"
 import { Grid } from "./Grid"
@@ -346,9 +347,3 @@ function subTitle(first: string, days: number, today: string, view: View): strin
   return "Today"
 }
 
-function shiftMonth(first: string, by: number): string {
-  const y = Number(first.slice(0, 4))
-  const m = Number(first.slice(5, 7)) - 1 + by
-  const date = new Date(Date.UTC(y, m, 1))
-  return date.toISOString().slice(0, 10)
-}

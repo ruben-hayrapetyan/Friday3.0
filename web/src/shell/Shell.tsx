@@ -29,9 +29,11 @@ import { RulesPage } from "@/rules/RulesPage"
 import { SettingsPage } from "@/settings/SettingsPage"
 import { Search } from "@/search/Search"
 import { Drawer, DrawerFrame } from "@/todo/Drawer"
-import { EventPane } from "./EventPane"
+import { draftAt, EventPane } from "./EventPane"
 import { TodoPage } from "@/todo/TodoPage"
+import { nextHour, placeAfter, useHost } from "./host"
 import { useShell } from "./ShellContext"
+import { nowMin } from "@/hooks/useClock"
 import { Sidebar } from "./Sidebar"
 
 export function Shell() {
@@ -43,6 +45,7 @@ export function Shell() {
   const onDrop = useDrop(setSelection)
   const location = useLocation()
   useShellKeys()
+  useHostActions()
   useTriageLink()
   useEffect(() => {
     if (briefDue(today)) setDialog("brief")
@@ -122,6 +125,44 @@ function useShellKeys() {
     window.addEventListener("keydown", press)
     return () => window.removeEventListener("keydown", press)
   }, [setPop, select, setDrawer, drawer])
+}
+
+/** The Mac app's menus and hotkeys (COMBINED.md 5). The calendar's actions bring you to the calendar first. */
+function useHostActions() {
+  const { today, place, setPlace, setPop, setDialog, setDrawer, drawer, setEvent, askClaude } = useShell()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const toPlan = () => location.pathname !== "/" && navigate("/")
+  useHost((request) => {
+    const moved = placeAfter(request, place, today)
+    if (moved) return (toPlan(), setPlace(moved))
+    switch (request.action) {
+      case "newEvent":
+        toPlan()
+        return setEvent(draftAt(nextHour(nowMin())))
+      case "newTodo":
+        return location.pathname === "/" ? setDrawer(true) : navigate("/todo")
+      case "search":
+        return setDialog("search")
+      case "ask":
+        return askClaude()
+      case "drawer":
+        toPlan()
+        return setDrawer(request.argument === "open" || !drawer)
+      case "go":
+        return navigate(request.argument ?? "/")
+      case "ways":
+        toPlan()
+        return setDialog("ways")
+      case "shove":
+      case "pace":
+        toPlan()
+        return setPop(request.action)
+      case "brief":
+      case "triage":
+        return setDialog(request.action)
+    }
+  })
 }
 
 /** A notification's "Options" opens the app at /?triage. */

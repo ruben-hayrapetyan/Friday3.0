@@ -12,3 +12,4 @@ friday.toml
 secrets.toml
 # Agent worktrees
 .claude/
+Mac/build/
