@@ -36,6 +36,14 @@ VERBS = {
         False,
         "Read a quick-add line the grammar can't, with the LLM (§22.7): the fields it would add, for you to confirm.",
     ),
+    "ask_claude": Verb(
+        "POST",
+        "/api/c/ask_claude",
+        commands.AskClaudeInput,
+        True,
+        False,
+        "What Claude would change for what you asked, as commands for you to confirm; nothing is changed.",
+    ),
     "batch_accept": Verb(
         "POST",
         "/api/c/batch_accept",

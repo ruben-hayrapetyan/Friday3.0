@@ -101,7 +101,7 @@ function Days({ first, view, drawer }: { first: string; view: 1 | 7; drawer: num
 
 function Header(props: { view: View; first: string; onView: (v: View) => void; onStep: (by: number) => void; onToday: () => void }) {
   const { view, first, onView, onStep, onToday } = props
-  const { today, pop, setPop, setDialog, drawer, setDrawer } = useShell()
+  const { today, pop, setPop, setDialog, drawer, setDrawer, askClaude } = useShell()
   const paces = usePaces().data
   const days = view === "month" ? 1 : view
   return (
@@ -129,6 +129,7 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
       <IconButton icon="magnifying-glass" label="Search (⌘K)" onClick={() => setDialog("search")} />
       <IconButton icon="bell" label="Notifications" onClick={() => setPop(pop === "bell" ? null : "bell")} />
       <IconButton icon="sun-horizon" label="Morning brief" onClick={() => setDialog("brief")} />
+      <IconButton icon="sparkle" label="Ask Claude" onClick={() => askClaude()} />
       <button className="btn btn-secondary" onClick={() => setDialog("ways")} title="Two more ways to plan the same work" style={{ flex: "none", whiteSpace: "nowrap" }}>
         <Icon name="shuffle" size={15} />
         Other ways

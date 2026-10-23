@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router"
 import { query, type Schemas } from "@/api/client"
 import { H, Icon, Seg, Switch } from "@/components/fr/controls"
+import { useShell } from "@/shell/ShellContext"
 import { useCommand } from "@/hooks/useCommand"
 import { useStatus } from "@/hooks/queries"
 
@@ -75,6 +76,7 @@ export function RulesPage() {
 }
 
 function NewRule() {
+  const { askClaude } = useShell()
   const [text, setText] = useState("")
   const [overrides, setOverrides] = useState<Record<string, unknown>>({})
   const [strength, setStrength] = useState<Strength | null>(null)
@@ -114,6 +116,13 @@ function NewRule() {
             <Icon name={reading ? "check-circle" : "question"} size={13} />
             {reading ? "Friday read this as" : preview.effect}
           </span>
+          {!reading && (
+            // What the grammar can't read goes to Claude (COMBINED.md 37), as rules to confirm.
+            <button className="btn btn-secondary" onClick={() => askClaude(text, "rule")} style={{ alignSelf: "flex-start" }}>
+              <Icon name="sparkle" />
+              Ask Claude to read it
+            </button>
+          )}
           {reading && (
             <>
               <H size={16}>{preview.sentence}</H>

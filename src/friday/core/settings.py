@@ -296,6 +296,25 @@ def _matches(pattern: str, title: str) -> bool:
         return False
 
 
+class ExamFocus(Model):
+    """personal's exam focus (COMBINED.md 38): in the days before an exam, other courses' work that is due after it
+    waits until the exam is over, when a day and half again its length are left before its own due. Off until you ask
+    for it, in Rules ("I want to focus on an exam before it")."""
+
+    on: bool = False
+    days_before: int = Field(3, ge=1, le=14)
+    words: tuple[str, ...] = ("exam", "prelim", "midterm", "final")
+
+
+class Sittings(Model):
+    """personal's split preference (COMBINED.md 38): "I like to do things in one go, but split problem sets first".
+    `one_go` makes splitting cost `factor` times more, except for the kinds in `split_first`, which cost half."""
+
+    one_go: bool = False
+    split_first: tuple[str, ...] = ()
+    factor: float = Field(3.0, ge=1, le=10)
+
+
 class TextSettings(Model):
     abbreviations: dict[str, str] = Field(
         default_factory=lambda: {
@@ -394,6 +413,8 @@ SETTINGS_TYPES: dict[str, Any] = {
     "categories": CategorySettings,  # events coloured by their titles, and the filter (COMBINED.md 17, 59)
     "busy": BusySettings,  # which events count as busy when planning (COMBINED.md 28)
     "pointless_late": PointlessLate,  # work never planned after its due (COMBINED.md 50)
+    "exam_focus": ExamFocus,  # other courses wait while you prepare for an exam (COMBINED.md 38)
+    "sittings": Sittings,  # one go, and which kinds to split first (COMBINED.md 38)
     "calendar_look": CalendarLook,  # each calendar's pigment and toolbar button (COMBINED.md 17, 19)
     **INTEGRATION_TYPES,
 }
@@ -431,6 +452,8 @@ DEFAULTS: dict[str, Any] = {
     "categories": CategorySettings(),
     "busy": BusySettings(),
     "pointless_late": PointlessLate(),
+    "exam_focus": ExamFocus(),
+    "sittings": Sittings(),
     "calendar_look": CalendarLook(),
     **INTEGRATION_DEFAULTS,
 }

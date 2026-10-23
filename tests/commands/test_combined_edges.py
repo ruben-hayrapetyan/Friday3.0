@@ -291,3 +291,79 @@ def test_a_way_is_described_by_what_it_gains_and_gives_up() -> None:
     assert difference(mine, other, rules) == "Freer weekends, fewer, longer sittings; but more late-night work"
     assert difference(mine, mine, rules) == "Much the same, arranged differently"
     assert difference(mine, {**mine, "late_night": 10}, rules) == "Arranged differently; but more late-night work"
+
+
+# Exam focus (38)
+
+
+def focused(app: App) -> None:
+    app.do("settings_set", key="exam_focus", value={"on": True, "days_before": 3})
+    app.do("add", title="MATH 2940 Prelim 2", when="fixed", start="2026-10-21T19:30", end="2026-10-21T21:00")
+
+
+def test_other_courses_wait_until_the_exam_is_over(app: App) -> None:
+    focused(app)
+    essay = app.do("add", title="HIST 1200 essay", preset="Assignment", due="2026-10-25T23:59", duration_min=120)[
+        "item"
+    ]
+    replan(app.conn, app.now_utc)
+    assert blocks_of(app, essay["id"]) and all(start >= "2026-10-21T21:00" for start, _ in blocks_of(app, essay["id"]))
+
+
+def test_the_exam_s_own_course_and_its_prep_are_not_held_back(app: App) -> None:
+    focused(app)
+    hw = app.do("add", title="MATH 2940 HW 8", preset="Assignment", due="2026-10-25T23:59", duration_min=60)["item"]
+    replan(app.conn, app.now_utc)
+    assert any(start < "2026-10-21T19:30" for start, _ in blocks_of(app, hw["id"]))
+
+
+def test_work_that_couldn_t_wait_is_done_before_the_exam(app: App) -> None:
+    focused(app)
+    soon = app.do("add", title="HIST 1200 response", preset="Assignment", due="2026-10-22T12:00", duration_min=120)[
+        "item"
+    ]
+    replan(app.conn, app.now_utc)
+    assert any(start < "2026-10-21T19:30" for start, _ in blocks_of(app, soon["id"]))
+
+
+def test_exam_focus_is_off_until_you_ask_for_it(app: App) -> None:
+    app.do("add", title="MATH 2940 Prelim 2", when="fixed", start="2026-10-21T19:30", end="2026-10-21T21:00")
+    essay = app.do("add", title="HIST 1200 essay", preset="Assignment", due="2026-10-25T23:59", duration_min=120)[
+        "item"
+    ]
+    app.do("add", title="Fill the week", when="fixed", start="2026-10-21T21:00", end="2026-10-26T00:00")
+    replan(app.conn, app.now_utc)
+    assert any(start < "2026-10-21T19:30" for start, _ in blocks_of(app, essay["id"]))
+
+
+def test_an_exam_more_than_the_focus_days_away_holds_nothing_back(app: App) -> None:
+    from friday.planner.build import build_problem
+    from friday.planner.prepare import build_input
+
+    app.do("settings_set", key="exam_focus", value={"on": True, "days_before": 1})
+    app.do("add", title="MATH 2940 Prelim 2", when="fixed", start="2026-10-23T19:30", end="2026-10-23T21:00")
+    essay = app.do("add", title="HIST 1200 essay", preset="Assignment", due="2026-10-26T12:00", duration_min=60)["item"]
+    problem = build_problem(build_input(take_snapshot(app.conn, app.now_utc)))
+    assert problem.items[f"item:{essay['id']}"].release_utc in (None, app.now_utc)
+    later = build_problem(build_input(take_snapshot(app.conn, app.now_utc + 4 * 1440)))  # Friday morning: focusing
+    assert (
+        later.items[f"item:{essay['id']}"].release_utc is not None
+        and later.items[f"item:{essay['id']}"].release_utc > app.now_utc + 4 * 1440
+    )
+
+
+# Split preference (38)
+
+
+def test_one_go_makes_splitting_cost_more_except_what_you_split_first(app: App) -> None:
+    from friday.planner.build import build_problem
+    from friday.planner.prepare import build_input
+
+    essay = app.do("add", title="Essay", preset="Assignment", due="2026-10-22T23:59", duration_min=180)["item"]
+    reading = app.do("add", title="Psych reading", preset="Reading", due="2026-10-22T23:59", duration_min=120)["item"]
+    before = build_problem(build_input(take_snapshot(app.conn, app.now_utc))).items
+    app.do("settings_set", key="sittings", value={"one_go": True, "split_first": ["Assignment"]})
+    after = build_problem(build_input(take_snapshot(app.conn, app.now_utc))).items
+    e, r = f"item:{essay['id']}", f"item:{reading['id']}"
+    assert after[e].chunk_cost < before[e].chunk_cost and after[r].chunk_cost > before[r].chunk_cost
+    assert 0 <= after[r].chunk_cost <= 1

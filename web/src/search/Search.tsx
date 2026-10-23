@@ -44,7 +44,7 @@ const PAGES: [string, string, string][] = [
 ]
 
 export function Search() {
-  const { today, setDialog, setPop, setPlace, place, setEvent, setAgendaDay } = useShell()
+  const { today, setDialog, setPop, setPlace, place, setEvent, setAgendaDay, askClaude } = useShell()
   const navigate = useNavigate()
   const { color } = useLook()
   const [q, setQ] = useState("")
@@ -97,6 +97,7 @@ export function Search() {
       { key: "brief", label: "Morning brief", icon: "sun-horizon", run: () => setDialog("brief") },
       { key: "triage", label: "What gives when it can't all fit", icon: "warning", run: () => setDialog("triage") },
       { key: "ways", label: "Other ways to plan the week", icon: "shuffle", run: () => setDialog("ways") },
+      { key: "ask", label: `Ask Claude${text ? `: ${text}` : ""}`, icon: "sparkle", run: () => askClaude(text) },
     ].filter((a) => has(a.label))
     return [
       ["To-dos", todos],

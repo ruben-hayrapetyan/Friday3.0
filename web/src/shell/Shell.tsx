@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router"
 import { DragProvider } from "@/components/calendar/useDrag"
 import { SelectionMenu } from "@/components/calendar/SelectionMenu"
+import { AskClaudeDialog } from "@/dialogs/AskClaude"
 import { BriefDialog, briefDue, LockDialog, TriageDialog } from "@/dialogs/Dialogs"
 import { useToast } from "@/components/Toasts"
 import { useNow, useStatus } from "@/hooks/queries"
@@ -85,6 +86,7 @@ export function Shell() {
       {dialog === "brief" && <BriefDialog onClose={() => setDialog(null)} />}
       {dialog === "search" && <Search />}
       {dialog === "ways" && <OtherWaysDialog onClose={() => setDialog(null)} />}
+      {dialog === "ask" && <AskClaudeDialog onClose={() => setDialog(null)} />}
     </DragProvider>
   )
 }

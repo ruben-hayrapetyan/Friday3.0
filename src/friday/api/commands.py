@@ -293,6 +293,25 @@ class OtherWayPickInput(Model):
     rule_totals: dict[str, int]  # the way's, as `other_ways` gave them
 
 
+class AskClaudeInput(Model):
+    text: str
+    purpose: Literal["anything", "rule"] = "anything"  # a rule the grammar couldn't read: only rule-shaped answers
+
+
+class ProposedAction(Model):
+    """One change Claude proposes, as the command that makes it; nothing runs until you apply it."""
+
+    sentence: str
+    command: str
+    input: dict[str, Any]
+    error: str | None = None  # the command wouldn't take it as written
+
+
+class AskClaudeOut(Model):
+    reply: str  # what Claude says, in a sentence or two
+    actions: list[ProposedAction]
+
+
 class EventGoingInput(Model):
     title: str  # an event you go to: never offered to skip again
 

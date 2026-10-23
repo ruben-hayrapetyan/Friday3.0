@@ -194,7 +194,45 @@ def window(item: Item, inp: BuildInput, by_id: Mapping[int, Item], fixed: Mappin
         if dep.depends_on_id == item.id and dep.item_id in fixed:  # `before:` an event
             event_start = parse_utc(fixed[dep.item_id].start_utc)  # type: ignore[arg-type]
             due = min(due, event_start - dep.lag_min) if due is not None else event_start - dep.lag_min
-    return release, exam_due(item, due, fixed)
+    due = exam_due(item, due, fixed)
+    return focused_release(item, release, due, fixed, inp.settings, now), due
+
+
+def focused_release(
+    item: Item, release: int | None, due: int | None, fixed: Mapping[int, Item], settings: Mapping[str, Any], now: int
+) -> int | None:
+    """Exam focus (personal's, COMBINED.md 38): while an exam is `days_before` days off or less, another course's work
+    due after it waits until the exam ends, when a day and half again its length still fit before its own due."""
+    focus = settings["exam_focus"]
+    if not focus.on or due is None or item.preset == "Exam prep":
+        return release
+    words = re.compile(r"\b(" + "|".join(re.escape(w) for w in focus.words) + r")\b", re.IGNORECASE)
+    course = course_word(item.title)
+    length = (item.duration_units or 0) * UNIT_MIN
+    for exam in fixed.values():
+        if not exam.start_utc or not exam.end_utc or exam.status != "todo" or not words.search(exam.title):
+            continue
+        start, end = parse_utc(exam.start_utc), parse_utc(exam.end_utc)
+        focusing = start - focus.days_before * 1440 <= now < start
+        room_after = due - end >= 1440 + 1.5 * length
+        if focusing and course_word(exam.title) != course and due > end and room_after:
+            release = max(release if release is not None else now, end)
+    return release
+    words = re.compile(r"\b(" + "|".join(re.escape(w) for w in focus.words) + r")\b", re.IGNORECASE)
+    course = course_word(item.title)
+    length = (item.duration_units or 0) * UNIT_MIN
+    for exam in fixed.values():
+        if not exam.start_utc or not exam.end_utc or exam.status != "todo" or not words.search(exam.title):
+            continue
+        start, end = parse_utc(exam.start_utc), parse_utc(exam.end_utc)
+        if course_word(exam.title) == course or not start < due:
+            continue
+        if due - end < 1440 + 1.5 * length:
+            continue  # it couldn't wait: done before the exam after all
+        focus_from = start - focus.days_before * 1440
+        if release is None or release < end:
+            release = max(release or focus_from, end) if (release or focus_from) <= start else release
+    return release
 
 
 def exam_due(item: Item, due: int | None, fixed: Mapping[int, Item]) -> int | None:
@@ -226,7 +264,8 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
         firmness=item.firmness,
         amount=item.amount, release_utc=release, due_utc=due, shape=item.shape,
         min_chunk=1 if item.shape == "one_sitting" else max(1, item.min_chunk_units),
-        max_chunk=item.max_chunk_units, chunk_cost=item.chunk_cost, spread=item.spread, tentative=tentative,
+        max_chunk=item.max_chunk_units, chunk_cost=sitting_cost(item, inp.settings), spread=item.spread,
+        tentative=tentative,
         progress=progress,
         window_is_hard=tentative or item.amount in ("elastic", "target") or expires(item, inp.settings),
         pacing=preset.pacing if preset else "none", pacing_start_utc=release if release is not None else created,
@@ -241,6 +280,15 @@ def expires(item: Item, settings: Mapping[str, Any]) -> bool:
     return (
         item.expires if item.expires is not None else bool(settings["pointless_late"].covers(item.preset, item.title))
     )
+
+
+def sitting_cost(item: Item, settings: Mapping[str, Any]) -> float:
+    """What splitting an item costs, after your split preference (COMBINED.md 38): kept between 0 and 1."""
+    sittings = settings["sittings"]
+    if not sittings.one_go:
+        return item.chunk_cost
+    factor = 0.5 if item.preset in sittings.split_first else sittings.factor
+    return min(1.0, max(item.chunk_cost, 0.05) * factor)
 
 
 def importance(item: Item, kind_order: Sequence[str]) -> float:

@@ -5,7 +5,7 @@ import { createContext, type ReactNode, useCallback, useContext, useMemo, useSta
 import type { Block, Schemas } from "@/api/client"
 
 export type Pop = "shove" | "pace" | "bell" | null
-export type Dialog = "brief" | "search" | "triage" | "conflicts" | "ways" | null
+export type Dialog = "brief" | "search" | "triage" | "conflicts" | "ways" | "ask" | null
 export type View = 1 | 7 | "month"
 
 /** An event open in the drawer (COMBINED.md 12): a new one being drafted (no id) or one being edited. */
@@ -49,6 +49,8 @@ interface Shell {
   setDrawerWidth: (width: number) => void
   way: Schemas["OtherWay"] | null // another way being previewed on the calendar
   setWay: (way: Schemas["OtherWay"] | null) => void
+  ask: { text: string; purpose: "anything" | "rule" } | null // what Ask Claude opens with
+  askClaude: (text?: string, purpose?: "anything" | "rule") => void
 }
 
 const Ctx = createContext<Shell | null>(null)
@@ -76,6 +78,11 @@ export function ShellProvider({ today, children }: { today: string; children: Re
   const [agendaDay, setAgendaDay] = useState<string | null>(null)
   const [event, setEvent] = useState<EventDraft | null>(null)
   const [way, setWay] = useState<Schemas["OtherWay"] | null>(null)
+  const [ask, setAsk] = useState<{ text: string; purpose: "anything" | "rule" } | null>(null)
+  const askClaude = useCallback((text = "", purpose: "anything" | "rule" = "anything") => {
+    setAsk({ text, purpose })
+    setDialog("ask")
+  }, [])
   const [drawerWidth, setWidth] = useState(loadWidth)
   const setDrawerWidth = useCallback((width: number) => {
     const kept = Math.round(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width)))
@@ -87,8 +94,8 @@ export function ShellProvider({ today, children }: { today: string; children: Re
     }
   }, [])
   const value = useMemo(
-    () => ({ today, pop, setPop, selected, select, drawer, setDrawer, dialog, setDialog, place, setPlace, agendaDay, setAgendaDay, event, setEvent, drawerWidth, setDrawerWidth, way, setWay }),
-    [today, pop, selected, drawer, dialog, place, agendaDay, event, drawerWidth, setDrawerWidth, way],
+    () => ({ today, pop, setPop, selected, select, drawer, setDrawer, dialog, setDialog, place, setPlace, agendaDay, setAgendaDay, event, setEvent, drawerWidth, setDrawerWidth, way, setWay, ask, askClaude }),
+    [today, pop, selected, drawer, dialog, place, agendaDay, event, drawerWidth, setDrawerWidth, way, ask, askClaude],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
