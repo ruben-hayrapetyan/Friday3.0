@@ -143,6 +143,10 @@ struct FridayMenus: Commands {
             Button("Rules") { Page.shared.send(.go("/rules")) }.keyboardShortcut("7", modifiers: [.command, .option])
             Button("Friday Settings") { Page.shared.send(.go("/settings")) }.keyboardShortcut(",", modifiers: [.command, .option])
         }
+        CommandGroup(replacing: .help) {
+            Button("Friday Tour") { Page.shared.send(.tour) }
+            Button("Shortcuts") { Page.shared.send(.go("/settings/shortcuts")) }
+        }
         CommandMenu("Plan") {
             Button("Ask Claude…") { Page.shared.send(.askClaude) }.keyboardShortcut("j")
             Button("Other Ways…") { Page.shared.send(.otherWays) }

@@ -59,7 +59,7 @@ function Week({ week }: { week: Full }) {
   const range = `${Number(week.start.slice(8, 10))}–${Number(week.end.slice(8, 10))} ${MONTHS[Number(week.end.slice(5, 7)) - 1]}`
   return (
     <div className="fr-panel" style={{ overflowY: "auto" }}>
-      <div style={{ maxWidth: 1040, padding: "32px 40px 150px", display: "flex", flexDirection: "column", gap: 34 }}>
+      <div className="fr-gutter" style={{ maxWidth: 1040, padding: "32px 40px 150px", display: "flex", flexDirection: "column", gap: 34 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <H size={36}>Week of {range}</H>
           <span style={{ fontSize: 15, color: "var(--color-neutral-300)", textWrap: "pretty", maxWidth: 640 }}>
@@ -89,7 +89,7 @@ function Week({ week }: { week: Full }) {
           })}
           {!week.areas.length && <span className="fr-kicker">Nothing planned or recorded yet this week.</span>}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.3fr)", gap: 40, alignItems: "start" }}>
+        <div className="fr-stack" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.3fr)", gap: 40, alignItems: "start" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <H size={18} style={{ paddingBottom: 8 }}>
               Finished
@@ -140,7 +140,7 @@ function Week({ week }: { week: Full }) {
             {!week.coming.length && <span className="fr-kicker">Nothing due or fixed next week yet.</span>}
           </div>
         </div>
-        <div className="fr-row" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 40, alignItems: "start", paddingTop: 8 }}>
+        <div className="fr-row fr-stack" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 40, alignItems: "start", paddingTop: 8 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 22 }}>
             <H size={18}>How did the week feel?</H>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0,1fr))", gap: 6 }}>

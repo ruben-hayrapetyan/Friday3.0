@@ -43,7 +43,7 @@ export function ShovePop() {
     { label: "All day", sub: "The whole day", range: `day ${day}` },
   ]
   return (
-    <div className="fr-float" style={{ position: "absolute", right: 20, top: 56, width: 340, maxHeight: "calc(100% - 72px)", overflowY: "auto", zIndex: 10, padding: 12, display: "flex", flexDirection: "column", gap: 2 }}>
+    <div className="fr-float" style={{ position: "absolute", right: 12, top: 56, width: "min(340px, calc(100vw - 24px))", maxHeight: "calc(100% - 72px)", overflowY: "auto", zIndex: 10, padding: 12, display: "flex", flexDirection: "column", gap: 2 }}>
       <div style={{ fontWeight: 500, padding: "2px 6px" }}>Shove: take time back</div>
       <div style={{ fontSize: 12, color: "var(--color-neutral-400)", padding: "0 6px 6px" }}>Friday moves work out of it, or tells you what would go late.</div>
       {mustDo ? (

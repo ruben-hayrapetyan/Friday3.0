@@ -16,8 +16,8 @@ export interface Look {
   dockStyle: "Bar" | "Minimal"
   hours: "Waking" | "All day" // the day and week grid: wake to bedtime with sleep bands, or all 24 hours
   deadlines: "Chips" | "Lanes" // a day's dues as chips in its header, or as a to-do lane down its column
-  hidden: string[] // calendars hidden by their title-row buttons (COMBINED.md 19)
-  hideFiltered: boolean // the categories' filter hides what it matches (office hours)
+  showing: string[] // calendars with title-row buttons that you switched on; off until you do (COMBINED.md 19)
+  showFiltered: boolean // what the categories' filter matches (office hours), shown; off until you switch it on
 }
 
 export const DEFAULT_LOOK: Look = {
@@ -31,8 +31,8 @@ export const DEFAULT_LOOK: Look = {
   dockStyle: "Bar",
   hours: "Waking",
   deadlines: "Chips",
-  hidden: [],
-  hideFiltered: false,
+  showing: [],
+  showFiltered: false,
 }
 
 const KEY = "friday-look-v8"

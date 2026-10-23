@@ -35,7 +35,7 @@ export function PacePop() {
   const shown = name ?? paces.now_label
   const changes = preview.changes
   return (
-    <div className="fr-float" style={{ position: "absolute", right: 20, top: 56, width: 360, zIndex: 10, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="fr-float" style={{ position: "absolute", right: 12, top: 56, width: "min(360px, calc(100vw - 24px))", zIndex: 10, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
       <div>
         <div className="fr-h" style={{ fontSize: 22 }}>
           Pace

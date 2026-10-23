@@ -1,9 +1,10 @@
 // The sidebar's agenda (personal's, COMBINED.md 10): the chosen day's events, planned work and deadlines in one
 // timeline by the clock, with today's red line between what's done and what's to come.
 
+import { useShownPlan } from "@/plan/shown"
 import type { Block, Item, Schemas } from "@/api/client"
 import { useClock } from "@/hooks/useClock"
-import { useCalendar, usePlan } from "@/hooks/queries"
+import { useCalendar } from "@/hooks/queries"
 import { clock, weekday } from "@/lib/format"
 import { addDays, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
@@ -26,7 +27,7 @@ export function DayAgenda() {
   const { color } = useLook()
   const day = agendaDay ?? today
   const calendar = useCalendar(day, 1).data
-  const plan = usePlan(`${day}T00:00`, `${addDays(day, 1)}T00:00`).data
+  const plan = useShownPlan(`${day}T00:00`, `${addDays(day, 1)}T00:00`).data
   const now = useClock()
   const entries = agendaOf(day, plan, calendar)
   const nowAt = day === today ? entries.findIndex((e) => e.sort !== "allday" && toMin(e.end ?? e.start) > now) : -1

@@ -149,8 +149,56 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 0 20px 0 12px;
+  padding: 0 20px 0 var(--fr-head-inset, 12px);
   min-width: 0;
+}
+/* Any size (shell/layout.ts): in a tight window, pages keep narrow margins, two-column rows stack and notes beside
+   a page's title give way to it. Inline layouts are overridden here, so each page needs only a class. */
+[data-tight] .fr-gutter {
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
+[data-tight] .fr-stack {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 8px !important;
+}
+[data-tight] .fr-head-note {
+  display: none !important;
+}
+[data-tight] .fr-page-head {
+  gap: 8px;
+  padding-right: 12px;
+}
+[data-tight] .fr-title {
+  font-size: 20px;
+}
+[data-tight] .fr-todo-row {
+  grid-template-columns: 22px 3px minmax(0, 1fr) auto !important;
+}
+[data-tight] .fr-todo-row > :nth-child(4) {
+  display: none !important;
+}
+[data-tight] .fr-todo-split[data-open] {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+[data-tight] .fr-todo-split[data-open] > :first-child {
+  display: none !important;
+}
+[data-tight] .fr-rule-row {
+  grid-template-columns: 36px minmax(0, 1fr) 28px !important;
+}
+[data-tight] .fr-rule-row > :nth-child(3) {
+  grid-column: 2;
+  grid-row: 2;
+  align-items: flex-start !important;
+}
+[data-tight] .fr-rule-row > :nth-child(4) {
+  grid-column: 3;
+  grid-row: 1;
+}
+@keyframes fr-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 .fr-title {
   font-size: 24px;

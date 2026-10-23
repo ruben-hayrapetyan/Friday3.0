@@ -2,6 +2,7 @@
 // Advanced for the rest (learning, plugins, saved paces and any key). Changes apply right away; keys friday.toml
 // sets are read-only here and say so.
 
+import { useShell } from "@/shell/ShellContext"
 import { type ReactNode, useEffect } from "react"
 import { Navigate, NavLink, useNavigate, useParams } from "react-router"
 import { H, Icon } from "@/components/fr/controls"
@@ -44,6 +45,7 @@ function remembered(): string {
 
 export function SettingsPage() {
   const { section } = useParams()
+  const tight = useShell().layout.tight // a narrow window: the sections in a row above, scrolled sideways
   const navigate = useNavigate()
   const owned = useStatus().data?.config_keys ?? []
   const known = SECTIONS.find((s) => s.id === section)
@@ -60,15 +62,21 @@ export function SettingsPage() {
     <>
       <div className="fr-page-head">
         <span className="fr-h fr-title">Settings</span>
-        <span style={{ color: "var(--color-neutral-500)" }}>Changes apply right away</span>
+        <span className="fr-head-note" style={{ color: "var(--color-neutral-500)" }}>Changes apply right away</span>
         <div style={{ flex: 1 }} />
         <button className="btn btn-secondary" onClick={() => navigate("/")}>
           <Icon name="arrow-left" size={15} />
-          Back to plan
+          <span className="fr-head-note">Back to plan</span>
         </button>
       </div>
-      <div className="fr-panel" style={{ display: "grid", gridTemplateColumns: "208px minmax(0,1fr)", overflow: "hidden" }}>
-        <nav style={{ padding: "14px 10px", display: "flex", flexDirection: "column", gap: 1, boxShadow: "inset -1px 0 0 color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
+      <div className="fr-panel" style={{ display: "grid", ...(tight ? { gridTemplateRows: "auto minmax(0,1fr)" } : { gridTemplateColumns: "208px minmax(0,1fr)" }), overflow: "hidden" }}>
+        <nav
+          style={
+            tight
+              ? { padding: "10px 12px", display: "flex", gap: 4, overflowX: "auto", boxShadow: "inset 0 -1px 0 color-mix(in srgb, var(--color-text) 8%, transparent)" }
+              : { padding: "14px 10px", display: "flex", flexDirection: "column", gap: 1, boxShadow: "inset -1px 0 0 color-mix(in srgb, var(--color-text) 8%, transparent)" }
+          }
+        >
           {SECTIONS.map((s) => (
             <NavLink
               key={s.id}
@@ -83,6 +91,8 @@ export function SettingsPage() {
                 background: isActive ? "color-mix(in srgb, var(--color-accent) 14%, transparent)" : undefined,
                 color: isActive ? "var(--color-text)" : "var(--color-neutral-300)",
                 textDecoration: "none",
+                whiteSpace: "nowrap",
+                flex: "none",
               })}
             >
               {({ isActive }) => (
@@ -94,7 +104,7 @@ export function SettingsPage() {
             </NavLink>
           ))}
         </nav>
-        <div style={{ overflowY: "auto", minHeight: 0, padding: "30px 40px 80px" }}>
+        <div className="fr-gutter" style={{ overflowY: "auto", minHeight: 0, padding: "30px 40px 80px" }}>
           <div style={{ maxWidth: 780, display: "flex", flexDirection: "column" }}>
             {owned.length > 0 && (
               <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", marginBottom: 18, borderRadius: "var(--radius-md)", background: "var(--color-bg)", fontSize: 12, color: "var(--color-neutral-300)" }}>
@@ -125,7 +135,7 @@ export function SectionHead({ title, note, right }: { title: string; note: strin
 /** One setting: its name and a line on what it does, then the control. */
 export function Field({ name, note, children }: { name: string; note?: string; children: ReactNode }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "220px minmax(0,1fr)", gap: 28, padding: "18px 0", boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
+    <div className="fr-stack" style={{ display: "grid", gridTemplateColumns: "220px minmax(0,1fr)", gap: 28, padding: "18px 0", boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <span style={{ fontWeight: 500 }}>{name}</span>
         {note && <span style={{ fontSize: 12, color: "var(--color-neutral-500)", textWrap: "pretty" }}>{note}</span>}

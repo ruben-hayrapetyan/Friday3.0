@@ -10,6 +10,7 @@ describe("a request from the Mac app", () => {
     expect(readHost({ action: "go", argument: "/settings/calendars" })).toEqual({ action: "go", argument: "/settings/calendars" })
     expect(readHost({ action: "go", argument: "/" })).toEqual({ action: "go", argument: "/" })
     expect(readHost({ action: "drawer", argument: "open" })).toEqual({ action: "drawer", argument: "open" })
+    expect(readHost({ action: "tour" })).toEqual({ action: "tour" })
   })
 
   it("is ignored otherwise", () => {

@@ -56,7 +56,7 @@ export function BellPop() {
     return []
   }
   return (
-    <div className="fr-float" style={{ position: "absolute", right: 150, top: 56, width: 360, maxHeight: "calc(100% - 72px)", overflowY: "auto", zIndex: 10, padding: 8, display: "flex", flexDirection: "column" }}>
+    <div className="fr-float" style={{ position: "absolute", right: 12, top: 56, width: "min(360px, calc(100vw - 24px))", maxHeight: "calc(100% - 72px)", overflowY: "auto", zIndex: 10, padding: 8, display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", alignItems: "center", padding: "6px 8px 8px" }}>
         <span style={{ flex: 1, fontWeight: 500 }}>Notifications</span>
         <button className="fr-link" style={{ fontSize: 12 }} onClick={go(() => navigate("/settings/notifications"))}>

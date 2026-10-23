@@ -1,13 +1,15 @@
 // The Plan page (v22): the header (range, views, Shove, Pace, search, notifications, brief, to-do drawer) over the
 // week, day or month view (COMBINED.md 13: no 3-day view).
 
-import { useEffect, useState } from "react"
+import { useShownPlan } from "@/plan/shown"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
 import { useOffline } from "@/api/offline"
-import { Icon, Seg } from "@/components/fr/controls"
+import { Dropdown, MenuRow } from "@/components/fr/Dropdown"
+import { Icon, Seg, Switch } from "@/components/fr/controls"
 import { useKeys } from "@/hooks/useKeys"
 import { followServer } from "@/hooks/useClock"
-import { useCalendar, usePaces, usePlan, useSettings, useStatus } from "@/hooks/queries"
+import { useCalendar, usePaces, useSettings, useStatus } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
 import { pigment } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
@@ -34,11 +36,12 @@ const VIEWS = [
 ]
 
 export function PlanPage() {
-  const { today, drawer, event, drawerWidth, place, setPlace } = useShell()
-  const { view, first } = place
+  const { today, drawer, event, drawerWidth, place, setPlace, layout, drawerOver } = useShell()
+  const view: View = place.view === 7 && !layout.weekFits ? 1 : place.view // a week too narrow to read shows its day
+  const first = place.first
   const shown = first ?? (view === "month" ? monthStart(today) : today)
   const setView = (v: View) => setPlace({ view: v, first: v === "month" ? monthStart(shown) : first })
-  const setFirst = (f: string | null) => setPlace({ view, first: f })
+  const setFirst = (f: string | null) => setPlace({ view: place.view, first: f }) // keeps the week you chose, even while it shows a day
   const step = (by: number) => setFirst(view === "month" ? shiftMonth(shown, by) : addDays(shown, by * view))
   const nudge = useNudge()
   const block = !!useShell().selected?.key.startsWith("T") // only then do the arrows move it, not the page
@@ -56,7 +59,7 @@ export function PlanPage() {
   return (
     <>
       <Header view={view} first={shown} onView={pick} onStep={step} onToday={() => setFirst(null)} />
-      {view === "month" ? <MonthView first={shown} onDay={(d) => setPlace({ view: 1, first: d })} /> : <Days first={shown} view={view} drawer={drawer || !!event ? drawerWidth : 0} />}
+      {view === "month" ? <MonthView first={shown} onDay={(d) => setPlace({ view: 1, first: d })} /> : <Days first={shown} view={view} drawer={(drawer || !!event) && !drawerOver ? drawerWidth : 0} aside={layout.dayAside} />}
     </>
   )
 }
@@ -84,67 +87,61 @@ function useNudge(): (by: number) => void {
   }
 }
 
-function Days({ first, view, drawer }: { first: string; view: 1 | 7; drawer: number }) {
+function Days({ first, view, drawer, aside }: { first: string; view: 1 | 7; drawer: number; aside: boolean }) {
   const calendar = useCalendar(addDays(first, -1), view + 1).data
-  const plan = usePlan(`${first}T00:00`, `${addDays(first, view + 1)}T12:00`).data
+  const plan = useShownPlan(`${first}T00:00`, `${addDays(first, view + 1)}T12:00`).data
   useEffect(() => {
     if (calendar) followServer(calendar.now)
   }, [calendar])
   if (!calendar || !plan) return <div className="fr-panel" />
-  const margin = drawer ? drawer + 24 : view === 1 ? 364 : 12
+  const margin = drawer ? drawer + 24 : view === 1 && aside ? 364 : 12
   return (
     <>
       <Grid dates={dayRange(first, view)} calendar={calendar} plan={plan} marginRight={margin} />
-      {view === 1 && !drawer && <DayAside date={first} calendar={calendar} plan={plan} />}
+      {view === 1 && !drawer && aside && <DayAside date={first} calendar={calendar} plan={plan} />}
     </>
   )
 }
 
 function Header(props: { view: View; first: string; onView: (v: View) => void; onStep: (by: number) => void; onToday: () => void }) {
   const { view, first, onView, onStep, onToday } = props
-  const { today, pop, setPop, setDialog, drawer, setDrawer, askClaude } = useShell()
-  const paces = usePaces().data
+  const { today, pop, setPop, setDialog, drawer, setDrawer, layout } = useShell()
   const days = view === "month" ? 1 : view
+  const views = layout.weekFits ? VIEWS : VIEWS.filter((v) => v.value !== 7)
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 20px 0 12px", minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flex: "none", whiteSpace: "nowrap" }}>
-        <span className="fr-h" style={{ fontSize: 26, lineHeight: 1 }}>
-          {rangeTitle(first, view)}
+    <div style={{ display: "flex", alignItems: "center", gap: layout.tight ? 4 : 8, padding: "0 12px 0 var(--fr-head-inset)", minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 48, flex: "0 1 auto", overflow: "hidden" }}>
+        <span className="fr-h" style={{ fontSize: layout.tight ? 18 : 24, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {rangeTitle(first, view, layout.main < 900)}
         </span>
-        <button className="fr-plain fr-hover-text" style={{ color: "var(--color-neutral-500)" }} onClick={onToday} title="Back to today (T)">
-          {subTitle(first, days, today, view)}
-        </button>
+        {!layout.tight && (
+          <button className="fr-plain fr-hover-text" style={{ color: "var(--color-neutral-500)", whiteSpace: "nowrap" }} onClick={onToday} title="Back to today">
+            {subTitle(first, days, today, view)}
+          </button>
+        )}
       </div>
-      <div style={{ display: "flex", gap: 2, marginLeft: 6, flex: "none" }}>
-        <button className="btn btn-icon btn-ghost" onClick={() => onStep(-1)} aria-label="Previous" style={{ width: 28, height: 28, color: "var(--color-neutral-300)" }}>
+      <div style={{ display: "flex", gap: 0, flex: "none" }}>
+        <button className="btn btn-icon btn-ghost" onClick={() => onStep(-1)} aria-label="Previous" style={{ width: 26, height: 28, color: "var(--color-neutral-300)" }}>
           <Icon name="caret-left" />
         </button>
-        <button className="btn btn-icon btn-ghost" onClick={() => onStep(1)} aria-label="Next" style={{ width: 28, height: 28, color: "var(--color-neutral-300)" }}>
+        <button className="btn btn-icon btn-ghost" onClick={() => onStep(1)} aria-label="Next" style={{ width: 26, height: 28, color: "var(--color-neutral-300)" }}>
           <Icon name="caret-right" />
         </button>
       </div>
-      <Pills first={first} days={view === "month" ? 7 : view} />
+      <Attention first={first} days={view === "month" ? 7 : view} />
       <div style={{ flex: 1, minWidth: 0 }} />
-      <CalendarButtons />
-      <Seg options={VIEWS} value={view} onPick={onView} label="View" />
-      <IconButton icon="magnifying-glass" label="Search (⌘K)" onClick={() => setDialog("search")} />
-      <IconButton icon="bell" label="Notifications" onClick={() => setPop(pop === "bell" ? null : "bell")} />
-      <IconButton icon="sun-horizon" label="Morning brief" onClick={() => setDialog("brief")} />
-      <IconButton icon="sparkle" label="Ask Claude" onClick={() => askClaude()} />
-      <button className="btn btn-secondary" onClick={() => setDialog("ways")} title="Two more ways to plan the same work" style={{ flex: "none", whiteSpace: "nowrap" }}>
-        <Icon name="shuffle" size={15} />
-        Other ways
-      </button>
-      <button className="btn btn-secondary" onClick={() => setPop(pop === "shove" ? null : "shove")} style={{ flex: "none", whiteSpace: "nowrap" }}>
-        <Icon name="hand-palm" size={15} />
-        Shove
-      </button>
-      <button className="btn btn-primary" onClick={() => setPop(pop === "pace" ? null : "pace")} style={{ flex: "none", whiteSpace: "nowrap" }}>
-        <Icon name="gauge" size={15} />
-        {paces ? paceLabel(paces) : "Pace"}
-      </button>
+      {!layout.tight && (
+        <span data-tour="views" style={{ flex: "none", display: "flex" }}>
+          <Seg options={views} value={view} onPick={onView} label="View" />
+        </span>
+      )}
+      <ShowMenu />
+      <PlanMenu views={layout.tight ? { options: views, value: view, onPick: onView, onToday } : undefined} />
+      <IconButton tour="search" icon="magnifying-glass" label="Search (⌘K)" onClick={() => setDialog("search")} />
+      {!layout.tight && <IconButton icon="bell" label="Notifications" onClick={() => setPop(pop === "bell" ? null : "bell")} />}
       <button
         className="btn btn-icon btn-secondary"
+        data-tour="drawer"
         onClick={() => setDrawer(!drawer)}
         aria-label="To-do list"
         title="To-do list (T)"
@@ -156,103 +153,183 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
   )
 }
 
-function IconButton({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
+function IconButton({ icon, label, onClick, tour }: { icon: string; label: string; onClick: () => void; tour?: string }) {
   return (
-    <button className="btn btn-icon btn-ghost" onClick={onClick} aria-label={label} title={label} style={{ flex: "none", color: "var(--color-neutral-300)" }}>
+    <button className="btn btn-icon btn-ghost" data-tour={tour} onClick={onClick} aria-label={label} title={label} style={{ flex: "none", color: "var(--color-neutral-300)" }}>
       <Icon name={icon} size={17} />
     </button>
   )
 }
 
-/** personal's title-row buttons (COMBINED.md 19): each calendar you gave a button shows or hides it, and the filter
- * shows or hides what it matches (office hours). They change what's drawn, not what's planned. */
-function CalendarButtons() {
+/** Everything that changes the plan, in one menu: Ask Claude, other ways, shove, pace, the brief. */
+function PlanMenu({ views }: { views?: { options: typeof VIEWS; value: View; onPick: (v: View) => void; onToday: () => void } }) {
+  const { pop, setPop, setDialog, askClaude, layout } = useShell()
+  const paces = usePaces().data
+  return (
+    <Dropdown tour="plan-menu" icon="sparkle" label="Plan">
+      {(close) => (
+        <>
+          {views && ( // in a narrow window the view and today live here, so the title row keeps the date
+            <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 8px 8px" }}>
+              <Seg options={views.options} value={views.value} onPick={(v) => (close(), views.onPick(v))} label="View" />
+              <button className="btn btn-ghost" onClick={() => (close(), views.onToday())} style={{ fontSize: 12 }}>
+                Today
+              </button>
+            </div>
+          )}
+          <MenuRow icon="sparkle" label="Ask Claude" note="Say what you want changed" onClick={() => (close(), askClaude())} />
+          <MenuRow icon="shuffle" label="Other ways" note="Two more ways to plan the same work" onClick={() => (close(), setDialog("ways"))} />
+          <MenuRow icon="hand-palm" label="Shove" note="Take back a stretch of time" onClick={() => (close(), setPop(pop === "shove" ? null : "shove"))} />
+          <MenuRow icon="gauge" label="Pace" note={paces ? paceLabel(paces) : "Push harder or ease off"} onClick={() => (close(), setPop(pop === "pace" ? null : "pace"))} />
+          <MenuRow icon="sun-horizon" label="Morning brief" note="Today at a glance" onClick={() => (close(), setDialog("brief"))} />
+          {layout.tight && <MenuRow icon="bell" label="Notifications" onClick={() => (close(), setPop("bell"))} />}
+        </>
+      )}
+    </Dropdown>
+  )
+}
+
+/** personal's title-row toggles (COMBINED.md 19), in one menu: the calendars you gave a button and what the filter
+ * matches (office hours) stay off the calendar until switched on here. They change what's drawn, not what's planned. */
+function ShowMenu() {
   const settings = useSettings().data as Record<string, unknown> | undefined
   const { look, light, setLook } = useLook()
   const toolbar = ((settings?.calendar_look as { toolbar?: string[] } | undefined)?.toolbar ?? []).slice(0, 9)
   const colors = (settings?.calendar_look as { colors?: Record<string, string> } | undefined)?.colors ?? {}
   const filter = (settings?.categories as { filter?: { label: string } | null } | undefined)?.filter
+  const flip = (name: string) => setLook({ showing: look.showing.includes(name) ? look.showing.filter((h) => h !== name) : [...look.showing, name] })
   useEffect(() => {
     // ⌥⌘1–9 show or hide the calendars with buttons, in order, as in personal.
     const press = (e: KeyboardEvent) => {
       if (!(e.altKey && (e.metaKey || e.ctrlKey))) return
-      const n = Number(e.code.replace("Digit", ""))
-      const name = toolbar[n - 1]
+      const name = toolbar[Number(e.code.replace("Digit", "")) - 1]
       if (!name) return
       e.preventDefault()
-      setLook({ hidden: look.hidden.includes(name) ? look.hidden.filter((h) => h !== name) : [...look.hidden, name] })
+      flip(name)
     }
     window.addEventListener("keydown", press)
     return () => window.removeEventListener("keydown", press)
-  }, [toolbar, look.hidden, setLook])
+  })
   if (!toolbar.length && !filter) return null
+  const on = toolbar.filter((t) => look.showing.includes(t)).length + (filter && look.showFiltered ? 1 : 0)
   return (
-    <div style={{ display: "flex", gap: 4, flex: "none" }}>
-      {filter && (
-        <button
-          className="fr-chip"
-          aria-pressed={!look.hideFiltered}
-          onClick={() => setLook({ hideFiltered: !look.hideFiltered })}
-          title={`${look.hideFiltered ? "Show" : "Hide"} ${filter.label}`}
-        >
-          <i className={`ph ph-${look.hideFiltered ? "eye-slash" : "eye"}`} />
-          {filter.label}
-        </button>
+    <Dropdown tour="show" icon={on ? "eye" : "eye-slash"} label="Show">
+      {() => (
+        <>
+          <span className="fr-kicker" style={{ padding: "6px 10px 4px" }}>
+            Off your calendar until you switch them on. They never change the plan.
+          </span>
+          {filter && (
+            <label className="fr-hover" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: "var(--radius-md)" }}>
+              <Switch on={look.showFiltered} onToggle={() => setLook({ showFiltered: !look.showFiltered })} label={`Show ${filter.label}`} />
+              {filter.label}
+            </label>
+          )}
+          {toolbar.map((name, i) => (
+            <label key={name} className="fr-hover" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: "var(--radius-md)" }}>
+              <Switch on={look.showing.includes(name)} onToggle={() => flip(name)} label={`Show ${name}`} />
+              <span className="fr-swatch" style={{ borderRadius: "50%", background: pigment(colors[name], light) ?? "var(--color-neutral-500)" }} />
+              <span style={{ flex: 1 }}>{name}</span>
+              <span className="fr-kicker">⌥⌘{i + 1}</span>
+            </label>
+          ))}
+        </>
       )}
-      {toolbar.map((name, i) => {
-        const hidden = look.hidden.includes(name)
-        return (
-          <button
-            key={name}
-            className="fr-chip"
-            aria-pressed={!hidden}
-            onClick={() => setLook({ hidden: hidden ? look.hidden.filter((h) => h !== name) : [...look.hidden, name] })}
-            title={`${hidden ? "Show" : "Hide"} ${name} (⌥⌘${i + 1})`}
-            style={{ opacity: hidden ? 0.55 : 1 }}
-          >
-            <span className="fr-swatch" style={{ borderRadius: "50%", background: pigment(colors[name], light) ?? "var(--color-neutral-500)" }} />
-            {name}
-          </button>
-        )
-      })}
-    </div>
+    </Dropdown>
   )
 }
 
-/** Events Friday isn't planning around this week, by why, each a chip that counts them after all (COMBINED.md 28:
- * personal's "Planning around"). */
-function NotCounted({ first, days }: { first: string; days: number }) {
-  const plan = usePlan(`${first}T00:00`, `${addDays(first, days)}T00:00`).data
+interface Note {
+  tone: "now" | "mark" | "plain"
+  icon: string
+  text: string
+  action?: { label: string; run: () => void }
+}
+
+/** What needs you, in one pill (late work, a day over its limit, a lock that can't hold, overlapping events, the
+ * server's problems, events not counted as busy), opening to the whole list with what to do about each. */
+function Attention({ first, days }: { first: string; days: number }) {
+  const { setDialog, layout } = useShell()
+  const navigate = useNavigate()
+  const offline = useOffline()
+  const status = useStatus().data
+  const calendar = useCalendar(first, days).data
+  const plan = useShownPlan(`${first}T00:00`, `${addDays(first, days)}T00:00`).data
   const settings = useSettings().data as Record<string, unknown> | undefined
   const save = useCommand("settings_set", { label: () => "Planning around it now" })
-  const navigate = useNavigate()
-  const [open, setOpen] = useState(false)
-  const out = (plan?.fixed ?? []).filter((f) => f.left_out)
-  if (!out.length || !settings) return null
-  const busy = settings.busy as { calendars: Record<string, boolean> } & Record<string, unknown>
-  const by = new Map<string, number>()
-  for (const f of out) by.set(f.left_out as string, (by.get(f.left_out as string) ?? 0) + 1)
-  const count = (reason: string) => {
-    const calendars = Object.fromEntries(out.filter((f) => f.left_out === "calendar" && f.calendar).map((f) => [f.calendar as string, true]))
-    const flag = { reminder: "count_reminders", free: "count_free", filtered: "count_filtered" }[reason]
-    save({ key: "busy", value: flag ? { ...busy, [flag]: true } : { ...busy, calendars: { ...busy.calendars, ...calendars } } })
+  const solving = !!status && status.plan_generation !== null && status.plan_generation < status.generation
+  const notes: Note[] = []
+  if (offline) notes.push({ tone: "plain", icon: "wifi-slash", text: "Offline: showing the last plan. Changes wait until you're back." })
+  for (const p of status?.problems ?? []) notes.push({ tone: "now", icon: "warning-circle", text: p })
+  const late = Object.entries(status?.late ?? {})
+  if (late.length) {
+    const text = late.length === 1 ? `${late[0][0]} will be late` : `${late.length} things will be late`
+    notes.push({ tone: "now", icon: "warning", text, action: { label: "See options", run: () => setDialog("triage") } })
   }
+  const over = calendar?.days.map((d) => ({ date: d.date, by: (plan?.day_hours[d.date] ?? 0) - d.cap_hours })).find((d) => d.by > 0.05)
+  if (over) notes.push({ tone: "mark", icon: "warning", text: `${FULL_DAY[weekday(over.date)]} is ${over.by.toFixed(1)} h over`, action: { label: "See options", run: () => setDialog("triage") } })
+  if (status?.conflicts?.length) notes.push({ tone: "mark", icon: "lock-simple", text: "A lock can't hold", action: { label: "Decide", run: () => setDialog("conflicts") } })
+  const overlaps = status?.notices ?? []
+  if (overlaps.length) notes.push({ tone: "plain", icon: "info", text: overlaps.length === 1 ? overlaps[0] : `${overlaps.length} notes about this plan, like: ${overlaps[0]}` })
+  const out = (plan?.fixed ?? []).filter((f) => f.left_out)
+  if (out.length && settings) {
+    const busy = settings.busy as { calendars: Record<string, boolean> } & Record<string, unknown>
+    const by = new Map<string, number>()
+    for (const f of out) by.set(f.left_out as string, (by.get(f.left_out as string) ?? 0) + 1)
+    for (const [reason, n] of by) {
+      const calendars = Object.fromEntries(out.filter((f) => f.left_out === "calendar" && f.calendar).map((f) => [f.calendar as string, true]))
+      const flag = { reminder: "count_reminders", free: "count_free", filtered: "count_filtered" }[reason]
+      const count = () => save({ key: "busy", value: flag ? { ...busy, [flag]: true } : { ...busy, calendars: { ...busy.calendars, ...calendars } } })
+      notes.push({ tone: "plain", icon: "calendar-x", text: `${n} not counted as busy: ${LEFT_OUT[reason] ?? reason}`, action: { label: "Count them", run: count } })
+    }
+  }
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const away = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false)
+    document.addEventListener("mousedown", away)
+    return () => document.removeEventListener("mousedown", away)
+  }, [open])
+  const urgent = notes.filter((n) => n.tone !== "plain")
+  const lead = urgent[0] ?? notes[0]
+  if (!lead) return solving ? <Replanning /> : null
+  const color = lead.tone === "now" ? "var(--fr-due)" : lead.tone === "mark" ? "var(--fr-warn)" : "var(--color-neutral-300)"
+  const bg = lead.tone === "now" ? "color-mix(in srgb, var(--fr-now) 14%, transparent)" : lead.tone === "mark" ? "color-mix(in srgb, var(--fr-mark) 16%, transparent)" : "color-mix(in srgb, var(--color-text) 6%, transparent)"
   return (
-    <span style={{ position: "relative" }}>
-      <button className="fr-pill" onClick={() => setOpen(!open)} title="Events on your calendar that Friday plans through" style={{ background: "color-mix(in srgb, var(--color-text) 6%, transparent)", color: "var(--color-neutral-300)", cursor: "pointer" }}>
-        <Icon name="calendar-x" size={13} />
-        {out.length} not counted as busy
+    <span ref={box} style={{ position: "relative", minWidth: 0, flex: "0 1 auto", display: "flex", alignItems: "center", gap: 6 }}>
+      <button className="fr-pill" data-tour="attention" onClick={() => setOpen(!open)} aria-expanded={open} title={notes.map((n) => n.text).join("\n")} style={{ background: bg, color, cursor: "pointer", minWidth: 0, maxWidth: "100%" }}>
+        <Icon name={lead.icon} size={13} />
+        {!layout.tight && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.text}</span>}
+        {notes.length > 1 && <span className="tnum" style={{ color: "var(--color-neutral-400)", flex: "none" }}>{layout.tight ? notes.length : `+${notes.length - 1}`}</span>}
       </button>
+      {solving && <Replanning />}
       {open && (
-        <div className="fr-float" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, width: 300, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          <span className="fr-kicker">Friday plans through these. Click one to plan around it after all.</span>
-          {[...by.entries()].map(([reason, n]) => (
-            <button key={reason} className="fr-chip" onClick={() => (count(reason), setOpen(false))} style={{ justifyContent: "space-between" }}>
-              <span>{LEFT_OUT[reason] ?? reason}</span>
-              <span className="tnum">{n}</span>
-            </button>
+        <div className="fr-float" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, width: "min(380px, calc(100vw - 24px))", maxHeight: "60vh", overflowY: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 2 }}>
+          {notes.map((n, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "18px minmax(0,1fr) auto", gap: 10, alignItems: "start", padding: "8px 8px" }}>
+              <Icon name={n.icon} size={15} style={{ color: n.tone === "now" ? "var(--fr-due)" : n.tone === "mark" ? "var(--fr-warn)" : "var(--color-neutral-400)", marginTop: 2 }} />
+              <span style={{ textWrap: "pretty" }}>{n.text}</span>
+              {n.action && (
+                <button className="btn btn-secondary" onClick={() => (setOpen(false), n.action?.run())} style={{ fontSize: 12, whiteSpace: "nowrap" }}>
+                  {n.action.label}
+                </button>
+              )}
+            </div>
           ))}
-          <button className="fr-link" onClick={() => navigate("/settings/calendars")} style={{ alignSelf: "flex-start", fontSize: 12 }}>
+          {overlaps.length > 1 && (
+            <details style={{ padding: "0 8px 6px 36px" }}>
+              <summary className="fr-kicker" style={{ cursor: "pointer" }}>
+                All {overlaps.length} notes
+              </summary>
+              <ul style={{ margin: "6px 0 0", paddingLeft: 16, fontSize: 12, color: "var(--color-neutral-400)" }}>
+                {overlaps.map((o) => (
+                  <li key={o}>{o}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+          <button className="fr-link" onClick={() => (setOpen(false), navigate("/settings/calendars"))} style={{ alignSelf: "flex-start", fontSize: 12, padding: "4px 8px 6px 36px" }}>
             Calendars settings
           </button>
         </div>
@@ -261,69 +338,8 @@ function NotCounted({ first, days }: { first: string; days: number }) {
   )
 }
 
-/** Offline, a day that's over its limit, and a plan being worked out. */
-function Pills({ first, days }: { first: string; days: number }) {
-  const { setDialog } = useShell()
-  const offline = useOffline()
-  const status = useStatus().data
-  const calendar = useCalendar(first, days).data
-  const plan = usePlan(`${first}T00:00`, `${addDays(first, days)}T00:00`).data
-  const solving = !!status && status.plan_generation !== null && status.plan_generation < status.generation
-  const late = Object.entries(status?.late ?? {})
-  const over = calendar?.days
-    .map((d) => ({ date: d.date, by: (plan?.day_hours[d.date] ?? 0) - d.cap_hours }))
-    .find((d) => d.by > 0.05)
-  return (
-    <>
-      {offline && (
-        <div className="fr-pill" title="Showing the last plan Friday sent. Changes wait until you're back online." style={{ background: "color-mix(in srgb, var(--color-text) 8%, transparent)", color: "var(--color-neutral-200)" }}>
-          <Icon name="wifi-slash" size={13} />
-          Offline
-        </div>
-      )}
-      {over && (
-        <button className="fr-pill" onClick={() => setDialog("triage")} style={{ background: "color-mix(in srgb, var(--fr-mark) 16%, transparent)", color: "var(--fr-warn)", cursor: "pointer" }}>
-          <Icon name="warning" size={13} />
-          {FULL_DAY[weekday(over.date)]} is {over.by.toFixed(1)} h over
-          <span style={{ color: "var(--color-text)" }}>See options</span>
-        </button>
-      )}
-      {late.length > 0 && (
-        <button className="fr-pill" onClick={() => setDialog("triage")} title={late.map(([t, h]) => `${t}: ${h.toFixed(1)} h late`).join("\n")} style={{ background: "color-mix(in srgb, var(--fr-now) 14%, transparent)", color: "var(--fr-due)", cursor: "pointer" }}>
-          <Icon name="warning" size={13} />
-          {late.length === 1 ? `${late[0][0]} will be late` : `${late.length} things will be late`}
-          <span style={{ color: "var(--color-text)" }}>See options</span>
-        </button>
-      )}
-      {(status?.notices ?? []).slice(0, 1).map((n) => (
-        <div key={n} className="fr-pill" title={(status?.notices ?? []).join("\n")} style={{ background: "color-mix(in srgb, var(--fr-mark) 16%, transparent)", color: "var(--fr-warn)", maxWidth: 360, overflow: "hidden" }}>
-          <Icon name="info" size={13} />
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n}</span>
-          {(status?.notices ?? []).length > 1 && <span style={{ color: "var(--color-neutral-400)" }}>+{(status?.notices ?? []).length - 1}</span>}
-        </div>
-      ))}
-      {(status?.problems ?? []).slice(0, 1).map((p) => (
-        <div key={p} className="fr-pill" title={(status?.problems ?? []).join("\n")} style={{ background: "color-mix(in srgb, var(--fr-now) 14%, transparent)", color: "var(--fr-due)", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis" }}>
-          <Icon name="warning-circle" size={13} />
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p}</span>
-        </div>
-      ))}
-      {!!status?.conflicts?.length && (
-        <button className="fr-pill" onClick={() => setDialog("conflicts")} style={{ background: "color-mix(in srgb, var(--fr-mark) 16%, transparent)", color: "var(--fr-warn)", cursor: "pointer" }}>
-          <Icon name="lock-simple" size={13} />
-          A lock can't hold
-          <span style={{ color: "var(--color-text)" }}>Decide</span>
-        </button>
-      )}
-      <NotCounted first={first} days={days} />
-      {solving && (
-        <div className="fr-pill" style={{ background: "color-mix(in srgb, var(--color-accent) 14%, transparent)", color: "var(--color-accent-200)" }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--color-accent)", boxShadow: "0 0 calc(10px * var(--g-accent)) calc(2px * var(--g-accent)) var(--color-accent)" }} />
-          Replanning…
-        </div>
-      )}
-    </>
-  )
+function Replanning() {
+  return <span title="Replanning…" style={{ width: 7, height: 7, flex: "none", borderRadius: "50%", background: "var(--color-accent)", animation: "fr-pulse 1.2s ease-in-out infinite" }} />
 }
 
 const FULL_DAY: Record<string, string> = { Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday", Sun: "Sunday" }
@@ -332,11 +348,11 @@ function paceLabel(p: { now_label: string; period_end: string | null }): string 
   return p.period_end ? `${p.now_label} · to ${weekday(p.period_end.slice(0, 10))}` : p.now_label
 }
 
-function rangeTitle(first: string, view: View): string {
-  const month = (d: string) => MONTHS[Number(d.slice(5, 7)) - 1]
+function rangeTitle(first: string, view: View, short = false): string {
+  const month = (d: string) => (short ? MONTHS[Number(d.slice(5, 7)) - 1].slice(0, 3) : MONTHS[Number(d.slice(5, 7)) - 1])
   const day = (d: string) => Number(d.slice(8, 10))
   if (view === "month") return `${month(first)} ${first.slice(0, 4)}`
-  if (view === 1) return `${FULL_DAY[weekday(first)]} ${day(first)} ${month(first)}`
+  if (view === 1) return `${short ? weekday(first) : FULL_DAY[weekday(first)]} ${day(first)} ${month(first)}`
   const last = addDays(first, view - 1)
   return month(first) === month(last) ? `${day(first)} – ${day(last)} ${month(last)}` : `${day(first)} ${month(first).slice(0, 3)} – ${day(last)} ${month(last)}`
 }

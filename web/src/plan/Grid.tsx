@@ -53,14 +53,12 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const timed = plan.fixed.filter((f): f is Item & { start: string; end: string } => !!f.start && !!f.end)
   // A birthday or holiday spans whole days: it goes with the day's dues at the top, not as a column-high block.
   const allDay = timed.filter((f) => f.start.endsWith("T00:00") && f.end.endsWith("T00:00") && f.end > f.start)
-  // Calendars hidden by their title-row buttons, and what the filter hides when it's on (COMBINED.md 19).
-  const shown = (f: Item) => !(f.calendar && look.hidden.includes(f.calendar)) && !(look.hideFiltered && f.filtered)
-  const fixed = timed.filter((f) => !allDay.includes(f) && shown(f))
+  const fixed = timed.filter((f) => !allDay.includes(f)) // what you toggled off is already gone (plan/shown.ts)
   // The same time of day in every column: strong on today, faint on the others.
   const nowAt = now - toMin(calendar.today) - axis.startMin
   const cols = `52px repeat(${dates.length}, minmax(0,1fr))`
   return (
-    <div ref={panel} className="fr-panel" style={{ overflowY: "auto", position: "relative", marginRight }}>
+    <div ref={panel} className="fr-panel" data-tour="calendar" style={{ overflowY: "auto", position: "relative", marginRight }}>
       <div ref={head} style={{ position: "sticky", top: 0, zIndex: 4, display: "grid", gridTemplateColumns: cols, background: "var(--color-surface)" }}>
         <div />
         {dates.map((date) => (

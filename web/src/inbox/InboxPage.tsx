@@ -48,6 +48,9 @@ export function InboxPage() {
   const shown: Suggestion[] = [...pending, ...resolved.map((r) => r.s).filter((s) => !pending.some((p) => p.id === s.id))]
   const current = shown.find((s) => s.id === selected) ?? pending[0] ?? null
   const sources = [...new Set(shown.map((s) => s.source))]
+  const tight = useShell().layout.tight // a narrow window: the list, then one suggestion with a way back
+  const showList = !tight || selected === null
+  const showDetail = !tight || selected !== null
   return (
     <>
       <div className="fr-page-head">
@@ -56,12 +59,13 @@ export function InboxPage() {
           {pending.length ? `${pending.length} to check from ${new Set(pending.map((s) => s.source)).size} ${new Set(pending.map((s) => s.source)).size === 1 ? "source" : "sources"}` : "All clear"}
         </span>
         <div style={{ flex: 1 }} />
-        <span style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12, color: "var(--color-neutral-500)" }}>
+        <span className="fr-head-note" style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12, color: "var(--color-neutral-500)" }}>
           <Icon name="shield-check" size={14} />
           Nothing here reaches your plan until you accept it
         </span>
       </div>
-      <div className="fr-panel" style={{ display: "grid", gridTemplateColumns: "300px minmax(0,1fr)", overflow: "hidden" }}>
+      <div className="fr-panel" style={{ display: "grid", gridTemplateColumns: tight ? "minmax(0,1fr)" : "300px minmax(0,1fr)", overflow: "hidden" }}>
+        {showList && (
         <div style={{ overflowY: "auto", minHeight: 0, padding: "12px 10px 40px", boxShadow: "inset -1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 14 }}>
           {!!inbox?.repeats && (
             <NavLink to="/settings/repeating" className="fr-well fr-hover" style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", color: "var(--color-text)", textDecoration: "none" }}>
@@ -77,6 +81,14 @@ export function InboxPage() {
           ))}
           {!sources.length && <span style={{ padding: 8, color: "var(--color-neutral-500)" }}>Nothing yet.</span>}
         </div>
+        )}
+        {showDetail && (
+        <div style={{ display: "grid", gridTemplateRows: tight ? "auto minmax(0,1fr)" : "minmax(0,1fr)", minHeight: 0, minWidth: 0 }}>
+        {tight && (
+          <button className="fr-plain fr-link" onClick={() => setSelected(null)} style={{ justifySelf: "start", padding: "12px 16px 0", fontSize: 13 }}>
+            ← All {pending.length}
+          </button>
+        )}
         {current ? (
           <Detail
             key={current.id}
@@ -96,6 +108,8 @@ export function InboxPage() {
             <H size={26}>Inbox is clear</H>
             <span style={{ color: "var(--color-neutral-400)" }}>New items from your email, course feeds and uploaded syllabi land here for you to check first.</span>
           </div>
+        )}
+        </div>
         )}
       </div>
     </>
@@ -246,7 +260,7 @@ function Detail({ s, all, resolved, onResolved, onReopen }: DetailProps) {
   const shown = FIELDS.filter(([k]) => fields[k] != null || (k === "duration_min" && work) || (editing && ["preset", "area", "due", "duration_min"].includes(k)))
   const actionLabel = s.command === "drop" ? "Drop it" : dup || s.command === "edit" ? "Update it" : "Accept"
   return (
-    <div style={{ overflowY: "auto", minHeight: 0, padding: "24px 28px 60px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 28, alignItems: "start" }}>
+    <div className="fr-gutter" style={{ overflowY: "auto", minHeight: 0, padding: "24px 28px 60px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 28, alignItems: "start" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>

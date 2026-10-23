@@ -24,7 +24,6 @@ export function Dock() {
   const timer = useStatus().data?.timer ?? null
   const today = fromMin(useClock()).slice(0, 10)
   const { look, color } = useLook()
-  const { drawer } = useShell()
   const [menu, setMenu] = useState<Menu>(null)
   const toggle = (m: Exclude<Menu, null>) => setMenu(menu === m ? null : m)
   if (!now) return null
@@ -32,16 +31,17 @@ export function Dock() {
   const next = now.next ? `${now.next.title} ${when(now.next.start, today)}` : "nothing else today"
   const compact = look.dockStyle === "Minimal"
   const work = !!cur && !cur.fixed
-  const room = `100% - 248px - ${drawer ? 344 : 12}px`
+  const room = "100% - var(--fr-side) - var(--fr-drawer) - 12px" // beside the sidebar and any drawer (Shell's variables)
   return (
     <div
       className="fr-float"
+      data-tour="now"
       style={{
         position: "absolute",
-        left: `calc(248px + (${room}) / 2)`,
+        left: `calc(var(--fr-side) + (${room}) / 2)`,
         bottom: 18,
         transform: "translateX(-50%)",
-        width: `min(${compact ? 540 : 780}px, calc(${room} - 32px))`,
+        width: `min(${compact ? 540 : 780}px, calc(${room} - 16px))`,
         zIndex: 8,
         borderRadius: compact ? 26 : "var(--radius-lg)",
         overflow: "hidden",

@@ -32,12 +32,15 @@ import { Drawer, DrawerFrame } from "@/todo/Drawer"
 import { draftAt, EventPane } from "./EventPane"
 import { TodoPage } from "@/todo/TodoPage"
 import { nextHour, placeAfter, useHost } from "./host"
+import { SIDEBAR } from "./layout"
 import { useShell } from "./ShellContext"
+import { FirstTour, Tour, tourDue } from "./Tour"
+import { Icon } from "@/components/fr/controls"
 import { nowMin } from "@/hooks/useClock"
 import { Sidebar } from "./Sidebar"
 
 export function Shell() {
-  const { today, pop, setPop, dialog, setDialog, drawer, event } = useShell()
+  const { today, pop, setPop, dialog, setDialog, drawer, event, layout, drawerOver, drawerWidth, navOpen, setNavOpen, tour } = useShell()
   const client = useQueryClient()
   const toast = useToast()
   const shove = (range: string) => runCommand(client, toast, "shove", { range }, { label: (o) => o.result.message ?? "Shoved" })
@@ -48,12 +51,29 @@ export function Shell() {
   useHostActions()
   useTriageLink()
   useEffect(() => {
-    if (briefDue(today)) setDialog("brief")
+    if (briefDue(today) && !tourDue()) setDialog("brief")
   }, [today, setDialog])
+  useEffect(() => setNavOpen(false), [location.pathname, setNavOpen]) // a page picked from the slid-out sidebar
+  const narrow = layout.mode === "narrow"
+  const drawerSpace = (drawer || event) && location.pathname === "/" && !drawerOver ? drawerWidth + 12 : 0
+  const vars = { "--fr-side": `${layout.side}px`, "--fr-drawer": `${drawerSpace}px`, "--fr-head-inset": narrow ? "56px" : "12px" } as React.CSSProperties
   return (
     <DragProvider onDrop={onDrop}>
-      <div style={{ height: "100vh", minWidth: 1100, display: "grid", gridTemplateColumns: "248px minmax(0,1fr)", background: "var(--fr-backdrop)", color: "var(--color-text)", overflow: "hidden", position: "relative" }}>
-        <Sidebar showTodos={!location.pathname.startsWith("/todo")} />
+      <div data-layout={layout.mode} data-tight={layout.tight || undefined} style={{ ...vars, height: "100vh", display: "grid", gridTemplateColumns: narrow ? "minmax(0,1fr)" : `${layout.side}px minmax(0,1fr)`, background: "var(--fr-backdrop)", color: "var(--color-text)", overflow: "hidden", position: "relative" }}>
+        {!narrow && <Sidebar showTodos={!location.pathname.startsWith("/todo")} rail={layout.mode === "rail"} />}
+        {narrow && (
+          <button className="btn btn-icon btn-ghost" data-tour="menu" onClick={() => setNavOpen(true)} aria-label="Menu" style={{ position: "absolute", left: 10, top: 14, zIndex: 9, width: 34, height: 34 }}>
+            <Icon name="list" size={20} />
+          </button>
+        )}
+        {narrow && navOpen && (
+          <>
+            <div onClick={() => setNavOpen(false)} style={{ position: "absolute", inset: 0, zIndex: 30, background: "color-mix(in srgb, #000 40%, transparent)" }} />
+            <div className="fr-float" style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `min(${SIDEBAR + 32}px, 86vw)`, zIndex: 31, display: "flex", borderRadius: 0 }}>
+              <Sidebar showTodos={false} onClose={() => setNavOpen(false)} />
+            </div>
+          </>
+        )}
         <main style={{ display: "grid", gridTemplateRows: "60px minmax(0,1fr)", minHeight: 0, minWidth: 0 }}>
           <Routes>
             <Route path="/" element={<PlanPage />} />
@@ -75,7 +95,7 @@ export function Shell() {
         ) : (
           drawer && location.pathname === "/" && <Drawer />
         )}
-        {!location.pathname.startsWith("/settings") && <Dock />}
+        {!location.pathname.startsWith("/settings") && !(drawerOver && (drawer || event) && location.pathname === "/") && <Dock />}
         <BlockPopover />
         {location.pathname === "/" && <WayBanner />}
         {pop && <div onClick={() => setPop(null)} style={{ position: "absolute", inset: 0, zIndex: 9 }} />}
@@ -90,6 +110,8 @@ export function Shell() {
       {dialog === "search" && <Search />}
       {dialog === "ways" && <OtherWaysDialog onClose={() => setDialog(null)} />}
       {dialog === "ask" && <AskClaudeDialog onClose={() => setDialog(null)} />}
+      {tour && <Tour />}
+      <FirstTour />
     </DragProvider>
   )
 }
@@ -129,7 +151,7 @@ function useShellKeys() {
 
 /** The Mac app's menus and hotkeys (COMBINED.md 5). The calendar's actions bring you to the calendar first. */
 function useHostActions() {
-  const { today, place, setPlace, setPop, setDialog, setDrawer, drawer, setEvent, askClaude } = useShell()
+  const { today, place, setPlace, setPop, setDialog, setDrawer, drawer, setEvent, askClaude, setTour } = useShell()
   const navigate = useNavigate()
   const location = useLocation()
   const toPlan = () => location.pathname !== "/" && navigate("/")
@@ -161,6 +183,8 @@ function useHostActions() {
       case "brief":
       case "triage":
         return setDialog(request.action)
+      case "tour":
+        return setTour(true)
     }
   })
 }

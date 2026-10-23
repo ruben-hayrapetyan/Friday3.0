@@ -3,6 +3,7 @@
 // top (COMBINED.md 21, 22): Short term and Long term (in its own sepia ink), and Due, every dated task soonest first
 // with the now line after the ones already past.
 
+import { Dropdown } from "@/components/fr/Dropdown"
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
 import { useSearchParams } from "react-router"
@@ -49,7 +50,7 @@ export function TodoPage() {
       <div className="fr-page-head" style={{ gap: 12 }}>
         <span className="fr-h fr-title">To-do</span>
         <Seg options={LISTS} value={list} onPick={pickList} label="List" />
-        <span className="tnum" style={{ color: "var(--color-neutral-500)" }}>
+        <span className="tnum fr-head-note" style={{ color: "var(--color-neutral-500)" }}>
           {summary(items)}
         </span>
         {solving && (
@@ -59,26 +60,34 @@ export function TodoPage() {
           </div>
         )}
         <div style={{ flex: 1 }} />
-        <Chip on={showDone} onClick={() => setShowDone(!showDone)}>
-          Show done
-        </Chip>
-        {list !== "Due" && (
-          <>
-            <span className="fr-kicker">Group by</span>
-            <Seg options={GROUPS} value={by} onPick={setBy} />
-            <span className="fr-kicker" style={{ marginLeft: 6 }}>
-              Sort
-            </span>
-            <select className="input" value={sort} onChange={(e) => setSort(e.target.value as SortBy)} style={{ width: 130, padding: "4px 8px", fontSize: 12, minHeight: 0 }}>
-              {SORTS.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </>
-        )}
+        <Dropdown icon="sliders-horizontal" label="View options">
+          {() => (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "8px 10px" }}>
+              <Chip on={showDone} onClick={() => setShowDone(!showDone)}>
+                Show done
+              </Chip>
+              {list !== "Due" && (
+                <>
+                  <span style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <span className="fr-kicker">Group by</span>
+                    <Seg options={GROUPS} value={by} onPick={setBy} />
+                  </span>
+                  <span style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <span className="fr-kicker">Sort</span>
+                    <select className="input" value={sort} onChange={(e) => setSort(e.target.value as SortBy)} style={{ padding: "4px 8px", fontSize: 12, minHeight: 0 }}>
+                      {SORTS.map((s) => (
+                        <option key={s}>{s}</option>
+                      ))}
+                    </select>
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+        </Dropdown>
       </div>
-      <div className="fr-panel" style={{ display: "grid", gridTemplateColumns: selected ? "minmax(0,1fr) 400px" : "minmax(0,1fr)", overflow: "hidden" }}>
-        <div style={{ overflowY: "auto", minHeight: 0, padding: "18px 22px 140px", display: "flex", flexDirection: "column", gap: 22 }}>
+      <div className="fr-panel fr-todo-split" data-open={selected ? "" : undefined} style={{ display: "grid", gridTemplateColumns: selected ? "minmax(0,1fr) 400px" : "minmax(0,1fr)", overflow: "hidden" }}>
+        <div className="fr-gutter" style={{ overflowY: "auto", minHeight: 0, padding: "18px 22px 140px", display: "flex", flexDirection: "column", gap: 22 }}>
           <AddBox onAdded={(id) => setFresh([...fresh, id])} longTerm={list === "Long term"} />
           {list === "Due" ? (
             <DueList items={items} fresh={fresh} selected={selected} onSelect={(id) => select(id === selected ? null : id)} />
@@ -155,7 +164,7 @@ function Row({ item, fresh, selected, onSelect }: { item: Item; fresh: boolean; 
   return (
     <div
       onClick={onSelect}
-      className="fr-row fr-hover-soft"
+      className="fr-row fr-hover-soft fr-todo-row"
       style={{
         display: "grid",
         gridTemplateColumns: "22px 3px minmax(160px,1fr) minmax(90px,140px) minmax(110px,150px)",

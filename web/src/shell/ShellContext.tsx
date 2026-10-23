@@ -3,6 +3,7 @@
 
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react"
 import type { Block, Schemas } from "@/api/client"
+import { drawerOver, type Layout, layoutFor, useWindowWidth } from "./layout"
 
 export type Pop = "shove" | "pace" | "bell" | null
 export type Dialog = "brief" | "search" | "triage" | "conflicts" | "ways" | "ask" | null
@@ -51,6 +52,12 @@ interface Shell {
   setWay: (way: Schemas["OtherWay"] | null) => void
   ask: { text: string; purpose: "anything" | "rule" } | null // what Ask Claude opens with
   askClaude: (text?: string, purpose?: "anything" | "rule") => void
+  layout: Layout // for the window's width (shell/layout.ts)
+  drawerOver: boolean // the drawer slides over the calendar rather than beside it
+  navOpen: boolean // the sidebar, slid over the page in a narrow window
+  setNavOpen: (open: boolean) => void
+  tour: boolean // the tour of Friday is showing
+  setTour: (on: boolean) => void
 }
 
 const Ctx = createContext<Shell | null>(null)
@@ -93,9 +100,14 @@ export function ShellProvider({ today, children }: { today: string; children: Re
       // private mode: the width lasts this visit
     }
   }, [])
+  const width = useWindowWidth()
+  const layout = useMemo(() => layoutFor(width), [width])
+  const [navOpen, setNavOpen] = useState(false)
+  const [tour, setTour] = useState(false)
+  const over = drawerOver(layout, drawerWidth)
   const value = useMemo(
-    () => ({ today, pop, setPop, selected, select, drawer, setDrawer, dialog, setDialog, place, setPlace, agendaDay, setAgendaDay, event, setEvent, drawerWidth, setDrawerWidth, way, setWay, ask, askClaude }),
-    [today, pop, selected, drawer, dialog, place, agendaDay, event, drawerWidth, setDrawerWidth, way, ask, askClaude],
+    () => ({ today, pop, setPop, selected, select, drawer, setDrawer, dialog, setDialog, place, setPlace, agendaDay, setAgendaDay, event, setEvent, drawerWidth, setDrawerWidth, way, setWay, ask, askClaude, layout, drawerOver: over, navOpen, setNavOpen, tour, setTour }),
+    [today, pop, selected, drawer, dialog, place, agendaDay, event, drawerWidth, setDrawerWidth, way, ask, askClaude, layout, over, navOpen, tour],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

@@ -1,8 +1,9 @@
 // The month view (v22): weeks of day cells with the planned hours, a load bar, dues and the first few blocks. A
 // click opens that day. Blocks exist only inside the planning horizon, so later days show fixed items and dues.
 
+import { useShownPlan } from "@/plan/shown"
 import { useDragging } from "@/components/calendar/useDrag"
-import { useCalendar, usePlan, useSettings } from "@/hooks/queries"
+import { useCalendar, useSettings } from "@/hooks/queries"
 import { clock } from "@/lib/format"
 import { addDays, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
@@ -26,7 +27,7 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
   const gridStart = addDays(first, -((dow - offset + 7) % 7))
   const days = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i))
   const calendar = useCalendar(gridStart, 42).data
-  const plan = usePlan(`${gridStart}T00:00`, `${addDays(gridStart, 42)}T00:00`).data
+  const plan = useShownPlan(`${gridStart}T00:00`, `${addDays(gridStart, 42)}T00:00`).data
   const caps = new Map(calendar?.days.map((d) => [d.date, d.cap_hours]))
   const month = first.slice(0, 7)
   const weeks = days.filter((_, i) => i % 7 === 0).filter((d, w) => w < 5 || addDays(d, 0).slice(0, 7) === month)

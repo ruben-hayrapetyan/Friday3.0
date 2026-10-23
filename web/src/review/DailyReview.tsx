@@ -90,7 +90,7 @@ export function DailyReview({ date, onWeek }: { date: string; onWeek: () => void
   const finished = submitted || (review.reviewed && card === null) || (!cards.length && review.reviewed)
   return (
     <div className="fr-panel" style={{ overflowY: "auto" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,600px) minmax(0,1fr)", gap: 48, padding: "32px 40px 150px", alignItems: "start" }}>
+      <div className="fr-gutter fr-stack" style={{ display: "grid", gridTemplateColumns: "minmax(0,600px) minmax(0,1fr)", gap: 48, padding: "32px 40px 150px", alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <H size={32}>{dayName(date)}</H>

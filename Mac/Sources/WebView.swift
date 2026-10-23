@@ -108,6 +108,6 @@ struct RootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(minWidth: 1100, minHeight: 640)
+        .frame(minWidth: 360, minHeight: 480)  // the website fits any width (web/src/shell/layout.ts)
     }
 }

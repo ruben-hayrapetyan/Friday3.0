@@ -1,11 +1,12 @@
 // The sidebar's mini month (personal's, COMBINED.md 10): each day tinted by how full it is, today underlined, the
 // agenda's day filled. A click shows that day in the calendar and the agenda; a task dropped on a day is due then.
 
+import { useShownPlan } from "@/plan/shown"
 import { useState } from "react"
 import { useNavigate } from "react-router"
 import { useDragging } from "@/components/calendar/useDrag"
 import { Icon } from "@/components/fr/controls"
-import { useCalendar, usePlan, useSettings } from "@/hooks/queries"
+import { useCalendar, useSettings } from "@/hooks/queries"
 import { addDays, toMin } from "@/lib/time"
 import { monthStart } from "@/plan/MonthView"
 import { useShell } from "./ShellContext"
@@ -24,7 +25,7 @@ export function MiniMonth() {
   const gridStart = addDays(month, -((dow - offset + 7) % 7))
   const days = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i))
   const calendar = useCalendar(gridStart, 42).data
-  const plan = usePlan(`${gridStart}T00:00`, `${addDays(gridStart, 42)}T00:00`).data
+  const plan = useShownPlan(`${gridStart}T00:00`, `${addDays(gridStart, 42)}T00:00`).data
   const fullness = (date: string) => {
     const cap = calendar?.days.find((d) => d.date === date)?.cap_hours ?? 8
     const fixed = (plan?.fixed ?? [])

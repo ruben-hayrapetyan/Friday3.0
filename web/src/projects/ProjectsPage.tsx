@@ -24,6 +24,7 @@ const STATUS: Record<Project["status"], [string, string]> = {
 export function ProjectsPage() {
   const projects = useProjects().data ?? []
   const [params, setParams] = useSearchParams()
+  const tight = useShell().layout.tight // a narrow window: the list, then one project with a way back
   const [creating, setCreating] = useState(false)
   const id = Number(params.get("id")) || projects[0]?.item.id
   const current = projects.find((p) => p.item.id === id) ?? null
@@ -31,7 +32,7 @@ export function ProjectsPage() {
     <>
       <div className="fr-page-head">
         <span className="fr-h fr-title">Projects</span>
-        <span style={{ color: "var(--color-neutral-500)", whiteSpace: "nowrap" }}>
+        <span className="fr-head-note" style={{ color: "var(--color-neutral-500)", whiteSpace: "nowrap" }}>
           {projects.length} open{projects.some((p) => p.status === "late") ? `, ${projects.filter((p) => p.status === "late").length} behind` : ""}
         </span>
         <div style={{ flex: 1 }} />
@@ -40,14 +41,25 @@ export function ProjectsPage() {
           New project
         </button>
       </div>
-      <div className="fr-panel" style={{ display: "grid", gridTemplateColumns: "240px minmax(0,1fr)", overflow: "hidden" }}>
+      <div className="fr-panel" style={{ display: "grid", gridTemplateColumns: tight ? "minmax(0,1fr)" : "240px minmax(0,1fr)", overflow: "hidden" }}>
+        {(!tight || !params.get("id")) && (
         <div style={{ overflowY: "auto", minHeight: 0, padding: "12px 10px", boxShadow: "inset -1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 2 }}>
           {projects.map((p) => (
             <ListRow key={p.item.id} p={p} on={p.item.id === current?.item.id} onPick={() => setParams({ id: String(p.item.id) })} />
           ))}
           {!projects.length && <span style={{ padding: 8, color: "var(--color-neutral-500)" }}>No projects yet. A project is something with steps, like an essay or a presentation.</span>}
         </div>
-        {current ? <Detail key={current.item.id} p={current} /> : <div />}
+        )}
+        {(!tight || params.get("id")) && (
+          <div style={{ display: "grid", gridTemplateRows: tight ? "auto minmax(0,1fr)" : "minmax(0,1fr)", minHeight: 0, minWidth: 0 }}>
+            {tight && (
+              <button className="fr-plain fr-link" onClick={() => setParams({})} style={{ justifySelf: "start", padding: "12px 16px 0", fontSize: 13 }}>
+                ← All projects
+              </button>
+            )}
+            {current ? <Detail key={current.item.id} p={current} /> : <div />}
+          </div>
+        )}
       </div>
       {creating && <NewProject onClose={(newId) => (setCreating(false), newId && setParams({ id: String(newId) }))} />}
     </>

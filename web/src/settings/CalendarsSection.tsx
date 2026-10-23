@@ -58,7 +58,7 @@ export function CalendarsSection() {
         <Toggle on={busy.count_free} onToggle={() => setBusy({ count_free: !busy.count_free })} label="Events marked free" hint="Free in their calendar, like a reminder or a hold" />
         <Toggle on={busy.count_filtered} onToggle={() => setBusy({ count_filtered: !busy.count_filtered })} label={filter ? `${filter.label}` : "Events the filter hides"} hint={filter ? "What the categories’ filter hides" : "Set a filter under Categories"} />
       </Field>
-      <Field name="Your calendars" note="A pigment for each, a button in the title row to show or hide it, and whether its events count as busy. Calendars of room bookings start out not counted.">
+      <Field name="Your calendars" note="A pigment for each; whether it's a toggle, kept off your calendar until you switch it on under Show; and whether its events count as busy. Calendars of room bookings start out not counted.">
         {reading.length === 0 ? (
           <span className="fr-kicker">Calendars list here once Google is connected (Integrations), and the Mac app's once it runs.</span>
         ) : (
@@ -69,9 +69,9 @@ export function CalendarsSection() {
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
               </span>
               <PigmentMenu value={look.colors[c.name] ?? null} onPick={(color) => setLook({ colors: color ? { ...look.colors, [c.name]: color } : omit(look.colors, c.name) })} />
-              <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }} title="A button in the title row shows or hides this calendar">
+              <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }} title="Kept off your calendar until you switch it on under Show (⌥⌘1–9)">
                 <Switch on={look.toolbar.includes(c.name)} onToggle={() => setLook({ toolbar: look.toolbar.includes(c.name) ? look.toolbar.filter((n) => n !== c.name) : [...look.toolbar, c.name] })} label={`Button for ${c.name}`} />
-                Button
+                Toggle
               </label>
               <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
                 <Switch on={counts(c.name, busy)} onToggle={() => setBusy({ calendars: { ...busy.calendars, [c.name]: !counts(c.name, busy) } })} label={`${c.name} counts as busy`} />

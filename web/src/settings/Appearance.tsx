@@ -28,7 +28,7 @@ export function Appearance() {
           </button>
         }
       />
-      <div className="fr-well" style={{ display: "grid", gridTemplateColumns: "200px minmax(0,1fr)", gap: 20, padding: 18, marginBottom: 10, borderRadius: "var(--radius-lg)" }}>
+      <div className="fr-well fr-stack" style={{ display: "grid", gridTemplateColumns: "200px minmax(0,1fr)", gap: 20, padding: 18, marginBottom: 10, borderRadius: "var(--radius-lg)" }}>
         <div style={{ position: "relative", height: 220, borderRadius: "var(--radius-md)", background: "var(--color-surface)", backgroundImage: "repeating-linear-gradient(to bottom, color-mix(in srgb, var(--color-text) 6%, transparent) 0 1px, transparent 1px 44px)" }}>
           {preview.map((b) => {
             const s = b.col ? { ...skinOf(b.kind, null), ...skinFor(b.kind, b.col, look, skinOf) } : skinOf(b.kind, null)

@@ -35,7 +35,7 @@ export function ReviewPage() {
           onPick={setMode}
         />
         <div style={{ flex: 1 }} />
-        <span className="fr-kicker">{mode === "Day" ? "1–4 to answer, ← to go back" : "Choices apply when you finish"}</span>
+        <span className="fr-kicker fr-head-note">{mode === "Day" ? "1–4 to answer, ← to go back" : "Choices apply when you finish"}</span>
       </div>
       {mode === "Day" ? <DailyReview key={date} date={date} onWeek={() => setMode("Week")} /> : <WeeklyReview />}
     </>

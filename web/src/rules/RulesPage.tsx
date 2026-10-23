@@ -34,16 +34,16 @@ export function RulesPage() {
     <>
       <div className="fr-page-head">
         <span className="fr-h fr-title">Rules</span>
-        <span style={{ color: "var(--color-neutral-500)", whiteSpace: "nowrap" }}>
+        <span className="fr-head-note" style={{ color: "var(--color-neutral-500)", whiteSpace: "nowrap" }}>
           {rules.filter((r) => r.enabled).length} on, {mine} of them yours
         </span>
         <div style={{ flex: 1 }} />
-        <Link to="/lab/rules" className="fr-link" style={{ fontSize: 13, whiteSpace: "nowrap" }}>
+        <Link to="/lab/rules" className="fr-link fr-head-note" style={{ fontSize: 13, whiteSpace: "nowrap" }}>
           Try new rule designs →
         </Link>
       </div>
       <div className="fr-panel" style={{ overflowY: "auto" }}>
-        <div style={{ maxWidth: 1000, padding: "28px 40px 140px", display: "flex", flexDirection: "column", gap: 34 }}>
+        <div className="fr-gutter" style={{ maxWidth: 1000, padding: "28px 40px 140px", display: "flex", flexDirection: "column", gap: 34 }}>
           <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <H size={22}>Rules</H>
@@ -223,7 +223,7 @@ function RuleRow({ rule, locked, said }: { rule: Schemas["RuleOut"]; locked: boo
   const [icon, source] = SOURCES[rule.source] ?? SOURCES.default
   const options = rule.source === "you" ? STRENGTHS : rule.strength === "Always" ? (["Always"] as Strength[]) : (["Prefer", "Strongly"] as Strength[])
   return (
-    <div className="fr-row" style={{ display: "grid", gridTemplateColumns: "36px minmax(180px,1fr) auto 28px", gap: "8px 14px", alignItems: "center", padding: "12px 0", opacity: rule.enabled ? 1 : 0.5 }}>
+    <div className="fr-row fr-rule-row" style={{ display: "grid", gridTemplateColumns: "36px minmax(180px,1fr) auto 28px", gap: "8px 14px", alignItems: "center", padding: "12px 0", opacity: rule.enabled ? 1 : 0.5 }}>
       <Switch on={rule.enabled} onToggle={() => !locked && set({ name: rule.name, enabled: !rule.enabled })} label={`${rule.enabled ? "Switch off" : "Switch on"} ${rule.sentence}`} />
       <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
         <span style={{ fontWeight: 500 }}>{rule.sentence}</span>

@@ -20,7 +20,7 @@ import { ExpiresMark } from "./TodoPage"
 
 /** The drawer's frame: over the calendar's right side, below the title row, resized by its left edge. */
 export function DrawerFrame({ children, todo }: { children: ReactNode; todo?: boolean }) {
-  const { drawerWidth, setDrawerWidth } = useShell()
+  const { drawerWidth, setDrawerWidth, drawerOver } = useShell()
   const grab = (e: React.PointerEvent) => {
     e.preventDefault()
     const from = e.clientX
@@ -34,7 +34,7 @@ export function DrawerFrame({ children, todo }: { children: ReactNode; todo?: bo
     <aside
       data-drop={todo ? "todo" : undefined}
       className="fr-float"
-      style={{ position: "absolute", right: 12, top: 60, bottom: 0, width: drawerWidth, zIndex: 7, display: "flex", flexDirection: "column", gap: 12, minHeight: 0, padding: "12px 14px 0", borderRadius: "var(--radius-lg) var(--radius-lg) 0 0" }}
+      style={{ position: "absolute", right: 12, top: 60, bottom: 0, ...(drawerOver ? { left: "calc(var(--fr-side) + 12px)", maxWidth: drawerWidth + 160, marginLeft: "auto", boxShadow: "0 12px 40px color-mix(in srgb, #000 35%, transparent)" } : { width: drawerWidth }), zIndex: 7, display: "flex", flexDirection: "column", gap: 12, minHeight: 0, padding: "12px 14px 0", borderRadius: "var(--radius-lg) var(--radius-lg) 0 0" }}
     >
       <div
         role="separator"
@@ -42,6 +42,7 @@ export function DrawerFrame({ children, todo }: { children: ReactNode; todo?: bo
         aria-label="Drag to resize"
         title="Drag to make the drawer wider or narrower"
         onPointerDown={grab}
+        hidden={drawerOver}
         style={{ position: "absolute", left: -4, top: 0, bottom: 0, width: 8, cursor: "ew-resize", touchAction: "none" }}
       />
       {children}

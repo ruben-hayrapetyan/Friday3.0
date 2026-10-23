@@ -31,13 +31,13 @@ export function InsightsPage() {
         <span className="fr-h fr-title">Insights</span>
         <Seg options={RANGES} value={weeks} onPick={setWeeks} />
         <div style={{ flex: 1 }} />
-        <span className="fr-kicker" style={{ whiteSpace: "nowrap" }}>
+        <span className="fr-kicker fr-head-note" style={{ whiteSpace: "nowrap" }}>
           {data ? `Based on ${data.done} finished ${data.done === 1 ? "thing" : "things"}` : ""}
         </span>
       </div>
       <div className="fr-panel" style={{ overflowY: "auto" }}>
         {data && (
-          <div style={{ maxWidth: 1080, padding: "28px 40px 120px", display: "flex", flexDirection: "column", gap: 28 }}>
+          <div className="fr-gutter" style={{ maxWidth: 1080, padding: "28px 40px 120px", display: "flex", flexDirection: "column", gap: 28 }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 28 }}>
               <Big big={String(data.done)} line={`things finished in ${data.weeks} weeks`} />
               <Big big={`${data.hours} h`} line="of work recorded" />
@@ -203,7 +203,7 @@ function Comparison() {
   const scale = 380 / Math.max(60, hi - lo)
   return (
     <Section title={`Which ${weekday(day) === "Thu" ? "Thursday" : weekday(day)} looks better?`} note="One quick question helps Friday learn what you prefer">
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 300px)) minmax(0,1fr)", gap: 20, alignItems: "start" }}>
+      <div className="fr-stack" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 300px)) minmax(0,1fr)", gap: 20, alignItems: "start" }}>
         {versions.map((v) => (
           <div key={v.letter} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <span style={{ fontWeight: 500 }}>Version {v.letter}</span>

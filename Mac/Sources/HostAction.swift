@@ -13,6 +13,7 @@ enum HostAction: Equatable {
     case openDrawer  // the summon hotkey: open, whatever it was
     case go(String)  // a page: "/", "/todo", "/projects", "/review", "/inbox", "/insights", "/rules", "/settings"
     case otherWays, shove, pace, brief, triage
+    case tour  // the tour of Friday
 
     var name: String {
         switch self {
@@ -31,6 +32,7 @@ enum HostAction: Equatable {
         case .pace: return "pace"
         case .brief: return "brief"
         case .triage: return "triage"
+        case .tour: return "tour"
         }
     }
 
