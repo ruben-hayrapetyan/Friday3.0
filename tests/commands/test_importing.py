@@ -49,3 +49,32 @@ def test_categories_come_in_only_when_you_have_none(tmp_path: Path) -> None:
     app.do("import_personal", **files(tmp_path))
     settings = app.do("settings")["categories"]
     assert [c["name"] for c in settings["categories"]] == ["Classes"] and settings["filter"]["label"] == "TA hours"
+
+
+def test_an_assignment_with_no_due_date_comes_in_without_a_deadline(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    todos = [
+        {"id": "S", "title": "CS make study guide", "bucket": "assignments", "horizon": "shortTerm", "isDone": False},
+        {"id": "T", "title": "Chem pre lab", "bucket": "assignments", "horizon": "shortTerm", "isDone": False},
+    ]  # fmt: skip
+    (tmp_path / "todos.json").write_text(json.dumps(todos))
+    out = app.do(
+        "import_personal", todos_path=str(tmp_path / "todos.json"), categories_path=str(tmp_path / "none.json")
+    )
+    assert out["message"] == "Imported 2 tasks from Todo List"
+    items = {i["title"]: i for i in app.do("items")}
+    assert items["Chem pre lab"]["preset"] == "Assignment" and items["Chem pre lab"]["firmness"] == "none"
+
+
+def test_a_task_that_cant_come_in_is_named_and_the_rest_still_do(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    todos = [
+        {"id": "X", "title": "Broken", "dueDate": "next tuesday-ish", "isDone": False},
+        {"id": "Y", "title": "Fine", "isDone": False},
+    ]
+    (tmp_path / "todos.json").write_text(json.dumps(todos))
+    paths = {"todos_path": str(tmp_path / "todos.json"), "categories_path": str(tmp_path / "none.json")}
+    out = app.do("import_personal", **paths)
+    assert out["message"].startswith("Imported 1 task from Todo List. Left out, to add by hand: Broken (")
+    assert [i["title"] for i in app.do("items")] == ["Fine"]
+    assert app.do("import_personal", **paths)["message"].startswith("Imported 0 tasks")  # Fine isn't added twice

@@ -31,12 +31,16 @@ def import_personal(ctx: Ctx, inp: ImportPersonalInput) -> Changed:
     if not todos_file.exists() and not categories_file.exists():
         raise FieldError("todos_path", f"found neither {todos_file} nor {categories_file}")
     seen = set(kv_get(ctx.conn, "imported_todos", [], ctx.user_id))
-    added = 0
+    added, skipped = 0, []
     if todos_file.exists():
         for task in json.loads(todos_file.read_text()):
             if task.get("isDone") or task.get("id") in seen or not (task.get("title") or "").strip():
                 continue
-            add(ctx, AddInput(**task_fields(ctx, task)))
+            try:
+                add(ctx, AddInput(**task_fields(ctx, task)))  # checks its fields before it writes anything
+            except (FieldError, ValueError) as error:  # one odd task doesn't stop the others; it's named instead
+                skipped.append(f"{task['title'].strip()} ({error})")
+                continue
             seen.add(task["id"])
             added += 1
         ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "imported_todos"}, {"value": json.dumps(sorted(seen))})
@@ -46,7 +50,8 @@ def import_personal(ctx: Ctx, inp: ImportPersonalInput) -> Changed:
     parts = [f"{added} task{'' if added == 1 else 's'} from Todo List"] + (
         [f"{rules} categories from Chroma"] if rules else []
     )
-    return Changed(message="Imported " + " and ".join(parts))
+    left = f". Left out, to add by hand: {'; '.join(skipped)}" if skipped else ""
+    return Changed(message="Imported " + " and ".join(parts) + left)
 
 
 def task_fields(ctx: Ctx, task: dict[str, Any]) -> dict[str, Any]:
@@ -61,6 +66,9 @@ def task_fields(ctx: Ctx, task: dict[str, Any]) -> dict[str, Any]:
         fields["preset"] = "Assignment"
     elif bucket == "emails" and "Errand" in ctx.settings["presets"]:
         fields |= {"preset": "Errand", "duration_min": 15}
+    preset = ctx.settings["presets"].get(fields.get("preset", ""))
+    if preset is not None and preset.firmness == "hard" and "due" not in fields:
+        fields["firmness"] = "none"  # an assignment with no due date yet, as `add` takes one
     return fields
 
 
