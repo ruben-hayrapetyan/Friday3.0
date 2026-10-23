@@ -98,6 +98,7 @@ export function Search() {
       { key: "triage", label: "What gives when it can't all fit", icon: "warning", run: () => setDialog("triage") },
       { key: "ways", label: "Other ways to plan the week", icon: "shuffle", run: () => setDialog("ways") },
       { key: "tour", label: "Take the tour of Friday", icon: "question", run: () => (setDialog(null), setTour(true)) },
+      { key: "setup", label: "Set up Friday: your day, load, free time, calendars", icon: "sliders-horizontal", run: () => setDialog("setup") },
       { key: "ask", label: `Ask Claude${text ? `: ${text}` : ""}`, icon: "sparkle", run: () => askClaude(text) },
     ].filter((a) => has(a.label))
     return [

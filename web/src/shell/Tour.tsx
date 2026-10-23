@@ -78,7 +78,7 @@ export const STEPS: Step[] = [
   {
     target: "help",
     title: "That’s it",
-    body: "Settings has your calendars, schedule and notifications. The ? brings this tour back whenever you want it.",
+    body: "Settings has your calendars, schedule and notifications, and Setup’s questions again. The ? brings this tour back whenever you want it.",
   },
 ]
 
@@ -222,13 +222,14 @@ export function Tour() {
   )
 }
 
-/** The tour the first time Friday opens on this device, once the calendar has drawn. */
-export function FirstTour() {
+/** The tour the first time Friday opens on this device, once the calendar has drawn and Setup's questions are
+ * answered. */
+export function FirstTour({ ready }: { ready: boolean }) {
   const { setTour } = useShell()
   useEffect(() => {
-    if (!tourDue()) return
+    if (!ready || !tourDue()) return
     const timer = setTimeout(() => setTour(true), 900)
     return () => clearTimeout(timer)
-  }, [setTour])
+  }, [ready, setTour])
   return null
 }

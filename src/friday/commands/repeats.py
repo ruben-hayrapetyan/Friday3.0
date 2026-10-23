@@ -15,6 +15,7 @@ from friday.core.db import rows
 from friday.core.items import FieldError
 from friday.core.recurrence import describe
 from friday.core.textnorm import course_tag
+from friday.core.time import ampm
 from friday.planner.store import area_names
 
 
@@ -46,15 +47,15 @@ def lead(instances: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def pattern(ctx: Ctx, batch: str, instances: list[dict[str, Any]]) -> str:
-    """The repeat in words, like "Every Mon, Wed and Fri, 12:20–13:10" or "Yearly, all day": the calendar's own
+    """The repeat in words, like "Every Mon, Wed and Fri, 12:20pm–1:10pm" or "Yearly, all day": the calendar's own
     rule (the instances' weekdays when it is unknown) and the first's times."""
     words = describe(calendar_rule(ctx, batch) or weekdays_rule([when(s) for s in instances]))
     first = lead(instances)["fields"]
     if first.get("blocks_time") is False and first.get("start", "").endswith("T00:00"):
         return f"{words}, all day"
     if first.get("start") and first.get("end"):
-        return f"{words}, {first['start'][11:16]}–{first['end'][11:16]}"
-    return f"{words}, due {first['due'][11:16]}" if first.get("due") else words
+        return f"{words}, {ampm(first['start'])}–{ampm(first['end'])}"
+    return f"{words}, due {ampm(first['due'])}" if first.get("due") else words
 
 
 @query("calendar_repeats")

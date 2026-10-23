@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { addDays, fromMin, hourMarks, layout, toMin } from "./time"
+import { addDays, ampm, fromMin, hourMarks, layout, toMin } from "./time"
 
 const axis = { startMin: 7 * 60 + 30, endMin: 24 * 60 + 30 }
 const block = (start: string, end: string, name = "") => ({ start, end, name })
@@ -42,7 +42,14 @@ describe("layout", () => {
 describe("hour marks", () => {
   it("label each whole hour on the axis, past midnight too", () => {
     const marks = hourMarks(axis)
-    expect(marks[0]).toEqual({ top: 30, label: "08:00" })
-    expect(marks.at(-1)).toEqual({ top: 990, label: "00:00" })
+    expect(marks[0]).toEqual({ top: 30, label: "8am" })
+    expect(marks.at(-1)).toEqual({ top: 990, label: "12am" })
+  })
+})
+
+describe("ampm", () => {
+  it("reads times on a 12-hour clock", () => {
+    expect(["00:00", "00:30", "09:05", "12:00", "13:10", "23:59"].map(ampm)).toEqual(["12am", "12:30am", "9:05am", "12pm", "1:10pm", "11:59pm"])
+    expect(ampm("2026-10-20T14:30")).toBe("2:30pm")
   })
 })

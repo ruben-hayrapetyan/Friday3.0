@@ -1908,6 +1908,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Setup's questions, answered with what Friday does now. */
+        get: operations["setup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/setup_save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Your answers to Setup's questions: sleep, load, focus, free time, finishing early, calendars and the brief. */
+        post: operations["setup_save"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/shove": {
         parameters: {
             query?: never;
@@ -4983,6 +5017,95 @@ export interface components {
         };
         /** SettleResult */
         SettleResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /** SetupCalendar */
+        SetupCalendar: {
+            /** Name */
+            name: string;
+            /**
+             * Shown
+             * @default true
+             */
+            shown?: boolean;
+            /**
+             * Busy
+             * @default true
+             */
+            busy?: boolean;
+        };
+        /**
+         * SetupInput
+         * @description Your answers to the questions Friday asks when it first opens (Setup): each sets the settings and rules it's
+         *     about, all in one change you can undo.
+         */
+        SetupInput: {
+            /** Wake */
+            wake: string;
+            /** Bedtime */
+            bedtime: string;
+            /** Weekend Wake */
+            weekend_wake: string;
+            /** Weekend Bedtime */
+            weekend_bedtime: string;
+            /** Normal Hours */
+            normal_hours: number;
+            /** Most Hours */
+            most_hours: number;
+            /** Focus Hours */
+            focus_hours: number;
+            /** Evening Free */
+            evening_free: number;
+            /** Evening From */
+            evening_from: string;
+            /** Weekend Free */
+            weekend_free: number;
+            /** Finish Early Days */
+            finish_early_days: number;
+            /** Brief */
+            brief: boolean;
+            /**
+             * Calendars
+             * @default []
+             */
+            calendars?: components["schemas"]["SetupCalendar"][];
+        };
+        /**
+         * SetupOut
+         * @description Setup's questions, answered with what Friday does now; `done` once you've been through them.
+         */
+        SetupOut: {
+            /** Done */
+            done: boolean;
+            /** Answers */
+            answers: {
+                [key: string]: unknown;
+            };
+            /**
+             * Events
+             * @default {}
+             */
+            events?: {
+                [key: string]: number;
+            };
+        };
+        /** SetupSaveResult */
+        SetupSaveResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
@@ -9566,6 +9689,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RuleWinResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupOut"];
+                };
+            };
+        };
+    };
+    setup_save: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetupInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupSaveResult"];
                 };
             };
             /** @description Validation Error */

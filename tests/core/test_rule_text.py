@@ -44,7 +44,7 @@ def test_what_it_cannot_read_is_none() -> None:
 
 def test_a_reading_becomes_a_planner_rule_in_your_words() -> None:
     lunch = Reading("window", "lunch", rel="before", at="13:00")
-    assert sentence(lunch) == "Lunch before 13:00"
+    assert sentence(lunch) == "Lunch before 1pm"
     soft = spec(lunch, "Prefer", "you:lunch", [], ["Reading"])
     assert (soft["type"], soft["scope"], soft["params"]) == (
         "time_preference",

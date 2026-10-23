@@ -23,7 +23,16 @@ from friday.commands.registry import Ctx, command, query, run
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.settings import minutes_of
-from friday.core.time import format_local, format_utc, local_midnight, parse_local, planning_date, to_local, to_utc
+from friday.core.time import (
+    ampm,
+    format_local,
+    format_utc,
+    local_midnight,
+    parse_local,
+    planning_date,
+    to_local,
+    to_utc,
+)
 from friday.planner.build import sleep_on
 from friday.planner.prepare import block_key
 from friday.planner.snapshot import day_overrides
@@ -181,7 +190,7 @@ def watched(conn: sqlite3.Connection, ask: Any, settings: dict[str, Any], now_ut
                 Outgoing(
                     "slack_low",
                     f"slack:{item}:{here[:10]}",
-                    f"Start {title} by {alert['latest_start'][11:]}",
+                    f"Start {title} by {ampm(alert['latest_start'])}",
                     f"{max(0, slack)} min of slack left.",
                     "/",
                     item,
@@ -210,7 +219,7 @@ def block_start(block: dict[str, Any], key: str) -> Outgoing:
         "block_start",
         key,
         f"Now: {block['title']}",
-        f"Until {block['end'][11:]}",
+        f"Until {ampm(block['end'])}",
         "/",
         block["item_id"],
         [("Start", f"start:{block['item_id']}"), ("Snooze 15", f"snooze:{key}"), ("Swap", "open:/")],

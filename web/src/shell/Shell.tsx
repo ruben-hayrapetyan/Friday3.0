@@ -8,6 +8,7 @@ import { DragProvider } from "@/components/calendar/useDrag"
 import { SelectionMenu } from "@/components/calendar/SelectionMenu"
 import { AskClaudeDialog } from "@/dialogs/AskClaude"
 import { BriefDialog, briefDue, LockDialog, TriageDialog } from "@/dialogs/Dialogs"
+import { SetupDialog, useSetup } from "@/dialogs/Setup"
 import { useToast } from "@/components/Toasts"
 import { useNow, useStatus } from "@/hooks/queries"
 import { runCommand, undoLast } from "@/hooks/useCommand"
@@ -50,9 +51,11 @@ export function Shell() {
   useShellKeys()
   useHostActions()
   useTriageLink()
+  const setupDone = useSetup().data?.done
   useEffect(() => {
-    if (briefDue(today) && !tourDue()) setDialog("brief")
-  }, [today, setDialog])
+    if (setupDone === false) setDialog("setup") // the first time Friday opens: a few questions before anything else
+    else if (setupDone && briefDue(today) && !tourDue()) setDialog("brief")
+  }, [today, setDialog, setupDone])
   useEffect(() => setNavOpen(false), [location.pathname, setNavOpen]) // a page picked from the slid-out sidebar
   const narrow = layout.mode === "narrow"
   const drawerSpace = (drawer || event) && location.pathname === "/" && !drawerOver ? drawerWidth + 12 : 0
@@ -110,8 +113,9 @@ export function Shell() {
       {dialog === "search" && <Search />}
       {dialog === "ways" && <OtherWaysDialog onClose={() => setDialog(null)} />}
       {dialog === "ask" && <AskClaudeDialog onClose={() => setDialog(null)} />}
+      {dialog === "setup" && <SetupDialog onClose={() => setDialog(null)} />}
       {tour && <Tour />}
-      <FirstTour />
+      <FirstTour ready={setupDone === true && dialog === null} />
     </DragProvider>
   )
 }
@@ -185,6 +189,8 @@ function useHostActions() {
         return setDialog(request.action)
       case "tour":
         return setTour(true)
+      case "setup":
+        return setDialog("setup")
     }
   })
 }

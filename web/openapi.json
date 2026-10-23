@@ -6551,6 +6551,95 @@
     }
    }
   },
+  "/api/q/setup": {
+   "get": {
+    "summary": "Setup's questions, answered with what Friday does now.",
+    "operationId": "setup",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SetupOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/setup_save": {
+   "post": {
+    "summary": "Your answers to Setup's questions: sleep, load, focus, free time, finishing early, calendars and the brief.",
+    "operationId": "setup_save",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SetupInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SetupSaveResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/shove": {
    "post": {
     "summary": "Clear time: `30m`, `12:00-13:30`, `rest`, `day fri`. Nothing is made later without your say.",
@@ -16369,6 +16458,213 @@
      "result"
     ],
     "title": "SettleResult"
+   },
+   "SetupCalendar": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "shown": {
+      "type": "boolean",
+      "title": "Shown",
+      "default": true
+     },
+     "busy": {
+      "type": "boolean",
+      "title": "Busy",
+      "default": true
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "title": "SetupCalendar"
+   },
+   "SetupInput": {
+    "properties": {
+     "wake": {
+      "type": "string",
+      "pattern": "^\\d{2}:\\d{2}$",
+      "title": "Wake"
+     },
+     "bedtime": {
+      "type": "string",
+      "pattern": "^\\d{2}:\\d{2}$",
+      "title": "Bedtime"
+     },
+     "weekend_wake": {
+      "type": "string",
+      "pattern": "^\\d{2}:\\d{2}$",
+      "title": "Weekend Wake"
+     },
+     "weekend_bedtime": {
+      "type": "string",
+      "pattern": "^\\d{2}:\\d{2}$",
+      "title": "Weekend Bedtime"
+     },
+     "normal_hours": {
+      "type": "number",
+      "maximum": 16.0,
+      "minimum": 1.0,
+      "title": "Normal Hours"
+     },
+     "most_hours": {
+      "type": "number",
+      "maximum": 16.0,
+      "minimum": 1.0,
+      "title": "Most Hours"
+     },
+     "focus_hours": {
+      "type": "number",
+      "maximum": 8.0,
+      "minimum": 0.5,
+      "title": "Focus Hours"
+     },
+     "evening_free": {
+      "type": "number",
+      "maximum": 6.0,
+      "minimum": 0.0,
+      "title": "Evening Free"
+     },
+     "evening_from": {
+      "type": "string",
+      "pattern": "^\\d{2}:\\d{2}$",
+      "title": "Evening From"
+     },
+     "weekend_free": {
+      "type": "number",
+      "maximum": 13.0,
+      "minimum": 0.0,
+      "title": "Weekend Free"
+     },
+     "finish_early_days": {
+      "type": "integer",
+      "maximum": 7.0,
+      "minimum": 0.0,
+      "title": "Finish Early Days"
+     },
+     "brief": {
+      "type": "boolean",
+      "title": "Brief"
+     },
+     "calendars": {
+      "items": {
+       "$ref": "#/components/schemas/SetupCalendar"
+      },
+      "type": "array",
+      "title": "Calendars",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "wake",
+     "bedtime",
+     "weekend_wake",
+     "weekend_bedtime",
+     "normal_hours",
+     "most_hours",
+     "focus_hours",
+     "evening_free",
+     "evening_from",
+     "weekend_free",
+     "finish_early_days",
+     "brief"
+    ],
+    "title": "SetupInput",
+    "description": "Your answers to the questions Friday asks when it first opens (Setup): each sets the settings and rules it's\nabout, all in one change you can undo."
+   },
+   "SetupOut": {
+    "properties": {
+     "done": {
+      "type": "boolean",
+      "title": "Done"
+     },
+     "answers": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Answers"
+     },
+     "events": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Events",
+      "default": {}
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "done",
+     "answers"
+    ],
+    "title": "SetupOut",
+    "description": "Setup's questions, answered with what Friday does now; `done` once you've been through them."
+   },
+   "SetupSaveResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "SetupSaveResult"
    },
    "ShoveInput": {
     "properties": {

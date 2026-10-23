@@ -145,6 +145,7 @@ struct FridayMenus: Commands {
         }
         CommandGroup(replacing: .help) {
             Button("Friday Tour") { Page.shared.send(.tour) }
+            Button("Set Up Friday…") { Page.shared.send(.setup) }
             Button("Shortcuts") { Page.shared.send(.go("/settings/shortcuts")) }
         }
         CommandMenu("Plan") {

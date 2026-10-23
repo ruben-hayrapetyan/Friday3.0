@@ -269,6 +269,31 @@ class ItemsInput(Model):
     text: str | None = None
 
 
+class SetupCalendar(Model):
+    name: str
+    shown: bool = True  # False: a toggle, kept off your calendar until switched on under Show
+    busy: bool = True  # its events block time when Friday plans
+
+
+class SetupInput(Model):
+    """Your answers to the questions Friday asks when it first opens (Setup): each sets the settings and rules it's
+    about, all in one change you can undo."""
+
+    wake: str = Field(pattern=r"^\d{2}:\d{2}$")
+    bedtime: str = Field(pattern=r"^\d{2}:\d{2}$")
+    weekend_wake: str = Field(pattern=r"^\d{2}:\d{2}$")  # Saturday and Sunday mornings
+    weekend_bedtime: str = Field(pattern=r"^\d{2}:\d{2}$")  # Friday and Saturday nights
+    normal_hours: float = Field(ge=1, le=16)  # a normal day's work: the daily-load rule
+    most_hours: float = Field(ge=1, le=16)  # a heavy day's: the daily limit
+    focus_hours: float = Field(ge=0.5, le=8)  # the longest stretch of focused work
+    evening_free: float = Field(ge=0, le=6)  # hours kept free on weekday evenings; 0: the rule off
+    evening_from: str = Field(pattern=r"^\d{2}:\d{2}$")
+    weekend_free: float = Field(ge=0, le=13)  # hours kept free each weekend day; 0: the rule off
+    finish_early_days: int = Field(ge=0, le=7)  # 0: the rule off
+    brief: bool
+    calendars: list[SetupCalendar] = []
+
+
 class ImportPersonalInput(Model):
     todos_path: str | None = None  # Todo List's tasks; ~/Documents/Todo List/todos.json when left out
     categories_path: str | None = None  # Chroma's rules; ~/Library/Application Support/Chroma/categories.json

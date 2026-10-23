@@ -76,7 +76,7 @@ def test_a_repeating_event_waits_in_repeating_rather_than_the_inbox(app: App) ->
     assert cards(app) == [] and app.do("inbox")["repeats"] == 1 and app.do("status")["suggestions"] == 0
     [found] = app.do("calendar_repeats")
     assert found["title"] == "CHEM 2090, Lecture" and found["kind"] == "Class" and found["calendar"] == "School"
-    assert found["pattern"] == "Every Mon and Wed, 12:20–13:10" and found["count"] == 2
+    assert found["pattern"] == "Every Mon and Wed, 12:20pm–1:10pm" and found["count"] == 2
 
 
 def test_an_imported_repeat_is_one_series_with_your_tag_and_kind_and_its_later_times_follow(app: App) -> None:
@@ -137,4 +137,4 @@ def test_an_imported_repeat_keeps_its_calendar_and_times_when_switched_off(app: 
     app.do("series_stop", id=app.do("series_list")[0]["id"])
     [series] = app.do("series_list")
     assert series["source"] == "School" and series["external"] and not series["active"]
-    assert series["pattern"] == "Every Tue and Thu, 12:20–13:10"
+    assert series["pattern"] == "Every Tue and Thu, 12:20pm–1:10pm"

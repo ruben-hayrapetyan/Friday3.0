@@ -14,6 +14,7 @@ enum HostAction: Equatable {
     case go(String)  // a page: "/", "/todo", "/projects", "/review", "/inbox", "/insights", "/rules", "/settings"
     case otherWays, shove, pace, brief, triage
     case tour  // the tour of Friday
+    case setup  // Setup's questions again
 
     var name: String {
         switch self {
@@ -33,6 +34,7 @@ enum HostAction: Equatable {
         case .brief: return "brief"
         case .triage: return "triage"
         case .tour: return "tour"
+        case .setup: return "setup"
         }
     }
 

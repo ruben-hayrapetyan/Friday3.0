@@ -6,7 +6,7 @@ import { useState } from "react"
 import { Seg } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { usePaces, useSettings } from "@/hooks/queries"
-import { dur } from "@/lib/format"
+import { ampm, dur } from "@/lib/format"
 import { useNavigate } from "react-router"
 import { BUFFER_OPTIONS, bufferLabel, useBuffers } from "./buffers"
 import { Field, SectionHead } from "./SettingsPage"
@@ -40,14 +40,18 @@ export function Schedule() {
       <Field name="Day starts" note={`Nothing flexible is planned before this.${differs("wake") ? " Some days differ; this sets them all." : ""}`}>
         <select className="input" value={mon.wake} onChange={(e) => allNights({ wake: e.target.value })} style={{ alignSelf: "flex-start", width: 140 }}>
           {times(5, 11).map((t) => (
-            <option key={t}>{t}</option>
+            <option key={t} value={t}>
+              {ampm(t)}
+            </option>
           ))}
         </select>
       </Field>
       <Field name="Bedtime" note={`Friday stops planning here; only a deadline can push past it.${differs("bedtime") ? " Some days differ; this sets them all." : ""}`}>
         <select className="input" value={mon.bedtime} onChange={(e) => allNights({ bedtime: e.target.value })} style={{ alignSelf: "flex-start", width: 140 }}>
           {times(21, 26).map((t) => (
-            <option key={t}>{t}</option>
+            <option key={t} value={t}>
+              {ampm(t)}
+            </option>
           ))}
         </select>
       </Field>

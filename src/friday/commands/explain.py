@@ -21,7 +21,7 @@ from friday.commands.registry import Ctx, query
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.settings import validate_value
-from friday.core.time import format_utc, parse_utc, to_local
+from friday.core.time import ampm, format_utc, parse_utc, to_local
 from friday.engine.rules import RULE_TYPES, build_rules
 from friday.planner.snapshot import take_snapshot
 from friday.planner.store import current_plan, kv_get
@@ -65,7 +65,8 @@ def sentence(ctx: Ctx, block: dict[str, Any], costs: dict[str, int]) -> str:
     parts = []
     if item.due_utc:
         slack = report.get("slack_minutes", {}).get(str(item.id))
-        due = f"Due {to_local(parse_utc(item.due_utc), ctx.tz):%a %-d %b %H:%M}"
+        due_at = to_local(parse_utc(item.due_utc), ctx.tz)
+        due = f"Due {due_at:%a %-d %b} {ampm(due_at)}"
         parts.append(f"{due}; {room(slack)}" if slack is not None else due)
     start, end = block["start_utc"], block["end_utc"]
     pinned = one(

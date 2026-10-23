@@ -319,7 +319,7 @@ def test_an_impossible_week_keeps_the_earliest_deadlines_and_says_what_will_be_l
 
 def test_a_lab_that_overlaps_a_lecture_is_pointed_out(planned: dict[str, Planned]) -> None:
     notices = planned["priya"].ask("status")["notices"]  # her Thursday lab starts before ENGRD 2700 ends
-    assert "ENGRD 2700 Lecture and ECE 3150 Lab overlap on Thu Oct 22 at 14:30" in notices
+    assert "ENGRD 2700 Lecture and ECE 3150 Lab overlap on Thu Oct 22 at 2:30pm" in notices
     assert planned["maya"].ask("status")["notices"] == []
     assert planned["elena"].ask("status")["notices"] == []  # her in-class midterm takes the lecture's place
 

@@ -20,9 +20,9 @@ def find(app: App, name: str) -> dict:
 
 def test_a_sentence_reads_as_a_rule_and_your_overrides_win(app: App) -> None:
     out = app.do("rule_read", text="I prefer eating lunch before 1pm")
-    assert (out["sentence"], out["strength"]) == ("Lunch before 13:00", "Prefer")
+    assert (out["sentence"], out["strength"]) == ("Lunch before 1pm", "Prefer")
     moved = app.do("rule_read", text="I prefer eating lunch before 1pm", overrides='{"at": "12:30", "days": ["sat"]}')
-    assert moved["sentence"] == "Lunch before 12:30 on Sat"
+    assert moved["sentence"] == "Lunch before 12:30pm on Sat"
     assert app.do("rule_read", text="make me a sandwich")["reading"] is None
 
 
@@ -33,7 +33,7 @@ def test_an_always_rule_keeps_work_out_of_those_hours(app: App) -> None:
     blocks = app.do("item", id=essay)["blocks"]
     assert blocks and all(b["end"][11:] <= "18:00" for b in blocks)
     (mine,) = [r for r in app.do("rules") if r["source"] == "you"]
-    assert (mine["sentence"], mine["strength"]) == ("No work after 18:00", "Always")
+    assert (mine["sentence"], mine["strength"]) == ("No work after 6pm", "Always")
 
 
 def test_strength_switch_and_delete(app: App) -> None:

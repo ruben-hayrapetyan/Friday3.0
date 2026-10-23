@@ -18,8 +18,8 @@ describe("change list", () => {
 
   it("gives each item one line", () => {
     expect(lines(changes, "2026-10-20")).toEqual([
-      { title: "PS5", text: "09:00 → Thu 09:00" },
-      { title: "essay", text: "new at 14:00" },
+      { title: "PS5", text: "9am → Thu 9am" },
+      { title: "essay", text: "new at 2pm" },
       { title: "book", text: "off the plan" },
     ])
   })

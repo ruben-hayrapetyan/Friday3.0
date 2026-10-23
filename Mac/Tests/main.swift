@@ -30,7 +30,7 @@ test("every action reaches the page as a friday:host event with its name") {
     let all: [(HostAction, String)] = [
         (.newEvent, "newEvent"), (.newTodo, "newTodo"), (.search, "search"), (.askClaude, "ask"), (.today, "today"),
         (.previous, "previous"), (.next, "next"), (.drawer, "drawer"), (.otherWays, "ways"), (.shove, "shove"),
-        (.pace, "pace"), (.brief, "brief"), (.triage, "triage"), (.tour, "tour"),
+        (.pace, "pace"), (.brief, "brief"), (.triage, "triage"), (.tour, "tour"), (.setup, "setup"),
     ]
     for (action, name) in all {
         check(detail(action) == ["action": name], "\(action) sends \(String(describing: detail(action)))")

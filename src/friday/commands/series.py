@@ -25,7 +25,7 @@ from friday.core.items import FieldError, with_defaults
 from friday.core.recurrence import describe, ending_before, read_repeat
 from friday.core.rows import item_to_row
 from friday.core.series import Series, materialize
-from friday.core.time import format_local, local_midnight, parse_local, parse_utc, to_local
+from friday.core.time import ampm, format_local, local_midnight, parse_local, parse_utc, to_local
 from friday.planner.store import area_names
 
 TIME_KEYS = ("start_utc", "end_utc", "release_utc", "due_utc")
@@ -439,11 +439,11 @@ def imported_fields(ctx: Ctx, batch: str, fields: dict[str, Any]) -> dict[str, A
 
 
 def imported_times(row: dict[str, Any]) -> str:
-    """An imported repeat's times, like ", 12:20–13:10", ", due 23:59" or ", all day"; its rule holds only days."""
+    """An imported repeat's times, like ", 12:20pm–1:10pm", ", due 11:59pm" or ", all day"; its rule holds only days."""
     start, length = row["dtstart_local"][11:16], json.loads(row["template"]).get("length_min")
     if length is None:
-        return f", due {start}"
+        return f", due {ampm(start)}"
     if length % (24 * 60) == 0 and start == "00:00":
         return ", all day"
     end = (datetime.strptime(start, "%H:%M") + timedelta(minutes=length)).strftime("%H:%M")
-    return f", {start}–{end}"
+    return f", {ampm(start)}–{ampm(end)}"

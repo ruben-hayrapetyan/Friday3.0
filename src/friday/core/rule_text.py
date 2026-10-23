@@ -14,6 +14,8 @@ import re
 from dataclasses import asdict, dataclass, replace
 from typing import Any, Literal
 
+from friday.core.time import ampm_in
+
 Strength = Literal["Prefer", "Strongly", "Always"]
 Kind = Literal["window", "days", "free", "cap", "early", "after"]
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
@@ -216,7 +218,11 @@ def days_words(days: tuple[str, ...] | None) -> str:
 
 
 def sentence(r: Reading) -> str:
-    """The rule in plain words, as the Rules list shows it."""
+    """The rule in plain words, as the Rules list shows it, on a 12-hour clock."""
+    return ampm_in(said(r))
+
+
+def said(r: Reading) -> str:
     subject = "Work" if r.subject == "work" else r.subject[0].upper() + r.subject[1:]
     on = (" " + days_words(r.days)) if r.days else ""
     if r.kind == "window":

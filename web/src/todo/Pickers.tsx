@@ -3,7 +3,7 @@
 
 import { useState } from "react"
 import { Chip, Icon, Seg } from "@/components/fr/controls"
-import { dur, parseLength, weekday } from "@/lib/format"
+import { ampm, dur, parseLength, weekday } from "@/lib/format"
 import { addDays, toMin } from "@/lib/time"
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
@@ -126,7 +126,7 @@ export function dueSummary(value: string | null, today: string): string {
   const date = value.slice(0, 10)
   const days = Math.round((toMin(date) - toMin(today)) / 1440)
   const away = days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`
-  return `Due ${weekday(date)} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1].slice(0, 3)}, ${value.slice(11, 16)} (${away})`
+  return `Due ${weekday(date)} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1].slice(0, 3)}, ${ampm(value)} (${away})`
 }
 
 /** A length typed as people say it ("45", "1h30", "an hour and a half", "2–3 hours"; personal's reader, COMBINED.md

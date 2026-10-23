@@ -272,6 +272,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "series_resume": lambda app: {"id": app.do("series_stop", id=gym(app)["series_id"])["id"]},
     "skip": lambda app: {"id": occurrence(app)},
     "settings_set": lambda app: {"key": "daily_cap", "value": dict.fromkeys(ALL_DAYS, 8)},
+    "setup_save": lambda app: app.do("setup")["answers"] | {"focus_hours": 2},
     "pace": lambda app: {"name": "easy", "for_days": 3},
     "pace_save": lambda app: {"name": "Gentle", "capacity": 0.8},
     "pace_delete": lambda app: {"name": "Push"},

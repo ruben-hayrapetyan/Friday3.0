@@ -150,7 +150,7 @@ def test_now_shows_the_current_block_and_safe_swaps(app: App) -> None:
 def test_why_explains_a_block_and_why_not_names_the_wall(app: App) -> None:
     item_id = planned(app, "essay due mon 12:00 ~1h")
     key = next(b["key"] for b in app.do("plan")["blocks"] if b["item_id"] == item_id)
-    assert app.do("why", key=key)["sentence"].startswith("Due Mon 19 Oct 12:00; it could all start")
+    assert app.do("why", key=key)["sentence"].startswith("Due Mon 19 Oct 12pm; it could all start")
     answer = app.do("why_not", key=key, start="2026-10-19T13:00")
     assert answer["wall"] and "due" in answer["wall"].lower()
 

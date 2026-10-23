@@ -48,8 +48,8 @@ def test_a_repeating_events_own_rule_is_shown_and_kept_not_guessed_from_weekdays
     read_calendars(app, {"Personal": [BIRTHDAY, *CLUB], "School": LECTURES})
     found = {r["title"]: r for r in app.do("calendar_repeats")}
     assert found["Mom's Birthday"]["pattern"] == "Yearly, all day"
-    assert found["CHEM 2090, Lecture"]["pattern"] == "Every Mon, Wed and Fri until Dec 11, 12:20–13:10"
-    assert found["Robotics"]["pattern"] == "Every Tuesday, 19:00–20:00"  # no rule from Google: its weekdays
+    assert found["CHEM 2090, Lecture"]["pattern"] == "Every Mon, Wed and Fri until Dec 11, 12:20pm–1:10pm"
+    assert found["Robotics"]["pattern"] == "Every Tuesday, 7pm–8pm"  # no rule from Google: its weekdays
     app.do("repeats_import", repeats=[{"batch": found["Mom's Birthday"]["batch"]}])
     birthday = next(s for s in app.do("series_list") if s["title"] == "Mom's Birthday")
     assert birthday["pattern"] == "Yearly, all day" and birthday["external"]

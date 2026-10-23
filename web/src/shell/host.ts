@@ -22,6 +22,7 @@ export type HostName =
   | "pace"
   | "brief"
   | "tour"
+  | "setup"
   | "triage"
 
 export interface HostRequest {
@@ -29,7 +30,7 @@ export interface HostRequest {
   argument?: string
 }
 
-const NAMES = new Set<string>(["newEvent", "newTodo", "search", "ask", "today", "previous", "next", "view", "drawer", "go", "ways", "shove", "pace", "brief", "triage", "tour"])
+const NAMES = new Set<string>(["newEvent", "newTodo", "search", "ask", "today", "previous", "next", "view", "drawer", "go", "ways", "shove", "pace", "brief", "triage", "tour", "setup"])
 const PAGES = ["/", "/todo", "/projects", "/review", "/inbox", "/insights", "/rules", "/settings"]
 
 /** The request in an event's detail, or null for anything Friday doesn't know. */

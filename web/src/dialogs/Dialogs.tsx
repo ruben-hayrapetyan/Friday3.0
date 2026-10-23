@@ -13,7 +13,7 @@ import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { dayName } from "@/review/DailyReview"
 
-function Modal({ onClose, children, top, width = 560 }: { onClose: () => void; children: ReactNode; top?: boolean; width?: number }) {
+export function Modal({ onClose, children, top, width = 560 }: { onClose: () => void; children: ReactNode; top?: boolean; width?: number }) {
   return (
     <div className="fr-scrim" style={top ? { alignItems: "flex-start", padding: "56px 24px 24px", background: "color-mix(in srgb, #05070b 60%, transparent)" } : undefined}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0 }} />

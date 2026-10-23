@@ -6,7 +6,7 @@ import { useNavigate } from "react-router"
 import { Icon, Seg } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useAreas, useItem, useNow, useWhy } from "@/hooks/queries"
-import { dur, weekday, when } from "@/lib/format"
+import { clock, dur, weekday, when } from "@/lib/format"
 import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
@@ -180,7 +180,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
             </span>
             <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
               <span className="tnum">
-                {b.start.slice(11, 16)}–{b.end.slice(11, 16)}
+                {clock(b.start)}–{clock(b.end)}
               </span>
               <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>{b.pinned === "locked" ? "Locked · won’t move" : b.pinned ? "Pinned here · resists moving" : b.tentative ? "Tentative · could fit here" : "Planned · Friday decides"}</span>
             </span>

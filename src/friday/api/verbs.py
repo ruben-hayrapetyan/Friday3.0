@@ -654,6 +654,17 @@ VERBS = {
         True,
         'Settle one of today\'s past blocks before the review ("did you finish it?"); the review keeps the answer.',
     ),
+    "setup": Verb(
+        "GET", "/api/q/setup", commands.Empty, False, False, "Setup's questions, answered with what Friday does now."
+    ),
+    "setup_save": Verb(
+        "POST",
+        "/api/c/setup_save",
+        commands.SetupInput,
+        True,
+        True,
+        "Your answers to Setup's questions: sleep, load, focus, free time, finishing early, calendars and the brief.",
+    ),
     "shove": Verb(
         "POST",
         "/api/c/shove",

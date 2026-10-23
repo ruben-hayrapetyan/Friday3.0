@@ -8,7 +8,7 @@ import { Icon } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { runCommand } from "@/hooks/useCommand"
 import { useClock } from "@/hooks/useClock"
-import { weekday } from "@/lib/format"
+import { ampm, weekday } from "@/lib/format"
 import { addDays, fromMin } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
 
@@ -32,14 +32,14 @@ export function ShovePop() {
   const tomorrow = addDays(today, 1)
   const day = weekday(tomorrow).toLowerCase()
   const quick = [
-    { label: "Next hour", sub: `${nowClock}–${fromMin(now + 60).slice(11, 16)}`, range: "1h" },
-    { label: "Rest of today", sub: `from ${nowClock}`, range: "rest" },
-    ...(nowClock < "19:00" ? [{ label: "Tonight", sub: "19:00–23:00", range: "19:00-23:00" }] : []),
+    { label: "Next hour", sub: `${ampm(nowClock)}–${ampm(fromMin(now + 60))}`, range: "1h" },
+    { label: "Rest of today", sub: `from ${ampm(nowClock)}`, range: "rest" },
+    ...(nowClock < "19:00" ? [{ label: "Tonight", sub: "7pm–11pm", range: "19:00-23:00" }] : []),
   ]
   const tmr = [
-    { label: "Morning", sub: "08:00–12:00", range: `08:00-12:00 ${day}` },
-    { label: "Afternoon", sub: "12:00–17:00", range: `12:00-17:00 ${day}` },
-    { label: "Evening", sub: "17:00–22:00", range: `17:00-22:00 ${day}` },
+    { label: "Morning", sub: "8am–12pm", range: `08:00-12:00 ${day}` },
+    { label: "Afternoon", sub: "12pm–5pm", range: `12:00-17:00 ${day}` },
+    { label: "Evening", sub: "5pm–10pm", range: `17:00-22:00 ${day}` },
     { label: "All day", sub: "The whole day", range: `day ${day}` },
   ]
   return (

@@ -14,6 +14,7 @@ from friday.commands.settings import write_setting
 from friday.core.items import FieldError
 from friday.core.rule_text import Reading, read, sentence, spec, with_overrides
 from friday.core.settings import REFERENCE_RULES
+from friday.core.time import ampm_in
 from friday.planner.learning import learnable
 from friday.planner.snapshot import take_snapshot
 from friday.planner.store import area_names, current_plan, kv_get
@@ -242,6 +243,10 @@ def unset_buffer(rule: Any) -> bool:
 
 
 def words(rule: Any, mine: dict[str, Any]) -> str:
+    return ampm_in(written(rule, mine))  # rules saved before the 12-hour clock read the same as new ones
+
+
+def written(rule: Any, mine: dict[str, Any]) -> str:
     if rule.name in mine or (rule.reason and rule.reason != rule.name):
         return rule.reason or rule.name
     said = SAID.get(rule.type) or rule.name.replace("_", " ").capitalize()

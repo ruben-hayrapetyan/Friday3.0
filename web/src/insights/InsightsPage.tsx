@@ -8,7 +8,7 @@ import { query } from "@/api/client"
 import { H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useLoad } from "@/hooks/queries"
-import { clock, weekday } from "@/lib/format"
+import { ampm, clock, weekday } from "@/lib/format"
 import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
@@ -158,7 +158,7 @@ function Heat({ heat }: { heat: number[][] }) {
       <span />
       {HOURS.map((h) => (
         <span key={h} className="tnum" style={{ fontSize: 10, color: "var(--color-neutral-500)" }}>
-          {h}
+          {ampm(`${h}:00`).replace(/[ap]m$/, (s) => s[0])}
         </span>
       ))}
       {heat.map((row, d) => (
@@ -175,7 +175,7 @@ function Row({ day, row, top }: { day: string; row: number[]; top: number }) {
       {row.map((m, h) => (
         <span
           key={h}
-          title={`${day} ${HOURS[h]}:00, ${m} min`}
+          title={`${day} ${ampm(`${HOURS[h]}:00`)}, ${m} min`}
           style={{ height: 22, borderRadius: 4, background: m ? `color-mix(in srgb, var(--color-accent) ${Math.round(8 + (m / top) * 92)}%, transparent)` : "color-mix(in srgb, var(--color-text) 4%, transparent)" }}
         />
       ))}

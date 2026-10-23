@@ -6,7 +6,7 @@ from typing import Any
 
 from friday.core.pace import DayScales, dials_on, pace_label
 from friday.core.textnorm import course_tag
-from friday.core.time import UNIT_MIN, format_utc, to_local
+from friday.core.time import UNIT_MIN, ampm, format_utc, to_local
 from friday.engine.executor import slack
 from friday.engine.explain import block_costs, blocks_of
 from friday.engine.problem import FixedOcc, Plan, Problem
@@ -166,7 +166,7 @@ def clashes(problem: Problem, tz: str) -> list[str]:
                 break
             if b.title != a.title and not in_class_exam(a, b):
                 when = to_local(max(a.start_utc, b.start_utc), tz)
-                out.append(f"{a.title} and {b.title} overlap on {when:%a %b} {when.day} at {when:%H:%M}")
+                out.append(f"{a.title} and {b.title} overlap on {when:%a %b} {when.day} at {ampm(when)}")
     return out
 
 

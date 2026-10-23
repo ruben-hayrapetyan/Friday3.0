@@ -70,7 +70,7 @@ def test_each_calendar_is_read_as_its_kind_and_repeats_wait_in_repeating(app: Ap
     waiting = repeats(app)
     for course in ("CHEM 2090, Lecture", "MATH 1920, Discussion", "PHYS 1110, Laboratory", "ENGRG 1050, Seminar"):
         assert waiting[course]["kind"] == "Class" and waiting[course]["calendar"] == "4. School"
-    assert waiting["MATH 1920, Lecture"]["pattern"] == "Every Mon, Wed and Fri, 11:15–12:05"
+    assert waiting["MATH 1920, Lecture"]["pattern"] == "Every Mon, Wed and Fri, 11:15am–12:05pm"
     assert waiting["Gym"]["kind"] == "Event" and waiting["CHEM Reading Response"]["kind"] == "Assignment"
     assert app.do("inbox")["repeats"] == len(waiting) == 13
     kinds = {title: s["input"]["preset"] for title, s in rows(app).items()}

@@ -114,7 +114,7 @@ def test_a_scripted_day(daemon: Daemon) -> None:
     ps5 = next(b for b in plan["blocks"] if b["title"] == "PS5")
     assert "PS5" in d.friday("plan") and ("Now" in d.friday("now") or "Next" in d.friday("now"))
     short = f"T{ps5['item_id']}@{parse_local(ps5['start']):%a%H:%M}"
-    assert "Due Tue 20 Oct 17:00" in d.friday("why", short)
+    assert "Due Tue 20 Oct 5pm" in d.friday("why", short)
 
     # 09:00–10:30: a timer session counts as progress.
     d.clock.at("2026-10-19T09:00")

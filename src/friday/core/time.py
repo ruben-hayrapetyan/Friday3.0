@@ -4,6 +4,7 @@ Inside Friday a moment is an int: minutes since the Unix epoch, in UTC. Storage 
 and the API speaks local `YYYY-MM-DDTHH:MM`; both convert here.
 """
 
+import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from functools import cache
@@ -55,6 +56,21 @@ def parse_local(text: str) -> datetime:
 
 def format_local(local: datetime) -> str:
     return local.strftime("%Y-%m-%dT%H:%M")
+
+
+def ampm(time: str | datetime) -> str:
+    """A time the way you read it, on a 12-hour clock: "14:30" is "2:30pm", "14:00" is "2pm", "00:00" is "12am".
+    Takes "HH:MM", a local "YYYY-MM-DDTHH:MM" or a datetime; only words for you use it, never stored times."""
+    hour, minute = (time.hour, time.minute) if isinstance(time, datetime) else map(int, time[-5:].split(":"))
+    return f"{(hour - 1) % 12 + 1}{f':{minute:02d}' if minute else ''}{'am' if hour % 24 < 12 else 'pm'}"
+
+
+TIMES = re.compile(r"(?<![\dT:])([01]?\d|2[0-3]):([0-5]\d)(?![\d:])")
+
+
+def ampm_in(text: str) -> str:
+    """A sentence with its 24-hour times ("No work after 22:00") on a 12-hour clock ("No work after 10pm")."""
+    return TIMES.sub(lambda m: ampm(f"{int(m[1]):02d}:{m[2]}"), text)
 
 
 def utc_offset(minutes: int, tz: str) -> timedelta:

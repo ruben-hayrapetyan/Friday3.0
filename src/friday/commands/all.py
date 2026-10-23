@@ -28,6 +28,7 @@ from friday.commands import (  # noqa: F401
     rules,
     series,
     settings,
+    setup,
     shove,
     tokens,
     undo,

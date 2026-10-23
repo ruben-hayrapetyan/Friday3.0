@@ -21,7 +21,7 @@ def test_insights_compare_estimates_by_kind_and_map_working_hours(app: App) -> N
     (kind,) = out["by_kind"]
     assert (kind["kind"], kind["n"], kind["low"], kind["high"]) == ("Assignment", 2, 1.0, 2.0)
     assert out["heat"][0][1] == 120 and out["heat"][0][2] == 60  # Monday 09:00 and 10:00
-    assert out["best_hours"] == "You get the most done on Mondays, 09:00 to 11:00."
+    assert out["best_hours"] == "You get the most done on Mondays, 9am to 11am."
 
 
 def test_a_projects_steps_keep_the_order_you_give_them(app: App) -> None:

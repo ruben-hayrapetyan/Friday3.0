@@ -11,7 +11,7 @@ import numpy as np
 from friday.api.types import BlockOut, ChangeOut
 from friday.core.calendars import fallback_level, rating_key
 from friday.core.items import Item
-from friday.core.time import format_local, format_utc, parse_utc, to_local
+from friday.core.time import ampm, format_local, format_utc, parse_utc, to_local
 from friday.engine.compile import compile_problem
 from friday.engine.executor import ExecutorInput, Now, NowSettings, now, safe_items
 from friday.engine.explain import WhyNot, why_not
@@ -214,7 +214,8 @@ def skip_actions(
     out = []
     for _, _, start, event in sorted(found, key=lambda f: f[:3])[:MAX_SKIPS]:
         reason = (ratings.get(rating_key(event.title)) or {}).get("reason")
-        when = to_local(start, snapshot.settings["time"].timezone).strftime("%a %H:%M")
+        local = to_local(start, snapshot.settings["time"].timezone)
+        when = f"{local:%a} {ampm(local)}"
         out.append(
             (
                 f"Skip {event.title} ({when})",

@@ -4,6 +4,8 @@ import pytest
 
 from friday.core.time import (
     GridSpec,
+    ampm,
+    ampm_in,
     format_utc,
     make_grid,
     night_utc,
@@ -127,3 +129,19 @@ def test_stored_times_round_trip() -> None:
     assert format_utc(parse_utc("2026-10-18T09:05Z")) == "2026-10-18T09:05Z"
     with pytest.raises(ValueError):
         parse_utc("2026-10-18T09:05")
+
+
+@pytest.mark.parametrize(
+    ("time", "said"),
+    [("00:00", "12am"), ("00:30", "12:30am"), ("09:05", "9:05am"), ("12:00", "12pm"), ("13:10", "1:10pm"),
+     ("23:59", "11:59pm"), ("2026-10-20T14:30", "2:30pm"), (datetime(2026, 10, 20, 7, 0), "7am")],
+)  # fmt: skip
+def test_times_read_on_a_12_hour_clock(time: str | datetime, said: str) -> None:
+    assert ampm(time) == said
+
+
+def test_sentences_turn_their_times_but_not_dates_or_lengths() -> None:
+    assert ampm_in("No work after 22:00 on weekdays") == "No work after 10pm on weekdays"
+    assert ampm_in("Keep evenings 18:00–23:00 free") == "Keep evenings 6pm–11pm free"
+    assert ampm_in("at 2026-10-20T14:00, timer 1:02:03") == "at 2026-10-20T14:00, timer 1:02:03"
+    assert ampm_in("No work after 10pm") == "No work after 10pm"

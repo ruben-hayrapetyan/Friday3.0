@@ -75,11 +75,17 @@ export function layout<T extends Span>(things: T[], date: string, axis: Axis): P
   return out
 }
 
+/** A time on a 12-hour clock, from "HH:MM" or a local "YYYY-MM-DDTHH:MM": "2:30pm", "2pm", "12am". */
+export function ampm(time: string): string {
+  const [hour, minute] = time.slice(-5).split(":").map(Number)
+  return `${((hour + 11) % 12) + 1}${minute ? `:${String(minute).padStart(2, "0")}` : ""}${hour % 24 < 12 ? "am" : "pm"}`
+}
+
 /** Hour labels down the axis, as minutes from the top with their clock text. */
 export function hourMarks(axis: Axis): { top: number; label: string }[] {
   const out = []
   for (let m = Math.ceil(axis.startMin / 60) * 60; m < axis.endMin; m += 60) {
-    out.push({ top: m - axis.startMin, label: `${String((m / 60) % 24).padStart(2, "0")}:00` })
+    out.push({ top: m - axis.startMin, label: ampm(`${String((m / 60) % 24).padStart(2, "0")}:00`) })
   }
   return out
 }

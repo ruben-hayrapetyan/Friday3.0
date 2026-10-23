@@ -43,7 +43,7 @@ export function ImpactPage() {
 function ShapeLine({ shape }: { shape: Shape }) {
   const parts = [
     `${fmtH(shape.total)} planned`,
-    `${fmtH(shape.lateNight)} after 22:00`,
+    `${fmtH(shape.lateNight)} after 10pm`,
     `${fmtH(shape.weekends)} on weekends`,
     `heaviest day ${fmtH(shape.heaviestDay)}`,
     `longest sitting ${fmtH(shape.longestSitting)}`,

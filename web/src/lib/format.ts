@@ -1,11 +1,14 @@
 import { parseLength as readLength } from "./lengths"
-import { toMin } from "./time"
+import { ampm, toMin } from "./time"
+
+export { ampm }
 
 const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
+/** A local time on a 12-hour clock: "2:30pm". */
 export function clock(local: string): string {
-  return local.slice(11, 16)
+  return ampm(local.slice(11, 16))
 }
 
 export function weekday(date: string): string {
@@ -16,13 +19,13 @@ export function dayLabel(date: string): string {
   return `${weekday(date)} ${Number(date.slice(8, 10))} ${MONTH[Number(date.slice(5, 7)) - 1]}`
 }
 
-/** "14:00" today, "Tue 14:00" within the week, "Fri 6 Nov 17:00" further off; a bare date has no time. */
+/** "2pm" today, "Tue 2pm" within the week, "Fri 6 Nov 5pm" further off; a bare date has no time. */
 export function when(local: string, today: string): string {
   const date = local.slice(0, 10)
   const time = local.length > 10 ? clock(local) : ""
   // A repeat's window ends as the next planning day starts (04:00): that is the end of the day before.
   // ponytail: assumes the default day start; read time.day_start if anyone changes it.
-  if (time === "04:00") return `${when(new Date((toMin(date) - 1440) * 60000).toISOString().slice(0, 10), today)}, end of day`
+  if (local.slice(11, 16) === "04:00") return `${when(new Date((toMin(date) - 1440) * 60000).toISOString().slice(0, 10), today)}, end of day`
   if (local.startsWith(today) && time) return time
   const days = Math.abs(toMin(date) - toMin(today)) / 1440
   const day = days < 7 ? weekday(date) : `${weekday(date)} ${Number(date.slice(8, 10))} ${MONTH[Number(date.slice(5, 7)) - 1]}`

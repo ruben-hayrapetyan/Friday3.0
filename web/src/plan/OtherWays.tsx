@@ -8,7 +8,7 @@ import { setGhosts } from "@/api/events"
 import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { addDays, toMin } from "@/lib/time"
-import { weekday } from "@/lib/format"
+import { clock, weekday } from "@/lib/format"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 
@@ -121,7 +121,7 @@ function WeekStrip({ blocks }: { blocks: Schemas["BlockOut"][] }) {
                 return (
                   <span
                     key={b.key}
-                    title={`${b.title} ${b.start.slice(11, 16)}–${b.end.slice(11, 16)}`}
+                    title={`${b.title} ${clock(b.start)}–${clock(b.end)}`}
                     style={{ position: "absolute", left: 2, right: 2, top: `${Math.max(0, (from / span) * 100)}%`, height: `${Math.max(2, (len / span) * 100)}%`, borderRadius: 2, background: color(b.area) }}
                   />
                 )

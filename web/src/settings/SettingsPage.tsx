@@ -45,7 +45,8 @@ function remembered(): string {
 
 export function SettingsPage() {
   const { section } = useParams()
-  const tight = useShell().layout.tight // a narrow window: the sections in a row above, scrolled sideways
+  const { layout, setDialog } = useShell()
+  const tight = layout.tight // a narrow window: the sections in a row above, scrolled sideways
   const navigate = useNavigate()
   const owned = useStatus().data?.config_keys ?? []
   const known = SECTIONS.find((s) => s.id === section)
@@ -64,6 +65,10 @@ export function SettingsPage() {
         <span className="fr-h fr-title">Settings</span>
         <span className="fr-head-note" style={{ color: "var(--color-neutral-500)" }}>Changes apply right away</span>
         <div style={{ flex: 1 }} />
+        <button className="btn btn-ghost" onClick={() => setDialog("setup")} title="Your day, load, free time and calendars, a question at a time">
+          <Icon name="sliders-horizontal" size={15} />
+          <span className="fr-head-note">Answer Setup’s questions again</span>
+        </button>
         <button className="btn btn-secondary" onClick={() => navigate("/")}>
           <Icon name="arrow-left" size={15} />
           <span className="fr-head-note">Back to plan</span>

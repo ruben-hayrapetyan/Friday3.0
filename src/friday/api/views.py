@@ -372,6 +372,14 @@ class RuleOut(Model):
     gives_way_to: list[str] = []  # rules you said beat this one
 
 
+class SetupOut(Model):
+    """Setup's questions, answered with what Friday does now; `done` once you've been through them."""
+
+    done: bool
+    answers: dict[str, Any]  # SetupInput's fields, from the settings in effect
+    events: dict[str, int] = {}  # each calendar's events in the next two weeks
+
+
 class RuleClashOut(Model):
     """What a rule is up against, when the plan bends it: the rule that gives way when it's kept, on which days."""
 
