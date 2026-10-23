@@ -8,7 +8,7 @@ import { useCommand } from "@/hooks/useCommand"
 import { useSettings } from "@/hooks/queries"
 import { PIGMENTS, pigment } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
-import { useCalendars } from "./Calendars"
+import { Calendars, useCalendars, useMacCalendars } from "./Calendars"
 import { Field, SectionHead } from "./SettingsPage"
 
 export interface Category {
@@ -42,6 +42,8 @@ export function CalendarsSection() {
   const settings = useSettings().data as Record<string, unknown> | undefined
   const save = useCommand("settings_set", { label: () => "Saved" })
   const google = (useCalendars().data ?? []).filter((c) => c.on)
+  const mac = (useMacCalendars().data ?? []).filter((c) => c.on && !google.some((g) => g.name === c.name))
+  const reading = [...google, ...mac] // what the plan shows, by name
   if (!settings) return null
   const busy = settings.busy as Busy
   const look = settings.calendar_look as CalendarLook
@@ -57,10 +59,10 @@ export function CalendarsSection() {
         <Toggle on={busy.count_filtered} onToggle={() => setBusy({ count_filtered: !busy.count_filtered })} label={filter ? `${filter.label}` : "Events the filter hides"} hint={filter ? "What the categories’ filter hides" : "Set a filter under Categories"} />
       </Field>
       <Field name="Your calendars" note="A pigment for each, a button in the title row to show or hide it, and whether its events count as busy. Calendars of room bookings start out not counted.">
-        {google.length === 0 ? (
+        {reading.length === 0 ? (
           <span className="fr-kicker">Calendars list here once Google is connected (Integrations), and the Mac app's once it runs.</span>
         ) : (
-          google.map((c) => (
+          reading.map((c) => (
             <div key={c.id} className="fr-row" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto auto", gap: 14, alignItems: "center", padding: "8px 0" }}>
               <span style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0 }}>
                 <span style={{ width: 10, height: 10, borderRadius: "50%", flex: "none", background: swatchOf(look.colors[c.name]) }} />
@@ -78,6 +80,9 @@ export function CalendarsSection() {
             </div>
           ))
         )}
+      </Field>
+      <Field name="This Mac’s calendars" note="Sent by the Mac app. Choose which Friday reads, and whether their events skip the Inbox.">
+        <Calendars mac />
       </Field>
       <Field name="New events go to" note="Events you make in Friday are saved to this Google calendar too, and follow it from then on. Kept only in Friday when none is chosen.">
         <select

@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let dockIcon = DockIcon()
     private let timer = MenuBarTimer()
     private let notifier = Notifier()
+    private let calendars = CalendarBridge()
     private var hotKeys: [GlobalHotKey] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -34,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await Server.shared.ensureRunning()
             timer.start()
             notifier.start()
+            calendars.start()
         }
         LoginItem.enableOnFirstLaunch()
     }
@@ -156,6 +158,7 @@ struct FridayMenus: Commands {
 struct MacSettings: View {
     @AppStorage("hotkeys") private var hotkeys = true
     @AppStorage("menuBarTimer") private var menuBarTimer = true
+    @AppStorage("macCalendars") private var macCalendars = true
     @AppStorage("fridaydPath") private var fridaydPath = ""
     @State private var opensAtLogin = LoginItem.isEnabled
 
@@ -164,6 +167,9 @@ struct MacSettings: View {
             Toggle("Global shortcuts: ⌃⌥Space Friday, ⌥Space new event, ⌃Space Ask Claude", isOn: $hotkeys)
             Text("Takes effect the next time Friday opens.").font(.caption).foregroundStyle(.secondary)
             Toggle("The running timer in the menu bar", isOn: $menuBarTimer)
+            Toggle("Send this Mac's calendars to Friday", isOn: $macCalendars)
+            Text("Choose which ones Friday reads in Settings → Calendars. Takes effect the next time Friday opens.")
+                .font(.caption).foregroundStyle(.secondary)
             Toggle("Open at login", isOn: Binding(get: { opensAtLogin }, set: { LoginItem.set($0); opensAtLogin = LoginItem.isEnabled }))
             HStack {
                 TextField("fridayd", text: $fridaydPath, prompt: Text(Server.shared.executable?.path ?? "~/.local/bin/fridayd"))

@@ -86,5 +86,61 @@ test("only notifications newer than the last shown, oldest first") {
     check(Notifier.unseen([["title": "no id"]], after: 0).isEmpty, "one without an id isn't new")
 }
 
+test("calendar payload: one id per occurrence") {
+    let monday = Date(timeIntervalSince1970: 1_792_504_800)  // 2026-10-20 10:00 New York
+    let week = monday.addingTimeInterval(7 * 86400)
+    check(MacPayload.occurrenceID("abc", at: monday) != MacPayload.occurrenceID("abc", at: week), "differ by occurrence")
+    check(MacPayload.occurrenceID("abc", at: monday) == MacPayload.occurrenceID("abc", at: monday), "stable")
+}
+
+test("calendar payload: times with the Mac's offset") {
+    let monday = Date(timeIntervalSince1970: 1_792_504_800)
+    let york = TimeZone(identifier: "America/New_York")!
+    check(MacPayload.timestamp(monday, zone: york) == "2026-10-20T10:00:00-04:00", MacPayload.timestamp(monday, zone: york))
+    let november = monday.addingTimeInterval(14 * 86400)  // after the clocks change
+    check(MacPayload.timestamp(november, zone: york) == "2026-11-03T09:00:00-05:00", MacPayload.timestamp(november, zone: york))
+    check(MacPayload.timestamp(monday, zone: TimeZone(identifier: "UTC")!) == "2026-10-20T14:00:00+00:00", "UTC spelled as an offset")
+}
+
+test("calendar payload: whole days end the day after the last") {
+    var york = Calendar(identifier: .gregorian)
+    york.timeZone = TimeZone(identifier: "America/New_York")!
+    let start = york.date(from: DateComponents(year: 2026, month: 10, day: 22))!
+    let lastSecond = york.date(from: DateComponents(year: 2026, month: 10, day: 23, hour: 23, minute: 59, second: 59))!
+    check(MacPayload.day(MacPayload.allDayEnd(start: start, end: lastSecond, calendar: york), calendar: york) == "2026-10-24",
+          "EventKit's 23:59:59 end")
+    let nextMidnight = york.date(from: DateComponents(year: 2026, month: 10, day: 24))!
+    check(MacPayload.day(MacPayload.allDayEnd(start: start, end: nextMidnight, calendar: york), calendar: york) == "2026-10-24",
+          "an end already at midnight")
+    check(MacPayload.day(MacPayload.allDayEnd(start: start, end: start, calendar: york), calendar: york) == "2026-10-23",
+          "a zero-length one is still a day")
+    check(MacPayload.day(start, calendar: york) == "2026-10-22", "the day")
+}
+
+test("calendar payload: types and colours") {
+    check(MacPayload.typeName(.calDAV) == "caldav" && MacPayload.typeName(.birthday) == "birthday", "types")
+    check(MacPayload.typeName(.subscription) == "subscription" && MacPayload.typeName(.local) == "local", "more types")
+    check(MacPayload.hex(red: 0.227, green: 0.353, blue: 0.549) == "#3a5a8c", MacPayload.hex(red: 0.227, green: 0.353, blue: 0.549))
+    check(MacPayload.hex(red: 1.2, green: -0.1, blue: 1) == "#ff00ff", "clamped")
+}
+
+test("calendar payload: the body mac_sync takes") {
+    let since = Date(timeIntervalSince1970: 1_792_382_400)  // 2026-10-19 00:00 New York
+    let body = MacPayload.body(calendars: [["id": "c", "name": "Home"]], events: [], since: since, until: since.addingTimeInterval(86400))
+    check(Set(body.keys) == ["calendars", "events", "since", "until"], "\(body.keys)")
+    check((body["since"] as? String)?.count == 25, "since with an offset: \(body["since"] ?? "")")
+    if CommandLine.arguments.count > 1 {  // ./test.sh payload.json writes a sample for the server's test
+        let monday = Date(timeIntervalSince1970: 1_792_504_800)
+        let sample = MacPayload.body(
+            calendars: [["id": "home-id", "name": "Home", "account": "iCloud", "type": "caldav", "color": "#3a5a8c", "writable": true]],
+            events: [["id": MacPayload.occurrenceID("dentist", at: monday), "calendar": "home-id", "title": "Dentist",
+                      "start": MacPayload.timestamp(monday), "end": MacPayload.timestamp(monday.addingTimeInterval(3600)),
+                      "all_day": false, "free": false, "declined": false]],
+            since: since, until: since.addingTimeInterval(12 * 7 * 86400))
+        let data = try! JSONSerialization.data(withJSONObject: sample, options: [.sortedKeys])
+        try! data.write(to: URL(fileURLWithPath: CommandLine.arguments[1]))
+    }
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

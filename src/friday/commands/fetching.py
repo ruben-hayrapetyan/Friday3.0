@@ -58,6 +58,9 @@ def sync(
             return read_calendars(conn, settings, now_utc, user_id, api, client) if api else 0
 
         made += guarded(conn, "gcal", now_utc, user_id, calendars)
+    if forced or kv_get(conn, "mac_sync_now", None, user_id) is not None:
+        conn.execute("DELETE FROM kv WHERE user_id = ? AND key = 'mac_sync_now'", [user_id])
+        made += read_mac(conn, settings, now_utc, user_id, client)
     if settings["gmail"].enabled and (forced or due(conn, "gmail", settings, now_utc, user_id)):
 
         def messages() -> int:
@@ -113,6 +116,29 @@ def read_calendars(
             return [f for f in found if f is not None]
 
         made += take(conn, source, read, settings, now_utc, user_id, until, client)
+    return made
+
+
+def read_mac(conn: sqlite3.Connection, settings: dict, now_utc: int, user_id: int, client: Any | None = None) -> int:
+    """The Mac's calendars you switched on, from what the Mac app last posted (`mac_sync`): read as Google's are, in
+    the window it posted, so an event gone from it is suggested dropped."""
+    listed = {c["id"] for c in kv_get(conn, "mac_calendars", [], user_id)}
+    events = kv_get(conn, "mac_events", {}, user_id)
+    window = kv_get(conn, "mac_window", None, user_id)
+    if window is None:
+        return 0
+    tz, made = settings["time"].timezone, 0
+    for source in rows(conn, "SELECT * FROM sources WHERE user_id = ? AND kind = 'mac' AND enabled = 1", [user_id]):
+        config = json.loads(source["config"])
+        way = event_reading(settings, config.get("kind"), settings["gcal"].include_all_day)
+
+        def read(calendar_id: str | None = config.get("calendar"), way: ics.Reading = way) -> list[Found]:
+            if calendar_id not in listed:
+                raise LookupError("no longer on your Mac")
+            found = (ics.google_event(e, tz, way) for e in events.get(calendar_id, []))
+            return [f for f in found if f is not None]
+
+        made += take(conn, source, read, settings, now_utc, user_id, window["until"], client)
     return made
 
 

@@ -140,3 +140,36 @@ def test_exam_prep_before_its_exam_and_a_switch_to_keep_it_going(client: TestCli
     assert blocks(client, item["id"]) and all(end <= "2026-10-21T19:30" for _, end in blocks(client, item["id"]))
     off = do(client, "edit", id=item["id"], expires=False)["result"]["item"]
     assert off["pointless_late"] is False and off["expires"] is False
+
+
+def test_the_mac_app_sending_its_calendars(client: TestClient, app: App) -> None:
+    from friday.commands.fetching import sync
+
+    body = {
+        "calendars": [
+            {"id": "home-id", "name": "Home", "account": "iCloud", "type": "caldav", "color": "#3a5a8c",
+             "writable": True},
+            {"id": "bday", "name": "Birthdays", "account": "Other", "type": "birthday"},
+        ],
+        "events": [
+            {"id": "dentist@1792504800", "calendar": "home-id", "title": "Dentist",
+             "start": "2026-10-20T10:00:00-04:00", "end": "2026-10-20T11:00:00-04:00", "all_day": False, "free": False,
+             "declined": False},
+        ],
+        "since": "2026-10-18T00:00:00-04:00",
+        "until": "2027-01-10T00:00:00-05:00",
+    }  # fmt: skip
+    out = client.post("/api/c/mac_sync", json=body, headers={"X-Friday-Client": "mac"})
+    assert out.status_code == 200 and out.json()["result"]["message"] == "Read 1 event on 2 Mac calendars"
+    assert out.json()["command_id"] is None  # not in the undo history
+    sync(app.conn, app.now_utc)  # the job's next minute
+    listed = ask(client, "mac_calendars")
+    assert [(c["name"], c["on"]) for c in listed] == [("Birthdays", False), ("Home", True)]  # type: ignore[index]
+    fixed = ask(client, "plan")["fixed"]  # type: ignore[index]
+    assert [(f["title"], f["start"]) for f in fixed if f["title"] == "Dentist"] == [("Dentist", "2026-10-20T10:00")]
+    do(client, "calendar_set", id="bday", mac=True, on=True)
+    assert all(c["on"] for c in ask(client, "mac_calendars"))  # type: ignore[union-attr]
+    bad = client.post("/api/c/mac_sync", json=body | {"events": [{"id": "x"}]})
+    assert bad.status_code == 422
+    stray = client.post("/api/c/mac_sync", json=body | {"events": [body["events"][0] | {"calendar": "work"}]})  # type: ignore[index]
+    assert stray.status_code == 422 and "not listed" in stray.text

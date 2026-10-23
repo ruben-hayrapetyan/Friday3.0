@@ -54,21 +54,24 @@ def current_plan(conn: sqlite3.Connection, user_id: int = 1) -> dict[str, Any] |
 
 @dataclass(frozen=True)
 class EventLink:
-    """Where a calendar event in Friday came from: the source (a Google calendar) and the event there."""
+    """Where a calendar event in Friday came from: the source (a Google calendar, or one of the Mac's) and the event
+    there."""
 
     source_id: int
     calendar: str  # the source's name
-    calendar_id: str | None  # Google's id for the calendar
+    calendar_id: str | None  # Google's id for the calendar, or EventKit's
     event_id: str
+    kind: str = "gcal"  # "gcal" or "mac"
 
 
 def event_links(conn: sqlite3.Connection, user_id: int = 1) -> dict[int, EventLink]:
     """Each event read from a calendar, by item id: the latest suggestion that made or changed it says where."""
     found = rows(
         conn,
-        "SELECT s.item_id, r.external_id, src.id AS source_id, src.name, json_extract(src.config, '$.calendar') AS cal "
-        "FROM suggestions s JOIN raw_inputs r ON r.id = s.raw_input_id JOIN sources src ON src.id = r.source_id "
-        "WHERE s.user_id = ? AND s.item_id IS NOT NULL AND s.status = 'accepted' AND src.kind = 'gcal' ORDER BY s.id",
+        "SELECT s.item_id, r.external_id, src.id AS source_id, src.name, src.kind, "
+        "json_extract(src.config, '$.calendar') AS cal FROM suggestions s JOIN raw_inputs r ON r.id = s.raw_input_id "
+        "JOIN sources src ON src.id = r.source_id WHERE s.user_id = ? AND s.item_id IS NOT NULL "
+        "AND s.status = 'accepted' AND src.kind IN ('gcal', 'mac') ORDER BY s.id",
         [user_id],
     )
-    return {r["item_id"]: EventLink(r["source_id"], r["name"], r["cal"], r["external_id"]) for r in found}
+    return {r["item_id"]: EventLink(r["source_id"], r["name"], r["cal"], r["external_id"], r["kind"]) for r in found}

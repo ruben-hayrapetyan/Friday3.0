@@ -1,5 +1,6 @@
 """Google calendars in Settings (M12b): every calendar the last sync saw, alphabetized, each switched on or off and
-read as one kind or per event. The choice lives in `sources`; `gcal.read` in friday.toml only picks the first ones."""
+read as one kind or per event. The choice lives in `sources`; `gcal.read` in friday.toml only picks the first ones.
+The Mac's calendars (`commands/mac.py`) are switched the same way, with `mac`."""
 
 import json
 import re
@@ -47,18 +48,22 @@ def google_calendars(ctx: Ctx, inp: Empty) -> list[GoogleCalendarOut]:
 
 @command("calendar_set")
 def calendar_set(ctx: Ctx, inp: CalendarSetInput) -> Changed:
-    """Read a Google calendar or stop, as one kind or per event, trusted or through the inbox."""
-    listed = {c["id"]: c for c in kv_get(ctx.conn, "google_calendars", [], ctx.user_id)}
+    """Read a Google calendar (or, with `mac`, one of the Mac's) or stop, as one kind or per event, trusted or
+    through the inbox."""
+    kind = "mac" if inp.mac else "gcal"
+    listed = {c["id"]: c for c in kv_get(ctx.conn, "mac_calendars" if inp.mac else "google_calendars", [], ctx.user_id)}
     if inp.id not in listed:
-        raise FieldError("id", "no such calendar in your Google account (as of the last sync)")
+        where = (
+            "on the Mac (as the Mac app last saw them)" if inp.mac else "in your Google account (as of the last sync)"
+        )
+        raise FieldError("id", f"no such calendar {where}")
     if inp.kind not in (None, "auto") and inp.kind not in ctx.settings["presets"]:
         raise FieldError("kind", f"no kind called {inp.kind}")
-    source = source_of(ctx, inp.id)
+    name = listed[inp.id].get("source_name", listed[inp.id]["name"])
+    source = source_of(ctx, inp.id, kind)
     if source is None:
         config = json.dumps({"calendar": inp.id})
-        source_id = ctx.db.insert(
-            "sources", {"kind": "gcal", "name": listed[inp.id]["name"], "config": config, "enabled": 0}
-        )
+        source_id = ctx.db.insert("sources", {"kind": kind, "name": name, "config": config, "enabled": 0})
         source = ctx.db.fetch("sources", {"id": source_id})
         assert source is not None
     changes: dict[str, Any] = {}
@@ -67,6 +72,8 @@ def calendar_set(ctx: Ctx, inp: CalendarSetInput) -> Changed:
     if inp.trusted is not None:
         changes["trusted"] = int(inp.trusted)
     if inp.editable is not None:
+        if inp.editable and inp.mac:
+            raise FieldError("editable", "Friday doesn't change the Mac's calendars yet")
         if inp.editable and not listed[inp.id].get("writable", False):
             raise FieldError("editable", "Google doesn't let you change this calendar's events")
         config = json.loads(changes.get("config") or source["config"])
@@ -78,7 +85,6 @@ def calendar_set(ctx: Ctx, inp: CalendarSetInput) -> Changed:
     if inp.on is not None or inp.kind is not None:
         forget_unanswered(ctx, source["id"])
         ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "sync_now"}, {"value": json.dumps(ctx.now_text)})
-    name = listed[inp.id]["name"]
     return Changed(
         message=f"Reading {name}" if inp.on else f"Stopped reading {name}" if inp.on is False else f"Saved {name}"
     )
@@ -91,18 +97,19 @@ def editable(config: dict[str, Any], listed: dict[str, Any]) -> bool:
     return bool(config.get("editable", True))
 
 
-def source_of(ctx: Ctx, calendar_id: str) -> dict[str, Any] | None:
+def source_of(ctx: Ctx, calendar_id: str, kind: str = "gcal") -> dict[str, Any] | None:
     return one(
         ctx.conn,
-        "SELECT * FROM sources WHERE user_id = ? AND kind = 'gcal' AND json_extract(config, '$.calendar') = ? "
-        "ORDER BY id",
-        [ctx.user_id, calendar_id],
+        "SELECT * FROM sources WHERE user_id = ? AND kind = ? AND json_extract(config, '$.calendar') = ? ORDER BY id",
+        [ctx.user_id, kind, calendar_id],
     )
 
 
 def reread_calendars(ctx: Ctx) -> None:
     """Every calendar read again on the next sync, which is now, as when one changes kind."""
-    for source in ctx.conn.execute("SELECT id FROM sources WHERE user_id = ? AND kind = 'gcal'", [ctx.user_id]):
+    for source in ctx.conn.execute(
+        "SELECT id FROM sources WHERE user_id = ? AND kind IN ('gcal', 'mac')", [ctx.user_id]
+    ):
         forget_unanswered(ctx, source[0])
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "sync_now"}, {"value": json.dumps(ctx.now_text)})
 

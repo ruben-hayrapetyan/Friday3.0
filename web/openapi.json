@@ -131,7 +131,7 @@
   },
   "/api/c/calendar_set": {
    "post": {
-    "summary": "Read a Google calendar or stop, as one kind or per event, trusted or through the inbox.",
+    "summary": "Read a Google calendar (or, with `mac`, one of the Mac's) or stop, as one kind or per event, trusted or",
     "operationId": "calendar_set",
     "parameters": [
      {
@@ -4412,6 +4412,99 @@
     }
    }
   },
+  "/api/c/mac_sync": {
+   "post": {
+    "summary": "The Mac's calendars and their events between `since` and `until`, from the Mac app.",
+    "operationId": "mac_sync",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MacSyncInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MacSyncResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/mac_calendars": {
+   "get": {
+    "summary": "The Mac's calendars as the Mac app last saw them, alphabetized, with whether each is read and how.",
+    "operationId": "mac_calendars",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/GoogleCalendarOut"
+         },
+         "type": "array",
+         "title": "Response Mac Calendars"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/mail_log": {
    "get": {
     "summary": "The newest mail Friday saw: read, skipped by the pre-filter, failed or waiting, and why.",
@@ -8244,6 +8337,11 @@
       "type": "string",
       "title": "Id"
      },
+     "mac": {
+      "type": "boolean",
+      "title": "Mac",
+      "default": false
+     },
      "on": {
       "anyOf": [
        {
@@ -9861,6 +9959,22 @@
       "type": "boolean",
       "title": "Editable",
       "default": false
+     },
+     "account": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Account"
+     },
+     "also_google": {
+      "type": "boolean",
+      "title": "Also Google",
+      "default": false
      }
     },
     "additionalProperties": false,
@@ -11245,6 +11359,216 @@
      "result"
     ],
     "title": "LogResult"
+   },
+   "MacCalendar": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "account": {
+      "type": "string",
+      "title": "Account",
+      "default": ""
+     },
+     "type": {
+      "type": "string",
+      "enum": [
+       "local",
+       "caldav",
+       "exchange",
+       "subscription",
+       "birthday",
+       "other"
+      ],
+      "title": "Type",
+      "default": "other"
+     },
+     "color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Color"
+     },
+     "writable": {
+      "type": "boolean",
+      "title": "Writable",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "name"
+    ],
+    "title": "MacCalendar",
+    "description": "One of the Mac's calendars, as EventKit lists it."
+   },
+   "MacEvent": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "calendar": {
+      "type": "string",
+      "title": "Calendar"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title",
+      "default": ""
+     },
+     "start": {
+      "type": "string",
+      "title": "Start"
+     },
+     "end": {
+      "type": "string",
+      "title": "End"
+     },
+     "all_day": {
+      "type": "boolean",
+      "title": "All Day",
+      "default": false
+     },
+     "series": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Series"
+     },
+     "free": {
+      "type": "boolean",
+      "title": "Free",
+      "default": false
+     },
+     "declined": {
+      "type": "boolean",
+      "title": "Declined",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "calendar",
+     "start",
+     "end"
+    ],
+    "title": "MacEvent",
+    "description": "One occurrence of an event on the Mac: timed with an offset (\"2026-10-23T09:00:00-04:00\"), or whole days with\nthe end the day after the last (\"2026-10-23\" to \"2026-10-24\"), as Google gives them."
+   },
+   "MacSyncInput": {
+    "properties": {
+     "calendars": {
+      "items": {
+       "$ref": "#/components/schemas/MacCalendar"
+      },
+      "type": "array",
+      "title": "Calendars"
+     },
+     "events": {
+      "items": {
+       "$ref": "#/components/schemas/MacEvent"
+      },
+      "type": "array",
+      "title": "Events"
+     },
+     "since": {
+      "type": "string",
+      "title": "Since"
+     },
+     "until": {
+      "type": "string",
+      "title": "Until"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "calendars",
+     "events",
+     "since",
+     "until"
+    ],
+    "title": "MacSyncInput",
+    "description": "What the Mac app sees on the Mac's calendars, between `since` and `until` (times with an offset)."
+   },
+   "MacSyncResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "MacSyncResult"
    },
    "MailOut": {
     "properties": {

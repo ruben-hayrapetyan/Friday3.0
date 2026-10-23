@@ -376,4 +376,4 @@ def test_an_undo_can_be_undone_and_a_command_is_undone_only_once(app: App) -> No
 
 
 def test_unlogged_commands_are_only_those_with_no_undo_or_a_secret_result() -> None:
-    assert {"replan", "notify_test", "ask_ai", "ask_claude", "token_add"} == UNLOGGED
+    assert {"replan", "notify_test", "ask_ai", "ask_claude", "mac_sync", "token_add"} == UNLOGGED

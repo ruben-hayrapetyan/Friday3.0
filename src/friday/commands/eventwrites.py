@@ -42,8 +42,8 @@ def queue_event_write(ctx: Ctx, item: Item, op: str) -> None:
 
 
 def writes_to(conn: sqlite3.Connection, user_id: int, source_id: int) -> bool:
-    source = one(conn, "SELECT config FROM sources WHERE id = ?", [source_id])
-    if source is None:
+    source = one(conn, "SELECT kind, config FROM sources WHERE id = ?", [source_id])
+    if source is None or source["kind"] != "gcal":  # Friday doesn't change the Mac's calendars yet
         return False
     config = json.loads(source["config"])
     listed = {c["id"]: c for c in kv_get(conn, "google_calendars", [], user_id)}
@@ -111,6 +111,8 @@ def send(
     item = load_item(conn, job["item_id"], user_id)
     link = event_links(conn, user_id).get(job["item_id"])
     tz = settings["time"].timezone
+    if link is not None and link.kind != "gcal":
+        return  # queued before its calendar turned out to be the Mac's: nothing to send to Google
     if job["op"] == "delete" or item is None or item.status != "todo":
         if link is not None and link.calendar_id:
             gcal.delete_event(google, link.calendar_id, link.event_id)

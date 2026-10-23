@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 mkdir -p build
-xcrun swiftc -swift-version 5 -target "$(uname -m)-apple-macos14.0" -sdk "$(xcrun --sdk macosx --show-sdk-path)" \
-  Sources/HostAction.swift Sources/Server.swift Sources/MenuBarTimer.swift Sources/Notifier.swift Tests/main.swift \
+xcrun swiftc -swift-version 5 -target "$(uname -m)-apple-macos14.0" -sdk "$(xcrun --sdk macosx --show-sdk-path)" -framework EventKit \
+  Sources/HostAction.swift Sources/Server.swift Sources/MenuBarTimer.swift Sources/Notifier.swift Sources/CalendarBridge.swift Tests/main.swift \
   -o build/tests
-build/tests
+build/tests "$@"

@@ -82,7 +82,7 @@ VERBS = {
         commands.CalendarSetInput,
         True,
         False,
-        "Read a Google calendar or stop, as one kind or per event, trusted or through the inbox.",
+        "Read a Google calendar (or, with `mac`, one of the Mac's) or stop, as one kind or per event, trusted or",
     ),
     "changes": Verb(
         "GET",
@@ -291,6 +291,22 @@ VERBS = {
     ),
     "log_list": Verb(
         "GET", "/api/q/log_list", commands.LogListInput, False, False, "The latest commands, newest first."
+    ),
+    "mac_calendars": Verb(
+        "GET",
+        "/api/q/mac_calendars",
+        commands.Empty,
+        False,
+        False,
+        "The Mac's calendars as the Mac app last saw them, alphabetized, with whether each is read and how.",
+    ),
+    "mac_sync": Verb(
+        "POST",
+        "/api/c/mac_sync",
+        commands.MacSyncInput,
+        True,
+        False,
+        "The Mac's calendars and their events between `since` and `until`, from the Mac app.",
     ),
     "mail_log": Verb(
         "GET",

@@ -75,7 +75,9 @@ def drop_mentions(ctx: Ctx, name: str) -> None:
         r["params"].get("by_preset", {}).pop(name, None)
     if rules != [r.model_dump() for r in ctx.settings["rules"]]:
         write_setting(ctx, "rules", rules)
-    for s in rows(ctx.conn, "SELECT id, config FROM sources WHERE user_id = ? AND kind = 'gcal'", [ctx.user_id]):
+    for s in rows(
+        ctx.conn, "SELECT id, config FROM sources WHERE user_id = ? AND kind IN ('gcal', 'mac')", [ctx.user_id]
+    ):
         config = json.loads(s["config"])
         if config.get("kind") == name:
             ctx.db.update("sources", {"id": s["id"]}, {"config": json.dumps(config | {"kind": None})})

@@ -81,7 +81,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Read a Google calendar or stop, as one kind or per event, trusted or through the inbox. */
+        /** Read a Google calendar (or, with `mac`, one of the Mac's) or stop, as one kind or per event, trusted or */
         post: operations["calendar_set"];
         delete?: never;
         options?: never;
@@ -1203,6 +1203,40 @@ export interface paths {
         };
         /** What Friday has learned: the multipliers in use, a suggestion waiting for you, the evidence and a digest. */
         get: operations["learning"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/mac_sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The Mac's calendars and their events between `since` and `until`, from the Mac app. */
+        post: operations["mac_sync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/mac_calendars": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The Mac's calendars as the Mac app last saw them, alphabetized, with whether each is read and how. */
+        get: operations["mac_calendars"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2407,6 +2441,11 @@ export interface components {
         CalendarSetInput: {
             /** Id */
             id: string;
+            /**
+             * Mac
+             * @default false
+             */
+            mac?: boolean;
             /** On */
             on?: boolean | null;
             /** Kind */
@@ -2907,6 +2946,13 @@ export interface components {
              * @default false
              */
             editable?: boolean;
+            /** Account */
+            account?: string | null;
+            /**
+             * Also Google
+             * @default false
+             */
+            also_google?: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -3348,6 +3394,104 @@ export interface components {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["ItemResult"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /**
+         * MacCalendar
+         * @description One of the Mac's calendars, as EventKit lists it.
+         */
+        MacCalendar: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Account
+             * @default
+             */
+            account?: string;
+            /**
+             * Type
+             * @default other
+             * @enum {string}
+             */
+            type?: "local" | "caldav" | "exchange" | "subscription" | "birthday" | "other";
+            /** Color */
+            color?: string | null;
+            /**
+             * Writable
+             * @default false
+             */
+            writable?: boolean;
+        };
+        /**
+         * MacEvent
+         * @description One occurrence of an event on the Mac: timed with an offset ("2026-10-23T09:00:00-04:00"), or whole days with
+         *     the end the day after the last ("2026-10-23" to "2026-10-24"), as Google gives them.
+         */
+        MacEvent: {
+            /** Id */
+            id: string;
+            /** Calendar */
+            calendar: string;
+            /**
+             * Title
+             * @default
+             */
+            title?: string;
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
+            /**
+             * All Day
+             * @default false
+             */
+            all_day?: boolean;
+            /** Series */
+            series?: string | null;
+            /**
+             * Free
+             * @default false
+             */
+            free?: boolean;
+            /**
+             * Declined
+             * @default false
+             */
+            declined?: boolean;
+        };
+        /**
+         * MacSyncInput
+         * @description What the Mac app sees on the Mac's calendars, between `since` and `until` (times with an offset).
+         */
+        MacSyncInput: {
+            /** Calendars */
+            calendars: components["schemas"]["MacCalendar"][];
+            /** Events */
+            events: components["schemas"]["MacEvent"][];
+            /** Since */
+            since: string;
+            /** Until */
+            until: string;
+        };
+        /** MacSyncResult */
+        MacSyncResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
             /** Provisional */
             provisional?: components["schemas"]["BlockOut"][] | null;
             changes?: components["schemas"]["ChangeOut"] | null;
@@ -8017,6 +8161,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LearningOut"];
+                };
+            };
+        };
+    };
+    mac_sync: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MacSyncInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MacSyncResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mac_calendars: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleCalendarOut"][];
                 };
             };
         };

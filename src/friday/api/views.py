@@ -322,6 +322,8 @@ class GoogleCalendarOut(Model):
     error: str | None
     writable: bool = False  # Google lets you write to it
     editable: bool = False  # changes made in Friday are saved back to it
+    account: str | None = None  # a Mac calendar's account
+    also_google: bool = False  # a Mac calendar Friday also reads from Google, under the same name
 
 
 class SourceOut(Model):

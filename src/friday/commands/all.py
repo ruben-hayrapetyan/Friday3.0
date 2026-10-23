@@ -15,6 +15,7 @@ from friday.commands import (  # noqa: F401
     kinds,
     learned,
     learning,
+    mac,
     mail,
     notify,
     pins,

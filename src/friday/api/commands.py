@@ -576,11 +576,47 @@ class RepeatsImportInput(Model):
 
 
 class CalendarSetInput(Model):
-    id: str  # the Google calendar's id
+    id: str  # the Google calendar's id, or the Mac's with `mac`
+    mac: bool = False  # one of the Mac's calendars, which the Mac app feeds in
     on: bool | None = None
     kind: str | None = None  # a kind's name, or "auto" to decide per event
     trusted: bool | None = None  # its events skip the inbox
     editable: bool | None = None  # changes made in Friday are saved back to it
+
+
+class MacCalendar(Model):
+    """One of the Mac's calendars, as EventKit lists it."""
+
+    id: str  # EventKit's calendarIdentifier
+    name: str
+    account: str = ""  # the account it belongs to: iCloud, an email address, On My Mac
+    type: Literal["local", "caldav", "exchange", "subscription", "birthday", "other"] = "other"
+    color: str | None = None  # "#rrggbb"
+    writable: bool = False
+
+
+class MacEvent(Model):
+    """One occurrence of an event on the Mac: timed with an offset ("2026-10-23T09:00:00-04:00"), or whole days with
+    the end the day after the last ("2026-10-23" to "2026-10-24"), as Google gives them."""
+
+    id: str  # unique per occurrence
+    calendar: str  # its calendar's id
+    title: str = ""
+    start: str
+    end: str
+    all_day: bool = False
+    series: str | None = None  # the repeating event it is an occurrence of
+    free: bool = False  # shown as free (availability)
+    declined: bool = False  # you declined the invitation
+
+
+class MacSyncInput(Model):
+    """What the Mac app sees on the Mac's calendars, between `since` and `until` (times with an offset)."""
+
+    calendars: list[MacCalendar]
+    events: list[MacEvent]
+    since: str
+    until: str
 
 
 class KindAddInput(Model):
