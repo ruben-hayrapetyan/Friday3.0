@@ -1,6 +1,7 @@
 // The month view (v22): weeks of day cells with the planned hours, a load bar, dues and the first few blocks. A
 // click opens that day. Blocks exist only inside the planning horizon, so later days show fixed items and dues.
 
+import { useDragging } from "@/components/calendar/useDrag"
 import { useCalendar, usePlan, useSettings } from "@/hooks/queries"
 import { clock } from "@/lib/format"
 import { addDays, toMin } from "@/lib/time"
@@ -17,6 +18,7 @@ export function monthStart(date: string): string {
 export function MonthView({ first, onDay }: { first: string; onDay: (date: string) => void }) {
   const { today } = useShell()
   const { skinOf } = useLook()
+  const { drag } = useDragging()
   const settings = useSettings().data as Record<string, { week_start?: string }> | undefined
   const weekStart = settings?.time?.week_start ?? "mon"
   const offset = DOWS.findIndex((d) => d.toLowerCase() === weekStart)
@@ -53,9 +55,12 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
             return (
               <div
                 key={date}
+                data-drop-day={date}
                 className="fr-hover-accent"
                 onClick={() => onDay(date)}
                 style={{
+                  outline: drag?.moved && drag.over === "day" && drag.day === date ? "2px solid var(--color-accent)" : undefined,
+                  outlineOffset: -2,
                   padding: "8px 8px 10px",
                   display: "flex",
                   flexDirection: "column",

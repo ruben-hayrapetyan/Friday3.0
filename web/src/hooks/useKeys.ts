@@ -6,8 +6,8 @@ export type KeyAction =
   | "quickAdd"
   | "palette"
   | "day"
-  | "three"
   | "week"
+  | "month"
   | "previous"
   | "next"
   | "drawer"
@@ -22,8 +22,8 @@ export type KeyAction =
 const SINGLE: Record<string, KeyAction> = {
   n: "quickAdd",
   d: "day",
-  "3": "three",
   w: "week",
+  m: "month",
   "[": "previous",
   "]": "next",
   t: "drawer",
@@ -43,7 +43,7 @@ export interface KeyPress {
 }
 
 export function keyAction({ key, meta, alt, busy }: KeyPress): KeyAction | null {
-  if (meta && key.toLowerCase() === "k") return "palette"
+  if (meta && (key.toLowerCase() === "k" || key.toLowerCase() === "f")) return "palette" // one search (COMBINED.md 57)
   if (busy || alt) return null
   if (meta) return key.toLowerCase() === "z" ? "undo" : null
   return SINGLE[key] ?? null

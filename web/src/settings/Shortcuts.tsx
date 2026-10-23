@@ -4,11 +4,12 @@ import { SectionHead } from "./SettingsPage"
 
 const KEYS: [string, string[]][] = [
   ["Search everything", ["⌘", "K"]],
+  ["Search everything, as on a Mac", ["⌘", "F"]],
   ["Add a to-do", ["N"]],
   ["Shove: take time back", ["S"]],
   ["Change pace", ["P"]],
   ["Start or pause the timer", ["Space"]],
-  ["Day, 3 days or week", ["D", "3", "W"]],
+  ["Day, week or month", ["D", "W", "M"]],
   ["Earlier or later period", ["[", "]"]],
   ["Show or hide the to-do list", ["T"]],
   ["Move the selected block by 15 minutes", ["↑", "↓"]],

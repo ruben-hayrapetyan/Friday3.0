@@ -4,6 +4,7 @@ import json
 from typing import Any
 
 from friday.api.commands import (
+    EventsInput,
     FitsInput,
     ItemRef,
     ItemsInput,
@@ -274,6 +275,34 @@ def items(ctx: Ctx, inp: ItemsInput) -> list[ItemOut]:
         waiting.setdefault(r["item_id"], []).append(r["depends_on_id"])
     out = [item_out(ctx, i, done.get(i.id or 0, 0)) for i in found]
     return [o.model_copy(update={"waiting_on": waiting.get(o.id, [])}) for o in out]
+
+
+@query("events")
+def events(ctx: Ctx, inp: EventsInput) -> list[ItemOut]:
+    """Calendar events whose title has the text, one per series (its next time, else its last), soonest first."""
+    text = inp.text.strip().lower()
+    if not text:
+        return []
+    now = format_utc(ctx.now_utc)
+    best: dict[str, Any] = {}
+    for r in rows(
+        ctx.conn, "SELECT * FROM items WHERE user_id = ? AND when_kind = 'fixed' AND status != 'dropped'", [ctx.user_id]
+    ):
+        if text not in r["title"].lower() or r["start_utc"] is None:
+            continue
+        series = f"s{r['series_id']}" if r["series_id"] is not None else f"i{r['id']}"
+        was = best.get(series)
+        if was is None or _closer(r["start_utc"], was["start_utc"], now):
+            best[series] = r
+    found = sorted(best.values(), key=lambda r: (r["start_utc"] < now, r["start_utc"] if r["start_utc"] >= now else ""))
+    return [item_out(ctx, item_from_row(r)) for r in found[: max(1, inp.limit)]]
+
+
+def _closer(start: str, other: str, now: str) -> bool:
+    """Whether `start` is a better occurrence to show than `other`: the next one to come, else the latest gone."""
+    if (start >= now) != (other >= now):
+        return start >= now
+    return start < other if start >= now else start > other
 
 
 @query("item")

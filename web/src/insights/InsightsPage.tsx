@@ -291,7 +291,7 @@ function Load() {
         })}
       </div>
       {over && (
-        <div style={{ display: "flex", gap: 14, alignItems: "center", padding: "12px 14px", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, #e8bd74 9%, var(--color-bg))" }}>
+        <div style={{ display: "flex", gap: 14, alignItems: "center", padding: "12px 14px", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--fr-mark) 9%, var(--color-bg))" }}>
           <Icon name="warning" size={18} style={{ color: "var(--fr-warn)" }} />
           <span style={{ flex: 1, textWrap: "pretty" }}>
             The week of {weekday(over.start)} {Number(over.start.slice(8, 10))} holds {(over.hours - over.capacity).toFixed(1)} h more than you can do.

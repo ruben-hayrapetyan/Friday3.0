@@ -1449,6 +1449,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Calendar events whose title has the text, one per series (its next time, else its last), soonest first. */
+        get: operations["events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/item": {
         parameters: {
             query?: never;
@@ -1962,6 +1979,8 @@ export interface components {
             energy?: ("deep" | "light" | "physical" | "social") | null;
             /** Location */
             location?: string | null;
+            /** Color */
+            color?: string | null;
             /** Certainty */
             certainty?: ("planned" | "tentative") | null;
             /** Event Kind */
@@ -2657,6 +2676,8 @@ export interface components {
             energy?: ("deep" | "light" | "physical" | "social") | null;
             /** Location */
             location?: string | null;
+            /** Color */
+            color?: string | null;
             /** Certainty */
             certainty?: ("planned" | "tentative") | null;
             /** Event Kind */
@@ -2817,6 +2838,13 @@ export interface components {
             energy: string | null;
             /** Shape */
             shape: string;
+            /** Color */
+            color?: string | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes?: string;
             /** Certainty */
             certainty: string;
             /** Event Kind */
@@ -4074,6 +4102,8 @@ export interface components {
             energy?: ("deep" | "light" | "physical" | "social") | null;
             /** Location */
             location?: string | null;
+            /** Color */
+            color?: string | null;
             /** Certainty */
             certainty?: ("planned" | "tentative") | null;
             /** Event Kind */
@@ -4196,6 +4226,8 @@ export interface components {
             energy?: ("deep" | "light" | "physical" | "social") | null;
             /** Location */
             location?: string | null;
+            /** Color */
+            color?: string | null;
             /** Certainty */
             certainty?: ("planned" | "tentative") | null;
             /** Event Kind */
@@ -8077,6 +8109,38 @@ export interface operations {
                 status?: "todo" | "done" | "dropped" | "skipped" | "all";
                 area?: string | null;
                 text?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    events: {
+        parameters: {
+            query?: {
+                text?: string;
+                limit?: number;
             };
             header?: never;
             path?: never;

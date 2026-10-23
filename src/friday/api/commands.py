@@ -264,6 +264,11 @@ class ItemsInput(Model):
     text: str | None = None
 
 
+class EventsInput(Model):
+    text: str = ""
+    limit: int = 12
+
+
 class DateInput(Model):
     date: str | None = None  # a planning date; today when left out
 

@@ -7,6 +7,8 @@ import { useCommand } from "@/hooks/useCommand"
 import type { Selection } from "@/hooks/useDrop"
 import { clock, dur, when } from "@/lib/format"
 import { fromMin, toMin } from "@/lib/time"
+import { draftAt } from "@/shell/EventPane"
+import { useShell } from "@/shell/ShellContext"
 
 interface Props {
   selection: Selection
@@ -18,10 +20,9 @@ interface Props {
 export function SelectionMenu({ selection, today, onShove, onClose }: Props) {
   const { start, end } = selection
   const minutes = toMin(end) - toMin(start)
-  const [mode, setMode] = useState<"menu" | "fixed" | "fits">("menu")
-  const [title, setTitle] = useState("")
+  const [mode, setMode] = useState<"menu" | "fits">("menu")
+  const { setEvent } = useShell()
   const [fits, setFits] = useState<Schemas["Swap"][] | null>(null)
-  const add = useCommand("add")
   const pin = useCommand("pin")
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -55,24 +56,13 @@ export function SelectionMenu({ selection, today, onShove, onClose }: Props) {
           <Item icon="hand-palm" onClick={() => onShove(`${clock(start)}-${clock(end)} ${start.slice(0, 10)}`)}>
             Shove this time
           </Item>
-          <Item icon="calendar-plus" onClick={() => setMode("fixed")}>
+          <Item icon="calendar-plus" onClick={() => (setEvent(draftAt(start, end)), onClose())}>
             Add a fixed event here
           </Item>
           <Item icon="list-magnifying-glass" onClick={showFits}>
             Show what fits
           </Item>
         </>
-      )}
-      {mode === "fixed" && (
-        <input
-          autoFocus
-          className="input"
-          placeholder="Title, then Enter"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && title.trim() && run(add({ title: title.trim(), when: "fixed", start, end }))}
-          style={{ minHeight: 0, padding: "5px 8px" }}
-        />
       )}
       {mode === "fits" &&
         (fits === null ? (

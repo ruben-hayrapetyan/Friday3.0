@@ -1,7 +1,7 @@
 // The Plan page (v22): the header (range, views, Shove, Pace, search, notifications, brief, to-do drawer) over the
-// week, 3-day, day or month view.
+// week, day or month view (COMBINED.md 13: no 3-day view).
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useOffline } from "@/api/offline"
 import { Icon, Seg } from "@/components/fr/controls"
 import { useKeys } from "@/hooks/useKeys"
@@ -9,58 +9,55 @@ import { followServer } from "@/hooks/useClock"
 import { useCalendar, usePaces, usePlan, useStatus } from "@/hooks/queries"
 import { weekday } from "@/lib/format"
 import { addDays, dayRange } from "@/lib/time"
-import { useShell } from "@/shell/ShellContext"
+import { useShell, type View } from "@/shell/ShellContext"
 import { DayAside } from "./DayAside"
 import { Grid } from "./Grid"
 import { MonthView, monthStart } from "./MonthView"
 
-export type View = 1 | 3 | 7 | "month"
+export type { View }
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 const VIEWS = [
   { value: 1 as View, label: "Day" },
-  { value: 3 as View, label: "3 days" },
   { value: 7 as View, label: "Week" },
   { value: "month" as View, label: "Month" },
 ]
 
 export function PlanPage() {
-  const { today, drawer } = useShell()
-  const [view, setView] = useState<View>(7)
-  const [first, setFirst] = useState<string | null>(null)
+  const { today, drawer, event, drawerWidth, place, setPlace } = useShell()
+  const { view, first } = place
   const shown = first ?? (view === "month" ? monthStart(today) : today)
+  const setView = (v: View) => setPlace({ view: v, first: v === "month" ? monthStart(shown) : first })
+  const setFirst = (f: string | null) => setPlace({ view, first: f })
   const step = (by: number) => setFirst(view === "month" ? shiftMonth(shown, by) : addDays(shown, by * view))
   useKeys({
     day: () => setView(1),
-    three: () => setView(3),
     week: () => setView(7),
+    month: () => setView("month"),
     previous: () => step(-1),
     next: () => step(1),
   })
-  const pick = (v: View) => {
-    setView(v)
-    setFirst(null)
-  }
+  const pick = (v: View) => setPlace({ view: v, first: null })
   return (
     <>
       <Header view={view} first={shown} onView={pick} onStep={step} onToday={() => setFirst(null)} />
-      {view === "month" ? <MonthView first={shown} onDay={(d) => (setView(1), setFirst(d))} /> : <Days first={shown} view={view} drawer={drawer} />}
+      {view === "month" ? <MonthView first={shown} onDay={(d) => setPlace({ view: 1, first: d })} /> : <Days first={shown} view={view} drawer={drawer || !!event ? drawerWidth : 0} />}
     </>
   )
 }
 
-function Days({ first, view, drawer }: { first: string; view: 1 | 3 | 7; drawer: boolean }) {
+function Days({ first, view, drawer }: { first: string; view: 1 | 7; drawer: number }) {
   const calendar = useCalendar(addDays(first, -1), view + 1).data
   const plan = usePlan(`${first}T00:00`, `${addDays(first, view + 1)}T12:00`).data
   useEffect(() => {
     if (calendar) followServer(calendar.now)
   }, [calendar])
   if (!calendar || !plan) return <div className="fr-panel" />
-  const margin = view === 1 ? 364 : drawer ? 344 : 12
+  const margin = drawer ? drawer + 24 : view === 1 ? 364 : 12
   return (
     <>
       <Grid dates={dayRange(first, view)} calendar={calendar} plan={plan} marginRight={margin} />
-      {view === 1 && <DayAside date={first} calendar={calendar} plan={plan} />}
+      {view === 1 && !drawer && <DayAside date={first} calendar={calendar} plan={plan} />}
     </>
   )
 }
@@ -144,34 +141,34 @@ function Pills({ first, days }: { first: string; days: number }) {
         </div>
       )}
       {over && (
-        <button className="fr-pill" onClick={() => setDialog("triage")} style={{ background: "color-mix(in srgb, #e8bd74 16%, transparent)", color: "var(--fr-warn)", cursor: "pointer" }}>
+        <button className="fr-pill" onClick={() => setDialog("triage")} style={{ background: "color-mix(in srgb, var(--fr-mark) 16%, transparent)", color: "var(--fr-warn)", cursor: "pointer" }}>
           <Icon name="warning" size={13} />
           {FULL_DAY[weekday(over.date)]} is {over.by.toFixed(1)} h over
           <span style={{ color: "var(--color-text)" }}>See options</span>
         </button>
       )}
       {late.length > 0 && (
-        <button className="fr-pill" onClick={() => setDialog("triage")} title={late.map(([t, h]) => `${t}: ${h.toFixed(1)} h late`).join("\n")} style={{ background: "color-mix(in srgb, #e86b74 14%, transparent)", color: "var(--fr-due)", cursor: "pointer" }}>
+        <button className="fr-pill" onClick={() => setDialog("triage")} title={late.map(([t, h]) => `${t}: ${h.toFixed(1)} h late`).join("\n")} style={{ background: "color-mix(in srgb, var(--fr-now) 14%, transparent)", color: "var(--fr-due)", cursor: "pointer" }}>
           <Icon name="warning" size={13} />
           {late.length === 1 ? `${late[0][0]} will be late` : `${late.length} things will be late`}
           <span style={{ color: "var(--color-text)" }}>See options</span>
         </button>
       )}
       {(status?.notices ?? []).slice(0, 1).map((n) => (
-        <div key={n} className="fr-pill" title={(status?.notices ?? []).join("\n")} style={{ background: "color-mix(in srgb, #e8bd74 16%, transparent)", color: "var(--fr-warn)", maxWidth: 360, overflow: "hidden" }}>
+        <div key={n} className="fr-pill" title={(status?.notices ?? []).join("\n")} style={{ background: "color-mix(in srgb, var(--fr-mark) 16%, transparent)", color: "var(--fr-warn)", maxWidth: 360, overflow: "hidden" }}>
           <Icon name="info" size={13} />
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n}</span>
           {(status?.notices ?? []).length > 1 && <span style={{ color: "var(--color-neutral-400)" }}>+{(status?.notices ?? []).length - 1}</span>}
         </div>
       ))}
       {(status?.problems ?? []).slice(0, 1).map((p) => (
-        <div key={p} className="fr-pill" title={(status?.problems ?? []).join("\n")} style={{ background: "color-mix(in srgb, #e86b74 14%, transparent)", color: "var(--fr-due)", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis" }}>
+        <div key={p} className="fr-pill" title={(status?.problems ?? []).join("\n")} style={{ background: "color-mix(in srgb, var(--fr-now) 14%, transparent)", color: "var(--fr-due)", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis" }}>
           <Icon name="warning-circle" size={13} />
           <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p}</span>
         </div>
       ))}
       {!!status?.conflicts?.length && (
-        <button className="fr-pill" onClick={() => setDialog("conflicts")} style={{ background: "color-mix(in srgb, #e8bd74 16%, transparent)", color: "var(--fr-warn)", cursor: "pointer" }}>
+        <button className="fr-pill" onClick={() => setDialog("conflicts")} style={{ background: "color-mix(in srgb, var(--fr-mark) 16%, transparent)", color: "var(--fr-warn)", cursor: "pointer" }}>
           <Icon name="lock-simple" size={13} />
           A lock can't hold
           <span style={{ color: "var(--color-text)" }}>Decide</span>

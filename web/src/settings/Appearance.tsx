@@ -2,7 +2,7 @@
 // device, with a live preview.
 
 import { Icon, Seg } from "@/components/fr/controls"
-import { accentHex, type Look } from "@/theme/look"
+import { accentHex, areaHex, type Look } from "@/theme/look"
 import { useLook } from "@/theme/LookProvider"
 import { Field, SectionHead } from "./SettingsPage"
 
@@ -12,9 +12,9 @@ export function Appearance() {
   const { look, light, setLook, skinOf } = useLook()
   const pick = <K extends keyof Look>(k: K) => (v: Look[K]) => setLook({ [k]: v } as Partial<Look>)
   const preview = [
-    { title: "PS5", meta: "09:00–12:00", top: 8, h: 96, kind: "planned" as const, area: null, col: accentHex(265, light) },
+    { title: "PS5", meta: "09:00–12:00", top: 8, h: 96, kind: "planned" as const, area: null, col: areaHex(265, light) },
     { title: "Lunch", meta: "12:30", top: 112, h: 34, kind: "routine" as const, area: null, col: "" },
-    { title: "Project draft", meta: "14:00–15:30", top: 150, h: 60, kind: "preferred" as const, area: null, col: accentHex(60, light) },
+    { title: "Project draft", meta: "14:00–15:30", top: 150, h: 60, kind: "preferred" as const, area: null, col: areaHex(60, light) },
   ]
   return (
     <>
@@ -42,7 +42,7 @@ export function Appearance() {
               </div>
             )
           })}
-          <div style={{ position: "absolute", left: 0, right: 0, top: 96, height: 2, background: "#ef6b73", boxShadow: "0 0 calc(10px * var(--g-now)) calc(1px * var(--g-now)) #ef6b73" }} />
+          <div style={{ position: "absolute", left: 0, right: 0, top: 96, height: 2, background: "var(--fr-now)", boxShadow: "0 0 calc(10px * var(--g-now)) calc(1px * var(--g-now)) var(--fr-now)" }} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
@@ -72,7 +72,7 @@ export function Appearance() {
       <Field name="Theme" note="Match system follows your computer’s light or dark setting.">
         <Seg options={["Dark", "Light", "Match system"] as const} value={look.theme} onPick={pick("theme")} size="big" />
       </Field>
-      <Field name="Accent color" note="Used for buttons, today, focus rings and highlights. Pick any hue.">
+      <Field name="Ink" note="The ink Friday’s own marks are written in: buttons, today, focus rings and highlights. Navy by default; pick any hue.">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(16, 1fr)", gap: 6 }}>
           {HUES.map((h) => (
             <button
@@ -93,6 +93,12 @@ export function Appearance() {
           {accentHex(look.accentHue, light)}, hue {look.accentHue}°
         </span>
       </Field>
+      <Field name="Hours shown" note="Waking hours run the grid from your earliest wake time to your latest bedtime, with the night shaded. All day shows every hour and opens at your wake time.">
+        <Seg options={["Waking", "All day"] as const} value={look.hours} onPick={pick("hours")} size="big" />
+      </Field>
+      <Field name="Deadlines" note="Chips put a day's deadlines in its header. Lanes give each day with something due a to-do list down the side of its column, which stays in view as you scroll and ticks off like the to-do list.">
+        <Seg options={["Chips", "Lanes"] as const} value={look.deadlines} onPick={pick("deadlines")} size="big" />
+      </Field>
       <Field name="Calendar blocks" note="Soft blocks sit back on the surface with a colored edge. Solid blocks fill with the area color.">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 220px))", gap: 10 }}>
           {(["Soft", "Solid"] as const).map((mode) => (
@@ -102,7 +108,7 @@ export function Appearance() {
                   ["PS5", 265, 30],
                   ["Essay", 155, 22],
                 ].map(([title, hue, h]) => {
-                  const col = accentHex(hue as number, light)
+                  const col = areaHex(hue as number, light)
                   const s = skinFor("planned", col, { ...look, blocks: mode }, skinOf)
                   return (
                     <div key={title} style={{ position: "relative", height: h as number, padding: "3px 8px 3px 10px", borderRadius: 5, background: s.bg, color: s.fg, fontSize: 11, fontWeight: 500, overflow: "hidden" }}>
@@ -120,18 +126,18 @@ export function Appearance() {
           ))}
         </div>
       </Field>
-      <Field name="Glow" note="A soft light behind key elements. Keep it to today, or turn it off for a fully flat look.">
+      <Field name="Glow" note="A soft light behind key elements, on the dark page only. Off keeps the paper flat.">
         <Seg options={["Off", "Today", "More"] as const} value={look.glow} onPick={pick("glow")} size="big" />
         <span className="fr-kicker">{light ? "Glow shows on the dark theme only." : { Off: "No glow anywhere.", Today: "Today’s date and underline glow.", More: "Today, the now line, the Now bar and the selected block glow." }[look.glow]}</span>
       </Field>
       <Field name="Floating panels" note="The Now bar, Shove, Pace and the to-do sidebar. Tonal panels sit a shade lighter with no outline.">
         <Seg options={["Tonal", "Shadow", "Flat", "Outline"] as const} value={look.chrome} onPick={pick("chrome")} size="big" />
       </Field>
-      <Field name="Now bar" note="Bar shows the most. Ring shows progress as a circle. Minimal is one slim line with the rest under ⋯.">
-        <Seg options={["Bar", "Ring", "Minimal"] as const} value={look.dockStyle} onPick={pick("dockStyle")} size="big" />
+      <Field name="Now bar" note="Bar shows the most. Minimal keeps the type small and the buttons to their icons.">
+        <Seg options={["Bar", "Minimal"] as const} value={look.dockStyle} onPick={pick("dockStyle")} size="big" />
       </Field>
-      <Field name="Headings" note="The typeface for titles, dates and big numbers. Body text stays Inter.">
-        <Seg options={["Archivo", "Inter", "Instrument Sans"] as const} value={look.headFont} onPick={pick("headFont")} size="big" />
+      <Field name="Headings" note="The typeface for titles, dates and big numbers. What people wrote stays in the system sans, and what Friday prints in mono.">
+        <Seg options={["Serif", "Archivo", "Inter"] as const} value={look.headFont} onPick={pick("headFont")} size="big" />
         <Seg options={["Bold", "Black"] as const} value={look.headWeight} onPick={pick("headWeight")} size="big" />
       </Field>
     </>

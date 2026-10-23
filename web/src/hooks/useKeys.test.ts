@@ -6,9 +6,10 @@ const press = (key: string, extra: Partial<{ meta: boolean; alt: boolean; busy: 
 
 describe("shortcuts", () => {
   it("map single keys to their actions", () => {
-    expect([press("n"), press("w"), press("]"), press(" "), press("ArrowDown")]).toEqual([
+    expect([press("n"), press("w"), press("m"), press("]"), press(" "), press("ArrowDown")]).toEqual([
       "quickAdd",
       "week",
+      "month",
       "next",
       "timer",
       "later",
@@ -19,10 +20,12 @@ describe("shortcuts", () => {
     expect(press("n", { busy: true })).toBeNull()
     expect(press("z", { meta: true, busy: true })).toBeNull()
     expect(press("k", { meta: true, busy: true })).toBe("palette")
+    expect(press("f", { meta: true })).toBe("palette")
   })
 
   it("read ⌘Z as undo and ignore other modified keys", () => {
     expect(press("z", { meta: true })).toBe("undo")
     expect(press("w", { meta: true })).toBeNull()
+    expect(press("3")).toBeNull() // no 3-day view
   })
 })

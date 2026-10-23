@@ -1,5 +1,6 @@
-// The sidebar (v22): the Friday mark and Settings, the pages, and what's next on the to-do list. Rows drag onto the
-// calendar; a block dropped here goes back to Friday ("let Friday decide").
+// The sidebar (v22): the Friday mark and Settings, the pages, personal's mini month and day agenda (COMBINED.md 10),
+// and what's next on the to-do list. Rows drag onto the calendar; a block dropped here goes back to Friday ("let
+// Friday decide").
 
 import { useQuery } from "@tanstack/react-query"
 import { NavLink, useNavigate } from "react-router"
@@ -10,6 +11,8 @@ import { useHorizon, useItems, useNow, useStatus } from "@/hooks/queries"
 import { dur, when } from "@/lib/format"
 import { nextBlocks, sections } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
+import { DayAgenda } from "./DayAgenda"
+import { MiniMonth } from "./MiniMonth"
 import { useShell } from "./ShellContext"
 
 const PAGES = [
@@ -47,6 +50,8 @@ export function Sidebar({ showTodos }: { showTodos: boolean }) {
         </button>
       </div>
       <Pages />
+      <MiniMonth />
+      <DayAgenda />
       {showTodos && <Upcoming />}
       {dropping && (
         <div
@@ -71,14 +76,24 @@ export function Sidebar({ showTodos }: { showTodos: boolean }) {
   )
 }
 
+/** How far round the ring is: 0 as Saturday begins, all the way on Friday (as the Mac app's icon). */
+function weekSweep(now = new Date()): number {
+  const sinceSat = ((now.getDay() + 1) % 7) + (now.getHours() * 60 + now.getMinutes()) / 1440
+  return Math.min(1, sinceSat / 6)
+}
+
 function Mark() {
   return (
-    <div className="fr-h" style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "'Archivo', var(--font-heading)", fontWeight: 900, fontSize: 21, letterSpacing: "-0.05em", lineHeight: 1 }}>
+    <div className="fr-h" style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--fr-head)", fontWeight: 600, fontSize: 20, letterSpacing: "-0.005em", lineHeight: 1 }}>
       <span
         style={{
-          width: 10,
-          height: 10,
-          background: "var(--color-accent)",
+          width: 12,
+          height: 12,
+          borderRadius: "50%",
+          // The Dock icon's ring, closed as far as the week has come round to Friday.
+          background: `conic-gradient(var(--color-accent) ${weekSweep()}turn, color-mix(in srgb, var(--color-text) 12%, transparent) 0)`,
+          WebkitMask: "radial-gradient(circle, transparent 3.4px, #000 3.6px)",
+          mask: "radial-gradient(circle, transparent 3.4px, #000 3.6px)",
           boxShadow: "0 0 calc(10px * var(--g-logo)) calc(1px * var(--g-logo)) var(--color-accent)",
         }}
       />

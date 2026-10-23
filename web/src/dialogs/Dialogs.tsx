@@ -256,7 +256,7 @@ export function LockDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal onClose={onClose}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <span style={{ flex: "none", width: 34, height: 34, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: "color-mix(in srgb, #e8bd74 16%, transparent)" }}>
+        <span style={{ flex: "none", width: 34, height: 34, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: "color-mix(in srgb, var(--fr-mark) 16%, transparent)" }}>
           <Icon name="lock-simple" size={17} style={{ color: "var(--fr-warn)" }} />
         </span>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>

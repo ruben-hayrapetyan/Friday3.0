@@ -26,13 +26,14 @@ import { ReviewPage } from "@/review/ReviewPage"
 import { RulesPage } from "@/rules/RulesPage"
 import { SettingsPage } from "@/settings/SettingsPage"
 import { Search } from "@/search/Search"
-import { Drawer } from "@/todo/Drawer"
+import { Drawer, DrawerFrame } from "@/todo/Drawer"
+import { EventPane } from "./EventPane"
 import { TodoPage } from "@/todo/TodoPage"
 import { useShell } from "./ShellContext"
 import { Sidebar } from "./Sidebar"
 
 export function Shell() {
-  const { today, pop, setPop, dialog, setDialog, drawer } = useShell()
+  const { today, pop, setPop, dialog, setDialog, drawer, event } = useShell()
   const client = useQueryClient()
   const toast = useToast()
   const shove = (range: string) => runCommand(client, toast, "shove", { range }, { label: (o) => o.result.message ?? "Shoved" })
@@ -62,7 +63,13 @@ export function Shell() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-        {drawer && location.pathname === "/" && <Drawer />}
+        {event && location.pathname === "/" ? (
+          <DrawerFrame>
+            <EventPane draft={event} />
+          </DrawerFrame>
+        ) : (
+          drawer && location.pathname === "/" && <Drawer />
+        )}
         {!location.pathname.startsWith("/settings") && <Dock />}
         <BlockPopover />
         {pop && <div onClick={() => setPop(null)} style={{ position: "absolute", inset: 0, zIndex: 9 }} />}

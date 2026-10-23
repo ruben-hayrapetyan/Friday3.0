@@ -54,7 +54,7 @@ filterwarnings = [
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-extend-exclude = ["reference", ".claude"]
+extend-exclude = ["reference", ".claude", "BackendGuidelines", "UI"]  # the research engine and the Mac app keep their own style
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

@@ -5225,6 +5225,60 @@
     }
    }
   },
+  "/api/q/events": {
+   "get": {
+    "summary": "Calendar events whose title has the text, one per series (its next time, else its last), soonest first.",
+    "operationId": "events",
+    "parameters": [
+     {
+      "name": "text",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "default": "",
+       "title": "Text"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "default": 12,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ItemOut"
+         },
+         "title": "Response Events"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/item": {
    "get": {
     "summary": "One item with its blocks, progress and dependencies.",
@@ -6850,6 +6904,17 @@
        }
       ],
       "title": "Location"
+     },
+     "color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Color"
      },
      "certainty": {
       "anyOf": [
@@ -9004,6 +9069,17 @@
       ],
       "title": "Location"
      },
+     "color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Color"
+     },
      "certainty": {
       "anyOf": [
        {
@@ -9543,6 +9619,22 @@
      "shape": {
       "type": "string",
       "title": "Shape"
+     },
+     "color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Color"
+     },
+     "notes": {
+      "type": "string",
+      "title": "Notes",
+      "default": ""
      },
      "certainty": {
       "type": "string",
@@ -13440,6 +13532,17 @@
       ],
       "title": "Location"
      },
+     "color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Color"
+     },
      "certainty": {
       "anyOf": [
        {
@@ -14021,6 +14124,17 @@
        }
       ],
       "title": "Location"
+     },
+     "color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Color"
      },
      "certainty": {
       "anyOf": [

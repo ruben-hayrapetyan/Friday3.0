@@ -46,7 +46,7 @@ export function LookProvider({ children }: { children: ReactNode }) {
 }
 
 function loadDefault(): Look {
-  localStorage.removeItem("friday-look-v7")
+  localStorage.removeItem("friday-look-v8")
   return loadLook()
 }
 

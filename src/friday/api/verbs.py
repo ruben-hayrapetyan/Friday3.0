@@ -157,6 +157,14 @@ VERBS = {
         True,
         "Change an item's fields; `from_date` changes a repeating item's series from that date on.",
     ),
+    "events": Verb(
+        "GET",
+        "/api/q/events",
+        commands.EventsInput,
+        False,
+        False,
+        "Calendar events whose title has the text, one per series (its next time, else its last), soonest first.",
+    ),
     "fits": Verb(
         "GET",
         "/api/q/fits",

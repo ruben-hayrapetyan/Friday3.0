@@ -1,5 +1,7 @@
 // Drag on pointer events, no library (DESIGN §18.4). One drag at a time, shared by the calendar and the to-do pane:
-// day columns carry `data-top-min` (the minute at their top) and the pane `data-drop="todo"`.
+// day columns carry `data-top-min` (the minute at their top), the pane `data-drop="todo"`, and whole days (month
+// cells, the mini month, day headers) `data-drop-day` with their date: a task dropped there is due that day
+// (COMBINED.md 16).
 
 import { createContext, type ReactNode, useCallback, useContext, useRef, useState } from "react"
 import { type DragStart, dragged } from "@/lib/drag"
@@ -12,7 +14,8 @@ export interface Drag extends DragStart {
   title: string
   locked: boolean // Shift held: pin as locked
   at: { start: number; end: number } | null // where it would land in the calendar
-  over: "calendar" | "todo" | null
+  over: "calendar" | "todo" | "day" | null
+  day: string | null // the date of the day it's over
   moved: boolean
   x: number
   y: number
@@ -22,18 +25,19 @@ export type DropHandler = (drag: Drag) => void
 
 interface DragApi {
   drag: Drag | null
-  begin: (e: React.PointerEvent, from: Omit<Drag, "at" | "over" | "moved" | "locked" | "x" | "y">) => void
+  begin: (e: React.PointerEvent, from: Omit<Drag, "at" | "over" | "day" | "moved" | "locked" | "x" | "y">) => void
 }
 
 const DragContext = createContext<DragApi>({ drag: null, begin: () => {} })
 
 export const useDragging = () => useContext(DragContext)
 
-/** The calendar minute under the pointer, or "todo", or nothing. */
-export function pointAt(x: number, y: number): number | "todo" | null {
+/** The calendar minute under the pointer, "todo", a whole day, or nothing. */
+export function pointAt(x: number, y: number): number | "todo" | { day: string } | null {
   for (const el of document.elementsFromPoint(x, y)) {
     if (!(el instanceof HTMLElement)) continue
     if (el.dataset.drop === "todo") return "todo"
+    if (el.dataset.dropDay) return { day: el.dataset.dropDay }
     if (el.dataset.topMin) return Number(el.dataset.topMin) + (y - el.getBoundingClientRect().top) / PX_PER_MIN
   }
   return null
@@ -61,7 +65,7 @@ export function DragProvider({ onDrop, children }: { onDrop: DropHandler; childr
       if (e.button !== 0) return
       e.preventDefault()
       const origin = { x: e.clientX, y: e.clientY }
-      show({ ...from, at: null, over: null, moved: false, locked: e.shiftKey, x: e.clientX, y: e.clientY })
+      show({ ...from, at: null, over: null, day: null, moved: false, locked: e.shiftKey, x: e.clientX, y: e.clientY })
       const move = (ev: PointerEvent) => {
         const was = current.current
         if (!was) return
@@ -70,7 +74,8 @@ export function DragProvider({ onDrop, children }: { onDrop: DropHandler; childr
           ...was,
           moved: was.moved || Math.hypot(ev.clientX - origin.x, ev.clientY - origin.y) > 4,
           locked: ev.shiftKey,
-          over: point === "todo" ? "todo" : point === null ? null : "calendar",
+          over: point === "todo" ? "todo" : point === null ? null : typeof point === "object" ? "day" : "calendar",
+          day: point !== null && typeof point === "object" ? point.day : null,
           at: typeof point === "number" ? dragged(was, point) : null,
           x: ev.clientX,
           y: ev.clientY,

@@ -1,14 +1,18 @@
-// Search (v22, ⌘K): to-dos, projects, pages and settings, and actions, filtered as you type; ↑↓ and Enter to open.
-// With nothing matching, Enter adds what you typed as a to-do.
+// Search (v22, ⌘K or ⌘F): to-dos, calendar events (any year, one per series, as personal's sidebar search),
+// projects, pages and settings, and actions, filtered as you type; ↑↓ and Enter to open. With nothing matching,
+// Enter adds what you typed as a to-do (COMBINED.md 57).
 
+import { useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router"
+import { query } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useAdd } from "@/components/todo/QuickAdd"
 import { useHorizon, useProjects } from "@/hooks/queries"
 import { when } from "@/lib/format"
 import { nextBlocks } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
+import { draftOf } from "@/shell/EventPane"
 import { useShell } from "@/shell/ShellContext"
 import { useAllItems } from "@/todo/TodoPage"
 
@@ -39,7 +43,7 @@ const PAGES: [string, string, string][] = [
 ]
 
 export function Search() {
-  const { today, setDialog, setPop } = useShell()
+  const { today, setDialog, setPop, setPlace, place, setEvent, setAgendaDay } = useShell()
   const navigate = useNavigate()
   const { color } = useLook()
   const [q, setQ] = useState("")
@@ -48,6 +52,8 @@ export function Search() {
   const items = useAllItems(true).data ?? []
   const projects = useProjects().data ?? []
   const next = nextBlocks(useHorizon().data?.blocks ?? [])
+  const text = q.trim()
+  const events = useQuery({ queryKey: ["events", text], queryFn: () => query("events", { text, limit: 8 }), enabled: text.length > 1 }).data ?? []
   const add = useAdd()
   useEffect(() => ref.current?.focus(), [])
   const close = () => setDialog(null)
@@ -64,6 +70,21 @@ export function Search() {
         meta: i.status === "done" ? "done" : next.get(i.id) ? when(next.get(i.id)!.start, today) : i.due ? `due ${when(i.due, today)}` : "",
         run: go(() => navigate(`/todo?item=${i.id}`)),
       }))
+    const eventHits: Hit[] = text.length > 1
+      ? events.map((e) => ({
+          key: `e${e.id}`,
+          label: e.title,
+          icon: e.series_id != null ? "repeat" : "calendar-blank",
+          meta: e.start ? when(e.start, today) : "",
+          run: go(() => {
+            const day = (e.start ?? today).slice(0, 10)
+            setPlace({ view: place.view === "month" ? 1 : place.view, first: day })
+            setAgendaDay(day)
+            navigate("/")
+            if (e.start && e.end) setEvent(draftOf(e))
+          }),
+        }))
+      : []
     const projectHits: Hit[] = projects
       .filter((p) => has(p.item.title))
       .slice(0, 4)
@@ -77,11 +98,12 @@ export function Search() {
     ].filter((a) => has(a.label))
     return [
       ["To-dos", todos],
+      ["Events", eventHits],
       ["Projects", projectHits],
       ["Go to", pages],
       ["Actions", actions],
     ].filter(([, hits]) => (hits as Hit[]).length) as [string, Hit[]][]
-  }, [q, items, projects, next, today, color])
+  }, [q, text, items, events, projects, next, today, color, place.view])
   const flat = groups.flatMap(([, hits]) => hits)
   const key = async (e: React.KeyboardEvent) => {
     if (e.key === "Escape") close()
@@ -103,7 +125,7 @@ export function Search() {
             value={q}
             onChange={(e) => (setQ(e.target.value), setAt(0))}
             onKeyDown={key}
-            placeholder="Search to-dos, blocks, projects, settings…"
+            placeholder="Search to-dos, events, projects, settings…"
             aria-label="Search"
             style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontSize: 16 }}
           />

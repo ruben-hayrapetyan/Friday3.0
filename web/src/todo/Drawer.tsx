@@ -1,7 +1,8 @@
 // The to-do drawer beside the plan (v22): a quick add with what Friday read, the list grouped by when or tag, rows
-// you can tick off or drag onto the calendar.
+// you can tick off or drag onto the calendar. Its frame also holds an open event (COMBINED.md 12), and its left edge
+// drags to make it wider or narrower, kept for next time (personal's drawer, COMBINED.md 11).
 
-import { useState } from "react"
+import { type ReactNode, useState } from "react"
 import { useNavigate } from "react-router"
 import type { Item } from "@/api/client"
 import { useDragging } from "@/components/calendar/useDrag"
@@ -15,6 +16,37 @@ import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { grouped, SORTS, type SortBy } from "./groups"
 
+/** The drawer's frame: over the calendar's right side, below the title row, resized by its left edge. */
+export function DrawerFrame({ children, todo }: { children: ReactNode; todo?: boolean }) {
+  const { drawerWidth, setDrawerWidth } = useShell()
+  const grab = (e: React.PointerEvent) => {
+    e.preventDefault()
+    const from = e.clientX
+    const was = drawerWidth
+    const move = (ev: PointerEvent) => setDrawerWidth(was + from - ev.clientX)
+    const up = () => (window.removeEventListener("pointermove", move), window.removeEventListener("pointerup", up))
+    window.addEventListener("pointermove", move)
+    window.addEventListener("pointerup", up)
+  }
+  return (
+    <aside
+      data-drop={todo ? "todo" : undefined}
+      className="fr-float"
+      style={{ position: "absolute", right: 12, top: 60, bottom: 0, width: drawerWidth, zIndex: 7, display: "flex", flexDirection: "column", gap: 12, minHeight: 0, padding: "12px 14px 0", borderRadius: "var(--radius-lg) var(--radius-lg) 0 0" }}
+    >
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Drag to resize"
+        title="Drag to make the drawer wider or narrower"
+        onPointerDown={grab}
+        style={{ position: "absolute", left: -4, top: 0, bottom: 0, width: 8, cursor: "ew-resize", touchAction: "none" }}
+      />
+      {children}
+    </aside>
+  )
+}
+
 export function Drawer() {
   const { today, setDrawer } = useShell()
   const navigate = useNavigate()
@@ -24,11 +56,7 @@ export function Drawer() {
   const blocks = useHorizon().data?.blocks ?? []
   const groups = grouped(items, blocks, today, by, sort)
   return (
-    <aside
-      data-drop="todo"
-      className="fr-float"
-      style={{ position: "absolute", right: 12, top: 60, bottom: 0, width: 320, zIndex: 7, display: "flex", flexDirection: "column", gap: 12, minHeight: 0, padding: "12px 14px 0", borderRadius: "var(--radius-lg) var(--radius-lg) 0 0" }}
-    >
+    <DrawerFrame todo>
       <div style={{ display: "flex", alignItems: "center", gap: 8, height: 32 }}>
         <span className="fr-h" style={{ fontSize: 20, lineHeight: 1 }}>
           To-do
@@ -67,7 +95,7 @@ export function Drawer() {
           </div>
         ))}
       </div>
-    </aside>
+    </DrawerFrame>
   )
 }
 

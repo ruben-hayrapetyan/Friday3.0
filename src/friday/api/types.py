@@ -42,6 +42,7 @@ class ItemFields(Model):
     neglect_carry: float | None = None
     energy: Literal["deep", "light", "physical", "social"] | None = None
     location: str | None = None
+    color: str | None = None
     certainty: Literal["planned", "tentative"] | None = None
     event_kind: str | None = None
     blocks_time: bool | None = None
@@ -67,6 +68,8 @@ class ItemOut(Model):
     importance: int
     energy: str | None
     shape: str
+    color: str | None = None
+    notes: str = ""
     certainty: str
     event_kind: str | None = None
     status: str

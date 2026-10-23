@@ -15,6 +15,10 @@ Certainty = Literal["planned", "tentative"]
 Status = Literal["todo", "done", "dropped", "skipped"]
 DurationSource = Literal["you", "estimate", "preset"]
 
+# personal's pigments (UI/Sources/Calendar/EventColors.swift), by id: Vermilion, Amber, Ochre, Verdigris, Sap Green,
+# Cerulean, Ultramarine, Magenta, Payne's Grey, Cobalt Violet. The web app holds their colours.
+PIGMENTS = ("red", "orange", "yellow", "green", "sapgreen", "blue", "purple", "pink", "graphite", "violet")
+
 DEFAULT_DAILY_CEILING_UNITS = 4  # an hour a day: at 3 h, a book or Leetcode took every free afternoon (M15)
 
 
@@ -56,6 +60,7 @@ class Item:
     neglect_carry: float = 0.5
     energy: Energy | None = None
     location: str | None = None
+    color: str | None = None  # an event's pigment (COMBINED.md 17): one of PIGMENTS, or None for its calendar's
     certainty: Certainty = "planned"
     event_kind: str | None = None
     blocks_time: bool = True
@@ -125,6 +130,8 @@ def check_ranges(item: Item) -> None:
         raise FieldError("chunk_cost", "must be between 0 and 1")
     if not 0 <= item.neglect_carry <= 1:
         raise FieldError("neglect_carry", "must be between 0 and 1")
+    if item.color is not None and item.color not in PIGMENTS:
+        raise FieldError("color", f"must be one of {', '.join(PIGMENTS)}")
     for name in ("duration_units", "min_units", "ideal_units", "max_units", "target_units", "cap_units"):
         value = getattr(item, name)
         if value is not None and value < 0:

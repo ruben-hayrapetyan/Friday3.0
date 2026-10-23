@@ -12,8 +12,9 @@ describe("area colours", () => {
     expect(blue).toBeLessThan(270)
   })
 
-  it("draws the design's default accent, hue 250 on dark", () => {
-    expect(accentHex(250, false)).toBe(oklch(0.71, 0.14, 250))
+  it("writes the chrome in ink: navy by default, dark on paper and light on the dark page", () => {
+    expect(accentHex(255, true)).toBe(oklch(0.34, 0.075, 255))
+    expect(accentHex(255, false)).toBe(oklch(0.76, 0.075, 255))
     expect(oklch(1, 0, 0)).toBe("#ffffff")
   })
 })

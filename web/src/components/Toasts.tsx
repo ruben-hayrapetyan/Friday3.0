@@ -37,7 +37,7 @@ export function Toasts({ children }: { children: ReactNode }) {
               borderRadius: "var(--radius-lg)",
               background: "var(--color-neutral-900)",
               boxShadow: `var(--shadow-md), inset 0 1px 0 color-mix(in srgb, var(--color-text) 8%, transparent)${
-                t.tone === "error" ? ", inset 3px 0 0 #e86b74" : ""
+                t.tone === "error" ? ", inset 3px 0 0 var(--fr-now)" : ""
               }`,
               maxWidth: 460,
             }}

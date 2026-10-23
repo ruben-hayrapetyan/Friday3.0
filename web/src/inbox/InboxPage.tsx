@@ -261,7 +261,7 @@ function Detail({ s, all, resolved, onResolved, onReopen }: DetailProps) {
           )}
         </div>
         {dup && (
-          <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0,1fr)", gap: 12, padding: "12px 14px", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, #e8bd74 9%, var(--color-bg))", boxShadow: "0 0 0 1px color-mix(in srgb, #e8bd74 28%, transparent)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0,1fr)", gap: 12, padding: "12px 14px", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--fr-mark) 9%, var(--color-bg))", boxShadow: "0 0 0 1px color-mix(in srgb, var(--fr-mark) 28%, transparent)" }}>
             <Icon name="copy" size={18} style={{ color: "var(--fr-warn)", marginTop: 1 }} />
             <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={{ fontWeight: 500 }}>Looks like {dup.title}, already in Friday</span>

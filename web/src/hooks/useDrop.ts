@@ -1,12 +1,14 @@
 // What a finished drag does (DESIGN §18.4): a block or a to-do row dropped on the calendar is pinned there
 // (preferred, or locked with Shift); a block dropped on the to-do pane is unpinned; a selection opens its menu.
-// Resizing a block pins it with its new length.
+// Resizing a block pins it with its new length. Dropped on a whole day (a month cell, the mini month, a day's
+// header) it is due that day instead, at the time it had or 23:59 (COMBINED.md 16, as personal's Deadlines.swift).
 
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useCallback } from "react"
 import type { Block, Item, Schemas } from "@/api/client"
 import type { Drag } from "@/components/calendar/useDrag"
 import { type Toast, useToast } from "@/components/Toasts"
+import { weekday } from "@/lib/format"
 import { fromMin } from "@/lib/time"
 import { runCommand } from "./useCommand"
 
@@ -28,6 +30,19 @@ export function moveBlock(client: QueryClient, key: string, start: string, end: 
   )
 }
 
+/** The due a task gets when dropped on a day: that day at the time it was due, or 23:59. */
+export function dueOn(day: string, was: string | null | undefined): string {
+  return `${day}T${was && was.length >= 16 ? was.slice(11, 16) : "23:59"}`
+}
+
+function knownDue(client: QueryClient, id: number): string | null | undefined {
+  for (const [, items] of client.getQueriesData<Item[]>({ queryKey: ["items"] })) {
+    const found = Array.isArray(items) ? items.find((i) => i.id === id) : undefined
+    if (found) return found.due
+  }
+  return undefined
+}
+
 /** A resized block of a fixed-length item changes the item's length too, by as much as the block grew. */
 async function lengthen(client: QueryClient, toast: (t: Toast) => void, id: number, by: number): Promise<void> {
   const item = client.getQueryData<Item[]>(["items"])?.find((i) => i.id === id)
@@ -46,6 +61,12 @@ export function useDrop(onSelection: (selection: Selection) => void): (drag: Dra
         return
       }
       if (drag.itemId === null) return
+      if (drag.over === "day" && drag.day) {
+        const due = dueOn(drag.day, knownDue(client, drag.itemId))
+        const day = drag.day
+        runCommand(client, toast, "edit", { id: drag.itemId, due }, { label: () => `${drag.title} is due ${weekday(day)} ${Number(day.slice(8, 10))}` })
+        return
+      }
       if (drag.over === "todo" && drag.kind !== "row") {
         runCommand(client, toast, "unpin", { id: drag.itemId })
         return

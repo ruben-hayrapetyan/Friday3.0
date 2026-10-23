@@ -5,20 +5,22 @@ import type { CSSProperties } from "react"
 import type { Block, Item } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { clock, dur, when } from "@/lib/format"
+import { pigment } from "@/lib/pigments"
 import { type Placed, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import type { Kind } from "@/theme/skin"
 
 export const PX = 0.8 // per minute: 48 px an hour, as drawn
 
+// A day column with a deadline lane (COMBINED.md 15) sets --lane to the lane's width; blocks share what's left.
 function box(p: Placed<unknown>): CSSProperties {
-  const width = 100 / p.columns
+  const share = 1 / p.columns
   return {
     position: "absolute",
     top: p.top * PX,
     height: Math.max(p.height * PX - 2, 14),
-    left: `calc(${p.column * width}% + 3px)`,
-    width: `calc(${width}% - 6px)`,
+    left: `calc((100% - var(--lane, 0px)) * ${p.column * share} + 3px)`,
+    width: `calc((100% - var(--lane, 0px)) * ${share} - 6px)`,
   }
 }
 
@@ -106,8 +108,11 @@ export function BlockBox({ p, isCur, selected, done, movedFrom, today, onOpen, o
 
 export function FixedBox({ p, onOpen }: { p: Placed<Item & { start: string; end: string }>; onOpen: () => void }) {
   const it = p.item
-  const { skinOf } = useLook()
-  const s = skinOf(it.event_kind === "shove" ? "shove" : "fixed", it.area)
+  const { skinOf, light } = useLook()
+  const base = skinOf(it.event_kind === "shove" ? "shove" : "fixed", it.area)
+  // An event wearing a pigment is painted in it, as personal painted events: the colour on its spine and a wash.
+  const paint = pigment(it.color, light)
+  const s = paint ? { ...base, bg: `color-mix(in srgb, ${paint} 16%, var(--color-surface))`, stripe: paint, fg: "var(--color-text)", sub: "var(--color-neutral-400)" } : base
   const tall = minutes(it) >= 45
   return (
     <div
@@ -167,6 +172,29 @@ export function GhostBox({ p }: { p: Placed<Block> }) {
   )
 }
 
+/** A new or moved event, drafted in the drawer: dashed until it is saved. */
+export function DraftBox({ p, title }: { p: Placed<unknown>; title: string }) {
+  return (
+    <div
+      style={{
+        ...box(p),
+        pointerEvents: "none",
+        zIndex: 3,
+        padding: "4px 8px",
+        borderRadius: 6,
+        fontSize: 12,
+        fontWeight: 500,
+        color: "var(--color-text)",
+        background: "color-mix(in srgb, var(--color-accent) 8%, var(--color-surface))",
+        border: "1.5px dashed var(--color-accent)",
+        overflow: "hidden",
+      }}
+    >
+      {title || "New event"}
+    </div>
+  )
+}
+
 /** Where a dragged block or a selection would land. */
 export function DropPreview({ p, label, locked }: { p: Placed<unknown>; label: string; locked: boolean }) {
   return (
@@ -216,7 +244,7 @@ export function SleepBand({ p, core }: { p: Placed<unknown>; core: boolean }) {
 
 export function NowLine({ top, today }: { top: number; today: boolean }) {
   if (!today) {
-    return <div style={{ position: "absolute", left: 0, right: 0, top, height: 1, background: "color-mix(in srgb, #ef6b73 22%, transparent)", pointerEvents: "none" }} />
+    return <div style={{ position: "absolute", left: 0, right: 0, top, height: 1, background: "color-mix(in srgb, var(--fr-now) 22%, transparent)", pointerEvents: "none" }} />
   }
   return (
     <div
@@ -226,13 +254,13 @@ export function NowLine({ top, today }: { top: number; today: boolean }) {
         right: 0,
         top,
         height: 2,
-        background: "#ef6b73",
-        boxShadow: "0 0 calc(10px * var(--g-now)) calc(1px * var(--g-now)) #ef6b73",
+        background: "var(--fr-now)",
+        boxShadow: "0 0 calc(10px * var(--g-now)) calc(1px * var(--g-now)) var(--fr-now)",
         zIndex: 2,
         pointerEvents: "none",
       }}
     >
-      <div style={{ position: "absolute", left: -4, top: -3, width: 8, height: 8, borderRadius: "50%", background: "#ef6b73" }} />
+      <div style={{ position: "absolute", left: -4, top: -3, width: 8, height: 8, borderRadius: "50%", background: "var(--fr-now)" }} />
     </div>
   )
 }

@@ -96,3 +96,31 @@ def test_touching_blocks_of_one_item_show_as_one(tmp_path: Path) -> None:
         )
     shown = [b for b in app.do("plan")["blocks"] if b["item_id"] == essay]
     assert [(b["start"][11:], b["end"][11:]) for b in shown] == [("10:00", "12:00")] and block["title"] == "essay"
+
+
+def test_events_are_found_by_title_once_per_series_at_their_next_time(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do("add", title="CS 2110 Lecture", when="fixed", start="2026-10-12T11:40", end="2026-10-12T12:55")
+    app.do("add", title="CS 2110 Lecture", when="fixed", start="2026-10-21T11:40", end="2026-10-21T12:55")
+    app.do("add", title="Dentist", when="fixed", start="2026-10-23T15:00", end="2026-10-23T16:00")
+    found = app.do("events", text="lecture")
+    assert [(e["title"], e["start"]) for e in found] == [
+        ("CS 2110 Lecture", "2026-10-21T11:40"),
+        ("CS 2110 Lecture", "2026-10-12T11:40"),
+    ]
+    assert app.do("events", text="dent")[0]["start"] == "2026-10-23T15:00"
+    assert app.do("events", text="") == []
+
+
+def test_an_event_wears_a_pigment_until_you_clear_it(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    event = app.do("add", title="Chess club", when="fixed", start="2026-10-21T19:00", end="2026-10-21T21:00")["item"]
+    assert event["color"] is None
+    assert app.do("edit", id=event["id"], color="violet")["item"]["color"] == "violet"
+    assert app.do("edit", id=event["id"], color=None)["item"]["color"] is None
+    try:
+        app.do("edit", id=event["id"], color="chartreuse")
+    except Exception as error:
+        assert "color" in str(error)
+    else:
+        raise AssertionError("an unknown pigment was taken")

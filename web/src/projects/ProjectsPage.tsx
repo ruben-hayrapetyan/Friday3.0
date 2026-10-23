@@ -271,7 +271,7 @@ function Timeline({ p, steps }: { p: Project; steps: Item[] }) {
             <span style={{ position: "absolute", top: 18, bottom: 0, left: `${at(`${d}T00:00`)}%`, width: 1, background: "color-mix(in srgb, var(--color-text) 7%, transparent)" }} />
           </span>
         ))}
-        <span style={{ position: "absolute", top: 18, bottom: 0, left: `${Math.max(0, at(`${today}T12:00`))}%`, width: 2, background: "#ef6b73" }} />
+        <span style={{ position: "absolute", top: 18, bottom: 0, left: `${Math.max(0, at(`${today}T12:00`))}%`, width: 2, background: "var(--fr-now)" }} />
         {p.item.due && (
           <>
             <span style={{ position: "absolute", top: 18, bottom: 0, left: `${at(p.item.due)}%`, width: 2, background: "var(--fr-due)" }} />
