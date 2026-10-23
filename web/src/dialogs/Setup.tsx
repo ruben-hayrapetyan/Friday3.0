@@ -7,7 +7,7 @@ import { type ReactNode, useEffect, useState } from "react"
 import { query, type Schemas } from "@/api/client"
 import { Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
-import { ampm } from "@/lib/format"
+import { ampm, parseLength } from "@/lib/format"
 import { Modal } from "./Dialogs"
 
 export type Answers = Schemas["SetupInput"]
@@ -15,21 +15,24 @@ type Calendar = Schemas["SetupCalendar"]
 
 export const useSetup = () => useQuery({ queryKey: ["setup"], queryFn: () => query("setup") })
 
-/** Half-hour times from `from` to `to` o'clock (past midnight when `to` > 24), with `current` among them. */
-export function timeOptions(from: number, to: number, current: string): { value: string; label: string }[] {
-  const all = Array.from({ length: (to - from) * 2 + 1 }, (_, i) => `${String(Math.floor(from + i / 2) % 24).padStart(2, "0")}:${i % 2 ? "30" : "00"}`)
-  const values = all.includes(current) ? all : [current, ...all]
-  return values.map((value) => ({ value, label: ampm(value) }))
+/** Hours typed any way: "6" is 6 hours here (a question about hours), "6.5h", "1h30", "90 min", "an hour and a
+ * half"; to the nearest quarter hour. Null when it can't be read. */
+export function readHours(text: string): number | null {
+  const t = text.trim()
+  if (!t) return null
+  const minutes = /^\d+(\.\d+)?$/.test(t) ? Number(t) * 60 : parseLength(t)
+  return minutes === null ? null : Math.round(minutes / 15) / 4
 }
 
-/** Hours as Seg options: "1h", "1.5h"; `none` and `all` name the ends. */
-function hourOptions(values: number[], none?: string, all?: { value: number; label: string }) {
-  return values.map((v) => ({ value: v, label: v === 0 && none ? none : all && v === all.value ? all.label : v < 1 ? `${v * 60}m` : `${v}h` }))
+/** Whole days typed: "2", "2 days", "a day"; null otherwise. */
+export function readDays(text: string): number | null {
+  const m = /^\s*(\d+|a|one|an)\s*(days?)?\s*$/i.exec(text)
+  return m ? (/^\d+$/.test(m[1]) ? Number(m[1]) : 1) : null
 }
 
-/** A value among `values`, adding it when you'd chosen something they don't offer (in Settings). */
-function withValue(values: number[], value: number): number[] {
-  return values.includes(value) ? values : [...values, value].sort((a, b) => a - b)
+/** "6h", "1.5h", "45m". */
+export function hoursLabel(v: number): string {
+  return v < 1 ? `${Math.round(v * 60)}m` : `${v}h`
 }
 
 interface Step {
@@ -65,10 +68,10 @@ const STEPS: Step[] = [
     body: (a, set) => (
       <>
         <Question label="A normal day">
-          <Seg options={hourOptions(withValue([3, 4, 5, 6, 8, 10], a.normal_hours))} value={a.normal_hours} onPick={(normal_hours) => set({ normal_hours, most_hours: Math.max(a.most_hours, normal_hours) })} size="big" label="A normal day" />
+          <Amount picks={[3, 4, 5, 6, 8, 10]} value={a.normal_hours} min={1} max={16} onPick={(normal_hours) => set({ normal_hours, most_hours: Math.max(a.most_hours, normal_hours) })} label="A normal day" />
         </Question>
         <Question label="At most, on a heavy day">
-          <Seg options={hourOptions(withValue([4, 6, 8, 10, 12], a.most_hours))} value={a.most_hours} onPick={(most_hours) => set({ most_hours, normal_hours: Math.min(a.normal_hours, most_hours) })} size="big" label="At most" />
+          <Amount picks={[4, 6, 8, 10, 12]} value={a.most_hours} min={1} max={16} onPick={(most_hours) => set({ most_hours, normal_hours: Math.min(a.normal_hours, most_hours) })} label="At most, on a heavy day" />
         </Question>
       </>
     ),
@@ -77,7 +80,7 @@ const STEPS: Step[] = [
     id: "focus",
     title: "Focus",
     note: "The longest Friday plans focused work in one go before a break or something else.",
-    body: (a, set) => <Seg options={hourOptions(withValue([0.75, 1, 1.5, 2, 3, 4], a.focus_hours))} value={a.focus_hours} onPick={(focus_hours) => set({ focus_hours })} size="big" label="Longest stretch" />,
+    body: (a, set) => <Amount picks={[0.75, 1, 1.5, 2, 3, 4]} value={a.focus_hours} min={0.5} max={8} onPick={(focus_hours) => set({ focus_hours })} label="Longest stretch" />,
   },
   {
     id: "free",
@@ -86,15 +89,18 @@ const STEPS: Step[] = [
     body: (a, set) => (
       <>
         <Question label="Weekday evenings">
-          <Seg options={hourOptions(withValue([0, 1, 2, 3, 5], a.evening_free), "None", { value: 5, label: "All of it" })} value={a.evening_free} onPick={(evening_free) => set({ evening_free })} size="big" label="Weekday evenings" />
+          <Amount picks={[0, 1, 2, 3, 5]} names={{ 0: "None", 5: "All of it" }} value={a.evening_free} min={0} max={6} onPick={(evening_free) => set({ evening_free })} label="Weekday evenings" />
         </Question>
         {a.evening_free > 0 && (
           <Question label="Evenings start at">
-            <Seg options={["17:00", "18:00", "19:00", "20:00"].map((t) => ({ value: t, label: ampm(t) }))} value={a.evening_from} onPick={(evening_from) => set({ evening_from })} size="big" label="Evenings start at" />
+            <span style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <Seg options={["17:00", "18:00", "19:00", "20:00"].map((t) => ({ value: t, label: ampm(t) }))} value={a.evening_from} onPick={(evening_from) => set({ evening_from })} size="big" label="Evenings start at" />
+              <TimeInput value={a.evening_from} onPick={(evening_from) => set({ evening_from })} label="Evenings start at, another time" />
+            </span>
           </Question>
         )}
         <Question label="Each weekend day">
-          <Seg options={hourOptions(withValue([0, 2, 4, 6, 13], a.weekend_free), "None", { value: 13, label: "All of it" })} value={a.weekend_free} onPick={(weekend_free) => set({ weekend_free })} size="big" label="Each weekend day" />
+          <Amount picks={[0, 2, 4, 6, 13]} names={{ 0: "None", 13: "All of it" }} value={a.weekend_free} min={0} max={13} onPick={(weekend_free) => set({ weekend_free })} label="Each weekend day" />
         </Question>
       </>
     ),
@@ -104,16 +110,16 @@ const STEPS: Step[] = [
     title: "Deadlines",
     note: "How early Friday aims to have work done. Exam prep is always planned in the days just before the exam.",
     body: (a, set) => (
-      <Seg
-        options={[
-          { value: 0, label: "On the day" },
-          { value: 1, label: "A day early" },
-          { value: 2, label: "2 days early" },
-          { value: 3, label: "3 days early" },
-        ]}
+      <Amount
+        picks={[0, 1, 2, 3]}
+        names={{ 0: "On the day", 1: "A day early", 2: "2 days early", 3: "3 days early" }}
         value={a.finish_early_days}
+        min={0}
+        max={7}
+        read={readDays}
+        say={(d) => `${d} day${d === 1 ? "" : "s"} early`}
+        example="5 days"
         onPick={(finish_early_days) => set({ finish_early_days })}
-        size="big"
         label="Finish work"
       />
     ),
@@ -229,24 +235,60 @@ function Question({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-function TimeRow({ label, wake, bedtime, onWake, onBedtime }: { label: string; wake: string; bedtime: string; onWake: (t: string) => void; onBedtime: (t: string) => void }) {
-  const select = (value: string, options: { value: string; label: string }[], onPick: (t: string) => void, aria: string) => (
-    <select className="input" value={value} onChange={(e) => onPick(e.target.value)} aria-label={aria} style={{ width: 120 }}>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+/** Any time, to the minute, shown on the Mac's clock (12-hour here). */
+function TimeInput({ value, onPick, label }: { value: string; onPick: (t: string) => void; label: string }) {
+  return <input className="input tnum" type="time" step={300} value={value} onChange={(e) => e.target.value && onPick(e.target.value)} aria-label={label} style={{ width: 130 }} />
+}
+
+/** Quick picks, and a box to type any other amount: hours by default ("6", "6.5h", "90 min"), or what `read` reads. */
+function Amount(props: { picks: number[]; names?: Record<number, string>; value: number; min: number; max: number; onPick: (v: number) => void; label: string; read?: (text: string) => number | null; say?: (v: number) => string; example?: string }) {
+  const { picks, names, value, min, max, onPick, label } = props
+  const read = props.read ?? readHours
+  const say = props.say ?? hoursLabel
+  const picked = picks.includes(value)
+  const [text, setText] = useState(picked ? "" : say(value))
+  const [problem, setProblem] = useState<string | null>(null)
+  useEffect(() => {
+    // the other question moved this one (a heavy day is never less than a normal one): the box follows
+    if (text.trim() && read(text) !== value && !problem) setText(picks.includes(value) ? "" : say(value))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+  const type = (t: string) => {
+    setText(t)
+    if (!t.trim()) return setProblem(null)
+    const v = read(t)
+    if (v === null) return setProblem(`Type it like ${props.example ?? "6, 6.5h or 90 min"}`)
+    if (v < min || v > max) return setProblem(`Between ${say(min)} and ${say(max)}`)
+    setProblem(null)
+    onPick(v)
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <span style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <Seg options={picks.map((v) => ({ value: v, label: names?.[v] ?? say(v) }))} value={picked && !text ? value : null} onPick={(v) => (setText(""), setProblem(null), onPick(v))} size="big" label={label} />
+        <input
+          className="input"
+          value={text}
+          onChange={(e) => type(e.target.value)}
+          placeholder="Or type"
+          aria-label={`${label}, typed`}
+          style={{ width: 110, boxShadow: problem ? "0 0 0 1px var(--fr-due)" : !picked || text ? "0 0 0 1px var(--color-accent)" : undefined }}
+        />
+      </span>
+      {problem && <span style={{ fontSize: 12, color: "var(--fr-due)" }}>{problem}</span>}
+    </div>
   )
+}
+
+function TimeRow({ label, wake, bedtime, onWake, onBedtime }: { label: string; wake: string; bedtime: string; onWake: (t: string) => void; onBedtime: (t: string) => void }) {
   return (
     <div className="fr-stack" style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
       <span style={{ fontSize: 13, fontWeight: 500, width: 90 }}>{label}</span>
       <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
-        Up at {select(wake, timeOptions(5, 12, wake), onWake, `${label}: up at`)}
+        Up at <TimeInput value={wake} onPick={onWake} label={`${label}: up at`} />
       </span>
       <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
-        Bed at {select(bedtime, timeOptions(20, 27, bedtime), onBedtime, `${label}: bed at`)}
+        Bed at <TimeInput value={bedtime} onPick={onBedtime} label={`${label}: bed at`} />
       </span>
     </div>
   )

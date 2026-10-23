@@ -170,3 +170,11 @@ def test_answers_out_of_range_are_refused(app: App) -> None:
     with pytest.raises(ValidationError):
         app.do("setup_save", **answers(app, wake="7am"))
     assert app.do("setup")["done"] is False
+
+
+def test_any_amount_you_type_is_kept_as_typed(app: App) -> None:
+    app.do("setup_save", **answers(app, normal_hours=6.25, most_hours=11, focus_hours=0.75, evening_free=4.5))
+    assert rule(app, "daily_load").params["threshold"] == "6.25h"
+    assert rule(app, "deep_run").params["threshold"] == "0.75h"
+    out = answers(app)
+    assert (out["normal_hours"], out["most_hours"], out["focus_hours"], out["evening_free"]) == (6.25, 11, 0.75, 4.5)

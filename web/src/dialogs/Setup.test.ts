@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { type Answers, shift, stepsFor, timeOptions } from "./Setup"
+import { type Answers, hoursLabel, readDays, readHours, shift, stepsFor } from "./Setup"
 
 const ANSWERS: Answers = {
   wake: "07:30",
@@ -23,11 +23,17 @@ describe("setup", () => {
     expect(stepsFor({ ...ANSWERS, calendars: [{ name: "Home", shown: true, busy: true }] })).toContain("calendars")
   })
 
-  it("offers half hours on a 12-hour clock, past midnight too, and keeps a time you'd set", () => {
-    const night = timeOptions(22, 25, "23:30")
-    expect(night.map((o) => o.value)).toEqual(["22:00", "22:30", "23:00", "23:30", "00:00", "00:30", "01:00"])
-    expect(night.map((o) => o.label).slice(3, 5)).toEqual(["11:30pm", "12am"])
-    expect(timeOptions(5, 6, "07:15")[0]).toEqual({ value: "07:15", label: "7:15am" })
+  it("reads any amount you type: a bare number is hours", () => {
+    expect(["6", "6.5", "6h", "6 hours", "1h30", "90 min", "an hour and a half", "10", "45m"].map(readHours)).toEqual([6, 6.5, 6, 6, 1.5, 1.5, 1.5, 10, 0.75])
+    expect(readHours("7h20")).toBe(7.25) // to the quarter hour
+    expect(readHours("lots")).toBeNull()
+    expect(readHours("")).toBeNull()
+    expect([hoursLabel(6), hoursLabel(6.5), hoursLabel(0.75)]).toEqual(["6h", "6.5h", "45m"])
+  })
+
+  it("reads days typed", () => {
+    expect(["5", "5 days", "a day", "1 day"].map(readDays)).toEqual([5, 5, 1, 1])
+    expect(readDays("soon")).toBeNull()
   })
 
   it("moves a time on, round midnight", () => {
