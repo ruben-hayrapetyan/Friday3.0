@@ -1,6 +1,7 @@
 // Rules (v22): how you like your days, in your own words. Type a rule; Friday shows how it read it (what, when,
 // which days) for you to correct, and how strongly to hold it. Below, every rule with a switch, its strength, how
-// often the plan keeps it, and delete.
+// often the plan keeps it, and delete. A rule the plan bends can ask what it's up against, and you say which should
+// win (COMBINED.md 66); the answer shows on both rules, and clicking it changes it.
 
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
@@ -10,6 +11,7 @@ import { H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useShell } from "@/shell/ShellContext"
 import { useCommand } from "@/hooks/useCommand"
 import { useStatus } from "@/hooks/queries"
+import { dayLabel } from "@/lib/format"
 
 type Strength = "Prefer" | "Strongly" | "Always"
 const STRENGTHS: Strength[] = ["Prefer", "Strongly", "Always"]
@@ -25,6 +27,7 @@ export const useRules = () => useQuery({ queryKey: ["rules"], queryFn: () => que
 
 export function RulesPage() {
   const rules = useRules().data ?? []
+  const said = new Map(rules.map((r) => [r.name, r.sentence]))
   const owned = (useStatus().data?.config_keys ?? []).includes("rules")
   const mine = rules.filter((r) => r.source === "you").length
   return (
@@ -53,7 +56,7 @@ export function RulesPage() {
               {rules
                 .filter((r) => !r.background)
                 .map((r) => (
-                  <RuleRow key={r.name} rule={r} locked={owned} />
+                  <RuleRow key={r.name} rule={r} locked={owned} said={said} />
                 ))}
             </div>
             <details>
@@ -64,7 +67,7 @@ export function RulesPage() {
                 {rules
                   .filter((r) => r.background)
                   .map((r) => (
-                    <RuleRow key={r.name} rule={r} locked={owned} />
+                    <RuleRow key={r.name} rule={r} locked={owned} said={said} />
                   ))}
               </div>
             </details>
@@ -211,9 +214,12 @@ function Fields(props: { reading: Reading; overrides: Record<string, unknown>; o
   )
 }
 
-function RuleRow({ rule, locked }: { rule: Schemas["RuleOut"]; locked: boolean }) {
+function RuleRow({ rule, locked, said }: { rule: Schemas["RuleOut"]; locked: boolean; said: Map<string, string> }) {
   const set = useCommand("rule_set", { label: () => "Saved" })
   const remove = useCommand("rule_remove", { label: () => "Deleted" })
+  const win = useCommand("rule_win", { label: (o) => o.result.message ?? "Saved" })
+  const [asking, setAsking] = useState(false)
+  const bends = rule.enabled && rule.strength !== "Always" && rule.effect === "Gives way in this plan"
   const [icon, source] = SOURCES[rule.source] ?? SOURCES.default
   const options = rule.source === "you" ? STRENGTHS : rule.strength === "Always" ? (["Always"] as Strength[]) : (["Prefer", "Strongly"] as Strength[])
   return (
@@ -227,6 +233,21 @@ function RuleRow({ rule, locked }: { rule: Schemas["RuleOut"]; locked: boolean }
             {source}
           </span>
           <span>{rule.effect}</span>
+          {bends && !locked && (
+            <button className="fr-plain fr-link" onClick={() => setAsking(!asking)} aria-expanded={asking} style={{ fontSize: 12 }}>
+              What to?
+            </button>
+          )}
+          {(rule.wins_over ?? []).map((other) => (
+            <button key={other} className="fr-plain fr-hover-text" title="Click to let it win instead" onClick={() => !locked && win({ winner: other, loser: rule.name })} style={{ fontSize: 12 }}>
+              Wins over “{said.get(other) ?? other}”
+            </button>
+          ))}
+          {(rule.gives_way_to ?? []).map((other) => (
+            <button key={other} className="fr-plain fr-hover-text" title="Click to let this one win instead" onClick={() => !locked && win({ winner: rule.name, loser: other })} style={{ fontSize: 12 }}>
+              Gives way to “{said.get(other) ?? other}”
+            </button>
+          ))}
         </span>
       </span>
       <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
@@ -241,6 +262,43 @@ function RuleRow({ rule, locked }: { rule: Schemas["RuleOut"]; locked: boolean }
         </button>
       ) : (
         <span />
+      )}
+      {asking && <Clash rule={rule} onAnswer={(winner, loser) => (win({ winner, loser }), setAsking(false))} />}
+    </div>
+  )
+}
+
+/** "This clashes with … Which should win?" (the v22 design): planned once more with the rule weighed far higher. */
+function Clash({ rule, onAnswer }: { rule: Schemas["RuleOut"]; onAnswer: (winner: string, loser: string) => void }) {
+  const found = useQuery({ queryKey: ["rule_clash", rule.name], queryFn: () => query("rule_clash", { name: rule.name }), staleTime: 60_000 })
+  const clash = found.data
+  return (
+    <div style={{ gridColumn: "2 / -1", display: "flex", flexDirection: "column", gap: 10, padding: "12px 14px", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--fr-warn) 9%, var(--color-bg))" }}>
+      {found.isLoading ? (
+        <span className="fr-kicker">Planning once more with this rule weighed far higher (a few seconds)…</span>
+      ) : found.isError || !clash ? (
+        <span className="fr-kicker">Couldn’t find out just now.</span>
+      ) : !clash.other ? (
+        <span className="fr-kicker">Weighed far higher, it bends no less, or no other rule gives way for it: your deadlines and the work itself are what bend it.</span>
+      ) : (
+        <>
+          <span style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+            <Icon name="warning" size={14} style={{ color: "var(--fr-warn)" }} />
+            <span style={{ textWrap: "pretty" }}>
+              This clashes with <span style={{ fontWeight: 500 }}>{clash.other_sentence}</span>
+              {clash.days?.length ? ` on ${clash.days.map(dayLabel).join(", ")}` : ""}. Which should win?
+            </span>
+          </span>
+          <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button className="btn btn-secondary" onClick={() => onAnswer(rule.name, clash.other as string)} style={{ fontSize: 12 }}>
+              {clash.sentence}
+            </button>
+            <button className="btn btn-secondary" onClick={() => onAnswer(clash.other as string, rule.name)} style={{ fontSize: 12 }}>
+              {clash.other_sentence}
+            </button>
+          </span>
+          <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>Friday remembers your answer for these two rules. Click the result to change it.</span>
+        </>
       )}
     </div>
   )

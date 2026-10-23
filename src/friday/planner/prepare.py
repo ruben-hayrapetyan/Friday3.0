@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from friday.core.pace import dials_on, scales
 from friday.core.settings import minutes_of
 from friday.core.time import UNIT_MIN, format_utc, parse_utc, planning_date
-from friday.planner.build import BuildInput, Dependency, Pin
+from friday.planner.build import BuildInput, Dependency, Pin, night_times
 from friday.planner.progress import recorded_minutes, remaining_minutes
 from friday.planner.snapshot import BlockRow, Snapshot
 
@@ -109,6 +109,36 @@ def day_scales(snapshot: Snapshot) -> list:
     ]
 
 
+DEBT_NIGHTS = 3
+
+
+def debt_hours(snapshot: Snapshot) -> dict[date, float]:
+    """Sleep debt (DESIGN §12.3): for each night from tonight, the hours of work recorded (or being timed) inside the
+    margins after bedtime of the three nights before it. Only work already done counts, so it is known when the plan
+    is built; nights more than three ahead owe nothing."""
+    settings, time = snapshot.settings, snapshot.settings["time"]
+    if settings["sleep"] is None:
+        return {}
+    first, start = today(snapshot), minutes_of(time.day_start)
+    sessions = [
+        (parse_utc(r["start_utc"]), parse_utc(r["end_utc"]))
+        for found in snapshot.progress.values()
+        for r in found
+        if r["start_utc"] and r["end_utc"]
+    ]
+    if snapshot.timer is not None:
+        sessions.append((snapshot.timer[1], snapshot.now_utc))
+    owed: dict[date, float] = {}
+    for back in range(0, DEBT_NIGHTS + 1):  # tonight too: work past bedtime so far makes tomorrow's late hours dearer
+        night = first - timedelta(days=back)
+        bedtime, _, margin = night_times(settings, snapshot.day_overrides, night, time.timezone, start)
+        hours = sum(max(0, min(end, bedtime + margin) - max(begin, bedtime)) for begin, end in sessions) / 60
+        for later in range(1, DEBT_NIGHTS + 1):  # it is owed on each of the three nights after it, from tonight on
+            if (owed_on := night + timedelta(days=later)) >= first:
+                owed[owed_on] = owed.get(owed_on, 0.0) + hours
+    return {day: hours for day, hours in owed.items() if hours > 0}
+
+
 def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
     done, on_today = progress_minutes(snapshot)
     pins = [Pin(p.item_id, p.start_utc, p.end_utc, p.kind, p.id) for p in snapshot.pins]  # type: ignore[arg-type]
@@ -132,4 +162,5 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
         day_overrides=snapshot.day_overrides,
         end_utc=end_utc,
         multipliers=snapshot.multipliers,
+        debt_hours=debt_hours(snapshot),
     )

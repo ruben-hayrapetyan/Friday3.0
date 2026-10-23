@@ -19,6 +19,8 @@ from tests.commands.helpers import App, new_app
 DERIVED = {"command_log", "kv", "plans", "blocks", "users", "sqlite_sequence"}
 KV_STATE = {
     "report",  # the last 50 reports, kept in kv
+    "stuck",  # the latest friction, kept in kv
+    "rule_win",
     "learn_module",
     "sync_now",
     "token_remove",
@@ -247,6 +249,8 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "drop": lambda app: {"id": essay(app)},
     "reopen": reopen_sample,
     "done": lambda app: {"id": essay(app), "actual_min": 100},
+    "stuck": lambda app: {"id": essay(app), "note": "can't find the reading"},
+    "rule_win": lambda app: {"winner": "deep_run", "loser": "chunk_cost"},
     "depend": lambda app: {"item_id": essay(app), "depends_on_id": chore(app)},
     "undepend": undepend_sample,
     "area_add": lambda app: {"name": "Psych"},

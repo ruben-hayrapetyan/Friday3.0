@@ -6,15 +6,18 @@ import json
 import re
 from typing import Any
 
-from friday.api.commands import Changed, RuleAddInput, RuleRef, RuleSetInput, RuleTextInput
+from friday.api.commands import Changed, RuleAddInput, RuleRef, RuleSetInput, RuleTextInput, RuleWinInput
 from friday.api.types import Empty
-from friday.api.views import RuleOut, RuleReadOut
+from friday.api.views import RuleClashOut, RuleOut, RuleReadOut
 from friday.commands.registry import Ctx, command, query
 from friday.commands.settings import write_setting
 from friday.core.items import FieldError
 from friday.core.rule_text import Reading, read, sentence, spec, with_overrides
 from friday.core.settings import REFERENCE_RULES
+from friday.planner.learning import learnable
+from friday.planner.snapshot import take_snapshot
 from friday.planner.store import area_names, current_plan, kv_get
+from friday.planner.views import rule_clash as find_clash
 
 DEFAULT_WEIGHT = {r.name: r.weight for r in REFERENCE_RULES}
 ALWAYS = {"late_work", "late_tasks", "quota"}  # deadlines: they never bend
@@ -155,6 +158,7 @@ def rules(ctx: Ctx, inp: Empty) -> list[RuleOut]:
     mine = readings(ctx)
     report = current_report(ctx)
     by_day = report.get("rule_totals_by_day", {})
+    wins = kv_get(ctx.conn, "rule_wins", [], ctx.user_id)
     out = []
     for r in ctx.settings["rules"]:
         source = "you" if r.name.startswith("you:") else "default" if r.name in DEFAULT_WEIGHT else "learned"
@@ -174,9 +178,56 @@ def rules(ctx: Ctx, inp: Empty) -> list[RuleOut]:
                 else "Off",
                 editable=r.name not in ALWAYS,
                 background=source == "default" and (r.type in BACKGROUND or unset_buffer(r)),
+                wins_over=[w["loser"] for w in wins if w["winner"] == r.name],
+                gives_way_to=[w["winner"] for w in wins if w["loser"] == r.name],
             )
         )
     return out
+
+
+@query("rule_clash")
+def rule_clash(ctx: Ctx, inp: RuleRef) -> RuleClashOut:
+    """What a rule the plan bends is up against: plans once more with it weighed far more (a few seconds)."""
+    rule = next((r for r in ctx.settings["rules"] if r.name == inp.name), None)
+    if rule is None:
+        raise FieldError("name", f"no rule named {inp.name}")
+    mine = readings(ctx)
+    said = {r.name: words(r, mine) for r in ctx.settings["rules"]}
+    if inp.name not in learnable(ctx.settings):
+        return RuleClashOut(rule=inp.name, other=None, sentence=said[inp.name])
+    found = find_clash(take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id), inp.name)
+    if found is None:
+        return RuleClashOut(rule=inp.name, other=None, sentence=said[inp.name])
+    return RuleClashOut(
+        rule=inp.name,
+        other=found.other,
+        days=found.days,
+        sentence=said[inp.name],
+        other_sentence=said.get(found.other, found.other),
+    )
+
+
+@command("rule_win", affects_plan=True)
+def rule_win(ctx: Ctx, inp: RuleWinInput) -> Changed:
+    """Which of two clashing rules wins from now on; a new answer for the same two replaces the old one."""
+    names = set(learnable(ctx.settings))
+    for field, name in (("winner", inp.winner), ("loser", inp.loser)):
+        if name not in names:
+            raise FieldError(
+                field,
+                f"{name} isn't a rule that can give way"
+                if any(r.name == name for r in ctx.settings["rules"])
+                else f"no rule named {name}",
+            )
+    if inp.winner == inp.loser:
+        raise FieldError("loser", "a rule can't win over itself")
+    pair = {inp.winner, inp.loser}
+    kept = [w for w in kv_get(ctx.conn, "rule_wins", [], ctx.user_id) if {w["winner"], w["loser"]} != pair]
+    kept.append({"winner": inp.winner, "loser": inp.loser})
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "rule_wins"}, {"value": json.dumps(kept)})
+    mine = readings(ctx)
+    said = {r.name: words(r, mine) for r in ctx.settings["rules"]}
+    return Changed(message=f"“{said[inp.winner]}” wins over “{said[inp.loser]}”")
 
 
 def unset_buffer(rule: Any) -> bool:

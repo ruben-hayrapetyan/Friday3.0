@@ -116,6 +116,44 @@ def other_ways(snapshot: Snapshot, n: int = 2, tries: int = 6) -> list[tuple[dic
     return out
 
 
+CLASH_FACTOR = 20  # how much more the rule is weighed when asking what keeping it would cost
+CLASH_SHARE = 0.25  # a rival counts when it loses at least this share of what the rule gains (less is search noise)
+
+
+@dataclass
+class Clash:
+    other: str  # the rule that gives way when this one is kept
+    days: list[str]  # the days (ISO dates) where they pull against each other
+
+
+def rule_clash(snapshot: Snapshot, name: str) -> Clash | None:
+    """What a rule the plan bends is up against ("Which should win?", COMBINED.md 66): plan afresh with it weighed far
+    more, and see, on the days it is then kept better, which other rule is bent more. Both plans are made from
+    scratch with the same seed (a warm start stays where it is), so the weight is what differs. None when keeping it
+    costs no other rule: deadlines bend it, or nothing would."""
+
+    def by_day(settings: dict[str, Any]) -> dict[str, dict[str, int]]:
+        changed = dataclasses.replace(snapshot, settings=settings)
+        totals = assemble(changed, solve(changed, warm=False)).report.get("rule_totals_by_day", {})
+        return {d: t for d, t in totals.items() if d != "other"}
+
+    before = by_day(snapshot.settings)
+    if not any(t.get(name, 0) > 0 for t in before.values()):
+        return None
+    after = by_day(picked(snapshot.settings, {name: CLASH_FACTOR}, 0))
+    gained = [d for d, t in before.items() if t.get(name, 0) > after.get(d, {}).get(name, 0) / CLASH_FACTOR]
+    gain = sum(before[d].get(name, 0) - after.get(d, {}).get(name, 0) / CLASH_FACTOR for d in gained)
+    lost: dict[str, float] = {}
+    for d in gained:
+        for rule in learnable(snapshot.settings):
+            if rule != name:
+                lost[rule] = lost.get(rule, 0) + after.get(d, {}).get(rule, 0) - before[d].get(rule, 0)
+    rival, cost = max(lost.items(), key=lambda kv: kv[1], default=("", 0.0))
+    if cost <= 0 or cost < CLASH_SHARE * gain:
+        return None
+    return Clash(rival, sorted(d for d in gained if after.get(d, {}).get(rival, 0) > before[d].get(rival, 0)))
+
+
 Step = tuple[str, dict[str, Any]]  # a registry command and its input; times as UTC minutes under `*_utc` keys
 
 

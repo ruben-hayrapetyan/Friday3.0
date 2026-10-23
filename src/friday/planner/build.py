@@ -343,14 +343,21 @@ def nights(inp: BuildInput, spec: GridSpec, first: date, days: int) -> dict[date
     out = {}
     for offset in range(-1, days + 2):
         day = first + timedelta(days=offset)
-        evening = sleep_on(inp.settings, inp.day_overrides, day)
-        morning = sleep_on(inp.settings, inp.day_overrides, day + timedelta(days=1))
-        bedtime = minutes_of(evening.bedtime)
-        if bedtime < spec.day_start:
-            bedtime += 1440  # a bedtime before the day starts is after midnight
-        out[day] = Night(night_utc(day, bedtime, spec.timezone), wake_utc(day, minutes_of(morning.wake), spec.timezone),
-                         evening.margin_min, inp.debt_hours.get(day, 0.0))  # fmt: skip
+        bedtime, wake, margin = night_times(inp.settings, inp.day_overrides, day, spec.timezone, spec.day_start)
+        out[day] = Night(bedtime, wake, margin, inp.debt_hours.get(day, 0.0))
     return out
+
+
+def night_times(
+    settings: Mapping[str, Any], overrides: Mapping[date, Mapping[str, Any]], day: date, tz: str, day_start: int
+) -> tuple[int, int, int]:
+    """The night beginning on `day`: bedtime and wake (UTC minutes) and the margin after bedtime."""
+    evening = sleep_on(settings, overrides, day)
+    morning = sleep_on(settings, overrides, day + timedelta(days=1))
+    bedtime = minutes_of(evening.bedtime)
+    if bedtime < day_start:
+        bedtime += 1440  # a bedtime before the day starts is after midnight
+    return night_utc(day, bedtime, tz), wake_utc(day, minutes_of(morning.wake), tz), evening.margin_min
 
 
 def sleep_on(settings: Mapping[str, Any], overrides: Mapping[date, Mapping[str, Any]], day: date) -> SleepDay:

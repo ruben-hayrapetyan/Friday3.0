@@ -86,7 +86,8 @@ def take_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> S
 
 
 def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snapshot:
-    settings = with_picked_way(conn, now_utc, with_learned_energy(conn, load_settings(conn, user_id), user_id), user_id)
+    settings = with_learned_energy(conn, load_settings(conn, user_id), user_id)
+    settings = with_rule_wins(conn, with_picked_way(conn, now_utc, settings, user_id), user_id)
     plan = current_plan(conn, user_id)
     plan_blocks = (
         tuple(
@@ -177,6 +178,21 @@ def with_picked_way(conn: sqlite3.Connection, now_utc: int, settings: dict[str, 
     if not way or parse_utc(way["until"]) <= now_utc:
         return settings
     return picked(settings, way["weights"], way.get("seed", 0))
+
+
+WIN = 3.0  # an answer to "Which should win?": the winner weighs ×3, the other ÷3
+
+
+def with_rule_wins(conn: sqlite3.Connection, settings: dict[str, Any], user_id: int) -> dict[str, Any]:
+    """The rules' weights with your answers to "Which should win?" (COMBINED.md 66), each for its pair of rules."""
+    names = {r.name for r in settings["rules"]}
+    factors: dict[str, float] = {}
+    for answer in kv_get(conn, "rule_wins", [], user_id):
+        winner, loser = answer["winner"], answer["loser"]
+        if winner in names and loser in names:
+            factors[winner] = factors.get(winner, 1.0) * WIN
+            factors[loser] = factors.get(loser, 1.0) / WIN
+    return picked(settings, factors, 0) if factors else settings
 
 
 def picked(settings: dict[str, Any], factors: dict[str, float], seed: int) -> dict[str, Any]:

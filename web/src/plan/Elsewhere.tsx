@@ -13,7 +13,7 @@ import { useShell } from "@/shell/ShellContext"
 const ACTOR: Record<string, string> = { you: "You", cli: "You (command line)", job: "Friday", config: "friday.toml" }
 const SAID: Record<string, string> = {
   add: "Added", edit: "Changed", done: "Marked done", drop: "Deleted", reopen: "Opened again", pin: "Pinned",
-  unpin: "Unpinned", start: "Started the timer", stop: "Stopped the timer", progress: "Progress", skip: "Skipped",
+  unpin: "Unpinned", start: "Started the timer", stop: "Stopped the timer", progress: "Progress", skip: "Skipped", stuck: "Stuck",
   depend: "Tied to another to-do", undepend: "Untied", suggestion_accept: "Accepted from the Inbox",
 } // prettier-ignore
 

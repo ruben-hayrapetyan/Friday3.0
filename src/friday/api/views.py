@@ -368,6 +368,18 @@ class RuleOut(Model):
     effect: str
     editable: bool  # strength can change (deadline rules always hold)
     background: bool = False  # the planner's own workings, folded away below the rules people tune
+    wins_over: list[str] = []  # rules you said this one beats when they clash ("Which should win?")
+    gives_way_to: list[str] = []  # rules you said beat this one
+
+
+class RuleClashOut(Model):
+    """What a rule is up against, when the plan bends it: the rule that gives way when it's kept, on which days."""
+
+    rule: str
+    other: str | None  # None: it bends for deadlines, or nothing else would give
+    days: list[str] = []  # ISO dates
+    sentence: str = ""
+    other_sentence: str = ""
 
 
 class SeriesRow(Model):

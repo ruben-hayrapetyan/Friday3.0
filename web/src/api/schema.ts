@@ -633,6 +633,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/stuck": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Say you're stuck on an item: it goes in its history, and the app offers what else fits now. */
+        post: operations["stuck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/stop": {
         parameters: {
             query?: never;
@@ -1851,6 +1868,40 @@ export interface paths {
         get: operations["rules"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/rule_clash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What a rule the plan bends is up against: plans once more with it weighed far more (a few seconds). */
+        get: operations["rule_clash"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/rule_win": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Which of two clashing rules wins from now on; a new answer for the same two replaces the old one. */
+        post: operations["rule_win"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4413,6 +4464,31 @@ export interface components {
              */
             repeated?: boolean;
         };
+        /**
+         * RuleClashOut
+         * @description What a rule is up against, when the plan bends it: the rule that gives way when it's kept, on which days.
+         */
+        RuleClashOut: {
+            /** Rule */
+            rule: string;
+            /** Other */
+            other: string | null;
+            /**
+             * Days
+             * @default []
+             */
+            days?: string[];
+            /**
+             * Sentence
+             * @default
+             */
+            sentence?: string;
+            /**
+             * Other Sentence
+             * @default
+             */
+            other_sentence?: string;
+        };
         /** RuleOut */
         RuleOut: {
             /** Name */
@@ -4441,6 +4517,16 @@ export interface components {
              * @default false
              */
             background?: boolean;
+            /**
+             * Wins Over
+             * @default []
+             */
+            wins_over?: string[];
+            /**
+             * Gives Way To
+             * @default []
+             */
+            gives_way_to?: string[];
         };
         /** RuleReadOut */
         RuleReadOut: {
@@ -4490,6 +4576,35 @@ export interface components {
         };
         /** RuleSetResult */
         RuleSetResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /**
+         * RuleWinInput
+         * @description Your answer to "Which should win?": `winner` beats `loser` whenever they clash.
+         */
+        RuleWinInput: {
+            /** Winner */
+            winner: string;
+            /** Loser */
+            loser: string;
+        };
+        /** RuleWinResult */
+        RuleWinResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
@@ -5169,6 +5284,35 @@ export interface components {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["TimerOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /** StuckInput */
+        StuckInput: {
+            /** Id */
+            id: number;
+            /**
+             * Note
+             * @default
+             */
+            note?: string;
+        };
+        /** StuckResult */
+        StuckResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
             /** Provisional */
             provisional?: components["schemas"]["BlockOut"][] | null;
             changes?: components["schemas"]["ChangeOut"] | null;
@@ -7010,6 +7154,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StartResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stuck: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StuckInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StuckResult"];
                 };
             };
             /** @description Validation Error */
@@ -9326,6 +9507,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RuleOut"][];
+                };
+            };
+        };
+    };
+    rule_clash: {
+        parameters: {
+            query: {
+                name: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleClashOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rule_win: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleWinInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleWinResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -1,5 +1,6 @@
 """Progress (DESIGN §8): progress, start, stop, log, review_submit, close_day."""
 
+import json
 import re
 from datetime import date, timedelta
 from typing import Any
@@ -15,6 +16,7 @@ from friday.api.commands import (
     SettleInput,
     StartInput,
     StopInput,
+    StuckInput,
     TimerOut,
 )
 from friday.commands.fields import insert_item, item_out, new_item, require_item
@@ -27,7 +29,7 @@ from friday.core.items import FieldError, Item
 from friday.core.time import UNIT_MIN, format_utc, local_midnight, parse_local, parse_utc, to_utc
 from friday.planner.prepare import block_key
 from friday.planner.progress import minutes_by_item
-from friday.planner.store import current_plan
+from friday.planner.store import current_plan, kv_get
 
 SHORT_START = re.compile(r"^([A-Za-z]{3})(\d{1,2}:\d{2})$")
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
@@ -62,6 +64,21 @@ def start(ctx: Ctx, inp: StartInput) -> TimerOut:
         ctx.db.update("items", {"id": inp.id}, {"certainty": "planned", "updated_utc": ctx.now_text})
     ctx.db.insert("timer", {"item_id": inp.id, "start_utc": started_text(ctx)})
     return timer_out(ctx, running(ctx) or {}, f"Timing {item.title}")
+
+
+FRICTION_KEPT = 200
+
+
+@command("stuck")  # no replan: the plan stands; the friction is kept, and shows in the item's history (DESIGN §18)
+def stuck(ctx: Ctx, inp: StuckInput) -> Changed:
+    """Say you're stuck on an item: it goes in its history, and the app offers what else fits now."""
+    item = require_item(ctx, inp.id)
+    if item.when == "fixed":
+        raise FieldError("id", f"T{inp.id} is an event, not something you work on")
+    kept = kv_get(ctx.conn, "friction", [], ctx.user_id)
+    kept = [*kept, {"item_id": inp.id, "at": ctx.now_text, "note": inp.note}][-FRICTION_KEPT:]
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "friction"}, {"value": json.dumps(kept)})
+    return Changed(message=f"Noted that you're stuck on {item.title}")
 
 
 @command("stop", affects_plan=True)

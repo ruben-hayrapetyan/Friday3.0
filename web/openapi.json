@@ -2366,6 +2366,77 @@
     }
    }
   },
+  "/api/c/stuck": {
+   "post": {
+    "summary": "Say you're stuck on an item: it goes in its history, and the app offers what else fits now.",
+    "operationId": "stuck",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/StuckInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StuckResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/stop": {
    "post": {
     "summary": "Stop the timer; with `done`, also complete the item.",
@@ -6363,6 +6434,116 @@
          },
          "type": "array",
          "title": "Response Rules"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/rule_clash": {
+   "get": {
+    "summary": "What a rule the plan bends is up against: plans once more with it weighed far more (a few seconds).",
+    "operationId": "rule_clash",
+    "parameters": [
+     {
+      "name": "name",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Name"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RuleClashOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/rule_win": {
+   "post": {
+    "summary": "Which of two clashing rules wins from now on; a new answer for the same two replaces the old one.",
+    "operationId": "rule_win",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RuleWinInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RuleWinResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
         }
        }
       }
@@ -14192,6 +14373,51 @@
     ],
     "title": "RuleAddResult"
    },
+   "RuleClashOut": {
+    "properties": {
+     "rule": {
+      "type": "string",
+      "title": "Rule"
+     },
+     "other": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Other"
+     },
+     "days": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Days",
+      "default": []
+     },
+     "sentence": {
+      "type": "string",
+      "title": "Sentence",
+      "default": ""
+     },
+     "other_sentence": {
+      "type": "string",
+      "title": "Other Sentence",
+      "default": ""
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "rule",
+     "other"
+    ],
+    "title": "RuleClashOut",
+    "description": "What a rule is up against, when the plan bends it: the rule that gives way when it's kept, on which days."
+   },
    "RuleOut": {
     "properties": {
      "name": {
@@ -14239,6 +14465,22 @@
       "type": "boolean",
       "title": "Background",
       "default": false
+     },
+     "wins_over": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Wins Over",
+      "default": []
+     },
+     "gives_way_to": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Gives Way To",
+      "default": []
      }
     },
     "additionalProperties": false,
@@ -14465,6 +14707,85 @@
      "result"
     ],
     "title": "RuleSetResult"
+   },
+   "RuleWinInput": {
+    "properties": {
+     "winner": {
+      "type": "string",
+      "title": "Winner"
+     },
+     "loser": {
+      "type": "string",
+      "title": "Loser"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "winner",
+     "loser"
+    ],
+    "title": "RuleWinInput",
+    "description": "Your answer to \"Which should win?\": `winner` beats `loser` whenever they clash."
+   },
+   "RuleWinResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "RuleWinResult"
    },
    "SeriesAddInput": {
     "properties": {
@@ -16852,6 +17173,84 @@
      "result"
     ],
     "title": "StopResult"
+   },
+   "StuckInput": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "note": {
+      "type": "string",
+      "title": "Note",
+      "default": ""
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id"
+    ],
+    "title": "StuckInput"
+   },
+   "StuckResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "StuckResult"
    },
    "SuggestionAcceptResult": {
     "properties": {

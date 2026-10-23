@@ -540,6 +540,14 @@ VERBS = {
         True,
         "Add a rule in your words; Friday plans with it from now.",
     ),
+    "rule_clash": Verb(
+        "GET",
+        "/api/q/rule_clash",
+        commands.RuleRef,
+        False,
+        False,
+        "What a rule the plan bends is up against: plans once more with it weighed far more (a few seconds).",
+    ),
     "rule_read": Verb(
         "GET",
         "/api/q/rule_read",
@@ -571,6 +579,14 @@ VERBS = {
         False,
         False,
         "Cost per rule in the current plan, or on one day.",
+    ),
+    "rule_win": Verb(
+        "POST",
+        "/api/c/rule_win",
+        commands.RuleWinInput,
+        True,
+        True,
+        "Which of two clashing rules wins from now on; a new answer for the same two replaces the old one.",
     ),
     "rules": Verb(
         "GET",
@@ -692,6 +708,14 @@ VERBS = {
     ),
     "stop": Verb(
         "POST", "/api/c/stop", commands.StopInput, True, True, "Stop the timer; with `done`, also complete the item."
+    ),
+    "stuck": Verb(
+        "POST",
+        "/api/c/stuck",
+        commands.StuckInput,
+        True,
+        False,
+        "Say you're stuck on an item: it goes in its history, and the app offers what else fits now.",
     ),
     "suggestion_accept": Verb(
         "POST",

@@ -83,6 +83,11 @@ class StartInput(Model):
     id: int
 
 
+class StuckInput(Model):
+    id: int
+    note: str = ""  # what's in the way, if you say
+
+
 class StopInput(Model):
     done: bool = False
 
@@ -582,6 +587,13 @@ class CalendarSetInput(Model):
     kind: str | None = None  # a kind's name, or "auto" to decide per event
     trusted: bool | None = None  # its events skip the inbox
     editable: bool | None = None  # changes made in Friday are saved back to it
+
+
+class RuleWinInput(Model):
+    """Your answer to "Which should win?": `winner` beats `loser` whenever they clash."""
+
+    winner: str
+    loser: str
 
 
 class MacCalendar(Model):

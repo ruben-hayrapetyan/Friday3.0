@@ -267,8 +267,10 @@ function IconButton({ icon, label, on, onClick }: { icon: string; label: string;
 function MoreMenu({ itemId, onSwitch, onClose }: { itemId: number; onSwitch: () => void; onClose: () => void }) {
   const navigate = useNavigate()
   const { setPop } = useShell()
+  const stuck = useCommand("stuck", { label: (o) => o.result.message ?? "Noted" })
   const options = [
     { icon: "swap", label: "Switch", desc: "Do something else now", run: onSwitch },
+    { icon: "warning-circle", label: "Stuck", desc: "Note it, and see what else fits", run: () => (stuck({ id: itemId }), onSwitch()) },
     { icon: "hand-palm", label: "Shove", desc: "Take time back", run: () => (onClose(), setPop("shove")) },
     { icon: "gauge", label: "Pace", desc: "Push harder or ease off", run: () => (onClose(), setPop("pace")) },
     { icon: "arrow-square-out", label: "Open", desc: "Details, sessions and why", run: () => (onClose(), navigate(`/todo?item=${itemId}`)) },
