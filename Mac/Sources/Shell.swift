@@ -121,14 +121,15 @@ struct FridayMenus: Commands {
         CommandGroup(after: .textEditing) {
             Button("Search") { Page.shared.send(.search) }.keyboardShortcut("f")
         }
-        CommandMenu("View") {
+        CommandGroup(before: .toolbar) {  // into the standard View menu, not a second one
             Button("Day") { Page.shared.send(.view("day")) }.keyboardShortcut("1")
             Button("Week") { Page.shared.send(.view("week")) }.keyboardShortcut("2")
             Button("Month") { Page.shared.send(.view("month")) }.keyboardShortcut("3")
             Divider()
             Button("Today") { Page.shared.send(.today) }.keyboardShortcut("t")
-            Button("Previous") { Page.shared.send(.previous) }.keyboardShortcut(.leftArrow)
-            Button("Next") { Page.shared.send(.next) }.keyboardShortcut(.rightArrow)
+            // no ⌘← / ⌘→: in a text field they go to the start and end of the line ([ and ] step the calendar)
+            Button("Previous") { Page.shared.send(.previous) }
+            Button("Next") { Page.shared.send(.next) }
             Divider()
             Button("To-do Drawer") { Page.shared.send(.drawer) }.keyboardShortcut("t", modifiers: [.command, .control])
         }
