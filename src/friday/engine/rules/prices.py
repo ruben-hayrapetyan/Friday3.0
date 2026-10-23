@@ -5,6 +5,7 @@ from datetime import timedelta
 from typing import Any, Literal
 
 from friday.core.time import MINUTES_PER_DAY, local_midnight, planning_date, to_local
+from friday.engine.pwl import Hinge, Measure
 from friday.engine.rules import (
     FORBID,
     Clock,
@@ -40,6 +41,47 @@ class LateWork(Rule):
 
     def price(self, item, s):
         return lateness_price(self, item, s, self.p.overflow_extra_hours)
+
+
+@rule_type("late_tasks")
+class LateTasks(Rule):
+    """personal's lateness (COMBINED.md 49, its decisions 38–39), on top of late_work: a fixed cost for each hard task
+    that is late at all, since people count late tasks and late_work alone prefers many tasks a little late to one;
+    and a price that grows with the square of the hours late, so one task very late costs more than several a little.
+    `hours`: what a late task costs, in hours late of one unit of its work; `square_hours`: h² / square_hours per unit
+    (0 switches it off). Work left unplaced counts as late, so leaving it off the plan never dodges the count."""
+
+    default_stage = "deadlines"
+    applies_to = {"fixed"}
+
+    class Params(Rule.Params):
+        hours: float = 48
+        square_hours: float = 96
+
+    def applies_also(self, item):
+        return item.firmness == "hard" and item.due_utc is not None
+
+    def price(self, item, s):
+        if not self.p.square_hours or item.due_utc is None:
+            return 0.0
+        grid = self.problem.grid
+        if s == grid.S and item.due_utc > grid.horizon_end:
+            return 0.0  # due after the horizon: unplaced isn't late yet
+        end = grid.horizon_end + 48 * 60 if s == grid.S else int(grid.end[s])  # unplaced: the horizon and two days
+        hours = max(0.0, (end - item.due_utc) / 60)
+        return item.importance * hours * hours / self.p.square_hours
+
+    def measures(self, ctx):
+        grid = ctx.grid
+        for item in self.scoped_items():
+            if item.due_utc > grid.horizon_end:
+                continue
+            late = [(item.key, s) for s in item.allowed if int(grid.end[s]) > item.due_utc]
+            expr = ctx.any_of(f"lt:{self.name}:{item.key}", late)
+            if not expr.is_const():
+                yield Measure(f"{item.key}", expr, "count", (Hinge("above", 0, item.importance * self.p.hours),))
+            yield Measure(f"{item.key}:over", ctx.over(item.key), "units",
+                          (Hinge("above", 0, 4 * item.importance * self.p.hours),))  # fmt: skip
 
 
 @rule_type("soft_late")

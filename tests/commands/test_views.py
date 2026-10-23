@@ -124,3 +124,32 @@ def test_an_event_wears_a_pigment_until_you_clear_it(tmp_path: Path) -> None:
         assert "color" in str(error)
     else:
         raise AssertionError("an unknown pigment was taken")
+
+
+def test_an_event_says_its_category_and_whether_it_counts_as_busy(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do(
+        "settings_set",
+        key="categories",
+        value={"categories": [{"name": "Advising", "color": "green", "pattern": "office hours"}],
+               "filter": {"label": "TA hours", "pattern": "office hours"}},
+    )  # fmt: skip
+    app.do("add", title="CS 2110 Office Hours", when="fixed", start="2026-10-21T13:00", end="2026-10-21T15:00")
+    app.do("add", title="Lunch", when="fixed", start="2026-10-21T12:00", end="2026-10-21T13:00", free=True)
+    hours, lunch = app.do("events", text="office")[0], app.do("events", text="lunch")[0]
+    assert (hours["category"], hours["category_color"], hours["left_out"]) == ("Advising", "green", "filtered")
+    assert lunch["left_out"] == "free"
+    app.do("settings_set", key="busy", value={"count_filtered": True})
+    assert app.do("events", text="office")[0]["left_out"] is None
+
+
+def test_events_left_out_block_no_time_when_planning(tmp_path: Path) -> None:
+    from friday.core.items import Item
+    from friday.core.settings import DEFAULTS
+    from friday.planner.snapshot import busy_as_you_count
+
+    reminder = Item(title="PS 8 due", when="fixed", start_utc="2026-10-21T16:00Z", end_utc="2026-10-21T17:00Z", id=1)
+    lecture = Item(title="Lecture", when="fixed", start_utc="2026-10-21T16:00Z", end_utc="2026-10-21T17:00Z", id=2)
+    assert not busy_as_you_count(reminder, DEFAULTS, {}).blocks_time
+    assert busy_as_you_count(lecture, DEFAULTS, {}).blocks_time
+    assert not busy_as_you_count(lecture, DEFAULTS, {2: "Library Rooms"}).blocks_time

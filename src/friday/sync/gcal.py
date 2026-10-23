@@ -28,15 +28,33 @@ def paged(request: Any, **params: Any) -> list[dict[str, Any]]:
 
 
 def calendars(service: Any) -> list[dict[str, Any]]:
-    """Every calendar in the account: id, name and whether it is the primary one."""
+    """Every calendar in the account: id, name, whether it is the primary one and whether you may write to it."""
     return [
         {
             "id": c["id"],
             "name": c.get("summaryOverride") or c.get("summary") or c["id"],
             "primary": bool(c.get("primary")),
+            "writable": c.get("accessRole", "owner") in ("owner", "writer"),
         }
         for c in paged(service.calendarList())
     ]
+
+
+def save_event(service: Any, calendar_id: str, event_id: str | None, body: dict[str, Any]) -> dict[str, Any]:
+    """Make an event, or change the fields in `body` of one (a patch: its guests, place and the rest stay)."""
+    api = service.events()
+    if event_id is None:
+        return dict(api.insert(calendarId=calendar_id, body=body).execute())
+    return dict(api.patch(calendarId=calendar_id, eventId=event_id, body=body).execute())
+
+
+def delete_event(service: Any, calendar_id: str, event_id: str) -> None:
+    """Delete an event; one already gone is fine."""
+    try:
+        service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+    except HttpError as error:
+        if error.resp.status not in (404, 410):
+            raise
 
 
 def events(service: Any, calendar_id: str, time_min: str, time_max: str | None = None) -> list[dict[str, Any]]:

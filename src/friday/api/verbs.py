@@ -181,6 +181,14 @@ VERBS = {
         False,
         "Your Google calendars as of the last sync, alphabetized, with whether each is read and how.",
     ),
+    "import_personal": Verb(
+        "POST",
+        "/api/c/import_personal",
+        commands.ImportPersonalInput,
+        True,
+        True,
+        "Todo List's open tasks and Chroma's categories, once.",
+    ),
     "inbox": Verb(
         "GET",
         "/api/q/inbox",

@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import tomli_w
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator
 
+from friday.core.calendars import BusySettings, CalendarLook, CategorySettings, check_colors
 from friday.core.integrations import INTEGRATION_DEFAULTS, INTEGRATION_TYPES
 from friday.core.pace import DEFAULT_PACES, Dials
 from friday.core.presets import DEFAULT_PRESETS, Preset
@@ -172,6 +173,8 @@ def rule(type: str, name: str, weight: float = 1.0, **params: Any) -> RuleSpec:
 NOT_ROUTINES = {"except_preset": ["Routine"]}
 REFERENCE_RULES = (
     rule("late_work", "late_work", 10, overflow_extra_hours=48),
+    # personal's (COMBINED.md 49): each late task counts, and lateness costs more the later it is.
+    rule("late_tasks", "late_tasks", 10, hours=48, square_hours=96),
     rule("quota", "quota", 3),
     # Meals and other routines aren't work: counted as load, any wellbeing cost outweighed a whole meal (M16).
     RuleSpec(
@@ -274,6 +277,25 @@ class LearnSettings(Model):
     query_stop_disagreement: float = 0.2
 
 
+class PointlessLate(Model):
+    """Work that's pointless once its deadline has passed (COMBINED.md 50): never planned after it."""
+
+    kinds: tuple[str, ...] = ("Exam prep",)  # prep for an exam is no use after the exam
+    titles: tuple[str, ...] = ()  # patterns (regular expressions, any case), from rules like "no point … after …"
+
+    def covers(self, preset: str | None, title: str) -> bool:
+        if preset in self.kinds:
+            return True
+        return any(_matches(pattern, title) for pattern in self.titles)
+
+
+def _matches(pattern: str, title: str) -> bool:
+    try:
+        return re.search(pattern, title, re.IGNORECASE) is not None
+    except re.error:
+        return False
+
+
 class TextSettings(Model):
     abbreviations: dict[str, str] = Field(
         default_factory=lambda: {
@@ -307,6 +329,8 @@ class EstimateSettings(Model):
     bias_min_samples: int = 5
     bias_threshold: float = 1.15
     bias_consistency: float = 0.7
+    cushion: bool = True  # plan your estimates at how far over you consistently run (COMBINED.md 41)
+    cushion_cap: float = Field(2.0, ge=1)
 
 
 class NotifySettings(Model):
@@ -367,6 +391,10 @@ SETTINGS_TYPES: dict[str, Any] = {
     "jobs": JobsSettings,
     "server": ServerSettings,
     "notes": tuple[str, ...],  # what you've told Friday about yourself, read by the AI with everything it reads
+    "categories": CategorySettings,  # events coloured by their titles, and the filter (COMBINED.md 17, 59)
+    "busy": BusySettings,  # which events count as busy when planning (COMBINED.md 28)
+    "pointless_late": PointlessLate,  # work never planned after its due (COMBINED.md 50)
+    "calendar_look": CalendarLook,  # each calendar's pigment and toolbar button (COMBINED.md 17, 19)
     **INTEGRATION_TYPES,
 }
 ADAPTERS = {key: TypeAdapter(kind) for key, kind in SETTINGS_TYPES.items()}
@@ -400,6 +428,10 @@ DEFAULTS: dict[str, Any] = {
     "jobs": JobsSettings(),
     "server": ServerSettings(),
     "notes": (),
+    "categories": CategorySettings(),
+    "busy": BusySettings(),
+    "pointless_late": PointlessLate(),
+    "calendar_look": CalendarLook(),
     **INTEGRATION_DEFAULTS,
 }
 
@@ -431,6 +463,8 @@ def check_whole_value(key: str, value: Any) -> None:
         raise ValueError(f"notes: at most {MAX_NOTES}, each 1–{MAX_NOTE_CHARS} characters")
     if key == "rules" and len({r.name for r in value}) != len(value):
         raise ValueError("rules: names must be unique")
+    if key in ("categories", "calendar_look"):
+        check_colors(value)
 
 
 def to_json(key: str, value: Any) -> Any:

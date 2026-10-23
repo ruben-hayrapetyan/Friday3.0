@@ -57,6 +57,16 @@ def price_function(p: Problem, rule: Rule, item: EngineItem) -> Callable[[int], 
         return early
     if kind == "unscheduled":
         return lambda s: rule.p.base * importance if s == grid.S else 0.0
+    if kind == "late_tasks":
+
+        def squared(s: int) -> float:
+            assert item.due_utc is not None
+            if not rule.p.square_hours or (s == grid.S and item.due_utc > grid.horizon_end):
+                return 0.0
+            end = grid.horizon_end + 2880 if s == grid.S else int(grid.end[s])
+            return importance * max(0.0, (end - item.due_utc) / 60) ** 2 / rule.p.square_hours
+
+        return squared
     # late_night and after_event read per-night and per-event data the rule prepares; the formula is the rule's.
     return lambda s: rule.price(item, s)
 
@@ -95,10 +105,27 @@ def direct_rule_costs(p: Problem, plan: Plan) -> dict[str, int]:
         items = [i for i in p.items.values() if rule.applies(i)]
         if rule.has_price:
             cost = sum(price_cost(p, rule, it, np.flatnonzero(X[it.key]).tolist(), over[it.key]) for it in items)
+            if rule.type == "late_tasks":
+                cost += late_task_counts(p, rule, items, X, over)
         else:
             cost = measure_rule_cost(p, rule, items, X, placed)
         out[rule.name] = out.get(rule.name, 0) + cost
     return out
+
+
+def late_task_counts(p: Problem, rule: Rule, items: list[EngineItem], X: dict[str, np.ndarray],
+                     over: dict[str, int]) -> int:  # fmt: skip
+    """late_tasks' counts: each task with any work after its due (or left unplaced) costs `hours` of one unit's."""
+    grid, hinges = p.grid, []
+    for it in items:
+        assert it.due_utc is not None
+        if it.due_utc > grid.horizon_end:
+            continue
+        late_slots = [s for s in it.allowed if int(grid.end[s]) > it.due_utc]
+        if late_slots:
+            hinges.append(("above", 0, it.importance * rule.p.hours, "count", 1.0, int(any(X[it.key][late_slots]))))
+        hinges.append(("above", 0, 4 * it.importance * rule.p.hours, "units", 1.0, over[it.key]))
+    return hinge_cost(p, rule, hinges)
 
 
 def units_in(U: np.ndarray, X: dict[str, np.ndarray], item: EngineItem, slots) -> int:  # noqa: ANN001

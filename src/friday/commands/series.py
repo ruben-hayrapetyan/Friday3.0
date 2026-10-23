@@ -17,6 +17,7 @@ from friday.api.commands import (
     SeriesRef,
 )
 from friday.api.views import SeriesRow
+from friday.commands.eventwrites import queue_event_write
 from friday.commands.fields import given_fields, insert_item, item_out, new_item, require_item, to_item_values
 from friday.commands.registry import Ctx, command, query
 from friday.core.db import one, rows
@@ -250,6 +251,7 @@ def skip(ctx: Ctx, inp: ItemRef) -> ItemResult:
     if item.series_id is None:
         raise FieldError("id", f"T{inp.id} doesn't repeat; drop it instead")
     ctx.db.update("items", {"id": inp.id}, {"status": "skipped", "updated_utc": ctx.now_text})
+    queue_event_write(ctx, item, "delete")  # one time of a calendar's repeating event: gone from the calendar too
     return ItemResult(item=item_out(ctx, require_item(ctx, inp.id)))
 
 

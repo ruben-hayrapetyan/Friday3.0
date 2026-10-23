@@ -2,6 +2,7 @@
 // holding them while you work; a preview of the selected one with its actions, and a test.
 
 import { useEffect, useState } from "react"
+import { BRIEF_AUTO } from "@/dialogs/Dialogs"
 import { query } from "@/api/client"
 import { H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
@@ -37,6 +38,13 @@ export function Notifications() {
   const set = useCommand("settings_set", { label: () => "Saved" })
   const test = useCommand("notify_test", { label: (o) => o.result.message ?? "Test sent" })
   const [selected, setSelected] = useState("morning_brief")
+  const [briefOpens, setBriefOpens] = useState(() => {
+    try {
+      return localStorage.getItem(BRIEF_AUTO) !== "off"
+    } catch {
+      return true
+    }
+  })
   if (!saved) return null
   const save = (change: Partial<Notify>) => set({ key: "notify", value: { ...saved, ...change } })
   const shown = KINDS.find((k) => k.kind === selected) ?? KINDS[0]
@@ -47,6 +55,25 @@ export function Notifications() {
         <H size={30}>Notifications</H>
         <span style={{ color: "var(--color-neutral-400)" }}>Each one has an action you can take right from it. Choose which ones fire, when, and where.</span>
       </div>
+      <label className="fr-well" style={{ display: "flex", gap: 12, alignItems: "center", padding: "12px 14px", marginBottom: 14 }}>
+        <Switch
+          on={briefOpens}
+          onToggle={() => {
+            const next = !briefOpens
+            setBriefOpens(next)
+            try {
+              localStorage.setItem(BRIEF_AUTO, next ? "on" : "off")
+            } catch {
+              // storage blocked: the switch lasts this visit
+            }
+          }}
+          label="Open the morning brief in the app"
+        />
+        <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontWeight: 500 }}>Open the morning brief when you first open Friday each morning</span>
+          <span className="fr-kicker">On this device. The brief is always a click away (the sun in the title row), and its notification is set below.</span>
+        </span>
+      </label>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 300px", gap: 28, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column" }}>
           {KINDS.map((k) => {

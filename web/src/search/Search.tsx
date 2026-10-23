@@ -34,6 +34,7 @@ const PAGES: [string, string, string][] = [
   ["Insights", "/insights", "chart-line"],
   ["Rules", "/rules", "sliders-horizontal"],
   ["Appearance", "/settings/appearance", "paint-brush"],
+  ["Calendars and categories", "/settings/calendars", "calendar"],
   ["Tags and kinds", "/settings/tags", "tag"],
   ["Schedule", "/settings/schedule", "clock"],
   ["Repeating", "/settings/repeating", "repeat"],

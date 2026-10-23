@@ -64,6 +64,9 @@ class Item:
     certainty: Certainty = "planned"
     event_kind: str | None = None
     blocks_time: bool = True
+    free: bool = False  # marked free in its calendar: kept, but not busy unless you count free events
+    long_term: bool = False  # on the long-term list (personal's), not the short-term one
+    expires: bool | None = None  # pointless once late: never planned after its due; None follows `pointless_late`
     buffer_before_min: int | None = None
     buffer_after_min: int | None = None
     status: Status = "todo"

@@ -1,5 +1,6 @@
 // The Now dock (v22): what you're doing right now. Timing something: the seconds ticking, how long the plan gives
-// it and what's next, with Done, Pause, Switch and more. In a planned block: Start, Done, More time. In a class:
+// it and what's next, with Done, Pause, Switch and more. In a planned block: Start and Done (no More time:
+// COMBINED.md 31). In a class:
 // the class. Free: how long, what's next, and the best things to start, one tap each. The timer is an overlay on
 // the plan, never a change to it (DESIGN §8), so Start and Pause move nothing on the calendar.
 
@@ -9,10 +10,9 @@ import type { Block } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useClock, useElapsed } from "@/hooks/useClock"
-import { useItem, useNow, useStatus } from "@/hooks/queries"
+import { useNow, useStatus } from "@/hooks/queries"
 import { clock, dur, hms, span, when } from "@/lib/format"
 import { fromMin, toMin } from "@/lib/time"
-import { moreTimePresets } from "@/lib/ui"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 
@@ -47,7 +47,6 @@ export function Dock() {
         overflow: "hidden",
       }}
     >
-      {work && menu === "time" && <MoreTime itemId={cur.item_id} end={cur.end} onDone={() => setMenu(null)} />}
       {work && menu === "more" && <MoreMenu itemId={cur.item_id} onSwitch={() => setMenu("swap")} onClose={() => setMenu(null)} />}
       {cur && timer && timer.item_id === cur.item_id ? (
         <Timing cur={cur} elapsed={timer.elapsed_s ?? 0} next={next} dot={color(cur.area)} compact={compact} menu={menu} onMenu={toggle} />
@@ -151,7 +150,6 @@ function On({ cur, next, dot, compact, menu, onMenu }: State) {
             {!compact && "Start"}
           </button>
           <IconButton icon="check" label="Mark it done" onClick={() => done({ id: cur.item_id })} />
-          <IconButton icon="clock-clockwise" label="More time" on={menu === "time"} onClick={() => onMenu("time")} />
           <IconButton icon="dots-three" label="More" on={menu === "more"} onClick={() => onMenu("more")} />
         </div>
       </div>
@@ -265,37 +263,6 @@ function IconButton({ icon, label, on, onClick }: { icon: string; label: string;
 }
 
 /** Longer by a preset, or until a time; the item gets that much more length. */
-function MoreTime({ itemId, end, onDone }: { itemId: number; end: string; onDone: () => void }) {
-  const item = useItem(itemId).data
-  const edit = useCommand("edit", { label: () => "More time added" })
-  const [until, setUntil] = useState(clock(fromMin(toMin(end) + 30)))
-  const add = (minutes: number) => {
-    if (minutes <= 0 || !item) return
-    const length = item.item.duration_min ?? item.item.remaining_min ?? 0
-    edit({ id: itemId, duration_min: length + minutes })
-    onDone()
-  }
-  const untilMinutes = toMin(`${end.slice(0, 10)}T${until}`) - toMin(end)
-  return (
-    <div className="fr-row" style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 16px 4px", boxShadow: "inset 0 -1px 0 color-mix(in srgb, var(--color-text) 7%, transparent)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12, color: "var(--color-neutral-400)", marginRight: 4 }}>Add</span>
-        {moreTimePresets().map((m) => (
-          <button key={m} className="fr-plain fr-hover-accent tnum" onClick={() => add(m)} style={{ padding: "5px 10px", borderRadius: "var(--radius-md)", background: "var(--fr-chip-bg)", fontSize: 12 }}>
-            +{dur(m)}
-          </button>
-        ))}
-        <span style={{ flex: 1 }} />
-        <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>or until</span>
-        <input type="time" step={300} className="input" value={until} onChange={(e) => setUntil(e.target.value)} style={{ width: 100, padding: "3px 8px", minHeight: 0 }} />
-        <button className="btn btn-secondary" onClick={() => add(untilMinutes)} disabled={untilMinutes <= 0} style={{ padding: "4px 10px", boxShadow: "none", background: "var(--fr-chip-bg)" }}>
-          Set
-        </button>
-      </div>
-      <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>Friday moves what comes after, and says if anything would go late.</span>
-    </div>
-  )
-}
 
 function MoreMenu({ itemId, onSwitch, onClose }: { itemId: number; onSwitch: () => void; onClose: () => void }) {
   const navigate = useNavigate()

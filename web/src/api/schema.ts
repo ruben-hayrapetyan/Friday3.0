@@ -803,6 +803,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/import_personal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Todo List's open tasks and Chroma's categories, once. */
+        post: operations["import_personal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/source_add": {
         parameters: {
             query?: never;
@@ -1987,6 +2004,12 @@ export interface components {
             event_kind?: string | null;
             /** Blocks Time */
             blocks_time?: boolean | null;
+            /** Free */
+            free?: boolean | null;
+            /** Long Term */
+            long_term?: boolean | null;
+            /** Expires */
+            expires?: boolean | null;
             /** Buffer Before Min */
             buffer_before_min?: number | null;
             /** Buffer After Min */
@@ -2285,6 +2308,8 @@ export interface components {
             kind?: string | null;
             /** Trusted */
             trusted?: boolean | null;
+            /** Editable */
+            editable?: boolean | null;
         };
         /** CalendarSetResult */
         CalendarSetResult: {
@@ -2684,6 +2709,12 @@ export interface components {
             event_kind?: string | null;
             /** Blocks Time */
             blocks_time?: boolean | null;
+            /** Free */
+            free?: boolean | null;
+            /** Long Term */
+            long_term?: boolean | null;
+            /** Expires */
+            expires?: boolean | null;
             /** Buffer Before Min */
             buffer_before_min?: number | null;
             /** Buffer After Min */
@@ -2737,6 +2768,16 @@ export interface components {
             last_sync: string | null;
             /** Error */
             error: string | null;
+            /**
+             * Writable
+             * @default false
+             */
+            writable?: boolean;
+            /**
+             * Editable
+             * @default false
+             */
+            editable?: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2754,6 +2795,32 @@ export interface components {
             kind: string;
             /** Summary */
             summary: string;
+        };
+        /** ImportPersonalInput */
+        ImportPersonalInput: {
+            /** Todos Path */
+            todos_path?: string | null;
+            /** Categories Path */
+            categories_path?: string | null;
+        };
+        /** ImportPersonalResult */
+        ImportPersonalResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
         };
         /** InboxOut */
         InboxOut: {
@@ -2845,6 +2912,43 @@ export interface components {
              * @default
              */
             notes?: string;
+            /**
+             * Long Term
+             * @default false
+             */
+            long_term?: boolean;
+            /** Expires */
+            expires?: boolean | null;
+            /**
+             * Pointless Late
+             * @default false
+             */
+            pointless_late?: boolean;
+            /**
+             * Cushion
+             * @default 1
+             */
+            cushion?: number;
+            /** Calendar */
+            calendar?: string | null;
+            /** Calendar Color */
+            calendar_color?: string | null;
+            /**
+             * Saves To Calendar
+             * @default false
+             */
+            saves_to_calendar?: boolean;
+            /** Category */
+            category?: string | null;
+            /** Category Color */
+            category_color?: string | null;
+            /** Left Out */
+            left_out?: string | null;
+            /**
+             * Filtered
+             * @default false
+             */
+            filtered?: boolean;
             /** Certainty */
             certainty: string;
             /** Event Kind */
@@ -4110,6 +4214,12 @@ export interface components {
             event_kind?: string | null;
             /** Blocks Time */
             blocks_time?: boolean | null;
+            /** Free */
+            free?: boolean | null;
+            /** Long Term */
+            long_term?: boolean | null;
+            /** Expires */
+            expires?: boolean | null;
             /** Buffer Before Min */
             buffer_before_min?: number | null;
             /** Buffer After Min */
@@ -4234,6 +4344,12 @@ export interface components {
             event_kind?: string | null;
             /** Blocks Time */
             blocks_time?: boolean | null;
+            /** Free */
+            free?: boolean | null;
+            /** Long Term */
+            long_term?: boolean | null;
+            /** Expires */
+            expires?: boolean | null;
             /** Buffer Before Min */
             buffer_before_min?: number | null;
             /** Buffer After Min */
@@ -6842,6 +6958,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReorderResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_personal: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ImportPersonalInput"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPersonalResult"];
                 };
             };
             /** @description Validation Error */

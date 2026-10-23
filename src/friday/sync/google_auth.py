@@ -15,6 +15,10 @@ CALENDAR_SCOPES = (
     "https://www.googleapis.com/auth/calendar.readonly",
     "https://www.googleapis.com/auth/calendar.app.created",  # only the "Friday" calendar it makes
 )
+# Editing your events from Friday (COMBINED.md 69) needs this as well; asked for by `fridayd google-login`, and an
+# older login without it keeps reading but can't write.
+EVENTS_SCOPE = "https://www.googleapis.com/auth/calendar.events"
+LOGIN_SCOPES = (*CALENDAR_SCOPES, EVENTS_SCOPE)
 GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 
 
@@ -22,7 +26,7 @@ def secrets_file(folder: Path) -> Path:
     return folder / "secrets.json"
 
 
-def login(client_file: Path, folder: Path, scopes: tuple[str, ...] = CALENDAR_SCOPES) -> None:
+def login(client_file: Path, folder: Path, scopes: tuple[str, ...] = LOGIN_SCOPES) -> None:
     """Open the browser for consent and keep the token."""
     flow = InstalledAppFlow.from_client_secrets_file(str(client_file), list(scopes))
     save(folder, flow.run_local_server(port=0, open_browser=True))

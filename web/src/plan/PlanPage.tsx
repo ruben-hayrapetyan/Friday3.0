@@ -1,14 +1,23 @@
 // The Plan page (v22): the header (range, views, Shove, Pace, search, notifications, brief, to-do drawer) over the
 // week, day or month view (COMBINED.md 13: no 3-day view).
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
+import { useNavigate } from "react-router"
 import { useOffline } from "@/api/offline"
 import { Icon, Seg } from "@/components/fr/controls"
 import { useKeys } from "@/hooks/useKeys"
 import { followServer } from "@/hooks/useClock"
-import { useCalendar, usePaces, usePlan, useStatus } from "@/hooks/queries"
+import { useCalendar, usePaces, usePlan, useSettings, useStatus } from "@/hooks/queries"
+import { useCommand } from "@/hooks/useCommand"
+import { pigment } from "@/lib/pigments"
+import { useLook } from "@/theme/LookProvider"
+import { LEFT_OUT } from "./Pieces"
 import { weekday } from "@/lib/format"
-import { addDays, dayRange } from "@/lib/time"
+import { addDays, dayRange, fromMin, toMin } from "@/lib/time"
+import { useQueryClient } from "@tanstack/react-query"
+import { useToast } from "@/components/Toasts"
+import { runCommand } from "@/hooks/useCommand"
+import { moveBlock } from "@/hooks/useDrop"
 import { useShell, type View } from "@/shell/ShellContext"
 import { DayAside } from "./DayAside"
 import { Grid } from "./Grid"
@@ -30,12 +39,17 @@ export function PlanPage() {
   const setView = (v: View) => setPlace({ view: v, first: v === "month" ? monthStart(shown) : first })
   const setFirst = (f: string | null) => setPlace({ view, first: f })
   const step = (by: number) => setFirst(view === "month" ? shiftMonth(shown, by) : addDays(shown, by * view))
+  const nudge = useNudge()
+  const block = !!useShell().selected?.key.startsWith("T") // only then do the arrows move it, not the page
   useKeys({
     day: () => setView(1),
     week: () => setView(7),
     month: () => setView("month"),
     previous: () => step(-1),
     next: () => step(1),
+    earlier: block ? () => nudge(-15) : undefined,
+    later: block ? () => nudge(15) : undefined,
+    open: block ? () => nudge(0) : undefined,
   })
   const pick = (v: View) => setPlace({ view: v, first: null })
   return (
@@ -44,6 +58,29 @@ export function PlanPage() {
       {view === "month" ? <MonthView first={shown} onDay={(d) => setPlace({ view: 1, first: d })} /> : <Days first={shown} view={view} drawer={drawer || !!event ? drawerWidth : 0} />}
     </>
   )
+}
+
+/** ↑ and ↓ move the selected block 15 minutes, pinned there; Enter opens its item (COMBINED.md 66). */
+function useNudge(): (by: number) => void {
+  const { selected, select } = useShell()
+  const client = useQueryClient()
+  const toast = useToast()
+  const navigate = useNavigate()
+  return (by: number) => {
+    if (!selected || !selected.key.startsWith("T")) return
+    if (by === 0) return navigate(`/todo?item=${selected.item_id}`)
+    const start = fromMin(toMin(selected.start) + by)
+    const end = fromMin(toMin(selected.end) + by)
+    const key = selected.key
+    runCommand(
+      client,
+      toast,
+      "pin",
+      { id: selected.item_id, start, end, kind: selected.pinned === "locked" ? "locked" : "preferred", from_start: selected.start, from_end: selected.end },
+      { optimistic: (c) => moveBlock(c, key, start, end, selected.pinned === "locked" ? "locked" : "preferred"), label: () => `Moved ${by < 0 ? "earlier" : "later"}` },
+    )
+    select({ ...selected, key: `T${selected.item_id}@${start}`, start, end })
+  }
 }
 
 function Days({ first, view, drawer }: { first: string; view: 1 | 7; drawer: number }) {
@@ -87,6 +124,7 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
       </div>
       <Pills first={first} days={view === "month" ? 7 : view} />
       <div style={{ flex: 1, minWidth: 0 }} />
+      <CalendarButtons />
       <Seg options={VIEWS} value={view} onPick={onView} label="View" />
       <IconButton icon="magnifying-glass" label="Search (⌘K)" onClick={() => setDialog("search")} />
       <IconButton icon="bell" label="Notifications" onClick={() => setPop(pop === "bell" ? null : "bell")} />
@@ -117,6 +155,103 @@ function IconButton({ icon, label, onClick }: { icon: string; label: string; onC
     <button className="btn btn-icon btn-ghost" onClick={onClick} aria-label={label} title={label} style={{ flex: "none", color: "var(--color-neutral-300)" }}>
       <Icon name={icon} size={17} />
     </button>
+  )
+}
+
+/** personal's title-row buttons (COMBINED.md 19): each calendar you gave a button shows or hides it, and the filter
+ * shows or hides what it matches (office hours). They change what's drawn, not what's planned. */
+function CalendarButtons() {
+  const settings = useSettings().data as Record<string, unknown> | undefined
+  const { look, light, setLook } = useLook()
+  const toolbar = ((settings?.calendar_look as { toolbar?: string[] } | undefined)?.toolbar ?? []).slice(0, 9)
+  const colors = (settings?.calendar_look as { colors?: Record<string, string> } | undefined)?.colors ?? {}
+  const filter = (settings?.categories as { filter?: { label: string } | null } | undefined)?.filter
+  useEffect(() => {
+    // ⌥⌘1–9 show or hide the calendars with buttons, in order, as in personal.
+    const press = (e: KeyboardEvent) => {
+      if (!(e.altKey && (e.metaKey || e.ctrlKey))) return
+      const n = Number(e.code.replace("Digit", ""))
+      const name = toolbar[n - 1]
+      if (!name) return
+      e.preventDefault()
+      setLook({ hidden: look.hidden.includes(name) ? look.hidden.filter((h) => h !== name) : [...look.hidden, name] })
+    }
+    window.addEventListener("keydown", press)
+    return () => window.removeEventListener("keydown", press)
+  }, [toolbar, look.hidden, setLook])
+  if (!toolbar.length && !filter) return null
+  return (
+    <div style={{ display: "flex", gap: 4, flex: "none" }}>
+      {filter && (
+        <button
+          className="fr-chip"
+          aria-pressed={!look.hideFiltered}
+          onClick={() => setLook({ hideFiltered: !look.hideFiltered })}
+          title={`${look.hideFiltered ? "Show" : "Hide"} ${filter.label}`}
+        >
+          <i className={`ph ph-${look.hideFiltered ? "eye-slash" : "eye"}`} />
+          {filter.label}
+        </button>
+      )}
+      {toolbar.map((name, i) => {
+        const hidden = look.hidden.includes(name)
+        return (
+          <button
+            key={name}
+            className="fr-chip"
+            aria-pressed={!hidden}
+            onClick={() => setLook({ hidden: hidden ? look.hidden.filter((h) => h !== name) : [...look.hidden, name] })}
+            title={`${hidden ? "Show" : "Hide"} ${name} (⌥⌘${i + 1})`}
+            style={{ opacity: hidden ? 0.55 : 1 }}
+          >
+            <span className="fr-swatch" style={{ borderRadius: "50%", background: pigment(colors[name], light) ?? "var(--color-neutral-500)" }} />
+            {name}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Events Friday isn't planning around this week, by why, each a chip that counts them after all (COMBINED.md 28:
+ * personal's "Planning around"). */
+function NotCounted({ first, days }: { first: string; days: number }) {
+  const plan = usePlan(`${first}T00:00`, `${addDays(first, days)}T00:00`).data
+  const settings = useSettings().data as Record<string, unknown> | undefined
+  const save = useCommand("settings_set", { label: () => "Planning around it now" })
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const out = (plan?.fixed ?? []).filter((f) => f.left_out)
+  if (!out.length || !settings) return null
+  const busy = settings.busy as { calendars: Record<string, boolean> } & Record<string, unknown>
+  const by = new Map<string, number>()
+  for (const f of out) by.set(f.left_out as string, (by.get(f.left_out as string) ?? 0) + 1)
+  const count = (reason: string) => {
+    const calendars = Object.fromEntries(out.filter((f) => f.left_out === "calendar" && f.calendar).map((f) => [f.calendar as string, true]))
+    const flag = { reminder: "count_reminders", free: "count_free", filtered: "count_filtered" }[reason]
+    save({ key: "busy", value: flag ? { ...busy, [flag]: true } : { ...busy, calendars: { ...busy.calendars, ...calendars } } })
+  }
+  return (
+    <span style={{ position: "relative" }}>
+      <button className="fr-pill" onClick={() => setOpen(!open)} title="Events on your calendar that Friday plans through" style={{ background: "color-mix(in srgb, var(--color-text) 6%, transparent)", color: "var(--color-neutral-300)", cursor: "pointer" }}>
+        <Icon name="calendar-x" size={13} />
+        {out.length} not counted as busy
+      </button>
+      {open && (
+        <div className="fr-float" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, width: 300, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+          <span className="fr-kicker">Friday plans through these. Click one to plan around it after all.</span>
+          {[...by.entries()].map(([reason, n]) => (
+            <button key={reason} className="fr-chip" onClick={() => (count(reason), setOpen(false))} style={{ justifyContent: "space-between" }}>
+              <span>{LEFT_OUT[reason] ?? reason}</span>
+              <span className="tnum">{n}</span>
+            </button>
+          ))}
+          <button className="fr-link" onClick={() => navigate("/settings/calendars")} style={{ alignSelf: "flex-start", fontSize: 12 }}>
+            Calendars settings
+          </button>
+        </div>
+      )}
+    </span>
   )
 }
 
@@ -174,6 +309,7 @@ function Pills({ first, days }: { first: string; days: number }) {
           <span style={{ color: "var(--color-text)" }}>Decide</span>
         </button>
       )}
+      <NotCounted first={first} days={days} />
       {solving && (
         <div className="fr-pill" style={{ background: "color-mix(in srgb, var(--color-accent) 14%, transparent)", color: "var(--color-accent-200)" }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--color-accent)", boxShadow: "0 0 calc(10px * var(--g-accent)) calc(2px * var(--g-accent)) var(--color-accent)" }} />

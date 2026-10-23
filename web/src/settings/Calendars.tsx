@@ -13,7 +13,7 @@ import { usePresets } from "@/todo/AddBox"
 
 export const useCalendars = () => useQuery({ queryKey: ["google_calendars"], queryFn: () => query("google_calendars") })
 
-const COLUMNS = "36px minmax(150px,1fr) 150px 72px"
+const COLUMNS = "36px minmax(150px,1fr) 150px 72px 72px"
 
 export function Calendars() {
   const calendars = useCalendars().data ?? []
@@ -46,6 +46,7 @@ function List({ calendars }: { calendars: NonNullable<ReturnType<typeof useCalen
         <span>Calendar</span>
         <span>Read events as</span>
         <span title="Its events go straight into the plan">Skip Inbox</span>
+        <span title="Changes you make to its events in Friday are saved back to it">Edit here</span>
       </div>
       {calendars.map((c) => (
         <div key={c.id} className="fr-row" style={{ display: "grid", gridTemplateColumns: COLUMNS, gap: 12, alignItems: "center", padding: "8px 0" }}>
@@ -63,10 +64,13 @@ function List({ calendars }: { calendars: NonNullable<ReturnType<typeof useCalen
           <span style={{ opacity: c.on ? 1 : 0.4 }}>
             <Switch on={c.trusted} onToggle={() => c.on && set({ id: c.id, trusted: !c.trusted })} label={`${c.name} straight to the plan`} />
           </span>
+          <span style={{ opacity: c.on && c.writable ? 1 : 0.4 }} title={c.writable ? undefined : "Google doesn't let you change this calendar's events"}>
+            <Switch on={!!c.editable} onToggle={() => c.on && c.writable && set({ id: c.id, editable: !c.editable })} label={`Save changes to ${c.name}`} />
+          </span>
         </div>
       ))}
       <span className="fr-kicker" style={{ paddingTop: 8, textWrap: "pretty" }}>
-        “Per event” reads due dates, exams (with prep), classes and other commitments from each event’s title; a kind reads every event as that kind. Turning a calendar off withdraws what it suggested that you haven’t answered; what you accepted stays.
+        “Edit here” saves what you change in Friday (title, times, notes, deleting) back to Google; it needs the login from `fridayd google-login` since this update. “Per event” reads due dates, exams (with prep), classes and other commitments from each event’s title; a kind reads every event as that kind. Turning a calendar off withdraws what it suggested that you haven’t answered; what you accepted stays.
       </span>
     </>
   )

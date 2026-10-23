@@ -7,7 +7,7 @@ from typing import Any
 from friday.core.items import ITEM_FIELDS, Item
 
 JSON_FIELDS = ("tags", "estimate_detail")
-BOOL_FIELDS = ("blocks_time", "detached")
+BOOL_FIELDS = ("blocks_time", "free", "long_term", "detached")
 
 
 def item_to_row(item: Item) -> dict[str, Any]:
@@ -17,6 +17,8 @@ def item_to_row(item: Item) -> dict[str, Any]:
         row[name] = json.dumps(row[name]) if row[name] is not None else None
     for name in BOOL_FIELDS:
         row[name] = int(row[name])
+    if row.get("expires") is not None:
+        row["expires"] = int(row["expires"])
     if row["tags"] is None:
         row["tags"] = "[]"
     return row
@@ -30,4 +32,6 @@ def item_from_row(row: dict[str, Any]) -> Item:
     values["tags"] = values["tags"] or []
     for name in BOOL_FIELDS:
         values[name] = bool(values[name])
+    if values.get("expires") is not None:
+        values["expires"] = bool(values["expires"])
     return Item(**values)

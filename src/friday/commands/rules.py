@@ -17,9 +17,10 @@ from friday.core.settings import REFERENCE_RULES
 from friday.planner.store import area_names, current_plan, kv_get
 
 DEFAULT_WEIGHT = {r.name: r.weight for r in REFERENCE_RULES}
-ALWAYS = {"late_work", "quota"}  # deadlines: they never bend
+ALWAYS = {"late_work", "late_tasks", "quota"}  # deadlines: they never bend
 SAID = {
     "late_work": "Deadlines come first",
+    "late_tasks": "Fewer tasks late, and none very late",
     "quota": "Keep pace with long work, week by week",
     "late_night": "Wind down before bed",
     "deep_run": "No more than {threshold} of focused work in a row",

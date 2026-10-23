@@ -31,6 +31,7 @@ from friday.commands.registry import Ctx, query
 from friday.commands.timer import elapsed_seconds, running
 from friday.commands.timer import timer_out as timing
 from friday.core.db import one, rows
+from friday.core.guess import course_of, guess_preset
 from friday.core.pace import dials_on, pace_label
 from friday.core.quickadd import parse
 from friday.core.rows import item_from_row
@@ -349,7 +350,15 @@ def parse_line(ctx: Ctx, inp: ParseInput) -> ParseOutput:
         ctx.settings["presets"],
     )
     spans = [{"start": s.start, "end": s.end, "kind": s.kind, "value": s.value} for s in result.spans]
-    return ParseOutput(fields=result.fields, spans=spans, warnings=result.warnings)
+    fields = dict(result.fields)
+    title = fields.get("title") or ""
+    if title and "start_local" not in fields:
+        # What add will guess from the title, so the add box shows it as a chip you can change (COMBINED.md 55).
+        if not fields.get("preset") and (preset := guess_preset(title, ctx.settings["presets"])):
+            fields["preset"] = preset
+        if not fields.get("area") and (course := course_of(title)):
+            fields["area"] = course
+    return ParseOutput(fields=fields, spans=spans, warnings=result.warnings)
 
 
 @query("paces")

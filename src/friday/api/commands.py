@@ -264,6 +264,11 @@ class ItemsInput(Model):
     text: str | None = None
 
 
+class ImportPersonalInput(Model):
+    todos_path: str | None = None  # Todo List's tasks; ~/Documents/Todo List/todos.json when left out
+    categories_path: str | None = None  # Chroma's rules; ~/Library/Application Support/Chroma/categories.json
+
+
 class EventsInput(Model):
     text: str = ""
     limit: int = 12
@@ -527,6 +532,7 @@ class CalendarSetInput(Model):
     on: bool | None = None
     kind: str | None = None  # a kind's name, or "auto" to decide per event
     trusted: bool | None = None  # its events skip the inbox
+    editable: bool | None = None  # changes made in Friday are saved back to it
 
 
 class KindAddInput(Model):

@@ -40,7 +40,8 @@ def test_nothing_personal_is_shipped() -> None:
 
 def test_reference_rules_match_the_design() -> None:
     names = [r.name for r in DEFAULTS["rules"]]
-    assert len(names) == 21 and names[0] == "late_work" and names[-1] == "minimize_changes"
+    # the design's 21, and personal's late_tasks after late_work (COMBINED.md 49)
+    assert len(names) == 22 and names[:2] == ["late_work", "late_tasks"] and names[-1] == "minimize_changes"
 
 
 @pytest.mark.parametrize(

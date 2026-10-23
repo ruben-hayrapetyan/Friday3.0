@@ -27,6 +27,7 @@ class GcalSettings(Model):
     include_all_day: bool = False
     publish: bool = False  # the "Friday" calendar
     publish_debounce_s: int = Field(60, ge=0)
+    new_events_to: str | None = None  # a calendar's id: events you make in Friday are saved there too (COMBINED.md 69)
 
 
 class GmailSettings(Model):

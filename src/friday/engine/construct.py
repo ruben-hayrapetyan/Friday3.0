@@ -48,9 +48,11 @@ def remap_owner(owner: np.ndarray, old: Compiled, new: Compiled) -> np.ndarray:
     return new.owner_from_plan({k: v for k, v in old.plan_from_owner(owner).items() if k in new.keys})
 
 
-def construct(c: Compiled, base: np.ndarray | None = None, only: set[str] | None = None) -> np.ndarray:
+def construct(
+    c: Compiled, base: np.ndarray | None = None, only: set[str] | None = None, order: list[int] | None = None
+) -> np.ndarray:
     """With `base`, a previous plan as owners, keep what it places where still allowed and add only what's missing;
-    with `only`, add it only for those items."""
+    with `only`, add it only for those items; with `order`, place items in that order instead of by deadline."""
     M, problem = c.m, c.problem
     index = {k: i for i, k in enumerate(c.keys)}
     owner = np.full(M.S, -1, dtype=np.int16)
@@ -61,7 +63,7 @@ def construct(c: Compiled, base: np.ndarray | None = None, only: set[str] | None
     if base is not None:
         keep_base(M, base, owner, day_units, placed)
         drop_invalid_kept(M, owner, day_units, placed)
-    order = placement_order(c)
+    order = placement_order(c) if order is None else order
     # Elastic items too (meals, a 30–45 minute lunch): left for the anneal to grow from nothing, a narrow window
     # between classes was often never found and the meal was dropped. Hard items still come first.
     pending = [
@@ -135,7 +137,34 @@ def placement_order(c: Compiled) -> list[int]:
             break
     hard = [bool(M.hard_due[i]) or effective[i] < due[i] for i in range(M.I)]
     importance = [problem.items[k].importance for k in c.keys]
-    return sorted(range(M.I), key=lambda i: (0 if hard[i] else 1, effective[i], -importance[i], i))
+    # A meal's minimum first (COMBINED.md: personal pinned lunch): placed after the work, it found its window taken
+    # by work due days later, and the anneal rarely moved both to give it back.
+    meal = [M.amount_kind[i] == 1 and problem.items[c.keys[i]].min > 0 for i in range(M.I)]
+    return sorted(range(M.I), key=lambda i: (0 if meal[i] else 1, 0 if hard[i] else 1, effective[i], -importance[i], i))
+
+
+def fewest_late_order(c: Compiled) -> list[int]:
+    """personal's start for an overloaded week (COMBINED.md 54): Moore–Hodgson on the hard items. In deadline order,
+    whenever the work so far can't fit before the latest due, the longest task so far is set aside; the kept ones go
+    first, in deadline order, so as many as can be are on time, and the set-aside ones fill what's left after them."""
+    M, problem = c.m, c.problem
+    deadline = placement_order(c)
+    hard = [i for i in deadline if M.hard_due[i]]
+    usable = M.allowed[:, : M.S].any(axis=0)
+    ends = c.problem.grid.end
+    kept: list[int] = []
+    load = 0
+    for i in hard:
+        kept.append(i)
+        load += int(M.need[i])
+        due = problem.items[c.keys[i]].due_utc
+        room = int(sum(int(M.units[s]) for s in range(M.S) if usable[s] and int(ends[s]) <= due))
+        if load > room:
+            longest = max(kept, key=lambda j: (int(M.need[j]), j))
+            kept.remove(longest)
+            load -= int(M.need[longest])
+    rest = [i for i in deadline if i not in kept]
+    return kept + rest
 
 
 def sources_settled(M: Model, placed: np.ndarray, i: int, done: set[int], pending: list[int]) -> bool:

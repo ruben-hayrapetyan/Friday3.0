@@ -1,3 +1,4 @@
+import { parseLength as readLength } from "./lengths"
 import { toMin } from "./time"
 
 const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -44,14 +45,10 @@ export function dur(minutes: number): string {
 }
 
 /** A typed length in minutes: "5", "5m", "45 min", "1h30", "1h 30m", "1.5h", "1:30"; null when it isn't one. */
+/** A length typed in plain language, in whole minutes (personal's reader, lib/lengths.ts; COMBINED.md 42). */
 export function parseLength(text: string): number | null {
-  const t = text.trim().toLowerCase().replace(/\s+/g, "")
-  const clock = /^(\d+):(\d{1,2})$/.exec(t)
-  if (clock) return Number(clock[1]) * 60 + Number(clock[2])
-  const parts = /^(?:(\d+(?:\.\d+)?)h(?:ours?|rs?)?)?(?:(\d+)m?(?:in(?:ute)?s?)?)?$/.exec(t)
-  if (!parts || (!parts[1] && !parts[2])) return null
-  const minutes = Math.round(Number(parts[1] ?? 0) * 60 + Number(parts[2] ?? 0))
-  return minutes > 0 ? minutes : null
+  const minutes = readLength(text)
+  return minutes === null ? null : Math.round(minutes)
 }
 
 /** "12:34" or "1:02:03", for a ticking timer. */
@@ -85,4 +82,20 @@ export function areaColor(area: string | null | undefined, colors: Record<string
 export function hours(text: string): number {
   const match = /^(?:(\d+(?:\.\d+)?)h)?(?:(\d+)m)?$/.exec(text.trim())
   return match ? Number(match[1] ?? 0) + Number(match[2] ?? 0) / 60 : 0
+}
+
+/** A due date as personal's to-do list showed it (COMBINED.md 21): the date while it's a day or more off, a
+ * countdown within the day ("in 3h 12m"), and how long ago once it has passed ("2h 5m over"), in the now red. */
+export function dueLabel(due: string, nowMinute: number, today: string): { text: string; tone: "plain" | "soon" | "over" } {
+  const left = toMin(due) - nowMinute
+  if (left < 0) return { text: `${spanText(-left)} over`, tone: "over" }
+  if (left < 1440) return { text: `in ${spanText(left)}`, tone: "soon" }
+  return { text: when(due, today), tone: "plain" }
+}
+
+function spanText(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`
+  if (minutes < 1440) return minutes % 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes / 60}h`
+  const days = Math.floor(minutes / 1440)
+  return `${days}d${Math.floor((minutes % 1440) / 60) ? ` ${Math.floor((minutes % 1440) / 60)}h` : ""}`
 }

@@ -5,12 +5,13 @@ Replans are reproducible from a saved snapshot: nothing after this point reads t
 
 import json
 import sqlite3
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import Any
 
 import numpy as np
 
+from friday.core.calendars import left_out
 from friday.core.db import one, rows
 from friday.core.items import Item
 from friday.core.pace import Dials, PacePeriod
@@ -18,8 +19,17 @@ from friday.core.rows import item_from_row
 from friday.core.settings import minutes_of
 from friday.core.time import format_utc, parse_utc, planning_date
 from friday.learn.state import loadings
+from friday.planner.cushion import cushion, cushioned
 from friday.planner.progress import progress_rows
-from friday.planner.store import area_names, current_plan, generation, kv_get, load_settings, settings_version
+from friday.planner.store import (
+    area_names,
+    current_plan,
+    event_links,
+    generation,
+    kv_get,
+    load_settings,
+    settings_version,
+)
 
 
 @dataclass(frozen=True)
@@ -122,19 +132,35 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
 def snapshot_items(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any], user_id: int) -> tuple[Item, ...]:
     """Todo items, plus fixed items from a day ago to past the allocator's horizon (with a week to spare)."""
     days = settings["time"].allocator_weeks * 7 + 7
+    calendars = {item_id: link.calendar for item_id, link in event_links(conn, user_id).items()}
+    areas, memo = area_names(conn, user_id), {}
     found = rows(
         conn,
         "SELECT * FROM items WHERE user_id = ? AND status = 'todo' AND (when_kind != 'fixed' "
         "OR (end_utc > ? AND start_utc < ?))",
         [user_id, format_utc(now_utc - 1440), format_utc(now_utc + days * 1440)],
     )
-    items = {r["id"]: item_from_row(r) for r in found}
+    items = {}
+    for r in found:
+        item = busy_as_you_count(item_from_row(r), settings, calendars)
+        area = areas.get(item.area_id) if item.area_id is not None else None
+        factor = cushion(conn, area, item.preset, now_utc, settings, user_id, memo) if item.when != "fixed" else 1.0
+        items[r["id"]] = cushioned(item, factor)
     missing = {i.parent_id for i in items.values() if i.parent_id is not None} - set(items)
     while missing:
         parents = rows(conn, f"SELECT * FROM items WHERE id IN ({', '.join('?' * len(missing))})", list(missing))
         items |= {r["id"]: item_from_row(r) for r in parents}
         missing = {i.parent_id for i in items.values() if i.parent_id is not None} - set(items)
     return tuple(items[k] for k in sorted(items))
+
+
+def busy_as_you_count(item: Item, settings: dict[str, Any], calendars: dict[int, str]) -> Item:
+    """An event left out of planning (a due reminder, marked free, filtered, a calendar of room bookings; COMBINED.md
+    28) is kept in the snapshot but blocks no time."""
+    if item.when != "fixed" or not item.blocks_time:
+        return item
+    reason = left_out(item.title, calendars.get(item.id or 0), item.free, settings["categories"], settings["busy"])
+    return replace(item, blocks_time=False) if reason else item
 
 
 def timer(conn: sqlite3.Connection, user_id: int) -> tuple[int, int] | None:

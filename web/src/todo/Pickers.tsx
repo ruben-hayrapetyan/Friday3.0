@@ -129,7 +129,8 @@ export function dueSummary(value: string | null, today: string): string {
   return `Due ${weekday(date)} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1].slice(0, 3)}, ${value.slice(11, 16)} (${away})`
 }
 
-/** A length typed as people say it ("5m", "45", "1h30", "1.5h"); it settles on Enter or leaving the box. */
+/** A length typed as people say it ("45", "1h30", "an hour and a half", "2–3 hours"; personal's reader, COMBINED.md
+ * 42), with a live reading under it; it settles on Enter or leaving the box. */
 export function LengthInput({ value, onPick, width = 110 }: { value: number | null; onPick: (v: number | null) => void; width?: number }) {
   const [text, setText] = useState<string | null>(null)
   const typed = text === null ? null : parseLength(text)
@@ -138,17 +139,24 @@ export function LengthInput({ value, onPick, width = 110 }: { value: number | nu
     setText(null)
   }
   return (
-    <input
-      className="input tnum"
-      value={text ?? (value == null ? "" : dur(value))}
-      placeholder="e.g. 10m or 1h30"
-      aria-label="Length"
-      aria-invalid={text !== null && text.trim() !== "" && typed === null}
-      onChange={(e) => setText(e.target.value)}
-      onBlur={settle}
-      onKeyDown={(e) => e.key === "Enter" && settle()}
-      style={{ width, padding: "4px 8px", minHeight: 0 }}
-    />
+    <span style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>
+      <input
+        className="input tnum"
+        value={text ?? (value == null ? "" : dur(value))}
+        placeholder="e.g. an hour and a half"
+        aria-label="Length"
+        aria-invalid={text !== null && text.trim() !== "" && typed === null}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={settle}
+        onKeyDown={(e) => e.key === "Enter" && settle()}
+        style={{ width, padding: "4px 8px", minHeight: 0 }}
+      />
+      {text !== null && text.trim() !== "" && (
+        <span className="tnum" style={{ fontSize: 11, color: typed === null ? "var(--fr-due)" : "var(--color-neutral-500)" }}>
+          {typed === null ? "Can't read that as a length" : `→ ${dur(typed)}`}
+        </span>
+      )}
+    </span>
   )
 }
 

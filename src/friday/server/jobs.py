@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from friday.commands.delivery import deliver
+from friday.commands.eventwrites import failed_writes, write_events
 from friday.commands.fetching import failing_sources, sync
 from friday.commands.google import publish_plan
 from friday.commands.learned import learn_nightly
@@ -33,7 +34,7 @@ from friday.planner.store import current_plan, load_settings
 from friday.server.config import apply_config
 from friday.server.events import Hub
 from friday.server.worker import Supervisor, set_problem
-from friday.sync.google_auth import GMAIL_SCOPE, connected
+from friday.sync.google_auth import EVENTS_SCOPE, GMAIL_SCOPE, connected
 
 log = logging.getLogger("friday.jobs")
 WAKE_S = 30
@@ -76,6 +77,7 @@ def run_due(
         ("config", every_minute, config),
         ("sync", every_minute, sync_sources),
         ("publish", every_minute, publish),
+        ("event_writes", every_minute, send_event_writes),
     )
     for name, is_due, job in jobs:
         if not is_due(last_run(conn, name, user_id), now_utc, settings):
@@ -232,6 +234,30 @@ def publish(
         set_problem(conn, user_id, "publish", f"Publishing to Google Calendar failed: {error}"[:300])
         raise
     set_problem(conn, user_id, "publish", None)
+
+
+def send_event_writes(
+    conn: sqlite3.Connection,
+    now_utc: int,
+    settings: dict[str, Any],
+    hub: Hub,
+    supervisor: Supervisor | None,
+    backups: Path,
+    user_id: int,
+) -> None:
+    """Changes to your events saved back to Google (COMBINED.md 69)."""
+    google = SAMPLE_APIS.get("google")
+    waiting = (
+        conn.execute("SELECT 1 FROM event_writes WHERE user_id = ? AND done_utc IS NULL", [user_id]).fetchone()
+        is not None
+    )
+    if waiting and google is None and not connected(backups.parent, (EVENTS_SCOPE,)):
+        set_problem(
+            conn, user_id, "event_writes", "Saving your changes to Google needs a new login: run `fridayd google-login`"
+        )
+        return
+    write_events(conn, now_utc, user_id, backups.parent, google)
+    set_problem(conn, user_id, "event_writes", "; ".join(failed_writes(conn, user_id)) or None)
 
 
 def questions_due(last: int | None, now_utc: int, settings: dict[str, Any]) -> bool:

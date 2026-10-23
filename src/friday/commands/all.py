@@ -7,6 +7,7 @@ from friday.commands import (  # noqa: F401
     diagnose,
     explain,
     horizon,
+    importing,
     inbox,
     insights,
     items,

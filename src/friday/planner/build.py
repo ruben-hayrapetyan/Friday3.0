@@ -4,11 +4,13 @@
 """
 
 import math
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any, Literal
 
+from friday.core.guess import EXAM, course_word
 from friday.core.items import Item
 from friday.core.pace import DayScales
 from friday.core.settings import SleepDay, minutes_of
@@ -143,9 +145,38 @@ def flexible_items(inp: BuildInput, grid: Grid, fixed: Mapping[int, Item]) -> di
         engine_item = to_engine_item(item, inp, grid, by_id, fixed)
         if engine_item is not None:
             out[engine_item.key] = engine_item
+    dependencies = [*inp.dependencies, *parts_in_order(inp, out)]
     for engine_item in out.values():
-        engine_item.depends_on = dependency_specs(id_of(engine_item.key), inp, out)
+        engine_item.depends_on = dependency_specs(id_of(engine_item.key), dependencies, out)
     return out
+
+
+def parts_in_order(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[Dependency]:
+    """Parts of one set done one after the other (personal's, COMBINED.md 53): tasks of the same kind due the same day
+    whose titles start with the same two words ("PS 7 odds" and "PS 7 evens", "Chem HW 5" and "Chem HW 6") each wait
+    for the one before, by title, so a plan never alternates between them. Left alone when you tied any yourself."""
+    tied = {d.item_id for d in inp.dependencies} | {d.depends_on_id for d in inp.dependencies}
+    groups: dict[tuple[str, str, int], list[Item]] = {}
+    for item in inp.items:
+        engine_item = items.get(key_of(item.id or 0))
+        if engine_item is None or engine_item.due_utc is None or item.preset is None or item.id in tied:
+            continue
+        if item.series_id is not None or engine_item.firmness == "none":
+            continue  # a repeat's occurrences (meals) and work with no deadline aren't parts of a set
+        stem = " ".join(re.findall(r"[a-z0-9]+", item.title.lower())[:2])
+        groups.setdefault((stem, item.preset, engine_item.due_utc // 1440), []).append(item)
+    out = []
+    for members in groups.values():
+        if len({m.title.strip().lower() for m in members}) < len(members):
+            continue  # the same title twice is the same thing twice, not two parts
+        ordered = sorted(members, key=lambda i: (natural(i.title), i.id))
+        out += [Dependency(after.id, before.id) for before, after in zip(ordered, ordered[1:], strict=False)]  # type: ignore[arg-type]
+    return out
+
+
+def natural(title: str) -> list[tuple[int, int, str]]:
+    """ "Chapter 9" before "Chapter 10"."""
+    return [(0, int(part), "") if part.isdigit() else (1, 0, part.lower()) for part in re.split(r"(\d+)", title)]
 
 
 def window(item: Item, inp: BuildInput, by_id: Mapping[int, Item], fixed: Mapping[int, Item],
@@ -163,7 +194,22 @@ def window(item: Item, inp: BuildInput, by_id: Mapping[int, Item], fixed: Mappin
         if dep.depends_on_id == item.id and dep.item_id in fixed:  # `before:` an event
             event_start = parse_utc(fixed[dep.item_id].start_utc)  # type: ignore[arg-type]
             due = min(due, event_start - dep.lag_min) if due is not None else event_start - dep.lag_min
-    return release, due
+    return release, exam_due(item, due, fixed)
+
+
+def exam_due(item: Item, due: int | None, fixed: Mapping[int, Item]) -> int | None:
+    """Prep for an exam or quiz on the calendar is due when it starts (personal's, COMBINED.md 50): the same course's
+    exam within three days before the prep's due ("Math quiz prep" due the evening of the quiz is due at the quiz)."""
+    if item.preset != "Exam prep" or due is None:
+        return due
+    course = course_word(item.title)
+    starts = [
+        parse_utc(f.start_utc)
+        for f in fixed.values()
+        if f.start_utc and f.status == "todo" and EXAM.search(f.title) and course_word(f.title) == course
+    ]
+    near = [start for start in starts if due - 3 * 1440 <= start <= due]
+    return min(near) if near else due
 
 
 def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, Item],
@@ -181,10 +227,20 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
         amount=item.amount, release_utc=release, due_utc=due, shape=item.shape,
         min_chunk=1 if item.shape == "one_sitting" else max(1, item.min_chunk_units),
         max_chunk=item.max_chunk_units, chunk_cost=item.chunk_cost, spread=item.spread, tentative=tentative,
-        progress=progress, window_is_hard=tentative or item.amount in ("elastic", "target"),
+        progress=progress,
+        window_is_hard=tentative or item.amount in ("elastic", "target") or expires(item, inp.settings),
         pacing=preset.pacing if preset else "none", pacing_start_utc=release if release is not None else created,
     )  # fmt: skip
     return with_amount(engine_item, item, inp)
+
+
+def expires(item: Item, settings: Mapping[str, Any]) -> bool:
+    """Pointless once late (COMBINED.md 50): your say on the item, else the kinds and titles in settings."""
+    if item.due_utc is None:
+        return False
+    return (
+        item.expires if item.expires is not None else bool(settings["pointless_late"].covers(item.preset, item.title))
+    )
 
 
 def importance(item: Item, kind_order: Sequence[str]) -> float:
@@ -220,9 +276,11 @@ def with_amount(engine_item: EngineItem, item: Item, inp: BuildInput) -> EngineI
     return engine_item
 
 
-def dependency_specs(item_id: int, inp: BuildInput, items: Mapping[str, EngineItem]) -> tuple[DepSpec, ...]:
+def dependency_specs(
+    item_id: int, dependencies: Sequence[Dependency], items: Mapping[str, EngineItem]
+) -> tuple[DepSpec, ...]:
     out = []
-    for dep in inp.dependencies:
+    for dep in dependencies:
         other = items.get(key_of(dep.depends_on_id))
         if dep.item_id == item_id and other is not None:
             out.append(DepSpec(other.key, dep.fraction, dep.lag_min, other.total_units, other.progress))

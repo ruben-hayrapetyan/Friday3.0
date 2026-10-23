@@ -46,6 +46,9 @@ class ItemFields(Model):
     certainty: Literal["planned", "tentative"] | None = None
     event_kind: str | None = None
     blocks_time: bool | None = None
+    free: bool | None = None
+    long_term: bool | None = None
+    expires: bool | None = None
     buffer_before_min: int | None = None
     buffer_after_min: int | None = None
 
@@ -70,6 +73,17 @@ class ItemOut(Model):
     shape: str
     color: str | None = None
     notes: str = ""
+    long_term: bool = False
+    expires: bool | None = None  # your own say on pointless-if-late; None follows the kinds in settings
+    pointless_late: bool = False  # what's in effect: never planned after its due
+    cushion: float = 1.0  # how far over you consistently run on work like this; the plan reserves that much more
+    calendar: str | None = None  # the calendar an event came from
+    calendar_color: str | None = None  # its pigment, set in Settings → Calendars
+    saves_to_calendar: bool = False  # changes made here are saved back to its calendar
+    category: str | None = None  # its category, by title
+    category_color: str | None = None
+    left_out: str | None = None  # why it doesn't count as busy: calendar, reminder, free or filtered
+    filtered: bool = False  # the categories' filter hides it (office hours), when you hide what it hides
     certainty: str
     event_kind: str | None = None
     status: str

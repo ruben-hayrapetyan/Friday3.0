@@ -55,6 +55,43 @@ def test_late_work_across_the_zone_boundary() -> None:
     assert cost(p, plan(item_1=(B - 2, B - 1)), "late_work") == 0
 
 
+# late_tasks (personal's, COMBINED.md 49): weight 10, a count per hard task late at all (importance × 48) and
+# importance × h² / 96 per unit late; unplaced work counts as late.
+
+LATE_TASKS = ["late_tasks"]
+
+
+def test_late_tasks_is_zero_on_time() -> None:
+    p = problem([item("assignment", 1, duration_units=4, due_utc=MON10 + 60, importance=4)], LATE_TASKS)
+    assert cost(p, plan(item_1=(0, 1, 2, 3)), "late_tasks") == 0
+
+
+def test_late_tasks_counts_a_late_task_once_and_squares_its_hours() -> None:
+    p = problem([item("assignment", 1, duration_units=4, due_utc=MON10 + 60, importance=4)], LATE_TASKS)
+    # one task late, counted once: 10 × 4 × 48 × 100 = 192000; slot 4 ends 0.25 h late: 10 × 4 × 0.0625 / 96 × 0.25
+    # × 100 ≈ 1
+    assert cost(p, plan(item_1=(1, 2, 3, 4)), "late_tasks") == 192_001
+    # two hours late: 10 × 4 × 2² / 96 × 0.25 × 100 ≈ 42 on top of the count
+    late = problem([item("assignment", 1, duration_units=1, due_utc=MON10, importance=4)], LATE_TASKS,
+                   slots=12)  # fmt: skip
+    assert cost(late, plan(item_1=(7,)), "late_tasks") == 192_000 + 42
+
+
+def test_late_tasks_prefers_one_task_a_little_later_to_two_tasks_late() -> None:
+    a = item("assignment", 1, duration_units=2, due_utc=MON10 + 30, min_chunk_units=1, importance=3)
+    b = item("assignment", 2, duration_units=2, due_utc=MON10 + 30, min_chunk_units=1, importance=3)
+    p = problem([a, b], LATE_TASKS)
+    split = evaluate(p, plan(item_1=(0, 2), item_2=(1, 3))).rule_totals["late_tasks"]  # both a quarter hour late
+    one = evaluate(p, plan(item_1=(0, 1), item_2=(2, 3))).rule_totals["late_tasks"]  # only the second is late
+    assert one < split
+
+
+def test_late_tasks_across_the_zone_boundary() -> None:
+    p = zone_problem([item("assignment", 1, duration_units=2, due_utc=at(1, "04:15"), importance=4)], LATE_TASKS)
+    assert cost(p, plan(item_1=(B,)), "late_tasks") == 192_001  # 04:00–04:30 ends late: the count, and 0.25 h²
+    assert cost(p, plan(item_1=(B - 2, B - 1)), "late_tasks") == 0
+
+
 # soft_late: weight 3, the same formula for soft deadlines
 
 

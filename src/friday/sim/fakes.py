@@ -89,7 +89,7 @@ class Events:
         return Call(lambda: {"id": eventId} | ({"recurrence": [f"RRULE:{rule}"]} if rule else {}))
 
     def insert(self, calendarId: str, body: dict[str, Any]) -> Call:  # noqa: N803
-        event = local(body) | {"id": f"e{next(self.google.ids)}"}
+        event = local_times(body) | {"id": f"e{next(self.google.ids)}"}
         return Call(lambda: self.google.calendars_by_id[calendarId].append(event) or self.write("insert", event))
 
     def update(self, calendarId: str, eventId: str, body: dict[str, Any]) -> Call:  # noqa: N803
@@ -97,6 +97,16 @@ class Events:
             events = self.google.calendars_by_id[calendarId]
             events[:] = [local(body) | {"id": eventId} if e["id"] == eventId else e for e in events]
             return self.write("update", body)
+
+        return Call(change)
+
+    def patch(self, calendarId: str, eventId: str, body: dict[str, Any]) -> Call:  # noqa: N803
+        def change() -> dict[str, Any]:
+            events = self.google.calendars_by_id[calendarId]
+            found = next(e for e in events if e["id"] == eventId)
+            patched = found | local_times(body)
+            events[:] = [patched if e["id"] == eventId else e for e in events]
+            return self.write("patch", patched)
 
         return Call(change)
 
@@ -117,6 +127,15 @@ def local(body: dict[str, Any]) -> dict[str, Any]:
     """Times as Google gives them back: in the calendar's offset, not UTC."""
     moved = {k: {"dateTime": instant(body[k]).astimezone(EASTERN).isoformat()} for k in ("start", "end")}
     return body | moved
+
+
+def local_times(body: dict[str, Any]) -> dict[str, Any]:
+    """A patch's times as Google gives them back; whole days stay dates."""
+    return body | {
+        k: {"dateTime": instant(body[k]).astimezone(EASTERN).isoformat()} if "dateTime" in body[k] else body[k]
+        for k in ("start", "end")
+        if k in body
+    }
 
 
 def event(eid: str, summary: str, start: str, end: str, **extra: Any) -> dict[str, Any]:

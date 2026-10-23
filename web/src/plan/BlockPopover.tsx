@@ -1,14 +1,16 @@
 // The selected block (v22): what it is, when, why Friday put it there, its due and what's left, and what you can do
-// with it: start, finish, pin or unpin, unlock, skip one occurrence, delete (Delete or Backspace too).
+// with it: start, finish, pin or unpin, unlock, skip one occurrence, delete (Delete or Backspace too). The timer's
+// buttons are personal's (COMBINED.md 32): large, on top, Start or Pause, and Done.
 
 import { useEffect, useState } from "react"
 import { useLocation } from "react-router"
 import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
-import { useItem, useNow, useWhy } from "@/hooks/queries"
+import { useItem, useStatus, useWhy } from "@/hooks/queries"
 import { clock, dur, weekday, when } from "@/lib/format"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
+import { Elsewhere } from "./Elsewhere"
 import { kindOf } from "./Pieces"
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -23,6 +25,22 @@ const KIND: Record<string, string> = {
 }
 const FIRM: Record<string, string> = { hard: "Hard deadline", soft: "Soft deadline", none: "No deadline" }
 
+function BigButton({ icon, label, note, onClick, primary }: { icon: string; label: string; note: string; onClick: () => void; primary?: boolean }) {
+  return (
+    <button
+      className={`btn ${primary ? "btn-primary" : "btn-secondary"}`}
+      onClick={onClick}
+      style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "10px 12px", minHeight: 58 }}
+    >
+      <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 15 }}>
+        <Icon name={icon} size={18} fill={icon === "play"} />
+        {label}
+      </span>
+      <span style={{ fontSize: 10.5, opacity: 0.75, fontFamily: "var(--fr-body)" }}>{note}</span>
+    </button>
+  )
+}
+
 export function BlockPopover() {
   const { selected: b, select, today } = useShell()
   const { pathname } = useLocation()
@@ -31,9 +49,11 @@ export function BlockPopover() {
   const detail = useItem(b?.item_id ?? null).data
   const isBlock = !!b && b.key.startsWith("T")
   const why = useWhy(isBlock ? b.key : null).data
-  const current = useNow().data?.current
   const start = useCommand("start", { label: () => `Started ${b?.title}` })
   const done = useCommand("done", { label: () => `${b?.title}: done` })
+  const stop = useCommand("stop", { label: (o) => o.result.message ?? "Paused" })
+  const tentative = useCommand("edit", { label: (o) => (o.result.item.certainty === "tentative" ? "Might not happen: planned loosely" : "Planned as usual") })
+  const timing = useStatus().data?.timer
   const pin = useCommand("pin", { label: () => `Pinned ${b?.title} here` })
   const unpin = useCommand("unpin", { label: () => `${b?.title}: Friday decides again` })
   const skip = useCommand("skip", { label: () => "Skipped this one" })
@@ -58,7 +78,6 @@ export function BlockPopover() {
   const item = detail?.item
   const close = () => select(null)
   const kind = b.key.startsWith("F") ? "fixed" : b.key.startsWith("D") ? "due" : kindOf(b)
-  const isCur = current?.key === b.key
   const flexible = kind !== "fixed" && kind !== "due"
   const date = b.start.slice(0, 10)
   const whenText = kind === "due" ? `Due ${when(b.start, today)}` : `${weekday(date)} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1]} · ${clock(b.start)}–${clock(b.end)}`
@@ -84,6 +103,17 @@ export function BlockPopover() {
             <Icon name="x" />
           </button>
         </div>
+        {flexible && (
+          // Large and first: what you came to the block for (personal's popover).
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {timing?.item_id === b.item_id ? (
+              <BigButton icon="pause" label="Pause" note="Keeps the time for next time" onClick={run(() => stop({}))} />
+            ) : (
+              <BigButton icon="play" label="Start" note={timing?.item_id ? "Pauses what's running" : "Times this sitting"} onClick={run(() => start({ id: b.item_id }))} primary />
+            )}
+            <BigButton icon="check" label="Done" note="Ticks it off" onClick={run(() => (timing?.item_id === b.item_id ? stop({ done: true }) : done({ id: b.item_id })))} />
+          </div>
+        )}
         <div style={{ fontSize: 12, color: "var(--color-accent-300)" }}>{KIND[kind]}</div>
         {why && (
           <div style={{ padding: 12, borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--color-accent) 10%, var(--color-bg))", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -105,16 +135,14 @@ export function BlockPopover() {
           </div>
         )}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {flexible && !isCur && (
-            <button className="btn btn-primary" onClick={run(() => start({ id: b.item_id }))}>
-              <Icon name="play" />
-              Start now
-            </button>
-          )}
-          {isCur && (
-            <button className="btn btn-primary" onClick={run(() => done({ id: b.item_id }))}>
-              <Icon name="check" />
-              Done
+          {flexible && item && (
+            <button
+              className="btn btn-ghost"
+              onClick={run(() => tentative({ id: b.item_id, certainty: item.certainty === "tentative" ? "planned" : "tentative" }))}
+              title="Tentative work is planned loosely: Friday doesn't count on it happening"
+            >
+              <Icon name="cloud" />
+              {item.certainty === "tentative" ? "It will happen" : "Might not happen"}
             </button>
           )}
           {flexible && kind !== "locked" && (
@@ -154,6 +182,7 @@ export function BlockPopover() {
             </button>
           )}
         </div>
+        {flexible && <Elsewhere block={b} onMoved={close} />}
         {item?.series_id != null && (
           <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
             <Icon name="repeat" size={13} />

@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 STAGES = ("deadlines", "wellbeing", "preferences")
 Amount = Literal["fixed", "elastic", "target", "open"]
 Plan = Mapping[str, tuple[int, ...]]  # item key → sorted slot indices
-NEVER_LEARNED = frozenset({"late_work", "quota"})
+NEVER_LEARNED = frozenset({"late_work", "late_tasks", "quota"})
 
 
 @dataclass(frozen=True)

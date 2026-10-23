@@ -2,6 +2,7 @@
 
 import json
 import sqlite3
+from dataclasses import dataclass
 from typing import Any
 
 from friday.core.db import one, rows
@@ -49,3 +50,25 @@ def area_names(conn: sqlite3.Connection, user_id: int = 1) -> dict[int, str]:
 
 def current_plan(conn: sqlite3.Connection, user_id: int = 1) -> dict[str, Any] | None:
     return one(conn, "SELECT * FROM plans WHERE user_id = ? AND status = 'current'", [user_id])
+
+
+@dataclass(frozen=True)
+class EventLink:
+    """Where a calendar event in Friday came from: the source (a Google calendar) and the event there."""
+
+    source_id: int
+    calendar: str  # the source's name
+    calendar_id: str | None  # Google's id for the calendar
+    event_id: str
+
+
+def event_links(conn: sqlite3.Connection, user_id: int = 1) -> dict[int, EventLink]:
+    """Each event read from a calendar, by item id: the latest suggestion that made or changed it says where."""
+    found = rows(
+        conn,
+        "SELECT s.item_id, r.external_id, src.id AS source_id, src.name, json_extract(src.config, '$.calendar') AS cal "
+        "FROM suggestions s JOIN raw_inputs r ON r.id = s.raw_input_id JOIN sources src ON src.id = r.source_id "
+        "WHERE s.user_id = ? AND s.item_id IS NOT NULL AND s.status = 'accepted' AND src.kind = 'gcal' ORDER BY s.id",
+        [user_id],
+    )
+    return {r["item_id"]: EventLink(r["source_id"], r["name"], r["cal"], r["external_id"]) for r in found}

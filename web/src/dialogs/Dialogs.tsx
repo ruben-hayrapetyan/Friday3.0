@@ -32,7 +32,7 @@ function Close({ onClose }: { onClose: () => void }) {
   )
 }
 
-const BRIEF_AUTO = "friday-brief-auto"
+export const BRIEF_AUTO = "friday-brief-auto"
 
 export function BriefDialog({ onClose }: { onClose: () => void }) {
   const { today } = useShell()
@@ -139,8 +139,12 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
 
 /** Whether the brief should open by itself: once a morning, unless switched off. */
 export function briefDue(today: string): boolean {
-  if (localStorage.getItem(BRIEF_AUTO) === "off" || localStorage.getItem("friday-brief-shown") === today) return false
-  localStorage.setItem("friday-brief-shown", today)
+  try {
+    if (localStorage.getItem(BRIEF_AUTO) === "off" || localStorage.getItem("friday-brief-shown") === today) return false
+    localStorage.setItem("friday-brief-shown", today)
+  } catch {
+    return false // storage blocked: don't open it on every load
+  }
   return new Date().getHours() < 12
 }
 

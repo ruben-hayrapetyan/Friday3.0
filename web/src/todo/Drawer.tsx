@@ -6,6 +6,7 @@ import { type ReactNode, useState } from "react"
 import { useNavigate } from "react-router"
 import type { Item } from "@/api/client"
 import { useDragging } from "@/components/calendar/useDrag"
+import { DueLabel } from "@/components/DueLabel"
 import { Check, Icon, Seg } from "@/components/fr/controls"
 import { readFields, useAdd, useParsed } from "@/components/todo/QuickAdd"
 import { useCommand } from "@/hooks/useCommand"
@@ -15,6 +16,7 @@ import { nextBlocks } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { grouped, SORTS, type SortBy } from "./groups"
+import { ExpiresMark } from "./TodoPage"
 
 /** The drawer's frame: over the calendar's right side, below the title row, resized by its left edge. */
 export function DrawerFrame({ children, todo }: { children: ReactNode; todo?: boolean }) {
@@ -162,10 +164,17 @@ function Row({ item }: { item: Item }) {
       <Check small done={false} onToggle={() => done({ id: item.id })} />
       <span style={{ alignSelf: "stretch", borderRadius: 2, background: color(item.area) }} />
       <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span>
+        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: item.long_term ? "var(--fr-aged)" : undefined }}>
+          {item.pointless_late && <ExpiresMark />} {item.title}
+        </span>
         <span className="tnum" style={{ fontSize: 11, color: overdue ? "var(--fr-due)" : "var(--color-neutral-500)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {next ? when(next.start, today) : "not planned"}
-          {item.due ? ` · due ${when(item.due, today)}` : ""}
+          {item.due && (
+            <>
+              {" · "}
+              <DueLabel due={item.due} prefix="due " />
+            </>
+          )}
         </span>
       </span>
       <span className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>

@@ -320,6 +320,8 @@ class GoogleCalendarOut(Model):
     trusted: bool
     last_sync: str | None
     error: str | None
+    writable: bool = False  # Google lets you write to it
+    editable: bool = False  # changes made in Friday are saved back to it
 
 
 class SourceOut(Model):

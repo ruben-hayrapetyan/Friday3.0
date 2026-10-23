@@ -17,6 +17,16 @@ import { Calendars, useCalendars } from "./Calendars"
 import { MailLog } from "./MailLog"
 import { SectionHead } from "./SettingsPage"
 
+/** The one-time import from the apps Friday replaces (COMBINED.md 24). */
+function ImportPersonal() {
+  const run = useCommand("import_personal", { label: (o) => o.result.message })
+  return (
+    <button className="btn btn-secondary" onClick={() => run({})} style={{ fontSize: 12 }}>
+      Import
+    </button>
+  )
+}
+
 export function Integrations() {
   return (
     <>
@@ -26,6 +36,12 @@ export function Integrations() {
         <Gmail />
         <Feeds />
         <Card icon="file-pdf" title="Syllabus upload" note="One PDF becomes class times, readings, assignments and exam prep, reviewed together in your Inbox." right={<Upload />} />
+        <Card
+          icon="arrow-square-in"
+          title="Todo List and Chroma"
+          note="Bring in Todo List's open tasks (with their due dates, and long-term ones on the Long term list) and Chroma's categories, from their files on this Mac. Each task comes in once, however often you press it."
+          right={<ImportPersonal />}
+        />
       </div>
       <div className="fr-well" style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 12, padding: "14px 18px", borderRadius: "var(--radius-lg)", boxShadow: "none" }}>
         <Icon name="download-simple" size={18} />

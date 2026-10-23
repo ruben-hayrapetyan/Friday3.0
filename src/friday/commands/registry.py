@@ -48,6 +48,7 @@ class Ctx:
     settings: dict[str, Any]
     command_id: int | None = None
     notices: list[str] = field(default_factory=list)
+    memo: dict[str, Any] = field(default_factory=dict)  # what one request reads once and many item views share
     # The server solves in its worker process: replan(reason) -> plan id. Without one, replan solves in-process.
     solver: Callable[[str], int | None] | None = None
 

@@ -1,6 +1,8 @@
 """Every mutating command applies, previews without a trace, undoes to the same rows, refuses a stale undo, and
 returns its stored result for a repeated idempotency key (DESIGN §9.2, §24.1)."""
 
+import json
+import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -225,7 +227,18 @@ def template_project(app: App) -> int:
 
 
 ALL_DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def import_sample(app: App) -> dict[str, Any]:
+    folder = Path(tempfile.mkdtemp())
+    (folder / "todos.json").write_text(json.dumps([{"id": "A", "title": "PS 3", "horizon": "shortTerm"}]))
+    rules = {"categories": [{"name": "Classes", "color": "blue", "pattern": "lec"}]}
+    (folder / "categories.json").write_text(json.dumps(rules))
+    return {"todos_path": str(folder / "todos.json"), "categories_path": str(folder / "categories.json")}
+
+
 SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
+    "import_personal": import_sample,
     "add": add_sample,
     "edit": lambda app: {"id": essay(app), "title": "long essay", "duration_min": 180},
     "drop": lambda app: {"id": essay(app)},

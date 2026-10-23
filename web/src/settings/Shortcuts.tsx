@@ -13,6 +13,7 @@ const KEYS: [string, string[]][] = [
   ["Earlier or later period", ["[", "]"]],
   ["Show or hide the to-do list", ["T"]],
   ["Move the selected block by 15 minutes", ["↑", "↓"]],
+  ["Open the selected block's to-do", ["Enter"]],
   ["Undo", ["⌘", "Z"]],
   ["Close a panel", ["Esc"]],
   ["Answer a review card", ["1", "2", "3", "4"]],

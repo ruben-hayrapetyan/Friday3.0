@@ -19,6 +19,8 @@ export interface EventDraft {
   notes: string
   every: string | null // a new event's repeat, as `rrule:…`
   seriesId: number | null
+  calendar: string | null // the calendar it came from
+  savesToCalendar: boolean // changes here are saved back to it
 }
 
 /** What the calendar shows: the view, and its first day (null follows today). The sidebar's mini month moves it. */

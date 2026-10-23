@@ -110,9 +110,11 @@ export function FixedBox({ p, onOpen }: { p: Placed<Item & { start: string; end:
   const it = p.item
   const { skinOf, light } = useLook()
   const base = skinOf(it.event_kind === "shove" ? "shove" : "fixed", it.area)
-  // An event wearing a pigment is painted in it, as personal painted events: the colour on its spine and a wash.
-  const paint = pigment(it.color, light)
-  const s = paint ? { ...base, bg: `color-mix(in srgb, ${paint} 16%, var(--color-surface))`, stripe: paint, fg: "var(--color-text)", sub: "var(--color-neutral-400)" } : base
+  // Painted as personal painted events, the pigment on its spine and a wash of it: its own pigment, else its
+  // category's, else its calendar's (COMBINED.md 17). One left out of planning sits back, dashed.
+  const paint = pigment(it.color, light) ?? pigment(it.category_color, light) ?? pigment(it.calendar_color, light)
+  const painted = paint ? { ...base, bg: `color-mix(in srgb, ${paint} 16%, var(--color-surface))`, stripe: paint, fg: "var(--color-text)", sub: "var(--color-neutral-400)" } : base
+  const s = it.left_out ? { ...painted, bg: "transparent", bd: `1px dashed ${paint ?? "var(--fr-rule)"}`, fg: "var(--color-neutral-400)" } : painted
   const tall = minutes(it) >= 45
   return (
     <div
@@ -136,7 +138,9 @@ export function FixedBox({ p, onOpen }: { p: Placed<Item & { start: string; end:
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: s.stripe }} />
       <div style={{ display: "flex", alignItems: "center", gap: 4, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden" }}>
         {it.series_id != null && <Icon name="repeat" size={11} />}
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{it.event_kind === "shove" ? "Your time" : it.title}</span>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }} title={it.left_out ? `${it.title} — not counted as busy (${LEFT_OUT[it.left_out] ?? it.left_out})` : undefined}>
+          {it.event_kind === "shove" ? "Your time" : it.title}
+        </span>
       </div>
       {tall && (
         <div className="tnum" style={{ fontSize: 11, color: s.sub, whiteSpace: "nowrap" }}>
@@ -145,6 +149,13 @@ export function FixedBox({ p, onOpen }: { p: Placed<Item & { start: string; end:
       )}
     </div>
   )
+}
+
+export const LEFT_OUT: Record<string, string> = {
+  calendar: "its calendar isn't counted",
+  reminder: "a reminder that something is due",
+  free: "marked free",
+  filtered: "the filter's office hours",
 }
 
 export function GhostBox({ p }: { p: Placed<Block> }) {

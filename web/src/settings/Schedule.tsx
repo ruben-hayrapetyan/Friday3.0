@@ -1,12 +1,11 @@
 // Schedule (v22): the shape of a normal day: when it starts, bedtime and the margin past it, a buffer between blocks, the
-// More time presets, the daily limit, the default pace and the first day of the week. Each sets every day; "By day"
+// the daily limit, the default pace and the first day of the week. Each sets every day; "By day"
 // sets them one day at a time.
 
 import { useState } from "react"
-import { Chip, Seg } from "@/components/fr/controls"
+import { Seg } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { usePaces, useSettings } from "@/hooks/queries"
-import { moreTimePresets, setMoreTimePresets } from "@/lib/ui"
 import { dur } from "@/lib/format"
 import { useNavigate } from "react-router"
 import { BUFFER_OPTIONS, bufferLabel, useBuffers } from "./buffers"
@@ -19,7 +18,6 @@ interface Night {
   margin_min: number
 }
 const times = (from: number, to: number) => Array.from({ length: (to - from) * 2 + 1 }, (_, i) => `${String(Math.floor(from + i / 2) % 24).padStart(2, "0")}:${i % 2 ? "30" : "00"}`)
-const MORE = [10, 15, 20, 30, 45, 60, 90]
 
 export function Schedule() {
   const settings = useSettings().data as Record<string, unknown> | undefined
@@ -27,7 +25,6 @@ export function Schedule() {
   const save = useCommand("settings_set", { label: () => "Saved" })
   const { buffers, set: setBuffers } = useBuffers()
   const navigate = useNavigate()
-  const [more, setMore] = useState(moreTimePresets)
   const [byDay, setByDay] = useState(false)
   if (!settings) return null
   const sleep = settings.sleep as Record<string, Night>
@@ -62,24 +59,6 @@ export function Schedule() {
         <button className="fr-link" onClick={() => navigate("/settings/tags")} style={{ alignSelf: "flex-start", fontSize: 12 }}>
           {Object.keys(buffers.by_area).length + Object.keys(buffers.by_preset).length ? "Some tags and kinds have their own →" : "Set one per tag or kind →"}
         </button>
-      </Field>
-      <Field name="More time presets" note="The quick options when a block needs longer. Pick up to four.">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {MORE.map((m) => (
-            <Chip
-              key={m}
-              on={more.includes(m)}
-              onClick={() => {
-                const next = more.includes(m) ? more.filter((x) => x !== m) : [...more, m].sort((a, b) => a - b).slice(-4)
-                if (!next.length) return
-                setMore(next)
-                setMoreTimePresets(next)
-              }}
-            >
-              +{dur(m)}
-            </Chip>
-          ))}
-        </div>
       </Field>
       <Field name="Daily limit" note="The most focused work Friday will plan in a day. Pace can raise or lower it for a while.">
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>

@@ -13,10 +13,10 @@ import numpy as np
 
 from friday.engine.checker import check
 from friday.engine.compile import Compiled
-from friday.engine.construct import prepare_start
+from friday.engine.construct import construct, fewest_late_order, prepare_start
 from friday.engine.cpsat_deadlines import DeadlineModel, FallbackResult
 from friday.engine.evaluate import Evaluation, evaluate
-from friday.engine.kernel import init_state, new_state, protected_items
+from friday.engine.kernel import init_state, new_state, protected_items, total_violations
 from friday.engine.problem import STAGES, Problem
 from friday.engine.repair import deadline_value, repair
 from friday.engine.sampler import ChainOutcome, SamplerConfig, anneal
@@ -101,6 +101,13 @@ def schedule(
     seconds["construct"], clock = time.perf_counter() - clock, time.perf_counter()
     owner = repair(c, owner, config.repair_steps, config.sampler.seed, config.sampler.move_weights, cancel)
     trace["repair"] = deadline_value(c, owner)
+    if not warm and trace["repair"] > 0:
+        # personal's overload start (COMBINED.md 54): as many tasks on time as can be, kept only if it ends less late.
+        other = construct(c, order=fewest_late_order(c))
+        other = repair(c, other, config.repair_steps, config.sampler.seed, config.sampler.move_weights, cancel)
+        if valid(c, other) and deadline_value(c, other) < trace["repair"]:
+            owner = other
+            trace["fewest_late"] = deadline_value(c, owner)
     seconds["repair"], clock = time.perf_counter() - clock, time.perf_counter()
     steps = step_budget(config, len(problem.items), warm)
     small = len(problem.items) <= config.fallback_threshold
@@ -128,6 +135,13 @@ def schedule(
     result.deadlines_after = trace | {"final": result.stage_values["deadlines"]}
     seconds["total"] = time.perf_counter() - began
     return result
+
+
+def valid(c: Compiled, owner: np.ndarray) -> bool:
+    """No wall broken (the repair's 1e9 penalties can leave one when nothing better was found)."""
+    st = new_state(c.m)
+    init_state(c.m, st, owner)
+    return int(total_violations(c.m, st)) == 0
 
 
 def current_owner(problem: Problem) -> np.ndarray | None:

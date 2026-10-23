@@ -38,6 +38,8 @@ def google_calendars(ctx: Ctx, inp: Empty) -> list[GoogleCalendarOut]:
                 trusted=bool(source and source["trusted"]),
                 last_sync=format_local(to_local(parse_utc(synced), ctx.tz)) if synced else None,
                 error=source["last_error"] if source else None,
+                writable=c.get("writable", False),
+                editable=editable(config, c),
             )
         )
     return sorted(out, key=lambda c: natural(c.name))
@@ -64,9 +66,14 @@ def calendar_set(ctx: Ctx, inp: CalendarSetInput) -> Changed:
         changes["enabled"] = int(inp.on)
     if inp.trusted is not None:
         changes["trusted"] = int(inp.trusted)
+    if inp.editable is not None:
+        if inp.editable and not listed[inp.id].get("writable", False):
+            raise FieldError("editable", "Google doesn't let you change this calendar's events")
+        config = json.loads(changes.get("config") or source["config"])
+        changes["config"] = json.dumps(config | {"editable": inp.editable})
     if inp.kind is not None:
         kind = None if inp.kind == "auto" else inp.kind
-        changes["config"] = json.dumps(json.loads(source["config"]) | {"kind": kind})
+        changes["config"] = json.dumps(json.loads(changes.get("config") or source["config"]) | {"kind": kind})
     ctx.db.update("sources", {"id": source["id"]}, changes)
     if inp.on is not None or inp.kind is not None:
         forget_unanswered(ctx, source["id"])
@@ -75,6 +82,13 @@ def calendar_set(ctx: Ctx, inp: CalendarSetInput) -> Changed:
     return Changed(
         message=f"Reading {name}" if inp.on else f"Stopped reading {name}" if inp.on is False else f"Saved {name}"
     )
+
+
+def editable(config: dict[str, Any], listed: dict[str, Any]) -> bool:
+    """Whether Friday saves changes back to a calendar: as you said, else whenever Google lets you write to it."""
+    if not listed.get("writable", False):
+        return False
+    return bool(config.get("editable", True))
 
 
 def source_of(ctx: Ctx, calendar_id: str) -> dict[str, Any] | None:

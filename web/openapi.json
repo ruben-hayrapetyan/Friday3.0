@@ -2875,6 +2875,84 @@
     }
    }
   },
+  "/api/c/import_personal": {
+   "post": {
+    "summary": "Todo List's open tasks and Chroma's categories, once.",
+    "operationId": "import_personal",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/ImportPersonalInput"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Inp"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImportPersonalResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/source_add": {
    "post": {
     "summary": "Add a calendar feed to read into the inbox.",
@@ -6953,6 +7031,39 @@
       ],
       "title": "Blocks Time"
      },
+     "free": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Free"
+     },
+     "long_term": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Long Term"
+     },
+     "expires": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires"
+     },
      "buffer_before_min": {
       "anyOf": [
        {
@@ -7830,6 +7941,17 @@
        }
       ],
       "title": "Trusted"
+     },
+     "editable": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Editable"
      }
     },
     "additionalProperties": false,
@@ -9117,6 +9239,39 @@
       ],
       "title": "Blocks Time"
      },
+     "free": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Free"
+     },
+     "long_term": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Long Term"
+     },
+     "expires": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires"
+     },
      "buffer_before_min": {
       "anyOf": [
        {
@@ -9288,6 +9443,16 @@
        }
       ],
       "title": "Error"
+     },
+     "writable": {
+      "type": "boolean",
+      "title": "Writable",
+      "default": false
+     },
+     "editable": {
+      "type": "boolean",
+      "title": "Editable",
+      "default": false
      }
     },
     "additionalProperties": false,
@@ -9341,6 +9506,94 @@
     ],
     "title": "Happening",
     "description": "One thing in `diagnose`'s timeline."
+   },
+   "ImportPersonalInput": {
+    "properties": {
+     "todos_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Todos Path"
+     },
+     "categories_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Categories Path"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "ImportPersonalInput"
+   },
+   "ImportPersonalResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "ImportPersonalResult"
    },
    "InboxOut": {
     "properties": {
@@ -9635,6 +9888,97 @@
       "type": "string",
       "title": "Notes",
       "default": ""
+     },
+     "long_term": {
+      "type": "boolean",
+      "title": "Long Term",
+      "default": false
+     },
+     "expires": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires"
+     },
+     "pointless_late": {
+      "type": "boolean",
+      "title": "Pointless Late",
+      "default": false
+     },
+     "cushion": {
+      "type": "number",
+      "title": "Cushion",
+      "default": 1.0
+     },
+     "calendar": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Calendar"
+     },
+     "calendar_color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Calendar Color"
+     },
+     "saves_to_calendar": {
+      "type": "boolean",
+      "title": "Saves To Calendar",
+      "default": false
+     },
+     "category": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Category"
+     },
+     "category_color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Category Color"
+     },
+     "left_out": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Left Out"
+     },
+     "filtered": {
+      "type": "boolean",
+      "title": "Filtered",
+      "default": false
      },
      "certainty": {
       "type": "string",
@@ -13580,6 +13924,39 @@
       ],
       "title": "Blocks Time"
      },
+     "free": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Free"
+     },
+     "long_term": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Long Term"
+     },
+     "expires": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires"
+     },
      "buffer_before_min": {
       "anyOf": [
        {
@@ -14172,6 +14549,39 @@
        }
       ],
       "title": "Blocks Time"
+     },
+     "free": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Free"
+     },
+     "long_term": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Long Term"
+     },
+     "expires": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires"
      },
      "buffer_before_min": {
       "anyOf": [

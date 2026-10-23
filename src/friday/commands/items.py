@@ -18,6 +18,7 @@ from friday.api.commands import (
     ItemResult,
 )
 from friday.commands.estimates import learned_minutes
+from friday.commands.eventwrites import queue_event_write
 from friday.commands.fields import (
     check_parent,
     given_fields,
@@ -32,6 +33,7 @@ from friday.commands.registry import Ctx, command
 from friday.commands.series import create_series, edit_series_from
 from friday.commands.timer import stop_timer
 from friday.core.db import one, rows
+from friday.core.guess import course_of, guess_preset
 from friday.core.items import FieldError, Item, amount_units, validate, would_create_cycle
 from friday.core.quickadd import parse
 from friday.core.rows import item_to_row
@@ -55,6 +57,7 @@ def add(ctx: Ctx, inp: AddInput) -> AddOutput:
     """Create an item from fields or from a quick-add line."""
     given, warnings, repeat = from_text(ctx, inp.text) if inp.text else ({}, [], {})
     given |= given_fields(inp)
+    given = with_guesses(ctx, given)
     after, before = repeat.pop("after", []) + inp.after, repeat.pop("before", []) + inp.before
     if inp.every:
         repeat["every"] = inp.every
@@ -71,11 +74,31 @@ def add(ctx: Ctx, inp: AddInput) -> AddOutput:
         item.firmness = "hard"  # a due you give is a deadline, even on a kind that usually has none (a form to send)
     check_parent(ctx, None, item.parent_id)
     item_id = insert_item(ctx, item)
+    queue_event_write(ctx, require_item(ctx, item_id), "save")
     for other in after:
         add_dependency(ctx, item_id, resolve_ref(ctx, other, warnings), 1.0, 0)
     for other in before:
         add_dependency(ctx, resolve_ref(ctx, other, warnings), item_id, 1.0, 0)
     return AddOutput(item=item_out(ctx, require_item(ctx, item_id)), warnings=warnings)
+
+
+def with_guesses(ctx: Ctx, given: dict[str, Any]) -> dict[str, Any]:
+    """A kind and a course tag read from the title when you gave neither (COMBINED.md 55); events are left alone."""
+    title = given.get("title") or ""
+    if not title or given.get("when") == "fixed" or given.get("start"):
+        return given
+    out = dict(given)
+    if not out.get("preset"):
+        guessed = guess_preset(title, ctx.settings["presets"])
+        if guessed:
+            out["preset"] = guessed
+            if ctx.settings["presets"][guessed].firmness == "hard" and not out.get("due") and not out.get("firmness"):
+                out["firmness"] = "none"  # "PS 3" with no due date yet is still a problem set, just not a deadline
+    if not out.get("area"):
+        course = course_of(title)
+        if course:
+            out["area"] = course
+    return out
 
 
 def weekly_target(ctx: Ctx, given: dict[str, Any], repeat: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -194,6 +217,7 @@ def edit(ctx: Ctx, inp: EditInput) -> ItemResult:
     if changed.parent_id != item.parent_id:
         check_parent(ctx, item.id, changed.parent_id)
     update_item(ctx, item, changed)
+    queue_event_write(ctx, changed, "save")
     return ItemResult(item=item_out(ctx, changed, minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0)))
 
 
@@ -213,7 +237,9 @@ def set_status(ctx: Ctx, item_id: int, status: str, completed: str | None = None
 @command("drop", affects_plan=True)
 def drop(ctx: Ctx, inp: ItemRef) -> ItemResult:
     """Drop an item."""
-    return ItemResult(item=item_out(ctx, set_status(ctx, inp.id, "dropped")))
+    dropped = set_status(ctx, inp.id, "dropped")
+    queue_event_write(ctx, dropped, "delete")
+    return ItemResult(item=item_out(ctx, dropped))
 
 
 @command("reopen", affects_plan=True)

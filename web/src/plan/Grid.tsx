@@ -53,7 +53,9 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const timed = plan.fixed.filter((f): f is Item & { start: string; end: string } => !!f.start && !!f.end)
   // A birthday or holiday spans whole days: it goes with the day's dues at the top, not as a column-high block.
   const allDay = timed.filter((f) => f.start.endsWith("T00:00") && f.end.endsWith("T00:00") && f.end > f.start)
-  const fixed = timed.filter((f) => !allDay.includes(f))
+  // Calendars hidden by their title-row buttons, and what the filter hides when it's on (COMBINED.md 19).
+  const shown = (f: Item) => !(f.calendar && look.hidden.includes(f.calendar)) && !(look.hideFiltered && f.filtered)
+  const fixed = timed.filter((f) => !allDay.includes(f) && shown(f))
   // The same time of day in every column: strong on today, faint on the others.
   const nowAt = now - toMin(calendar.today) - axis.startMin
   const cols = `52px repeat(${dates.length}, minmax(0,1fr))`
@@ -210,6 +212,12 @@ function DayHead(props: {
         </span>
         <span style={{ color: isToday ? "var(--color-accent-300)" : "var(--color-neutral-400)" }}>{weekday(date)}</span>
         {day?.pace && <span style={{ fontSize: 11, color: "var(--color-accent-300)" }}>{day.pace}</span>}
+        {day && hours > 0 && (
+          // Planned against the day's limit (COMBINED.md 67).
+          <span className="tnum" title={`${hours.toFixed(1)} h planned of ${day.cap_hours} h`} style={{ marginLeft: "auto", fontSize: 10.5, color: over > 0.05 ? "var(--fr-warn)" : "var(--color-neutral-500)" }}>
+            {hours.toFixed(hours < 10 ? 1 : 0)}/{day.cap_hours}h
+          </span>
+        )}
       </div>
       <div style={{ display: "flex", flexWrap: open ? "wrap" : "nowrap", gap: 4, minHeight: 18, overflow: "hidden" }}>
         {over > 0.05 && (

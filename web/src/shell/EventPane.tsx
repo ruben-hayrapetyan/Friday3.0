@@ -23,15 +23,27 @@ const REPEATS = [
 
 /** A new event's draft: an hour from the quarter hour it was asked for. */
 export function draftAt(start: string, end?: string): EventDraft {
-  return { id: null, title: "", start, end: end ?? fromMin(toMin(start) + 60), allDay: false, color: null, notes: "", every: null, seriesId: null }
+  return { id: null, title: "", start, end: end ?? fromMin(toMin(start) + 60), allDay: false, color: null, notes: "", every: null, seriesId: null, calendar: null, savesToCalendar: false }
 }
 
 /** An event to edit, as the drawer holds it. */
-export function draftOf(item: Pick<Item, "id" | "title" | "start" | "end" | "series_id" | "color" | "notes">): EventDraft {
+export function draftOf(item: Pick<Item, "id" | "title" | "start" | "end" | "series_id" | "color" | "notes" | "calendar" | "saves_to_calendar">): EventDraft {
   const start = item.start ?? ""
   const end = item.end ?? start
   const allDay = start.endsWith("T00:00") && end.endsWith("T00:00") && end > start
-  return { id: item.id, title: item.title, start, end, allDay, color: item.color ?? null, notes: item.notes ?? "", every: null, seriesId: item.series_id ?? null }
+  return {
+    id: item.id,
+    title: item.title,
+    start,
+    end,
+    allDay,
+    color: item.color ?? null,
+    notes: item.notes ?? "",
+    every: null,
+    seriesId: item.series_id ?? null,
+    calendar: item.calendar ?? null,
+    savesToCalendar: item.saves_to_calendar ?? false,
+  }
 }
 
 export function EventPane({ draft }: { draft: EventDraft }) {
@@ -106,6 +118,12 @@ export function EventPane({ draft }: { draft: EventDraft }) {
           <Icon name="x" />
         </button>
       </div>
+      {draft.calendar && (
+        <span className="fr-kicker" style={{ display: "flex", gap: 6, alignItems: "center", marginTop: -6 }}>
+          <Icon name={draft.savesToCalendar ? "cloud-check" : "lock-simple"} size={13} />
+          {draft.savesToCalendar ? `From ${draft.calendar}; changes are saved there too.` : `From ${draft.calendar}, which Friday doesn't change: edits stay here until the calendar changes it.`}
+        </span>
+      )}
       <input
         ref={title}
         className="input"

@@ -159,8 +159,9 @@ def test_a_feasible_week_is_on_time_in_real_sittings_with_no_marathons(planned: 
     v = planned[key].verdict()
     assert v.late == {}
     # A 45-minute piece of a pset in a full week. Since meals are kept (M16: Priya's 14 meals went from 0 to 14) her
-    # week puts 4 short prelab and slides pieces in the gaps between morning classes.
-    allowed = 4 if planned[key].student.load == "heavy" else 0
+    # week puts 4 short prelab and slides pieces in the gaps between morning classes; with meals placed first in the
+    # start plan (combined decision C6) and exam prep never after its exam, one more: a lunch kept each day is worth it.
+    allowed = 5 if planned[key].student.load == "heavy" else 0
     assert len(v.scraps) <= allowed, [(s.title, s.start, s.minutes) for s in v.scraps]
     assert v.marathons == [], [(s.title, s.start, s.minutes) for s in v.marathons]
     assert v.unplanned == []

@@ -16,6 +16,8 @@ export interface Look {
   dockStyle: "Bar" | "Minimal"
   hours: "Waking" | "All day" // the day and week grid: wake to bedtime with sleep bands, or all 24 hours
   deadlines: "Chips" | "Lanes" // a day's dues as chips in its header, or as a to-do lane down its column
+  hidden: string[] // calendars hidden by their title-row buttons (COMBINED.md 19)
+  hideFiltered: boolean // the categories' filter hides what it matches (office hours)
 }
 
 export const DEFAULT_LOOK: Look = {
@@ -29,6 +31,8 @@ export const DEFAULT_LOOK: Look = {
   dockStyle: "Bar",
   hours: "Waking",
   deadlines: "Chips",
+  hidden: [],
+  hideFiltered: false,
 }
 
 const KEY = "friday-look-v8"
@@ -120,6 +124,8 @@ export function applyLook(look: Look): void {
   set("--fr-mark", light ? MARK.light : MARK.dark)
   set("--fr-warn", light ? "#8a6514" : MARK.dark)
   set("--fr-knob", light ? surface : bg)
+  set("--fr-fresh", light ? "#1d3557" : "#8aaedc") // personal's iron-gall navy: short term
+  set("--fr-aged", light ? "#7c4a32" : "#cc9270") // and its sepia: long term
   set("--fr-hairline", `color-mix(in srgb, ${text} 7%, transparent)`)
   set("--fr-rule", `color-mix(in srgb, ${text} 12%, transparent)`)
   const root = document.documentElement.style

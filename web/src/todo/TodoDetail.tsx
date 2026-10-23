@@ -112,6 +112,22 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
         {pick === "due" && panel(<DuePicker value={item.due} today={today} onPick={(v) => edit({ id, due: v })} stacked />)}
         <span className="fr-kicker">Deadline</span>
         <Seg options={FIRMNESS} value={item.firmness} onPick={(v) => edit({ id, firmness: v as "hard" | "soft" | "none" })} />
+        <span className="fr-kicker" title="Never planned after its due: pointless once late (COMBINED.md 50)">After it's due</span>
+        <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <Seg
+            options={[
+              { value: "pointless", label: "⏳ Pointless" },
+              { value: "late", label: "Still worth doing" },
+            ]}
+            value={item.pointless_late ? "pointless" : "late"}
+            onPick={(v) => edit({ id, expires: v === "pointless" })}
+            size="small"
+          />
+          <span className="fr-kicker">
+            {item.expires == null ? (item.pointless_late ? "As for all exam prep. " : "") : "Your choice for this one. "}
+            {item.pointless_late ? "Never planned after it's due." : "Planned late if it can't be on time."}
+          </span>
+        </span>
         <span className="fr-kicker">Estimate</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button className="btn btn-icon btn-secondary" disabled={!length} onClick={() => length && edit({ id, duration_min: Math.max(15, length - 15) })} aria-label="Less time" style={{ width: 26, height: 26 }}>
@@ -129,6 +145,12 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
           </button>
         </div>
         {pick === "length" && panel(<LengthPicker value={length} onPick={(v) => v && edit({ id, duration_min: v })} />)}
+        {(item.cushion ?? 1) > 1 && length && (
+          <span className="fr-kicker" style={{ gridColumn: "2" }} title="Settings → Advanced → estimate.cushion turns this off">
+            Friday plans {dur(Math.ceil((length * (item.cushion ?? 1)) / 15) * 15)}: you run about {(item.cushion ?? 1).toFixed(1)}× on{" "}
+            {item.area ?? item.preset ?? "work like this"}.
+          </span>
+        )}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>

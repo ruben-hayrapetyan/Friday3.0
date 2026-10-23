@@ -9,6 +9,7 @@ import { useStatus } from "@/hooks/queries"
 import { AboutYou } from "./AboutYou"
 import { AdvancedSection } from "./Advanced"
 import { Appearance } from "./Appearance"
+import { CalendarsSection } from "./CalendarsSection"
 import { Integrations } from "./Integrations"
 import { Notifications } from "./Notifications"
 import { Repeating } from "./Repeating"
@@ -18,6 +19,7 @@ import { TagsKinds } from "./TagsKinds"
 
 const SECTIONS = [
   { id: "appearance", label: "Appearance", icon: "paint-brush", page: Appearance },
+  { id: "calendars", label: "Calendars", icon: "calendar", page: CalendarsSection },
   { id: "tags", label: "Tags/Kinds", icon: "tag", page: TagsKinds },
   { id: "schedule", label: "Schedule", icon: "clock", page: Schedule },
   { id: "repeating", label: "Repeating", icon: "repeat", page: Repeating },

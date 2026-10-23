@@ -4,13 +4,16 @@ import math
 from typing import Any
 
 from friday.api.types import ItemFields, ItemOut
+from friday.commands.eventwrites import writes_to
 from friday.commands.registry import Ctx
+from friday.core.calendars import category_of, is_filtered, left_out
 from friday.core.items import FieldError, Item, apply_preset, validate, with_defaults
 from friday.core.rows import item_to_row
 from friday.core.textnorm import plain_words
 from friday.core.time import UNIT_MIN
+from friday.planner.cushion import cushion
 from friday.planner.progress import remaining_minutes
-from friday.planner.store import area_names, load_item
+from friday.planner.store import EventLink, area_names, event_links, load_item
 
 UNIT_FIELDS = {
     "duration_min": "duration_units",
@@ -90,6 +93,56 @@ def insert_item(ctx: Ctx, item: Item) -> int:
     return ctx.db.insert("items", row)
 
 
+def pointless_late(item: Item, settings: dict[str, Any]) -> bool:
+    """Whether work is never planned after its due: your say on the item, else the kinds and titles in settings."""
+    if item.when == "fixed" or item.due_utc is None:
+        return False
+    if item.expires is not None:
+        return item.expires
+    return bool(settings["pointless_late"].covers(item.preset, item.title))
+
+
+def item_cushion(ctx: Ctx, item: Item, area: str | None) -> float:
+    """The learned cushion on your estimate (COMBINED.md 41), when you gave one."""
+    if item.when == "fixed" or item.duration_source != "you":
+        return 1.0
+    memo = ctx.memo.setdefault("cushions", {})
+    return round(cushion(ctx.conn, area, item.preset, ctx.now_utc, ctx.settings, ctx.user_id, memo), 2)
+
+
+def links(ctx: Ctx) -> dict[int, EventLink]:
+    if "event_links" not in ctx.memo:
+        ctx.memo["event_links"] = event_links(ctx.conn, ctx.user_id)
+    found: dict[int, EventLink] = ctx.memo["event_links"]
+    return found
+
+
+def saves(ctx: Ctx, source_id: int) -> bool:
+    key = f"writes_to:{source_id}"
+    if key not in ctx.memo:
+        ctx.memo[key] = writes_to(ctx.conn, ctx.user_id, source_id)
+    return bool(ctx.memo[key])
+
+
+def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
+    """An event's calendar, category and whether it counts as busy (COMBINED.md 17, 28)."""
+    if item.when != "fixed":
+        return {}
+    link = links(ctx).get(item.id or 0)
+    calendar = link.calendar if link else None
+    category = category_of(item.title, ctx.settings["categories"])
+    reason = left_out(item.title, calendar, item.free, ctx.settings["categories"], ctx.settings["busy"])
+    return {
+        "calendar": calendar,
+        "calendar_color": ctx.settings["calendar_look"].colors.get(calendar) if calendar else None,
+        "saves_to_calendar": bool(link) and saves(ctx, link.source_id),
+        "category": category.name if category else None,
+        "category_color": category.color if category else None,
+        "left_out": reason,
+        "filtered": is_filtered(item.title, ctx.settings["categories"]),
+    }
+
+
 def item_out(ctx: Ctx, item: Item, done_minutes: int = 0) -> ItemOut:
     area = area_names(ctx.conn, ctx.user_id).get(item.area_id) if item.area_id else None
     return ItemOut(
@@ -112,6 +165,10 @@ def item_out(ctx: Ctx, item: Item, done_minutes: int = 0) -> ItemOut:
         shape=item.shape,
         color=item.color,
         notes=item.notes,
+        long_term=item.long_term,
+        expires=item.expires,
+        pointless_late=pointless_late(item, ctx.settings),
+        cushion=item_cushion(ctx, item, area),
         certainty=item.certainty,
         event_kind=item.event_kind,
         status=item.status,
@@ -119,6 +176,7 @@ def item_out(ctx: Ctx, item: Item, done_minutes: int = 0) -> ItemOut:
         done_min=done_minutes,
         remaining_min=remaining_minutes(item, done_minutes) if item.when != "fixed" else None,
         estimate=item.estimate_detail,
+        **event_facts(ctx, item),
     )
 
 
