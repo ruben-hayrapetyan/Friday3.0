@@ -1,0 +1,378 @@
+"""Answers of the queries (DESIGN §9.3): plan, now, status, the calendar and the rest. Inputs are in `commands.py`."""
+
+from typing import Any, Literal
+
+from friday.api.commands import TimerOut
+from friday.api.types import BlockOut, ItemOut, Model
+
+
+class PlanOut(Model):
+    plan_id: int | None
+    blocks: list[BlockOut]
+    fixed: list[ItemOut]
+    day_hours: dict[str, float]
+    provisional: bool = False
+
+
+class ItemDetail(Model):
+    item: ItemOut
+    blocks: list[BlockOut]
+    progress: list[dict[str, Any]]
+    depends_on: list[dict[str, Any]]
+
+
+class ParseOutput(Model):
+    fields: dict[str, Any]
+    spans: list[dict[str, Any]]
+    warnings: list[str]
+
+
+class Swap(Model):
+    item_id: int
+    title: str
+    minutes: int
+    price: int
+    slack_hours: float | None
+
+
+class Alert(Model):
+    item_id: int
+    title: str
+    kind: str
+    latest_start: str
+
+
+class NowOut(Model):
+    current: BlockOut | None
+    current_source: str
+    timer_minutes: int = 0
+    next: BlockOut | None
+    swaps: list[Swap]
+    alerts: list[Alert]
+    fits: list[Swap]
+    gap_minutes: int
+
+
+class ReviewOut(Model):
+    date: str
+    reviewed: bool
+    blocks: list[BlockOut]
+    sessions: list[dict[str, Any]]
+    finished: list[ItemOut]  # remaining reached 0: confirm with `done`
+    settled: dict[str, int] = {}  # block key → minutes already answered (by `settle` or an earlier review)
+
+
+class PacesOut(Model):
+    default: str
+    paces: dict[str, dict[str, float]]
+    now_label: str
+    now_dials: dict[str, float]
+    period_end: str | None
+
+
+class LockConflict(Model):
+    pin_id: int
+    item_id: int
+    title: str
+    start: str
+    extra_late_hours: float
+
+
+class StatusOut(Model):
+    demo: bool = False  # `fridayd demo`: made-up sample data, said on every page
+    generation: int
+    plan_id: int | None
+    plan_generation: int | None
+    timer: TimerOut | None
+    settings_version: int
+    ready: bool  # timezone and sleep are set
+    notices: list[str]
+    problems: list[str] = []  # the server's banners: a failing worker, plugins that didn't load
+    conflicts: list[LockConflict] = []  # a newer plan waits on these locks (`resolve`)
+    config_keys: list[str] = []  # settings friday.toml sets: read-only in the app
+    suggestions: int = 0  # waiting in the inbox (repeating calendar events wait in Settings → Repeating)
+    late: dict[str, float] = {}  # hard work the plan finishes after its due: hours late, by title
+
+
+class KindAccuracy(Model):
+    kind: str
+    n: int
+    median: float  # actual time over the estimate: 1.0 is on estimate
+    low: float  # the quartiles, for the spread
+    high: float
+
+
+class InsightsOut(Model):
+    weeks: int
+    done: int
+    hours: float
+    estimate_ratio: float | None
+    by_kind: list[KindAccuracy]
+    heat: list[list[int]]  # minutes worked by weekday (Monday first) and hour, 08:00 to 23:00
+    best_hours: str | None  # when you get the most done, in words
+
+
+class StatsOut(Model):
+    done_this_week: int
+    hours_this_week: float
+    late_items: int
+    estimate_ratio: float | None
+
+
+class CalendarDay(Model):
+    date: str
+    cap_hours: float
+    pace: str | None  # the pace's name on days that don't use the default
+    bedtime: str  # local; sleep's margin runs from here to `core`
+    core: str  # the core night, from here to `wake`
+    wake: str  # the next morning
+
+
+class DueMarker(Model):
+    item_id: int
+    title: str
+    due: str
+
+
+class CalendarOut(Model):
+    now: str  # the server's local time, so the client's clock can follow it
+    today: str
+    axis_start_min: int  # the earliest wake, minutes after local midnight
+    axis_end_min: int  # the latest start of core sleep (bedtime + margin); past 1440 means after midnight
+    days: list[CalendarDay]
+    dues: list[DueMarker]
+
+
+class Happening(Model):
+    """One thing in `diagnose`'s timeline."""
+
+    at: str
+    kind: str  # command, plan, job, report
+    summary: str
+
+
+class LogEntry(Model):
+    id: int
+    at: str
+    actor: str
+    command: str
+    input: dict[str, Any]
+    undone_by: int | None
+
+
+class ProjectOut(Model):
+    item: ItemOut
+    children: list[ItemOut]  # every descendant; `parent_id` gives the tree
+    done_min: int
+    remaining_min: int
+    planned_finish: str | None  # the last planned work: a block's end, or a date when the allocator plans it
+    status: Literal["done", "on_track", "late", "unplanned"]
+
+
+class WeekLoad(Model):
+    start: str  # the week's first day
+    hours: float  # planned work: the plan's blocks inside the horizon, the allocator's forecast past it
+    capacity: float  # hours the allocator may fill
+    forecast: bool  # some of the week is past the horizon
+    due: list[DueMarker]  # hard deadlines that week
+
+
+class Rock(Model):
+    item_id: int
+    title: str
+    planned_min: int  # planned today
+    due: str | None
+    hard: bool
+
+
+class BriefOut(Model):
+    """The morning brief (DESIGN §20.4), as data and as plain text."""
+
+    rocks: list[Rock]  # today's big things, 3–5
+    fixed: list[ItemOut]  # today's fixed items
+    alerts: list[Alert]
+    pace: str | None  # "Easy pace until Fri", "Back to Normal today"; None on an ordinary day
+    summary: str
+    text: str
+
+
+class AreaWeek(Model):
+    area: str
+    planned_h: float  # what each morning's plan held
+    actual_h: float  # what was recorded
+
+
+class DeadlineWeek(Model):
+    item_id: int
+    title: str
+    due: str
+    outcome: Literal["on_time", "late", "open"]
+
+
+class WeekItem(Model):
+    item_id: int
+    title: str
+    area: str | None
+    when: str  # local time: when it was finished, is due, or happens
+    note: str = ""
+
+
+class WeekOut(Model):
+    """The weekly review (DESIGN §18.9): planned against actual by area, deadlines, moves and notifications."""
+
+    start: str
+    end: str  # the last day
+    areas: list[AreaWeek]
+    fixed_h: dict[str, float]  # fixed time by event kind
+    deadlines: list[DeadlineWeek]
+    moves: int  # pins, unpins and shoves you made
+    notifications: dict[str, int]  # sent, acted, dismissed
+    learned: list[str] = []  # what Friday learned (M9)
+    finished: list[WeekItem] = []  # done this week
+    carried: list[WeekItem] = []  # planned this week, still open
+    coming: list[WeekItem] = []  # due or fixed in the next seven days
+    note: dict[str, str] = {}  # how the week felt and anything to remember (`week_note`)
+
+
+class Question(Model):
+    id: int
+    day: str
+    a: list[dict[str, Any]]  # that day's blocks in version A: item_id, title, start, end
+    b: list[dict[str, Any]]
+    fixed: list[dict[str, Any]] = []  # the day's classes and events (title, start, end), the same in both
+
+
+class QuestionsOut(Model):
+    """What the evening review asks (DESIGN §18.9): at most two comparisons a day, a rule proposal or a wall
+    question, and a check-in when state inference is on."""
+
+    comparisons: list[Question]
+    proposal: dict[str, str] | None  # {name, sentence}
+    wall: dict[str, str] | None  # {rule, sentence}
+    checkin: bool
+
+
+class LearningOut(Model):
+    mode: str  # learn.weights
+    version: int  # the profile in use; 0 before anything was learned
+    multipliers: dict[str, float]
+    suggested: dict[str, Any] | None  # {version, changes: [{rule, from, to}], evidence}
+    comparisons: int
+    drags: int
+    answer_noise: float
+    state: dict[str, Any] | None  # {on, gain, mood} while state inference is on
+    proposals: dict[str, Any]  # pending, accepted, refused
+    digest: list[str]
+    durations: dict[str, Any] | None = None  # learned lengths: in use, n, error against the old estimator
+    energy: dict[str, Any] | None = None  # learned hours: in use, observations, the hours where work slips most
+
+
+class SuggestionOut(Model):
+    id: int
+    source: str
+    origin: str  # what it came from: an email subject, a document's name, an event's summary
+    command: str  # add, or edit for a change to something accepted earlier
+    input: dict[str, Any]
+    quotes: dict[str, str]
+    confidence: float
+    duplicate_of: int | None
+    batch: str | None
+    created: str
+    repeat: str | None = None  # the repeat in words, when there is one
+    source_kind: str = ""  # ics, gcal, gmail or upload
+    source_text: str | None = None  # what was read, when it is text (not a PDF or image), for the quotes to sit in
+
+
+class ModelCheck(Model):
+    model: str
+    job: str  # what Friday uses it for
+    ok: bool
+    said: str  # "Answered", or the error
+
+
+class RepeatFound(Model):
+    batch: str
+    title: str
+    kind: str  # what Friday read it as
+    calendar: str
+    pattern: str  # "Every Mon, Wed and Fri, 12:20–13:10"
+    count: int  # how many times within the planning horizon
+    first: str | None  # the next one's start or due, local
+    tag: str | None = None  # the course its title names, as a tag to start with ("CS 2110")
+
+
+class MailOut(Model):
+    id: int
+    subject: str
+    sender: str
+    received: str
+    status: Literal["read", "skipped", "failed", "waiting"]
+    why: str | None  # why it was skipped or failed
+    found: int  # suggestions it made
+
+
+class GoogleCalendarOut(Model):
+    id: str
+    name: str
+    primary: bool
+    on: bool
+    kind: str  # a kind's name, or "auto"
+    trusted: bool
+    last_sync: str | None
+    error: str | None
+
+
+class SourceOut(Model):
+    id: int
+    kind: str
+    name: str
+    trusted: bool
+    enabled: bool
+    last_sync: str | None
+    last_error: str | None
+
+
+class InboxOut(Model):
+    suggestions: list[SuggestionOut]
+    sources: list[SourceOut]
+    llm: dict[str, Any]  # calls and tokens used today against the budget, and whether a key is set
+    repeats: int = 0  # repeating calendar events waiting to be imported in Settings → Repeating
+
+
+class TokenOut(Model):
+    name: str
+    scope: str
+    created: str
+    last_used: str | None
+
+
+class RuleReadOut(Model):
+    reading: dict[str, Any] | None  # what the grammar read, with your overrides; None when it can't
+    strength: str
+    sentence: str
+    effect: str
+
+
+class RuleOut(Model):
+    name: str
+    type: str
+    sentence: str
+    source: Literal["you", "learned", "default"]
+    strength: str  # Prefer, Strongly or Always
+    enabled: bool
+    kept: str  # how often the current plan keeps it
+    effect: str
+    editable: bool  # strength can change (deadline rules always hold)
+    background: bool = False  # the planner's own workings, folded away below the rules people tune
+
+
+class SeriesRow(Model):
+    id: int
+    title: str
+    area: str | None
+    fixed: bool  # a class or commitment at a set time, rather than flexible work
+    pattern: str  # the repeat in words
+    next: str | None  # the next open occurrence's start or due, local
+    source: str  # "you", or the feed or calendar it came from
+    active: bool
+    external: bool = False  # it repeats in a calendar, which makes its times: changed there, not here

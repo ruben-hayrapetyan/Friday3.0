@@ -1,0 +1,98 @@
+"""What the web app needs: the calendar (sleep, axis, paces, dues), areas, waiting items, item history, day shoves."""
+
+from pathlib import Path
+
+from tests.commands.helpers import new_app
+
+
+def test_days_carry_sleep_caps_and_a_pace_off_the_default(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do("pace", name="Easy", for_days=2)
+    out = app.do("calendar", days=7)
+    assert out["today"] == "2026-10-19" and out["now"] == "2026-10-19T09:00"
+    friday, saturday = out["days"][4], out["days"][5]
+    night = [friday["bedtime"], friday["core"], friday["wake"]]
+    assert night == ["2026-10-23T23:30", "2026-10-24T00:30", "2026-10-24T09:00"]
+    assert saturday["bedtime"] == "2026-10-25T00:30"  # after midnight
+    assert [d["pace"] for d in out["days"][:3]] == ["Easy", "Easy", None]
+    assert out["days"][0]["cap_hours"] == 10
+
+
+def test_the_axis_runs_from_the_earliest_wake_to_the_latest_core_sleep(tmp_path: Path) -> None:
+    out = new_app(tmp_path).do("calendar", days=7)
+    assert (out["axis_start_min"], out["axis_end_min"]) == (7 * 60 + 30, 25 * 60 + 30)
+
+
+def test_due_markers_fall_in_the_range(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do("add", text="essay due wed 17:00 ~2h")
+    app.do("add", text="thesis due dec 1 ~10h")
+    out = app.do("calendar", days=3)
+    assert [(d["title"], d["due"]) for d in out["dues"]] == [("essay", "2026-10-21T17:00")]
+
+
+def test_areas_list_their_colours(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do("area_add", name="CS", color="#3b82f6")
+    assert [(a["name"], a["color"]) for a in app.do("areas")] == [("CS", "#3b82f6")]
+
+
+def test_items_list_what_they_are_waiting_on(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    draft = app.do("add", text="draft ~1h")["item"]["id"]
+    edit = app.do("add", text="edit ~1h", after=[draft])["item"]["id"]
+    waiting = {i["id"]: i["waiting_on"] for i in app.do("items")}
+    assert waiting == {draft: [], edit: [draft]}
+    app.do("done", id=draft)
+    assert app.do("items")[0]["waiting_on"] == []
+
+
+def test_the_log_lists_one_items_commands(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    essay = app.do("add", text="essay ~1h")["item"]["id"]
+    app.do("add", text="laundry ~1h")
+    app.do("depend", item_id=essay + 1, depends_on_id=essay)
+    app.do("done", id=essay)
+    assert [e["command"] for e in app.do("log_list", item_id=essay)] == ["done", "depend", "add"]
+
+
+def test_a_time_range_can_name_its_day(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    created = app.do("shove", range="12:00-13:30 wed")["created"]
+    assert [(i["start_utc"], i["end_utc"]) for i in app.table("items") if i["id"] in created] == [
+        ("2026-10-21T16:00Z", "2026-10-21T17:30Z")
+    ]
+
+
+def test_only_blocks_on_a_pin_show_as_pinned(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    essay = app.do("add", text="essay ~2h split")["item"]["id"]
+    app.do("pin", id=essay, start="2026-10-20T10:00", end="2026-10-20T11:00", kind="preferred")
+    app.do("replan")
+    shown = {b["start"]: b["pinned"] for b in app.do("plan")["blocks"] if b["item_id"] == essay}
+    assert shown["2026-10-20T10:00"] == "preferred" and list(shown.values()).count(None) == len(shown) - 1
+
+
+def test_a_deleted_items_blocks_leave_the_calendar_before_the_replan(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    essay = app.do("add", text="essay ~2h due fri")["item"]["id"]
+    app.do("replan")
+    assert any(b["item_id"] == essay for b in app.do("plan")["blocks"])
+    app.do("drop", id=essay)  # no replan yet
+    assert not any(b["item_id"] == essay for b in app.do("plan")["blocks"])
+
+
+def test_touching_blocks_of_one_item_show_as_one(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    essay = app.do("add", text="essay ~2h due fri")["item"]["id"]
+    app.do("replan")
+    plan_id = app.do("plan")["plan_id"]
+    (block,) = [b for b in app.do("plan")["blocks"] if b["item_id"] == essay]
+    app.conn.execute("DELETE FROM blocks WHERE plan_id = ? AND item_id = ?", [plan_id, essay])
+    for start, end in (("14:00", "15:00"), ("15:00", "15:15"), ("15:15", "16:00")):  # as replans leave them
+        app.conn.execute(
+            "INSERT INTO blocks (plan_id, item_id, start_utc, end_utc, cost) VALUES (?, ?, ?, ?, '{}')",
+            [plan_id, essay, f"2026-10-19T{start}Z", f"2026-10-19T{end}Z"],
+        )
+    shown = [b for b in app.do("plan")["blocks"] if b["item_id"] == essay]
+    assert [(b["start"][11:], b["end"][11:]) for b in shown] == [("10:00", "12:00")] and block["title"] == "essay"

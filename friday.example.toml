@@ -1,0 +1,44 @@
+# Friday's config file (DESIGN §22.9). Copy to ~/.config/friday/friday.toml (or point FRIDAY_CONFIG at it).
+# Anything set here is applied within a minute of saving, logged as `config`, and read-only in the app.
+# Any settings key works (see `friday settings`); these are the outside-world ones. Secrets go in secrets.toml (see
+# secrets.example.toml):
+#   [anthropic]
+#   api_key = "sk-ant-..."
+#   [webhooks]
+#   secret = "..."                 # signs each webhook: X-Friday-Signature: sha256=<HMAC of the body>
+# (or ANTHROPIC_API_KEY in the environment). Google sign-in tokens are kept in the data folder.
+
+[llm]
+model = "claude-sonnet-5-5"        # claude-haiku-5-5 costs less for mail
+daily_calls = 50
+daily_tokens = 500_000
+
+[google]
+client_file = "~/.config/friday/google_client.json"   # your Desktop OAuth client, downloaded from Google Cloud
+
+[gcal]
+read = ["primary"]                 # calendars to read in as fixed items
+trusted = []                       # their events skip the inbox
+include_all_day = false
+publish = false                    # write the plan to a "Friday" calendar
+publish_debounce_s = 60
+
+[gmail]
+enabled = false
+query = "newer_than:14d -category:promotions -category:social -category:forums"
+max_per_sync = 50
+sender_domains = []                # e.g. ["myuniversity.edu"]: mail from these is read by the AI
+keywords = ["due", "deadline", "exam", "quiz", "assignment", "submit", "meeting", "invite", "reschedule", "cancelled"]
+
+[ingest]
+poll_min = 30
+
+# [[sources]]                      # a calendar feed, e.g. your course site's
+# name = "Canvas"
+# url = "https://canvas.example.edu/feeds/calendars/user_xxx.ics"
+# trusted = false
+# due_pattern = "^(due|deadline)[: ]"
+
+# [[webhooks]]                     # POSTed as JSON: {"event": ..., "data": ...}
+# url = "https://example.com/friday"
+# events = ["block.started", "slack.low", "plan.changed", "item.done"]

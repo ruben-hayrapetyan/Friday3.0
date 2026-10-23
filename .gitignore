@@ -1,0 +1,14 @@
+reference/
+.venv/
+__pycache__/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.DS_Store
+web/node_modules/
+web/dist/
+# Your own config and secrets, if copied into the repo by mistake
+friday.toml
+secrets.toml
+# Agent worktrees
+.claude/

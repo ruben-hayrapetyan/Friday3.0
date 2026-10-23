@@ -1,0 +1,268 @@
+"""Answers computed from the current state and plan: now, fits, why-not, triage, weight previews (DESIGN §14, §16)."""
+
+import dataclasses
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import date, timedelta
+from typing import Any
+
+from friday.api.types import BlockOut, ChangeOut
+from friday.core.items import Item
+from friday.core.time import format_local, format_utc, parse_utc, to_local
+from friday.engine.compile import compile_problem
+from friday.engine.executor import ExecutorInput, Now, NowSettings, now, safe_items
+from friday.engine.explain import WhyNot, why_not
+from friday.engine.problem import Plan, Problem
+from friday.planner.assemble import AssembledPlan, assemble
+from friday.planner.build import BuildInput, build_problem, key_of
+from friday.planner.inputs import executor_input, now_settings
+from friday.planner.prepare import build_input, day_of
+from friday.planner.service import quick_late, with_pins_preferred
+from friday.planner.snapshot import Snapshot
+from friday.planner.solve import solve
+
+MAX_TRIAGE_ACTIONS = 8
+
+
+@dataclass
+class Current:
+    inp: BuildInput
+    problem: Problem
+    plan: Plan  # the saved plan's future blocks, as slots of this problem
+    executor: ExecutorInput
+
+
+def current(snapshot: Snapshot) -> Current:
+    inp = build_input(snapshot)
+    problem = build_problem(inp)
+    grid = problem.grid
+    plan: dict[str, list[int]] = {k: [] for k in problem.items}
+    for block in snapshot.plan_blocks:
+        key = key_of(block.item_id)
+        if key in plan:
+            plan[key].extend(grid.slots_in(block.start_utc, block.end_utc))
+    return Current(inp, problem, {k: tuple(sorted(set(v))) for k, v in plan.items()}, executor_input(inp, problem))
+
+
+def now_view(snapshot: Snapshot) -> tuple[Current, Now]:
+    state = current(snapshot)
+    timer_key = key_of(snapshot.timer[0]) if snapshot.timer else None
+    return state, now(state.problem, state.plan, state.executor, now_settings(snapshot.settings), timer_key)
+
+
+def fits_view(snapshot: Snapshot, minutes: int | None) -> tuple[Current, list]:
+    state, shown = now_view(snapshot)
+    gap = minutes if minutes is not None else shown.gap_minutes
+    settings: NowSettings = now_settings(snapshot.settings)
+    found = [w for w in safe_items(state.problem, state.plan, state.executor, gap) if w.chunk_minutes <= gap]
+    return state, found[: settings.swap_count * 3]
+
+
+def why_not_view(
+    snapshot: Snapshot, item_id: int, start_utc: int, new_start_utc: int | None
+) -> tuple[WhyNot, int | None]:
+    """The relocation answer, and where the block was tried, in UTC minutes."""
+    state = current(snapshot)
+    c = compile_problem(state.problem)
+    owner = c.owner_from_plan(state.plan)
+    grid = state.problem.grid
+    slot = grid.slot_at(start_utc)
+    if slot < 0 or owner[slot] < 0 or c.keys[owner[slot]] != key_of(item_id):
+        raise ValueError(f"T{item_id} has no block at that time in the current plan")
+    target = grid.slot_at(new_start_utc) if new_start_utc is not None else None
+    if target is not None and target < 0:
+        raise ValueError("that start is outside the planning horizon")
+    answer = why_not(c, owner, slot, target)
+    return answer, int(grid.start[answer.start]) if answer.start is not None else None
+
+
+def preview_weights(
+    snapshot: Snapshot, weights: dict[str, float], off: list[str], rules_instead: tuple | None = None
+) -> AssembledPlan:
+    """A warm run with changed weights, rules switched off or another rules list; nothing is saved."""
+    rules = [
+        r.model_copy(update={"weight": weights.get(r.name, r.weight)})
+        for r in (snapshot.settings["rules"] if rules_instead is None else rules_instead)
+        if r.name not in off
+    ]
+    changed = dataclasses.replace(snapshot, settings=snapshot.settings | {"rules": tuple(rules)})
+    return assemble(changed, solve(changed, warm=True))
+
+
+Step = tuple[str, dict[str, Any]]  # a registry command and its input; times as UTC minutes under `*_utc` keys
+
+
+@dataclass
+class TriageOption:
+    action: str
+    steps: list[Step]  # applying the option runs these commands in order
+    hours_saved: float
+    side_effects: list[str]
+
+
+def triage(snapshot: Snapshot) -> tuple[dict[int, float], list[TriageOption]]:
+    """Ways to make late hard work less late, each tested with a quick replan (§16)."""
+    inp = build_input(snapshot)
+    _, late = quick_late(inp, with_fallback=False)
+    if not late:
+        return {}, []
+    before = sum(late.values())
+    options = []
+    for action, steps, change, effects in candidate_actions(snapshot, inp, late)[:MAX_TRIAGE_ACTIONS]:
+        _, after = quick_late(change(inp), with_fallback=False)
+        saved = round(before - sum(after.values()), 2)
+        if saved > 0 and steps:
+            options.append(TriageOption(action, steps, saved, effects))
+    return late, sorted(options, key=lambda o: -o.hours_saved)
+
+
+Change = Callable[[BuildInput], BuildInput]
+
+
+def candidate_actions(snapshot: Snapshot, inp: BuildInput, late: dict[int, float]) -> list[tuple]:
+    by_id = {i.id: i for i in snapshot.items}
+    worst = max(late, key=lambda k: late[k])
+    item = by_id[worst]
+    due = parse_utc(item.due_utc) if item.due_utc else snapshot.now_utc
+    out: list[tuple] = []
+    for other in competitors(snapshot, item, due)[:5]:
+        out.append(
+            (
+                f"Drop {other.title}",
+                [("drop", {"id": other.id})],
+                without_item(other.id or 0),
+                [f"{other.title} won't be done"],
+            )
+        )
+    for days in (1, 3):
+        later = due + days * 1440
+        out.append(
+            (
+                f"Move {item.title}'s due {days} day{'s' * (days > 1)} later",
+                [("edit", {"id": worst, "due_utc": later})],
+                with_due(worst, format_utc(later)),
+                [],
+            )
+        )
+    nights = nights_before(snapshot, due)
+    out.append(
+        (
+            "Use the sleep margin on the nights before it",
+            [("day_override", {"date": d.isoformat(), "margin_min": 0}) for d in nights],
+            without_margin(nights),
+            ["Later nights"],
+        )
+    )
+    locks = [p for p in snapshot.pins if p.kind == "locked"]
+    if locks:
+        steps = [
+            ("pin", {"id": p.item_id, "start_utc": p.start_utc, "end_utc": p.end_utc, "kind": "preferred"})
+            for p in locks
+        ]
+        out.append(("Make locked blocks preferred", steps, with_pins_preferred(None), ["Pinned blocks may move"]))
+    elastic = [i for i in competitors(snapshot, item, due) if i.amount == "elastic" and i.min_units is not None]
+    if elastic:
+        steps = [("edit", {"id": i.id, "ideal_min": i.min_units * 15, "max_min": i.min_units * 15}) for i in elastic]
+        out.append(
+            (
+                "Shorten meals and routines to their minimum",
+                steps,
+                at_minimum({i.id for i in elastic}),
+                ["Shorter meals"],
+            )
+        )
+    return out
+
+
+def competitors(snapshot: Snapshot, late_item: Item, due: int) -> list[Item]:
+    """Lower-importance flexible work that could use the same time before the due."""
+    found = [
+        i
+        for i in snapshot.items
+        if i.status == "todo"
+        and i.when != "fixed"
+        and i.id != late_item.id
+        and i.importance < late_item.importance
+        and (i.release_utc is None or parse_utc(i.release_utc) < due)
+    ]
+    return sorted(found, key=lambda i: (i.importance, i.id or 0))
+
+
+def without_item(item_id: int) -> Change:
+    return lambda inp: dataclasses.replace(inp, items=[i for i in inp.items if i.id != item_id])
+
+
+def with_due(item_id: int, due: str) -> Change:
+    def change(inp: BuildInput) -> BuildInput:
+        return dataclasses.replace(
+            inp, items=[dataclasses.replace(i, due_utc=due) if i.id == item_id else i for i in inp.items]
+        )
+
+    return change
+
+
+def nights_before(snapshot: Snapshot, due: int) -> list[date]:
+    first, last = day_of(snapshot, snapshot.now_utc), day_of(snapshot, due)
+    return [first + timedelta(days=n) for n in range((last - first).days + 1)]
+
+
+def without_margin(days: list[date]) -> Change:
+    def change(inp: BuildInput) -> BuildInput:
+        overrides = dict(inp.day_overrides) | {d: {**inp.day_overrides.get(d, {}), "margin_min": 0} for d in days}
+        return dataclasses.replace(inp, day_overrides=overrides)
+
+    return change
+
+
+def at_minimum(item_ids: set[int | None]) -> Change:
+    def change(inp: BuildInput) -> BuildInput:
+        return dataclasses.replace(
+            inp,
+            items=[
+                dataclasses.replace(i, ideal_units=i.min_units, max_units=i.min_units) if i.id in item_ids else i
+                for i in inp.items
+            ],
+        )
+
+    return change
+
+
+def change_list(report: dict[str, Any], before: dict[str, int], tz: str, title: Callable[[int], str]) -> ChangeOut:
+    """A plan report's change list in local time, with titles."""
+    changes = report.get("changes", {})
+
+    def local(stored: str) -> str:
+        return format_local(to_local(parse_utc(stored), tz))
+
+    def blocks(entries: list[dict[str, Any]], side: str) -> list[BlockOut]:
+        return [
+            BlockOut(
+                key=f"T{e['item_id']}@{local(a)}",
+                item_id=e["item_id"],
+                title=title(e["item_id"]),
+                start=local(a),
+                end=local(b),
+            )
+            for e in entries
+            for a, b in e[side]
+        ]
+
+    moved = [
+        {
+            "item_id": e["item_id"],
+            "title": title(e["item_id"]),
+            "before": [[local(a), local(b)] for a, b in e["before"]],
+            "after": [[local(a), local(b)] for a, b in e["after"]],
+        }
+        for e in changes.get("moved", [])
+    ]
+    return ChangeOut(
+        added=blocks(changes.get("added", []), "after"),
+        moved=moved,
+        removed=blocks(changes.get("removed", []), "before"),
+        inputs=changes.get("inputs", []),
+        rule_totals_before=before,
+        rule_totals_after=report.get("rule_totals", {}),
+        notices=report.get("notices", []) + report.get("pace_notices", []),
+        late_hours={title(int(k)): v for k, v in report.get("late_hours", {}).items()},
+    )

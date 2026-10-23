@@ -1,0 +1,327 @@
+"""Items, pins and settings → a pruned engine Problem (DESIGN §11.2, §15.2).
+
+`build_problem` is pure: the planner's snapshot (M5) gathers its inputs from the database.
+"""
+
+import math
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
+from datetime import date, timedelta
+from typing import Any, Literal
+
+from friday.core.items import Item
+from friday.core.pace import DayScales
+from friday.core.settings import SleepDay, minutes_of
+from friday.core.textnorm import identity_text, norm
+from friday.core.time import UNIT_MIN, WEEKDAYS, Grid, GridSpec, make_grid, night_utc, parse_utc, wake_utc
+from friday.engine.problem import DepSpec, EngineItem, FixedOcc, Night, Problem
+from friday.engine.prune import demote_unusable_locks, prune
+from friday.engine.rules import RULE_TYPES, build_rules
+from friday.engine.sampler import SamplerConfig, default_chains
+from friday.engine.scheduler import SchedulerConfig, StepBudget
+
+
+@dataclass(frozen=True)
+class Pin:
+    item_id: int
+    start_utc: int
+    end_utc: int
+    kind: Literal["preferred", "locked"] = "locked"
+    created: int = 0  # creation order; the newer of two overlapping locks wins
+
+
+@dataclass(frozen=True)
+class Dependency:
+    item_id: int
+    depends_on_id: int
+    fraction: float = 1.0
+    lag_min: int = 0
+
+
+@dataclass
+class BuildInput:
+    items: Sequence[Item]
+    now_utc: int
+    settings: Mapping[str, Any]  # validated settings values by key, as core.settings.DEFAULTS
+    dependencies: Sequence[Dependency] = ()
+    pins: Sequence[Pin] = ()
+    areas: Mapping[int, str] = field(default_factory=dict)
+    progress_units: Mapping[int, int] = field(default_factory=dict)  # item id → units done in its window
+    progress_today_units: Mapping[int, int] = field(default_factory=dict)
+    current: Mapping[int, Sequence[tuple[int, int]]] = field(default_factory=dict)  # item id → (start, end) blocks
+    day_scales: Sequence[DayScales] | None = None
+    debt_hours: Mapping[date, float] = field(default_factory=dict)
+    multipliers: Mapping[str, float] = field(default_factory=dict)
+    minimize_changes_scale: float = 1.0
+    hold: tuple[int, int, int] | None = None  # the running timer's item, held from (start, end) without a pin
+    day_overrides: Mapping[date, Mapping[str, Any]] = field(default_factory=dict)  # bedtime, wake, margin, cap
+    end_utc: int | None = None  # truncates the grid (tests, brute force)
+
+
+def key_of(item_id: int) -> str:
+    return f"item:{item_id}"
+
+
+def id_of(key: str) -> int:
+    return int(key.removeprefix("item:"))
+
+
+def build_problem(inp: BuildInput) -> Problem:
+    settings = inp.settings
+    grid = make_grid(inp.now_utc, settings["time"].grid_spec(), inp.end_utc)
+    fixed, fixed_items = fixed_occurrences(inp, grid.now, grid.horizon_end)
+    items = flexible_items(inp, grid, fixed_items)
+    pins = pin_slots(inp, grid, items)
+    scales = list(inp.day_scales) if inp.day_scales is not None else [DayScales()] * grid.n_days
+    problem = Problem(
+        grid=grid,
+        items=items,
+        fixed=fixed,
+        nights=nights(inp, grid.spec, grid.slots[0].date, grid.spec.horizon_days),
+        day_caps=day_caps(inp, grid),
+        rules=[],
+        scales=scales,
+        energy_map=settings["energy_map"],
+        multipliers=dict(inp.multipliers),
+        scale=settings["engine"].scale,
+        minimize_changes_scale=inp.minimize_changes_scale,
+        text=settings["text"].rules(),
+    )
+    problem.day_caps = repair_locks(problem, pins, inp)
+    for key, item in items.items():
+        item.locked = frozenset(pins[key]["locked"])
+        item.preferred = frozenset(pins[key]["preferred"])
+        planned = frozenset(s for lo, hi in inp.current.get(id_of(key), ()) for s in grid.slots_in(lo, hi))
+        # A preferred pin counts as already planned there, so `minimize_changes` holds it (×10) even when the plan
+        # had the item elsewhere: a block dragged to a new time moves there unless that costs more.
+        item.current = planned | item.preferred
+        if inp.hold is not None and id_of(key) == inp.hold[0]:
+            # What you're timing: `minimize_changes` weighs these slots like a preferred pin, but no pin edge splits
+            # the block around them (a lock had cut a 3-hour block into pieces, M16).
+            item.held = frozenset(grid.slots_in(inp.hold[1], inp.hold[2]))
+            item.current = item.current | item.held
+    problem.refresh_locks()
+    # A rule whose type a plugin should have defined, but didn't load, is off; the plan report says so.
+    problem.rules = build_rules(
+        rule.model_dump(exclude={"enabled"}) for rule in settings["rules"] if rule.type in RULE_TYPES and rule.enabled
+    )
+    for rule in problem.rules:
+        rule.prepare(problem)
+    prune(problem)
+    if demote_unusable_locks(problem):
+        prune(problem)
+    return problem
+
+
+def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOcc], dict[int, Item]]:
+    """Occurrences overlapping [now, end + a day), and every fixed item by id."""
+    kinds = inp.settings["event_kinds"]
+    text = inp.settings["text"].rules()
+    out, by_id = [], {}
+    for item in inp.items:
+        if item.when != "fixed":
+            continue
+        start, end_at = parse_utc(item.start_utc), parse_utc(item.end_utc)  # type: ignore[arg-type]
+        by_id[item.id] = item
+        if end_at <= now or start >= end + 1440:
+            continue
+        kind = kinds.get(item.event_kind or "other", kinds["other"])
+        before = item.buffer_before_min if item.buffer_before_min is not None else kind.before_min
+        after = item.buffer_after_min if item.buffer_after_min is not None else kind.after_min
+        out.append(FixedOcc(item.title, item.event_kind or "other", start, end_at, tuple(item.tags), before, after,
+                            item.blocks_time, identity_text(norm(item.title, text))))  # fmt: skip
+    return out, by_id
+
+
+def flexible_items(inp: BuildInput, grid: Grid, fixed: Mapping[int, Item]) -> dict[str, EngineItem]:
+    by_id = {item.id: item for item in inp.items}
+    parents = {item.parent_id for item in inp.items if item.parent_id is not None}
+    out: dict[str, EngineItem] = {}
+    for item in inp.items:
+        if item.when == "fixed" or item.id in parents or item.status != "todo":
+            continue
+        engine_item = to_engine_item(item, inp, grid, by_id, fixed)
+        if engine_item is not None:
+            out[engine_item.key] = engine_item
+    for engine_item in out.values():
+        engine_item.depends_on = dependency_specs(id_of(engine_item.key), inp, out)
+    return out
+
+
+def window(item: Item, inp: BuildInput, by_id: Mapping[int, Item], fixed: Mapping[int, Item],
+           now: int) -> tuple[int | None, int | None]:  # fmt: skip
+    """Release and due, with a parent's due inherited and dependencies on fixed items folded in (§6.4)."""
+    release = parse_utc(item.release_utc) if item.release_utc else None
+    due = parse_utc(item.due_utc) if item.due_utc else None
+    parent = by_id.get(item.parent_id) if item.parent_id is not None else None
+    if due is None and parent is not None and parent.due_utc:
+        due = parse_utc(parent.due_utc)
+    for dep in inp.dependencies:
+        if dep.item_id == item.id and dep.depends_on_id in fixed:
+            event_end = parse_utc(fixed[dep.depends_on_id].end_utc)  # type: ignore[arg-type]
+            release = max(release if release is not None else now, event_end + dep.lag_min)
+        if dep.depends_on_id == item.id and dep.item_id in fixed:  # `before:` an event
+            event_start = parse_utc(fixed[dep.item_id].start_utc)  # type: ignore[arg-type]
+            due = min(due, event_start - dep.lag_min) if due is not None else event_start - dep.lag_min
+    return release, due
+
+
+def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, Item],
+                   fixed: Mapping[int, Item]) -> EngineItem | None:  # fmt: skip
+    release, due = window(item, inp, by_id, fixed, grid.now)
+    progress = inp.progress_units.get(item.id, 0)
+    preset = inp.settings["presets"].get(item.preset) if item.preset else None
+    created = parse_utc(item.created_utc) if item.created_utc else None
+    tentative = item.certainty == "tentative"
+    engine_item = EngineItem(
+        key=key_of(item.id), title=item.title, norm_title=identity_text(norm(item.title, inp.settings["text"].rules())),
+        area=inp.areas.get(item.area_id) if item.area_id is not None else None, tags=tuple(item.tags),
+        preset=item.preset, energy=item.energy, importance=importance(item, inp.settings["kind_order"]),
+        firmness=item.firmness,
+        amount=item.amount, release_utc=release, due_utc=due, shape=item.shape,
+        min_chunk=1 if item.shape == "one_sitting" else max(1, item.min_chunk_units),
+        max_chunk=item.max_chunk_units, chunk_cost=item.chunk_cost, spread=item.spread, tentative=tentative,
+        progress=progress, window_is_hard=tentative or item.amount in ("elastic", "target"),
+        pacing=preset.pacing if preset else "none", pacing_start_utc=release if release is not None else created,
+    )  # fmt: skip
+    return with_amount(engine_item, item, inp)
+
+
+def importance(item: Item, kind_order: Sequence[str]) -> float:
+    """The item's importance, scaled by its kind's place in `kind_order`: twice for the first, once for the last
+    and for kinds not listed. Lateness is priced by importance, so the first kinds keep their time."""
+    if item.preset not in kind_order or len(kind_order) < 2:
+        return item.importance
+    rank = list(kind_order).index(item.preset)
+    return item.importance * (1 + (len(kind_order) - 1 - rank) / (len(kind_order) - 1))
+
+
+def with_amount(engine_item: EngineItem, item: Item, inp: BuildInput) -> EngineItem | None:
+    progress = engine_item.progress
+    if item.amount == "fixed":
+        engine_item.need = max(0, (item.duration_units or 0) - progress)
+        if engine_item.need == 0:
+            return None  # finished: awaiting confirmation, not scheduled
+        # The last bit of an item may be shorter than its minimum chunk; otherwise it fits nowhere before its due.
+        engine_item.min_chunk = min(engine_item.min_chunk, engine_item.need)
+        engine_item.size_hours = (item.duration_units or 0) * UNIT_MIN / 60
+    elif item.amount == "elastic":
+        engine_item.min = max(0, (item.min_units or 0) - progress)
+        engine_item.ideal = max(engine_item.min, (item.ideal_units or 0) - progress)
+        engine_item.max = max(engine_item.ideal, (item.max_units or 0) - progress)
+        engine_item.size_hours = (item.ideal_units or 0) * UNIT_MIN / 60
+    elif item.amount == "target":
+        engine_item.target = item.target_units or 0
+        engine_item.cap = item.cap_units or math.ceil(1.5 * engine_item.target)
+        engine_item.size_hours = engine_item.target * UNIT_MIN / 60
+    else:
+        engine_item.daily_ceiling = item.daily_ceiling_units or 12
+        engine_item.progress_today = inp.progress_today_units.get(item.id, 0)
+    return engine_item
+
+
+def dependency_specs(item_id: int, inp: BuildInput, items: Mapping[str, EngineItem]) -> tuple[DepSpec, ...]:
+    out = []
+    for dep in inp.dependencies:
+        other = items.get(key_of(dep.depends_on_id))
+        if dep.item_id == item_id and other is not None:
+            out.append(DepSpec(other.key, dep.fraction, dep.lag_min, other.total_units, other.progress))
+    return tuple(out)
+
+
+def nights(inp: BuildInput, spec: GridSpec, first: date, days: int) -> dict[date, Night]:
+    """The nights beginning on the day before `first` through two days after the last of `days`."""
+    sleep = inp.settings["sleep"]
+    if sleep is None:
+        raise ValueError("sleep: not set yet; run `fridayd init`")
+    out = {}
+    for offset in range(-1, days + 2):
+        day = first + timedelta(days=offset)
+        evening = sleep_on(inp.settings, inp.day_overrides, day)
+        morning = sleep_on(inp.settings, inp.day_overrides, day + timedelta(days=1))
+        bedtime = minutes_of(evening.bedtime)
+        if bedtime < spec.day_start:
+            bedtime += 1440  # a bedtime before the day starts is after midnight
+        out[day] = Night(night_utc(day, bedtime, spec.timezone), wake_utc(day, minutes_of(morning.wake), spec.timezone),
+                         evening.margin_min, inp.debt_hours.get(day, 0.0))  # fmt: skip
+    return out
+
+
+def sleep_on(settings: Mapping[str, Any], overrides: Mapping[date, Mapping[str, Any]], day: date) -> SleepDay:
+    """That date's bedtime (the evening) and wake (the morning), with a day override over the weekday setting."""
+    usual = settings["sleep"][WEEKDAYS[day.weekday()]]
+    override = {k: v for k, v in overrides.get(day, {}).items() if k in SleepDay.model_fields and v is not None}
+    return usual.model_copy(update=override) if override else usual
+
+
+def cap_hours_on(settings: Mapping[str, Any], overrides: Mapping[date, Mapping[str, Any]], day: date) -> float:
+    override = overrides.get(day, {}).get("cap_hours")
+    return override if override is not None else settings["daily_cap"][WEEKDAYS[day.weekday()]]
+
+
+def day_caps(inp: BuildInput, grid: Grid) -> list[int]:
+    return [round(cap_hours_on(inp.settings, inp.day_overrides, d) * 60 / UNIT_MIN) for d in grid.day_date]
+
+
+def pin_slots(inp: BuildInput, grid: Grid, items: Mapping[str, EngineItem]) -> dict[str, dict[str, set[int]]]:
+    out: dict[str, dict[str, set[int]]] = {k: {"locked": set(), "preferred": set()} for k in items}
+    for pin in sorted(inp.pins, key=lambda p: p.created):
+        key = key_of(pin.item_id)
+        if key in out:
+            out[key][pin.kind].update(grid.slots_in(pin.start_utc, pin.end_utc))
+    return out
+
+
+def repair_locks(problem: Problem, pins: dict[str, dict[str, set[int]]], inp: BuildInput) -> list[int]:
+    """The lock checks of §15.2. Returns the day caps, raised where locks exceed them."""
+    grid, created = problem.grid, {key_of(p.item_id): p.created for p in inp.pins if p.kind == "locked"}
+    owner: dict[int, str] = {}
+    for key in sorted(pins, key=lambda k: (created.get(k, -1), k)):  # the newer lock wins an overlap
+        for s in sorted(pins[key]["locked"]):
+            older = owner.get(s)
+            if older is not None:
+                pins[older]["locked"].discard(s)
+                pins[older]["preferred"].add(s)
+            owner[s] = key
+    for slots in pins.values():
+        over_fixed = {s for s in slots["locked"] if problem.blocked[s]}
+        slots["locked"] -= over_fixed
+        slots["preferred"] |= over_fixed
+    for key, slots in pins.items():
+        item = problem.items[key]
+        locked_units = sum(int(grid.units[s]) for s in slots["locked"])
+        if item.amount == "fixed" and locked_units > item.need:
+            item.need = locked_units
+    caps = list(problem.day_caps)
+    for d in range(grid.n_days):
+        locked_today = sum(int(grid.units[s]) for p in pins.values() for s in p["locked"] if grid.slots[s].day == d)
+        caps[d] = max(caps[d], locked_today)
+    return caps
+
+
+def scheduler_config(settings: Mapping[str, Any], threads: int | None = None) -> SchedulerConfig:
+    """The engine settings as the scheduler takes them. Plans depend on `engine.chains`, never on `threads`."""
+    engine = settings["engine"]
+    chains = engine.chains or default_chains()
+    sampler = SamplerConfig(
+        policy=engine.stage_policy,
+        weighted_ratio=engine.weighted_ratio,
+        seed=engine.seed,
+        chains=chains,
+        threads=threads if threads is not None else min(chains, default_chains()),
+        t0=engine.t0,
+        t1=engine.t1,
+        tabu_after_steps=engine.tabu_after_steps,
+        move_weights=dict(engine.move_weights),
+    )
+    return SchedulerConfig(
+        sampler=sampler,
+        step_budgets=tuple(StepBudget(b.max_items, b.cold, b.warm) for b in engine.step_budgets),
+        warm_t0=engine.warm_t0,
+        repair_steps=engine.repair_steps,
+        fallback_threshold=engine.fallback_threshold,
+        fallback_s=engine.fallback_s,
+        fallback_overload_s=engine.fallback_overload_s,
+        fallback_warm_s=engine.fallback_warm_s,
+        fallback_workers=engine.fallback_workers,
+    )
