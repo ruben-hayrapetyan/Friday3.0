@@ -96,6 +96,7 @@ export function Search() {
       { key: "pace", label: "Change pace", icon: "gauge", run: go(() => setPop("pace")) },
       { key: "brief", label: "Morning brief", icon: "sun-horizon", run: () => setDialog("brief") },
       { key: "triage", label: "What gives when it can't all fit", icon: "warning", run: () => setDialog("triage") },
+      { key: "ways", label: "Other ways to plan the week", icon: "shuffle", run: () => setDialog("ways") },
     ].filter((a) => has(a.label))
     return [
       ["To-dos", todos],

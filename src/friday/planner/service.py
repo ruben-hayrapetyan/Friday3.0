@@ -63,6 +63,8 @@ def save_plan(conn: sqlite3.Connection, snapshot: Snapshot, plan: AssembledPlan,
             )
             if snapshot.next_stability is not None:
                 conn.execute("DELETE FROM kv WHERE user_id = ? AND key = 'next_stability'", [snapshot.user_id])
+            if snapshot.cold_once:
+                conn.execute("DELETE FROM kv WHERE user_id = ? AND key = 'next_cold'", [snapshot.user_id])
         report = plan.report | {"settings_version": plan.settings_version}
         plan_id = int(
             conn.execute(

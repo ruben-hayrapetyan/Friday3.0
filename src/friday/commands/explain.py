@@ -24,7 +24,7 @@ from friday.core.settings import validate_value
 from friday.core.time import format_utc, parse_utc, to_local
 from friday.engine.rules import RULE_TYPES, build_rules
 from friday.planner.snapshot import take_snapshot
-from friday.planner.store import current_plan
+from friday.planner.store import current_plan, kv_get
 from friday.planner.views import change_list, why_not_view
 from friday.planner.views import preview_weights as run_preview
 from friday.planner.views import triage as run_triage
@@ -182,7 +182,9 @@ def api_input(ctx: Ctx, values: dict[str, Any]) -> dict[str, Any]:
 @query("triage")
 def triage(ctx: Ctx, inp: Empty) -> TriageOut:
     """Options when hard work is late or overflowing, each with the late hours it saves."""
-    late, options = run_triage(take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id))
+    ratings = kv_get(ctx.conn, "event_ratings", {}, ctx.user_id)
+    going = frozenset(kv_get(ctx.conn, "events_going", [], ctx.user_id))
+    late, options = run_triage(take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id), ratings, going)
     titles = {item_id: require_item(ctx, item_id).title for item_id in late}
     return TriageOut(
         late={titles[k]: v for k, v in late.items()},
@@ -192,6 +194,7 @@ def triage(ctx: Ctx, inp: Empty) -> TriageOut:
                 steps=[TriageStep(command=c, input=api_input(ctx, i)) for c, i in o.steps],
                 late_hours_saved=o.hours_saved,
                 side_effects=o.side_effects,
+                skip_title=o.skip_title,
             )
             for o in options
         ],

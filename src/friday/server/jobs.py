@@ -24,6 +24,7 @@ from friday.commands.eventwrites import failed_writes, write_events
 from friday.commands.fetching import failing_sources, sync
 from friday.commands.google import publish_plan
 from friday.commands.learned import learn_nightly
+from friday.commands.rating import rate_upcoming
 from friday.commands.refit import prepare_questions
 from friday.commands.registry import run
 from friday.core.db import connect, one
@@ -78,6 +79,7 @@ def run_due(
         ("sync", every_minute, sync_sources),
         ("publish", every_minute, publish),
         ("event_writes", every_minute, send_event_writes),
+        ("ratings", every_minute, rate_events),
     )
     for name, is_due, job in jobs:
         if not is_due(last_run(conn, name, user_id), now_utc, settings):
@@ -258,6 +260,19 @@ def send_event_writes(
         return
     write_events(conn, now_utc, user_id, backups.parent, google)
     set_problem(conn, user_id, "event_writes", "; ".join(failed_writes(conn, user_id)) or None)
+
+
+def rate_events(
+    conn: sqlite3.Connection,
+    now_utc: int,
+    settings: dict[str, Any],
+    hub: Hub,
+    supervisor: Supervisor | None,
+    backups: Path,
+    user_id: int,
+) -> None:
+    """How much each new event needs attending, for triage's skips (COMBINED.md 56)."""
+    rate_upcoming(conn, now_utc, user_id, SAMPLE_APIS.get("client"))
 
 
 def questions_due(last: int | None, now_utc: int, settings: dict[str, Any]) -> bool:

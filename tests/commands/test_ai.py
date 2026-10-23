@@ -30,4 +30,4 @@ def test_a_refusal_is_said_in_full(app: App, monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(llm, "client", lambda: Refusing({}))
     assert all("not supported" in c["said"] and not c["ok"] for c in app.do("ai_check"))
     monkeypatch.setattr(llm, "client", lambda: None)
-    assert all("No Anthropic API key" in c["said"] for c in app.do("ai_check"))
+    assert all("nor an Anthropic API key" in c["said"] for c in app.do("ai_check"))

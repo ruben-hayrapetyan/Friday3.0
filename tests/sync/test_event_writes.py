@@ -88,3 +88,66 @@ def test_undoing_a_change_before_it_is_sent_takes_it_back(app: App) -> None:
     app.do("undo", command_id=edit.command_id)
     assert write_events(app.conn, app.now_utc, google=google) == 0
     assert google.calendars_by_id["Classes@group"][0]["summary"] == "CS 1110 Lecture"
+
+
+def test_an_all_day_event_is_written_as_whole_days(app: App) -> None:
+    from friday.commands.eventwrites import event_body
+    from friday.core.items import Item
+
+    item = Item(title="Fall break", when="fixed", start_utc="2026-10-26T04:00Z", end_utc="2026-10-28T04:00Z", id=1)
+    body = event_body(item, "America/New_York")
+    assert body["start"] == {"date": "2026-10-26"} and body["end"] == {"date": "2026-10-28"}
+    timed = Item(title="Talk", when="fixed", start_utc="2026-10-26T22:00Z", end_utc="2026-10-26T23:00Z", id=2)
+    assert event_body(timed, "America/New_York")["start"] == {"dateTime": "2026-10-26T22:00:00Z"}
+
+
+def test_changes_the_calendar_made_are_never_written_back(app: App) -> None:
+    google = lecture()
+    read(app, google)
+    google.calendars_by_id["Classes@group"][0]["summary"] = "CS 1110 Lecture (moved)"
+    read(app, google, minutes_later=60)
+    assert app.table("event_writes") == []  # the sync's own edit
+    assert google.writes == []
+
+
+def test_a_new_event_stays_in_friday_without_a_calendar_named(app: App) -> None:
+    google = lecture()
+    read(app, google)
+    app.do("add", title="Chess club", when="fixed", start="2026-10-21T19:00", end="2026-10-21T21:00")
+    assert app.table("event_writes") == []
+
+
+def test_a_failing_write_is_tried_again_then_reported(app: App) -> None:
+    from friday.commands.eventwrites import MAX_TRIES, failed_writes
+
+    google = lecture()
+    read(app, google)
+    app.do("edit", id=the_lecture(app)["id"], title="Renamed")
+
+    class Down:
+        def events(self) -> "Down":
+            return self
+
+        def patch(self, **_: object) -> "Down":
+            raise ConnectionError("Google is down")
+
+    for _ in range(MAX_TRIES):
+        assert write_events(app.conn, app.now_utc, google=Down()) == 0
+    assert app.table("event_writes")[0]["tries"] == MAX_TRIES
+    assert failed_writes(app.conn) == ["Couldn't save Renamed to Google (ConnectionError: Google is down)"]
+    assert write_events(app.conn, app.now_utc, google=google) == 0  # given up: not tried again
+
+
+def test_skipping_one_time_of_a_repeating_event_deletes_that_time(app: App) -> None:
+    google = FakeGoogle(
+        {"Classes@group": [event("r_1", "Gym", "2026-10-20T07:00", "2026-10-20T08:00", recurringEventId="r"),
+                           event("r_2", "Gym", "2026-10-22T07:00", "2026-10-22T08:00", recurringEventId="r")]},
+        rules={"r": "FREQ=WEEKLY;BYDAY=TU,TH"},
+    )  # fmt: skip
+    read(app, google)
+    first = next(i for i in app.table("items") if i["title"] == "Gym" and i["start_utc"].startswith("2026-10-20"))
+    if first["series_id"] is None:
+        pytest.skip("this calendar's repeats come in as separate events")
+    app.do("skip", id=first["id"])
+    write_events(app.conn, app.now_utc, google=google)
+    assert [e["id"] for e in google.calendars_by_id["Classes@group"]] == ["r_2"]

@@ -1,12 +1,15 @@
 """Answers computed from the current state and plan: now, fits, why-not, triage, weight previews (DESIGN §14, §16)."""
 
 import dataclasses
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
 
+import numpy as np
+
 from friday.api.types import BlockOut, ChangeOut
+from friday.core.calendars import fallback_level, rating_key
 from friday.core.items import Item
 from friday.core.time import format_local, format_utc, parse_utc, to_local
 from friday.engine.compile import compile_problem
@@ -16,12 +19,14 @@ from friday.engine.problem import Plan, Problem
 from friday.planner.assemble import AssembledPlan, assemble
 from friday.planner.build import BuildInput, build_problem, key_of
 from friday.planner.inputs import executor_input, now_settings
+from friday.planner.learning import learnable
 from friday.planner.prepare import build_input, day_of
 from friday.planner.service import quick_late, with_pins_preferred
-from friday.planner.snapshot import Snapshot
+from friday.planner.snapshot import Snapshot, picked
 from friday.planner.solve import solve
 
 MAX_TRIAGE_ACTIONS = 8
+MAX_SKIPS = 4  # events offered to skip, least important first (COMBINED.md 56)
 
 
 @dataclass
@@ -89,6 +94,28 @@ def preview_weights(
     return assemble(changed, solve(changed, warm=True))
 
 
+def other_ways(snapshot: Snapshot, n: int = 2, tries: int = 6) -> list[tuple[dict[str, float], int, AssembledPlan]]:
+    """Other ways to plan the same work (personal's options, COMBINED.md 25): each a plan made from scratch with the
+    learnable rules weighed differently (×e^N(0, 1)) and another search seed, kept when its blocks differ from the plan
+    you have and from the ways already found. Picking one plans with those weights afresh, so it comes out the same."""
+    rules = learnable(snapshot.settings)
+    seen = [{(b.item_id, b.start_utc, b.end_utc) for b in snapshot.plan_blocks}]
+    out = []
+    for seed in range(1, tries + 1):
+        rng = np.random.default_rng(seed)
+        factors = {r: round(float(np.exp(rng.normal(0, 1.0))), 3) for r in rules}
+        changed = dataclasses.replace(snapshot, settings=picked(snapshot.settings, factors, seed))
+        plan = assemble(changed, solve(changed, warm=False))
+        blocks = {(b.item_id, b.start_utc, b.end_utc) for b in plan.blocks}
+        if any(blocks == other for other in seen):
+            continue
+        seen.append(blocks)
+        out.append((factors, seed, plan))
+        if len(out) == n:
+            break
+    return out
+
+
 Step = tuple[str, dict[str, Any]]  # a registry command and its input; times as UTC minutes under `*_utc` keys
 
 
@@ -98,22 +125,74 @@ class TriageOption:
     steps: list[Step]  # applying the option runs these commands in order
     hours_saved: float
     side_effects: list[str]
+    skip_title: str | None = None  # an event offered to skip: "I'm going" stops offering it
 
 
-def triage(snapshot: Snapshot) -> tuple[dict[int, float], list[TriageOption]]:
-    """Ways to make late hard work less late, each tested with a quick replan (§16)."""
+def triage(
+    snapshot: Snapshot, ratings: Mapping[str, Mapping[str, str]] | None = None, going: frozenset[str] = frozenset()
+) -> tuple[dict[int, float], list[TriageOption]]:
+    """Ways to make late hard work less late, each tested with a quick replan (§16): m16's, and events you could skip
+    (personal's, COMBINED.md 56), rated by how much they need attending; `going` are titles you said you go to."""
     inp = build_input(snapshot)
     _, late = quick_late(inp, with_fallback=False)
     if not late:
         return {}, []
     before = sum(late.values())
     options = []
-    for action, steps, change, effects in candidate_actions(snapshot, inp, late)[:MAX_TRIAGE_ACTIONS]:
+    candidates = candidate_actions(snapshot, inp, late)[:MAX_TRIAGE_ACTIONS]
+    candidates += skip_actions(snapshot, late, ratings or {}, going)
+    for action, steps, change, effects, *rest in candidates:
         _, after = quick_late(change(inp), with_fallback=False)
         saved = round(before - sum(after.values()), 2)
         if saved > 0 and steps:
-            options.append(TriageOption(action, steps, saved, effects))
+            options.append(TriageOption(action, steps, saved, effects, rest[0] if rest else None))
     return late, sorted(options, key=lambda o: -o.hours_saved)
+
+
+def skip_actions(
+    snapshot: Snapshot, late: dict[int, float], ratings: Mapping[str, Mapping[str, str]], going: frozenset[str]
+) -> list[tuple]:
+    """Events before the latest late due that aren't required, least important first, then the longest: skipping one
+    keeps it on your calendar and only stops it blocking time."""
+    by_id = {i.id: i for i in snapshot.items}
+    until = (
+        max(parse_utc(by_id[k].due_utc) for k in late if by_id[k].due_utc)
+        if any(by_id[k].due_utc for k in late)
+        else None
+    )
+    if until is None:
+        return []
+    rank = {"optional": 0, "likely": 1}
+    found = []
+    for event in snapshot.items:
+        if event.when != "fixed" or not event.blocks_time or event.status != "todo" or not event.start_utc:
+            continue
+        start, end = parse_utc(event.start_utc), parse_utc(event.end_utc or event.start_utc)
+        if not snapshot.now_utc <= start < until or rating_key(event.title) in going:
+            continue
+        level = (ratings.get(rating_key(event.title)) or {}).get("level") or fallback_level(event.title)
+        if level in rank:
+            found.append((rank[level], -(end - start), start, event))
+    out = []
+    for _, _, start, event in sorted(found, key=lambda f: f[:3])[:MAX_SKIPS]:
+        reason = (ratings.get(rating_key(event.title)) or {}).get("reason")
+        when = to_local(start, snapshot.settings["time"].timezone).strftime("%a %H:%M")
+        out.append(
+            (
+                f"Skip {event.title} ({when})",
+                [("edit", {"id": event.id, "blocks_time": False})],
+                without_blocking(event.id or 0),
+                ["It stays on your calendar; Friday plans through it", *([reason] if reason else [])],
+                event.title,
+            )
+        )
+    return out
+
+
+def without_blocking(event_id: int) -> "Change":
+    return lambda inp: dataclasses.replace(
+        inp, items=[dataclasses.replace(i, blocks_time=False) if i.id == event_id else i for i in inp.items]
+    )
 
 
 Change = Callable[[BuildInput], BuildInput]

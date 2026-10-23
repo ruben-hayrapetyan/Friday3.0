@@ -37,7 +37,7 @@ export function TodoPage() {
   const selected = params.get("item") ? Number(params.get("item")) : null
   const list: List = (LISTS as readonly string[]).includes(params.get("list") ?? "") ? (params.get("list") as List) : "Short term"
   const all = (useAllItems(showDone).data ?? []).filter((i) => showDone || i.status === "todo")
-  const items = list === "Due" ? all.filter((i) => i.due) : all.filter((i) => i.long_term === (list === "Long term"))
+  const items = list === "Due" ? all.filter(isDueWork) : all.filter((i) => i.long_term === (list === "Long term"))
   const blocks = useHorizon().data?.blocks ?? []
   const status = useStatus().data
   const solving = !!status && status.plan_generation !== null && status.plan_generation < status.generation
@@ -105,6 +105,11 @@ export function TodoPage() {
       </div>
     </>
   )
+}
+
+/** What the Due view lists: work with a due date, not each day's meals and habits (personal's Due page held tasks). */
+export function isDueWork(i: Item): boolean {
+  return !!i.due && i.amount === "fixed" && i.preset !== "Routine" && i.preset !== "Habit"
 }
 
 /** personal's ⏳: work that is pointless once its deadline has passed, so never planned after it. */

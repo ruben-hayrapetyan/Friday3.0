@@ -74,6 +74,7 @@ class Snapshot:
     last_command_id: int  # the newest command this snapshot has seen
     multipliers: dict[str, float] = field(default_factory=dict)  # learned θ in effect (DESIGN §21.8)
     profile_version: int = 0  # 0: nothing learned yet
+    cold_once: bool = False  # the next solve starts afresh, not from the current plan (a picked other way)
 
 
 def take_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> Snapshot:
@@ -85,7 +86,7 @@ def take_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> S
 
 
 def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snapshot:
-    settings = with_learned_energy(conn, load_settings(conn, user_id), user_id)
+    settings = with_picked_way(conn, now_utc, with_learned_energy(conn, load_settings(conn, user_id), user_id), user_id)
     plan = current_plan(conn, user_id)
     plan_blocks = (
         tuple(
@@ -121,6 +122,7 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         plan_id=plan["id"] if plan else None,
         plan_blocks=plan_blocks,
         next_stability=kv_get(conn, "next_stability", None, user_id),
+        cold_once=kv_get(conn, "next_cold", None, user_id) is not None,
         **learned(conn, now_utc, settings, user_id),
         log_since_plan=log_since(conn, json.loads(plan["report"]).get("last_command_id", 0) if plan else 0, user_id),
         last_command_id=int(
@@ -166,6 +168,22 @@ def busy_as_you_count(item: Item, settings: dict[str, Any], calendars: dict[int,
 def timer(conn: sqlite3.Connection, user_id: int) -> tuple[int, int] | None:
     found = conn.execute("SELECT item_id, start_utc FROM timer WHERE user_id = ?", [user_id]).fetchone()
     return (found["item_id"], parse_utc(found["start_utc"])) if found else None
+
+
+def with_picked_way(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any], user_id: int) -> dict[str, Any]:
+    """The rules' weights as the other way you picked had them (COMBINED.md 25), for a week, while what you learned
+    from the pick catches up."""
+    way = kv_get(conn, "other_way", None, user_id)
+    if not way or parse_utc(way["until"]) <= now_utc:
+        return settings
+    return picked(settings, way["weights"], way.get("seed", 0))
+
+
+def picked(settings: dict[str, Any], factors: dict[str, float], seed: int) -> dict[str, Any]:
+    """Settings as another way plans with them: each rule's weight times its factor, and the search seed moved on."""
+    rules = tuple(r.model_copy(update={"weight": r.weight * factors.get(r.name, 1.0)}) for r in settings["rules"])
+    engine = settings["engine"].model_copy(update={"seed": settings["engine"].seed + seed})
+    return settings | {"rules": rules, "engine": engine}
 
 
 def with_learned_energy(conn: sqlite3.Connection, settings: dict[str, Any], user_id: int) -> dict[str, Any]:

@@ -14,6 +14,7 @@ import { type Selection, useDrop } from "@/hooks/useDrop"
 import { useKeys } from "@/hooks/useKeys"
 import { Dock } from "@/now/Dock"
 import { BlockPopover } from "@/plan/BlockPopover"
+import { OtherWaysDialog, WayBanner } from "@/plan/OtherWays"
 import { PlanPage } from "@/plan/PlanPage"
 import { BellPop } from "@/pops/BellPop"
 import { PacePop } from "@/pops/PacePop"
@@ -72,6 +73,7 @@ export function Shell() {
         )}
         {!location.pathname.startsWith("/settings") && <Dock />}
         <BlockPopover />
+        {location.pathname === "/" && <WayBanner />}
         {pop && <div onClick={() => setPop(null)} style={{ position: "absolute", inset: 0, zIndex: 9 }} />}
         {pop === "shove" && <ShovePop />}
         {pop === "pace" && <PacePop />}
@@ -82,6 +84,7 @@ export function Shell() {
       {dialog === "triage" && <TriageDialog onClose={() => setDialog(null)} />}
       {dialog === "brief" && <BriefDialog onClose={() => setDialog(null)} />}
       {dialog === "search" && <Search />}
+      {dialog === "ways" && <OtherWaysDialog onClose={() => setDialog(null)} />}
     </DragProvider>
   )
 }

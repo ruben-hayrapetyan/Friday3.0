@@ -129,6 +129,10 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
       <IconButton icon="magnifying-glass" label="Search (⌘K)" onClick={() => setDialog("search")} />
       <IconButton icon="bell" label="Notifications" onClick={() => setPop(pop === "bell" ? null : "bell")} />
       <IconButton icon="sun-horizon" label="Morning brief" onClick={() => setDialog("brief")} />
+      <button className="btn btn-secondary" onClick={() => setDialog("ways")} title="Two more ways to plan the same work" style={{ flex: "none", whiteSpace: "nowrap" }}>
+        <Icon name="shuffle" size={15} />
+        Other ways
+      </button>
       <button className="btn btn-secondary" onClick={() => setPop(pop === "shove" ? null : "shove")} style={{ flex: "none", whiteSpace: "nowrap" }}>
         <Icon name="hand-palm" size={15} />
         Shove

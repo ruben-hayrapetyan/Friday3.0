@@ -14,6 +14,7 @@ const ACTOR: Record<string, string> = { you: "You", cli: "You (command line)", j
 const SAID: Record<string, string> = {
   add: "Added", edit: "Changed", done: "Marked done", drop: "Deleted", reopen: "Opened again", pin: "Pinned",
   unpin: "Unpinned", start: "Started the timer", stop: "Stopped the timer", progress: "Progress", skip: "Skipped",
+  depend: "Tied to another to-do", undepend: "Untied", suggestion_accept: "Accepted from the Inbox",
 } // prettier-ignore
 
 export function Elsewhere({ block, onMoved }: { block: Block; onMoved: () => void }) {
@@ -22,6 +23,9 @@ export function Elsewhere({ block, onMoved }: { block: Block; onMoved: () => voi
   const where = useQuery({ queryKey: ["why_not", block.key], queryFn: () => query("why_not", { key: block.key }), enabled: open === "where" })
   const history = useQuery({ queryKey: ["log_list", block.item_id], queryFn: () => query("log_list", { item_id: block.item_id, limit: 12 }), enabled: open === "history" })
   const pin = useCommand("pin", { label: () => `Moved ${block.title}` })
+  // Each rule by its sentence on the Rules page ("Wind down before bed"), not its name.
+  const rules = useQuery({ queryKey: ["rules"], queryFn: () => query("rules"), enabled: open === "where" }).data ?? []
+  const said = new Map(rules.map((r) => [r.name, r.sentence]))
   const length = toMin(block.end) - toMin(block.start)
   const found = where.data
   return (
@@ -44,14 +48,17 @@ export function Elsewhere({ block, onMoved }: { block: Block; onMoved: () => voi
         ) : (
           <div className="fr-well" style={{ padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
             <span>
-              {when(found.to_start, today)} costs {found.total > 0 ? `${(found.total / 100).toFixed(1)} more` : "no more"}.
+              {when(found.to_start, today)} {found.total > 0 ? `costs ${(found.total / 100).toFixed(1)} points more:` : "costs no more."}
             </span>
             {Object.entries(found.difference)
               .filter(([, d]) => d !== 0)
               .map(([rule, d]) => (
-                <span key={rule} className="tnum fr-kicker">
-                  {rule.replaceAll("_", " ")}: {d > 0 ? "+" : ""}
-                  {(d / 100).toFixed(1)}
+                <span key={rule} className="fr-kicker" style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                  <span>{said.get(rule) ?? rule.replaceAll("_", " ")}</span>
+                  <span className="tnum" style={{ color: d > 0 ? "var(--fr-warn)" : "var(--color-accent-300)" }}>
+                    {d > 0 ? "+" : ""}
+                    {(d / 100).toFixed(1)}
+                  </span>
                 </span>
               ))}
             <button

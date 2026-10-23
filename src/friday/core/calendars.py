@@ -116,3 +116,28 @@ def check_colors(settings: CategorySettings | CalendarLook) -> None:
     for category in settings.categories:
         if category.color not in PIGMENTS:
             raise ValueError(f"categories: {category.name}'s color must be one of {', '.join(PIGMENTS)}")
+
+
+# How much an event needs attending, by its title alone (personal's events.py fallback; COMBINED.md 56): what the AI's
+# rating falls back on, and what triage reads when nothing was rated yet.
+_REQUIRED = re.compile(
+    r"\b(lec(ture)?|lab|disc(ussion)?|recitation|section|seminar|exam|prelim|midterm|quiz|final|interview|"
+    r"appointment|shift|class)\b",
+    re.IGNORECASE,
+)
+_OPTIONAL = re.compile(
+    r"\b(office hours|drop.?in|help session|talk|info session|social|networking|expo|open|conversation hours|poker|"
+    r"ping ?pong|table tennis|chess|game|party)\b",
+    re.IGNORECASE,
+)
+
+
+def rating_key(title: str) -> str:
+    """One rating per series: case, spacing and trailing numbers don't make a new event."""
+    return re.sub(r"\s+", " ", re.sub(r"\s*#?\d+\s*$", "", title.strip().lower()))
+
+
+def fallback_level(title: str) -> str:
+    if _REQUIRED.search(title):
+        return "required"
+    return "optional" if _OPTIONAL.search(title) else "likely"

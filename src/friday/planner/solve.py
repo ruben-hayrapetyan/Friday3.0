@@ -40,5 +40,6 @@ def solve(snapshot: Snapshot, warm: bool, cancel: np.ndarray | None = None, thre
     deadlines = executor_input(inp, problem)
     overloaded = not edf(deadlines.jobs, deadlines.free).feasible
     config = scheduler_config(snapshot.settings, threads)
-    result = schedule(problem, config, warm=warm and bool(snapshot.plan_blocks), cancel=cancel, overloaded=overloaded)
+    warm = warm and bool(snapshot.plan_blocks) and not snapshot.cold_once
+    result = schedule(problem, config, warm=warm, cancel=cancel, overloaded=overloaded)
     return Solved(inp, problem, allocation, deadlines, overloaded, result)

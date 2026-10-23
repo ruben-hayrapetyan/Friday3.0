@@ -18,7 +18,8 @@ def ai_check(ctx: Ctx, inp: Empty) -> list[ModelCheck]:
     out = []
     for model, job in jobs:
         if client is None:
-            out.append(ModelCheck(model=model, job=job, ok=False, said="No Anthropic API key in secrets.toml"))
+            said = "Neither the claude command (Claude Code) nor an Anthropic API key in secrets.toml"
+            out.append(ModelCheck(model=model, job=job, ok=False, said=said))
             continue
         try:
             found, _ = extract.call(client, model, "Answer ok: true.", [{"type": "text", "text": "Ping"}], PING)

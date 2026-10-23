@@ -1602,6 +1602,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/event_going": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** You go to this event: Friday stops offering to skip it. */
+        post: operations["event_going"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/calendar_repeats": {
         parameters: {
             query?: never;
@@ -1885,6 +1902,40 @@ export interface paths {
         put?: never;
         /** Undo a command. Undo is itself a command, so it can be undone. */
         post: operations["undo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/other_ways": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Two other ways to plan what you have, each made afresh; nothing is saved. */
+        get: operations["other_ways"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/other_way_pick": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make another way your plan, and learn from the pick. */
+        post: operations["other_way_pick"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2750,6 +2801,30 @@ export interface components {
             /** Endpoint */
             endpoint: string;
         };
+        /** EventGoingInput */
+        EventGoingInput: {
+            /** Title */
+            title: string;
+        };
+        /** EventGoingResult */
+        EventGoingResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
         /** GoogleCalendarOut */
         GoogleCalendarOut: {
             /** Id */
@@ -3351,6 +3426,78 @@ export interface components {
             fits: components["schemas"]["Swap"][];
             /** Gap Minutes */
             gap_minutes: number;
+        };
+        /**
+         * OtherWay
+         * @description Another way to plan the same work (COMBINED.md 25).
+         */
+        OtherWay: {
+            /** Weights */
+            weights: {
+                [key: string]: number;
+            };
+            /** Seed */
+            seed: number;
+            /** Summary */
+            summary: string;
+            /** Blocks */
+            blocks: components["schemas"]["BlockOut"][];
+            /** Hours */
+            hours: number;
+            /** Sessions */
+            sessions: number;
+            /** Late */
+            late: {
+                [key: string]: number;
+            };
+            /** Rule Totals */
+            rule_totals: {
+                [key: string]: number;
+            };
+        };
+        /** OtherWayPickInput */
+        OtherWayPickInput: {
+            /** Weights */
+            weights: {
+                [key: string]: number;
+            };
+            /**
+             * Seed
+             * @default 0
+             */
+            seed?: number;
+            /** Rule Totals */
+            rule_totals: {
+                [key: string]: number;
+            };
+        };
+        /** OtherWayPickResult */
+        OtherWayPickResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /** OtherWaysOut */
+        OtherWaysOut: {
+            /** Current */
+            current: {
+                [key: string]: number;
+            };
+            /** Ways */
+            ways: components["schemas"]["OtherWay"][];
         };
         /** PaceDeleteInput */
         PaceDeleteInput: {
@@ -5112,6 +5259,8 @@ export interface components {
              * @default []
              */
             side_effects?: string[];
+            /** Skip Title */
+            skip_title?: string | null;
         };
         /** TriageOut */
         TriageOut: {
@@ -8497,6 +8646,43 @@ export interface operations {
             };
         };
     };
+    event_going: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventGoingInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventGoingResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     calendar_repeats: {
         parameters: {
             query?: never;
@@ -9028,6 +9214,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UndoResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    other_ways: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OtherWaysOut"];
+                };
+            };
+        };
+    };
+    other_way_pick: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OtherWayPickInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OtherWayPickResult"];
                 };
             };
             /** @description Validation Error */

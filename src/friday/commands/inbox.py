@@ -294,7 +294,7 @@ def inbox(ctx: Ctx, inp: Empty) -> InboxOut:
     budget = ctx.settings["llm"]
     used = spend(ctx.conn, ctx.user_id, ctx.today.isoformat())
     llm_state = {
-        "key": llm.api_key() is not None,
+        "key": llm.api_key() is not None or llm.cli_path() is not None,  # an AI to read with: a key or the command
         "calls": used["calls"],
         "daily_calls": budget.daily_calls,
         "tokens": used["tokens"],

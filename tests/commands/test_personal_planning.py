@@ -79,3 +79,40 @@ def test_your_estimate_is_planned_exactly_until_you_consistently_run_over(tmp_pa
     assert planned == 90
     app.do("settings_set", key="estimate", value={"cushion": False})
     assert app.do("item", id=new["id"])["item"]["cushion"] == 1.0
+
+
+def test_an_overloaded_week_offers_the_least_important_events_to_skip(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    # Monday is full but for two events; the problem set due tonight doesn't fit around them
+    app.do("add", title="Club meeting", when="fixed", start="2026-10-19T09:00", end="2026-10-19T13:00")
+    app.do("add", title="CS 2110 Lecture", when="fixed", start="2026-10-19T13:00", end="2026-10-19T17:00")
+    app.do("add", title="Poker night", when="fixed", start="2026-10-19T17:00", end="2026-10-19T23:00")
+    app.do("add", title="Problem set", preset="Assignment", due="2026-10-19T23:00", duration_min=240)
+    replan(app.conn, app.now_utc)
+    skips = [o for o in app.do("triage")["options"] if o["skip_title"]]
+    titles = [o["skip_title"] for o in skips]
+    assert "CS 2110 Lecture" not in titles  # a class is required
+    assert titles[0] == "Poker night" or "Poker night" in titles
+    assert skips[0]["steps"][0]["command"] == "edit" and skips[0]["steps"][0]["input"]["blocks_time"] is False
+    app.do("event_going", title="Poker night")
+    assert "Poker night" not in [o["skip_title"] for o in app.do("triage")["options"]]
+
+
+def test_other_ways_differ_and_a_pick_becomes_the_plan(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    for n in range(1, 5):
+        app.do("add", title=f"Essay {n}", preset="Assignment", due=f"2026-10-2{n}T23:59", duration_min=120)
+    app.do("add", title="Reading", preset="Reading", due="2026-10-23T23:59", duration_min=90)
+    replan(app.conn, app.now_utc)
+    found = app.do("other_ways")
+    assert 1 <= len(found["ways"]) <= 2
+    mine = {(b["item_id"], b["start"]) for b in app.do("plan")["blocks"]}
+    way = found["ways"][0]
+    assert {(b["item_id"], b["start"]) for b in way["blocks"]} != mine and way["summary"]
+    app.do("other_way_pick", weights=way["weights"], seed=way["seed"], rule_totals=way["rule_totals"])
+    replan(app.conn, app.now_utc)
+    assert {(b["item_id"], b["start"]) for b in app.do("plan")["blocks"]} == {
+        (b["item_id"], b["start"]) for b in way["blocks"]
+    }
+    picked = [c for c in app.table("comparisons") if c["answer"] == "a"]
+    assert len(picked) == 1

@@ -148,6 +148,30 @@ export function briefDue(today: string): boolean {
   return new Date().getHours() < 12
 }
 
+/** An event you could skip (personal's Going | Skip switch, large): skipping keeps it on your calendar and only stops
+ * it blocking time; Going means Friday stops asking about it. */
+function SkipRow({ option, on, onToggle, onGoing }: { option: Schemas["TriageOption"]; on: boolean; onToggle: () => void; onGoing: () => void }) {
+  return (
+    <div className="fr-hover" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 12, alignItems: "center", padding: 12, borderRadius: "var(--radius-md)", background: on ? "color-mix(in srgb, var(--color-accent) 10%, transparent)" : undefined }}>
+      <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+        <span style={{ fontWeight: 500 }}>{option.action}</span>
+        <span style={{ fontSize: 12, color: "var(--color-neutral-400)", textWrap: "pretty" }}>{option.side_effects?.join("; ")}</span>
+      </span>
+      <span className="tnum" style={{ fontSize: 13, fontWeight: 500, color: "var(--color-accent-300)", whiteSpace: "nowrap" }}>
+        −{option.late_hours_saved} h
+      </span>
+      <span className="fr-seg big" role="group" aria-label={`Going to ${option.skip_title}?`}>
+        <button aria-pressed={false} onClick={onGoing} title="You go to it: Friday stops suggesting it">
+          Going
+        </button>
+        <button aria-pressed={on} onClick={onToggle}>
+          Skip
+        </button>
+      </span>
+    </div>
+  )
+}
+
 export function TriageDialog({ onClose }: { onClose: () => void }) {
   // Several quick replans on the server, so a few seconds.
   const triage = useQuery({ queryKey: ["triage"], queryFn: () => query("triage"), staleTime: 0 })
@@ -178,6 +202,12 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
     onClose()
   }
   const toggle = (a: string) => setChosen(chosen.includes(a) ? chosen.filter((x) => x !== a) : [...chosen, a])
+  // "I'm going": never offered again (COMBINED.md 56).
+  const going = async (o: Schemas["TriageOption"]) => {
+    setChosen(chosen.filter((x) => x !== o.action))
+    await command("event_going", { title: o.skip_title as string })
+    client.invalidateQueries({ queryKey: ["triage"] })
+  }
   return (
     <Modal onClose={onClose}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -208,7 +238,10 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
           <span className="fr-kicker" style={{ paddingBottom: 2 }}>
             Best options first. Pick one or combine them.
           </span>
-          {options.map((o) => (
+          {options.map((o) =>
+            o.skip_title ? (
+              <SkipRow key={o.action} option={o} on={chosen.includes(o.action)} onToggle={() => toggle(o.action)} onGoing={() => going(o)} />
+            ) : (
             <button
               key={o.action}
               onClick={() => toggle(o.action)}
@@ -228,7 +261,8 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
                 −{o.late_hours_saved} h
               </span>
             </button>
-          ))}
+            ),
+          )}
         </div>
       )}
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

@@ -20,6 +20,7 @@ from friday.commands import (  # noqa: F401
     planning,
     progress,
     queries,
+    rating,
     repeats,
     reviews,
     rules,
@@ -28,6 +29,7 @@ from friday.commands import (  # noqa: F401
     shove,
     tokens,
     undo,
+    ways,
 )
 from friday.commands.registry import REGISTRY
 

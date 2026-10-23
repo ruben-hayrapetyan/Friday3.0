@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from friday.api.types import Empty, ItemFields, ItemOut, Model
+from friday.api.types import BlockOut, Empty, ItemFields, ItemOut, Model
 
 
 class AddInput(ItemFields):
@@ -269,6 +269,34 @@ class ImportPersonalInput(Model):
     categories_path: str | None = None  # Chroma's rules; ~/Library/Application Support/Chroma/categories.json
 
 
+class OtherWay(Model):
+    """Another way to plan the same work (COMBINED.md 25)."""
+
+    weights: dict[str, float]  # each learnable rule's factor
+    seed: int  # the search seed it was made with
+    summary: str  # how it differs from your plan, in words
+    blocks: list[BlockOut]
+    hours: float
+    sessions: int
+    late: dict[str, float]  # title → hours late
+    rule_totals: dict[str, int]
+
+
+class OtherWaysOut(Model):
+    current: dict[str, int]  # your plan's cost by rule
+    ways: list[OtherWay]
+
+
+class OtherWayPickInput(Model):
+    weights: dict[str, float]
+    seed: int = 0
+    rule_totals: dict[str, int]  # the way's, as `other_ways` gave them
+
+
+class EventGoingInput(Model):
+    title: str  # an event you go to: never offered to skip again
+
+
 class EventsInput(Model):
     text: str = ""
     limit: int = 12
@@ -341,6 +369,7 @@ class TriageOption(Model):
     steps: list[TriageStep]  # applying the option runs these commands in order
     late_hours_saved: float
     side_effects: list[str] = []
+    skip_title: str | None = None  # an event offered to skip; `event_going` stops offering it
 
 
 class TriageOut(Model):

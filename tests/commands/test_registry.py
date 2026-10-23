@@ -25,6 +25,7 @@ KV_STATE = {
     "week_note",
     "reorder",
     "rule_add",
+    "event_going",
 }  # commands whose whole effect is in kv, which other commands only use for counters
 
 
@@ -239,6 +240,8 @@ def import_sample(app: App) -> dict[str, Any]:
 
 SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "import_personal": import_sample,
+    "event_going": lambda app: {"title": "Poker night"},
+    "other_way_pick": lambda app: {"weights": {"energy": 2.0}, "seed": 1, "rule_totals": {"energy": 100}},
     "add": add_sample,
     "edit": lambda app: {"id": essay(app), "title": "long essay", "duration_min": 180},
     "drop": lambda app: {"id": essay(app)},

@@ -157,6 +157,14 @@ VERBS = {
         True,
         "Change an item's fields; `from_date` changes a repeating item's series from that date on.",
     ),
+    "event_going": Verb(
+        "POST",
+        "/api/c/event_going",
+        commands.EventGoingInput,
+        True,
+        False,
+        "You go to this event: Friday stops offering to skip it.",
+    ),
     "events": Verb(
         "GET",
         "/api/q/events",
@@ -323,6 +331,22 @@ VERBS = {
         False,
         False,
         "What's on now, what's next, what else is safe to do, and deadlines needing attention.",
+    ),
+    "other_way_pick": Verb(
+        "POST",
+        "/api/c/other_way_pick",
+        commands.OtherWayPickInput,
+        True,
+        True,
+        "Make another way your plan, and learn from the pick.",
+    ),
+    "other_ways": Verb(
+        "GET",
+        "/api/q/other_ways",
+        commands.Empty,
+        False,
+        False,
+        "Two other ways to plan what you have, each made afresh; nothing is saved.",
     ),
     "pace": Verb(
         "POST",

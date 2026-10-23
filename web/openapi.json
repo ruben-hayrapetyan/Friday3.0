@@ -5569,6 +5569,77 @@
     }
    }
   },
+  "/api/c/event_going": {
+   "post": {
+    "summary": "You go to this event: Friday stops offering to skip it.",
+    "operationId": "event_going",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EventGoingInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EventGoingResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/calendar_repeats": {
    "get": {
     "summary": "Repeating events in your calendars waiting to be imported, each as one repeat.",
@@ -6502,6 +6573,95 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/UndoResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/other_ways": {
+   "get": {
+    "summary": "Two other ways to plan what you have, each made afresh; nothing is saved.",
+    "operationId": "other_ways",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OtherWaysOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/other_way_pick": {
+   "post": {
+    "summary": "Make another way your plan, and learn from the pick.",
+    "operationId": "other_way_pick",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OtherWayPickInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OtherWayPickResult"
         }
        }
       }
@@ -9396,6 +9556,79 @@
     ],
     "title": "EndpointInput"
    },
+   "EventGoingInput": {
+    "properties": {
+     "title": {
+      "type": "string",
+      "title": "Title"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "title"
+    ],
+    "title": "EventGoingInput"
+   },
+   "EventGoingResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "EventGoingResult"
+   },
    "GoogleCalendarOut": {
     "properties": {
      "id": {
@@ -11199,6 +11432,182 @@
      "gap_minutes"
     ],
     "title": "NowOut"
+   },
+   "OtherWay": {
+    "properties": {
+     "weights": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Weights"
+     },
+     "seed": {
+      "type": "integer",
+      "title": "Seed"
+     },
+     "summary": {
+      "type": "string",
+      "title": "Summary"
+     },
+     "blocks": {
+      "items": {
+       "$ref": "#/components/schemas/BlockOut"
+      },
+      "type": "array",
+      "title": "Blocks"
+     },
+     "hours": {
+      "type": "number",
+      "title": "Hours"
+     },
+     "sessions": {
+      "type": "integer",
+      "title": "Sessions"
+     },
+     "late": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Late"
+     },
+     "rule_totals": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Rule Totals"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "weights",
+     "seed",
+     "summary",
+     "blocks",
+     "hours",
+     "sessions",
+     "late",
+     "rule_totals"
+    ],
+    "title": "OtherWay",
+    "description": "Another way to plan the same work (COMBINED.md 25)."
+   },
+   "OtherWayPickInput": {
+    "properties": {
+     "weights": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": "object",
+      "title": "Weights"
+     },
+     "seed": {
+      "type": "integer",
+      "title": "Seed",
+      "default": 0
+     },
+     "rule_totals": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Rule Totals"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "weights",
+     "rule_totals"
+    ],
+    "title": "OtherWayPickInput"
+   },
+   "OtherWayPickResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "OtherWayPickResult"
+   },
+   "OtherWaysOut": {
+    "properties": {
+     "current": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Current"
+     },
+     "ways": {
+      "items": {
+       "$ref": "#/components/schemas/OtherWay"
+      },
+      "type": "array",
+      "title": "Ways"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "current",
+     "ways"
+    ],
+    "title": "OtherWaysOut"
    },
    "PaceDeleteInput": {
     "properties": {
@@ -16735,6 +17144,17 @@
       "type": "array",
       "title": "Side Effects",
       "default": []
+     },
+     "skip_title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Skip Title"
      }
     },
     "additionalProperties": false,
