@@ -3759,6 +3759,84 @@
     }
    }
   },
+  "/api/c/import_chroma_colors": {
+   "post": {
+    "summary": "The colour Chroma showed each event in, by the event: its own choice, its calendar's or its category's.",
+    "operationId": "import_chroma_colors",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/ChromaColorsInput"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Inp"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImportChromaColorsResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/insights": {
    "get": {
     "summary": "The last few weeks: things finished, hours worked, estimates against actual time by kind, and when you work.",
@@ -8889,6 +8967,24 @@
     ],
     "title": "CheckinResult"
    },
+   "ChromaColorsInput": {
+    "properties": {
+     "colors_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Colors Path"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "ChromaColorsInput"
+   },
    "CloseDayResult": {
     "properties": {
      "command_id": {
@@ -10299,6 +10395,65 @@
     "title": "Happening",
     "description": "One thing in `diagnose`'s timeline."
    },
+   "ImportChromaColorsResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "ImportChromaColorsResult"
+   },
    "ImportPersonalInput": {
     "properties": {
      "todos_path": {
@@ -10755,6 +10910,17 @@
        }
       ],
       "title": "Category Color"
+     },
+     "chroma_color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Chroma Color"
      },
      "left_out": {
       "anyOf": [
