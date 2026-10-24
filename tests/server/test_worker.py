@@ -131,3 +131,21 @@ def test_a_failing_solve_keeps_the_plan_raises_a_banner_and_saves_the_snapshot(
         assert list((tmp_path / "snapshots").glob("*.pickle"))
     finally:
         restarted.stop()
+
+
+def test_output_nobody_reads_any_more_goes_nowhere(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The Mac app quit: its end of fridayd's output is closed, and restarting the solver would fail flushing it."""
+    import os
+    import sys
+
+    from friday.server.worker import orphaned_streams
+
+    read, write = os.pipe()
+    os.close(read)
+    broken = os.fdopen(write, "w")
+    broken.write("x")
+    monkeypatch.setattr(sys, "stderr", broken)
+    orphaned_streams()
+    assert sys.stderr is not broken and sys.stderr.name == os.devnull
+    sys.stderr.write("fine")
+    sys.stderr.flush()

@@ -11,6 +11,7 @@ import contextlib
 import json
 import logging
 import multiprocessing as mp
+import os
 import pickle
 import sqlite3
 import sys
@@ -96,6 +97,7 @@ class Supervisor:
             self.process.terminate()
 
     def spawn(self) -> None:
+        orphaned_streams()
         self.pipe, theirs = self.context.Pipe()
         self.process = self.context.Process(
             target=child, args=(theirs, self.cancel_buffer, self.plugin_dir), name="friday-solver", daemon=True
@@ -187,6 +189,8 @@ class Supervisor:
         self.release(plan_id, job.snapshot.generation)
 
     def crashed(self, conn: sqlite3.Connection) -> None:
+        if self.stopping.is_set():  # shutting down: the worker went with it, nothing to restart
+            return
         log.warning("the solver worker exited (code %s); restarting", self.process.exitcode)
         job, self.job = self.job, None
         self.spawn()
@@ -244,3 +248,14 @@ def set_problem(conn: sqlite3.Connection, user_id: int, source: str, message: st
         "ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value",
         [user_id, json.dumps(problems)],
     )
+
+
+def orphaned_streams() -> None:
+    """The Mac app reads fridayd's output; once it has quit, writing there fails, and starting a worker flushes it.
+    The log file has everything, so what nobody reads any more goes nowhere instead."""
+    for name in ("stdout", "stderr"):
+        stream = getattr(sys, name)
+        try:
+            stream.flush()
+        except (BrokenPipeError, OSError, ValueError):
+            setattr(sys, name, open(os.devnull, "w"))  # noqa: SIM115  (kept for the life of the process)

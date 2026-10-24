@@ -38,7 +38,7 @@ final class Server: ObservableObject {
     }
 
     /// Running already (another copy, or `fridayd` started by hand), or start it.
-    func ensureRunning() async {
+    func ensureRunning(attempt: Int = 0) async {
         if await Self.status() != nil {
             await setUp()
             return
@@ -73,6 +73,13 @@ final class Server: ObservableObject {
                 return
             }
             if !started.isRunning {
+                // The Friday you just quit can take a few seconds to let go of the port; wait for it, then start.
+                if log.contains("already in use"), attempt < 20 {
+                    try? await Task.sleep(for: .seconds(1))
+                    if await Self.status() != nil { return await setUp() }
+                    log = ""
+                    return await ensureRunning(attempt: attempt + 1)
+                }
                 state = .failed("fridayd stopped while starting:\n" + log.suffix(600))
                 return
             }
@@ -100,9 +107,15 @@ final class Server: ObservableObject {
     }
 
     /// Stops the server only if this app started it.
+    /// On quit: ask fridayd to stop and give it three seconds before insisting, so a Friday opened straight after
+    /// finds the port free rather than "Friday's server isn't running".
     func stop() {
-        process?.terminate()
+        guard let running = process else { return }
         process = nil
+        running.terminate()
+        let deadline = Date().addingTimeInterval(3)
+        while running.isRunning, Date() < deadline { usleep(50_000) }
+        if running.isRunning { kill(running.processIdentifier, SIGKILL) }
     }
 
     /// `/api/q/status`, or nil when nothing answers.
