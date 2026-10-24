@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { Item } from "@/api/client"
-import { grouped, progress } from "./groups"
+import { addHint, fillFor, grouped, plural, progress } from "./groups"
 
 const item = (id: number, over: Partial<Item>): Item =>
   ({
@@ -23,6 +23,30 @@ describe("to-do groups", () => {
       ["No tag", [3]],
       ["Done", [4]],
     ])
+  })
+
+  it("groups by kind in personal's order, the empty buckets kept for their add lines, the rest last", () => {
+    const items = [item(1, { preset: "Project" }), item(2, { preset: "Assignment" }), item(3, {}), item(4, { preset: "Reading" })]
+    const groups = grouped(items, [], "2026-10-19", "Kind", "Title", ["Reading", "Assignment", "Errand", "Other"])
+    expect(groups.map((g) => [g.name, g.items.map((i) => i.id)])).toEqual([
+      ["Reading", [4]],
+      ["Assignment", [2]],
+      ["Errand", []],
+      ["Project", [1]],
+      ["Other", [3]],
+    ])
+  })
+
+  it("says what each add line fills in", () => {
+    expect([fillFor("Kind", "Reading"), fillFor("Kind", "Other"), fillFor("Tag", "cs"), fillFor("When", "Today")]).toEqual([{ preset: "Reading" }, {}, { area: "cs" }, null])
+    expect(["Reading", "Assignment", "Errand", "Exam prep", "Other"].map((n) => addHint("Kind", n))).toEqual([
+      "Add a reading…",
+      "Add an assignment…",
+      "Add an errand…",
+      "Add exam prep…",
+      "Add anything else…",
+    ])
+    expect(["Reading", "Exam prep", "Other", "Homework"].map(plural)).toEqual(["Readings", "Exam prep", "Other", "Homework"])
   })
 
   it("reads progress as done of total", () => {

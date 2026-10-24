@@ -410,3 +410,31 @@ kbd.fr-kbd {
   gap: 16px;
   padding: 22px 24px;
 }
+
+/* The to-do's one-line rows: the details caret shows on hover; narrow, what Friday made of it goes under the title. */
+.fr-todo-more {
+  color: var(--color-neutral-500);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.fr-todo-line:hover .fr-todo-more,
+.fr-todo-line:focus-visible .fr-todo-more {
+  opacity: 1;
+}
+[data-tight] .fr-todo-line {
+  grid-template-columns: 24px minmax(0, 1fr) !important;
+  padding: 3px 0;
+}
+[data-tight] .fr-todo-meta {
+  grid-column: 2;
+  padding-left: 12px !important;
+  gap: 10px !important;
+}
+[data-tight] .fr-todo-meta > span {
+  min-width: 0 !important;
+}
+[data-tight] .fr-tag-mini {
+  flex-shrink: 1 !important;
+  min-width: 0;
+  overflow: hidden;
+}
