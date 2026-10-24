@@ -23,6 +23,8 @@ import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { AddBox } from "./AddBox"
 import { addHint, fillFor, GROUPS, type GroupBy, grouped, KINDS_FIRST, OTHER, plural, progress, SORTS, type SortBy, summary } from "./groups"
+import { DuePicker, LengthInput } from "./Pickers"
+import { SortPicker } from "./SortPicker"
 import { TodoDetail } from "./TodoDetail"
 
 export const useAllItems = (done: boolean) =>
@@ -35,7 +37,7 @@ export function TodoPage() {
   const { today } = useShell()
   const { look, setLook } = useLook()
   const [by, setBy] = useStored<GroupBy>("friday-todo-group", "Kind", GROUPS)
-  const [sort, setSort] = useState<SortBy>("Next up")
+  const [sort, setSort] = useStored<SortBy>("friday-todo-sort", "Next up", SORTS)
   const [showDone, setShowDone] = useState(false)
   const [fresh, setFresh] = useState<number[]>([])
   const [params, setParams] = useSearchParams()
@@ -70,30 +72,27 @@ export function TodoPage() {
         <div style={{ flex: 1 }} />
         <Dropdown icon="sliders-horizontal" label="View options">
           {() => (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "8px 10px" }}>
-              <Chip on={showDone} onClick={() => setShowDone(!showDone)}>
-                Show done
-              </Chip>
-              <span style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <span className="fr-kicker">Rows</span>
-                <Seg options={["Compact", "Detailed"] as const} value={look.todoRows} onPick={(todoRows) => setLook({ todoRows })} />
-              </span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "10px 12px", width: 250 }}>
               {list !== "Due" && (
                 <>
                   <span style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <span className="fr-kicker">Group by</span>
-                    <Seg options={GROUPS} value={by} onPick={setBy} />
+                    <span className="fr-eyebrow">Sections</span>
+                    <Seg options={GROUPS.map((g) => ({ value: g, label: g === "Kind" ? "By kind" : g === "When" ? "By when" : "By tag" }))} value={by} onPick={setBy} />
                   </span>
-                  <span style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <span className="fr-kicker">Sort</span>
-                    <select className="input" value={sort} onChange={(e) => setSort(e.target.value as SortBy)} style={{ padding: "4px 8px", fontSize: 12, minHeight: 0 }}>
-                      {SORTS.map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </select>
+                  <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span className="fr-eyebrow">Sort</span>
+                    <SortPicker value={sort} onPick={setSort} />
                   </span>
                 </>
               )}
+              <span style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span className="fr-eyebrow">Rows</span>
+                <Seg options={[{ value: "Compact" as const, label: "One line" }, { value: "Detailed" as const, label: "Two lines" }]} value={look.todoRows} onPick={(todoRows) => setLook({ todoRows })} />
+              </span>
+              <Chip on={showDone} onClick={() => setShowDone(!showDone)}>
+                <Icon name={showDone ? "eye" : "eye-slash"} size={12} />
+                Show done
+              </Chip>
             </div>
           )}
         </Dropdown>
@@ -201,14 +200,26 @@ function CompactRow({ item, by, fresh, selected, onSelect }: RowProps) {
   const left = item.remaining_min ?? 0
   const share = item.done_min && item.done_min + left ? item.done_min / (item.done_min + left) : 0
   const meta = { fontSize: 11, color: "var(--color-neutral-500)", whiteSpace: "nowrap" } as const
+  // What can be changed in the line is changed in the line (double-click the title; click the time left or the
+  // due); everything else is a click away, beside the list.
+  const edit = useCommand("edit", { label: () => "Saved" })
+  const [editing, setEditing] = useState<"title" | "due" | "length" | null>(null)
+  const [title, setTitle] = useState(item.title)
+  const inline = (what: "due" | "length") => (e: React.MouseEvent) => (e.stopPropagation(), setEditing(editing === what ? null : what))
+  const rename = () => {
+    if (title.trim() && title.trim() !== item.title) edit({ id: item.id, title: title.trim() })
+    setEditing(null)
+  }
+  const cell = { ...meta, textAlign: "right", cursor: "text", borderRadius: 3, padding: "1px 3px" } as const
   return (
+    <>
     <div
       role="button"
       tabIndex={0}
-      onClick={onSelect}
-      onKeyDown={(e) => e.key === "Enter" && onSelect()}
+      onClick={() => editing === null && onSelect()}
+      onKeyDown={(e) => e.key === "Enter" && editing === null && onSelect()}
       className="fr-hover-soft fr-todo-line"
-      title={`${item.title}: click for everything about it`}
+      title={`${item.title}: click for everything about it, double-click the title to rename`}
       style={{
         display: "grid",
         gridTemplateColumns: "24px minmax(0,1fr) auto",
@@ -225,7 +236,29 @@ function CompactRow({ item, by, fresh, selected, onSelect }: RowProps) {
       </span>
       {/* personal's ruled margin, in the task's tag colour */}
       <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, alignSelf: "stretch", paddingLeft: 10, boxShadow: `inset ${item.area ? 2 : 1}px 0 0 ${item.area ? color(item.area) : "var(--fr-rule)"}` }}>
-        <span style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textDecoration: isDone ? "line-through" : undefined, color: item.long_term ? "var(--fr-aged)" : undefined }}>{item.title}</span>
+        {editing === "title" ? (
+          <input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onBlur={rename}
+            onKeyDown={(e) => {
+              e.stopPropagation()
+              if (e.key === "Enter") rename()
+              if (e.key === "Escape") (setTitle(item.title), setEditing(null))
+            }}
+            aria-label="Title"
+            style={{ flex: 1, minWidth: 0, font: "inherit", fontSize: 13, color: "var(--color-text)", background: "transparent", border: 0, outline: 0, boxShadow: "inset 0 -1.5px 0 var(--color-accent)", padding: 0 }}
+          />
+        ) : (
+          <span
+            onDoubleClick={(e) => (e.stopPropagation(), setTitle(item.title), setEditing("title"))}
+            style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textDecoration: isDone ? "line-through" : undefined, color: item.long_term ? "var(--fr-aged)" : undefined }}
+          >
+            {item.title}
+          </span>
+        )}
         {item.pointless_late && <ExpiresMark />}
         {fresh && <span style={{ fontSize: 10.5, color: "var(--color-accent-300)", flex: "none" }}>new</span>}
         {item.area && by !== "Tag" && (
@@ -243,19 +276,46 @@ function CompactRow({ item, by, fresh, selected, onSelect }: RowProps) {
           </span>
         )}
         {share > 0 && <Pie share={share} />}
-        <span style={{ ...meta, minWidth: 40, textAlign: "right" }} title={progress(item).text}>
-          {left > 0 && !isDone ? dur(left) : ""}
+        <span className="fr-hover" onClick={inline("length")} style={{ ...cell, minWidth: 40 }} title={`${progress(item).text}. Click to change`}>
+          {left > 0 && !isDone ? dur(left) : "·"}
         </span>
         <span style={{ ...meta, minWidth: 84, textAlign: "right" }} title={next ? "Next planned" : "Not on the plan yet"}>
           {isNow ? <span className="fr-tag accent">Now</span> : next ? when(next.start, today) : isDone ? "done" : "—"}
         </span>
-        <span style={{ ...meta, minWidth: 104, textAlign: "right" }} title={item.due ? "Due" : undefined}>
-          {item.due ? <DueLabel due={item.due} prefix="due " /> : ""}
+        <span className="fr-hover" onClick={inline("due")} style={{ ...cell, minWidth: 104 }} title={item.due ? "Due. Click to change" : "Click to set a due date"}>
+          {item.due ? <DueLabel due={item.due} prefix="due " /> : <span className="fr-todo-more">+ due</span>}
         </span>
         <span className="fr-todo-more" style={{ display: "inline-flex" }}>
           <Icon name="caret-right" size={10} />
         </span>
       </span>
+    </div>
+    {editing === "due" && (
+      <InlineEditor onClose={() => setEditing(null)}>
+        <DuePicker value={item.due ?? null} today={today} onPick={(due) => edit({ id: item.id, due })} onDone={() => setEditing(null)} />
+      </InlineEditor>
+    )}
+    {editing === "length" && (
+      <InlineEditor onClose={() => setEditing(null)}>
+        <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>How long it takes in all{item.done_min ? `, ${dur(item.done_min)} done so far` : ""}</span>
+        <LengthInput value={item.duration_min ?? null} onPick={(duration_min) => (edit({ id: item.id, duration_min }), setEditing(null))} width={160} />
+      </InlineEditor>
+    )}
+    </>
+  )
+}
+
+/** An editor opened under its row, in the list rather than over it; Escape or Done closes it. */
+function InlineEditor({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      style={{ margin: "2px 0 8px 34px", padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--color-surface)", boxShadow: "0 0 0 1px var(--fr-rule)", display: "flex", flexDirection: "column", gap: 8, position: "relative" }}
+    >
+      {children}
+      <button className="fr-link" onClick={onClose} style={{ position: "absolute", top: 8, right: 10, fontSize: 11 }}>
+        Done
+      </button>
     </div>
   )
 }

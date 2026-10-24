@@ -6,6 +6,7 @@ import type { Block, Item, Schemas } from "@/api/client"
 import { useClock } from "@/hooks/useClock"
 import { useCalendar } from "@/hooks/queries"
 import { clock, weekday } from "@/lib/format"
+import { eventPaint } from "@/lib/pigments"
 import { addDays, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { draftOf } from "./EventPane"
@@ -24,7 +25,7 @@ interface Entry {
 
 export function DayAgenda() {
   const { today, agendaDay, select, setEvent } = useShell()
-  const { color } = useLook()
+  const { color, light } = useLook()
   const day = agendaDay ?? today
   const calendar = useCalendar(day, 1).data
   const plan = useShownPlan(`${day}T00:00`, `${addDays(day, 1)}T00:00`).data
@@ -52,7 +53,7 @@ export function DayAgenda() {
               <span className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)", textAlign: "right" }}>
                 {e.sort === "allday" ? "all day" : e.sort === "due" && e.start.endsWith("T23:59") ? "due" : clock(e.start)}
               </span>
-              <span style={{ alignSelf: "stretch", borderRadius: 2, background: e.sort === "due" ? "var(--fr-due)" : e.sort === "work" ? color(e.area) : "var(--color-neutral-500)" }} />
+              <span style={{ alignSelf: "stretch", borderRadius: 2, background: e.sort === "due" ? "var(--fr-due)" : e.sort === "work" ? (e.area ? color(e.area) : "var(--color-accent)") : e.event ? eventPaint(e.event, light) : "var(--color-neutral-500)" }} />
               <span style={{ fontSize: 12.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: e.sort === "due" ? "var(--fr-due)" : undefined }}>
                 {e.title}
               </span>

@@ -5,6 +5,7 @@ import { useShownPlan } from "@/plan/shown"
 import { useDragging } from "@/components/calendar/useDrag"
 import { useCalendar, useSettings } from "@/hooks/queries"
 import { clock } from "@/lib/format"
+import { eventPaint, wash } from "@/lib/pigments"
 import { addDays, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
@@ -18,7 +19,7 @@ export function monthStart(date: string): string {
 
 export function MonthView({ first, onDay }: { first: string; onDay: (date: string) => void }) {
   const { today } = useShell()
-  const { skinOf } = useLook()
+  const { skinOf, light } = useLook()
   const { drag } = useDragging()
   const settings = useSettings().data as Record<string, { week_start?: string }> | undefined
   const weekStart = settings?.time?.week_start ?? "mon"
@@ -48,7 +49,7 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
             const cap = caps.get(date) ?? 8
             const items = [
               ...(plan?.blocks ?? []).filter((b) => b.start.startsWith(date)).map((b) => ({ key: b.key, start: b.start, title: b.title, s: skinOf(b.pinned === "locked" ? "locked" : "planned", b.area) })),
-              ...(plan?.fixed ?? []).filter((f) => f.start?.startsWith(date)).map((f) => ({ key: `F${f.id}`, start: f.start as string, title: f.title, s: skinOf("fixed", f.area) })),
+              ...(plan?.fixed ?? []).filter((f) => f.start?.startsWith(date)).map((f) => ({ key: `F${f.id}`, start: f.start as string, title: f.title, s: { ...skinOf("fixed", f.area), bg: wash(eventPaint(f, light), light), stripe: eventPaint(f, light), fg: "var(--color-text)" } })),
             ].sort((a, b) => a.start.localeCompare(b.start))
             const dues = (calendar?.dues ?? []).filter((d) => d.due.startsWith(date))
             const inMonth = date.slice(0, 7) === month

@@ -1,9 +1,11 @@
 // Appearance (v22): theme, accent hue, block style, glow, floating panels, the Now bar and the heading face, on this
-// device, with a live preview.
+// device, with a live preview. Each choice is a card with a small picture of what it looks like (ChoiceCards).
 
-import { Icon, Seg } from "@/components/fr/controls"
+import { Icon } from "@/components/fr/controls"
 import { accentHex, areaHex, type Look } from "@/theme/look"
 import { useLook } from "@/theme/LookProvider"
+import { BlocksArt, ChromeArt, DeadlinesArt, FaceArt, GlowArt, HoursArt, NowBarArt, ThemeArt } from "./appearanceArt"
+import { ChoiceCards } from "./ChoiceCards"
 import { Field, SectionHead } from "./SettingsPage"
 
 const HUES = Array.from({ length: 16 }, (_, i) => Math.round(i * 22.5))
@@ -69,10 +71,10 @@ export function Appearance() {
           </div>
         </div>
       </div>
-      <Field name="Theme" note="Match system follows your computer’s light or dark setting.">
-        <Seg options={["Dark", "Light", "Match system"] as const} value={look.theme} onPick={pick("theme")} size="big" />
+      <Field name="Theme" note="Light, dark, or follow your device.">
+        <ChoiceCards label="Theme" value={look.theme} onPick={pick("theme")} choices={(["Dark", "Light", "Match system"] as const).map((v) => ({ value: v, label: v, art: <ThemeArt theme={v} hue={look.accentHue} /> }))} />
       </Field>
-      <Field name="Ink" note="The ink Friday’s own marks are written in: buttons, today, focus rings and highlights. Navy by default; pick any hue.">
+      <Field name="Ink" note="The colour of buttons, today and highlights.">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(16, 1fr)", gap: 6 }}>
           {HUES.map((h) => (
             <button
@@ -93,52 +95,39 @@ export function Appearance() {
           {accentHex(look.accentHue, light)}, hue {look.accentHue}°
         </span>
       </Field>
-      <Field name="Hours shown" note="Waking hours run the grid from your earliest wake time to your latest bedtime, with the night shaded. All day shows every hour and opens at your wake time.">
-        <Seg options={["Waking", "All day"] as const} value={look.hours} onPick={pick("hours")} size="big" />
+      <Field name="Hours shown" note="How much of the day the calendar shows.">
+        <ChoiceCards label="Hours shown" value={look.hours} onPick={pick("hours")} choices={[{ value: "Waking", label: "Waking hours", art: <HoursArt hours="Waking" /> }, { value: "All day", label: "All 24 hours", art: <HoursArt hours="All day" /> }]} />
       </Field>
-      <Field name="Deadlines" note="Chips put a day's deadlines in its header. Lanes give each day with something due a to-do list down the side of its column, which stays in view as you scroll and ticks off like the to-do list.">
-        <Seg options={["Chips", "Lanes"] as const} value={look.deadlines} onPick={pick("deadlines")} size="big" />
+      <Field name="Deadlines" note="Where things due show on the calendar.">
+        <ChoiceCards label="Deadlines" value={look.deadlines} onPick={pick("deadlines")} choices={[{ value: "Chips", label: "Chips on top", art: <DeadlinesArt deadlines="Chips" /> }, { value: "Lanes", label: "To-do lane", art: <DeadlinesArt deadlines="Lanes" /> }]} />
       </Field>
-      <Field name="Calendar blocks" note="Soft blocks sit back on the surface with a colored edge. Solid blocks fill with the area color.">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 220px))", gap: 10 }}>
-          {(["Soft", "Solid"] as const).map((mode) => (
-            <button key={mode} onClick={() => setLook({ blocks: mode })} className="fr-plain" style={{ display: "flex", flexDirection: "column", gap: 10, padding: 12, borderRadius: "var(--radius-md)", background: "var(--color-bg)", boxShadow: look.blocks === mode ? "inset 0 0 0 1px var(--color-accent)" : "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {[
-                  ["PS5", 265, 30],
-                  ["Essay", 155, 22],
-                ].map(([title, hue, h]) => {
-                  const col = areaHex(hue as number, light)
-                  const s = skinFor("planned", col, { ...look, blocks: mode }, skinOf)
-                  return (
-                    <div key={title} style={{ position: "relative", height: h as number, padding: "3px 8px 3px 10px", borderRadius: 5, background: s.bg, color: s.fg, fontSize: 11, fontWeight: 500, overflow: "hidden" }}>
-                      <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: s.stripe }} />
-                      {title}
-                    </div>
-                  )
-                })}
-              </div>
-              <span style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                <span>{mode}</span>
-                {look.blocks === mode && <Icon name="check" style={{ color: "var(--color-accent-300)" }} />}
-              </span>
-            </button>
-          ))}
-        </div>
+      <Field name="Calendar blocks" note="Edged and light, or filled with colour.">
+        <ChoiceCards
+          label="Calendar blocks"
+          value={look.blocks}
+          onPick={pick("blocks")}
+          choices={(["Soft", "Solid"] as const).map((mode) => ({
+            value: mode,
+            label: mode,
+            art: <BlocksArt skins={[265, 155].map((hue) => skinFor("planned", areaHex(hue, light), { ...look, blocks: mode }, skinOf))} />,
+          }))}
+        />
       </Field>
-      <Field name="Glow" note="A soft light behind key elements, on the dark page only. Off keeps the paper flat.">
-        <Seg options={["Off", "Today", "More"] as const} value={look.glow} onPick={pick("glow")} size="big" />
-        <span className="fr-kicker">{light ? "Glow shows on the dark theme only." : { Off: "No glow anywhere.", Today: "Today’s date and underline glow.", More: "Today, the now line, the Now bar and the selected block glow." }[look.glow]}</span>
+      <Field name="Glow" note="A soft light, on the dark theme only.">
+        <ChoiceCards label="Glow" value={look.glow} onPick={pick("glow")} choices={[{ value: "Off", label: "Off", art: <GlowArt glow="Off" hue={look.accentHue} /> }, { value: "Today", label: "Today", art: <GlowArt glow="Today" hue={look.accentHue} /> }, { value: "More", label: "Today + more", art: <GlowArt glow="More" hue={look.accentHue} /> }]} />
+        {light && <span className="fr-kicker">Switch to dark to see it.</span>}
       </Field>
-      <Field name="Floating panels" note="The Now bar, Shove, Pace and the to-do sidebar. Tonal panels sit a shade lighter with no outline.">
-        <Seg options={["Tonal", "Shadow", "Flat", "Outline"] as const} value={look.chrome} onPick={pick("chrome")} size="big" />
+      <Field name="Floating panels" note="The Now bar, Shove, Pace and sidebar.">
+        <ChoiceCards label="Floating panels" value={look.chrome} onPick={pick("chrome")} choices={(["Tonal", "Shadow", "Flat", "Outline"] as const).map((v) => ({ value: v, label: v, art: <ChromeArt chrome={v} light={light} /> }))} />
       </Field>
-      <Field name="Now bar" note="Bar shows the most. Minimal keeps the type small and the buttons to their icons.">
-        <Seg options={["Bar", "Minimal"] as const} value={look.dockStyle} onPick={pick("dockStyle")} size="big" />
+      <Field name="Now bar" note="Everything at hand, or just the essentials.">
+        <ChoiceCards label="Now bar" value={look.dockStyle} onPick={pick("dockStyle")} choices={[{ value: "Bar", label: "Full bar", art: <NowBarArt dock="Bar" /> }, { value: "Minimal", label: "Minimal", art: <NowBarArt dock="Minimal" /> }]} />
       </Field>
-      <Field name="Headings" note="The typeface for titles, dates and big numbers. What people wrote stays in the system sans, and what Friday prints in mono.">
-        <Seg options={["Serif", "Archivo", "Inter"] as const} value={look.headFont} onPick={pick("headFont")} size="big" />
-        <Seg options={["Bold", "Black"] as const} value={look.headWeight} onPick={pick("headWeight")} size="big" />
+      <Field name="Headings" note="The typeface for titles, dates and numbers.">
+        <ChoiceCards label="Heading face" value={look.headFont} onPick={pick("headFont")} choices={(["Serif", "Archivo", "Inter"] as const).map((v) => ({ value: v, label: v, art: <FaceArt font={v} weight={look.headWeight} /> }))} />
+      </Field>
+      <Field name="Heading weight" note="How heavy titles and dates look.">
+        <ChoiceCards label="Heading weight" value={look.headWeight} onPick={pick("headWeight")} choices={(["Bold", "Black"] as const).map((v) => ({ value: v, label: v, art: <FaceArt font={look.headFont} weight={v} /> }))} />
       </Field>
     </>
   )

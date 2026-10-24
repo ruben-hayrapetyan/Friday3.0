@@ -1,10 +1,12 @@
-// The field pickers the add box and the item detail share (v22): a list of options, a due date (month grid, quick
-// picks and a time), a length, and a repeat.
+// The field pickers the add box and the item detail share (v22): a list of options, a due date (typed the way you'd
+// say it, with quick picks), a length, and a repeat.
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { query } from "@/api/client"
 import { Chip, Icon, Seg } from "@/components/fr/controls"
+import { useClock } from "@/hooks/useClock"
 import { ampm, dur, parseLength, weekday } from "@/lib/format"
-import { addDays, toMin } from "@/lib/time"
+import { addDays, fromMin, toMin } from "@/lib/time"
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 const DOWS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -29,93 +31,90 @@ export function ListPicker<T>({ options, value, onPick }: { options: PickOption<
 
 const dowOf = (date: string) => (new Date(toMin(date) * 60000).getUTCDay() + 6) % 7 // Monday is 0
 
-/** A due date and time; `value` is local `YYYY-MM-DDTHH:MM` or null. */
-export function DuePicker({ value, today, onPick, stacked }: { value: string | null; today: string; onPick: (v: string | null) => void; stacked?: boolean }) {
-  const [month, setMonth] = useState((value ?? today).slice(0, 7))
-  const time = value?.slice(11, 16) ?? "23:59"
-  const date = value?.slice(0, 10) ?? null
-  const first = `${month}-01`
-  const lead = dowOf(first)
-  const cells = Array.from({ length: 42 }, (_, i) => addDays(first, i - lead)).filter((d, i) => i < 35 || d.startsWith(month))
-  const weeks = Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7))
-  const pick = (d: string) => onPick(`${d}T${time}`)
+/** "in 3 days", "in 2 hours", "eod": what the quick-add grammar leaves to personal's DueParser. Null otherwise. */
+export function readRelative(text: string, now: string): string | null {
+  const t = text.trim().toLowerCase()
+  if (/^(eod|end of (the )?day|tonight|midnight)$/.test(t)) return `${now.slice(0, 10)}T23:59`
+  const m = /^in\s+(\d+(?:\.\d+)?|an?|one)\s*(m|mins?|minutes?|h|hrs?|hours?|d|days?|w|wks?|weeks?)$/.exec(t)
+  if (!m) return null
+  const n = /^\d/.test(m[1]) ? Number(m[1]) : 1
+  const unit = m[2][0]
+  if (unit === "d" || unit === "w") return `${addDays(now.slice(0, 10), n * (unit === "w" ? 7 : 1))}T23:59`
+  return fromMin(toMin(now) + Math.round(n * (unit === "h" ? 60 : 1)))
+}
+
+/** A typed due date as Friday reads it: a local time, null for "none", undefined while it can't be read. */
+export function useDueReading(text: string, now: string): { due: string | null | undefined; reading: boolean } {
+  const [read, setRead] = useState<{ for: string; due: string | null | undefined }>({ for: "", due: undefined })
+  const t = text.trim()
+  const local = !t ? null : /^(none|no due( date)?|clear|-)$/i.test(t) ? null : readRelative(t, now)
+  useEffect(() => {
+    if (!t || local !== null || /^(none|no due( date)?|clear|-)$/i.test(t)) return
+    const timer = setTimeout(
+      () =>
+        query("parse", { text: `x due ${t}` }).then(
+          (out) => {
+            const f = out.fields as Record<string, unknown>
+            const due = (typeof f.due === "string" ? f.due : typeof f.due_local === "string" ? f.due_local : undefined) as string | undefined
+            // A bare time already gone today means tomorrow's, as personal read it.
+            setRead({ for: t, due: due && toMin(due) < toMin(now) && due.startsWith(now.slice(0, 10)) && !/today/i.test(t) ? fromMin(toMin(due) + 1440) : due })
+          },
+          () => setRead({ for: t, due: undefined }),
+        ),
+      150,
+    )
+    return () => clearTimeout(timer)
+  }, [t, local, now])
+  if (!t) return { due: undefined, reading: false }
+  if (local !== null || /^(none|no due( date)?|clear|-)$/i.test(t)) return { due: local, reading: false }
+  return read.for === t ? { due: read.due, reading: false } : { due: undefined, reading: true }
+}
+
+/** A due date typed the way you'd say it ("fri 5pm", "tomorrow", "oct 30", "in 3 days", "none"), read as you type and
+ * set on Enter; quick picks for the usual ones. personal's DuePicker, in place of a month grid and a time box.
+ * `value` is local `YYYY-MM-DDTHH:MM` or null. */
+export function DuePicker({ value, today, onPick, onDone, autoFocus = true }: { value: string | null; today: string; onPick: (v: string | null) => void; onDone?: () => void; stacked?: boolean; autoFocus?: boolean }) {
+  const now = fromMin(useClock())
+  const [text, setText] = useState("")
+  const { due, reading } = useDueReading(text, now)
   const friday = addDays(today, (4 - dowOf(today) + 7) % 7 || 7)
   const quick: [string, string | null][] = [
-    ["Today", today],
-    ["Tomorrow", addDays(today, 1)],
-    [`${weekday(friday)} ${Number(friday.slice(8, 10))}`, friday],
-    ["In a week", addDays(today, 7)],
+    ["Today", `${today}T23:59`],
+    ["Tomorrow", `${addDays(today, 1)}T23:59`],
+    [`${weekday(friday)} ${Number(friday.slice(8, 10))}`, `${friday}T23:59`],
+    ["In a week", `${addDays(today, 7)}T23:59`],
     ["No due date", null],
   ]
-  const shift = (by: number) => {
-    const [y, m] = month.split("-").map(Number)
-    const d = new Date(Date.UTC(y, m - 1 + by, 1))
-    setMonth(d.toISOString().slice(0, 7))
+  const set = (v: string | null) => {
+    onPick(v)
+    setText("")
+    onDone?.()
   }
+  const readable = text.trim() !== "" && due !== undefined
   return (
-    <div style={{ display: "grid", gridTemplateColumns: stacked ? "1fr" : "auto minmax(0,1fr)", gap: 18, alignItems: "start" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 4, width: 7 * 35 }}>
-          <button className="btn btn-icon btn-ghost" onClick={() => shift(-1)} disabled={month <= today.slice(0, 7)} aria-label="Previous month" style={{ width: 26, height: 26, color: "var(--color-neutral-300)" }}>
-            <Icon name="caret-left" />
-          </button>
-          <span style={{ fontSize: 13, fontWeight: 500 }}>
-            {MONTHS[Number(month.slice(5, 7)) - 1]} {month.slice(0, 4)}
-          </span>
-          <button className="btn btn-icon btn-ghost" onClick={() => shift(1)} aria-label="Next month" style={{ width: 26, height: 26, color: "var(--color-neutral-300)" }}>
-            <Icon name="caret-right" />
-          </button>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 32px)", gap: 3, fontSize: 11, color: "var(--color-neutral-500)", textAlign: "center" }}>
-          {DOWS.map((d) => (
-            <span key={d}>{d.slice(0, 2)}</span>
-          ))}
-        </div>
-        {weeks.map((w) => (
-          <div key={w[0]} style={{ display: "grid", gridTemplateColumns: "repeat(7, 32px)", gap: 3 }}>
-            {w.map((d) => {
-              const on = d === date
-              const past = d < today
-              return (
-                <button
-                  key={d}
-                  className="tnum"
-                  disabled={past}
-                  onClick={() => pick(d)}
-                  title={d}
-                  style={{
-                    opacity: past ? 0.3 : d.startsWith(month) ? 1 : 0.45,
-                    height: 30,
-                    border: 0,
-                    borderRadius: 6,
-                    background: on ? "var(--color-accent)" : "transparent",
-                    color: on ? "var(--fr-ink)" : "var(--color-text)",
-                    boxShadow: d === today && !on ? "inset 0 0 0 1px var(--color-accent-500)" : "none",
-                    font: "inherit",
-                    fontSize: 12,
-                    cursor: past ? "default" : "pointer",
-                  }}
-                >
-                  {Number(d.slice(8, 10))}
-                </button>
-              )
-            })}
-          </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 420 }}>
+      <input
+        className="input"
+        autoFocus={autoFocus}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && readable) set(due ?? null)
+          if (e.key === "Escape") (e.stopPropagation(), text ? setText("") : onDone?.())
+        }}
+        placeholder="fri 5pm, tomorrow, oct 30, in 3 days…"
+        aria-label="Due"
+        style={{ padding: "6px 10px", minHeight: 0, fontSize: 13 }}
+      />
+      <span className="tnum" style={{ fontSize: 12, color: text.trim() && !readable && !reading ? "var(--fr-due)" : "var(--color-neutral-400)" }}>
+        {!text.trim() ? (value ? `Now: ${dueSummary(value, today)}` : "No due date yet.") : reading ? "Reading…" : readable ? `→ ${dueSummary(due ?? null, today)} · Enter to set` : "Can’t read that. Try “fri 5pm” or “oct 30”."}
+      </span>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {quick.map(([label, v]) => (
+          <Chip key={label} on={v === null ? value === null : value?.slice(0, 10) === v.slice(0, 10)} onClick={() => set(v === null || !value ? v : `${v.slice(0, 10)}T${value.slice(11, 16)}`)}>
+            {label}
+          </Chip>
         ))}
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {quick.map(([label, d]) => (
-            <Chip key={label} on={d === date} onClick={() => (d ? pick(d) : onPick(null))}>
-              {label}
-            </Chip>
-          ))}
-        </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--color-neutral-400)" }}>
-          Time
-          <input type="time" step={900} className="input" value={time} disabled={!date} onChange={(e) => date && onPick(`${date}T${e.target.value || "23:59"}`)} style={{ width: 120, padding: "4px 8px", minHeight: 0 }} />
-        </label>
-        <span style={{ fontSize: 13 }}>{dueSummary(value, today)}</span>
       </div>
     </div>
   )

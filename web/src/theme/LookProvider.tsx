@@ -40,7 +40,9 @@ export function LookProvider({ children }: { children: ReactNode }) {
   const hues = useAreaHues()
   const value = useMemo<LookContext>(() => {
     const color = (area: string | null | undefined) => areaHex(area ? (hues.get(area) ?? "n") : "n", light)
-    return { look, light, setLook, color, skinOf: (kind, area, x) => skin(kind, color(area), look, light, x) }
+    // Work with no tag wears the ink Friday writes in, not grey: grey is for meals and routines.
+    const paint = (kind: Kind, area: string | null | undefined) => (area || kind === "routine" || kind === "fixed" ? color(area) : "var(--color-accent)")
+    return { look, light, setLook, color, skinOf: (kind, area, x) => skin(kind, paint(kind, area), look, light, x) }
   }, [look, light, setLook, hues])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

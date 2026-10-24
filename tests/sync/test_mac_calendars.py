@@ -2,6 +2,7 @@
 reads each calendar you switched on from it as it reads Google's. A calendar starts on unless it's a copy of one read
 from Google, a subscription or birthdays; its events skip the inbox; one gone from the Mac is suggested dropped."""
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -192,6 +193,23 @@ def test_a_calendar_switched_off_leaves_your_calendar_and_comes_back_when_on(app
     assert out() == {"Haircut", "Gym"} and all(i["active"] for i in app.table("series"))
     sync(app.conn, app.now_utc + 10)
     assert sorted(i["title"] for i in app.table("items") if i["status"] == "todo").count("Gym") == 2  # no copies
+
+
+def test_chromas_colours_come_with_their_events(app: App, tmp_path: Path) -> None:
+    colors = {
+        "CHROMA-CAL:l1": "blue",  # the dentist, by its event however Chroma named its calendar
+        "CHROMA-CAL:gym/RID=800000000": "red",  # one occurrence of a repeat
+        "CHROMA-CAL:gym": "green",  # and the whole repeat, which wins
+        "CHROMA-CAL:nope": "default",  # Unmarked: nothing
+    }
+    (tmp_path / "colors.json").write_text(json.dumps(colors))
+    gym = mac_event("gym", "home", "Gym", "2026-10-22T18:00", "2026-10-22T19:00")
+    post(app, [HOME], [LECTURE, gym])
+    out = app.do("import_chroma_colors", colors_path=str(tmp_path / "colors.json"))
+    assert out["message"] == "Brought in Chroma's colours for 2 events"
+    assert shown(app, "Dentist")["chroma_color"] == "blue" and shown(app, "Gym")["chroma_color"] == "green"
+    with pytest.raises(FieldError, match="found no"):
+        app.do("import_chroma_colors", colors_path=str(tmp_path / "gone.json"))
 
 
 def test_a_mac_calendar_read_as_one_kind(app: App) -> None:

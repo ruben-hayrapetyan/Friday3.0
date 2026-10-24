@@ -81,7 +81,7 @@ VERBS = {
         "/api/c/calendar_set",
         commands.CalendarSetInput,
         True,
-        False,
+        True,
         "Read a Google calendar (or, with `mac`, one of the Mac's) or stop, as one kind or per event, trusted or",
     ),
     "changes": Verb(
@@ -196,6 +196,14 @@ VERBS = {
         False,
         False,
         "Your Google calendars as of the last sync, alphabetized, with whether each is read and how.",
+    ),
+    "import_chroma_colors": Verb(
+        "POST",
+        "/api/c/import_chroma_colors",
+        commands.ChromaColorsInput,
+        True,
+        False,
+        "The colour Chroma showed each event in, by the event: its own choice, its calendar's or its category's.",
     ),
     "import_personal": Verb(
         "POST",

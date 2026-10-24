@@ -141,3 +141,8 @@ def fallback_level(title: str) -> str:
     if _REQUIRED.search(title):
         return "required"
     return "optional" if _OPTIONAL.search(title) else "likely"
+
+
+def event_key(external_id: str) -> str:
+    """The event's own id, from Chroma's key or the id a calendar sync keeps (`<calendar>:<event>@<start>`)."""
+    return external_id.split("@")[0].split("/RID=")[0].split(":")[-1]

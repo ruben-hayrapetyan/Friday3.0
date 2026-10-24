@@ -6,14 +6,14 @@ from typing import Any
 from friday.api.types import ItemFields, ItemOut
 from friday.commands.eventwrites import writes_to
 from friday.commands.registry import Ctx
-from friday.core.calendars import category_of, is_filtered, left_out
+from friday.core.calendars import category_of, event_key, is_filtered, left_out
 from friday.core.items import FieldError, Item, apply_preset, validate, with_defaults
 from friday.core.rows import item_to_row
 from friday.core.textnorm import plain_words
 from friday.core.time import UNIT_MIN
 from friday.planner.cushion import cushion
 from friday.planner.progress import remaining_minutes
-from friday.planner.store import EventLink, area_names, event_links, load_item
+from friday.planner.store import EventLink, area_names, event_links, kv_get, load_item
 
 UNIT_FIELDS = {
     "duration_min": "duration_units",
@@ -132,7 +132,10 @@ def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
     calendar = link.calendar if link else None
     category = category_of(item.title, ctx.settings["categories"])
     reason = left_out(item.title, calendar, item.free, ctx.settings["categories"], ctx.settings["busy"])
+    if "chroma_colors" not in ctx.memo:
+        ctx.memo["chroma_colors"] = kv_get(ctx.conn, "chroma_colors", {}, ctx.user_id) or {}
     return {
+        "chroma_color": ctx.memo["chroma_colors"].get(event_key(link.event_id)) if link else None,
         "calendar": calendar,
         "calendar_color": ctx.settings["calendar_look"].colors.get(calendar) if calendar else None,
         "saves_to_calendar": bool(link) and saves(ctx, link.source_id),

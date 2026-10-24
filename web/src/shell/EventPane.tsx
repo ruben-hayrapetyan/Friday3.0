@@ -7,7 +7,7 @@ import type { Item } from "@/api/client"
 import { Icon, Menu, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { clock, weekday } from "@/lib/format"
-import { PIGMENTS, pigment } from "@/lib/pigments"
+import { PIGMENTS, pigment, UNMARKED } from "@/lib/pigments"
 import { addDays, fromMin, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { type EventDraft, useShell } from "./ShellContext"
@@ -27,7 +27,9 @@ export function draftAt(start: string, end?: string): EventDraft {
 }
 
 /** An event to edit, as the drawer holds it. */
-export function draftOf(item: Pick<Item, "id" | "title" | "start" | "end" | "series_id" | "color" | "notes" | "calendar" | "saves_to_calendar">): EventDraft {
+export function draftOf(
+  item: Pick<Item, "id" | "title" | "start" | "end" | "series_id" | "color" | "notes" | "calendar" | "saves_to_calendar" | "chroma_color" | "category" | "category_color" | "calendar_color">,
+): EventDraft {
   const start = item.start ?? ""
   const end = item.end ?? start
   const allDay = start.endsWith("T00:00") && end.endsWith("T00:00") && end > start
@@ -43,6 +45,13 @@ export function draftOf(item: Pick<Item, "id" | "title" | "start" | "end" | "ser
     seriesId: item.series_id ?? null,
     calendar: item.calendar ?? null,
     savesToCalendar: item.saves_to_calendar ?? false,
+    auto: item.chroma_color
+      ? { color: item.chroma_color, from: "as in Chroma" }
+      : item.category_color
+        ? { color: item.category_color, from: item.category ?? "its category" }
+        : item.calendar_color
+          ? { color: item.calendar_color, from: item.calendar ?? "its calendar" }
+          : { color: null, from: "no category matches" },
   }
 }
 
@@ -64,6 +73,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   useEffect(() => setAsking(false), [draft.id])
   const day = draft.start.slice(0, 10)
   const lastDay = draft.allDay ? addDays(draft.end.slice(0, 10), -1) : day
+  const autoName = draft.auto?.color ? `${PIGMENTS.find((p) => p.id === draft.auto?.color)?.name ?? draft.auto.color}, ${draft.auto.from}` : `Unmarked, ${draft.auto?.from ?? "no category matches"}`
   const valid = draft.title.trim() !== "" && (draft.allDay ? lastDay >= day : toMin(draft.end) > toMin(draft.start))
   const close = () => setEvent(null)
   const save = async () => {
@@ -177,21 +187,25 @@ export function EventPane({ draft }: { draft: EventDraft }) {
         )
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span className="fr-eyebrow">Pigment</span>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        <span className="fr-eyebrow">Colour</span>
+        {/* Chroma's picker: rounded squares that wrap, Automatic first, the choice named underneath. */}
+        <div role="radiogroup" aria-label="Colour" style={{ display: "grid", gridTemplateColumns: "repeat(6, 24px)", gap: 8, padding: 3 }}>
           <button
             className="fr-plain"
+            role="radio"
             onClick={() => set({ color: null })}
-            title="Its calendar's colour"
-            aria-pressed={draft.color === null}
-            style={{ ...swatch, background: "transparent", boxShadow: ring(draft.color === null, "var(--color-neutral-500)") }}
+            title={`Automatic: ${autoName}`}
+            aria-label="Automatic"
+            aria-checked={draft.color === null}
+            style={{ ...swatch, background: pigment(draft.auto?.color, light) ?? UNMARKED, boxShadow: ring(draft.color === null), display: "grid", placeItems: "center" }}
           >
-            <Icon name="prohibit" size={14} style={{ color: "var(--color-neutral-500)", display: "block", margin: "auto" }} />
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", lineHeight: 1 }}>A</span>
           </button>
           {PIGMENTS.map((p) => (
-            <button key={p.id} className="fr-plain" onClick={() => set({ color: p.id })} title={p.name} aria-label={p.name} aria-pressed={draft.color === p.id} style={{ ...swatch, background: pigment(p.id, light) ?? undefined, boxShadow: ring(draft.color === p.id, "var(--color-text)") }} />
+            <button key={p.id} className="fr-plain" role="radio" onClick={() => set({ color: p.id })} title={p.name} aria-label={p.name} aria-checked={draft.color === p.id} style={{ ...swatch, background: pigment(p.id, light) ?? undefined, boxShadow: ring(draft.color === p.id) }} />
           ))}
         </div>
+        <span className="fr-kicker">{draft.color ? (PIGMENTS.find((p) => p.id === draft.color)?.name ?? draft.color) : `Automatic: ${autoName}`}</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <span className="fr-eyebrow">Notes</span>
@@ -237,8 +251,8 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 const field = { minHeight: 0, padding: "4px 6px", fontSize: 13, width: "auto", maxWidth: "100%" }
-const swatch = { width: 22, height: 22, borderRadius: "50%", flex: "none" } as const
-const ring = (on: boolean, color: string) => (on ? `0 0 0 2px var(--color-surface), 0 0 0 4px ${color}` : `inset 0 0 0 1px var(--fr-rule)`)
+const swatch = { width: 24, height: 24, borderRadius: 4, flex: "none" } as const
+const ring = (on: boolean) => (on ? "0 0 0 2px var(--color-surface), 0 0 0 3.5px color-mix(in srgb, var(--color-text) 75%, transparent)" : "none")
 
 function summary(d: EventDraft): string {
   const day = d.start.slice(0, 10)

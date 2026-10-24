@@ -12,7 +12,6 @@ import { when } from "@/lib/format"
 import { addDays } from "@/lib/time"
 import { useInbox } from "@/inbox/InboxPage"
 import { useShell } from "@/shell/ShellContext"
-import { Assistants } from "./Assistants"
 import { Calendars, useCalendars } from "./Calendars"
 import { MailLog } from "./MailLog"
 import { SectionHead } from "./SettingsPage"
@@ -54,7 +53,9 @@ export function Integrations() {
         </a>
       </div>
       <Imported />
-      <Assistants />
+      <p className="fr-kicker" style={{ paddingTop: 18 }}>
+        Tokens for assistants and scripts are under <a href="#/settings/tokens">Tokens</a>.
+      </p>
     </>
   )
 }

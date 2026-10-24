@@ -1,4 +1,5 @@
-"""Bringing in the two apps Friday replaces, once (COMBINED.md 24): Todo List's open tasks and Chroma's categories.
+"""Bringing in the two apps Friday replaces, once (COMBINED.md 24): Todo List's open tasks and Chroma's categories,
+and the colour Chroma showed each event in.
 
 The server runs on your Mac (COMBINED.md 2), so it reads their files where they are. Tasks keep their title, due
 date and list (short or long term); a reading is a Reading, an assignment an Assignment and an email a quick Errand,
@@ -11,16 +12,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from friday.api.commands import AddInput, Changed, ImportPersonalInput, SettingsSetInput
+from friday.api.commands import AddInput, Changed, ChromaColorsInput, ImportPersonalInput, SettingsSetInput
 from friday.commands.items import add
 from friday.commands.registry import Ctx, command
 from friday.commands.settings import settings_set
-from friday.core.items import FieldError
+from friday.core.calendars import event_key
+from friday.core.items import PIGMENTS, FieldError
 from friday.core.time import format_local, to_local
 from friday.planner.store import kv_get
 
 TODOS = Path("~/Documents/Todo List/todos.json")
 CATEGORIES = Path("~/Library/Application Support/Chroma/categories.json")
+COLORS = Path("~/Library/Application Support/Chroma/colors.json")
 
 
 @command("import_personal", affects_plan=True)
@@ -81,3 +84,25 @@ def import_categories(ctx: Ctx, data: dict[str, Any]) -> int:
     rule = {"label": found["label"], "pattern": found["pattern"], "except": found.get("except", [])} if found else None
     settings_set(ctx, SettingsSetInput(key="categories", value={"categories": categories, "filter": rule}))
     return len(categories)
+
+
+@command("import_chroma_colors")
+def import_chroma_colors(ctx: Ctx, inp: ChromaColorsInput) -> Changed:
+    """The colour Chroma showed each event in, by the event: its own choice, its calendar's or its category's.
+    Chroma's file is only read; reading it again takes in what changed there."""
+    colors_file = Path(inp.colors_path or COLORS).expanduser()
+    if not colors_file.exists():
+        raise FieldError("colors_path", f"found no {colors_file}")
+    found = chroma_colors(json.loads(colors_file.read_text()))
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "chroma_colors"}, {"value": json.dumps(found)})
+    return Changed(message=f"Brought in Chroma's colours for {len(found)} event{'' if len(found) == 1 else 's'}")
+
+
+def chroma_colors(stored: dict[str, str]) -> dict[str, str]:
+    """Chroma's colors.json, keyed `<calendar>:<event>` (a repeat's one occurrence adds `/RID=<time>`), as pigments by
+    the event alone: a whole repeat's colour over one occurrence's, Unmarked and unknown names left out."""
+    out: dict[str, str] = {}
+    for key, color in sorted(stored.items(), key=lambda kv: "/RID=" not in kv[0]):  # whole repeats last, so they win
+        if color in PIGMENTS:
+            out[event_key(key)] = color
+    return out

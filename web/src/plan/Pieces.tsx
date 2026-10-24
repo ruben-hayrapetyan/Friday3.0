@@ -5,7 +5,7 @@ import type { CSSProperties } from "react"
 import type { Block, Item } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { clock, dur, when } from "@/lib/format"
-import { pigment } from "@/lib/pigments"
+import { eventPaint, wash } from "@/lib/pigments"
 import { type Placed, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import type { Kind } from "@/theme/skin"
@@ -111,11 +111,12 @@ export function FixedBox({ p, onOpen }: { p: Placed<Item & { start: string; end:
   const it = p.item
   const { skinOf, light } = useLook()
   const base = skinOf(it.event_kind === "shove" ? "shove" : "fixed", it.area)
-  // Painted as personal painted events, the pigment on its spine and a wash of it: its own pigment, else its
-  // category's, else its calendar's (COMBINED.md 17). One left out of planning sits back, dashed.
-  const paint = pigment(it.color, light) ?? pigment(it.category_color, light) ?? pigment(it.calendar_color, light)
-  const painted = paint ? { ...base, bg: `color-mix(in srgb, ${paint} 16%, var(--color-surface))`, stripe: paint, fg: "var(--color-text)", sub: "var(--color-neutral-400)" } : base
-  const s = it.left_out ? { ...painted, bg: "transparent", bd: `1px dashed ${paint ?? "var(--fr-rule)"}`, fg: "var(--color-neutral-400)" } : painted
+  // Painted as Chroma painted events: the pigment as a spine and an 11% wash over the page, the title in ink. Its
+  // own pigment, else the one Chroma showed it in, else its category's, else its calendar's, else Chroma's
+  // Unmarked slate (COMBINED.md 17). One left out of planning sits back, dashed.
+  const paint = eventPaint(it, light)
+  const painted = it.event_kind === "shove" ? base : { ...base, bg: wash(paint, light), stripe: paint, fg: "var(--color-text)", sub: "var(--color-neutral-400)" }
+  const s = it.left_out ? { ...painted, bg: "transparent", bd: `1px dashed ${paint}`, fg: "var(--color-neutral-400)" } : painted
   const tall = minutes(it) >= 45
   return (
     <div

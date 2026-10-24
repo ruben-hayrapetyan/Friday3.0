@@ -8,11 +8,13 @@ import { query } from "@/api/client"
 import { H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useLoad } from "@/hooks/queries"
-import { ampm, clock, weekday } from "@/lib/format"
-import { toMin } from "@/lib/time"
-import { useLook } from "@/theme/LookProvider"
+import { ampm, weekday } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
+import { Comparison } from "./Comparison"
 import { Learned } from "./Learned"
+import { Section } from "./Section"
+
+export { Section }
 
 const RANGES = [
   { value: 2, label: "2 weeks" },
@@ -72,20 +74,6 @@ function Big({ big, line }: { big: string; line: string }) {
       </H>
       <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>{line}</span>
     </div>
-  )
-}
-
-export function Section({ title, note, right, children }: { title: string; note: string; right?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section className="fr-row" style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 24 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-        <H size={20}>{title}</H>
-        <span className="fr-kicker">{note}</span>
-        <span style={{ flex: 1 }} />
-        {right}
-      </div>
-      {children}
-    </section>
   )
 }
 
@@ -183,65 +171,6 @@ function Row({ day, row, top }: { day: string; row: number[]; top: number }) {
   )
 }
 
-/** One question about tomorrow: two versions that finish the same work. */
-function Comparison() {
-  const questions = useQuery({ queryKey: ["questions"], queryFn: () => query("questions") }).data
-  const answer = useCommand("compare_answer", { label: (o) => o.result.message ?? "Thanks" })
-  const { skinOf } = useLook()
-  const q = questions?.comparisons[0]
-  if (!q) return null
-  const day = String(q.day)
-  type B = { item_id: number; title: string; start: string; end: string; area?: string | null }
-  const versions = [
-    { letter: "A", blocks: q.a as unknown as B[] },
-    { letter: "B", blocks: q.b as unknown as B[] },
-  ]
-  const fixed = (q.fixed ?? []) as unknown as B[]
-  const all = [...versions.flatMap((v) => v.blocks), ...fixed]
-  const lo = Math.min(...all.map((b) => toMin(b.start))) - 30
-  const hi = Math.max(...all.map((b) => toMin(b.end))) + 30
-  const scale = 380 / Math.max(60, hi - lo)
-  return (
-    <Section title={`Which ${weekday(day) === "Thu" ? "Thursday" : weekday(day)} looks better?`} note="One quick question helps Friday learn what you prefer">
-      <div className="fr-stack" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 300px)) minmax(0,1fr)", gap: 20, alignItems: "start" }}>
-        {versions.map((v) => (
-          <div key={v.letter} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <span style={{ fontWeight: 500 }}>Version {v.letter}</span>
-            <div style={{ position: "relative", height: 380, overflow: "hidden", borderRadius: "var(--radius-md)", background: "var(--color-bg)", backgroundImage: `repeating-linear-gradient(to bottom, color-mix(in srgb, var(--color-text) 5%, transparent) 0 1px, transparent 1px ${60 * scale}px)` }}>
-              {fixed.map((b) => (
-                <div key={`f${b.start}`} style={{ position: "absolute", left: 6, right: 6, top: (toMin(b.start) - lo) * scale, height: Math.max(14, (toMin(b.end) - toMin(b.start)) * scale - 2), padding: "3px 9px", borderRadius: 5, background: "color-mix(in srgb, var(--color-text) 7%, transparent)", color: "var(--color-neutral-500)", fontSize: 11, overflow: "hidden", whiteSpace: "nowrap" }}>
-                  {b.title}
-                </div>
-              ))}
-              {v.blocks.map((b) => {
-                const s = skinOf("planned", b.area)
-                return (
-                  <div key={`${b.item_id}${b.start}`} style={{ position: "absolute", left: 6, right: 6, top: (toMin(b.start) - lo) * scale, height: Math.max(14, (toMin(b.end) - toMin(b.start)) * scale - 2), padding: "3px 7px 3px 9px", borderRadius: 5, background: s.bg, color: s.fg, fontSize: 11, overflow: "hidden", whiteSpace: "nowrap" }}>
-                    <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: s.stripe }} />
-                    {b.title}{" "}
-                    <span className="tnum" style={{ color: "var(--color-neutral-500)" }}>
-                      {clock(b.start)}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-            <button className="btn btn-secondary" onClick={() => answer({ id: q.id, answer: v.letter.toLowerCase() as "a" | "b" })}>
-              Pick {v.letter}
-            </button>
-          </div>
-        ))}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 26 }}>
-          <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>Both finish the same work, placed differently around your classes (grey). Pick the day you'd rather have.</span>
-          <button className="btn btn-ghost" onClick={() => answer({ id: q.id, answer: "skip" })} style={{ alignSelf: "flex-start" }}>
-            Skip
-          </button>
-        </div>
-      </div>
-    </Section>
-  )
-}
-
 function LoadLegend() {
   return (
     <span style={{ display: "flex", gap: 12, fontSize: 11, color: "var(--color-neutral-500)" }}>
@@ -264,31 +193,35 @@ function Load() {
   const over = weeks.find((w) => w.hours > w.capacity + 0.5)
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(8, minmax(0,1fr))", gap: 10, alignItems: "end" }}>
-        {weeks.map((w) => {
-          const heavy = w.hours > w.capacity
-          return (
-            <div key={w.start} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{ position: "relative", height: 140, borderRadius: 6, background: "var(--color-bg)" }}>
-                <div style={{ position: "absolute", left: 0, right: 0, bottom: `${(w.capacity / top) * 100}%`, height: 1, background: "var(--color-neutral-500)" }} />
-                <div style={{ position: "absolute", left: 6, right: 6, bottom: 0, height: `${(w.hours / top) * 100}%`, borderRadius: "4px 4px 0 0", background: heavy ? "var(--fr-warn)" : w.forecast ? "color-mix(in srgb, var(--color-accent) 45%, transparent)" : "var(--color-accent)" }} />
-                {w.due.length > 0 && (
-                  <span title={w.due.map((d) => d.title).join(", ")} style={{ position: "absolute", top: 6, left: 6, display: "flex", gap: 3 }}>
-                    {w.due.slice(0, 5).map((d) => (
-                      <span key={d.item_id} style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--fr-due)" }} />
-                    ))}
-                  </span>
-                )}
+      {/* One column a week, however many come back (this week and the eight after): they share the width, and on a
+          phone the row scrolls sideways inside the section rather than wrapping. */}
+      <div style={{ overflowX: "auto", margin: "0 -2px", padding: "0 2px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(1, weeks.length)}, minmax(52px, 1fr))`, gap: 8, alignItems: "end" }}>
+          {weeks.map((w) => {
+            const heavy = w.hours > w.capacity
+            return (
+              <div key={w.start} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ position: "relative", height: 140, borderRadius: 6, background: "var(--color-bg)" }}>
+                  <div style={{ position: "absolute", left: 0, right: 0, bottom: `${(w.capacity / top) * 100}%`, height: 1, background: "var(--color-neutral-500)" }} />
+                  <div style={{ position: "absolute", left: 6, right: 6, bottom: 0, height: `${(w.hours / top) * 100}%`, borderRadius: "4px 4px 0 0", background: heavy ? "var(--fr-warn)" : w.forecast ? "color-mix(in srgb, var(--color-accent) 45%, transparent)" : "var(--color-accent)" }} />
+                  {w.due.length > 0 && (
+                    <span title={w.due.map((d) => d.title).join(", ")} style={{ position: "absolute", top: 6, left: 6, display: "flex", gap: 3 }}>
+                      {w.due.slice(0, 5).map((d) => (
+                        <span key={d.item_id} style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--fr-due)" }} />
+                      ))}
+                    </span>
+                  )}
+                </div>
+                <span className="tnum" style={{ fontSize: 11, whiteSpace: "nowrap", color: heavy ? "var(--fr-warn)" : "var(--color-neutral-300)" }}>
+                  {weekday(w.start)} {Number(w.start.slice(8, 10))}
+                </span>
+                <span className="tnum" style={{ fontSize: 11, whiteSpace: "nowrap", color: "var(--color-neutral-500)" }}>
+                  {w.hours.toFixed(0)} / {w.capacity.toFixed(0)} h
+                </span>
               </div>
-              <span className="tnum" style={{ fontSize: 11, color: heavy ? "var(--fr-warn)" : "var(--color-neutral-300)" }}>
-                {weekday(w.start)} {Number(w.start.slice(8, 10))}
-              </span>
-              <span className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>
-                {w.hours.toFixed(0)} / {w.capacity.toFixed(0)} h
-              </span>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
       {over && (
         <div style={{ display: "flex", gap: 14, alignItems: "center", padding: "12px 14px", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--fr-mark) 9%, var(--color-bg))" }}>

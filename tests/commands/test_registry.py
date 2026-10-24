@@ -18,6 +18,7 @@ from tests.commands.helpers import App, new_app
 # Tables a command's undo doesn't restore: the log itself, the plan generation, and derived plans.
 DERIVED = {"command_log", "kv", "plans", "blocks", "users", "sqlite_sequence"}
 KV_STATE = {
+    "import_chroma_colors",  # the colours, kept in kv
     "report",  # the last 50 reports, kept in kv
     "stuck",  # the latest friction, kept in kv
     "rule_win",
@@ -240,8 +241,15 @@ def import_sample(app: App) -> dict[str, Any]:
     return {"todos_path": str(folder / "todos.json"), "categories_path": str(folder / "categories.json")}
 
 
+def chroma_sample(app: App) -> dict[str, Any]:
+    folder = Path(tempfile.mkdtemp())
+    (folder / "colors.json").write_text(json.dumps({"CAL:EVENT": "blue"}))
+    return {"colors_path": str(folder / "colors.json")}
+
+
 SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "import_personal": import_sample,
+    "import_chroma_colors": chroma_sample,
     "event_going": lambda app: {"title": "Poker night"},
     "other_way_pick": lambda app: {"weights": {"energy": 2.0}, "seed": 1, "rule_totals": {"energy": 100}},
     "add": add_sample,

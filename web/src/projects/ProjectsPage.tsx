@@ -7,11 +7,11 @@ import type { Item, Schemas } from "@/api/client"
 import { Box, Check, H, Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useHorizon, useProjects } from "@/hooks/queries"
-import { dur, weekday, when } from "@/lib/format"
-import { addDays, toMin } from "@/lib/time"
+import { dur, when } from "@/lib/format"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { NewProject } from "./NewProject"
+import { Timeline } from "./Timeline"
 
 type Project = Schemas["ProjectOut"]
 const STATUS: Record<Project["status"], [string, string]> = {
@@ -66,6 +66,10 @@ export function ProjectsPage() {
   )
 }
 
+// The steps' columns; a narrow window keeps the name and length, with when it's planned and what it waits on
+// under the name.
+const cols = (tight: boolean) => (tight ? "22px 18px minmax(0,1fr) auto 28px" : "22px 18px minmax(0,1fr) 170px 96px 92px 28px")
+
 const pct = (p: Project) => (p.done_min + p.remaining_min ? Math.round((p.done_min / (p.done_min + p.remaining_min)) * 100) : 0)
 
 function ListRow({ p, on, onPick }: { p: Project; on: boolean; onPick: () => void }) {
@@ -89,7 +93,7 @@ function ListRow({ p, on, onPick }: { p: Project; on: boolean; onPick: () => voi
 }
 
 function Detail({ p }: { p: Project }) {
-  const { today } = useShell()
+  const { today, layout } = useShell()
   const { color } = useLook()
   const blocks = useHorizon().data?.blocks ?? []
   const add = useCommand("add", { label: () => "Step added" })
@@ -106,14 +110,14 @@ function Detail({ p }: { p: Project }) {
     reorder({ parent_id: p.item.id, ids })
   }
   return (
-    <div style={{ overflowY: "auto", minHeight: 0, padding: "24px 30px 120px", display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ overflowY: "auto", minHeight: 0, padding: layout.tight ? "16px 16px 120px" : "24px 30px 120px", display: "flex", flexDirection: "column", gap: 24 }}>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 260, display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ flex: 1, minWidth: "min(260px, 100%)", display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
             <span className="fr-swatch" style={{ background: color(p.item.area) }} />
             {p.item.area ?? "No tag"}, {p.item.preset ?? "Project"}
           </span>
-          <H size={36}>{p.item.title}</H>
+          <H size={layout.tight ? 28 : 36}>{p.item.title}</H>
           <span className="tnum" style={{ color: "var(--color-neutral-300)" }}>
             {p.item.due ? `Due ${when(p.item.due, today)}, ` : ""}
             {steps.length} steps, {dur(total)} in all
@@ -132,13 +136,13 @@ function Detail({ p }: { p: Project }) {
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "22px 18px minmax(0,1fr) 170px 96px 92px 28px", gap: 12, padding: "0 0 6px", fontSize: 11, color: "var(--color-neutral-500)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: cols(layout.tight), gap: 12, padding: "0 0 6px", fontSize: 11, color: "var(--color-neutral-500)" }}>
           <span />
           <span />
           <span>Step</span>
-          <span>Waits on</span>
+          {!layout.tight && <span>Waits on</span>}
           <span style={{ textAlign: "right" }}>Length</span>
-          <span style={{ textAlign: "right" }}>Planned</span>
+          {!layout.tight && <span style={{ textAlign: "right" }}>Planned</span>}
           <span />
         </div>
         {steps.map((s, i) => (
@@ -155,13 +159,13 @@ function Detail({ p }: { p: Project }) {
           />
         </div>
       </div>
-      <Timeline p={p} steps={steps} />
+      <Timeline p={p} steps={steps} tone={fg} />
     </div>
   )
 }
 
 function Step({ step, steps, first, last, next, onMove }: { step: Item; steps: Item[]; first: boolean; last: boolean; next: string | null; onMove: (by: number) => void }) {
-  const { today } = useShell()
+  const { today, layout } = useShell()
   const [open, setOpen] = useState(false)
   const done = useCommand("done", { label: () => `${step.title}: done` })
   const reopen = useCommand("reopen", { label: () => "Open again" })
@@ -186,8 +190,15 @@ function Step({ step, steps, first, last, next, onMove }: { step: Item; steps: I
     return false
   }
   const length = step.duration_min ?? 60
+  const planned = isDone ? "Done" : next ? when(next, today) : "not planned"
+  const waitsOn = (
+    <button onClick={() => setOpen(!open)} className="fr-plain" title={names.join(", ") || "Nothing"} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: "var(--radius-md)", background: "var(--color-bg)", boxShadow: open ? "inset 0 0 0 1px var(--color-accent-500)" : "0 0 0 1px color-mix(in srgb, var(--color-text) 7%, transparent)", color: names.length ? "var(--color-text)" : "var(--color-neutral-500)", fontSize: 12, minWidth: 0, ...(layout.tight ? { padding: 0, background: "none", boxShadow: "none", maxWidth: "100%" } : {}) }}>
+      <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{layout.tight ? `Waits on ${names.join(", ") || "nothing"}` : names.join(", ") || "Nothing"}</span>
+      <Icon name="caret-down" size={10} style={{ opacity: 0.6 }} />
+    </button>
+  )
   return (
-    <div className="fr-row" style={{ display: "grid", gridTemplateColumns: "22px 18px minmax(0,1fr) 170px 96px 92px 28px", gap: 12, alignItems: "center", padding: "10px 0", opacity: isDone ? 0.55 : 1 }}>
+    <div className="fr-row" style={{ display: "grid", gridTemplateColumns: cols(layout.tight), gap: 12, alignItems: "center", padding: "10px 0", opacity: isDone ? 0.55 : 1 }}>
       <span style={{ display: "flex", flexDirection: "column" }}>
         <button className="fr-plain" onClick={() => onMove(-1)} aria-label="Move up" style={{ height: 12, color: "var(--color-neutral-400)", opacity: first ? 0.25 : 1 }}>
           <Icon name="caret-up" size={12} />
@@ -204,11 +215,16 @@ function Step({ step, steps, first, last, next, onMove }: { step: Item; steps: I
             <Icon name="hourglass-medium" size={11} /> Waiting on {names.join(", ")}
           </span>
         )}
+        {layout.tight && (
+          <span style={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 10, rowGap: 2, paddingTop: 2, minWidth: 0 }}>
+            <span className="tnum" style={{ flex: "none", fontSize: 12, color: "var(--color-neutral-400)" }}>
+              {planned}
+            </span>
+            {waitsOn}
+          </span>
+        )}
       </span>
-      <button onClick={() => setOpen(!open)} className="fr-plain" title={names.join(", ") || "Nothing"} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: "var(--radius-md)", background: "var(--color-bg)", boxShadow: open ? "inset 0 0 0 1px var(--color-accent-500)" : "0 0 0 1px color-mix(in srgb, var(--color-text) 7%, transparent)", color: names.length ? "var(--color-text)" : "var(--color-neutral-500)", fontSize: 12, minWidth: 0 }}>
-        <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{names.join(", ") || "Nothing"}</span>
-        <Icon name="caret-down" size={10} style={{ opacity: 0.6 }} />
-      </button>
+      {!layout.tight && waitsOn}
       <span className="tnum" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, fontSize: 12 }}>
         <button className="fr-plain" onClick={() => edit({ id: step.id, duration_min: Math.max(15, length - 15) })} aria-label="Shorter" style={{ padding: "0 2px", color: "var(--color-neutral-400)" }}>
           −
@@ -218,9 +234,11 @@ function Step({ step, steps, first, last, next, onMove }: { step: Item; steps: I
           +
         </button>
       </span>
-      <span className="tnum" style={{ textAlign: "right", fontSize: 12, color: "var(--color-neutral-300)" }}>
-        {isDone ? "Done" : next ? when(next, today) : "not planned"}
-      </span>
+      {!layout.tight && (
+        <span className="tnum" style={{ textAlign: "right", fontSize: 12, color: "var(--color-neutral-300)" }}>
+          {planned}
+        </span>
+      )}
       <button className="btn btn-icon btn-ghost" onClick={() => drop({ id: step.id })} aria-label="Delete step" title="Delete step" style={{ width: 28, height: 28, color: "var(--color-neutral-500)" }}>
         <Icon name="trash" />
       </button>
@@ -247,65 +265,6 @@ function Step({ step, steps, first, last, next, onMove }: { step: Item; steps: I
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-/** When each step is planned, from today to the due date (or the last block). */
-function Timeline({ p, steps }: { p: Project; steps: Item[] }) {
-  const { today } = useShell()
-  const { skinOf } = useLook()
-  const blocks = useHorizon().data?.blocks ?? []
-  const spans = steps.map((s) => ({ s, bs: blocks.filter((b) => b.item_id === s.id) }))
-  const ends = [p.item.due, ...blocks.filter((b) => steps.some((s) => s.id === b.item_id)).map((b) => b.end)].filter((x): x is string => !!x)
-  const last = ends.sort().at(-1) ?? addDays(today, 7)
-  const lo = toMin(`${today}T00:00`)
-  const hi = Math.max(lo + 3 * 1440, toMin(`${last.slice(0, 10)}T00:00`) + 1440)
-  const at = (t: string) => ((toMin(t) - lo) / (hi - lo)) * 100
-  const days = Math.round((hi - lo) / 1440)
-  const every = Math.max(1, Math.ceil(days / 10))
-  const axis = Array.from({ length: days }, (_, i) => addDays(today, i)).filter((_, i) => i % every === 0)
-  const finish = p.planned_finish
-  const slack = finish && p.item.due ? Math.round((toMin(p.item.due) - toMin(finish)) / 60) : null
-  const line = p.status === "unplanned" ? "Some steps aren't planned yet: give them a length." : slack === null ? "" : slack >= 0 ? `Planned to finish ${when(finish as string, today)}, ${slack >= 24 ? `${Math.round(slack / 24)} days` : `${slack} h`} before it's due.` : `Planned to finish ${when(finish as string, today)}, after it's due.`
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-        <H size={18}>Timeline</H>
-        <span className="fr-kicker">When each step is planned, up to the deadline</span>
-      </div>
-      <div style={{ position: "relative", padding: "22px 0 6px", borderRadius: "var(--radius-md)", background: "var(--color-bg)" }}>
-        {axis.map((d) => (
-          <span key={d}>
-            <span className="tnum" style={{ position: "absolute", top: 4, left: `${at(`${d}T00:00`)}%`, fontSize: 10, color: "var(--color-neutral-500)", transform: "translateX(-50%)" }}>
-              {weekday(d)} {Number(d.slice(8, 10))}
-            </span>
-            <span style={{ position: "absolute", top: 18, bottom: 0, left: `${at(`${d}T00:00`)}%`, width: 1, background: "color-mix(in srgb, var(--color-text) 7%, transparent)" }} />
-          </span>
-        ))}
-        <span style={{ position: "absolute", top: 18, bottom: 0, left: `${Math.max(0, at(`${today}T12:00`))}%`, width: 2, background: "var(--fr-now)" }} />
-        {p.item.due && (
-          <>
-            <span style={{ position: "absolute", top: 18, bottom: 0, left: `${at(p.item.due)}%`, width: 2, background: "var(--fr-due)" }} />
-            <span style={{ position: "absolute", top: 4, left: `${at(p.item.due)}%`, fontSize: 10, color: "var(--fr-due)", paddingLeft: 4 }}>Due</span>
-          </>
-        )}
-        {spans.map(({ s, bs }) => {
-          const k = skinOf(s.status === "done" ? "done" : "planned", s.area)
-          const from = bs.length ? at(bs[0].start) : null
-          const to = bs.length ? at(bs[bs.length - 1].end) : null
-          return (
-            <div key={s.id} style={{ position: "relative", height: 28 }}>
-              {from !== null && to !== null && (
-                <div title={`${s.title}: ${bs.length} sessions`} style={{ position: "absolute", top: 4, height: 20, left: `${from}%`, width: `${Math.max(1.5, to - from)}%`, padding: "0 6px", borderRadius: 5, background: k.bg, border: k.bd, color: k.fg, fontSize: 11, lineHeight: "20px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {s.title}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-      <span style={{ fontSize: 12, color: STATUS[p.status][1] }}>{line}</span>
     </div>
   )
 }

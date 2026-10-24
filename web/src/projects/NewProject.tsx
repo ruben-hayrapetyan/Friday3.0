@@ -1,6 +1,7 @@
 // A new project (v22): a name, a template's steps (or none), a tag, a due date and about how long it all takes.
+// Escape or a click outside closes it.
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Chip, H, Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useAreas, useSettings } from "@/hooks/queries"
@@ -23,6 +24,12 @@ export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
   const [area, setArea] = useState<string | null>(null)
   const [due, setDue] = useState<string | null>(`${addDays(today, 7)}T23:59`)
   const [hours, setHours] = useState(6)
+  // Caught before the fields see it: the due field keeps Escape to itself.
+  useEffect(() => {
+    const escape = (e: KeyboardEvent) => e.key === "Escape" && onClose()
+    window.addEventListener("keydown", escape, true)
+    return () => window.removeEventListener("keydown", escape, true)
+  }, [onClose])
   const apply = useCommand("template_apply", { label: () => "Project made" })
   const add = useCommand("add", { label: () => "Project made" })
   const create = async () => {
@@ -68,7 +75,7 @@ export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span className="fr-kicker">Due</span>
-          <DuePicker value={due} today={today} onPick={setDue} />
+          <DuePicker value={due} today={today} onPick={setDue} autoFocus={false} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span className="fr-kicker" style={{ width: 120 }}>

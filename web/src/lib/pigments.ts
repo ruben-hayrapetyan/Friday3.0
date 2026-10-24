@@ -25,3 +25,16 @@ export function pigment(id: string | null | undefined, light: boolean): string |
   const found = PIGMENTS.find((p) => p.id === id)
   return found ? (light ? found.light : found.dark) : null
 }
+
+export const UNMARKED = "#8a9199" // Chroma's slate for an event no colour reached
+
+type Painted = { color?: string | null; chroma_color?: string | null; category_color?: string | null; calendar_color?: string | null }
+
+/** An event's paint, as Chroma chose it: its own pigment, else the one Chroma showed it in, else its category's,
+ * else its calendar's, else the Unmarked slate (COMBINED.md 17). */
+export function eventPaint(it: Painted, light: boolean): string {
+  return pigment(it.color, light) ?? pigment(it.chroma_color, light) ?? pigment(it.category_color, light) ?? pigment(it.calendar_color, light) ?? UNMARKED
+}
+
+/** Chroma's wash: the paint at 11% over the page (a little more on the dark page, where 11% vanishes). */
+export const wash = (paint: string, light: boolean) => `color-mix(in srgb, ${paint} ${light ? 11 : 16}%, var(--color-surface))`

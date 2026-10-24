@@ -299,6 +299,10 @@ class ImportPersonalInput(Model):
     categories_path: str | None = None  # Chroma's rules; ~/Library/Application Support/Chroma/categories.json
 
 
+class ChromaColorsInput(Model):
+    colors_path: str | None = None  # Chroma's colours; ~/Library/Application Support/Chroma/colors.json
+
+
 class OtherWay(Model):
     """Another way to plan the same work (COMBINED.md 25)."""
 

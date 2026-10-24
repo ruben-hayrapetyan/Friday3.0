@@ -82,6 +82,7 @@ class ItemOut(Model):
     saves_to_calendar: bool = False  # changes made here are saved back to its calendar
     category: str | None = None  # its category, by title
     category_color: str | None = None
+    chroma_color: str | None = None  # the pigment Chroma showed it in, before your own or its category's
     left_out: str | None = None  # why it doesn't count as busy: calendar, reminder, free or filtered
     filtered: bool = False  # the categories' filter hides it (office hours), when you hide what it hides
     certainty: str

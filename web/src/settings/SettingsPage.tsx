@@ -11,6 +11,7 @@ import { AboutYou } from "./AboutYou"
 import { AdvancedSection } from "./Advanced"
 import { Appearance } from "./Appearance"
 import { CalendarsSection } from "./CalendarsSection"
+import { Tokens } from "./Assistants"
 import { Integrations } from "./Integrations"
 import { Notifications } from "./Notifications"
 import { Repeating } from "./Repeating"
@@ -26,6 +27,7 @@ const SECTIONS = [
   { id: "repeating", label: "Repeating", icon: "repeat", page: Repeating },
   { id: "notifications", label: "Notifications", icon: "bell", page: Notifications },
   { id: "integrations", label: "Integrations", icon: "plugs", page: Integrations },
+  { id: "tokens", label: "Tokens", icon: "key", page: Tokens },
   { id: "about", label: "About you", icon: "user", page: AboutYou },
   { id: "shortcuts", label: "Shortcuts", icon: "keyboard", page: Shortcuts },
   { id: "advanced", label: "Advanced", icon: "brackets-curly", page: AdvancedSection },

@@ -8,6 +8,7 @@ import { query } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { undoAll, useCommand } from "@/hooks/useCommand"
+import { weighing } from "./shapes"
 
 interface Suggestion {
   key: string
@@ -21,6 +22,7 @@ interface Suggestion {
 export function Learned() {
   const learning = useQuery({ queryKey: ["learning"], queryFn: () => query("learning") }).data
   const questions = useQuery({ queryKey: ["questions"], queryFn: () => query("questions") }).data
+  const rules = useQuery({ queryKey: ["rules"], queryFn: () => query("rules") }).data
   const apply = useCommand("learn_apply", { label: (o) => o.result.message ?? "Approved" })
   const reject = useCommand("learn_reject", { label: (o) => o.result.message ?? "Kept as it was" })
   const answer = useCommand("proposal_answer", { label: (o) => o.result.message ?? "Thanks" })
@@ -29,13 +31,15 @@ export function Learned() {
   const toast = useToast()
   const [closed, setClosed] = useState<Record<string, { state: string; id: number | null }>>({})
   const items: Suggestion[] = []
-  const suggested = learning?.suggested as { version: number; changes: string[] } | null | undefined
+  // A change is {rule, from, to}: said in the rule's own words (the Rules page's sentence), more or less weight.
+  const suggested = learning?.suggested as { version: number; changes: { rule: string; from: number; to: number }[] } | null | undefined
+  const said = (rule: string) => rules?.find((r) => r.name === rule)?.sentence ?? rule.replaceAll("_", " ")
   if (suggested) {
     items.push({
       key: `profile${suggested.version}`,
       icon: "sliders-horizontal",
       title: "Weigh your preferences the way you answered",
-      why: suggested.changes.join(" ") || "From your answers and the blocks you moved.",
+      why: weighing(suggested.changes ?? [], said) || "From your answers and the blocks you moved.",
       yes: () => apply({ version: suggested.version }),
       no: () => reject({ version: suggested.version }),
     })

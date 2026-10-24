@@ -15,7 +15,9 @@ import { dur, when } from "@/lib/format"
 import { nextBlocks } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
-import { grouped, SORTS, type SortBy } from "./groups"
+import { Dropdown } from "@/components/fr/Dropdown"
+import { grouped, type SortBy } from "./groups"
+import { SortPicker } from "./SortPicker"
 import { ExpiresMark } from "./TodoPage"
 
 /** The drawer's frame: over the calendar's right side, below the title row, resized by its left edge. */
@@ -77,11 +79,13 @@ export function Drawer() {
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <Seg options={["When", "Tag"] as const} value={by} onPick={setBy} size="small" />
         <div style={{ flex: 1 }} />
-        <select className="input" value={sort} onChange={(e) => setSort(e.target.value as SortBy)} aria-label="Sort" style={{ width: 104, padding: "3px 6px", fontSize: 11, minHeight: 0 }}>
-          {SORTS.map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
+        <Dropdown icon="sort-ascending" label={sort}>
+          {(close) => (
+            <div style={{ padding: 6, width: 210 }}>
+              <SortPicker value={sort} onPick={(v) => (setSort(v), close())} compact />
+            </div>
+          )}
+        </Dropdown>
       </div>
       <div style={{ overflowY: "auto", minHeight: 0, flex: 1, display: "flex", flexDirection: "column", gap: 14, paddingBottom: 24 }}>
         {groups.map((g) => (
