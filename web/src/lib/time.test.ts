@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { addDays, ampm, fromMin, hourMarks, layout, toMin } from "./time"
+import { addDays, ampm, fitAxis, fromMin, hourMarks, layout, toMin } from "./time"
 
 const axis = { startMin: 7 * 60 + 30, endMin: 24 * 60 + 30 }
 const block = (start: string, end: string, name = "") => ({ start, end, name })
@@ -51,5 +51,24 @@ describe("ampm", () => {
   it("reads times on a 12-hour clock", () => {
     expect(["00:00", "00:30", "09:05", "12:00", "13:10", "23:59"].map(ampm)).toEqual(["12am", "12:30am", "9:05am", "12pm", "1:10pm", "11:59pm"])
     expect(ampm("2026-10-20T14:30")).toBe("2:30pm")
+  })
+})
+
+describe("fitAxis", () => {
+  const week = ["2026-10-26", "2026-10-27"]
+  it("opens the day at the hour of anything before the wake time, and closes it after anything later", () => {
+    expect(fitAxis(axis, [block("2026-10-26T06:00", "2026-10-26T08:00")], week)).toEqual({ startMin: 360, endMin: axis.endMin })
+    expect(fitAxis(axis, [block("2026-10-27T06:45", "2026-10-27T07:00")], week).startMin).toBe(360)
+    expect(fitAxis(axis, [block("2026-10-27T23:30", "2026-10-28T01:10")], week).endMin).toBe(26 * 60)
+  })
+  it("leaves it be for what fits, what's on other days, and past midnight's own small hours", () => {
+    expect(fitAxis(axis, [block("2026-10-26T09:00", "2026-10-26T10:00"), block("2026-10-29T05:00", "2026-10-29T06:00")], week)).toEqual(axis)
+    // 1am Tuesday is Monday night: it stretches Monday's end, never Tuesday's start back to 1am
+    expect(fitAxis(axis, [block("2026-10-27T01:00", "2026-10-27T02:00")], week)).toEqual({ startMin: axis.startMin, endMin: 26 * 60 })
+    expect(fitAxis(axis, [block("2026-10-26T05:00", "2026-10-26T05:00")], week)).toEqual(axis) // no length
+  })
+  it("stays a day long at most", () => {
+    const late = { startMin: 360, endMin: 28 * 60 }
+    expect(fitAxis(late, [block("2026-10-26T04:00", "2026-10-26T05:00")], week)).toEqual({ startMin: 240, endMin: 28 * 60 })
   })
 })

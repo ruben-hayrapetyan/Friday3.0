@@ -171,6 +171,29 @@ def test_switching_a_mac_calendar_off_and_on(app: App) -> None:
     assert "Haircut" in events(app)
 
 
+def test_a_calendar_switched_off_leaves_your_calendar_and_comes_back_when_on(app: App) -> None:
+    gym = [
+        mac_event(f"gym@{day}", "home", "Gym", f"2026-10-{day}T18:00", f"2026-10-{day}T19:00", series="gym")
+        for day in (22, 29)
+    ]
+    post(app, [HOME], [mac_event("h", "home", "Haircut", "2026-10-23T10:00", "2026-10-23T10:30"), *gym])
+
+    def out() -> set[str]:
+        return {f["title"] for f in app.do("plan", start="2026-10-19T00:00", end="2026-11-01T00:00")["fixed"]}
+
+    assert out() == {"Haircut", "Gym"}
+    said = app.full("calendar_set", payload={"id": "home", "mac": True, "on": False}, provisional=False)
+    assert out() == set() and not any(i["active"] for i in app.table("series"))
+    app.do("undo", command_id=said.command_id)
+    assert out() == {"Haircut", "Gym"}
+    app.do("calendar_set", id="home", mac=True, on=False)
+    app.do("calendar_set", id="home", mac=True, on=False)  # again: nothing more to put away, nothing forgotten
+    app.do("calendar_set", id="home", mac=True, on=True)
+    assert out() == {"Haircut", "Gym"} and all(i["active"] for i in app.table("series"))
+    sync(app.conn, app.now_utc + 10)
+    assert sorted(i["title"] for i in app.table("items") if i["status"] == "todo").count("Gym") == 2  # no copies
+
+
 def test_a_mac_calendar_read_as_one_kind(app: App) -> None:
     post(app, [HOME], [])
     app.do("calendar_set", id="home", mac=True, kind="Class")

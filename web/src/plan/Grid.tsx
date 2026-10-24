@@ -9,7 +9,7 @@ import { useClock, useElapsed } from "@/hooks/useClock"
 import { useGhosts, useItems, useNow, useStatus } from "@/hooks/queries"
 import { movedSince } from "@/lib/drag"
 import { clock, hms, weekday, when } from "@/lib/format"
-import { type Axis, addDays, fromMin, hourMarks, layout, toMin } from "@/lib/time"
+import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, toMin } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
 import { useLook } from "@/theme/LookProvider"
 import { draftAt, draftOf } from "@/shell/EventPane"
@@ -38,7 +38,12 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const allDay24 = look.hours === "All day"
   // The lanes step aside while the to-do drawer is out, as personal's did: the full list is showing.
   const lanes = look.deadlines === "Lanes" && !drawer
-  const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : { startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }
+  const timed = plan.fixed.filter((f): f is Item & { start: string; end: string } => !!f.start && !!f.end)
+  // A birthday or holiday spans whole days: it goes with the day's dues at the top, not as a column-high block.
+  const allDay = timed.filter((f) => f.start.endsWith("T00:00") && f.end.endsWith("T00:00") && f.end > f.start)
+  const fixed = timed.filter((f) => !allDay.includes(f)) // what you toggled off is already gone (plan/shown.ts)
+  // From the wake time to core sleep, stretched for anything earlier or later on these days.
+  const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : fitAxis({ startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }, [...fixed, ...plan.blocks], dates)
   const panel = useRef<HTMLDivElement>(null)
   const head = useRef<HTMLDivElement>(null)
   const headHeight = useHeight(head)
@@ -50,10 +55,6 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const days = new Map(calendar.days.map((d) => [d.date, d]))
   const planned = new Set(plan.blocks.map((b) => b.key))
   const news = ghosts.filter((g) => !planned.has(g.key))
-  const timed = plan.fixed.filter((f): f is Item & { start: string; end: string } => !!f.start && !!f.end)
-  // A birthday or holiday spans whole days: it goes with the day's dues at the top, not as a column-high block.
-  const allDay = timed.filter((f) => f.start.endsWith("T00:00") && f.end.endsWith("T00:00") && f.end > f.start)
-  const fixed = timed.filter((f) => !allDay.includes(f)) // what you toggled off is already gone (plan/shown.ts)
   // The same time of day in every column: strong on today, faint on the others.
   const nowAt = now - toMin(calendar.today) - axis.startMin
   const cols = `52px repeat(${dates.length}, minmax(0,1fr))`

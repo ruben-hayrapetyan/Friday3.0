@@ -106,3 +106,17 @@ def test_a_backup_downloads_the_whole_database(client: TestClient, tmp_path: Pat
     copy = tmp_path / "copy.db"
     copy.write_bytes(got.content)
     assert sqlite3.connect(copy).execute("SELECT title FROM items").fetchall() == [("essay",)]
+
+
+def test_the_websites_own_pages_open_on_a_reload_and_missing_files_stay_missing(app: App, tmp_path: Path) -> None:
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<!doctype html>Friday")
+    (dist / "assets" / "app.js").write_text("ok")
+    served = create_app(tmp_path / "friday.db", clock=lambda: app.now_utc, background=False, web_dist=dist)
+    with TestClient(served) as client:
+        for page in ("/", "/settings", "/todo/12", "/lab/rules"):
+            assert client.get(page).text == "<!doctype html>Friday", page
+        assert client.get("/assets/app.js").text == "ok"
+        assert client.get("/assets/gone.js").status_code == 404
+        assert client.get("/api/q/no_such_query").status_code == 404

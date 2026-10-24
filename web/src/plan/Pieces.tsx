@@ -15,12 +15,15 @@ export const PX = 0.8 // per minute: 48 px an hour, as drawn
 // A day column with a deadline lane (COMBINED.md 15) sets --lane to the lane's width; blocks share what's left.
 function box(p: Placed<unknown>): CSSProperties {
   const share = 1 / p.columns
+  const height = Math.max(p.height * PX - 2, 10) // a quarter hour is 12px: never taller, or it covers the next one
   return {
     position: "absolute",
     top: p.top * PX,
-    height: Math.max(p.height * PX - 2, 14),
+    height,
     left: `calc((100% - var(--lane, 0px)) * ${p.column * share} + 3px)`,
     width: `calc((100% - var(--lane, 0px)) * ${share} - 6px)`,
+    // Under half an hour there's room for one line: the title, centred, its time beside it.
+    ...(p.height < 30 ? { padding: "0 6px 0 9px", fontSize: 10.5, lineHeight: `${height - 2}px` } : { padding: "4px 7px 4px 9px", fontSize: 12, lineHeight: 1.3 }),
   }
 }
 
@@ -62,7 +65,6 @@ export function BlockBox({ p, isCur, selected, done, movedFrom, today, onOpen, o
         ...box(p),
         touchAction: "none",
         userSelect: "none",
-        padding: "4px 7px 4px 9px",
         borderRadius: 6,
         background: s.bg,
         border: s.bd,
@@ -71,8 +73,6 @@ export function BlockBox({ p, isCur, selected, done, movedFrom, today, onOpen, o
         boxShadow: s.shadow,
         overflow: "hidden",
         cursor: "pointer",
-        fontSize: 12,
-        lineHeight: 1.3,
         zIndex: 1,
       }}
     >
@@ -82,6 +82,7 @@ export function BlockBox({ p, isCur, selected, done, movedFrom, today, onOpen, o
         {b.pinned === "preferred" && <Icon name="push-pin" fill size={11} />}
         {done && <Icon name="check" size={11} />}
         <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{b.title}</span>
+        {minutes(b) < 30 && <Inline at={b.start} color={s.sub} />}
       </div>
       {tall && (
         <div className="tnum" style={{ fontSize: 11, color: s.sub, whiteSpace: "nowrap" }}>
@@ -124,15 +125,12 @@ export function FixedBox({ p, onOpen }: { p: Placed<Item & { start: string; end:
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
       style={{
         ...box(p),
-        padding: "4px 7px 4px 9px",
         borderRadius: 6,
         background: s.bg,
         border: s.bd,
         color: s.fg,
         overflow: "hidden",
         cursor: "pointer",
-        fontSize: 12,
-        lineHeight: 1.3,
       }}
     >
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: s.stripe }} />
@@ -141,6 +139,7 @@ export function FixedBox({ p, onOpen }: { p: Placed<Item & { start: string; end:
         <span style={{ overflow: "hidden", textOverflow: "ellipsis" }} title={it.left_out ? `${it.title} — not counted as busy (${LEFT_OUT[it.left_out] ?? it.left_out})` : undefined}>
           {it.event_kind === "shove" ? "Your time" : it.title}
         </span>
+        {minutes(it) < 30 && <Inline at={it.start} color={s.sub} />}
       </div>
       {tall && (
         <div className="tnum" style={{ fontSize: 11, color: s.sub, whiteSpace: "nowrap" }}>
@@ -148,6 +147,15 @@ export function FixedBox({ p, onOpen }: { p: Placed<Item & { start: string; end:
         </div>
       )}
     </div>
+  )
+}
+
+/** A short piece's time, on its one line after the title. */
+function Inline({ at, color }: { at: string; color: string }) {
+  return (
+    <span className="tnum" style={{ flex: "none", fontWeight: 400, color }}>
+      {clock(at)}
+    </span>
   )
 }
 

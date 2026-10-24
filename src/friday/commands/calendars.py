@@ -10,10 +10,10 @@ from friday.api.commands import CalendarSetInput, Changed
 from friday.api.types import Empty
 from friday.api.views import GoogleCalendarOut
 from friday.commands.registry import Ctx, command, query
-from friday.core.db import one
+from friday.core.db import one, rows
 from friday.core.items import FieldError
-from friday.core.time import format_local, parse_utc, to_local
-from friday.planner.store import kv_get
+from friday.core.time import format_local, format_utc, parse_utc, to_local
+from friday.planner.store import event_links, kv_get
 
 
 def natural(name: str) -> list[Any]:
@@ -46,7 +46,7 @@ def google_calendars(ctx: Ctx, inp: Empty) -> list[GoogleCalendarOut]:
     return sorted(out, key=lambda c: natural(c.name))
 
 
-@command("calendar_set")
+@command("calendar_set", affects_plan=True)
 def calendar_set(ctx: Ctx, inp: CalendarSetInput) -> Changed:
     """Read a Google calendar (or, with `mac`, one of the Mac's) or stop, as one kind or per event, trusted or
     through the inbox."""
@@ -81,6 +81,9 @@ def calendar_set(ctx: Ctx, inp: CalendarSetInput) -> Changed:
     if inp.kind is not None:
         kind = None if inp.kind == "auto" else inp.kind
         changes["config"] = json.dumps(json.loads(changes.get("config") or source["config"]) | {"kind": kind})
+    if inp.on is False or (inp.on and not source["enabled"]):
+        config = json.loads(changes.get("config") or source["config"])
+        changes["config"] = json.dumps(put_away(ctx, source["id"], config) if not inp.on else bring_back(ctx, config))
     ctx.db.update("sources", {"id": source["id"]}, changes)
     if inp.on is not None or inp.kind is not None:
         forget_unanswered(ctx, source["id"])
@@ -112,6 +115,48 @@ def reread_calendars(ctx: Ctx) -> None:
     ):
         forget_unanswered(ctx, source[0])
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "sync_now"}, {"value": json.dumps(ctx.now_text)})
+
+
+def put_away(ctx: Ctx, source_id: int, config: dict[str, Any]) -> dict[str, Any]:
+    """A calendar you stop reading leaves your calendar and planning: its events from now on are put away and its
+    repeats paused, and which is kept in its config so switching it back on brings them back. Switching off one
+    that's already off puts away what's still out."""
+    linked = [item_id for item_id, link in event_links(ctx.conn, ctx.user_id).items() if link.source_id == source_id]
+    marks = ", ".join("?" * len(linked)) or "NULL"
+    items = [
+        r["id"]
+        for r in rows(
+            ctx.conn,
+            f"SELECT id FROM items WHERE id IN ({marks}) AND when_kind = 'fixed' AND status = 'todo' AND end_utc > ?",
+            [*linked, format_utc(ctx.now_utc)],
+        )
+    ]
+    series = [
+        r["id"]
+        for r in rows(
+            ctx.conn,
+            f"SELECT id FROM series WHERE active = 1 AND id IN (SELECT series_id FROM items WHERE id IN ({marks}))",
+            linked,
+        )
+    ]
+    for item_id in items:
+        ctx.db.update("items", {"id": item_id}, {"status": "dropped"})
+    for series_id in series:
+        ctx.db.update("series", {"id": series_id}, {"active": 0})
+    away = config.get("put_away") or {}
+    return config | {"put_away": {"items": away.get("items", []) + items, "series": away.get("series", []) + series}}
+
+
+def bring_back(ctx: Ctx, config: dict[str, Any]) -> dict[str, Any]:
+    """What `put_away` put away and nothing else has touched since: back on your calendar, the repeats running."""
+    away = config.pop("put_away", None) or {}
+    for item_id in away.get("items", []):
+        if (found := ctx.db.fetch("items", {"id": item_id})) and found["status"] == "dropped":
+            ctx.db.update("items", {"id": item_id}, {"status": "todo"})
+    for series_id in away.get("series", []):
+        if ctx.db.fetch("series", {"id": series_id}):
+            ctx.db.update("series", {"id": series_id}, {"active": 1})
+    return config
 
 
 def forget_unanswered(ctx: Ctx, source_id: int) -> None:

@@ -8,6 +8,7 @@ import { query, type Schemas } from "@/api/client"
 import { Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { ampm, parseLength } from "@/lib/format"
+import { CalendarChoice, saying } from "@/settings/calendarChoice"
 import { Modal } from "./Dialogs"
 
 export type Answers = Schemas["SetupInput"]
@@ -127,7 +128,7 @@ const STEPS: Step[] = [
   {
     id: "calendars",
     title: "Your calendars",
-    note: "Hidden ones stay off your calendar until you switch them on under Show. Busy ones keep Friday from planning work over their events.",
+    note: "For each: plan around its events, just show them (dashed, and work may go over them), or hide it. A hidden one comes back under Show whenever you want it.",
     body: (a, set, events) => (
       <div style={{ display: "flex", flexDirection: "column" }}>
         {(a.calendars ?? []).map((c) => (
@@ -301,21 +302,11 @@ function CalendarRow({ c, events, onChange }: { c: Calendar; events: number; onC
         <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={c.name}>
           {c.name}
         </span>
-        <span className="fr-kicker">{events ? `${events} event${events === 1 ? "" : "s"} in the next two weeks` : "Nothing in the next two weeks"}</span>
+        <span className="fr-kicker">
+          {events ? `${events} event${events === 1 ? "" : "s"} in the next two weeks` : "Nothing in the next two weeks"} · {saying(c.shown !== false, c.busy !== false)}
+        </span>
       </span>
-      <Seg
-        options={[
-          { value: "shown", label: "Show" },
-          { value: "hidden", label: "Hide" },
-        ]}
-        value={c.shown ? "shown" : "hidden"}
-        onPick={(v) => onChange({ shown: v === "shown" })}
-        label={`Show ${c.name}`}
-      />
-      <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
-        <Switch on={!!c.busy} onToggle={() => onChange({ busy: !c.busy })} label={`${c.name} counts as busy`} />
-        Busy
-      </label>
+      <CalendarChoice name={c.name} shown={c.shown !== false} busy={c.busy !== false} onPick={onChange} />
     </div>
   )
 }

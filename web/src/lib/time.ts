@@ -38,6 +38,29 @@ export interface Span {
   end: string
 }
 
+const DAY_START = 4 * 60 // before 4am is the night before, as the server counts days
+
+/** The axis stretched, to the hour, to take in what's on these days: a 6am class opens the day at 6am rather than
+ * being cut at the wake time. Something after midnight belongs to the evening before; a day stays a day long. */
+export function fitAxis(axis: Axis, things: Span[], dates: string[]): Axis {
+  let { startMin, endMin } = axis
+  const shown = new Set(dates)
+  for (const t of things) {
+    const date = t.start.slice(0, 10)
+    const midnight = toMin(date)
+    const night = toMin(t.start) - midnight < DAY_START
+    const column = night ? addDays(date, -1) : date
+    if (!shown.has(column)) continue
+    const from = toMin(t.start) - toMin(column)
+    const to = toMin(t.end) - toMin(column)
+    if (to <= from) continue
+    startMin = Math.min(startMin, Math.floor(from / 60) * 60)
+    endMin = Math.max(endMin, Math.min(Math.ceil(to / 60) * 60, 1440 + DAY_START))
+  }
+  startMin = Math.max(startMin, DAY_START)
+  return { startMin, endMin: Math.min(endMin, startMin + 1440) }
+}
+
 export interface Placed<T> {
   item: T
   top: number // minutes from the column's top

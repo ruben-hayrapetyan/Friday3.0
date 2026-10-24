@@ -32,7 +32,10 @@ from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError, create_model
 from starlette.background import BackgroundTask
+from starlette.exceptions import HTTPException
+from starlette.responses import Response
 from starlette.routing import Route
+from starlette.types import Scope
 
 from friday.api.types import CommandResult
 from friday.commands.all import REGISTRY
@@ -150,8 +153,21 @@ def create_app(
             yield message
 
     if web_dist is not None and web_dist.is_dir():
-        app.mount("/", StaticFiles(directory=web_dist, html=True), name="web")
+        app.mount("/", Website(directory=web_dist, html=True), name="web")
     return app
+
+
+class Website(StaticFiles):
+    """The website, its own pages' addresses (/settings, /todo) answered with its index.html so a reload or a link
+    opens that page rather than Not Found. A missing file (a dot in its name) or API route is still Not Found."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        try:
+            return await super().get_response(path, scope)
+        except HTTPException as error:
+            if error.status_code != 404 or "." in path.rsplit("/", 1)[-1] or path.split("/", 1)[0] in ("api", "mcp"):
+                raise
+            return await super().get_response("index.html", scope)
 
 
 def field_error(request: Request, error: Exception) -> JSONResponse:
