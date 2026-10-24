@@ -111,7 +111,7 @@ export function TodoPage() {
       </div>
       <div className="fr-panel fr-todo-split" data-open={selected ? "" : undefined} style={{ display: "grid", gridTemplateColumns: selected ? "minmax(0,1fr) 400px" : "minmax(0,1fr)", overflow: "hidden" }}>
         <div className="fr-gutter" style={{ overflowY: "auto", minHeight: 0, padding: "16px 22px 140px" }}>
-          <div style={{ maxWidth: 940, display: "flex", flexDirection: "column", gap: 22 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
             {(by === "When" || list === "Due") && <AddBox compact onAdded={added} longTerm={list === "Long term"} placeholder="Add a to-do…" />}
             {list === "Due" ? (
               <DueList items={items} fresh={fresh} selected={selected} onSelect={(id) => select(id === selected ? null : id)} Row={RowOf} />
