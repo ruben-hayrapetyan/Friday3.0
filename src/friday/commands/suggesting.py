@@ -208,6 +208,8 @@ def suggest(
         earlier = same_kind(made_before, fields)
         if command == "add" and not earlier and over(fields, settings["time"].timezone, now_utc):
             continue  # an assignment due last week, read today, is nothing to do now
+        if command == "add" and not earlier and not p.fixed and twin_suggested(conn, raw_id):
+            continue  # the same event on another of your calendars already made this task
         if command == "add":
             fields = addable(fields, settings["presets"])
         if earlier and command == "add":
@@ -237,6 +239,25 @@ def suggest(
         if (trusted and p.fixed) or said == "accepted" or imported:
             accept_trusted(conn, now_utc, user_id, int(cursor.lastrowid or 0), source)
     return made
+
+
+def twin_suggested(conn: sqlite3.Connection, raw_id: int) -> bool:
+    """The same calendar event, read from another of your calendars (the Mac's copy of a Google one), already
+    suggested this task."""
+    mine = one(conn, "SELECT source_id, external_id FROM raw_inputs WHERE id = ?", [raw_id])
+    if not mine or not mine["external_id"]:
+        return False
+    key = mine["external_id"].split(":")[-1]  # the event and its occurrence, without the calendar
+    return (
+        one(
+            conn,
+            "SELECT 1 AS yes FROM raw_inputs r JOIN suggestions s ON s.raw_input_id = r.id "
+            "WHERE r.source_id != ? AND (r.external_id = ? OR r.external_id LIKE ?) AND s.command = 'add' "
+            "AND s.status IN ('pending', 'accepted')",
+            [mine["source_id"], key, f"%:{key}"],
+        )
+        is not None
+    )
 
 
 def addable(fields: dict[str, Any], presets: dict) -> dict[str, Any]:

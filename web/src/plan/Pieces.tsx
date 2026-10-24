@@ -1,12 +1,13 @@
 // What sits in a day column (v22): blocks painted by kind in their area's colour, fixed items, ghosts of a plan
 // being worked out, the wind-down band, the drop preview and the now line.
 
-import type { CSSProperties } from "react"
+import { type CSSProperties, type ReactNode, useLayoutEffect, useRef, useState } from "react"
 import type { Block, Item } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { clock, dur, when } from "@/lib/format"
 import { eventPaint, wash } from "@/lib/pigments"
-import { type Placed, toMin } from "@/lib/time"
+import { type Placed, type Span, toMin } from "@/lib/time"
+import { rangeText, readTimeRange } from "@/lib/timeRange"
 import { useLook } from "@/theme/LookProvider"
 import type { Kind } from "@/theme/skin"
 
@@ -29,6 +30,17 @@ function box(p: Placed<unknown>): CSSProperties {
 
 const minutes = (b: { start: string; end: string }) => toMin(b.end) - toMin(b.start)
 
+/** A fixed item as the selected "block" the popover reads. */
+export function asBlock(item: Item & { start: string; end: string }): Block {
+  return { key: `F${item.id}`, item_id: item.id, title: item.title, area: item.area, start: item.start, end: item.end }
+}
+
+/** Typing a box's time anew: `begin` when its time is double-clicked, `save` with what was typed. */
+export interface Retime {
+  begin: () => void
+  save: (span: Span) => void
+}
+
 export function kindOf(b: Block): Kind {
   if (b.pinned === "locked") return "locked"
   if (b.pinned === "preferred") return "preferred"
@@ -45,18 +57,22 @@ interface BlockProps {
   onOpen: () => void
   onGrab: (e: React.PointerEvent) => void
   onResize: (e: React.PointerEvent) => void
+  retime?: Retime
 }
 
-export function BlockBox({ p, isCur, selected, done, movedFrom, today, onOpen, onGrab, onResize }: BlockProps) {
+export function BlockBox({ p, isCur, selected, done, movedFrom, today, onOpen, onGrab, onResize, retime }: BlockProps) {
   const b = p.item
   const { skinOf } = useLook()
   const kind = done ? "done" : kindOf(b)
   const s = skinOf(kind, b.area, { isCur, sel: selected })
   const tall = minutes(b) >= 45
+  const [typing, setTyping] = useState(false)
+  const time = retime && { typing, span: b, start: () => (setTyping(true), retime.begin()), save: retime.save, stop: () => setTyping(false) }
   return (
     <div
       role="button"
       tabIndex={0}
+      data-block-key={b.key}
       onClick={onOpen}
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
       onPointerDown={onGrab}
@@ -71,9 +87,9 @@ export function BlockBox({ p, isCur, selected, done, movedFrom, today, onOpen, o
         color: s.fg,
         opacity: s.op,
         boxShadow: s.shadow,
-        overflow: "hidden",
+        overflow: typing ? "visible" : "hidden",
         cursor: "pointer",
-        zIndex: 1,
+        zIndex: typing ? 5 : 1,
       }}
     >
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: s.stripe }} />
@@ -82,13 +98,13 @@ export function BlockBox({ p, isCur, selected, done, movedFrom, today, onOpen, o
         {b.pinned === "preferred" && <Icon name="push-pin" fill size={11} />}
         {done && <Icon name="check" size={11} />}
         <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{b.title}</span>
-        {minutes(b) < 30 && <Inline at={b.start} color={s.sub} />}
+        {!tall && <Inline at={b.start} color={s.sub} time={time} />}
       </div>
       {tall && (
-        <div className="tnum" style={{ fontSize: 11, color: s.sub, whiteSpace: "nowrap" }}>
+        <TimeLine color={s.sub} time={time}>
           {clock(b.start)}–{clock(b.end)}
           {b.estimated ? ` · ~${dur(minutes(b))}` : ""}
-        </div>
+        </TimeLine>
       )}
       {movedFrom && (
         <div style={{ fontSize: 10, color: "var(--color-accent-200)", whiteSpace: "nowrap" }}>moved from {when(movedFrom, today)}</div>
@@ -107,7 +123,14 @@ export function BlockBox({ p, isCur, selected, done, movedFrom, today, onOpen, o
   )
 }
 
-export function FixedBox({ p, onOpen }: { p: Placed<Item & { start: string; end: string }>; onOpen: () => void }) {
+interface FixedProps {
+  p: Placed<Item & { start: string; end: string }>
+  onOpen: () => void
+  onEdit?: () => void // a double-click on it, away from its time
+  retime?: Retime
+}
+
+export function FixedBox({ p, onOpen, onEdit, retime }: FixedProps) {
   const it = p.item
   const { skinOf, light } = useLook()
   const base = skinOf(it.event_kind === "shove" ? "shove" : "fixed", it.area)
@@ -118,11 +141,15 @@ export function FixedBox({ p, onOpen }: { p: Placed<Item & { start: string; end:
   const painted = it.event_kind === "shove" ? base : { ...base, bg: wash(paint, light), stripe: paint, fg: "var(--color-text)", sub: "var(--color-neutral-400)" }
   const s = it.left_out ? { ...painted, bg: "transparent", bd: `1px dashed ${paint}`, fg: "var(--color-neutral-400)" } : painted
   const tall = minutes(it) >= 45
+  const [typing, setTyping] = useState(false)
+  const time = retime && { typing, span: it, start: () => (setTyping(true), retime.begin()), save: retime.save, stop: () => setTyping(false) }
   return (
     <div
       role="button"
       tabIndex={0}
+      data-block-key={`F${it.id}`}
       onClick={onOpen}
+      onDoubleClick={onEdit}
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
       style={{
         ...box(p),
@@ -130,8 +157,10 @@ export function FixedBox({ p, onOpen }: { p: Placed<Item & { start: string; end:
         background: s.bg,
         border: s.bd,
         color: s.fg,
-        overflow: "hidden",
+        overflow: typing ? "visible" : "hidden",
+        userSelect: "none",
         cursor: "pointer",
+        ...(typing ? { zIndex: 5 } : {}),
       }}
     >
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: s.stripe }} />
@@ -140,23 +169,104 @@ export function FixedBox({ p, onOpen }: { p: Placed<Item & { start: string; end:
         <span style={{ overflow: "hidden", textOverflow: "ellipsis" }} title={it.left_out ? `${it.title} — not counted as busy (${LEFT_OUT[it.left_out] ?? it.left_out})` : undefined}>
           {it.event_kind === "shove" ? "Your time" : it.title}
         </span>
-        {minutes(it) < 30 && <Inline at={it.start} color={s.sub} />}
+        {!tall && <Inline at={it.start} color={s.sub} time={time} />}
       </div>
       {tall && (
-        <div className="tnum" style={{ fontSize: 11, color: s.sub, whiteSpace: "nowrap" }}>
+        <TimeLine color={s.sub} time={time}>
           {clock(it.start)}–{clock(it.end)}
-        </div>
+        </TimeLine>
       )}
     </div>
   )
 }
 
+/** A box's time, while it can be typed anew: whether it is being typed, and what to do. */
+interface Timing {
+  typing: boolean
+  span: Span
+  start: () => void
+  save: (span: Span) => void
+  stop: () => void
+}
+
 /** A short piece's time, on its one line after the title. */
-function Inline({ at, color }: { at: string; color: string }) {
+function Inline({ at, color, time }: { at: string; color: string; time?: Timing }) {
+  if (time?.typing) return <TimeField time={time} />
   return (
-    <span className="tnum" style={{ flex: "none", fontWeight: 400, color }}>
+    <span className="tnum" onDoubleClick={retype(time)} title={time && "Double-click to change the time"} style={{ flex: "none", fontWeight: 400, color }}>
       {clock(at)}
     </span>
+  )
+}
+
+/** A taller piece's time, on its own line under the title. */
+function TimeLine({ color, time, children }: { color: string; time?: Timing; children: ReactNode }) {
+  if (time?.typing) return <TimeField time={time} />
+  return (
+    <div className="tnum" style={{ fontSize: 11, color, whiteSpace: "nowrap" }}>
+      <span onDoubleClick={retype(time)} title={time && "Double-click to change the time"}>
+        {children}
+      </span>
+    </div>
+  )
+}
+
+/** A double-click on a time opens it for typing, and not the event behind it. */
+function retype(time?: Timing) {
+  return time && ((e: React.MouseEvent) => (e.stopPropagation(), time.start()))
+}
+
+/** The time as text to type over: "10–11:30", "2pm-3pm", or a start alone that keeps the length. Return saves;
+ * Escape or clicking away leaves it as it was. Red while it can't be read. */
+function TimeField({ time }: { time: Timing }) {
+  const [text, setText] = useState(() => rangeText(time.span))
+  const typed = readTimeRange(text, time.span)
+  const field = useRef<HTMLInputElement>(null)
+  useLayoutEffect(() => {
+    field.current?.focus()
+    field.current?.select()
+  }, [])
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation() // the box's own click, drag and Return
+  return (
+    <input
+      ref={field}
+      className="tnum"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onPointerDown={stop}
+      onClick={stop}
+      onDoubleClick={stop}
+      onBlur={time.stop}
+      onKeyDown={(e) => {
+        e.stopPropagation()
+        if (e.key === "Escape") time.stop()
+        if (e.key !== "Enter" || !typed) return
+        time.stop()
+        if (typed.start !== time.span.start || typed.end !== time.span.end) time.save(typed)
+      }}
+      aria-label="Time"
+      aria-invalid={!typed}
+      title="Type a time, like 10–11:30 or 3pm; Return saves, Escape doesn't"
+      style={{
+        display: "block",
+        flex: "none",
+        width: 150,
+        maxWidth: "100%",
+        height: 18,
+        margin: "1px 0",
+        padding: "0 5px",
+        border: "none",
+        borderRadius: 4,
+        outline: `1.5px solid ${typed ? "var(--color-accent)" : "var(--fr-due)"}`,
+        background: "var(--color-surface)",
+        color: "var(--color-text)",
+        font: "inherit",
+        fontSize: 11,
+        fontWeight: 400,
+        lineHeight: "18px",
+        userSelect: "text",
+      }}
+    />
   )
 }
 

@@ -157,6 +157,22 @@ VERBS = {
         "Complete an item, optionally with the time it really took.",
     ),
     "drop": Verb("POST", "/api/c/drop", commands.ItemRef, True, True, "Drop an item."),
+    "duplicates": Verb(
+        "GET",
+        "/api/q/duplicates",
+        commands.Empty,
+        False,
+        False,
+        "Open tasks that look like copies of each other, with the one Friday would keep.",
+    ),
+    "duplicates_merge": Verb(
+        "POST",
+        "/api/c/duplicates_merge",
+        commands.MergeInput,
+        True,
+        True,
+        "Keep one copy of each, with the time logged on the others moved onto it; the others leave your list.",
+    ),
     "edit": Verb(
         "POST",
         "/api/c/edit",
@@ -339,6 +355,14 @@ VERBS = {
         True,
         True,
         "Create every active series' missing occurrences (the nightly job runs this).",
+    ),
+    "not_duplicates": Verb(
+        "POST",
+        "/api/c/not_duplicates",
+        commands.ItemIds,
+        True,
+        False,
+        "These look alike but aren't the same: stop asking.",
     ),
     "notifications": Verb(
         "GET",
@@ -532,6 +556,14 @@ VERBS = {
         False,
         "A day's review sheet: its blocks, timer sessions and logged work, and items that look finished.",
     ),
+    "review_again": Verb(
+        "POST",
+        "/api/c/review_again",
+        commands.Empty,
+        True,
+        False,
+        "Every open task Friday brought in from a calendar or mail, to go over again; until you do, they stay planned.",
+    ),
     "review_submit": Verb(
         "POST",
         "/api/c/review_submit",
@@ -539,6 +571,14 @@ VERBS = {
         True,
         True,
         "Settle a day: each block done, partial or not done, plus anything that happened (§8 rule 4).",
+    ),
+    "reviewed": Verb(
+        "POST",
+        "/api/c/reviewed",
+        commands.ReviewedInput,
+        True,
+        True,
+        "Gone over: kept as they are, or taken off your list.",
     ),
     "rule_add": Verb(
         "POST",
@@ -770,6 +810,9 @@ VERBS = {
         True,
         False,
         "Save a project's children, in order, as a template; each step's share is its part of the hours.",
+    ),
+    "to_review": Verb(
+        "GET", "/api/q/to_review", commands.Empty, False, False, "What's left to go over, soonest due first."
     ),
     "token_add": Verb(
         "POST",

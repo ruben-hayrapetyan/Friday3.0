@@ -668,3 +668,21 @@ class KindAddInput(Model):
 class KindRemoveInput(Model):
     name: str
     move_to: str  # where its items, series and settings go
+
+
+class MergeGroup(Model):
+    keep: int  # the copy that stays, with the others' time logged moved onto it
+    drop: list[int]
+
+
+class MergeInput(Model):
+    groups: list[MergeGroup]
+
+
+class ItemIds(Model):
+    ids: list[int]
+
+
+class ReviewedInput(Model):
+    ids: list[int]
+    keep: bool = True  # False takes them off your list (your calendar keeps its event)

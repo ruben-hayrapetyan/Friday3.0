@@ -1,14 +1,18 @@
 // The selected block (v22): what it is, when, why Friday put it there, its due and what's left, and what you can do
 // with it: start, finish, pin or unpin, unlock, skip one occurrence, delete (Delete or Backspace too). The timer's
-// buttons are personal's (COMBINED.md 32): large, on top, Start or Pause, and Done.
+// buttons are personal's (COMBINED.md 32): large, on top, Start or Pause, and Done. A selected event shows its
+// calendar, colour and notes, with Edit to open it in the drawer.
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useLocation } from "react-router"
+import type { Item } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useItem, useStatus, useWhy } from "@/hooks/queries"
 import { clock, dur, weekday, when } from "@/lib/format"
+import { eventPaint, PIGMENTS } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
+import { draftOf } from "@/shell/EventPane"
 import { useShell } from "@/shell/ShellContext"
 import { Elsewhere } from "./Elsewhere"
 import { kindOf } from "./Pieces"
@@ -42,10 +46,11 @@ function BigButton({ icon, label, note, onClick, primary }: { icon: string; labe
 }
 
 export function BlockPopover() {
-  const { selected: b, select, today } = useShell()
+  const { selected: b, select, today, setEvent } = useShell()
   const { pathname } = useLocation()
   useEffect(() => select(null), [pathname, select]) // another page: the block isn't there to point at
-  const { color } = useLook()
+  const { color, light } = useLook()
+  const card = useRef<HTMLElement>(null)
   const detail = useItem(b?.item_id ?? null).data
   const isBlock = !!b && b.key.startsWith("T")
   const why = useWhy(isBlock ? b.key : null).data
@@ -74,23 +79,37 @@ export function BlockPopover() {
     window.addEventListener("keydown", press)
     return () => window.removeEventListener("keydown", press)
   }, [b, detail, repeats, drop, select])
+  // A press anywhere else closes it, and goes on to what was pressed: another block opens in its place, and a second
+  // click on this one's time can open the time for typing (Pieces' TimeField).
+  const key = b?.key
+  useEffect(() => {
+    if (!key) return
+    const press = (e: PointerEvent) => {
+      const target = e.target instanceof Element ? e.target : null
+      if (target && (card.current?.contains(target) || target.closest(`[data-block-key="${CSS.escape(key)}"]`))) return
+      select(null)
+    }
+    window.addEventListener("pointerdown", press, true)
+    return () => window.removeEventListener("pointerdown", press, true)
+  }, [key, select])
   if (!b) return null
   const item = detail?.item
   const close = () => select(null)
   const kind = b.key.startsWith("F") ? "fixed" : b.key.startsWith("D") ? "due" : kindOf(b)
   const flexible = kind !== "fixed" && kind !== "due"
+  const event = kind === "fixed" ? item : undefined
+  const dot = event ? eventPaint(event, light) : color(b.area ?? item?.area)
   const date = b.start.slice(0, 10)
   const whenText = kind === "due" ? `Due ${when(b.start, today)}` : `${weekday(date)} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1]} · ${clock(b.start)}–${clock(b.end)}`
   const run = (f: () => void) => () => (f(), close())
   return (
     <>
-      <div onClick={close} style={{ position: "absolute", inset: 0, zIndex: 9 }} />
-      <aside className="fr-float" style={{ position: "absolute", right: 24, top: 72, width: 340, zIndex: 10, padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+      <aside ref={card} className="fr-float" style={{ position: "absolute", right: 24, top: 72, width: 340, zIndex: 10, padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: color(b.area ?? item?.area), boxShadow: `0 0 calc(8px * var(--g-accent)) ${color(b.area ?? item?.area)}` }} />
-              {[item?.area, item?.preset].filter(Boolean).join(", ") || "No tag"}
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, boxShadow: `0 0 calc(8px * var(--g-accent)) ${dot}` }} />
+              {event ? [event.calendar ?? "Event", event.area].filter(Boolean).join(", ") : [item?.area, item?.preset].filter(Boolean).join(", ") || "No tag"}
             </div>
             <div className="fr-h" style={{ fontSize: 28, lineHeight: 1.05 }}>
               {b.title}
@@ -124,7 +143,8 @@ export function BlockPopover() {
             <div style={{ textWrap: "pretty" }}>{why.sentence}</div>
           </div>
         )}
-        {item && (
+        {event && <EventFacts event={event} paint={dot} />}
+        {item && !event && (
           <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", fontSize: 12 }}>
             <span style={{ color: "var(--color-neutral-500)" }}>Due</span>
             <span>{item.due ? when(item.due, today) : "—"}</span>
@@ -135,6 +155,12 @@ export function BlockPopover() {
           </div>
         )}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {event && event.event_kind !== "shove" && (
+            <button className="btn btn-secondary" onClick={run(() => setEvent(draftOf(event)))} title="Open it in the drawer: title, day, times, colour, notes">
+              <Icon name="pencil-simple" />
+              Edit
+            </button>
+          )}
           {flexible && item && (
             <button
               className="btn btn-ghost"
@@ -189,7 +215,33 @@ export function BlockPopover() {
             Repeats. Skipping leaves the others as they are.
           </div>
         )}
+        {(event || flexible) && <span className="fr-kicker">Double-click its time on the calendar to type a new one</span>}
       </aside>
     </>
+  )
+}
+
+/** An event's calendar, colour and notes, as the drawer has them. */
+function EventFacts({ event, paint }: { event: Item; paint: string }) {
+  const own = [event.color, event.chroma_color, event.category_color, event.calendar_color].find((c) => PIGMENTS.some((p) => p.id === c))
+  const name = own ? PIGMENTS.find((p) => p.id === own)?.name : "Unmarked"
+  // Where an automatic colour came from, as the drawer says it.
+  const from = event.color ? null : event.chroma_color ? "as in Chroma" : event.category_color ? (event.category ?? "its category") : event.calendar_color ? (event.calendar ?? "its calendar") : null
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", fontSize: 12 }}>
+      <span style={{ color: "var(--color-neutral-500)" }}>Calendar</span>
+      <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        {event.calendar ?? "Friday"}
+        {event.calendar && <Icon name={event.saves_to_calendar ? "cloud-check" : "lock-simple"} size={12} />}
+      </span>
+      <span style={{ color: "var(--color-neutral-500)" }}>Colour</span>
+      <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <span style={{ width: 10, height: 10, borderRadius: 3, background: paint, flex: "none" }} />
+        {name}
+        {from && <span style={{ color: "var(--color-neutral-500)" }}>{from}</span>}
+      </span>
+      <span style={{ color: "var(--color-neutral-500)" }}>Notes</span>
+      <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 120, overflowY: "auto", color: event.notes ? undefined : "var(--color-neutral-500)" }}>{event.notes || "—"}</span>
+    </div>
   )
 }

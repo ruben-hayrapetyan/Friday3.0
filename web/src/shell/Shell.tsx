@@ -21,6 +21,7 @@ import { PlanPage } from "@/plan/PlanPage"
 import { BellPop } from "@/pops/BellPop"
 import { PacePop } from "@/pops/PacePop"
 import { ShovePop } from "@/pops/ShovePop"
+import { CheckTasks } from "@/inbox/CheckTasks"
 import { InboxPage } from "@/inbox/InboxPage"
 import { InsightsPage } from "@/insights/InsightsPage"
 import { RulesLab } from "@/lab/rules/RulesLab"
@@ -84,6 +85,7 @@ export function Shell() {
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/review" element={<ReviewPage />} />
             <Route path="/inbox" element={<InboxPage />} />
+            <Route path="/inbox/check" element={<CheckTasks />} />
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/rules" element={<RulesPage />} />
             <Route path="/lab/rules/:slug?" element={<RulesLab />} />

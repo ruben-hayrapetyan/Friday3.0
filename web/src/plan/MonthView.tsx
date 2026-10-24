@@ -1,5 +1,5 @@
 // The month view (v22): weeks of day cells with the planned hours, a load bar, dues and the first few blocks. A
-// click opens that day. Blocks exist only inside the planning horizon, so later days show fixed items and dues.
+// click opens that day; a click on an event shows it in the popover, as the week does. Blocks exist only inside the planning horizon, so later days show fixed items and dues.
 
 import { useShownPlan } from "@/plan/shown"
 import { useDragging } from "@/components/calendar/useDrag"
@@ -9,6 +9,7 @@ import { eventPaint, wash } from "@/lib/pigments"
 import { addDays, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
+import { asBlock } from "./Pieces"
 
 const DOWS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const SHOWN = 3
@@ -18,7 +19,7 @@ export function monthStart(date: string): string {
 }
 
 export function MonthView({ first, onDay }: { first: string; onDay: (date: string) => void }) {
-  const { today } = useShell()
+  const { today, select } = useShell()
   const { skinOf, light } = useLook()
   const { drag } = useDragging()
   const settings = useSettings().data as Record<string, { week_start?: string }> | undefined
@@ -48,8 +49,8 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
             const hrs = plan?.day_hours[date] ?? 0
             const cap = caps.get(date) ?? 8
             const items = [
-              ...(plan?.blocks ?? []).filter((b) => b.start.startsWith(date)).map((b) => ({ key: b.key, start: b.start, title: b.title, s: skinOf(b.pinned === "locked" ? "locked" : "planned", b.area) })),
-              ...(plan?.fixed ?? []).filter((f) => f.start?.startsWith(date)).map((f) => ({ key: `F${f.id}`, start: f.start as string, title: f.title, s: { ...skinOf("fixed", f.area), bg: wash(eventPaint(f, light), light), stripe: eventPaint(f, light), fg: "var(--color-text)" } })),
+              ...(plan?.blocks ?? []).filter((b) => b.start.startsWith(date)).map((b) => ({ key: b.key, start: b.start, title: b.title, s: skinOf(b.pinned === "locked" ? "locked" : "planned", b.area), event: null })),
+              ...(plan?.fixed ?? []).filter((f) => f.start?.startsWith(date)).map((f) => ({ key: `F${f.id}`, start: f.start as string, title: f.title, s: { ...skinOf("fixed", f.area), bg: wash(eventPaint(f, light), light), stripe: eventPaint(f, light), fg: "var(--color-text)" }, event: asBlock({ ...f, start: f.start as string, end: f.end ?? (f.start as string) }) })),
             ].sort((a, b) => a.start.localeCompare(b.start))
             const dues = (calendar?.dues ?? []).filter((d) => d.due.startsWith(date))
             const inMonth = date.slice(0, 7) === month
@@ -103,6 +104,8 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
                 {items.slice(0, SHOWN).map((it) => (
                   <div
                     key={it.key}
+                    data-block-key={it.event ? it.key : undefined}
+                    onClick={it.event ? (e) => (e.stopPropagation(), select(it.event)) : undefined}
                     style={{ position: "relative", display: "flex", alignItems: "center", gap: 6, padding: "2px 6px 2px 8px", borderRadius: 4, background: it.s.bg, border: it.s.bd, color: it.s.fg, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden" }}
                   >
                     <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: it.s.stripe }} />

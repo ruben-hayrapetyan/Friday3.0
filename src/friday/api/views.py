@@ -400,3 +400,20 @@ class SeriesRow(Model):
     source: str  # "you", or the feed or calendar it came from
     active: bool
     external: bool = False  # it repeats in a calendar, which makes its times: changed there, not here
+
+
+class DuplicateGroup(Model):
+    key: str  # the words the copies share
+    keep: int  # the copy Friday would keep: the most done, else one from a calendar it still reads, else the first
+    items: list[ItemOut]
+
+
+class DuplicatesOut(Model):
+    groups: list[DuplicateGroup]
+    sources: dict[int, str]  # where each copy came from: a calendar, mail, or you
+
+
+class ToReviewOut(Model):
+    items: list[ItemOut]
+    sources: dict[int, str]
+    started: bool  # a review is under way (Review again was pressed and not everything is checked yet)

@@ -4,6 +4,7 @@ from friday.commands import (  # noqa: F401
     ai,
     calendar,
     calendars,
+    checking,
     claude,
     diagnose,
     explain,

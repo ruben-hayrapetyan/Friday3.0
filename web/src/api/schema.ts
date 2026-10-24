@@ -378,6 +378,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/duplicates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Open tasks that look like copies of each other, with the one Friday would keep. */
+        get: operations["duplicates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/duplicates_merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Keep one copy of each, with the time logged on the others moved onto it; the others leave your list. */
+        post: operations["duplicates_merge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/not_duplicates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** These look alike but aren't the same: stop asking. */
+        post: operations["not_duplicates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/review_again": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Every open task Friday brought in from a calendar or mail, to go over again; until you do, they stay planned. */
+        post: operations["review_again"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/to_review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What's left to go over, soonest due first. */
+        get: operations["to_review"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/reviewed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gone over: kept as they are, or taken off your list. */
+        post: operations["reviewed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/source_add": {
         parameters: {
             query?: never;
@@ -2892,6 +2994,43 @@ export interface components {
             /** Due */
             due: string;
         };
+        /** DuplicateGroup */
+        DuplicateGroup: {
+            /** Key */
+            key: string;
+            /** Keep */
+            keep: number;
+            /** Items */
+            items: components["schemas"]["ItemOut"][];
+        };
+        /** DuplicatesMergeResult */
+        DuplicatesMergeResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /** DuplicatesOut */
+        DuplicatesOut: {
+            /** Groups */
+            groups: components["schemas"]["DuplicateGroup"][];
+            /** Sources */
+            sources: {
+                [key: string]: string;
+            };
+        };
         /** EditInput */
         EditInput: {
             /** Title */
@@ -3169,6 +3308,11 @@ export interface components {
             depends_on: {
                 [key: string]: unknown;
             }[];
+        };
+        /** ItemIds */
+        ItemIds: {
+            /** Ids */
+            ids: number[];
         };
         /** ItemOut */
         ItemOut: {
@@ -3692,6 +3836,18 @@ export interface components {
              */
             repeated?: boolean;
         };
+        /** MergeGroup */
+        MergeGroup: {
+            /** Keep */
+            keep: number;
+            /** Drop */
+            drop: number[];
+        };
+        /** MergeInput */
+        MergeInput: {
+            /** Groups */
+            groups: components["schemas"]["MergeGroup"][];
+        };
         /** ModelCheck */
         ModelCheck: {
             /** Model */
@@ -3713,6 +3869,25 @@ export interface components {
             extra_late_hours: number;
             /** Planned Hours In Range */
             planned_hours_in_range: number;
+        };
+        /** NotDuplicatesResult */
+        NotDuplicatesResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
         };
         /** NotifyTestResult */
         NotifyTestResult: {
@@ -4415,6 +4590,25 @@ export interface components {
              */
             repeated?: boolean;
         };
+        /** ReviewAgainResult */
+        ReviewAgainResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
         /** ReviewEntry */
         ReviewEntry: {
             /** Block Key */
@@ -4471,6 +4665,35 @@ export interface components {
         };
         /** ReviewSubmitResult */
         ReviewSubmitResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /** ReviewedInput */
+        ReviewedInput: {
+            /** Ids */
+            ids: number[];
+            /**
+             * Keep
+             * @default true
+             */
+            keep?: boolean;
+        };
+        /** ReviewedResult */
+        ReviewedResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
@@ -5696,6 +5919,17 @@ export interface components {
              */
             message?: string;
         };
+        /** ToReviewOut */
+        ToReviewOut: {
+            /** Items */
+            items: components["schemas"]["ItemOut"][];
+            /** Sources */
+            sources: {
+                [key: string]: string;
+            };
+            /** Started */
+            started: boolean;
+        };
         /** TokenAddResult */
         TokenAddResult: {
             /** Command Id */
@@ -6788,6 +7022,194 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AreaEditResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duplicates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicatesOut"];
+                };
+            };
+        };
+    };
+    duplicates_merge: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MergeInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicatesMergeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    not_duplicates: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemIds"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotDuplicatesResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_again: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Empty"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewAgainResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    to_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToReviewOut"];
+                };
+            };
+        };
+    };
+    reviewed: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewedInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewedResult"];
                 };
             };
             /** @description Validation Error */

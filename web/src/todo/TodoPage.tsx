@@ -9,7 +9,7 @@
 import { Dropdown } from "@/components/fr/Dropdown"
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
-import { useSearchParams } from "react-router"
+import { NavLink, useSearchParams } from "react-router"
 import { type Item, query } from "@/api/client"
 import { Check, Chip, Icon, Seg } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
@@ -24,8 +24,11 @@ import { useShell } from "@/shell/ShellContext"
 import { AddBox } from "./AddBox"
 import { addHint, fillFor, GROUPS, type GroupBy, grouped, KINDS_FIRST, OTHER, plural, progress, SORTS, type SortBy, summary } from "./groups"
 import { DuePicker, LengthInput } from "./Pickers"
+import { useDuplicates } from "@/inbox/CheckTasks"
 import { SortPicker } from "./SortPicker"
 import { TodoDetail } from "./TodoDetail"
+
+const DRAG = "text/x-friday-item" // a task dragged to another section
 
 export const useAllItems = (done: boolean) =>
   useQuery({ queryKey: ["items", done ? "all" : "todo"], queryFn: () => query("items", { status: done ? "all" : "todo" }) })
@@ -36,6 +39,9 @@ type List = (typeof LISTS)[number]
 export function TodoPage() {
   const { today } = useShell()
   const { look, setLook } = useLook()
+  const copies = useDuplicates().data?.groups.length ?? 0
+  const move = useCommand("edit", { label: (o) => `Moved ${o.result.item?.title ?? ""}` })
+  const [over, setOver] = useState<string | null>(null) // the section a task is being dragged over
   const [by, setBy] = useStored<GroupBy>("friday-todo-group", "Kind", GROUPS)
   const [sort, setSort] = useStored<SortBy>("friday-todo-sort", "Next up", SORTS)
   const [showDone, setShowDone] = useState(false)
@@ -63,6 +69,12 @@ export function TodoPage() {
         <span className="tnum fr-head-note" style={{ color: "var(--color-neutral-500)" }}>
           {summary(items)}
         </span>
+        {copies > 0 && (
+          <NavLink to="/inbox/check" className="fr-pill fr-hover" style={{ fontSize: 12, color: "var(--fr-warn)", textDecoration: "none" }} title="The same task more than once">
+            <Icon name="copy" size={12} />
+            {copies} with copies · Check
+          </NavLink>
+        )}
         {solving && (
           <div className="fr-pill" style={{ background: "color-mix(in srgb, var(--color-accent) 14%, transparent)", color: "var(--color-accent-200)" }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--color-accent)" }} />
@@ -107,7 +119,19 @@ export function TodoPage() {
               groups.map((g) => {
                 const fill = fillFor(by, g.name)
                 return (
-                  <section key={g.name} style={{ display: "flex", flexDirection: "column" }}>
+                  <section
+                    key={g.name}
+                    // Drag a task here to make it this kind (or give it this tag): an assignment that's really an errand.
+                    onDragOver={(e) => fill && e.dataTransfer.types.includes(DRAG) && (e.preventDefault(), setOver(g.name))}
+                    onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && setOver(null)}
+                    onDrop={(e) => {
+                      setOver(null)
+                      const id = Number(e.dataTransfer.getData(DRAG))
+                      if (!fill || !id || g.items.some((i) => i.id === id)) return
+                      move(by === "Tag" ? { id, area: fill.area ?? null } : { id, preset: fill.preset ?? null })
+                    }}
+                    style={{ display: "flex", flexDirection: "column", borderRadius: 6, outline: over === g.name ? "1.5px dashed var(--color-accent)" : undefined, outlineOffset: 4 }}
+                  >
                     <SectionRule name={by === "Kind" ? plural(g.name) : g.name} items={g.items} />
                     {g.items.map((i) => (
                       <RowOf key={i.id} item={i} by={by} fresh={fresh.includes(i.id)} selected={i.id === selected} onSelect={() => select(i.id === selected ? null : i.id)} />
@@ -119,7 +143,7 @@ export function TodoPage() {
             )}
             {!groups.length && list !== "Due" && <div style={{ padding: "40px 8px", color: "var(--color-neutral-400)" }}>Nothing left. Add something above, or turn on Show done to see what you finished.</div>}
             <span className="fr-mono" style={{ fontSize: 10.5, color: "var(--color-neutral-500)" }}>
-              Type it the way you’d say it: <span style={{ color: "var(--color-neutral-300)" }}>ch 4 #psych due fri 5pm ~1h</span>. Click a task for everything about it.
+              Type it the way you’d say it: <span style={{ color: "var(--color-neutral-300)" }}>ch 4 #psych due fri 5pm ~1h</span>. Click a task for everything about it; drag it onto another section to change its kind.
             </span>
           </div>
         </div>
@@ -217,6 +241,8 @@ function CompactRow({ item, by, fresh, selected, onSelect }: RowProps) {
       role="button"
       tabIndex={0}
       onClick={() => editing === null && onSelect()}
+      draggable={editing === null}
+      onDragStart={(e) => (e.dataTransfer.setData(DRAG, String(item.id)), (e.dataTransfer.effectAllowed = "move"))}
       onKeyDown={(e) => e.key === "Enter" && editing === null && onSelect()}
       className="fr-hover-soft fr-todo-line"
       title={`${item.title}: click for everything about it, double-click the title to rename`}

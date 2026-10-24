@@ -2,19 +2,23 @@
 // items, ghosts and the wind-down; drag to move, resize or select time. Settings → Appearance chooses the hours
 // shown and whether a day's dues are header chips or a lane down its column (COMBINED.md 14, 15).
 
+import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import type { Block, Item, Schemas } from "@/api/client"
 import { type Drag, justDragged, minuteAt, selectionFrom, useDragging } from "@/components/calendar/useDrag"
+import { useToast } from "@/components/Toasts"
 import { useClock, useElapsed } from "@/hooks/useClock"
+import { runCommand } from "@/hooks/useCommand"
+import { moveBlock } from "@/hooks/useDrop"
 import { useGhosts, useItems, useNow, useStatus } from "@/hooks/queries"
 import { movedSince } from "@/lib/drag"
 import { clock, hms, weekday, when } from "@/lib/format"
-import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, toMin } from "@/lib/time"
+import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, type Span, toMin } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
 import { useLook } from "@/theme/LookProvider"
 import { draftAt, draftOf } from "@/shell/EventPane"
 import { DueLane } from "./DueLane"
-import { BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, PX, SleepBand } from "./Pieces"
+import { asBlock, BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, PX, SleepBand } from "./Pieces"
 
 interface Props {
   dates: string[]
@@ -33,6 +37,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const elapsed = useElapsed(timer?.elapsed_s)
   const open = new Set((useItems().data ?? []).map((i) => i.id))
   const moved = useMoved(plan)
+  const retime = useRetime()
   const now = useClock()
   const { look } = useLook()
   const allDay24 = look.hours === "All day"
@@ -104,7 +109,15 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
               {dues.length > 0 && <DueLane dues={dues} stickyTop={headHeight} narrow={dates.length > 1} />}
               <Nights date={date} days={days} axis={axis} />
               {layout(fixed, date, axis).map((p) => (
-                <FixedBox key={`f${p.item.id}`} p={p} onOpen={() => (p.item.event_kind === "shove" ? select(asBlock(p.item)) : setEvent(draftOf(p.item)))} />
+                // One click shows it in the popover, as a block shows; a double-click opens it in the drawer, or, on its
+                // time, lets you type a new one there.
+                <FixedBox
+                  key={`f${p.item.id}`}
+                  p={p}
+                  onOpen={() => select(asBlock(p.item))}
+                  onEdit={p.item.event_kind === "shove" ? undefined : () => (select(null), setEvent(draftOf(p.item)))}
+                  retime={{ begin: () => select(null), save: (span) => retime.event(p.item, span) }}
+                />
               ))}
               {event && !event.allDay && layout([event], date, axis).map((p) => <DraftBox key="draft" p={p} title={event.title} />)}
               {layout(plan.blocks, date, axis).map((p) => (
@@ -119,6 +132,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                   onOpen={() => !justDragged() && select(p.item)}
                   onGrab={(e) => begin(e, grabbed(p.item, "move", minuteAt(e)))}
                   onResize={(e) => begin(e, grabbed(p.item, "resize", minuteAt(e)))}
+                  retime={{ begin: () => select(null), save: (span) => retime.block(p.item, span) }}
                 />
               ))}
               {layout(news, date, axis).map((p) => (
@@ -264,11 +278,7 @@ function DayHead(props: {
   )
 }
 
-/** A fixed item or a due marker, as the selected "block" the popover reads. */
-function asBlock(item: Item & { start: string; end: string }): Block {
-  return { key: `F${item.id}`, item_id: item.id, title: item.title, area: item.area, start: item.start, end: item.end }
-}
-
+/** A due marker, as the selected "block" the popover reads. */
 function dueBlock(d: Schemas["DueMarker"]): Block {
   return { key: `D${d.item_id}`, item_id: d.item_id, title: d.title, start: d.due, end: d.due }
 }
@@ -309,6 +319,32 @@ function Preview({ drag, date, axis, today }: { drag: Drag; date: string; axis: 
       ))}
     </>
   )
+}
+
+/** A time typed over a box on the grid (Pieces' TimeField). An event is saved as the drawer saves it: this time only,
+ * for a repeat, and back to its calendar if it saves there. A block is pinned there as dragging it there pins it,
+ * and a new length changes a fixed-length item's length, as resizing it does. */
+function useRetime() {
+  const client = useQueryClient()
+  const toast = useToast()
+  return {
+    event: (item: Item, span: Span) =>
+      runCommand(client, toast, "edit", { id: item.id, start: span.start, end: span.end }, {
+        optimistic: (c) =>
+          c.setQueriesData<Schemas["PlanOut"]>({ queryKey: ["plan"] }, (plan) => plan && { ...plan, fixed: plan.fixed.map((f) => (f.id === item.id ? { ...f, ...span } : f)) }),
+        label: () => `${item.title}: ${clock(span.start)}–${clock(span.end)}`,
+      }),
+    block: async (block: Block, span: Span) => {
+      const { start, end } = span
+      const kind = block.pinned === "locked" ? "locked" : "preferred"
+      const by = toMin(end) - toMin(start) - (toMin(block.end) - toMin(block.start))
+      const item = client.getQueryData<Item[]>(["items"])?.find((i) => i.id === block.item_id)
+      if (by && item?.amount === "fixed" && item.duration_min != null) {
+        await runCommand(client, toast, "edit", { id: block.item_id, duration_min: Math.max(15, item.duration_min + by) })
+      }
+      runCommand(client, toast, "pin", { id: block.item_id, start, end, kind, from_start: block.start, from_end: block.end }, { optimistic: (c) => moveBlock(c, block.key, start, end, kind) })
+    },
+  }
 }
 
 /** Items whose first block moved in the latest plan, with where it was, for ten seconds. */

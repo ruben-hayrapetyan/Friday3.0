@@ -18,6 +18,7 @@ import { LengthInput } from "@/todo/Pickers"
 import { useNotes } from "@/settings/AboutYou"
 import { useAreas } from "@/hooks/queries"
 import { NavLink } from "react-router"
+import { useDuplicates } from "./CheckTasks"
 
 type Suggestion = Schemas["SuggestionOut"]
 interface Resolved {
@@ -42,6 +43,7 @@ export const useInbox = () => useQuery({ queryKey: ["inbox"], queryFn: () => que
 
 export function InboxPage() {
   const inbox = useInbox().data
+  const copies = useDuplicates().data?.groups.length ?? 0
   const [selected, setSelected] = useState<number | null>(null)
   const [resolved, setResolved] = useState<Resolved[]>([])
   const pending = inbox?.suggestions ?? []
@@ -67,6 +69,14 @@ export function InboxPage() {
       <div className="fr-panel" style={{ display: "grid", gridTemplateColumns: tight ? "minmax(0,1fr)" : "300px minmax(0,1fr)", overflow: "hidden" }}>
         {showList && (
         <div style={{ overflowY: "auto", minHeight: 0, padding: "12px 10px 40px", boxShadow: "inset -1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 14 }}>
+          <NavLink to="/inbox/check" className="fr-well fr-hover" style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", color: "var(--color-text)", textDecoration: "none" }}>
+            <Icon name="list-checks" size={16} style={{ color: "var(--color-accent-300)" }} />
+            <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 1, fontSize: 12 }}>
+              <span>Check your tasks{copies ? `: ${copies} with copies` : ""}</span>
+              <span style={{ color: "var(--color-neutral-500)" }}>Copies, and going over what Friday brought in again</span>
+            </span>
+            <Icon name="caret-right" size={13} />
+          </NavLink>
           {!!inbox?.repeats && (
             <NavLink to="/settings/repeating" className="fr-well fr-hover" style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", color: "var(--color-text)", textDecoration: "none" }}>
               <Icon name="repeat" size={16} style={{ color: "var(--color-accent-300)" }} />
