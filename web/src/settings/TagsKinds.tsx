@@ -1,10 +1,10 @@
 // Tags and kinds (v22): each tag's name, colour and hours this week, with its own buffer; kinds in priority order
-// (who gets the time when it can't all fit), each with a buffer too.
+// (who gets the time when it can't all fit), each with a buffer too, and whether short-term work comes before long.
 
 import { useQuery } from "@tanstack/react-query"
 import { Fragment, useState } from "react"
 import { query } from "@/api/client"
-import { H, Icon, Menu, Seg } from "@/components/fr/controls"
+import { H, Icon, Menu, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useAreas, useSettings } from "@/hooks/queries"
 import { usePresets } from "@/todo/AddBox"
@@ -134,6 +134,7 @@ function Kinds() {
   const settings = useSettings().data as Record<string, unknown> | undefined
   const order = (settings?.kind_order as string[]) ?? []
   const save = useCommand("settings_set", { label: () => "Order saved" })
+  const saveShort = useCommand("settings_set", { label: () => "Saved" })
   const { buffers, set } = useBuffers()
   const ranked = [...order.filter((p) => presets.includes(p)), ...presets.filter((p) => !order.includes(p))]
   const [removing, setRemoving] = useState<string | null>(null)
@@ -151,6 +152,13 @@ function Kinds() {
         <span className="fr-kicker" style={{ textWrap: "pretty" }}>
           When things genuinely can’t all fit before their deadlines, kinds higher on the list get the time first. Order doesn’t matter when everything fits.
         </span>
+      </div>
+      <div className="fr-row" style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0" }}>
+        <span style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+          <span style={{ fontWeight: 500 }}>Short term before long term</span>
+          <span className="fr-kicker">Your Long term list gets only the time your Short term list leaves.</span>
+        </span>
+        <Switch on={!!settings?.short_term_first} onToggle={() => saveShort({ key: "short_term_first", value: !settings?.short_term_first })} label="Short term before long term" />
       </div>
       {ranked.map((k, i) => (
         <Fragment key={k}>

@@ -24,7 +24,9 @@ from friday.planner.store import area_names
 
 ANYTHING = ("add", "edit", "drop", "done", "pin", "unpin", "shove", "rule_add", "settings_set", "day_override")
 RULES = ("rule_add", "settings_set", "add")
-SETTINGS = ("kind_order", "exam_focus", "pointless_late", "sittings", "busy", "daily_cap", "event_kinds")
+SETTINGS = (
+    "kind_order", "short_term_first", "exam_focus", "pointless_late", "sittings", "busy", "daily_cap", "event_kinds",
+)  # fmt: skip
 
 SYSTEM = """You turn what a student asks for into changes to Friday, a planner, as Friday's own commands. You never
 plan their time: a separate engine does that. You only propose commands, each with one plain sentence saying what it
@@ -43,10 +45,14 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
   on/not_on), free (keep a window free: at/until, days), cap (amount: hours a day), early (amount: days early),
   after (event: title words). subject: "work", "deep work", a tag, a kind or a title.
 - settings_set: {key, value} for these keys only: kind_order (kinds most important first, e.g. ["Assignment",
-  "Reading"] for "prioritize assignments over readings"), exam_focus ({on: true, days_before} for focusing on an
-  exam's course in the days before it), pointless_late ({kinds, titles} for work pointless once late), busy, daily_cap
-  ({mon..sun: hours}), event_kinds, sittings ({one_go: true, split_first: [kinds]} for "I like to do things in one
-  go, but split problem sets first": problem sets are the kind "Assignment").
+  "Reading"] for "prioritize assignments over readings"), short_term_first (true for "prioritize short-term work
+  over long-term", meaning the to-do's Short term list over its Long term list), exam_focus ({on: true, days_before}
+  for focusing on an exam's course in the days before it), pointless_late ({kinds, titles} for work pointless once
+  late), busy, daily_cap ({mon..sun: hours}), event_kinds (time kept free of work around events, to get there or
+  away: {kind: {before_min, after_min}} for the kinds "class", "meeting", "exam" and "other"; "15 minutes before and
+  after events" sets all four to 15 and 15; only the kinds given change), sittings ({one_go: true, split_first:
+  [kinds]} for "I like to do things in one go, but split problem sets first": problem sets are the kind
+  "Assignment").
 If something can't be expressed with these, say so in the reply and propose nothing for it. Never invent ids."""
 
 SCHEMA = {

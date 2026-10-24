@@ -398,6 +398,7 @@ SETTINGS_TYPES: dict[str, Any] = {
     "event_kinds": dict[str, EventKind],
     "presets": dict[str, Preset],
     "kind_order": tuple[str, ...],  # presets, most important first: who gets the time when it can't all fit
+    "short_term_first": bool,  # the Short term list's work comes before anything on the Long term list
     "rules": tuple[RuleSpec, ...],
     "templates": dict[str, tuple[TemplateStep, ...]],
     "paces": dict[str, Dials],
@@ -437,6 +438,7 @@ DEFAULTS: dict[str, Any] = {
     },
     "presets": DEFAULT_PRESETS,
     "kind_order": (),
+    "short_term_first": False,
     "rules": REFERENCE_RULES,
     "templates": DEFAULT_TEMPLATES,
     "paces": DEFAULT_PACES,

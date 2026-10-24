@@ -47,7 +47,11 @@ def settings_set(ctx: Ctx, inp: SettingsSetInput) -> Changed:
     if ctx.actor != "config" and inp.key in kv_get(ctx.conn, "config_keys", [], ctx.user_id):
         raise FieldError("key", f"{inp.key} is set in friday.toml; change it there")
     all_day = ctx.settings["gcal"].include_all_day
-    write_setting(ctx, inp.key, inp.value)
+    value = inp.value
+    if inp.key == "event_kinds" and isinstance(value, dict):
+        # Only the kinds given change ("15 minutes after classes" leaves meetings and exams as they were).
+        value = {k: v.model_dump() for k, v in ctx.settings["event_kinds"].items()} | value
+    write_setting(ctx, inp.key, value)
     if inp.key == "gcal" and validate_value("gcal", inp.value).include_all_day != all_day:
         reread_calendars(ctx)  # events seen before would otherwise keep the old reading
     return Changed(message=f"Saved {inp.key}")

@@ -1,10 +1,11 @@
-// Shove (v22): take time back. Quick picks, "for N hours", "until", or a slice of tomorrow. When clearing it would
+// Shove (v22): take time back. Quick picks, "for N hours", from one time to another on any day this week, or a slice
+// of tomorrow. When clearing it would
 // make work late, the must-dos are listed and you choose.
 
 import { useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import type { Schemas } from "@/api/client"
-import { Icon } from "@/components/fr/controls"
+import { Icon, Menu } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { runCommand } from "@/hooks/useCommand"
 import { useClock } from "@/hooks/useClock"
@@ -20,9 +21,17 @@ export function ShovePop() {
   const toast = useToast()
   const now = useClock()
   const [hours, setHours] = useState(1)
-  const [until, setUntil] = useState("17:00")
   const [mustDo, setMustDo] = useState<{ range: string; list: Schemas["MustDo"][] } | null>(null)
   const nowClock = fromMin(now).slice(11, 16)
+  // Any stretch of any day this week: from the next quarter hour for an hour, unless you say otherwise.
+  const [from, setFrom] = useState(() => fromMin(Math.ceil(now / 15) * 15).slice(11, 16))
+  const [until, setUntil] = useState(() => fromMin(Math.ceil(now / 15) * 15 + 60).slice(11, 16))
+  const [on, setOn] = useState(0) // days from today
+  const days = Array.from({ length: 7 }, (_, n) => {
+    const d = addDays(today, n)
+    return { value: String(n), label: n === 0 ? "Today" : n === 1 ? "Tomorrow" : `${weekday(d)} ${Number(d.slice(8, 10))}` }
+  })
+  const wrong = !from || !until ? "Give both times" : until <= from ? "The end comes after the start" : on === 0 && until <= nowClock ? "That time has passed" : null
   const shove = async (range: string, decision: Decision = "ask") => {
     const out = await runCommand(client, toast, "shove", { range, decision }, { label: (o) => o.result.message ?? "Shoved" })
     const list = out?.result.must_do ?? []
@@ -76,14 +85,21 @@ export function ShovePop() {
                 Shove
               </button>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ width: 64, fontSize: 12, color: "var(--color-neutral-400)" }}>Until</span>
-              <input type="time" step={900} className="input" value={until} onChange={(e) => setUntil(e.target.value)} style={{ width: 110, padding: "4px 8px", minHeight: 0 }} />
-              <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>today</span>
-              <div style={{ flex: 1 }} />
-              <button className="btn btn-secondary" disabled={until <= nowClock} onClick={() => shove(`${nowClock}-${until}`)} style={{ padding: "4px 10px" }}>
-                Shove
-              </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>From</span>
+                <input type="time" step={900} className="input" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From" style={{ flex: 1, minWidth: 0, padding: "4px 6px", minHeight: 0 }} />
+                <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>to</span>
+                <input type="time" step={900} className="input" value={until} onChange={(e) => setUntil(e.target.value)} aria-label="To" style={{ flex: 1, minWidth: 0, padding: "4px 6px", minHeight: 0 }} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Menu options={days} value={String(on)} onPick={(v) => setOn(Number(v))} label="Which day" />
+                <div style={{ flex: 1 }} />
+                <button className="btn btn-secondary" disabled={!!wrong} title={wrong ?? undefined} onClick={() => shove(`${from}-${until} +${on}d`)} style={{ padding: "4px 10px" }}>
+                  Shove
+                </button>
+              </div>
+              {wrong && <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>{wrong}</span>}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>

@@ -264,6 +264,18 @@ def test_kind_order_doubles_the_first_kinds_importance_and_leaves_the_rest() -> 
     assert (of("Exam prep"), of("Assignment"), of("Reading"), of("Chore")) == (6, 4.5, 3, 3)
 
 
+def test_short_term_first_puts_long_term_work_last() -> None:
+    from types import SimpleNamespace
+
+    from friday.planner.build import importance
+
+    def of(long_term: bool, first: bool) -> float:
+        item = SimpleNamespace(preset="Reading", importance=4, long_term=long_term)
+        return importance(item, ("Assignment", "Reading"), first)  # type: ignore[arg-type]
+
+    assert (of(False, True), of(True, True), of(True, False)) == (4, 1, 4)
+
+
 def test_a_rule_change_lets_the_next_replan_move_things_once(app: App) -> None:
     app.do("add", text="essay ~3h due fri")
     replan(app.conn, app.now_utc)

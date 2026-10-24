@@ -49,6 +49,16 @@ def test_edit_changes_only_what_is_given_and_can_clear_a_due(app: App) -> None:
     assert (edited["title"], edited["due"], edited["duration_min"]) == ("reading ch 4", None, 60)
 
 
+def test_an_assignment_can_be_shortened_below_its_smallest_piece_and_lengthened_again(app: App) -> None:
+    item_id = app.do("add", text="PS5 due tue 5pm ~3h")["item"]["id"]
+    assert app.do("edit", id=item_id, duration_min=15)["item"]["duration_min"] == 15
+    assert app.table("items")[0]["min_chunk_units"] == 1  # done in one go
+    assert app.do("edit", id=item_id, duration_min=120)["item"]["duration_min"] == 120
+    assert app.table("items")[0]["min_chunk_units"] == 2  # not split into 15-minute bits
+    with pytest.raises(FieldError, match="amount"):
+        app.do("edit", id=item_id, duration_min=15, min_chunk_min=60)
+
+
 def test_done_records_a_completion_with_the_actual_time_and_reopen_removes_it(app: App) -> None:
     item_id = app.do("add", text="essay due wed ~2h")["item"]["id"]
     app.do("done", id=item_id, actual_min=150)

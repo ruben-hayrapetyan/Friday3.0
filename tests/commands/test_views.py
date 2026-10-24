@@ -64,6 +64,16 @@ def test_a_time_range_can_name_its_day(tmp_path: Path) -> None:
     ]
 
 
+def test_a_time_range_can_be_days_from_today(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    out = app.do("shove", range="14:00-16:30 +2d", decision="shove_anyway")
+    created = out["created"]
+    assert out["message"] == "Cleared Wed Oct 21 2–4:30pm"
+    assert [(i["start_utc"], i["end_utc"]) for i in app.table("items") if i["id"] in created] == [
+        ("2026-10-21T18:00Z", "2026-10-21T20:30Z")
+    ]
+
+
 def test_only_blocks_on_a_pin_show_as_pinned(tmp_path: Path) -> None:
     app = new_app(tmp_path)
     essay = app.do("add", text="essay ~2h split")["item"]["id"]

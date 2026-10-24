@@ -22,6 +22,8 @@ from friday.engine.rules import RULE_TYPES, build_rules
 from friday.engine.sampler import SamplerConfig, default_chains
 from friday.engine.scheduler import SchedulerConfig, StepBudget
 
+LONG_TERM_SCALE = 0.25  # how much Long term work counts when short-term work comes first
+
 
 @dataclass(frozen=True)
 class Pin:
@@ -260,7 +262,8 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
     engine_item = EngineItem(
         key=key_of(item.id), title=item.title, norm_title=identity_text(norm(item.title, inp.settings["text"].rules())),
         area=inp.areas.get(item.area_id) if item.area_id is not None else None, tags=tuple(item.tags),
-        preset=item.preset, energy=item.energy, importance=importance(item, inp.settings["kind_order"]),
+        preset=item.preset, energy=item.energy,
+        importance=importance(item, inp.settings["kind_order"], inp.settings["short_term_first"]),
         firmness=item.firmness,
         amount=item.amount, release_utc=release, due_utc=due, shape=item.shape,
         min_chunk=1 if item.shape == "one_sitting" else max(1, item.min_chunk_units),
@@ -291,13 +294,15 @@ def sitting_cost(item: Item, settings: Mapping[str, Any]) -> float:
     return min(1.0, max(item.chunk_cost, 0.05) * factor)
 
 
-def importance(item: Item, kind_order: Sequence[str]) -> float:
+def importance(item: Item, kind_order: Sequence[str], short_term_first: bool = False) -> float:
     """The item's importance, scaled by its kind's place in `kind_order`: twice for the first, once for the last
-    and for kinds not listed. Lateness is priced by importance, so the first kinds keep their time."""
+    and for kinds not listed. Lateness is priced by importance, so the first kinds keep their time. With
+    `short_term_first`, Long term work counts a quarter as much, so it gets only the time short-term work leaves."""
+    scale = LONG_TERM_SCALE if short_term_first and item.long_term else 1.0
     if item.preset not in kind_order or len(kind_order) < 2:
-        return item.importance
+        return item.importance * scale
     rank = list(kind_order).index(item.preset)
-    return item.importance * (1 + (len(kind_order) - 1 - rank) / (len(kind_order) - 1))
+    return item.importance * scale * (1 + (len(kind_order) - 1 - rank) / (len(kind_order) - 1))
 
 
 def with_amount(engine_item: EngineItem, item: Item, inp: BuildInput) -> EngineItem | None:

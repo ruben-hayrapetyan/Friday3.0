@@ -200,6 +200,15 @@ def learned_estimate(ctx: Ctx, values: dict[str, Any], area: str | None) -> Esti
     return Estimate(max(1, -(-minutes // UNIT_MIN)), "learned", detail)
 
 
+def fitted_chunk(ctx: Ctx, before: Item, after: Item) -> int:
+    """The smallest piece after a new length: a 15-minute assignment is done in one go, as when it's added; made
+    longer again, it's back to its kind's smallest piece rather than split into 15-minute bits."""
+    kind = ctx.settings["presets"].get(after.preset) if after.preset else None
+    usual = max(before.min_chunk_units, kind.min_chunk_units if kind and kind.min_chunk_units else 1)
+    amount = amount_units(after)
+    return min(usual, amount) if amount else usual
+
+
 @command("edit", affects_plan=True)
 def edit(ctx: Ctx, inp: EditInput) -> ItemResult:
     """Change an item's fields; `from_date` changes a repeating item's series from that date on."""
@@ -213,6 +222,8 @@ def edit(ctx: Ctx, inp: EditInput) -> ItemResult:
     changed = dataclasses.replace(item, **to_item_values(ctx, given))
     if changed.series_id is not None:
         changed.detached = True  # regeneration leaves an edited occurrence alone
+    if "min_chunk_min" not in given and amount_units(changed) != amount_units(item):
+        changed.min_chunk_units = fitted_chunk(ctx, item, changed)
     validate(changed)
     if changed.parent_id != item.parent_id:
         check_parent(ctx, item.id, changed.parent_id)

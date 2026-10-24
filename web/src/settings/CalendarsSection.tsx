@@ -1,9 +1,10 @@
-// Calendars (COMBINED.md 17, 19, 28, 59, 60): what counts as busy when Friday plans, each calendar's pigment and its
+// Calendars (COMBINED.md 17, 19, 28, 59, 60): what counts as busy when Friday plans, the time kept free around
+// events (to get there and back), each calendar's pigment and its
 // button in the title row, and the categories that colour events by their titles, with the filter that hides the
 // ones you'd rather not see (office hours). Chroma's categories.json is imported into these once.
 
-import { useEffect, useState } from "react"
-import { Icon, Switch } from "@/components/fr/controls"
+import { Fragment, useEffect, useState } from "react"
+import { Chip, Icon, Menu, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings } from "@/hooks/queries"
 import { PIGMENTS, pigment } from "@/lib/pigments"
@@ -34,7 +35,52 @@ interface CalendarLook {
   toolbar: string[]
 }
 
+interface Gap {
+  before_min: number
+  after_min: number
+}
+
 const ROOMS = /\b(rooms?|bookings?|reservations?)\b/i
+const KINDS = [
+  ["class", "Classes"],
+  ["meeting", "Meetings"],
+  ["exam", "Exams"],
+  ["other", "Everything else"],
+] as const
+const GAPS = [0, 5, 10, 15, 20, 30, 45, 60]
+const gapLabel = (m: number) => (m ? `${m} min` : "None")
+
+/** Time kept free of work before and after events, to get there and away: the same for all, or kind by kind. */
+function AroundEvents({ kinds, onSave }: { kinds: Record<string, Gap>; onSave: (value: Record<string, Gap>) => void }) {
+  const all = KINDS.map(([k]) => kinds[k] ?? { before_min: 0, after_min: 0 })
+  const same = all.every((g) => g.before_min === all[0].before_min && g.after_min === all[0].after_min && g.before_min === g.after_min) ? all[0].before_min : null
+  const set = (kind: string, side: keyof Gap, minutes: number) => onSave({ [kind]: { ...(kinds[kind] ?? { before_min: 0, after_min: 0 }), [side]: minutes } })
+  const options = GAPS.map((m) => ({ value: String(m), label: gapLabel(m) }))
+  return (
+    <Field name="Time around events" note="Kept free of work before and after your events, to get there and to get back to where you work.">
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontSize: 12, color: "var(--color-neutral-400)", marginRight: 4 }}>Before and after every event</span>
+        {[0, 10, 15, 30].map((m) => (
+          <Chip key={m} on={same === m} onClick={() => onSave(Object.fromEntries(KINDS.map(([k]) => [k, { before_min: m, after_min: m }])))}>
+            {gapLabel(m)}
+          </Chip>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: "6px 12px", alignItems: "center", maxWidth: 420, paddingTop: 4 }}>
+        <span />
+        <span className="fr-kicker">Before</span>
+        <span className="fr-kicker">After</span>
+        {KINDS.map(([k, name], i) => (
+          <Fragment key={k}>
+            <span style={{ fontSize: 13 }}>{name}</span>
+            <Menu options={options} value={String(all[i].before_min)} onPick={(v) => set(k, "before_min", Number(v))} label={`Before ${name.toLowerCase()}`} />
+            <Menu options={options} value={String(all[i].after_min)} onPick={(v) => set(k, "after_min", Number(v))} label={`After ${name.toLowerCase()}`} />
+          </Fragment>
+        ))}
+      </div>
+    </Field>
+  )
+}
 
 /** Whether a calendar's events block time: as you said, else all but calendars of room bookings (as the server). */
 export const counts = (name: string, busy: Busy) => busy.calendars[name] ?? !ROOMS.test(name)
@@ -59,6 +105,7 @@ export function CalendarsSection() {
         <Toggle on={busy.count_free} onToggle={() => setBusy({ count_free: !busy.count_free })} label="Events marked free" hint="Free in their calendar, like a reminder or a hold" />
         <Toggle on={busy.count_filtered} onToggle={() => setBusy({ count_filtered: !busy.count_filtered })} label={filter ? `${filter.label}` : "Events the filter hides"} hint={filter ? "What the categories’ filter hides" : "Set a filter under Categories"} />
       </Field>
+      <AroundEvents kinds={settings.event_kinds as Record<string, Gap>} onSave={(value) => save({ key: "event_kinds", value })} />
       <Field name="Your calendars" note="For each: plan around its events, just show them (dashed, and work may go over them), or hide it until you switch it on under Show (⌥⌘1–9). And a pigment. Calendars of room bookings start out just shown.">
         {reading.length === 0 ? (
           <span className="fr-kicker">Calendars list here once Google is connected (Integrations), and the Mac app's once it runs.</span>

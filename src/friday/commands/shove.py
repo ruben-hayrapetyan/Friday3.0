@@ -12,7 +12,7 @@ from friday.commands.series import delete_item
 from friday.core.dates import WEEKDAY_NAMES, next_weekday, parse_duration, parse_time, read_date
 from friday.core.db import one
 from friday.core.items import FieldError, Item
-from friday.core.time import format_utc, local_midnight, to_utc
+from friday.core.time import ampm, format_utc, local_midnight, to_local, to_utc
 from friday.engine.executor import edf, subtract
 from friday.planner.build import BuildInput, build_problem
 from friday.planner.inputs import executor_input
@@ -137,8 +137,18 @@ def shove(ctx: Ctx, inp: ShoveInput) -> ShoveOutput:
     if late and inp.decision == "keep_must_dos":
         spans = keep_must_dos(ctx, snapshot, late, spans)
     created = [insert_item(ctx, shove_item(ctx, span)) for span in spans if span[1] > span[0]]
-    cleared = "; ".join(f"{ctx.local(format_utc(a))}–{ctx.local(format_utc(b))[-5:]}" for a, b in spans)
+    cleared = "; ".join(spoken(ctx, a, b) for a, b in spans)
     return ShoveOutput(created=created, must_do=late, message=f"Cleared {cleared}")
+
+
+def spoken(ctx: Ctx, start: int, end: int) -> str:
+    """A cleared stretch as you'd say it: "today 4–5pm", "Mon Oct 26 4–5pm"."""
+    a, b = to_local(start, ctx.tz), to_local(end, ctx.tz)
+    day = "today" if a.date() == ctx.today else a.strftime("%a %b ") + str(a.day)
+    first = ampm(a)
+    if (a.hour < 12) == (b.hour < 12):
+        first = first.removesuffix("am").removesuffix("pm")  # "4–5pm", not "4pm–5pm"
+    return f"{day} {first}–{ampm(b)}"
 
 
 def must_dos_if_any(ctx: Ctx, snapshot: Snapshot, planning: BuildInput, spans: list[Range]) -> list[MustDo]:

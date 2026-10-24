@@ -74,6 +74,30 @@ def test_a_rule_gets_only_rule_shaped_answers(app: App, monkeypatch: pytest.Monk
     assert "only with rule_add" in claude.asked[0]["system"]
 
 
+def test_gaps_around_events_and_short_term_first_are_rules_claude_may_propose(
+    app: App, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    gaps = {k: {"before_min": 15, "after_min": 15} for k in ("class", "meeting", "exam", "other")}
+    asking(monkeypatch, {"reply": "", "actions": [
+        {"sentence": "Around events", "command": "settings_set", "input": {"key": "event_kinds", "value": gaps}},
+        {"sentence": "Short term", "command": "settings_set", "input": {"key": "short_term_first", "value": True}},
+    ]})  # fmt: skip
+    actions = app.do("ask_claude", text="15 minutes before and after events; short term over long term", purpose="rule")
+    assert [a["error"] for a in actions["actions"]] == [None, None]
+    for action in actions["actions"]:
+        app.do(action["command"], **action["input"])
+    kinds = app.do("settings")["event_kinds"]
+    assert kinds["class"] == {"before_min": 15, "after_min": 15} and kinds["shove"] == {"before_min": 0, "after_min": 0}
+    assert app.do("settings")["short_term_first"] is True
+
+
+def test_some_kinds_gaps_change_and_the_rest_stay(app: App) -> None:
+    app.do("settings_set", key="event_kinds", value={"class": {"before_min": 0, "after_min": 15}})
+    kinds = app.do("settings")["event_kinds"]
+    assert kinds["class"] == {"before_min": 0, "after_min": 15}
+    assert kinds["meeting"] == {"before_min": 5, "after_min": 5}
+
+
 def test_an_applied_proposal_is_an_ordinary_undoable_command(app: App, monkeypatch: pytest.MonkeyPatch) -> None:
     order = {"key": "kind_order", "value": ["Assignment", "Reading"]}
     asking(
