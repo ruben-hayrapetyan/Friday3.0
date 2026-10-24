@@ -2551,6 +2551,671 @@
     }
    }
   },
+  "/api/c/settings_set": {
+   "post": {
+    "summary": "Change one settings key (validated, versioned, undoable); a key `friday.toml` sets is changed there only.",
+    "operationId": "settings_set",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SettingsSetInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SettingsSetResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/pace": {
+   "post": {
+    "summary": "Switch to a saved pace, or set dials directly, from today for a while or until changed (\u00a717.6).",
+    "operationId": "pace",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/PaceInput"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Inp"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaceResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/pace_save": {
+   "post": {
+    "summary": "Create or change a saved pace; dials left out keep the pace's values, or the dials in effect now.",
+    "operationId": "pace_save",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PaceSaveInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaceSaveResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/pace_delete": {
+   "post": {
+    "summary": "Delete a saved pace (not the default, nor the one in use).",
+    "operationId": "pace_delete",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PaceDeleteInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaceDeleteResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/day_override": {
+   "post": {
+    "summary": "One date's bedtime, wake, sleep margin or daily cap, over the weekday settings.",
+    "operationId": "day_override",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DayOverrideInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DayOverrideResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/projects": {
+   "get": {
+    "summary": "Open projects with their descendants, rolled-up progress, planned finish and whether they're on track.",
+    "operationId": "projects",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ProjectOut"
+         },
+         "type": "array",
+         "title": "Response Projects"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/load": {
+   "get": {
+    "summary": "Planned hours against room, week by week: the plan inside the horizon, the allocator's forecast past it.",
+    "operationId": "load",
+    "parameters": [
+     {
+      "name": "weeks",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 52,
+       "minimum": 1,
+       "default": 12,
+       "title": "Weeks"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/WeekLoad"
+         },
+         "title": "Response Load"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/template_apply": {
+   "post": {
+    "summary": "Create a project from a template: one child per step, each after the one before.",
+    "operationId": "template_apply",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TemplateApplyInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TemplateApplyResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/template_save": {
+   "post": {
+    "summary": "Save a project's children, in order, as a template; each step's share is its part of the hours.",
+    "operationId": "template_save",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TemplateSaveInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TemplateSaveResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/reorder": {
+   "post": {
+    "summary": "Put a project's steps in this order (it shows them so; the plan follows their dependencies).",
+    "operationId": "reorder",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ReorderInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ReorderResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/exams": {
+   "get": {
+    "summary": "Upcoming exams, soonest first, each with its prep: what it waits on, and exam prep for its course due at it.",
+    "operationId": "exams",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ExamOut"
+         },
+         "type": "array",
+         "title": "Response Exams"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/progress": {
    "post": {
     "summary": "Set progress as a share of the amount (\"about half done\").",
@@ -3358,649 +4023,6 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/TriageOut"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/c/settings_set": {
-   "post": {
-    "summary": "Change one settings key (validated, versioned, undoable); a key `friday.toml` sets is changed there only.",
-    "operationId": "settings_set",
-    "parameters": [
-     {
-      "name": "preview",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "enum": [
-        "false",
-        "true",
-        "full"
-       ],
-       "type": "string",
-       "default": "false",
-       "title": "Preview"
-      }
-     },
-     {
-      "name": "idempotency-key",
-      "in": "header",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Idempotency-Key"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/SettingsSetInput"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/SettingsSetResult"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/c/pace": {
-   "post": {
-    "summary": "Switch to a saved pace, or set dials directly, from today for a while or until changed (\u00a717.6).",
-    "operationId": "pace",
-    "parameters": [
-     {
-      "name": "preview",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "enum": [
-        "false",
-        "true",
-        "full"
-       ],
-       "type": "string",
-       "default": "false",
-       "title": "Preview"
-      }
-     },
-     {
-      "name": "idempotency-key",
-      "in": "header",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Idempotency-Key"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "anyOf": [
-         {
-          "$ref": "#/components/schemas/PaceInput"
-         },
-         {
-          "type": "null"
-         }
-        ],
-        "title": "Inp"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/PaceResult"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/c/pace_save": {
-   "post": {
-    "summary": "Create or change a saved pace; dials left out keep the pace's values, or the dials in effect now.",
-    "operationId": "pace_save",
-    "parameters": [
-     {
-      "name": "preview",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "enum": [
-        "false",
-        "true",
-        "full"
-       ],
-       "type": "string",
-       "default": "false",
-       "title": "Preview"
-      }
-     },
-     {
-      "name": "idempotency-key",
-      "in": "header",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Idempotency-Key"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/PaceSaveInput"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/PaceSaveResult"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/c/pace_delete": {
-   "post": {
-    "summary": "Delete a saved pace (not the default, nor the one in use).",
-    "operationId": "pace_delete",
-    "parameters": [
-     {
-      "name": "preview",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "enum": [
-        "false",
-        "true",
-        "full"
-       ],
-       "type": "string",
-       "default": "false",
-       "title": "Preview"
-      }
-     },
-     {
-      "name": "idempotency-key",
-      "in": "header",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Idempotency-Key"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/PaceDeleteInput"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/PaceDeleteResult"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/c/day_override": {
-   "post": {
-    "summary": "One date's bedtime, wake, sleep margin or daily cap, over the weekday settings.",
-    "operationId": "day_override",
-    "parameters": [
-     {
-      "name": "preview",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "enum": [
-        "false",
-        "true",
-        "full"
-       ],
-       "type": "string",
-       "default": "false",
-       "title": "Preview"
-      }
-     },
-     {
-      "name": "idempotency-key",
-      "in": "header",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Idempotency-Key"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/DayOverrideInput"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/DayOverrideResult"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/q/projects": {
-   "get": {
-    "summary": "Open projects with their descendants, rolled-up progress, planned finish and whether they're on track.",
-    "operationId": "projects",
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "$ref": "#/components/schemas/ProjectOut"
-         },
-         "type": "array",
-         "title": "Response Projects"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/q/load": {
-   "get": {
-    "summary": "Planned hours against room, week by week: the plan inside the horizon, the allocator's forecast past it.",
-    "operationId": "load",
-    "parameters": [
-     {
-      "name": "weeks",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "type": "integer",
-       "maximum": 52,
-       "minimum": 1,
-       "default": 12,
-       "title": "Weeks"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "type": "array",
-         "items": {
-          "$ref": "#/components/schemas/WeekLoad"
-         },
-         "title": "Response Load"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/c/template_apply": {
-   "post": {
-    "summary": "Create a project from a template: one child per step, each after the one before.",
-    "operationId": "template_apply",
-    "parameters": [
-     {
-      "name": "preview",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "enum": [
-        "false",
-        "true",
-        "full"
-       ],
-       "type": "string",
-       "default": "false",
-       "title": "Preview"
-      }
-     },
-     {
-      "name": "idempotency-key",
-      "in": "header",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Idempotency-Key"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/TemplateApplyInput"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/TemplateApplyResult"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/c/template_save": {
-   "post": {
-    "summary": "Save a project's children, in order, as a template; each step's share is its part of the hours.",
-    "operationId": "template_save",
-    "parameters": [
-     {
-      "name": "preview",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "enum": [
-        "false",
-        "true",
-        "full"
-       ],
-       "type": "string",
-       "default": "false",
-       "title": "Preview"
-      }
-     },
-     {
-      "name": "idempotency-key",
-      "in": "header",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Idempotency-Key"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/TemplateSaveInput"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/TemplateSaveResult"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/c/reorder": {
-   "post": {
-    "summary": "Put a project's steps in this order (it shows them so; the plan follows their dependencies).",
-    "operationId": "reorder",
-    "parameters": [
-     {
-      "name": "preview",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "enum": [
-        "false",
-        "true",
-        "full"
-       ],
-       "type": "string",
-       "default": "false",
-       "title": "Preview"
-      }
-     },
-     {
-      "name": "idempotency-key",
-      "in": "header",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Idempotency-Key"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/ReorderInput"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ReorderResult"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
         }
        }
       }
@@ -10705,6 +10727,98 @@
      "result"
     ],
     "title": "EventGoingResult"
+   },
+   "ExamOut": {
+    "properties": {
+     "item": {
+      "$ref": "#/components/schemas/ItemOut"
+     },
+     "prep": {
+      "items": {
+       "$ref": "#/components/schemas/ExamPrepOut"
+      },
+      "type": "array",
+      "title": "Prep"
+     },
+     "done_min": {
+      "type": "integer",
+      "title": "Done Min"
+     },
+     "remaining_min": {
+      "type": "integer",
+      "title": "Remaining Min"
+     },
+     "planned_finish": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Planned Finish"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "no_prep",
+       "ready",
+       "on_track",
+       "late",
+       "unplanned"
+      ],
+      "title": "Status"
+     },
+     "focus_from": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Focus From"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "item",
+     "prep",
+     "done_min",
+     "remaining_min",
+     "planned_finish",
+     "status",
+     "focus_from"
+    ],
+    "title": "ExamOut"
+   },
+   "ExamPrepOut": {
+    "properties": {
+     "item": {
+      "$ref": "#/components/schemas/ItemOut"
+     },
+     "planned_finish": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Planned Finish"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "item",
+     "planned_finish"
+    ],
+    "title": "ExamPrepOut"
    },
    "GoogleCalendarOut": {
     "properties": {

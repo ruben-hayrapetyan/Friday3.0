@@ -28,7 +28,7 @@ interface Hit {
 const PAGES: [string, string, string][] = [
   ["Plan", "/", "calendar-dots"],
   ["To-do", "/todo", "check-square"],
-  ["Projects", "/projects", "tree-structure"],
+  ["Projects & exams", "/projects", "tree-structure"],
   ["Review", "/review", "cards"],
   ["Inbox", "/inbox", "tray"],
   ["Insights", "/insights", "chart-line"],

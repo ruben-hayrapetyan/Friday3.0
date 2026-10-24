@@ -7,6 +7,7 @@ from friday.commands import (  # noqa: F401
     checking,
     claude,
     diagnose,
+    exams,
     explain,
     horizon,
     importing,

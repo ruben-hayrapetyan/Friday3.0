@@ -12,7 +12,7 @@ const REFRESH: Record<string, string[]> = {
   // Every command sends it, and any query may read what a command changed (rules, tokens, calendars, mail…), so a
   // list kept by hand here went stale whenever a page was added.
   "items.changed": [EVERYTHING],
-  "plan.changed": ["plan", "now", "items", "item", "calendar", "status", "why", "review", "projects", "load", "triage", "brief", "week"],
+  "plan.changed": ["plan", "now", "items", "item", "calendar", "status", "why", "review", "projects", "exams", "load", "triage", "brief", "week"],
   "status.changed": ["status", "notifications", "questions"],
 }
 

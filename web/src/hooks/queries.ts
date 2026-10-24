@@ -37,5 +37,7 @@ export const useSettings = () => useQuery({ queryKey: ["settings"], queryFn: () 
 
 export const useProjects = () => useQuery({ queryKey: ["projects"], queryFn: () => query("projects") })
 
+export const useExams = () => useQuery({ queryKey: ["exams"], queryFn: () => query("exams") })
+
 export const useLoad = (weeks: number) =>
   useQuery({ queryKey: ["load", weeks], queryFn: () => query("load", { weeks }), retry: false })

@@ -83,6 +83,7 @@ export function Shell() {
             <Route path="/" element={<PlanPage />} />
             <Route path="/todo" element={<TodoPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/exams" element={<Navigate to="/projects" replace />} />
             <Route path="/review" element={<ReviewPage />} />
             <Route path="/inbox" element={<InboxPage />} />
             <Route path="/inbox/check" element={<CheckTasks />} />

@@ -20,7 +20,7 @@ import { useShell } from "./ShellContext"
 const PAGES = [
   { to: "/", icon: "calendar-dots", label: "Plan" },
   { to: "/todo", icon: "check-square", label: "To-do" },
-  { to: "/projects", icon: "tree-structure", label: "Projects" },
+  { to: "/projects", icon: "tree-structure", label: "Projects & exams" },
   { to: "/review", icon: "cards", label: "Review" },
   { to: "/inbox", icon: "tray", label: "Inbox" },
   { to: "/insights", icon: "chart-line", label: "Insights" },

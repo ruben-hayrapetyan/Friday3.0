@@ -136,7 +136,7 @@ struct FridayMenus: Commands {
         CommandMenu("Go") {
             Button("Plan") { Page.shared.send(.go("/")) }.keyboardShortcut("1", modifiers: [.command, .option])
             Button("To-do") { Page.shared.send(.go("/todo")) }.keyboardShortcut("2", modifiers: [.command, .option])
-            Button("Projects") { Page.shared.send(.go("/projects")) }.keyboardShortcut("3", modifiers: [.command, .option])
+            Button("Projects & Exams") { Page.shared.send(.go("/projects")) }.keyboardShortcut("3", modifiers: [.command, .option])
             Button("Review") { Page.shared.send(.go("/review")) }.keyboardShortcut("4", modifiers: [.command, .option])
             Button("Inbox") { Page.shared.send(.go("/inbox")) }.keyboardShortcut("5", modifiers: [.command, .option])
             Button("Insights") { Page.shared.send(.go("/insights")) }.keyboardShortcut("6", modifiers: [.command, .option])

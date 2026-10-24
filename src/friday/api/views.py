@@ -169,6 +169,21 @@ class ProjectOut(Model):
     status: Literal["done", "on_track", "late", "unplanned"]
 
 
+class ExamPrepOut(Model):
+    item: ItemOut
+    planned_finish: str | None  # its last planned work, when all it has left is planned
+
+
+class ExamOut(Model):
+    item: ItemOut  # the exam itself, a fixed event
+    prep: list[ExamPrepOut]  # what prepares for it, done and to do, soonest due first
+    done_min: int
+    remaining_min: int
+    planned_finish: str | None  # when the last prep is planned to end, once all of it is planned
+    status: Literal["no_prep", "ready", "on_track", "late", "unplanned"]
+    focus_from: str | None  # when exam focus starts for it (other courses wait), if that rule is on
+
+
 class WeekLoad(Model):
     start: str  # the week's first day
     hours: float  # planned work: the plan's blocks inside the horizon, the allocator's forecast past it

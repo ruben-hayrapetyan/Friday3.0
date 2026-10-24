@@ -197,6 +197,14 @@ VERBS = {
         False,
         "Calendar events whose title has the text, one per series (its next time, else its last), soonest first.",
     ),
+    "exams": Verb(
+        "GET",
+        "/api/q/exams",
+        commands.Empty,
+        False,
+        False,
+        "Upcoming exams, soonest first, each with its prep: what it waits on, and exam prep for its course due at it.",
+    ),
     "fits": Verb(
         "GET",
         "/api/q/fits",
