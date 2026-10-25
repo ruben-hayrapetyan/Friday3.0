@@ -31,7 +31,7 @@ def calendar(ctx: Ctx, inp: CalendarInput) -> CalendarOut:
         bedtime = bedtime_min(ctx, evening.bedtime)
         wakes.append(minutes_of(evening.wake))  # this morning's, by the same weekday rule
         bedtimes.append(bedtime + evening.margin_min)  # the margin can hold work, so it is drawn
-        label = pace_label(dials_on(day, periods, paces, default), paces)
+        label = pace_label(dials_on(day, periods, paces, default, ctx.settings["pace"].weekly), paces)
         days.append(
             CalendarDay(
                 date=day.isoformat(),

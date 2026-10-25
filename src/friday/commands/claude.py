@@ -26,6 +26,7 @@ ANYTHING = ("add", "edit", "drop", "done", "pin", "unpin", "shove", "rule_add", 
 RULES = ("rule_add", "settings_set", "add")
 SETTINGS = (
     "kind_order", "short_term_first", "exam_focus", "pointless_late", "sittings", "busy", "daily_cap", "event_kinds",
+    "pace",
 )  # fmt: skip
 
 SYSTEM = """You turn what a student asks for into changes to Friday, a planner, as Friday's own commands. You never
@@ -52,7 +53,8 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
   away: {kind: {before_min, after_min}} for the kinds "class", "meeting", "exam" and "other"; "15 minutes before and
   after events" sets all four to 15 and 15; only the kinds given change), sittings ({one_go: true, split_first:
   [kinds]} for "I like to do things in one go, but split problem sets first": problem sets are the kind
-  "Assignment").
+  "Assignment"), pace ({weekly: {mon..sun: "Easy" | "Normal" | "Push"}} for a pace on those weekdays every week:
+  "go easier on Saturdays and harder on Sundays" is {weekly: {"sat": "Easy", "sun": "Push"}}).
 If something can't be expressed with these, say so in the reply and propose nothing for it. Never invent ids."""
 
 SCHEMA = {

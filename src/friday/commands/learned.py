@@ -50,7 +50,7 @@ def default_pace_days(conn: sqlite3.Connection, settings: dict[str, Any], user_i
     periods, paces, default = list(pace_periods(conn, user_id)), settings["paces"], settings["pace"].default
 
     def is_default(day: date) -> bool:
-        return dials_on(day, periods, paces, default) == paces[default]
+        return dials_on(day, periods, paces, default, settings["pace"].weekly) == paces[default]
 
     return is_default
 

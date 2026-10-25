@@ -78,6 +78,8 @@ class EngineItem:
     quotas: dict[int, int] = field(default_factory=dict)  # week → units, from the allocator
     pacing: Literal["linear", "front", "back", "none"] = "none"
     pacing_start_utc: int | None = None  # where the pacing line starts: the release, else creation, else now
+    travel_before: int = 0  # units kept clear of other work before each chunk: getting to lunch
+    travel_after: int = 0  # and after it: getting back to somewhere you can work
 
     def __post_init__(self) -> None:
         self.allowed_set: frozenset[int] = frozenset(self.allowed)
@@ -150,6 +152,7 @@ class Problem:
     text: TextRules = field(default_factory=TextRules)
     blocked: np.ndarray = field(default=None)  # type: ignore[assignment]
     core: np.ndarray = field(default=None)  # type: ignore[assignment]
+    events: np.ndarray = field(default=None)  # type: ignore[assignment]  # busy events themselves, not their gaps
     lock_owner: dict[int, str] = field(default_factory=dict)
     price_cache: dict[tuple[str, str], np.ndarray] = field(default_factory=dict, repr=False)
 
@@ -158,6 +161,10 @@ class Problem:
             self.blocked = self.slots_covered((f.blocked_lo, f.blocked_hi) for f in self.fixed if f.blocks_time)
         if self.core is None:
             self.core = self.slots_covered(n.core for n in self.nights.values())
+        if self.events is None:
+            self.events = self.slots_covered(
+                (f.start_utc, f.end_utc) for f in self.fixed if f.blocks_time and f.kind != "shove"
+            )
         self.refresh_locks()
 
     def slots_covered(self, ranges: Any) -> np.ndarray:

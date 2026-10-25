@@ -102,7 +102,11 @@ def day_scales(snapshot: Snapshot) -> list:
     return [
         scales(
             dials_on(
-                first + timedelta(days=d), list(snapshot.pace_periods), settings["paces"], settings["pace"].default
+                first + timedelta(days=d),
+                list(snapshot.pace_periods),
+                settings["paces"],
+                settings["pace"].default,
+                settings["pace"].weekly,
             )
         )
         for d in range(days)

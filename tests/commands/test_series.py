@@ -51,3 +51,28 @@ def test_a_daily_break_keeps_its_window_and_one_length_is_exact(app: App) -> Non
         ("2026-10-20T15:30Z", "2026-10-20T18:30Z"),
     ]  # 11:30am–2:30pm New York, every day
     assert {(i["amount"], i["min_units"], i["ideal_units"], i["max_units"]) for i in lunches} == {("elastic", 1, 1, 1)}
+
+
+def test_time_to_get_there_set_on_one_lunch_is_every_lunch_from_then(app: App) -> None:
+    app.do("add", text="Lunch every day 11:30am-2:30pm 30m")
+    app.do("add", text="essay ~2h due fri")  # an item made after them, so a remade lunch can't take an old id
+    lunches = sorted((i for i in app.table("items") if i["title"] == "Lunch"), key=lambda i: i["occurrence_date"])
+    today, later = lunches[0], lunches[1:]
+    app.do("progress", id=today["id"], share=0.5)
+    out = app.do(
+        "edit",
+        id=today["id"],
+        buffer_before_min=15,
+        buffer_after_min=15,
+        min_min=15,
+        ideal_min=15,
+        max_min=15,
+        from_date="2026-10-19",
+    )
+    assert out["item"]["id"] == today["id"] and out["item"]["done_min"] == 15  # the same lunch, its work kept
+    now = {i["id"]: i for i in app.table("items") if i["title"] == "Lunch" and i["status"] == "todo"}
+    assert set(now) == {i["id"] for i in lunches}  # changed where they are, none remade
+    assert {(i["buffer_before_min"], i["buffer_after_min"]) for i in now.values()} == {(15, 15)}
+    assert all(i["max_units"] == 1 for i in now.values()) and len(later) > 7
+    shown = next(i for i in app.do("items") if i["title"] == "Lunch")
+    assert (shown["buffer_before_min"], shown["buffer_after_min"]) == (15, 15)

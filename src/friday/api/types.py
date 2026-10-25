@@ -92,6 +92,9 @@ class ItemOut(Model):
     done_min: int  # recorded progress
     remaining_min: int | None  # None for open items
     estimate: dict[str, Any] | None = None
+    guess_min: int | None = None  # Friday's own guess at its length, beside yours when you gave one
+    buffer_before_min: int | None = None  # an event's gap, or a task's time to get there
+    buffer_after_min: int | None = None  # and to get back
     waiting_on: list[int] = []  # unfinished items this one depends on (filled by the `items` query)
 
 

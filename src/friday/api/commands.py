@@ -546,6 +546,12 @@ class DocumentInput(Model):
     content: str
 
 
+class GoogleClientInput(Model):
+    """The OAuth client JSON downloaded from Google Cloud (a Desktop app's), as text."""
+
+    content: str
+
+
 class SuggestionInput(Model):
     id: int
     edits: dict[str, Any] = {}  # fields to change before accepting

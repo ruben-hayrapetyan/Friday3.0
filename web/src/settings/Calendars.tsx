@@ -78,7 +78,7 @@ function List({ calendars, mac }: { calendars: NonNullable<ReturnType<typeof use
       <span className="fr-kicker" style={{ paddingTop: 8, textWrap: "pretty" }}>
         {mac
           ? "A calendar Friday also reads from Google, a subscription or birthdays starts off, so nothing comes in twice. Friday doesn’t change the Mac’s calendars yet. "
-          : "“Edit here” saves what you change in Friday (title, times, notes, deleting) back to Google; it needs the login from `fridayd google-login` since this update. "}
+          : "“Edit here” saves what you change in Friday (title, times, notes, deleting) back to Google. "}
         “Per event” reads due dates, exams (with prep), classes and other commitments from each event’s title; a kind reads every event as that kind. Turning a calendar off withdraws what it suggested that you haven’t answered; what you accepted stays.
       </span>
     </>

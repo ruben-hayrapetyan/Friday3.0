@@ -1,9 +1,12 @@
 """Dials, paces and pace periods (DESIGN §17.6). The only place dials turn into per-day factors."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import date, timedelta
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from friday.core.time import WEEKDAYS
 
 
 class Dials(BaseModel):
@@ -68,9 +71,19 @@ def period_on(day: date, periods: list[PacePeriod]) -> PacePeriod | None:
     return None
 
 
-def dials_on(day: date, periods: list[PacePeriod], paces: dict[str, Dials], default_pace: str) -> Dials:
+def dials_on(
+    day: date,
+    periods: list[PacePeriod],
+    paces: dict[str, Dials],
+    default_pace: str,
+    weekly: Mapping[str, str] | None = None,
+) -> Dials:
+    """A pace you chose for these dates, else that weekday's every week ("easier on Saturdays"), else the default."""
     period = period_on(day, periods)
-    return period.dials if period else paces[default_pace]
+    if period:
+        return period.dials
+    name = (weekly or {}).get(WEEKDAYS[day.weekday()])
+    return paces[name] if name in paces else paces[default_pace]
 
 
 def switch_pace(

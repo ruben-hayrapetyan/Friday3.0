@@ -7,7 +7,9 @@ which days), and from a Reading and a strength to one of the planner's rule type
 - `keep saturday mornings free`, `keep evenings free`: `reserve` (Always forbids the window);
 - `at most 6 hours a day`, `no more than 2h of reading a day`: `daily_load`;
 - `finish things a day early`, `finish essays 2 days before they're due`: `finish_early`;
-- `gym right after class`: `after_event`.
+- `gym right after class`: `after_event`;
+- `go easier on saturday and go harder on sunday`, `take it easy on weekends`: a pace for those weekdays, every week
+  (not a planner rule: `pace.weekly`, which the day's dials come from).
 """
 
 import re
@@ -17,7 +19,7 @@ from typing import Any, Literal
 from friday.core.time import ampm_in
 
 Strength = Literal["Prefer", "Strongly", "Always"]
-Kind = Literal["window", "days", "free", "cap", "early", "after"]
+Kind = Literal["window", "days", "free", "cap", "early", "after", "pace"]
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 NAMES = {
     "monday": "mon",
@@ -51,6 +53,7 @@ class Reading:
     days: tuple[str, ...] | None = None  # None is every day
     amount: float | None = None  # hours a day for cap, days for early
     event: str | None = None  # after
+    paces: tuple[tuple[str, str], ...] | None = None  # pace: (weekday, pace name), every week
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -109,7 +112,7 @@ def read(text: str) -> tuple[Reading | None, Strength]:
     t = re.sub(r"\s+", " ", t)
     negated = bool(re.search(r"\b(no|never|don't|not|avoid)\b", t))
     t = re.sub(r"\b(no|never|don't do|don't|do not|not|avoid)\b", " ", t)
-    for parse in (read_cap, read_early, read_free, read_window, read_days, read_after):
+    for parse in (read_pace, read_cap, read_early, read_free, read_window, read_days, read_after):
         found = parse(" " + " ".join(t.split()) + " ", negated)
         if found:
             return found, strength
@@ -122,6 +125,42 @@ def subject_of(words: str) -> str:
     if not s or s in EVERYTHING:
         return "work"
     return "deep work" if s in DEEP else s
+
+
+PACE_WORDS = {
+    **dict.fromkeys(("easier", "easy", "lighter", "light", "less", "relaxed", "slower"), "Easy"),
+    **dict.fromkeys(("harder", "hard", "heavier", "heavy", "more", "push", "faster"), "Push"),
+    **dict.fromkeys(("normal", "regular", "usual"), "Normal"),
+}
+PACE = "(" + "|".join(PACE_WORDS) + ")"
+LEAD = r"(?:(?:go|take it|keep it|be|work|do|plan|push it|make it)\s+)?"
+FULL_DAY = {short: name for name, short in NAMES.items()}
+
+
+def read_pace(t: str, negated: bool) -> Reading | None:
+    """`go easier on saturday and go harder on sunday`, `push on sundays`, `saturdays are easy`: every clause names a
+    pace and days (a clause of days alone takes the one before's); anything else isn't read as paces."""
+    if negated:
+        return None
+    found: dict[str, str] = {}
+    pace = None
+    first = rf"{LEAD}(?:an? )?{PACE}(?: days?| pace| work)?(?: on| for)? {DAY_WORDS}"  # go easier on saturday
+    last = rf"{DAY_WORDS} (?:are |is |should be |will be |as )?(?:an? )?{PACE}(?: days?| pace)?"  # sundays are hard
+    for clause in (c.strip() for c in re.split(r",|;|\band\b|\bbut\b|\bthen\b", t) if c.strip()):
+        if m := re.fullmatch(first, clause):
+            word, days = m[1], m[2]
+        elif m := re.fullmatch(last, clause):
+            days, word = m[1], m[2]
+        elif pace and re.fullmatch(rf"(?:on )?{DAY_WORDS}", clause):
+            word, days = None, clause
+        else:
+            return None
+        pace = PACE_WORDS[word] if word else pace
+        for day in days_of(days) or DAYS:
+            found[day] = pace  # type: ignore[assignment]
+    if not found:
+        return None
+    return Reading("pace", "pace", paces=tuple((d, found[d]) for d in DAYS if d in found))
 
 
 def read_cap(t: str, negated: bool) -> Reading | None:
@@ -216,12 +255,25 @@ def days_words(days: tuple[str, ...] | None) -> str:
     return DAY_LABEL.get(days) or "on " + ", ".join(d.capitalize() for d in days)
 
 
+def days_spoken(days: tuple[str, ...]) -> str:
+    """Saturdays; Saturdays and Sundays; weekends."""
+    if days in (DAYS[:5], DAYS[5:]):
+        return "weekdays" if days == DAYS[:5] else "weekends"
+    names = [FULL_DAY[d].capitalize() + "s" for d in days]
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+
 def sentence(r: Reading) -> str:
     """The rule in plain words, as the Rules list shows it, on a 12-hour clock."""
     return ampm_in(said(r))
 
 
 def said(r: Reading) -> str:
+    if r.kind == "pace":
+        by_pace: dict[str, list[str]] = {}
+        for day, pace in r.paces or ():
+            by_pace.setdefault(pace, []).append(day)
+        return ", ".join(f"{pace} on {days_spoken(tuple(days))}" for pace, days in by_pace.items())
     subject = "Work" if r.subject == "work" else r.subject[0].upper() + r.subject[1:]
     on = (" " + days_words(r.days)) if r.days else ""
     if r.kind == "window":
@@ -268,6 +320,9 @@ WEIGHT = {"Prefer": 1.0, "Strongly": 3.0, "Always": 10.0}
 
 def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: list[str]) -> dict[str, Any]:
     """The planner rule for a reading: {type, name, weight, scope, reason, params}."""
+    if r.kind == "pace":  # a setting, not a planner rule: `rule_add` writes `pace.weekly`
+        return {"name": name, "type": "pace", "weight": 0.0, "scope": None, "reason": sentence(r),
+                "params": {"weekly": dict(r.paces or ())}}  # fmt: skip
     scope = scope_of(r.subject, areas, presets)
     price: Any = "forbid" if strength == "Always" else PRICE[strength]
     base = {"name": name, "scope": scope, "reason": sentence(r)}

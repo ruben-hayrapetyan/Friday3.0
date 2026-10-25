@@ -179,6 +179,9 @@ def item_out(ctx: Ctx, item: Item, done_minutes: int = 0) -> ItemOut:
         done_min=done_minutes,
         remaining_min=remaining_minutes(item, done_minutes) if item.when != "fixed" else None,
         estimate=item.estimate_detail,
+        guess_min=item.friday_estimate_units * UNIT_MIN if item.friday_estimate_units else None,
+        buffer_before_min=item.buffer_before_min,
+        buffer_after_min=item.buffer_after_min,
         **event_facts(ctx, item),
     )
 

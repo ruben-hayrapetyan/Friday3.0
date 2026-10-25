@@ -296,6 +296,7 @@ class SuggestionOut(Model):
     repeat: str | None = None  # the repeat in words, when there is one
     source_kind: str = ""  # ics, gcal, gmail or upload
     source_text: str | None = None  # what was read, when it is text (not a PDF or image), for the quotes to sit in
+    guess_min: int | None = None  # a task with no length: the one Friday would give it on accept
 
 
 class ModelCheck(Model):
@@ -339,6 +340,18 @@ class GoogleCalendarOut(Model):
     editable: bool = False  # changes made in Friday are saved back to it
     account: str | None = None  # a Mac calendar's account
     also_google: bool = False  # a Mac calendar Friday also reads from Google, under the same name
+
+
+class GoogleConnectOut(Model):
+    """Connecting Google from the app: how the sign-in started there is going, and what Google allows Friday."""
+
+    state: Literal["idle", "waiting", "connected", "failed"]  # idle: no sign-in started since the server started
+    message: str | None = None  # why it failed, in a sentence
+    url: str | None = None  # while waiting: Google's page, to open again
+    client_file: bool  # the OAuth client JSON Friday signs in with is there
+    calendar: bool  # Google is connected
+    gmail: bool  # and lets Friday read your mail
+    events: bool  # and lets Friday save changes to your events
 
 
 class SourceOut(Model):

@@ -14,6 +14,8 @@ import { usePresets } from "./AddBox"
 import { progress } from "./groups"
 import { DuePicker, LengthPicker, ListPicker } from "./Pickers"
 
+const TRAVEL = [0, 10, 15, 30] // minutes each way
+
 const FIRMNESS = [
   { value: "hard", label: "Hard" },
   { value: "soft", label: "Soft" },
@@ -44,6 +46,8 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
   const isDone = item.status === "done"
   const toggle = (k: typeof pick) => setPick(pick === k ? null : k)
   const length = item.duration_min
+  // The same each way here; an item given different times before and after shows neither chip.
+  const travel = (item.buffer_before_min ?? 0) === (item.buffer_after_min ?? 0) ? item.buffer_before_min ?? 0 : null
   const button = (k: typeof pick, content: React.ReactNode) => (
     <button
       onClick={() => toggle(k)}
@@ -139,7 +143,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
           <button className="btn btn-icon btn-secondary" disabled={!length} onClick={() => length && edit({ id, duration_min: length + 15 })} aria-label="More time" style={{ width: 26, height: 26 }}>
             <Icon name="plus" />
           </button>
-          {item.estimate && <span className="fr-kicker">Friday’s guess</span>}
+          {item.guess_min ? <span className="fr-kicker">{item.guess_min === length ? "Friday’s guess" : `Friday guessed ${dur(item.guess_min)}`}</span> : null}
           <button onClick={() => toggle("length")} className="btn btn-ghost" style={{ padding: "2px 8px", fontSize: 12 }}>
             Set
           </button>
@@ -151,6 +155,25 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
             {item.area ?? item.preset ?? "work like this"}.
           </span>
         )}
+        <span className="fr-kicker" title="Kept clear of other work before and after it">
+          Getting there
+        </span>
+        <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <Seg
+            options={TRAVEL.map((m) => ({ value: m, label: m ? `${m} min` : "None" }))}
+            value={travel}
+            onPick={(m) => edit({ id, buffer_before_min: m || null, buffer_after_min: m || null, ...(item.series_id != null ? { from_date: today } : {}) })}
+            size="small"
+          />
+          <span className="fr-kicker">
+            {travel === null
+              ? `${item.buffer_before_min ?? 0} min kept free before, ${item.buffer_after_min ?? 0} after`
+              : travel
+                ? `${travel} min kept free before and after, to get there and back`
+                : "Work can sit right up against it"}
+            {item.series_id != null && travel !== null ? `, every ${item.title} from today.` : "."}
+          </span>
+        </span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>

@@ -1,6 +1,6 @@
 """`fridayd`: `serve` (the default) runs the API, worker and jobs; `init` sets the timezone and sleep times;
-`google-login` connects your Google account once; `google-calendars` lists its calendars for `gcal.read`; `demo`
-serves a sample term to try Friday on."""
+`google-login` connects your Google account once (as Connect in Settings → Integrations does); `google-calendars`
+lists its calendars for `gcal.read`; `demo` serves a sample term to try Friday on."""
 
 import argparse
 import logging
@@ -43,7 +43,9 @@ def main(argv: list[str] | None = None) -> None:
     login = commands.add_parser(
         "google-login", help="connect Google Calendar, and Gmail if gmail.enabled (opens the browser once)"
     )
-    login.add_argument("--client-file", type=Path, help="default: google.client_file in friday.toml")
+    login.add_argument(
+        "--client-file", type=Path, help="default: google.client_file, else google_client.json beside friday.toml"
+    )
     commands.add_parser("google-calendars", help="list your Google calendars' names and ids, for gcal.read")
     demo = commands.add_parser("demo", help="a sample student's term with stand-in Google, Gmail and AI")
     demo.add_argument("--port", type=int, default=8799)
@@ -107,14 +109,10 @@ def google_login(db_path: Path, client_file: Path | None) -> None:
     apply_config(conn, wall_clock(), config_path())  # so client_file is read from friday.toml even before serving
     settings = load_settings(conn)
     conn.close()
-    named = client_file or settings["google"].client_file
-    if named is None:
-        raise SystemExit("name your OAuth client JSON: google.client_file in friday.toml, or --client-file")
-    path = Path(named).expanduser()
+    path = client_file.expanduser() if client_file else google_auth.client_file(settings["google"].client_file)
     if not path.exists():
-        raise SystemExit(f"no OAuth client JSON at {path}")
-    mail = (google_auth.GMAIL_SCOPE,) if settings["gmail"].enabled else ()
-    google_auth.login(path, db_path.parent, google_auth.CALENDAR_SCOPES + mail)
+        raise SystemExit(f"no OAuth client JSON at {path}: choose it in Settings → Integrations, or pass --client-file")
+    google_auth.login(path, db_path.parent, google_auth.scopes(settings["gmail"].enabled))
     print(f"Google is connected; the token is in {google_auth.secrets_file(db_path.parent)}.")
 
 

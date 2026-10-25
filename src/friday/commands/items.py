@@ -1,6 +1,7 @@
 """Items, dependencies and areas: add, edit, drop, reopen, done, depend, undepend, area_add, area_edit."""
 
 import dataclasses
+import json
 import math
 from typing import Any
 
@@ -30,14 +31,14 @@ from friday.commands.fields import (
     to_item_values,
 )
 from friday.commands.registry import Ctx, command
-from friday.commands.series import create_series, edit_series_from
+from friday.commands.series import create_series, load_series, without_times
 from friday.commands.timer import stop_timer
 from friday.core.db import one, rows
 from friday.core.guess import course_of, guess_preset
 from friday.core.items import FieldError, Item, amount_units, validate, would_create_cycle
 from friday.core.quickadd import parse
 from friday.core.rows import item_to_row
-from friday.core.textnorm import identity_text, norm
+from friday.core.textnorm import identity_text, norm, plain_words
 from friday.core.time import UNIT_MIN, to_local
 from friday.estimate.durations import Estimate, bias_ratio, estimate_length, history
 from friday.planner.progress import actual_minutes, minutes_by_item, progress_rows
@@ -199,6 +200,30 @@ def estimated_length(ctx: Ctx, values: dict[str, Any], given: dict[str, Any], wa
     return out
 
 
+def guessed_minutes(ctx: Ctx, fields: dict[str, Any]) -> int | None:
+    """The length Friday would give a suggested task that has none, made the way `add` makes it but without adding
+    anything (no new tag): the Inbox shows it ("1h 30m, Friday's guess") so it isn't accepted unseen."""
+    if fields.get("duration_min") or fields.get("start") or fields.get("when") == "fixed":
+        return None
+    given = with_guesses(ctx, {k: fields[k] for k in ("title", "preset", "area", "due") if fields.get(k)})
+    presets = ctx.settings["presets"]
+    typed = str(given.get("preset") or ("Assignment" if given.get("due") else "Errand"))
+    preset = next((p for p in presets if p.lower() == typed.lower().replace("_", " ")), None)
+    kind = presets.get(preset) if preset else None
+    if kind is None or (kind.amount or "fixed") != "fixed":
+        return None
+    wanted = "".join(plain_words(str(given.get("area") or "")))
+    area = next((n for n in area_names(ctx.conn, ctx.user_id).values() if "".join(plain_words(n)) == wanted), None)
+    settings = ctx.settings["estimate"]
+    past = history(ctx.conn, area, preset, ctx.now_utc, settings.window_days, ctx.user_id)
+    title = str(given.get("title") or "")
+    estimate = learned_estimate(ctx, {"title": title, "preset": preset}, area) or estimate_length(
+        title, area, past, settings, ctx.settings["text"].rules()
+    )
+    units = estimate.units if estimate is not None else kind.duration_units
+    return units * UNIT_MIN if units else None
+
+
 def learned_estimate(ctx: Ctx, values: dict[str, Any], area: str | None) -> Estimate | None:
     """Learned durations, when in use (§21.7): the cautious p80 for hard-deadline work, else p50."""
     preset = values.get("preset")
@@ -229,8 +254,7 @@ def edit(ctx: Ctx, inp: EditInput) -> ItemResult:
     if inp.from_date is not None:
         if item.series_id is None:
             raise FieldError("from_date", f"T{item.id} doesn't repeat")
-        edit_series_from(ctx, item.series_id, inp.from_date, given)
-        return ItemResult(item=item_out(ctx, require_item(ctx, inp.id)))
+        return edit_from(ctx, item, inp.from_date, given)
     changed = dataclasses.replace(item, **to_item_values(ctx, given))
     if changed.series_id is not None:
         changed.detached = True  # regeneration leaves an edited occurrence alone
@@ -242,6 +266,31 @@ def edit(ctx: Ctx, inp: EditInput) -> ItemResult:
     update_item(ctx, item, changed)
     queue_event_write(ctx, changed, "save")
     return ItemResult(item=item_out(ctx, changed, minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0)))
+
+
+def edit_from(ctx: Ctx, item: Item, from_date: str, given: dict[str, Any]) -> ItemResult:
+    """This occurrence and the later ones changed where they are, and the series' template for those not made yet.
+    Each keeps its id and the work recorded on it: remaking them lost both, and failed on the one being edited."""
+    assert item.series_id is not None
+    values = without_times(to_item_values(ctx, given))
+    series = load_series(ctx, item.series_id)
+    template = json.loads(series["template"]) | values
+    ctx.db.update("series", {"id": item.series_id}, {"template": json.dumps(template), "updated_utc": ctx.now_text})
+    for row in rows(
+        ctx.conn,
+        "SELECT id FROM items WHERE series_id = ? AND status = 'todo' AND (detached = 0 OR id = ?) "
+        "AND occurrence_date >= ?",
+        [item.series_id, item.id, from_date],
+    ):
+        before = require_item(ctx, row["id"])
+        after = dataclasses.replace(before, **values)
+        if "min_chunk_min" not in given and amount_units(after) != amount_units(before):
+            after.min_chunk_units = fitted_chunk(ctx, before, after)
+        validate(after)
+        update_item(ctx, before, after)
+    return ItemResult(
+        item=item_out(ctx, require_item(ctx, item.id), minutes_by_item(ctx.conn, ctx.user_id).get(item.id, 0))
+    )
 
 
 def update_item(ctx: Ctx, before: Item, after: Item) -> None:

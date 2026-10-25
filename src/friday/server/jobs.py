@@ -215,9 +215,9 @@ def google_problem(conn: sqlite3.Connection, settings: dict[str, Any], folder: P
     chosen = conn.execute("SELECT 1 FROM sources WHERE kind = 'gcal' AND enabled = 1").fetchone() is not None
     calendar, mail = settings["gcal"].read or settings["gcal"].publish or chosen, settings["gmail"].enabled
     if (calendar or mail) and not connected(folder):
-        return "Google isn't connected: run `fridayd google-login`"
+        return "Google isn't connected: press Connect under Google Calendar in Settings → Integrations"
     if mail and not connected(folder, (GMAIL_SCOPE,)):
-        return "Gmail isn't allowed yet: run `fridayd google-login` again"
+        return "Gmail isn't allowed yet: press Connect under Gmail in Settings → Integrations"
     return None
 
 
@@ -255,7 +255,10 @@ def send_event_writes(
     )
     if waiting and google is None and not connected(backups.parent, (EVENTS_SCOPE,)):
         set_problem(
-            conn, user_id, "event_writes", "Saving your changes to Google needs a new login: run `fridayd google-login`"
+            conn,
+            user_id,
+            "event_writes",
+            "Saving your changes to Google needs Google's OK again: press Connect again in Settings → Integrations",
         )
         return
     write_events(conn, now_utc, user_id, backups.parent, google)

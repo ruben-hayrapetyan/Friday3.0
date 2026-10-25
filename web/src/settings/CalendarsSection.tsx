@@ -1,7 +1,7 @@
 // Calendars (COMBINED.md 17, 19, 28, 59, 60): what counts as busy when Friday plans, the time kept free around
 // events (to get there and back), each calendar's pigment and its
 // button in the title row, and the categories that colour events by their titles, with the filter that hides the
-// ones you'd rather not see (office hours). Chroma's categories.json is imported into these once.
+// ones you'd rather not see (office hours).
 
 import { Fragment, useEffect, useState } from "react"
 import { Chip, Icon, Menu, Switch } from "@/components/fr/controls"

@@ -366,7 +366,7 @@ def paces(ctx: Ctx, inp: Empty) -> PacesOut:
     """Saved paces, the default, the dials in effect now, and when the current period ends."""
     periods = list(pace_periods(ctx.conn, ctx.user_id))
     saved = ctx.settings["paces"]
-    dials = dials_on(ctx.today, periods, saved, ctx.settings["pace"].default)
+    dials = dials_on(ctx.today, periods, saved, ctx.settings["pace"].default, ctx.settings["pace"].weekly)
     period = next(
         (p for p in periods if p.start_date <= ctx.today and (p.end_date is None or ctx.today <= p.end_date)), None
     )

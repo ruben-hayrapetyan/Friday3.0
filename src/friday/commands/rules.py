@@ -53,6 +53,7 @@ EFFECT = {
     "daily_load": "Friday plans less on full days",
     "finish_early": "Friday aims to finish early",
     "after_event": "Friday places it right after",
+    "pace": "Every week, Friday plans less on Easy days and more on Push days",
 }
 
 
@@ -95,12 +96,25 @@ def rule_add(ctx: Ctx, inp: RuleAddInput) -> Changed:
     reading, _ = described(ctx, inp.text, inp.overrides)
     if reading is None:
         raise FieldError("text", "Friday can’t read that as a rule; try one of the examples")
+    if reading.kind == "pace":
+        return weekly_pace(ctx, dict(reading.paces or ()), sentence(reading))
     rules = [r.model_dump() for r in ctx.settings["rules"]]
     name = unique(f"you:{slug(sentence(reading))}", {r["name"] for r in rules})
     areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
     write_setting(ctx, "rules", [*rules, spec(reading, inp.strength, name, areas, presets)])
     keep(ctx, {**readings(ctx), name: {"reading": reading.to_dict(), "strength": inp.strength, "text": inp.text}})
     return Changed(message=f"Added: {sentence(reading)}")
+
+
+def weekly_pace(ctx: Ctx, days: dict[str, str], said: str) -> Changed:
+    """Those weekdays' pace, every week (`pace.weekly`); Normal clears a day back to the default."""
+    pace = ctx.settings["pace"]
+    unknown = sorted({p for p in days.values() if p not in ctx.settings["paces"]})
+    if unknown:
+        raise FieldError("text", f"no pace named {unknown[0]}")
+    weekly = {d: p for d, p in {**pace.weekly, **days}.items() if p != pace.default}
+    write_setting(ctx, "pace", pace.model_dump() | {"weekly": weekly})
+    return Changed(message=f"Every week: {said}")
 
 
 @command("rule_set", affects_plan=True)

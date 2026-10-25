@@ -1,6 +1,7 @@
-// Integrations (v22, shown and explained, decision 134): Google Calendar and Gmail as friday.toml and the login
-// command set them up, the AI's key and daily budget, course feeds, a syllabus upload, a backup, what was imported
-// lately, and tokens for assistants. Controls work only for keys friday.toml doesn't set.
+// Integrations (v22, shown and explained, decision 134): Google Calendar and Gmail, connected with a button (Google's
+// page opens in your browser; no terminal), the AI's key and daily budget, course feeds, a syllabus upload, a backup,
+// what was imported lately, and tokens for assistants. Controls work only for keys friday.toml doesn't set. Setup's
+// last step reuses the Connect button, the feed box, the upload and Gmail's switch.
 
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
@@ -13,18 +14,9 @@ import { addDays } from "@/lib/time"
 import { useInbox } from "@/inbox/InboxPage"
 import { useShell } from "@/shell/ShellContext"
 import { Calendars, useCalendars } from "./Calendars"
+import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess, wantsSignIn } from "./GoogleConnect"
 import { MailLog } from "./MailLog"
 import { SectionHead } from "./SettingsPage"
-
-/** The one-time import from the apps Friday replaces (COMBINED.md 24). */
-function ImportPersonal() {
-  const run = useCommand("import_personal", { label: (o) => o.result.message })
-  return (
-    <button className="btn btn-secondary" onClick={() => run({})} style={{ fontSize: 12 }}>
-      Import
-    </button>
-  )
-}
 
 export function Integrations() {
   return (
@@ -35,12 +27,6 @@ export function Integrations() {
         <Gmail />
         <Feeds />
         <Card icon="file-pdf" title="Syllabus upload" note="One PDF becomes class times, readings, assignments and exam prep, reviewed together in your Inbox." right={<Upload />} />
-        <Card
-          icon="arrow-square-in"
-          title="Todo List and Chroma"
-          note="Bring in Todo List's open tasks (with their due dates, and long-term ones on the Long term list) and Chroma's categories, from their files on this Mac. Each task comes in once, however often you press it."
-          right={<ImportPersonal />}
-        />
       </div>
       <div className="fr-well" style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 12, padding: "14px 18px", borderRadius: "var(--radius-lg)", boxShadow: "none" }}>
         <Icon name="download-simple" size={18} />
@@ -97,25 +83,30 @@ const usePart = <T,>(key: string) => (useSettings().data as Record<string, unkno
 function Google() {
   const { today } = useShell()
   const status = useStatus().data
+  const access = useGoogleAccess()
   const gcal = usePart<{ read: string[]; trusted: string[]; publish: boolean }>("gcal")
   const owned = (status?.config_keys ?? []).includes("gcal")
   const save = useCommand("settings_set", { label: () => "Saved" })
   const sync = useCommand("sync_now", { label: (o) => o.result.message ?? "Syncing" })
   const calendars = useCalendars().data ?? []
   const reading = calendars.filter((c) => c.on)
-  const unconnected = (status?.problems ?? []).some((p) => p.startsWith("Google isn"))
+  const connected = !!access?.calendar
+  const expired = connected && !access?.justNow && reading.some((c) => wantsSignIn(c.error)) // until the next sync, after a new sign-in
+  const editing = connected && !access?.events && calendars.some((c) => c.editable) // a login from before "Edit here"
   const wanted = !!gcal && (calendars.length > 0 || gcal.read.length > 0 || gcal.publish)
-  const state: [string, string] = !wanted ? ["Off", "var(--color-neutral-500)"] : unconnected ? ["Not connected", "var(--fr-warn)"] : reading.some((c) => c.error) ? ["Trouble reading", "var(--fr-due)"] : ["Connected", "var(--color-accent-300)"]
+  const state: [string, string] = !connected ? (wanted ? ["Not connected", "var(--fr-warn)"] : ["Off", "var(--color-neutral-500)"]) : expired ? ["Connect again", "var(--fr-warn)"] : reading.some((c) => c.error) ? ["Trouble reading", "var(--fr-due)"] : ["Connected", "var(--color-accent-300)"]
   const last = reading.map((c) => c.last_sync).filter(Boolean).sort().at(-1)
   return (
     <Card icon="google-logo" title="Google Calendar" status={state} note="Events become fixed time. Friday plans around them.">
-      {(!wanted || unconnected) && (
-        <span style={{ fontSize: 12, color: "var(--color-neutral-300)", textWrap: "pretty" }}>
-          To connect, run <Command text="uv run fridayd google-login" /> in a terminal on the computer running Friday. It opens Google once; your calendars then list here after a sync.
-        </span>
+      {access && (!connected || expired || editing || access.justNow) && (
+        <ConnectGoogle
+          again={expired || editing}
+          why={expired ? "Google stopped letting Friday in (the sign-in expired or was removed). Connect again to carry on." : editing ? "Saving your changes back to Google needs Google's OK once more." : undefined}
+          done="Switch on the calendars Friday should read below."
+        />
       )}
-      {!unconnected && <Calendars />}
-      {gcal && (
+      {connected && <Calendars />}
+      {connected && gcal && (
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Switch on={gcal.publish} onToggle={() => !owned && save({ key: "gcal", value: { ...gcal, publish: !gcal.publish } })} label="Publish the plan" />
           <span style={{ display: "flex", flexDirection: "column" }}>
@@ -124,7 +115,7 @@ function Google() {
           </span>
         </div>
       )}
-      {wanted && (
+      {connected && wanted && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--color-neutral-500)" }}>
           <span>{last ? `Last read ${when(last, today)}` : "Not read yet"}</span>
           <button className="btn btn-ghost" onClick={() => sync({})} style={{ fontSize: 12, padding: "2px 8px" }}>
@@ -144,20 +135,19 @@ function Gmail() {
   const owned = status?.config_keys ?? []
   const save = useCommand("settings_set", { label: () => "Saved" })
   const llm = useInbox().data?.llm as { key: boolean; calls: number; daily_calls: number; tokens: number; daily_tokens: number; model: string } | undefined
-  const granted = !(status?.problems ?? []).some((p) => p.startsWith("Gmail isn") || p.startsWith("Google isn"))
+  const access = useGoogleAccess()
+  const granted = !!access?.gmail
   const { today } = useShell()
   const source = (useInbox().data?.sources ?? []).find((s) => s.kind === "gmail")
   const trouble = source?.last_error
+  const expired = granted && !access?.justNow && wantsSignIn(trouble)
   const sync = useCommand("sync_now", { label: (o) => o.result.message ?? "Syncing" })
-  const state: [string, string] = !gmail?.enabled ? ["Off", "var(--color-neutral-500)"] : !granted ? ["Needs the Google login again", "var(--fr-warn)"] : trouble ? ["Trouble reading", "var(--fr-due)"] : ["Reading", "var(--color-accent-300)"]
+  const state: [string, string] = !gmail?.enabled ? ["Off", "var(--color-neutral-500)"] : !granted ? ["Needs Google's OK", "var(--fr-warn)"] : expired ? ["Connect again", "var(--fr-warn)"] : trouble ? ["Trouble reading", "var(--fr-due)"] : ["Reading", "var(--color-accent-300)"]
   return (
     <Card icon="envelope-simple" title="Gmail" status={state} note="Friday reads new mail and suggests assignments, due dates and events. It never sends or deletes.">
-      {gmail && !gmail.enabled && (
-        <span style={{ fontSize: 12, color: "var(--color-neutral-300)" }}>
-          Set <Command text="enabled = true" /> under [gmail] in friday.toml, then run <Command text="uv run fridayd google-login" /> so Google allows reading mail.
-        </span>
-      )}
-      {gmail?.enabled && (
+      <GmailSwitch />
+      {gmail?.enabled && (!granted || expired) && <GmailConnect again={expired} done="Friday reads your new mail within the minute." />}
+      {gmail?.enabled && granted && (
         <>
           {trouble && <span style={{ fontSize: 12, color: "var(--fr-due)", textWrap: "pretty" }}>{trouble}</span>}
           <span className="fr-kicker">Mail it looks at</span>
@@ -215,17 +205,8 @@ function Gmail() {
 function Feeds() {
   const { today } = useShell()
   const sources = (useInbox().data?.sources ?? []).filter((s) => s.kind === "ics")
-  const add = useCommand("source_add", { label: (o) => o.result.message ?? "Added" })
   const edit = useCommand("source_edit", { label: () => "Saved" })
   const remove = useCommand("source_remove", { label: () => "Removed" })
-  const [url, setUrl] = useState("")
-  const name = (u: string) => {
-    try {
-      return new URL(u).hostname.replace(/^www\./, "").split(".")[0]
-    } catch {
-      return "Feed"
-    }
-  }
   return (
     <Card icon="rss" title="Course feeds" note="Calendar links from Canvas or your school. New dates go to your Inbox.">
       {sources.map((f) => (
@@ -247,17 +228,36 @@ function Feeds() {
           </span>
         </div>
       ))}
-      <div className="fr-row" style={{ display: "flex", gap: 6, paddingTop: 10 }}>
-        <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste a calendar link (.ics)" style={{ flex: 1, maxWidth: 380, padding: "5px 8px", minHeight: 0 }} />
-        <button className="btn btn-secondary" disabled={!/^https?:\/\//.test(url.trim())} onClick={async () => (await add({ kind: "ics", name: name(url), url: url.trim(), trusted: false })) && setUrl("")} style={{ fontSize: 12 }}>
-          Add feed
-        </button>
+      <div className="fr-row" style={{ paddingTop: 10 }}>
+        <AddFeed />
       </div>
     </Card>
   )
 }
 
-function Upload() {
+/** A box to paste a calendar feed's link into, named after its site ("canvas"). */
+export function AddFeed() {
+  const add = useCommand("source_add", { label: (o) => o.result.message ?? "Added" })
+  const [url, setUrl] = useState("")
+  const name = (u: string) => {
+    try {
+      return new URL(u).hostname.replace(/^www\./, "").split(".")[0]
+    } catch {
+      return "Feed"
+    }
+  }
+  return (
+    <div style={{ display: "flex", gap: 6 }}>
+      <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste a calendar link (.ics)" aria-label="Calendar link" style={{ flex: 1, maxWidth: 380, padding: "5px 8px", minHeight: 0 }} />
+      <button className="btn btn-secondary" disabled={!/^https?:\/\//.test(url.trim())} onClick={async () => (await add({ kind: "ics", name: name(url), url: url.trim(), trusted: false })) && setUrl("")} style={{ fontSize: 12 }}>
+        Add feed
+      </button>
+    </div>
+  )
+}
+
+/** Upload PDF: a syllabus or handout, read into the Inbox. */
+export function Upload() {
   const add = useCommand("document_add", { label: (o) => o.result.message ?? "Reading it" })
   const file = useRef<HTMLInputElement>(null)
   const send = async (picked: File) => {

@@ -199,3 +199,14 @@ def test_a_request_the_model_wont_take_leaves_documents_waiting_and_says_so(app:
     sync(app.conn, app.now_utc, client=Refusing({}))
     assert [r["status"] for r in app.table("raw_inputs")] == ["new"]
     assert "won't take Friday's request" in app.table("sources")[0]["last_error"]
+
+
+def test_a_task_without_a_length_shows_the_one_it_will_get(app: App) -> None:
+    feed(app)
+    found = pending(app)
+    guess = found["PS4"]["guess_min"]
+    assert guess and found["CS 1110 Lecture"]["guess_min"] is None  # an event has its own length
+    app.do("suggestion_accept", id=found["PS4"]["id"])
+    (ps4,) = app.do("items")
+    assert ps4["duration_min"] == guess  # here the kind's usual length, as nothing learned says otherwise
+    assert [a["name"] for a in app.do("areas")] == [r["name"] for r in app.table("areas")]  # guessing made no tag

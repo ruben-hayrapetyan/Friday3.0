@@ -1,6 +1,7 @@
 // The daily review (v22): one card per block of the day, answered with a key (1 done, 2 partly, 3 didn't happen,
 // 4 finished the whole thing). Beside it, what Friday will do with each answer. The day is settled when the last
-// card is answered (`review_submit`); nothing changes before that.
+// card is answered (`review_submit`); nothing changes before that. A day comes back with what's on record answered,
+// so a reviewed day isn't asked again; only blocks that started since are.
 
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
@@ -10,15 +11,10 @@ import { H, Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useItems } from "@/hooks/queries"
 import { clock, dur, weekday, when } from "@/lib/format"
-import { addDays, toMin } from "@/lib/time"
+import { addDays } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
-
-type Status = "done" | "partial" | "not_done" | "finished"
-interface Answer {
-  status: Status
-  minutes: number
-}
+import { type Answer, known, length, type Status } from "./answers"
 
 const OPTIONS: { status: Status; key: string; label: string; desc: string; icon: string; ic: string }[] = [
   { status: "done", key: "1", label: "Done", desc: "Did what was planned", icon: "check", ic: "var(--color-accent-300)" },
@@ -30,17 +26,16 @@ const STATE: Record<Status, string> = { done: "Done", partial: "Partly", not_don
 const FULL: Record<string, string> = { Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday", Sun: "Sunday" }
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
-const length = (b: Block) => toMin(b.end) - toMin(b.start)
 // Half the block, on the slider's steps (5 minutes for a short block, else 15).
 const halfOf = (b: Block) => (length(b) < 30 ? Math.max(5, Math.round(length(b) / 10) * 5) : Math.round(length(b) / 30) * 15)
 export const dayName = (date: string) => `${FULL[weekday(date)]} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1]}`
 
-/** The day to review: yesterday until it's settled, then today. */
+/** The day to review: yesterday while one of its blocks is unanswered, then today. */
 export function useReviewDay(): string {
   const { today } = useShell()
   const yesterday = addDays(today, -1)
   const before = useQuery({ queryKey: ["review", yesterday], queryFn: () => query("review", { date: yesterday }) }).data
-  return before && !before.reviewed && before.blocks.length ? yesterday : today
+  return before && !before.reviewed && before.blocks.some((b) => !(b.key in (before.settled ?? {}))) ? yesterday : today
 }
 
 export function DailyReview({ date, onWeek }: { date: string; onWeek: () => void }) {
@@ -48,17 +43,20 @@ export function DailyReview({ date, onWeek }: { date: string; onWeek: () => void
   const [answers, setAnswers] = useState<Record<string, Answer>>(() => saved(date))
   const [partial, setPartial] = useState<number | null>(null)
   const [submitted, setSubmitted] = useState(false)
+  const [fresh, setFresh] = useState(false) // answering a reviewed day again, from nothing
   const submit = useCommand("review_submit", { label: (o) => o.result.message ?? "Reviewed" })
   const done = useCommand("done", { label: () => "Done" })
   const navigate = useNavigate()
   const cards = review?.blocks ?? []
-  const at = cards.findIndex((b) => !answers[b.key])
+  const all = known(cards, review?.settled, answers, fresh)
+  const at = cards.findIndex((b) => !all[b.key])
   const card = at >= 0 ? cards[at] : null
   useEffect(() => sessionStorage.setItem(`review-${date}`, JSON.stringify(answers)), [date, answers])
   const answer = async (status: Status, minutes?: number) => {
     if (!card) return
-    const next = { ...answers, [card.key]: { status, minutes: minutes ?? (status === "not_done" ? 0 : length(card)) } }
-    setAnswers(next)
+    const mine = { ...answers, [card.key]: { status, minutes: minutes ?? (status === "not_done" ? 0 : length(card)) } }
+    const next = { ...all, ...mine }
+    setAnswers(mine)
     setPartial(null)
     if (cards.every((b) => next[b.key]) && review) {
       const entries = cards.map((b) => {
@@ -69,12 +67,13 @@ export function DailyReview({ date, onWeek }: { date: string; onWeek: () => void
       if (await submit({ date, entries })) {
         for (const b of cards) if (next[b.key].status === "finished") await done({ id: b.item_id })
         setSubmitted(true)
+        setFresh(false)
         sessionStorage.removeItem(`review-${date}`)
       }
     }
   }
   const back = () => {
-    const last = [...cards].reverse().find((b) => answers[b.key])
+    const last = [...cards].reverse().find((b) => answers[b.key]) // this visit's; what's on record stays
     if (!last) return
     const { [last.key]: _, ...rest } = answers
     setAnswers(rest)
@@ -87,19 +86,21 @@ export function DailyReview({ date, onWeek }: { date: string; onWeek: () => void
     else answer(option.status)
   }, back)
   if (!review) return <div className="fr-panel" />
-  const finished = submitted || (review.reviewed && card === null) || (!cards.length && review.reviewed)
+  // Settled once every block has an answer, whether given now or on record from before.
+  const finished = submitted || (card === null && (review.reviewed || cards.length > 0))
+  const again = () => (setAnswers({}), setFresh(true), setSubmitted(false))
   return (
     <div className="fr-panel" style={{ overflowY: "auto" }}>
       <div className="fr-gutter fr-stack" style={{ display: "grid", gridTemplateColumns: "minmax(0,600px) minmax(0,1fr)", gap: 48, padding: "32px 40px 150px", alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <H size={32}>{dayName(date)}</H>
-            <span style={{ color: "var(--color-neutral-400)" }}>{subline(cards.length, Object.keys(answers).length, review.reviewed)}</span>
+            <span style={{ color: "var(--color-neutral-400)" }}>{subline(cards.length, cards.filter((b) => all[b.key]).length, review.reviewed)}</span>
           </div>
-          {cards.length > 0 && <Bars cards={cards} answers={answers} current={card?.key ?? null} />}
+          {cards.length > 0 && <Bars cards={cards} answers={all} current={card?.key ?? null} />}
           {card && !finished && <Card card={card} pos={`${at + 1} of ${cards.length}`} partial={partial} onPick={(s) => (s === "partial" ? setPartial(halfOf(card)) : answer(s))} onPartial={setPartial} onLog={(m) => answer("partial", m)} />}
           {!cards.length && !finished && <span style={{ color: "var(--color-neutral-400)" }}>Nothing was planned that day.</span>}
-          {finished && <Wrapped date={date} cards={cards} answers={answers} onWeek={onWeek} onPlan={() => navigate("/")} />}
+          {finished && <Wrapped date={date} cards={cards} answers={all} onWeek={onWeek} onPlan={() => navigate("/")} onAgain={cards.length ? again : undefined} />}
           <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
             {Object.keys(answers).length > 0 && !finished && (
               <button className="fr-plain fr-hover-text" onClick={back} style={{ color: "var(--color-neutral-400)", display: "flex", gap: 6, alignItems: "center" }}>
@@ -114,7 +115,7 @@ export function DailyReview({ date, onWeek }: { date: string; onWeek: () => void
             )}
           </div>
         </div>
-        <Log cards={cards} answers={answers} />
+        <Log cards={cards} answers={all} />
       </div>
     </div>
   )
@@ -247,8 +248,8 @@ function Card({ card, pos, partial, onPick, onPartial, onLog }: CardProps) {
   )
 }
 
-function Wrapped(props: { date: string; cards: Block[]; answers: Record<string, Answer>; onWeek: () => void; onPlan: () => void }) {
-  const { date, cards, answers, onWeek, onPlan } = props
+function Wrapped(props: { date: string; cards: Block[]; answers: Record<string, Answer>; onWeek: () => void; onPlan: () => void; onAgain?: () => void }) {
+  const { date, cards, answers, onWeek, onPlan, onAgain } = props
   const worked = Object.values(answers).reduce((s, a) => s + a.minutes, 0)
   const did = Object.values(answers).filter((a) => a.status !== "not_done").length
   const line = cards.length && Object.keys(answers).length ? `You did ${did} of ${cards.length} blocks, ${dur(worked)} in all. Friday has planned what's left.` : "This day is settled."
@@ -265,6 +266,11 @@ function Wrapped(props: { date: string; cards: Block[]; answers: Record<string, 
         <button className="btn btn-secondary" onClick={onPlan}>
           Back to plan
         </button>
+        {onAgain && (
+          <button className="btn btn-ghost" onClick={onAgain}>
+            Change answers
+          </button>
+        )}
       </div>
     </div>
   )

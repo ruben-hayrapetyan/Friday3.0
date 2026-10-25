@@ -19,8 +19,14 @@ const ANSWERS: Answers = {
 
 describe("setup", () => {
   it("asks about calendars only when there are some", () => {
-    expect(stepsFor(ANSWERS)).toEqual(["day", "load", "focus", "free", "early", "brief"])
+    expect(stepsFor(ANSWERS)).toEqual(["day", "load", "focus", "free", "early", "brief", "bring"])
     expect(stepsFor({ ...ANSWERS, calendars: [{ name: "Home", shown: true, busy: true }] })).toContain("calendars")
+  })
+
+  it("ends by bringing things in: Google, feeds, a syllabus and Gmail, after every question", () => {
+    const steps = stepsFor({ ...ANSWERS, calendars: [{ name: "Home", shown: true, busy: true }] })
+    expect(steps).toHaveLength(8)
+    expect(steps.at(-1)).toBe("bring")
   })
 
   it("reads any amount you type: a bare number is hours", () => {

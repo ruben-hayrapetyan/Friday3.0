@@ -254,6 +254,7 @@ DEFAULT_TEMPLATES = {
 
 class PaceSettings(Model):
     default: str = "Normal"
+    weekly: dict[str, str] = {}  # weekday → pace, every week ("go easier on Saturdays"): {"sat": "Easy"}
     switch_stability: float = Field(0.2, ge=0, le=1)
 
 

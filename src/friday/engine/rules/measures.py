@@ -314,7 +314,10 @@ class MinimizeChanges(Rule):
 @rule_type("buffer")
 class Buffer(Rule):
     """Breathing room before a block: a chunk that starts right after other work or a fixed event costs, per unit of
-    that work inside its buffer. An item's buffer is the largest of `minutes`, its area's and its preset's."""
+    that work inside its buffer. An item's buffer is the largest of `minutes`, its area's and its preset's.
+
+    An item's own travel (lunch: 15 minutes to get there and back) keeps other work out on both sides. A busy event
+    counts before it, but not the event's own gap: the walk from a class to lunch is one walk, not two."""
 
     default_stage = "wellbeing"
 
@@ -342,6 +345,39 @@ class Buffer(Rule):
                 fixed = sum(int(grid.units[w]) for w in window if problem.blocked[w] and not problem.core[w])
                 expr = starts * b + ctx.busy_units(window) + fixed
                 yield Measure(f"{self.name}:b{b}@{s}", expr, "units", (Hinge("above", b, 1.0),))
+        yield from self.travel(ctx)
+
+    def travel(self, ctx):
+        grid, problem = ctx.grid, ctx.problem
+        scoped = self.scoped_items()
+        for side in ("before", "after"):
+            groups: dict[int, list[Any]] = {}
+            for item in scoped:
+                if (b := getattr(item, f"travel_{side}")) > 0:
+                    groups.setdefault(b, []).append(item)
+            for b, members in sorted(groups.items()):
+                keys = {m.key for m in members}
+                others = [i for i in problem.items.values() if i.key not in keys]
+                for s in range(grid.S):
+                    window = before(grid, s, b)
+                    if not window:
+                        continue
+                    if side == "before":
+                        # As above: a chunk starting at s, with other work or an event in the b units before it.
+                        starts = lin_sum(ctx.start(m.key, s) for m in members)
+                        if starts.is_const():
+                            continue
+                        events = sum(int(grid.units[w]) for w in window if problem.events[w])
+                        expr, limit = starts * b + ctx.busy_units(window, others) + events, b
+                    else:
+                        # Other work at s, with one of these in the b units before it: b × (work at s) + its units
+                        # there, above b × (the slot's units) only when both.
+                        mine = ctx.busy_units(window, members)
+                        here = ctx.busy_units([s], others)
+                        if mine.is_const() or here.is_const():
+                            continue
+                        expr, limit = here * b + mine, b * int(grid.units[s])
+                    yield Measure(f"{self.name}:t{side[0]}{b}@{s}", expr, "units", (Hinge("above", limit, 1.0),))
 
 
 def before(grid: Any, s: int, units: int) -> list[int]:

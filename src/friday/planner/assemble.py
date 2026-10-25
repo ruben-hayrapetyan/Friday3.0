@@ -219,7 +219,9 @@ def pace_days(snapshot: Snapshot, problem: Problem) -> dict[str, str]:
     settings = snapshot.settings
     out = {}
     for day in problem.grid.day_date:
-        dials = dials_on(day, list(snapshot.pace_periods), settings["paces"], settings["pace"].default)
+        dials = dials_on(
+            day, list(snapshot.pace_periods), settings["paces"], settings["pace"].default, settings["pace"].weekly
+        )
         out[day.isoformat()] = pace_label(dials, settings["paces"])
     return out
 

@@ -22,7 +22,7 @@ from friday.api.commands import (
 )
 from friday.api.types import Empty
 from friday.api.views import InboxOut, SourceOut, SuggestionOut
-from friday.commands.items import add, drop, edit, find_item
+from friday.commands.items import add, drop, edit, find_item, guessed_minutes
 from friday.commands.registry import Ctx, command, query
 from friday.commands.series import attach_to_series, imported_fields
 from friday.core.db import one, rows
@@ -276,6 +276,7 @@ def inbox(ctx: Ctx, inp: Empty) -> InboxOut:
             repeat=repeat_words(json.loads(s["input"]).get("every")),
             source_kind=s["kind"] or "",
             source_text=source_text(s),
+            guess_min=guessed_minutes(ctx, json.loads(s["input"])) if s["command"] == "add" else None,
         )
         for s in found
     ]

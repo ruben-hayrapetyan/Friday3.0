@@ -272,6 +272,8 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
         progress=progress,
         window_is_hard=tentative or item.amount in ("elastic", "target") or expires(item, inp.settings),
         pacing=preset.pacing if preset else "none", pacing_start_utc=release if release is not None else created,
+        travel_before=math.ceil((item.buffer_before_min or 0) / UNIT_MIN),
+        travel_after=math.ceil((item.buffer_after_min or 0) / UNIT_MIN),
     )  # fmt: skip
     return with_amount(engine_item, item, inp)
 

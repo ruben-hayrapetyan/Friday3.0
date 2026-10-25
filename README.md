@@ -45,13 +45,12 @@ Or run Friday in a browser:
 fridayd serve            # http://127.0.0.1:8765
 ```
 
-**Moving in from Todo List and Chroma:** Settings → Integrations → Import brings in Todo List's open tasks and Chroma's
-event categories, once.
-
-**Google Calendar and Gmail** are read by the server. Put your Desktop OAuth client's file at the path in
-[`friday.example.toml`](friday.example.toml) (`google.client_file`), run `fridayd google-login` once, then choose the
-calendars in Settings → Calendars. **The Mac's calendars** come through the Mac app: allow it to read them, and choose
-the ones Friday reads under This Mac's calendars. One that is also read from Google starts off, so nothing comes in twice.
+**Google Calendar and Gmail** are read by the server. In Settings → Integrations (or setup's last step), choose your
+Desktop OAuth client's .json file from Google Cloud once, then press Connect: Google's page opens in your browser, and
+your calendars list there once you allow Friday. Gmail has its own switch beside it. (`fridayd google-login` does the
+same from a terminal, with the file at `google.client_file` in [`friday.example.toml`](friday.example.toml).)
+**The Mac's calendars** come through the Mac app: allow it to read them, and choose the ones Friday reads under This
+Mac's calendars. One that is also read from Google starts off, so nothing comes in twice.
 
 **Claude.** Ask Claude, rules in your own words, judging which events you could skip and sorting new calendar events
 use Claude Code's `claude` command. An Anthropic API key (`[anthropic] api_key` in `secrets.toml` beside `friday.toml`,

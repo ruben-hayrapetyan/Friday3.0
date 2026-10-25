@@ -667,6 +667,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/google_connect_status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How connecting Google is going, and what Google lets Friday do: read calendars, read mail, change events. */
+        get: operations["google_connect_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/google_connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Connect Google: opens Google's page in your browser to let Friday read your calendars. */
+        post: operations["google_connect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/google_client_save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Keep the OAuth client JSON you downloaded from Google Cloud (a Desktop app's) where `google.client_file` */
+        post: operations["google_client_save"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/report": {
         parameters: {
             query?: never;
@@ -3242,6 +3293,75 @@ export interface components {
              */
             also_google?: boolean;
         };
+        /**
+         * GoogleClientInput
+         * @description The OAuth client JSON downloaded from Google Cloud (a Desktop app's), as text.
+         */
+        GoogleClientInput: {
+            /** Content */
+            content: string;
+        };
+        /** GoogleClientSaveResult */
+        GoogleClientSaveResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["GoogleConnectOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /**
+         * GoogleConnectOut
+         * @description Connecting Google from the app: how the sign-in started there is going, and what Google allows Friday.
+         */
+        GoogleConnectOut: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "idle" | "waiting" | "connected" | "failed";
+            /** Message */
+            message?: string | null;
+            /** Url */
+            url?: string | null;
+            /** Client File */
+            client_file: boolean;
+            /** Calendar */
+            calendar: boolean;
+            /** Gmail */
+            gmail: boolean;
+            /** Events */
+            events: boolean;
+        };
+        /** GoogleConnectResult */
+        GoogleConnectResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["GoogleConnectOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -3454,6 +3574,12 @@ export interface components {
             estimate?: {
                 [key: string]: unknown;
             } | null;
+            /** Guess Min */
+            guess_min?: number | null;
+            /** Buffer Before Min */
+            buffer_before_min?: number | null;
+            /** Buffer After Min */
+            buffer_after_min?: number | null;
             /**
              * Waiting On
              * @default []
@@ -5826,6 +5952,8 @@ export interface components {
             source_kind?: string;
             /** Source Text */
             source_text?: string | null;
+            /** Guess Min */
+            guess_min?: number | null;
         };
         /** SuggestionRejectResult */
         SuggestionRejectResult: {
@@ -7644,6 +7772,100 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AskClaudeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    google_connect_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleConnectOut"];
+                };
+            };
+        };
+    };
+    google_connect: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Empty"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleConnectResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    google_client_save: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoogleClientInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleClientSaveResult"];
                 };
             };
             /** @description Validation Error */

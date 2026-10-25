@@ -1,5 +1,5 @@
 // Pace (v22): how hard Friday pushes for a while. Pick a saved pace and how long; a full solve previews what changes
-// before you apply it. Deadlines hold whatever you pick.
+// before you apply it. Deadlines hold whatever you pick. Below, the days that go easier or harder every week.
 
 import { useState } from "react"
 import type { Schemas } from "@/api/client"
@@ -8,6 +8,7 @@ import { useCommand } from "@/hooks/useCommand"
 import { usePaces } from "@/hooks/queries"
 import { usePreview } from "@/hooks/usePreview"
 import { lines, summary } from "@/lib/changes"
+import { WeekPaces } from "@/rules/WeekPaces"
 import { useShell } from "@/shell/ShellContext"
 
 type For = Pick<Schemas["PaceInput"], "for_days" | "until">
@@ -87,6 +88,10 @@ export function PacePop() {
           </>
         )}
         {preview.error && <div style={{ color: "var(--fr-due)" }}>{preview.error.message}</div>}
+      </div>
+      <div className="fr-row" style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 10 }}>
+        <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>Every week</span>
+        <WeekPaces compact />
       </div>
       <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
         <button className="btn btn-ghost" onClick={() => setPop(null)}>

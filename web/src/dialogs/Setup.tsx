@@ -1,14 +1,19 @@
 // Setup: a few questions when Friday first opens, so the defaults fit you instead of being changed one by one in
 // Settings. Each starts from what Friday does now; Skip keeps those. All the answers are saved together at the end
-// (`setup_save`, one change you can undo), and the tour follows. Again from Settings, search or the Help menu.
+// (`setup_save`, one change you can undo), and the tour follows. Again from Settings, search or the Help menu. The last
+// step brings things in (Google Calendar, course feeds, a syllabus, Gmail), each optional and done the moment you do
+// it, with the same controls as Settings → Integrations.
 
 import { useQuery } from "@tanstack/react-query"
 import { type ReactNode, useEffect, useState } from "react"
 import { query, type Schemas } from "@/api/client"
 import { Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
+import { useInbox } from "@/inbox/InboxPage"
 import { ampm, parseLength } from "@/lib/format"
 import { CalendarChoice, saying } from "@/settings/calendarChoice"
+import { ConnectGoogle, GmailConnect, GmailSwitch } from "@/settings/GoogleConnect"
+import { AddFeed, Upload } from "@/settings/Integrations"
 import { Modal } from "./Dialogs"
 
 export type Answers = Schemas["SetupInput"]
@@ -154,6 +159,12 @@ const STEPS: Step[] = [
       />
     ),
   },
+  {
+    id: "bring",
+    title: "Bring things in",
+    note: "Classes, deadlines and events from where they already are. Each is optional and happens right away; they're all in Settings → Integrations too.",
+    body: () => <BringIn />,
+  },
 ]
 
 /** The questions to ask: the calendars only when there are some. */
@@ -224,6 +235,48 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
         </button>
       </div>
     </Modal>
+  )
+}
+
+/** The last step: each source is added (or connected) the moment you do it, not with the answers. */
+function BringIn() {
+  const feeds = (useInbox().data?.sources ?? []).filter((s) => s.kind === "ics")
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <Source icon="google-logo" title="Google Calendar" note="Its events become fixed time Friday plans around.">
+        <ConnectGoogle done="Choose the calendars it reads in Settings → Integrations." />
+      </Source>
+      <Source icon="rss" title="Course feeds" note="A calendar link from Canvas or your school; new dates go to your Inbox.">
+        <AddFeed />
+        {feeds.length > 0 && <span className="fr-kicker">Added: {feeds.map((f) => f.name).join(", ")}</span>}
+      </Source>
+      <Source icon="file-pdf" title="Syllabus" note="A PDF becomes classes, readings, assignments and exam prep, in your Inbox.">
+        <span>
+          <Upload />
+        </span>
+      </Source>
+      <Source icon="envelope-simple" title="Gmail" note="Friday suggests due dates and events from your mail. It never sends or deletes.">
+        <GmailSwitch />
+        <GmailConnect />
+      </Source>
+    </div>
+  )
+}
+
+function Source({ icon, title, note, children }: { icon: string; title: string; note: string; children: ReactNode }) {
+  return (
+    <div className="fr-row" style={{ display: "grid", gridTemplateColumns: "24px minmax(0,1fr)", gap: 12, padding: "12px 0" }}>
+      <Icon name={icon} size={18} style={{ color: "var(--color-neutral-400)", paddingTop: 1 }} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+        <span style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <span style={{ fontWeight: 500 }}>{title}</span>
+          <span className="fr-kicker" style={{ textWrap: "pretty" }}>
+            {note}
+          </span>
+        </span>
+        {children}
+      </div>
+    </div>
   )
 }
 

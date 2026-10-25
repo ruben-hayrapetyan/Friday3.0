@@ -12,10 +12,11 @@ import { useShell } from "@/shell/ShellContext"
 import { useCommand } from "@/hooks/useCommand"
 import { useStatus } from "@/hooks/queries"
 import { dayLabel } from "@/lib/format"
+import { WeekPaces } from "./WeekPaces"
 
 type Strength = "Prefer" | "Strongly" | "Always"
 const STRENGTHS: Strength[] = ["Prefer", "Strongly", "Always"]
-const EXAMPLES = ["I prefer eating lunch before 1pm", "No work after 10pm", "Keep Saturday mornings free", "At most 6 hours a day", "Deep work in the morning", "Gym right after class", "Finish things a day early"]
+const EXAMPLES = ["I prefer eating lunch before 1pm", "No work after 10pm", "Keep Saturday mornings free", "At most 6 hours a day", "Deep work in the morning", "Gym right after class", "Finish things a day early", "Go easier on Saturdays"]
 const SOURCES: Record<string, [string, string]> = { you: ["user", "Yours"], learned: ["sparkle", "Learned from you"], default: ["sliders-horizontal", "Built in"] }
 const DAY_OPTS: { value: string; label: string; days: string[] | null }[] = [
   { value: "every", label: "Every day", days: null },
@@ -52,6 +53,13 @@ export function RulesPage() {
               </span>
             </div>
             {owned ? <span className="fr-kicker">Your rules are set in friday.toml; change them there.</span> : <NewRule />}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "6px 0 4px" }}>
+              <span style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 500 }}>Your week</span>
+                <span className="fr-kicker">Days that go easier or harder, every week. Click a day to change it.</span>
+              </span>
+              <WeekPaces />
+            </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
               {rules
                 .filter((r) => !r.background)
@@ -129,12 +137,19 @@ function NewRule() {
           {reading && (
             <>
               <H size={16}>{preview.sentence}</H>
-              <span className="fr-kicker">{preview.effect}{chosen === "Always" ? ", and never bends." : ", unless it has to."}</span>
-              <Fields reading={reading} overrides={overrides} onSet={set} onReset={() => setOverrides({})} />
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span className="fr-kicker">Strength</span>
-                <Seg options={STRENGTHS} value={chosen} onPick={setStrength} onBg />
-              </div>
+              {reading.kind === "pace" ? (
+                // A pace for weekdays is a setting: it shows under Your week, with no strength to choose.
+                <span className="fr-kicker">{preview.effect}. It shows under Your week.</span>
+              ) : (
+                <>
+                  <span className="fr-kicker">{preview.effect}{chosen === "Always" ? ", and never bends." : ", unless it has to."}</span>
+                  <Fields reading={reading} overrides={overrides} onSet={set} onReset={() => setOverrides({})} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span className="fr-kicker">Strength</span>
+                    <Seg options={STRENGTHS} value={chosen} onPick={setStrength} onBg />
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

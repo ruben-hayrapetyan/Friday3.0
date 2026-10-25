@@ -259,7 +259,7 @@ function Detail({ s, all, resolved, onResolved, onReopen }: DetailProps) {
     return () => window.removeEventListener("keydown", press)
   })
   const value = (key: string, v: unknown): string => {
-    if (v == null) return key === "duration_min" ? "Friday’s guess" : "—"
+    if (v == null) return key === "duration_min" ? (s.guess_min ? `${dur(s.guess_min)}, Friday’s guess` : "Friday’s guess") : "—"
     if (key === "duration_min") return dur(Number(v))
     if (key === "every") return s.repeat ?? String(v)
     if (typeof v === "string" && /^\d{4}-\d\d-\d\dT/.test(v)) return when(v, today)

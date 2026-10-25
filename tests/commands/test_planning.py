@@ -323,3 +323,33 @@ def test_diagnose_reads_the_last_hours_back_in_order(app: App) -> None:
     assert [h["kind"] for h in found][-2:] == ["plan", "report"]  # after the fixture's own setup commands
     assert any(h["kind"] == "command" and "essay ~2h due fri" in h["summary"] for h in found)
     assert found[-2]["summary"].startswith("P") and "the calendar went blank" in found[-1]["summary"] and essay
+
+
+def test_lunch_keeps_its_travel_time_clear_on_both_sides(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    lunch = app.do("add", text="Lunch tomorrow 11:30am-2:30pm 15m")["item"]["id"]
+    app.do("edit", id=lunch, buffer_before_min=15, buffer_after_min=15)
+    app.do("add", text="essay ~3h", release="2026-10-20T11:00", due="2026-10-20T15:00")
+    app.do("replan")
+    day = [b for b in app.do("plan")["blocks"] if b["start"].startswith("2026-10-20")]
+    ((eat_from, eat_to),) = [(_minutes(b["start"][11:]), _minutes(b["end"][11:])) for b in day if b["title"] == "Lunch"]
+    essay = [(_minutes(b["start"][11:]), _minutes(b["end"][11:])) for b in day if b["title"] == "essay"]
+    assert sum(b - a for a, b in essay) == 180
+    assert all(b <= eat_from - 15 or a >= eat_to + 15 for a, b in essay), day  # to get there, and back
+
+
+def _minutes(clock: str) -> int:
+    return int(clock[:2]) * 60 + int(clock[3:5])
+
+
+def test_a_weekly_pace_from_a_rule_sets_those_days_every_week(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    out = app.do("rule_add", text="go easier on saturday and go harder on sunday")
+    assert out["message"] == "Every week: Easy on Saturdays, Push on Sundays"
+    assert app.do("settings")["pace"]["weekly"] == {"sat": "Easy", "sun": "Push"}
+    days = {d["date"]: d["pace"] for d in app.do("calendar", days=14)["days"]}
+    assert days["2026-10-24"] == days["2026-10-31"] == "Easy" and days["2026-10-25"] == "Push"
+    assert days["2026-10-23"] is None  # a Friday keeps the default
+    assert not any(r["name"].startswith("you:") for r in app.do("rules"))  # a setting, not a planner rule
+    app.do("rule_add", text="saturdays are normal")
+    assert app.do("settings")["pace"]["weekly"] == {"sun": "Push"}

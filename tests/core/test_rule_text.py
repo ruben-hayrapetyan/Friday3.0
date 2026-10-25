@@ -77,3 +77,25 @@ def test_a_reading_becomes_a_planner_rule_in_your_words() -> None:
         15.0,
         {"threshold": "2h"},
     )
+
+
+@pytest.mark.parametrize(
+    ("text", "paces"),
+    [
+        ("go easier on saturday and go harder on sunday", (("sat", "Easy"), ("sun", "Push"))),
+        ("take it easy on weekends", (("sat", "Easy"), ("sun", "Easy"))),
+        ("saturdays are easy, sundays are hard", (("sat", "Easy"), ("sun", "Push"))),
+        ("go easy on saturdays and sundays", (("sat", "Easy"), ("sun", "Easy"))),
+        ("push on sundays", (("sun", "Push"),)),
+    ],
+)
+def test_a_pace_for_some_weekdays_every_week(text: str, paces: tuple) -> None:
+    reading, _ = read(text)
+    assert reading is not None and reading.kind == "pace" and reading.paces == paces
+
+
+def test_pace_words_alone_or_beside_other_rules_read_as_before() -> None:
+    assert read("no work on sundays")[0] == Reading("days", "work", rel="not_on", days=("sun",))
+    mixed = read("go easier on saturday and no work on sunday")[0]
+    assert mixed is None or mixed.kind != "pace"  # half a pace isn't read as all of one
+    assert sentence(read("go easier on saturday and go harder on sunday")[0]) == "Easy on Saturdays, Push on Sundays"
