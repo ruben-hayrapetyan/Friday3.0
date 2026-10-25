@@ -9,7 +9,9 @@ which days), and from a Reading and a strength to one of the planner's rule type
 - `finish things a day early`, `finish essays 2 days before they're due`: `finish_early`;
 - `gym right after class`: `after_event`;
 - `go easier on saturday and go harder on sunday`, `take it easy on weekends`: a pace for those weekdays, every week
-  (not a planner rule: `pace.weekly`, which the day's dials come from).
+  (not a planner rule: `pace.weekly`, which the day's dials come from);
+- `push when necessary for work not to be late`, `don't let work be late`: deadlines first, which is built in
+  (`late_work`), so it's said to be on already rather than added.
 """
 
 import re
@@ -19,7 +21,7 @@ from typing import Any, Literal
 from friday.core.time import ampm_in
 
 Strength = Literal["Prefer", "Strongly", "Always"]
-Kind = Literal["window", "days", "free", "cap", "early", "after", "pace"]
+Kind = Literal["window", "days", "free", "cap", "early", "after", "pace", "deadlines"]
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 NAMES = {
     "monday": "mon",
@@ -112,7 +114,7 @@ def read(text: str) -> tuple[Reading | None, Strength]:
     t = re.sub(r"\s+", " ", t)
     negated = bool(re.search(r"\b(no|never|don't|not|avoid)\b", t))
     t = re.sub(r"\b(no|never|don't do|don't|do not|not|avoid)\b", " ", t)
-    for parse in (read_pace, read_cap, read_early, read_free, read_window, read_days, read_after):
+    for parse in (read_pace, read_cap, read_early, read_free, read_window, read_days, read_after, read_deadlines):
         found = parse(" " + " ".join(t.split()) + " ", negated)
         if found:
             return found, strength
@@ -161,6 +163,13 @@ def read_pace(t: str, negated: bool) -> Reading | None:
     if not found:
         return None
     return Reading("pace", "pace", paces=tuple((d, found[d]) for d in DAYS if d in found))
+
+
+def read_deadlines(t: str, negated: bool) -> Reading | None:
+    """Work more when it must, so nothing is late: what `late_work` already does, read last so any other rule wins."""
+    late = re.search(r"\b(late|on time|deadlines?|overdue|miss(?:ed|ing)?)\b", t)
+    push = re.search(r"\b(push|harder|more|longer|later|necessary|needed|need|must|have to|whatever|sure|let|be)\b", t)
+    return Reading("deadlines", "work") if late and push else None
 
 
 def read_cap(t: str, negated: bool) -> Reading | None:
@@ -269,6 +278,8 @@ def sentence(r: Reading) -> str:
 
 
 def said(r: Reading) -> str:
+    if r.kind == "deadlines":
+        return "Deadlines come first"
     if r.kind == "pace":
         by_pace: dict[str, list[str]] = {}
         for day, pace in r.paces or ():
@@ -320,6 +331,9 @@ WEIGHT = {"Prefer": 1.0, "Strongly": 3.0, "Always": 10.0}
 
 def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: list[str]) -> dict[str, Any]:
     """The planner rule for a reading: {type, name, weight, scope, reason, params}."""
+    if r.kind == "deadlines":  # built in: `rule_add` makes sure it's on rather than adding a second one
+        return {"name": "late_work", "type": "late_work", "weight": 10.0, "scope": None, "reason": sentence(r),
+                "params": {}}  # fmt: skip
     if r.kind == "pace":  # a setting, not a planner rule: `rule_add` writes `pace.weekly`
         return {"name": name, "type": "pace", "weight": 0.0, "scope": None, "reason": sentence(r),
                 "params": {"weekly": dict(r.paces or ())}}  # fmt: skip

@@ -54,6 +54,8 @@ EFFECT = {
     "finish_early": "Friday aims to finish early",
     "after_event": "Friday places it right after",
     "pace": "Every week, Friday plans less on Easy days and more on Push days",
+    "late_work": "Already built in and always on: when work would be late, Friday plans past your pace and your "
+    "preferences, Easy days too. Only your sleep, your daily limit and rules set to Always hold",
 }
 
 
@@ -98,12 +100,24 @@ def rule_add(ctx: Ctx, inp: RuleAddInput) -> Changed:
         raise FieldError("text", "Friday can’t read that as a rule; try one of the examples")
     if reading.kind == "pace":
         return weekly_pace(ctx, dict(reading.paces or ()), sentence(reading))
+    if reading.kind == "deadlines":
+        return deadlines_first(ctx)
     rules = [r.model_dump() for r in ctx.settings["rules"]]
     name = unique(f"you:{slug(sentence(reading))}", {r["name"] for r in rules})
     areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
     write_setting(ctx, "rules", [*rules, spec(reading, inp.strength, name, areas, presets)])
     keep(ctx, {**readings(ctx), name: {"reading": reading.to_dict(), "strength": inp.strength, "text": inp.text}})
     return Changed(message=f"Added: {sentence(reading)}")
+
+
+def deadlines_first(ctx: Ctx) -> Changed:
+    """Built in and on unless you switched it off: switched back on, never added twice."""
+    rules = [r.model_dump() for r in ctx.settings["rules"]]
+    off = [r for r in rules if r["type"] in ("late_work", "late_tasks") and not r["enabled"]]
+    if off:
+        write_setting(ctx, "rules", [r | {"enabled": True} if r in off else r for r in rules])
+        return Changed(message="Deadlines come first is back on: Friday works more when it must, so nothing is late")
+    return Changed(message="Already on: Friday works more when it must, so nothing is late")
 
 
 def weekly_pace(ctx: Ctx, days: dict[str, str], said: str) -> Changed:

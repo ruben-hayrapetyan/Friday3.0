@@ -364,3 +364,13 @@ def test_a_quarter_hour_lunch_fills_a_half_hour_slot_past_the_fine_days(tmp_path
     later = [b for b in lunches if b["start"] >= "2026-10-22"]
     assert later and all(_minutes(b["end"][11:]) - _minutes(b["start"][11:]) == 30 for b in later)
     assert all(_minutes(b["end"][11:]) - _minutes(b["start"][11:]) == 15 for b in lunches if b["start"] < "2026-10-21")
+
+
+def test_asking_for_deadlines_first_says_it_is_on_and_switches_it_back_on(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    out = app.do("rule_add", text="push when necessary for work not to be late")
+    assert out["message"].startswith("Already on")
+    assert not any(r["name"].startswith("you:") for r in app.do("rules"))  # nothing added
+    app.do("rule_set", name="late_tasks", enabled=False)
+    assert app.do("rule_add", text="don't let work be late")["message"].startswith("Deadlines come first is back on")
+    assert all(r["enabled"] for r in app.do("rules") if r["name"] in ("late_work", "late_tasks"))

@@ -140,6 +140,8 @@ function NewRule() {
               {reading.kind === "pace" ? (
                 // A pace for weekdays is a setting: it shows under Your week, with no strength to choose.
                 <span className="fr-kicker">{preview.effect}. It shows under Your week.</span>
+              ) : reading.kind === "deadlines" ? (
+                <span className="fr-kicker" style={{ textWrap: "pretty" }}>{preview.effect}.</span>
               ) : (
                 <>
                   <span className="fr-kicker">{preview.effect}{chosen === "Always" ? ", and never bends." : ", unless it has to."}</span>

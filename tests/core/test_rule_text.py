@@ -99,3 +99,17 @@ def test_pace_words_alone_or_beside_other_rules_read_as_before() -> None:
     mixed = read("go easier on saturday and no work on sunday")[0]
     assert mixed is None or mixed.kind != "pace"  # half a pace isn't read as all of one
     assert sentence(read("go easier on saturday and go harder on sunday")[0]) == "Easy on Saturdays, Push on Sundays"
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["push when neccessary for work not to be late", "push when necessary for work not to be late",
+     "don't let work be late", "work harder if needed so nothing is late"],
+)  # fmt: skip
+def test_working_more_so_nothing_is_late_reads_as_deadlines_first(text: str) -> None:
+    reading, _ = read(text)
+    assert reading is not None and reading.kind == "deadlines" and sentence(reading) == "Deadlines come first"
+
+
+def test_rules_that_mention_due_dates_still_read_as_themselves() -> None:
+    assert read("finish essays 2 days before they're due")[0] == Reading("early", "essays", amount=2.0)
