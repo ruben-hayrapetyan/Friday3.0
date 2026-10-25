@@ -16462,6 +16462,44 @@
     "title": "RuleClashOut",
     "description": "What a rule is up against, when the plan bends it: the rule that gives way when it's kept, on which days."
    },
+   "RuleConflict": {
+    "properties": {
+     "other": {
+      "type": "string",
+      "title": "Other"
+     },
+     "other_sentence": {
+      "type": "string",
+      "title": "Other Sentence"
+     },
+     "why": {
+      "type": "string",
+      "title": "Why"
+     },
+     "days": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Days",
+      "default": []
+     },
+     "overlap": {
+      "type": "boolean",
+      "title": "Overlap",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "other",
+     "other_sentence",
+     "why"
+    ],
+    "title": "RuleConflict",
+    "description": "Two rules at odds, found from the rules themselves (`planner/contradictions.py`)."
+   },
    "RuleOut": {
     "properties": {
      "name": {
@@ -16525,6 +16563,14 @@
       "type": "array",
       "title": "Gives Way To",
       "default": []
+     },
+     "contradicts": {
+      "items": {
+       "$ref": "#/components/schemas/RuleConflict"
+      },
+      "type": "array",
+      "title": "Contradicts",
+      "default": []
      }
     },
     "additionalProperties": false,
@@ -16567,6 +16613,14 @@
      "effect": {
       "type": "string",
       "title": "Effect"
+     },
+     "conflicts": {
+      "items": {
+       "$ref": "#/components/schemas/RuleConflict"
+      },
+      "type": "array",
+      "title": "Conflicts",
+      "default": []
      }
     },
     "additionalProperties": false,

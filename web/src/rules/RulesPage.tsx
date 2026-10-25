@@ -1,16 +1,18 @@
 // Rules (v22): how you like your days, in your own words. Type a rule; Friday shows how it read it (what, when,
-// which days) for you to correct, and how strongly to hold it. Below, every rule with a switch, its strength, how
-// often the plan keeps it, and delete. A rule the plan bends can ask what it's up against, and you say which should
-// win (COMBINED.md 66); the answer shows on both rules, and clicking it changes it.
+// which days) for you to correct, and how strongly to hold it. What Friday can't read goes to Claude when you press ↩
+// (when Claude is connected). Below, every rule with a switch, its strength, how often the plan keeps it, and delete.
+// A rule the plan bends can ask what it's up against, and you say which should win (COMBINED.md 66); the answer shows
+// on both rules, and clicking it changes it. Rules that contradict each other say so, before you add one and after.
 
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
-import { Link } from "react-router"
+import { Link, useNavigate } from "react-router"
 import { query, type Schemas } from "@/api/client"
 import { H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useShell } from "@/shell/ShellContext"
 import { useCommand } from "@/hooks/useCommand"
 import { useStatus } from "@/hooks/queries"
+import { useInbox } from "@/inbox/InboxPage"
 import { dayLabel } from "@/lib/format"
 import { WeekPaces } from "./WeekPaces"
 
@@ -28,7 +30,7 @@ export const useRules = () => useQuery({ queryKey: ["rules"], queryFn: () => que
 
 export function RulesPage() {
   const rules = useRules().data ?? []
-  const said = new Map(rules.map((r) => [r.name, r.sentence]))
+  const byName = new Map(rules.map((r) => [r.name, r]))
   const owned = (useStatus().data?.config_keys ?? []).includes("rules")
   const mine = rules.filter((r) => r.source === "you").length
   return (
@@ -64,7 +66,7 @@ export function RulesPage() {
               {rules
                 .filter((r) => !r.background)
                 .map((r) => (
-                  <RuleRow key={r.name} rule={r} locked={owned} said={said} />
+                  <RuleRow key={r.name} rule={r} locked={owned} byName={byName} />
                 ))}
             </div>
             <details>
@@ -75,7 +77,7 @@ export function RulesPage() {
                 {rules
                   .filter((r) => r.background)
                   .map((r) => (
-                    <RuleRow key={r.name} rule={r} locked={owned} said={said} />
+                    <RuleRow key={r.name} rule={r} locked={owned} byName={byName} />
                   ))}
               </div>
             </details>
@@ -88,10 +90,16 @@ export function RulesPage() {
 
 function NewRule() {
   const { askClaude } = useShell()
+  const navigate = useNavigate()
+  const llm = useInbox().data?.llm as { key?: boolean } | undefined
+  const demo = !!useStatus().data?.demo // the demo's stand-in AI
+  const ai = !!llm?.key || demo // a key or the claude command
+  const strengths = new Map((useRules().data ?? []).map((r) => [r.name, r.strength]))
   const [text, setText] = useState("")
   const [overrides, setOverrides] = useState<Record<string, unknown>>({})
   const [strength, setStrength] = useState<Strength | null>(null)
-  const settled = useSettled(JSON.stringify({ text, overrides }), 200)
+  const typed = JSON.stringify({ text, overrides })
+  const settled = useSettled(typed, 200)
   const preview = useQuery({
     queryKey: ["rule_read", settled],
     queryFn: () => {
@@ -101,14 +109,23 @@ function NewRule() {
     enabled: !!text.trim(),
   }).data
   const add = useCommand("rule_add", { label: (o) => o.result.message ?? "Added" })
+  const switchOff = useCommand("rule_set", { label: () => "Switched off" })
   const reading = preview?.reading as Reading | null | undefined
   const chosen = strength ?? ((preview?.strength as Strength) || "Prefer")
-  const submit = async () => {
-    if (!reading) return
-    if (await add({ text, overrides: overrides as Record<string, never>, strength: chosen })) {
-      setText("")
-      setOverrides({})
-      setStrength(null)
+  const unread = !!text.trim() && !!preview && !reading
+  const clear = () => (setText(""), setOverrides({}), setStrength(null))
+  /** ↩ or the button: add what Friday read, or hand what it couldn't read to Claude. Read again if typing ran ahead. */
+  const submit = async (replacing?: string) => {
+    if (!text.trim()) return
+    const now = settled === typed && preview ? preview : await query("rule_read", { text, overrides: JSON.stringify(overrides) }).catch(() => null)
+    if (!now) return
+    if (!now.reading) {
+      if (ai) (askClaude(text, "rule", true), clear())
+      return
+    }
+    if (await add({ text, overrides: overrides as Record<string, never>, strength: strength ?? ((now.strength as Strength) || "Prefer") })) {
+      if (replacing) await switchOff({ name: replacing, enabled: false })
+      clear()
     }
   }
   const set = (k: string, v: unknown) => setOverrides({ ...overrides, [k]: v })
@@ -117,25 +134,35 @@ function NewRule() {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <Icon name="plus" size={18} style={{ color: "var(--color-accent-300)" }} />
         <input value={text} onChange={(e) => (setText(e.target.value), setOverrides({}), setStrength(null))} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="I prefer eating lunch before 1pm" aria-label="New rule" style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontSize: 16 }} />
-        <button className="btn btn-primary" onClick={submit} disabled={!reading}>
-          Add rule
+        <button className="btn btn-primary" onClick={() => submit()} disabled={!text.trim() || (unread && !ai)}>
+          {unread && ai && <Icon name="sparkle" />}
+          {unread && ai ? "Ask Claude" : "Add rule"}
         </button>
       </div>
       {text.trim() && preview ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 14px", marginLeft: 28, borderRadius: "var(--radius-md)", background: "var(--color-surface)" }}>
-          <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: reading ? "var(--color-accent-300)" : "var(--fr-warn)" }}>
-            <Icon name={reading ? "check-circle" : "question"} size={13} />
-            {reading ? "Friday read this as" : preview.effect}
-          </span>
-          {!reading && (
-            // What the grammar can't read goes to Claude (COMBINED.md 37), as rules to confirm.
-            <button className="btn btn-secondary" onClick={() => askClaude(text, "rule")} style={{ alignSelf: "flex-start" }}>
-              <Icon name="sparkle" />
-              Ask Claude to read it
-            </button>
-          )}
-          {reading && (
+          {!reading ? (
+            // What the grammar can't read goes to Claude (COMBINED.md 37), as rules to confirm: ↩ sends it.
+            <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12, color: ai ? "var(--color-neutral-300)" : "var(--fr-warn)", textWrap: "pretty" }}>
+              <Icon name={ai ? "sparkle" : "question"} size={13} style={{ color: ai ? "var(--color-accent-300)" : undefined, flexShrink: 0, alignSelf: "center" }} />
+              {ai ? (
+                <span>Friday can’t read this one itself. Press ↩ and Claude will turn it into rules for you to check before anything changes.</span>
+              ) : (
+                <span>
+                  Friday can’t read that as a rule yet, and Claude isn’t connected to read it instead.{" "}
+                  <button className="fr-link" onClick={() => navigate("/settings/integrations")} style={{ fontSize: 12 }}>
+                    Connect Claude
+                  </button>{" "}
+                  or try one of the examples.
+                </span>
+              )}
+            </span>
+          ) : (
             <>
+              <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-accent-300)" }}>
+                <Icon name="check-circle" size={13} />
+                Friday read this as
+              </span>
               <H size={16}>{preview.sentence}</H>
               {reading.kind === "pace" ? (
                 // A pace for weekdays is a setting: it shows under Your week, with no strength to choose.
@@ -160,6 +187,9 @@ function NewRule() {
                   </div>
                 </>
               )}
+              {(preview.conflicts ?? []).map((c) => (
+                <Conflict key={c.other} conflict={c} mine={chosen} theirs={strengths.get(c.other)} onReplace={() => submit(c.other)} />
+              ))}
             </>
           )}
         </div>
@@ -175,6 +205,24 @@ function NewRule() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/** Before adding: “Contradicts …” (or “Overlaps …”), what it means at these strengths, and adding it in that one's place. */
+function Conflict({ conflict: c, mine, theirs, onReplace }: { conflict: Schemas["RuleConflict"]; mine: string; theirs?: string; onReplace: () => void }) {
+  const outcome = c.overlap ? "" : mine === "Always" && theirs === "Always" ? " Both are Always, so Friday can’t keep both." : theirs === "Always" ? " That one is Always, so this one would give way there." : mine === "Always" ? " This one is Always, so that one would give way there." : " Friday would bend one of them; once both are in, you can say which wins."
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 12px", borderRadius: "var(--radius-md)", background: c.overlap ? "var(--color-bg)" : "color-mix(in srgb, var(--fr-warn) 9%, var(--color-bg))" }}>
+      <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12, textWrap: "pretty" }}>
+        <Icon name={c.overlap ? "info" : "warning"} size={13} style={{ color: c.overlap ? "var(--color-neutral-400)" : "var(--fr-warn)", flexShrink: 0, alignSelf: "center" }} />
+        <span>
+          {c.overlap ? "Overlaps" : "Contradicts"} <span style={{ fontWeight: 500 }}>“{c.other_sentence}”</span>: {c.why}.{outcome}
+        </span>
+      </span>
+      <button className="fr-link" onClick={onReplace} style={{ alignSelf: "flex-start", fontSize: 12, marginLeft: 21 }}>
+        Add this, and switch that one off
+      </button>
     </div>
   )
 }
@@ -239,7 +287,8 @@ function Fields(props: { reading: Reading; overrides: Record<string, unknown>; o
   )
 }
 
-function RuleRow({ rule, locked, said }: { rule: Schemas["RuleOut"]; locked: boolean; said: Map<string, string> }) {
+function RuleRow({ rule, locked, byName }: { rule: Schemas["RuleOut"]; locked: boolean; byName: Map<string, Schemas["RuleOut"]> }) {
+  const said = (name: string) => byName.get(name)?.sentence ?? name
   const set = useCommand("rule_set", { label: () => "Saved" })
   const remove = useCommand("rule_remove", { label: () => "Deleted" })
   const win = useCommand("rule_win", { label: (o) => o.result.message ?? "Saved" })
@@ -265,12 +314,12 @@ function RuleRow({ rule, locked, said }: { rule: Schemas["RuleOut"]; locked: boo
           )}
           {(rule.wins_over ?? []).map((other) => (
             <button key={other} className="fr-plain fr-hover-text" title="Click to let it win instead" onClick={() => !locked && win({ winner: other, loser: rule.name })} style={{ fontSize: 12 }}>
-              Wins over “{said.get(other) ?? other}”
+              Wins over “{said(other)}”
             </button>
           ))}
           {(rule.gives_way_to ?? []).map((other) => (
             <button key={other} className="fr-plain fr-hover-text" title="Click to let this one win instead" onClick={() => !locked && win({ winner: rule.name, loser: other })} style={{ fontSize: 12 }}>
-              Gives way to “{said.get(other) ?? other}”
+              Gives way to “{said(other)}”
             </button>
           ))}
         </span>
@@ -289,6 +338,47 @@ function RuleRow({ rule, locked, said }: { rule: Schemas["RuleOut"]; locked: boo
         <span />
       )}
       {asking && <Clash rule={rule} onAnswer={(winner, loser) => (win({ winner, loser }), setAsking(false))} />}
+      {rule.enabled &&
+        (rule.contradicts ?? []).map((c) => (
+          <Contradiction key={c.other} rule={rule} other={byName.get(c.other)} conflict={c} locked={locked} onWin={(winner, loser) => win({ winner, loser })} onOff={() => set({ name: rule.name, enabled: false })} />
+        ))}
+    </div>
+  )
+}
+
+/** Two rules that can't both be kept, found from the rules themselves. Both bend: which should win? One is Always:
+ * it wins, and this one says it gives way. Both Always: Friday can't keep both, so one should go. */
+function Contradiction(props: { rule: Schemas["RuleOut"]; other?: Schemas["RuleOut"]; conflict: Schemas["RuleConflict"]; locked: boolean; onWin: (winner: string, loser: string) => void; onOff: () => void }) {
+  const { rule, other, conflict: c, locked, onWin, onOff } = props
+  const mine = rule.strength === "Always"
+  const theirs = other?.strength === "Always"
+  if (mine && !theirs) return null // it wins; the other rule says it gives way
+  const both = mine && theirs
+  const bends = !mine && !theirs
+  return (
+    <div style={{ gridColumn: "2 / -1", display: "flex", flexDirection: "column", gap: 8, padding: "10px 12px", borderRadius: "var(--radius-md)", background: theirs && !both ? "var(--color-bg)" : "color-mix(in srgb, var(--fr-warn) 9%, var(--color-bg))" }}>
+      <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12, textWrap: "pretty" }}>
+        <Icon name={theirs && !both ? "info" : "warning"} size={13} style={{ color: theirs && !both ? "var(--color-neutral-400)" : "var(--fr-warn)", flexShrink: 0, alignSelf: "center" }} />
+        <span>
+          {theirs && !both ? "Gives way to" : "Contradicts"} <span style={{ fontWeight: 500 }}>“{c.other_sentence}”</span>
+          {theirs && !both ? ", which is Always" : ""}: {c.why}.{both ? " Both are Always, so Friday can’t keep both." : bends ? " Which should win?" : ""}
+        </span>
+      </span>
+      {!locked && bends && (
+        <span style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: 21 }}>
+          <button className="btn btn-secondary" onClick={() => onWin(rule.name, c.other)} style={{ fontSize: 12 }}>
+            {rule.sentence}
+          </button>
+          <button className="btn btn-secondary" onClick={() => onWin(c.other, rule.name)} style={{ fontSize: 12 }}>
+            {c.other_sentence}
+          </button>
+        </span>
+      )}
+      {!locked && both && (
+        <button className="fr-link" onClick={onOff} style={{ alignSelf: "flex-start", fontSize: 12, marginLeft: 21 }}>
+          Switch this one off
+        </button>
+      )}
     </div>
   )
 }

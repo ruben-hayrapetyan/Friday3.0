@@ -8,15 +8,16 @@ from typing import Any
 
 from friday.api.commands import Changed, RuleAddInput, RuleRef, RuleSetInput, RuleTextInput, RuleWinInput
 from friday.api.types import Empty
-from friday.api.views import RuleClashOut, RuleOut, RuleReadOut
+from friday.api.views import RuleClashOut, RuleConflict, RuleOut, RuleReadOut
 from friday.commands.registry import Ctx, command, query
 from friday.commands.settings import write_setting
 from friday.core.db import rows
 from friday.core.items import FieldError
-from friday.core.rule_text import Reading, read, sentence, spec, with_overrides
+from friday.core.rule_text import Reading, days_spoken, read, sentence, spec, with_overrides
 from friday.core.settings import REFERENCE_RULES
 from friday.core.textnorm import identity_text, norm
 from friday.core.time import ampm_in
+from friday.planner.contradictions import Conflict, against, contradictions
 from friday.planner.learning import learnable
 from friday.planner.snapshot import take_snapshot
 from friday.planner.store import area_names, current_plan, kv_get
@@ -90,12 +91,42 @@ def rule_read(ctx: Ctx, inp: RuleTextInput) -> RuleReadOut:
     reading, strength = described(ctx, inp.text, {k: v for k, v in overrides.items() if v is not None or k == "days"})
     if reading is None:
         return RuleReadOut(reading=None, strength=strength, sentence="", effect="Friday can’t read that as a rule yet.")
-    kind = spec(reading, strength, "preview", [], [])["type"]
-    effect = EFFECT.get(kind, "")
+    areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
+    new = spec(reading, strength, "preview", areas, presets)
+    effect = EFFECT.get(new["type"], "")
     if reading.events:
         found = events_named(ctx, reading.events)
         effect += f". Matches {', '.join(found)}" if found else ". No event has those words in its title yet"
-    return RuleReadOut(reading=reading.to_dict(), strength=strength, sentence=sentence(reading), effect=effect)
+    if reading.kind == "pace":
+        effect += replaced_paces(ctx, dict(reading.paces or ()))
+    mine = readings(ctx)
+    said = {r.name: words(r, mine) for r in ctx.settings["rules"]}
+    rules = [r.model_dump() for r in ctx.settings["rules"]]
+    conflicts = [conflict_out(c, said) for c in against(new, rules)] if reading.kind not in NOT_COMPARED else []
+    return RuleReadOut(
+        reading=reading.to_dict(), strength=strength, sentence=sentence(reading), effect=effect, conflicts=conflicts
+    )
+
+
+NOT_COMPARED = {"pace", "deadlines"}  # settings, not rules: a pace replaces that day's, and deadlines are built in
+
+
+def replaced_paces(ctx: Ctx, days: dict[str, str]) -> str:
+    """ ". Replaces Push on Saturdays": a weekday's pace is one setting, so a new one takes the old one's place."""
+    weekly = ctx.settings["pace"].weekly
+    gone: dict[str, list[str]] = {}
+    for day, pace in days.items():
+        if weekly.get(day) not in (None, pace):
+            gone.setdefault(weekly[day], []).append(day)
+    if not gone:
+        return ""
+    return ". Replaces " + " and ".join(f"{pace} on {days_spoken(tuple(d))}" for pace, d in gone.items())
+
+
+def conflict_out(c: Conflict, said: dict[str, str]) -> RuleConflict:
+    return RuleConflict(
+        other=c.other, other_sentence=said.get(c.other, c.other), why=c.why, days=list(c.days), overlap=c.overlap
+    )
 
 
 def events_named(ctx: Ctx, words: tuple[str, ...]) -> list[str]:
@@ -211,6 +242,8 @@ def rules(ctx: Ctx, inp: Empty) -> list[RuleOut]:
     report = current_report(ctx)
     by_day = report.get("rule_totals_by_day", {})
     wins = kv_get(ctx.conn, "rule_wins", [], ctx.user_id)
+    said = {r.name: words(r, mine) for r in ctx.settings["rules"]}
+    against_each = contradictions([r.model_dump() for r in ctx.settings["rules"]], wins)
     out = []
     for r in ctx.settings["rules"]:
         source = "you" if r.name.startswith("you:") else "default" if r.name in DEFAULT_WEIGHT else "learned"
@@ -220,7 +253,7 @@ def rules(ctx: Ctx, inp: Empty) -> list[RuleOut]:
             RuleOut(
                 name=r.name,
                 type=r.type,
-                sentence=words(r, mine),
+                sentence=said[r.name],
                 source=source,
                 strength=strength_of(r, mine),
                 enabled=r.enabled,
@@ -232,6 +265,7 @@ def rules(ctx: Ctx, inp: Empty) -> list[RuleOut]:
                 background=source == "default" and (r.type in BACKGROUND or unset_buffer(r)),
                 wins_over=[w["loser"] for w in wins if w["winner"] == r.name],
                 gives_way_to=[w["winner"] for w in wins if w["loser"] == r.name],
+                contradicts=[conflict_out(c, said) for c in against_each.get(r.name, [])],
             )
         )
     return out

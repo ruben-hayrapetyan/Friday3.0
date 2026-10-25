@@ -1,6 +1,7 @@
 // Ask Claude (personal's, COMBINED.md 20, 37): say what you want ("move my 5pm to Thursday", "prioritize assignments
 // over readings"), see what Claude would change as Friday's own commands, tick what to keep, and apply. Nothing runs
-// before Apply; applied, the changes undo together. ⌘↩ asks; Esc closes.
+// before Apply; applied, the changes undo together. ⌘↩ asks; Esc closes. Opened with `now` (a rule Friday couldn't
+// read, sent with ↩ from Rules), it asks at once.
 
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
@@ -35,6 +36,14 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
     }
     setBusy(false)
   }
+  const asked = useRef(false)
+  useEffect(() => {
+    if (ask?.now && !asked.current) {
+      asked.current = true
+      run()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const apply = async () => {
     if (!answer) return
     const ids: number[] = []
@@ -96,6 +105,7 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
         {answer && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {answer.reply && <span style={{ textWrap: "pretty" }}>{answer.reply}</span>}
+            {!answer.reply && !answer.actions.length && <span className="fr-kicker">Claude had no changes to suggest for this. Try saying it another way.</span>}
             {answer.actions.length > 0 && <span className="fr-eyebrow">Claude wants to</span>}
             {answer.actions.map((a, i) => {
               const on = kept.includes(i)

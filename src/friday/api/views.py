@@ -411,6 +411,17 @@ class RuleReadOut(Model):
     strength: str
     sentence: str
     effect: str
+    conflicts: list["RuleConflict"] = []  # the switched-on rules it would contradict or overlap
+
+
+class RuleConflict(Model):
+    """Two rules at odds, found from the rules themselves (`planner/contradictions.py`)."""
+
+    other: str  # the other rule's name
+    other_sentence: str
+    why: str  # "together they leave no time for deep work on Saturdays"
+    days: list[str] = []  # the weekdays it bites on; empty for all of them
+    overlap: bool = False  # the same kind of rule for the same work, not a contradiction: the stricter counts
 
 
 class RuleOut(Model):
@@ -426,6 +437,7 @@ class RuleOut(Model):
     background: bool = False  # the planner's own workings, folded away below the rules people tune
     wins_over: list[str] = []  # rules you said this one beats when they clash ("Which should win?")
     gives_way_to: list[str] = []  # rules you said beat this one
+    contradicts: list[RuleConflict] = []  # switched-on rules this one can't be kept together with
 
 
 class SetupOut(Model):

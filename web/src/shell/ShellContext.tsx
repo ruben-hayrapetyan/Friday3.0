@@ -51,8 +51,8 @@ interface Shell {
   setDrawerWidth: (width: number) => void
   way: Schemas["OtherWay"] | null // another way being previewed on the calendar
   setWay: (way: Schemas["OtherWay"] | null) => void
-  ask: { text: string; purpose: "anything" | "rule" } | null // what Ask Claude opens with
-  askClaude: (text?: string, purpose?: "anything" | "rule") => void
+  ask: { text: string; purpose: "anything" | "rule"; now?: boolean } | null // what Ask Claude opens with
+  askClaude: (text?: string, purpose?: "anything" | "rule", now?: boolean) => void // now: ask at once, no second ↩
   layout: Layout // for the window's width (shell/layout.ts)
   drawerOver: boolean // the drawer slides over the calendar rather than beside it
   navOpen: boolean // the sidebar, slid over the page in a narrow window
@@ -86,9 +86,9 @@ export function ShellProvider({ today, children }: { today: string; children: Re
   const [agendaDay, setAgendaDay] = useState<string | null>(null)
   const [event, setEvent] = useState<EventDraft | null>(null)
   const [way, setWay] = useState<Schemas["OtherWay"] | null>(null)
-  const [ask, setAsk] = useState<{ text: string; purpose: "anything" | "rule" } | null>(null)
-  const askClaude = useCallback((text = "", purpose: "anything" | "rule" = "anything") => {
-    setAsk({ text, purpose })
+  const [ask, setAsk] = useState<{ text: string; purpose: "anything" | "rule"; now?: boolean } | null>(null)
+  const askClaude = useCallback((text = "", purpose: "anything" | "rule" = "anything", now = false) => {
+    setAsk({ text, purpose, now })
     setDialog("ask")
   }, [])
   const [drawerWidth, setWidth] = useState(loadWidth)

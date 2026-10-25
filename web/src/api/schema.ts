@@ -5133,6 +5133,28 @@ export interface components {
              */
             other_sentence?: string;
         };
+        /**
+         * RuleConflict
+         * @description Two rules at odds, found from the rules themselves (`planner/contradictions.py`).
+         */
+        RuleConflict: {
+            /** Other */
+            other: string;
+            /** Other Sentence */
+            other_sentence: string;
+            /** Why */
+            why: string;
+            /**
+             * Days
+             * @default []
+             */
+            days?: string[];
+            /**
+             * Overlap
+             * @default false
+             */
+            overlap?: boolean;
+        };
         /** RuleOut */
         RuleOut: {
             /** Name */
@@ -5171,6 +5193,11 @@ export interface components {
              * @default []
              */
             gives_way_to?: string[];
+            /**
+             * Contradicts
+             * @default []
+             */
+            contradicts?: components["schemas"]["RuleConflict"][];
         };
         /** RuleReadOut */
         RuleReadOut: {
@@ -5184,6 +5211,11 @@ export interface components {
             sentence: string;
             /** Effect */
             effect: string;
+            /**
+             * Conflicts
+             * @default []
+             */
+            conflicts?: components["schemas"]["RuleConflict"][];
         };
         /** RuleRef */
         RuleRef: {
