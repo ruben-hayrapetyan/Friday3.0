@@ -90,7 +90,7 @@ export function ConnectGoogle({ need = "calendar", again = false, why, done }: {
     setPressed(false)
   }
   const failed = problem ?? (access.state === "failed" ? access.message : null)
-  const note = failed ?? (waiting ? "Google's page is open in your browser: choose your account and allow Friday. This updates by itself." : (why ?? "Opens Google's page in your browser. Allow Friday there, then come back."))
+  const note = failed ?? (waiting ? "Google's page is open in your browser: choose your account and click Allow (if it says the app isn't verified, click Advanced, then Go to Friday). This updates by itself." : (why ?? "Opens Google's page in your browser. Allow Friday there, then come back."))
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
       <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -141,7 +141,17 @@ export function TerminalWay() {
   )
 }
 
-/** Before the first sign-in: what the key file is, and a way to choose it. */
+// Getting the key file, step by step, each with the Google Cloud page it happens on (about five minutes, once).
+const CLOUD = "https://console.cloud.google.com"
+const STEPS: { what: string; how: string; link?: [string, string] }[] = [
+  { what: "Make a project", how: "Sign in with the Google account whose calendar you want, name the project “Friday” and click Create.", link: ["New project", `${CLOUD}/projectcreate`] },
+  { what: "Turn on the Calendar API", how: "Click Enable. (For mail too, turn on the Gmail API the same way.)", link: ["Calendar API", `${CLOUD}/apis/library/calendar-json.googleapis.com`] },
+  { what: "Say who may sign in", how: "Click Get started: app name “Friday”, your email, audience External. Then under Audience, add your own Gmail address as a test user.", link: ["Consent screen", `${CLOUD}/apis/credentials/consent`] },
+  { what: "Make the key file", how: "Create credentials → OAuth client ID → application type “Desktop app” → Create → Download JSON. It lands in Downloads as client_secret_….json.", link: ["Credentials", `${CLOUD}/apis/credentials`] },
+  { what: "Give it to Friday", how: "Click Choose the key file below and pick that file. Then Connect, and on Google's page click Allow. If Google says it hasn't verified the app, that's expected for your own: click Advanced, then Go to Friday." },
+]
+
+/** Before the first sign-in: what the key file is, how to get one, and a way to choose it. */
 function KeyFile() {
   const client = useQueryClient()
   const file = useRef<HTMLInputElement>(null)
@@ -156,16 +166,33 @@ function KeyFile() {
     if (file.current) file.current.value = "" // so the same file can be chosen again
   }
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-start" }}>
       <span style={{ fontSize: 12, color: "var(--color-neutral-300)", textWrap: "pretty" }}>
-        Friday signs in to Google with a key file of your own, made once in{" "}
-        <a className="fr-link" href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer">
-          Google Cloud
-        </a>
-        : turn on the Google Calendar API (and the Gmail API for mail), then create an OAuth client ID for a “Desktop app” and download its .json file. Choose that file here; it stays on this Mac.
+        Google only lets apps it knows read your calendar. Friday is your own app, so you introduce it to Google once, for free: Google gives you a small <b style={{ fontWeight: 500 }}>key file</b> (client_secret_….json). It's Friday's ID card, not your password, and it stays on this Mac. About five minutes:
       </span>
+      <ol style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8, alignSelf: "stretch" }}>
+        {STEPS.map((step, n) => (
+          <li key={step.what} style={{ display: "grid", gridTemplateColumns: "22px minmax(0,1fr) auto", gap: 10, alignItems: "start" }}>
+            <span className="tnum" style={{ width: 20, height: 20, borderRadius: "50%", display: "grid", placeItems: "center", fontSize: 11, background: "color-mix(in srgb, var(--color-accent) 18%, transparent)", color: "var(--color-accent-200)" }}>
+              {n + 1}
+            </span>
+            <span style={{ display: "flex", flexDirection: "column", gap: 1, fontSize: 12 }}>
+              <span style={{ fontWeight: 500 }}>{step.what}</span>
+              <span style={{ color: "var(--color-neutral-400)", textWrap: "pretty" }}>{step.how}</span>
+            </span>
+            {step.link ? (
+              <a className="btn btn-ghost" href={step.link[1]} target="_blank" rel="noreferrer" style={{ fontSize: 12, padding: "2px 8px", whiteSpace: "nowrap" }}>
+                {step.link[0]}
+                <Icon name="arrow-square-out" size={12} />
+              </a>
+            ) : (
+              <span />
+            )}
+          </li>
+        ))}
+      </ol>
       <input ref={file} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && send(e.target.files[0])} />
-      <button className="btn btn-secondary" onClick={() => file.current?.click()} style={{ fontSize: 12 }}>
+      <button className="btn btn-primary" onClick={() => file.current?.click()} style={{ fontSize: 12 }}>
         <Icon name="key" />
         Choose the key file
       </button>
