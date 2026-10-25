@@ -33,6 +33,7 @@ from friday.commands import (  # noqa: F401
     settings,
     setup,
     shove,
+    sleeping,
     tokens,
     undo,
     ways,

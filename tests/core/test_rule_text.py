@@ -113,3 +113,41 @@ def test_working_more_so_nothing_is_late_reads_as_deadlines_first(text: str) -> 
 
 def test_rules_that_mention_due_dates_still_read_as_themselves() -> None:
     assert read("finish essays 2 days before they're due")[0] == Reading("early", "essays", amount=2.0)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "gym and climbing club are optional",
+        "make the gym sessions on tuesday and thursday as well as climbing club be not mandatory",
+        "skip gym and climbing club if there is too much work",
+        "gym and climbing club can be skipped",
+    ],
+)
+def test_events_that_give_way_to_work(text: str) -> None:
+    reading, _ = read(text)
+    assert reading == Reading("optional", "events", events=("gym", "climbing club"))
+    assert sentence(reading) == "Gym and Climbing Club are optional: work takes the time when it must"
+    rule = spec(reading, "Prefer", "you:x", [], [])
+    assert (rule["type"], rule["params"]["titles"]) == ("skippable", ["gym", "climbing club"])
+
+
+@pytest.mark.parametrize(
+    ("text", "strength"),
+    [
+        ("if i am going to climbing club the next day then the previous day must end at 10:00", "Always"),
+        ("no work after 10pm the night before climbing club", "Prefer"),
+        ("stop working at 10 the night before climbing club", "Prefer"),
+    ],
+)
+def test_the_night_before_an_event_ends_early(text: str, strength: str) -> None:
+    reading, read_strength = read(text)
+    assert (
+        reading == Reading("night_before", "work", at="22:00", events=("climbing club",)) and read_strength == strength
+    )
+    assert sentence(reading) == "No work after 10pm the night before Climbing Club"
+    rule = spec(reading, "Always", "you:x", [], [])
+    assert (rule["type"], rule["params"]) == (
+        "before_event",
+        {"titles": ["climbing club"], "after": "22:00", "price": "forbid"},
+    )

@@ -11,9 +11,11 @@ from friday.api.types import Empty
 from friday.api.views import RuleClashOut, RuleOut, RuleReadOut
 from friday.commands.registry import Ctx, command, query
 from friday.commands.settings import write_setting
+from friday.core.db import rows
 from friday.core.items import FieldError
 from friday.core.rule_text import Reading, read, sentence, spec, with_overrides
 from friday.core.settings import REFERENCE_RULES
+from friday.core.textnorm import identity_text, norm
 from friday.core.time import ampm_in
 from friday.planner.learning import learnable
 from friday.planner.snapshot import take_snapshot
@@ -54,6 +56,9 @@ EFFECT = {
     "finish_early": "Friday aims to finish early",
     "after_event": "Friday places it right after",
     "pace": "Every week, Friday plans less on Easy days and more on Push days",
+    "skippable": "Friday plans around them as usual, and uses their time only when work would be late otherwise; "
+    "the plan says when one gives way",
+    "before_event": "Friday ends those days early",
     "late_work": "Already built in and always on: when work would be late, Friday plans past your pace and your "
     "preferences, Easy days too. Only your sleep, your daily limit and rules set to Always hold",
 }
@@ -86,9 +91,27 @@ def rule_read(ctx: Ctx, inp: RuleTextInput) -> RuleReadOut:
     if reading is None:
         return RuleReadOut(reading=None, strength=strength, sentence="", effect="Friday can’t read that as a rule yet.")
     kind = spec(reading, strength, "preview", [], [])["type"]
-    return RuleReadOut(
-        reading=reading.to_dict(), strength=strength, sentence=sentence(reading), effect=EFFECT.get(kind, "")
-    )
+    effect = EFFECT.get(kind, "")
+    if reading.events:
+        found = events_named(ctx, reading.events)
+        effect += f". Matches {', '.join(found)}" if found else ". No event has those words in its title yet"
+    return RuleReadOut(reading=reading.to_dict(), strength=strength, sentence=sentence(reading), effect=effect)
+
+
+def events_named(ctx: Ctx, words: tuple[str, ...]) -> list[str]:
+    """The upcoming events a rule's words find, as the planner matches them: by the words in their titles."""
+    rules = ctx.settings["text"].rules()
+    wanted = [identity_text(norm(w, rules)) for w in words]
+    titles = [
+        r["title"]
+        for r in rows(
+            ctx.conn,
+            "SELECT DISTINCT title FROM items WHERE user_id = ? AND when_kind = 'fixed' AND status = 'todo' "
+            "AND start_utc >= ? ORDER BY title",
+            [ctx.user_id, ctx.now_text],
+        )
+    ]
+    return [t for t in titles if any(w and w in identity_text(norm(t, rules)) for w in wanted)][:6]
 
 
 @command("rule_add", affects_plan=True)

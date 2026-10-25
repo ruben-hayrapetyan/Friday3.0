@@ -2,7 +2,8 @@
 // it and what's next, with Done, Pause, Switch and more. In a planned block: Start and Done (no More time:
 // COMBINED.md 31). In a class:
 // the class. Free: how long, what's next, and the best things to start, one tap each. The timer is an overlay on
-// the plan, never a change to it (DESIGN §8), so Start and Pause move nothing on the calendar.
+// the plan, never a change to it (DESIGN §8), so Start and Pause move nothing on the calendar. With sleep tracking on
+// (Settings → Schedule), a slim row on top offers the tap that fits the hour: I'm up, Ready to work, Going to bed.
 
 import { useState } from "react"
 import { useNavigate } from "react-router"
@@ -10,7 +11,7 @@ import type { Block } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useClock, useElapsed } from "@/hooks/useClock"
-import { useNow, useStatus } from "@/hooks/queries"
+import { useNow, useSleep, useStatus } from "@/hooks/queries"
 import { clock, dur, hms, span, when } from "@/lib/format"
 import { fromMin, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
@@ -48,6 +49,7 @@ export function Dock() {
       }}
     >
       {work && menu === "more" && <MoreMenu itemId={cur.item_id} onSwitch={() => setMenu("swap")} onClose={() => setMenu(null)} />}
+      <SleepTap />
       {cur && timer && timer.item_id === cur.item_id ? (
         <Timing cur={cur} elapsed={timer.elapsed_s ?? 0} next={next} dot={color(cur.area, cur.preset)} compact={compact} menu={menu} onMenu={toggle} />
       ) : cur?.fixed ? (
@@ -58,6 +60,31 @@ export function Dock() {
         <Free until={now.next?.start ?? null} gap={now.gap_minutes} next={now.next?.title ?? null} fits={now.fits} today={today} />
       )}
       {work && menu === "swap" && <Swaps options={now.swaps} onClose={() => setMenu(null)} />}
+    </div>
+  )
+}
+
+const TAPS = {
+  up: { icon: "sun-horizon", ask: "Just up?", button: "I'm up" },
+  ready: { icon: "coffee", ask: "Morning routine done?", button: "Ready to work" },
+  bed: { icon: "moon", ask: "Heading to sleep?", button: "Going to bed" },
+} as const
+
+/** Tracked sleep's one tap, when there's one to make; Friday learns your nights and mornings from them. */
+function SleepTap() {
+  const sleep = useSleep().data
+  const mark = useCommand("sleep_mark", { label: (o) => o.result.message ?? "Saved" })
+  const [busy, setBusy] = useState(false)
+  if (!sleep?.on || !sleep.next) return null
+  const kind = sleep.next
+  const tap = TAPS[kind]
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 14px 6px 18px", boxShadow: "inset 0 -1px 0 var(--fr-hairline)", fontSize: 12, color: "var(--color-neutral-400)" }}>
+      <Icon name={tap.icon} size={14} style={{ color: "var(--color-accent-300)" }} />
+      <span style={{ flex: 1 }}>{tap.ask}</span>
+      <button className="btn btn-secondary fr-press" disabled={busy} onClick={async () => (setBusy(true), await mark({ kind }), setBusy(false))} style={{ fontSize: 12, padding: "2px 10px" }}>
+        {tap.button}
+      </button>
     </div>
   )
 }

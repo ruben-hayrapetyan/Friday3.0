@@ -16,7 +16,7 @@ import { WeekPaces } from "./WeekPaces"
 
 type Strength = "Prefer" | "Strongly" | "Always"
 const STRENGTHS: Strength[] = ["Prefer", "Strongly", "Always"]
-const EXAMPLES = ["I prefer eating lunch before 1pm", "No work after 10pm", "Keep Saturday mornings free", "At most 6 hours a day", "Deep work in the morning", "Gym right after class", "Finish things a day early", "Go easier on Saturdays"]
+const EXAMPLES = ["I prefer eating lunch before 1pm", "No work after 10pm", "Keep Saturday mornings free", "At most 6 hours a day", "Deep work in the morning", "Gym right after class", "Finish things a day early", "Go easier on Saturdays", "Gym is optional", "No work after 10pm the night before climbing club"]
 const SOURCES: Record<string, [string, string]> = { you: ["user", "Yours"], learned: ["sparkle", "Learned from you"], default: ["sliders-horizontal", "Built in"] }
 const DAY_OPTS: { value: string; label: string; days: string[] | null }[] = [
   { value: "every", label: "Every day", days: null },
@@ -140,8 +140,16 @@ function NewRule() {
               {reading.kind === "pace" ? (
                 // A pace for weekdays is a setting: it shows under Your week, with no strength to choose.
                 <span className="fr-kicker">{preview.effect}. It shows under Your week.</span>
-              ) : reading.kind === "deadlines" ? (
+              ) : reading.kind === "deadlines" || reading.kind === "optional" ? (
                 <span className="fr-kicker" style={{ textWrap: "pretty" }}>{preview.effect}.</span>
+              ) : reading.kind === "night_before" ? (
+                <>
+                  <span className="fr-kicker" style={{ textWrap: "pretty" }}>{preview.effect}{chosen === "Always" ? ". It never bends." : ", unless work would be late."}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span className="fr-kicker">Strength</span>
+                    <Seg options={STRENGTHS} value={chosen} onPick={setStrength} onBg />
+                  </div>
+                </>
               ) : (
                 <>
                   <span className="fr-kicker">{preview.effect}{chosen === "Always" ? ", and never bends." : ", unless it has to."}</span>

@@ -60,6 +60,14 @@ class ReviewOut(Model):
     sessions: list[dict[str, Any]]
     finished: list[ItemOut]  # remaining reached 0: confirm with `done`
     settled: dict[str, int] = {}  # block key → minutes already answered (by `settle` or an earlier review)
+    sleep: list["SleepAsk"] = []  # tracked sleep: the taps that day is missing, to add or skip
+
+
+class SleepAsk(Model):
+    kind: Literal["up", "ready", "bed"]
+    date: str  # the day the review is of
+    at: str  # a local time to start from: your usual one
+    question: str
 
 
 class PacesOut(Model):
@@ -207,6 +215,7 @@ class BriefOut(Model):
     fixed: list[ItemOut]  # today's fixed items
     alerts: list[Alert]
     pace: str | None  # "Easy pace until Fri", "Back to Normal today"; None on an ordinary day
+    sleep: str | None = None  # tracked sleep: a short night, with an Easy day offered beside it
     summary: str
     text: str
 
@@ -445,3 +454,38 @@ class ToReviewOut(Model):
     items: list[ItemOut]
     sources: dict[int, str]
     started: bool  # a review is under way (Review again was pressed and not everything is checked yet)
+
+
+class SleepNightOut(Model):
+    date: str  # the evening's day
+    bed: str | None = None  # local times
+    up: str | None = None  # the next morning
+    ready: str | None = None
+    ready_timed: bool = False  # ready is the first timer you started, not a tap
+    bed_id: int | None = None
+    up_id: int | None = None
+    ready_id: int | None = None
+    slept_min: int | None = None
+    planned_min: int  # the sleep your bedtime and wake time give that night
+    routine_min: int | None = None
+
+
+class SleepChangeOut(Model):
+    days: list[str]
+    field: Literal["bedtime", "wake"]
+    now: str  # HH:MM
+    learned: str
+
+
+class SleepOut(Model):
+    on: bool
+    next: Literal["up", "ready", "bed"] | None = None  # the tap the Now bar offers now
+    up: str | None = None  # this morning's, local
+    ready: str | None = None
+    nights: list[SleepNightOut] = []  # the last two weeks, newest first
+    average_slept_min: int | None = None  # over the last seven recorded nights
+    routine_min: dict[str, int] = {}  # learned, by the weekday of the morning
+    changes: list[SleepChangeOut] = []  # learned times half an hour or more off the ones set
+    suggested: dict[str, Any] | None = None  # the whole sleep setting with them, for `settings_set`
+    recorded_nights: int = 0
+    min_nights: int = 4

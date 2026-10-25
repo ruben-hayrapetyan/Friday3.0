@@ -6,7 +6,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
-import { type Block, query } from "@/api/client"
+import { type Block, query, type Schemas } from "@/api/client"
 import { H, Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useItems } from "@/hooks/queries"
@@ -97,6 +97,7 @@ export function DailyReview({ date, onWeek }: { date: string; onWeek: () => void
             <H size={32}>{dayName(date)}</H>
             <span style={{ color: "var(--color-neutral-400)" }}>{subline(cards.length, cards.filter((b) => all[b.key]).length, review.reviewed)}</span>
           </div>
+          {!!review.sleep?.length && <SleepAsks asks={review.sleep} />}
           {cards.length > 0 && <Bars cards={cards} answers={all} current={card?.key ?? null} />}
           {card && !finished && <Card card={card} pos={`${at + 1} of ${cards.length}`} partial={partial} onPick={(s) => (s === "partial" ? setPartial(halfOf(card)) : answer(s))} onPartial={setPartial} onLog={(m) => answer("partial", m)} />}
           {!cards.length && !finished && <span style={{ color: "var(--color-neutral-400)" }}>Nothing was planned that day.</span>}
@@ -117,6 +118,41 @@ export function DailyReview({ date, onWeek }: { date: string; onWeek: () => void
         </div>
         <Log cards={cards} answers={all} />
       </div>
+    </div>
+  )
+}
+
+/** Tracked sleep's taps this day is missing: the time to add (your usual one to start from), or skip it. */
+function SleepAsks({ asks }: { asks: Schemas["SleepAsk"][] }) {
+  return (
+    <div className="fr-well" style={{ display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px" }}>
+      <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
+        <Icon name="moon" size={14} style={{ color: "var(--color-accent-300)" }} />
+        Forgot a tap? Add the time, or skip it.
+      </span>
+      {asks.map((a) => (
+        <SleepAskRow key={a.kind} ask={a} />
+      ))}
+    </div>
+  )
+}
+
+function SleepAskRow({ ask }: { ask: Schemas["SleepAsk"] }) {
+  const add = useCommand("sleep_mark", { label: (o) => o.result.message ?? "Added" })
+  const skip = useCommand("sleep_skip", { label: () => "Skipped" })
+  const [time, setTime] = useState(ask.at.slice(11, 16))
+  // A bedtime in the small hours is the next morning's date.
+  const day = ask.kind === "bed" && time < "12:00" ? addDays(ask.date, 1) : ask.kind === "bed" ? ask.date : ask.at.slice(0, 10)
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <span style={{ flex: 1, minWidth: 180 }}>{ask.question}</span>
+      <input type="time" className="input" value={time} onChange={(e) => setTime(e.target.value)} aria-label={ask.question} style={{ width: 110, padding: "3px 6px", minHeight: 0, fontSize: 12 }} />
+      <button className="btn btn-secondary fr-press" disabled={!time} onClick={() => add({ kind: ask.kind, at: `${day}T${time}` })} style={{ fontSize: 12, padding: "3px 10px" }}>
+        Add
+      </button>
+      <button className="btn btn-ghost" onClick={() => skip({ date: ask.date, kind: ask.kind })} style={{ fontSize: 12, padding: "3px 8px" }}>
+        Skip
+      </button>
     </div>
   )
 }

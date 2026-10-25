@@ -6562,6 +6562,308 @@
     }
    }
   },
+  "/api/c/sleep_mark": {
+   "post": {
+    "summary": "Going to bed, up, or ready to work: now, or at the time you give.",
+    "operationId": "sleep_mark",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SleepMarkInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SleepMarkResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/sleep_mark_edit": {
+   "post": {
+    "summary": "A tap at the wrong time, moved to the right one.",
+    "operationId": "sleep_mark_edit",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SleepMarkEditInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SleepMarkEditResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/sleep_mark_remove": {
+   "post": {
+    "summary": "A tap you didn't mean.",
+    "operationId": "sleep_mark_remove",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SleepMarkRef"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SleepMarkRemoveResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/sleep_skip": {
+   "post": {
+    "summary": "A tap you don't remember: the review stops asking for it.",
+    "operationId": "sleep_skip",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SleepSkipInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SleepSkipResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/sleep": {
+   "get": {
+    "summary": "Your nights, your morning routine and the bedtimes and wake times Friday has learned, with the tap to offer",
+    "operationId": "sleep",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SleepOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/review": {
    "get": {
     "summary": "A day's review sheet: its blocks, timer sessions and logged work, and items that look finished.",
@@ -9092,6 +9394,17 @@
        }
       ],
       "title": "Pace"
+     },
+     "sleep": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sleep"
      },
      "summary": {
       "type": "string",
@@ -15535,6 +15848,14 @@
       "type": "object",
       "title": "Settled",
       "default": {}
+     },
+     "sleep": {
+      "items": {
+       "$ref": "#/components/schemas/SleepAsk"
+      },
+      "type": "array",
+      "title": "Sleep",
+      "default": []
      }
     },
     "additionalProperties": false,
@@ -18228,6 +18549,620 @@
      "result"
     ],
     "title": "SkipResult"
+   },
+   "SleepAsk": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "enum": [
+       "up",
+       "ready",
+       "bed"
+      ],
+      "title": "Kind"
+     },
+     "date": {
+      "type": "string",
+      "title": "Date"
+     },
+     "at": {
+      "type": "string",
+      "title": "At"
+     },
+     "question": {
+      "type": "string",
+      "title": "Question"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "kind",
+     "date",
+     "at",
+     "question"
+    ],
+    "title": "SleepAsk"
+   },
+   "SleepChangeOut": {
+    "properties": {
+     "days": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Days"
+     },
+     "field": {
+      "type": "string",
+      "enum": [
+       "bedtime",
+       "wake"
+      ],
+      "title": "Field"
+     },
+     "now": {
+      "type": "string",
+      "title": "Now"
+     },
+     "learned": {
+      "type": "string",
+      "title": "Learned"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "days",
+     "field",
+     "now",
+     "learned"
+    ],
+    "title": "SleepChangeOut"
+   },
+   "SleepMarkEditInput": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "at": {
+      "type": "string",
+      "title": "At"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "at"
+    ],
+    "title": "SleepMarkEditInput"
+   },
+   "SleepMarkEditResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "SleepMarkEditResult"
+   },
+   "SleepMarkInput": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "enum": [
+       "bed",
+       "up",
+       "ready"
+      ],
+      "title": "Kind"
+     },
+     "at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "At"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "kind"
+    ],
+    "title": "SleepMarkInput"
+   },
+   "SleepMarkRef": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id"
+    ],
+    "title": "SleepMarkRef"
+   },
+   "SleepMarkRemoveResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "SleepMarkRemoveResult"
+   },
+   "SleepMarkResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "SleepMarkResult"
+   },
+   "SleepNightOut": {
+    "properties": {
+     "date": {
+      "type": "string",
+      "title": "Date"
+     },
+     "bed": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bed"
+     },
+     "up": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Up"
+     },
+     "ready": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ready"
+     },
+     "ready_timed": {
+      "type": "boolean",
+      "title": "Ready Timed",
+      "default": false
+     },
+     "bed_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bed Id"
+     },
+     "up_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Up Id"
+     },
+     "ready_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ready Id"
+     },
+     "slept_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Slept Min"
+     },
+     "planned_min": {
+      "type": "integer",
+      "title": "Planned Min"
+     },
+     "routine_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Routine Min"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "date",
+     "planned_min"
+    ],
+    "title": "SleepNightOut"
+   },
+   "SleepOut": {
+    "properties": {
+     "on": {
+      "type": "boolean",
+      "title": "On"
+     },
+     "next": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "up",
+         "ready",
+         "bed"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Next"
+     },
+     "up": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Up"
+     },
+     "ready": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ready"
+     },
+     "nights": {
+      "items": {
+       "$ref": "#/components/schemas/SleepNightOut"
+      },
+      "type": "array",
+      "title": "Nights",
+      "default": []
+     },
+     "average_slept_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Average Slept Min"
+     },
+     "routine_min": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Routine Min",
+      "default": {}
+     },
+     "changes": {
+      "items": {
+       "$ref": "#/components/schemas/SleepChangeOut"
+      },
+      "type": "array",
+      "title": "Changes",
+      "default": []
+     },
+     "suggested": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Suggested"
+     },
+     "recorded_nights": {
+      "type": "integer",
+      "title": "Recorded Nights",
+      "default": 0
+     },
+     "min_nights": {
+      "type": "integer",
+      "title": "Min Nights",
+      "default": 4
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "on"
+    ],
+    "title": "SleepOut"
+   },
+   "SleepSkipInput": {
+    "properties": {
+     "date": {
+      "type": "string",
+      "title": "Date"
+     },
+     "kind": {
+      "type": "string",
+      "enum": [
+       "bed",
+       "up",
+       "ready"
+      ],
+      "title": "Kind"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "date",
+     "kind"
+    ],
+    "title": "SleepSkipInput"
+   },
+   "SleepSkipResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "SleepSkipResult"
    },
    "SourceAddResult": {
     "properties": {

@@ -12,11 +12,12 @@ from friday.commands.fields import item_out
 from friday.commands.progress import day_blocks, day_bounds, reviewed_minutes
 from friday.commands.queries import block_out, now, paces, plan
 from friday.commands.registry import Ctx, command, query
+from friday.commands.sleeping import missing, planned_min, recorded
 from friday.core.db import one, rows
 from friday.core.rows import item_from_row
 from friday.core.time import format_utc, parse_utc
 from friday.planner.progress import minutes_by_item, remaining_minutes
-from friday.planner.snapshot import pace_periods
+from friday.planner.snapshot import day_overrides, pace_periods
 from friday.planner.store import area_names, current_plan, kv_get
 
 
@@ -58,7 +59,13 @@ def review(ctx: Ctx, inp: DateInput) -> ReviewOut:
     )
     settled = {k: v for k, v in answered.items() if v is not None}
     return ReviewOut(
-        date=day.isoformat(), reviewed=reviewed, blocks=blocks, sessions=sessions, finished=finished, settled=settled
+        date=day.isoformat(),
+        reviewed=reviewed,
+        blocks=blocks,
+        sessions=sessions,
+        finished=finished,
+        settled=settled,
+        sleep=missing(ctx, day),
     )
 
 
@@ -104,7 +111,24 @@ def brief(ctx: Ctx, inp: Empty) -> BriefOut:
         f"• {r.title} ({spoken(r.planned_min)} today{', due ' + r.due[5:16].replace('T', ' ') if r.due else ''})"
         for r in rocks
     ]
-    return BriefOut(rocks=rocks, fixed=today.fixed, alerts=alerts, pace=pace, summary=summary, text="\n".join(lines))
+    slept = short_night(ctx)
+    return BriefOut(
+        rocks=rocks, fixed=today.fixed, alerts=alerts, pace=pace, sleep=slept, summary=summary, text="\n".join(lines)
+    )
+
+
+def short_night(ctx: Ctx) -> str | None:
+    """Last night, when you tracked it and it fell an hour or more short of the sleep you plan for."""
+    if not ctx.settings["sleep_tracking"].on or ctx.settings["sleep"] is None:
+        return None
+    evening = ctx.today - timedelta(days=1)
+    night = recorded(ctx, 2).get(evening)
+    if night is None or night.slept_min is None:
+        return None
+    short = planned_min(ctx, day_overrides(ctx.conn, ctx.user_id), evening) - night.slept_min
+    if short < 60:
+        return None
+    return f"You slept {spoken(night.slept_min)} last night, {spoken(short)} less than you plan for. An Easy day?"
 
 
 def spoken(minutes: int) -> str:

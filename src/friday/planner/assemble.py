@@ -99,6 +99,7 @@ def assemble(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
         "late_hours": late_hours(problem, result.plan, evaluation.over_units),
         "notices": notices(problem, result.demoted_locks)
         + clashes(problem, snapshot.settings["time"].timezone)
+        + given_way(problem, blocks, snapshot.settings["time"].timezone)
         + missing_rule_types(snapshot),
         "changes": changes(snapshot, problem, blocks),
         "solve": {
@@ -167,6 +168,19 @@ def clashes(problem: Problem, tz: str) -> list[str]:
             if b.title != a.title and not in_class_exam(a, b):
                 when = to_local(max(a.start_utc, b.start_utc), tz)
                 out.append(f"{a.title} and {b.title} overlap on {when:%a %b} {when.day} at {ampm(when)}")
+    return out
+
+
+def given_way(problem: Problem, blocks: list[PlannedBlock], tz: str) -> list[str]:
+    """Optional events the plan uses the time of (`skippable`), because the work wouldn't fit otherwise."""
+    out = []
+    for event in sorted((f for f in problem.fixed if f.skippable), key=lambda f: f.start_utc):
+        over = [b for b in blocks if b.start_utc < event.end_utc and b.end_utc > event.start_utc]
+        if over:
+            when = to_local(event.start_utc, tz)
+            work = problem.items.get(key_of(over[0].item_id))
+            needs = work.title if work else "work"
+            out.append(f"Skip {event.title} on {when:%a} at {ampm(when)}: {needs} needs the time")
     return out
 
 

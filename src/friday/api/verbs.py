@@ -754,6 +754,41 @@ VERBS = {
         "Clear time: `30m`, `12:00-13:30`, `rest`, `day fri`. Nothing is made later without your say.",
     ),
     "skip": Verb("POST", "/api/c/skip", commands.ItemRef, True, True, "Skip one occurrence of a repeating item."),
+    "sleep": Verb(
+        "GET",
+        "/api/q/sleep",
+        commands.Empty,
+        False,
+        False,
+        "Your nights, your morning routine and the bedtimes and wake times Friday has learned, with the tap to offer",
+    ),
+    "sleep_mark": Verb(
+        "POST",
+        "/api/c/sleep_mark",
+        commands.SleepMarkInput,
+        True,
+        True,
+        "Going to bed, up, or ready to work: now, or at the time you give.",
+    ),
+    "sleep_mark_edit": Verb(
+        "POST",
+        "/api/c/sleep_mark_edit",
+        commands.SleepMarkEditInput,
+        True,
+        True,
+        "A tap at the wrong time, moved to the right one.",
+    ),
+    "sleep_mark_remove": Verb(
+        "POST", "/api/c/sleep_mark_remove", commands.SleepMarkRef, True, True, "A tap you didn't mean."
+    ),
+    "sleep_skip": Verb(
+        "POST",
+        "/api/c/sleep_skip",
+        commands.SleepSkipInput,
+        True,
+        False,
+        "A tap you don't remember: the review stops asking for it.",
+    ),
     "source_add": Verb(
         "POST", "/api/c/source_add", commands.SourceInput, True, False, "Add a calendar feed to read into the inbox."
     ),

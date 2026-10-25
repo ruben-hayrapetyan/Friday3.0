@@ -307,6 +307,16 @@ class ExamFocus(Model):
     words: tuple[str, ...] = ("exam", "prelim", "midterm", "final")
 
 
+class SleepTracking(Model):
+    """Recording your sleep (Settings → Schedule): off until you turn it on. When on, the Now bar has one-tap "I'm up",
+    "Ready to work" and "Going to bed", and Friday learns from them (`learn/sleep.py`): your real bedtime and wake time
+    (offered, never changed without a yes), your morning routine (kept light) and your sleep debt."""
+
+    on: bool = False
+    min_nights: int = Field(4, ge=2, le=30)  # recorded nights a weekday group needs before Friday suggests times
+    morning_hours: float = Field(4.0, ge=1, le=8)  # how long after waking "Ready to work" stays on offer
+
+
 class Sittings(Model):
     """personal's split preference (COMBINED.md 38): "I like to do things in one go, but split problem sets first".
     `one_go` makes splitting cost `factor` times more, except for the kinds in `split_first`, which cost half."""
@@ -400,6 +410,7 @@ SETTINGS_TYPES: dict[str, Any] = {
     "presets": dict[str, Preset],
     "kind_order": tuple[str, ...],  # presets, most important first: who gets the time when it can't all fit
     "short_term_first": bool,  # the Short term list's work comes before anything on the Long term list
+    "sleep_tracking": SleepTracking,
     "rules": tuple[RuleSpec, ...],
     "templates": dict[str, tuple[TemplateStep, ...]],
     "paces": dict[str, Dials],
@@ -440,6 +451,7 @@ DEFAULTS: dict[str, Any] = {
     "presets": DEFAULT_PRESETS,
     "kind_order": (),
     "short_term_first": False,
+    "sleep_tracking": SleepTracking(),
     "rules": REFERENCE_RULES,
     "templates": DEFAULT_TEMPLATES,
     "paces": DEFAULT_PACES,

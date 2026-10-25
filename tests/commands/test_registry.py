@@ -18,6 +18,7 @@ from tests.commands.helpers import App, new_app
 # Tables a command's undo doesn't restore: the log itself, the plan generation, and derived plans.
 DERIVED = {"command_log", "kv", "plans", "blocks", "users", "sqlite_sequence"}
 KV_STATE = {
+    "sleep_skip",
     "not_duplicates",  # kept in kv
     "review_again",
     "reviewed",
@@ -46,6 +47,12 @@ def essay(app: App) -> int:
 
 def chore(app: App) -> int:
     return app.do("add", text="laundry ~1h")["item"]["id"]
+
+
+def slept(app: App) -> int:
+    app.do("settings_set", key="sleep_tracking", value={"on": True})
+    app.do("sleep_mark", kind="up")
+    return app.do("sleep")["nights"][0]["up_id"]
 
 
 def gym(app: App) -> dict[str, Any]:
@@ -260,6 +267,10 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "review_again": lambda app: {},
     "reviewed": lambda app: (app.do("review_again"), {"ids": [essay(app)], "keep": False})[1],
     "event_going": lambda app: {"title": "Poker night"},
+    "sleep_mark": lambda app: (app.do("settings_set", key="sleep_tracking", value={"on": True}), {"kind": "up"})[1],
+    "sleep_mark_edit": lambda app: {"id": slept(app), "at": "2026-10-19T07:30"},
+    "sleep_mark_remove": lambda app: {"id": slept(app)},
+    "sleep_skip": lambda app: {"date": "2026-10-18", "kind": "bed"},
     "other_way_pick": lambda app: {"weights": {"energy": 2.0}, "seed": 1, "rule_totals": {"energy": 100}},
     "add": add_sample,
     "edit": lambda app: {"id": essay(app), "title": "long essay", "duration_min": 180},

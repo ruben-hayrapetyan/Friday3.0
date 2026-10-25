@@ -39,5 +39,9 @@ export const useProjects = () => useQuery({ queryKey: ["projects"], queryFn: () 
 
 export const useExams = () => useQuery({ queryKey: ["exams"], queryFn: () => query("exams") })
 
+// Tracked sleep (Settings → Schedule): checked each minute, since what the Now bar offers ("I'm up", "Going to bed")
+// changes with the clock.
+export const useSleep = () => useQuery({ queryKey: ["sleep"], queryFn: () => query("sleep"), refetchInterval: 60_000 })
+
 export const useLoad = (weeks: number) =>
   useQuery({ queryKey: ["load", weeks], queryFn: () => query("load", { weeks }), retry: false })

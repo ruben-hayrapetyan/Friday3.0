@@ -59,6 +59,9 @@ class BuildInput:
     minimize_changes_scale: float = 1.0
     hold: tuple[int, int, int] | None = None  # the running timer's item, held from (start, end) without a pin
     day_overrides: Mapping[date, Mapping[str, Any]] = field(default_factory=dict)  # bedtime, wake, margin, cap
+    routine_min: Mapping[str, int] = field(default_factory=dict)  # tracked sleep: the morning routine by weekday
+    woke_utc: int | None = None  # tracked sleep: this morning's "I'm up"
+    ready_today: bool = False  # tracked sleep: ready to work this morning
     end_utc: int | None = None  # truncates the grid (tests, brute force)
 
 
@@ -121,6 +124,14 @@ def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOc
     """Occurrences overlapping [now, end + a day), and every fixed item by id."""
     kinds = inp.settings["event_kinds"]
     text = inp.settings["text"].rules()
+    # Events you said are optional don't wall off their time; the `skippable` rule prices it instead.
+    optional = [
+        identity_text(norm(t, text))
+        for r in inp.settings["rules"]
+        if r.type == "skippable" and r.enabled
+        for t in r.params.get("titles", [])
+        if t.strip()
+    ]
     out, by_id = [], {}
     for item in inp.items:
         if item.when != "fixed":
@@ -132,8 +143,10 @@ def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOc
         kind = kinds.get(item.event_kind or "other", kinds["other"])
         before = item.buffer_before_min if item.buffer_before_min is not None else kind.before_min
         after = item.buffer_after_min if item.buffer_after_min is not None else kind.after_min
+        title = identity_text(norm(item.title, text))
+        skippable = item.blocks_time and any(o in title for o in optional)
         out.append(FixedOcc(item.title, item.event_kind or "other", start, end_at, tuple(item.tags), before, after,
-                            item.blocks_time, identity_text(norm(item.title, text))))  # fmt: skip
+                            item.blocks_time and not skippable, title, skippable))  # fmt: skip
     return out, by_id
 
 
@@ -351,7 +364,10 @@ def nights(inp: BuildInput, spec: GridSpec, first: date, days: int) -> dict[date
     for offset in range(-1, days + 2):
         day = first + timedelta(days=offset)
         bedtime, wake, margin = night_times(inp.settings, inp.day_overrides, day, spec.timezone, spec.day_start)
-        out[day] = Night(bedtime, wake, margin, inp.debt_hours.get(day, 0.0))
+        routine = inp.routine_min.get(WEEKDAYS[(day + timedelta(days=1)).weekday()])
+        if offset == -1 and inp.woke_utc is not None:  # last night: up early frees the morning, late moves the routine
+            wake, routine = inp.woke_utc, 0 if inp.ready_today else routine
+        out[day] = Night(bedtime, wake, margin, inp.debt_hours.get(day, 0.0), routine)
     return out
 
 

@@ -105,6 +105,16 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
           {brief && !brief.alerts.length && <span style={{ color: "var(--color-neutral-500)" }}>Nothing pressing.</span>}
         </div>
       </div>
+      {brief?.sleep && (
+        // Tracked sleep: a short night, and the Easy day to answer it with.
+        <div className="fr-well" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginTop: 12 }}>
+          <Icon name="moon" size={16} style={{ color: "var(--color-accent-300)", flex: "none" }} />
+          <span style={{ flex: 1, textWrap: "pretty" }}>{brief.sleep}</span>
+          <button className="btn btn-secondary" onClick={() => pace({ name: "Easy", for_days: 1 })} style={{ fontSize: 12 }}>
+            Easy today
+          </button>
+        </div>
+      )}
       <div className="fr-row" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", paddingTop: 16 }}>
         <span className="fr-kicker">Pace today</span>
         {paces && <Seg options={Object.keys(paces.paces)} value={paces.now_label} onPick={(p) => pace({ name: p, for_days: 1 })} />}

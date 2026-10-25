@@ -374,3 +374,47 @@ def test_asking_for_deadlines_first_says_it_is_on_and_switches_it_back_on(tmp_pa
     app.do("rule_set", name="late_tasks", enabled=False)
     assert app.do("rule_add", text="don't let work be late")["message"].startswith("Deadlines come first is back on")
     assert all(r["enabled"] for r in app.do("rules") if r["name"] in ("late_work", "late_tasks"))
+
+
+def test_an_optional_event_gives_way_only_when_work_would_be_late(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do("add", title="Gym", when="fixed", start="2026-10-20T08:00", end="2026-10-20T12:00")
+    app.do("add", text="essay ~2h", release="2026-10-20T08:00", due="2026-10-20T12:00")
+    app.do("replan")
+    assert app.do("status")["late"]  # the gym walls off the only time there is
+    out = app.do("rule_add", text="gym is optional")
+    assert out["message"].startswith("Added: Gym is optional")
+    app.do("replan")
+    essay = [b for b in app.do("plan")["blocks"] if b["title"] == "essay"]
+    assert essay and all("2026-10-20T08:00" <= b["start"] < "2026-10-20T12:00" for b in essay)
+    assert not app.do("status")["late"]
+    assert "Skip Gym on Tue at 8am: essay needs the time" in app.do("status")["notices"]
+
+
+def test_an_optional_event_keeps_its_time_when_the_work_fits_elsewhere(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do("add", title="Gym", when="fixed", start="2026-10-20T08:00", end="2026-10-20T12:00")
+    app.do("add", text="essay ~2h due tue 12pm")
+    app.do("rule_add", text="gym is optional")
+    app.do("replan")
+    essay = [b for b in app.do("plan")["blocks"] if b["title"] == "essay"]
+    assert essay and not any("2026-10-20T07:45" <= b["start"] < "2026-10-20T12:15" for b in essay)
+
+
+def test_no_work_the_night_before_an_early_event(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do("add", title="Climbing Club", when="fixed", start="2026-10-21T06:00", end="2026-10-21T08:00")
+    said = "if i am going to climbing club the next day then the previous day must end at 10:00"
+    assert app.do("rule_read", text=said)["strength"] == "Always"  # "must": what the Rules page adds it with
+    app.do("rule_add", text=said, strength="Always")
+    app.do("add", text="essay ~2h")
+    problem = build_problem(build_input(take_snapshot(app.conn, app.now_utc)))
+    essay = next(i for i in problem.items.values() if i.title == "essay")
+    late_tuesday = [
+        s for s, slot in enumerate(problem.grid.slots) if str(slot.date) == "2026-10-20" and slot.day_minute >= 22 * 60
+    ]
+    late_monday = [
+        s for s, slot in enumerate(problem.grid.slots) if str(slot.date) == "2026-10-19" and slot.day_minute >= 22 * 60
+    ]
+    assert late_tuesday and not set(late_tuesday) & essay.allowed_set  # Tuesday night, before Wednesday's club
+    assert set(late_monday) & essay.allowed_set  # Monday night is as usual

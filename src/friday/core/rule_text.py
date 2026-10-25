@@ -11,7 +11,11 @@ which days), and from a Reading and a strength to one of the planner's rule type
 - `go easier on saturday and go harder on sunday`, `take it easy on weekends`: a pace for those weekdays, every week
   (not a planner rule: `pace.weekly`, which the day's dials come from);
 - `push when necessary for work not to be late`, `don't let work be late`: deadlines first, which is built in
-  (`late_work`), so it's said to be on already rather than added.
+  (`late_work`), so it's said to be on already rather than added;
+- `gym and climbing club are optional`, `skip gym if there's too much work`: `skippable`, events whose time is
+  used only when work would otherwise be late;
+- `no work after 10pm the night before climbing club`, `if I'm going to climbing club the next day, the day before
+  must end at 10`: `before_event`.
 """
 
 import re
@@ -21,7 +25,7 @@ from typing import Any, Literal
 from friday.core.time import ampm_in
 
 Strength = Literal["Prefer", "Strongly", "Always"]
-Kind = Literal["window", "days", "free", "cap", "early", "after", "pace", "deadlines"]
+Kind = Literal["window", "days", "free", "cap", "early", "after", "pace", "deadlines", "optional", "night_before"]
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 NAMES = {
     "monday": "mon",
@@ -56,6 +60,7 @@ class Reading:
     amount: float | None = None  # hours a day for cap, days for early
     event: str | None = None  # after
     paces: tuple[tuple[str, str], ...] | None = None  # pace: (weekday, pace name), every week
+    events: tuple[str, ...] | None = None  # optional, night_before: words in the events' titles
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -114,7 +119,9 @@ def read(text: str) -> tuple[Reading | None, Strength]:
     t = re.sub(r"\s+", " ", t)
     negated = bool(re.search(r"\b(no|never|don't|not|avoid)\b", t))
     t = re.sub(r"\b(no|never|don't do|don't|do not|not|avoid)\b", " ", t)
-    for parse in (read_pace, read_cap, read_early, read_free, read_window, read_days, read_after, read_deadlines):
+    readers = (read_pace, read_optional, read_night_before, read_cap, read_early, read_free, read_window, read_days,
+               read_after, read_deadlines)  # fmt: skip
+    for parse in readers:
         found = parse(" " + " ".join(t.split()) + " ", negated)
         if found:
             return found, strength
@@ -163,6 +170,68 @@ def read_pace(t: str, negated: bool) -> Reading | None:
     if not found:
         return None
     return Reading("pace", "pace", paces=tuple((d, found[d]) for d in DAYS if d in found))
+
+
+def titles_in(words: str) -> tuple[str, ...]:
+    """The events a sentence names: `the gym sessions on tuesday and thursday as well as climbing club` is gym and
+    climbing club (the days go: a title is matched on every day it's on)."""
+    words = re.sub(rf"\b(?:on|every) {DAY_WORDS}", " ", words)
+    out = []
+    for part in re.split(r"\s*(?:,|&|\band\b|\bas well as\b|\bplus\b|\bor\b)\s*", words):
+        part = re.sub(r"\b(?:make|the|my|going to|go to|sessions?|meetings?|practices?)\b", " ", part)
+        part = " ".join(part.split())
+        if part and not days_of(part):
+            out.append(part)
+    return tuple(out)
+
+
+OPTIONAL = r"(?:optional|skippable|flexible)"
+REQUIRED = r"(?:mandatory|required|compulsory|necessary|essential)"
+BUSY = r"(?:too much|a lot|lots|busy|behind|swamped|work|late|time)"
+
+
+def read_optional(t: str, negated: bool) -> Reading | None:
+    """Events that give way to work: `X are optional`, `X not mandatory`, `skip X if there's too much work`."""
+    found = (
+        re.search(rf"^ ?(?:make |treat |consider )?(.+?) (?:be |is |are |as )?{OPTIONAL}\b", t)
+        or (negated and re.search(rf"^ ?(?:make |treat )?(.+?) (?:be|is|are) {REQUIRED}\b", t))
+        or re.search(
+            rf"^ ?(?:can |may |you can |friday can |ok to )?(?:skip|miss|drop) (.+?) (?:if|when|whenever) .*{BUSY}", t
+        )
+        or re.search(r"^ ?(.+?) (?:can|may) be (?:skipped|missed|dropped)\b", t)
+        or re.search(rf"^ ?if .*{BUSY}.*?,? (?:then )?(?:skip|miss|drop) (.+?) ?$", t)
+        or (negated and re.search(rf"^ ?(?:go to|attend) (.+?) (?:if|when|whenever) .*{BUSY}", t))
+    )
+    titles = titles_in(found[1]) if found else ()
+    return Reading("optional", "events", events=titles) if titles else None
+
+
+def evening(raw: str) -> str | None:
+    """A time the day ends at: `10` or `10:00` with no am or pm is the evening's."""
+    at = clock(raw)
+    if at and not re.search(r"(am|pm|noon|midnight)", raw) and int(at[:2]) < 12:
+        at = f"{int(at[:2]) + 12:02d}{at[2:]}"
+    return at
+
+
+def read_night_before(t: str, negated: bool) -> Reading | None:
+    """`no work after 10pm the night before climbing club`, `stop working at 10 before climbing club`, `if I'm going to
+    climbing club the next day, the day before must end at 10`."""
+    before = r"(?:on )?(?:the )?(?:night|day|evening)?s? ?before"
+    stop = r"(?:stop working|stop work|end(?: the| my)? day|finish(?: work)?|be done|wrap up|go to bed|be in bed)"
+    ended = negated and re.search(rf"^ ?(?:work |anything )?(?:after|past) {TIME} {before} (.+?) ?$", t)
+    if m := ended or re.search(rf"^ ?{stop} (?:at|by) {TIME} {before} (.+?) ?$", t):
+        at, titles = evening(m[1]), titles_in(m[2])  # no work after 10pm, or stop working at 10, the night before X
+    elif m := re.search(
+        rf"^ ?if (?:'m |am |im )?(?:going to|have|got) (.+?) (?:the )?(?:next day|tomorrow|next morning),? (?:then )?"
+        rf"(?:the )?(?:previous day|day before|night before|evening before|previous night)? ?"
+        rf"(?:must |should |has to |needs to |to )?(?:end|stop|finish|be done|wrap up) (?:at|by) {TIME}",
+        t,
+    ):
+        titles, at = titles_in(m[1]), evening(m[2])
+    else:
+        return None
+    return Reading("night_before", "work", at=at, events=titles) if at and titles else None
 
 
 def read_deadlines(t: str, negated: bool) -> Reading | None:
@@ -264,6 +333,10 @@ def days_words(days: tuple[str, ...] | None) -> str:
     return DAY_LABEL.get(days) or "on " + ", ".join(d.capitalize() for d in days)
 
 
+def titled(words: str) -> str:
+    return " ".join(w[:1].upper() + w[1:] for w in words.split())
+
+
 def days_spoken(days: tuple[str, ...]) -> str:
     """Saturdays; Saturdays and Sundays; weekends."""
     if days in (DAYS[:5], DAYS[5:]):
@@ -280,6 +353,12 @@ def sentence(r: Reading) -> str:
 def said(r: Reading) -> str:
     if r.kind == "deadlines":
         return "Deadlines come first"
+    if r.kind == "optional":
+        names = [titled(e) for e in r.events or ()]
+        listed = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+        return f"{listed} {'is' if len(names) == 1 else 'are'} optional: work takes the time when it must"
+    if r.kind == "night_before":
+        return f"No work after {r.at} the night before {' or '.join(titled(e) for e in r.events or ())}"
     if r.kind == "pace":
         by_pace: dict[str, list[str]] = {}
         for day, pace in r.paces or ():
@@ -331,6 +410,13 @@ WEIGHT = {"Prefer": 1.0, "Strongly": 3.0, "Always": 10.0}
 
 def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: list[str]) -> dict[str, Any]:
     """The planner rule for a reading: {type, name, weight, scope, reason, params}."""
+    if r.kind == "optional":  # their time is priced, not walled off (build), so it goes only when work must
+        return {"name": name, "type": "skippable", "weight": 1.0, "scope": None, "reason": sentence(r),
+                "params": {"titles": list(r.events or ()), "price": 8.0}}  # fmt: skip
+    if r.kind == "night_before":
+        price: Any = "forbid" if strength == "Always" else PRICE[strength]
+        return {"name": name, "type": "before_event", "weight": 1.0, "scope": None, "reason": sentence(r),
+                "params": {"titles": list(r.events or ()), "after": r.at, "price": price}}  # fmt: skip
     if r.kind == "deadlines":  # built in: `rule_add` makes sure it's on rather than adding a second one
         return {"name": "late_work", "type": "late_work", "weight": 10.0, "scope": None, "reason": sentence(r),
                 "params": {}}  # fmt: skip

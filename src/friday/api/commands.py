@@ -172,6 +172,25 @@ class ShoveOutput(Model):
     day: str | None = None  # the first day cleared (YYYY-MM-DD, a planning day), for the calendar to show it
 
 
+class SleepMarkInput(Model):
+    kind: Literal["bed", "up", "ready"]
+    at: str | None = None  # local time; now when left out
+
+
+class SleepMarkEditInput(Model):
+    id: int
+    at: str  # local time
+
+
+class SleepMarkRef(Model):
+    id: int
+
+
+class SleepSkipInput(Model):
+    date: str  # the reviewed day
+    kind: Literal["bed", "up", "ready"]
+
+
 class UnshoveInput(Model):
     id: int | None = None  # the most recent shove when left out
 

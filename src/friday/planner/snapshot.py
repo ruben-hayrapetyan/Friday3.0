@@ -6,7 +6,7 @@ Replans are reproducible from a saved snapshot: nothing after this point reads t
 import json
 import sqlite3
 from dataclasses import dataclass, field, replace
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import numpy as np
@@ -17,7 +17,8 @@ from friday.core.items import Item
 from friday.core.pace import Dials, PacePeriod
 from friday.core.rows import item_from_row
 from friday.core.settings import minutes_of
-from friday.core.time import format_utc, parse_utc, planning_date
+from friday.core.time import format_utc, parse_utc, planning_date, to_local, to_utc
+from friday.learn.sleep import Mark, learn, nights_from
 from friday.learn.state import loadings
 from friday.planner.cushion import cushion, cushioned
 from friday.planner.progress import progress_rows
@@ -50,6 +51,16 @@ class BlockRow:
 
 
 @dataclass(frozen=True)
+class SleepFacts:
+    """What tracked sleep tells the planner (Settings → Schedule → Track my sleep; None while it's off)."""
+
+    routine_min: dict[str, int]  # your morning routine, learned, by the morning's weekday
+    slept_min: dict[date, int]  # each recorded night's sleep, by its evening
+    woke_utc: int | None = None  # this morning's "I'm up"
+    ready: bool = False  # this morning's "Ready to work", or a timer started since waking
+
+
+@dataclass(frozen=True)
 class Snapshot:
     user_id: int
     now_utc: int
@@ -75,6 +86,7 @@ class Snapshot:
     multipliers: dict[str, float] = field(default_factory=dict)  # learned θ in effect (DESIGN §21.8)
     profile_version: int = 0  # 0: nothing learned yet
     cold_once: bool = False  # the next solve starts afresh, not from the current plan (a picked other way)
+    sleep: SleepFacts | None = None
 
 
 def take_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> Snapshot:
@@ -124,11 +136,44 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         plan_blocks=plan_blocks,
         next_stability=kv_get(conn, "next_stability", None, user_id),
         cold_once=kv_get(conn, "next_cold", None, user_id) is not None,
+        sleep=sleep_facts(conn, now_utc, settings, user_id),
         **learned(conn, now_utc, settings, user_id),
         log_since_plan=log_since(conn, json.loads(plan["report"]).get("last_command_id", 0) if plan else 0, user_id),
         last_command_id=int(
             conn.execute("SELECT coalesce(max(id), 0) FROM command_log WHERE user_id = ?", [user_id]).fetchone()[0]
         ),
+    )
+
+
+LEARN_DAYS = 56
+
+
+def sleep_facts(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any], user_id: int) -> SleepFacts | None:
+    """The last eight weeks of sleep taps, as the planner uses them: your routine, your nights, this morning."""
+    tracking = settings["sleep_tracking"]
+    tz = settings["time"].timezone
+    if not tracking.on or settings["sleep"] is None or tz is None:
+        return None
+    since = format_utc(now_utc - LEARN_DAYS * 1440)
+    marks = [
+        Mark(r["id"], r["kind"], to_local(parse_utc(r["at_utc"]), tz))
+        for r in rows(conn, "SELECT * FROM sleep_marks WHERE user_id = ? AND at_utc >= ?", [user_id, since])
+    ]
+    timers = [
+        to_local(parse_utc(r["start_utc"]), tz)
+        for r in rows(
+            conn,
+            "SELECT start_utc FROM progress WHERE user_id = ? AND source = 'timer' AND start_utc >= ?",
+            [user_id, since],
+        )
+    ]
+    nights = nights_from(marks, timers, minutes_of(settings["time"].day_start))
+    morning = nights.get(to_local(now_utc, tz).date() - timedelta(days=1))
+    return SleepFacts(
+        routine_min=learn(nights.values(), tracking.min_nights).routine_min,
+        slept_min={d: n.slept_min for d, n in nights.items() if n.slept_min is not None},
+        woke_utc=to_utc(morning.up.at, tz) if morning and morning.up else None,
+        ready=bool(morning and morning.ready_at),
     )
 
 

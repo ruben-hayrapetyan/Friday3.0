@@ -1908,6 +1908,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/sleep_mark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Going to bed, up, or ready to work: now, or at the time you give. */
+        post: operations["sleep_mark"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/sleep_mark_edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A tap at the wrong time, moved to the right one. */
+        post: operations["sleep_mark_edit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/sleep_mark_remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A tap you didn't mean. */
+        post: operations["sleep_mark_remove"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/sleep_skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A tap you don't remember: the review stops asking for it. */
+        post: operations["sleep_skip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/sleep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your nights, your morning routine and the bedtimes and wake times Friday has learned, with the tap to offer */
+        get: operations["sleep"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/review": {
         parameters: {
             query?: never;
@@ -2676,6 +2761,8 @@ export interface components {
             alerts: components["schemas"]["Alert"][];
             /** Pace */
             pace: string | null;
+            /** Sleep */
+            sleep?: string | null;
             /** Summary */
             summary: string;
             /** Text */
@@ -4822,6 +4909,11 @@ export interface components {
             settled?: {
                 [key: string]: number;
             };
+            /**
+             * Sleep
+             * @default []
+             */
+            sleep?: components["schemas"]["SleepAsk"][];
         };
         /** ReviewSubmitInput */
         ReviewSubmitInput: {
@@ -5617,6 +5709,214 @@ export interface components {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["ItemResult"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /** SleepAsk */
+        SleepAsk: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "up" | "ready" | "bed";
+            /** Date */
+            date: string;
+            /** At */
+            at: string;
+            /** Question */
+            question: string;
+        };
+        /** SleepChangeOut */
+        SleepChangeOut: {
+            /** Days */
+            days: string[];
+            /**
+             * Field
+             * @enum {string}
+             */
+            field: "bedtime" | "wake";
+            /** Now */
+            now: string;
+            /** Learned */
+            learned: string;
+        };
+        /** SleepMarkEditInput */
+        SleepMarkEditInput: {
+            /** Id */
+            id: number;
+            /** At */
+            at: string;
+        };
+        /** SleepMarkEditResult */
+        SleepMarkEditResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /** SleepMarkInput */
+        SleepMarkInput: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "bed" | "up" | "ready";
+            /** At */
+            at?: string | null;
+        };
+        /** SleepMarkRef */
+        SleepMarkRef: {
+            /** Id */
+            id: number;
+        };
+        /** SleepMarkRemoveResult */
+        SleepMarkRemoveResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /** SleepMarkResult */
+        SleepMarkResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /** SleepNightOut */
+        SleepNightOut: {
+            /** Date */
+            date: string;
+            /** Bed */
+            bed?: string | null;
+            /** Up */
+            up?: string | null;
+            /** Ready */
+            ready?: string | null;
+            /**
+             * Ready Timed
+             * @default false
+             */
+            ready_timed?: boolean;
+            /** Bed Id */
+            bed_id?: number | null;
+            /** Up Id */
+            up_id?: number | null;
+            /** Ready Id */
+            ready_id?: number | null;
+            /** Slept Min */
+            slept_min?: number | null;
+            /** Planned Min */
+            planned_min: number;
+            /** Routine Min */
+            routine_min?: number | null;
+        };
+        /** SleepOut */
+        SleepOut: {
+            /** On */
+            on: boolean;
+            /** Next */
+            next?: ("up" | "ready" | "bed") | null;
+            /** Up */
+            up?: string | null;
+            /** Ready */
+            ready?: string | null;
+            /**
+             * Nights
+             * @default []
+             */
+            nights?: components["schemas"]["SleepNightOut"][];
+            /** Average Slept Min */
+            average_slept_min?: number | null;
+            /**
+             * Routine Min
+             * @default {}
+             */
+            routine_min?: {
+                [key: string]: number;
+            };
+            /**
+             * Changes
+             * @default []
+             */
+            changes?: components["schemas"]["SleepChangeOut"][];
+            /** Suggested */
+            suggested?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Recorded Nights
+             * @default 0
+             */
+            recorded_nights?: number;
+            /**
+             * Min Nights
+             * @default 4
+             */
+            min_nights?: number;
+        };
+        /** SleepSkipInput */
+        SleepSkipInput: {
+            /** Date */
+            date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "bed" | "up" | "ready";
+        };
+        /** SleepSkipResult */
+        SleepSkipResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
             /** Provisional */
             provisional?: components["schemas"]["BlockOut"][] | null;
             changes?: components["schemas"]["ChangeOut"] | null;
@@ -10138,6 +10438,174 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sleep_mark: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SleepMarkInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SleepMarkResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sleep_mark_edit: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SleepMarkEditInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SleepMarkEditResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sleep_mark_remove: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SleepMarkRef"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SleepMarkRemoveResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sleep_skip: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SleepSkipInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SleepSkipResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sleep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SleepOut"];
                 };
             };
         };

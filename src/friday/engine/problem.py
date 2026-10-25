@@ -112,6 +112,7 @@ class FixedOcc:
     buffer_after: int = 0
     blocks_time: bool = True
     norm_title: str = ""
+    skippable: bool = False  # optional (`skippable` rule): its time is priced, not walled off
 
     @property
     def blocked_lo(self) -> int:
@@ -130,6 +131,7 @@ class Night:
     wake_utc: int
     margin_min: int = 60
     debt_hours: float = 0.0  # sleep debt D_n from the previous nights (DESIGN §12.3)
+    routine_min: int | None = None  # the next morning's routine, learned from tracked sleep; None: late_night's own
 
     @property
     def core(self) -> tuple[int, int]:

@@ -4,7 +4,8 @@ import math
 from datetime import timedelta
 from typing import Any, Literal
 
-from friday.core.time import MINUTES_PER_DAY, local_midnight, planning_date, to_local
+from friday.core.textnorm import identity_text, norm
+from friday.core.time import MINUTES_PER_DAY, UNIT_MIN, local_midnight, planning_date, to_local
 from friday.engine.pwl import Hinge, Measure
 from friday.engine.rules import (
     FORBID,
@@ -124,6 +125,8 @@ class LateNight(Rule):
             for day, night in problem.nights.items()
         }
         self.wake_on = {day + timedelta(days=1): night.wake_utc for day, night in problem.nights.items()}
+        # Tracked sleep's learned routine (0 once you're ready to work) in place of the hour after waking.
+        self.routine_on = {day + timedelta(days=1): night.routine_min for day, night in problem.nights.items()}
 
     def day_mult(self, day):
         return self.problem.scales[day].late_night_weight
@@ -138,7 +141,9 @@ class LateNight(Rule):
         multiplier = 1 + self.p.debt_factor * self.problem.scales[slot.day].debt_factor * debt
         gradient = self.p.gradient_start / 60
         wake = self.wake_on.get(slot.date)
-        waking = self.p.morning if wake is not None and slot.start_utc < wake + self.p.morning_min else 0.0
+        routine = self.routine_on.get(slot.date)
+        morning = self.p.morning_min if routine is None else routine
+        waking = self.p.morning if wake is not None and slot.start_utc < wake + morning else 0.0
         return self.p.a * max(0.0, min(tau, bed) - gradient) + self.p.b * multiplier * max(0.0, tau - bed) + waking
 
 
@@ -171,6 +176,62 @@ class TimePreference(Rule):
         if self.p.start is not None or self.p.end is not None or day.weekday() not in self.weekdays:
             return 0.0
         return math.inf if self.p.price == FORBID else float(self.p.price)
+
+
+def titled(problem: Any, titles: list[str]) -> Any:
+    """The events whose title has one of these in it ("gym" finds "Gym" and "Gym with Sam"), as `scope` reads titles."""
+    wanted = [identity_text(norm(t, problem.text)) for t in titles if t.strip()]
+    return [f for f in problem.fixed if f.kind != "shove" and any(w and w in f.norm_title for w in wanted)]
+
+
+@rule_type("skippable")
+class Skippable(Rule):
+    """`Gym and climbing club are optional`: their time isn't walled off (build leaves it free), but work there costs
+    in the wellbeing stage, so Friday plans around them as around any event and uses their time only when work would
+    otherwise be late; the plan then says which one gives way."""
+
+    default_stage = "wellbeing"
+
+    class Params(Rule.Params):
+        titles: list[str] = []
+        price: float = 4.0
+
+    def prepare(self, problem):
+        super().prepare(problem)
+        self.covered = problem.slots_covered((f.blocked_lo, f.blocked_hi) for f in titled(problem, self.p.titles))
+
+    def price(self, item, s):
+        return float(self.p.price) if s < self.problem.grid.S and self.covered[s] else 0.0
+
+
+@rule_type("before_event")
+class BeforeEvent(Rule):
+    """`No work after 10pm the night before climbing club`: on each planning day before one of its events, work from
+    `after` until the day ends costs (or, Always, is ruled out). The event's planning day is the one it starts in, so a
+    6am club on Wednesday makes Tuesday night early."""
+
+    class Params(Rule.Params):
+        titles: list[str] = []
+        after: Clock = 22 * 60
+        price: float | Literal["forbid"] = 2.0
+
+    def prepare(self, problem):
+        super().prepare(problem)
+        spec = problem.grid.spec
+        days = {planning_date(f.start_utc, spec.timezone, spec.day_start) for f in titled(problem, self.p.titles)}
+        self.nights = {d - timedelta(days=1) for d in days}
+
+    def matches(self, s: int) -> bool:
+        slot = self.problem.grid.slots[s]
+        return slot.date in self.nights and slot.day_minute + slot.units * UNIT_MIN > self.p.after
+
+    def price(self, item, s):
+        if s == self.problem.grid.S or self.p.price == FORBID:
+            return 0.0
+        return float(self.p.price) if self.matches(s) else 0.0
+
+    def forbids(self, item, s):
+        return self.p.price == FORBID and self.matches(s)
 
 
 @rule_type("energy")

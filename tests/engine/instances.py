@@ -29,6 +29,9 @@ EXTRA_RULES = [
          scope=dict(preset=["Chore", "Errand"])),
     dict(type="batch_by_day", name="batch_area", weight=2, params=dict(by="area"), scope=dict(firmness="hard")),
     dict(type="buffer", name="breathing_room", weight=3, params=dict(minutes="15m", by_preset={"Assignment": "30m"})),
+    dict(type="skippable", name="club_optional", weight=1, params=dict(titles=["club"], price=8)),
+    dict(type="before_event", name="early_before_lecture", weight=1,
+         params=dict(titles=["CS 1100"], after="22:00", price=2)),
 ]  # fmt: skip
 MIXED = scales(Dials(capacity=0.8, rest=1.5, spread=2.0, growth=0.5))
 

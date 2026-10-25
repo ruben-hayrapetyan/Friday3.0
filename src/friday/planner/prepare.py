@@ -135,8 +135,10 @@ def debt_hours(snapshot: Snapshot) -> dict[date, float]:
     owed: dict[date, float] = {}
     for back in range(0, DEBT_NIGHTS + 1):  # tonight too: work past bedtime so far makes tomorrow's late hours dearer
         night = first - timedelta(days=back)
-        bedtime, _, margin = night_times(settings, snapshot.day_overrides, night, time.timezone, start)
+        bedtime, wake, margin = night_times(settings, snapshot.day_overrides, night, time.timezone, start)
         hours = sum(max(0, min(end, bedtime + margin) - max(begin, bedtime)) for begin, end in sessions) / 60
+        if snapshot.sleep and night in snapshot.sleep.slept_min:  # a tracked night: what it fell short by, if more
+            hours = max(hours, (wake - bedtime - snapshot.sleep.slept_min[night]) / 60)
         for later in range(1, DEBT_NIGHTS + 1):  # it is owed on each of the three nights after it, from tonight on
             if (owed_on := night + timedelta(days=later)) >= first:
                 owed[owed_on] = owed.get(owed_on, 0.0) + hours
@@ -167,4 +169,7 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
         end_utc=end_utc,
         multipliers=snapshot.multipliers,
         debt_hours=debt_hours(snapshot),
+        routine_min=snapshot.sleep.routine_min if snapshot.sleep else {},
+        woke_utc=snapshot.sleep.woke_utc if snapshot.sleep else None,
+        ready_today=bool(snapshot.sleep and snapshot.sleep.ready),
     )
