@@ -11,7 +11,7 @@ import type { Block } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useClock, useElapsed } from "@/hooks/useClock"
-import { useNow, useSleep, useStatus } from "@/hooks/queries"
+import { useItem, useNow, useSleep, useStatus } from "@/hooks/queries"
 import { clock, dur, hms, span, when } from "@/lib/format"
 import { fromMin, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
@@ -152,6 +152,7 @@ function On({ cur, next, dot, compact, menu, onMenu }: State) {
   const nowMin = useClock()
   const start = useCommand("start", { label: (o) => o.result.message ?? "Timing" })
   const done = useCommand("done", { label: () => `${cur.title}: done` })
+  const worked = useItem(cur.item_id).data?.item.done_min ?? 0 // some done already: Resume, not Start
   return (
     <>
       <Bar pct={share(cur, nowMin)} />
@@ -172,9 +173,9 @@ function On({ cur, next, dot, compact, menu, onMenu }: State) {
           {span(toMin(cur.end) - nowMin)} left
         </span>
         <div style={buttons}>
-          <button className="btn btn-primary" onClick={() => start({ id: cur.item_id })} title="Start the timer (Space)" style={{ whiteSpace: "nowrap" }}>
+          <button className="btn btn-primary" onClick={() => start({ id: cur.item_id })} title={worked ? `Resume the timer: ${dur(worked)} done so far (Space)` : "Start the timer (Space)"} style={{ whiteSpace: "nowrap" }}>
             <Icon name="play" size={14} fill />
-            {!compact && "Start"}
+            {!compact && (worked ? "Resume" : "Start")}
           </button>
           <IconButton icon="check" label="Mark it done" onClick={() => done({ id: cur.item_id })} />
           <IconButton icon="dots-three" label="More" on={menu === "more"} onClick={() => onMenu("more")} />

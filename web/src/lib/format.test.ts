@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { dueLabel, hours, lateBy, parseLength, when } from "./format"
+import { dueLabel, hours, lateBy, parseLength, sittings, when } from "./format"
 import { toMin } from "./time"
 
 describe("rule lengths", () => {
@@ -45,5 +45,20 @@ describe("due labels", () => {
 describe("how late, roughly", () => {
   it("rounds to the quarter hour, at least a quarter, and says days past a day", () => {
     expect([lateBy(0.1), lateBy(1.4), lateBy(3), lateBy(25), lateBy(59)]).toEqual(["15m", "1h 30m", "3h", "1 day", "2 days"])
+  })
+})
+
+describe("timed sittings", () => {
+  it("are a day's timer rows in order, each from its start for as long as it ran", () => {
+    const rows = [
+      { source: "timer", minutes: 19, start: "2026-10-25T15:11" },
+      { source: "timer", minutes: 3, start: "2026-10-25T14:45" },
+      { source: "review", minutes: 30, start: "2026-10-25T16:00" },
+      { source: "timer", minutes: 40, start: "2026-10-25T11:40" },
+      { source: "timer", minutes: 10, start: "2026-10-24T09:00" },
+      { source: "timer", minutes: 6, start: "2026-10-25T15:30" }, // picks up where 3:11 left off: one sitting
+    ]
+    expect(sittings(rows, "2026-10-25")).toBe("11:40am–12:20pm, 2:45–2:48pm, 3:11–3:36pm")
+    expect(sittings(rows, "2026-10-23")).toBe("")
   })
 })

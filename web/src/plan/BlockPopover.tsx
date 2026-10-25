@@ -1,7 +1,8 @@
 // The selected block (v22): what it is, when, why Friday put it there, its due and what's left, and what you can do
 // with it: start, finish, pin or unpin, unlock, skip one occurrence, delete (Delete or Backspace too). The timer's
-// buttons are personal's (COMBINED.md 32): large, on top, Start or Pause, and Done. A selected event shows its
-// calendar, colour and notes, with Edit to open it in the drawer.
+// buttons are personal's (COMBINED.md 32): large, on top, Start or Pause, and Done; Resume once some of it is done,
+// with how much, and that day's timed sittings below. A selected event shows its calendar, colour and notes, with
+// Edit to open it in the drawer.
 
 import { useEffect, useRef, useState } from "react"
 import { useLocation } from "react-router"
@@ -9,7 +10,7 @@ import type { Item } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useItem, useStatus, useWhy } from "@/hooks/queries"
-import { clock, dur, weekday, when } from "@/lib/format"
+import { clock, dur, sittings, weekday, when } from "@/lib/format"
 import { eventPaint, PIGMENTS } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
 import { draftOf } from "@/shell/EventPane"
@@ -102,6 +103,9 @@ export function BlockPopover() {
   const date = b.start.slice(0, 10)
   const whenText = kind === "due" ? `Due ${when(b.start, today)}` : `${weekday(date)} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1]} · ${clock(b.start)}–${clock(b.end)}`
   const run = (f: () => void) => () => (f(), close())
+  const worked = item?.done_min ?? 0
+  const timed = sittings(detail?.progress ?? [], date)
+  const startNote = timing?.item_id ? "Pauses what's running" : worked ? `${dur(worked)} done${item?.remaining_min ? ` · ${dur(item.remaining_min)} left` : ""}` : "Times this sitting"
   return (
     <>
       <aside ref={card} className="fr-float" style={{ position: "absolute", right: 24, top: 72, width: 340, zIndex: 10, padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -128,7 +132,7 @@ export function BlockPopover() {
             {timing?.item_id === b.item_id ? (
               <BigButton icon="pause" label="Pause" note="Keeps the time for next time" onClick={run(() => stop({}))} />
             ) : (
-              <BigButton icon="play" label="Start" note={timing?.item_id ? "Pauses what's running" : "Times this sitting"} onClick={run(() => start({ id: b.item_id }))} primary />
+              <BigButton icon="play" label={worked ? "Resume" : "Start"} note={startNote} onClick={run(() => start({ id: b.item_id }))} primary />
             )}
             <BigButton icon="check" label="Done" note="Ticks it off" onClick={run(() => (timing?.item_id === b.item_id ? stop({ done: true }) : done({ id: b.item_id })))} />
           </div>
@@ -152,6 +156,25 @@ export function BlockPopover() {
             <span>{FIRM[item.firmness] ?? "—"}</span>
             <span style={{ color: "var(--color-neutral-500)" }}>Remaining</span>
             <span>{item.remaining_min != null ? `${dur(item.remaining_min)} left${item.duration_min ? ` of ${dur(item.duration_min)}` : ""}` : "—"}</span>
+            {worked > 0 && (
+              <>
+                <span style={{ color: "var(--color-neutral-500)" }}>Done so far</span>
+                <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span>{dur(worked)}</span>
+                  {item.duration_min ? (
+                    <span style={{ height: 4, borderRadius: 2, background: "color-mix(in srgb, var(--color-text) 10%, transparent)", overflow: "hidden" }}>
+                      <span style={{ display: "block", height: "100%", width: `${Math.min(100, (worked / item.duration_min) * 100)}%`, background: dot }} />
+                    </span>
+                  ) : null}
+                </span>
+              </>
+            )}
+            {timed && (
+              <>
+                <span style={{ color: "var(--color-neutral-500)" }}>Timed</span>
+                <span className="tnum">{timed}</span>
+              </>
+            )}
           </div>
         )}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>

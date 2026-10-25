@@ -1,5 +1,5 @@
 import { parseLength as readLength } from "./lengths"
-import { ampm, toMin } from "./time"
+import { ampm, fromMin, toMin } from "./time"
 
 export { ampm }
 
@@ -45,6 +45,28 @@ export function dur(minutes: number): string {
   const h = Math.floor(m / 60)
   const r = m % 60
   return h ? `${h}h${r ? ` ${r}m` : ""}` : `${r}m`
+}
+
+/** A day's timed sittings, in order: "2:45–2:48pm, 3:11–3:36pm" (each from its start for as long as it ran; one
+ * that picks up where the last ended, as a replan's cut leaves it, is the same sitting). */
+export function sittings(rows: { source?: unknown; start?: unknown; minutes?: unknown }[], date: string): string {
+  const spans = rows
+    .filter((r) => r.source === "timer" && typeof r.start === "string" && r.start.startsWith(date))
+    .map((r) => [toMin(r.start as string), toMin(r.start as string) + (Number(r.minutes) || 0)])
+    .sort(([a], [b]) => a - b)
+  const joined: number[][] = []
+  for (const [from, to] of spans) {
+    const last = joined[joined.length - 1]
+    if (last && from <= last[1]) last[1] = Math.max(last[1], to)
+    else joined.push([from, to])
+  }
+  return joined
+    .map(([from, to]) => {
+      const a = clock(fromMin(from))
+      const b = clock(fromMin(to))
+      return a.slice(-2) === b.slice(-2) ? `${a.slice(0, -2)}–${b}` : `${a}–${b}`
+    })
+    .join(", ")
 }
 
 /** How late the plan finishes something, roughly: "30m", "3h", "2 days". */

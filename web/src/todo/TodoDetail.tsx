@@ -82,7 +82,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div className="tnum" style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
           <span style={{ color: "var(--color-neutral-300)" }}>{p.text}</span>
-          <span style={{ color: "var(--color-neutral-500)" }}>{item.remaining_min != null ? `${dur(item.remaining_min)} left` : ""}</span>
+          <span style={{ color: "var(--color-neutral-500)" }}>{item.remaining_min != null ? `${dur(item.remaining_min)} left${item.done_min ? ` · ${dur(item.done_min)} done` : ""}` : ""}</span>
         </div>
         <div style={{ height: 6, borderRadius: 3, background: "color-mix(in srgb, var(--color-text) 8%, transparent)", overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${p.pct}%`, background: color(item.area, item.preset) }} />
@@ -224,7 +224,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
         {!isDone && item.when !== "fixed" && now?.current?.item_id !== id && (
           <button className="btn btn-primary" onClick={() => start({ id })}>
             <Icon name="play" />
-            Start now
+            {item.done_min ? "Resume" : "Start now"}
           </button>
         )}
         <button className="btn btn-secondary" onClick={() => (isDone ? reopen({ id }) : done({ id }))}>
