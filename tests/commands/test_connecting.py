@@ -173,3 +173,14 @@ def test_google_login_asks_what_connect_asks_and_finds_the_same_key_file(
     with_client(no_personal_config)
     main(["--data-dir", str(tmp_path), "google-login"])
     assert asked == [(no_personal_config / "google_client.json", google_auth.LOGIN_SCOPES)]
+
+
+def test_a_key_file_named_in_terminal_is_kept_where_friday_looks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, no_personal_config: Path
+) -> None:
+    monkeypatch.setattr(google_auth, "login", lambda client, folder, scopes: None)
+    downloaded = tmp_path / "client_secret_123.json"
+    downloaded.write_text(json.dumps(CLIENT))
+    main(["--data-dir", str(tmp_path / "data"), "google-login", "--client-file", str(downloaded)])
+    kept = no_personal_config / "google_client.json"
+    assert json.loads(kept.read_text()) == CLIENT and oct(kept.stat().st_mode & 0o777) == "0o600"

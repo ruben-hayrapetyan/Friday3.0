@@ -113,6 +113,9 @@ def google_login(db_path: Path, client_file: Path | None) -> None:
     if not path.exists():
         raise SystemExit(f"no OAuth client JSON at {path}: choose it in Settings → Integrations, or pass --client-file")
     google_auth.login(path, db_path.parent, google_auth.scopes(settings["gmail"].enabled))
+    kept = google_auth.client_file(settings["google"].client_file)
+    if not kept.exists():  # a key file named here is kept where Friday looks, so Connect in the app works from now on
+        google_auth.keep_client(kept, path.read_text())
     print(f"Google is connected; the token is in {google_auth.secrets_file(db_path.parent)}.")
 
 

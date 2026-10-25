@@ -1,7 +1,7 @@
-// Connecting Google from Friday itself, no terminal: Connect opens Google's page in your browser (the server runs on
-// this Mac) and the button waits, spinning, until you've allowed Friday there. Before the first time, it says what the
-// key file from Google Cloud is and takes it. Gmail's switch is here too. The Google Calendar and Gmail cards and
-// setup's last step share these.
+// Connecting Google from Friday itself, or from Terminal if you'd rather: Connect opens Google's page in your browser
+// (the server runs on this Mac) and the button waits, spinning, until you've allowed Friday there. Before the first
+// time, it says what the key file from Google Cloud is and takes it. Gmail's switch is here too. The Google Calendar
+// and Gmail cards and setup's last step share these.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
@@ -64,13 +64,19 @@ export function ConnectGoogle({ need = "calendar", again = false, why, done }: {
   const [pressed, setPressed] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   if (!access) return null
-  if (!access.client_file) return <KeyFile />
   if ((need === "gmail" ? access.gmail : access.calendar) && !again)
     return (
       <span style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12, color: "var(--color-accent-300)" }}>
         <Icon name="check-circle" size={15} fill />
         {access.justNow && done ? `Connected. ${done}` : "Connected"}
       </span>
+    )
+  if (!access.client_file)
+    return (
+      <>
+        <KeyFile />
+        <TerminalWay />
+      </>
     )
   const waiting = access.state === "waiting"
   const start = async () => {
@@ -99,6 +105,38 @@ export function ConnectGoogle({ need = "calendar", again = false, why, done }: {
         )}
       </span>
       <span style={{ fontSize: 12, color: failed ? "var(--fr-due)" : "var(--color-neutral-300)", textWrap: "pretty" }}>{note}</span>
+      <TerminalWay />
+    </div>
+  )
+}
+
+export const TERMINAL = "fridayd google-login --client-file ~/Downloads/client_secret.json"
+
+/** The same sign-in from Terminal, for those who'd rather: the command, a copy button, and that this page follows. */
+export function TerminalWay() {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(TERMINAL)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false) // no clipboard here: the command is on screen to select
+    }
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6, paddingTop: 10, boxShadow: "inset 0 1px 0 var(--fr-hairline)", alignSelf: "stretch" }}>
+      <span className="fr-kicker">Or use Terminal</span>
+      <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <code style={{ padding: "3px 8px", borderRadius: 4, background: "var(--color-surface)", fontSize: 12, userSelect: "all" }}>{TERMINAL}</code>
+        <button className="btn btn-ghost fr-press" onClick={copy} style={{ fontSize: 12, padding: "2px 8px" }}>
+          <Icon name={copied ? "check" : "copy"} />
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </span>
+      <span style={{ fontSize: 12, color: "var(--color-neutral-400)", textWrap: "pretty" }}>
+        Put the name of the key file you downloaded in place of client_secret.json (leave out --client-file once Friday has it). It opens Google's page the same way; when you've allowed Friday, this card shows Connected by itself.
+      </span>
     </div>
   )
 }
