@@ -123,8 +123,48 @@ export function ConnectGoogle(props: { need?: Need; account?: string; again?: bo
         )}
       </span>
       {note && <span style={{ fontSize: 12, color: failed ? "var(--fr-due)" : worked ? "var(--color-accent-300)" : "var(--color-neutral-300)", textWrap: "pretty" }}>{note}</span>}
+      {!first && ((!again && need === "calendar" && !small) || (waiting && mine)) && <Blocked open={waiting && mine && !again} />}
       {first && !small && <TerminalWay />}
     </div>
+  )
+}
+
+// What to do when Google turns another account away ("Access blocked: Friday has not completed the Google
+// verification process"): the project you made the key in lets in only the addresses listed as its test users.
+const BLOCKED_STEPS: { what: string; how: string; link?: [string, string] }[] = [
+  { what: "Open your Friday project's Audience page", how: "Sign in there with the account you made the key file with (the first one you connected).", link: ["Audience", "https://console.cloud.google.com/auth/audience"] },
+  { what: "Add the address as a test user", how: "Under Test users, click Add users, type the address you're adding, and click Save." },
+  { what: "Connect again", how: "Back here, click Add another Google account. When Google says it hasn't verified the app, click Continue (or Advanced, then Go to Friday): it's your own." },
+]
+
+/** "Access blocked"? The three steps, folded until they're wanted (open while Google's page is up). */
+function Blocked({ open }: { open: boolean }) {
+  return (
+    <details open={open || undefined} style={{ alignSelf: "stretch" }}>
+      <summary className="fr-link" style={{ cursor: "pointer", fontSize: 12 }}>
+        Google says “Access blocked: Friday has not completed the Google verification process”?
+      </summary>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "8px 0 2px" }}>
+        <span style={{ fontSize: 12, color: "var(--color-neutral-400)", textWrap: "pretty" }}>
+          Your Friday project only lets in the addresses you list as its test users. Add this one:
+        </span>
+        <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6, fontSize: 12 }}>
+          {BLOCKED_STEPS.map((step) => (
+            <li key={step.what} style={{ textWrap: "pretty" }}>
+              <span style={{ fontWeight: 500 }}>{step.what}.</span> <span style={{ color: "var(--color-neutral-300)" }}>{step.how}</span>{" "}
+              {step.link && (
+                <a className="fr-link" href={step.link[1]} target="_blank" rel="noreferrer">
+                  {step.link[0]} ↗
+                </a>
+              )}
+            </li>
+          ))}
+        </ol>
+        <span style={{ fontSize: 11, color: "var(--color-neutral-500)", textWrap: "pretty" }}>
+          A school account can still be refused by the school itself; then it has to be the account the project was made with.
+        </span>
+      </div>
+    </details>
   )
 }
 
