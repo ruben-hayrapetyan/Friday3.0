@@ -5358,6 +5358,99 @@
     }
    }
   },
+  "/api/q/mac_writes": {
+   "get": {
+    "summary": "Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title only if you",
+    "operationId": "mac_writes",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/MacWriteOut"
+         },
+         "type": "array",
+         "title": "Response Mac Writes"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/mac_written": {
+   "post": {
+    "summary": "What the Mac app made of a change: done, with the event as it now is; or why not, tried again up to five times",
+    "operationId": "mac_written",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MacWrittenInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MacWrittenResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/act": {
    "post": {
     "summary": "Run a notification's button: start, done, settle a block, snooze, or record that it was opened or dismissed.",
@@ -13549,6 +13642,178 @@
     ],
     "title": "MacSyncResult"
    },
+   "MacWriteOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "op": {
+      "type": "string",
+      "enum": [
+       "save",
+       "delete"
+      ],
+      "title": "Op"
+     },
+     "calendar": {
+      "type": "string",
+      "title": "Calendar"
+     },
+     "event": {
+      "type": "string",
+      "title": "Event"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Start"
+     },
+     "end": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End"
+     },
+     "all_day": {
+      "type": "boolean",
+      "title": "All Day",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "op",
+     "calendar",
+     "event"
+    ],
+    "title": "MacWriteOut",
+    "description": "A change to one of the Mac's events, for the Mac app to make through EventKit: its times (timed with an offset,\nor whole days with the end the day after the last) and, if you renamed it, its title; or a delete."
+   },
+   "MacWrittenInput": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "ok": {
+      "type": "boolean",
+      "title": "Ok"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "event": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/MacEvent"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "ok"
+    ],
+    "title": "MacWrittenInput",
+    "description": "What the Mac app made of a change to one of the Mac's events (`mac_writes`)."
+   },
+   "MacWrittenResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "MacWrittenResult"
+   },
    "MailOut": {
     "properties": {
      "id": {
@@ -14803,6 +15068,14 @@
       "type": "boolean",
       "title": "Provisional",
       "default": false
+     },
+     "sessions": {
+      "items": {
+       "$ref": "#/components/schemas/BlockOut"
+      },
+      "type": "array",
+      "title": "Sessions",
+      "default": []
      }
     },
     "additionalProperties": false,

@@ -179,3 +179,25 @@ def test_status_lists_what_will_be_late_soonest_due_first(tmp_path: Path) -> Non
     late = app.do("status")["late_items"]
     assert [i["title"] for i in late] == ["lab report", "essay"] and late[0]["due"] == "2026-10-19T10:00"
     assert all(i["hours"] > 0 for i in late) and set(app.do("status")["late"]) == {"lab report", "essay"}
+
+
+def test_the_plan_shows_what_you_timed_when_you_did_it(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    essay = app.do("add", text="essay ~2h due fri")["item"]["id"]
+    app.do("start", id=essay)
+    app.at("2026-10-19T09:19").do("stop")
+    app.at("2026-10-19T09:30").do("start", id=essay)
+    app.at("2026-10-19T09:45").do("stop")
+    # A replan cuts a running timer's record in two; touching pieces read as one sitting.
+    app.conn.execute(
+        "INSERT INTO progress (user_id, item_id, start_utc, end_utc, minutes, source, created_utc) "
+        "VALUES (1, ?, '2026-10-19T13:45Z', '2026-10-19T13:50Z', 5, 'timer', '2026-10-19T13:50Z')",
+        [essay],
+    )
+    plan = app.do("plan", start="2026-10-19T00:00", end="2026-10-20T00:00")
+    assert [(s["key"], s["start"], s["end"]) for s in plan["sessions"]] == [
+        (f"S{essay}@2026-10-19T09:00", "2026-10-19T09:00", "2026-10-19T09:19"),
+        (f"S{essay}@2026-10-19T09:30", "2026-10-19T09:30", "2026-10-19T09:50"),
+    ]
+    assert plan["sessions"][0]["title"] == "essay"
+    assert app.do("plan", start="2026-10-20T00:00", end="2026-10-21T00:00")["sessions"] == []

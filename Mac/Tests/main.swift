@@ -1,3 +1,4 @@
+import EventKit
 import Foundation
 
 // A plain executable rather than XCTest, like UI/Tests: runs with only the Command Line Tools. Run ./test.sh.
@@ -140,6 +141,36 @@ test("calendar payload: the body mac_sync takes") {
         let data = try! JSONSerialization.data(withJSONObject: sample, options: [.sortedKeys])
         try! data.write(to: URL(fileURLWithPath: CommandLine.arguments[1]))
     }
+}
+
+test("a change Friday asks of a Mac event: which occurrence, and what it changes") {
+    var york = Calendar(identifier: .gregorian)
+    york.timeZone = TimeZone(identifier: "America/New_York")!
+    let (identifier, at) = MacWriter.parts("6F9619FF:abc@google.com@1761000000")!
+    check(identifier == "6F9619FF:abc@google.com", "the identifier keeps its own @")
+    check(Int(at.timeIntervalSince1970) == 1_761_000_000, "the occurrence's start")
+    check(MacWriter.parts("no-occurrence") == nil && MacWriter.parts("x@later") == nil, "not an occurrence id")
+    check(MacWriter.parts(MacPayload.occurrenceID("abc", at: Date(timeIntervalSince1970: 1_761_000_000)))!.0 == "abc", "round trip")
+
+    let event = EKEvent(eventStore: EKEventStore())
+    event.title = "Chem 2090 Lec (room 200)"
+    event.startDate = Date(timeIntervalSince1970: 1_761_000_000)
+    event.endDate = event.startDate.addingTimeInterval(3600)
+    let later: [String: Any] = ["start": "2025-10-20T23:40:00Z", "end": "2025-10-21T00:40:00Z", "all_day": false]
+    check(MacWriter.change(event, to: later), "moved")
+    check(event.title == "Chem 2090 Lec (room 200)", "no title sent: the calendar's stays")
+    check(Int(event.startDate.timeIntervalSince1970) == 1_761_003_600, "the new start \(event.startDate!)")
+    check(!MacWriter.change(event, to: later), "the same again changes nothing")
+    check(MacWriter.change(event, to: later.merging(["title": "Chem (moved to 120)"]) { $1 }), "renamed")
+    check(event.title == "Chem (moved to 120)", "the new title")
+
+    let day: [String: Any] = ["start": "2026-10-23", "end": "2026-10-24", "all_day": true]
+    check(MacWriter.change(event, to: day, calendar: york) && event.isAllDay, "a whole day")
+    check(MacPayload.day(event.startDate, calendar: york) == "2026-10-23", "starts that day")
+    let end = MacPayload.allDayEnd(start: event.startDate, end: event.endDate, calendar: york)
+    check(MacPayload.day(end, calendar: york) == "2026-10-24", "and reads back ending the day after, as Friday sent it")
+    check(!MacWriter.change(event, to: day, calendar: york), "the same whole day again changes nothing")
+    check(MacWriter.moment("2026-10-25T19:30:00Z", allDay: false) == Date(timeIntervalSince1970: 1_792_956_600), "a time")
 }
 
 print(failures == 0 ? "All passed" : "\(failures) failed")

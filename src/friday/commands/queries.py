@@ -217,7 +217,27 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
     for b in blocks:
         day = b.start[:10]
         hours[day] = hours.get(day, 0) + (parse_utc(ctx.utc(b.end)) - parse_utc(ctx.utc(b.start))) / 60
-    return PlanOut(plan_id=saved["id"] if saved else None, blocks=blocks, fixed=fixed, day_hours=hours)
+    plan_id = saved["id"] if saved else None
+    return PlanOut(plan_id=plan_id, blocks=blocks, fixed=fixed, day_hours=hours, sessions=sittings(ctx, lo, hi))
+
+
+def sittings(ctx: Ctx, lo: int, hi: int) -> list[BlockOut]:
+    """What you timed between `lo` and `hi`, when you did it: the timer's records, one item's touching ones as one
+    (a replan cuts a running timer's record in two). The running timer isn't one yet: the grid draws it live."""
+    spans: list[list[int]] = []  # item id, start, end
+    for r in rows(
+        ctx.conn,
+        "SELECT item_id, start_utc, end_utc FROM progress WHERE user_id = ? AND source = 'timer' AND start_utc "
+        "IS NOT NULL AND end_utc IS NOT NULL AND end_utc > ? AND start_utc < ? ORDER BY item_id, start_utc",
+        [ctx.user_id, format_utc(lo), format_utc(hi)],
+    ):
+        start, end = parse_utc(r["start_utc"]), parse_utc(r["end_utc"])
+        if spans and spans[-1][0] == r["item_id"] and start <= spans[-1][2]:
+            spans[-1][2] = max(spans[-1][2], end)
+        elif end > start:
+            spans.append([r["item_id"], start, end])
+    out = [block_out(ctx, item_id, start, end) for item_id, start, end in sorted(spans, key=lambda s: s[1])]
+    return [b.model_copy(update={"key": "S" + b.key[1:]}) for b in out]
 
 
 def coalesced(blocks: list[BlockOut]) -> list[BlockOut]:

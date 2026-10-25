@@ -27,6 +27,7 @@ const KIND: Record<string, string> = {
   fixed: "Fixed time",
   due: "Due",
   done: "Done",
+  timed: "Timed · when you worked on it",
 }
 const FIRM: Record<string, string> = { hard: "Hard deadline", soft: "Soft deadline", none: "No deadline" }
 
@@ -57,6 +58,7 @@ export function BlockPopover() {
   const why = useWhy(isBlock ? b.key : null).data
   const start = useCommand("start", { label: () => `Started ${b?.title}` })
   const done = useCommand("done", { label: () => `${b?.title}: done` })
+  const reopen = useCommand("reopen", { label: () => `${b?.title}: open again` })
   const stop = useCommand("stop", { label: (o) => o.result.message ?? "Paused" })
   const tentative = useCommand("edit", { label: (o) => (o.result.item.certainty === "tentative" ? "Might not happen: planned loosely" : "Planned as usual") })
   const timing = useStatus().data?.timer
@@ -72,7 +74,7 @@ export function BlockPopover() {
     if (!b) return
     const press = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select")) return
-      if ((e.key !== "Delete" && e.key !== "Backspace") || !detail) return  // not before we know if it repeats
+      if ((e.key !== "Delete" && e.key !== "Backspace") || !detail || b.key.startsWith("S")) return  // not before we know if it repeats; a sitting isn't deleted
       e.preventDefault()
       if (repeats) setAsking(true)
       else (drop({ id: b.item_id }), select(null))
@@ -96,7 +98,8 @@ export function BlockPopover() {
   if (!b) return null
   const item = detail?.item
   const close = () => select(null)
-  const kind = b.key.startsWith("F") ? "fixed" : b.key.startsWith("D") ? "due" : kindOf(b)
+  const kind = b.key.startsWith("F") ? "fixed" : b.key.startsWith("D") ? "due" : b.key.startsWith("S") ? "timed" : kindOf(b)
+  const sitting = kind === "timed" // a sitting you timed: what you did, not a block to move
   const flexible = kind !== "fixed" && kind !== "due"
   const event = kind === "fixed" ? item : undefined
   const dot = event ? eventPaint(event, light) : color(b.area ?? item?.area)
@@ -126,7 +129,19 @@ export function BlockPopover() {
             <Icon name="x" />
           </button>
         </div>
-        {flexible && (
+        {flexible && item?.status === "done" && (
+          // Finished: nothing to start; it says so, and can be opened again.
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ display: "flex", gap: 6, alignItems: "center", color: "var(--color-accent-300)" }}>
+              <Icon name="check-circle" size={16} fill />
+              Done{worked ? ` · ${dur(worked)} in all` : ""}
+            </span>
+            <button className="btn btn-ghost" onClick={run(() => reopen({ id: b.item_id }))} style={{ marginLeft: "auto", fontSize: 12 }}>
+              Open again
+            </button>
+          </div>
+        )}
+        {flexible && item?.status !== "done" && (
           // Large and first: what you came to the block for (personal's popover).
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {timing?.item_id === b.item_id ? (
@@ -184,7 +199,7 @@ export function BlockPopover() {
               Edit
             </button>
           )}
-          {flexible && item && (
+          {flexible && item && !sitting && (
             <button
               className="btn btn-ghost"
               onClick={run(() => tentative({ id: b.item_id, certainty: item.certainty === "tentative" ? "planned" : "tentative" }))}
@@ -194,7 +209,7 @@ export function BlockPopover() {
               {item.certainty === "tentative" ? "It will happen" : "Might not happen"}
             </button>
           )}
-          {flexible && kind !== "locked" && (
+          {flexible && !sitting && kind !== "locked" && (
             <button
               className="btn btn-secondary"
               onClick={run(() => (kind === "preferred" ? unpin({ id: b.item_id }) : pin({ id: b.item_id, start: b.start, end: b.end, kind: "preferred", from_start: b.start, from_end: b.end })))}
@@ -224,21 +239,21 @@ export function BlockPopover() {
                 Every one
               </button>
             </span>
-          ) : (
+          ) : sitting ? null : (
             <button className="btn btn-ghost" onClick={repeats ? () => setAsking(true) : run(() => drop({ id: b.item_id }))} title="Delete (⌫)" style={{ marginLeft: "auto", color: "var(--fr-due)" }}>
               <Icon name="trash" />
               Delete
             </button>
           )}
         </div>
-        {flexible && <Elsewhere block={b} onMoved={close} />}
+        {flexible && !sitting && <Elsewhere block={b} onMoved={close} />}
         {item?.series_id != null && (
           <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
             <Icon name="repeat" size={13} />
             Repeats. Skipping leaves the others as they are.
           </div>
         )}
-        {(event || flexible) && <span className="fr-kicker">Double-click its time on the calendar to type a new one</span>}
+        {(event || (flexible && !sitting)) && <span className="fr-kicker">Double-click its time on the calendar to type a new one</span>}
       </aside>
     </>
   )

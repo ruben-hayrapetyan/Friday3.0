@@ -91,8 +91,8 @@ function List({ calendars, mac }: { calendars: Listed; mac: boolean }) {
               <span style={{ opacity: c.on ? 1 : 0.4 }}>
                 <Switch on={c.trusted} onToggle={() => c.on && set({ id: c.id, trusted: !c.trusted })} label={`${c.name} straight to the plan`} />
               </span>
-              <span style={{ opacity: c.on && c.writable && !mac ? 1 : 0.4 }} title={mac ? "Friday doesn't change the Mac's calendars yet" : c.writable ? undefined : "Google doesn't let you change this calendar's events"}>
-                <Switch on={!!c.editable} onToggle={() => c.on && c.writable && !mac && set({ id: c.id, editable: !c.editable })} label={`Save changes to ${c.name}`} />
+              <span style={{ opacity: c.on && c.writable ? 1 : 0.4 }} title={c.writable ? undefined : `${mac ? "The Mac" : "Google"} doesn't let you change this calendar's events`}>
+                <Switch on={!!c.editable} onToggle={() => c.on && c.writable && set({ id: c.id, editable: !c.editable })} label={`Save changes to ${c.name}`} />
               </span>
             </div>
           ))}
@@ -100,8 +100,8 @@ function List({ calendars, mac }: { calendars: Listed; mac: boolean }) {
       ))}
       <span className="fr-kicker" style={{ paddingTop: 8, textWrap: "pretty" }}>
         {mac
-          ? "A calendar Friday also reads from Google, a subscription or birthdays starts off, so nothing comes in twice. Friday doesn’t change the Mac’s calendars yet. "
-          : "“Edit here” saves what you change in Friday (title, times, notes, deleting) back to Google. "}
+          ? "A calendar Friday also reads from Google, a subscription or birthdays starts off, so nothing comes in twice. “Edit here” saves what you change in Friday (times, a new title, deleting) back to the calendar on your Mac, which passes it on to Google or iCloud; your notes stay in Friday. "
+          : "“Edit here” saves what you change in Friday (times, a new title, deleting) back to Google; your notes stay in Friday. "}
         “Per event” reads due dates, exams (with prep), classes and other commitments from each event’s title; a kind reads every event as that kind. Turning a calendar off withdraws what it suggested that you haven’t answered; what you accepted stays.
       </span>
     </>

@@ -3,11 +3,15 @@ import EventKit
 
 /// The Mac's calendars, fed to Friday's server (COMBINED.md 4): what EventKit sees from yesterday to twelve weeks out,
 /// posted to `mac_sync` at launch, whenever a calendar changes and every ten minutes. The server reads each calendar
-/// you switch on in Settings → Calendars, as it reads Google's.
+/// you switch on in Settings → Calendars, as it reads Google's. The other way, every twenty seconds: what you changed
+/// in Friday about those calendars' events (`mac_writes`), made here so a Google or iCloud calendar gets it from the
+/// Mac's own sync, each answered (`mac_written`).
 @MainActor
 final class CalendarBridge {
     private let store = EKEventStore()
     private var poll: Timer?
+    private var writes: Timer?
+    private var writing = false
     private var pending: Task<Void, Never>?
     private var lastSent: (body: Int, at: Date)?
     static let weeks = 12
@@ -27,7 +31,23 @@ final class CalendarBridge {
         poll = Timer.scheduledTimer(withTimeInterval: 10 * 60, repeats: true) { _ in
             MainActor.assumeIsolated { self.soon() }
         }
+        writes = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { _ in
+            _ = Task { @MainActor in await self.write() }
+        }
         soon()
+    }
+
+    /// Friday's waiting changes, one at a time; each answer goes back before the next (and before the change's own
+    /// EKEventStoreChanged sends the calendars again), so the server knows the event's new id when it reads them.
+    private func write() async {
+        guard !writing else { return }
+        writing = true
+        defer { writing = false }
+        guard let jobs = await Server.get("api/q/mac_writes") as? [[String: Any]] else { return }
+        for job in jobs {
+            let answer = MacWriter.apply(job, in: store)
+            if answer["id"] != nil { await Server.post("mac_written", answer) }
+        }
     }
 
     /// A burst of changes (a calendar syncing) sends once, two seconds after the last.
@@ -54,6 +74,94 @@ final class CalendarBridge {
         let digest = (try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys]))?.hashValue ?? 0
         if let lastSent, lastSent.body == digest, now.timeIntervalSince(lastSent.at) < 3600 { return }
         if await Server.post("mac_sync", body) != nil { lastSent = (digest, now) }
+    }
+}
+
+/// A change Friday asks of one of the Mac's events (api/views.py MacWriteOut), made through EventKit: its times and, when
+/// you renamed it in Friday, its title; or a delete. Only that occurrence of a repeating event changes.
+enum MacWriter {
+    /// Makes one change; the answer for `mac_written`, with the event as it now is.
+    static func apply(_ job: [String: Any], in store: EKEventStore) -> [String: Any] {
+        guard let id = job["id"] as? Int else { return [:] }
+        guard let op = job["op"] as? String, let calendar = job["calendar"] as? String,
+              let occurrence = job["event"] as? String else {
+            return ["id": id, "ok": false, "error": "Friday's change didn't say which event"]
+        }
+        guard let event = find(occurrence, calendar: calendar, in: store) else {
+            if op == "delete" { return ["id": id, "ok": true] }  // gone already
+            return ["id": id, "ok": false, "error": "The event isn't on that calendar any more"]
+        }
+        do {
+            if op == "delete" {
+                try store.remove(event, span: .thisEvent, commit: true)
+                return ["id": id, "ok": true]
+            }
+            if change(event, to: job) { try store.save(event, span: .thisEvent, commit: true) }
+            var answer: [String: Any] = ["id": id, "ok": true]
+            if let now = MacPayload.event(event) { answer["event"] = now }
+            return answer
+        } catch {
+            store.reset()  // the half-made change isn't left on the store's copy
+            return ["id": id, "ok": false, "error": error.localizedDescription]
+        }
+    }
+
+    /// The occurrence an id names (MacPayload.occurrenceID): its event, at its occurrence, on its calendar.
+    static func find(_ occurrence: String, calendar: String, in store: EKEventStore) -> EKEvent? {
+        guard let (identifier, at) = parts(occurrence), let place = store.calendar(withIdentifier: calendar) else { return nil }
+        let fortnight: TimeInterval = 14 * 86400  // a repeat's occurrence moved away from its day is still found
+        let near = store.predicateForEvents(withStart: at - fortnight, end: at + fortnight, calendars: [place])
+        return store.events(matching: near).first { e in
+            (e.eventIdentifier ?? e.calendarItemIdentifier) == identifier
+                && Int((e.occurrenceDate ?? e.startDate).timeIntervalSince1970) == Int(at.timeIntervalSince1970)
+        }
+    }
+
+    /// "<identifier>@<Unix seconds>" apart; the identifier may hold an @ of its own.
+    static func parts(_ occurrence: String) -> (String, Date)? {
+        guard let at = occurrence.lastIndex(of: "@"), let seconds = Int(occurrence[occurrence.index(after: at)...]) else {
+            return nil
+        }
+        return (String(occurrence[..<at]), Date(timeIntervalSince1970: TimeInterval(seconds)))
+    }
+
+    /// Puts the job's times, and its title if it sends one, on the event; whether that changed anything.
+    static func change(_ e: EKEvent, to job: [String: Any], calendar: Calendar = .current) -> Bool {
+        var changed = false
+        if let title = job["title"] as? String, e.title != title {
+            e.title = title
+            changed = true
+        }
+        let allDay = job["all_day"] as? Bool ?? false
+        guard let start = moment(job["start"], allDay: allDay, calendar: calendar),
+              let after = moment(job["end"], allDay: allDay, calendar: calendar) else { return changed }
+        let end = allDay ? after.addingTimeInterval(-1) : after  // Friday ends whole days at the next one's start
+        if e.isAllDay != allDay {
+            e.isAllDay = allDay
+            changed = true
+        }
+        if e.startDate == nil || abs(e.startDate.timeIntervalSince(start)) >= 60 {
+            e.startDate = start
+            changed = true
+        }
+        if e.endDate == nil || abs(e.endDate.timeIntervalSince(end)) >= 60 {
+            e.endDate = end
+            changed = true
+        }
+        return changed
+    }
+
+    /// "2026-10-25T19:30:00Z", or a whole day's "2026-10-25" (its start, on this Mac's calendar).
+    static func moment(_ value: Any?, allDay: Bool, calendar: Calendar = .current) -> Date? {
+        guard let text = value as? String else { return nil }
+        if allDay {
+            let parts = text.split(separator: "-").compactMap { Int($0) }
+            guard parts.count == 3 else { return nil }
+            return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+        }
+        let format = ISO8601DateFormatter()
+        format.formatOptions = [.withInternetDateTime]
+        return format.date(from: text)
     }
 }
 

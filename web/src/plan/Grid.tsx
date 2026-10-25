@@ -1,6 +1,7 @@
 // The week and day grid (v22 Plan): day headers with the date, pace, dues and overload; hour lines; blocks, fixed
-// items, ghosts and the wind-down; drag to move, resize or select time. Settings → Appearance chooses the hours
-// shown and whether a day's dues are header chips or a lane down its column (COMBINED.md 14, 15).
+// items, ghosts and the wind-down; what you timed, when you did it, over the right of the column; drag to move,
+// resize or select time. Settings → Appearance chooses the hours shown and whether a day's dues are header chips or
+// a lane down its column (COMBINED.md 14, 15).
 
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
@@ -12,8 +13,8 @@ import { runCommand } from "@/hooks/useCommand"
 import { moveBlock } from "@/hooks/useDrop"
 import { useGhosts, useItems, useNow, useStatus } from "@/hooks/queries"
 import { movedSince } from "@/lib/drag"
-import { clock, hms, weekday, when } from "@/lib/format"
-import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, type Span, toMin } from "@/lib/time"
+import { clock, dur, hms, weekday, when } from "@/lib/format"
+import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, type Placed, type Span, toMin } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
 import { useLook } from "@/theme/LookProvider"
 import { draftAt, draftOf } from "@/shell/EventPane"
@@ -48,7 +49,8 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const allDay = timed.filter((f) => f.start.endsWith("T00:00") && f.end.endsWith("T00:00") && f.end > f.start)
   const fixed = timed.filter((f) => !allDay.includes(f)) // what you toggled off is already gone (plan/shown.ts)
   // From the wake time to core sleep, stretched for anything earlier or later on these days.
-  const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : fitAxis({ startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }, [...fixed, ...plan.blocks], dates)
+  const sessions = plan.sessions ?? []
+  const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : fitAxis({ startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }, [...fixed, ...plan.blocks, ...sessions], dates)
   const panel = useRef<HTMLDivElement>(null)
   const head = useRef<HTMLDivElement>(null)
   const headHeight = useHeight(head)
@@ -138,6 +140,9 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
               {layout(news, date, axis).map((p) => (
                 <GhostBox key={`g${p.item.key}`} p={p} />
               ))}
+              {layout(sessions, date, axis).map((p) => (
+                <SessionBox key={p.item.key} p={p} selected={p.item.key === selected?.key} onOpen={() => select(p.item)} />
+              ))}
               {drag?.moved && drag.at && drag.over === "calendar" && <Preview drag={drag} date={date} axis={axis} today={today} />}
               {timer && date === calendar.today && nowData?.current_source === "timer" && (
                 <TimerBox title={nowData.current?.title ?? ""} top={(now - elapsed / 60 - toMin(date) - axis.startMin) * PX} seconds={elapsed} />
@@ -162,6 +167,49 @@ function useHeight(ref: React.RefObject<HTMLElement | null>): number {
     return () => observer.disconnect()
   }, [ref])
   return height
+}
+
+/** A sitting you timed, when you did it: over the right of the column, so what was planned there still shows its
+ * title, in the colour of its tag and drawn solid. A click opens it as a block opens. */
+function SessionBox({ p, selected, onOpen }: { p: Placed<Block>; selected: boolean; onOpen: () => void }) {
+  const b = p.item
+  const { skinOf } = useLook()
+  const s = skinOf("planned", b.area, { isCur: false, sel: selected }, b.preset)
+  const minutes = toMin(b.end) - toMin(b.start)
+  const height = Math.max(minutes * PX - 2, 8)
+  const share = 0.62 / p.columns
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      data-block-key={b.key}
+      onClick={onOpen}
+      onKeyDown={(e) => e.key === "Enter" && onOpen()}
+      title={`Timed ${b.title}: ${clock(b.start)}–${clock(b.end)} (${dur(minutes)})`}
+      style={{
+        position: "absolute",
+        top: p.top * PX,
+        height,
+        left: `calc((100% - var(--lane, 0px)) * ${0.38 + p.column * share} + 3px)`,
+        width: `calc((100% - var(--lane, 0px)) * ${share} - 6px)`,
+        zIndex: 2,
+        borderRadius: 5,
+        padding: height < 22 ? "0 6px" : "3px 6px",
+        fontSize: 10.5,
+        lineHeight: height < 22 ? `${height}px` : 1.3,
+        fontWeight: 500,
+        overflow: "hidden",
+        whiteSpace: "nowrap",
+        textOverflow: "ellipsis",
+        cursor: "pointer",
+        color: "var(--color-text)",
+        background: `color-mix(in srgb, ${s.stripe} 30%, var(--color-surface))`,
+        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${s.stripe} ${selected ? 90 : 60}%, transparent)`,
+      }}
+    >
+      {height >= 12 && `◷ ${b.title} · ${dur(minutes)}`}
+    </div>
+  )
 }
 
 /** What you're timing, from when you started to now: drawn from the timer itself, so it shows even when the plan

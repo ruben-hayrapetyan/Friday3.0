@@ -1,20 +1,28 @@
 """The Mac's calendars (COMBINED.md 4), fed in by the Mac app: it posts what EventKit sees, and the sync job reads each
 calendar you switched on from that, as it reads Google's, within the minute. A Mac calendar starts on unless it is a
 copy of one Friday reads from Google (the same name), a subscription or birthdays; its events skip the inbox, as they
-did in the Mac app."""
+did in the Mac app.
+
+Changes go the other way too: an event of a Mac calendar that may be changed, edited or deleted here, is queued
+(`eventwrites.queue_event_write`), and the Mac app makes the change through EventKit (`mac_writes`, then
+`mac_written`), so a Google calendar on the Mac gets it from the Mac's own sync. A one-off event's id carries its
+start, so a move gives it a new one: the answer brings the event as it now is, and its raw input (and the last
+reading the Mac posted) take the new id and times, so the next sync finds nothing new rather than a vanished event
+and a new one."""
 
 import json
 from typing import Any
 
-from friday.api.commands import Changed, MacCalendar, MacEvent, MacSyncInput
+from friday.api.commands import Changed, MacCalendar, MacEvent, MacSyncInput, MacWrittenInput
 from friday.api.types import Empty
-from friday.api.views import GoogleCalendarOut
-from friday.commands.calendars import natural, source_of
+from friday.api.views import GoogleCalendarOut, MacWriteOut
+from friday.commands.calendars import editable, natural, source_of
+from friday.commands.eventwrites import MAX_TRIES, event_body, event_digest, renamed
 from friday.commands.registry import Ctx, command, query
-from friday.core.db import rows
+from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.time import format_local, parse_utc, to_local
-from friday.planner.store import kv_get
+from friday.planner.store import event_links, kv_get, load_item
 
 OFF_TYPES = ("subscription", "birthday")
 
@@ -66,12 +74,89 @@ def mac_calendars(ctx: Ctx, inp: Empty) -> list[GoogleCalendarOut]:
                 last_sync=format_local(to_local(parse_utc(synced), ctx.tz)) if synced else None,
                 error=source["last_error"] if source else None,
                 writable=c.get("writable", False),
-                editable=False,  # Friday doesn't change the Mac's calendars yet
+                editable=editable(config, c),  # the Mac app saves changes made here back to it
                 account=c.get("account") or None,
                 also_google=c["name"] in google,
             )
         )
     return sorted(out, key=lambda c: natural(c.name))
+
+
+@query("mac_writes")
+def mac_writes(ctx: Ctx, inp: Empty) -> list[MacWriteOut]:
+    """Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title only if you
+    renamed it here (never its notes, which Friday doesn't read from the Mac); or a delete."""
+    links = event_links(ctx.conn, ctx.user_id)
+    out = []
+    for job in rows(
+        ctx.conn,
+        "SELECT * FROM event_writes WHERE user_id = ? AND done_utc IS NULL AND tries < ? ORDER BY id",
+        [ctx.user_id, MAX_TRIES],
+    ):
+        link = links.get(job["item_id"])
+        if link is None or link.kind != "mac" or not link.calendar_id:
+            continue
+        item = load_item(ctx.conn, job["item_id"], ctx.user_id)
+        where = {"id": job["id"], "calendar": link.calendar_id, "event": link.event_id}
+        if job["op"] == "delete":
+            out.append(MacWriteOut(op="delete", **where))
+        elif item is not None and item.status == "todo" and item.start_utc and item.end_utc:
+            body = event_body(item, ctx.tz)
+            day = "date" in body["start"]
+            when = "date" if day else "dateTime"
+            title = item.title if renamed(ctx.conn, item) else None
+            start, end = body["start"][when], body["end"][when]
+            out.append(MacWriteOut(op="save", title=title, start=start, end=end, all_day=day, **where))
+    return out
+
+
+@command("mac_written", logged=False)  # the Mac app's report, like `mac_sync`: nothing of yours to undo
+def mac_written(ctx: Ctx, inp: MacWrittenInput) -> Changed:
+    """What the Mac app made of a change: done, with the event as it now is; or why not, tried again up to five times
+    (then the status line says so)."""
+    job = one(ctx.conn, "SELECT * FROM event_writes WHERE id = ? AND user_id = ?", [inp.id, ctx.user_id])
+    if job is None:
+        raise FieldError("id", f"no change {inp.id} is waiting")
+    if job["done_utc"]:
+        return Changed(message="Already saved")
+    if not inp.ok:
+        ctx.db.update(
+            "event_writes", {"id": inp.id}, {"tries": job["tries"] + 1, "error": (inp.error or "failed")[:300]}
+        )
+        return Changed(message="Kept, to try again")
+    ctx.db.update("event_writes", {"id": inp.id}, {"done_utc": ctx.now_text, "error": None})
+    if inp.event is not None and job["op"] == "save":
+        settle(ctx, job["item_id"], inp.event)
+    return Changed(message="Saved to your calendar" if job["op"] == "save" else "Deleted from your calendar")
+
+
+def settle(ctx: Ctx, item_id: int, event: MacEvent) -> None:
+    """The event as the Mac app left it becomes what Friday last read of it: the raw input takes its (maybe new) id
+    and times, and so does the last reading the Mac posted, in case the sync job reads that before the next one."""
+    link = event_links(ctx.conn, ctx.user_id).get(item_id)
+    if link is None or link.kind != "mac":
+        return
+    shaped = google_shape(event)
+    text, digest = event_digest(shaped)
+    raw = one(
+        ctx.conn, "SELECT id FROM raw_inputs WHERE source_id = ? AND external_id = ?", [link.source_id, link.event_id]
+    )
+    taken = one(
+        ctx.conn,
+        "SELECT id FROM raw_inputs WHERE source_id = ? AND external_id = ? AND external_id != ?",
+        [link.source_id, event.id, link.event_id],
+    )
+    if raw is not None and taken is None:
+        title = (shaped.get("summary") or "").strip()
+        ctx.db.update(
+            "raw_inputs",
+            {"id": raw["id"]},
+            {"external_id": event.id, "content": text, "content_hash": digest, "title": title},
+        )
+    posted = kv_get(ctx.conn, "mac_events", {}, ctx.user_id)
+    if link.calendar_id in posted:
+        posted[link.calendar_id] = [shaped if e.get("id") == link.event_id else e for e in posted[link.calendar_id]]
+        put(ctx, "mac_events", posted)
 
 
 def google_shape(e: MacEvent) -> dict[str, Any]:

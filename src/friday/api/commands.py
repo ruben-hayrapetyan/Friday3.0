@@ -688,6 +688,15 @@ class MacEvent(Model):
     declined: bool = False  # you declined the invitation
 
 
+class MacWrittenInput(Model):
+    """What the Mac app made of a change to one of the Mac's events (`mac_writes`)."""
+
+    id: int  # the change's id
+    ok: bool
+    error: str | None = None  # why not, when it couldn't
+    event: MacEvent | None = None  # the event as it is after the change (its id moves with a one-off event's start)
+
+
 class MacSyncInput(Model):
     """What the Mac app sees on the Mac's calendars, between `since` and `until` (times with an offset)."""
 

@@ -224,8 +224,8 @@ def test_calendar_set_refuses_what_it_cant_do(app: App) -> None:
     post(app, [HOME], [])
     with pytest.raises(FieldError, match="on the Mac"):
         app.do("calendar_set", id="nope", mac=True, on=True)
-    with pytest.raises(FieldError, match="Mac's calendars"):
-        app.do("calendar_set", id="home", mac=True, editable=True)
+    with pytest.raises(FieldError, match="The Mac doesn't let you"):
+        app.do("calendar_set", id="home", mac=True, editable=True)  # EventKit says it can't be changed
     with pytest.raises(FieldError, match="Google account"):
         app.do("calendar_set", id="home", on=True)  # without `mac` it's a Google calendar's id
 
@@ -287,3 +287,109 @@ def test_what_the_mac_app_posts_is_checked(app: App) -> None:
 def test_nothing_is_read_before_the_mac_app_posts(app: App) -> None:
     sync(app.conn, app.now_utc)
     assert app.table("sources") == [] and app.table("items") == []
+
+
+# Changes made here to a Mac calendar's events, made on the Mac by the Mac app (`mac_writes`, then `mac_written`).
+WRITABLE = calendar("home", "Home", writable=True)
+
+
+def written(app: App, job: dict, **event: Any) -> None:
+    """The Mac app's answer: done, with the event as EventKit now has it."""
+    answer = {"id": job["id"], "ok": True}
+    app.do("mac_written", **answer, **({"event": mac_event(**event)} if event else {}))
+
+
+def test_an_event_changed_here_waits_for_the_mac_app_and_comes_back_as_the_same_event(app: App) -> None:
+    post(app, [WRITABLE], [LECTURE])
+    dentist = events(app)["Dentist"]
+    assert shown(app, "Dentist")["saves_to_calendar"] is True
+    assert app.do("mac_calendars")[0]["editable"] is True
+    app.do("edit", id=dentist["id"], start="2026-10-20T12:00", end="2026-10-20T13:00")
+    (job,) = app.do("mac_writes")
+    assert {k: job[k] for k in ("op", "calendar", "event", "title", "start", "end", "all_day")} == {
+        "op": "save",
+        "calendar": "home",
+        "event": "l1",
+        "title": None,  # a move leaves the calendar's title alone
+        "start": "2026-10-20T16:00:00Z",
+        "end": "2026-10-20T17:00:00Z",
+        "all_day": False,
+    }
+    google = FakeGoogle({"Classes@group": []})
+    assert write_events(app.conn, app.now_utc, google=google) == 0 and google.writes == []  # the Mac app's to make
+    assert len(app.do("mac_writes")) == 1
+    # A one-off event's id carries its start, so the move gives it a new one.
+    written(app, job, eid="l1@moved", cid="home", title="Dentist", start="2026-10-20T12:00", end="2026-10-20T13:00")
+    assert app.do("mac_writes") == []
+    log = len(app.table("command_log"))
+    moved = mac_event("l1@moved", "home", "Dentist", "2026-10-20T12:00", "2026-10-20T13:00")
+    post(app, [WRITABLE], [moved], minutes_later=1)
+    assert [i["id"] for i in events(app).values()] == [dentist["id"]]  # not dropped and made again
+    assert shown(app, "Dentist")["start"] == "2026-10-20T12:00"
+    assert len(app.table("command_log")) == log and app.do("inbox")["suggestions"] == []  # nothing new to read
+    assert app.table("event_writes")[-1]["done_utc"] is not None and len(app.table("event_writes")) == 1
+
+
+def test_the_answer_also_corrects_what_the_mac_last_posted(app: App) -> None:
+    post(app, [WRITABLE], [LECTURE])
+    dentist = events(app)["Dentist"]
+    app.do("edit", id=dentist["id"], start="2026-10-20T12:00", end="2026-10-20T13:00")
+    (job,) = app.do("mac_writes")
+    written(app, job, eid="l1@moved", cid="home", title="Dentist", start="2026-10-20T12:00", end="2026-10-20T13:00")
+    # The job reads the last posting again before the Mac app posts anew: the event isn't taken for gone.
+    app.conn.execute("INSERT INTO kv (user_id, key, value) VALUES (1, 'mac_sync_now', '\"now\"')")
+    sync(app.conn, app.now_utc + 1)
+    assert [i["id"] for i in events(app).values()] == [dentist["id"]]
+
+
+def test_a_title_goes_back_only_when_you_renamed_it_here(app: App) -> None:
+    post(app, [WRITABLE], [mac_event("c1", "home", "Chem 2090 Lec (room 200)", "2026-10-20T10:00", "2026-10-20T11:00")])
+    chem = next(iter(events(app).values()))
+    # As the small model tidies a title it reads: the item and the suggestion it accepted say "Chem 2090 Lecture".
+    app.conn.execute("UPDATE items SET title = 'Chem 2090 Lecture' WHERE id = ?", [chem["id"]])
+    app.conn.execute(
+        "UPDATE suggestions SET input = json_set(input, '$.title', 'Chem 2090 Lecture') WHERE item_id = ?", [chem["id"]]
+    )
+    app.do("edit", id=chem["id"], start="2026-10-20T10:30", end="2026-10-20T11:30")
+    assert app.do("mac_writes")[0]["title"] is None  # the room stays in the calendar's title
+    app.do("edit", id=chem["id"], title="Chem 2090 Lecture (moved to 120)")
+    assert app.do("mac_writes")[-1]["title"] == "Chem 2090 Lecture (moved to 120)"
+
+
+def test_an_event_deleted_here_is_deleted_on_the_mac(app: App) -> None:
+    post(app, [WRITABLE], [LECTURE])
+    dentist = events(app)["Dentist"]
+    app.do("drop", id=dentist["id"])
+    (job,) = app.do("mac_writes")
+    assert (job["op"], job["calendar"], job["event"]) == ("delete", "home", "l1")
+    assert app.do("mac_written", id=job["id"], ok=True)["message"] == "Deleted from your calendar"
+    post(app, [WRITABLE], [], minutes_later=1)
+    assert events(app) == {} and app.do("inbox")["suggestions"] == []
+
+
+def test_undoing_a_change_before_the_mac_app_asks_takes_it_back(app: App) -> None:
+    post(app, [WRITABLE], [LECTURE])
+    edit = app.full("edit", payload={"id": events(app)["Dentist"]["id"], "title": "Oops"}, provisional=False)
+    app.do("undo", command_id=edit.command_id)
+    assert app.do("mac_writes") == []
+
+
+def test_a_change_the_mac_cant_make_is_tried_again_then_reported(app: App) -> None:
+    from friday.commands.eventwrites import MAX_TRIES, failed_writes
+
+    post(app, [WRITABLE], [LECTURE])
+    app.do("edit", id=events(app)["Dentist"]["id"], title="Dentist at noon")
+    for _ in range(MAX_TRIES):
+        (job,) = app.do("mac_writes")
+        assert app.do("mac_written", id=job["id"], ok=False, error="The event isn't on the calendar any more")
+    assert app.do("mac_writes") == []
+    assert failed_writes(app.conn) == [
+        "Couldn't save Dentist at noon to your calendar (The event isn't on the calendar any more)"
+    ]
+
+
+def test_a_mac_calendar_you_said_not_to_edit_gets_nothing(app: App) -> None:
+    post(app, [WRITABLE], [LECTURE])
+    app.do("calendar_set", id="home", mac=True, editable=False)
+    app.do("edit", id=events(app)["Dentist"]["id"], start="2026-10-20T12:00", end="2026-10-20T13:00")
+    assert app.do("mac_writes") == [] and shown(app, "Dentist")["saves_to_calendar"] is False

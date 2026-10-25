@@ -1500,6 +1500,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/mac_writes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title only if you */
+        get: operations["mac_writes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/mac_written": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What the Mac app made of a change: done, with the event as it now is; or why not, tried again up to five times */
+        post: operations["mac_written"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/act": {
         parameters: {
             query?: never;
@@ -4117,6 +4151,67 @@ export interface components {
              */
             repeated?: boolean;
         };
+        /**
+         * MacWriteOut
+         * @description A change to one of the Mac's events, for the Mac app to make through EventKit: its times (timed with an offset,
+         *     or whole days with the end the day after the last) and, if you renamed it, its title; or a delete.
+         */
+        MacWriteOut: {
+            /** Id */
+            id: number;
+            /**
+             * Op
+             * @enum {string}
+             */
+            op: "save" | "delete";
+            /** Calendar */
+            calendar: string;
+            /** Event */
+            event: string;
+            /** Title */
+            title?: string | null;
+            /** Start */
+            start?: string | null;
+            /** End */
+            end?: string | null;
+            /**
+             * All Day
+             * @default false
+             */
+            all_day?: boolean;
+        };
+        /**
+         * MacWrittenInput
+         * @description What the Mac app made of a change to one of the Mac's events (`mac_writes`).
+         */
+        MacWrittenInput: {
+            /** Id */
+            id: number;
+            /** Ok */
+            ok: boolean;
+            /** Error */
+            error?: string | null;
+            event?: components["schemas"]["MacEvent"] | null;
+        };
+        /** MacWrittenResult */
+        MacWrittenResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
         /** MailOut */
         MailOut: {
             /** Id */
@@ -4536,6 +4631,11 @@ export interface components {
              * @default false
              */
             provisional?: boolean;
+            /**
+             * Sessions
+             * @default []
+             */
+            sessions?: components["schemas"]["BlockOut"][];
         };
         /** PreviewWeightsInput */
         PreviewWeightsInput: {
@@ -9840,6 +9940,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GoogleCalendarOut"][];
+                };
+            };
+        };
+    };
+    mac_writes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MacWriteOut"][];
+                };
+            };
+        };
+    };
+    mac_written: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MacWrittenInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MacWrittenResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

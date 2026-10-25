@@ -12,6 +12,7 @@ class PlanOut(Model):
     fixed: list[ItemOut]
     day_hours: dict[str, float]
     provisional: bool = False
+    sessions: list[BlockOut] = []  # what you timed in the range, when you did it (keys S<id>@<start>)
 
 
 class ItemDetail(Model):
@@ -404,6 +405,20 @@ class TokenOut(Model):
     scope: str
     created: str
     last_used: str | None
+
+
+class MacWriteOut(Model):
+    """A change to one of the Mac's events, for the Mac app to make through EventKit: its times (timed with an offset,
+    or whole days with the end the day after the last) and, if you renamed it, its title; or a delete."""
+
+    id: int
+    op: Literal["save", "delete"]
+    calendar: str  # EventKit's calendarIdentifier
+    event: str  # the occurrence's id, as the Mac app sent it ("<identifier>@<occurrence start, Unix seconds>")
+    title: str | None = None  # only when you renamed it in Friday: otherwise the calendar's own stays
+    start: str | None = None
+    end: str | None = None
+    all_day: bool = False
 
 
 class RuleReadOut(Model):

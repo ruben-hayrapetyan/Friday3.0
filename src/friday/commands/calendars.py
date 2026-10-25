@@ -76,10 +76,9 @@ def calendar_set(ctx: Ctx, inp: CalendarSetInput) -> Changed:
     if inp.trusted is not None:
         changes["trusted"] = int(inp.trusted)
     if inp.editable is not None:
-        if inp.editable and inp.mac:
-            raise FieldError("editable", "Friday doesn't change the Mac's calendars yet")
         if inp.editable and not listed[inp.id].get("writable", False):
-            raise FieldError("editable", "Google doesn't let you change this calendar's events")
+            owner = "The Mac" if inp.mac else "Google"
+            raise FieldError("editable", f"{owner} doesn't let you change this calendar's events")
         config = json.loads(changes.get("config") or source["config"])
         changes["config"] = json.dumps(config | {"editable": inp.editable})
     if inp.kind is not None:

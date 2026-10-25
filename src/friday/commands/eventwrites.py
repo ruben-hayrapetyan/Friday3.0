@@ -1,4 +1,4 @@
-"""Your events, changed in Friday, saved back to Google Calendar (COMBINED.md 69).
+"""Your events, changed in Friday, saved back to Google Calendar (COMBINED.md 69), and to the Mac's calendars.
 
 A change you make to an event read from a calendar you may edit, or an event you make while `gcal.new_events_to`
 names a calendar, is queued in `event_writes` by the command, in its transaction (so undoing the command before the
@@ -7,6 +7,10 @@ keeps for that event is brought up to date with what Google gave back, so the ne
 suggesting your own change back to you. A new event gets a raw input and an accepted suggestion of its own, as if it
 had been read from the calendar: from then on it is one of that calendar's events, changed there or here. Each change
 goes through the Google account the calendar is read through.
+
+An event read from one of the Mac's calendars is changed by the Mac app, through EventKit (so a Google calendar the Mac
+reads gets it from the Mac's own sync): it asks for the queue (`mac_writes`) and says what it made of each change
+(`mac_written`). The job here leaves those to it.
 """
 
 import hashlib
@@ -47,11 +51,13 @@ def queue_event_write(ctx: Ctx, item: Item, op: str) -> None:
 
 
 def writes_to(conn: sqlite3.Connection, user_id: int, source_id: int) -> bool:
+    """Whether changes here go back to the event's calendar: a Google one or one of the Mac's that may be changed."""
     source = one(conn, "SELECT kind, config FROM sources WHERE id = ?", [source_id])
-    if source is None or source["kind"] != "gcal":  # Friday doesn't change the Mac's calendars yet
+    if source is None or source["kind"] not in ("gcal", "mac"):
         return False
     config = json.loads(source["config"])
-    listed = {c["id"]: c for c in kv_get(conn, "google_calendars", [], user_id)}
+    key = "google_calendars" if source["kind"] == "gcal" else "mac_calendars"
+    listed = {c["id"]: c for c in kv_get(conn, key, [], user_id)}
     return editable(config, listed.get(config.get("calendar"), {}))
 
 
@@ -68,6 +74,28 @@ def event_body(item: Item, tz: str) -> dict[str, Any]:
     return body
 
 
+def change_body(conn: sqlite3.Connection, item: Item, tz: str) -> dict[str, Any]:
+    """What a change to an event already on a calendar sends: its times, and its title only if you renamed it here.
+    Friday tidies titles as it reads them ("Chem 2090 Lec (room 200)" is "Chem 2090 Lecture" here) and never reads
+    descriptions, so sending either back as it stands would overwrite what the calendar says."""
+    body = event_body(item, tz)
+    kept = {"start": body["start"], "end": body["end"]}
+    return kept | ({"summary": item.title} if renamed(conn, item) else {})
+
+
+def renamed(conn: sqlite3.Connection, item: Item) -> bool:
+    """Whether the title isn't the one Friday made of the calendar's: the latest it accepted from the calendar."""
+    for r in rows(
+        conn,
+        "SELECT input FROM suggestions WHERE item_id = ? AND status = 'accepted' ORDER BY id DESC",
+        [item.id],
+    ):
+        title = json.loads(r["input"] or "{}").get("title")
+        if title:
+            return title != item.title
+    return False
+
+
 class NeedsSignIn(Exception):
     """The calendar's account signed in before "Edit here", so Google won't take changes until it signs in again."""
 
@@ -77,11 +105,16 @@ def write_events(
 ) -> int:
     """Send what's queued, each through its calendar's account; returns how many were saved or deleted. Failures are
     kept and tried again later; changes to an account that needs to sign in again wait for it."""
-    pending = rows(
-        conn,
-        "SELECT * FROM event_writes WHERE user_id = ? AND done_utc IS NULL AND tries < ? ORDER BY id",
-        [user_id, MAX_TRIES],
-    )
+    links = event_links(conn, user_id)
+    pending = [
+        job
+        for job in rows(
+            conn,
+            "SELECT * FROM event_writes WHERE user_id = ? AND done_utc IS NULL AND tries < ? ORDER BY id",
+            [user_id, MAX_TRIES],
+        )
+        if not on_mac(links.get(job["item_id"]))  # the Mac app makes those (`mac_writes`)
+    ]
     if not pending:
         return 0
     apis = google_auth.per_account(google, folder, google_auth.calendar)
@@ -125,15 +158,21 @@ def write_events(
     return written
 
 
+def on_mac(link: Any) -> bool:
+    return link is not None and link.kind == "mac"
+
+
 def failed_writes(conn: sqlite3.Connection, user_id: int = 1) -> list[str]:
     """Changes Friday gave up saving to Google, for the status line."""
     found = rows(
         conn,
-        "SELECT i.title, w.error FROM event_writes w JOIN items i ON i.id = w.item_id "
+        "SELECT w.item_id, i.title, w.error FROM event_writes w JOIN items i ON i.id = w.item_id "
         "WHERE w.user_id = ? AND w.done_utc IS NULL AND w.tries >= ? ORDER BY w.id DESC LIMIT 3",
         [user_id, MAX_TRIES],
     )
-    return [f"Couldn't save {r['title']} to Google ({r['error']})" for r in found]
+    links = event_links(conn, user_id)
+    where = {r["item_id"]: "your calendar" if on_mac(links.get(r["item_id"])) else "Google" for r in found}
+    return [f"Couldn't save {r['title']} to {where[r['item_id']]} ({r['error']})" for r in found]
 
 
 def send(
@@ -154,7 +193,8 @@ def send(
             gcal.delete_event(google_for(link.calendar_id), link.calendar_id, link.event_id)
         return
     if link is not None and link.calendar_id:
-        made = gcal.save_event(google_for(link.calendar_id), link.calendar_id, link.event_id, event_body(item, tz))
+        body = change_body(conn, item, tz)
+        made = gcal.save_event(google_for(link.calendar_id), link.calendar_id, link.event_id, body)
         remember(conn, link.source_id, made, tz, settings, now_utc, user_id, None)
         return
     calendar = job["calendar_id"]

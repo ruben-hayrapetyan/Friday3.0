@@ -372,6 +372,22 @@ VERBS = {
         False,
         "The Mac's calendars and their events between `since` and `until`, from the Mac app.",
     ),
+    "mac_writes": Verb(
+        "GET",
+        "/api/q/mac_writes",
+        commands.Empty,
+        False,
+        False,
+        "Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title only if you",
+    ),
+    "mac_written": Verb(
+        "POST",
+        "/api/c/mac_written",
+        commands.MacWrittenInput,
+        True,
+        False,
+        "What the Mac app made of a change: done, with the event as it now is; or why not, tried again up to five times",
+    ),
     "mail_log": Verb(
         "GET",
         "/api/q/mail_log",
