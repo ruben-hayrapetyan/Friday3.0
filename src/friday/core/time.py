@@ -65,7 +65,7 @@ def ampm(time: str | datetime) -> str:
     return f"{(hour - 1) % 12 + 1}{f':{minute:02d}' if minute else ''}{'am' if hour % 24 < 12 else 'pm'}"
 
 
-TIMES = re.compile(r"(?<![\dT:])([01]?\d|2[0-3]):([0-5]\d)(?![\d:])")
+TIMES = re.compile(r"(?<![\dT:])([01]?\d|2[0-3]):([0-5]\d)(?![\d:]|\s?[ap]m)")  # "8:30pm" is already on 12 hours
 
 
 def ampm_in(text: str) -> str:

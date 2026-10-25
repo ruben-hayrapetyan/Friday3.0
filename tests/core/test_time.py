@@ -145,3 +145,9 @@ def test_sentences_turn_their_times_but_not_dates_or_lengths() -> None:
     assert ampm_in("Keep evenings 18:00–23:00 free") == "Keep evenings 6pm–11pm free"
     assert ampm_in("at 2026-10-20T14:00, timer 1:02:03") == "at 2026-10-20T14:00, timer 1:02:03"
     assert ampm_in("No work after 10pm") == "No work after 10pm"
+
+
+def test_a_sentence_already_on_twelve_hours_reads_the_same() -> None:
+    assert ampm_in("Gym between 7am and 8:30pm on weekdays") == "Gym between 7am and 8:30pm on weekdays"
+    assert ampm_in("Keep Fri, Sat 8pm–11:59pm free") == "Keep Fri, Sat 8pm–11:59pm free"
+    assert ampm_in("between 12:20 and 13:10") == "between 12:20pm and 1:10pm"
