@@ -26,6 +26,7 @@ describe("shortcuts", () => {
   it("read ⌘Z as undo and ignore other modified keys", () => {
     expect(press("z", { meta: true })).toBe("undo")
     expect(press("w", { meta: true })).toBeNull()
-    expect(press("3")).toBeNull() // no 3-day view
+    expect(press("3", { meta: true })).toBeNull()
+    expect(press("3")).toBe("three") // the 3 days view
   })
 })

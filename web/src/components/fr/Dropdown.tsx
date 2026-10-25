@@ -6,7 +6,7 @@ import { useShell } from "@/shell/ShellContext"
 import { Icon } from "./controls"
 
 /** A button that opens a small panel below it; a click outside or Escape closes it. */
-export function Dropdown(props: { tour?: string; icon: string; label: string; badge?: ReactNode; tone?: CSSProperties; wide?: boolean; children: (close: () => void) => ReactNode }) {
+export function Dropdown(props: { tour?: string; icon: string; label: string; badge?: ReactNode; tone?: CSSProperties; wide?: boolean; up?: boolean; children: (close: () => void) => ReactNode }) {
   const { layout } = useShell()
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
@@ -36,7 +36,7 @@ export function Dropdown(props: { tour?: string; icon: string; label: string; ba
         {words && <Icon name="caret-down" size={11} style={{ opacity: 0.6 }} />}
       </button>
       {open && (
-        <div className="fr-float" style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 20, width: "min(300px, calc(100vw - 24px))", padding: 6, display: "flex", flexDirection: "column", gap: 1 }}>
+        <div className="fr-float" style={{ position: "absolute", ...(props.up ? { bottom: "calc(100% + 6px)", left: 0 } : { top: "calc(100% + 6px)", right: 0 }), zIndex: 20, width: "min(300px, calc(100vw - 24px))", padding: 6, display: "flex", flexDirection: "column", gap: 1 }}>
           {props.children(() => setOpen(false))}
         </div>
       )}

@@ -29,8 +29,10 @@ describe("a request from the Mac app", () => {
 
 describe("moving the calendar from the menus", () => {
   const today = "2026-10-23"
-  it("steps by the view: a day, a week or a month", () => {
+  it("steps by the view: a day, three days, a week or a month", () => {
     expect(placeAfter({ action: "next" }, { view: 1, first: null }, today)).toEqual({ view: 1, first: "2026-10-24" })
+    expect(placeAfter({ action: "next" }, { view: 3, first: null }, today)).toEqual({ view: 3, first: "2026-10-26" })
+    expect(placeAfter({ action: "view", argument: "three" }, { view: 7, first: null }, today)).toEqual({ view: 3, first: null })
     expect(placeAfter({ action: "previous" }, { view: 7, first: "2026-10-19" }, today)).toEqual({ view: 7, first: "2026-10-12" })
     expect(placeAfter({ action: "next" }, { view: "month", first: null }, today)).toEqual({ view: "month", first: "2026-11-01" })
     expect(placeAfter({ action: "next" }, { view: "month", first: "2026-12-01" }, today)).toEqual({ view: "month", first: "2027-01-01" })

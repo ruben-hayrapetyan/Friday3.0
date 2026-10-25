@@ -9,8 +9,13 @@ import { type Toast, useToast } from "@/components/Toasts"
 
 const OPTIMISTIC = ["items", "item", "plan", "now"]
 
-// The newest command this page ran, for ⌘Z.
-let lastCommand: number | null = null
+// The newest change this page made, for ⌘Z: one command, or several made as one (a change to many to-dos).
+let lastCommands: number[] = []
+
+/** ⌘Z undoes these together, as the toast's Undo does. */
+export function rememberTogether(ids: number[]): void {
+  if (ids.length) lastCommands = ids
+}
 
 export interface Options<N extends CommandName> {
   optimistic?: (client: QueryClient, input: CommandInput<N>) => void
@@ -37,7 +42,7 @@ export async function runCommand<N extends CommandName>(
     if (Array.isArray(provisional)) setGhosts(client, provisional)
     const message = label ? label(out) : sentence(name)
     if (id !== null) {
-      lastCommand = id
+      lastCommands = [id]
       if (!quiet) toast({ message, action: { label: "Undo", run: () => undo(client, toast, id) } })
     }
     return out
@@ -81,9 +86,9 @@ function sentence(name: string): string {
 }
 
 export function undoLast(client: QueryClient, toast: (toast: Toast) => void): void {
-  if (lastCommand === null) return toast({ message: "Nothing to undo" })
-  undo(client, toast, lastCommand)
-  lastCommand = null
+  if (!lastCommands.length) return toast({ message: "Nothing to undo" })
+  undoAll(client, toast, lastCommands)
+  lastCommands = []
 }
 
 async function undo(client: QueryClient, toast: (toast: Toast) => void, id: number): Promise<void> {

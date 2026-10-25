@@ -6,6 +6,7 @@ export type KeyAction =
   | "quickAdd"
   | "palette"
   | "day"
+  | "three"
   | "week"
   | "month"
   | "previous"
@@ -22,6 +23,7 @@ export type KeyAction =
 const SINGLE: Record<string, KeyAction> = {
   n: "quickAdd",
   d: "day",
+  "3": "three",
   w: "week",
   m: "month",
   "[": "previous",

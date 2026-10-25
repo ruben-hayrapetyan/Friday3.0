@@ -3,12 +3,12 @@
 // due dates, lengths and tags as you'd say them; Long term in its own sepia ink; Due, every dated task soonest first
 // with the now line after the ones already past. A row is one line: the title, its tag, and on the right what
 // Friday made of it (start-by warnings, progress, time left, when it's next planned, the due countdown). Click one
-// for everything about it beside the list. View options keep v22's grouping by when or tag, sorting, done items and
-// the two-line rows with progress bars.
+// for everything about it beside the list; ⌘-click or Shift-click several (⌘A for all) to change them together.
+// View options keep v22's grouping by when or tag, sorting, done items and the two-line rows with progress bars.
 
 import { Dropdown } from "@/components/fr/Dropdown"
 import { useQuery } from "@tanstack/react-query"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { NavLink, useSearchParams } from "react-router"
 import { type Item, query } from "@/api/client"
 import { Check, Chip, Icon, Seg } from "@/components/fr/controls"
@@ -22,6 +22,7 @@ import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { AddBox } from "./AddBox"
+import { BulkBar, pickWith } from "./Bulk"
 import { addHint, fillFor, GROUPS, type GroupBy, grouped, KINDS_FIRST, OTHER, plural, progress, SORTS, type SortBy, summary } from "./groups"
 import { DuePicker, LengthInput } from "./Pickers"
 import { useDuplicates } from "@/inbox/CheckTasks"
@@ -61,6 +62,30 @@ export function TodoPage() {
   const added = (id: number) => setFresh((was) => [...was, id])
   const select = (id: number | null) => setParams({ ...(id ? { item: String(id) } : {}), ...(list !== "Short term" ? { list } : {}) }, { replace: true })
   const pickList = (next: List) => setParams(next === "Short term" ? {} : { list: next }, { replace: true })
+  // Several at once: ⌘ (or Ctrl) adds one, Shift a run, ⌘A all shown; a plain click goes back to one task's detail.
+  const [picked, setPicked] = useState<number[]>([])
+  const [anchor, setAnchor] = useState<number | null>(null)
+  const order = list === "Due" ? [...items].sort((a, b) => (a.due as string).localeCompare(b.due as string)).map((i) => i.id) : groups.flatMap((g) => g.items.map((i) => i.id))
+  const pickedItems = items.filter((i) => picked.includes(i.id))
+  const choose = (id: number, e: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => {
+    const toggle = e.metaKey || e.ctrlKey
+    if (!toggle && !e.shiftKey) return (setPicked([]), select(id === selected ? null : id))
+    setPicked(pickWith(order, picked.length ? picked : selected ? [selected] : [], anchor ?? selected, id, toggle, e.shiftKey))
+    setAnchor(id)
+    if (selected) select(null)
+  }
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select, [contenteditable]")) return
+      if (e.key === "Escape" && picked.length) setPicked([])
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a" && order.length) {
+        e.preventDefault()
+        setPicked(order)
+      }
+    }
+    window.addEventListener("keydown", key)
+    return () => window.removeEventListener("keydown", key)
+  })
   return (
     <>
       <div className="fr-page-head" style={{ gap: 12 }}>
@@ -109,12 +134,13 @@ export function TodoPage() {
           )}
         </Dropdown>
       </div>
-      <div className="fr-panel fr-todo-split" data-open={selected ? "" : undefined} style={{ display: "grid", gridTemplateColumns: selected ? "minmax(0,1fr) 400px" : "minmax(0,1fr)", overflow: "hidden" }}>
+      <div className="fr-panel fr-todo-split" data-open={selected ? "" : undefined} style={{ display: "grid", gridTemplateColumns: selected ? "minmax(0,1fr) 400px" : "minmax(0,1fr)", overflow: "hidden", position: "relative" }}>
+        {pickedItems.length > 0 && <BulkBar items={pickedItems} onClear={() => setPicked([])} />}
         <div className="fr-gutter" style={{ overflowY: "auto", minHeight: 0, padding: "16px 22px 140px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
             {(by === "When" || list === "Due") && <AddBox compact onAdded={added} longTerm={list === "Long term"} placeholder="Add a to-do…" />}
             {list === "Due" ? (
-              <DueList items={items} fresh={fresh} selected={selected} onSelect={(id) => select(id === selected ? null : id)} Row={RowOf} />
+              <DueList items={items} fresh={fresh} selected={selected} picked={picked} onSelect={choose} Row={RowOf} />
             ) : (
               groups.map((g) => {
                 const fill = fillFor(by, g.name)
@@ -134,7 +160,7 @@ export function TodoPage() {
                   >
                     <SectionRule name={by === "Kind" ? plural(g.name) : g.name} items={g.items} />
                     {g.items.map((i) => (
-                      <RowOf key={i.id} item={i} by={by} fresh={fresh.includes(i.id)} selected={i.id === selected} onSelect={() => select(i.id === selected ? null : i.id)} />
+                      <RowOf key={i.id} item={i} by={by} fresh={fresh.includes(i.id)} selected={i.id === selected} picked={picked.includes(i.id)} onSelect={(e) => choose(i.id, e)} />
                     ))}
                     {fill && <AddBox compact onAdded={added} longTerm={list === "Long term"} fill={fill} placeholder={addHint(by, g.name)} />}
                   </section>
@@ -143,7 +169,7 @@ export function TodoPage() {
             )}
             {!groups.length && list !== "Due" && <div style={{ padding: "40px 8px", color: "var(--color-neutral-400)" }}>Nothing left. Add something above, or turn on Show done to see what you finished.</div>}
             <span className="fr-mono" style={{ fontSize: 10.5, color: "var(--color-neutral-500)" }}>
-              Type it the way you’d say it: <span style={{ color: "var(--color-neutral-300)" }}>ch 4 #psych due fri 5pm ~1h</span>. Click a task for everything about it; drag it onto another section to change its kind.
+              Type it the way you’d say it: <span style={{ color: "var(--color-neutral-300)" }}>ch 4 #psych due fri 5pm ~1h</span>. Click a task for everything about it; ⌘-click or Shift-click to pick several; drag it onto another section to change its kind.
             </span>
           </div>
         </div>
@@ -168,7 +194,7 @@ export function ExpiresMark() {
 }
 
 /** Every dated task, soonest first, with the now line after the ones already past (personal's Due page). */
-function DueList({ items, fresh, selected, onSelect, Row }: { items: Item[]; fresh: number[]; selected: number | null; onSelect: (id: number) => void; Row: (p: RowProps) => React.ReactNode }) {
+function DueList({ items, fresh, selected, picked, onSelect, Row }: { items: Item[]; fresh: number[]; selected: number | null; picked: number[]; onSelect: (id: number, e: React.MouseEvent | React.KeyboardEvent) => void; Row: (p: RowProps) => React.ReactNode }) {
   const now = useClock()
   const sorted = [...items].sort((a, b) => (a.due as string).localeCompare(b.due as string))
   const past = sorted.filter((i) => toMin(i.due as string) < now).length
@@ -177,7 +203,7 @@ function DueList({ items, fresh, selected, onSelect, Row }: { items: Item[]; fre
       {sorted.map((i, n) => (
         <div key={i.id} style={{ display: "contents" }}>
           {n === past && past > 0 && <div role="separator" aria-label="Now" style={{ height: 2, margin: "4px 8px", borderRadius: 1, background: "var(--fr-now)" }} />}
-          <Row item={i} by="Due" fresh={fresh.includes(i.id)} selected={i.id === selected} onSelect={() => onSelect(i.id)} />
+          <Row item={i} by="Due" fresh={fresh.includes(i.id)} selected={i.id === selected} picked={picked.includes(i.id)} onSelect={(e) => onSelect(i.id, e)} />
         </div>
       ))}
       {!sorted.length && <div style={{ padding: "40px 8px", color: "var(--color-neutral-400)" }}>Nothing has a due date.</div>}
@@ -190,7 +216,8 @@ interface RowProps {
   by: GroupBy | "Due" // what the list is grouped by, which the row then needn't repeat
   fresh: boolean
   selected: boolean
-  onSelect: () => void
+  picked: boolean // one of several picked to change together
+  onSelect: (e: React.MouseEvent | React.KeyboardEvent) => void
 }
 
 /** A section's head, as personal ruled it: its name, a rule to the edge, how many and how long. */
@@ -210,7 +237,7 @@ function SectionRule({ name, items }: { name: string; items: Item[] }) {
 }
 
 /** One line, as personal's notebook drew a task, with what Friday made of it on the right. */
-function CompactRow({ item, by, fresh, selected, onSelect }: RowProps) {
+function CompactRow({ item, by, fresh, selected, picked, onSelect }: RowProps) {
   const { today } = useShell()
   const { color } = useLook()
   const blocks = useHorizon().data?.blocks ?? []
@@ -240,10 +267,11 @@ function CompactRow({ item, by, fresh, selected, onSelect }: RowProps) {
     <div
       role="button"
       tabIndex={0}
-      onClick={() => editing === null && onSelect()}
+      onClick={(e) => editing === null && onSelect(e)}
+      onMouseDown={(e) => e.shiftKey && e.preventDefault()}
       draggable={editing === null}
       onDragStart={(e) => (e.dataTransfer.setData(DRAG, String(item.id)), (e.dataTransfer.effectAllowed = "move"))}
-      onKeyDown={(e) => e.key === "Enter" && editing === null && onSelect()}
+      onKeyDown={(e) => e.key === "Enter" && editing === null && onSelect(e)}
       className="fr-hover-soft fr-todo-line"
       title={`${item.title}: click for everything about it, double-click the title to rename`}
       style={{
@@ -252,7 +280,8 @@ function CompactRow({ item, by, fresh, selected, onSelect }: RowProps) {
         alignItems: "center",
         minHeight: 28,
         borderRadius: 4,
-        background: selected ? "color-mix(in srgb, var(--color-accent) 12%, transparent)" : undefined,
+        background: picked ? "color-mix(in srgb, var(--color-accent) 22%, transparent)" : selected ? "color-mix(in srgb, var(--color-accent) 12%, transparent)" : undefined,
+        boxShadow: picked ? "inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 55%, transparent)" : undefined,
         cursor: "pointer",
         opacity: isDone ? 0.55 : 1,
       }}
@@ -360,7 +389,7 @@ function Pie({ share }: { share: number }) {
 }
 
 /** The two-line row (v22), for those who like progress bars: View options → Rows → Detailed. */
-function Row({ item, fresh, selected, onSelect }: RowProps) {
+function Row({ item, fresh, selected, picked, onSelect }: RowProps) {
   const { today } = useShell()
   const { color } = useLook()
   const blocks = useHorizon().data?.blocks ?? []
@@ -376,6 +405,7 @@ function Row({ item, fresh, selected, onSelect }: RowProps) {
   return (
     <div
       onClick={onSelect}
+      onMouseDown={(e) => e.shiftKey && e.preventDefault()}
       className="fr-row fr-hover-soft fr-todo-row"
       style={{
         display: "grid",
@@ -384,7 +414,8 @@ function Row({ item, fresh, selected, onSelect }: RowProps) {
         alignItems: "center",
         padding: "10px 8px",
         borderRadius: "var(--radius-md)",
-        background: selected ? "color-mix(in srgb, var(--color-accent) 10%, transparent)" : undefined,
+        background: picked ? "color-mix(in srgb, var(--color-accent) 22%, transparent)" : selected ? "color-mix(in srgb, var(--color-accent) 10%, transparent)" : undefined,
+        boxShadow: picked ? "inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 55%, transparent)" : undefined,
         cursor: "pointer",
         opacity: isDone ? 0.55 : 1,
       }}

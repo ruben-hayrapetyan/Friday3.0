@@ -9,7 +9,7 @@ const KEYS: [string, string[]][] = [
   ["Shove: take time back", ["S"]],
   ["Change pace", ["P"]],
   ["Start or pause the timer", ["Space"]],
-  ["Day, week or month", ["D", "W", "M"]],
+  ["Day, 3 days, week or month", ["D", "3", "W", "M"]],
   ["Earlier or later period", ["[", "]"]],
   ["Show or hide the to-do list", ["T"]],
   ["Move the selected block by 15 minutes", ["↑", "↓"]],

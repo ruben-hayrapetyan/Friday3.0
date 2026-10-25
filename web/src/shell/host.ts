@@ -40,7 +40,7 @@ export function readHost(detail: unknown): HostRequest | null {
   if (typeof name !== "string" || !NAMES.has(name)) return null
   const action = name as HostName
   if (argument !== undefined && typeof argument !== "string") return null
-  if (action === "view" && !["day", "week", "month"].includes(argument ?? "")) return null
+  if (action === "view" && !["day", "three", "week", "month"].includes(argument ?? "")) return null
   if (action === "go" && !PAGES.some((p) => argument === p || (p !== "/" && argument?.startsWith(`${p}/`)))) return null
   return argument === undefined ? { action } : { action, argument }
 }
@@ -66,7 +66,7 @@ export function placeAfter(request: HostRequest, place: CalendarPlace, today: st
     case "next":
       return step(1)
     case "view": {
-      const view = request.argument === "day" ? 1 : request.argument === "week" ? 7 : "month"
+      const view = request.argument === "day" ? 1 : request.argument === "three" ? 3 : request.argument === "week" ? 7 : "month"
       return { view, first: view === "month" ? monthStart(shown) : place.first }
     }
     default:

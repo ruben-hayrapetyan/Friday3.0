@@ -1,5 +1,5 @@
 // The Plan page (v22): the header (range, views, Shove, Pace, search, notifications, brief, to-do drawer) over the
-// week, day or month view (COMBINED.md 13: no 3-day view).
+// week, three days, day or month view (COMBINED.md 13 had no three days; you asked for them).
 
 import { useShownPlan } from "@/plan/shown"
 import { useEffect, useRef, useState } from "react"
@@ -31,6 +31,7 @@ export type { View }
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 const VIEWS = [
   { value: 1 as View, label: "Day" },
+  { value: 3 as View, label: "3 days" },
   { value: 7 as View, label: "Week" },
   { value: "month" as View, label: "Month" },
 ]
@@ -47,6 +48,7 @@ export function PlanPage() {
   const block = !!useShell().selected?.key.startsWith("T") // only then do the arrows move it, not the page
   useKeys({
     day: () => setView(1),
+    three: () => setView(3),
     week: () => setView(7),
     month: () => setView("month"),
     previous: () => step(-1),
@@ -87,7 +89,7 @@ function useNudge(): (by: number) => void {
   }
 }
 
-function Days({ first, view, drawer, aside }: { first: string; view: 1 | 7; drawer: number; aside: boolean }) {
+function Days({ first, view, drawer, aside }: { first: string; view: 1 | 3 | 7; drawer: number; aside: boolean }) {
   const calendar = useCalendar(addDays(first, -1), view + 1).data
   const plan = useShownPlan(`${first}T00:00`, `${addDays(first, view + 1)}T12:00`).data
   useEffect(() => {
@@ -359,7 +361,7 @@ function rangeTitle(first: string, view: View, short = false): string {
 
 function subTitle(first: string, days: number, today: string, view: View): string {
   if (view === "month") return today.slice(0, 7) === first.slice(0, 7) ? "This month" : "Today"
-  if (first <= today && today < addDays(first, days)) return view === 1 ? "Today" : "This week"
+  if (first <= today && today < addDays(first, days)) return view === 1 ? "Today" : view === 3 ? "Next 3 days" : "This week"
   return "Today"
 }
 
