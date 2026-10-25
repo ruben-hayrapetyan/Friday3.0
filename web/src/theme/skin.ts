@@ -48,7 +48,8 @@ function base(kind: Kind, col: string, mix: (p: number) => string): Skin {
     case "shove":
       return {
         ...s,
-        bg: "color-mix(in srgb, var(--color-accent) 12%, var(--color-surface))",
+        // Striped, as time set aside: it reads as yours at a glance, not as one more event.
+        bg: "repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 16%, var(--color-surface)) 0 6px, color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)) 6px 12px)",
         bd: "1px dashed color-mix(in srgb, var(--color-accent) 50%, transparent)",
         fg: "var(--color-accent-200)",
         sub: "var(--color-accent-300)",

@@ -200,6 +200,51 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
 }
+/* Time just shoved: a ring that swells out from it three times, over a brighter wash. */
+@keyframes fr-shoved {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 75%, transparent); }
+  100% { box-shadow: 0 0 0 9px transparent; }
+}
+.fr-just-shoved {
+  animation: fr-shoved 1.2s ease-out 3;
+  background: color-mix(in srgb, var(--color-accent) 26%, var(--color-surface)) !important;
+  z-index: 4;
+  transition: background 0.6s ease;
+}
+/* Shove's check pops in. */
+@keyframes fr-pop-in {
+  0% { transform: scale(0.4); opacity: 0; }
+  70% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.fr-shoved-check {
+  animation: fr-pop-in 0.35s ease-out;
+}
+/* A button that's working: a little ring turns beside its words. */
+@keyframes fr-spin {
+  to { transform: rotate(360deg); }
+}
+.fr-spinner {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  animation: fr-spin 0.7s linear infinite;
+}
+/* Shove's choices sink a little under the finger, as a button does. */
+.fr-press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.fr-press {
+  transition: transform 0.08s ease, background 0.12s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fr-just-shoved, .fr-shoved-check { animation: none; }
+  .fr-spinner { animation-duration: 2s; }
+  .fr-press:active:not(:disabled) { transform: none; }
+}
 .fr-title {
   font-size: 24px;
   line-height: 1;

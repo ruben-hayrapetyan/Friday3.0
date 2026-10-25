@@ -15,6 +15,7 @@ let lastCommand: number | null = null
 export interface Options<N extends CommandName> {
   optimistic?: (client: QueryClient, input: CommandInput<N>) => void
   label?: (out: Output<N>) => string
+  quiet?: boolean // the caller says it worked itself (Shove's check), so no toast; ⌘Z still undoes it
 }
 
 export async function runCommand<N extends CommandName>(
@@ -22,7 +23,7 @@ export async function runCommand<N extends CommandName>(
   toast: (toast: Toast) => void,
   name: N,
   input: CommandInput<N>,
-  { optimistic, label }: Options<N> = {},
+  { optimistic, label, quiet }: Options<N> = {},
 ): Promise<Output<N> | undefined> {
   const matches = { predicate: (q: { queryKey: readonly unknown[] }) => OPTIMISTIC.includes(String(q.queryKey[0])) }
   const saved = client.getQueriesData(matches)
@@ -37,7 +38,7 @@ export async function runCommand<N extends CommandName>(
     const message = label ? label(out) : sentence(name)
     if (id !== null) {
       lastCommand = id
-      toast({ message, action: { label: "Undo", run: () => undo(client, toast, id) } })
+      if (!quiet) toast({ message, action: { label: "Undo", run: () => undo(client, toast, id) } })
     }
     return out
   } catch (error) {

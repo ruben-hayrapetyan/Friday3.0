@@ -138,7 +138,13 @@ def shove(ctx: Ctx, inp: ShoveInput) -> ShoveOutput:
         spans = keep_must_dos(ctx, snapshot, late, spans)
     created = [insert_item(ctx, shove_item(ctx, span)) for span in spans if span[1] > span[0]]
     cleared = "; ".join(spoken(ctx, a, b) for a, b in spans)
-    return ShoveOutput(created=created, must_do=late, message=f"Cleared {cleared}")
+    day = planning_day(ctx, spans[0][0]) if created else None
+    return ShoveOutput(created=created, must_do=late, message=f"Cleared {cleared}", day=day)
+
+
+def planning_day(ctx: Ctx, at: int) -> str:
+    """The calendar column a moment falls in: 1am is still the night before, until the day starts."""
+    return (to_local(at, ctx.tz) - timedelta(minutes=ctx.day_start)).date().isoformat()
 
 
 def spoken(ctx: Ctx, start: int, end: int) -> str:

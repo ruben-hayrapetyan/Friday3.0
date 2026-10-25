@@ -17687,6 +17687,17 @@
       "type": "string",
       "title": "Message",
       "default": ""
+     },
+     "day": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Day"
      }
     },
     "additionalProperties": false,

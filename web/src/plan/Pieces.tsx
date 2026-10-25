@@ -1,13 +1,14 @@
 // What sits in a day column (v22): blocks painted by kind in their area's colour, fixed items, ghosts of a plan
 // being worked out, the wind-down band, the drop preview and the now line.
 
-import { type CSSProperties, type ReactNode, useLayoutEffect, useRef, useState } from "react"
+import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react"
 import type { Block, Item } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { clock, dur, when } from "@/lib/format"
 import { eventPaint, wash } from "@/lib/pigments"
 import { type Placed, type Span, toMin } from "@/lib/time"
 import { rangeText, readTimeRange } from "@/lib/timeRange"
+import { useJustShoved } from "@/pops/shoved"
 import { useLook } from "@/theme/LookProvider"
 import type { Kind } from "@/theme/skin"
 
@@ -143,11 +144,19 @@ export function FixedBox({ p, onOpen, onEdit, retime }: FixedProps) {
   const tall = minutes(it) >= 45
   const [typing, setTyping] = useState(false)
   const time = retime && { typing, span: it, start: () => (setTyping(true), retime.begin()), save: retime.save, stop: () => setTyping(false) }
+  // Time you just shoved comes into view and glows, so you see it was taken back.
+  const fresh = useJustShoved(it.id) && it.event_kind === "shove"
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (fresh) ref.current?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" })
+  }, [fresh])
   return (
     <div
+      ref={ref}
       role="button"
       tabIndex={0}
       data-block-key={`F${it.id}`}
+      className={fresh ? "fr-just-shoved" : undefined}
       onClick={onOpen}
       onDoubleClick={onEdit}
       onKeyDown={(e) => e.key === "Enter" && onOpen()}

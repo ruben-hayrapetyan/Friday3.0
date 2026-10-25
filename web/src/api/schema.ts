@@ -5462,6 +5462,8 @@ export interface components {
              * @default
              */
             message?: string;
+            /** Day */
+            day?: string | null;
         };
         /** ShoveResult */
         ShoveResult: {

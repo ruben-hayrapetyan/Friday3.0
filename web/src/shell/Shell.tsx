@@ -20,6 +20,7 @@ import { OtherWaysDialog, WayBanner } from "@/plan/OtherWays"
 import { PlanPage } from "@/plan/PlanPage"
 import { BellPop } from "@/pops/BellPop"
 import { PacePop } from "@/pops/PacePop"
+import { markShoved } from "@/pops/shoved"
 import { ShovePop } from "@/pops/ShovePop"
 import { CheckTasks } from "@/inbox/CheckTasks"
 import { InboxPage } from "@/inbox/InboxPage"
@@ -45,7 +46,10 @@ export function Shell() {
   const { today, pop, setPop, dialog, setDialog, drawer, event, layout, drawerOver, drawerWidth, navOpen, setNavOpen, tour } = useShell()
   const client = useQueryClient()
   const toast = useToast()
-  const shove = (range: string) => runCommand(client, toast, "shove", { range }, { label: (o) => o.result.message ?? "Shoved" })
+  const shove = async (range: string) => {
+    const out = await runCommand(client, toast, "shove", { range }, { label: (o) => o.result.message ?? "Shoved" })
+    if (out?.result.created?.length) markShoved(out.result.created) // the time glows where it was taken back
+  }
   const [selection, setSelection] = useState<Selection | null>(null)
   const onDrop = useDrop(setSelection)
   const location = useLocation()

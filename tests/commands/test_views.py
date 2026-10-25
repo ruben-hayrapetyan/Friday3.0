@@ -68,7 +68,7 @@ def test_a_time_range_can_be_days_from_today(tmp_path: Path) -> None:
     app = new_app(tmp_path)
     out = app.do("shove", range="14:00-16:30 +2d", decision="shove_anyway")
     created = out["created"]
-    assert out["message"] == "Cleared Wed Oct 21 2–4:30pm"
+    assert out["message"] == "Cleared Wed Oct 21 2–4:30pm" and out["day"] == "2026-10-21"
     assert [(i["start_utc"], i["end_utc"]) for i in app.table("items") if i["id"] in created] == [
         ("2026-10-21T18:00Z", "2026-10-21T20:30Z")
     ]
@@ -163,3 +163,9 @@ def test_events_left_out_block_no_time_when_planning(tmp_path: Path) -> None:
     assert not busy_as_you_count(reminder, DEFAULTS, {}).blocks_time
     assert busy_as_you_count(lecture, DEFAULTS, {}).blocks_time
     assert not busy_as_you_count(lecture, DEFAULTS, {2: "Library Rooms"}).blocks_time
+
+
+def test_a_shove_after_midnight_belongs_to_the_night_before(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    out = app.do("shove", range="01:00-02:00 +3d", decision="shove_anyway")
+    assert out["day"] == "2026-10-21"  # Thursday 1am is Wednesday night until the day starts at 4am

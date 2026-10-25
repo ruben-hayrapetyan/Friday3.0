@@ -169,6 +169,7 @@ class ShoveOutput(Model):
     created: list[int] = []  # shove item ids
     must_do: list[MustDo] = []
     message: str = ""
+    day: str | None = None  # the first day cleared (YYYY-MM-DD, a planning day), for the calendar to show it
 
 
 class UnshoveInput(Model):
