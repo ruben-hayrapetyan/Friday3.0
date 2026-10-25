@@ -13,7 +13,8 @@ from typing import Any, Protocol
 from friday.ingest.ics import Proposed
 
 DATE_FIELDS = ("due", "start", "end", "release")
-MAX_TOKENS = 4096
+MAX_TOKENS = 16384  # a syllabus with its readings runs to dozens of items
+MIN_PER_PAGE = 3  # a reading's length from its pages, when the source gives pages but no time
 UNCHECKED_CONFIDENCE = 0.7  # quotes from a PDF or image can't be checked against text Friday doesn't read
 
 
@@ -61,6 +62,7 @@ ITEM = {
         "start": maybe("string", "For something at a set time, YYYY-MM-DDTHH:MM"),
         "end": maybe("string"),
         "duration_min": maybe("integer", "Only when the source says how long"),
+        "pages": maybe("integer", "For a reading: how many pages, when the source gives pages or a page range"),
         "every": maybe("string", "A repeat like 'mon,wed until 12-11'"),
         "before": maybe("string", "For exam prep: the exam's title"),
         "quotes": {
@@ -70,8 +72,8 @@ ITEM = {
         },
         "confidence": {"type": "number", "description": "0–1: how sure this is a real task or event for them"},
     },
-    "required": ["title", "preset", "area", "due", "start", "end", "duration_min", "every", "before", "quotes",
-                 "confidence"],
+    "required": ["title", "preset", "area", "due", "start", "end", "duration_min", "pages", "every", "before",
+                 "quotes", "confidence"],
     "additionalProperties": False,
 }  # fmt: skip
 PROPOSE = {
@@ -101,7 +103,10 @@ def system(today: date, tz: str, areas: Sequence[str], presets: Sequence[str], n
         f"Their kinds, one per item: {kinds}. Propose only real tasks, deadlines and events for them; newsletters, "
         "receipts and marketing propose nothing. Resolve dates to local YYYY-MM-DDTHH:MM (a due date with no time "
         "is 23:59). Quote the source exactly for every field you fill. A syllabus gives the class meetings as a "
-        "repeating Class, each assignment and exam, and an 'Exam prep' item before each exam."
+        "repeating Class, each assignment and exam, an 'Exam prep' item before each exam, and each assigned reading "
+        "as a Reading: titled by what to read ('Read ch. 4', 'Read Smith 2019'), due at the start of the class it is "
+        "for (or by its own date), with its pages when the syllabus gives them. Leave out readings marked optional "
+        "or recommended."
     ) + told(notes)
 
 
@@ -138,10 +143,21 @@ def squash(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
+def item_fields(item: dict[str, Any]) -> dict[str, Any]:
+    """An answer's `add` fields: what the model filled, with a reading's pages as its length when no time was given."""
+    fields = {
+        k: v for k, v in item.items() if k not in ("quotes", "confidence", "before", "pages") and v not in (None, "")
+    }
+    pages = item.get("pages")
+    if isinstance(pages, int) and pages > 0 and not fields.get("duration_min"):
+        fields["duration_min"] = max(15, round(pages * MIN_PER_PAGE / 15) * 15)
+    return fields
+
+
 def checked(item: dict[str, Any], source: str | None) -> Proposed | None:
     """The proposal, with date fields whose quote isn't in the source dropped (all kept, less sure, without text)."""
     quotes = quotes_of(item)
-    fields = {k: v for k, v in item.items() if k not in ("quotes", "confidence", "before") and v not in (None, "")}
+    fields = item_fields(item)
     confidence = float(item.get("confidence", 0.5))
     if source is None:
         confidence = min(confidence, UNCHECKED_CONFIDENCE)
@@ -154,6 +170,8 @@ def checked(item: dict[str, Any], source: str | None) -> Proposed | None:
                 confidence *= 0.7
     if not fields.get("title"):
         return None
+    if "pages" in quotes and "duration_min" in fields and not item.get("duration_min"):
+        quotes["duration_min"] = quotes.pop("pages")
     if item.get("before"):
         fields["before_title"] = item["before"]
     return Proposed("add", fields, quotes, round(confidence, 2), fixed=False)
@@ -191,5 +209,4 @@ def quick_add(
     """The `add` input one free-form line asks for (§22.7); you confirm it before anything runs."""
     instructions = system(today, tz, areas, presets, notes)
     found, used = call(client, model, instructions, [{"type": "text", "text": line}], QUICK_ADD)
-    fields = {k: v for k, v in found.items() if k not in ("quotes", "confidence", "before") and v not in (None, "")}
-    return fields, used
+    return item_fields(found), used

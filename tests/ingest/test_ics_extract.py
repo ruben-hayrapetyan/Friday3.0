@@ -70,3 +70,33 @@ def test_a_pdf_goes_to_the_model_as_a_document_and_its_unchecked_quotes_lower_co
     found, syllabus, _ = extract.extract(client, "m", "JVBERi0=", "application/pdf", date(2026, 10, 19), TZ, [], [])
     assert syllabus and found[0].confidence == extract.UNCHECKED_CONFIDENCE
     assert client.calls[0]["messages"][0]["content"][0]["type"] == "document"
+
+
+def test_a_syllabus_reading_is_asked_for_and_its_pages_give_its_length() -> None:
+    syllabus = "Week 3, Tue Oct 20 10:00: Lecture 5. Read Chapter 4, pp. 85-112, before class."
+    answer = {
+        "is_syllabus": True,
+        "items": [
+            {
+                "title": "Read ch. 4",
+                "preset": "Reading",
+                "due": "2026-10-20T10:00",
+                "pages": 28,
+                "confidence": 0.85,
+                "quotes": [{"field": "due", "words": "Tue Oct 20 10:00"}, {"field": "pages", "words": "pp. 85-112"}],
+            }
+        ],
+    }
+    client = FakeClient(answer)
+    found, _, _ = extract.extract(client, "m", syllabus, "text/plain", date(2026, 10, 19), TZ, [], ["Reading"])
+    reading = found[0]
+    assert reading.input == {"title": "Read ch. 4", "preset": "Reading", "due": "2026-10-20T10:00", "duration_min": 90}
+    assert reading.quotes["duration_min"] == "pp. 85-112"  # 28 pages at three minutes a page, to the quarter hour
+    assert "each assigned reading" in client.calls[0]["system"]
+    assert "pages" in extract.ITEM["required"] and client.calls[0]["max_tokens"] == extract.MAX_TOKENS
+
+
+def test_a_quick_add_with_pages_gets_a_length_not_a_pages_field() -> None:
+    client = FakeClient({"title": "Read ch. 5", "preset": "Reading", "pages": 10, "quotes": [], "confidence": 0.9})
+    fields, _ = extract.quick_add(client, "m", "read ch 5 (10 pages)", date(2026, 10, 19), TZ, [], ["Reading"])
+    assert fields == {"title": "Read ch. 5", "preset": "Reading", "duration_min": 30}
