@@ -52,6 +52,11 @@ def create_series(ctx: Ctx, given: dict[str, Any], repeat: dict[str, Any]) -> tu
         dtstart = repeat.get("dtstart_local") or format_local(
             local_midnight(ctx.today) + timedelta(minutes=ctx.day_start)
         )
+    offsets = {k: repeat.get(k) for k in ("release_offset_min", "due_offset_min")}
+    for key, field in (("release_offset_min", "release_utc"), ("due_offset_min", "due_utc")):
+        if not start and offsets[key] is None and values.get(field):
+            # "lunch every day 11:30am-2:30pm": the first day's window, kept for every day after
+            offsets[key] = (to_local(parse_utc(values[field]), ctx.tz) - parse_local(dtstart)) // timedelta(minutes=1)
     template = template_of(ctx, values)
     series_id = ctx.db.insert(
         "series",
@@ -60,8 +65,7 @@ def create_series(ctx: Ctx, given: dict[str, Any], repeat: dict[str, Any]) -> tu
             "rrule": rule,
             "dtstart_local": dtstart,
             "per_window": repeat.get("per_window") or 1,
-            "release_offset_min": repeat.get("release_offset_min"),
-            "due_offset_min": repeat.get("due_offset_min"),
+            **offsets,
             "created_utc": ctx.now_text,
             "updated_utc": ctx.now_text,
         },

@@ -20,6 +20,16 @@ from friday.core.rule_text import Reading, read, sentence, spec
             "Prefer",
         ),
         ("gym between 5 and 7", Reading("window", "gym", rel="between", at="17:00", until="19:00"), "Prefer"),
+        (
+            "no work between 11:30pm and 7am",
+            Reading("window", "work", rel="not_between", at="23:30", until="07:00"),
+            "Prefer",
+        ),
+        (
+            "no reading in the morning",
+            Reading("window", "reading", rel="not_between", at="08:00", until="12:00"),
+            "Prefer",
+        ),
         ("never work on sundays", Reading("days", "work", rel="not_on", days=("sun",)), "Always"),
         ("reading only on weekends", Reading("days", "reading", rel="on", days=("sat", "sun")), "Prefer"),
         (
@@ -36,6 +46,14 @@ from friday.core.rule_text import Reading, read, sentence, spec
 )
 def test_the_grammar_reads(text: str, reading: Reading, strength: str) -> None:
     assert read(text) == (reading, strength)
+
+
+def test_no_work_between_two_times_avoids_those_hours_not_the_rest() -> None:
+    night = Reading("window", "work", rel="not_between", at="07:00", until="10:00")
+    assert sentence(night) == "No work between 7am and 10am"
+    assert spec(night, "Strongly", "you:mornings", [], [])["params"] == {"start": "07:00", "end": "10:00", "price": 6.0}
+    gym = spec(Reading("window", "gym", rel="between", at="17:00", until="19:00"), "Prefer", "you:gym", [], [])
+    assert (gym["params"]["start"], gym["params"]["end"]) == ("19:00", "17:00")  # the other hours
 
 
 def test_what_it_cannot_read_is_none() -> None:

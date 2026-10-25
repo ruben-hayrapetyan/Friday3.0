@@ -41,3 +41,13 @@ def test_a_meal_whose_window_has_passed_is_skipped_at_night_not_owed(app: App) -
     app.do("close_day")
     lunches = sorted((i for i in app.table("items") if i["title"] == "lunch"), key=lambda i: i["occurrence_date"])
     assert [i["status"] for i in lunches[:2]] == ["skipped", "skipped"] and lunches[2]["status"] == "todo"
+
+
+def test_a_daily_break_keeps_its_window_and_one_length_is_exact(app: App) -> None:
+    app.do("add", text="Lunch every day 11:30am-2:30pm 15m")
+    lunches = sorted((i for i in app.table("items") if i["title"] == "Lunch"), key=lambda i: i["occurrence_date"])
+    assert [(i["release_utc"], i["due_utc"]) for i in lunches[:2]] == [
+        ("2026-10-19T15:30Z", "2026-10-19T18:30Z"),
+        ("2026-10-20T15:30Z", "2026-10-20T18:30Z"),
+    ]  # 11:30am–2:30pm New York, every day
+    assert {(i["amount"], i["min_units"], i["ideal_units"], i["max_units"]) for i in lunches} == {("elastic", 1, 1, 1)}

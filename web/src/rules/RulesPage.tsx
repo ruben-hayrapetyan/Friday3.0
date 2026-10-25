@@ -169,7 +169,7 @@ function Fields(props: { reading: Reading; overrides: Record<string, unknown>; o
   const { reading, overrides, onSet, onReset } = props
   const pin = (k: string) => k in overrides && <Icon name="push-pin" size={12} style={{ color: "var(--color-accent-300)" }} />
   const dayValue = DAY_OPTS.find((o) => JSON.stringify(o.days) === JSON.stringify(reading.days))?.value ?? null
-  const rels = reading.kind === "window" ? ["before", "after", "between"] : []
+  const rels = reading.kind === "window" ? ["before", "after", "between", { value: "not_between", label: "not between" }] : []
   return (
     <div className="fr-row" style={{ display: "grid", gridTemplateColumns: "56px minmax(0,1fr)", gap: "8px 12px", alignItems: "center", paddingTop: 8 }}>
       <span className="fr-kicker">What</span>
@@ -183,7 +183,7 @@ function Fields(props: { reading: Reading; overrides: Record<string, unknown>; o
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <Seg options={rels} value={reading.rel} onPick={(v) => onSet("rel", v)} onBg />
             <input type="time" step={900} className="input" value={reading.at ?? ""} onChange={(e) => onSet("at", e.target.value)} style={{ width: 110, padding: "4px 8px", fontSize: 12, minHeight: 0 }} />
-            {reading.rel === "between" && (
+            {(reading.rel === "between" || reading.rel === "not_between") && (
               <input type="time" step={900} className="input" value={reading.until ?? ""} onChange={(e) => onSet("until", e.target.value)} style={{ width: 110, padding: "4px 8px", fontSize: 12, minHeight: 0 }} />
             )}
             {pin("at")}

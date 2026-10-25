@@ -208,10 +208,12 @@ function DayHead(props: {
   const target = !!drag?.moved && drag.over === "day" && drag.day === date
   const [open, setOpen] = useState(false)
   const over = day ? hours - day.cap_hours : 0
-  // One line, two deadlines, the rest on a tap: five wrapped chips a day made the header half the screen.
+  // A deadline a line, each cut to the column's width; two lines at most, the rest on a tap ("+2 more"): side by
+  // side, the second was cut off mid-word and its "+1" hidden past the column's edge.
   const mine = dues.filter((d) => d.due.startsWith(date))
-  const shown = open ? mine : mine.slice(0, 2)
-  const chip = { maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" } as const
+  const shown = open || mine.length <= 2 ? mine : mine.slice(0, 1)
+  const line = { flex: "none", maxWidth: "100%", minWidth: 0, alignSelf: "flex-start" } as const
+  const chip = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } as const
   const big = { fontSize: 28, lineHeight: 0.95 }
   return (
     // The header is the day's all-day row: a task dropped here is due that day.
@@ -232,9 +234,9 @@ function DayHead(props: {
           </span>
         )}
       </div>
-      <div style={{ display: "flex", flexWrap: open ? "wrap" : "nowrap", gap: 4, minHeight: 18, overflow: "hidden" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 3, minHeight: 18, minWidth: 0 }}>
         {over > 0.05 && (
-          <span className="fr-tag warn">
+          <span className="fr-tag warn" style={line}>
             <i className="ph ph-warning" style={{ fontSize: 11 }} />
             {over.toFixed(1)} h over
           </span>
@@ -242,21 +244,21 @@ function DayHead(props: {
         {allDay
           .filter((f) => f.start.slice(0, 10) <= date && date < f.end.slice(0, 10))
           .map((f) => (
-            <button key={`a${f.id}`} className="fr-tag fr-plain" title={f.title} onClick={() => select(asBlock(f))} style={{ flex: "none" }}>
+            <button key={`a${f.id}`} className="fr-tag fr-plain" title={f.title} onClick={() => select(asBlock(f))} style={line}>
               <i className="ph ph-calendar-blank" style={{ fontSize: 11 }} />
               <span style={chip}>{f.title}</span>
             </button>
           ))}
         {shown.map((d) => (
-          <button key={d.item_id} className="fr-tag due fr-plain" title={`${d.title}, ${clock(d.due)}`} onClick={() => select(dueBlock(d))} style={{ flex: "none" }}>
-            <i className="ph ph-flag" style={{ fontSize: 11 }} />
+          <button key={d.item_id} className="fr-tag due fr-plain" title={`${d.title}, ${clock(d.due)}`} onClick={() => select(dueBlock(d))} style={line}>
+            <i className="ph ph-flag" style={{ fontSize: 11, flex: "none" }} />
             <span style={chip}>{d.title}</span>
-            {!d.due.endsWith("T23:59") && <span className="tnum">{clock(d.due)}</span>}
+            {!d.due.endsWith("T23:59") && <span className="tnum" style={{ flex: "none" }}>{clock(d.due)}</span>}
           </button>
         ))}
         {mine.length > 2 && (
-          <button className="fr-tag fr-plain" onClick={() => setOpen(!open)} style={{ flex: "none", color: "var(--color-neutral-400)" }}>
-            {open ? "less" : `+${mine.length - 2}`}
+          <button className="fr-tag fr-plain" onClick={() => setOpen(!open)} style={{ ...line, color: "var(--color-neutral-400)" }}>
+            {open ? "Show less" : `+${mine.length - 1} more due`}
           </button>
         )}
       </div>

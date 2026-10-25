@@ -57,7 +57,7 @@ def add(ctx: Ctx, inp: AddInput) -> AddOutput:
     """Create an item from fields or from a quick-add line."""
     given, warnings, repeat = from_text(ctx, inp.text) if inp.text else ({}, [], {})
     given |= given_fields(inp)
-    given = with_guesses(ctx, given)
+    given = exact_length(ctx, with_guesses(ctx, given))
     after, before = repeat.pop("after", []) + inp.after, repeat.pop("before", []) + inp.before
     if inp.every:
         repeat["every"] = inp.every
@@ -99,6 +99,18 @@ def with_guesses(ctx: Ctx, given: dict[str, Any]) -> dict[str, Any]:
         if course:
             out["area"] = course
     return out
+
+
+def exact_length(ctx: Ctx, given: dict[str, Any]) -> dict[str, Any]:
+    """One length for a kind that stretches ("lunch every day 15m", where Routine is 30–45 minutes) is exactly that
+    long, not the kind's usual range."""
+    preset = ctx.settings["presets"].get(preset_name(ctx, given["preset"])) if given.get("preset") else None
+    amount = given.get("amount", preset.amount if preset else None)
+    length = given.get("duration_min")
+    if amount != "elastic" or not length or any(k in given for k in ("min_min", "ideal_min", "max_min")):
+        return given
+    rest = {k: v for k, v in given.items() if k != "duration_min"}
+    return rest | {"amount": "elastic", "min_min": length, "ideal_min": length, "max_min": length}
 
 
 def weekly_target(ctx: Ctx, given: dict[str, Any], repeat: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:

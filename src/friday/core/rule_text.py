@@ -45,7 +45,7 @@ DAY_WORDS = rf"((?:{DAY}|weekdays?|weekends?|every day)(?:\s*(?:,|and|&)\s*{DAY}
 class Reading:
     kind: Kind
     subject: str = "work"  # "work" is everything; else deep work, an area, a preset or a title
-    rel: Literal["before", "after", "between", "on", "not_on"] | None = None
+    rel: Literal["before", "after", "between", "not_between", "on", "not_on"] | None = None
     at: str | None = None  # HH:MM
     until: str | None = None  # HH:MM, for between
     days: tuple[str, ...] | None = None  # None is every day
@@ -161,17 +161,16 @@ def read_window(t: str, negated: bool) -> Reading | None:
     days = days_of(on[1]) if on else None
     if on:
         t = t.replace(on[0], " ")
+    between = "not_between" if negated else "between"  # "no work between 7 and 10am" keeps those hours free
     if m := re.search(r"^ ?([a-z ]*?) ?(?:in the|during the) (morning|afternoon|evening|night)s? ", t):
         start, end = PARTS[m[2]]
-        return Reading("window", subject_of(m[1]), rel="between", at=start, until=end, days=days)
+        return Reading("window", subject_of(m[1]), rel=between, at=start, until=end, days=days)
     if m := re.search(rf"^ ?([a-z ]*?) ?(?:between|from) {TIME} (?:and|to|until|-) {TIME} ", t):
         start, end = clock(m[2]), clock(m[3])
         if start and end and end <= start and not re.search(r"(am|pm)", m[3]) and int(end[:2]) < 12:
             end = f"{int(end[:2]) + 12:02d}{end[2:]}"
         return (
-            Reading("window", subject_of(m[1]), rel="between", at=start, until=end, days=days)
-            if start and end
-            else None
+            Reading("window", subject_of(m[1]), rel=between, at=start, until=end, days=days) if start and end else None
         )
     if m := re.search(rf"^ ?([a-z ]*?) ?(before|after|by|until|past) {TIME} ", t):
         at = clock(m[3])
@@ -228,6 +227,8 @@ def said(r: Reading) -> str:
     if r.kind == "window":
         if r.rel == "between":
             return f"{subject} between {r.at} and {r.until}{on}"
+        if r.rel == "not_between":
+            return f"No {r.subject} between {r.at} and {r.until}{on}"
         if r.subject == "work":  # "no work after 22:00" says it the way people do
             return f"No work {'after' if r.rel == 'before' else 'before'} {r.at}{on}"
         return f"{subject} {r.rel} {r.at}{on}"
@@ -271,10 +272,14 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
     price: Any = "forbid" if strength == "Always" else PRICE[strength]
     base = {"name": name, "scope": scope, "reason": sentence(r)}
     if r.kind == "window":
-        # The hours to avoid: after `at` (for before), before it (for after), outside [at, until) (for between).
-        start, end = {"before": (r.at, "04:00"), "after": ("04:00", r.at), "between": (r.until, r.at)}[
-            r.rel or "before"
-        ]
+        # The hours to avoid: after `at` (for before), before it (for after), outside [at, until) (for between),
+        # inside it (for not_between).
+        start, end = {
+            "before": (r.at, "04:00"),
+            "after": ("04:00", r.at),
+            "between": (r.until, r.at),
+            "not_between": (r.at, r.until),
+        }[r.rel or "before"]
         params = {"start": start, "end": end, "price": price} | ({"days": list(r.days)} if r.days else {})
         return base | {"type": "time_preference", "weight": 1.0, "params": params}
     if r.kind == "days":
