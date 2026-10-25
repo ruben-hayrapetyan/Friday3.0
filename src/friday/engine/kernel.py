@@ -307,7 +307,9 @@ def item_violations(M, st, i):
     if kind == 0:
         if placed > M.need[i] and (placed > M.need[i] + 1 or not has_coarse):
             count += 1
-    elif (kind == 1 or kind == 2) and placed > M.amount_cap[i]:
+    elif kind == 1 and placed > M.amount_cap[i] and (placed > M.amount_cap[i] + 1 or not has_coarse):
+        count += 1  # a 15-minute lunch past the first week fills a 30-minute slot, as a fixed remainder does
+    elif kind == 2 and placed > M.amount_cap[i]:
         count += 1
     if M.one_sitting[i]:
         if chunks > 1:

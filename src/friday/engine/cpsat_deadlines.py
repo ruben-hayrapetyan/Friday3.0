@@ -85,7 +85,7 @@ class DeadlineModel:
             if item.amount == "fixed":
                 self.add_fixed_amount(item, placed)
             elif item.amount == "elastic":
-                self.m.add(placed <= item.max)
+                self.add_most(item, placed, item.max)
             elif item.amount == "target":
                 self.m.add(placed <= item.cap)
             else:
@@ -94,6 +94,16 @@ class DeadlineModel:
                     slots = [s for s in self.g.day_slots[d] if s in item.allowed_set]
                     if slots:
                         self.m.add(self.placed(item, slots) <= max(0, ceiling))
+
+    def add_most(self, item: EngineItem, placed: Any, most: int) -> None:
+        """At most `most` units, and one more only when a 30-minute slot holds the last 15 minutes (W4)."""
+        coarse = [self.x[item.key, s] for s in item.allowed if self.g.units[s] > 1]
+        if coarse:
+            uses_coarse = self.m.new_bool_var(f"coarse_max_{item.key}")
+            self.m.add(uses_coarse <= sum(coarse))
+            self.m.add(placed <= most + uses_coarse)
+        else:
+            self.m.add(placed <= most)
 
     def add_fixed_amount(self, item: EngineItem, placed: Any) -> None:
         over = self.over[item.key]

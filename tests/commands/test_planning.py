@@ -353,3 +353,14 @@ def test_a_weekly_pace_from_a_rule_sets_those_days_every_week(tmp_path: Path) ->
     assert not any(r["name"].startswith("you:") for r in app.do("rules"))  # a setting, not a planner rule
     app.do("rule_add", text="saturdays are normal")
     assert app.do("settings")["pace"]["weekly"] == {"sun": "Push"}
+
+
+def test_a_quarter_hour_lunch_fills_a_half_hour_slot_past_the_fine_days(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do("settings_set", key="time", value={"timezone": "America/New_York", "horizon_days": 7, "fine_days": 2})
+    app.do("add", text="Lunch every day 11:30am-2:30pm 15m")
+    app.do("replan")  # a 15-minute maximum in 30-minute slots broke W4, and the whole plan failed
+    lunches = [b for b in app.do("plan")["blocks"] if b["title"] == "Lunch"]
+    later = [b for b in lunches if b["start"] >= "2026-10-22"]
+    assert later and all(_minutes(b["end"][11:]) - _minutes(b["start"][11:]) == 30 for b in later)
+    assert all(_minutes(b["end"][11:]) - _minutes(b["start"][11:]) == 15 for b in lunches if b["start"] < "2026-10-21")

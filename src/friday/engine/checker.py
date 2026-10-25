@@ -107,7 +107,8 @@ def amount_violations(problem: Problem, solution: Solution, item: EngineItem) ->
     fills_coarse_slot = placed == item.need + 1 and any(grid.units[s] > 1 for s in slots)
     if item.amount == "fixed" and placed > item.need and not fills_coarse_slot:
         out.append(Violation("over_placed", key, f"{placed} > {item.need}"))
-    if item.amount == "elastic" and placed > item.max:
+    fills_coarse_max = placed == item.max + 1 and any(grid.units[s] > 1 for s in slots)
+    if item.amount == "elastic" and placed > item.max and not fills_coarse_max:
         out.append(Violation("over_max", key, f"{placed} > {item.max}"))
     if item.amount == "target" and placed > item.cap:
         out.append(Violation("over_cap", key, f"{placed} > {item.cap}"))
