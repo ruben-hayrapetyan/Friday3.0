@@ -63,7 +63,7 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
           const b = next.get(r.item_id)
           return (
             <div key={r.item_id} style={{ display: "grid", gridTemplateColumns: "4px minmax(0,1fr) auto", gap: 14, alignItems: "center", padding: "12px 14px 12px 0", borderRadius: "var(--radius-md)", background: "var(--color-bg)" }}>
-              <span style={{ alignSelf: "stretch", borderRadius: "0 2px 2px 0", background: color(b?.area) }} />
+              <span style={{ alignSelf: "stretch", borderRadius: "0 2px 2px 0", background: color(b?.area, b?.preset) }} />
               <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
                 <H size={18} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {r.title}

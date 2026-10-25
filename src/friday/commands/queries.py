@@ -54,6 +54,7 @@ def block_out(ctx: Ctx, item_id: int, start: int, end: int, cost: dict | None = 
         item_id=item_id,
         title=item.title,
         area=area_names(ctx.conn, ctx.user_id).get(item.area_id) if item.area_id else None,
+        preset=item.preset,
         estimated=item.estimate_detail is not None,
         start=begins,
         end=ctx.local(format_utc(end)) or "",

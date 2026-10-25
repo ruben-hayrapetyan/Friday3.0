@@ -2632,6 +2632,8 @@ export interface components {
             title: string;
             /** Area */
             area?: string | null;
+            /** Preset */
+            preset?: string | null;
             /**
              * Estimated
              * @default false

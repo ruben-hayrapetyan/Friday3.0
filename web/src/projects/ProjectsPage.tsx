@@ -143,7 +143,7 @@ function ProjectCard({ p, blocks, onOpen }: { p: Project; blocks: Block[]; onOpe
   const next = steps.find((s) => s.status !== "done")
   const nextAt = next && blocks.find((b) => b.item_id === next.id)?.start
   const [label, tone] = PROJECT_STATUS[p.status]
-  const tint = color(p.item.area)
+  const tint = color(p.item.area, p.item.preset)
   const due = p.item.due
   return (
     <button className="fr-plain fr-hover-soft" onClick={onOpen} style={{ ...card(tint, light), gap: 12, textAlign: "left" }}>

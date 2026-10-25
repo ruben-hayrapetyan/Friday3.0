@@ -260,8 +260,8 @@ function CompactRow({ item, by, fresh, selected, onSelect }: RowProps) {
       <span style={{ display: "flex", justifyContent: "center" }}>
         <Check small done={isDone} onToggle={() => (isDone ? reopen({ id: item.id }) : done({ id: item.id }))} />
       </span>
-      {/* personal's ruled margin, in the task's tag colour */}
-      <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, alignSelf: "stretch", paddingLeft: 10, boxShadow: `inset ${item.area ? 2 : 1}px 0 0 ${item.area ? color(item.area) : "var(--fr-rule)"}` }}>
+      {/* personal's ruled margin, in the task's paint: its tag's, else its kind's, as on the calendar */}
+      <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, alignSelf: "stretch", paddingLeft: 10, boxShadow: `inset 2px 0 0 ${color(item.area, item.preset)}` }}>
         {editing === "title" ? (
           <input
             autoFocus
@@ -289,7 +289,7 @@ function CompactRow({ item, by, fresh, selected, onSelect }: RowProps) {
         {fresh && <span style={{ fontSize: 10.5, color: "var(--color-accent-300)", flex: "none" }}>new</span>}
         {item.area && by !== "Tag" && (
           <span className="fr-tag-mini" style={{ display: "inline-flex", gap: 4, alignItems: "center", flex: "none", fontSize: 10.5, color: "var(--color-neutral-400)" }}>
-            <span style={{ width: 6, height: 6, borderRadius: 2, background: color(item.area) }} />
+            <span style={{ width: 6, height: 6, borderRadius: 2, background: color(item.area, item.preset) }} />
             {item.area}
           </span>
         )}
@@ -390,7 +390,7 @@ function Row({ item, fresh, selected, onSelect }: RowProps) {
       }}
     >
       <Check done={isDone} onToggle={() => (isDone ? reopen({ id: item.id }) : done({ id: item.id }))} />
-      <span style={{ alignSelf: "stretch", borderRadius: 2, background: color(item.area) }} />
+      <span style={{ alignSelf: "stretch", borderRadius: 2, background: color(item.area, item.preset) }} />
       <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
         <span style={{ display: "flex", gap: 8, alignItems: "baseline", minWidth: 0 }}>
           <span style={{ fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textDecoration: isDone ? "line-through" : undefined, color: item.long_term ? "var(--fr-aged)" : undefined }}>{item.title}</span>
@@ -401,7 +401,7 @@ function Row({ item, fresh, selected, onSelect }: RowProps) {
           <span>{item.preset ?? "To-do"}</span>
           {item.area && (
             <span style={{ display: "inline-flex", gap: 5, alignItems: "center" }}>
-              <span style={{ width: 7, height: 7, borderRadius: 2, background: color(item.area) }} />
+              <span style={{ width: 7, height: 7, borderRadius: 2, background: color(item.area, item.preset) }} />
               {item.area}
             </span>
           )}
@@ -414,7 +414,7 @@ function Row({ item, fresh, selected, onSelect }: RowProps) {
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <div style={{ height: 4, borderRadius: 2, background: "color-mix(in srgb, var(--color-text) 8%, transparent)", overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${p.pct}%`, borderRadius: 2, background: color(item.area) }} />
+          <div style={{ height: "100%", width: `${p.pct}%`, borderRadius: 2, background: color(item.area, item.preset) }} />
         </div>
         <span className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>
           {p.text}

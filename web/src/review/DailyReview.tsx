@@ -182,11 +182,11 @@ function Card({ card, pos, partial, onPick, onPartial, onLog }: CardProps) {
       <div style={{ position: "absolute", left: 24, right: 24, bottom: 0, height: 40, borderRadius: "var(--radius-lg)", background: "color-mix(in srgb, var(--color-text) 4%, var(--color-bg))", boxShadow: "0 0 0 1px color-mix(in srgb, var(--color-text) 7%, transparent)" }} />
       <div style={{ position: "absolute", left: 12, right: 12, bottom: 9, height: 40, borderRadius: "var(--radius-lg)", background: "color-mix(in srgb, var(--color-text) 6%, var(--color-bg))", boxShadow: "0 0 0 1px color-mix(in srgb, var(--color-text) 7%, transparent)" }} />
       <div style={{ position: "relative", display: "grid", gridTemplateColumns: "4px minmax(0,1fr)", borderRadius: "var(--radius-lg)", background: "var(--color-bg)", boxShadow: "var(--fr-float-sh)", overflow: "hidden" }}>
-        <span style={{ background: color(card.area) }} />
+        <span style={{ background: color(card.area, card.preset) }} />
         <div style={{ padding: "22px 24px 22px 22px", display: "flex", flexDirection: "column", gap: 18 }}>
           <div className="tnum" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 12, color: "var(--color-neutral-400)" }}>
             <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span className="fr-swatch" style={{ background: color(card.area) }} />
+              <span className="fr-swatch" style={{ background: color(card.area, card.preset) }} />
               {[card.area, item?.preset].filter(Boolean).join(", ") || "No tag"}
             </span>
             <span>{pos}</span>
@@ -294,7 +294,7 @@ function Log({ cards, answers }: { cards: Block[]; answers: Record<string, Answe
         const tag = a.status === "not_done" ? ["color-mix(in srgb, var(--color-text) 8%, transparent)", "var(--color-neutral-300)"] : ["color-mix(in srgb, var(--color-accent) 18%, transparent)", "var(--color-accent-200)"]
         return (
           <div key={b.key} className="fr-row" style={{ display: "grid", gridTemplateColumns: "3px minmax(0,1fr)", gap: 12, padding: "10px 0" }}>
-            <span style={{ borderRadius: 2, background: color(b.area) }} />
+            <span style={{ borderRadius: 2, background: color(b.area, b.preset) }} />
             <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 500 }}>
                 {b.title}

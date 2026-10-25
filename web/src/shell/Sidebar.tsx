@@ -307,7 +307,7 @@ function Row(props: { item: Item; next?: Block; isNow: boolean; startBy?: string
       title={`${item.title}${item.remaining_min ? `, ${dur(item.remaining_min)} left` : ""}`}
       style={{ display: "grid", gridTemplateColumns: "3px minmax(0,1fr)", gap: 10, padding: "6px 8px", borderRadius: "var(--radius-md)", touchAction: "none" }}
     >
-      <span style={{ borderRadius: 2, background: color(item.area) }} />
+      <span style={{ borderRadius: 2, background: color(item.area, item.preset) }} />
       <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
         <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span>
         <span className="tnum" style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>

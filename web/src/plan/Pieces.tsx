@@ -65,7 +65,7 @@ export function BlockBox({ p, isCur, selected, done, movedFrom, today, onOpen, o
   const b = p.item
   const { skinOf } = useLook()
   const kind = done ? "done" : kindOf(b)
-  const s = skinOf(kind, b.area, { isCur, sel: selected })
+  const s = skinOf(kind, b.area, { isCur, sel: selected }, b.preset)
   const tall = minutes(b) >= 45
   const [typing, setTyping] = useState(false)
   const time = retime && { typing, span: b, start: () => (setTyping(true), retime.begin()), save: retime.save, stop: () => setTyping(false) }
@@ -288,7 +288,7 @@ export const LEFT_OUT: Record<string, string> = {
 
 export function GhostBox({ p }: { p: Placed<Block> }) {
   const { skinOf } = useLook()
-  const s = skinOf("ghost", p.item.area)
+  const s = skinOf("ghost", p.item.area, undefined, p.item.preset)
   return (
     <div
       style={{

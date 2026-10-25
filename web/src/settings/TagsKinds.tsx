@@ -8,12 +8,13 @@ import { H, Icon, Menu, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useAreas, useSettings } from "@/hooks/queries"
 import { usePresets } from "@/todo/AddBox"
-import { areaHex } from "@/theme/look"
-import { AUTO_HUES, hueOf, useLook } from "@/theme/LookProvider"
+import { PIGMENTS } from "@/lib/pigments"
+import { AUTO_PAINTS, hueOf, paintOf, useLook } from "@/theme/LookProvider"
 import { BUFFER_OPTIONS, bufferLabel, useBuffers } from "./buffers"
 import { SectionHead } from "./SettingsPage"
 
-const SWATCHES: (number | "n")[] = [0, 30, 60, 90, 120, 155, 180, 210, 230, 265, 290, 330, "n"]
+// Chroma's paints, and the neutral grey.
+const SWATCHES: { id: string; name: string }[] = [...PIGMENTS.map((p) => ({ id: p.id, name: p.name })), { id: "n", name: "Grey" }]
 
 export function TagsKinds() {
   const areas = (useAreas().data ?? []).filter((a) => !a.archived)
@@ -30,19 +31,19 @@ export function TagsKinds() {
         const hue = hueOf(a.color, i)
         return (
           <div key={a.id} className="fr-row" style={{ display: "grid", gridTemplateColumns: "28px minmax(0,180px) minmax(0,1fr)", gap: "10px 16px", alignItems: "center", padding: "14px 0" }}>
-            <span style={{ width: 28, height: 28, borderRadius: 8, background: areaHex(hue, light) }} />
+            <span style={{ width: 28, height: 28, borderRadius: 8, background: paintOf(hue, light) }} />
             <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, gridColumn: "2" }}>
               <NameInput name={a.name} onSave={(name) => edit({ id: a.id, name })} />
               <span className="tnum fr-kicker">{hours.get(a.name) ?? 0} h this week</span>
             </div>
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-              {SWATCHES.map((h) => (
+              {SWATCHES.map((p) => (
                 <button
-                  key={String(h)}
-                  onClick={() => edit({ id: a.id, color: String(h) })}
-                  aria-label={h === "n" ? "Grey" : `Hue ${h}`}
-                  title={h === "n" ? "Grey" : `Hue ${h}`}
-                  style={{ width: 22, height: 22, border: 0, borderRadius: 6, background: areaHex(h, light), boxShadow: h === hue ? "0 0 0 2px var(--color-bg), 0 0 0 3px var(--color-text)" : "none", cursor: "pointer" }}
+                  key={p.id}
+                  onClick={() => edit({ id: a.id, color: p.id })}
+                  aria-label={p.name}
+                  title={p.name}
+                  style={{ width: 22, height: 22, border: 0, borderRadius: 6, background: paintOf(p.id, light), boxShadow: p.id === hue ? "0 0 0 2px var(--color-bg), 0 0 0 3px var(--color-text)" : "none", cursor: "pointer" }}
                 />
               ))}
             </div>
@@ -66,11 +67,11 @@ export function TagsKinds() {
         )
       })}
       <div className="fr-row" style={{ display: "flex", gap: 8, paddingTop: 16 }}>
-        <button className="btn btn-secondary" onClick={() => add({ name: `Tag ${areas.length + 1}`, color: String(AUTO_HUES[areas.length % AUTO_HUES.length]) })}>
+        <button className="btn btn-secondary" onClick={() => add({ name: `Tag ${areas.length + 1}`, color: AUTO_PAINTS[areas.length % AUTO_PAINTS.length] })}>
           <Icon name="plus" size={15} />
           Add tag
         </button>
-        <button className="btn btn-ghost" onClick={() => areas.forEach((a, i) => edit({ id: a.id, color: String(AUTO_HUES[i % AUTO_HUES.length]) }))}>
+        <button className="btn btn-ghost" onClick={() => areas.forEach((a, i) => edit({ id: a.id, color: AUTO_PAINTS[i % AUTO_PAINTS.length] }))}>
           <Icon name="arrow-counter-clockwise" size={15} />
           Auto-assign colors
         </button>

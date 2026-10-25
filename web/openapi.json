@@ -8990,6 +8990,17 @@
       ],
       "title": "Area"
      },
+     "preset": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preset"
+     },
      "estimated": {
       "type": "boolean",
       "title": "Estimated",

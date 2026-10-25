@@ -157,7 +157,7 @@ function TaskLine({ item, from, dim }: { item: Item; from?: string; dim?: boolea
       <span style={{ fontSize: 13, fontWeight: 500 }}>{item.title}</span>
       {item.area && (
         <span style={{ ...meta, display: "inline-flex", gap: 4, alignItems: "center" }}>
-          <span style={{ width: 6, height: 6, borderRadius: 2, background: color(item.area) }} />
+          <span style={{ width: 6, height: 6, borderRadius: 2, background: color(item.area, item.preset) }} />
           {item.area}
         </span>
       )}

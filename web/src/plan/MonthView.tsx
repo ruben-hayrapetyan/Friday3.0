@@ -49,7 +49,7 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
             const hrs = plan?.day_hours[date] ?? 0
             const cap = caps.get(date) ?? 8
             const items = [
-              ...(plan?.blocks ?? []).filter((b) => b.start.startsWith(date)).map((b) => ({ key: b.key, start: b.start, title: b.title, s: skinOf(b.pinned === "locked" ? "locked" : "planned", b.area), event: null })),
+              ...(plan?.blocks ?? []).filter((b) => b.start.startsWith(date)).map((b) => ({ key: b.key, start: b.start, title: b.title, s: skinOf(b.pinned === "locked" ? "locked" : "planned", b.area, undefined, b.preset), event: null })),
               ...(plan?.fixed ?? []).filter((f) => f.start?.startsWith(date)).map((f) => ({ key: `F${f.id}`, start: f.start as string, title: f.title, s: { ...skinOf("fixed", f.area), bg: wash(eventPaint(f, light), light), stripe: eventPaint(f, light), fg: "var(--color-text)" }, event: asBlock({ ...f, start: f.start as string, end: f.end ?? (f.start as string) }) })),
             ].sort((a, b) => a.start.localeCompare(b.start))
             const dues = (calendar?.dues ?? []).filter((d) => d.due.startsWith(date))

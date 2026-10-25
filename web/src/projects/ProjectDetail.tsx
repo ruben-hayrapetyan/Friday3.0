@@ -43,7 +43,7 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
       <div style={{ display: "flex", alignItems: "flex-end", gap: 20, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: "min(260px, 100%)", display: "flex", flexDirection: "column", gap: 8 }}>
           <span className="fr-eyebrow" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span className="fr-swatch" style={{ background: color(p.item.area) }} />
+            <span className="fr-swatch" style={{ background: color(p.item.area, p.item.preset) }} />
             {p.item.area ?? "No tag"} · {p.item.preset ?? "Project"}
           </span>
           <H size={layout.tight ? 28 : 36} style={{ overflowWrap: "anywhere" }}>
@@ -61,7 +61,7 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
             </span>
             <StatusTag label={label} tone={tone} />
           </div>
-          <Bar pct={projectPct(p)} color={color(p.item.area)} />
+          <Bar pct={projectPct(p)} color={color(p.item.area, p.item.preset)} />
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column" }}>

@@ -103,6 +103,7 @@ class BlockOut(Model):
     item_id: int
     title: str
     area: str | None = None
+    preset: str | None = None  # its kind: work with no tag wears its kind's paint
     estimated: bool = False  # the item's length is Friday's estimate, drawn with a `~`
     start: str
     end: str

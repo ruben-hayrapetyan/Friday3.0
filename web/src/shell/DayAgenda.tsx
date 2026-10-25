@@ -53,7 +53,7 @@ export function DayAgenda() {
               <span className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)", textAlign: "right" }}>
                 {e.sort === "allday" ? "all day" : e.sort === "due" && e.start.endsWith("T23:59") ? "due" : clock(e.start)}
               </span>
-              <span style={{ alignSelf: "stretch", borderRadius: 2, background: e.sort === "due" ? "var(--fr-due)" : e.sort === "work" ? (e.area ? color(e.area) : "var(--color-accent)") : e.event ? eventPaint(e.event, light) : "var(--color-neutral-500)" }} />
+              <span style={{ alignSelf: "stretch", borderRadius: 2, background: e.sort === "due" ? "var(--fr-due)" : e.sort === "work" ? (e.area || e.block.preset ? color(e.area, e.block.preset) : "var(--color-accent)") : e.event ? eventPaint(e.event, light) : "var(--color-neutral-500)" }} />
               <span style={{ fontSize: 12.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: e.sort === "due" ? "var(--fr-due)" : undefined }}>
                 {e.title}
               </span>

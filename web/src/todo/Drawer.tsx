@@ -167,7 +167,7 @@ function Row({ item }: { item: Item }) {
       style={{ display: "grid", gridTemplateColumns: "16px 3px minmax(0,1fr) auto", gap: 9, alignItems: "center", padding: "6px 4px", borderRadius: "var(--radius-md)", cursor: "pointer", touchAction: "none" }}
     >
       <Check small done={false} onToggle={() => done({ id: item.id })} />
-      <span style={{ alignSelf: "stretch", borderRadius: 2, background: color(item.area) }} />
+      <span style={{ alignSelf: "stretch", borderRadius: 2, background: color(item.area, item.preset) }} />
       <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
         <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: item.long_term ? "var(--fr-aged)" : undefined }}>
           {item.pointless_late && <ExpiresMark />} {item.title}

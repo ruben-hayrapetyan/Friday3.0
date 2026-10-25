@@ -49,11 +49,11 @@ export function Dock() {
     >
       {work && menu === "more" && <MoreMenu itemId={cur.item_id} onSwitch={() => setMenu("swap")} onClose={() => setMenu(null)} />}
       {cur && timer && timer.item_id === cur.item_id ? (
-        <Timing cur={cur} elapsed={timer.elapsed_s ?? 0} next={next} dot={color(cur.area)} compact={compact} menu={menu} onMenu={toggle} />
+        <Timing cur={cur} elapsed={timer.elapsed_s ?? 0} next={next} dot={color(cur.area, cur.preset)} compact={compact} menu={menu} onMenu={toggle} />
       ) : cur?.fixed ? (
-        <InEvent cur={cur} next={next} dot={color(cur.area)} />
+        <InEvent cur={cur} next={next} dot={color(cur.area, cur.preset)} />
       ) : cur ? (
-        <On cur={cur} next={next} dot={color(cur.area)} compact={compact} menu={menu} onMenu={toggle} />
+        <On cur={cur} next={next} dot={color(cur.area, cur.preset)} compact={compact} menu={menu} onMenu={toggle} />
       ) : (
         <Free until={now.next?.start ?? null} gap={now.gap_minutes} next={now.next?.title ?? null} fits={now.fits} today={today} />
       )}

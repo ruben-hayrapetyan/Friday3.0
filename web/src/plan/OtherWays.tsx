@@ -122,7 +122,7 @@ function WeekStrip({ blocks }: { blocks: Schemas["BlockOut"][] }) {
                   <span
                     key={b.key}
                     title={`${b.title} ${clock(b.start)}–${clock(b.end)}`}
-                    style={{ position: "absolute", left: 2, right: 2, top: `${Math.max(0, (from / span) * 100)}%`, height: `${Math.max(2, (len / span) * 100)}%`, borderRadius: 2, background: color(b.area) }}
+                    style={{ position: "absolute", left: 2, right: 2, top: `${Math.max(0, (from / span) * 100)}%`, height: `${Math.max(2, (len / span) * 100)}%`, borderRadius: 2, background: color(b.area, b.preset) }}
                   />
                 )
               })}

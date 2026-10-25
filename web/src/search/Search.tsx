@@ -67,7 +67,7 @@ export function Search() {
       .map((i) => ({
         key: `i${i.id}`,
         label: i.title,
-        swatch: color(i.area),
+        swatch: color(i.area, i.preset),
         meta: i.status === "done" ? "done" : next.get(i.id) ? when(next.get(i.id)!.start, today) : i.due ? `due ${when(i.due, today)}` : "",
         run: go(() => navigate(`/todo?item=${i.id}`)),
       }))
@@ -89,7 +89,7 @@ export function Search() {
     const projectHits: Hit[] = projects
       .filter((p) => has(p.item.title))
       .slice(0, 4)
-      .map((p) => ({ key: `p${p.item.id}`, label: p.item.title, swatch: color(p.item.area), meta: "project", run: go(() => navigate(`/projects?id=${p.item.id}`)) }))
+      .map((p) => ({ key: `p${p.item.id}`, label: p.item.title, swatch: color(p.item.area, p.item.preset), meta: "project", run: go(() => navigate(`/projects?id=${p.item.id}`)) }))
     const pages: Hit[] = PAGES.filter(([label]) => has(label)).map(([label, to, icon]) => ({ key: to, label, icon, run: go(() => navigate(to)) }))
     const actions: Hit[] = [
       { key: "shove", label: "Shove: take time back", icon: "hand-palm", run: go(() => setPop("shove")) },

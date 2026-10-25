@@ -82,7 +82,7 @@ export function Timeline({ p, steps, tone }: { p: Project; steps: Item[]; tone: 
             {due && <Due at={x(due)} text={`Due ${weekday(due)} ${Number(due.slice(8, 10))}, ${clock(due)}`} />}
             {showNow && <span title={`Now, ${clock(nowAt)}`} style={{ position: "absolute", zIndex: 2, top: HEAD - 16, bottom: 0, left: `${x(nowAt)}%`, width: 2, marginLeft: -1, borderRadius: 1, background: "var(--fr-now)" }} />}
             {lanes.map(({ s, bs }, i) => (
-              <Lane key={s.id} top={HEAD + i * LANE} title={s.title} bs={bs} x={x} skin={skinOf(s.status === "done" ? "done" : "planned", p.item.area)} done={s.status === "done"} today={today} />
+              <Lane key={s.id} top={HEAD + i * LANE} title={s.title} bs={bs} x={x} skin={skinOf(s.status === "done" ? "done" : "planned", p.item.area, undefined, p.item.preset)} done={s.status === "done"} today={today} />
             ))}
           </div>
         </div>

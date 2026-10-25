@@ -68,7 +68,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
           <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
-            <span style={{ width: 10, height: 10, borderRadius: 3, background: color(item.area) }} />
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: color(item.area, item.preset) }} />
             {item.area ?? "No tag"}
           </span>
           <span className="fr-h" style={{ fontSize: 30, lineHeight: 1 }}>
@@ -85,14 +85,14 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
           <span style={{ color: "var(--color-neutral-500)" }}>{item.remaining_min != null ? `${dur(item.remaining_min)} left` : ""}</span>
         </div>
         <div style={{ height: 6, borderRadius: 3, background: "color-mix(in srgb, var(--color-text) 8%, transparent)", overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${p.pct}%`, background: color(item.area) }} />
+          <div style={{ height: "100%", width: `${p.pct}%`, background: color(item.area, item.preset) }} />
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "96px minmax(0,1fr)", gap: "12px 14px", alignItems: "center" }}>
         <span className="fr-kicker">Tag</span>
         {button("area", (
           <>
-            <span className="fr-swatch" style={{ background: color(item.area) }} />
+            <span className="fr-swatch" style={{ background: color(item.area, item.preset) }} />
             {item.area ?? "No tag"}
           </>
         ))}
