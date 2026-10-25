@@ -10,6 +10,10 @@ web/dist/
 # Your own config and secrets, if copied into the repo by mistake
 friday.toml
 secrets.toml
+# Google sign-in: the key file from Google Cloud (client_secret_….json), Friday's copy of it and the saved token
+client_secret*.json
+google_client.json
+secrets.json
 # Agent worktrees
 .claude/
 Mac/build/
