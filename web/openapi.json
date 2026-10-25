@@ -5360,7 +5360,7 @@
   },
   "/api/q/mac_writes": {
    "get": {
-    "summary": "Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title only if you",
+    "summary": "Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title",
     "operationId": "mac_writes",
     "responses": {
      "200": {
@@ -5382,7 +5382,7 @@
   },
   "/api/c/mac_written": {
    "post": {
-    "summary": "What the Mac app made of a change: done, with the event as it now is; or why not, tried again up to five times",
+    "summary": "What the Mac app made of a change: done, with the event as it now is; or why not, tried again",
     "operationId": "mac_written",
     "parameters": [
      {

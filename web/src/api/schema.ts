@@ -1507,7 +1507,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title only if you */
+        /** Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title */
         get: operations["mac_writes"];
         put?: never;
         post?: never;
@@ -1526,7 +1526,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** What the Mac app made of a change: done, with the event as it now is; or why not, tried again up to five times */
+        /** What the Mac app made of a change: done, with the event as it now is; or why not, tried again */
         post: operations["mac_written"];
         delete?: never;
         options?: never;

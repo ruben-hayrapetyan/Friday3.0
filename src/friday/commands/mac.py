@@ -84,8 +84,8 @@ def mac_calendars(ctx: Ctx, inp: Empty) -> list[GoogleCalendarOut]:
 
 @query("mac_writes")
 def mac_writes(ctx: Ctx, inp: Empty) -> list[MacWriteOut]:
-    """Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title only if you
-    renamed it here (never its notes, which Friday doesn't read from the Mac); or a delete."""
+    """Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title
+    only if you renamed it here (never its notes, which Friday doesn't read from the Mac); or a delete."""
     links = event_links(ctx.conn, ctx.user_id)
     out = []
     for job in rows(
@@ -112,8 +112,8 @@ def mac_writes(ctx: Ctx, inp: Empty) -> list[MacWriteOut]:
 
 @command("mac_written", logged=False)  # the Mac app's report, like `mac_sync`: nothing of yours to undo
 def mac_written(ctx: Ctx, inp: MacWrittenInput) -> Changed:
-    """What the Mac app made of a change: done, with the event as it now is; or why not, tried again up to five times
-    (then the status line says so)."""
+    """What the Mac app made of a change: done, with the event as it now is; or why not, tried again
+    up to five times (then the status line says so)."""
     job = one(ctx.conn, "SELECT * FROM event_writes WHERE id = ? AND user_id = ?", [inp.id, ctx.user_id])
     if job is None:
         raise FieldError("id", f"no change {inp.id} is waiting")

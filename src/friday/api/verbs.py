@@ -378,7 +378,7 @@ VERBS = {
         commands.Empty,
         False,
         False,
-        "Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title only if you",
+        "Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title",
     ),
     "mac_written": Verb(
         "POST",
@@ -386,7 +386,7 @@ VERBS = {
         commands.MacWrittenInput,
         True,
         False,
-        "What the Mac app made of a change: done, with the event as it now is; or why not, tried again up to five times",
+        "What the Mac app made of a change: done, with the event as it now is; or why not, tried again",
     ),
     "mail_log": Verb(
         "GET",
