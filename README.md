@@ -47,8 +47,10 @@ fridayd serve            # http://127.0.0.1:8765
 
 **Google Calendar and Gmail** are read by the server. In Settings → Integrations (or setup's last step), choose your
 Desktop OAuth client's .json file from Google Cloud once, then press Connect: Google's page opens in your browser, and
-your calendars list there once you allow Friday. Gmail has its own switch beside it. (`fridayd google-login` does the
-same from a terminal, with the file at `google.client_file` in [`friday.example.toml`](friday.example.toml).)
+your calendars list there once you allow Friday. Add another Google account the same way (your school's beside your
+own): each account's calendars are listed under its address, and each is read and changed through its own account.
+Gmail has its own switch beside it and reads every account that allows it. (`fridayd google-login` does the same from a
+terminal, once per account, with the file at `google.client_file` in [`friday.example.toml`](friday.example.toml).)
 **The Mac's calendars** come through the Mac app: allow it to read them, and choose the ones Friday reads under This
 Mac's calendars. One that is also read from Google starts off, so nothing comes in twice.
 

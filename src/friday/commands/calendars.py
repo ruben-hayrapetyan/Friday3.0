@@ -1,6 +1,7 @@
-"""Google calendars in Settings (M12b): every calendar the last sync saw, alphabetized, each switched on or off and
-read as one kind or per event. The choice lives in `sources`; `gcal.read` in friday.toml only picks the first ones.
-The Mac's calendars (`commands/mac.py`) are switched the same way, with `mac`."""
+"""Google calendars in Settings (M12b): every calendar the last sync saw in each of your Google accounts,
+alphabetized, each switched on or off and read as one kind or per event. The choice lives in `sources`; `gcal.read`
+in friday.toml only picks the first ones. The Mac's calendars (`commands/mac.py`) are switched the same way, with
+`mac`."""
 
 import json
 import re
@@ -14,6 +15,7 @@ from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.time import format_local, format_utc, parse_utc, to_local
 from friday.planner.store import event_links, kv_get
+from friday.sync.google_auth import LEGACY
 
 
 def natural(name: str) -> list[Any]:
@@ -23,7 +25,8 @@ def natural(name: str) -> list[Any]:
 
 @query("google_calendars")
 def google_calendars(ctx: Ctx, inp: Empty) -> list[GoogleCalendarOut]:
-    """Your Google calendars as of the last sync, alphabetized, with whether each is read and how."""
+    """Your Google calendars as of the last sync, alphabetized, with whether each is read and how, and the account
+    it's read through."""
     out = []
     for c in kv_get(ctx.conn, "google_calendars", [], ctx.user_id):
         source = source_of(ctx, c["id"])
@@ -32,7 +35,7 @@ def google_calendars(ctx: Ctx, inp: Empty) -> list[GoogleCalendarOut]:
         out.append(
             GoogleCalendarOut(
                 id=c["id"],
-                name=c["name"],
+                name=c.get("source_name", c["name"]),
                 primary=c["primary"],
                 on=bool(source and source["enabled"]),
                 kind=config.get("kind") or "auto",
@@ -41,6 +44,7 @@ def google_calendars(ctx: Ctx, inp: Empty) -> list[GoogleCalendarOut]:
                 error=source["last_error"] if source else None,
                 writable=c.get("writable", False),
                 editable=editable(config, c),
+                account=c.get("account") or None,
             )
         )
     return sorted(out, key=lambda c: natural(c.name))
@@ -106,6 +110,29 @@ def source_of(ctx: Ctx, calendar_id: str, kind: str = "gcal") -> dict[str, Any] 
         "SELECT * FROM sources WHERE user_id = ? AND kind = ? AND json_extract(config, '$.calendar') = ? ORDER BY id",
         [ctx.user_id, kind, calendar_id],
     )
+
+
+def let_go(ctx: Ctx, account: str, remaining: list[str]) -> None:
+    """After an account is removed: a calendar only it had leaves the list and stops being read, what it suggested
+    that you haven't answered withdrawn (as when you switch one off; what you accepted stays), and is read again if
+    the account comes back. One another account has too is read through that one. Its mail stops the same way."""
+    kept = []
+    for c in kv_get(ctx.conn, "google_calendars", [], ctx.user_id):
+        others = [a for a in c.get("accounts", []) if a != account and a in remaining]
+        if c.get("account", LEGACY) != account:
+            kept.append(c)
+        elif others:
+            kept.append(c | {"account": others[0], "accounts": others})
+        elif (source := source_of(ctx, c["id"])) is not None and source["enabled"]:
+            config = json.loads(source["config"]) | {"account_removed": True}
+            ctx.db.update("sources", {"id": source["id"]}, {"enabled": 0, "config": json.dumps(config)})
+            forget_unanswered(ctx, source["id"])
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "google_calendars"}, {"value": json.dumps(kept)})
+    for source in rows(ctx.conn, "SELECT * FROM sources WHERE user_id = ? AND kind = 'gmail'", [ctx.user_id]):
+        config = json.loads(source["config"])
+        if config.get("account", LEGACY) == account and source["enabled"]:
+            changes = {"enabled": 0, "config": json.dumps(config | {"account_removed": True})}
+            ctx.db.update("sources", {"id": source["id"]}, changes)
 
 
 def reread_calendars(ctx: Ctx) -> None:

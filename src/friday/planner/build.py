@@ -160,10 +160,27 @@ def flexible_items(inp: BuildInput, grid: Grid, fixed: Mapping[int, Item]) -> di
         engine_item = to_engine_item(item, inp, grid, by_id, fixed)
         if engine_item is not None:
             out[engine_item.key] = engine_item
-    dependencies = [*inp.dependencies, *parts_in_order(inp, out)]
+    dependencies = [*inp.dependencies, *parts_in_order(inp, out), *long_after_short(inp, out)]
     for engine_item in out.values():
         engine_item.depends_on = dependency_specs(id_of(engine_item.key), dependencies, out)
     return out
+
+
+SHORT_TERM_DAYS = 7  # short-term work due within this long comes before any long-term work
+
+
+def long_after_short(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[Dependency]:
+    """With `short_term_first`, Long term work waits until the Short term work due this week is done: it isn't
+    started in free time while that work is still to do. Long term work due this week itself doesn't wait, and
+    meals and habits don't hold anything up."""
+    if not inp.settings["short_term_first"]:
+        return []
+    soon = inp.now_utc + SHORT_TERM_DAYS * 1440
+    planned = {item.id: item for item in inp.items if key_of(item.id) in items}
+    due_soon = lambda i: i.due_utc is not None and parse_utc(i.due_utc) <= soon  # noqa: E731
+    shorts = [i for i in planned.values() if not i.long_term and due_soon(i) and i.preset not in ("Routine", "Habit")]
+    longs = [i for i in planned.values() if i.long_term and not due_soon(i)]
+    return [Dependency(long.id, short.id) for long in longs for short in shorts]  # type: ignore[arg-type]
 
 
 def parts_in_order(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[Dependency]:
@@ -312,7 +329,8 @@ def sitting_cost(item: Item, settings: Mapping[str, Any]) -> float:
 def importance(item: Item, kind_order: Sequence[str], short_term_first: bool = False) -> float:
     """The item's importance, scaled by its kind's place in `kind_order`: twice for the first, once for the last
     and for kinds not listed. Lateness is priced by importance, so the first kinds keep their time. With
-    `short_term_first`, Long term work counts a quarter as much, so it gets only the time short-term work leaves."""
+    `short_term_first`, Long term work counts a quarter as much, and waits for this week's short-term work
+    (`long_after_short`)."""
     scale = LONG_TERM_SCALE if short_term_first and item.long_term else 1.0
     if item.preset not in kind_order or len(kind_order) < 2:
         return item.importance * scale

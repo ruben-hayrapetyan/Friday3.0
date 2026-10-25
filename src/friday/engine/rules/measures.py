@@ -81,14 +81,24 @@ class Reserve(Rule):
             window = [s for s in slots if in_hour_window(grid.slots[s].local_minute, self.p.start, self.p.end)]
             if not window:
                 continue
+            # An evening kept free until 11:59pm keeps the rest of that night too: otherwise the work it holds off
+            # lands just past midnight, later than the evening it was kept from.
+            night = []
+            if self.p.start is not None and self.p.end is not None and self.p.start < self.p.end >= NIGHT_FROM:
+                night = [s for s in slots if grid.slots[s].day_minute >= self.p.end and s not in window]
+            window += night
             free_units = sum(int(grid.units[s]) for s in window if not (problem.blocked[s] or problem.core[s]))
-            theta = max(0, free_units - round(self.p.free * problem.scales[d].reserve_free))
+            free_night = sum(int(grid.units[s]) for s in night if not (problem.blocked[s] or problem.core[s]))
+            theta = max(0, free_units - round(self.p.free * problem.scales[d].reserve_free) - free_night)
             items = self.scoped_items()  # all work by default; a meal in the evening isn't work taking the evening
             workable = sum(int(grid.units[s]) for s in window if any(s in it.allowed_set for it in items))
             if workable > theta:
                 yield Measure(
                     f"{self.name}@d{d}", ctx.busy_units(window, items), "units", (Hinge("above", theta, 1.0),)
                 )
+
+
+NIGHT_FROM = 23 * 60 + 30  # a free window ending this late is an evening, which runs on into the night
 
 
 @rule_type("daily_load")

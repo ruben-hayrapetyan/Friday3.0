@@ -52,28 +52,30 @@ def sync(
         if forced or last is None or now_utc - last >= settings["ingest"].poll_min:
             made += read_feed(conn, source, settings, now_utc, user_id, fetch, client)
     if forced or due(conn, "gcal", settings, now_utc, user_id):
+        calendar_apis = google_auth.per_account(google, folder, google_auth.calendar)
 
         def calendars() -> int:
-            api = google or (google_auth.calendar(folder) if folder and google_auth.connected(folder) else None)
-            return read_calendars(conn, settings, now_utc, user_id, api, client) if api else 0
+            return read_calendars(conn, settings, now_utc, user_id, calendar_apis, client, folder)
 
-        made += guarded(conn, "gcal", now_utc, user_id, calendars)
+        made += guarded(conn, "gcal", now_utc, user_id, calendars) if calendar_apis else 0
     if forced or kv_get(conn, "mac_sync_now", None, user_id) is not None:
         conn.execute("DELETE FROM kv WHERE user_id = ? AND key = 'mac_sync_now'", [user_id])
         made += read_mac(conn, settings, now_utc, user_id, client)
     if settings["gmail"].enabled and (forced or due(conn, "gmail", settings, now_utc, user_id)):
-
-        def messages() -> int:
-            api = mail or (google_auth.gmail(folder) if folder else None)
-            return read_mail(conn, settings, now_utc, user_id, api) if api else 0
-
-        guarded(conn, "gmail", now_utc, user_id, messages)
+        # Each account that lets Friday read its mail, into a source of its own; one failing leaves the others.
+        mail_apis = google_auth.per_account(mail, folder, google_auth.gmail, (google_auth.GMAIL_SCOPE,))
+        for account, api in mail_apis.items():
+            read_mail(conn, settings, now_utc, user_id, api, account)
     made += extract_pending(conn, settings, now_utc, user_id, client)
     return made
 
 
 def due(conn: sqlite3.Connection, kind: str, settings: dict, now_utc: int, user_id: int) -> bool:
-    found = one(conn, "SELECT MIN(last_sync_utc) AS at FROM sources WHERE user_id = ? AND kind = ?", [user_id, kind])
+    found = one(  # a source switched off (or a removed account's) isn't read, so it doesn't make the rest due
+        conn,
+        "SELECT MIN(last_sync_utc) AS at FROM sources WHERE user_id = ? AND kind = ? AND enabled = 1",
+        [user_id, kind],
+    )
     at = found["at"] if found else None
     return at is None or now_utc - parse_utc(at) >= settings["ingest"].poll_min
 
@@ -92,13 +94,21 @@ def guarded(conn: sqlite3.Connection, kind: str, now_utc: int, user_id: int, rea
 
 
 def read_calendars(
-    conn: sqlite3.Connection, settings: dict, now_utc: int, user_id: int, google: Any, client: Any | None = None
+    conn: sqlite3.Connection,
+    settings: dict,
+    now_utc: int,
+    user_id: int,
+    apis: dict[str, google_auth.Api],
+    client: Any | None = None,
+    folder: Path | None = None,
 ) -> int:
-    """The calendars you switched on (`gcal.read` only picks the first ones), from yesterday as far ahead as the
-    allocator plans: a paper due in five weeks on Canvas is paced from now, not found two weeks before it's due."""
-    listed = gcal.calendars(google)
+    """The calendars you switched on (`gcal.read` only picks the first ones), each through its own account, from
+    yesterday as far ahead as the allocator plans: a paper due in five weeks on Canvas is paced from now, not found
+    two weeks before it's due."""
+    listed, services, broken = list_calendars(conn, apis, user_id, folder)
     kv_set(conn, "google_calendars", listed, user_id)
     seed_calendars(conn, settings["gcal"], listed, user_id)
+    owners = {c["id"]: c.get("account", google_auth.LEGACY) for c in listed}
     tz, since = settings["time"].timezone, now_utc - 24 * 60
     until = now_utc + settings["time"].allocator_weeks * 7 * 24 * 60
     made = 0
@@ -107,8 +117,14 @@ def read_calendars(
         way = event_reading(settings, config.get("kind"), settings["gcal"].include_all_day)
 
         def read(calendar_id: str | None = config.get("calendar"), way: ics.Reading = way) -> list[Found]:
-            if calendar_id not in {c["id"] for c in listed}:
+            if calendar_id not in owners:
                 raise LookupError("no longer in your Google account")
+            if owners[calendar_id] in broken:  # its account can't be read now (an expired sign-in, say)
+                raise broken[owners[calendar_id]]
+            account = google_auth.which(services, owners[calendar_id])
+            if account is None:
+                raise LookupError(f"{owners[calendar_id]} isn't connected any more")
+            google = services[account]
             events = gcal.events(google, calendar_id, gcal.rfc3339(since), gcal.rfc3339(until))
             series = {e.get("recurringEventId", "") for e in events} - {""}
             rules = gcal.repeat_rules(google, calendar_id, series)
@@ -142,21 +158,90 @@ def read_mac(conn: sqlite3.Connection, settings: dict, now_utc: int, user_id: in
     return made
 
 
+def list_calendars(
+    conn: sqlite3.Connection, apis: dict[str, google_auth.Api], user_id: int, folder: Path | None
+) -> tuple[list[dict], dict[str, Any], dict[str, Exception]]:
+    """Every account's calendars, each once, with the account it's read through; the accounts' APIs; and why
+    each account that couldn't be listed couldn't. That one's calendars stay as last listed, so they aren't taken
+    for gone, and fail with the reason when read."""
+    before = kv_get(conn, "google_calendars", [], user_id)
+    found: list[dict] = []
+    services: dict[str, Any] = {}
+    broken: dict[str, Exception] = {}
+    for account, api in apis.items():
+        try:
+            service = api()
+            listed = gcal.calendars(service)
+        except Exception as error:
+            broken[account] = error
+            found += [c for c in before if c.get("account", google_auth.LEGACY) == account]
+            continue
+        if account == google_auth.LEGACY:  # the token from before Friday kept several: its primary calendar names it
+            account = next((c["id"] for c in listed if c["primary"]), google_auth.LEGACY)
+            if folder is not None:
+                google_auth.adopt(folder, account)
+        services[account] = service
+        found += [c | {"account": account} for c in listed]
+    return named(merged(found)), services, broken
+
+
+def merged(listed: list[dict]) -> list[dict]:
+    """Each calendar once, though several accounts list it (one shared with your other account, say): read through
+    the first account that may change it, else the first that has it. `accounts` keeps them all, to fall back on
+    when one is removed."""
+    by_id: dict[str, dict] = {}
+    for c in listed:
+        seen = by_id.get(c["id"])
+        if seen is None:
+            by_id[c["id"]] = c | {"accounts": [c["account"]]}
+            continue
+        better = c if c.get("writable") and not seen.get("writable") else seen
+        by_id[c["id"]] = better | {"accounts": [*seen["accounts"], c["account"]]}
+    return list(by_id.values())
+
+
+def named(listed: list[dict]) -> list[dict]:
+    """Each calendar's name in Friday (its source's): its own, or with its account's address when an earlier
+    account has one by that name ("Holidays in United States (me@cornell.edu)"), numbered when one account has
+    two. The first account's keep their own names, so adding another renames nothing you had."""
+    taken: dict[str, str] = {}  # a name given → the account it was given in
+    out = []
+    for c in listed:
+        name = c["name"]
+        if name in taken and taken[name] != c["account"] and c["account"]:
+            name = f"{name} ({c['account']})"
+        base, n = name, 1
+        while name in taken:
+            n += 1
+            name = f"{base} {n}"
+        taken[name] = c["account"]
+        out.append(c | {"source_name": name})
+    return out
+
+
 def seed_calendars(conn: sqlite3.Connection, wanted: GcalSettings, listed: list[dict], user_id: int) -> None:
-    """A calendar `gcal.read` names becomes a source the first time it is seen; after that, Settings decides."""
+    """A calendar `gcal.read` names becomes a source the first time it is seen; after that, Settings decides. One
+    that was read until its account was removed is read again once the account is back."""
     found = rows(conn, "SELECT config FROM sources WHERE user_id = ? AND kind = 'gcal'", [user_id])
     have = {json.loads(r["config"]).get("calendar") for r in found}
     for c in listed:
+        name = c.get("source_name", c["name"])
         conn.execute(  # a calendar renamed in Google, or first named "primary", goes by its name
             "UPDATE OR IGNORE sources SET name = ? WHERE user_id = ? AND kind = 'gcal' "
             "AND json_extract(config, '$.calendar') = ?",
-            [c["name"], user_id, c["id"]],
+            [name, user_id, c["id"]],
+        )
+        conn.execute(
+            "UPDATE sources SET enabled = 1, config = json_remove(config, '$.account_removed') "
+            "WHERE user_id = ? AND kind = 'gcal' AND json_extract(config, '$.calendar') = ? "
+            "AND json_extract(config, '$.account_removed')",
+            [user_id, c["id"]],
         )
         named = [n for n in wanted.read if n in (c["id"], c["name"]) or (n == "primary" and c["primary"])]
         if named and c["id"] not in have:
             conn.execute(
                 "INSERT OR IGNORE INTO sources (user_id, kind, name, config, trusted) VALUES (?, 'gcal', ?, ?, ?)",
-                [user_id, c["name"], json.dumps({"calendar": c["id"]}), int(bool(set(named) & set(wanted.trusted)))],
+                [user_id, name, json.dumps({"calendar": c["id"]}), int(bool(set(named) & set(wanted.trusted)))],
             )
 
 

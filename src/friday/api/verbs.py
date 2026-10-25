@@ -219,7 +219,7 @@ VERBS = {
         commands.Empty,
         False,
         False,
-        "Your Google calendars as of the last sync, alphabetized, with whether each is read and how.",
+        "Your Google calendars as of the last sync, alphabetized, with whether each is read and how, and the account",
     ),
     "google_client_save": Verb(
         "POST",
@@ -232,10 +232,10 @@ VERBS = {
     "google_connect": Verb(
         "POST",
         "/api/c/google_connect",
-        commands.Empty,
+        commands.GoogleConnectInput,
         True,
         False,
-        "Connect Google: opens Google's page in your browser to let Friday read your calendars.",
+        "Connect a Google account: opens Google's page in your browser to let Friday read its calendars, and its mail",
     ),
     "google_connect_status": Verb(
         "GET",
@@ -243,7 +243,15 @@ VERBS = {
         commands.Empty,
         False,
         False,
-        "How connecting Google is going, and what Google lets Friday do: read calendars, read mail, change events.",
+        "How connecting Google is going, and what Google lets Friday do: read calendars, read mail, change events,",
+    ),
+    "google_remove": Verb(
+        "POST",
+        "/api/c/google_remove",
+        commands.GoogleAccountInput,
+        True,
+        False,
+        "Remove a Google account: its token is deleted and Friday stops reading its calendars and mail. What they",
     ),
     "import_chroma_colors": Verb(
         "POST",

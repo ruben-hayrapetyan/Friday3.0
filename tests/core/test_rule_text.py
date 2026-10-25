@@ -151,3 +151,12 @@ def test_the_night_before_an_event_ends_early(text: str, strength: str) -> None:
         "before_event",
         {"titles": ["climbing club"], "after": "22:00", "price": "forbid"},
     )
+
+
+def test_a_lighter_stretch_keeps_about_half_of_it_free() -> None:
+    reading, _ = read("Keep Friday and Saturday nights lighter")
+    assert reading == Reading("free", "work", rel="between", at="22:00", until="02:00", days=("fri", "sat"), amount=0.5)
+    assert sentence(reading) == "Keep Fri, Sat 10pm–2am lighter"
+    rule = spec(reading, "Prefer", "you:x", [], [])
+    assert (rule["type"], rule["params"]["free"]) == ("reserve", "2h")  # half of four hours: less work, not none
+    assert read("lighter friday evenings")[0].amount == 0.5 and read("keep saturday mornings free")[0].amount is None

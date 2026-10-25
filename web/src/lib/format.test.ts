@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { dueLabel, hours, parseLength, when } from "./format"
+import { dueLabel, hours, lateBy, parseLength, when } from "./format"
 import { toMin } from "./time"
 
 describe("rule lengths", () => {
@@ -39,5 +39,11 @@ describe("due labels", () => {
     expect(dueLabel("2026-10-23T17:00", at("2026-10-23T13:48"), "2026-10-23")).toEqual({ text: "in 3h 12m", tone: "soon" })
     expect(dueLabel("2026-10-23T09:00", at("2026-10-23T11:05"), "2026-10-23")).toEqual({ text: "2h 5m over", tone: "over" })
     expect(dueLabel("2026-10-20T09:00", at("2026-10-23T11:00"), "2026-10-23")).toEqual({ text: "3d 2h over", tone: "over" })
+  })
+})
+
+describe("how late, roughly", () => {
+  it("rounds to the quarter hour, at least a quarter, and says days past a day", () => {
+    expect([lateBy(0.1), lateBy(1.4), lateBy(3), lateBy(25), lateBy(59)]).toEqual(["15m", "1h 30m", "3h", "1 day", "2 days"])
   })
 })

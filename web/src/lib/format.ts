@@ -47,6 +47,12 @@ export function dur(minutes: number): string {
   return h ? `${h}h${r ? ` ${r}m` : ""}` : `${r}m`
 }
 
+/** How late the plan finishes something, roughly: "30m", "3h", "2 days". */
+export function lateBy(hours: number): string {
+  if (hours >= 24) return `${Math.round(hours / 24)} day${Math.round(hours / 24) === 1 ? "" : "s"}`
+  return dur(Math.max(15, Math.round((hours * 60) / 15) * 15))
+}
+
 /** A typed length in minutes: "5", "5m", "45 min", "1h30", "1h 30m", "1.5h", "1:30"; null when it isn't one. */
 /** A length typed in plain language, in whole minutes (personal's reader, lib/lengths.ts; COMBINED.md 42). */
 export function parseLength(text: string): number | null {

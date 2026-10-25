@@ -16,7 +16,7 @@ import { useCommand } from "@/hooks/useCommand"
 import { useHorizon, useNow, useStatus } from "@/hooks/queries"
 import { DueLabel } from "@/components/DueLabel"
 import { useClock } from "@/hooks/useClock"
-import { dur, when } from "@/lib/format"
+import { dur, lateBy, when } from "@/lib/format"
 import { nextBlocks } from "@/lib/todo"
 import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
@@ -247,6 +247,7 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect }: RowProps) {
   const next = nextBlocks(blocks).get(item.id)
   const isNow = now?.current?.item_id === item.id
   const startBy = now?.alerts.find((a) => a.item_id === item.id)?.latest_start
+  const late = useStatus().data?.late_items?.find((l) => l.item_id === item.id)
   const isDone = item.status === "done"
   const left = item.remaining_min ?? 0
   const share = item.done_min && item.done_min + left ? item.done_min / (item.done_min + left) : 0
@@ -325,6 +326,7 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect }: RowProps) {
         {by !== "Kind" && <span style={{ fontSize: 10.5, color: "var(--color-neutral-500)", flex: "none" }}>{item.preset ?? ""}</span>}
       </span>
       <span className="tnum fr-mono fr-todo-meta" style={{ display: "flex", alignItems: "center", gap: 12, paddingLeft: 12, paddingRight: 6 }}>
+        {late && !isDone && <LateTag hours={late.hours} />}
         {startBy && !isDone && (
           <span title={`Start by ${when(startBy, today)} to finish on time`} style={{ color: "var(--fr-warn)", display: "inline-flex" }}>
             <Icon name="warning" size={11} />
@@ -375,6 +377,15 @@ function InlineEditor({ children, onClose }: { children: React.ReactNode; onClos
   )
 }
 
+/** The plan finishes it after its due, by about this much. */
+function LateTag({ hours }: { hours: number }) {
+  return (
+    <span className="fr-tag" title={`The plan finishes this about ${lateBy(hours)} after it's due`} style={{ color: "var(--fr-due)", background: "color-mix(in srgb, var(--fr-now) 14%, transparent)", flex: "none", alignSelf: "flex-start" }}>
+      {lateBy(hours)} late
+    </span>
+  )
+}
+
 /** How much is done, as personal's little pie. */
 function Pie({ share }: { share: number }) {
   const a = Math.min(share, 0.999) * 2 * Math.PI
@@ -399,6 +410,7 @@ function Row({ item, fresh, selected, picked, onSelect }: RowProps) {
   const next = nextBlocks(blocks).get(item.id)
   const isNow = now?.current?.item_id === item.id
   const startBy = now?.alerts.find((a) => a.item_id === item.id)?.latest_start
+  const late = useStatus().data?.late_items?.find((l) => l.item_id === item.id)
   const p = progress(item)
   const isDone = item.status === "done"
   const soon = item.due && item.firmness === "hard" && toMin(item.due) - toMin(`${today}T00:00`) < 2 * 1440
@@ -460,6 +472,7 @@ function Row({ item, fresh, selected, picked, onSelect }: RowProps) {
           <span style={{ color: "var(--color-neutral-300)" }}>{next ? when(next.start, today) : isDone ? "Done" : "not planned"}</span>
         )}
         <span style={{ color: soon ? "var(--fr-due)" : "var(--color-neutral-500)" }}>{item.due ? <DueLabel due={item.due} /> : "No due date"}</span>
+        {late && !isDone && <LateTag hours={late.hours} />}
       </div>
     </div>
   )

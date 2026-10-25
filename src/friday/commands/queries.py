@@ -16,6 +16,7 @@ from friday.api.types import BlockOut, Empty, ItemOut
 from friday.api.views import (
     Alert,
     ItemDetail,
+    LateItem,
     LockConflict,
     LogEntry,
     NowOut,
@@ -389,10 +390,18 @@ def status(ctx: Ctx, inp: Empty) -> StatusOut:
     ready = ctx.settings["time"].timezone is not None and ctx.settings["sleep"] is not None
     report = json.loads(saved["report"]) if saved else {}
     notices = report.get("notices", [])
-    titles = {
-        r["id"]: r["title"] for r in rows(ctx.conn, "SELECT id, title FROM items WHERE user_id = ?", [ctx.user_id])
+    found = {
+        r["id"]: r for r in rows(ctx.conn, "SELECT id, title, due_utc FROM items WHERE user_id = ?", [ctx.user_id])
     }
-    late = {titles[int(k)]: hours for k, hours in report.get("late_hours", {}).items() if int(k) in titles}
+    late_hours = {int(k): hours for k, hours in report.get("late_hours", {}).items() if int(k) in found}
+    late = {found[k]["title"]: hours for k, hours in late_hours.items()}
+    late_items = sorted(
+        (
+            LateItem(item_id=k, title=found[k]["title"], due=ctx.local(found[k]["due_utc"]), hours=hours)
+            for k, hours in late_hours.items()
+        ),
+        key=lambda i: i.due or "9999",
+    )
     return StatusOut(
         generation=generation(ctx.conn, ctx.user_id),
         plan_id=saved["id"] if saved else None,
@@ -402,6 +411,7 @@ def status(ctx: Ctx, inp: Empty) -> StatusOut:
         ready=ready,
         notices=notices,
         late=late,
+        late_items=late_items,
         problems=list(kv_get(ctx.conn, "server_problems", {}, ctx.user_id).values()),
         conflicts=waiting_conflicts(ctx, saved["id"] if saved else 0),
         config_keys=kv_get(ctx.conn, "config_keys", [], ctx.user_id),

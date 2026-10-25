@@ -571,6 +571,17 @@ class GoogleClientInput(Model):
     content: str
 
 
+class GoogleConnectInput(Model):
+    """Which account to sign in: none to add one (Google's page asks which), or one already connected to sign it in
+    again (to allow Gmail, or when its sign-in expired)."""
+
+    account: str | None = None
+
+
+class GoogleAccountInput(Model):
+    account: str  # a connected account's address
+
+
 class SuggestionInput(Model):
     id: int
     edits: dict[str, Any] = {}  # fields to change before accepting

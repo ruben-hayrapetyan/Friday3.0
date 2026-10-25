@@ -1,11 +1,15 @@
 """Mail into the inbox (DESIGN §22.4): the newest messages matching `gmail.query` are stored, and only those
 passing the pre-filter (a sender domain or keyword you listed; no LLM) wait for extraction, with their PDFs as
-documents of their own. Everything else is kept as `ignored` and never leaves the machine. Run by the sync job.
+documents of their own. Everything else is kept as `ignored` and never leaves the machine. Run by the sync job, for
+each Google account that lets Friday read its mail, each into a source of its own; a message that came to two of
+your accounts (forwarded from school, say) is read once.
 """
 
 import hashlib
+import json
 import re
 import sqlite3
+from collections.abc import Callable
 from typing import Any
 
 from friday.api.commands import Changed, ItemRef, MailLogInput
@@ -16,22 +20,66 @@ from friday.core.integrations import GmailSettings
 from friday.core.items import FieldError
 from friday.core.time import format_local, format_utc, parse_utc, to_local
 from friday.sync import gmail
+from friday.sync.google_auth import LEGACY
 
 SOURCE = "Gmail"
 OLDER = "A newer message in its thread was read instead (it quotes this one)"
+ELSEWHERE = "The same message came to another of your Google accounts and was seen there"
 
 
-def read_mail(conn: sqlite3.Connection, settings: dict, now_utc: int, user_id: int, service: Any) -> int:
-    """Store new messages; returns how many will be read by the AI."""
-    wanted: GmailSettings = settings["gmail"]
-    conn.execute(
-        "INSERT INTO sources (user_id, kind, name) VALUES (?, 'gmail', ?) ON CONFLICT (user_id, kind, name) DO NOTHING",
-        [user_id, SOURCE],
-    )
-    source = one(conn, "SELECT * FROM sources WHERE user_id = ? AND kind = 'gmail'", [user_id])
-    assert source is not None
+def read_mail(
+    conn: sqlite3.Connection, settings: dict, now_utc: int, user_id: int, api: Callable[[], Any], account: str
+) -> int:
+    """Store an account's new messages; returns how many will be read by the AI. Gmail being down (or the sign-in
+    expired) shows on the account's source, and the other accounts go on."""
+    source = mail_source(conn, user_id, account)
     if not source["enabled"]:
         return 0
+    try:
+        passed = read_messages(conn, settings["gmail"], api(), source, now_utc, user_id)
+    except Exception as error:
+        conn.execute(
+            "UPDATE sources SET last_error = ?, failures = failures + 1, last_sync_utc = ? WHERE id = ?",
+            [f"{type(error).__name__}: {error}"[:300], format_utc(now_utc), source["id"]],
+        )
+        return 0
+    conn.execute(
+        "UPDATE sources SET last_error = NULL, failures = 0, last_sync_utc = ? WHERE id = ?",
+        [format_utc(now_utc), source["id"]],
+    )
+    return passed
+
+
+def mail_source(conn: sqlite3.Connection, user_id: int, account: str) -> dict[str, Any]:
+    """An account's Gmail source, made the first time its mail is read: "Gmail" while it's the only one, else named
+    with its address. The one kept from before Friday kept several accounts (no account in it) goes to the first
+    account read; one put away when its account was removed comes back with it."""
+    mine = rows(conn, "SELECT * FROM sources WHERE user_id = ? AND kind = 'gmail' ORDER BY id", [user_id])
+    found = next((s for s in mine if json.loads(s["config"]).get("account", LEGACY) == account), None)
+    if found is None and account != LEGACY:
+        found = next((s for s in mine if not json.loads(s["config"]).get("account")), None)
+    if found is None:
+        name = SOURCE if all(s["name"] != SOURCE for s in mine) else f"{SOURCE} ({account or 'another account'})"
+        config = json.dumps({"account": account} if account else {})
+        conn.execute(
+            "INSERT INTO sources (user_id, kind, name, config) VALUES (?, 'gmail', ?, ?)", [user_id, name, config]
+        )
+        return mail_source(conn, user_id, account)
+    config = json.loads(found["config"])
+    back = config.pop("account_removed", False)
+    claimed = config | ({"account": account} if account else {})
+    if claimed != json.loads(found["config"]):
+        enabled = 1 if back else found["enabled"]
+        conn.execute(
+            "UPDATE sources SET config = ?, enabled = ? WHERE id = ?", [json.dumps(claimed), enabled, found["id"]]
+        )
+        found = found | {"config": json.dumps(claimed), "enabled": enabled}
+    return found
+
+
+def read_messages(
+    conn: sqlite3.Connection, wanted: GmailSettings, service: Any, source: dict[str, Any], now_utc: int, user_id: int
+) -> int:
     seen = {
         r["external_id"] for r in rows(conn, "SELECT external_id FROM raw_inputs WHERE source_id = ?", [source["id"]])
     }
@@ -44,7 +92,8 @@ def read_mail(conn: sqlite3.Connection, settings: dict, now_utc: int, user_id: i
         if message_id in seen:
             continue
         mail = gmail.read(service, message_id)
-        skipped = OLDER if newest[thread] != message_id else why_skipped(mail, wanted)
+        skipped = OLDER if newest[thread] != message_id else elsewhere(conn, user_id, source["id"], mail.text)
+        skipped = skipped or why_skipped(mail, wanted)
         save(conn, user_id, source["id"], mail.id, mail.subject, "text/plain", mail.text, now_utc, skipped, thread)
         if skipped is None:
             passed += 1
@@ -66,11 +115,19 @@ def read_mail(conn: sqlite3.Connection, settings: dict, now_utc: int, user_id: i
                     now_utc,
                     None,
                 )
-    conn.execute(
-        "UPDATE sources SET last_error = NULL, failures = 0, last_sync_utc = ? WHERE id = ?",
-        [format_utc(now_utc), source["id"]],
-    )
     return passed
+
+
+def elsewhere(conn: sqlite3.Connection, user_id: int, source_id: int, text: str) -> str | None:
+    """Why a message isn't read again: the very same one (headers and all) came to another of your accounts."""
+    digest = hashlib.sha256(text.encode()).hexdigest()
+    found = one(
+        conn,
+        "SELECT 1 FROM raw_inputs r JOIN sources s ON s.id = r.source_id WHERE s.user_id = ? AND s.kind = 'gmail' "
+        "AND r.source_id != ? AND r.content_hash = ? LIMIT 1",
+        [user_id, source_id, digest],
+    )
+    return ELSEWHERE if found else None
 
 
 # "Send me your abstract by Nov 1": a person asking for something by a day, with no keyword in it.

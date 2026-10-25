@@ -12,7 +12,8 @@ import { useCommand } from "@/hooks/useCommand"
 import { useInbox } from "@/inbox/InboxPage"
 import { ampm, parseLength } from "@/lib/format"
 import { CalendarChoice, saying } from "@/settings/calendarChoice"
-import { ConnectGoogle, GmailConnect, GmailSwitch } from "@/settings/GoogleConnect"
+import { ConnectedAccounts } from "@/settings/GoogleAccounts"
+import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess } from "@/settings/GoogleConnect"
 import { AddFeed, Upload } from "@/settings/Integrations"
 import { Modal } from "./Dialogs"
 
@@ -241,10 +242,12 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
 /** The last step: each source is added (or connected) the moment you do it, not with the answers. */
 function BringIn() {
   const feeds = (useInbox().data?.sources ?? []).filter((s) => s.kind === "ics")
+  const accounts = useGoogleAccess()?.accounts ?? []
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      <Source icon="google-logo" title="Google Calendar" note="Its events become fixed time Friday plans around.">
-        <ConnectGoogle done="Choose the calendars it reads in Settings → Integrations." />
+      <Source icon="google-logo" title="Google Calendar" note="Its events become fixed time Friday plans around. Connect your school's account too, if you have one.">
+        <ConnectedAccounts accounts={accounts} />
+        <ConnectGoogle why={accounts.length ? "Google's page asks which account." : undefined} done="Choose the calendars it reads in Settings → Integrations." />
       </Source>
       <Source icon="rss" title="Course feeds" note="A calendar link from Canvas or your school; new dates go to your Inbox.">
         <AddFeed />

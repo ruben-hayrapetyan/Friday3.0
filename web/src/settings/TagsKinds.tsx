@@ -157,7 +157,7 @@ function Kinds() {
       <div className="fr-row" style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0" }}>
         <span style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
           <span style={{ fontWeight: 500 }}>Short term before long term</span>
-          <span className="fr-kicker">Your Long term list gets only the time your Short term list leaves.</span>
+          <span className="fr-kicker">Long term work waits until this week's short-term work is done (unless it's due this week itself).</span>
         </span>
         <Switch on={!!settings?.short_term_first} onToggle={() => saveShort({ key: "short_term_first", value: !settings?.short_term_first })} label="Short term before long term" />
       </div>

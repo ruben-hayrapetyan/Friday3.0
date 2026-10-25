@@ -14,7 +14,7 @@ import { useCommand } from "@/hooks/useCommand"
 import { pigment } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
 import { LEFT_OUT } from "./Pieces"
-import { weekday } from "@/lib/format"
+import { lateBy, weekday, when } from "@/lib/format"
 import { addDays, dayRange, fromMin, toMin } from "@/lib/time"
 import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/components/Toasts"
@@ -246,12 +246,13 @@ interface Note {
   icon: string
   text: string
   action?: { label: string; run: () => void }
+  list?: { key: number; title: string; sub: string; onOpen: () => void }[] // what it's about, one line each
 }
 
 /** What needs you, in one pill (late work, a day over its limit, a lock that can't hold, overlapping events, the
  * server's problems, events not counted as busy), opening to the whole list with what to do about each. */
 function Attention({ first, days }: { first: string; days: number }) {
-  const { setDialog, layout } = useShell()
+  const { setDialog, layout, today } = useShell()
   const navigate = useNavigate()
   const offline = useOffline()
   const status = useStatus().data
@@ -263,10 +264,11 @@ function Attention({ first, days }: { first: string; days: number }) {
   const notes: Note[] = []
   if (offline) notes.push({ tone: "plain", icon: "wifi-slash", text: "Offline: showing the last plan. Changes wait until you're back." })
   for (const p of status?.problems ?? []) notes.push({ tone: "now", icon: "warning-circle", text: p })
-  const late = Object.entries(status?.late ?? {})
+  const late = status?.late_items ?? []
   if (late.length) {
-    const text = late.length === 1 ? `${late[0][0]} will be late` : `${late.length} things will be late`
-    notes.push({ tone: "now", icon: "warning", text, action: { label: "See options", run: () => setDialog("triage") } })
+    const text = late.length === 1 ? `${late[0].title} will be late` : `${late.length} things will be late`
+    const list = late.map((i) => ({ key: i.item_id, title: i.title, sub: `${i.due ? `due ${when(i.due, today)} · ` : ""}about ${lateBy(i.hours)} late`, onOpen: () => navigate(`/todo?item=${i.item_id}`) }))
+    notes.push({ tone: "now", icon: "warning", text, action: { label: "See options", run: () => setDialog("triage") }, list })
   }
   const over = calendar?.days.map((d) => ({ date: d.date, by: (plan?.day_hours[d.date] ?? 0) - d.cap_hours })).find((d) => d.by > 0.05)
   if (over) notes.push({ tone: "mark", icon: "warning", text: `${FULL_DAY[weekday(over.date)]} is ${over.by.toFixed(1)} h over`, action: { label: "See options", run: () => setDialog("triage") } })
@@ -311,7 +313,18 @@ function Attention({ first, days }: { first: string; days: number }) {
           {notes.map((n, i) => (
             <div key={i} style={{ display: "grid", gridTemplateColumns: "18px minmax(0,1fr) auto", gap: 10, alignItems: "start", padding: "8px 8px" }}>
               <Icon name={n.icon} size={15} style={{ color: n.tone === "now" ? "var(--fr-due)" : n.tone === "mark" ? "var(--fr-warn)" : "var(--color-neutral-400)", marginTop: 2 }} />
-              <span style={{ textWrap: "pretty" }}>{n.text}</span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+                <span style={{ textWrap: "pretty" }}>{n.text}</span>
+                {n.list?.map((l) => (
+                  // Each thing that will be late: what, when it's due, roughly how late; a click opens it.
+                  <button key={l.key} className="fr-plain fr-hover-text" onClick={() => (setOpen(false), l.onOpen())} style={{ display: "flex", flexDirection: "column", gap: 1, textAlign: "left", paddingLeft: 8, boxShadow: "inset 2px 0 0 var(--fr-due)" }}>
+                    <span style={{ fontWeight: 500, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.title}</span>
+                    <span className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-400)" }}>
+                      {l.sub}
+                    </span>
+                  </button>
+                ))}
+              </span>
               {n.action && (
                 <button className="btn btn-secondary" onClick={() => (setOpen(false), n.action?.run())} style={{ fontSize: 12, whiteSpace: "nowrap" }}>
                   {n.action.label}

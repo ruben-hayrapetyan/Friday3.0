@@ -418,3 +418,32 @@ def test_no_work_the_night_before_an_early_event(tmp_path: Path) -> None:
     ]
     assert late_tuesday and not set(late_tuesday) & essay.allowed_set  # Tuesday night, before Wednesday's club
     assert set(late_monday) & essay.allowed_set  # Monday night is as usual
+
+
+def test_an_evening_kept_free_until_midnight_keeps_the_night_after_it_too(tmp_path: Path) -> None:
+    from friday.engine.rules import BuildContext
+
+    app = new_app(tmp_path)
+    app.do("add", text="read a paper ~1h")
+    app.do("rule_add", text="keep friday from 8pm to 11:59pm free")
+    problem = build_problem(build_input(take_snapshot(app.conn, app.now_utc)))
+    rule = next(r for r in problem.rules if r.type == "reserve" and r.name.startswith("you:"))  # Fridays only
+    slots = {v[2] for m in rule.measures(BuildContext(problem)) for v in m.expr.terms if v[0] == "x"}
+    assert any(problem.grid.slots[s].day_minute >= 24 * 60 for s in slots)  # 12am to bedtime on Friday night too
+
+
+def test_short_term_first_makes_long_term_work_wait_for_this_weeks_short_term_work(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    essay = app.do("add", text="essay ~2h due wed")["item"]["id"]
+    app.do("add", text="thesis ~2h due dec 20")  # short term, but not due this week: doesn't hold anything up
+    book = app.do("add", text="read a book ~2h")["item"]["id"]
+    app.do("edit", id=book, long_term=True)
+    problem = build_problem(build_input(take_snapshot(app.conn, app.now_utc)))
+    assert not problem.items[f"item:{book}"].depends_on
+    app.do("settings_set", key="short_term_first", value=True)
+    problem = build_problem(build_input(take_snapshot(app.conn, app.now_utc)))
+    assert [d.key for d in problem.items[f"item:{book}"].depends_on] == [f"item:{essay}"]
+    app.do("replan")
+    blocks = app.do("plan")["blocks"]
+    essay_end = max(b["end"] for b in blocks if b["item_id"] == essay)
+    assert all(b["start"] >= essay_end for b in blocks if b["item_id"] == book)

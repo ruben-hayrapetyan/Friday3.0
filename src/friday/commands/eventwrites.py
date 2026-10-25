@@ -5,12 +5,14 @@ names a calendar, is queued in `event_writes` by the command, in its transaction
 job runs takes it back). The server's job loop sends the queue once a minute. After a write, the raw input the sync
 keeps for that event is brought up to date with what Google gave back, so the next sync sees nothing new instead of
 suggesting your own change back to you. A new event gets a raw input and an accepted suggestion of its own, as if it
-had been read from the calendar: from then on it is one of that calendar's events, changed there or here.
+had been read from the calendar: from then on it is one of that calendar's events, changed there or here. Each change
+goes through the Google account the calendar is read through.
 """
 
 import hashlib
 import json
 import sqlite3
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +25,7 @@ from friday.planner.store import event_links, kv_get, load_item, load_settings
 from friday.sync import gcal, google_auth
 
 MAX_TRIES = 5
+EDITING = (google_auth.EVENTS_SCOPE,)
 
 
 def queue_event_write(ctx: Ctx, item: Item, op: str) -> None:
@@ -36,6 +39,8 @@ def queue_event_write(ctx: Ctx, item: Item, op: str) -> None:
         target = ctx.settings["gcal"].new_events_to
         if op != "save" or target is None or item.event_kind == "shove":
             return
+        if target not in {c["id"] for c in kv_get(ctx.conn, "google_calendars", [], ctx.user_id)}:
+            return  # its account was removed: kept only in Friday until you choose another calendar
     elif not writes_to(ctx.conn, ctx.user_id, link.source_id):
         return
     ctx.db.insert("event_writes", {"item_id": item.id, "op": op, "calendar_id": target, "queued_utc": ctx.now_text})
@@ -63,10 +68,15 @@ def event_body(item: Item, tz: str) -> dict[str, Any]:
     return body
 
 
+class NeedsSignIn(Exception):
+    """The calendar's account signed in before "Edit here", so Google won't take changes until it signs in again."""
+
+
 def write_events(
     conn: sqlite3.Connection, now_utc: int, user_id: int = 1, folder: Path | None = None, google: Any = None
 ) -> int:
-    """Send what's queued; returns how many were saved or deleted. Failures are kept and tried again later."""
+    """Send what's queued, each through its calendar's account; returns how many were saved or deleted. Failures are
+    kept and tried again later; changes to an account that needs to sign in again wait for it."""
     pending = rows(
         conn,
         "SELECT * FROM event_writes WHERE user_id = ? AND done_utc IS NULL AND tries < ? ORDER BY id",
@@ -74,18 +84,39 @@ def write_events(
     )
     if not pending:
         return 0
-    google = google or (google_auth.calendar(folder) if folder else None)
-    if google is None:
+    apis = google_auth.per_account(google, folder, google_auth.calendar)
+    if not apis:
         return 0
+    # A stand-in (tests, the demo) may change anything; a real account only once it allowed changing events.
+    allowed = None if google is not None or folder is None else google_auth.accounts(folder, EDITING)
+    owners = {c["id"]: c.get("account", google_auth.LEGACY) for c in kv_get(conn, "google_calendars", [], user_id)}
+    made: dict[str, Any] = {}
+
+    def google_for(calendar_id: str) -> Any:
+        if calendar_id not in owners:
+            raise LookupError("that calendar isn't in your Google accounts any more")
+        account = google_auth.which(apis, owners[calendar_id])
+        if account is None:
+            raise LookupError(f"{owners[calendar_id]} isn't connected any more")
+        if allowed is not None and account not in allowed:
+            raise NeedsSignIn(account)
+        if account not in made:
+            made[account] = apis[account]()
+        if made[account] is None:
+            raise LookupError(f"{account or 'your Google account'} isn't connected any more")
+        return made[account]
+
     settings = load_settings(conn, user_id)
     written = 0
     for job in pending:
         try:
-            send(conn, google, job, settings, now_utc, user_id)
+            send(conn, google_for, job, settings, now_utc, user_id)
             conn.execute(
                 "UPDATE event_writes SET done_utc = ?, error = NULL WHERE id = ?", [format_utc(now_utc), job["id"]]
             )
             written += 1
+        except NeedsSignIn:
+            continue  # the status line asks you to connect that account again
         except Exception as error:  # Google down, a revoked token, an event deleted there: kept, tried again
             conn.execute(
                 "UPDATE event_writes SET tries = tries + 1, error = ? WHERE id = ?",
@@ -106,7 +137,12 @@ def failed_writes(conn: sqlite3.Connection, user_id: int = 1) -> list[str]:
 
 
 def send(
-    conn: sqlite3.Connection, google: Any, job: dict[str, Any], settings: dict, now_utc: int, user_id: int
+    conn: sqlite3.Connection,
+    google_for: Callable[[str], Any],
+    job: dict[str, Any],
+    settings: dict,
+    now_utc: int,
+    user_id: int,
 ) -> None:
     item = load_item(conn, job["item_id"], user_id)
     link = event_links(conn, user_id).get(job["item_id"])
@@ -115,10 +151,10 @@ def send(
         return  # queued before its calendar turned out to be the Mac's: nothing to send to Google
     if job["op"] == "delete" or item is None or item.status != "todo":
         if link is not None and link.calendar_id:
-            gcal.delete_event(google, link.calendar_id, link.event_id)
+            gcal.delete_event(google_for(link.calendar_id), link.calendar_id, link.event_id)
         return
     if link is not None and link.calendar_id:
-        made = gcal.save_event(google, link.calendar_id, link.event_id, event_body(item, tz))
+        made = gcal.save_event(google_for(link.calendar_id), link.calendar_id, link.event_id, event_body(item, tz))
         remember(conn, link.source_id, made, tz, settings, now_utc, user_id, None)
         return
     calendar = job["calendar_id"]
@@ -127,7 +163,7 @@ def send(
         "SELECT id FROM sources WHERE user_id = ? AND kind = 'gcal' AND json_extract(config, '$.calendar') = ?",
         [user_id, calendar],
     )
-    made = gcal.save_event(google, calendar, None, event_body(item, tz))
+    made = gcal.save_event(google_for(calendar), calendar, None, event_body(item, tz))
     if source is not None:
         remember(conn, source["id"], made, tz, settings, now_utc, user_id, item)
 

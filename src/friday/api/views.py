@@ -100,6 +100,14 @@ class StatusOut(Model):
     config_keys: list[str] = []  # settings friday.toml sets: read-only in the app
     suggestions: int = 0  # waiting in the inbox (repeating calendar events wait in Settings → Repeating)
     late: dict[str, float] = {}  # hard work the plan finishes after its due: hours late, by title
+    late_items: list["LateItem"] = []  # the same, each with its id and due, soonest due first
+
+
+class LateItem(Model):
+    item_id: int
+    title: str
+    due: str | None  # local
+    hours: float  # how late the plan finishes it
 
 
 class KindAccuracy(Model):
@@ -347,8 +355,17 @@ class GoogleCalendarOut(Model):
     error: str | None
     writable: bool = False  # Google lets you write to it
     editable: bool = False  # changes made in Friday are saved back to it
-    account: str | None = None  # a Mac calendar's account
+    account: str | None = None  # the Google account it's read through, or a Mac calendar's account
     also_google: bool = False  # a Mac calendar Friday also reads from Google, under the same name
+
+
+class GoogleAccountOut(Model):
+    """A connected Google account and what it lets Friday do."""
+
+    email: str  # "" for the one signed in before Friday kept several, until the next sync finds its address
+    gmail: bool  # lets Friday read its mail
+    events: bool  # lets Friday save changes to its events
+    mail_error: str | None = None  # why its mail couldn't be read last time
 
 
 class GoogleConnectOut(Model):
@@ -357,10 +374,12 @@ class GoogleConnectOut(Model):
     state: Literal["idle", "waiting", "connected", "failed"]  # idle: no sign-in started since the server started
     message: str | None = None  # why it failed, in a sentence
     url: str | None = None  # while waiting: Google's page, to open again
+    account: str | None = None  # the sign-in's account: the one asked for (None: any), the one it connected after
     client_file: bool  # the OAuth client JSON Friday signs in with is there
-    calendar: bool  # Google is connected
-    gmail: bool  # and lets Friday read your mail
-    events: bool  # and lets Friday save changes to your events
+    calendar: bool  # some Google account is connected
+    gmail: bool  # and one lets Friday read its mail
+    events: bool  # and one lets Friday save changes to its events
+    accounts: list[GoogleAccountOut] = []  # in the order you added them
 
 
 class SourceOut(Model):
@@ -467,6 +486,8 @@ class SleepNightOut(Model):
     ready_id: int | None = None
     slept_min: int | None = None
     planned_min: int  # the sleep your bedtime and wake time give that night
+    planned_bed: str | None = None  # local: the bedtime and wake time set for that night
+    planned_up: str | None = None
     routine_min: int | None = None
 
 

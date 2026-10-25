@@ -260,17 +260,30 @@ def read_early(t: str, negated: bool) -> Reading | None:
     return Reading("early", subject_of(m[1] or "work"), amount=float(n))
 
 
+LIGHTER = r"lighter|light|easier|easy|quieter|quiet|calmer|less busy"
+LIGHTER_SHARE = 0.5  # a lighter stretch keeps about half its time free: less work there, not none
+
+
 def read_free(t: str, negated: bool) -> Reading | None:
+    """`keep saturday mornings free` keeps all of it; `keep friday and saturday nights lighter` (or `lighter friday
+    evenings`) about half."""
     m = re.search(
-        rf"keep (?:my )?{DAY_WORDS}? ?(mornings?|afternoons?|evenings?|nights?)? ?"
-        rf"(?:from {TIME} (?:to|until|-) {TIME} )?(?:free|clear|open)",
+        rf"(?:keep|make) (?:my )?{DAY_WORDS}? ?(mornings?|afternoons?|evenings?|nights?)? ?"
+        rf"(?:from {TIME} (?:to|until|-) {TIME} )?(free|clear|open|{LIGHTER})\b",
         t,
     )
-    if not m or not (m[1] or m[2] or m[3]):
+    if m and (m[1] or m[2] or m[3]):
+        days, part, start, end, how = m[1], m[2], m[3], m[4], m[5]
+    elif m := re.search(rf"\b({LIGHTER}) {DAY_WORDS} ?(mornings?|afternoons?|evenings?|nights?)\b", t):
+        how, days, part, start, end = m[1], m[2], m[3], None, None
+    else:
         return None
-    part = (m[2] or "").rstrip("s")
-    start, end = PARTS.get(part, (clock(m[3]) if m[3] else None, clock(m[4]) if m[4] else None))
-    return Reading("free", "work", rel="between" if start else None, at=start, until=end, days=days_of(m[1] or ""))
+    span = PARTS.get((part or "").rstrip("s"), (clock(start) if start else None, clock(end) if end else None))
+    share = None if how in ("free", "clear", "open") else LIGHTER_SHARE
+    return Reading(
+        "free", "work", rel="between" if span[0] else None, at=span[0], until=span[1], days=days_of(days or ""),
+        amount=share,
+    )  # fmt: skip
 
 
 def read_window(t: str, negated: bool) -> Reading | None:
@@ -378,7 +391,8 @@ def said(r: Reading) -> str:
         return f"No {r.subject} {days_words(r.days)}" if r.rel == "not_on" else f"{subject} only {days_words(r.days)}"
     if r.kind == "free":
         when = f" {r.at}–{r.until}" if r.at else ""
-        return f"Keep {days_words(r.days).removeprefix('on ') or 'every day'}{when} free"
+        how = "lighter" if r.amount else "free"
+        return f"Keep {days_words(r.days).removeprefix('on ') or 'every day'}{when} {how}"
     if r.kind == "cap":
         of = "" if r.subject == "work" else f" of {r.subject}"
         return f"At most {r.amount:g} h{of} a day"
@@ -443,7 +457,7 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
     if r.kind == "free":
         window = {"start": r.at, "end": r.until} if r.at else {}
         days = {"days": list(r.days)} if r.days else {}
-        if strength == "Always":
+        if strength == "Always" and not r.amount:
             return base | {
                 "type": "time_preference",
                 "weight": 1.0,
@@ -451,11 +465,12 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
                 "params": window | days | {"price": "forbid"},
             }
         hours = hours_between(r.at, r.until) if r.at and r.until else 24
+        kept = round(hours * (r.amount or 1) * 4) / 4  # lighter: about half kept free, to the quarter hour
         return base | {
             "type": "reserve",
             "weight": WEIGHT[strength] * 2,
             "scope": None,
-            "params": window | days | {"free": f"{hours:g}h"},
+            "params": window | days | {"free": f"{kept:g}h"},
         }
     if r.kind == "cap":
         return base | {"type": "daily_load", "weight": WEIGHT[strength] * 5, "params": {"threshold": f"{r.amount:g}h"}}

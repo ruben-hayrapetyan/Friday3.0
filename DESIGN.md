@@ -1892,7 +1892,8 @@ due_pattern = "^(due|deadline)[: ]"
 - Google OAuth uses your own Google Cloud OAuth client (Desktop type, its JSON named in `friday.toml`), the
   loopback redirect flow (`friday google-login` opens the browser once), and the narrowest scopes:
   `calendar.readonly` and `calendar.app.created` (only the Friday calendar) for M10b, `gmail.readonly` for M10c.
-  Tokens live in `data_dir/secrets.json`.
+  Tokens live in `data_dir/secrets.json`, one per Google account under its address (found from its primary
+  calendar, so no extra scope); the single token older versions kept still counts until the sync names it.
 - `source_remove(forget: true)` deletes a source's raw inputs and files; extraction results are kept only as the
   suggestions you accepted.
 - A source that fails shows its error in Settings and as a red banner after 3 failures in a row; other sources go

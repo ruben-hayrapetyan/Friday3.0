@@ -33,11 +33,13 @@ class FakeGoogle:
         primary: str | None = None,
         names: dict[str, str] | None = None,
         rules: dict[str, str] | None = None,
+        roles: dict[str, str] | None = None,
     ):
         self.calendars_by_id = calendars or {}
         self.rules = rules or {}  # a repeating event's id → its RRULE, for the event its instances come from
         self.primary = primary
         self.names = {cid: cid.split("@")[0] for cid in self.calendars_by_id} | (names or {})
+        self.roles = roles or {}  # a calendar's accessRole ("reader" for one shared read-only); else you own it
         self.ids = itertools.count(1)
         self.writes: list[str] = []
 
@@ -51,7 +53,11 @@ class FakeGoogle:
         return Events(self)
 
     def list(self, pageToken: str | None = None) -> Call:  # noqa: N803
-        listed = [{"id": c, "summary": self.names[c], "primary": c == self.primary} for c in self.calendars_by_id]
+        listed = [
+            {"id": c, "summary": self.names[c], "primary": c == self.primary}
+            | ({"accessRole": self.roles[c]} if c in self.roles else {})
+            for c in self.calendars_by_id
+        ]
         return Call(lambda: {"items": listed})
 
     def get(self, calendarId: str) -> Call:  # noqa: N803

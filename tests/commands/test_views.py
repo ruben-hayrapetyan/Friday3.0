@@ -169,3 +169,13 @@ def test_a_shove_after_midnight_belongs_to_the_night_before(tmp_path: Path) -> N
     app = new_app(tmp_path)
     out = app.do("shove", range="01:00-02:00 +3d", decision="shove_anyway")
     assert out["day"] == "2026-10-21"  # Thursday 1am is Wednesday night until the day starts at 4am
+
+
+def test_status_lists_what_will_be_late_soonest_due_first(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do("add", text="essay ~6h", release="2026-10-19T09:00", due="2026-10-19T11:00")
+    app.do("add", text="lab report ~5h", release="2026-10-19T09:00", due="2026-10-19T10:00")
+    app.do("replan")
+    late = app.do("status")["late_items"]
+    assert [i["title"] for i in late] == ["lab report", "essay"] and late[0]["due"] == "2026-10-19T10:00"
+    assert all(i["hours"] > 0 for i in late) and set(app.do("status")["late"]) == {"lab report", "essay"}

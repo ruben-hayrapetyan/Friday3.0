@@ -1,6 +1,6 @@
 """`fridayd`: `serve` (the default) runs the API, worker and jobs; `init` sets the timezone and sleep times;
-`google-login` connects your Google account once (as Connect in Settings → Integrations does); `google-calendars`
-lists its calendars for `gcal.read`; `demo` serves a sample term to try Friday on."""
+`google-login` connects a Google account (as Connect in Settings → Integrations does; again for another account);
+`google-calendars` lists every account's calendars for `gcal.read`; `demo` serves a sample term to try Friday on."""
 
 import argparse
 import logging
@@ -41,12 +41,14 @@ def main(argv: list[str] | None = None) -> None:
     init.add_argument("--margin-min", type=int, default=60, help="time past bedtime used only when a deadline needs it")
     commands.add_parser("mcp", help="an MCP server on stdio for a local assistant (FRIDAY_TOKEN; daemon running)")
     login = commands.add_parser(
-        "google-login", help="connect Google Calendar, and Gmail if gmail.enabled (opens the browser once)"
+        "google-login",
+        help="connect a Google account's calendars, and its mail if gmail.enabled (opens the browser); "
+        "run it again to add another account",
     )
     login.add_argument(
         "--client-file", type=Path, help="default: google.client_file, else google_client.json beside friday.toml"
     )
-    commands.add_parser("google-calendars", help="list your Google calendars' names and ids, for gcal.read")
+    commands.add_parser("google-calendars", help="list each Google account's calendars' names and ids, for gcal.read")
     demo = commands.add_parser("demo", help="a sample student's term with stand-in Google, Gmail and AI")
     demo.add_argument("--port", type=int, default=8799)
     demo.add_argument("--case", choices=list(STUDENTS), help="a Cornell student, from very light to overloaded")
@@ -112,22 +114,27 @@ def google_login(db_path: Path, client_file: Path | None) -> None:
     path = client_file.expanduser() if client_file else google_auth.client_file(settings["google"].client_file)
     if not path.exists():
         raise SystemExit(f"no OAuth client JSON at {path}: choose it in Settings → Integrations, or pass --client-file")
-    google_auth.login(path, db_path.parent, google_auth.scopes(settings["gmail"].enabled))
+    account = google_auth.login(path, db_path.parent, google_auth.scopes(settings["gmail"].enabled))
     kept = google_auth.client_file(settings["google"].client_file)
     if not kept.exists():  # a key file named here is kept where Friday looks, so Connect in the app works from now on
         google_auth.keep_client(kept, path.read_text())
-    print(f"Google is connected; the token is in {google_auth.secrets_file(db_path.parent)}.")
+    print(
+        f"Google is connected for {account}; its token is in {google_auth.secrets_file(db_path.parent)}. "
+        "Run this again to add another account."
+    )
 
 
 def google_calendars(folder: Path) -> None:
-    service = google_auth.calendar(folder)
-    if service is None:
+    apis = google_auth.per_account(None, folder, google_auth.calendar)
+    if not apis:
         raise SystemExit("Google isn't connected yet: run `fridayd google-login` first")
-    print("Switch them on in Settings → Integrations, or name them in gcal.read in friday.toml:\n")
-    for entry in gcal.paged(service.calendarList()):
-        name = "primary" if entry.get("primary") else entry.get("summary", "")
-        also = f"  (also: {entry.get('summary')})" if entry.get("primary") else ""
-        print(f"  {name!r}{also}\n      id {entry['id']}, {entry.get('accessRole', '')}")
+    print("Switch them on in Settings → Integrations, or name them in gcal.read in friday.toml.")
+    for account, api in apis.items():
+        print(f"\n{account or 'Your Google account'}:")
+        for entry in gcal.paged(api().calendarList()):
+            name = "primary" if entry.get("primary") else entry.get("summary", "")
+            also = f"  (also: {entry.get('summary')})" if entry.get("primary") else ""
+            print(f"  {name!r}{also}\n      id {entry['id']}, {entry.get('accessRole', '')}")
 
 
 def local_timezone() -> str | None:

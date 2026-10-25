@@ -1,20 +1,26 @@
 // Connecting Google from Friday itself, or from Terminal if you'd rather: Connect opens Google's page in your browser
 // (the server runs on this Mac) and the button waits, spinning, until you've allowed Friday there. Before the first
-// time, it says what the key file from Google Cloud is and takes it. Gmail's switch is here too. The Google Calendar
-// and Gmail cards and setup's last step share these.
+// time, it says what the key file from Google Cloud is and takes it. Once an account is connected the same button adds
+// another (your school's beside your own, say), and an account's own button signs just that one in again, to allow
+// Gmail or when Google asks. Gmail's switch is here too. The Google Calendar and Gmail cards and setup's last step
+// share these; the accounts' list is in GoogleAccounts.
 
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useRef, useState } from "react"
+import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query"
+import { type ReactNode, useEffect, useRef, useState } from "react"
 import { ApiError, command, query, type Schemas } from "@/api/client"
 import { Icon, Switch } from "@/components/fr/controls"
 import { useSettings, useStatus } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
 
 export type GoogleAccess = Schemas["GoogleConnectOut"]
+export type GoogleAccount = Schemas["GoogleAccountOut"]
 type Need = "calendar" | "gmail"
 
-const KEY = ["google_connect_status"]
-const AFTER = ["status", "google_calendars", "inbox", "settings"] // what a finished sign-in changes
+export const KEY = ["google_connect_status"]
+const AFTER = ["status", "google_calendars", "inbox", "settings", "mail_log"] // what a sign-in or a removal changes
+
+/** Ask again for what connecting or removing an account changes. */
+export const refreshAfterGoogle = (client: QueryClient) => client.invalidateQueries({ predicate: (q) => AFTER.includes(String(q.queryKey[0])) })
 
 /** What Google lets Friday do and how a sign-in is going, asked every second and a half while Google's page is open.
  * `justNow`: a sign-in this page was watching has just finished. */
@@ -26,18 +32,26 @@ export function useGoogleAccess(): (GoogleAccess & { justNow: boolean }) | undef
   useEffect(() => {
     if (was.current === "waiting" && access?.state === "connected") {
       setJustNow(true)
-      client.invalidateQueries({ predicate: (q) => AFTER.includes(String(q.queryKey[0])) })
+      refreshAfterGoogle(client)
     }
     was.current = access?.state
   }, [access?.state, client])
   return access && { ...access, justNow }
 }
 
+/** An account as said: its address, or, for the one signed in before Friday kept several, words until the next sync
+ * finds its address. */
+export const accountName = (email: string | null | undefined) => email || "Your Google account"
+
+/** Whether a sign-in is this button's: the one for its account, or (no account) the one adding an account. */
+const isFor = (access: GoogleAccess, account: string | undefined) => (access.account || undefined) === account
+
 /** The button's words: what pressing it does now. */
-export function connectLabel(access: GoogleAccess, need: Need, again: boolean): string {
-  if (access.state === "waiting") return "Waiting for Google…"
+export function connectLabel(access: GoogleAccess, need: Need, again: boolean, account?: string): string {
+  if (access.state === "waiting" && isFor(access, account)) return "Waiting for Google…"
   if (again) return "Connect again"
-  return need === "gmail" && access.calendar ? "Allow Gmail" : "Connect Google"
+  if (need === "gmail") return access.calendar ? "Allow Gmail" : "Connect Google"
+  return access.calendar ? "Add another Google account" : "Connect Google"
 }
 
 /** A reading error that means Google wants you to sign in again (the token expired, was removed, or is short of a
@@ -49,28 +63,27 @@ export function wantsSignIn(error: string | null | undefined): boolean {
 /** A refusal as a sentence: "file: file: that isn't Google's key file" (the field named by the server and again by
  * the client) reads "That isn't Google's key file." */
 export function sentence(message: string): string {
-  const text = message.replace(/^((file|google): )+/, "")
+  const text = message.replace(/^((file|google|account): )+/, "")
   const said = text.charAt(0).toUpperCase() + text.slice(1)
   return /[.!?]$/.test(said) ? said : `${said}.`
 }
 
-const said = (error: unknown) => sentence(error instanceof ApiError ? error.message : String(error))
+export const said = (error: unknown) => sentence(error instanceof ApiError ? error.message : String(error))
 
-/** Connect, and what it says while Google's page is open, if it failed, and once it worked (`done` adds what's next).
- * `again` asks for a new sign-in though one is saved; `why` says what it's for. */
-export function ConnectGoogle({ need = "calendar", again = false, why, done }: { need?: Need; again?: boolean; why?: string; done?: string }) {
+const WAITING = "Google's page is open in your browser: choose the account and click Allow (if it says the app isn't verified, click Advanced, then Go to Friday). This updates by itself."
+
+/** Connect (Add another Google account, once one is), or for `account` Allow Gmail or, with `again`, Connect again; and
+ * what it says while Google's page is open, if it failed, and once it worked (`done` adds what's next). `why` says
+ * what it's for; `small` is the quiet button beside an account, which speaks only while it waits or if it failed. */
+export function ConnectGoogle(props: { need?: Need; account?: string; again?: boolean; why?: ReactNode; done?: string; small?: boolean }) {
+  const { need = "calendar", again = false, why, done, small = false } = props
+  const account = props.account || undefined // the account from before, address unknown, signs in like a new one
   const access = useGoogleAccess()
   const client = useQueryClient()
   const [pressed, setPressed] = useState(false)
+  const [started, setStarted] = useState(false) // this button began the latest sign-in
   const [problem, setProblem] = useState<string | null>(null)
   if (!access) return null
-  if ((need === "gmail" ? access.gmail : access.calendar) && !again)
-    return (
-      <span style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12, color: "var(--color-accent-300)" }}>
-        <Icon name="check-circle" size={15} fill />
-        {access.justNow && done ? `Connected. ${done}` : "Connected"}
-      </span>
-    )
   if (!access.client_file)
     return (
       <>
@@ -78,34 +91,39 @@ export function ConnectGoogle({ need = "calendar", again = false, why, done }: {
         <TerminalWay />
       </>
     )
+  const first = !access.calendar
   const waiting = access.state === "waiting"
+  const mine = isFor(access, account)
   const start = async () => {
     setPressed(true)
+    setStarted(true)
     setProblem(null)
     try {
-      client.setQueryData(KEY, (await command("google_connect", {})).result)
+      client.setQueryData(KEY, (await command("google_connect", account ? { account } : {})).result)
     } catch (error) {
       setProblem(said(error))
     }
     setPressed(false)
   }
-  const failed = problem ?? (access.state === "failed" ? access.message : null)
-  const note = failed ?? (waiting ? "Google's page is open in your browser: choose your account and click Allow (if it says the app isn't verified, click Advanced, then Go to Friday). This updates by itself." : (why ?? "Opens Google's page in your browser. Allow Friday there, then come back."))
+  const failed = problem ?? (access.state === "failed" && mine ? access.message : null)
+  const worked = started && access.justNow && access.state === "connected" && !small
+  const note = failed ?? (waiting && mine ? WAITING : worked ? `Connected ${accountName(access.account)}.${done ? ` ${done}` : ""}` : small ? null : (why ?? "Opens Google's page in your browser. Allow Friday there, then come back."))
+  const look = first ? "btn btn-primary" : "btn btn-secondary"
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
       <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <button className="btn btn-primary" onClick={start} disabled={waiting || pressed} aria-busy={waiting || pressed} style={{ fontSize: 12 }}>
-          {waiting || pressed ? <span className="fr-spinner" /> : <Icon name="google-logo" />}
-          {pressed && !waiting ? "Opening Google…" : connectLabel(access, need, again)}
+        <button className={look} onClick={start} disabled={waiting || pressed} aria-busy={(waiting && mine) || pressed} style={{ fontSize: 12, ...(small ? { padding: "2px 10px" } : {}) }}>
+          {(waiting && mine) || pressed ? <span className="fr-spinner" /> : <Icon name={!first && need === "calendar" && !again ? "plus" : "google-logo"} />}
+          {pressed && !waiting ? "Opening Google…" : connectLabel(access, need, again, account)}
         </button>
-        {waiting && access.url && (
+        {waiting && mine && access.url && (
           <a className="fr-link" href={access.url} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>
             Didn't see it? Open Google's page
           </a>
         )}
       </span>
-      <span style={{ fontSize: 12, color: failed ? "var(--fr-due)" : "var(--color-neutral-300)", textWrap: "pretty" }}>{note}</span>
-      <TerminalWay />
+      {note && <span style={{ fontSize: 12, color: failed ? "var(--fr-due)" : worked ? "var(--color-accent-300)" : "var(--color-neutral-300)", textWrap: "pretty" }}>{note}</span>}
+      {first && !small && <TerminalWay />}
     </div>
   )
 }
@@ -135,7 +153,7 @@ export function TerminalWay() {
         </button>
       </span>
       <span style={{ fontSize: 12, color: "var(--color-neutral-400)", textWrap: "pretty" }}>
-        Put the name of the key file you downloaded in place of client_secret.json (leave out --client-file once Friday has it). It opens Google's page the same way; when you've allowed Friday, this card shows Connected by itself.
+        Put the name of the key file you downloaded in place of client_secret.json (leave out --client-file once Friday has it). It opens Google's page the same way; when you've allowed Friday, this card shows the account by itself. Run it again to add another account.
       </span>
     </div>
   )
@@ -224,12 +242,33 @@ export function GmailSwitch({ text = "Read my Gmail", note }: { text?: string; n
   )
 }
 
-/** With Gmail on but not allowed yet: Allow Gmail once Google is connected; before that, Connect for the calendars asks
- * about mail too. */
-export function GmailConnect({ again = false, done }: { again?: boolean; done?: string }) {
+/** With Gmail on: before any account is connected, that connecting asks about mail too; after, each account's mail,
+ * with Allow Gmail beside one that hasn't allowed it yet. */
+export function GmailConnect({ done }: { done?: string }) {
   const gmail = useGmail()
   const access = useGoogleAccess()
   if (!gmail?.enabled || !access) return null
   if (!access.calendar) return <span className="fr-kicker">Connect Google Calendar first; Google asks about your mail at the same time.</span>
-  return <ConnectGoogle need="gmail" again={again} done={done} why={again ? "Google stopped letting Friday read your mail. Connect again to carry on." : "Google asks you once to let Friday read your mail."} />
+  return <MailAccounts accounts={access.accounts ?? []} done={done} />
+}
+
+/** Each account's mail: read, waiting for your OK (Allow Gmail), or turned away by Google (Connect again). */
+export function MailAccounts({ accounts, done }: { accounts: GoogleAccount[]; done?: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {accounts.map((a) => {
+        const expired = a.gmail && wantsSignIn(a.mail_error)
+        const [text, tone] = !a.gmail ? ["Its mail isn't allowed yet", "var(--fr-warn)"] : expired ? ["Google stopped letting Friday read its mail", "var(--fr-warn)"] : a.mail_error ? [a.mail_error, "var(--fr-due)"] : ["Its mail is read", "var(--color-accent-300)"]
+        return (
+          <div key={a.email} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 12px" }}>
+            <span style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0, flex: "1 1 200px" }}>
+              <span style={{ fontWeight: 500, overflowWrap: "anywhere" }}>{accountName(a.email)}</span>
+              <span style={{ fontSize: 12, color: tone, textWrap: "pretty" }}>{text}</span>
+            </span>
+            {(!a.gmail || expired) && <ConnectGoogle need="gmail" account={a.email} again={expired} small done={done} />}
+          </div>
+        )
+      })}
+    </div>
+  )
 }

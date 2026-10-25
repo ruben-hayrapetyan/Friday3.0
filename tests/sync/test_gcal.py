@@ -83,12 +83,25 @@ def test_the_plan_is_published_once_per_change_and_google_edits_are_overwritten(
     assert google.writes.count("delete") >= 1 and "insert" not in google.writes  # unchanged blocks kept their events
 
 
-def test_google_calendars_lists_names_for_the_config(
+def test_google_calendars_lists_each_accounts_names_for_the_config(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    google = FakeGoogle({"me@gmail.com": [], "Classes@group": []}, primary="me@gmail.com")
-    google.names["me@gmail.com"] = "Sam"
-    monkeypatch.setattr(google_auth, "calendar", lambda folder: google)
+    with pytest.raises(SystemExit, match="google-login"):
+        main(["--data-dir", str(tmp_path), "google-calendars"])
+    google = {
+        "me@gmail.com": FakeGoogle({"me@gmail.com": [], "Classes@group": []}, primary="me@gmail.com"),
+        "student@school.edu": FakeGoogle({"student@school.edu": [], "dsa@group": []}, names={"dsa@group": "DSA"}),
+    }
+    google["me@gmail.com"].names["me@gmail.com"] = "Sam"
+    for account in google:
+        google_auth.rewrite(tmp_path, lambda found, saved, account=account: saved | {account: {"token": "t"}})
+    monkeypatch.setattr(google_auth, "calendar", lambda folder, account: google[account])
     main(["--data-dir", str(tmp_path), "google-calendars"])
     shown = capsys.readouterr().out
     assert "'primary'  (also: Sam)" in shown and "'Classes'" in shown and "id Classes@group" in shown
+    assert (
+        shown.index("me@gmail.com:")
+        < shown.index("'Classes'")
+        < shown.index("student@school.edu:")
+        < shown.index("'DSA'")
+    )

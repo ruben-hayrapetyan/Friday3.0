@@ -1,9 +1,14 @@
-"""Google OAuth (DESIGN §22.10): your own Desktop OAuth client, the loopback flow once (Connect in Settings →
-Integrations, or `fridayd google-login`), and the token in `data_dir/secrets.json` (mode 0600), refreshed as needed.
-Only the scopes the features need."""
+"""Google OAuth (DESIGN §22.10): your own Desktop OAuth client, the loopback flow once per account (Connect in
+Settings → Integrations, or `fridayd google-login`), and each account's token in `data_dir/secrets.json` (mode 0600)
+under its address, refreshed as needed. Only the scopes the features need.
+
+Several accounts may be connected (a personal one and a school one, say). Signing in again with one already there
+replaces its token. A token saved before Friday kept several sits under `google` with no address; it counts as one
+account (`LEGACY`) until the sync lists its calendars, whose primary one names it, and it moves under that name."""
 
 import json
 import os
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -25,6 +30,8 @@ EVENTS_SCOPE = "https://www.googleapis.com/auth/calendar.events"
 LOGIN_SCOPES = (*CALENDAR_SCOPES, EVENTS_SCOPE)
 GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 DONE_PAGE = "Friday is connected to Google. You can close this tab and go back to Friday."
+LEGACY = ""  # the account of the one token kept before Friday kept several, until its address is known
+LOCK = threading.Lock()  # the sync, a sign-in and Remove may all rewrite the file
 
 
 def secrets_file(folder: Path) -> Path:
@@ -36,12 +43,17 @@ def client_file(named: str | None) -> Path:
     return Path(named).expanduser() if named else config_path().with_name("google_client.json")
 
 
-def keep_client(path: Path, text: str) -> None:
-    """Save the OAuth client JSON (it holds the client's secret), readable only by you."""
+def write_private(path: Path, text: str) -> None:
+    """Write a file only you can read, from its first byte."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w") as out:
         out.write(text)
     os.chmod(path, 0o600)
+
+
+def keep_client(path: Path, text: str) -> None:
+    """Save the OAuth client JSON (it holds the client's secret), readable only by you."""
+    write_private(path, text)
 
 
 def scopes(mail: bool) -> tuple[str, ...]:
@@ -67,52 +79,147 @@ def login(
     scopes: tuple[str, ...] = LOGIN_SCOPES,
     wait_s: int | None = None,
     opened: Callable[[str], None] | None = None,
-) -> None:
-    """Open the browser for consent and keep the token; WSGITimeoutError after `wait_s` without an answer."""
+    account: str | None = None,
+) -> str:
+    """Open the browser for consent and keep the token under the account's address, which it returns;
+    WSGITimeoutError after `wait_s` without an answer. `account` (one already connected) goes straight to it."""
     flow = Flow.from_client_secrets_file(str(client_file), list(scopes))
     flow.opened = opened
-    # Asking again each time brings a new refresh token: without it, a second sign-in's token lasts an hour.
+    # Asking again each time brings a new refresh token: without it, a second sign-in's token lasts an hour. Google
+    # would otherwise sign in whichever account the browser is signed in to, so it asks which, unless told.
+    asking = {"prompt": "consent", "login_hint": account} if account else {"prompt": "select_account consent"}
     creds = flow.run_local_server(
-        port=0, open_browser=True, timeout_seconds=wait_s, success_message=DONE_PAGE, prompt="consent"
+        port=0, open_browser=True, timeout_seconds=wait_s, success_message=DONE_PAGE, **asking
     )
-    save(folder, creds)
+    found = address(build("calendar", "v3", credentials=creds, cache_discovery=False))
+    save(folder, found, creds)
+    return found
 
 
-def save(folder: Path, creds: Credentials) -> None:
+def address(service: Any) -> str:
+    """The account's address: its primary calendar's id is the address."""
+    return str(service.calendarList().get(calendarId="primary").execute()["id"])
+
+
+def kept(folder: Path) -> dict[str, Any]:
     path = secrets_file(folder)
-    kept = json.loads(path.read_text()) if path.exists() else {}
-    path.write_text(json.dumps(kept | {"google": json.loads(creds.to_json())}))
-    os.chmod(path, 0o600)
+    return json.loads(path.read_text()) if path.exists() else {}
 
 
-def credentials(folder: Path) -> Credentials | None:
-    """The saved token, refreshed when expired; None before the first sign-in."""
-    path = secrets_file(folder)
-    info = json.loads(path.read_text()).get("google") if path.exists() else None
-    if not info:
+def tokens(folder: Path) -> dict[str, dict[str, Any]]:
+    """Each connected account's token, by address, in the order they were added (the one from before first)."""
+    found = kept(folder)
+    old = {LEGACY: found["google"]} if found.get("google") else {}
+    return old | dict(found.get("google_accounts") or {})
+
+
+def accounts(folder: Path, scopes: tuple[str, ...] = ()) -> list[str]:
+    """The connected accounts that granted these scopes."""
+    return [a for a, info in tokens(folder).items() if set(scopes) <= set(info.get("scopes") or ())]
+
+
+def connected(folder: Path, scopes: tuple[str, ...] = ()) -> bool:
+    """Some account is connected with these scopes granted."""
+    return bool(accounts(folder, scopes))
+
+
+Accounts = dict[str, dict[str, Any]]
+
+
+def rewrite(folder: Path, change: Callable[[dict[str, Any], Accounts], Accounts]) -> None:
+    """Change the saved accounts (`change` gets the whole file and its accounts, and gives the accounts back) and
+    write the file again. Whatever else the file keeps stays."""
+    with LOCK:
+        found = kept(folder)
+        found["google_accounts"] = change(found, dict(found.get("google_accounts") or {}))
+        write_private(secrets_file(folder), json.dumps(found))
+
+
+def save(folder: Path, account: str, creds: Credentials) -> None:
+    info = json.loads(creds.to_json())
+
+    def put(found: dict[str, Any], saved: Accounts) -> Accounts:
+        if account == LEGACY:
+            found["google"] = info
+            return saved
+        return saved | {account: info}
+
+    rewrite(folder, put)
+
+
+def adopt(folder: Path, account: str) -> None:
+    """The token from before Friday kept several, now that its address is known, kept under it (still first);
+    dropped when that account has signed in again since, whose newer token stays."""
+
+    def move(found: dict[str, Any], saved: Accounts) -> Accounts:
+        old = found.pop("google", None)
+        return saved if not old or account in saved else {account: old} | saved
+
+    if account != LEGACY and kept(folder).get("google"):
+        rewrite(folder, move)
+
+
+def remove(folder: Path, account: str) -> None:
+    """Forget an account's token; Friday stops reading it."""
+
+    def drop(found: dict[str, Any], saved: Accounts) -> Accounts:
+        if account == LEGACY:
+            found.pop("google", None)
+        return {a: info for a, info in saved.items() if a != account}
+
+    rewrite(folder, drop)
+
+
+def credentials(folder: Path, account: str | None = None) -> Credentials | None:
+    """An account's token (the first account's when none is named), refreshed when expired; None when not
+    connected."""
+    found = tokens(folder)
+    account = next(iter(found), None) if account is None else account
+    info = found.get(account) if account is not None else None
+    if not info or account is None:
         return None
     creds = Credentials.from_authorized_user_info(info)
     if not creds.valid and creds.refresh_token:
         creds.refresh(Request())
-        save(folder, creds)
+        save(folder, account, creds)
     return creds
 
 
-def calendar(folder: Path) -> Any | None:
-    """The Calendar API, or None when not logged in."""
-    creds = credentials(folder)
+def calendar(folder: Path, account: str | None = None) -> Any | None:
+    """The Calendar API for an account (the first's when none is named), or None when not connected."""
+    creds = credentials(folder, account)
     return build("calendar", "v3", credentials=creds, cache_discovery=False) if creds else None
 
 
-def gmail(folder: Path) -> Any | None:
-    """The Gmail API, or None when not logged in or the login didn't include Gmail."""
-    creds = credentials(folder)
+def gmail(folder: Path, account: str | None = None) -> Any | None:
+    """The Gmail API for an account (the first's when none is named), or None when not connected or its login
+    didn't include Gmail."""
+    creds = credentials(folder, account)
     usable = creds is not None and creds.has_scopes([GMAIL_SCOPE])
     return build("gmail", "v1", credentials=creds, cache_discovery=False) if usable else None
 
 
-def connected(folder: Path, scopes: tuple[str, ...] = ()) -> bool:
-    """Logged in, with these scopes granted."""
-    path = secrets_file(folder)
-    info = json.loads(path.read_text()).get("google") if path.exists() else None
-    return bool(info) and set(scopes) <= set(info.get("scopes") or ())
+Api = Callable[[], Any]  # an account's API, made when first used: making it may refresh the token, and fail
+
+
+def per_account(
+    given: Any, folder: Path | None, make: Callable[[Path, str], Any], needs: tuple[str, ...] = ()
+) -> dict[str, Api]:
+    """The API of each connected account that granted `needs` (`make` is `calendar` or `gmail`). A stand-in `given`
+    (tests, the demo) is one API for an account not named, or one per account by address."""
+    if given is not None:
+        pairs = given.items() if isinstance(given, dict) else [(LEGACY, given)]
+        return {account: (lambda api=api: api) for account, api in pairs}
+    if folder is None:
+        return {}
+    return {account: (lambda account=account: make(folder, account)) for account in accounts(folder, needs)}
+
+
+def which(apis: dict[str, Any], account: str | None) -> str | None:
+    """The account whose API reads or writes a calendar of `account`: that one; else the one whose address isn't
+    known yet, which may be it; else, for a calendar listed before Friday kept several accounts, the first."""
+    if account in apis:
+        return account
+    if LEGACY in apis:
+        return LEGACY
+    return next(iter(apis), None) if not account else None

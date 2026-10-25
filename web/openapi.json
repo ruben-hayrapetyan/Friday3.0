@@ -109,7 +109,7 @@
   },
   "/api/q/google_calendars": {
    "get": {
-    "summary": "Your Google calendars as of the last sync, alphabetized, with whether each is read and how.",
+    "summary": "Your Google calendars as of the last sync, alphabetized, with whether each is read and how, and the account",
     "operationId": "google_calendars",
     "responses": {
      "200": {
@@ -2434,9 +2434,126 @@
     }
    }
   },
+  "/api/q/mail_log": {
+   "get": {
+    "summary": "The newest mail Friday saw: read, skipped by the pre-filter, failed or waiting, and why.",
+    "operationId": "mail_log",
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 500,
+       "minimum": 1,
+       "default": 60,
+       "title": "Limit"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/MailOut"
+         },
+         "title": "Response Mail Log"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/mail_retry": {
+   "post": {
+    "summary": "Read a skipped or failed message with the AI after all (on the next sync).",
+    "operationId": "mail_retry",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ItemRef"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MailRetryResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/google_connect_status": {
    "get": {
-    "summary": "How connecting Google is going, and what Google lets Friday do: read calendars, read mail, change events.",
+    "summary": "How connecting Google is going, and what Google lets Friday do: read calendars, read mail, change events,",
     "operationId": "google_connect_status",
     "responses": {
      "200": {
@@ -2454,7 +2571,7 @@
   },
   "/api/c/google_connect": {
    "post": {
-    "summary": "Connect Google: opens Google's page in your browser to let Friday read your calendars.",
+    "summary": "Connect a Google account: opens Google's page in your browser to let Friday read its calendars, and its mail",
     "operationId": "google_connect",
     "parameters": [
      {
@@ -2495,7 +2612,7 @@
        "schema": {
         "anyOf": [
          {
-          "$ref": "#/components/schemas/Empty"
+          "$ref": "#/components/schemas/GoogleConnectInput"
          },
          {
           "type": "null"
@@ -2513,6 +2630,77 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/GoogleConnectResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/google_remove": {
+   "post": {
+    "summary": "Remove a Google account: its token is deleted and Friday stops reading its calendars and mail. What they",
+    "operationId": "google_remove",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GoogleAccountInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/GoogleRemoveResult"
         }
        }
       }
@@ -5163,123 +5351,6 @@
          },
          "type": "array",
          "title": "Response Mac Calendars"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/q/mail_log": {
-   "get": {
-    "summary": "The newest mail Friday saw: read, skipped by the pre-filter, failed or waiting, and why.",
-    "operationId": "mail_log",
-    "parameters": [
-     {
-      "name": "limit",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "type": "integer",
-       "maximum": 500,
-       "minimum": 1,
-       "default": 60,
-       "title": "Limit"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "type": "array",
-         "items": {
-          "$ref": "#/components/schemas/MailOut"
-         },
-         "title": "Response Mail Log"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/c/mail_retry": {
-   "post": {
-    "summary": "Read a skipped or failed message with the AI after all (on the next sync).",
-    "operationId": "mail_retry",
-    "parameters": [
-     {
-      "name": "preview",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "enum": [
-        "false",
-        "true",
-        "full"
-       ],
-       "type": "string",
-       "default": "false",
-       "title": "Preview"
-      }
-     },
-     {
-      "name": "idempotency-key",
-      "in": "header",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Idempotency-Key"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/ItemRef"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/MailRetryResult"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
         }
        }
       }
@@ -11311,6 +11382,56 @@
     ],
     "title": "ExamPrepOut"
    },
+   "GoogleAccountInput": {
+    "properties": {
+     "account": {
+      "type": "string",
+      "title": "Account"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "account"
+    ],
+    "title": "GoogleAccountInput"
+   },
+   "GoogleAccountOut": {
+    "properties": {
+     "email": {
+      "type": "string",
+      "title": "Email"
+     },
+     "gmail": {
+      "type": "boolean",
+      "title": "Gmail"
+     },
+     "events": {
+      "type": "boolean",
+      "title": "Events"
+     },
+     "mail_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mail Error"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "email",
+     "gmail",
+     "events"
+    ],
+    "title": "GoogleAccountOut",
+    "description": "A connected Google account and what it lets Friday do."
+   },
    "GoogleCalendarOut": {
     "properties": {
      "id": {
@@ -11474,6 +11595,25 @@
     ],
     "title": "GoogleClientSaveResult"
    },
+   "GoogleConnectInput": {
+    "properties": {
+     "account": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Account"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "GoogleConnectInput",
+    "description": "Which account to sign in: none to add one (Google's page asks which), or one already connected to sign it in\nagain (to allow Gmail, or when its sign-in expired)."
+   },
    "GoogleConnectOut": {
     "properties": {
      "state": {
@@ -11508,6 +11648,17 @@
       ],
       "title": "Url"
      },
+     "account": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Account"
+     },
      "client_file": {
       "type": "boolean",
       "title": "Client File"
@@ -11523,6 +11674,14 @@
      "events": {
       "type": "boolean",
       "title": "Events"
+     },
+     "accounts": {
+      "items": {
+       "$ref": "#/components/schemas/GoogleAccountOut"
+      },
+      "type": "array",
+      "title": "Accounts",
+      "default": []
      }
     },
     "additionalProperties": false,
@@ -11595,6 +11754,65 @@
      "result"
     ],
     "title": "GoogleConnectResult"
+   },
+   "GoogleRemoveResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/GoogleConnectOut"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "GoogleRemoveResult"
    },
    "HTTPValidationError": {
     "properties": {
@@ -12537,6 +12755,42 @@
      "result"
     ],
     "title": "KindRemoveResult"
+   },
+   "LateItem": {
+    "properties": {
+     "item_id": {
+      "type": "integer",
+      "title": "Item Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "due": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Due"
+     },
+     "hours": {
+      "type": "number",
+      "title": "Hours"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "item_id",
+     "title",
+     "due",
+     "hours"
+    ],
+    "title": "LateItem"
    },
    "LearnApplyResult": {
     "properties": {
@@ -18952,6 +19206,28 @@
       "type": "integer",
       "title": "Planned Min"
      },
+     "planned_bed": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Planned Bed"
+     },
+     "planned_up": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Planned Up"
+     },
      "routine_min": {
       "anyOf": [
        {
@@ -19710,6 +19986,14 @@
       "type": "object",
       "title": "Late",
       "default": {}
+     },
+     "late_items": {
+      "items": {
+       "$ref": "#/components/schemas/LateItem"
+      },
+      "type": "array",
+      "title": "Late Items",
+      "default": []
      }
     },
     "additionalProperties": false,

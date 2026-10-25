@@ -1,6 +1,6 @@
 // Insights (v22): the last few weeks in three numbers, how long things really take by kind (and whether Friday
-// adjusts estimates for you), when you get things done, what Friday learned for you to approve, one comparison
-// question, and the load ahead against what you can do.
+// adjusts estimates for you), when you get things done, your sleep (when you track it), what Friday learned for you
+// to approve, one comparison question, and the load ahead against what you can do.
 
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
@@ -13,6 +13,7 @@ import { useShell } from "@/shell/ShellContext"
 import { Comparison } from "./Comparison"
 import { Learned } from "./Learned"
 import { Section } from "./Section"
+import { SleepSection } from "./Sleep"
 
 export { Section }
 
@@ -52,6 +53,7 @@ export function InsightsPage() {
               <Heat heat={data.heat} />
               <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>{data.best_hours ?? "Not enough recorded work yet to see a pattern."}</span>
             </Section>
+            <SleepSection />
             <Section title="What Friday learned" note="Suggestions from how you actually work. Nothing changes until you approve.">
               <Learned />
             </Section>

@@ -62,7 +62,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Your Google calendars as of the last sync, alphabetized, with whether each is read and how. */
+        /** Your Google calendars as of the last sync, alphabetized, with whether each is read and how, and the account */
         get: operations["google_calendars"];
         put?: never;
         post?: never;
@@ -667,6 +667,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/mail_log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The newest mail Friday saw: read, skipped by the pre-filter, failed or waiting, and why. */
+        get: operations["mail_log"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/mail_retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read a skipped or failed message with the AI after all (on the next sync). */
+        post: operations["mail_retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/google_connect_status": {
         parameters: {
             query?: never;
@@ -674,7 +708,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** How connecting Google is going, and what Google lets Friday do: read calendars, read mail, change events. */
+        /** How connecting Google is going, and what Google lets Friday do: read calendars, read mail, change events, */
         get: operations["google_connect_status"];
         put?: never;
         post?: never;
@@ -693,8 +727,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Connect Google: opens Google's page in your browser to let Friday read your calendars. */
+        /** Connect a Google account: opens Google's page in your browser to let Friday read its calendars, and its mail */
         post: operations["google_connect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/google_remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove a Google account: its token is deleted and Friday stops reading its calendars and mail. What they */
+        post: operations["google_remove"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1443,40 +1494,6 @@ export interface paths {
         get: operations["mac_calendars"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/q/mail_log": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** The newest mail Friday saw: read, skipped by the pre-filter, failed or waiting, and why. */
-        get: operations["mail_log"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/c/mail_retry": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Read a skipped or failed message with the AI after all (on the next sync). */
-        post: operations["mail_retry"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3346,6 +3363,25 @@ export interface components {
             /** Planned Finish */
             planned_finish: string | null;
         };
+        /** GoogleAccountInput */
+        GoogleAccountInput: {
+            /** Account */
+            account: string;
+        };
+        /**
+         * GoogleAccountOut
+         * @description A connected Google account and what it lets Friday do.
+         */
+        GoogleAccountOut: {
+            /** Email */
+            email: string;
+            /** Gmail */
+            gmail: boolean;
+            /** Events */
+            events: boolean;
+            /** Mail Error */
+            mail_error?: string | null;
+        };
         /** GoogleCalendarOut */
         GoogleCalendarOut: {
             /** Id */
@@ -3410,6 +3446,15 @@ export interface components {
             repeated?: boolean;
         };
         /**
+         * GoogleConnectInput
+         * @description Which account to sign in: none to add one (Google's page asks which), or one already connected to sign it in
+         *     again (to allow Gmail, or when its sign-in expired).
+         */
+        GoogleConnectInput: {
+            /** Account */
+            account?: string | null;
+        };
+        /**
          * GoogleConnectOut
          * @description Connecting Google from the app: how the sign-in started there is going, and what Google allows Friday.
          */
@@ -3423,6 +3468,8 @@ export interface components {
             message?: string | null;
             /** Url */
             url?: string | null;
+            /** Account */
+            account?: string | null;
             /** Client File */
             client_file: boolean;
             /** Calendar */
@@ -3431,9 +3478,33 @@ export interface components {
             gmail: boolean;
             /** Events */
             events: boolean;
+            /**
+             * Accounts
+             * @default []
+             */
+            accounts?: components["schemas"]["GoogleAccountOut"][];
         };
         /** GoogleConnectResult */
         GoogleConnectResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["GoogleConnectOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /** GoogleRemoveResult */
+        GoogleRemoveResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["GoogleConnectOut"];
@@ -3748,6 +3819,17 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+        };
+        /** LateItem */
+        LateItem: {
+            /** Item Id */
+            item_id: number;
+            /** Title */
+            title: string;
+            /** Due */
+            due: string | null;
+            /** Hours */
+            hours: number;
         };
         /** LearnApplyResult */
         LearnApplyResult: {
@@ -5855,6 +5937,10 @@ export interface components {
             slept_min?: number | null;
             /** Planned Min */
             planned_min: number;
+            /** Planned Bed */
+            planned_bed?: string | null;
+            /** Planned Up */
+            planned_up?: string | null;
             /** Routine Min */
             routine_min?: number | null;
         };
@@ -6131,6 +6217,11 @@ export interface components {
             late?: {
                 [key: string]: number;
             };
+            /**
+             * Late Items
+             * @default []
+             */
+            late_items?: components["schemas"]["LateItem"][];
         };
         /** StopInput */
         StopInput: {
@@ -8087,6 +8178,74 @@ export interface operations {
             };
         };
     };
+    mail_log: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mail_retry: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemRef"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailRetryResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     google_connect_status: {
         parameters: {
             query?: never;
@@ -8120,7 +8279,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["Empty"] | null;
+                "application/json": components["schemas"]["GoogleConnectInput"] | null;
             };
         };
         responses: {
@@ -8131,6 +8290,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GoogleConnectResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    google_remove: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoogleAccountInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleRemoveResult"];
                 };
             };
             /** @description Validation Error */
@@ -9612,74 +9808,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GoogleCalendarOut"][];
-                };
-            };
-        };
-    };
-    mail_log: {
-        parameters: {
-            query?: {
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MailOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    mail_retry: {
-        parameters: {
-            query?: {
-                preview?: "false" | "true" | "full";
-            };
-            header?: {
-                "idempotency-key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ItemRef"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MailRetryResult"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

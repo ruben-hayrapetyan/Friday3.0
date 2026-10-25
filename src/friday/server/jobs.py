@@ -35,7 +35,7 @@ from friday.planner.store import current_plan, load_settings
 from friday.server.config import apply_config
 from friday.server.events import Hub
 from friday.server.worker import Supervisor, set_problem
-from friday.sync.google_auth import EVENTS_SCOPE, GMAIL_SCOPE, connected
+from friday.sync.google_auth import EVENTS_SCOPE, GMAIL_SCOPE, accounts, connected
 
 log = logging.getLogger("friday.jobs")
 WAKE_S = 30
@@ -216,8 +216,8 @@ def google_problem(conn: sqlite3.Connection, settings: dict[str, Any], folder: P
     calendar, mail = settings["gcal"].read or settings["gcal"].publish or chosen, settings["gmail"].enabled
     if (calendar or mail) and not connected(folder):
         return "Google isn't connected: press Connect under Google Calendar in Settings → Integrations"
-    if mail and not connected(folder, (GMAIL_SCOPE,)):
-        return "Gmail isn't allowed yet: press Connect under Gmail in Settings → Integrations"
+    if mail and not connected(folder, (GMAIL_SCOPE,)):  # with several accounts, any one allowing it will do
+        return "Gmail isn't allowed yet: press Allow Gmail beside your account under Gmail in Settings → Integrations"
     return None
 
 
@@ -249,19 +249,25 @@ def send_event_writes(
 ) -> None:
     """Changes to your events saved back to Google (COMBINED.md 69)."""
     google = SAMPLE_APIS.get("google")
+    write_events(conn, now_utc, user_id, backups.parent, google)  # changes to an account short of the OK wait
     waiting = (
-        conn.execute("SELECT 1 FROM event_writes WHERE user_id = ? AND done_utc IS NULL", [user_id]).fetchone()
+        conn.execute(
+            "SELECT 1 FROM event_writes WHERE user_id = ? AND done_utc IS NULL AND tries = 0", [user_id]
+        ).fetchone()
         is not None
     )
-    if waiting and google is None and not connected(backups.parent, (EVENTS_SCOPE,)):
+    folder = backups.parent
+    short = [] if google is not None else [a for a in accounts(folder) if a not in accounts(folder, (EVENTS_SCOPE,))]
+    if waiting and short:
+        who = ", ".join(a or "your Google account" for a in short)
         set_problem(
             conn,
             user_id,
             "event_writes",
-            "Saving your changes to Google needs Google's OK again: press Connect again in Settings → Integrations",
+            f"Saving your changes to Google needs Google's OK again for {who}: press Connect again beside it in "
+            "Settings → Integrations",
         )
         return
-    write_events(conn, now_utc, user_id, backups.parent, google)
     set_problem(conn, user_id, "event_writes", "; ".join(failed_writes(conn, user_id)) or None)
 
 

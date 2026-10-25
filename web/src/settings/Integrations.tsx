@@ -1,5 +1,5 @@
 // Integrations (v22, shown and explained, decision 134): Google Calendar and Gmail, connected with a button (Google's
-// page opens in your browser; no terminal), the AI's key and daily budget, course feeds, a syllabus upload, a backup,
+// page opens in your browser; no terminal), one Google account or several, the AI's key and daily budget, course feeds, a syllabus upload, a backup,
 // what was imported lately, and tokens for assistants. Controls work only for keys friday.toml doesn't set. Setup's
 // last step reuses the Connect button, the feed box, the upload and Gmail's switch.
 
@@ -14,6 +14,7 @@ import { addDays } from "@/lib/time"
 import { useInbox } from "@/inbox/InboxPage"
 import { useShell } from "@/shell/ShellContext"
 import { Calendars, useCalendars } from "./Calendars"
+import { AccountList, signInAgain } from "./GoogleAccounts"
 import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess, wantsSignIn } from "./GoogleConnect"
 import { MailLog } from "./MailLog"
 import { SectionHead } from "./SettingsPage"
@@ -80,6 +81,8 @@ function Command({ text }: { text: string }) {
 
 const usePart = <T,>(key: string) => (useSettings().data as Record<string, unknown> | undefined)?.[key] as T | undefined
 
+const CONSENT = "https://console.cloud.google.com/auth/audience"
+
 function Google() {
   const { today } = useShell()
   const status = useStatus().data
@@ -89,29 +92,33 @@ function Google() {
   const save = useCommand("settings_set", { label: () => "Saved" })
   const sync = useCommand("sync_now", { label: (o) => o.result.message ?? "Syncing" })
   const calendars = useCalendars().data ?? []
+  const accounts = access?.accounts ?? []
   const reading = calendars.filter((c) => c.on)
   const connected = !!access?.calendar
-  const expired = connected && !access?.justNow && reading.some((c) => wantsSignIn(c.error)) // until the next sync, after a new sign-in
-  const editing = connected && !access?.events && calendars.some((c) => c.editable) // a login from before "Edit here"
+  const asking = !access?.justNow && accounts.some((a) => signInAgain(a, calendars)) // until the next sync, after a new sign-in
   const wanted = !!gcal && (calendars.length > 0 || gcal.read.length > 0 || gcal.publish)
-  const state: [string, string] = !connected ? (wanted ? ["Not connected", "var(--fr-warn)"] : ["Off", "var(--color-neutral-500)"]) : expired ? ["Connect again", "var(--fr-warn)"] : reading.some((c) => c.error) ? ["Trouble reading", "var(--fr-due)"] : ["Connected", "var(--color-accent-300)"]
+  const state: [string, string] = !connected ? (wanted ? ["Not connected", "var(--fr-warn)"] : ["Off", "var(--color-neutral-500)"]) : asking ? ["Connect again", "var(--fr-warn)"] : reading.some((c) => c.error) ? ["Trouble reading", "var(--fr-due)"] : ["Connected", "var(--color-accent-300)"]
   const last = reading.map((c) => c.last_sync).filter(Boolean).sort().at(-1)
+  const another = (
+    <>
+      For your school's or work's calendar too. Google's page asks which account; if it says access is blocked, add that address as a test user in{" "}
+      <a className="fr-link" href={CONSENT} target="_blank" rel="noreferrer">
+        Google Cloud
+      </a>{" "}
+      first, as you did for your own.
+    </>
+  )
   return (
     <Card icon="google-logo" title="Google Calendar" status={state} note="Events become fixed time. Friday plans around them.">
-      {access && (!connected || expired || editing || access.justNow) && (
-        <ConnectGoogle
-          again={expired || editing}
-          why={expired ? "Google stopped letting Friday in (the sign-in expired or was removed). Connect again to carry on." : editing ? "Saving your changes back to Google needs Google's OK once more." : undefined}
-          done="Switch on the calendars Friday should read below."
-        />
-      )}
+      {connected && <AccountList accounts={accounts} calendars={calendars} demo={!!status?.demo} />}
+      {access && !status?.demo && <ConnectGoogle why={connected ? another : undefined} done="Switch on the calendars Friday should read below." />}
       {connected && <Calendars />}
       {connected && gcal && (
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Switch on={gcal.publish} onToggle={() => !owned && save({ key: "gcal", value: { ...gcal, publish: !gcal.publish } })} label="Publish the plan" />
           <span style={{ display: "flex", flexDirection: "column" }}>
             <span>Publish your plan to a “Friday” calendar</span>
-            <span className="fr-kicker">{owned ? "Set in friday.toml." : "One way only. Edit blocks in Friday, not in Google."}</span>
+            <span className="fr-kicker">{owned ? "Set in friday.toml." : `One way only. Edit blocks in Friday, not in Google.${accounts.length > 1 ? ` It goes in ${accounts[0].email || "your first account"}.` : ""}`}</span>
           </span>
         </div>
       )}
@@ -138,18 +145,19 @@ function Gmail() {
   const access = useGoogleAccess()
   const granted = !!access?.gmail
   const { today } = useShell()
-  const source = (useInbox().data?.sources ?? []).find((s) => s.kind === "gmail")
-  const trouble = source?.last_error
-  const expired = granted && !access?.justNow && wantsSignIn(trouble)
+  const read = (useInbox().data?.sources ?? []).filter((s) => s.kind === "gmail" && s.enabled) // one for each account
+  const allowed = (access?.accounts ?? []).filter((a) => a.gmail)
+  const expired = !access?.justNow && allowed.some((a) => wantsSignIn(a.mail_error))
+  const trouble = allowed.some((a) => a.mail_error)
+  const last = read.map((s) => s.last_sync).filter(Boolean).sort().at(-1)
   const sync = useCommand("sync_now", { label: (o) => o.result.message ?? "Syncing" })
   const state: [string, string] = !gmail?.enabled ? ["Off", "var(--color-neutral-500)"] : !granted ? ["Needs Google's OK", "var(--fr-warn)"] : expired ? ["Connect again", "var(--fr-warn)"] : trouble ? ["Trouble reading", "var(--fr-due)"] : ["Reading", "var(--color-accent-300)"]
   return (
     <Card icon="envelope-simple" title="Gmail" status={state} note="Friday reads new mail and suggests assignments, due dates and events. It never sends or deletes.">
       <GmailSwitch />
-      {gmail?.enabled && (!granted || expired) && <GmailConnect again={expired} done="Friday reads your new mail within the minute." />}
+      {gmail?.enabled && <GmailConnect done="Friday reads its new mail within the minute." />}
       {gmail?.enabled && granted && (
         <>
-          {trouble && <span style={{ fontSize: 12, color: "var(--fr-due)", textWrap: "pretty" }}>{trouble}</span>}
           <span className="fr-kicker">Mail it looks at</span>
           <span style={{ fontSize: 12 }}>
             <Command text={gmail.query} />
@@ -161,7 +169,7 @@ function Gmail() {
           <ListField label="Always read mail from" placeholder="e.g. cornell.edu" value={gmail.sender_domains} locked={owned.includes("gmail")} onSave={(sender_domains) => save({ key: "gmail", value: { ...gmail, sender_domains } })} />
           <MailLog />
           <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--color-neutral-500)" }}>
-            <span>{source?.last_sync ? `Last read ${when(source.last_sync, today)}` : "Not read yet"}</span>
+            <span>{last ? `Last read ${when(last, today)}` : "Not read yet"}</span>
             <button className="btn btn-ghost" onClick={() => sync({})} style={{ fontSize: 12, padding: "2px 8px" }}>
               <Icon name="arrows-clockwise" />
               Sync now

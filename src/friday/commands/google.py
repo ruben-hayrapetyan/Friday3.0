@@ -1,7 +1,8 @@
 """Publishing the plan to Google Calendar (DESIGN §22.3): the current plan's blocks from now to the end of the
 horizon become the events of a "Friday" calendar, at most once every `gcal.publish_debounce_s`, and only when the
 plan changed. Fixed items aren't blocks, so what came from Google is never copied back. The server's job loop runs
-this every minute; kv `gcal_publish` keeps the calendar id and what was published last.
+this every minute; kv `gcal_publish` keeps the calendar id, the account it's in (the first connected, unless it was
+made in another that's still there) and what was published last.
 """
 
 import json
@@ -29,15 +30,18 @@ def publish_plan(
         return False
     if state.get("at") and (now_utc - parse_utc(state["at"])) * 60 < wanted.publish_debounce_s:
         return False
-    google = google or (google_auth.calendar(folder) if folder else None)
-    if google is None:
+    apis = google_auth.per_account(google, folder, google_auth.calendar)
+    account = google_auth.which(apis, state.get("account"))
+    account = next(iter(apis), None) if account is None else account  # its account was removed: the first's now
+    service = apis[account]() if account is not None else None
+    if service is None:
         return False
-    calendar = gcal.own_calendar(google, state.get("calendar"), settings["time"].timezone)
+    calendar = gcal.own_calendar(service, state.get("calendar"), settings["time"].timezone)
     until = now_utc + settings["time"].horizon_days * 24 * 60
     gcal.publish(
-        google, calendar, blocks(conn, saved["id"], now_utc, until, settings["notify"].app_url), gcal.rfc3339(now_utc)
+        service, calendar, blocks(conn, saved["id"], now_utc, until, settings["notify"].app_url), gcal.rfc3339(now_utc)
     )
-    state = {"calendar": calendar, "plan": saved["id"], "at": format_utc(now_utc)}
+    state = {"calendar": calendar, "account": account, "plan": saved["id"], "at": format_utc(now_utc)}
     conn.execute(
         "INSERT INTO kv (user_id, key, value) VALUES (?, 'gcal_publish', ?) ON CONFLICT (user_id, key) "
         "DO UPDATE SET value = excluded.value",

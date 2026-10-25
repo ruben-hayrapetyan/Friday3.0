@@ -1,7 +1,7 @@
 // Calendars (COMBINED.md 17, 19, 28, 59, 60): what counts as busy when Friday plans, the time kept free around
 // events (to get there and back), each calendar's pigment and its
-// button in the title row, and the categories that colour events by their titles, with the filter that hides the
-// ones you'd rather not see (office hours).
+// button in the title row (under its Google account's address when there are several), and the categories that colour
+// events by their titles, with the filter that hides the ones you'd rather not see (office hours).
 
 import { Fragment, useEffect, useState } from "react"
 import { Chip, Icon, Menu, Switch } from "@/components/fr/controls"
@@ -11,6 +11,7 @@ import { PIGMENTS, pigment } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
 import { CalendarChoice, saying } from "./calendarChoice"
 import { Calendars, useCalendars, useMacCalendars } from "./Calendars"
+import { accountName, useGoogleAccess } from "./GoogleConnect"
 import { Field, SectionHead } from "./SettingsPage"
 
 export interface Category {
@@ -91,6 +92,11 @@ export function CalendarsSection() {
   const google = (useCalendars().data ?? []).filter((c) => c.on)
   const mac = (useMacCalendars().data ?? []).filter((c) => c.on && !google.some((g) => g.name === c.name))
   const reading = [...google, ...mac] // what the plan shows, by name
+  const accounts = (useGoogleAccess()?.accounts ?? []).map((a) => a.email)
+  const several = accounts.length > 1
+  const lost = (c: (typeof google)[number]) => !accounts.includes(c.account ?? "") // listed before its account was known
+  const of = (account: string) => google.filter((c) => (c.account ?? "") === account || (account === accounts[0] && lost(c)))
+  const groups: [string | null, typeof reading][] = several ? [...accounts.map((a): [string, typeof reading] => [accountName(a), of(a)]), ["On this Mac", mac]] : [[null, reading]]
   if (!settings) return null
   const busy = settings.busy as Busy
   const look = settings.calendar_look as CalendarLook
@@ -110,35 +116,44 @@ export function CalendarsSection() {
         {reading.length === 0 ? (
           <span className="fr-kicker">Calendars list here once Google is connected (Integrations), and the Mac app's once it runs.</span>
         ) : (
-          reading.map((c) => {
-            const shown = !look.toolbar.includes(c.name)
-            const busyNow = counts(c.name, busy)
-            const pick = (to: { shown: boolean; busy: boolean }) => {
-              if (to.shown !== shown) setLook({ toolbar: to.shown ? look.toolbar.filter((n) => n !== c.name) : [...look.toolbar, c.name] })
-              if (to.busy !== busyNow) setBusy({ calendars: { ...busy.calendars, [c.name]: to.busy } })
-            }
-            return (
-              <div key={c.id} className="fr-row" style={{ display: "flex", flexWrap: "wrap", gap: "8px 14px", alignItems: "center", padding: "8px 0" }}>
-                <span style={{ flex: "1 1 180px", display: "flex", flexDirection: "column", minWidth: 0 }}>
-                  <span style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: "50%", flex: "none", background: swatchOf(look.colors[c.name]) }} />
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
-                  </span>
-                  <span className="fr-kicker">
-                    {saying(shown, busyNow)}
-                    {!shown && (
-                      // Hidden and still kept clear: rare, so a link rather than a third switch.
-                      <button className="fr-plain fr-link" onClick={() => setBusy({ calendars: { ...busy.calendars, [c.name]: !busyNow } })} style={{ marginLeft: 6 }}>
-                        {busyNow ? "Let work go over it" : "Keep work off it anyway"}
-                      </button>
-                    )}
-                  </span>
+          groups.map(([label, list]) => (
+            <Fragment key={label ?? "all"}>
+              {label !== null && list.length > 0 && (
+                <span className="fr-kicker" style={{ padding: "10px 0 2px", fontWeight: 500, color: "var(--color-neutral-300)", overflowWrap: "anywhere" }}>
+                  {label}
                 </span>
-                <CalendarChoice name={c.name} shown={shown} busy={busyNow} onPick={pick} />
-                <PigmentMenu value={look.colors[c.name] ?? null} onPick={(color) => setLook({ colors: color ? { ...look.colors, [c.name]: color } : omit(look.colors, c.name) })} />
-              </div>
-            )
-          })
+              )}
+              {list.map((c) => {
+                const shown = !look.toolbar.includes(c.name)
+                const busyNow = counts(c.name, busy)
+                const pick = (to: { shown: boolean; busy: boolean }) => {
+                  if (to.shown !== shown) setLook({ toolbar: to.shown ? look.toolbar.filter((n) => n !== c.name) : [...look.toolbar, c.name] })
+                  if (to.busy !== busyNow) setBusy({ calendars: { ...busy.calendars, [c.name]: to.busy } })
+                }
+                return (
+                  <div key={c.id} className="fr-row" style={{ display: "flex", flexWrap: "wrap", gap: "8px 14px", alignItems: "center", padding: "8px 0" }}>
+                    <span style={{ flex: "1 1 180px", display: "flex", flexDirection: "column", minWidth: 0 }}>
+                      <span style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: "50%", flex: "none", background: swatchOf(look.colors[c.name]) }} />
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
+                      </span>
+                      <span className="fr-kicker">
+                        {saying(shown, busyNow)}
+                        {!shown && (
+                          // Hidden and still kept clear: rare, so a link rather than a third switch.
+                          <button className="fr-plain fr-link" onClick={() => setBusy({ calendars: { ...busy.calendars, [c.name]: !busyNow } })} style={{ marginLeft: 6 }}>
+                            {busyNow ? "Let work go over it" : "Keep work off it anyway"}
+                          </button>
+                        )}
+                      </span>
+                    </span>
+                    <CalendarChoice name={c.name} shown={shown} busy={busyNow} onPick={pick} />
+                    <PigmentMenu value={look.colors[c.name] ?? null} onPick={(color) => setLook({ colors: color ? { ...look.colors, [c.name]: color } : omit(look.colors, c.name) })} />
+                  </div>
+                )
+              })}
+            </Fragment>
+          ))
         )}
       </Field>
       <Field name="This Mac’s calendars" note="Sent by the Mac app. Choose which Friday reads, and whether their events skip the Inbox. One you switch off leaves your calendar, its events and repeats coming back if you switch it on again.">
@@ -153,13 +168,25 @@ export function CalendarsSection() {
           aria-label="New events go to"
         >
           <option value="">Only Friday</option>
-          {google
-            .filter((c) => c.writable)
-            .map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
+          {several
+            ? accounts.map((a) => (
+                <optgroup key={a} label={accountName(a)}>
+                  {of(a)
+                    .filter((c) => c.writable)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                </optgroup>
+              ))
+            : google
+                .filter((c) => c.writable)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
         </select>
       </Field>
       <Categories value={settings.categories as CategorySettings} onSave={(value) => save({ key: "categories", value })} />

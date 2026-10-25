@@ -198,7 +198,10 @@ def offer(ctx: Ctx, now: datetime, nights: dict, overrides: dict, morning_hours:
 
 def night_out(ctx: Ctx, overrides: dict, night: Night) -> SleepNightOut:
     local = lambda m: format_local(m.at) if m else None  # noqa: E731
+    bedtime, wake, _ = night_times(ctx.settings, overrides, night.date, ctx.tz, ctx.day_start)
     return SleepNightOut(
+        planned_bed=format_local(to_local(bedtime, ctx.tz)),
+        planned_up=format_local(to_local(wake, ctx.tz)),
         date=night.date.isoformat(),
         bed=local(night.bed),
         up=local(night.up),
@@ -208,6 +211,6 @@ def night_out(ctx: Ctx, overrides: dict, night: Night) -> SleepNightOut:
         up_id=night.up.id if night.up else None,
         ready_id=night.ready.id if night.ready else None,
         slept_min=night.slept_min,
-        planned_min=planned_min(ctx, overrides, night.date),
+        planned_min=wake - bedtime,
         routine_min=night.routine_min,
     )

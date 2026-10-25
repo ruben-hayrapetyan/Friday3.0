@@ -49,7 +49,8 @@ def run_demo(
     kv_set(conn, "demo", True)  # said on every page, so the sample isn't taken for your own data
     conn.close()
     sample = cornell.term(student, date.today()) if student else term(date.today())
-    jobs.SAMPLE_APIS.update(google=sample.google, mail=sample.gmail, client=sample.ai)
+    address = f"{student.netid}@cornell.edu" if student else "student@cornell.edu"  # the stand-in account
+    jobs.SAMPLE_APIS.update(google={address: sample.google}, mail={address: sample.gmail}, client=sample.ai)
     llm.client = lambda: sample.ai  # "Ask AI" too
     who = f"{student.name}: {student.about}" if student else "a sample term"
     print(f"Made-up sample data ({who}; not your calendars or mail) in {folder}, at http://localhost:{port}.")
