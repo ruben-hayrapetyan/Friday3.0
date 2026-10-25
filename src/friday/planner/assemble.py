@@ -11,6 +11,7 @@ from friday.engine.executor import slack
 from friday.engine.explain import block_costs, blocks_of
 from friday.engine.problem import FixedOcc, Plan, Problem
 from friday.engine.rules import RULE_TYPES
+from friday.engine.rules.prices import Skippable, titled
 from friday.planner.build import id_of, key_of
 from friday.planner.snapshot import BlockRow, Snapshot
 from friday.planner.solve import Solved
@@ -99,7 +100,7 @@ def assemble(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
         "late_hours": late_hours(problem, result.plan, evaluation.over_units),
         "notices": notices(problem, result.demoted_locks)
         + clashes(problem, snapshot.settings["time"].timezone)
-        + given_way(problem, blocks, snapshot.settings["time"].timezone)
+        + given_way(problem, blocks, snapshot.settings["time"].timezone, snapshot.now_utc)
         + missing_rule_types(snapshot),
         "changes": changes(snapshot, problem, blocks),
         "solve": {
@@ -171,16 +172,28 @@ def clashes(problem: Problem, tz: str) -> list[str]:
     return out
 
 
-def given_way(problem: Problem, blocks: list[PlannedBlock], tz: str) -> list[str]:
-    """Optional events the plan uses the time of (`skippable`), because the work wouldn't fit otherwise."""
+GO_DAYS = 7  # "go" is said for the coming week's events: further out, the plan will still change
+
+
+def given_way(problem: Problem, blocks: list[PlannedBlock], tz: str, now: int) -> list[str]:
+    """Optional events the plan uses the time of (`skippable`), because the work wouldn't fit otherwise; and the
+    coming week's events you go to only when you're ahead (`ahead`) whose time the plan leaves free: go."""
+    ahead = {
+        (f.title, f.start_utc)
+        for r in problem.rules
+        if isinstance(r, Skippable) and r.p.ahead
+        for f in titled(problem, r.p.titles)
+    }
     out = []
     for event in sorted((f for f in problem.fixed if f.skippable), key=lambda f: f.start_utc):
         over = [b for b in blocks if b.start_utc < event.end_utc and b.end_utc > event.start_utc]
+        when = to_local(event.start_utc, tz)
         if over:
-            when = to_local(event.start_utc, tz)
             work = problem.items.get(key_of(over[0].item_id))
             needs = work.title if work else "work"
             out.append(f"Skip {event.title} on {when:%a} at {ampm(when)}: {needs} needs the time")
+        elif (event.title, event.start_utc) in ahead and now <= event.start_utc < now + GO_DAYS * 1440:
+            out.append(f"Go to {event.title} on {when:%a} at {ampm(when)}: you’re ahead")
     return out
 
 

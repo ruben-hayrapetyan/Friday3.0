@@ -14,6 +14,8 @@ which days), and from a Reading and a strength to one of the planner's rule type
   (`late_work`), so it's said to be on already rather than added;
 - `gym and climbing club are optional`, `skip gym if there's too much work`: `skippable`, events whose time is
   used only when work would otherwise be late;
+- `climbing club only if I'm ahead`, `I usually skip climbing club`: `skippable` the other way round, events whose
+  time work takes first, so you go only in weeks the work fits without it;
 - `no work after 10pm the night before climbing club`, `if I'm going to climbing club the next day, the day before
   must end at 10`: `before_event`.
 """
@@ -25,7 +27,9 @@ from typing import Any, Literal
 from friday.core.time import ampm_in
 
 Strength = Literal["Prefer", "Strongly", "Always"]
-Kind = Literal["window", "days", "free", "cap", "early", "after", "pace", "deadlines", "optional", "night_before"]
+Kind = Literal[
+    "window", "days", "free", "cap", "early", "after", "pace", "deadlines", "optional", "ahead", "night_before"
+]  # fmt: skip
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 NAMES = {
     "monday": "mon",
@@ -60,7 +64,7 @@ class Reading:
     amount: float | None = None  # hours a day for cap, days for early
     event: str | None = None  # after
     paces: tuple[tuple[str, str], ...] | None = None  # pace: (weekday, pace name), every week
-    events: tuple[str, ...] | None = None  # optional, night_before: words in the events' titles
+    events: tuple[str, ...] | None = None  # optional, ahead, night_before: words in the events' titles
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -119,8 +123,8 @@ def read(text: str) -> tuple[Reading | None, Strength]:
     t = re.sub(r"\s+", " ", t)
     negated = bool(re.search(r"\b(no|never|don't|not|avoid)\b", t))
     t = re.sub(r"\b(no|never|don't do|don't|do not|not|avoid)\b", " ", t)
-    readers = (read_pace, read_optional, read_night_before, read_cap, read_early, read_free, read_window, read_days,
-               read_after, read_deadlines)  # fmt: skip
+    readers = (read_pace, read_ahead, read_optional, read_night_before, read_cap, read_early, read_free, read_window,
+               read_days, read_after, read_deadlines)  # fmt: skip
     for parse in readers:
         found = parse(" " + " ".join(t.split()) + " ", negated)
         if found:
@@ -204,6 +208,32 @@ def read_optional(t: str, negated: bool) -> Reading | None:
     )
     titles = titles_in(found[1]) if found else ()
     return Reading("optional", "events", events=titles) if titles else None
+
+
+AHEAD = (
+    r"(?:'m |am |'re |are |im |'ve |have |'ve got |got )?(?:all |fully |completely |well )?(?:ahead|caught up"
+    r"|on top of|on track|up to date|done with|finished with|(?:have |got )?(?:the |spare |free )?time)"
+)
+# The reason people give after naming the event, typos and all: `because of my workload`, `bc of work`, `, so …`.
+WHY = r"(?: (?:because|becasue|becuase|bc|cause|cuz|since|due to|as|so|given)\b.*|,.*)?"
+USUALLY = r"(?:usually|mostly|often|normally|generally|tend to)"
+
+
+def read_ahead(t: str, negated: bool) -> Reading | None:
+    """Events you go to only when you're ahead: `climbing club only if I'm ahead`, `only go to climbing club when I'm
+    caught up`, `skip climbing club unless I'm ahead`, `I usually skip climbing club`, `I usually don't go to climbing
+    club because of my workload, so I'll only go if I'm ahead of my work`. The `usually` ones are tried first: what
+    follows the reason (`so I'll only go if…`) names no event."""
+    found = (
+        re.search(rf"^ ?{USUALLY} (?:skip|miss|drop) (.+?){WHY} ?$", t)
+        or (negated and re.search(rf"^ ?{USUALLY} (?:go to|attend|make it to) (.+?){WHY} ?$", t))
+        or re.search(rf"^ ?(?:go to |do |attend )?(.+?) only (?:if|when|once) {AHEAD}", t)
+        or re.search(rf"\bonly (?:go to|do|attend|make it to) (.+?) (?:if|when|once) {AHEAD}", t)
+        or re.search(rf"^ ?(?:skip|miss|drop) (.+?) unless {AHEAD}", t)
+        or re.search(rf"^ ?(?:go to |attend )(.+?) (?:if|when) {AHEAD}", t)
+    )
+    titles = titles_in(found[1]) if found else ()
+    return Reading("ahead", "events", events=titles) if titles else None
 
 
 def evening(raw: str) -> str | None:
@@ -370,6 +400,10 @@ def said(r: Reading) -> str:
         names = [titled(e) for e in r.events or ()]
         listed = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
         return f"{listed} {'is' if len(names) == 1 else 'are'} optional: work takes the time when it must"
+    if r.kind == "ahead":
+        names = [titled(e) for e in r.events or ()]
+        listed = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+        return f"{listed} only when you’re ahead: work takes {'its' if len(names) == 1 else 'their'} time first"
     if r.kind == "night_before":
         return f"No work after {r.at} the night before {' or '.join(titled(e) for e in r.events or ())}"
     if r.kind == "pace":
@@ -419,6 +453,7 @@ def scope_of(subject: str, areas: list[str], presets: list[str]) -> dict[str, An
 
 
 PRICE = {"Prefer": 2.0, "Strongly": 6.0}
+AHEAD_PRICE = 1.0  # among your preferences, below a Prefer rule: work takes it before late nights or broken rules
 WEIGHT = {"Prefer": 1.0, "Strongly": 3.0, "Always": 10.0}
 
 
@@ -427,6 +462,10 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
     if r.kind == "optional":  # their time is priced, not walled off (build), so it goes only when work must
         return {"name": name, "type": "skippable", "weight": 1.0, "scope": None, "reason": sentence(r),
                 "params": {"titles": list(r.events or ()), "price": 8.0}}  # fmt: skip
+    if r.kind == "ahead":  # priced among preferences, not wellbeing: work takes the time before any late night does
+        params = {"titles": list(r.events or ()), "price": AHEAD_PRICE, "ahead": True}
+        return {"name": name, "type": "skippable", "weight": 1.0, "stage": "preferences", "scope": None,
+                "reason": sentence(r), "params": params}  # fmt: skip
     if r.kind == "night_before":
         price: Any = "forbid" if strength == "Always" else PRICE[strength]
         return {"name": name, "type": "before_event", "weight": 1.0, "scope": None, "reason": sentence(r),

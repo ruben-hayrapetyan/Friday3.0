@@ -4,6 +4,7 @@ logged and undoable; your sentence and reading are kept in kv `rule_readings` to
 
 import json
 import re
+from dataclasses import replace
 from typing import Any
 
 from friday.api.commands import Changed, RuleAddInput, RuleRef, RuleSetInput, RuleTextInput, RuleWinInput
@@ -60,6 +61,8 @@ EFFECT = {
     "skippable": "Friday plans around them as usual, and uses their time only when work would be late otherwise; "
     "the plan says when one gives way",
     "before_event": "Friday ends those days early",
+    "ahead": "Friday plans work into that time first and leaves it free only when everything fits without it; each "
+    "week the plan says go or skip",
     "late_work": "Already built in and always on: when work would be late, Friday plans past your pace and your "
     "preferences, Easy days too. Only your sleep, your daily limit and rules set to Always hold",
 }
@@ -93,13 +96,16 @@ def rule_read(ctx: Ctx, inp: RuleTextInput) -> RuleReadOut:
         return RuleReadOut(reading=None, strength=strength, sentence="", effect="Friday can’t read that as a rule yet.")
     areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
     new = spec(reading, strength, "preview", areas, presets)
-    effect = EFFECT.get(new["type"], "")
+    effect = EFFECT.get(reading.kind if reading.kind == "ahead" else new["type"], "")
     if reading.events:
         found = events_named(ctx, reading.events)
         effect += f". Matches {', '.join(found)}" if found else ". No event has those words in its title yet"
     if reading.kind == "pace":
         effect += replaced_paces(ctx, dict(reading.paces or ()))
     mine = readings(ctx)
+    if new["type"] == "skippable":
+        _, moved = taken_from([r.model_dump() for r in ctx.settings["rules"]], new, dict(mine))
+        effect += "".join(f". Takes it out of “{m}”" for m in moved)
     said = {r.name: words(r, mine) for r in ctx.settings["rules"]}
     rules = [r.model_dump() for r in ctx.settings["rules"]]
     conflicts = [conflict_out(c, said) for c in against(new, rules)] if reading.kind not in NOT_COMPARED else []
@@ -159,9 +165,48 @@ def rule_add(ctx: Ctx, inp: RuleAddInput) -> Changed:
     rules = [r.model_dump() for r in ctx.settings["rules"]]
     name = unique(f"you:{slug(sentence(reading))}", {r["name"] for r in rules})
     areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
-    write_setting(ctx, "rules", [*rules, spec(reading, inp.strength, name, areas, presets)])
-    keep(ctx, {**readings(ctx), name: {"reading": reading.to_dict(), "strength": inp.strength, "text": inp.text}})
-    return Changed(message=f"Added: {sentence(reading)}")
+    new = spec(reading, inp.strength, name, areas, presets)
+    mine = readings(ctx)
+    rules, moved = taken_from(rules, new, mine) if new["type"] == "skippable" else (rules, [])
+    write_setting(ctx, "rules", [*rules, new])
+    keep(ctx, {**mine, name: {"reading": reading.to_dict(), "strength": inp.strength, "text": inp.text}})
+    return Changed(message=f"Added: {sentence(reading)}" + "".join(f". Taken out of “{m}”" for m in moved))
+
+
+def taken_from(
+    rules: list[dict[str, Any]], new: dict[str, Any], mine: dict[str, Any]
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """One event, one rule: a new optional (or only-when-ahead) rule takes its events out of the other such rules,
+    which then say what's left, or go when nothing is (`mine`, the kept readings, is updated to match). Returns the
+    rules and what each one that gave something up said before."""
+    wanted = {event_key(t) for t in new["params"]["titles"]}
+    out, moved = [], []
+    for r in rules:
+        titles = r["params"].get("titles", []) if r["type"] == "skippable" else []
+        left = [t for t in titles if event_key(t) not in wanted]
+        if left == titles:
+            out.append(r)
+            continue
+        moved.append(words_of(r, mine))
+        if not left:
+            mine.pop(r["name"], None)
+            continue
+        stored = mine.get(r["name"])
+        kind = "ahead" if r["params"].get("ahead") else "optional"
+        reading = Reading(**{**stored["reading"], "days": None, "paces": None}) if stored else Reading(kind, "events")
+        reading = replace(reading, events=tuple(left))
+        if stored:
+            mine[r["name"]] = {**stored, "reading": reading.to_dict()}
+        out.append(r | {"params": r["params"] | {"titles": left}, "reason": sentence(reading)})
+    return out, moved
+
+
+def event_key(title: str) -> str:
+    return re.sub(r"^(?:the|my) ", "", " ".join(title.lower().split()))
+
+
+def words_of(rule: dict[str, Any], mine: dict[str, Any]) -> str:
+    return ampm_in(rule.get("reason") or mine.get(rule["name"], {}).get("text") or rule["name"])
 
 
 def deadlines_first(ctx: Ctx) -> Changed:

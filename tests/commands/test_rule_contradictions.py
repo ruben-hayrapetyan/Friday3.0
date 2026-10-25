@@ -150,3 +150,29 @@ def test_a_kind_a_general_rule_leaves_out_isnt_compared_with_it() -> None:
         "meals": [Conflict("work", "together they leave no time for routine")],
         "work": [Conflict("meals", "together they leave no time for routine")],
     }
+
+
+def test_one_event_one_rule_a_new_optional_rule_takes_its_events_from_the_others(app: App) -> None:
+    app.do("rule_add", text="gym and climbing club are optional")
+    preview = app.do("rule_read", text="climbing club only if i'm ahead")["effect"]
+    assert preview.endswith(". Takes it out of “Gym and Climbing Club are optional: work takes the time when it must”")
+    out = app.do("rule_add", text="climbing club only if i'm ahead")
+    assert out["message"] == (
+        "Added: Climbing Club only when you’re ahead: work takes its time first. "
+        "Taken out of “Gym and Climbing Club are optional: work takes the time when it must”"
+    )
+    rules = mine(app)
+    assert set(rules) == {
+        "Gym is optional: work takes the time when it must",
+        "Climbing Club only when you’re ahead: work takes its time first",
+    }
+    titles = [r["params"]["titles"] for r in app.do("settings")["rules"] if r["type"] == "skippable"]
+    assert sorted(titles) == [["climbing club"], ["gym"]]
+    app.do("rule_set", name=rules["Gym is optional: work takes the time when it must"]["name"], strength="Strongly")
+    assert "Gym is optional: work takes the time when it must" in mine(app)  # its kept reading says gym alone
+
+    app.do("rule_add", text="gym only if i'm ahead")  # gym was all that rule had left: it goes
+    assert set(mine(app)) == {
+        "Climbing Club only when you’re ahead: work takes its time first",
+        "Gym only when you’re ahead: work takes its time first",
+    }

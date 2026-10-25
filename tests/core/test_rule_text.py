@@ -133,6 +133,36 @@ def test_events_that_give_way_to_work(text: str) -> None:
 
 
 @pytest.mark.parametrize(
+    "text",
+    [
+        "i usually don't go to the climbing club becasue of my workload so I will only go if I am ahead of my work",
+        "climbing club only if i'm ahead",
+        "Climbing club only when I'm caught up on work",
+        "only go to climbing club when I'm on top of my work",
+        "I only go to the climbing club if I have time",
+        "skip climbing club unless I'm ahead",
+        "I usually skip climbing club because of work",
+        "I usually skip climbing club",
+    ],
+)
+def test_events_you_go_to_only_when_ahead(text: str) -> None:
+    reading, _ = read(text)
+    assert reading == Reading("ahead", "events", events=("climbing club",))
+    assert sentence(reading) == "Climbing Club only when you’re ahead: work takes its time first"
+    rule = spec(reading, "Prefer", "you:x", [], [])
+    assert (rule["type"], rule["stage"]) == ("skippable", "preferences")  # below every late night, not above it
+    assert rule["params"] == {"titles": ["climbing club"], "price": 1.0, "ahead": True}
+
+
+def test_optional_and_ahead_read_apart() -> None:
+    assert read("gym and climbing club only if I am ahead of my work")[0] == Reading(
+        "ahead", "events", events=("gym", "climbing club")
+    )
+    assert read("skip gym if there is too much work")[0] == Reading("optional", "events", events=("gym",))
+    assert read("gym is optional")[0].kind == "optional"  # type: ignore[union-attr]
+
+
+@pytest.mark.parametrize(
     ("text", "strength"),
     [
         ("if i am going to climbing club the next day then the previous day must end at 10:00", "Always"),

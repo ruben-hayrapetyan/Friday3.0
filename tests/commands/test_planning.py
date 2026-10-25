@@ -401,6 +401,41 @@ def test_an_optional_event_keeps_its_time_when_the_work_fits_elsewhere(tmp_path:
     assert essay and not any("2026-10-20T07:45" <= b["start"] < "2026-10-20T12:15" for b in essay)
 
 
+def test_an_event_you_go_to_only_when_ahead_gives_its_time_before_a_late_night(tmp_path: Path) -> None:
+    # 3 hours from 6pm: either the club's 6 to 8pm, or work until 11pm. Optional keeps the club and works late; only
+    # when ahead skips the club, so nothing runs past 10pm.
+    def evening(rule: str) -> list[dict]:
+        folder = tmp_path / rule.split()[-1]
+        folder.mkdir()
+        app = new_app(folder)
+        app.do("add", title="Climbing Club", when="fixed", start="2026-10-20T18:00", end="2026-10-20T20:00")
+        app.do("add", text="essay ~3h", release="2026-10-20T18:00", due="2026-10-21T00:30")
+        app.do("rule_add", text=rule)
+        app.do("replan")
+        return [b for b in app.do("plan")["blocks"] if b["title"] == "essay"], app.do("status")["notices"]
+
+    kept, _ = evening("climbing club is optional")
+    assert kept and not any(b["start"] < "2026-10-20T20:00" for b in kept)
+    taken, notices = evening("climbing club only if i'm ahead")
+    assert any(b["start"] < "2026-10-20T20:00" for b in taken)
+    assert all(b["end"] <= "2026-10-20T22:00" for b in taken)
+    assert any(n.startswith("Skip Climbing Club on Tue at 6pm: essay needs the time") for n in notices)
+
+
+def test_an_event_you_go_to_only_when_ahead_says_go_when_the_work_fits(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do("add", title="Climbing Club", when="fixed", start="2026-10-20T18:00", end="2026-10-20T20:00")
+    app.do("add", title="Climbing Club", when="fixed", start="2026-11-03T18:00", end="2026-11-03T20:00")
+    app.do("add", text="essay ~1h due thu 5pm")
+    app.do("rule_add", text="climbing club only if i'm ahead")
+    app.do("replan")
+    essay = [b for b in app.do("plan")["blocks"] if b["title"] == "essay"]
+    assert essay and not any("2026-10-20T18:00" <= b["start"] < "2026-10-20T20:00" for b in essay)
+    notices = app.do("status")["notices"]
+    assert "Go to Climbing Club on Tue at 6pm: you’re ahead" in notices
+    assert not any("Nov" in n or n.count("Go to") > 1 for n in notices)  # only the coming week's is said
+
+
 def test_no_work_the_night_before_an_early_event(tmp_path: Path) -> None:
     app = new_app(tmp_path)
     app.do("add", title="Climbing Club", when="fixed", start="2026-10-21T06:00", end="2026-10-21T08:00")

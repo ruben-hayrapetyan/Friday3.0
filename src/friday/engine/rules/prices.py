@@ -188,13 +188,16 @@ def titled(problem: Any, titles: list[str]) -> Any:
 class Skippable(Rule):
     """`Gym and climbing club are optional`: their time isn't walled off (build leaves it free), but work there costs
     in the wellbeing stage, so Friday plans around them as around any event and uses their time only when work would
-    otherwise be late; the plan then says which one gives way."""
+    otherwise be late; the plan then says which one gives way. `Climbing club only if I'm ahead` is the other way
+    round (`ahead`, priced in the preferences stage): work takes that time before a late night or a broken rule, so
+    it stays free only in weeks the work fits without it, and the plan says go."""
 
     default_stage = "wellbeing"
 
     class Params(Rule.Params):
         titles: list[str] = []
         price: float = 4.0
+        ahead: bool = False  # you go only when you're ahead: said in the plan as "go" when its time is left free
 
     def prepare(self, problem):
         super().prepare(problem)
