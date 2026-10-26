@@ -641,3 +641,26 @@ def test_a_replan_with_nothing_changed_keeps_the_plan(tmp_path: Path) -> None:
     for _ in range(3):
         app.do("replan")
         assert blocks() == first
+
+
+def test_skipping_an_optional_event_frees_the_night_before_too(tmp_path: Path) -> None:
+    # The essay is due Wednesday 9am and needs Tuesday night past 10pm; the club is Wednesday evening, so its own
+    # time is no help. Skipping it is what frees the night: the plan works late and says skip, rather than ending
+    # Tuesday at 10pm before a club it would skip anyway.
+    app = new_app(tmp_path)
+    app.do("add", title="Climbing Club", when="fixed", start="2026-10-21T18:00", end="2026-10-21T20:00")
+    app.do("rule_add", text="climbing club only if i'm ahead")
+    app.do("rule_add", text="no work after 10pm the night before climbing club", strength="Always")
+    for start, end in (("2026-10-19T09:00", "2026-10-20T01:00"), ("2026-10-20T07:00", "2026-10-20T20:00"),
+                       ("2026-10-21T07:00", "2026-10-21T09:00")):  # fmt: skip
+        app.do("add", title="Lab", when="fixed", start=start, end=end)
+    app.do("add", title="Essay", duration_min=3 * 60, due="2026-10-21T09:00")
+    app.do("replan")
+    essay = [
+        b for b in app.do("plan", start="2026-10-19T00:00", end="2026-10-22T00:00")["blocks"] if b["title"] == "Essay"
+    ]
+    assert any(b["end"] > "2026-10-20T22:00" for b in essay)  # Tuesday night, past 10pm
+    assert not app.do("status")["late"]
+    assert any(
+        n.startswith("Skip Climbing Club on Wed at 6pm: Essay needs Tuesday night") for n in app.do("status")["notices"]
+    )

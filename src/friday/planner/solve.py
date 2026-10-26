@@ -1,9 +1,13 @@
 """One solve, from a snapshot to a plan (DESIGN §15.3 step 2). This is what the worker process runs.
 
-Build, allocate and attach quotas, ask the executor whether the hard deadlines can all be met, then schedule. When
-the plan gives an optional event's time to work, and a night-before rule ended the night before it early ("no work
-after 10pm the night before climbing club"), you aren't going, so that night is lifted and the plan made once more
-from this one; kept only if it never keeps an event it worked late before, and is no later.
+Build, allocate and attach quotas, ask the executor whether the hard deadlines can all be met, then schedule. An
+optional event with a night-before rule ("climbing club only if I'm ahead", "no work after 10pm the night before
+climbing club") is one Friday decides to skip or go to: skipping frees both its time and the night before. The first
+plan keeps every such night as if you're going; when it gives an event's time to work, or work is late anyway, those
+nights are lifted and the plan made once more from it, kept when it's no later and no harder on you. Then each lifted
+event whose time or night before the plan uses is one you skip (assemble says so); one it uses neither of, you go to,
+and its night was kept after all. Lifting a night only when the event's own time was used had left the night ended
+at 10pm before a club the plan already skipped.
 """
 
 import dataclasses
@@ -50,6 +54,9 @@ def solve(snapshot: Snapshot, warm: bool, cancel: np.ndarray | None = None, thre
     warm = warm and bool(snapshot.plan_blocks) and not snapshot.cold_once
     result = schedule(problem, config, warm=warm, cancel=cancel, overloaded=overloaded)
     lifted = not_gone_to(problem, result.plan)
+    if result.stage_values["deadlines"] > 0:  # late anyway: any of those nights may be what the work needs
+        for name, days in optional_nights(problem).items():
+            lifted.setdefault(name, set()).update(days)
     if lifted and not (cancel is not None and cancel[0]):
         inp2 = dataclasses.replace(
             inp, settings=inp.settings | {"rules": with_skip_days(inp.settings["rules"], lifted)}
@@ -62,8 +69,8 @@ def solve(snapshot: Snapshot, warm: bool, cancel: np.ndarray | None = None, thre
         # of CP-SAT on a big week) bought nothing the first hadn't.
         quick = dataclasses.replace(config, use_fallback=False)
         again = schedule(problem2, quick, warm=True, cancel=cancel, overloaded=overloaded)
-        no_later = again.stage_values["deadlines"] <= result.stage_values["deadlines"]
-        if no_later and kept_nights_free(problem, again.plan, lifted):
+        better = [again.stage_values[s] for s in ("deadlines", "wellbeing")]
+        if better <= [result.stage_values[s] for s in ("deadlines", "wellbeing")]:
             return Solved(inp2, problem2, allocation, deadlines, overloaded, again)
     return Solved(inp, problem, allocation, deadlines, overloaded, result)
 
@@ -94,16 +101,13 @@ def with_skip_days(rules: tuple, lifted: dict[str, set[date]]) -> tuple:
     )
 
 
-def kept_nights_free(problem: Problem, plan: Plan, lifted: dict[str, set[date]]) -> bool:
-    """No lifted night worked late before an event the new plan keeps after all (one you'd go to tired)."""
-    spec, used, grid = problem.grid.spec, worked(plan), problem.grid
+def optional_nights(problem: Problem) -> dict[str, set[date]]:
+    """Per night-before rule, the days of its optional events in the plan's range: each one Friday may skip."""
+    spec = problem.grid.spec
+    out: dict[str, set[date]] = {}
     for rule in problem.rules:
-        if not isinstance(rule, BeforeEvent) or rule.name not in lifted:
-            continue
-        for f in titled(problem, rule.p.titles):
-            day = planning_date(f.start_utc, spec.timezone, spec.day_start)
-            if day not in lifted[rule.name] or used & set(grid.slots_in(f.start_utc, f.end_utc)):
-                continue  # not lifted, or still not gone to
-            if any(rule.matches(s) for s in used if grid.slots[s].date == day.fromordinal(day.toordinal() - 1)):
-                return False
-    return True
+        if isinstance(rule, BeforeEvent):
+            for f in titled(problem, rule.p.titles):
+                if f.skippable:
+                    out.setdefault(rule.name, set()).add(planning_date(f.start_utc, spec.timezone, spec.day_start))
+    return out

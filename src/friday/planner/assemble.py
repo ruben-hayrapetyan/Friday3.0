@@ -2,16 +2,26 @@
 worker can hand it back across processes and the API process only has to save it."""
 
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 from typing import Any
 
 from friday.core.pace import DayScales, dials_on, pace_label
 from friday.core.textnorm import course_tag
-from friday.core.time import UNIT_MIN, ampm, format_utc, to_local
+from friday.core.time import (
+    UNIT_MIN,
+    ampm,
+    format_utc,
+    local_midnight,
+    planning_date,
+    planning_day_start_utc,
+    to_local,
+    to_utc,
+)
 from friday.engine.executor import slack
 from friday.engine.explain import block_costs, blocks_of
 from friday.engine.problem import FixedOcc, Plan, Problem
 from friday.engine.rules import RULE_TYPES
-from friday.engine.rules.prices import Skippable, titled
+from friday.engine.rules.prices import BeforeEvent, Skippable, titled
 from friday.planner.build import PLANNER_RULES, id_of, key_of
 from friday.planner.snapshot import BlockRow, Snapshot
 from friday.planner.solve import Solved
@@ -183,24 +193,49 @@ GO_DAYS = 7  # "go" is said for the coming week's events: further out, the plan 
 
 
 def given_way(problem: Problem, blocks: list[PlannedBlock], tz: str, now: int) -> list[str]:
-    """Optional events the plan uses the time of (`skippable`), because the work wouldn't fit otherwise; and the
-    coming week's events you go to only when you're ahead (`ahead`) whose time the plan leaves free: go."""
+    """Optional events the plan uses the time of (`skippable`), or the night before of (a night-before rule's night
+    the plan lifted: planner/solve.py), because the work wouldn't fit otherwise: skip; and the coming week's events you
+    go to only when you're ahead (`ahead`) whose time and night the plan leaves free: go."""
     ahead = {
         (f.title, f.start_utc)
         for r in problem.rules
         if isinstance(r, Skippable) and r.p.ahead
         for f in titled(problem, r.p.titles)
     }
+    nights = lifted_nights(problem)
     out = []
     for event in sorted((f for f in problem.fixed if f.skippable), key=lambda f: f.start_utc):
         over = [b for b in blocks if b.start_utc < event.end_utc and b.end_utc > event.start_utc]
+        night = nights.get((event.title, event.start_utc))
+        late = [b for b in blocks if night and b.start_utc < night[1] and b.end_utc > night[0]]
         when = to_local(event.start_utc, tz)
-        if over:
-            work = problem.items.get(key_of(over[0].item_id))
+        if over or late:
+            work = problem.items.get(key_of((over or late)[0].item_id))
             needs = work.title if work else "work"
-            out.append(f"Skip {event.title} on {when:%a} at {ampm(when)}: {needs} needs the time")
+            eve = to_local(night[0], tz) if night else when
+            said = "the time" if over else f"{eve:%A} night"
+            out.append(f"Skip {event.title} on {when:%a} at {ampm(when)}: {needs} needs {said}")
         elif (event.title, event.start_utc) in ahead and now <= event.start_utc < now + GO_DAYS * 1440:
             out.append(f"Go to {event.title} on {when:%a} at {ampm(when)}: you’re ahead")
+    return out
+
+
+def lifted_nights(problem: Problem) -> dict[tuple[str, int], tuple[int, int]]:
+    """The optional events whose night before the plan was free to use (a night-before rule's `skip_days`), and that
+    night: from the rule's hour until the event's day starts, in UTC minutes."""
+    spec = problem.grid.spec
+    out = {}
+    for rule in problem.rules:
+        if not isinstance(rule, BeforeEvent) or not rule.p.skip_days:
+            continue
+        days = {date.fromisoformat(d) for d in rule.p.skip_days}
+        for f in titled(problem, rule.p.titles):
+            day = planning_date(f.start_utc, spec.timezone, spec.day_start)
+            if day in days:
+                eve = day - timedelta(days=1)
+                after = rule.p.after + (1440 if rule.p.after < spec.day_start else 0)
+                start = to_utc(local_midnight(eve) + timedelta(minutes=after), spec.timezone)
+                out[(f.title, f.start_utc)] = (start, planning_day_start_utc(day, spec.timezone, spec.day_start))
     return out
 
 
