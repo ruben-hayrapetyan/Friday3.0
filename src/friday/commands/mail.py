@@ -94,6 +94,11 @@ def read_messages(
         mail = gmail.read(service, message_id)
         skipped = OLDER if newest[thread] != message_id else elsewhere(conn, user_id, source["id"], mail.text)
         skipped = skipped or why_skipped(mail, wanted)
+        # Its PDFs first: if Google fails one, nothing of the message is kept, so the next sync reads it again whole
+        # (saved first, the message would count as seen and its syllabus would never come).
+        pdfs = (
+            [(pdf, gmail.attachment(service, mail.id, pdf.attachment_id)) for pdf in mail.pdfs] if not skipped else []
+        )
         save(conn, user_id, source["id"], mail.id, mail.subject, "text/plain", mail.text, now_utc, skipped, thread)
         if skipped is None:
             passed += 1
@@ -102,8 +107,7 @@ def read_messages(
                 "AND status = 'new' AND external_id != ? AND external_id NOT LIKE ?",
                 [OLDER, source["id"], thread, mail.id, f"{mail.id}#%"],
             )
-            for pdf in mail.pdfs:
-                content = gmail.attachment(service, mail.id, pdf.attachment_id)
+            for pdf, content in pdfs:
                 save(
                     conn,
                     user_id,

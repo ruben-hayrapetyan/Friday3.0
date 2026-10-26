@@ -309,7 +309,7 @@ def test_an_event_changed_here_waits_for_the_mac_app_and_comes_back_as_the_same_
     assert {k: job[k] for k in ("op", "calendar", "event", "title", "start", "end", "all_day")} == {
         "op": "save",
         "calendar": "home",
-        "event": "l1",
+        "event": "l1@1792504800",  # the Mac app finds a one-off by its identifier and its start on the calendar
         "title": None,  # a move leaves the calendar's title alone
         "start": "2026-10-20T16:00:00Z",
         "end": "2026-10-20T17:00:00Z",
@@ -361,7 +361,7 @@ def test_an_event_deleted_here_is_deleted_on_the_mac(app: App) -> None:
     dentist = events(app)["Dentist"]
     app.do("drop", id=dentist["id"])
     (job,) = app.do("mac_writes")
-    assert (job["op"], job["calendar"], job["event"]) == ("delete", "home", "l1")
+    assert (job["op"], job["calendar"], job["event"]) == ("delete", "home", "l1@1792504800")
     assert app.do("mac_written", id=job["id"], ok=True)["message"] == "Deleted from your calendar"
     post(app, [WRITABLE], [], minutes_later=1)
     assert events(app) == {} and app.do("inbox")["suggestions"] == []
@@ -393,3 +393,34 @@ def test_a_mac_calendar_you_said_not_to_edit_gets_nothing(app: App) -> None:
     app.do("calendar_set", id="home", mac=True, editable=False)
     app.do("edit", id=events(app)["Dentist"]["id"], start="2026-10-20T12:00", end="2026-10-20T13:00")
     assert app.do("mac_writes") == [] and shown(app, "Dentist")["saves_to_calendar"] is False
+
+
+# The Mac app's ids: "<EventKit identifier>@<occurrence start, Unix seconds>"; a one-off's start moves with it.
+TEN_AM, ELEVEN_NEXT_DAY = 1792504800, 1792594800  # Tue 20 Oct 10am, Wed 21 Oct 11am (New York)
+
+
+def test_a_one_off_event_moved_in_calendar_stays_the_same_event(app: App) -> None:
+    post(app, [HOME], [mac_event(f"CAL:UID1@{TEN_AM}", "home", "Dentist", "2026-10-20T10:00", "2026-10-20T11:00")])
+    dentist = events(app)["Dentist"]
+    app.do("edit", id=dentist["id"], notes="bring insurance card")
+    moved = mac_event(f"CAL:UID1@{ELEVEN_NEXT_DAY}", "home", "Dentist", "2026-10-21T11:00", "2026-10-21T12:00")
+    post(app, [HOME], [moved], minutes_later=5)
+    (item,) = [i for i in app.table("items") if i["title"] == "Dentist"]
+    assert (item["id"], item["status"], item["notes"]) == (dentist["id"], "todo", "bring insurance card")
+    assert shown(app, "Dentist")["start"] == "2026-10-21T11:00"
+
+
+def test_a_repeats_occurrences_keep_their_starts_apart(app: App) -> None:
+    one = mac_event(f"GYM@{TEN_AM}", "home", "Gym", "2026-10-20T10:00", "2026-10-20T11:00", series="GYM")
+    two = mac_event(f"GYM@{TEN_AM + 7 * 86400}", "home", "Gym", "2026-10-27T10:00", "2026-10-27T11:00", series="GYM")
+    post(app, [HOME], [one, two])
+    assert len([i for i in app.table("items") if i["title"] == "Gym"]) == 2
+
+
+def test_one_off_events_read_before_take_their_new_ids(app: App) -> None:
+    post(app, [HOME], [LECTURE])  # read once under the old ids
+    app.conn.execute("UPDATE raw_inputs SET external_id = ? WHERE external_id = 'l1'", [f"CAL:UID1@{TEN_AM}"])
+    dentist = events(app)["Dentist"]
+    moved = mac_event(f"CAL:UID1@{ELEVEN_NEXT_DAY}", "home", "Dentist", "2026-10-21T11:00", "2026-10-21T12:00")
+    post(app, [HOME], [moved], minutes_later=5)
+    assert [i["id"] for i in events(app).values()] == [dentist["id"]] and app.do("inbox")["suggestions"] == []

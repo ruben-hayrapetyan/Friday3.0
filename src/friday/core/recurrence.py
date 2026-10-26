@@ -67,10 +67,25 @@ def byday(word: str) -> str | None:
 
 def is_valid_rule(rule: str) -> bool:
     try:
-        rrulestr(rule, dtstart=datetime(2026, 1, 1))
+        repeat, _ = rule_and_skips(rule)
+        rrulestr(repeat, dtstart=datetime(2026, 1, 1))
     except (ValueError, TypeError):
         return False
     return True
+
+
+def rule_and_skips(rule: str) -> tuple[str, set[datetime]]:
+    """A stored rule apart from the times it skips: `EXDATE=20261124T100000,…` (local), as a calendar feed's EXDATE
+    cancels one week's lecture. Everything else reads the rule as it is and passes that part over."""
+    parts = rule.split(";")
+    skips = {
+        datetime.strptime(moment, "%Y%m%dT%H%M%S")
+        for part in parts
+        if part.upper().startswith("EXDATE=")
+        for moment in part.split("=", 1)[1].split(",")
+        if moment
+    }
+    return ";".join(p for p in parts if not p.upper().startswith("EXDATE=")), skips
 
 
 def rule_parts(rule: str) -> dict[str, str]:
@@ -132,12 +147,18 @@ def ordinal(n: int) -> str:
 
 
 def occurrences(rule: str, dtstart: datetime, start: datetime, end: datetime) -> list[datetime]:
-    """Local occurrence times in [start, end). Local, so a weekly 08:00 stays 08:00 across DST changes."""
-    return [t for t in rrulestr(rule, dtstart=dtstart).between(start, end, inc=True) if t < end]
+    """Local occurrence times in [start, end), less the ones it skips. Local, so a weekly 08:00 stays 08:00 across
+    DST changes."""
+    repeat, skips = rule_and_skips(rule)
+    return [t for t in rrulestr(repeat, dtstart=dtstart).between(start, end, inc=True) if t < end and t not in skips]
 
 
 def next_occurrence(rule: str, dtstart: datetime, after: datetime) -> datetime | None:
-    return rrulestr(rule, dtstart=dtstart).after(after)
+    repeat, skips = rule_and_skips(rule)
+    found = rrulestr(repeat, dtstart=dtstart).after(after)
+    while found is not None and found in skips:
+        found = rrulestr(repeat, dtstart=dtstart).after(found)
+    return found
 
 
 def ending_before(rule: str, day: date) -> str:

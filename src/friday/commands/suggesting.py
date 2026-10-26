@@ -134,11 +134,18 @@ def gone(
             "UPDATE suggestions SET status = 'superseded' WHERE raw_input_id = ? AND status = 'pending'", [r["id"]]
         )
         conn.execute("UPDATE raw_inputs SET status = 'ignored' WHERE id = ?", [r["id"]])
-        item = made_item(conn, r["id"])
-        when = item and (item["start_utc"] or item["due_utc"])
-        if item and when and now_utc <= parse_utc(when) and (until is None or parse_utc(when) < until):
-            drop = Proposed("drop", {"id": item["id"], "title": item["title"]}, fixed=True)
-            made += suggest(conn, settings, now_utc, user_id, r["id"], [drop], bool(source["trusted"]), source["name"])
+        # Everything it made that's still ahead: an exam and the prep you accepted for it go together.
+        drops, seen_ids = [], set()
+        for item in made_items(conn, r["id"]):
+            when = item["start_utc"] or item["due_utc"]
+            if item["id"] in seen_ids or not when or not now_utc <= parse_utc(when):
+                continue
+            if until is not None and parse_utc(when) >= until:
+                continue
+            seen_ids.add(item["id"])
+            drops.append(Proposed("drop", {"id": item["id"], "title": item["title"]}, fixed=True))
+        if drops:
+            made += suggest(conn, settings, now_utc, user_id, r["id"], drops, bool(source["trusted"]), source["name"])
     return made
 
 

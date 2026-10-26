@@ -11,6 +11,8 @@ reading the Mac posted) take the new id and times, so the next sync finds nothin
 and a new one."""
 
 import json
+import re
+from datetime import date, datetime
 from typing import Any
 
 from friday.api.commands import Changed, MacCalendar, MacEvent, MacSyncInput, MacWrittenInput
@@ -21,10 +23,11 @@ from friday.commands.eventwrites import MAX_TRIES, event_body, event_digest, ren
 from friday.commands.registry import Ctx, command, query
 from friday.core.db import one, rows
 from friday.core.items import FieldError
-from friday.core.time import format_local, parse_utc, to_local
+from friday.core.time import format_local, local_midnight, parse_utc, to_local, to_utc
 from friday.planner.store import event_links, kv_get, load_item
 
 OFF_TYPES = ("subscription", "birthday")
+OCCURRENCE = re.compile(r"^(.+)@(\d+)$")  # the Mac app's "<EventKit identifier>@<occurrence start, Unix seconds>"
 
 
 @command("mac_sync", logged=False)  # a reading of the Mac's calendars, like the sync job's of Google: nothing to undo
@@ -45,11 +48,12 @@ def mac_sync(ctx: Ctx, inp: MacSyncInput) -> Changed:
     for e in inp.events:
         events[e.calendar].append(google_shape(e))
     listed = [c.model_dump() | {"source_name": named[c.id]} for c in inp.calendars]
+    seed(ctx, inp.calendars, named)
+    keep_one_offs(ctx, inp.events)
     put(ctx, "mac_calendars", listed)
     put(ctx, "mac_events", events)
     put(ctx, "mac_window", window)
     put(ctx, "mac_sync_now", ctx.now_text)
-    seed(ctx, inp.calendars, named)
     n = len(inp.events)
     return Changed(message=f"Read {n} event{'' if n == 1 else 's'} on {len(inp.calendars)} Mac calendars")
 
@@ -97,7 +101,11 @@ def mac_writes(ctx: Ctx, inp: Empty) -> list[MacWriteOut]:
         if link is None or link.kind != "mac" or not link.calendar_id:
             continue
         item = load_item(ctx.conn, job["item_id"], ctx.user_id)
-        where = {"id": job["id"], "calendar": link.calendar_id, "event": link.event_id}
+        where = {
+            "id": job["id"],
+            "calendar": link.calendar_id,
+            "event": occurrence_of(ctx, link.source_id, link.event_id),
+        }
         if job["op"] == "delete":
             out.append(MacWriteOut(op="delete", **where))
         elif item is not None and item.status == "todo" and item.start_utc and item.end_utc:
@@ -159,10 +167,62 @@ def settle(ctx: Ctx, item_id: int, event: MacEvent) -> None:
         put(ctx, "mac_events", posted)
 
 
+def event_id(e: MacEvent) -> str:
+    """The event's id in Friday: a repeat's occurrence keeps the start the Mac app adds (that's what tells its
+    occurrences apart), a one-off event drops it, so moving it in Calendar keeps it the same event."""
+    found = OCCURRENCE.match(e.id)
+    return found[1] if found and not e.series else e.id
+
+
+def keep_one_offs(ctx: Ctx, events: list[MacEvent]) -> None:
+    """One-off events read before their ids lost the start (`event_id`) take the new id, so they aren't taken for
+    gone and made again: each raw input whose id is that event's identifier and a start, if it's the only one."""
+    by_calendar: dict[str, list[MacEvent]] = {}
+    for e in events:
+        if not e.series and event_id(e) != e.id:
+            by_calendar.setdefault(e.calendar, []).append(e)
+    for calendar, found in by_calendar.items():
+        source = source_of(ctx, calendar, "mac")
+        if source is None:
+            continue
+        stored = rows(  # what's still current: an event moved before had its old reading set aside as gone
+            ctx.conn,
+            "SELECT id, external_id FROM raw_inputs WHERE source_id = ? AND status != 'ignored'",
+            [source["id"]],
+        )
+        have = {r["external_id"] for r in stored}
+        old: dict[str, list[int]] = {}
+        for r in stored:
+            if m := OCCURRENCE.match(r["external_id"]):
+                old.setdefault(m[1], []).append(r["id"])
+        for e in found:
+            bare = event_id(e)
+            if bare not in have and len(old.get(bare, [])) == 1:
+                ctx.db.update("raw_inputs", {"id": old[bare][0]}, {"external_id": bare})
+                have.add(bare)
+
+
+def occurrence_of(ctx: Ctx, source_id: int, external_id: str) -> str:
+    """The id the Mac app finds an event by: a one-off's (`event_id`) with its start on the calendar put back."""
+    if OCCURRENCE.match(external_id):
+        return external_id
+    raw = one(
+        ctx.conn, "SELECT content FROM raw_inputs WHERE source_id = ? AND external_id = ?", [source_id, external_id]
+    )
+    start = (json.loads(raw["content"] or "{}").get("start") or {}) if raw else {}
+    if "dateTime" in start:
+        seconds = int(datetime.fromisoformat(start["dateTime"]).timestamp())
+    elif "date" in start:
+        seconds = to_utc(local_midnight(date.fromisoformat(start["date"])), ctx.tz) * 60
+    else:
+        return external_id
+    return f"{external_id}@{seconds}"
+
+
 def google_shape(e: MacEvent) -> dict[str, Any]:
     """An event as Google gives one, so the Mac's go through the same reading (`ics.google_event`)."""
     when = "date" if e.all_day else "dateTime"
-    shaped: dict[str, Any] = {"id": e.id, "summary": e.title, "start": {when: e.start}, "end": {when: e.end}}
+    shaped: dict[str, Any] = {"id": event_id(e), "summary": e.title, "start": {when: e.start}, "end": {when: e.end}}
     if e.series:
         shaped["recurringEventId"] = e.series
     if e.free:
@@ -210,15 +270,25 @@ def seed(ctx: Ctx, calendars: list[MacCalendar], named: dict[str, str]) -> None:
                 continue
             config = json.dumps({"calendar": c.id})
             on = default_on(c, google)
-            ctx.db.insert(
-                "sources", {"kind": "mac", "name": named[c.id], "config": config, "trusted": 1, "enabled": int(on)}
-            )
+            name = free_name(ctx, named[c.id])  # a calendar renamed away may still hold it until it's seen below
+            ctx.db.insert("sources", {"kind": "mac", "name": name, "config": config, "trusted": 1, "enabled": int(on)})
         elif source["name"] != named[c.id]:
             taken = ctx.conn.execute(
                 "SELECT 1 FROM sources WHERE user_id = ? AND kind = 'mac' AND name = ?", [ctx.user_id, named[c.id]]
             ).fetchone()
             if not taken:
                 ctx.db.update("sources", {"id": source["id"]}, {"name": named[c.id]})
+
+
+def free_name(ctx: Ctx, name: str) -> str:
+    """The name, or numbered ("Work 2") while another of the Mac's sources has it."""
+    base, n = name, 1
+    while ctx.conn.execute(
+        "SELECT 1 FROM sources WHERE user_id = ? AND kind = 'mac' AND name = ?", [ctx.user_id, name]
+    ).fetchone():
+        n += 1
+        name = f"{base} {n}"
+    return name
 
 
 def put(ctx: Ctx, key: str, value: Any) -> None:

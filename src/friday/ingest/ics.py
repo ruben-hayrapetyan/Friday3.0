@@ -125,8 +125,16 @@ def event(component: Any, tz: str) -> Event | None:
     if start is None:
         return Event(summary, None, None, start_raw.dt.isoformat(), end_dt.isoformat())
     rule = component.get("RRULE")
-    every = "rrule:" + rule.to_ical().decode() if rule is not None else None
+    every = "rrule:" + rule.to_ical().decode() + skipped(component, tz) if rule is not None else None
     return Event(summary, start, local(end_dt, tz), None, None, every)
+
+
+def skipped(component: Any, tz: str) -> str:
+    """The rule's cancelled times (EXDATE, one property or several), as `;EXDATE=…` local, or nothing."""
+    found = component.get("EXDATE")
+    lists = found if isinstance(found, list) else [found] if found is not None else []
+    moments = sorted({at for lst in lists for d in lst.dts if (at := local(d.dt, tz))})
+    return ";EXDATE=" + ",".join(m.replace("-", "").replace(":", "") + "00" for m in moments) if moments else ""
 
 
 def from_facts(e: Event, read: Reading) -> list[Proposed]:

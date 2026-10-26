@@ -188,10 +188,12 @@ def send(
     tz = settings["time"].timezone
     if link is not None and link.kind != "gcal":
         return  # queued before its calendar turned out to be the Mac's: nothing to send to Google
-    if job["op"] == "delete" or item is None or item.status != "todo":
+    if job["op"] == "delete" or item is None:
         if link is not None and link.calendar_id:
             gcal.delete_event(google_for(link.calendar_id), link.calendar_id, link.event_id)
         return
+    if item.status != "todo":
+        return  # a change saved before it was ticked done (or skipped): nothing to send, and nothing to delete
     if link is not None and link.calendar_id:
         body = change_body(conn, item, tz)
         made = gcal.save_event(google_for(link.calendar_id), link.calendar_id, link.event_id, body)
@@ -204,8 +206,27 @@ def send(
         [user_id, calendar],
     )
     made = gcal.save_event(google_for(calendar), calendar, None, event_body(item, tz))
-    if source is not None:
-        remember(conn, source["id"], made, tz, settings, now_utc, user_id, item)
+    # Tied to the event either way: a calendar Friday doesn't read gets a source of its own, switched off, so the
+    # next change patches this event (instead of making another) and a delete finds it.
+    source_id = source["id"] if source is not None else quiet_source(conn, calendar, user_id)
+    remember(conn, source_id, made, tz, settings, now_utc, user_id, item)
+
+
+def quiet_source(conn: sqlite3.Connection, calendar: str, user_id: int) -> int:
+    """A switched-off source for a Google calendar Friday writes new events to but doesn't read."""
+    listed = next((c for c in kv_get(conn, "google_calendars", [], user_id) if c["id"] == calendar), {})
+    name = base = listed.get("source_name") or listed.get("name") or calendar
+    n = 1
+    while one(conn, "SELECT 1 FROM sources WHERE user_id = ? AND kind = 'gcal' AND name = ?", [user_id, name]):
+        n += 1
+        name = f"{base} {n}"
+    return int(
+        conn.execute(
+            "INSERT INTO sources (user_id, kind, name, config, trusted, enabled) VALUES (?, 'gcal', ?, ?, 0, 0)",
+            [user_id, name, json.dumps({"calendar": calendar})],
+        ).lastrowid
+        or 0
+    )
 
 
 def remember(
