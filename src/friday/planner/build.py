@@ -160,7 +160,7 @@ def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOc
             continue
         start, end_at = parse_utc(item.start_utc), parse_utc(item.end_utc)  # type: ignore[arg-type]
         by_id[item.id] = item
-        if end_at <= now or start >= end + 1440:
+        if start >= end + 1440:
             continue
         kind = kinds.get(item.event_kind or "other", kinds["other"])
         before = item.buffer_before_min if item.buffer_before_min is not None else kind.before_min
@@ -169,6 +169,10 @@ def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOc
         for words, more_before, more_after in travel:
             if has_words(title, words):
                 before, after = max(before, more_before), max(after, more_after)
+        # An event already over still holds the time after it: a lecture ending at 10:00 keeps 10:00-10:15 free when
+        # the plan starts at 10:00 (the next quarter hour from 9:51); dropped as over, its buffer went with it.
+        if end_at + after <= now:
+            continue
         skippable = item.blocks_time and any(has_words(title, o) for o in optional)
         out.append(FixedOcc(item.title, item.event_kind or "other", start, end_at, tuple(item.tags), before, after,
                             item.blocks_time and not skippable, title, skippable))  # fmt: skip

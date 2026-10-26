@@ -6,11 +6,12 @@ from pathlib import Path
 import pytest
 
 from friday.core.items import FieldError
+from friday.core.time import parse_local, to_utc
 from friday.planner.build import build_problem
 from friday.planner.prepare import build_input
 from friday.planner.service import plan_snapshot, replan
 from friday.planner.snapshot import take_snapshot
-from tests.commands.helpers import App, new_app
+from tests.commands.helpers import TZ, App, new_app
 
 
 @pytest.fixture
@@ -681,3 +682,18 @@ def test_the_nightly_fresh_plan_keeps_yours_unless_it_is_better(tmp_path: Path) 
     warm = blocks()
     replan(app.conn, app.now_utc, warm=False)  # as the nightly job does
     assert blocks() == warm
+
+
+def test_the_time_after_a_class_holds_as_the_class_ends(tmp_path: Path) -> None:
+    # At 9:51 the plan starts at 10:00; the lecture ending at 10:00 was dropped as over, and its 15 minutes after
+    # with it, so work was planned at 10:00 on the dot.
+    app = new_app(tmp_path)
+    app.do("add", title="Math 1920 Lecture", when="fixed", start="2026-10-19T09:00", end="2026-10-19T10:00",
+           event_kind="class")  # fmt: skip
+    app.do("add", title="Pre-lab", duration_min=90, due="2026-10-19T12:20")
+    app.now_utc = to_utc(parse_local("2026-10-19T09:51"), TZ)
+    replan(app.conn, app.now_utc)
+    blocks = [
+        b for b in app.do("plan", start="2026-10-19T00:00", end="2026-10-20T00:00")["blocks"] if b["title"] == "Pre-lab"
+    ]
+    assert blocks and min(b["start"] for b in blocks) >= "2026-10-19T10:15"
