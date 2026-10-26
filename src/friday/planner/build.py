@@ -34,18 +34,16 @@ from friday.engine.rules.prices import has_words
 from friday.engine.sampler import SamplerConfig, default_chains
 from friday.engine.scheduler import SchedulerConfig, StepBudget
 
-PLANNER_RULES = frozenset({"travel"})  # rules the build applies itself, not the engine's priced or walled rules
-# Lunch and dinner are never given up for work (asked 26 Oct): a meal routine's minimum is kept in the deadlines stage,
-# priced far above work being late. Whether it may leave its window is the calendar's to say, not the work's: when
-# events leave no room in it (dinner's 5:30-8:30 under a 6pm Zoom and a 7:30 lab), it may go up to MEAL_REACH_MIN
-# outside, priced in the wellbeing stage so it stays close; with room nowhere near, it isn't asked for that day.
+# Rules the build or the job loop applies itself, not the engine's priced or walled rules: time kept around events,
+# and meals Friday decides from tracking (`commands/eating.decide`).
+PLANNER_RULES = frozenset({"travel", "meal_learned"})
+# Whether a meal may leave its window is the calendar's to say, not the work's: when events leave no room in it
+# (dinner's 5:30-8:30 under a 6pm Zoom and a 7:30 lab), it may go up to MEAL_REACH_MIN outside, priced in the
+# wellbeing stage so it stays close; with room nowhere near, it isn't asked for that day. Whether work may take a
+# meal's time is yours to say: a rule ("Never skip lunch or dinner") keeps it in the deadlines stage.
 MEAL_REACH_MIN = 120
-MEALS_KEPT = (
-    {"type": "elastic_shortfall", "name": "meals_kept", "weight": 1.0, "stage": "deadlines",
-     "scope": {"preset": "Routine", "title_regex": ["(?i)" + MEAL.pattern]},
-     "params": {"steep": 10000.0, "gentle": 0.0}},
-    {"type": "meal_window", "name": "meal_window", "weight": 1.0, "stage": "wellbeing", "params": {"price": 2000.0}},
-)  # fmt: skip
+MEAL_WINDOW = {"type": "meal_window", "name": "meal_window", "weight": 1.0, "stage": "wellbeing",
+               "params": {"price": 2000.0}}  # fmt: skip
 LONG_TERM_SCALE = 0.25  # how much Long term work counts when short-term work comes first
 
 
@@ -138,7 +136,7 @@ def build_problem(inp: BuildInput) -> Problem:
     # A rule whose type a plugin should have defined, but didn't load, is off; the plan report says so.
     problem.rules = build_rules(
         [rule.model_dump(exclude={"enabled"}) for rule in settings["rules"] if rule.type in RULE_TYPES and rule.enabled]
-        + list(MEALS_KEPT)
+        + [MEAL_WINDOW]
     )
     for rule in problem.rules:
         rule.prepare(problem)

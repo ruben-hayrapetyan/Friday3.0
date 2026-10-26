@@ -22,7 +22,10 @@ which days), and from a Reading and a strength to one of the planner's rule type
   `travel`, time kept free around those events (to get there, change, shower), on top of each kind's;
 - `exam prep as close to the exam as possible`, `prep for the math quiz close to the quiz with a day of buffer`,
   `readings as late as possible`: `close_to_due`, work planned in the last free time before it's due (for prep, the
-  exam), or before a buffer kept clear ahead of it.
+  exam), or before a buffer kept clear ahead of it;
+- `never skip lunch or dinner`, `always keep my meals`: those meals' routines kept even when work is late
+  (`elastic_shortfall` in the deadlines stage); `let Friday decide breakfast`, `learn whether I have breakfast`:
+  Friday plans that meal or stops, and when, from what meal tracking learns (`meal_learned`, applied each night).
 """
 
 import re
@@ -34,7 +37,7 @@ from friday.core.time import ampm_in
 Strength = Literal["Prefer", "Strongly", "Always"]
 Kind = Literal[
     "window", "days", "free", "cap", "early", "after", "pace", "deadlines", "optional", "ahead", "night_before",
-    "around", "close",
+    "around", "close", "meals_kept", "meals_learned",
 ]  # fmt: skip
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 NAMES = {
@@ -131,8 +134,8 @@ def read(text: str) -> tuple[Reading | None, Strength]:
     t = re.sub(r"\s+", " ", t)
     negated = bool(re.search(r"\b(no|never|don't|not|avoid)\b", t))
     t = re.sub(r"\b(no|never|don't do|don't|do not|not|avoid)\b", " ", t)
-    readers = (read_pace, read_around, read_ahead, read_optional, read_night_before, read_close, read_cap, read_early,
-               read_free, read_window, read_days, read_after, read_deadlines)  # fmt: skip
+    readers = (read_pace, read_meals, read_around, read_ahead, read_optional, read_night_before, read_close, read_cap,
+               read_early, read_free, read_window, read_days, read_after, read_deadlines)  # fmt: skip
     for parse in readers:
         found = parse(" " + " ".join(t.split()) + " ", negated)
         if found:
@@ -324,6 +327,56 @@ def read_close(t: str, negated: bool) -> Reading | None:
     return Reading("close", what, events=(specific,) if specific else None, before_min=buffer or None)
 
 
+MEAL_NAMES = ("breakfast", "lunch", "dinner")
+MEAL = r"(?:breakfast|brunch|lunch|dinner|supper)"
+MEALS = rf"((?:(?:all |all of )?(?:my |the )?)?(?:{MEAL}|meals?)(?:\s*(?:,|and|or|&)\s*{MEAL})*)"
+DECIDES = r"(?:decides?|learns?|figures? out|works? out)"
+
+
+def meals_in(words: str) -> tuple[str, ...]:
+    """The meals named: `lunch or dinner`, `my meals` (all three), brunch as lunch and supper as dinner."""
+    if re.search(r"\bmeals?\b", words):
+        return MEAL_NAMES
+    said = {"brunch": "lunch", "supper": "dinner"}
+    found = {said.get(w, w) for w in re.findall(r"breakfast|brunch|lunch|dinner|supper", words)}
+    return tuple(m for m in MEAL_NAMES if m in found)
+
+
+def read_meals(t: str, negated: bool) -> Reading | None:
+    """Meals kept, whatever the work (`never skip lunch or dinner`, `always keep my meals`, `dinner is
+    non-negotiable`), or left to what Friday learns (`let Friday decide breakfast`, `learn whether I have
+    breakfast`, `plan breakfast only if I usually have it`)."""
+    if m := (
+        re.search(rf"^ ?(?:let )?friday {DECIDES} (?:(?:whether|if|when) (?:have |eat )?)?{MEALS}", t)
+        or re.search(rf"^ ?(?:learn|figure out|work out) (?:(?:whether|if|when) )?(?:have |eat )?{MEALS}", t)
+        or re.search(rf"^ ?(?:plan )?{MEALS} only (?:if|when) (?:usually )?(?:have|eat) (?:it|them)", t)
+    ):
+        meals = meals_in(m[1])
+        return Reading("meals_learned", "meals", events=meals) if meals else None
+    kept = (
+        (negated and re.search(rf"^ ?(?:skip|miss|drop|give up|lose|cut) (?:on )?{MEALS}\b", t))
+        or (negated and re.search(rf"^ ?{MEALS} (?:is|are|gets?) (?:skipped|missed|dropped|cut|given up)\b", t))
+        or re.search(rf"^ ?(?:keep|protect|eat|have) {MEALS}(?: no matter what| every day| whatever)?\b", t)
+        or re.search(rf"^ ?{MEALS} (?:is|are) (?:non-?negotiable|a must|mandatory|required|protected|sacred)\b", t)
+    )
+    if kept:
+        meals = meals_in(kept[1])
+        return Reading("meals_kept", "meals", events=meals) if meals else None
+    return None
+
+
+def named_meals(r: Reading) -> tuple[str, ...]:
+    """The meals a reading names, however they were given (Claude's overrides too); all three when none are."""
+    return meals_in(" ".join(r.events or ()).lower()) or MEAL_NAMES
+
+
+def meals_said(meals: tuple[str, ...]) -> str:
+    if set(meals) == set(MEAL_NAMES):
+        return "Meals"
+    names = [m.capitalize() if n == 0 else m for n, m in enumerate(meals)]
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+
 def evening(raw: str) -> str | None:
     """A time the day ends at: `10` or `10:00` with no am or pm is the evening's."""
     at = clock(raw)
@@ -499,6 +552,11 @@ def said(r: Reading) -> str:
         names = [titled(e) for e in r.events or ()]
         listed = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
         return f"{listed} {'is' if len(names) == 1 else 'are'} optional: work takes the time when it must"
+    if r.kind == "meals_kept":
+        meals = named_meals(r)
+        return f"{meals_said(meals)} {'is' if len(meals) == 1 else 'are'} never skipped for work"
+    if r.kind == "meals_learned":
+        return f"Let Friday decide {meals_said(named_meals(r)).lower()} from your habits"
     if r.kind == "close":
         spare = f", finished {buffer_said(r.before_min)} before" if r.before_min else ""
         if r.subject == "exam prep":
@@ -585,6 +643,7 @@ def scope_of(subject: str, areas: list[str], presets: list[str]) -> dict[str, An
 
 
 PRICE = {"Prefer": 2.0, "Strongly": 6.0}
+MEAL_KEPT = 10000.0  # a quarter hour short of a kept meal: far above what work being late can cost
 CLOSE_INSIDE = 10.0  # an hour inside the buffer you keep before a due: more than a week early costs
 AHEAD_PRICE = 1.0  # among your preferences, below a Prefer rule: work takes it before late nights or broken rules
 WEIGHT = {"Prefer": 1.0, "Strongly": 3.0, "Always": 10.0}
@@ -609,6 +668,14 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
     if r.kind == "deadlines":  # built in: `rule_add` makes sure it's on rather than adding a second one
         return {"name": "late_work", "type": "late_work", "weight": 10.0, "scope": None, "reason": sentence(r),
                 "params": {}}  # fmt: skip
+    if r.kind == "meals_kept":  # their minimum in the deadlines stage, priced far above work being late
+        names = "|".join(named_meals(r)).replace("dinner", "dinner|supper").replace("lunch", "lunch|brunch")
+        scope = {"preset": "Routine", "title_regex": [rf"(?i)\b({names})s?\b"]}
+        return {"name": name, "type": "elastic_shortfall", "weight": 1.0, "stage": "deadlines", "scope": scope,
+                "reason": sentence(r), "params": {"steep": MEAL_KEPT, "gentle": 0.0}}  # fmt: skip
+    if r.kind == "meals_learned":  # not a priced rule: each night the learned meal routines are planned or stopped
+        return {"name": name, "type": "meal_learned", "weight": 0.0, "scope": None, "reason": sentence(r),
+                "params": {"meals": list(named_meals(r))}}  # fmt: skip
     if r.kind == "close":  # each hour costs more the earlier it is; Always rules out the buffer before the due
         scope = scope_of(r.subject, areas, presets) or {}
         if r.events:

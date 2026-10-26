@@ -55,6 +55,7 @@ def test_nightly_closes_yesterday_backs_up_and_asks_for_a_cold_replan(app: App, 
         "publish",
         "event_writes",
         "ratings",
+        "meals",
     ]
     assert [r["last_error"] for r in app.table("job_runs") if r["last_error"]] == []
     assumed = [(p["item_id"], p["minutes"]) for p in app.table("progress") if p["source"] == "assumed"]
@@ -87,7 +88,7 @@ def test_tick_replans_when_a_block_boundary_passed_and_not_for_a_timer(app: App,
     worker = Worker()
     assert (
         run_jobs(app, worker, tmp_path)
-        == ["tick", "notify", "questions", "config", "sync", "publish", "event_writes", "ratings"]
+        == ["tick", "notify", "questions", "config", "sync", "publish", "event_writes", "ratings", "meals"]
         and worker.requests == []
     )
     app.at("2026-10-19T09:15").do("start", id=1)  # the timer is an overlay on the plan, not a reason to replan
@@ -121,3 +122,14 @@ def test_the_daemon_log_file_takes_every_logger_under_friday(tmp_path: Path) -> 
     logging.getLogger("friday.worker").warning("the solver worker exited")
     text = where.read_text()
     assert "friday.commands: add by you: C7" in text and "WARNING friday.worker" in text
+
+
+def test_meals_you_let_friday_decide_are_planned_by_the_job(app: App, tmp_path: Path) -> None:
+    app.do("settings_set", key="meal_tracking", value={"on": True})
+    for day in range(12, 19):
+        app.do("meal_log", kind="breakfast", start=f"2026-10-{day}T08:00", end=f"2026-10-{day}T08:15")
+    app.do("rule_add", text="Let Friday decide breakfast")
+    worker = Worker()
+    run_jobs(app, worker, tmp_path)
+    assert any(r["title"] == "Breakfast" for r in app.table("items"))
+    assert {"warm": True, "reason": "meals"} in worker.requests

@@ -83,7 +83,7 @@ def breakfasts(app: App) -> dict[str, Any]:
     app.do("settings_set", key="meal_tracking", value={"on": True})
     for day in range(12, 19):
         app.do("meal_log", kind="breakfast", start=f"2026-10-{day}T08:00", end=f"2026-10-{day}T08:15")
-    return {"plan": True}
+    return {"kind": "breakfast", "plan": True}
 
 
 def gym(app: App) -> dict[str, Any]:
@@ -314,7 +314,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "meal_remove": lambda app: {"id": eating(app)},
     "meal_use_length": longer_lunches,
     "meal_use_time": late_lunches,
-    "meal_breakfast": breakfasts,
+    "meal_plan": breakfasts,
     "other_way_pick": lambda app: {"weights": {"energy": 2.0}, "seed": 1, "rule_totals": {"energy": 100}},
     "add": add_sample,
     "edit": lambda app: {"id": essay(app), "title": "long essay", "duration_min": 180},

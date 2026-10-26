@@ -63,6 +63,10 @@ EFFECT = {
     "the plan says when one gives way",
     "before_event": "Friday ends those days early when you're going (not when it plans work into that event)",
     "travel": "Friday keeps that time free around them, to get there and back, on top of each kind's",
+    "meals_kept": "Work never takes that time: when it would, the work is late instead. When events fill a meal's "
+    "usual time, Friday plans it just outside",
+    "meal_learned": "From what you track in Sleep & meals, each night Friday plans it or stops, and moves it to when "
+    "you eat and how long you take",
     "close_to_due": "Friday plans it in the last free time before it's due (prep: before its exam), each day earlier "
     "costing a little more; a buffer you name is kept clear",
     "ahead": "Friday plans work into that time first and leaves it free only when everything fits without it; each "
@@ -100,7 +104,9 @@ def rule_read(ctx: Ctx, inp: RuleTextInput) -> RuleReadOut:
         return RuleReadOut(reading=None, strength=strength, sentence="", effect="Friday can’t read that as a rule yet.")
     areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
     new = spec(reading, strength, "preview", areas, presets)
-    effect = EFFECT.get(reading.kind if reading.kind == "ahead" else new["type"], "")
+    effect = EFFECT.get(reading.kind if reading.kind in ("ahead", "meals_kept") else new["type"], "")
+    if reading.kind == "meals_learned" and not ctx.settings["meal_tracking"].on:
+        effect += ". Meal tracking is off: turn it on in Sleep & meals so Friday has something to learn from"
     if reading.events:
         found = events_named(ctx, reading.events)
         effect += f". Matches {', '.join(found)}" if found else ". No event has those words in its title yet"
@@ -118,7 +124,12 @@ def rule_read(ctx: Ctx, inp: RuleTextInput) -> RuleReadOut:
     )
 
 
-NOT_COMPARED = {"pace", "deadlines"}  # settings, not rules: a pace replaces that day's, and deadlines are built in
+NOT_COMPARED = {
+    "pace",
+    "deadlines",
+    "meals_kept",
+    "meals_learned",
+}  # settings, not rules: a pace replaces that day's, and deadlines are built in
 
 
 def replaced_paces(ctx: Ctx, days: dict[str, str]) -> str:

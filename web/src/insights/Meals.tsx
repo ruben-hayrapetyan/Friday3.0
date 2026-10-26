@@ -1,8 +1,9 @@
 // Meals (Insights): what your tracked meals say, while tracking is on (Sleep & meals has the switch, and the meals to
 // log or put right). When you usually eat each meal, how much that moves, how long it takes and how often you skip it,
 // weekdays and weekends apart; the last two weeks on one timeline from 6am to 2am; and what's learned offered with one
-// click each: a routine's length when you take longer or shorter, its window when you eat well outside it, and
-// breakfast planned when you have it most days (or no longer, when you mostly skip it).
+// click each: a routine's length when you take longer or shorter, its window when you eat well outside it, and a meal
+// planned when you have it most days (or no longer, when you mostly skip it). Meals a rule leaves to Friday ("Let
+// Friday decide breakfast") get no button: Friday applies those itself that night, and says so.
 
 import { useState } from "react"
 import { useNavigate } from "react-router"
@@ -150,13 +151,24 @@ function Timeline({ days }: { days: Schemas["MealDayOut"][] }) {
 function Offers({ meals }: { meals: Schemas["MealsOut"] }) {
   const length = useCommand("meal_use_length", { label: (o) => o.result.message ?? "Saved" })
   const time = useCommand("meal_use_time", { label: (o) => o.result.message ?? "Saved" })
-  const breakfast = useCommand("meal_breakfast", { label: (o) => o.result.message ?? "Saved" })
+  const plan = useCommand("meal_plan", { label: (o) => o.result.message ?? "Saved" })
   const changes = meals.changes ?? []
   const times = meals.times ?? []
-  if (!changes.length && !times.length && !meals.breakfast) return null
+  const plans = meals.plans ?? []
+  if (!changes.length && !times.length && !plans.length) return null
   type Kind = "breakfast" | "lunch" | "dinner"
   const row = { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 13 } as const
   const button = { fontSize: 12, padding: "2px 10px" }
+  const decided = new Set(meals.decided ?? [])
+  // A meal you let Friday decide: what's offered happens tonight, without a click.
+  const act = (kind: string, label: string, onClick: () => void) =>
+    decided.has(kind) ? (
+      <span className="fr-kicker">Friday does this tonight</span>
+    ) : (
+      <button className="btn btn-secondary fr-press" onClick={onClick} style={button}>
+        {label}
+      </button>
+    )
   return (
     <div className="fr-well" style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px 14px" }}>
       <span style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 500 }}>
@@ -169,9 +181,7 @@ function Offers({ meals }: { meals: Schemas["MealsOut"] }) {
             {named(c.kind)} takes you about <b style={{ fontWeight: 500 }}>{dur(c.usual_min)}</b>
             <span style={{ color: "var(--color-neutral-500)" }}>; Friday plans {dur(c.planned_min)}</span>
           </span>
-          <button className="btn btn-secondary fr-press" onClick={() => length({ kind: c.kind as Kind })} style={button}>
-            Plan {dur(Math.max(15, Math.round(c.usual_min / 15) * 15))}
-          </button>
+          {act(c.kind, `Plan ${dur(Math.max(15, Math.round(c.usual_min / 15) * 15))}`, () => length({ kind: c.kind as Kind }))}
         </span>
       ))}
       {times.map((t) => (
@@ -180,32 +190,25 @@ function Offers({ meals }: { meals: Schemas["MealsOut"] }) {
             You usually have {t.kind} around <b style={{ fontWeight: 500 }}>{ampm(t.usual_start)}</b>
             <span style={{ color: "var(--color-neutral-500)" }}>; it's planned {ampm(t.start)}–{ampm(t.end)}</span>
           </span>
-          <button className="btn btn-secondary fr-press" onClick={() => time({ kind: t.kind as Kind })} style={button}>
-            Plan {ampm(t.new_start)}–{ampm(t.new_end)}
-          </button>
+          {act(t.kind, `Plan ${ampm(t.new_start)}–${ampm(t.new_end)}`, () => time({ kind: t.kind as Kind }))}
         </span>
       ))}
-      {meals.breakfast === "plan" && (
-        <span style={row}>
-          <span>
-            You have breakfast most days, around <b style={{ fontWeight: 500 }}>{ampm(meals.breakfast_at ?? "08:00")}</b>
-            <span style={{ color: "var(--color-neutral-500)" }}>; Friday doesn't plan it</span>
-          </span>
-          <button className="btn btn-secondary fr-press" onClick={() => breakfast({ plan: true })} style={button}>
-            Plan breakfast
-          </button>
+      {plans.map((p) => (
+        <span key={`plan-${p.kind}`} style={row}>
+          {p.plan ? (
+            <span>
+              You have {p.kind} most days, around <b style={{ fontWeight: 500 }}>{ampm(p.usual_start ?? "08:00")}</b>
+              <span style={{ color: "var(--color-neutral-500)" }}>; Friday doesn't plan it</span>
+            </span>
+          ) : (
+            <span>
+              You usually skip {p.kind}
+              <span style={{ color: "var(--color-neutral-500)" }}>; Friday still plans it</span>
+            </span>
+          )}
+          {act(p.kind, p.plan ? `Plan ${p.kind}` : "Stop planning it", () => plan({ kind: p.kind as Kind, plan: p.plan }))}
         </span>
-      )}
-      {meals.breakfast === "stop" && (
-        <span style={row}>
-          <span>
-            You usually skip breakfast<span style={{ color: "var(--color-neutral-500)" }}>; Friday still plans it</span>
-          </span>
-          <button className="btn btn-secondary fr-press" onClick={() => breakfast({ plan: false })} style={button}>
-            Stop planning it
-          </button>
-        </span>
-      )}
+      ))}
     </div>
   )
 }

@@ -176,12 +176,16 @@ def due_order(c: Compiled, owner: np.ndarray, config: SchedulerConfig, cancel: n
 
 
 def meals_first(c: Compiled, owner: np.ndarray, config: SchedulerConfig, cancel: np.ndarray) -> np.ndarray | None:
-    """Meals short of their minimum placed first: each in the free run nearest its own window (inside it first), what
-    work sat there and in its travel taken out and placed again after; returned when it scores better. A plan with
-    work where dinner could go couldn't trade the two a slot at a time, so lunch and dinner stayed off the plan."""
+    """Meals a rule keeps from work (the deadlines stage) short of their minimum placed first: each in the free run
+    nearest its own window (inside it first), what work sat there and in its travel taken out and placed again after;
+    returned when it scores better. A plan with work where dinner could go couldn't trade the two a slot at a time, so
+    lunch and dinner stayed off the plan."""
     M, problem = c.m, c.problem
     index = {k: i for i, k in enumerate(c.keys)}
-    meals = [k for k, item in problem.items.items() if item.meal_window is not None]
+    kept = [r for r in problem.rules if r.stage == "deadlines" and r.type == "elastic_shortfall"]
+    meals = [
+        k for k, item in problem.items.items() if item.meal_window is not None and any(r.applies(item) for r in kept)
+    ]
     held = {k: int(sum(M.units[s] for s in range(M.S) if owner[s] == index[k])) for k in meals}
     short = [k for k in meals if held[k] < problem.items[k].min]
     if not short:

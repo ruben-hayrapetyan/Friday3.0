@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from friday.commands.eating import decide
 from friday.core.items import FieldError
 from friday.core.time import parse_local, to_utc
 from friday.planner.service import replan
@@ -158,19 +159,69 @@ def test_lunch_eaten_well_after_its_window_is_offered_a_later_window(app: App) -
     assert app.do("meals")["times"] == []
 
 
+def breakfasts(app: App, days: range, skipped: bool = False) -> None:
+    for back in days:
+        day = date(2026, 10, 19) - timedelta(days=back)
+        if skipped:
+            app.do("meal_skip", kind="breakfast", date=day.isoformat())
+        else:
+            app.do("meal_log", kind="breakfast", start=f"{day}T08:00", end=f"{day}T08:15")
+
+
 def test_breakfast_is_planned_once_you_have_it_most_days_and_dropped_when_you_skip_it(app: App) -> None:
     on(app)
-    for back in range(1, 8):
-        day = date(2026, 10, 19) - timedelta(days=back)
-        app.do("meal_log", kind="breakfast", start=f"{day}T08:00", end=f"{day}T08:15")
-    out = app.do("meals")
-    assert (out["breakfast"], out["breakfast_at"], out["breakfast_min"]) == ("plan", "08:00", 15)
-    assert "around 8am, 15 min" in app.do("meal_breakfast", plan=True)["message"]
+    breakfasts(app, range(1, 8))
+    (offered,) = app.do("meals")["plans"]
+    assert offered == {"kind": "breakfast", "plan": True, "usual_start": "08:00", "usual_min": 15}
+    assert "around 8am, 15 min" in app.do("meal_plan", kind="breakfast", plan=True)["message"]
     made = [r for r in app.table("items") if r["title"] == "Breakfast" and r["occurrence_date"] == "2026-10-19"]
     assert made and made[0]["release_utc"] == "2026-10-19T11:15Z"  # 7:15am EDT, 45 minutes before
-    assert app.do("meals")["breakfast"] is None
-    for back in range(8, 16):  # a week and more of skipping it
-        app.do("meal_skip", kind="breakfast", date=(date(2026, 10, 19) - timedelta(days=back)).isoformat())
-    assert app.do("meals")["breakfast"] == "stop"
-    app.do("meal_breakfast", plan=False)
-    assert app.do("meals")["breakfast"] is None
+    assert app.do("meals")["plans"] == []
+    breakfasts(app, range(8, 16), skipped=True)  # 8 of 15 days skipped: neither most nor few, so it stays
+    assert app.do("meals")["plans"] == []
+    breakfasts(app, range(16, 21), skipped=True)  # 13 of 20
+    assert [(p["kind"], p["plan"]) for p in app.do("meals")["plans"]] == [("breakfast", False)]
+    app.do("meal_plan", kind="breakfast", plan=False)
+    assert app.do("meals")["plans"] == []
+    with pytest.raises(FieldError, match="no breakfast routine"):
+        app.do("meal_plan", kind="breakfast", plan=False)
+
+
+def test_any_meal_can_be_planned_or_stopped_from_tracking(app: App) -> None:
+    on(app)
+    lunch_routine(app)
+    for back in range(1, 8):
+        day = date(2026, 10, 19) - timedelta(days=back)
+        app.do("meal_skip", kind="lunch", date=day.isoformat())
+        app.do("meal_log", kind="dinner", start=f"{day}T18:30", end=f"{day}T19:15")
+    plans = {p["kind"]: p["plan"] for p in app.do("meals")["plans"]}
+    assert plans == {"lunch": False, "dinner": True}
+    assert "around 6:30pm, 45 min" in app.do("meal_plan", kind="dinner", plan=True)["message"]
+    (dinner,) = [r for r in app.table("items") if r["title"] == "Dinner" and r["occurrence_date"] == "2026-10-19"]
+    assert (dinner["release_utc"], dinner["due_utc"]) == ("2026-10-19T21:45Z", "2026-10-20T00:00Z")  # 5:45 to 8pm
+    with pytest.raises(FieldError, match="dinner is already planned"):
+        app.do("meal_plan", kind="dinner", plan=True)
+
+
+def test_meals_you_let_friday_decide_are_applied_once_a_night(app: App) -> None:
+    on(app)
+    lunch_routine(app)  # planned 11:30am to 2:30pm, but you eat at 1:45
+    breakfasts(app, range(1, 8))
+    for back in range(1, 8):
+        day = date(2026, 10, 19) - timedelta(days=back)
+        app.do("meal_log", kind="lunch", start=f"{day}T13:45", end=f"{day}T14:15")
+    assert decide(app.conn, app.now_utc) == []  # no rule: only offered
+    app.do("rule_add", text="Let Friday decide breakfast")
+    assert app.do("meals")["decided"] == ["breakfast"]
+    (said,) = decide(app.conn, app.now_utc)
+    assert "Breakfast is planned around 8am" in said
+    assert [c["actor"] for c in app.table("command_log") if c["command"] == "meal_plan"] == ["job"]
+    assert [t["kind"] for t in app.do("meals")["times"]] == ["lunch"]  # lunch isn't Friday's to move
+    assert decide(app.conn, app.now_utc) == []  # once a day
+    app.do("rule_add", text="Friday decides lunch too")  # a changed rule acts the same day
+    assert app.do("meals")["decided"] == ["breakfast", "lunch"]
+    (said,) = decide(app.conn, app.now_utc)
+    assert "12:30pm to 3:30pm" in said
+    app.do("settings_set", key="meal_tracking", value={"on": False})
+    app.do("rule_add", text="Let Friday decide dinner")
+    assert decide(app.conn, app.now_utc) == []  # nothing to learn from with tracking off

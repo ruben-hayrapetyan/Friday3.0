@@ -742,15 +742,18 @@ def meals_on(app: App, day: str) -> dict[str, list[str]]:
     return {m: [b["start"][11:] for b in blocks if b["title"] == m] for m in ("Lunch", "Dinner")}
 
 
-def test_lunch_and_dinner_are_never_given_up_for_work(tmp_path: Path) -> None:
-    # Far more due tonight than fits: work used to take lunch and dinner (meals were a wellbeing cost, below
-    # deadlines). Now they're kept, and only the work is late.
+@pytest.mark.parametrize("kept", [True, False])
+def test_lunch_and_dinner_are_given_up_for_work_only_without_a_rule(tmp_path: Path, kept: bool) -> None:
+    # Far more due tonight than fits. Meals are a wellbeing cost, below deadlines, so work takes them; with "Never
+    # skip lunch or dinner" they're kept, and only the work is late.
     app = new_app(tmp_path)
     meals_day(app)
+    if kept:
+        app.do("rule_add", text="Never skip lunch or dinner")
     app.do("add", title="Huge essay", duration_min=12 * 60, due="2026-10-19T23:00")
     replan(app.conn, app.now_utc)
     eaten = meals_on(app, "2026-10-19")
-    assert eaten["Lunch"] and eaten["Dinner"], eaten
+    assert bool(eaten["Lunch"] and eaten["Dinner"]) == kept, eaten
     assert app.do("status")["late"]
 
 

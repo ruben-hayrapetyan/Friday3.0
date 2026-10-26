@@ -3581,10 +3581,10 @@
     }
    }
   },
-  "/api/c/meal_breakfast": {
+  "/api/c/meal_plan": {
    "post": {
-    "summary": "Plan breakfast at the time and length you have it, or stop planning it (what Sleep & meals offers).",
-    "operationId": "meal_breakfast",
+    "summary": "Plan a meal every day at the time and length you have it, or stop planning it (what Sleep & meals offers).",
+    "operationId": "meal_plan",
     "parameters": [
      {
       "name": "preview",
@@ -3623,7 +3623,7 @@
      "content": {
       "application/json": {
        "schema": {
-        "$ref": "#/components/schemas/MealBreakfastInput"
+        "$ref": "#/components/schemas/MealPlanInput"
        }
       }
      }
@@ -3634,7 +3634,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/MealBreakfastResult"
+         "$ref": "#/components/schemas/MealPlanResult"
         }
        }
       }
@@ -15132,79 +15132,6 @@
     ],
     "title": "MaterializeResult"
    },
-   "MealBreakfastInput": {
-    "properties": {
-     "plan": {
-      "type": "boolean",
-      "title": "Plan"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "plan"
-    ],
-    "title": "MealBreakfastInput"
-   },
-   "MealBreakfastResult": {
-    "properties": {
-     "command_id": {
-      "anyOf": [
-       {
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Command Id"
-     },
-     "result": {
-      "$ref": "#/components/schemas/Changed"
-     },
-     "provisional": {
-      "anyOf": [
-       {
-        "items": {
-         "$ref": "#/components/schemas/BlockOut"
-        },
-        "type": "array"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Provisional"
-     },
-     "changes": {
-      "anyOf": [
-       {
-        "$ref": "#/components/schemas/ChangeOut"
-       },
-       {
-        "type": "null"
-       }
-      ]
-     },
-     "preview": {
-      "type": "boolean",
-      "title": "Preview",
-      "default": false
-     },
-     "repeated": {
-      "type": "boolean",
-      "title": "Repeated",
-      "default": false
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "command_id",
-     "result"
-    ],
-    "title": "MealBreakfastResult"
-   },
    "MealChangeOut": {
     "properties": {
      "kind": {
@@ -15667,6 +15594,131 @@
      "date"
     ],
     "title": "MealOut"
+   },
+   "MealPlanInput": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "enum": [
+       "breakfast",
+       "lunch",
+       "dinner"
+      ],
+      "title": "Kind"
+     },
+     "plan": {
+      "type": "boolean",
+      "title": "Plan"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "kind",
+     "plan"
+    ],
+    "title": "MealPlanInput"
+   },
+   "MealPlanOut": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "title": "Kind"
+     },
+     "plan": {
+      "type": "boolean",
+      "title": "Plan"
+     },
+     "usual_start": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Usual Start"
+     },
+     "usual_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Usual Min"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "kind",
+     "plan"
+    ],
+    "title": "MealPlanOut",
+    "description": "A meal you have most days with none planned (plan: true), or one planned that you mostly skip (false)."
+   },
+   "MealPlanResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "MealPlanResult"
    },
    "MealRef": {
     "properties": {
@@ -16147,42 +16199,21 @@
       "title": "Times",
       "default": []
      },
-     "breakfast": {
-      "anyOf": [
-       {
-        "type": "string",
-        "enum": [
-         "plan",
-         "stop"
-        ]
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Breakfast"
+     "plans": {
+      "items": {
+       "$ref": "#/components/schemas/MealPlanOut"
+      },
+      "type": "array",
+      "title": "Plans",
+      "default": []
      },
-     "breakfast_at": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Breakfast At"
-     },
-     "breakfast_min": {
-      "anyOf": [
-       {
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Breakfast Min"
+     "decided": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Decided",
+      "default": []
      }
     },
     "additionalProperties": false,

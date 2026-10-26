@@ -304,3 +304,42 @@ def test_close_to_the_exam_becomes_a_price_on_that_prep() -> None:
     assert re.search(words, "Prep: Math 1920 Quiz 3") and not re.search(words, "Prep: Math 1920 Prelim 2")
     always = spec(reading, "Always", "you:quiz", [], ["Exam prep"])
     assert always["params"]["inside"] == "forbid"
+
+
+@pytest.mark.parametrize(
+    ("text", "kind", "meals"),
+    [
+        ("Never skip lunch or dinner", "meals_kept", ("lunch", "dinner")),
+        ("Lunch and dinner are never skipped", "meals_kept", ("lunch", "dinner")),
+        ("Dinner is non-negotiable", "meals_kept", ("dinner",)),
+        ("never miss supper", "meals_kept", ("dinner",)),
+        ("Always keep my meals", "meals_kept", ("breakfast", "lunch", "dinner")),
+        ("Let Friday decide breakfast", "meals_learned", ("breakfast",)),
+        ("Let Friday decide whether I have breakfast", "meals_learned", ("breakfast",)),
+        ("Learn whether I have breakfast", "meals_learned", ("breakfast",)),
+        ("Plan breakfast only if I usually have it", "meals_learned", ("breakfast",)),
+        ("Friday decides all my meals", "meals_learned", ("breakfast", "lunch", "dinner")),
+    ],
+)
+def test_meals_kept_from_work_or_left_to_friday(text: str, kind: str, meals: tuple) -> None:
+    assert read(text)[0] == Reading(kind, "meals", events=meals)
+
+
+def test_kept_meals_hold_in_the_deadlines_stage_and_learned_ones_are_the_jobs() -> None:
+    reading, strength = read("Never skip lunch or dinner")
+    assert reading is not None and sentence(reading) == "Lunch and dinner are never skipped for work"
+    kept = spec(reading, strength, "you:meals", [], [])
+    assert (kept["type"], kept["stage"], kept["scope"]["preset"]) == ("elastic_shortfall", "deadlines", "Routine")
+    (words,) = kept["scope"]["title_regex"]
+    assert all(re.search(words, t) for t in ("Lunch", "Dinner", "Supper")) and not re.search(words, "Breakfast")
+    reading, strength = read("Let Friday decide breakfast")
+    assert reading is not None and sentence(reading) == "Let Friday decide breakfast from your habits"
+    learned = spec(reading, strength, "you:breakfast", [], [])
+    assert (learned["type"], learned["params"]) == ("meal_learned", {"meals": ["breakfast"]})
+    claude = Reading("meals_kept", "meals", events=["Supper"])  # Claude's overrides: a list, in its own words
+    assert sentence(claude) == "Dinner is never skipped for work"
+
+
+def test_skipping_a_meal_when_busy_is_not_keeping_it() -> None:
+    reading, _ = read("skip lunch if there's too much work")
+    assert reading is not None and reading.kind != "meals_kept"

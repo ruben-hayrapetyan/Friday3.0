@@ -9,6 +9,8 @@ after downtime. `job_runs` remembers when each job last ran.
 - `config` (every minute): apply `friday.toml` when it changed (`server/config.py`).
 - `sync` (every minute): read the sources that are due and make suggestions (`commands/fetching.py`).
 - `publish` (every minute): put a changed plan on the "Friday" Google calendar, debounced (`commands/google.py`).
+- `meals` (every minute, acting once a day): what's learned of the meals your rules leave to Friday, applied
+  (`commands/eating.decide`).
 """
 
 import logging
@@ -20,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from friday.commands.delivery import deliver
+from friday.commands.eating import decide
 from friday.commands.eventwrites import failed_writes, write_events
 from friday.commands.fetching import failing_sources, sync
 from friday.commands.google import publish_plan
@@ -80,6 +83,7 @@ def run_due(
         ("publish", every_minute, publish),
         ("event_writes", every_minute, send_event_writes),
         ("ratings", every_minute, rate_events),
+        ("meals", every_minute, decide_meals),
     )
     for name, is_due, job in jobs:
         if not is_due(last_run(conn, name, user_id), now_utc, settings):
@@ -282,6 +286,22 @@ def rate_events(
 ) -> None:
     """How much each new event needs attending, for triage's skips (COMBINED.md 56)."""
     rate_upcoming(conn, now_utc, user_id, SAMPLE_APIS.get("client"))
+
+
+def decide_meals(
+    conn: sqlite3.Connection,
+    now_utc: int,
+    settings: dict[str, Any],
+    hub: Hub,
+    supervisor: Supervisor | None,
+    backups: Path,
+    user_id: int,
+) -> None:
+    """Meals planned or not, moved and resized from what tracking learns, for those you let Friday decide."""
+    if decide(conn, now_utc, user_id):
+        hub.publish("items.changed")
+        if supervisor is not None:
+            supervisor.request(0, reason="meals")
 
 
 def questions_due(last: int | None, now_utc: int, settings: dict[str, Any]) -> bool:

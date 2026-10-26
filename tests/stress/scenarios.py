@@ -638,6 +638,23 @@ def check_eating_now(w: World) -> list[str]:
     return expect(not any(b["start"] < at(0, "12:45") for b in essay), f"work planned while you eat: {essay[:2]}")
 
 
+def meals_kept_by_rule(folder: Path) -> World:
+    w = World.fresh(folder, "meals-kept-on-an-overloaded-day", at(0, "08:00"), ZONE)
+    w.do("rule_add", text="Never skip lunch or dinner")
+    w.do("series_add", title="Lunch", preset="Routine", every="day", release_offset_min=450, due_offset_min=630,
+         min_min=15, ideal_min=30, max_min=30)  # fmt: skip
+    w.do("series_add", title="Dinner", preset="Routine", every="day", release_offset_min=810, due_offset_min=990,
+         min_min=30, ideal_min=45, max_min=45)  # fmt: skip
+    w.do("add", title="Huge essay", duration_min=14 * 60, due=at(0, "23:00"))
+    return w
+
+
+def check_meals_kept_by_rule(w: World) -> list[str]:
+    today = w.local(w.now)[:10]
+    eaten = {m: [b for b in blocks_of(w, m) if b["start"][:10] == today] for m in ("Lunch", "Dinner")}
+    return expect(all(eaten.values()), f"a kept meal gave way to work: {eaten}")
+
+
 def repeats_of_every_kind(folder: Path) -> World:
     w = World.fresh(folder, "monthly-and-every-other-week-errands", at(0, "08:00"), ZONE)
     for text in (
@@ -700,4 +717,5 @@ EDGES = (
     Edge("Done with work tonight", done_for_tonight, check_done_for_tonight, {"tick"}),
     Edge("Eating lunch now", eating_now, check_eating_now, {"tick"}),
     Edge("Monthly, fortnightly and weekly errands", repeats_of_every_kind, check_repeats_of_every_kind),
+    Edge("Lunch and dinner kept on an overloaded day", meals_kept_by_rule, check_meals_kept_by_rule, {"tick"}),
 )

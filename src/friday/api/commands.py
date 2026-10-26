@@ -219,8 +219,9 @@ class MealLengthInput(Model):
     kind: MealKind  # its routine is planned at the length you usually take, from today
 
 
-class MealBreakfastInput(Model):
-    plan: bool  # plan breakfast at the time and length you have it, or stop planning it
+class MealPlanInput(Model):
+    kind: Literal["breakfast", "lunch", "dinner"]
+    plan: bool  # plan it every day at the time and length you have it, or stop planning it
 
 
 class SleepMarkInput(Model):

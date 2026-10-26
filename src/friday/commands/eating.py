@@ -7,37 +7,43 @@ it holds a timed task), so no work is planned over your meal; done eating ticks 
 and taking a meal back opens it again.
 
 What's learned is offered, never changed without a yes: a routine's length when you take longer or shorter, its window
-when you eat well outside it or off its middle, and breakfast itself: planned when you have it most days and none is,
-no longer planned when you mostly skip it.
+when you eat well outside it or off its middle, and the meal itself: planned when you have it most days and none is,
+no longer planned when you mostly skip it. A rule can say yes ahead for some meals ("Let Friday decide breakfast",
+`meal_learned`): each night `decide` applies what's offered for them, as the job.
 """
 
+import sqlite3
+from collections.abc import Mapping
 from datetime import date, timedelta
+from typing import Any
 
 from friday.api.commands import (
     Changed,
-    MealBreakfastInput,
     MealEditInput,
     MealEndInput,
     MealLengthInput,
     MealLogInput,
+    MealPlanInput,
     MealRef,
     MealSkipInput,
     MealStartInput,
     SeriesRef,
 )
 from friday.api.types import Empty
-from friday.api.views import MealChangeOut, MealDayOut, MealLearnedOut, MealOut, MealsOut, MealTimeOut
+from friday.api.views import MealChangeOut, MealDayOut, MealLearnedOut, MealOut, MealPlanOut, MealsOut, MealTimeOut
 from friday.commands.items import edit_from, set_status
-from friday.commands.registry import Ctx, command, query
+from friday.commands.registry import Ctx, command, query, run
 from friday.commands.series import create_series, edit_series_from, load_series, series_stop
 from friday.core.db import one, rows
 from friday.core.items import FieldError
+from friday.core.settings import minutes_of
 from friday.core.time import UNIT_MIN, ampm, format_local, format_utc, parse_local, parse_utc, planning_date, to_local
 from friday.learn.meals import Learned, Meal, learn, length_changes
-from friday.planner.store import load_item
+from friday.planner.store import kv_get, kv_set, load_item, load_settings
 
 SHIFT_OFF_BY = 45  # minutes a usual meal's middle must be off its window's middle (or outside it) to offer moving it
-BREAKFAST_ROOM = 45  # a planned breakfast's window reaches this far either side of when you have it
+MEAL_ROOM = 45  # a meal Friday starts planning gets a window this far either side of when you have it
+PLAN_BELOW, STOP_FROM = 0.4, 0.6  # skipped on fewer days: plan it; on more: stop. In between it stays as it is
 SHOWN_DAYS = 14
 LEARN_DAYS = 56  # the last eight weeks teach what's usual
 LONGEST_MIN = 4 * 60
@@ -318,16 +324,18 @@ def time_changes(ctx: Ctx, found: list[Learned], planned: dict[str, tuple]) -> l
     return out
 
 
-def breakfast_offer(found: list[Learned], planned: dict[str, tuple]) -> tuple[str | None, Learned | None]:
-    """Breakfast to plan (you have it most days and none is planned) or to stop planning (you mostly skip it)."""
-    usual = usual_of(found, "breakfast")
-    if usual is None or usual.skip_share is None:
-        return None, None
-    if "breakfast" not in planned and usual.skip_share < 0.5 and usual.usual_start:
-        return "plan", usual
-    if "breakfast" in planned and usual.skip_share >= 0.5:
-        return "stop", usual
-    return None, usual
+def plan_offers(found: list[Learned], planned: dict[str, tuple]) -> list[MealPlanOut]:
+    """Meals to plan (you have them most days and none is planned) or to stop planning (you mostly skip them)."""
+    out = []
+    for kind in PLANNED:
+        usual = usual_of(found, kind)
+        if usual is None or usual.skip_share is None:
+            continue
+        start = kind not in planned and usual.skip_share < PLAN_BELOW and usual.usual_start
+        if start or (kind in planned and usual.skip_share >= STOP_FROM):
+            out.append(MealPlanOut(kind=kind, plan=bool(start), usual_start=usual.usual_start,
+                                   usual_min=usual.usual_min))  # fmt: skip
+    return out
 
 
 @command("meal_use_time", affects_plan=True)
@@ -351,27 +359,64 @@ def meal_use_time(ctx: Ctx, inp: MealLengthInput) -> Changed:
     )
 
 
-@command("meal_breakfast", affects_plan=True)
-def meal_breakfast(ctx: Ctx, inp: MealBreakfastInput) -> Changed:
-    """Plan breakfast at the time and length you have it, or stop planning it (what Sleep & meals offers)."""
-    planned = planned_routines(ctx)
+@command("meal_plan", affects_plan=True)
+def meal_plan(ctx: Ctx, inp: MealPlanInput) -> Changed:
+    """Plan a meal every day at the time and length you have it, or stop planning it (what Sleep & meals offers)."""
+    kind, planned = inp.kind, planned_routines(ctx)
     if not inp.plan:
-        if "breakfast" not in planned or planned["breakfast"][0].series_id is None:
-            raise FieldError("plan", "there's no breakfast routine to stop")
-        series_stop(ctx, SeriesRef(id=planned["breakfast"][0].series_id))
-        return Changed(message="Breakfast is no longer planned")
-    if "breakfast" in planned:
-        raise FieldError("plan", "breakfast is already planned")
-    usual = usual_of(learned(ctx), "breakfast")
+        if kind not in planned or planned[kind][0].series_id is None:
+            raise FieldError("plan", f"there's no {kind} routine to stop")
+        series_stop(ctx, SeriesRef(id=planned[kind][0].series_id))
+        return Changed(message=f"{kind.capitalize()} is no longer planned")
+    if kind in planned:
+        raise FieldError("plan", f"{kind} is already planned")
+    usual = usual_of(learned(ctx), kind)
     if usual is None or usual.usual_start is None:
-        raise FieldError("plan", "Friday hasn't learned when you have breakfast yet")
+        raise FieldError("plan", f"Friday hasn't learned when you have {kind} yet")
     length = max(UNIT_MIN, round((usual.usual_min or UNIT_MIN) / UNIT_MIN) * UNIT_MIN)
     start = int(usual.usual_start[:2]) * 60 + int(usual.usual_start[3:])
-    given = {"title": "Breakfast", "preset": "Routine", "min_min": length, "ideal_min": length, "max_min": length}
-    repeat = {"every": "day", "release_offset_min": start - BREAKFAST_ROOM - ctx.day_start,
-              "due_offset_min": start + length + BREAKFAST_ROOM - ctx.day_start}  # fmt: skip
+    start += 1440 if start < ctx.day_start else 0
+    given = {"title": kind.capitalize(), "preset": "Routine", "min_min": length, "ideal_min": length,
+             "max_min": length}  # fmt: skip
+    repeat = {"every": "day", "release_offset_min": start - MEAL_ROOM - ctx.day_start,
+              "due_offset_min": start + length + MEAL_ROOM - ctx.day_start}  # fmt: skip
     create_series(ctx, given, repeat)
-    return Changed(message=f"Breakfast is planned around {ampm(usual.usual_start)}, {length} min, every day")
+    return Changed(message=f"{kind.capitalize()} is planned around {ampm(usual.usual_start)}, {length} min, every day")
+
+
+def decided(settings: Mapping[str, Any]) -> list[str]:
+    """The meals your rules leave to Friday ("Let Friday decide breakfast")."""
+    named = {m for r in settings["rules"] if r.type == "meal_learned" and r.enabled for m in r.params.get("meals", [])}
+    return [kind for kind in PLANNED if kind in named]
+
+
+def decide(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> list[str]:
+    """What's learned of the meals Friday decides, applied as the job: planned or no longer, then moved to when you
+    eat and planned at the length you take. Once a day, and again when the rule changes; returns what changed."""
+    settings = load_settings(conn, user_id)
+    kinds = decided(settings)
+    if not kinds or not settings["meal_tracking"].on:
+        return []
+    day = planning_date(now_utc, settings["time"].timezone, minutes_of(settings["time"].day_start))
+    key = {"date": day.isoformat(), "meals": kinds}
+    if kv_get(conn, "meals_decided", None, user_id) == key:
+        return []
+    said = []
+    do = lambda name, payload: said.append(  # noqa: E731
+        run(conn, name, payload, now_utc=now_utc, actor="job", user_id=user_id, provisional=False).result["message"]
+    )
+    look = lambda: MealsOut(**run(conn, "meals", {}, now_utc=now_utc, user_id=user_id).result)  # noqa: E731
+    for offered in look().plans:
+        if offered.kind in kinds:
+            do("meal_plan", {"kind": offered.kind, "plan": offered.plan})
+    for moved in look().times:
+        if moved.kind in kinds:
+            do("meal_use_time", {"kind": moved.kind})
+    for change in look().changes:
+        if change.kind in kinds:
+            do("meal_use_length", {"kind": change.kind})
+    kv_set(conn, "meals_decided", key, user_id)
+    return said
 
 
 def meal_out(m: Meal) -> MealOut:
@@ -409,7 +454,6 @@ def meals(ctx: Ctx, inp: Empty) -> MealsOut:
     found = learn(every, settings.min_days)
     planned = planned_routines(ctx)
     changes = length_changes(found, {kind: minutes for kind, (_, minutes) in planned.items()})
-    breakfast, usual = breakfast_offer(found, planned)
     return MealsOut(
         on=True,
         eating=meal_out(now) if now else None,
@@ -419,7 +463,6 @@ def meals(ctx: Ctx, inp: Empty) -> MealsOut:
         changes=[MealChangeOut(kind=k, planned_min=planned[k][1], usual_min=v) for k, v in changes.items()],
         min_days=settings.min_days,
         times=time_changes(ctx, found, planned),
-        breakfast=breakfast,  # type: ignore[arg-type]
-        breakfast_at=usual.usual_start if usual else None,
-        breakfast_min=usual.usual_min if usual else None,
+        plans=plan_offers(found, planned),
+        decided=decided(ctx.settings),
     )

@@ -21,7 +21,7 @@ from friday.planner.prepare import build_input
 from friday.planner.snapshot import Snapshot
 
 # Stability is the planner's own concern, not a taste; travel time around events isn't weighed at all.
-NOT_LEARNED = NEVER_LEARNED | {"minimize_changes", "travel"}
+NOT_LEARNED = NEVER_LEARNED | {"minimize_changes", "travel", "meal_learned"}
 SAMPLE_STEPS = 20_000
 SAMPLE_TEMPERATURE = 1.0  # × the median move: plans a user could plausibly prefer either way
 

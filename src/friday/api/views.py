@@ -614,6 +614,15 @@ class MealTimeOut(Model):
     new_end: str
 
 
+class MealPlanOut(Model):
+    """A meal you have most days with none planned (plan: true), or one planned that you mostly skip (false)."""
+
+    kind: str
+    plan: bool
+    usual_start: str | None = None  # HH:MM: when you usually have it
+    usual_min: int | None = None
+
+
 class MealsOut(Model):
     on: bool
     eating: MealOut | None = None  # the meal you're eating now
@@ -623,9 +632,8 @@ class MealsOut(Model):
     changes: list[MealChangeOut] = []  # routine lengths 10 minutes or more off what you take
     min_days: int = 4
     times: list[MealTimeOut] = []  # routines whose window is well off when you eat
-    breakfast: Literal["plan", "stop"] | None = None  # you have breakfast most days with none planned, or skip it
-    breakfast_at: str | None = None  # HH:MM: when you usually have it
-    breakfast_min: int | None = None
+    plans: list[MealPlanOut] = []  # meals to start or stop planning
+    decided: list[str] = []  # meals a rule leaves to Friday: what's learned of them it applies itself, each night
 
 
 class SleepOut(Model):

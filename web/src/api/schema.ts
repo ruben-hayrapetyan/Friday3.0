@@ -973,7 +973,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/c/meal_breakfast": {
+    "/api/c/meal_plan": {
         parameters: {
             query?: never;
             header?: never;
@@ -982,8 +982,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Plan breakfast at the time and length you have it, or stop planning it (what Sleep & meals offers). */
-        post: operations["meal_breakfast"];
+        /** Plan a meal every day at the time and length you have it, or stop planning it (what Sleep & meals offers). */
+        post: operations["meal_plan"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4644,30 +4644,6 @@ export interface components {
              */
             repeated?: boolean;
         };
-        /** MealBreakfastInput */
-        MealBreakfastInput: {
-            /** Plan */
-            plan: boolean;
-        };
-        /** MealBreakfastResult */
-        MealBreakfastResult: {
-            /** Command Id */
-            command_id: number | null;
-            result: components["schemas"]["Changed"];
-            /** Provisional */
-            provisional?: components["schemas"]["BlockOut"][] | null;
-            changes?: components["schemas"]["ChangeOut"] | null;
-            /**
-             * Preview
-             * @default false
-             */
-            preview?: boolean;
-            /**
-             * Repeated
-             * @default false
-             */
-            repeated?: boolean;
-        };
         /** MealChangeOut */
         MealChangeOut: {
             /** Kind */
@@ -4823,6 +4799,49 @@ export interface components {
              * @default false
              */
             skipped?: boolean;
+        };
+        /** MealPlanInput */
+        MealPlanInput: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "breakfast" | "lunch" | "dinner";
+            /** Plan */
+            plan: boolean;
+        };
+        /**
+         * MealPlanOut
+         * @description A meal you have most days with none planned (plan: true), or one planned that you mostly skip (false).
+         */
+        MealPlanOut: {
+            /** Kind */
+            kind: string;
+            /** Plan */
+            plan: boolean;
+            /** Usual Start */
+            usual_start?: string | null;
+            /** Usual Min */
+            usual_min?: number | null;
+        };
+        /** MealPlanResult */
+        MealPlanResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
         };
         /** MealRef */
         MealRef: {
@@ -4991,12 +5010,16 @@ export interface components {
              * @default []
              */
             times?: components["schemas"]["MealTimeOut"][];
-            /** Breakfast */
-            breakfast?: ("plan" | "stop") | null;
-            /** Breakfast At */
-            breakfast_at?: string | null;
-            /** Breakfast Min */
-            breakfast_min?: number | null;
+            /**
+             * Plans
+             * @default []
+             */
+            plans?: components["schemas"]["MealPlanOut"][];
+            /**
+             * Decided
+             * @default []
+             */
+            decided?: string[];
         };
         /** MergeGroup */
         MergeGroup: {
@@ -9684,7 +9707,7 @@ export interface operations {
             };
         };
     };
-    meal_breakfast: {
+    meal_plan: {
         parameters: {
             query?: {
                 preview?: "false" | "true" | "full";
@@ -9697,7 +9720,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MealBreakfastInput"];
+                "application/json": components["schemas"]["MealPlanInput"];
             };
         };
         responses: {
@@ -9707,7 +9730,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MealBreakfastResult"];
+                    "application/json": components["schemas"]["MealPlanResult"];
                 };
             };
             /** @description Validation Error */
