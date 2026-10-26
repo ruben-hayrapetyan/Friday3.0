@@ -25,6 +25,7 @@ import { ShovePop } from "@/pops/ShovePop"
 import { CheckTasks } from "@/inbox/CheckTasks"
 import { InboxPage } from "@/inbox/InboxPage"
 import { InsightsPage } from "@/insights/InsightsPage"
+import { BodyPage } from "@/body/BodyPage"
 import { RulesLab } from "@/lab/rules/RulesLab"
 import { ProjectsPage } from "@/projects/ProjectsPage"
 import { ReviewPage } from "@/review/ReviewPage"
@@ -92,6 +93,7 @@ export function Shell() {
             <Route path="/inbox" element={<InboxPage />} />
             <Route path="/inbox/check" element={<CheckTasks />} />
             <Route path="/insights" element={<InsightsPage />} />
+            <Route path="/body" element={<BodyPage />} />
             <Route path="/rules" element={<RulesPage />} />
             <Route path="/lab/rules/:slug?" element={<RulesLab />} />
             <Route path="/settings/:section?" element={<SettingsPage />} />

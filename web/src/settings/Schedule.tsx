@@ -10,7 +10,7 @@ import { ampm, dur } from "@/lib/format"
 import { useNavigate } from "react-router"
 import { BUFFER_OPTIONS, bufferLabel, useBuffers } from "./buffers"
 import { Field, SectionHead } from "./SettingsPage"
-import { TrackSleep } from "./SleepTracking"
+import { TrackMeals, TrackSleep } from "./SleepTracking"
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 interface Night {
@@ -101,6 +101,7 @@ export function Schedule() {
         />
       </Field>
       <TrackSleep />
+      <TrackMeals />
       <Field name="By day" note="Different bedtimes, wake times or limits on some days.">
         <button className="fr-link" onClick={() => setByDay(!byDay)} style={{ alignSelf: "flex-start" }}>
           {byDay ? "Hide" : "Set each day"}

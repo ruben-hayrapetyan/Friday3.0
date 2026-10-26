@@ -12,7 +12,7 @@ from friday.engine.explain import block_costs, blocks_of
 from friday.engine.problem import FixedOcc, Plan, Problem
 from friday.engine.rules import RULE_TYPES
 from friday.engine.rules.prices import Skippable, titled
-from friday.planner.build import id_of, key_of
+from friday.planner.build import PLANNER_RULES, id_of, key_of
 from friday.planner.snapshot import BlockRow, Snapshot
 from friday.planner.solve import Solved
 
@@ -155,7 +155,14 @@ def totals_by_day(problem: Problem, blocks: list[PlannedBlock], other: dict[str,
 
 def notices(problem: Problem, demoted: list[str]) -> list[str]:
     """What the plan couldn't do as asked. Late work has its own line in the app (`status.late`), from late_hours."""
-    return [f"A lock on {problem.items[k].title} couldn't be kept and became a preferred pin" for k in demoted]
+    tz = problem.grid.spec.timezone
+    over = [
+        f"Your lock on {problem.items[k].title} ({to_local(at, tz):%a} {ampm(to_local(at, tz))}) is during {event}, "
+        f"so Friday planned it elsewhere: move the lock, or make {event} optional"
+        for k, event, at in problem.locks_over_events
+        if k in problem.items
+    ]
+    return over + [f"A lock on {problem.items[k].title} couldn't be kept and became a preferred pin" for k in demoted]
 
 
 def clashes(problem: Problem, tz: str) -> list[str]:
@@ -207,7 +214,7 @@ def missing_rule_types(snapshot: Snapshot) -> list[str]:
     return [
         f"Rule {r.name} is off: no rule type {r.type!r} is loaded"
         for r in snapshot.settings["rules"]
-        if r.type not in RULE_TYPES
+        if r.type not in RULE_TYPES and r.type not in PLANNER_RULES
     ]
 
 

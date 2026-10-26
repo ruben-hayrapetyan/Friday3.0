@@ -18,7 +18,7 @@ import { WeekPaces } from "./WeekPaces"
 
 type Strength = "Prefer" | "Strongly" | "Always"
 const STRENGTHS: Strength[] = ["Prefer", "Strongly", "Always"]
-const EXAMPLES = ["I prefer eating lunch before 1pm", "No work after 10pm", "Keep Saturday mornings free", "At most 6 hours a day", "Deep work in the morning", "Gym right after class", "Finish things a day early", "Go easier on Saturdays", "Gym is optional", "Climbing club only if I'm ahead", "No work after 10pm the night before climbing club"]
+const EXAMPLES = ["I prefer eating lunch before 1pm", "No work after 10pm", "Keep Saturday mornings free", "At most 6 hours a day", "Deep work in the morning", "Gym right after class", "Finish things a day early", "Go easier on Saturdays", "Gym is optional", "Climbing club only if I'm ahead", "No work after 10pm the night before climbing club", "30 minutes before and after gym"]
 const SOURCES: Record<string, [string, string]> = { you: ["user", "Yours"], learned: ["sparkle", "Learned from you"], default: ["sliders-horizontal", "Built in"] }
 const DAY_OPTS: { value: string; label: string; days: string[] | null }[] = [
   { value: "every", label: "Every day", days: null },
@@ -167,7 +167,7 @@ function NewRule() {
               {reading.kind === "pace" ? (
                 // A pace for weekdays is a setting: it shows under Your week, with no strength to choose.
                 <span className="fr-kicker">{preview.effect}. It shows under Your week.</span>
-              ) : reading.kind === "deadlines" || reading.kind === "optional" || reading.kind === "ahead" ? (
+              ) : reading.kind === "deadlines" || reading.kind === "optional" || reading.kind === "ahead" || reading.kind === "around" ? (
                 <span className="fr-kicker" style={{ textWrap: "pretty" }}>{preview.effect}.</span>
               ) : reading.kind === "night_before" ? (
                 <>

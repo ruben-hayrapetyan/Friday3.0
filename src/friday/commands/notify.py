@@ -22,7 +22,7 @@ from friday.commands.progress import settle, start
 from friday.commands.registry import Ctx, command, query, run
 from friday.core.db import one, rows
 from friday.core.items import FieldError
-from friday.core.settings import minutes_of
+from friday.core.settings import bedtime_minutes, minutes_of
 from friday.core.time import (
     ampm,
     format_local,
@@ -72,8 +72,7 @@ def day_now(conn: sqlite3.Connection, settings: dict[str, Any], now_utc: int, us
     today = planning_date(now_utc, tz, day_start)
     minute = int((to_local(now_utc, tz) - local_midnight(today)).total_seconds() // 60)
     night = sleep_on(settings, day_overrides(conn, user_id), today)
-    bedtime = minutes_of(night.bedtime)
-    return Day(today, minute, minutes_of(night.wake), bedtime + 1440 if bedtime < day_start else bedtime)
+    return Day(today, minute, minutes_of(night.wake), bedtime_minutes(night.bedtime, night.wake, day_start))
 
 
 def due_notifications(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> list[Outgoing]:

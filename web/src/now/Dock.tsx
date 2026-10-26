@@ -3,7 +3,8 @@
 // COMBINED.md 31). In a class:
 // the class. Free: how long, what's next, and the best things to start, one tap each. The timer is an overlay on
 // the plan, never a change to it (DESIGN §8), so Start and Pause move nothing on the calendar. With sleep tracking on
-// (Settings → Schedule), a slim row on top offers the tap that fits the hour: I'm up, Ready to work, Going to bed.
+// (Settings → Schedule), a slim row on top offers the tap that fits the hour: I'm up, Ready to work, Going to bed; with
+// meal tracking on, another offers Eating now around a mealtime (or Skip), and Done eating while you eat.
 
 import { useState } from "react"
 import { useNavigate } from "react-router"
@@ -11,7 +12,7 @@ import type { Block } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useClock, useElapsed } from "@/hooks/useClock"
-import { useItem, useNow, useSleep, useStatus } from "@/hooks/queries"
+import { useItem, useMeals, useNow, useSleep, useStatus } from "@/hooks/queries"
 import { clock, dur, hms, span, when } from "@/lib/format"
 import { fromMin, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
@@ -50,6 +51,7 @@ export function Dock() {
     >
       {work && menu === "more" && <MoreMenu itemId={cur.item_id} onSwitch={() => setMenu("swap")} onClose={() => setMenu(null)} />}
       <SleepTap />
+      <MealTap />
       {cur && timer && timer.item_id === cur.item_id ? (
         <Timing cur={cur} elapsed={timer.elapsed_s ?? 0} next={next} dot={color(cur.area, cur.preset)} compact={compact} menu={menu} onMenu={toggle} />
       ) : cur?.fixed ? (
@@ -85,6 +87,47 @@ function SleepTap() {
       <button className="btn btn-secondary fr-press" disabled={busy} onClick={async () => (setBusy(true), await mark({ kind }), setBusy(false))} style={{ fontSize: 12, padding: "2px 10px" }}>
         {tap.button}
       </button>
+    </div>
+  )
+}
+
+const MEAL_ICON: Record<string, string> = { breakfast: "coffee", lunch: "bowl-food", dinner: "fork-knife", snack: "cookie" }
+
+/** Tracked meals' tap: Eating now when it's a meal's time, Done eating while you eat (the plan keeps your meal free). */
+function MealTap() {
+  const meals = useMeals().data
+  const start = useCommand("meal_start", { label: (o) => o.result.message ?? "Saved" })
+  const end = useCommand("meal_end", { label: (o) => o.result.message ?? "Saved" })
+  const skip = useCommand("meal_skip", { label: (o) => o.result.message ?? "Saved" })
+  const [busy, setBusy] = useState(false)
+  const nowMin = useClock()
+  if (!meals?.on || !(meals.eating || meals.next)) return null
+  const run = async (act: () => Promise<unknown>) => (setBusy(true), await act(), setBusy(false))
+  const kind = meals.eating?.kind ?? meals.next ?? "snack"
+  const since = meals.eating?.start
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 14px 6px 18px", boxShadow: "inset 0 -1px 0 var(--fr-hairline)", fontSize: 12, color: "var(--color-neutral-400)" }}>
+      <Icon name={MEAL_ICON[kind] ?? "fork-knife"} size={14} style={{ color: "var(--color-accent-300)" }} />
+      {since ? (
+        <>
+          <span className="tnum" style={{ flex: 1 }}>
+            Eating {kind} since {clock(since)} · {dur(Math.max(1, nowMin - toMin(since)))}
+          </span>
+          <button className="btn btn-secondary fr-press" disabled={busy} onClick={() => run(() => end({}))} style={{ fontSize: 12, padding: "2px 10px" }}>
+            Done eating
+          </button>
+        </>
+      ) : (
+        <>
+          <span style={{ flex: 1 }}>{kind[0].toUpperCase() + kind.slice(1)}?</span>
+          <button className="fr-link" disabled={busy} onClick={() => run(() => skip({ kind: kind as "breakfast" | "lunch" | "dinner" }))} style={{ fontSize: 12 }}>
+            Skip
+          </button>
+          <button className="btn btn-secondary fr-press" disabled={busy} onClick={() => run(() => start({ kind: kind as "breakfast" | "lunch" | "dinner" }))} style={{ fontSize: 12, padding: "2px 10px" }}>
+            Eating now
+          </button>
+        </>
+      )}
     </div>
   )
 }

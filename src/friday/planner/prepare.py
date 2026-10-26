@@ -99,11 +99,16 @@ def keep_a_hold(snapshot: Snapshot, total: dict[int, int], on_today: dict[int, i
 
 
 def timer_hold(snapshot: Snapshot) -> tuple[int, int, int] | None:
-    """The timed item, held from the plan's first slot for `timer_hold_min` (§8 rule 2)."""
-    if snapshot.timer is None:
-        return None
+    """The timed item, held from the plan's first slot for `timer_hold_min` (§8 rule 2); with no timer, the meal you're
+    eating, its routine held for what's left of its length, so no work is planned while you eat."""
     at = snapshot.now_utc + (-snapshot.now_utc) % UNIT_MIN
-    return (snapshot.timer[0], at, at + snapshot.settings["planner"].timer_hold_min)
+    if snapshot.timer is not None:
+        return (snapshot.timer[0], at, at + snapshot.settings["planner"].timer_hold_min)
+    meal = next((i for i in snapshot.items if snapshot.eating and i.id == snapshot.eating[0]), None)
+    if meal is None or snapshot.eating is None:
+        return None
+    left = snapshot.eating[1] + (meal.ideal_units or meal.min_units or 1) * UNIT_MIN - at
+    return (snapshot.eating[0], at, at + max(UNIT_MIN, left + (-left) % UNIT_MIN))
 
 
 def day_scales(snapshot: Snapshot) -> list:

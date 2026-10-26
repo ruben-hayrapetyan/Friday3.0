@@ -87,6 +87,7 @@ class Snapshot:
     profile_version: int = 0  # 0: nothing learned yet
     cold_once: bool = False  # the next solve starts afresh, not from the current plan (a picked other way)
     sleep: SleepFacts | None = None
+    eating: tuple[int, int] | None = None  # the routine of the meal you're eating (Sleep & meals), and its start
 
 
 def take_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> Snapshot:
@@ -137,6 +138,7 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         next_stability=kv_get(conn, "next_stability", None, user_id),
         cold_once=kv_get(conn, "next_cold", None, user_id) is not None,
         sleep=sleep_facts(conn, now_utc, settings, user_id),
+        eating=eating(conn, user_id) if settings["meal_tracking"].on else None,
         **learned(conn, now_utc, settings, user_id),
         log_since_plan=log_since(conn, json.loads(plan["report"]).get("last_command_id", 0) if plan else 0, user_id),
         last_command_id=int(
@@ -213,6 +215,15 @@ def busy_as_you_count(item: Item, settings: dict[str, Any], calendars: dict[int,
 
 def timer(conn: sqlite3.Connection, user_id: int) -> tuple[int, int] | None:
     found = conn.execute("SELECT item_id, start_utc FROM timer WHERE user_id = ?", [user_id]).fetchone()
+    return (found["item_id"], parse_utc(found["start_utc"])) if found else None
+
+
+def eating(conn: sqlite3.Connection, user_id: int) -> tuple[int, int] | None:
+    found = conn.execute(
+        "SELECT item_id, start_utc FROM meals WHERE user_id = ? AND end_utc IS NULL AND start_utc IS NOT NULL "
+        "AND skipped = 0 AND item_id IS NOT NULL ORDER BY id DESC LIMIT 1",
+        [user_id],
+    ).fetchone()
     return (found["item_id"], parse_utc(found["start_utc"])) if found else None
 
 

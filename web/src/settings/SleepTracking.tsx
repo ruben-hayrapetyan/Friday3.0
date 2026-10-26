@@ -1,6 +1,6 @@
-// Track my sleep (Settings → Schedule): off until you turn it on. Your nights, logging one and what Friday learned are
-// in Insights → Sleep; the Now bar also offers "I'm up", "Ready to work" and "Going to bed", one tap each. The night
-// rows and their fixable times are shared with Insights.
+// Track my sleep and Track my meals (Settings → Schedule, and Sleep & meals): each off until you turn it on. Logging
+// a night or a meal, and putting one right, is in Sleep & meals; what Friday learned from them is in Insights; the Now
+// bar offers the tap that fits the hour. The night rows and their fixable times are shared with Sleep & meals.
 
 import { useState } from "react"
 import { useNavigate } from "react-router"
@@ -26,25 +26,35 @@ export function daysSaid(days: string[], field: "bedtime" | "wake"): string {
   return `${days.map((d) => SHORT[d]).join(", ")} ${field === "bedtime" ? "nights" : "mornings"}`
 }
 
-export function TrackSleep() {
+/** One of the two switches, as Settings → Schedule shows it, with the way to Sleep & meals when it's on. */
+export function Tracking({ what }: { what: "sleep" | "meals" }) {
   const settings = useSettings().data as Record<string, { on?: boolean }> | undefined
   const save = useCommand("settings_set", { label: () => "Saved" })
   const navigate = useNavigate()
-  const on = !!settings?.sleep_tracking?.on
+  const key = what === "sleep" ? "sleep_tracking" : "meal_tracking"
+  const on = !!settings?.[key]?.on
+  const name = what === "sleep" ? "Track my sleep" : "Track my meals"
+  const note =
+    what === "sleep"
+      ? "Optional. Tap “Going to bed” and “I’m up” in the Now bar (or log a night in Sleep & meals); Friday learns your real bedtime, wake time and morning routine. Off, nothing is recorded or learned."
+      : "Optional. Tap “Eating now” and “Done eating” in the Now bar (or log a meal in Sleep & meals); Friday learns when you eat, for how long and what you skip, and keeps your meal free while you eat. Off, nothing is recorded or learned."
   return (
-    <Field name="Track my sleep" note="Optional. Log your nights in Insights → Sleep (or tap in the Now bar); Friday learns your real bedtime, wake time and morning routine. Off, nothing is recorded or learned.">
+    <Field name={name} note={note}>
       <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Switch on={on} onToggle={() => save({ key: "sleep_tracking", value: { ...settings?.sleep_tracking, on: !on } })} label="Track my sleep" />
+        <Switch on={on} onToggle={() => save({ key, value: { ...settings?.[key], on: !on } })} label={name} />
         <span style={{ color: on ? "var(--color-text)" : "var(--color-neutral-400)" }}>{on ? "On" : "Off"}</span>
       </span>
       {on && (
-        <button className="fr-link" onClick={() => navigate("/insights")} style={{ alignSelf: "flex-start", fontSize: 12 }}>
-          Your nights and what Friday learned are in Insights → Sleep
+        <button className="fr-link" onClick={() => navigate(`/body?tab=${what}`)} style={{ alignSelf: "flex-start", fontSize: 12 }}>
+          {what === "sleep" ? "Log or fix a night in Sleep & meals" : "Log or fix a meal in Sleep & meals"}
         </button>
       )}
     </Field>
   )
 }
+
+export const TrackSleep = () => <Tracking what="sleep" />
+export const TrackMeals = () => <Tracking what="meals" />
 
 /** The last two weeks: each time can be put right, or taken back. */
 export function Nights({ nights }: { nights: Schemas["SleepNightOut"][] }) {

@@ -32,6 +32,7 @@ const PAGES: [string, string, string][] = [
   ["Review", "/review", "cards"],
   ["Inbox", "/inbox", "tray"],
   ["Insights", "/insights", "chart-line"],
+  ["Sleep & meals", "/body", "moon-stars"],
   ["Rules", "/rules", "sliders-horizontal"],
   ["Appearance", "/settings/appearance", "paint-brush"],
   ["Calendars and categories", "/settings/calendars", "calendar"],

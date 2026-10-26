@@ -2,7 +2,7 @@
 
 import math
 import re
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Any, Literal
 
 from friday.core.textnorm import identity_text, norm
@@ -217,17 +217,22 @@ class Skippable(Rule):
 class BeforeEvent(Rule):
     """`No work after 10pm the night before climbing club`: on each planning day before one of its events, work from
     `after` until the day ends costs (or, Always, is ruled out). The event's planning day is the one it starts in, so a
-    6am club on Wednesday makes Tuesday night early."""
+    6am club on Wednesday makes Tuesday night early. Only when you're going: not before an occurrence you said you
+    aren't going to (it no longer holds its time, and isn't one you marked optional), nor on `skip_days`, the event
+    days whose time the plan gives to work (planner/solve.py lifts those nights and plans once more)."""
 
     class Params(Rule.Params):
         titles: list[str] = []
         after: Clock = 22 * 60
         price: float | Literal["forbid"] = 2.0
+        skip_days: list[str] = []  # ISO dates of events not gone to: their nights are free
 
     def prepare(self, problem):
         super().prepare(problem)
         spec = problem.grid.spec
-        days = {planning_date(f.start_utc, spec.timezone, spec.day_start) for f in titled(problem, self.p.titles)}
+        going = [f for f in titled(problem, self.p.titles) if f.blocks_time or f.skippable]
+        days = {planning_date(f.start_utc, spec.timezone, spec.day_start) for f in going}
+        days -= {date.fromisoformat(d) for d in self.p.skip_days}
         self.nights = {d - timedelta(days=1) for d in days}
         # Past midnight ("no work after 1am the night before") is still that planning day's night: 1am is 25:00.
         self.after = self.p.after + (1440 if self.p.after < spec.day_start else 0)

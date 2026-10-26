@@ -8,6 +8,7 @@ from friday.commands import (  # noqa: F401
     claude,
     connecting,
     diagnose,
+    eating,
     exams,
     explain,
     horizon,

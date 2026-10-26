@@ -55,6 +55,21 @@ def slept(app: App) -> int:
     return app.do("sleep")["nights"][0]["up_id"]
 
 
+def eating(app: App) -> int:
+    app.do("settings_set", key="meal_tracking", value={"on": True})
+    app.do("meal_log", kind="breakfast", start="2026-10-19T07:40", end="2026-10-19T08:00")
+    return app.do("meals")["days"][0]["meals"][0]["id"]
+
+
+def longer_lunches(app: App) -> dict[str, Any]:
+    app.do("settings_set", key="meal_tracking", value={"on": True})
+    app.do("series_add", title="Lunch", preset="Routine", every="day", release_offset_min=450, due_offset_min=630,
+           min_min=15, ideal_min=15, max_min=15)  # fmt: skip
+    for day in range(12, 19):
+        app.do("meal_log", kind="lunch", start=f"2026-10-{day}T12:00", end=f"2026-10-{day}T12:45")
+    return {"kind": "lunch"}
+
+
 def gym(app: App) -> dict[str, Any]:
     return app.do("add", text="gym every mon,wed ~1h")
 
@@ -271,6 +286,17 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "sleep_mark_edit": lambda app: {"id": slept(app), "at": "2026-10-19T07:30"},
     "sleep_mark_remove": lambda app: {"id": slept(app)},
     "sleep_skip": lambda app: {"date": "2026-10-18", "kind": "bed"},
+    "meal_start": lambda app: (app.do("settings_set", key="meal_tracking", value={"on": True}), {})[1],
+    "meal_end": lambda app: (
+        app.do("settings_set", key="meal_tracking", value={"on": True}),
+        app.do("meal_start", at="2026-10-19T08:30"),
+        {},
+    )[2],
+    "meal_log": lambda app: (eating(app), {"kind": "lunch", "start": "2026-10-18T12:00", "end": "2026-10-18T12:30"})[1],
+    "meal_skip": lambda app: (eating(app), {"kind": "lunch"})[1],
+    "meal_edit": lambda app: {"id": eating(app), "start": "2026-10-19T07:30"},
+    "meal_remove": lambda app: {"id": eating(app)},
+    "meal_use_length": longer_lunches,
     "other_way_pick": lambda app: {"weights": {"energy": 2.0}, "seed": 1, "rule_totals": {"energy": 100}},
     "add": add_sample,
     "edit": lambda app: {"id": essay(app), "title": "long essay", "duration_min": 180},
@@ -331,6 +357,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "kind_remove": lambda app: {"name": "Errand", "move_to": "Chore"},
     "token_remove": lambda app: {"name": app.do("token_add", name="claude")["name"]},
     "document_add": lambda app: {"name": "syllabus", "content": "PS1 due Friday"},
+    "document_retry": lambda app: {"id": a_failed_document(app)},
     "suggestion_accept": lambda app: {"id": a_suggestion(app)},
     "suggestion_reject": lambda app: {"id": a_suggestion(app)},
     "batch_accept": lambda app: {"batch": a_batch(app)},
@@ -343,6 +370,13 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
 }
 NOT_UNDOABLE = {"resolve"}  # needs a waiting plan; tested with scenario 3
 UNLOGGED = {name for name, spec in REGISTRY.items() if not spec.logged}
+
+
+def a_failed_document(app: App) -> int:
+    app.do("document_add", name="syllabus.pdf", media_type="application/pdf", content="JVBERi0=")
+    raw = app.table("raw_inputs")[-1]["id"]
+    app.conn.execute("UPDATE raw_inputs SET status = 'failed', error = 'no key' WHERE id = ?", [raw])
+    return raw
 
 
 def test_every_mutating_command_has_a_sample() -> None:

@@ -407,6 +407,20 @@ class TokenOut(Model):
     last_used: str | None
 
 
+class DocumentOut(Model):
+    """A syllabus or handout you uploaded: whether it was read, and what came of it."""
+
+    id: int
+    name: str
+    kind: str  # pdf, image or text
+    received: str  # local
+    status: Literal["reading", "read", "failed", "skipped"]
+    error: str | None = None  # why it couldn't be read
+    found: int = 0  # suggestions it made
+    waiting: int = 0  # of those, still in your inbox
+    accepted: int = 0
+
+
 class MacWriteOut(Model):
     """A change to one of the Mac's events, for the Mac app to make through EventKit: its times (timed with an offset,
     or whole days with the end the day after the last) and, if you renamed it, its title; or a delete."""
@@ -523,6 +537,49 @@ class SleepChangeOut(Model):
     field: Literal["bedtime", "wake"]
     now: str  # HH:MM
     learned: str
+
+
+class MealOut(Model):
+    id: int
+    kind: str
+    date: str
+    start: str | None = None  # local
+    end: str | None = None  # local; None while eating
+    minutes: int | None = None
+    skipped: bool = False
+
+
+class MealDayOut(Model):
+    date: str
+    meals: list[MealOut] = []
+
+
+class MealLearnedOut(Model):
+    """What a meal usually is, on weekdays or at weekends, once there are enough days of it."""
+
+    kind: str
+    group: Literal["weekdays", "weekends"]
+    days: int  # days recorded (eaten or skipped)
+    usual_start: str | None = None  # "12:45": the median, to the quarter hour
+    usual_min: int | None = None  # how long, the median
+    start_spread_min: int | None = None  # how much the start moves (the middle half of days)
+    skip_share: float | None = None  # of the days recorded, skipped
+
+
+class MealChangeOut(Model):
+    kind: str
+    planned_min: int  # the routine's length now
+    usual_min: int  # what you take
+
+
+class MealsOut(Model):
+    on: bool
+    eating: MealOut | None = None  # the meal you're eating now
+    next: str | None = None  # the meal the Now bar offers now, when you aren't eating
+    days: list[MealDayOut] = []  # the last two weeks, newest first
+    learned: list[MealLearnedOut] = []
+    changes: list[MealChangeOut] = []  # routine lengths 10 minutes or more off what you take
+    min_days: int = 4
 
 
 class SleepOut(Model):

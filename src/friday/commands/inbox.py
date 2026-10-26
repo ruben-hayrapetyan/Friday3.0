@@ -21,11 +21,12 @@ from friday.api.commands import (
     SuggestionInput,
 )
 from friday.api.types import Empty
-from friday.api.views import InboxOut, SourceOut, SuggestionOut
+from friday.api.views import DocumentOut, InboxOut, SourceOut, SuggestionOut
 from friday.commands.items import add, drop, edit, find_item, guessed_minutes
 from friday.commands.registry import Ctx, command, query
 from friday.commands.series import attach_to_series, imported_fields
 from friday.core.db import one, rows
+from friday.core.html_text import html_text, looks_like_html
 from friday.core.items import FieldError
 from friday.core.recurrence import describe
 from friday.core.textnorm import course_tag
@@ -96,6 +97,11 @@ def document_add(ctx: Ctx, inp: DocumentInput) -> Changed:
     """A document to read for tasks (a syllabus, a handout): it is read within a minute, into the inbox."""
     if len(inp.content) > 14_000_000:
         raise FieldError("content", "too big; the limit is about 10 MB")
+    content, media_type = inp.content, inp.media_type
+    if looks_like_html(inp.name, media_type, content):  # a saved web page: read as the text a reader sees
+        content, media_type = html_text(content), "text/plain"
+        if not content:
+            raise FieldError("content", f"{inp.name} has no text in it")
     source = one(ctx.conn, "SELECT id FROM sources WHERE user_id = ? AND kind = 'upload'", [ctx.user_id])
     source_id = source["id"] if source else ctx.db.insert("sources", {"kind": "upload", "name": "Uploads"})
     digest = hashlib.sha256(inp.content.encode()).hexdigest()
@@ -107,11 +113,60 @@ def document_add(ctx: Ctx, inp: DocumentInput) -> Changed:
             "received_utc": ctx.now_text,
             "content_hash": digest,
             "title": inp.name,
-            "media_type": inp.media_type,
-            "content": inp.content,
+            "media_type": media_type,
+            "content": content,
         },
     )
     return Changed(message=f"Reading {inp.name}; its suggestions come into the inbox within a minute")
+
+
+@query("documents")
+def documents(ctx: Ctx, inp: Empty) -> list[DocumentOut]:
+    """Every syllabus or handout you uploaded, newest first: read or not (and why), and what it found."""
+    out = []
+    for r in rows(
+        ctx.conn,
+        "SELECT r.*, (SELECT count(*) FROM suggestions s WHERE s.raw_input_id = r.id) AS found, "
+        "(SELECT count(*) FROM suggestions s WHERE s.raw_input_id = r.id AND s.status = 'pending') AS waiting, "
+        "(SELECT count(*) FROM suggestions s WHERE s.raw_input_id = r.id AND s.status = 'accepted') AS accepted "
+        "FROM raw_inputs r JOIN sources src ON src.id = r.source_id WHERE r.user_id = ? AND src.kind = 'upload' "
+        "ORDER BY r.received_utc DESC, r.id DESC",
+        [ctx.user_id],
+    ):
+        media = r["media_type"] or ""
+        status = {"new": "reading", "failed": "failed", "ignored": "skipped"}.get(r["status"], "read")
+        out.append(
+            DocumentOut(
+                id=r["id"],
+                name=r["title"] or "Untitled",
+                kind="pdf" if media == "application/pdf" else "image" if media.startswith("image/") else "text",
+                received=ctx.local(r["received_utc"]) or "",
+                status=status,
+                error=r["error"] if status == "failed" else None,
+                found=r["found"],
+                waiting=r["waiting"],
+                accepted=r["accepted"],
+            )
+        )
+    return out
+
+
+@command("document_retry")
+def document_retry(ctx: Ctx, inp: ItemRef) -> Changed:
+    """Read a document again that couldn't be read (now that it can be: a PDF's text is read out for the claude
+    command); it's read within a minute, into the inbox."""
+    found = one(
+        ctx.conn,
+        "SELECT r.* FROM raw_inputs r JOIN sources s ON s.id = r.source_id WHERE r.id = ? AND r.user_id = ? "
+        "AND s.kind = 'upload'",
+        [inp.id, ctx.user_id],
+    )
+    if found is None:
+        raise FieldError("id", f"no uploaded document {inp.id}")
+    if found["status"] != "failed":
+        raise FieldError("id", f"{found['title']} isn't one that failed")
+    ctx.db.update("raw_inputs", {"id": inp.id}, {"status": "new", "error": None})
+    return Changed(message=f"Reading {found['title']} again; what it finds comes into the inbox within a minute")
 
 
 @command("suggestion_accept", affects_plan=True)

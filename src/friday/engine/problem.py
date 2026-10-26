@@ -152,6 +152,9 @@ class Problem:
     scale: int = 100
     minimize_changes_scale: float = 1.0
     text: TextRules = field(default_factory=TextRules)
+    # Locks put where an event holds the time: (item key, the event's title, the lock's start, UTC minutes). They can't
+    # be kept there, so they plan as preferred pins, and the plan says so.
+    locks_over_events: list[tuple[str, str, int]] = field(default_factory=list)
     blocked: np.ndarray = field(default=None)  # type: ignore[assignment]
     core: np.ndarray = field(default=None)  # type: ignore[assignment]
     events: np.ndarray = field(default=None)  # type: ignore[assignment]  # busy events themselves, not their gaps

@@ -24,6 +24,13 @@ def minutes_of(hhmm: str) -> int:
     return int(hours) * 60 + int(minutes)
 
 
+def bedtime_minutes(bedtime: str, wake: str, day_start: int) -> int:
+    """A bedtime as minutes from its evening's midnight: past 1440 when it's after midnight, as it is when it comes
+    before the day starts (1am) or before you wake (4:30am, waking at noon: that's the next morning, not this one)."""
+    bed = minutes_of(bedtime)
+    return bed + 1440 if bed < day_start or bed < minutes_of(wake) else bed
+
+
 class Model(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -307,6 +314,15 @@ class ExamFocus(Model):
     words: tuple[str, ...] = ("exam", "prelim", "midterm", "final")
 
 
+class MealTracking(Model):
+    """Recording your meals (Sleep & meals): off until you turn it on. When on, the Now bar offers "Eating now" around
+    mealtimes and "Done eating" while you eat, and Friday learns when you eat, for how long and what you skip
+    (`learn/meals.py`); a meal's real length is offered for its routine, never changed without a yes."""
+
+    on: bool = False
+    min_days: int = Field(4, ge=2, le=30)  # days of a meal a weekday group needs before Friday says what's usual
+
+
 class SleepTracking(Model):
     """Recording your sleep (Settings → Schedule): off until you turn it on. When on, the Now bar has one-tap "I'm up",
     "Ready to work" and "Going to bed", and Friday learns from them (`learn/sleep.py`): your real bedtime and wake time
@@ -411,6 +427,7 @@ SETTINGS_TYPES: dict[str, Any] = {
     "kind_order": tuple[str, ...],  # presets, most important first: who gets the time when it can't all fit
     "short_term_first": bool,  # the Short term list's work comes before anything on the Long term list
     "sleep_tracking": SleepTracking,
+    "meal_tracking": MealTracking,
     "rules": tuple[RuleSpec, ...],
     "templates": dict[str, tuple[TemplateStep, ...]],
     "paces": dict[str, Dials],
@@ -452,6 +469,7 @@ DEFAULTS: dict[str, Any] = {
     "kind_order": (),
     "short_term_first": False,
     "sleep_tracking": SleepTracking(),
+    "meal_tracking": MealTracking(),
     "rules": REFERENCE_RULES,
     "templates": DEFAULT_TEMPLATES,
     "paces": DEFAULT_PACES,

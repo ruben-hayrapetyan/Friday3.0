@@ -1,17 +1,17 @@
-// Sleep (Insights; tracking is a setting, off until you turn it on): your last two weeks of nights on one timeline,
-// from 8pm to the next noon (a bar from bed to up, the schedule you set as an outline behind it, a tick where you were
-// ready to work), your usual times, a night to log or put right, and what Friday learned, to take with one click.
+// Sleep (Insights): what your tracked nights say, while tracking is on (Sleep & meals has the switch, and the nights
+// to log or put right). Your last two weeks of nights on one timeline from 8pm to the next noon (a bar from bed to up,
+// the schedule you set as an outline behind it, a tick where you were ready to work), your usual times, and what
+// Friday learned, to take with one click.
 
 import { useState } from "react"
 import { useNavigate } from "react-router"
 import type { Schemas } from "@/api/client"
-import { Icon, Switch } from "@/components/fr/controls"
+import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
-import { useSettings, useSleep } from "@/hooks/queries"
+import { useSleep } from "@/hooks/queries"
 import { ampm, clock, dayLabel, dur, weekday } from "@/lib/format"
-import { addDays, toMin } from "@/lib/time"
-import { daysSaid, Nights } from "@/settings/SleepTracking"
-import { useShell } from "@/shell/ShellContext"
+import { toMin } from "@/lib/time"
+import { daysSaid } from "@/settings/SleepTracking"
 import { Section } from "./Section"
 
 const FROM = 20 * 60 // the timeline runs from 8pm on the night's day…
@@ -35,32 +35,25 @@ export function usual(times: string[], night: boolean): string | null {
 }
 
 export function SleepSection() {
-  const settings = useSettings().data as Record<string, { on?: boolean }> | undefined
   const sleep = useSleep().data
-  const save = useCommand("settings_set", { label: () => "Saved" })
-  const on = !!settings?.sleep_tracking?.on
-  const toggle = <Switch on={on} onToggle={() => save({ key: "sleep_tracking", value: { ...settings?.sleep_tracking, on: !on } })} label="Track my sleep" />
-  if (!on || !sleep?.on)
+  const navigate = useNavigate()
+  const log = (
+    <button className="fr-link" onClick={() => navigate("/body?tab=sleep")} style={{ fontSize: 12 }}>
+      {sleep?.on ? "Log or fix a night" : "Turn it on in Sleep & meals"}
+    </button>
+  )
+  if (!sleep?.on)
     return (
-      <Section title="Sleep" note="Off. Turn it on to log your nights here; Friday learns your real bedtime, wake time and morning routine." right={toggle}>
+      <Section title="Sleep" note="Not tracked. Track your sleep and Friday learns your real bedtime, wake time and morning routine." right={log}>
         <span />
       </Section>
     )
   const nights = sleep.nights ?? []
   return (
-    <Section title="Sleep" note="Your last two weeks of nights, and what Friday learned from them" right={toggle}>
+    <Section title="Sleep" note="Your last two weeks of nights, and what Friday learned from them" right={log}>
       <Usual sleep={sleep} />
-      {nights.length ? <Timeline nights={nights} /> : <span style={{ color: "var(--color-neutral-400)" }}>No nights yet. Log last night below, or tap “Going to bed” and “I’m up” in the Now bar.</span>}
-      <LogNight nights={nights} />
+      {nights.length ? <Timeline nights={nights} /> : <span style={{ color: "var(--color-neutral-400)" }}>No nights yet. Tap “Going to bed” and “I’m up” in the Now bar, or log last night in Sleep &amp; meals.</span>}
       <LearnedSleep sleep={sleep} />
-      {nights.length > 0 && (
-        <details>
-          <summary className="fr-kicker" style={{ cursor: "pointer", padding: "4px 0" }}>
-            Every night, each time to change
-          </summary>
-          <Nights nights={nights} />
-        </details>
-      )}
     </Section>
   )
 }
@@ -151,72 +144,6 @@ function Timeline({ nights }: { nights: Schemas["SleepNightOut"][] }) {
           {shown ? `${dayLabel(shown.date)}: ${shown.bed ? `bed ${clock(shown.bed)}` : "no bedtime"}, ${shown.up ? `up ${clock(shown.up)}` : "no wake time"}${shown.ready ? `, ready ${clock(shown.ready)}` : ""}${shown.slept_min ? ` · ${dur(shown.slept_min)} asleep, ${dur(shown.planned_min)} planned` : ""}` : "Point at a night for its times"}
         </span>
       </div>
-    </div>
-  )
-}
-
-type Kind = "bed" | "up" | "ready"
-
-/** Last night, or any of the two weeks before: the times to add, or to put right. */
-function LogNight({ nights }: { nights: Schemas["SleepNightOut"][] }) {
-  const { today } = useShell()
-  const sleepSet = (useSettings().data as Record<string, Record<string, { bedtime: string; wake: string }>> | undefined)?.sleep
-  const add = useCommand("sleep_mark", { label: (o) => o.result.message ?? "Saved" })
-  const edit = useCommand("sleep_mark_edit", { label: (o) => o.result.message ?? "Saved" })
-  const evenings = Array.from({ length: 14 }, (_, n) => addDays(today, -1 - n))
-  const [evening, setEvening] = useState(evenings[0])
-  const night = nights.find((n) => n.date === evening)
-  const morning = addDays(evening, 1)
-  const key = (d: string) => ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date(`${d}T12:00:00Z`).getUTCDay()]
-  const planned = { bed: sleepSet?.[key(evening)]?.bedtime ?? "23:30", up: sleepSet?.[key(morning)]?.wake ?? "08:00" }
-  const start = { bed: night?.bed?.slice(11, 16) ?? planned.bed, up: night?.up?.slice(11, 16) ?? planned.up, ready: night?.ready?.slice(11, 16) ?? "" }
-  const [times, setTimes] = useState<Record<Kind, string>>(start)
-  const [saving, setSaving] = useState(false)
-  const pick = (d: string) => {
-    setEvening(d)
-    const n = nights.find((x) => x.date === d)
-    const m = addDays(d, 1)
-    setTimes({ bed: n?.bed?.slice(11, 16) ?? sleepSet?.[key(d)]?.bedtime ?? "23:30", up: n?.up?.slice(11, 16) ?? sleepSet?.[key(m)]?.wake ?? "08:00", ready: n?.ready?.slice(11, 16) ?? "" })
-  }
-  // A bedtime in the small hours is the next morning's date; up and ready are the morning's.
-  const at = (kind: Kind, time: string) => `${kind === "bed" && time >= "12:00" ? evening : morning}T${time}`
-  const ids: Record<Kind, number | null | undefined> = { bed: night?.bed_id, up: night?.up_id, ready: night?.ready_id }
-  const save = async () => {
-    setSaving(true)
-    for (const kind of ["bed", "up", "ready"] as Kind[]) {
-      const time = times[kind]
-      if (!time) continue
-      const was = { bed: night?.bed, up: night?.up, ready: night?.ready_timed ? null : night?.ready }[kind]
-      if (ids[kind] && was?.slice(11, 16) !== time) await edit({ id: ids[kind] as number, at: at(kind, time) })
-      else if (!ids[kind] && !(kind === "ready" && night?.ready_timed && night.ready?.slice(11, 16) === time)) await add({ kind, at: at(kind, time) })
-    }
-    setSaving(false)
-  }
-  const field = (kind: Kind, label: string) => (
-    <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, color: "var(--color-neutral-400)" }}>
-      {label}
-      <input type="time" className="input" value={times[kind]} onChange={(e) => setTimes({ ...times, [kind]: e.target.value })} style={{ width: 120, padding: "4px 8px", minHeight: 0, fontSize: 13 }} />
-    </label>
-  )
-  return (
-    <div className="fr-well" style={{ display: "flex", alignItems: "flex-end", gap: 14, flexWrap: "wrap", padding: "12px 14px" }}>
-      <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, color: "var(--color-neutral-400)" }}>
-        Log a night
-        <select className="input" value={evening} onChange={(e) => pick(e.target.value)} style={{ width: 170, padding: "4px 8px", minHeight: 0, fontSize: 13 }}>
-          {evenings.map((d, n) => (
-            <option key={d} value={d}>
-              {n === 0 ? `Last night (${weekday(d)})` : `${dayLabel(d)} night`}
-            </option>
-          ))}
-        </select>
-      </label>
-      {field("bed", "Went to bed")}
-      {field("up", "Got up")}
-      {field("ready", "Ready to work")}
-      <button className="btn btn-primary fr-press" disabled={saving} onClick={save} style={{ fontSize: 12 }}>
-        {saving ? <span className="fr-spinner" /> : <Icon name="check" />}
-        {night ? "Save changes" : "Log it"}
-      </button>
     </div>
   )
 }

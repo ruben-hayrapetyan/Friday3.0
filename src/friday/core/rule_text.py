@@ -17,7 +17,9 @@ which days), and from a Reading and a strength to one of the planner's rule type
 - `climbing club only if I'm ahead`, `I usually skip climbing club`: `skippable` the other way round, events whose
   time work takes first, so you go only in weeks the work fits without it;
 - `no work after 10pm the night before climbing club`, `if I'm going to climbing club the next day, the day before
-  must end at 10`: `before_event`.
+  must end at 10`: `before_event`, which holds only when you're going;
+- `30 minutes before and after gym`, `leave 15 minutes around climbing club`, `20 min before gym and 40 after`:
+  `travel`, time kept free around those events (to get there, change, shower), on top of each kind's.
 """
 
 import re
@@ -28,7 +30,8 @@ from friday.core.time import ampm_in
 
 Strength = Literal["Prefer", "Strongly", "Always"]
 Kind = Literal[
-    "window", "days", "free", "cap", "early", "after", "pace", "deadlines", "optional", "ahead", "night_before"
+    "window", "days", "free", "cap", "early", "after", "pace", "deadlines", "optional", "ahead", "night_before",
+    "around",
 ]  # fmt: skip
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 NAMES = {
@@ -64,7 +67,9 @@ class Reading:
     amount: float | None = None  # hours a day for cap, days for early
     event: str | None = None  # after
     paces: tuple[tuple[str, str], ...] | None = None  # pace: (weekday, pace name), every week
-    events: tuple[str, ...] | None = None  # optional, ahead, night_before: words in the events' titles
+    events: tuple[str, ...] | None = None  # optional, ahead, night_before, around: words in the events' titles
+    before_min: int | None = None  # around: minutes kept free before those events
+    after_min: int | None = None  # around: and after them
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -123,8 +128,8 @@ def read(text: str) -> tuple[Reading | None, Strength]:
     t = re.sub(r"\s+", " ", t)
     negated = bool(re.search(r"\b(no|never|don't|not|avoid)\b", t))
     t = re.sub(r"\b(no|never|don't do|don't|do not|not|avoid)\b", " ", t)
-    readers = (read_pace, read_ahead, read_optional, read_night_before, read_cap, read_early, read_free, read_window,
-               read_days, read_after, read_deadlines)  # fmt: skip
+    readers = (read_pace, read_around, read_ahead, read_optional, read_night_before, read_cap, read_early, read_free,
+               read_window, read_days, read_after, read_deadlines)  # fmt: skip
     for parse in readers:
         found = parse(" " + " ".join(t.split()) + " ", negated)
         if found:
@@ -208,6 +213,38 @@ def read_optional(t: str, negated: bool) -> Reading | None:
     )
     titles = titles_in(found[1]) if found else ()
     return Reading("optional", "events", events=titles) if titles else None
+
+
+SPAN = r"(\d+(?:\.\d+)?) ?(minutes?|mins?|m|hours?|hrs?|h)\b"
+SIDES = r"(?:before and after|around|either side of|on either side of|on both sides of|each side of)"
+ROOM = r"(?:(?:of |for )?(?:buffer|travel time|travel|time|room|a gap|gap|break)s? )?"
+AND_AFTER = r"(\d+(?:\.\d+)?) ?(minutes?|mins?|m|hours?|hrs?|h)? ?after ?$"  # "… and 40 after", the unit kept
+
+
+def span_minutes(amount: str, unit: str) -> int:
+    return round(float(amount) * (60 if unit.startswith("h") else 1))
+
+
+def read_around(t: str, negated: bool) -> Reading | None:
+    """Time kept free around events: `30 minutes before and after gym`, `leave 15 min around climbing club`, `a 20
+    minute buffer around gym`, `20 min before gym and 40 after`, `45 minutes after gym`."""
+    lead = r"^ ?(?:leave |keep |give (?:me )?|add |have |allow |need )?(?:an? )?"
+    if m := re.search(rf"{lead}{SPAN} ?{ROOM}{SIDES} (.+?) ?$", t):
+        before = after = span_minutes(m[1], m[2])
+        titles = titles_in(m[3])
+    elif m := re.search(rf"{lead}{SPAN} ?{ROOM}before (.+?) and {AND_AFTER}", t):
+        before = span_minutes(m[1], m[2])
+        after = span_minutes(m[4], m[5] or m[2])
+        titles = titles_in(m[3])
+    elif m := re.search(rf"{lead}{SPAN} ?{ROOM}(before|after) (.+?) ?$", t):
+        minutes = span_minutes(m[1], m[2])
+        before, after = (minutes, 0) if m[3] == "before" else (0, minutes)
+        titles = titles_in(m[4])
+    else:
+        return None
+    if not titles or not 0 < max(before, after) <= 6 * 60:
+        return None
+    return Reading("around", "events", events=titles, before_min=before, after_min=after)
 
 
 AHEAD = (
@@ -409,6 +446,14 @@ def said(r: Reading) -> str:
         names = [titled(e) for e in r.events or ()]
         listed = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
         return f"{listed} {'is' if len(names) == 1 else 'are'} optional: work takes the time when it must"
+    if r.kind == "around":
+        names = " and ".join(titled(e) for e in r.events or ())
+        b, a = r.before_min or 0, r.after_min or 0
+        if b == a:
+            return f"{span_said(b)} before and after {names}"
+        sides = [f"{span_said(b)} before {names}"] if b else []
+        sides += [f"{span_said(a)} after" + ("" if b else f" {names}")] if a else []
+        return " and ".join(sides)
     if r.kind == "ahead":
         names = [titled(e) for e in r.events or ()]
         listed = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
@@ -447,6 +492,12 @@ def said(r: Reading) -> str:
     return f"{subject} right after {r.event}"
 
 
+def span_said(minutes: int) -> str:
+    """45 min, 1 h, 1 h 30."""
+    h, m = divmod(minutes, 60)
+    return f"{m} min" if not h else f"{h} h" + (f" {m}" if m else "")
+
+
 def scope_of(subject: str, areas: list[str], presets: list[str]) -> dict[str, Any] | None:
     if subject == "work":
         return None
@@ -471,6 +522,9 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
     if r.kind == "optional":  # their time is priced, not walled off (build), so it goes only when work must
         return {"name": name, "type": "skippable", "weight": 1.0, "scope": None, "reason": sentence(r),
                 "params": {"titles": list(r.events or ()), "price": 8.0}}  # fmt: skip
+    if r.kind == "around":  # not a priced rule: the plan's build keeps that time around those events (planner.build)
+        params = {"titles": list(r.events or ()), "before_min": r.before_min or 0, "after_min": r.after_min or 0}
+        return {"name": name, "type": "travel", "weight": 0.0, "scope": None, "reason": sentence(r), "params": params}
     if r.kind == "ahead":  # priced among preferences, not wellbeing: work takes the time before any late night does
         params = {"titles": list(r.events or ()), "price": AHEAD_PRICE, "ahead": True}
         return {"name": name, "type": "skippable", "weight": 1.0, "stage": "preferences", "scope": None,

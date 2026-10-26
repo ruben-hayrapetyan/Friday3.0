@@ -13,7 +13,7 @@ from typing import Any, Literal
 from friday.core.guess import EXAM, course_word
 from friday.core.items import Item
 from friday.core.pace import DayScales
-from friday.core.settings import SleepDay, minutes_of
+from friday.core.settings import SleepDay, bedtime_minutes, minutes_of
 from friday.core.textnorm import identity_text, norm
 from friday.core.time import (
     UNIT_MIN,
@@ -33,6 +33,7 @@ from friday.engine.rules.prices import has_words
 from friday.engine.sampler import SamplerConfig, default_chains
 from friday.engine.scheduler import SchedulerConfig, StepBudget
 
+PLANNER_RULES = frozenset({"travel"})  # rules the build applies itself, not the engine's priced or walled rules
 LONG_TERM_SCALE = 0.25  # how much Long term work counts when short-term work comes first
 
 
@@ -143,6 +144,14 @@ def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOc
         for t in r.params.get("titles", [])
         if t.strip()
     ]
+    # Time kept around some events by name ("30 minutes before and after gym"), on top of their kind's.
+    travel = [
+        (identity_text(norm(t, text)), int(r.params.get("before_min", 0)), int(r.params.get("after_min", 0)))
+        for r in inp.settings["rules"]
+        if r.type == "travel" and r.enabled
+        for t in r.params.get("titles", [])
+        if t.strip()
+    ]
     out, by_id = [], {}
     for item in inp.items:
         if item.when != "fixed":
@@ -155,6 +164,9 @@ def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOc
         before = item.buffer_before_min if item.buffer_before_min is not None else kind.before_min
         after = item.buffer_after_min if item.buffer_after_min is not None else kind.after_min
         title = identity_text(norm(item.title, text))
+        for words, more_before, more_after in travel:
+            if has_words(title, words):
+                before, after = max(before, more_before), max(after, more_after)
         skippable = item.blocks_time and any(has_words(title, o) for o in optional)
         out.append(FixedOcc(item.title, item.event_kind or "other", start, end_at, tuple(item.tags), before, after,
                             item.blocks_time and not skippable, title, skippable))  # fmt: skip
@@ -410,9 +422,7 @@ def night_times(
     """The night beginning on `day`: bedtime and wake (UTC minutes) and the margin after bedtime."""
     evening = sleep_on(settings, overrides, day)
     morning = sleep_on(settings, overrides, day + timedelta(days=1))
-    bedtime = minutes_of(evening.bedtime)
-    if bedtime < day_start:
-        bedtime += 1440  # a bedtime before the day starts is after midnight
+    bedtime = bedtime_minutes(evening.bedtime, morning.wake, day_start)
     return night_utc(day, bedtime, tz), wake_utc(day, minutes_of(morning.wake), tz), evening.margin_min
 
 
@@ -452,10 +462,16 @@ def repair_locks(problem: Problem, pins: dict[str, dict[str, set[int]]], inp: Bu
                 pins[older]["locked"].discard(s)
                 pins[older]["preferred"].add(s)
             owner[s] = key
-    for slots in pins.values():
+    for key, slots in pins.items():
         over_fixed = {s for s in slots["locked"] if problem.blocked[s]}
         slots["locked"] -= over_fixed
         slots["preferred"] |= over_fixed
+        if over_fixed:  # said in the plan's notes: a lock you made, not kept, and why
+            first = int(grid.start[min(over_fixed)])
+            event = next(
+                (f.title for f in problem.fixed if f.blocks_time and f.blocked_lo <= first < f.blocked_hi), "an event"
+            )
+            problem.locks_over_events.append((key, event, first))
     for key, slots in pins.items():
         item = problem.items[key]
         locked_units = sum(int(grid.units[s]) for s in slots["locked"])

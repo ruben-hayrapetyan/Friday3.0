@@ -24,6 +24,7 @@ const PAGES = [
   { to: "/review", icon: "cards", label: "Review" },
   { to: "/inbox", icon: "tray", label: "Inbox" },
   { to: "/insights", icon: "chart-line", label: "Insights" },
+  { to: "/body", icon: "moon-stars", label: "Sleep & meals" },
   { to: "/rules", icon: "sliders-horizontal", label: "Rules" },
 ] as const
 

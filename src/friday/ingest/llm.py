@@ -6,6 +6,7 @@ The key comes from `[anthropic] api_key` in `secrets.toml` beside `friday.toml`,
 never stored in settings, exported or logged. The file wins: it is the one written for Friday, while the variable may
 be left over in a shell for something else."""
 
+import base64
 import json
 import os
 import shutil
@@ -87,8 +88,11 @@ class CliClient:
 
     def create(self, *, model: str, system: str, messages: list[dict[str, Any]], output_config: dict | None = None,
                **_: Any) -> Any:  # fmt: skip
+        messages = [pdfs_as_text(m) for m in messages]  # the command takes text: a PDF's is read out here
         if has_files(messages):
-            raise RuntimeError("PDFs and images need an Anthropic API key (Settings → Integrations)")
+            raise RuntimeError(
+                "Images (and PDFs with no text in them) need an Anthropic API key (Settings → Integrations)"
+            )
         prompt = "\n\n".join(text_of(m.get("content")) for m in messages if m.get("role") == "user")
         args = [str(self.path), "-p", prompt, "--model", model, "--output-format", "json", "--system-prompt", system,
                 "--tools", "", "--strict-mcp-config", "--no-session-persistence"]  # fmt: skip
@@ -110,6 +114,50 @@ class CliClient:
                 input_tokens=int(usage.get("input_tokens", 0)), output_tokens=int(usage.get("output_tokens", 0))
             ),
         )
+
+
+PDFTOTEXT = (Path("/opt/homebrew/bin/pdftotext"), Path("/usr/local/bin/pdftotext"))
+
+
+def pdftotext_path() -> Path | None:
+    """Poppler's `pdftotext`, if it's installed (Homebrew puts it in one of these)."""
+    found = shutil.which("pdftotext")
+    return Path(found) if found else next((p for p in PDFTOTEXT if p.exists()), None)
+
+
+def pdfs_as_text(message: dict[str, Any]) -> dict[str, Any]:
+    """A message with each PDF it carries replaced by the PDF's text, for the `claude` command, which is handed text
+    only; one with no text in it (a scan) stays a PDF, for the API."""
+    content = message.get("content")
+    if not isinstance(content, list):
+        return message
+    out = []
+    for block in content:
+        source = block.get("source", {}) if isinstance(block, dict) else {}
+        if (
+            isinstance(block, dict)
+            and block.get("type") == "document"
+            and source.get("media_type") == "application/pdf"
+        ):
+            text = pdf_text(base64.b64decode(source.get("data", "")))
+            if text:
+                out.append({"type": "text", "text": f"The attached PDF, as text:\n\n{text}"})
+                continue
+        out.append(block)
+    return message | {"content": out}
+
+
+def pdf_text(data: bytes, run: Any = subprocess.run) -> str | None:
+    """A PDF's text, its layout kept (tables of due dates stay in rows); None without pdftotext or any text."""
+    tool = pdftotext_path()
+    if tool is None or not data:
+        return None
+    with tempfile.NamedTemporaryFile(suffix=".pdf") as f:
+        f.write(data)
+        f.flush()
+        out = run([str(tool), "-layout", "-enc", "UTF-8", f.name, "-"], capture_output=True, timeout=60)
+    text = out.stdout.decode("utf-8", "replace").strip() if out.returncode == 0 else ""
+    return text or None
 
 
 def text_of(content: Any) -> str:

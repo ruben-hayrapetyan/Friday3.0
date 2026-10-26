@@ -482,3 +482,80 @@ def test_short_term_first_makes_long_term_work_wait_for_this_weeks_short_term_wo
     blocks = app.do("plan")["blocks"]
     essay_end = max(b["end"] for b in blocks if b["item_id"] == essay)
     assert all(b["start"] >= essay_end for b in blocks if b["item_id"] == book)
+
+
+def test_a_bedtime_after_the_day_starts_is_that_night_not_that_morning(tmp_path: Path) -> None:
+    # Bed at 4:30am, up at noon: the night runs 4:30am to noon the next morning, not from 4:30 this morning, which
+    # left no waking hour to plan in.
+    app = new_app(tmp_path, now="2026-10-19T12:00")
+    late = {"bedtime": "04:30", "wake": "12:00", "margin_min": 60}
+    app.do("settings_set", key="sleep", value=dict.fromkeys(("mon", "tue", "wed", "thu", "fri", "sat", "sun"), late))
+    essay = app.do("add", title="Essay", duration_min=4 * 60, due="2026-10-21T23:59")["item"]["id"]
+    app.do("replan")
+    blocks = app.do("item", id=essay)["blocks"]
+    assert (
+        sum(_minutes(b["end"][11:]) - _minutes(b["start"][11:]) for b in blocks if b["end"][:10] == b["start"][:10]) > 0
+    )
+    assert not app.do("status")["late"]
+    assert all(not ("04:30" <= b["start"][11:] < "12:00") for b in blocks)  # none in the night
+
+
+def test_a_lock_over_an_event_says_why_it_wasnt_kept(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    essay = app.do("add", title="Essay", duration_min=120, due="2026-10-22T23:59")["item"]["id"]
+    app.do("add", title="Seminar", when="fixed", start="2026-10-20T14:00", end="2026-10-20T16:00")
+    app.do("pin", id=essay, start="2026-10-20T14:00", end="2026-10-20T16:00", kind="locked")
+    app.do("replan")
+    said = "Your lock on Essay (Tue 2pm) is during Seminar, so Friday planned it elsewhere: move the lock, or make "
+    assert said + "Seminar optional" in app.do("status")["notices"]
+    assert not any("2026-10-20T14:00" <= b["start"] < "2026-10-20T16:00" for b in app.do("item", id=essay)["blocks"])
+
+
+def test_travel_time_around_an_event_by_name(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do("settings_set", key="event_kinds", value={"other": {"before_min": 0, "after_min": 0}})
+    out = app.do("rule_add", text="30 minutes before and after gym")
+    assert out["message"] == "Added: 30 min before and after Gym"
+    app.do("add", title="Gym", when="fixed", start="2026-10-19T12:00", end="2026-10-19T13:00")
+    app.do("add", title="Essay", duration_min=10 * 60, due="2026-10-19T23:59")  # the day fills up to the gym's sides
+    app.do("replan")
+    near = [
+        b
+        for b in app.do("plan", start="2026-10-19T00:00", end="2026-10-20T04:00")["blocks"]
+        if b["title"] == "Essay" and b["start"] < "2026-10-19T13:30" and b["end"] > "2026-10-19T11:30"
+    ]
+    assert near == []  # 11:30 to 1:30 kept: the gym and half an hour each side
+    assert not any("is off" in n for n in app.do("status")["notices"])  # not taken for an unknown rule
+
+
+def test_the_night_before_holds_only_when_you_go(tmp_path: Path) -> None:
+    # Climbing club only when you're ahead, and no work after 10pm the night before it. Every other hour is taken, so
+    # a 3-hour essay due when the Wednesday evening club ends needs the club's time and Tuesday night: the plan gives
+    # the club's time to the essay, so you aren't going, and the night before is free to work.
+    app = new_app(tmp_path)
+    app.do("add", title="Climbing Club", when="fixed", start="2026-10-21T18:00", end="2026-10-21T20:00")
+    app.do("rule_add", text="climbing club only if i'm ahead")
+    app.do("rule_add", text="no work after 10pm the night before climbing club", strength="Always")
+    for start, end in (("2026-10-19T07:00", "2026-10-20T01:00"), ("2026-10-20T07:00", "2026-10-20T22:00"),
+                       ("2026-10-21T07:00", "2026-10-21T18:00")):  # fmt: skip
+        app.do("add", title="Lab", when="fixed", start=start, end=end)
+    app.do("add", title="Essay", duration_min=3 * 60, due="2026-10-21T20:00")
+    app.do("replan")
+    blocks = [
+        b for b in app.do("plan", start="2026-10-19T00:00", end="2026-10-22T04:00")["blocks"] if b["title"] == "Essay"
+    ]
+    assert any("2026-10-21T18:00" <= b["start"] < "2026-10-21T20:00" for b in blocks)  # the club's time, used
+    assert any(b["end"] > "2026-10-20T22:00" and b["start"] < "2026-10-21T04:00" for b in blocks)  # the night, too
+    assert not app.do("status")["late"]
+
+
+def test_the_night_before_holds_when_you_go(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do("add", title="Climbing Club", when="fixed", start="2026-10-21T06:00", end="2026-10-21T08:00")
+    app.do("rule_add", text="no work after 10pm the night before climbing club", strength="Always")
+    app.do("add", title="Essay", duration_min=10 * 60, due="2026-10-21T12:00")
+    app.do("replan")
+    blocks = [
+        b for b in app.do("plan", start="2026-10-19T00:00", end="2026-10-22T00:00")["blocks"] if b["title"] == "Essay"
+    ]
+    assert not any(b["end"] > "2026-10-20T22:00" and b["start"] < "2026-10-21T04:00" for b in blocks)

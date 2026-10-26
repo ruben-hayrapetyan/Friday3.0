@@ -172,6 +172,45 @@ class ShoveOutput(Model):
     day: str | None = None  # the first day cleared (YYYY-MM-DD, a planning day), for the calendar to show it
 
 
+MealKind = Literal["breakfast", "lunch", "dinner", "snack"]
+
+
+class MealStartInput(Model):
+    kind: MealKind | None = None  # by the time when left out: the routine whose window it is, else the hour
+    at: str | None = None  # local time; now when left out
+
+
+class MealEndInput(Model):
+    at: str | None = None  # local time; now when left out
+
+
+class MealLogInput(Model):
+    """A meal you didn't tap: when you ate it, after the fact."""
+
+    kind: MealKind
+    start: str  # local
+    end: str  # local
+
+
+class MealSkipInput(Model):
+    kind: MealKind
+    date: str | None = None  # the planning day; today when left out
+
+
+class MealEditInput(Model):
+    id: int
+    start: str | None = None  # local
+    end: str | None = None  # local
+
+
+class MealRef(Model):
+    id: int
+
+
+class MealLengthInput(Model):
+    kind: MealKind  # its routine is planned at the length you usually take, from today
+
+
 class SleepMarkInput(Model):
     kind: Literal["bed", "up", "ready"]
     at: str | None = None  # local time; now when left out
@@ -562,7 +601,7 @@ class DocumentInput(Model):
     """A document to read for tasks: a syllabus, a handout, a screenshot. Text, or base64 for a PDF or image."""
 
     name: str
-    media_type: str = "text/plain"  # text/plain, application/pdf, image/png, image/jpeg
+    media_type: str = "text/plain"  # text/plain, text/html (read as its text), application/pdf, image/png, image/jpeg
     content: str
 
 

@@ -5,6 +5,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
+import { useNavigate } from "react-router"
 import { query, type Schemas } from "@/api/client"
 import { H, Icon, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
@@ -27,7 +28,9 @@ export function Integrations() {
         <Google />
         <Gmail />
         <Feeds />
-        <Card icon="file-pdf" title="Syllabus upload" note="One PDF becomes class times, readings, assignments and exam prep, reviewed together in your Inbox." right={<Upload />} />
+        <Card icon="file-pdf" title="Syllabus upload" note="One syllabus (a PDF, or a page saved from Canvas or a course site) becomes class times, readings, assignments and exam prep, reviewed together in your Inbox." right={<Upload />}>
+          <Documents />
+        </Card>
       </div>
       <div className="fr-well" style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 12, padding: "14px 18px", borderRadius: "var(--radius-lg)", boxShadow: "none" }}>
         <Icon name="download-simple" size={18} />
@@ -269,18 +272,69 @@ export function Upload() {
   const add = useCommand("document_add", { label: (o) => o.result.message ?? "Reading it" })
   const file = useRef<HTMLInputElement>(null)
   const send = async (picked: File) => {
-    const isText = picked.type.startsWith("text/") || picked.type === ""
+    const isText = picked.type.startsWith("text/") || picked.type === "" || /\.html?$/i.test(picked.name)
     const content = isText ? await picked.text() : toBase64(new Uint8Array(await picked.arrayBuffer()))
-    await add({ name: picked.name, media_type: isText ? "text/plain" : picked.type, content })
+    // A web page goes as HTML: Friday reads it as the text a reader sees.
+    await add({ name: picked.name, media_type: isText ? (picked.type === "text/html" || /\.html?$/i.test(picked.name) ? "text/html" : "text/plain") : picked.type, content })
   }
   return (
     <>
-      <input ref={file} type="file" accept="application/pdf,image/png,image/jpeg,text/plain" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && send(e.target.files[0])} />
+      <input ref={file} type="file" accept="application/pdf,image/png,image/jpeg,text/plain,text/html,.html,.htm" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && send(e.target.files[0])} />
       <button className="btn btn-secondary" onClick={() => file.current?.click()} style={{ fontSize: 12 }}>
         <Icon name="upload-simple" />
-        Upload PDF
+        Upload PDF or page
       </button>
     </>
+  )
+}
+
+/** What you've uploaded: each syllabus read or not, what it found and what's still in the Inbox; one that failed can
+ * be read again (a PDF's text is read out for the claude command now, so no API key is needed). */
+function Documents() {
+  const { today } = useShell()
+  const navigate = useNavigate()
+  const docs = useQuery({ queryKey: ["documents"], queryFn: () => query("documents"), refetchInterval: (q) => (q.state.data?.some((d) => d.status === "reading") ? 5000 : false) }).data ?? []
+  const retry = useCommand("document_retry", { label: (o) => o.result.message ?? "Reading it again" })
+  if (!docs.length) return null
+  return (
+    <div style={{ display: "flex", flexDirection: "column", paddingLeft: 50 }}>
+      <span className="fr-kicker" style={{ paddingBottom: 4 }}>
+        Uploaded ({docs.length})
+      </span>
+      {docs.map((d) => (
+        <div key={d.id} className="fr-row" style={{ display: "grid", gridTemplateColumns: "18px minmax(0,1fr) auto", gap: 10, alignItems: "center", padding: "7px 0", fontSize: 12 }}>
+          <Icon name={d.kind === "pdf" ? "file-pdf" : d.kind === "image" ? "image" : "file-text"} size={15} style={{ color: "var(--color-neutral-400)" }} />
+          <span style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+            <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.name}>
+              {d.name}
+            </span>
+            <span style={{ color: d.status === "failed" ? "var(--fr-warn)" : "var(--color-neutral-500)", textWrap: "pretty" }}>
+              {when(d.received, today)} ·{" "}
+              {d.status === "reading"
+                ? "being read…"
+                : d.status === "failed"
+                  ? `couldn't be read: ${d.error ?? "unknown error"}`
+                  : d.status === "skipped"
+                    ? "skipped"
+                    : d.found
+                      ? `found ${d.found}${d.waiting ? ` · ${d.waiting} waiting in your Inbox` : ""}${d.accepted ? ` · ${d.accepted} added` : ""}`
+                      : "read; nothing to plan in it"}
+            </span>
+          </span>
+          {d.status === "failed" ? (
+            <button className="btn btn-secondary" onClick={() => retry({ id: d.id })} style={{ fontSize: 12, padding: "2px 10px" }}>
+              Read again
+            </button>
+          ) : d.waiting ? (
+            <button className="fr-link" onClick={() => navigate("/inbox")} style={{ fontSize: 12 }}>
+              Review
+            </button>
+          ) : (
+            <span />
+          )}
+        </div>
+      ))}
+    </div>
   )
 }
 

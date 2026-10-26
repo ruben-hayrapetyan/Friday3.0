@@ -208,3 +208,28 @@ def test_a_free_span_said_without_am_or_pm_is_the_evening() -> None:
 @pytest.mark.parametrize("text", ["rest on sundays", "I rest on Sundays", "rest sundays", "off on sundays"])
 def test_resting_on_a_day(text: str) -> None:
     assert read(text)[0] == Reading("days", "work", rel="not_on", days=("sun",))
+
+
+@pytest.mark.parametrize(
+    ("text", "before", "after", "said"),
+    [
+        ("30 minutes before and after gym", 30, 30, "30 min before and after Gym"),
+        ("leave 15 min around the gym", 15, 15, "15 min before and after Gym"),
+        ("a 20 minute buffer around gym", 20, 20, "20 min before and after Gym"),
+        ("keep 30 mins either side of gym", 30, 30, "30 min before and after Gym"),
+        ("20 min before gym and 40 after", 20, 40, "20 min before Gym and 40 min after"),
+        ("45 minutes after gym", 0, 45, "45 min after Gym"),
+        ("1 hour before gym", 60, 0, "1 h before Gym"),
+    ],
+)
+def test_time_kept_around_events(text: str, before: int, after: int, said: str) -> None:
+    reading, _ = read(text)
+    assert reading == Reading("around", "events", events=("gym",), before_min=before, after_min=after)
+    assert sentence(reading) == said
+    rule = spec(reading, "Prefer", "you:x", [], [])
+    assert (rule["type"], rule["params"]) == ("travel", {"titles": ["gym"], "before_min": before, "after_min": after})
+
+
+def test_around_leaves_other_rules_alone() -> None:
+    assert read("gym right after class")[0].kind == "after"  # type: ignore[union-attr]
+    assert read("no work after 10pm")[0].kind == "window"  # type: ignore[union-attr]

@@ -61,7 +61,8 @@ EFFECT = {
     "pace": "Every week, Friday plans less on Easy days and more on Push days",
     "skippable": "Friday plans around them as usual, and uses their time only when work would be late otherwise; "
     "the plan says when one gives way",
-    "before_event": "Friday ends those days early",
+    "before_event": "Friday ends those days early when you're going (not when it plans work into that event)",
+    "travel": "Friday keeps that time free around them, to get there and back, on top of each kind's",
     "ahead": "Friday plans work into that time first and leaves it free only when everything fits without it; each "
     "week the plan says go or skip",
     "late_work": "Already built in and always on: when work would be late, Friday plans past your pace and your "
