@@ -4,7 +4,7 @@
 // read, sent with ↩ from Rules), it asks at once. A proposal that adds, moves or clears time says under it whether you
 // have time for it ("can I go to poker Thursday 8 to 11?"), as `components/Fit.tsx` checks it.
 
-import { useQueryClient } from "@tanstack/react-query"
+import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { ApiError, type CommandName, command, type Schemas } from "@/api/client"
 import { FIT_COMMANDS, type FitCommand, FitLine } from "@/components/Fit"
@@ -12,6 +12,25 @@ import { Box, Icon } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { undoAll } from "@/hooks/useCommand"
 import { useShell } from "@/shell/ShellContext"
+
+/** Claude's proposals you kept, run in order as one change: Undo takes them all back, and one that fails takes back
+ * those before it. Whether they all ran. */
+export async function applyActions(actions: Schemas["ProposedAction"][], client: QueryClient, toast: ReturnType<typeof useToast>): Promise<boolean> {
+  const ids: number[] = []
+  try {
+    for (const a of actions) {
+      const out = await command(a.command as CommandName, a.input as never)
+      if (out.command_id != null) ids.push(out.command_id)
+    }
+  } catch (e) {
+    toast({ message: e instanceof Error ? e.message : String(e), tone: "error" })
+    await undoAll(client, toast, ids)
+    return false
+  }
+  toast({ message: `Applied ${ids.length} change${ids.length === 1 ? "" : "s"}`, action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
+  client.invalidateQueries()
+  return true
+}
 
 export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
   const { ask } = useShell()
@@ -47,21 +66,7 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const apply = async () => {
-    if (!answer) return
-    const ids: number[] = []
-    try {
-      for (const i of kept) {
-        const a = answer.actions[i]
-        const out = await command(a.command as CommandName, a.input as never)
-        if (out.command_id != null) ids.push(out.command_id)
-      }
-    } catch (e) {
-      toast({ message: e instanceof Error ? e.message : String(e), tone: "error" })
-      return undoAll(client, toast, ids)
-    }
-    toast({ message: `Applied ${ids.length} change${ids.length === 1 ? "" : "s"}`, action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
-    client.invalidateQueries()
-    onClose()
+    if (answer && (await applyActions(kept.map((i) => answer.actions[i]), client, toast))) onClose()
   }
   return (
     <div className="fr-scrim" style={{ alignItems: "flex-start", padding: "70px 24px 24px" }}>

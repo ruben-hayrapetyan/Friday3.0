@@ -1,15 +1,16 @@
 // Rules (v22): how you like your days, in your own words. Type a rule; Friday shows how it read it (what, when,
 // which days) for you to correct, and how strongly to hold it. What Friday can't read goes to Claude when you press ↩
-// (when Claude is connected). Below, every rule with a switch, its strength, how often the plan keeps it, and delete.
+// (when Claude is connected), right here: Claude's rules show under the box to tick, and ↩ again adds them. Below, every rule with a switch, its strength, how often the plan keeps it, and delete.
 // A rule the plan bends can ask what it's up against, and you say which should win (COMBINED.md 66); the answer shows
 // on both rules, and clicking it changes it. Rules that contradict each other say so, before you add one and after.
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router"
-import { query, type Schemas } from "@/api/client"
-import { H, Icon, Seg, Switch } from "@/components/fr/controls"
-import { useShell } from "@/shell/ShellContext"
+import { ApiError, command, query, type Schemas } from "@/api/client"
+import { Box, H, Icon, Seg, Switch } from "@/components/fr/controls"
+import { useToast } from "@/components/Toasts"
+import { applyActions } from "@/dialogs/AskClaude"
 import { useCommand } from "@/hooks/useCommand"
 import { useStatus } from "@/hooks/queries"
 import { useInbox } from "@/inbox/InboxPage"
@@ -88,9 +89,14 @@ export function RulesPage() {
   )
 }
 
+/** Claude reading a rule Friday couldn't: asking, what it said, and which of its rules you've ticked. */
+type ClaudeReading = { busy: boolean; error?: string; answer?: Schemas["AskClaudeOut"]; kept: number[] }
+
 function NewRule() {
-  const { askClaude } = useShell()
   const navigate = useNavigate()
+  const client = useQueryClient()
+  const toast = useToast()
+  const [claude, setClaude] = useState<ClaudeReading | null>(null)
   const llm = useInbox().data?.llm as { key?: boolean } | undefined
   const demo = !!useStatus().data?.demo // the demo's stand-in AI
   const ai = !!llm?.key || demo // a key or the claude command
@@ -113,14 +119,31 @@ function NewRule() {
   const reading = preview?.reading as Reading | null | undefined
   const chosen = strength ?? ((preview?.strength as Strength) || "Prefer")
   const unread = !!text.trim() && !!preview && !reading
-  const clear = () => (setText(""), setOverrides({}), setStrength(null))
+  const clear = () => (setText(""), setOverrides({}), setStrength(null), setClaude(null))
+  /** What Friday couldn't read, to Claude, answered here (no dialog): its rules, ticked, for ↩ or Add to apply. */
+  const askInline = async () => {
+    setClaude({ busy: true, kept: [] })
+    try {
+      const out = await command("ask_claude", { text, purpose: "rule" })
+      const kept = out.result.actions.map((a, i) => (a.error ? -1 : i)).filter((i) => i >= 0)
+      setClaude({ busy: false, answer: out.result, kept })
+    } catch (e) {
+      setClaude({ busy: false, kept: [], error: e instanceof ApiError || e instanceof Error ? e.message : String(e) })
+    }
+  }
+  const applyClaude = async () => {
+    const answer = claude?.answer
+    if (answer && (await applyActions(claude.kept.map((i) => answer.actions[i]), client, toast))) clear()
+  }
   /** ↩ or the button: add what Friday read, or hand what it couldn't read to Claude. Read again if typing ran ahead. */
   const submit = async (replacing?: string) => {
     if (!text.trim()) return
     const now = settled === typed && preview ? preview : await query("rule_read", { text, overrides: JSON.stringify(overrides) }).catch(() => null)
     if (!now) return
     if (!now.reading) {
-      if (ai) (askClaude(text, "rule", true), clear())
+      if (!ai || claude?.busy) return
+      if (!claude?.answer?.actions.length) return askInline() // asked again only when Claude had nothing, or not yet
+      if (claude.kept.length) await applyClaude()
       return
     }
     if (await add({ text, overrides: overrides as Record<string, never>, strength: strength ?? ((now.strength as Strength) || "Prefer") })) {
@@ -133,20 +156,22 @@ function NewRule() {
     <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, borderRadius: "var(--radius-lg)", background: "var(--color-bg)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <Icon name="plus" size={18} style={{ color: "var(--color-accent-300)" }} />
-        <input value={text} onChange={(e) => (setText(e.target.value), setOverrides({}), setStrength(null))} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="I prefer eating lunch before 1pm" aria-label="New rule" style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontSize: 16 }} />
-        <button className="btn btn-primary" onClick={() => submit()} disabled={!text.trim() || (unread && !ai)}>
-          {unread && ai && <Icon name="sparkle" />}
-          {unread && ai ? "Ask Claude" : "Add rule"}
+        <input value={text} onChange={(e) => (setText(e.target.value), setOverrides({}), setStrength(null), setClaude(null))} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="I prefer eating lunch before 1pm" aria-label="New rule" style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontSize: 16 }} />
+        <button className="btn btn-primary" onClick={() => submit()} disabled={!text.trim() || (unread && !ai) || !!claude?.busy || (!!claude?.answer && !claude.kept.length && !!claude.answer.actions.length)}>
+          {unread && ai && !claude?.answer && <Icon name="sparkle" />}
+          {!unread || !ai ? "Add rule" : claude?.busy ? "Asking Claude…" : claude?.answer?.actions.length ? `Add ${claude.kept.length > 1 ? `${claude.kept.length} rules` : "rule"}` : claude?.answer ? "Ask again" : "Ask Claude"}
         </button>
       </div>
       {text.trim() && preview ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 14px", marginLeft: 28, borderRadius: "var(--radius-md)", background: "var(--color-surface)" }}>
-          {!reading ? (
+          {!reading && claude ? (
+            <ClaudeRules claude={claude} onTick={(kept) => setClaude({ ...claude, kept })} />
+          ) : !reading ? (
             // What the grammar can't read goes to Claude (COMBINED.md 37), as rules to confirm: ↩ sends it.
             <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12, color: ai ? "var(--color-neutral-300)" : "var(--fr-warn)", textWrap: "pretty" }}>
               <Icon name={ai ? "sparkle" : "question"} size={13} style={{ color: ai ? "var(--color-accent-300)" : undefined, flexShrink: 0, alignSelf: "center" }} />
               {ai ? (
-                <span>Friday can’t read this one itself. Press ↩ and Claude will turn it into rules for you to check before anything changes.</span>
+                <span>Friday can’t read this one itself. Press ↩ and Claude will turn it into rules, shown here for you to check before anything changes.</span>
               ) : (
                 <span>
                   Friday can’t read that as a rule yet, and Claude isn’t connected to read it instead.{" "}
@@ -205,6 +230,45 @@ function NewRule() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/** Claude's reading, in the rule box: asking, what went wrong, or what it said and the rules it proposes, ticked to add. */
+function ClaudeRules({ claude, onTick }: { claude: ClaudeReading; onTick: (kept: number[]) => void }) {
+  const head = (icon: string, words: string, ink = "var(--color-accent-300)") => (
+    <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: ink }}>
+      {claude.busy ? <span className="fr-spinner" /> : <Icon name={icon} size={13} />}
+      {words}
+    </span>
+  )
+  if (claude.busy) return head("sparkle", "Claude is reading it…")
+  if (claude.error) return head("warning", `Claude couldn’t read it: ${claude.error}`, "var(--fr-due)")
+  const answer = claude.answer
+  if (!answer) return null
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {head("sparkle", answer.actions.length ? "Claude read this as" : "Claude had no rule to suggest for this")}
+      {answer.reply && <span style={{ fontSize: 12, color: "var(--color-neutral-300)", textWrap: "pretty" }}>{answer.reply}</span>}
+      {answer.actions.map((a, i) => {
+        const on = claude.kept.includes(i)
+        return (
+          <button
+            key={i}
+            className="fr-plain fr-hover"
+            disabled={!!a.error}
+            onClick={() => onTick(on ? claude.kept.filter((k) => k !== i) : [...claude.kept, i])}
+            style={{ display: "grid", gridTemplateColumns: "18px minmax(0,1fr)", gap: 10, alignItems: "start", padding: "6px 8px", borderRadius: "var(--radius-md)", opacity: a.error ? 0.6 : 1, textAlign: "left" }}
+          >
+            <Box on={on} />
+            <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <H size={15}>{a.sentence}</H>
+              {a.error && <span className="fr-kicker" style={{ color: "var(--fr-due)" }}>{a.error}</span>}
+            </span>
+          </button>
+        )
+      })}
+      {answer.actions.length > 0 && <span className="fr-kicker">↩ adds what’s ticked; Undo takes it all back. Change the words to ask again.</span>}
     </div>
   )
 }
