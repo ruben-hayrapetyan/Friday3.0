@@ -768,3 +768,26 @@ def test_a_meal_whose_window_events_fill_goes_just_outside_it(tmp_path: Path) ->
     replan(app.conn, app.now_utc)
     (dinner,) = meals_on(app, "2026-10-19")["Dinner"] or ["none"]
     assert "15:30" <= dinner < "17:45" or dinner >= "21:00", dinner
+
+
+def test_kept_meals_keep_the_time_to_get_there(tmp_path: Path) -> None:
+    # 26 Oct: on an overloaded day dinner started the moment reading ended. The 15 minutes to get to a meal and back
+    # were a wellbeing cost, so work took them; a meal kept from work keeps its travel too.
+    app = new_app(tmp_path)
+    for title, lo, hi, length in (("Lunch", 450, 630, 15), ("Dinner", 810, 990, 30)):
+        app.do("series_add", title=title, preset="Routine", every="day", release_offset_min=lo, due_offset_min=hi,
+               min_min=length, ideal_min=length, max_min=length, buffer_before_min=15, buffer_after_min=15)  # fmt: skip
+    app.do("rule_add", text="Never skip lunch or dinner")
+    app.do("settings_set", key="daily_cap", value=dict.fromkeys(("mon", "tue", "wed", "thu", "fri", "sat", "sun"), 16))
+    app.do("add", title="Huge essay", duration_min=13 * 60, due="2026-10-19T23:00")
+    replan(app.conn, app.now_utc)
+    blocks = app.do("plan", start="2026-10-19T00:00", end="2026-10-19T23:59")["blocks"]
+    work = [(to_min(b["start"]), to_min(b["end"])) for b in blocks if b["title"] == "Huge essay"]
+    for meal in (b for b in blocks if b["title"] in ("Lunch", "Dinner")):
+        lo, hi = to_min(meal["start"]) - 15, to_min(meal["end"]) + 15
+        assert not [w for w in work if w[0] < hi and w[1] > lo], (meal["title"], meal["start"])
+    assert app.do("status")["late"]
+
+
+def to_min(local: str) -> int:
+    return int(local[11:13]) * 60 + int(local[14:16])

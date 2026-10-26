@@ -1,6 +1,7 @@
 """Measure rules (DESIGN §12.2): a linear quantity of the plan with a convex hinge curve."""
 
 import math
+from collections.abc import Iterator
 from typing import Any, Literal
 
 import numpy as np
@@ -356,39 +357,56 @@ class Buffer(Rule):
                 fixed = sum(int(grid.units[w]) for w in window if problem.blocked[w] and not problem.core[w])
                 expr = starts * b + ctx.busy_units(window) + fixed
                 yield Measure(f"{self.name}:b{b}@{s}", expr, "units", (Hinge("above", b, 1.0),))
-        yield from self.travel(ctx)
+        yield from travel_measures(self, ctx, self.scoped_items(), 1.0)
 
-    def travel(self, ctx):
-        grid, problem = ctx.grid, ctx.problem
-        scoped = self.scoped_items()
-        for side in ("before", "after"):
-            groups: dict[int, list[Any]] = {}
-            for item in scoped:
-                if (b := getattr(item, f"travel_{side}")) > 0:
-                    groups.setdefault(b, []).append(item)
-            for b, members in sorted(groups.items()):
-                keys = {m.key for m in members}
-                others = [i for i in problem.items.values() if i.key not in keys]
-                for s in range(grid.S):
-                    window = before(grid, s, b)
-                    if not window:
+
+@rule_type("travel_kept")
+class TravelKept(Rule):
+    """The time to get to and from what a rule keeps from work ("Never skip lunch or dinner"), kept from it too, in
+    that rule's stage: a lunch you can't get to is a lunch skipped. The build adds one beside each such rule."""
+
+    default_stage = "deadlines"
+    applies_to = {"elastic"}
+
+    class Params(Rule.Params):
+        price: float = 10000.0  # a quarter hour of work in it costs what a kept meal a quarter hour short does
+
+    def measures(self, ctx):
+        yield from travel_measures(self, ctx, self.scoped_items(), self.p.price)
+
+
+def travel_measures(rule: Rule, ctx: Any, scoped: list[Any], slope: float) -> Iterator[Measure]:
+    """An item's own travel (lunch: 15 minutes to get there and back) kept clear of other work on both sides, and of
+    events before it; `slope` per unit of them inside it."""
+    grid, problem = ctx.grid, ctx.problem
+    for side in ("before", "after"):
+        groups: dict[int, list[Any]] = {}
+        for item in scoped:
+            if (b := getattr(item, f"travel_{side}")) > 0:
+                groups.setdefault(b, []).append(item)
+        for b, members in sorted(groups.items()):
+            keys = {m.key for m in members}
+            others = [i for i in problem.items.values() if i.key not in keys]
+            for s in range(grid.S):
+                window = before(grid, s, b)
+                if not window:
+                    continue
+                if side == "before":
+                    # A chunk starting at s, with other work or an event in the b units before it.
+                    starts = lin_sum(ctx.start(m.key, s) for m in members)
+                    if starts.is_const():
                         continue
-                    if side == "before":
-                        # As above: a chunk starting at s, with other work or an event in the b units before it.
-                        starts = lin_sum(ctx.start(m.key, s) for m in members)
-                        if starts.is_const():
-                            continue
-                        events = sum(int(grid.units[w]) for w in window if problem.events[w])
-                        expr, limit = starts * b + ctx.busy_units(window, others) + events, b
-                    else:
-                        # Other work at s, with one of these in the b units before it: b × (work at s) + its units
-                        # there, above b × (the slot's units) only when both.
-                        mine = ctx.busy_units(window, members)
-                        here = ctx.busy_units([s], others)
-                        if mine.is_const() or here.is_const():
-                            continue
-                        expr, limit = here * b + mine, b * int(grid.units[s])
-                    yield Measure(f"{self.name}:t{side[0]}{b}@{s}", expr, "units", (Hinge("above", limit, 1.0),))
+                    events = sum(int(grid.units[w]) for w in window if problem.events[w])
+                    expr, limit = starts * b + ctx.busy_units(window, others) + events, b
+                else:
+                    # Other work at s, with one of these in the b units before it: b × (work at s) + its units
+                    # there, above b × (the slot's units) only when both.
+                    mine = ctx.busy_units(window, members)
+                    here = ctx.busy_units([s], others)
+                    if mine.is_const() or here.is_const():
+                        continue
+                    expr, limit = here * b + mine, b * int(grid.units[s])
+                yield Measure(f"{rule.name}:t{side[0]}{b}@{s}", expr, "units", (Hinge("above", limit, slope),))
 
 
 def before(grid: Any, s: int, units: int) -> list[int]:

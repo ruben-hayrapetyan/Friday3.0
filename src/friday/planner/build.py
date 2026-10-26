@@ -40,7 +40,8 @@ PLANNER_RULES = frozenset({"travel", "meal_learned"})
 # Whether a meal may leave its window is the calendar's to say, not the work's: when events leave no room in it
 # (dinner's 5:30-8:30 under a 6pm Zoom and a 7:30 lab), it may go up to MEAL_REACH_MIN outside, priced in the
 # wellbeing stage so it stays close; with room nowhere near, it isn't asked for that day. Whether work may take a
-# meal's time is yours to say: a rule ("Never skip lunch or dinner") keeps it in the deadlines stage.
+# meal's time is yours to say: a rule ("Never skip lunch or dinner") keeps it in the deadlines stage, and the time to
+# get there and back with it (`travel_kept`).
 MEAL_REACH_MIN = 120
 MEAL_WINDOW = {"type": "meal_window", "name": "meal_window", "weight": 1.0, "stage": "wellbeing",
                "params": {"price": 2000.0}}  # fmt: skip
@@ -134,16 +135,26 @@ def build_problem(inp: BuildInput) -> Problem:
             item.current = item.current | item.held
     problem.refresh_locks()
     # A rule whose type a plugin should have defined, but didn't load, is off; the plan report says so.
-    problem.rules = build_rules(
-        [rule.model_dump(exclude={"enabled"}) for rule in settings["rules"] if rule.type in RULE_TYPES and rule.enabled]
-        + [MEAL_WINDOW]
-    )
+    rules = [
+        rule.model_dump(exclude={"enabled"}) for rule in settings["rules"] if rule.type in RULE_TYPES and rule.enabled
+    ]
+    problem.rules = build_rules(rules + [MEAL_WINDOW] + travel_kept(rules))
     for rule in problem.rules:
         rule.prepare(problem)
     prune(problem)
     if demote_unusable_locks(problem):
         prune(problem)
     return problem
+
+
+def travel_kept(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Beside each rule keeping routines from work, the time to get to and from them kept the same way."""
+    return [
+        {"type": "travel_kept", "name": f"{r['name']}:travel", "weight": 1.0, "stage": "deadlines",
+         "scope": r.get("scope"), "reason": r.get("reason"), "params": {}}
+        for r in rules
+        if r["type"] == "elastic_shortfall" and r.get("stage") == "deadlines"
+    ]  # fmt: skip
 
 
 def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOcc], dict[int, Item]]:
