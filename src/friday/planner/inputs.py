@@ -85,7 +85,28 @@ def executor_input(inp: BuildInput, problem: Problem) -> ExecutorInput:
     busy = busy_until(inp, problem, end)
     locked = [(int(grid.start[s]), int(grid.end[s])) for item in problem.items.values() for s in item.locked]
     next_blocking = min((lo for lo, _ in busy if lo > now), default=None)
-    return ExecutorInput(now, subtract([(now, end)], busy + locked), jobs, next_blocking)
+    return ExecutorInput(now, whole_slots(problem, subtract([(now, end)], busy + locked)), jobs, next_blocking)
+
+
+def whole_slots(problem: Problem, free: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Free time the plan can use: within the planned days, only whole slots (the 10 minutes between two meetings
+    holds no work, and counted as free it let Shove clear an evening a report due that night needed); past them, as
+    it is."""
+    grid = problem.grid
+    inside = sorted((lo, hi) for lo, hi in free if lo < grid.horizon_end)
+    out: list[tuple[int, int]] = []
+    k = 0
+    for s in range(grid.S):  # slots and free time both in order: one sweep
+        a, b = int(grid.start[s]), int(grid.end[s])
+        while k < len(inside) and inside[k][1] < b:
+            k += 1
+        if k < len(inside) and inside[k][0] <= a:
+            if out and out[-1][1] == a:
+                out[-1] = (out[-1][0], b)
+            else:
+                out.append((a, b))
+    later = [(max(lo, grid.horizon_end), hi) for lo, hi in free if hi > grid.horizon_end]
+    return out + [(lo, hi) for lo, hi in later if hi > lo]
 
 
 def now_settings(settings: Mapping[str, Any]) -> NowSettings:

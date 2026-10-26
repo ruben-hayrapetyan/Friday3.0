@@ -50,6 +50,9 @@ def test_room_bookings_dont_count_until_you_count_them() -> None:
 def test_events_left_out_of_planning_say_why() -> None:
     busy = BusySettings()
     assert left_out("Problem Set 8 due", "Classes", False, RULES, busy) == "reminder"
+    assert left_out("Applications deadline", "Personal", False, RULES, busy) == "reminder"
+    assert left_out("Thesis deadline check-in with advisor", "Personal", False, RULES, busy) is None
+    assert left_out("Meeting: project due date review", "Personal", False, RULES, busy) is None
     assert left_out("Lunch with Sam", "Personal", True, RULES, busy) == "free"
     assert left_out("CS 2110 Office Hours", "Classes", False, RULES, busy) == "filtered"
     assert left_out("Study room 3", "Library Rooms", False, RULES, busy) == "calendar"

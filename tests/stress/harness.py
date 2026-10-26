@@ -19,9 +19,11 @@ from typing import Any
 from friday.commands.all import REGISTRY  # noqa: F401  (registers the commands)
 from friday.commands.registry import run
 from friday.core.db import connect, rows
+from friday.core.quickadd import MEAL
 from friday.core.time import format_utc, parse_local, parse_utc, to_utc
 from friday.engine.checker import check
 from friday.planner.assemble import assemble
+from friday.planner.build import MEAL_REACH_MIN
 from friday.planner.service import lock_conflicts, save_plan
 from friday.planner.snapshot import take_snapshot
 from friday.planner.solve import solve
@@ -258,7 +260,9 @@ def plan_issues(world: World, status: str, coarse_from: int | None = None) -> li
             continue
         if item["due_utc"] and item["firmness"] == "hard" and end > parse_utc(item["due_utc"]) and item_id not in late:
             out.append(f"T{item_id} planned past its due ({world.local(parse_utc(item['due_utc']))}) and not said late")
-        if item["release_utc"] and start < parse_utc(item["release_utc"]):
+        # A meal may reach up to MEAL_REACH_MIN outside its window when events fill it (planner/build.meal_room).
+        reach = MEAL_REACH_MIN if item["preset"] == "Routine" and MEAL.search(item["title"]) else 0
+        if item["release_utc"] and start < parse_utc(item["release_utc"]) - reach:
             out.append(f"T{item_id} planned before its release")
     # What it waits on comes first.
     by_item: dict[int, list[tuple[int, int]]] = {}

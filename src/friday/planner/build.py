@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any, Literal
 
-from friday.core.guess import EXAM, course_word
+from friday.core.guess import EXAM, same_course
 from friday.core.items import Item
 from friday.core.pace import DayScales
 from friday.core.quickadd import MEAL
@@ -293,7 +293,6 @@ def focused_release(
     if not focus.on or due is None or item.preset == "Exam prep":
         return release
     words = re.compile(r"\b(" + "|".join(re.escape(w) for w in focus.words) + r")\b", re.IGNORECASE)
-    course = course_word(item.title)
     length = (item.duration_units or 0) * UNIT_MIN
     for exam in fixed.values():
         if not exam.start_utc or not exam.end_utc or exam.status != "todo" or not words.search(exam.title):
@@ -301,23 +300,8 @@ def focused_release(
         start, end = parse_utc(exam.start_utc), parse_utc(exam.end_utc)
         focusing = start - focus.days_before * 1440 <= now < start
         room_after = due - end >= 1440 + 1.5 * length
-        if focusing and course_word(exam.title) != course and due > end and room_after:
+        if focusing and not same_course(item.title, exam.title) and due > end and room_after:
             release = max(release if release is not None else now, end)
-    return release
-    words = re.compile(r"\b(" + "|".join(re.escape(w) for w in focus.words) + r")\b", re.IGNORECASE)
-    course = course_word(item.title)
-    length = (item.duration_units or 0) * UNIT_MIN
-    for exam in fixed.values():
-        if not exam.start_utc or not exam.end_utc or exam.status != "todo" or not words.search(exam.title):
-            continue
-        start, end = parse_utc(exam.start_utc), parse_utc(exam.end_utc)
-        if course_word(exam.title) == course or not start < due:
-            continue
-        if due - end < 1440 + 1.5 * length:
-            continue  # it couldn't wait: done before the exam after all
-        focus_from = start - focus.days_before * 1440
-        if release is None or release < end:
-            release = max(release or focus_from, end) if (release or focus_from) <= start else release
     return release
 
 
@@ -328,11 +312,10 @@ def exam_due(item: Item, due: int | None, fixed: Mapping[int, Item], now: int) -
     review is for."""
     if item.preset != "Exam prep" or due is None:
         return due
-    course = course_word(item.title)
     starts = [
         parse_utc(f.start_utc)
         for f in fixed.values()
-        if f.start_utc and f.status == "todo" and EXAM.search(f.title) and course_word(f.title) == course
+        if f.start_utc and f.status == "todo" and EXAM.search(f.title) and same_course(item.title, f.title)
     ]
     near = [start for start in starts if due - 3 * 1440 <= start <= due and start > now]
     return max(near) if near else due

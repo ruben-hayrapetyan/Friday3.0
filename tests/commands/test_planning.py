@@ -791,3 +791,50 @@ def test_kept_meals_keep_the_time_to_get_there(tmp_path: Path) -> None:
 
 def to_min(local: str) -> int:
     return int(local[11:13]) * 60 + int(local[14:16])
+
+
+@pytest.mark.parametrize("fitted", [True, False])
+def test_short_tasks_take_the_short_gaps_when_you_ask(tmp_path: Path, fitted: bool) -> None:
+    # Monday afternoon is free from 1 to 5, then half an hour from 5:30 to 6 before the evening's events. Left alone
+    # the email follows the essay in the afternoon; asked for, it takes the half hour, and the essay the afternoon.
+    app = new_app(tmp_path)
+    for start, end in (("09:00", "13:00"), ("17:00", "17:30"), ("18:00", "23:30")):
+        app.do("add", title="Class", when="fixed", start=f"2026-10-19T{start}", end=f"2026-10-19T{end}")
+    if fitted:
+        app.do("rule_add", text="short tasks in short gaps, long tasks in long stretches", strength="Strongly")
+    app.do("add", title="Email prof", duration_min=30, due="2026-10-19T23:00")
+    app.do("add", title="Essay", duration_min=180, due="2026-10-19T23:00", shape="one_sitting")
+    replan(app.conn, app.now_utc)
+    blocks = app.do("plan", start="2026-10-19T00:00", end="2026-10-20T00:00")["blocks"]
+    (email,) = [b for b in blocks if b["title"] == "Email prof"]
+    (essay,) = [b for b in blocks if b["title"] == "Essay"]
+    assert essay["start"] >= "2026-10-19T13:00" and essay["end"] <= "2026-10-19T17:00"
+    assert (email["start"] == "2026-10-19T17:30") == fitted, email
+
+
+def test_exam_prep_is_due_at_its_own_courses_exam_not_another_in_the_department(tmp_path: Path) -> None:
+    # 26 Oct, from a stress calendar: PHYS 2213's prelim prep took PHYS 1112's Monday quiz as its due ("phys" both),
+    # got 105 of its 300 minutes and was called late with days free.
+    app = new_app(tmp_path)
+    app.do("add", title="PHYS 1112 Quiz 4", when="fixed", start="2026-10-19T10:10", end="2026-10-19T10:30",
+           event_kind="exam")  # fmt: skip
+    prep = app.do("add", title="PHYS 2213 prelim 2 prep", preset="Exam prep", duration_min=300,
+                  due="2026-10-21T23:59")["item"]["id"]  # fmt: skip
+    replan(app.conn, app.now_utc)
+    planned = [b for b in app.do("plan", start="2026-10-19T00:00", end="2026-10-23T00:00")["blocks"]
+               if b["item_id"] == prep]  # fmt: skip
+    minutes = sum((parse_local(b["end"]) - parse_local(b["start"])).total_seconds() / 60 for b in planned)
+    assert minutes == 300 and not app.do("status")["late"]
+
+
+def test_shove_asks_before_clearing_time_work_needs_when_the_rest_is_slivers(tmp_path: Path) -> None:
+    # Sessions every hour leave ten minutes between them: no room for work. Shove counted them as free, said the
+    # evening was clear, and the report due tonight went late.
+    app = new_app(tmp_path)
+    for h in range(9, 20):
+        app.do("add", title=f"Session {h}", when="fixed", start=f"2026-10-19T{h:02d}:00",
+               end=f"2026-10-19T{h:02d}:50")  # fmt: skip
+    app.do("add", title="Report", duration_min=180, due="2026-10-19T23:59", firmness="hard")
+    replan(app.conn, app.now_utc)
+    out = app.do("shove", range="20:00-21:30")
+    assert [m["title"] for m in out["must_do"]] == ["Report"] and not out["created"]

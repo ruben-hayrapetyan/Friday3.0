@@ -52,6 +52,12 @@ class CalendarLook(Model):
 
 
 REMINDER = re.compile(r"\b(due|deadline)\b", re.IGNORECASE)
+# A meeting about a deadline is still a meeting: "Thesis deadline check-in with advisor" takes the hour (26 Oct).
+MEETING = re.compile(
+    r"\b(with|meeting|meet|check-?in|call|session|office hours|review|interview|talk|chat|sync|1:1|appointment"
+    r"|class|lecture|lab|discussion|seminar|workshop|presentation|defense)\b",
+    re.IGNORECASE,
+)
 ROOMS = re.compile(r"\b(rooms?|bookings?|reservations?)\b", re.IGNORECASE)
 REASONS = ("calendar", "reminder", "free", "filtered")
 
@@ -98,7 +104,7 @@ def left_out(
     """Why an event doesn't count as busy (one of REASONS), or None when it does."""
     if not calendar_counts(calendar, busy):
         return "calendar"
-    if REMINDER.search(title) and not busy.count_reminders:
+    if REMINDER.search(title) and not MEETING.search(title) and not busy.count_reminders:
         return "reminder"
     if free and not busy.count_free:
         return "free"

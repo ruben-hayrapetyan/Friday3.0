@@ -44,6 +44,21 @@ def course_of(title: str) -> str | None:
 EXAM = re.compile(r"\b(exam|prelim|midterm|final|quiz)\b", re.IGNORECASE)
 
 
+def course_code(title: str) -> str | None:
+    """A title's course with its number ("phys 2213" for "PHYS 2213 prelim 2 prep"), or None without one."""
+    m = re.search(r"\b([A-Za-z]{2,5})\s?(\d{4})\b", title)
+    return f"{m.group(1).lower()} {m.group(2)}" if m else None
+
+
+def same_course(a: str, b: str) -> bool:
+    """Two titles about the same course: by number when both give one (PHYS 1112's quiz isn't PHYS 2213's), else by
+    the department or first word ("Math quiz prep" goes with "MATH 2940 Quiz 3")."""
+    code_a, code_b = course_code(a), course_code(b)
+    if code_a and code_b:
+        return code_a == code_b
+    return course_word(a) == course_word(b)
+
+
 def course_word(title: str) -> str:
     """The course a title is about, as one word for comparing ("math" for "MATH 2940 Prelim"); its first word when
     no course code is found."""
