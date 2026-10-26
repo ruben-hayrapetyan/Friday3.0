@@ -96,7 +96,10 @@ def keep_base(M: Model, base: np.ndarray, owner: np.ndarray, day_units: np.ndarr
         i = int(base[s])
         if i < 0 or owner[s] != -1 or not M.allowed[i, s]:
             continue
-        room = max(M.need[i], M.amount_cap[i])
+        # A 30-minute slot past the first week may end a quarter hour past what's needed (a 45-minute task fills an
+        # hour there), as the kernel allows: kept to the need alone, the plan lost that slot, then the whole item
+        # (too little of it), and every warm start moved it somewhere new.
+        room = max(M.need[i], M.amount_cap[i]) + (1 if M.units[s] > 1 and M.amount_kind[i] in (0, 1) else 0)
         if placed[i] + M.units[s] <= room and day_units[M.day[s]] + M.units[s] <= M.day_cap[M.day[s]]:
             write(M, owner, day_units, placed, i, [s])
 

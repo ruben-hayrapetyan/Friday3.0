@@ -130,6 +130,8 @@ def schedule(
             outcomes, protected = sample_from(c, candidate, config, warm_steps, True, cancel)
             owner = outcomes[0].owner
         seconds["fallback"] += time.perf_counter() - clock
+    if warm and (kept := better_kept(c, owner)) is not None:
+        owner, protected = kept, []
     result = verified(c, owner, protected, fallback, start.demoted, seconds, config, steps)
     result.cancelled = bool(cancel[0])
     result.deadlines_after = trace | {"final": result.stage_values["deadlines"]}
@@ -142,6 +144,26 @@ def valid(c: Compiled, owner: np.ndarray) -> bool:
     st = new_state(c.m)
     init_state(c.m, st, owner)
     return int(total_violations(c.m, st)) == 0
+
+
+def stage_values(c: Compiled, owner: np.ndarray) -> tuple[int, ...]:
+    st = new_state(c.m)
+    init_state(c.m, st, owner)
+    return tuple(int(v) for v in st.stage_value)
+
+
+def better_kept(c: Compiled, owner: np.ndarray) -> np.ndarray | None:
+    """The plan you have, scored now (kept where it still may be, nothing added), when the new one isn't better.
+    A warm start adds back what the plan left out (a meal with no room, say) and anneals from there, so with nothing
+    changed it could end elsewhere, even somewhere worse, and every tick moved blocks; now a replan moves the plan
+    only for one that is better, deadlines first, then wellbeing, then preferences (where moving costs)."""
+    have = {k: tuple(item.current) for k, item in c.problem.items.items() if item.current}
+    if not have:
+        return None
+    kept = construct(c, c.owner_from_plan(have), only=set())
+    if not valid(c, kept) or check(c.problem, c.plan_from_owner(kept)):
+        return None
+    return kept if stage_values(c, kept) <= stage_values(c, owner) and (kept != owner).any() else None
 
 
 def current_owner(problem: Problem) -> np.ndarray | None:

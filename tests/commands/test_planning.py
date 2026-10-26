@@ -619,3 +619,25 @@ def test_exam_prep_as_close_to_the_exam_as_possible(tmp_path: Path) -> None:
     buffered = prep(["prep for the math quiz closer to the math quiz (with 1 day of buffer)"])
     quiz = buffered["Prep: Math 1920 Quiz 3"]
     assert quiz and all(b["end"] <= "2026-10-22T13:25" for b in quiz) and any(b["start"] >= "2026-10-22" for b in quiz)
+
+
+def test_a_replan_with_nothing_changed_keeps_the_plan(tmp_path: Path) -> None:
+    # Past the first week a 45-minute task fills an hour (two 30-minute slots). Rebuilt from the saved plan for a warm
+    # start, that hour was cut to the 45 minutes, the task dropped as too short and placed anew, so every tick (a
+    # replan each 15 minutes) moved blocks with nothing changed. Now the plan you have holds unless one is better.
+    app = new_app(tmp_path, horizon_days=14)
+    for n in range(12):
+        app.do("add", title=f"run {n}", duration_min=45, release="2026-10-26T08:00", due=f"2026-10-{27 + n % 4}T20:00")
+    app.do("add", text="essay ~3h due fri 5pm")
+    app.do("replan")
+
+    def blocks() -> list[tuple]:
+        plan = app.do("plan", start="2026-10-19T09:00", end="2026-11-02T00:00")
+        return sorted((b["item_id"], b["start"], b["end"]) for b in plan["blocks"])
+
+    app.do("replan")
+    first = blocks()
+    assert any(b[1] >= "2026-10-26T04:00" for b in first)  # some in the second week's 30-minute slots
+    for _ in range(3):
+        app.do("replan")
+        assert blocks() == first
