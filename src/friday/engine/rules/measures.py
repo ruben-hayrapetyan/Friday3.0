@@ -84,8 +84,9 @@ class Reserve(Rule):
             # An evening kept free until 11:59pm keeps the rest of that night too: otherwise the work it holds off
             # lands just past midnight, later than the evening it was kept from.
             night = []
-            if self.p.start is not None and self.p.end is not None and self.p.start < self.p.end >= NIGHT_FROM:
-                night = [s for s in slots if grid.slots[s].day_minute >= self.p.end and s not in window]
+            end = 1440 if self.p.end == 0 else self.p.end  # until midnight is the end of the evening, not its start
+            if self.p.start is not None and end is not None and self.p.start < end >= NIGHT_FROM:
+                night = [s for s in slots if grid.slots[s].day_minute >= end and s not in window]
             window += night
             free_units = sum(int(grid.units[s]) for s in window if not (problem.blocked[s] or problem.core[s]))
             free_night = sum(int(grid.units[s]) for s in night if not (problem.blocked[s] or problem.core[s]))

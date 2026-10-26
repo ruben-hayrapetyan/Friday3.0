@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { addDays, ampm, fitAxis, fromMin, hourMarks, layout, toMin } from "./time"
+import { addDays, ampm, fitAxis, fromMin, hourMarks, layout, nearestAt, toMin } from "./time"
 
 const axis = { startMin: 7 * 60 + 30, endMin: 24 * 60 + 30 }
 const block = (start: string, end: string, name = "") => ({ start, end, name })
@@ -70,5 +70,13 @@ describe("fitAxis", () => {
   it("stays a day long at most", () => {
     const late = { startMin: 360, endMin: 28 * 60 }
     expect(fitAxis(late, [block("2026-10-26T04:00", "2026-10-26T05:00")], week)).toEqual({ startMin: 240, endMin: 28 * 60 })
+  })
+})
+
+describe("a corrected time", () => {
+  it("lands on the date nearest the time it replaces", () => {
+    expect(nearestAt("2026-10-21T00:20", "23:50")).toBe("2026-10-20T23:50") // a bedtime after midnight, made earlier
+    expect(nearestAt("2026-10-20T23:40", "00:30")).toBe("2026-10-21T00:30") // and the other way
+    expect(nearestAt("2026-10-21T07:30", "08:15")).toBe("2026-10-21T08:15") // the same morning
   })
 })

@@ -1,6 +1,7 @@
 """Queries (DESIGN §9.3): now, fits, plan, items, item, parse, review, paces, status, settings, log_list, stats."""
 
 import json
+from datetime import timedelta
 from typing import Any
 
 from friday.api.commands import (
@@ -37,7 +38,7 @@ from friday.core.pace import dials_on, pace_label
 from friday.core.quickadd import parse
 from friday.core.rows import item_from_row
 from friday.core.settings import to_json
-from friday.core.time import format_utc, parse_utc, to_local
+from friday.core.time import format_utc, local_midnight, parse_utc, to_local, to_utc
 from friday.engine import executor
 from friday.engine.explain import Block
 from friday.planner.build import id_of, key_of
@@ -491,7 +492,9 @@ def log_list(ctx: Ctx, inp: LogListInput) -> list[LogEntry]:
 @query("stats")
 def stats(ctx: Ctx, inp: Empty) -> StatsOut:
     """This week's completions and hours, late items, and how actual times compare with estimates."""
-    since = format_utc(ctx.now_utc - (ctx.today.weekday()) * 1440 - 1440)
+    # From the start of this planning week (Settings' week start, at the day start), not a day before it.
+    first = ctx.today - timedelta(days=(ctx.today.weekday() - ctx.settings["time"].grid_spec().week_start) % 7)
+    since = format_utc(to_utc(local_midnight(first) + timedelta(minutes=ctx.day_start), ctx.tz))
     done = rows(ctx.conn, "SELECT * FROM completions WHERE user_id = ? AND completed_utc >= ?", [ctx.user_id, since])
     saved = current_plan(ctx.conn, ctx.user_id)
     late = len(json.loads(saved["report"]).get("late_hours", {})) if saved else 0

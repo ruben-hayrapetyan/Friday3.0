@@ -132,8 +132,9 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                   movedFrom={moved.get(p.item.item_id)}
                   today={today}
                   onOpen={() => !justDragged() && select(p.item)}
-                  onGrab={(e) => begin(e, grabbed(p.item, "move", minuteAt(e)))}
-                  onResize={(e) => begin(e, grabbed(p.item, "resize", minuteAt(e)))}
+                  // A selected block let go of, as retyping its time does: its popover would act on where it was.
+                  onGrab={(e) => (p.item.key === selected?.key && select(null), begin(e, grabbed(p.item, "move", minuteAt(e))))}
+                  onResize={(e) => (p.item.key === selected?.key && select(null), begin(e, grabbed(p.item, "resize", minuteAt(e))))}
                   retime={{ begin: () => select(null), save: (span) => retime.block(p.item, span) }}
                 />
               ))}

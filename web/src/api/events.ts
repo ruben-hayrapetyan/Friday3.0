@@ -27,7 +27,8 @@ export function setGhosts(client: QueryClient, ghosts: Block[]): void {
 
 function refresh(client: QueryClient, event: string): void {
   const stale = refreshFor(event)
-  client.invalidateQueries({ predicate: (q) => stale.includes(EVERYTHING) || stale.includes(String(q.queryKey[0])) })
+  // Ghosts are put there by hand (a preview, provisional placements): refetching them would only empty them.
+  client.invalidateQueries({ predicate: (q) => q.queryKey[0] !== GHOSTS[0] && (stale.includes(EVERYTHING) || stale.includes(String(q.queryKey[0]))) })
 }
 
 export function useServerEvents(): void {

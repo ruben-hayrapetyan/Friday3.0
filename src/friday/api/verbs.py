@@ -122,7 +122,7 @@ VERBS = {
         commands.DayOverrideInput,
         True,
         True,
-        "One date's bedtime, wake, sleep margin or daily cap, over the weekday settings.",
+        "One date's bedtime, wake, sleep margin or daily cap, over the weekday settings; what you leave out stays.",
     ),
     "depend": Verb(
         "POST",

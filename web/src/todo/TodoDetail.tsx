@@ -3,6 +3,7 @@
 
 import { useState } from "react"
 import { useNavigate } from "react-router"
+import type { Block } from "@/api/client"
 import { Icon, Seg } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useAreas, useItem, useNow, useWhy } from "@/hooks/queries"
@@ -23,8 +24,10 @@ const FIRMNESS = [
 ]
 
 export function TodoDetail({ id, onClose }: { id: number; onClose: () => void }) {
-  const { today, select } = useShell()
+  const { today, select, place, setPlace } = useShell()
   const navigate = useNavigate()
+  // "See on plan": the calendar shows that block's day, and the block is selected there.
+  const seeOnPlan = (b: Block) => (setPlace({ view: place.view === "month" ? 1 : place.view, first: b.start.slice(0, 10) }), navigate("/"), select(b))
   const { color } = useLook()
   const detail = useItem(id).data
   const now = useNow().data
@@ -185,7 +188,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
         {detail.blocks.map((b) => (
           <button
             key={b.key}
-            onClick={() => (navigate("/"), select(b))}
+            onClick={() => seeOnPlan(b)}
             className="fr-plain"
             style={{
               display: "grid",
@@ -232,7 +235,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
           {isDone ? "Open again" : "Mark done"}
         </button>
         {detail.blocks[0] && (
-          <button className="btn btn-ghost" onClick={() => (navigate("/"), select(detail.blocks[0]))}>
+          <button className="btn btn-ghost" onClick={() => seeOnPlan(detail.blocks[0])}>
             <Icon name="calendar-dots" />
             See on plan
           </button>

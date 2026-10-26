@@ -26,15 +26,19 @@ def day_of(snapshot: Snapshot, moment: int) -> date:
 
 
 def assumed_blocks(snapshot: Snapshot) -> list[BlockRow]:
-    """Today's past blocks that count as done until the review says otherwise (§8 rule 1)."""
-    if snapshot.settings["planner"].assume_unreviewed != "done" or today(snapshot) in snapshot.reviewed_dates:
+    """Past blocks that count as done until the review says otherwise (§8 rule 1): today's, and an earlier day's
+    the plan still holds until that day is reviewed or closed (`close_day` writes them as progress, which settles
+    them here). The nightly job runs before the day starts, so it closes a day only the night after next."""
+    if snapshot.settings["planner"].assume_unreviewed != "done":
         return []
     out = []
     for block in snapshot.plan_blocks:
+        day = day_of(snapshot, block.start_utc)
         if (
             block.start_utc >= snapshot.now_utc
             or block.tentative
-            or day_of(snapshot, block.start_utc) != today(snapshot)
+            or day > today(snapshot)
+            or day in snapshot.reviewed_dates
         ):
             continue
         # A running block counts up to where the new plan begins, the next quarter hour, so no minutes fall between.
@@ -42,7 +46,9 @@ def assumed_blocks(snapshot: Snapshot) -> list[BlockRow]:
         recorded = snapshot.progress.get(block.item_id, ())
         settled = any(r["block_key"] == block_key(block.item_id, block.start_utc) for r in recorded)
         timed = any(r["source"] == "timer" and overlaps(r, block) for r in recorded)  # a session replaces the block
-        if not settled and not timed:
+        # The slider sets the total as of when you moved it: a block begun before then is in that total already.
+        slid = any(r["source"] == "slider" and parse_utc(r["created_utc"]) > block.start_utc for r in recorded)
+        if not settled and not timed and not slid:
             out.append(block)
     return out
 
@@ -61,12 +67,17 @@ def progress_minutes(snapshot: Snapshot) -> tuple[dict[int, int], dict[int, int]
     for item_id, found in snapshot.progress.items():
         today_rows = [r for r in found if r["start_utc"] and day_of(snapshot, parse_utc(r["start_utc"])) == this_day]
         on_today[item_id] = sum(r["minutes"] for r in today_rows)
-    extra = [(b.item_id, (b.end_utc - b.start_utc)) for b in assumed_blocks(snapshot)]
+    # Each with whether it was today's: an earlier day's assumed block counts in all, not toward today's work.
+    extra = [
+        (b.item_id, b.end_utc - b.start_utc, day_of(snapshot, b.start_utc) == this_day)
+        for b in assumed_blocks(snapshot)
+    ]
     if snapshot.timer is not None:
-        extra.append((snapshot.timer[0], max(0, snapshot.now_utc - snapshot.timer[1])))
-    for item_id, minutes in extra:
+        extra.append((snapshot.timer[0], max(0, snapshot.now_utc - snapshot.timer[1]), True))
+    for item_id, minutes, todays in extra:
         total[item_id] = total.get(item_id, 0) + minutes
-        on_today[item_id] = on_today.get(item_id, 0) + minutes
+        if todays:
+            on_today[item_id] = on_today.get(item_id, 0) + minutes
     if snapshot.timer is not None:
         keep_a_hold(snapshot, total, on_today)
     return total, on_today

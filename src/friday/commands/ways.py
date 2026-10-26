@@ -10,10 +10,10 @@ from friday.api.types import Empty
 from friday.commands.fields import require_item
 from friday.commands.queries import block_out
 from friday.commands.registry import Ctx, command, query
-from friday.core.time import format_utc
+from friday.core.time import format_utc, parse_utc
 from friday.planner.learning import learnable
 from friday.planner.snapshot import take_snapshot
-from friday.planner.store import current_plan
+from friday.planner.store import current_plan, kv_get
 from friday.planner.views import other_ways as find_ways
 
 PICK_DAYS = 7
@@ -83,10 +83,17 @@ def difference(current: dict[str, int], other: dict[str, int], rules: tuple[str,
 def other_way_pick(ctx: Ctx, inp: OtherWayPickInput) -> Changed:
     """Make another way your plan, and learn from the pick."""
     until = format_utc(ctx.now_utc + PICK_DAYS * 1440)
+    weights, seed = dict(inp.weights), inp.seed
+    before = kv_get(ctx.conn, "other_way", None, ctx.user_id)
+    if before and parse_utc(before["until"]) > ctx.now_utc:
+        # The ways were made on top of the pick still in force, so this one is both: kept, it plans as shown.
+        old = before["weights"]
+        weights = {r: old.get(r, 1.0) * inp.weights.get(r, 1.0) for r in {*old, *inp.weights}}
+        seed += before.get("seed", 0)
     ctx.db.upsert(
         "kv",
         {"user_id": ctx.user_id, "key": "other_way"},
-        {"value": json.dumps({"weights": inp.weights, "seed": inp.seed, "until": until})},
+        {"value": json.dumps({"weights": weights, "seed": seed, "until": until})},
     )
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "next_cold"}, {"value": json.dumps(True)})
     saved = current_plan(ctx.conn, ctx.user_id)

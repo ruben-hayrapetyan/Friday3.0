@@ -18,6 +18,7 @@ from friday.core.rule_text import Reading, days_spoken, read, sentence, spec, wi
 from friday.core.settings import REFERENCE_RULES
 from friday.core.textnorm import identity_text, norm
 from friday.core.time import ampm_in
+from friday.engine.rules.prices import has_words
 from friday.planner.contradictions import Conflict, against, contradictions
 from friday.planner.learning import learnable
 from friday.planner.snapshot import take_snapshot
@@ -148,7 +149,7 @@ def events_named(ctx: Ctx, words: tuple[str, ...]) -> list[str]:
             [ctx.user_id, ctx.now_text],
         )
     ]
-    return [t for t in titles if any(w and w in identity_text(norm(t, rules)) for w in wanted)][:6]
+    return [t for t in titles if any(has_words(identity_text(norm(t, rules)), w) for w in wanted)][:6]
 
 
 @command("rule_add", affects_plan=True)

@@ -190,3 +190,21 @@ def test_a_lighter_stretch_keeps_about_half_of_it_free() -> None:
     rule = spec(reading, "Prefer", "you:x", [], [])
     assert (rule["type"], rule["params"]["free"]) == ("reserve", "2h")  # half of four hours: less work, not none
     assert read("lighter friday evenings")[0].amount == 0.5 and read("keep saturday mornings free")[0].amount is None
+
+
+def test_midnight_ends_a_span_at_midnight_not_noon() -> None:
+    reading, strength = read("never work between 9pm and midnight")
+    assert reading == Reading("window", "work", rel="not_between", at="21:00", until="00:00")
+    assert spec(reading, strength, "x", [], [])["params"] == {"start": "21:00", "end": "00:00", "price": "forbid"}
+    assert read("keep fridays from 6pm to midnight free")[0].until == "00:00"  # type: ignore[union-attr]
+
+
+def test_a_free_span_said_without_am_or_pm_is_the_evening() -> None:
+    reading, _ = read("keep saturdays from 6 to 9 free")
+    assert (reading.at, reading.until) == ("18:00", "21:00")  # type: ignore[union-attr]
+    assert read("keep saturdays from 9 to 11am free")[0].at == "09:00"  # type: ignore[union-attr]
+
+
+@pytest.mark.parametrize("text", ["rest on sundays", "I rest on Sundays", "rest sundays", "off on sundays"])
+def test_resting_on_a_day(text: str) -> None:
+    assert read(text)[0] == Reading("days", "work", rel="not_on", days=("sun",))

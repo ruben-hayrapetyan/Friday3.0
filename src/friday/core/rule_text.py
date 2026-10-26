@@ -294,6 +294,14 @@ LIGHTER = r"lighter|light|easier|easy|quieter|quiet|calmer|less busy"
 LIGHTER_SHARE = 0.5  # a lighter stretch keeps about half its time free: less work there, not none
 
 
+def span_end(start: str | None, end: str | None, said: str) -> str | None:
+    """A span's end as people say it: `from 6 to 9` with no am or pm ends at 9pm, after it began; noon and midnight
+    are what they say (`9pm to midnight` ends at midnight, not noon)."""
+    if start and end and end <= start and not re.search(r"(am|pm|noon|midnight)", said) and int(end[:2]) < 12:
+        return f"{int(end[:2]) + 12:02d}{end[2:]}"
+    return end
+
+
 def read_free(t: str, negated: bool) -> Reading | None:
     """`keep saturday mornings free` keeps all of it; `keep friday and saturday nights lighter` (or `lighter friday
     evenings`) about half."""
@@ -308,7 +316,9 @@ def read_free(t: str, negated: bool) -> Reading | None:
         how, days, part, start, end = m[1], m[2], m[3], None, None
     else:
         return None
-    span = PARTS.get((part or "").rstrip("s"), (clock(start) if start else None, clock(end) if end else None))
+    begins = clock(start) if start else None
+    ends = span_end(begins, clock(end), end) if end else None
+    span = PARTS.get((part or "").rstrip("s"), (begins, ends))
     share = None if how in ("free", "clear", "open") else LIGHTER_SHARE
     return Reading(
         "free", "work", rel="between" if span[0] else None, at=span[0], until=span[1], days=days_of(days or ""),
@@ -326,9 +336,8 @@ def read_window(t: str, negated: bool) -> Reading | None:
         start, end = PARTS[m[2]]
         return Reading("window", subject_of(m[1]), rel=between, at=start, until=end, days=days)
     if m := re.search(rf"^ ?([a-z ]*?) ?(?:between|from) {TIME} (?:and|to|until|-) {TIME} ", t):
-        start, end = clock(m[2]), clock(m[3])
-        if start and end and end <= start and not re.search(r"(am|pm)", m[3]) and int(end[:2]) < 12:
-            end = f"{int(end[:2]) + 12:02d}{end[2:]}"
+        start = clock(m[2])
+        end = span_end(start, clock(m[3]), m[3])
         return (
             Reading("window", subject_of(m[1]), rel=between, at=start, until=end, days=days) if start and end else None
         )
@@ -345,8 +354,8 @@ def read_days(t: str, negated: bool) -> Reading | None:
     m = re.search(rf"^ ?([a-z ]*?) ?(only )?on {DAY_WORDS} ", t) or re.search(rf"^ ?(rest|off) {DAY_WORDS} ", t)
     if not m:
         return None
-    if m[1] in ("rest", "off"):
-        return Reading("days", "work", rel="not_on", days=days_of(m[2]))
+    if m[1] in ("rest", "off"):  # `rest sundays` or `rest on sundays`: the days are the last group either way
+        return Reading("days", "work", rel="not_on", days=days_of(m.groups()[-1]))
     rel = "not_on" if negated else "on"
     return Reading("days", subject_of(m[1]), rel=rel, days=days_of(m[3]))
 

@@ -50,7 +50,9 @@ function BigButton({ icon, label, note, onClick, primary }: { icon: string; labe
 export function BlockPopover() {
   const { selected: b, select, today, setEvent } = useShell()
   const { pathname } = useLocation()
-  useEffect(() => select(null), [pathname, select]) // another page: the block isn't there to point at
+  useEffect(() => {
+    if (pathname !== "/") select(null) // another page: the block isn't there to point at ("See on plan" selects on the way in)
+  }, [pathname, select])
   const { color, light } = useLook()
   const card = useRef<HTMLElement>(null)
   const detail = useItem(b?.item_id ?? null).data
@@ -74,14 +76,15 @@ export function BlockPopover() {
     if (!b) return
     const press = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select")) return
-      if ((e.key !== "Delete" && e.key !== "Backspace") || !detail || b.key.startsWith("S")) return  // not before we know if it repeats; a sitting isn't deleted
+      // Not before we know if it repeats; a sitting isn't deleted; and only on the plan, where Backspace means nothing else.
+      if ((e.key !== "Delete" && e.key !== "Backspace") || !detail || b.key.startsWith("S") || pathname !== "/") return
       e.preventDefault()
       if (repeats) setAsking(true)
       else (drop({ id: b.item_id }), select(null))
     }
     window.addEventListener("keydown", press)
     return () => window.removeEventListener("keydown", press)
-  }, [b, detail, repeats, drop, select])
+  }, [b, detail, repeats, drop, select, pathname])
   // A press anywhere else closes it, and goes on to what was pressed: another block opens in its place, and a second
   // click on this one's time can open the time for typing (Pieces' TimeField).
   const key = b?.key

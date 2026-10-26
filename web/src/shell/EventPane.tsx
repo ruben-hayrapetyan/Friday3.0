@@ -139,7 +139,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
         className="input"
         value={draft.title}
         onChange={(e) => set({ title: e.target.value })}
-        onKeyDown={(e) => e.key === "Enter" && !e.metaKey && save()}
+        onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && save()}
         placeholder="Title"
         aria-label="Title"
         style={{ fontSize: 16, fontWeight: 500 }}

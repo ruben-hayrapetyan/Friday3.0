@@ -15,10 +15,21 @@ from friday.core.items import Item
 from friday.core.pace import DayScales
 from friday.core.settings import SleepDay, minutes_of
 from friday.core.textnorm import identity_text, norm
-from friday.core.time import UNIT_MIN, WEEKDAYS, Grid, GridSpec, make_grid, night_utc, parse_utc, wake_utc
+from friday.core.time import (
+    UNIT_MIN,
+    WEEKDAYS,
+    Grid,
+    GridSpec,
+    make_grid,
+    night_utc,
+    parse_utc,
+    planning_date,
+    wake_utc,
+)
 from friday.engine.problem import DepSpec, EngineItem, FixedOcc, Night, Problem
 from friday.engine.prune import demote_unusable_locks, prune
 from friday.engine.rules import RULE_TYPES, build_rules
+from friday.engine.rules.prices import has_words
 from friday.engine.sampler import SamplerConfig, default_chains
 from friday.engine.scheduler import SchedulerConfig, StepBudget
 
@@ -144,7 +155,7 @@ def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOc
         before = item.buffer_before_min if item.buffer_before_min is not None else kind.before_min
         after = item.buffer_after_min if item.buffer_after_min is not None else kind.after_min
         title = identity_text(norm(item.title, text))
-        skippable = item.blocks_time and any(o in title for o in optional)
+        skippable = item.blocks_time and any(has_words(title, o) for o in optional)
         out.append(FixedOcc(item.title, item.event_kind or "other", start, end_at, tuple(item.tags), before, after,
                             item.blocks_time and not skippable, title, skippable))  # fmt: skip
     return out, by_id
@@ -188,7 +199,8 @@ def parts_in_order(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[Dep
     whose titles start with the same two words ("PS 7 odds" and "PS 7 evens", "Chem HW 5" and "Chem HW 6") each wait
     for the one before, by title, so a plan never alternates between them. Left alone when you tied any yourself."""
     tied = {d.item_id for d in inp.dependencies} | {d.depends_on_id for d in inp.dependencies}
-    groups: dict[tuple[str, str, int], list[Item]] = {}
+    groups: dict[tuple[str, str, date], list[Item]] = {}
+    time = inp.settings["time"]
     for item in inp.items:
         engine_item = items.get(key_of(item.id or 0))
         if engine_item is None or engine_item.due_utc is None or item.preset is None or item.id in tied:
@@ -196,7 +208,8 @@ def parts_in_order(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[Dep
         if item.series_id is not None or engine_item.firmness == "none":
             continue  # a repeat's occurrences (meals) and work with no deadline aren't parts of a set
         stem = " ".join(re.findall(r"[a-z0-9]+", item.title.lower())[:2])
-        groups.setdefault((stem, item.preset, engine_item.due_utc // 1440), []).append(item)
+        day = planning_date(engine_item.due_utc, time.timezone, minutes_of(time.day_start))  # your day, not UTC's
+        groups.setdefault((stem, item.preset, day), []).append(item)
     out = []
     for members in groups.values():
         if len({m.title.strip().lower() for m in members}) < len(members):
@@ -226,7 +239,7 @@ def window(item: Item, inp: BuildInput, by_id: Mapping[int, Item], fixed: Mappin
         if dep.depends_on_id == item.id and dep.item_id in fixed:  # `before:` an event
             event_start = parse_utc(fixed[dep.item_id].start_utc)  # type: ignore[arg-type]
             due = min(due, event_start - dep.lag_min) if due is not None else event_start - dep.lag_min
-    due = exam_due(item, due, fixed)
+    due = exam_due(item, due, fixed, now)
     return focused_release(item, release, due, fixed, inp.settings, now), due
 
 
@@ -267,9 +280,11 @@ def focused_release(
     return release
 
 
-def exam_due(item: Item, due: int | None, fixed: Mapping[int, Item]) -> int | None:
+def exam_due(item: Item, due: int | None, fixed: Mapping[int, Item], now: int) -> int | None:
     """Prep for an exam or quiz on the calendar is due when it starts (personal's, COMBINED.md 50): the same course's
-    exam within three days before the prep's due ("Math quiz prep" due the evening of the quiz is due at the quiz)."""
+    exam within three days before the prep's due ("Math quiz prep" due the evening of the quiz is due at the quiz).
+    Of several, the one nearest the due, and never one already begun: Monday's quiz isn't what Wednesday's midterm
+    review is for."""
     if item.preset != "Exam prep" or due is None:
         return due
     course = course_word(item.title)
@@ -278,8 +293,8 @@ def exam_due(item: Item, due: int | None, fixed: Mapping[int, Item]) -> int | No
         for f in fixed.values()
         if f.start_utc and f.status == "todo" and EXAM.search(f.title) and course_word(f.title) == course
     ]
-    near = [start for start in starts if due - 3 * 1440 <= start <= due]
-    return min(near) if near else due
+    near = [start for start in starts if due - 3 * 1440 <= start <= due and start > now]
+    return max(near) if near else due
 
 
 def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, Item],

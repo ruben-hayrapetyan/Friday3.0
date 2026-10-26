@@ -3199,7 +3199,7 @@
   },
   "/api/c/day_override": {
    "post": {
-    "summary": "One date's bedtime, wake, sleep margin or daily cap, over the weekday settings.",
+    "summary": "One date's bedtime, wake, sleep margin or daily cap, over the weekday settings; what you leave out stays.",
     "operationId": "day_override",
     "parameters": [
      {

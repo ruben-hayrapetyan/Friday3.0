@@ -67,15 +67,32 @@ def duplicates_merge(ctx: Ctx, inp: MergeInput) -> Changed:
         for item_id in group.drop:
             for r in rows(ctx.conn, "SELECT id FROM progress WHERE item_id = ?", [item_id]):
                 ctx.db.update("progress", {"id": r["id"]}, {"item_id": group.keep})
+            # Its ties move to the kept copy, unless the kept one has that tie already or it would tie it to itself.
             for r in rows(ctx.conn, "SELECT id, depends_on_id FROM dependencies WHERE item_id = ?", [item_id]):
-                ctx.db.update("dependencies", {"id": r["id"]}, {"item_id": group.keep})
-            for r in rows(ctx.conn, "SELECT id FROM dependencies WHERE depends_on_id = ?", [item_id]):
-                ctx.db.update("dependencies", {"id": r["id"]}, {"depends_on_id": group.keep})
+                if tied(ctx, group.keep, r["depends_on_id"]):
+                    ctx.db.delete("dependencies", {"id": r["id"]})
+                else:
+                    ctx.db.update("dependencies", {"id": r["id"]}, {"item_id": group.keep})
+            for r in rows(ctx.conn, "SELECT id, item_id FROM dependencies WHERE depends_on_id = ?", [item_id]):
+                if tied(ctx, r["item_id"], group.keep):
+                    ctx.db.delete("dependencies", {"id": r["id"]})
+                else:
+                    ctx.db.update("dependencies", {"id": r["id"]}, {"depends_on_id": group.keep})
             for r in rows(ctx.conn, "SELECT id FROM pins WHERE item_id = ?", [item_id]):
                 ctx.db.delete("pins", {"id": r["id"]})
             set_status(ctx, item_id, "dropped")  # not `drop`: the calendar it came from keeps its event
             gone += 1
     return Changed(message=f"Removed {gone} cop{'y' if gone == 1 else 'ies'}; one of each kept")
+
+
+def tied(ctx: Ctx, item_id: int, depends_on_id: int) -> bool:
+    """Whether `item_id` already waits on `depends_on_id`, or they're the same item (nothing waits on itself)."""
+    if item_id == depends_on_id:
+        return True
+    found = ctx.conn.execute(
+        "SELECT 1 FROM dependencies WHERE item_id = ? AND depends_on_id = ?", [item_id, depends_on_id]
+    ).fetchone()
+    return found is not None
 
 
 @command("not_duplicates")

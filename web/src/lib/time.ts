@@ -14,6 +14,14 @@ export function fromMin(minutes: number): string {
   return new Date(minutes * 60000).toISOString().slice(0, 16)
 }
 
+/** A time typed for a moment you're correcting, on whichever date puts it nearest the old one: a bedtime of 12:20am
+ * changed to 11:50pm is the evening before, not the next night. */
+export function nearestAt(at: string, time: string): string {
+  const day = at.slice(0, 10)
+  const options = [-1, 0, 1].map((d) => `${addDays(day, d)}T${time}`)
+  return options.reduce((best, o) => (Math.abs(toMin(o) - toMin(at)) < Math.abs(toMin(best) - toMin(at)) ? o : best))
+}
+
 export function addDays(date: string, days: number): string {
   return fromMin(toMin(date) + days * 1440).slice(0, 10)
 }

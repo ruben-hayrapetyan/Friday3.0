@@ -1,6 +1,7 @@
 """Price and forbid rules (DESIGN §12.2): a cost per hour of an item in a slot, or a ban."""
 
 import math
+import re
 from datetime import timedelta
 from typing import Any, Literal
 
@@ -181,7 +182,12 @@ class TimePreference(Rule):
 def titled(problem: Any, titles: list[str]) -> Any:
     """The events whose title has one of these in it ("gym" finds "Gym" and "Gym with Sam"), as `scope` reads titles."""
     wanted = [identity_text(norm(t, problem.text)) for t in titles if t.strip()]
-    return [f for f in problem.fixed if f.kind != "shove" and any(w and w in f.norm_title for w in wanted)]
+    return [f for f in problem.fixed if f.kind != "shove" and any(has_words(f.norm_title, w) for w in wanted)]
+
+
+def has_words(title: str, words: str) -> bool:
+    """Whether a title has these words in it, as words: "gym" is in "Gym with Sam", "pe" isn't in "Open"."""
+    return bool(words) and re.search(rf"(?<!\w){re.escape(words)}(?!\w)", title) is not None
 
 
 @rule_type("skippable")
@@ -223,10 +229,12 @@ class BeforeEvent(Rule):
         spec = problem.grid.spec
         days = {planning_date(f.start_utc, spec.timezone, spec.day_start) for f in titled(problem, self.p.titles)}
         self.nights = {d - timedelta(days=1) for d in days}
+        # Past midnight ("no work after 1am the night before") is still that planning day's night: 1am is 25:00.
+        self.after = self.p.after + (1440 if self.p.after < spec.day_start else 0)
 
     def matches(self, s: int) -> bool:
         slot = self.problem.grid.slots[s]
-        return slot.date in self.nights and slot.day_minute + slot.units * UNIT_MIN > self.p.after
+        return slot.date in self.nights and slot.day_minute + slot.units * UNIT_MIN > self.after
 
     def price(self, item, s):
         if s == self.problem.grid.S or self.p.price == FORBID:

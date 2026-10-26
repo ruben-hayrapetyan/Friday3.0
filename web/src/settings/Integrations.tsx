@@ -293,7 +293,7 @@ function toBase64(bytes: Uint8Array): string {
 /** The last week's imports: what came in from a source and what you accepted, each undoable. */
 function Imported() {
   const { today } = useShell()
-  const log = useQuery({ queryKey: ["log_list", 200], queryFn: () => query("log_list", { limit: 200 }) }).data ?? []
+  const log = useQuery({ queryKey: ["log_list", "recent", 200], queryFn: () => query("log_list", { limit: 200 }) }).data ?? []
   const undo = useCommand("undo", { label: () => "Import undone" })
   const weekAgo = addDays(today, -7)
   const imports = log.filter((l) => (l.actor.startsWith("sync:") || l.command === "batch_accept" || l.command === "suggestion_accept") && l.at.slice(0, 10) >= weekAgo)

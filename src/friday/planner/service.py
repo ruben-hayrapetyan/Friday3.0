@@ -83,7 +83,8 @@ def save_plan(conn: sqlite3.Connection, snapshot: Snapshot, plan: AssembledPlan,
             ).lastrowid
             or 0
         )
-        past = past_blocks(conn, saved, snapshot.now_utc) if plan.status == "current" else []
+        # A plan waiting on a lock carries them too: accepting it (`resolve`) mustn't lose what was planned earlier.
+        past = past_blocks(conn, saved, snapshot.now_utc)
         conn.executemany(
             "INSERT INTO blocks (plan_id, user_id, item_id, start_utc, end_utc, cost, tentative) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",

@@ -123,14 +123,16 @@ def materialize_series(ctx: Ctx, series_id: int) -> int:
 
 
 def remove_future_occurrences(ctx: Ctx, series_id: int, from_day: date) -> list[int]:
-    """Delete undone, undetached occurrences from `from_day` on; returns the detached ones kept."""
+    """Delete undone, undetached occurrences from `from_day` on; returns the ones kept: detached, or being timed
+    (you're on it now, so it isn't taken from under the timer)."""
     kept = []
+    timer = one(ctx.conn, "SELECT item_id FROM timer WHERE user_id = ?", [ctx.user_id])
     for row in rows(
         ctx.conn,
         "SELECT id, detached FROM items WHERE series_id = ? AND status = 'todo' AND occurrence_date >= ?",
         [series_id, from_day.isoformat()],
     ):
-        if row["detached"]:
+        if row["detached"] or (timer is not None and timer["item_id"] == row["id"]):
             kept.append(row["id"])
         else:
             delete_item(ctx, row["id"])
@@ -138,7 +140,16 @@ def remove_future_occurrences(ctx: Ctx, series_id: int, from_day: date) -> list[
 
 
 def delete_item(ctx: Ctx, item_id: int) -> None:
-    """Delete an item and, first, every row that refers to it, so undo can bring all of them back."""
+    """Delete an item and, first, every row that refers to it, so undo can bring all of them back: its steps go on
+    without it, what a calendar or mail suggested lets go of it (and is tied to it again by undo), and a timer on it
+    stops."""
+    for row in rows(ctx.conn, "SELECT id FROM items WHERE parent_id = ?", [item_id]):
+        ctx.db.update("items", {"id": row["id"]}, {"parent_id": None})
+    for column in ("item_id", "duplicate_of"):
+        for row in rows(ctx.conn, f"SELECT id FROM suggestions WHERE {column} = ?", [item_id]):
+            ctx.db.update("suggestions", {"id": row["id"]}, {column: None})
+    if one(ctx.conn, "SELECT 1 FROM timer WHERE user_id = ? AND item_id = ?", [ctx.user_id, item_id]):
+        ctx.db.delete("timer", {"user_id": ctx.user_id})
     for table, column in (
         ("pins", "item_id"),
         ("dependencies", "item_id"),

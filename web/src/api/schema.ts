@@ -880,7 +880,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** One date's bedtime, wake, sleep margin or daily cap, over the weekday settings. */
+        /** One date's bedtime, wake, sleep margin or daily cap, over the weekday settings; what you leave out stays. */
         post: operations["day_override"];
         delete?: never;
         options?: never;

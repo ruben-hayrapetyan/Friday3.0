@@ -173,7 +173,7 @@ export function TodoPage() {
             </span>
           </div>
         </div>
-        {selected && <TodoDetail id={selected} onClose={() => select(null)} />}
+        {selected && <TodoDetail key={selected} id={selected} onClose={() => select(null)} />}
       </div>
     </>
   )

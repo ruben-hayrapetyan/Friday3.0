@@ -37,12 +37,17 @@ def parse_range(ctx: Ctx, text: str) -> list[Range]:
     if "-" in words[0]:
         first, _, last = words[0].partition("-")
         a, b = parse_time(first), parse_time(last)
+        if a is not None and b is not None and b <= a and b <= ctx.day_start:
+            b += 24 * 60  # `11pm-12am`, `11pm-1am`: on into that night, not a backwards range
         if a is None or b is None or b <= a:
             raise FieldError("range", f"{text!r} isn't a time range like 12:00-13:30")
-        on = read_date(words, 1, ctx.today) if len(words) > 1 else None
+        # Times on a day, by the calendar: at 1am Tuesday "12:00-13:30" is Tuesday's noon, though the planning day
+        # (which starts at 4am) is still Monday's.
+        calendar_today = to_local(ctx.now_utc, ctx.tz).date()
+        on = read_date(words, 1, calendar_today) if len(words) > 1 else None
         if len(words) > 1 and (on is None or on[1] != len(words) - 1):
             raise FieldError("range", f"{' '.join(words[1:])!r} isn't a day")
-        midnight = local_midnight(on[0] if on else ctx.today)
+        midnight = local_midnight(on[0] if on else calendar_today)
         return [(to_utc(midnight + timedelta(minutes=a), ctx.tz), to_utc(midnight + timedelta(minutes=b), ctx.tz))]
     minutes = parse_duration(words[0])
     if minutes is None:

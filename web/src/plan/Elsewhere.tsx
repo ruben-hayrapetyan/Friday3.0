@@ -21,7 +21,7 @@ export function Elsewhere({ block, onMoved }: { block: Block; onMoved: () => voi
   const { today } = useShell()
   const [open, setOpen] = useState<"where" | "history" | null>(null)
   const where = useQuery({ queryKey: ["why_not", block.key], queryFn: () => query("why_not", { key: block.key }), enabled: open === "where" })
-  const history = useQuery({ queryKey: ["log_list", block.item_id], queryFn: () => query("log_list", { item_id: block.item_id, limit: 12 }), enabled: open === "history" })
+  const history = useQuery({ queryKey: ["log_list", "item", block.item_id], queryFn: () => query("log_list", { item_id: block.item_id, limit: 12 }), enabled: open === "history" })
   const pin = useCommand("pin", { label: () => `Moved ${block.title}` })
   // Each rule by its sentence on the Rules page ("Wind down before bed"), not its name.
   const rules = useQuery({ queryKey: ["rules"], queryFn: () => query("rules"), enabled: open === "where" }).data ?? []

@@ -199,7 +199,7 @@ def pace_delete(ctx: Ctx, inp: PaceDeleteInput) -> Changed:
 
 @command("day_override", affects_plan=True)
 def day_override(ctx: Ctx, inp: DayOverrideInput) -> Changed:
-    """One date's bedtime, wake, sleep margin or daily cap, over the weekday settings."""
+    """One date's bedtime, wake, sleep margin or daily cap, over the weekday settings; what you leave out stays."""
     try:
         day = date.fromisoformat(inp.date)
         for name in ("bedtime", "wake"):
@@ -209,6 +209,9 @@ def day_override(ctx: Ctx, inp: DayOverrideInput) -> Changed:
         raise FieldError("date", str(error)) from error
     if inp.margin_min is not None:
         SleepDay(bedtime="23:00", wake="07:00", margin_min=inp.margin_min)
-    values = {"bedtime": inp.bedtime, "wake": inp.wake, "margin_min": inp.margin_min, "cap_hours": inp.cap_hours}
-    ctx.db.upsert("day_overrides", {"user_id": ctx.user_id, "date": day.isoformat()}, values)
+    # Only the fields given (null clears one): Thursday's cap stays when its sleep margin is set later.
+    fields = ("bedtime", "wake", "margin_min", "cap_hours")
+    values = {name: getattr(inp, name) for name in fields if name in inp.model_fields_set}
+    if values:
+        ctx.db.upsert("day_overrides", {"user_id": ctx.user_id, "date": day.isoformat()}, values)
     return Changed(message=f"Set {day:%a %b} {day.day}")

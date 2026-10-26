@@ -9,6 +9,7 @@ import { Icon, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings } from "@/hooks/queries"
 import { clock, dayLabel, dur } from "@/lib/format"
+import { nearestAt } from "@/lib/time"
 import { Field } from "./SettingsPage"
 
 const SCHOOL_NIGHTS = ["sun", "mon", "tue", "wed", "thu"]
@@ -79,7 +80,7 @@ function TapTime({ label, at, id, timed }: { label: string; at?: string | null; 
           defaultValue={at.slice(11, 16)}
           aria-label={`${label} time`}
           className="input"
-          onBlur={(e) => (e.target.value && e.target.value !== at.slice(11, 16) && edit({ id, at: `${at.slice(0, 11)}${e.target.value}` }), setEditing(false))}
+          onBlur={(e) => (e.target.value && e.target.value !== at.slice(11, 16) && edit({ id, at: nearestAt(at, e.target.value) }), setEditing(false))}
           onKeyDown={(e) => (e.key === "Enter" ? e.currentTarget.blur() : e.key === "Escape" && setEditing(false))}
           style={{ width: 100, padding: "2px 6px", minHeight: 0, fontSize: 12 }}
         />
