@@ -183,6 +183,31 @@ class FitInput(Model):
     exact: bool = False  # plan the changed week as a replan would (seconds), not just check the deadlines (instant)
 
 
+WhatIfCommand = Literal[
+    "add", "edit", "series_add", "shove", "rule_add", "pin", "unpin", "day_override", "skip", "drop"
+]
+
+
+class WhatIfChange(Model):
+    """A change staged in What if, as the command that would make it. An item another staged change makes is named
+    by a placeholder id: -(1000 × that change's place + the item's place + 1)."""
+
+    command: WhatIfCommand
+    input: dict[str, Any]
+
+
+class WhatIfInput(Model):
+    """What if: changes tried together on a copy of your plan; nothing is kept until you keep them."""
+
+    changes: list[WhatIfChange]
+    start: str  # the range the calendar shows, local
+    end: str
+
+
+class WhatIfKeepInput(Model):
+    changes: list[WhatIfChange]  # kept together: one Undo takes them all back
+
+
 class MealStartInput(Model):
     kind: MealKind | None = None  # by the time when left out: the routine whose window it is, else the hour
     at: str | None = None  # local time; now when left out

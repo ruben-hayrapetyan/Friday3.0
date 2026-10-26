@@ -11,6 +11,10 @@ import { rangeText, readTimeRange } from "@/lib/timeRange"
 import { useJustShoved } from "@/pops/shoved"
 import { useLook } from "@/theme/LookProvider"
 import type { Kind } from "@/theme/skin"
+import { useTried } from "@/whatif/store"
+
+/** What if: an item the staged changes make or change, outlined. */
+const TRIED = { outline: "2px dashed var(--color-accent-300)", outlineOffset: -1 } as const
 
 export const PX = 0.8 // per minute: 48 px an hour, as drawn
 
@@ -66,6 +70,7 @@ interface BlockProps {
 
 export function BlockBox({ p, isCur, selected, done, look, movedFrom, today, onOpen, onGrab, onResize, retime }: BlockProps) {
   const b = p.item
+  const tried = useTried(b.item_id)
   const { skinOf } = useLook()
   const kind = done ? "done" : look ? "planned" : kindOf(b)
   const s = skinOf(kind, b.area, { isCur, sel: selected }, b.preset)
@@ -105,6 +110,7 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, today, onO
             ? `repeating-linear-gradient(135deg, color-mix(in srgb, ${s.stripe} 14%, transparent) 0 6px, transparent 6px 12px)`
             : s.bg,
         border: missed || running ? `1px dashed color-mix(in srgb, ${s.stripe} 55%, transparent)` : s.bd,
+        ...(tried ? TRIED : {}),
         color: missed ? "var(--color-neutral-500)" : s.fg,
         opacity: missed ? 0.75 : running ? 0.85 : s.op,
         boxShadow: missed ? "none" : s.shadow,
@@ -154,6 +160,7 @@ interface FixedProps {
 
 export function FixedBox({ p, onOpen, onEdit, retime }: FixedProps) {
   const it = p.item
+  const tried = useTried(it.id)
   const { skinOf, light } = useLook()
   const base = skinOf(it.event_kind === "shove" ? "shove" : "fixed", it.area)
   // Painted as Chroma painted events: the pigment as a spine and an 11% wash over the page, the title in ink. Its
@@ -186,6 +193,7 @@ export function FixedBox({ p, onOpen, onEdit, retime }: FixedProps) {
         borderRadius: 6,
         background: s.bg,
         border: s.bd,
+        ...(tried ? TRIED : {}),
         color: s.fg,
         overflow: typing ? "visible" : "hidden",
         userSelect: "none",

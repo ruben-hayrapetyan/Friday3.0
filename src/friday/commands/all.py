@@ -39,6 +39,7 @@ from friday.commands import (  # noqa: F401
     tokens,
     undo,
     ways,
+    whatif,
 )
 from friday.commands.registry import REGISTRY
 

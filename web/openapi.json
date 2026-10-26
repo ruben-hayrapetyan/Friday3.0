@@ -9053,6 +9053,115 @@
     }
    }
   },
+  "/api/q/whatif": {
+   "post": {
+    "summary": "What if: the calendar with these changes, and what they'd cost together; nothing is kept.",
+    "operationId": "whatif",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/WhatIfInput"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WhatIfOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/whatif_keep": {
+   "post": {
+    "summary": "Keep what you tried in What if: every change made, in order, as one; one Undo takes them all back.",
+    "operationId": "whatif_keep",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/WhatIfKeepInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WhatifKeepResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/events": {
    "get": {
     "summary": "Events",
@@ -24501,6 +24610,315 @@
     ],
     "title": "WeekOut",
     "description": "The weekly review (DESIGN \u00a718.9): planned against actual by area, deadlines, moves and notifications."
+   },
+   "WhatIfChange": {
+    "properties": {
+     "command": {
+      "type": "string",
+      "enum": [
+       "add",
+       "edit",
+       "series_add",
+       "shove",
+       "rule_add",
+       "pin",
+       "unpin",
+       "day_override",
+       "skip",
+       "drop"
+      ],
+      "title": "Command"
+     },
+     "input": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Input"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command",
+     "input"
+    ],
+    "title": "WhatIfChange",
+    "description": "A change staged in What if, as the command that would make it. An item another staged change makes is named\nby a placeholder id: -(1000 \u00d7 that change's place + the item's place + 1)."
+   },
+   "WhatIfChangeOut": {
+    "properties": {
+     "said": {
+      "type": "string",
+      "title": "Said"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "late": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Late",
+      "default": []
+     },
+     "created": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Created",
+      "default": []
+     },
+     "changed": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Changed",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "said"
+    ],
+    "title": "WhatIfChangeOut"
+   },
+   "WhatIfDay": {
+    "properties": {
+     "date": {
+      "type": "string",
+      "title": "Date"
+     },
+     "before": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Before"
+     },
+     "after": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "After"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "date"
+    ],
+    "title": "WhatIfDay"
+   },
+   "WhatIfInput": {
+    "properties": {
+     "changes": {
+      "items": {
+       "$ref": "#/components/schemas/WhatIfChange"
+      },
+      "type": "array",
+      "title": "Changes"
+     },
+     "start": {
+      "type": "string",
+      "title": "Start"
+     },
+     "end": {
+      "type": "string",
+      "title": "End"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "changes",
+     "start",
+     "end"
+    ],
+    "title": "WhatIfInput",
+    "description": "What if: changes tried together on a copy of your plan; nothing is kept until you keep them."
+   },
+   "WhatIfKeepInput": {
+    "properties": {
+     "changes": {
+      "items": {
+       "$ref": "#/components/schemas/WhatIfChange"
+      },
+      "type": "array",
+      "title": "Changes"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "changes"
+    ],
+    "title": "WhatIfKeepInput"
+   },
+   "WhatIfOut": {
+    "properties": {
+     "plan": {
+      "$ref": "#/components/schemas/PlanOut"
+     },
+     "changes": {
+      "items": {
+       "$ref": "#/components/schemas/WhatIfChangeOut"
+      },
+      "type": "array",
+      "title": "Changes"
+     },
+     "verdict": {
+      "type": "string",
+      "enum": [
+       "fits",
+       "tight",
+       "late"
+      ],
+      "title": "Verdict"
+     },
+     "said": {
+      "type": "string",
+      "title": "Said"
+     },
+     "later": {
+      "items": {
+       "$ref": "#/components/schemas/FitLate"
+      },
+      "type": "array",
+      "title": "Later",
+      "default": []
+     },
+     "sooner": {
+      "items": {
+       "$ref": "#/components/schemas/FitLate"
+      },
+      "type": "array",
+      "title": "Sooner",
+      "default": []
+     },
+     "slipped": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Slipped",
+      "default": []
+     },
+     "later_days": {
+      "items": {
+       "$ref": "#/components/schemas/WhatIfDay"
+      },
+      "type": "array",
+      "title": "Later Days",
+      "default": []
+     },
+     "notices": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Notices",
+      "default": []
+     },
+     "moved": {
+      "type": "integer",
+      "title": "Moved",
+      "default": 0
+     },
+     "seconds": {
+      "type": "number",
+      "title": "Seconds",
+      "default": 0.0
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "plan",
+     "changes",
+     "verdict",
+     "said"
+    ],
+    "title": "WhatIfOut",
+    "description": "What if: the calendar with the staged changes, and what they cost together, against the plan without them."
+   },
+   "WhatifKeepResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "WhatifKeepResult"
    },
    "WhyNotOut": {
     "properties": {

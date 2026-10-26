@@ -1,11 +1,13 @@
 // Every change goes through here (DESIGN §18.2): optimistic display, the command, ghosts, an Undo toast, and a
-// rollback with the server's message on error.
+// rollback with the server's message on error. In What if, a change made on the Plan page is staged instead
+// (`whatif/store.ts`): nothing is sent until you keep it.
 
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useCallback } from "react"
 import { ApiError, type CommandInput, type CommandName, command, type Output } from "@/api/client"
 import { setGhosts } from "@/api/events"
 import { type Toast, useToast } from "@/components/Toasts"
+import { whatIf } from "@/whatif/store"
 
 const OPTIMISTIC = ["items", "item", "plan", "now"]
 
@@ -30,6 +32,11 @@ export async function runCommand<N extends CommandName>(
   input: CommandInput<N>,
   { optimistic, label, quiet }: Options<N> = {},
 ): Promise<Output<N> | undefined> {
+  if (whatIf.stages(name)) {
+    whatIf.stage(name, input as Record<string, unknown>)
+    if (!quiet) toast({ message: "Tried in What if: nothing changes until you keep it" })
+    return { command_id: null, result: { message: "In What if" } } as unknown as Output<N>
+  }
   const matches = { predicate: (q: { queryKey: readonly unknown[] }) => OPTIMISTIC.includes(String(q.queryKey[0])) }
   const saved = client.getQueriesData(matches)
   if (optimistic) {

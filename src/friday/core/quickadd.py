@@ -41,6 +41,8 @@ REPEAT_WORDS = {
 }
 # Meals are routines, and their time range is when they may happen, not a fixed sitting.
 MEAL = re.compile(r"\b(breakfast|brunch|lunch|dinner|supper|meal)s?\b", re.IGNORECASE)
+# A meal with someone, or out, is a plan at a time, not your meal routine: "dinner with Sam thu 6-9pm".
+SOCIAL = re.compile(r"\b(with|w/|out|date)\b|\bw/", re.IGNORECASE)
 FLEXIBLE_KINDS = {"Routine", "Habit", "Chore", "Errand"}
 SCHOOLWORK = {"Assignment", "Exam prep", "Project", "Reading"}
 PER_WINDOW = re.compile(r"^(\d+)x$")
@@ -377,7 +379,7 @@ class Parser:
     def inferred_preset(self) -> str:
         if self.fields.get("amount") == "open":
             return "Side project"
-        if MEAL.search(self.fields["title"]):
+        if MEAL.search(self.fields["title"]) and not SOCIAL.search(self.fields["title"]):
             return "Routine"
         if "start_local" in self.fields:
             return "Class" if "rrule" in self.fields and CLASSLIKE.search(self.fields["title"]) else "Event"

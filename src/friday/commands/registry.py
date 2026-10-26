@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any, Literal, get_type_hints
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from friday.api.types import ChangeOut, CommandResult
 from friday.commands.writer import Writer
@@ -245,6 +245,64 @@ def tried[T](
         if spec.affects_plan:
             bump_generation(conn, user_id)
         return look(conn)
+    finally:
+        conn.execute("ROLLBACK")
+
+
+@dataclass
+class Tried:
+    """One change of several tried together: why it was refused, else the items it made and those it changed."""
+
+    error: str | None = None
+    created: list[int] = field(default_factory=list)
+    changed: list[int] = field(default_factory=list)
+
+
+def tried_many[T, S](
+    conn: sqlite3.Connection,
+    changes: list[tuple[str, dict[str, Any]]],
+    look: Callable[[sqlite3.Connection, list[Tried]], T],
+    *,
+    now_utc: int,
+    user_id: int = 1,
+    each: Callable[[sqlite3.Connection], S] | None = None,
+    resolve: Callable[[dict[str, Any], list["Tried"]], dict[str, Any]] | None = None,
+) -> tuple[T, list[S]]:
+    """`tried` for several changes in order, in one transaction always rolled back (What if, `commands/whatif.py`).
+    Each is kept apart: one refused (a moved event that no longer exists, say) is taken back alone and the rest
+    still apply. A rule or setting tried counts for the changes after it. `each` looks after every change; `resolve`
+    puts what earlier changes made into a change's input (What if's placeholders)."""
+    settings = load_settings(conn, user_id)
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        done: list[Tried] = []
+        seen: list[S] = []
+        for n, (name, payload) in enumerate(changes):
+            spec = REGISTRY.get(name)
+            if spec is None or not spec.mutates or not spec.logged:
+                done.append(Tried(error=f"{name!r} isn't a change Friday can try"))
+            else:
+                conn.execute(f"SAVEPOINT tried_{n}")
+                try:
+                    inp = spec.input_type.model_validate(resolve(payload, done) if resolve else payload)
+                    writer = Writer(conn, user_id)
+                    command_id = log_start(conn, spec, inp, now_utc, "you", user_id, None)
+                    spec.fn(Ctx(conn, writer, now_utc, "you", user_id, settings, command_id), inp)
+                    if spec.affects_plan:
+                        bump_generation(conn, user_id)
+                    items = [c for c in writer.changes if c["table"] == "items"]
+                    made = [int(c["key"]["id"]) for c in items if c["op"] == "insert"]
+                    touched = sorted({int(c["key"]["id"]) for c in items if c["op"] != "insert"} - set(made))
+                    done.append(Tried(created=made, changed=touched))
+                    conn.execute(f"RELEASE tried_{n}")
+                except (FieldError, ValidationError, ValueError) as error:
+                    conn.execute(f"ROLLBACK TO tried_{n}")
+                    conn.execute(f"RELEASE tried_{n}")
+                    done.append(Tried(error=str(error)))
+                settings = load_settings(conn, user_id)
+            if each is not None:
+                seen.append(each(conn))
+        return look(conn, done), seen
     finally:
         conn.execute("ROLLBACK")
 

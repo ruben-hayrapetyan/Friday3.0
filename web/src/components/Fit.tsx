@@ -12,7 +12,7 @@ type Fit = Schemas["FitOut"]
 export type FitCommand = Schemas["FitInput"]["command"]
 export const FIT_COMMANDS: readonly FitCommand[] = ["add", "edit", "series_add", "shove", "rule_add", "pin", "day_override"]
 
-const LOOK: Record<Fit["verdict"], { icon: string; ink: string }> = {
+export const LOOK: Record<Fit["verdict"], { icon: string; ink: string }> = {
   fits: { icon: "check-circle", ink: "var(--color-accent-300)" },
   tight: { icon: "hourglass-medium", ink: "var(--fr-warn)" },
   late: { icon: "warning", ink: "var(--fr-due)" },

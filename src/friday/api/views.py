@@ -556,6 +556,20 @@ class FitTime(Model):
     end: str
 
 
+class WhatIfChangeOut(Model):
+    said: str  # the change in words: "Add Dinner with Sam, Fri 7pm"
+    error: str | None = None  # refused, and why (the others still apply)
+    late: list[str] = []  # the quick check, on top of the changes before it: what it leaves short ("Essay 2 h")
+    created: list[int] = []  # items it makes, as the trial calendar shows them
+    changed: list[int] = []  # items it moves, skips or drops
+
+
+class WhatIfDay(Model):
+    date: str
+    before: str | None = None  # local HH:MM: when the day's work ends now
+    after: str | None = None  # with the changes
+
+
 class FitOut(Model):
     """Do I have time for this?: whether everything still fits with the change, in a sentence and in parts."""
 
@@ -634,6 +648,22 @@ class MealsOut(Model):
     times: list[MealTimeOut] = []  # routines whose window is well off when you eat
     plans: list[MealPlanOut] = []  # meals to start or stop planning
     decided: list[str] = []  # meals a rule leaves to Friday: what's learned of them it applies itself, each night
+
+
+class WhatIfOut(Model):
+    """What if: the calendar with the staged changes, and what they cost together, against the plan without them."""
+
+    plan: PlanOut
+    changes: list[WhatIfChangeOut]
+    verdict: Literal["fits", "tight", "late"]
+    said: str
+    later: list[FitLate] = []  # work with a hard due ahead that would end later past it
+    sooner: list[FitLate] = []  # work that would be less late
+    slipped: list[str] = []  # soft dues ahead the plan would now finish after (how far past one means little)
+    later_days: list[WhatIfDay] = []  # days the work ends later
+    notices: list[str] = []  # what the plan says with them that it doesn't now (an optional event given up)
+    moved: int = 0  # your blocks that move
+    seconds: float = 0.0
 
 
 class SleepOut(Model):

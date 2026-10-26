@@ -56,57 +56,66 @@ def save_plan(conn: sqlite3.Connection, snapshot: Snapshot, plan: AssembledPlan,
         if saved is not None and saved["generation"] > plan.generation:
             conn.execute("ROLLBACK")
             return None
-        if plan.status == "current":
-            conn.execute(
-                "UPDATE plans SET status = 'replaced' WHERE user_id = ? AND status IN ('current', 'waiting')",
-                [snapshot.user_id],
-            )
-            if snapshot.next_stability is not None:
-                conn.execute("DELETE FROM kv WHERE user_id = ? AND key = 'next_stability'", [snapshot.user_id])
-            if snapshot.cold_once:
-                conn.execute("DELETE FROM kv WHERE user_id = ? AND key = 'next_cold'", [snapshot.user_id])
-        report = plan.report | {"settings_version": plan.settings_version}
-        plan_id = int(
-            conn.execute(
-                "INSERT INTO plans (user_id, created_utc, generation, reason, status, stage_values, solve_seconds, "
-                "report) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                [
-                    snapshot.user_id,
-                    format_utc(snapshot.now_utc),
-                    plan.generation,
-                    reason,
-                    plan.status,
-                    json.dumps(plan.stage_values),
-                    plan.seconds,
-                    json.dumps(report, default=str),
-                ],
-            ).lastrowid
-            or 0
-        )
-        # A plan waiting on a lock carries them too: accepting it (`resolve`) mustn't lose what was planned earlier.
-        past = past_blocks(conn, saved, snapshot.now_utc)
-        conn.executemany(
-            "INSERT INTO blocks (plan_id, user_id, item_id, start_utc, end_utc, cost, tentative) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [
-                (
-                    plan_id,
-                    snapshot.user_id,
-                    b.item_id,
-                    format_utc(b.start_utc),
-                    format_utc(b.end_utc),
-                    json.dumps(b.cost),
-                    int(b.tentative),
-                )
-                for b in joined(past, plan.blocks, snapshot)
-            ],
-        )
-        if plan.status == "current" and saved is not None:
-            record_drag(conn, snapshot, json.loads(saved["report"]), report)
+        plan_id = write_plan(conn, snapshot, plan, reason, saved)
         conn.execute("COMMIT")
     except BaseException:
         conn.execute("ROLLBACK")
         raise
+    return plan_id
+
+
+def write_plan(
+    conn: sqlite3.Connection, snapshot: Snapshot, plan: AssembledPlan, reason: str, saved: dict | None
+) -> int:
+    """The plan and its blocks written as the current one, in the caller's transaction (`save_plan`, or What if's,
+    which is always rolled back)."""
+    if plan.status == "current":
+        conn.execute(
+            "UPDATE plans SET status = 'replaced' WHERE user_id = ? AND status IN ('current', 'waiting')",
+            [snapshot.user_id],
+        )
+        if snapshot.next_stability is not None:
+            conn.execute("DELETE FROM kv WHERE user_id = ? AND key = 'next_stability'", [snapshot.user_id])
+        if snapshot.cold_once:
+            conn.execute("DELETE FROM kv WHERE user_id = ? AND key = 'next_cold'", [snapshot.user_id])
+    report = plan.report | {"settings_version": plan.settings_version}
+    plan_id = int(
+        conn.execute(
+            "INSERT INTO plans (user_id, created_utc, generation, reason, status, stage_values, solve_seconds, "
+            "report) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                snapshot.user_id,
+                format_utc(snapshot.now_utc),
+                plan.generation,
+                reason,
+                plan.status,
+                json.dumps(plan.stage_values),
+                plan.seconds,
+                json.dumps(report, default=str),
+            ],
+        ).lastrowid
+        or 0
+    )
+    # A plan waiting on a lock carries them too: accepting it (`resolve`) mustn't lose what was planned earlier.
+    past = past_blocks(conn, saved, snapshot.now_utc)
+    conn.executemany(
+        "INSERT INTO blocks (plan_id, user_id, item_id, start_utc, end_utc, cost, tentative) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [
+            (
+                plan_id,
+                snapshot.user_id,
+                b.item_id,
+                format_utc(b.start_utc),
+                format_utc(b.end_utc),
+                json.dumps(b.cost),
+                int(b.tentative),
+            )
+            for b in joined(past, plan.blocks, snapshot)
+        ],
+    )
+    if plan.status == "current" and saved is not None:
+        record_drag(conn, snapshot, json.loads(saved["report"]), report)
     return plan_id
 
 

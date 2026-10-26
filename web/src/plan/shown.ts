@@ -1,12 +1,15 @@
 // What the calendar draws (COMBINED.md 19): a calendar you gave a title-row button, and what the categories' filter
 // matches (office hours), stay off the calendar until you switch them on: not drawn, not even dashed, in the grid,
 // the month, the day's agenda or the mini month. An event on two of your calendars at once (the same title and
-// times) is drawn once. None of this changes what's planned.
+// times) is drawn once. None of this changes what's planned. In What if with changes staged, the calendar draws the
+// plan with them (`whatif/store.ts`).
 
 import { useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { query, type Schemas } from "@/api/client"
 import { useSettings } from "@/hooks/queries"
+import { useShell } from "@/shell/ShellContext"
+import { useTrial, useWhatIf, within } from "@/whatif/store"
 import { useLook } from "@/theme/LookProvider"
 
 export interface Showing {
@@ -45,5 +48,9 @@ export function useShownPlan(start: string, end: string) {
   const s = useShowing()
   const key = `${s.toolbar.join("|")}/${s.showing.join("|")}/${s.showFiltered}`
   const select = useCallback((plan: Schemas["PlanOut"]) => withShown(plan, s), [key])
-  return useQuery({ queryKey: ["plan", start, end], queryFn: () => query("plan", { start, end }), select })
+  const real = useQuery({ queryKey: ["plan", start, end], queryFn: () => query("plan", { start, end }), select })
+  const w = useWhatIf()
+  const trial = useTrial(useShell().today).data
+  if (w.on && w.changes.length && trial) return { ...real, data: withShown(within(trial.plan, start, end), s) }
+  return real
 }

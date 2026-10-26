@@ -2639,6 +2639,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/whatif": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What if: the calendar with these changes, and what they'd cost together; nothing is kept. */
+        post: operations["whatif"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/whatif_keep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Keep what you tried in What if: every change made, in order, as one; one Undo takes them all back. */
+        post: operations["whatif_keep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events": {
         parameters: {
             query?: never;
@@ -7767,6 +7801,140 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /**
+         * WhatIfChange
+         * @description A change staged in What if, as the command that would make it. An item another staged change makes is named
+         *     by a placeholder id: -(1000 × that change's place + the item's place + 1).
+         */
+        WhatIfChange: {
+            /**
+             * Command
+             * @enum {string}
+             */
+            command: "add" | "edit" | "series_add" | "shove" | "rule_add" | "pin" | "unpin" | "day_override" | "skip" | "drop";
+            /** Input */
+            input: {
+                [key: string]: unknown;
+            };
+        };
+        /** WhatIfChangeOut */
+        WhatIfChangeOut: {
+            /** Said */
+            said: string;
+            /** Error */
+            error?: string | null;
+            /**
+             * Late
+             * @default []
+             */
+            late?: string[];
+            /**
+             * Created
+             * @default []
+             */
+            created?: number[];
+            /**
+             * Changed
+             * @default []
+             */
+            changed?: number[];
+        };
+        /** WhatIfDay */
+        WhatIfDay: {
+            /** Date */
+            date: string;
+            /** Before */
+            before?: string | null;
+            /** After */
+            after?: string | null;
+        };
+        /**
+         * WhatIfInput
+         * @description What if: changes tried together on a copy of your plan; nothing is kept until you keep them.
+         */
+        WhatIfInput: {
+            /** Changes */
+            changes: components["schemas"]["WhatIfChange"][];
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
+        };
+        /** WhatIfKeepInput */
+        WhatIfKeepInput: {
+            /** Changes */
+            changes: components["schemas"]["WhatIfChange"][];
+        };
+        /**
+         * WhatIfOut
+         * @description What if: the calendar with the staged changes, and what they cost together, against the plan without them.
+         */
+        WhatIfOut: {
+            plan: components["schemas"]["PlanOut"];
+            /** Changes */
+            changes: components["schemas"]["WhatIfChangeOut"][];
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "fits" | "tight" | "late";
+            /** Said */
+            said: string;
+            /**
+             * Later
+             * @default []
+             */
+            later?: components["schemas"]["FitLate"][];
+            /**
+             * Sooner
+             * @default []
+             */
+            sooner?: components["schemas"]["FitLate"][];
+            /**
+             * Slipped
+             * @default []
+             */
+            slipped?: string[];
+            /**
+             * Later Days
+             * @default []
+             */
+            later_days?: components["schemas"]["WhatIfDay"][];
+            /**
+             * Notices
+             * @default []
+             */
+            notices?: string[];
+            /**
+             * Moved
+             * @default 0
+             */
+            moved?: number;
+            /**
+             * Seconds
+             * @default 0
+             */
+            seconds?: number;
+        };
+        /** WhatifKeepResult */
+        WhatifKeepResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
         /** WhyNotOut */
         WhyNotOut: {
             /** Key */
@@ -12876,6 +13044,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OtherWayPickResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    whatif: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WhatIfInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatIfOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    whatif_keep: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WhatIfKeepInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatifKeepResult"];
                 };
             };
             /** @description Validation Error */

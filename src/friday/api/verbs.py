@@ -1066,6 +1066,22 @@ VERBS = {
         False,
         "The week holding a date (this week when left out): planned against actual by area, deadlines hit, moves made",
     ),
+    "whatif": Verb(
+        "POST",
+        "/api/q/whatif",
+        commands.WhatIfInput,
+        False,
+        False,
+        "What if: the calendar with these changes, and what they'd cost together; nothing is kept.",
+    ),
+    "whatif_keep": Verb(
+        "POST",
+        "/api/c/whatif_keep",
+        commands.WhatIfKeepInput,
+        True,
+        True,
+        "Keep what you tried in What if: every change made, in order, as one; one Undo takes them all back.",
+    ),
     "why": Verb(
         "GET",
         "/api/q/why",

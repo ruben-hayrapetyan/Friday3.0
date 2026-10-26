@@ -254,3 +254,19 @@ def test_lines_as_students_type_them(text: str, expected: dict) -> None:
 def test_repeating_errands_stay_errands_with_a_due(text: str, rule: str, preset: str) -> None:
     fields = quick(text)
     assert (fields["rrule"], fields["preset"]) == (rule, preset)
+
+
+@pytest.mark.parametrize(
+    ("text", "preset"),
+    [
+        ("dinner with Sam thu 6pm-9pm", "Event"),  # a plan with someone, at a time
+        ("lunch w/ mom sat 12-2pm", "Event"),
+        ("dinner out fri 7-9pm", "Event"),
+        ("lunch every day 11:30am-2pm 30-45m", "Routine"),  # your meal: a window it may go in
+        ("dinner 5:30-8:30pm", "Routine"),
+    ],
+)
+def test_a_meal_with_someone_is_an_event_and_your_own_is_a_routine(text: str, preset: str) -> None:
+    fields = quick(text)
+    assert fields["preset"] == preset
+    assert ("start_local" in fields) == (preset == "Event")

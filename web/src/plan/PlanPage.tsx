@@ -25,6 +25,8 @@ import { useShell, type View } from "@/shell/ShellContext"
 import { DayAside } from "./DayAside"
 import { Grid } from "./Grid"
 import { MonthView, monthStart } from "./MonthView"
+import { useWhatIf, whatIf } from "@/whatif/store"
+import { WhatIfPanel } from "@/whatif/WhatIfPanel"
 
 export type { View }
 
@@ -58,6 +60,10 @@ export function PlanPage() {
     open: block ? () => nudge(0) : undefined,
   })
   const pick = (v: View) => setPlace({ view: v, first: null })
+  useEffect(() => {
+    whatIf.here(true) // What if stages changes made here, and only here
+    return () => whatIf.here(false)
+  }, [])
   return (
     <>
       <Header view={view} first={shown} onView={pick} onStep={step} onToday={() => setFirst(null)} />
@@ -95,12 +101,14 @@ function Days({ first, view, drawer, aside }: { first: string; view: 1 | 3 | 7; 
   useEffect(() => {
     if (calendar) followServer(calendar.now)
   }, [calendar])
+  const trying = useWhatIf().on
   if (!calendar || !plan) return <div className="fr-panel" />
   const margin = drawer ? drawer + 24 : view === 1 && aside ? 364 : 12
   return (
     <>
       <Grid dates={dayRange(first, view)} calendar={calendar} plan={plan} marginRight={margin} />
-      {view === 1 && !drawer && aside && <DayAside date={first} calendar={calendar} plan={plan} />}
+      {view === 1 && !drawer && aside && !trying && <DayAside date={first} calendar={calendar} plan={plan} />}
+      {trying && <WhatIfPanel right={drawer ? drawer + 24 : 12} />}
     </>
   )
 }
@@ -137,6 +145,7 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
           <Seg options={views} value={view} onPick={onView} label="View" />
         </span>
       )}
+      <WhatIfButton />
       <ShowMenu />
       <PlanMenu views={layout.tight ? { options: views, value: view, onPick: onView, onToday } : undefined} />
       <IconButton tour="search" icon="magnifying-glass" label="Search (⌘K)" onClick={() => setDialog("search")} />
@@ -152,6 +161,24 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
         <Icon name="list-checks" size={16} />
       </button>
     </div>
+  )
+}
+
+/** What if: try changes on the calendar without making them. */
+function WhatIfButton() {
+  const on = useWhatIf().on
+  const { layout } = useShell()
+  return (
+    <button
+      className="btn btn-secondary"
+      onClick={() => (on ? whatIf.stop() : whatIf.start())}
+      aria-pressed={on}
+      title={on ? "Leave What if: nothing you tried is kept" : "What if: try changes on the calendar and see what they cost, without making them"}
+      style={{ flex: "none", fontSize: 12, gap: 6, color: on ? "var(--color-accent-200)" : undefined, background: on ? "color-mix(in srgb, var(--color-accent) 14%, transparent)" : undefined }}
+    >
+      <Icon name="flask" size={15} />
+      {!layout.tight && "What if"}
+    </button>
   )
 }
 
