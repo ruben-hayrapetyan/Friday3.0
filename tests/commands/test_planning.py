@@ -3,14 +3,19 @@
 import pickle
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from friday.core.items import FieldError
 from friday.core.time import parse_local, to_utc
-from friday.planner.build import build_problem
+from friday.engine.construct import prepare_start
+from friday.engine.repair import deadline_value
+from friday.engine.scheduler import due_order
+from friday.planner.build import build_problem, scheduler_config
 from friday.planner.prepare import build_input
 from friday.planner.service import plan_snapshot, replan
 from friday.planner.snapshot import take_snapshot
+from friday.planner.solve import prepared_problem
 from tests.commands.helpers import TZ, App, new_app
 
 
@@ -697,3 +702,29 @@ def test_the_time_after_a_class_holds_as_the_class_ends(tmp_path: Path) -> None:
         b for b in app.do("plan", start="2026-10-19T00:00", end="2026-10-20T00:00")["blocks"] if b["title"] == "Pre-lab"
     ]
     assert blocks and min(b["start"] for b in blocks) >= "2026-10-19T10:15"
+
+
+def test_late_work_is_placed_again_by_due_when_a_replan_is_stuck(tmp_path: Path) -> None:
+    # A warm replan keeps where things were and moves a few slots at a time, so the papers due at 6pm kept the morning
+    # while the pre-lab due at noon went to the evening: it couldn't trade the two (26 Oct, 877 items). Placed again
+    # earliest due first, the pre-lab takes the morning and only the papers are late.
+    app = new_app(tmp_path)
+    for start, end in (("2026-10-19T12:05", "2026-10-19T16:40"), ("2026-10-19T18:00", "2026-10-20T07:00")):
+        app.do("add", title="Lab", when="fixed", start=start, end=end)
+    pre = app.do("add", title="Pre-lab", duration_min=90, due="2026-10-19T12:05")["item"]["id"]
+    papers = app.do("add", title="Papers", duration_min=300, due="2026-10-19T18:00")["item"]["id"]
+    snapshot = take_snapshot(app.conn, app.now_utc)
+    _, problem, _ = prepared_problem(snapshot)
+    c = prepare_start(problem).c
+    grid, keys = problem.grid, {k: i for i, k in enumerate(c.keys)}
+    free = [s for s in range(grid.S) if not problem.blocked[s] and c.m.allowed[keys[f"item:{papers}"], s]]
+    stuck = np.full(grid.S, -1, dtype=np.int16)
+    for s in free[:20]:  # the papers hold the morning and the afternoon
+        stuck[s] = keys[f"item:{papers}"]
+    for s in free[20:26]:  # the pre-lab after its due
+        stuck[s] = keys[f"item:{pre}"]
+    config = scheduler_config(snapshot.settings)
+    fixed = due_order(c, stuck, config, np.zeros(1, dtype=np.int64))
+    assert fixed is not None and deadline_value(c, fixed) < deadline_value(c, stuck)
+    on_time = [s for s in range(grid.S) if fixed[s] == keys[f"item:{pre}"]]
+    assert on_time and max(int(grid.end[s]) for s in on_time) <= problem.items[f"item:{pre}"].due_utc

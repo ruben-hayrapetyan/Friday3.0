@@ -104,6 +104,9 @@ def schedule(
     seconds["construct"], clock = time.perf_counter() - clock, time.perf_counter()
     owner = repair(c, owner, config.repair_steps, config.sampler.seed, config.sampler.move_weights, cancel)
     trace["repair"] = deadline_value(c, owner)
+    if warm and trace["repair"] > 0 and (reordered := due_order(c, owner, config, cancel)) is not None:
+        owner = reordered
+        trace["due_order"] = deadline_value(c, owner)
     if not warm and trace["repair"] > 0:
         # personal's overload start (COMBINED.md 54): as many tasks on time as can be, kept only if it ends less late.
         other = construct(c, order=fewest_late_order(c))
@@ -140,6 +143,33 @@ def schedule(
     result.deadlines_after = trace | {"final": result.stage_values["deadlines"]}
     seconds["total"] = time.perf_counter() - began
     return result
+
+
+def due_order(c: Compiled, owner: np.ndarray, config: SchedulerConfig, cancel: np.ndarray) -> np.ndarray | None:
+    """A warm plan with work late, its deadline work placed again by due: the hard items due by the last late one's due
+    taken out and put back in `fewest_late_order` (earliest due first, as many on time as can be), the rest of the
+    plan kept; returned only when it's less late. A warm start keeps where things were and the anneal moves a few
+    slots at a time, so it couldn't trade two mornings: work due tonight kept the morning while work due at noon went
+    19 hours late (CS 2091's pre-lab and CUAI's papers, 26 Oct). Locks stay where they are."""
+    misses = set(evaluate(c.problem, c.plan_from_owner(owner)).deadline_misses)
+    M, items = c.m, c.problem.items
+    dues = [items[k].due_utc for k in misses if items[k].due_utc is not None]
+    if not dues:
+        return None
+    latest = max(dues)
+    index = {k: i for i, k in enumerate(c.keys)}
+    moving = {
+        k for k, item in items.items() if M.hard_due[index[k]] and item.due_utc is not None and item.due_utc <= latest
+    }
+    base = owner.copy()
+    for s in range(M.S):
+        if base[s] >= 0 and c.keys[base[s]] in moving and not M.locked[base[s], s]:
+            base[s] = -1
+    other = construct(c, base, only=moving, order=fewest_late_order(c))
+    other = repair(c, other, config.repair_steps, config.sampler.seed, config.sampler.move_weights, cancel)
+    if not valid(c, other) or deadline_value(c, other) >= deadline_value(c, owner):
+        return None
+    return other
 
 
 def valid(c: Compiled, owner: np.ndarray) -> bool:
