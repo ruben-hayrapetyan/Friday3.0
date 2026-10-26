@@ -15,6 +15,7 @@ added) uses a placeholder: -(1000 × that change's place + the item's place + 1)
 
 import json
 import sqlite3
+import threading
 import time
 from dataclasses import replace
 from datetime import date
@@ -42,6 +43,11 @@ EACH_UP_TO = 8  # changes each checked on their own; more, and only all of them 
 LATER_BY = 15  # minutes a day's work must end later to count
 NOISE_H = 0.25  # hours a finish must move past its due to count as later (or sooner)
 BEFORE: dict[tuple[str, int, int], tuple[int, AssembledPlan]] = {}  # (database, user, generation) → (now, plan)
+# One try at a time, and only the newest: changes made in quick succession (drag, drag, drag) each ask, and a try
+# still waiting when a newer one comes gives way rather than spend 20 seconds on an answer no one will see.
+LATEST: dict[tuple[str, int], int] = {}
+SOLVING = threading.Lock()
+COUNTING = threading.Lock()
 KEPT_MIN = 10  # how long the plan without the changes stays good for the same generation
 SAVED_FRESH_MIN = 30  # your saved plan stands for the plan without the changes while it's this fresh
 
@@ -76,17 +82,23 @@ def resolver(payload: dict[str, Any], done: list[Tried]) -> dict[str, Any]:
 def whatif(ctx: Ctx, inp: WhatIfInput) -> WhatIfOut:
     """What if: the calendar with these changes, and what they'd cost together; nothing is kept."""
     began = time.perf_counter()
+    who = (str(ctx.conn.execute("PRAGMA database_list").fetchone()[2]), ctx.user_id)
+    with COUNTING:
+        mine = LATEST[who] = LATEST.get(who, 0) + 1
     changes = staged(inp.changes)
     before = take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id)
     look = lambda conn, done: (done, read_snapshot(conn, ctx.now_utc, ctx.user_id))  # noqa: E731
     each = (lambda conn: read_snapshot(conn, ctx.now_utc, ctx.user_id)) if len(changes) <= EACH_UP_TO else None
     (done, after), steps = tried_many(ctx.conn, changes, look, now_utc=ctx.now_utc, user_id=ctx.user_id,
                                       each=each, resolve=resolver)  # fmt: skip
-    was = without(ctx, before)
-    # Started from the plan without them, so what moves is what the changes move: two plans made apart on a full
-    # week wandered apart on their own (one dinner "moved" 49 blocks and slid overdue readings by days).
-    started = tuple(BlockRow(b.item_id, b.start_utc, b.end_utc, b.tentative) for b in was.blocks)
-    plan = plan_snapshot(replace(after, plan_blocks=started), warm=True)
+    with SOLVING:
+        if LATEST.get(who) != mine:
+            raise FieldError("changes", "a newer try replaced this one")
+        was = without(ctx, before)
+        # Started from the plan without them, so what moves is what the changes move: two plans made apart on a full
+        # week wandered apart on their own (one dinner "moved" 49 blocks and slid overdue readings by days).
+        started = tuple(BlockRow(b.item_id, b.start_utc, b.end_utc, b.tentative) for b in was.blocks)
+        plan = plan_snapshot(replace(after, plan_blocks=started), warm=True)
     shown, again = trial_plan(ctx, changes, after, plan, inp)
     if [t.created for t in again] != [t.created for t in done]:  # something was added meanwhile: ids moved on
         raise FieldError("changes", "your plan changed while Friday tried this; try again")

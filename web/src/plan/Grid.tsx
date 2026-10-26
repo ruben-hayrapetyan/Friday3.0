@@ -19,7 +19,8 @@ import { useShell } from "@/shell/ShellContext"
 import { useLook } from "@/theme/LookProvider"
 import { draftAt, draftOf } from "@/shell/EventPane"
 import { DueLane } from "./DueLane"
-import { asBlock, BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, PX, SleepBand } from "./Pieces"
+import { type TrialPlan, useWhatIf, whatIf } from "@/whatif/store"
+import { asBlock, BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, PX, SleepBand, type TriedLook } from "./Pieces"
 
 interface Props {
   dates: string[]
@@ -38,6 +39,15 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const elapsed = useElapsed(timer?.elapsed_s)
   const open = new Set((useItems().data ?? []).map((i) => i.id))
   const moved = useMoved(plan)
+  // What if: what the tried changes made, changed or deleted, and blocks' moves against your real plan.
+  const tried = (plan as TrialPlan).tried
+  const trying = useWhatIf().on
+  const lookOf = (id: number): TriedLook | undefined =>
+    !tried ? undefined : tried.gone.has(id) ? "gone" : tried.made.has(id) ? "made" : tried.changed.has(id) ? "changed" : undefined
+  const bringBack = (id: number) => {
+    const at = whatIf.get().changes.findIndex((c) => (c.command === "drop" || c.command === "skip") && (c.input as { id?: number }).id === id)
+    if (at >= 0) whatIf.remove(at)
+  }
   const retime = useRetime()
   const now = useClock()
   const { look } = useLook()
@@ -69,7 +79,13 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const nowAt = now - toMin(calendar.today) - axis.startMin
   const cols = `52px repeat(${dates.length}, minmax(0,1fr))`
   return (
-    <div ref={panel} className="fr-panel" data-tour="calendar" style={{ overflowY: "auto", position: "relative", marginRight }}>
+    <div
+      ref={panel}
+      className="fr-panel"
+      data-tour="calendar"
+      // What if: the week framed in the accent while it shows changes not made, as Docs frames a suggestion.
+      style={{ overflowY: "auto", position: "relative", marginRight, ...(trying ? { boxShadow: "inset 0 0 0 2px color-mix(in srgb, var(--color-accent) 55%, transparent)" } : {}) }}
+    >
       <div ref={head} style={{ position: "sticky", top: 0, zIndex: 4, display: "grid", gridTemplateColumns: cols, background: "var(--color-surface)" }}>
         <div />
         {dates.map((date) => (
@@ -119,7 +135,14 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                 <FixedBox
                   key={`f${p.item.id}`}
                   p={p}
-                  onOpen={() => select(asBlock(p.item))}
+                  tried={lookOf(p.item.id)}
+                  onOpen={() =>
+                    lookOf(p.item.id) === "gone"
+                      ? bringBack(p.item.id)
+                      : tried && whatIf.madeBy(p.item.id) !== null
+                        ? (select(null), setEvent(draftOf(p.item)))
+                        : select(asBlock(p.item))
+                  }
                   onEdit={p.item.event_kind === "shove" ? undefined : () => (select(null), setEvent(draftOf(p.item)))}
                   retime={{ begin: () => select(null), save: (span) => retime.event(p.item, span) }}
                 />
@@ -133,7 +156,8 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                   selected={p.item.key === selected?.key}
                   done={p.item.state === "done" || (toMin(p.item.end) <= now && !open.has(p.item.item_id))}
                   look={p.item.key.startsWith("S") ? "sitting" : p.item.state === "missed" ? "missed" : undefined}
-                  movedFrom={moved.get(p.item.item_id)}
+                  movedFrom={tried ? tried.moved.get(p.item.item_id) : moved.get(p.item.item_id)}
+                  tried={lookOf(p.item.item_id)}
                   today={today}
                   onOpen={() => !justDragged() && select(p.item)}
                   // A selected block let go of, as retyping its time does: its popover would act on where it was.

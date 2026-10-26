@@ -95,8 +95,10 @@ class Writer:
         final: dict[str, dict[str, Any]] = {}  # a command may write one row twice; its last write is what to find
         for change in changes:
             final[json.dumps([change["table"], change["key"]], sort_keys=True)] = change
+        changes = [c for c in changes if not passing(c)]  # a replan may have taken them since: nothing to put back
         for change in final.values():
-            self.check_unchanged(change, later_writer)
+            if not passing(change):
+                self.check_unchanged(change, later_writer)
         for change in reversed(changes):
             table, key = change["table"], change["key"]
             if change["op"] == "insert":
@@ -111,6 +113,16 @@ class Writer:
         expected = None if change["op"] == "delete" else change["after"]
         if now != expected:
             raise StaleUndo(change["table"], change["key"], later.touching(change["table"], change["key"]))
+
+
+# Notes a command leaves for the next replan, which takes them (`next_stability` after a rule or pace change,
+# `next_cold` after a picked way): gone by the time you undo, they're no reason to refuse it (26 Oct: undoing a rule
+# after the plan refreshed always failed, "kv next_stability changed since").
+PASSING = {"next_stability", "next_cold"}
+
+
+def passing(change: dict[str, Any]) -> bool:
+    return change["table"] == "kv" and change["key"].get("key") in PASSING
 
 
 class LaterCommands:

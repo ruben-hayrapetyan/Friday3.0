@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query"
 import { query, type Schemas } from "@/api/client"
 import { useSettings } from "@/hooks/queries"
 import { useShell } from "@/shell/ShellContext"
-import { useTrial, useWhatIf, within } from "@/whatif/store"
+import { trialView, useTrial, useWhatIf, within } from "@/whatif/store"
 import { useLook } from "@/theme/LookProvider"
 
 export interface Showing {
@@ -50,7 +50,9 @@ export function useShownPlan(start: string, end: string) {
   const select = useCallback((plan: Schemas["PlanOut"]) => withShown(plan, s), [key])
   const real = useQuery({ queryKey: ["plan", start, end], queryFn: () => query("plan", { start, end }), select })
   const w = useWhatIf()
-  const trial = useTrial(useShell().today).data
-  if (w.on && w.changes.length && trial) return { ...real, data: withShown(within(trial.plan, start, end), s) }
-  return real
+  const trial = useTrial(useShell().today)
+  if (!w.on || !w.changes.length || !real.data) return real
+  // While trying: the latest answer with the changes made since drawn at once (whatif/store.trialView).
+  const view = trialView(real.data, trial.out, w.changes, trial.answered)
+  return { ...real, data: { ...withShown(within(view, start, end), s), tried: view.tried } }
 }

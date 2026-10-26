@@ -2,6 +2,7 @@
 // you can tick off or drag onto the calendar. Its frame also holds an open event (COMBINED.md 12), and its left edge
 // drags to make it wider or narrower, kept for next time (personal's drawer, COMBINED.md 11).
 
+import { useWhatIf } from "@/whatif/store"
 import { type ReactNode, useState } from "react"
 import { useNavigate } from "react-router"
 import type { Item } from "@/api/client"
@@ -60,6 +61,7 @@ export function Drawer() {
   const items = useItems().data ?? []
   const blocks = useHorizon().data?.blocks ?? []
   const groups = grouped(items, blocks, today, by, sort)
+  const trying = useWhatIf().on
   return (
     <DrawerFrame todo>
       <div style={{ display: "flex", alignItems: "center", gap: 8, height: 32 }}>
@@ -76,6 +78,12 @@ export function Drawer() {
         </button>
       </div>
       <QuickLine />
+      {trying && (
+        <span style={{ display: "flex", gap: 6, alignItems: "center", marginTop: -6, fontSize: 11.5, color: "var(--color-accent-200)" }}>
+          <Icon name="flask" size={12} />
+          What if is on: a to-do added here is tried on the calendar, not saved.
+        </span>
+      )}
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <Seg options={["When", "Tag"] as const} value={by} onPick={setBy} size="small" />
         <div style={{ flex: 1 }} />

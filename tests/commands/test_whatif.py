@@ -149,3 +149,35 @@ def test_keep_refuses_all_when_one_cant_be_made(app: App) -> None:
         app.do("whatif_keep", changes=[{"command": "add", "input": {"text": "laundry ~1h"}},
                                        {"command": "edit", "input": {"id": 99999, "title": "x"}}])  # fmt: skip
     assert len(app.table("items")) == items
+
+
+def test_a_try_a_newer_one_replaced_gives_way(app: App, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Changes made in quick succession each ask; one still waiting when a newer comes doesn't spend its 20 seconds.
+    essay_day(app)
+    who = (str(app.conn.execute("PRAGMA database_list").fetchone()[2]), 1)
+    real_snapshot = whatif.take_snapshot
+
+    def newer_comes(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+        whatif.LATEST[who] = whatif.LATEST.get(who, 0) + 5  # a newer try arrives while this one reads the week
+        return real_snapshot(*args, **kwargs)
+
+    monkeypatch.setattr(whatif, "take_snapshot", newer_comes)
+    with pytest.raises(FieldError, match="newer try"):
+        tried(app, coffee())
+    monkeypatch.setattr(whatif, "take_snapshot", real_snapshot)
+    assert tried(app, coffee())["verdict"] == "late"  # the newest goes ahead
+
+
+def test_a_kept_rule_undoes_after_the_plan_refreshed(app: App) -> None:
+    # 26 Oct: a rule added (here, or kept from What if) left a note for the next replan, which took it, and the undo
+    # refused: "kv next_stability changed since".
+    essay_day(app)
+    rule = {"command": "rule_add", "input": {"text": "No work after 9pm"}}
+    for add in (
+        lambda: app.full("rule_add", payload=rule["input"]),
+        lambda: app.full("whatif_keep", payload={"changes": [rule]}),
+    ):
+        out = add()
+        replan(app.conn, app.now_utc)
+        app.do("undo", command_id=out.command_id)
+        assert not [r for r in app.do("rules") if r["name"].startswith("you:")]

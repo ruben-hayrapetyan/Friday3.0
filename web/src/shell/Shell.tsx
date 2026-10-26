@@ -33,6 +33,8 @@ import { RulesPage } from "@/rules/RulesPage"
 import { SettingsPage } from "@/settings/SettingsPage"
 import { Search } from "@/search/Search"
 import { Drawer, DrawerFrame } from "@/todo/Drawer"
+import { useWhatIf, whatIf } from "@/whatif/store"
+import { WhatIfPanel } from "@/whatif/WhatIfPanel"
 import { draftAt, EventPane } from "./EventPane"
 import { TodoPage } from "@/todo/TodoPage"
 import { nextHour, placeAfter, useHost } from "./host"
@@ -64,7 +66,9 @@ export function Shell() {
   }, [today, setDialog, setupDone])
   useEffect(() => setNavOpen(false), [location.pathname, setNavOpen]) // a page picked from the slid-out sidebar
   const narrow = layout.mode === "narrow"
-  const drawerSpace = (drawer || event) && location.pathname === "/" && !drawerOver ? drawerWidth + 12 : 0
+  const w = useWhatIf()
+  const trying = w.on && w.panel // What if's changes, in the drawer's place (whatif/WhatIfPanel.tsx)
+  const drawerSpace = (drawer || event || trying) && location.pathname === "/" && !drawerOver ? drawerWidth + 12 : 0
   const vars = { "--fr-side": `${layout.side}px`, "--fr-drawer": `${drawerSpace}px`, "--fr-head-inset": narrow ? "56px" : "12px" } as React.CSSProperties
   return (
     <DragProvider onDrop={onDrop}>
@@ -104,10 +108,17 @@ export function Shell() {
           <DrawerFrame>
             <EventPane draft={event} />
           </DrawerFrame>
+        ) : drawer && location.pathname === "/" ? (
+          <Drawer />
         ) : (
-          drawer && location.pathname === "/" && <Drawer />
+          trying &&
+          location.pathname === "/" && (
+            <DrawerFrame>
+              <WhatIfPanel />
+            </DrawerFrame>
+          )
         )}
-        {!location.pathname.startsWith("/settings") && !(drawerOver && (drawer || event) && location.pathname === "/") && <Dock />}
+        {!location.pathname.startsWith("/settings") && !(drawerOver && (drawer || event || trying) && location.pathname === "/") && <Dock />}
         <BlockPopover />
         {location.pathname === "/" && <WayBanner />}
         {pop && <div onClick={() => setPop(null)} style={{ position: "absolute", inset: 0, zIndex: 9 }} />}
@@ -142,7 +153,8 @@ function useShellKeys() {
     palette: () => setDialog("search"),
     shove: () => setPop("shove"),
     pace: () => setPop("pace"),
-    undo: () => undoLast(client, toast),
+    // While trying, ⌘Z takes back the last change you tried, never one of your real ones.
+    undo: () => (whatIf.get().on && location.pathname === "/" ? whatIf.undoLast() : undoLast(client, toast)),
     drawer: () => setDrawer(!drawer),
     quickAdd: () => (location.pathname === "/" ? setDrawer(true) : navigate("/todo")),
     timer: () => {

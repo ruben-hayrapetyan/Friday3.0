@@ -9,6 +9,7 @@ import { FitLine } from "@/components/Fit"
 import { Icon, Menu, Switch } from "@/components/fr/controls"
 import { useItem, useSettings } from "@/hooks/queries"
 import { useCalendars } from "@/settings/Calendars"
+import { useWhatIf, whatIf } from "@/whatif/store"
 import { useCommand } from "@/hooks/useCommand"
 import { clock, weekday } from "@/lib/format"
 import { PIGMENTS, pigment, UNMARKED } from "@/lib/pigments"
@@ -68,9 +69,10 @@ export function hasWords(title: string, words: string): boolean {
 /** Do I have time for this? A new event, or one moved: what it would make late. One you marked optional ("Gym is
  * optional", "Climbing club only if I'm ahead"): whether you have time to go, as an event over its time would. */
 function EventFit({ draft, onTime }: { draft: EventDraft; onTime: (start: string, end: string) => void }) {
-  const saved = useItem(draft.id).data?.item
+  const trying = useWhatIf().on // What if says what it costs, in its own panel
+  const saved = useItem(trying || (draft.id ?? 0) < 0 ? null : draft.id).data?.item
   const rules = (useSettings().data as { rules?: { type: string; enabled?: boolean; params?: { titles?: string[] } }[] } | undefined)?.rules ?? []
-  if (draft.allDay || !draft.title.trim() || toMin(draft.end) <= toMin(draft.start)) return null
+  if (trying || draft.allDay || !draft.title.trim() || toMin(draft.end) <= toMin(draft.start)) return null
   const optional = rules.some((r) => r.type === "skippable" && r.enabled !== false && (r.params?.titles ?? []).some((t) => hasWords(draft.title, t)))
   const times = { start: draft.start, end: draft.end }
   const moved = saved && (saved.start !== draft.start || saved.end !== draft.end)
@@ -103,6 +105,9 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   const title = useRef<HTMLInputElement>(null)
   const set = (change: Partial<EventDraft>) => setEvent({ ...draft, ...change })
   const isNew = draft.id === null
+  // An event a change in What if made: saving puts that change another way, and Delete takes it out.
+  const w = useWhatIf()
+  const staged = w.on ? whatIf.madeBy(draft.id) : null
   useEffect(() => {
     if (isNew) title.current?.focus()
   }, [isNew])
@@ -123,6 +128,11 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   const save = async () => {
     if (!valid) return
     const fields = { title: draft.title.trim(), start: draft.start, end: draft.end, color: draft.color, notes: draft.notes, blocks_time: !draft.allDay }
+    if (staged !== null) {
+      const was = w.changes[staged].input as Record<string, unknown>
+      whatIf.replace(staged, { ...(was.calendar !== undefined ? { calendar: was.calendar } : {}), ...fields, when: "fixed" })
+      return close()
+    }
     const done = isNew
       ? await add({ ...fields, when: "fixed", ...(draft.saveTo !== undefined ? { calendar: savingTo ? saveTo : "" } : {}), ...(draft.every ? { every: draft.every } : {}) })
       : await edit({ id: draft.id as number, ...fields })
@@ -130,6 +140,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   }
   const remove = async (how: "one" | "all") => {
     if (draft.id === null) return
+    if (staged !== null) return (whatIf.remove(staged), close())
     const done = how === "all" && draft.seriesId !== null ? await deleteSeries({ id: draft.seriesId }) : draft.seriesId !== null ? await skip({ id: draft.id }) : await drop({ id: draft.id })
     if (done) close()
   }
@@ -166,7 +177,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, height: 32 }}>
         <span className="fr-h" style={{ fontSize: 20, lineHeight: 1, flex: 1 }}>
-          {isNew ? "New event" : "Event"}
+          {isNew ? "New event" : staged !== null ? "Tried event" : "Event"}
         </span>
         <button className="btn btn-icon btn-ghost" onClick={close} aria-label="Close" style={{ width: 28, height: 28, color: "var(--color-neutral-400)" }}>
           <Icon name="x" />
@@ -277,7 +288,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
       <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
         <button className="btn btn-primary" onClick={save} disabled={!valid}>
           <Icon name="check" />
-          {isNew ? "Add" : "Save"}
+          {isNew ? "Add" : staged !== null ? "Update" : "Save"}
         </button>
         <button className="btn btn-secondary" onClick={close}>
           Cancel
@@ -294,8 +305,8 @@ export function EventPane({ draft }: { draft: EventDraft }) {
             </span>
           ) : (
             <button className="btn btn-ghost" onClick={() => (draft.seriesId !== null ? setAsking(true) : remove("one"))} style={{ marginLeft: "auto", color: "var(--fr-due)" }}>
-              <Icon name="trash" />
-              Delete
+              <Icon name={staged !== null ? "x" : "trash"} />
+              {staged !== null ? "Take out" : "Delete"}
             </button>
           ))}
       </div>

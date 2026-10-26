@@ -233,6 +233,14 @@ body {
   border-right-color: transparent;
   animation: fr-spin 0.7s linear infinite;
 }
+/* What if's bar while Friday plans: a stretch of the accent runs along it. */
+@keyframes fr-run {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+.fr-progress {
+  animation: fr-run 1.1s ease-in-out infinite;
+}
 /* Shove's choices sink a little under the finger, as a button does. */
 .fr-press:active:not(:disabled) {
   transform: scale(0.97);
@@ -243,6 +251,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .fr-just-shoved, .fr-shoved-check { animation: none; }
   .fr-spinner { animation-duration: 2s; }
+  .fr-progress { animation-duration: 3s; }
   .fr-press:active:not(:disabled) { transform: none; }
 }
 .fr-title {

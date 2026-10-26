@@ -33,8 +33,7 @@ export async function runCommand<N extends CommandName>(
   { optimistic, label, quiet }: Options<N> = {},
 ): Promise<Output<N> | undefined> {
   if (whatIf.stages(name)) {
-    whatIf.stage(name, input as Record<string, unknown>)
-    if (!quiet) toast({ message: "Tried in What if: nothing changes until you keep it" })
+    whatIf.stage(name, input as Record<string, unknown>) // the header and the changes say so: no toast for each
     return { command_id: null, result: { message: "In What if" } } as unknown as Output<N>
   }
   const matches = { predicate: (q: { queryKey: readonly unknown[] }) => OPTIMISTIC.includes(String(q.queryKey[0])) }

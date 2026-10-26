@@ -11,10 +11,15 @@ import { rangeText, readTimeRange } from "@/lib/timeRange"
 import { useJustShoved } from "@/pops/shoved"
 import { useLook } from "@/theme/LookProvider"
 import type { Kind } from "@/theme/skin"
-import { useTried } from "@/whatif/store"
 
-/** What if: an item the staged changes make or change, outlined. */
-const TRIED = { outline: "2px dashed var(--color-accent-300)", outlineOffset: -1 } as const
+/** What if, as calendar apps draw tentative changes: an item a tried change makes is dashed, one it changes is
+ * outlined, and one it deletes stays where it was, faded and struck through. */
+export type TriedLook = "made" | "changed" | "gone"
+const TRIED: Record<TriedLook, React.CSSProperties> = {
+  made: { outline: "2px dashed var(--color-accent-300)", outlineOffset: -1 },
+  changed: { outline: "2px solid color-mix(in srgb, var(--color-accent-300) 75%, transparent)", outlineOffset: -1 },
+  gone: { opacity: 0.4, textDecoration: "line-through", background: "transparent", border: "1px dashed var(--color-neutral-500)" },
+}
 
 export const PX = 0.8 // per minute: 48 px an hour, as drawn
 
@@ -61,6 +66,7 @@ interface BlockProps {
   // it again). Neither moves or stretches.
   look?: "sitting" | "missed"
   movedFrom?: string
+  tried?: TriedLook
   today: string
   onOpen: () => void
   onGrab: (e: React.PointerEvent) => void
@@ -68,9 +74,9 @@ interface BlockProps {
   retime?: Retime
 }
 
-export function BlockBox({ p, isCur, selected, done, look, movedFrom, today, onOpen, onGrab, onResize, retime }: BlockProps) {
+export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, today, onOpen, onGrab, onResize, retime }: BlockProps) {
   const b = p.item
-  const tried = useTried(b.item_id)
+
   const { skinOf } = useLook()
   const kind = done ? "done" : look ? "planned" : kindOf(b)
   const s = skinOf(kind, b.area, { isCur, sel: selected }, b.preset)
@@ -110,7 +116,7 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, today, onO
             ? `repeating-linear-gradient(135deg, color-mix(in srgb, ${s.stripe} 14%, transparent) 0 6px, transparent 6px 12px)`
             : s.bg,
         border: missed || running ? `1px dashed color-mix(in srgb, ${s.stripe} 55%, transparent)` : s.bd,
-        ...(tried ? TRIED : {}),
+        ...(tried ? TRIED[tried] : {}),
         color: missed ? "var(--color-neutral-500)" : s.fg,
         opacity: missed ? 0.75 : running ? 0.85 : s.op,
         boxShadow: missed ? "none" : s.shadow,
@@ -156,11 +162,11 @@ interface FixedProps {
   onOpen: () => void
   onEdit?: () => void // a double-click on it, away from its time
   retime?: Retime
+  tried?: TriedLook
 }
 
-export function FixedBox({ p, onOpen, onEdit, retime }: FixedProps) {
+export function FixedBox({ p, onOpen, onEdit, retime, tried }: FixedProps) {
   const it = p.item
-  const tried = useTried(it.id)
   const { skinOf, light } = useLook()
   const base = skinOf(it.event_kind === "shove" ? "shove" : "fixed", it.area)
   // Painted as Chroma painted events: the pigment as a spine and an 11% wash over the page, the title in ink. Its
@@ -193,7 +199,7 @@ export function FixedBox({ p, onOpen, onEdit, retime }: FixedProps) {
         borderRadius: 6,
         background: s.bg,
         border: s.bd,
-        ...(tried ? TRIED : {}),
+        ...(tried ? TRIED[tried] : {}),
         color: s.fg,
         overflow: typing ? "visible" : "hidden",
         userSelect: "none",
