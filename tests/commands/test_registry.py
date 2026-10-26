@@ -70,6 +70,22 @@ def longer_lunches(app: App) -> dict[str, Any]:
     return {"kind": "lunch"}
 
 
+def late_lunches(app: App) -> dict[str, Any]:
+    app.do("settings_set", key="meal_tracking", value={"on": True})
+    app.do("series_add", title="Lunch", preset="Routine", every="day", release_offset_min=450, due_offset_min=630,
+           min_min=15, ideal_min=15, max_min=15)  # fmt: skip
+    for day in range(12, 19):  # 11:30am to 2:30pm planned, eaten at 1:45
+        app.do("meal_log", kind="lunch", start=f"2026-10-{day}T13:45", end=f"2026-10-{day}T14:15")
+    return {"kind": "lunch"}
+
+
+def breakfasts(app: App) -> dict[str, Any]:
+    app.do("settings_set", key="meal_tracking", value={"on": True})
+    for day in range(12, 19):
+        app.do("meal_log", kind="breakfast", start=f"2026-10-{day}T08:00", end=f"2026-10-{day}T08:15")
+    return {"plan": True}
+
+
 def gym(app: App) -> dict[str, Any]:
     return app.do("add", text="gym every mon,wed ~1h")
 
@@ -297,6 +313,8 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "meal_edit": lambda app: {"id": eating(app), "start": "2026-10-19T07:30"},
     "meal_remove": lambda app: {"id": eating(app)},
     "meal_use_length": longer_lunches,
+    "meal_use_time": late_lunches,
+    "meal_breakfast": breakfasts,
     "other_way_pick": lambda app: {"weights": {"energy": 2.0}, "seed": 1, "rule_totals": {"energy": 100}},
     "add": add_sample,
     "edit": lambda app: {"id": essay(app), "title": "long essay", "duration_min": 180},

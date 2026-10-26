@@ -80,6 +80,7 @@ class EngineItem:
     pacing_start_utc: int | None = None  # where the pacing line starts: the release, else creation, else now
     travel_before: int = 0  # units kept clear of other work before each chunk: getting to lunch
     travel_after: int = 0  # and after it: getting back to somewhere you can work
+    meal_window: tuple[int, int] | None = None  # a meal's own window (UTC minutes); its allowed window reaches past it
 
     def __post_init__(self) -> None:
         self.allowed_set: frozenset[int] = frozenset(self.allowed)

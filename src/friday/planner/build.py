@@ -13,6 +13,7 @@ from typing import Any, Literal
 from friday.core.guess import EXAM, course_word
 from friday.core.items import Item
 from friday.core.pace import DayScales
+from friday.core.quickadd import MEAL
 from friday.core.settings import SleepDay, bedtime_minutes, minutes_of
 from friday.core.textnorm import identity_text, norm
 from friday.core.time import (
@@ -34,6 +35,17 @@ from friday.engine.sampler import SamplerConfig, default_chains
 from friday.engine.scheduler import SchedulerConfig, StepBudget
 
 PLANNER_RULES = frozenset({"travel"})  # rules the build applies itself, not the engine's priced or walled rules
+# Lunch and dinner are never given up for work (asked 26 Oct): a meal routine's minimum is kept in the deadlines stage,
+# priced far above work being late. Whether it may leave its window is the calendar's to say, not the work's: when
+# events leave no room in it (dinner's 5:30-8:30 under a 6pm Zoom and a 7:30 lab), it may go up to MEAL_REACH_MIN
+# outside, priced in the wellbeing stage so it stays close; with room nowhere near, it isn't asked for that day.
+MEAL_REACH_MIN = 120
+MEALS_KEPT = (
+    {"type": "elastic_shortfall", "name": "meals_kept", "weight": 1.0, "stage": "deadlines",
+     "scope": {"preset": "Routine", "title_regex": ["(?i)" + MEAL.pattern]},
+     "params": {"steep": 10000.0, "gentle": 0.0}},
+    {"type": "meal_window", "name": "meal_window", "weight": 1.0, "stage": "wellbeing", "params": {"price": 2000.0}},
+)  # fmt: skip
 LONG_TERM_SCALE = 0.25  # how much Long term work counts when short-term work comes first
 
 
@@ -92,6 +104,7 @@ def build_problem(inp: BuildInput) -> Problem:
     grid = make_grid(inp.now_utc, settings["time"].grid_spec(), inp.end_utc)
     fixed, fixed_items = fixed_occurrences(inp, grid.now, grid.horizon_end)
     items = flexible_items(inp, grid, fixed_items)
+    meal_room(items, fixed, grid)
     pins = pin_slots(inp, grid, items)
     scales = list(inp.day_scales) if inp.day_scales is not None else [DayScales()] * grid.n_days
     problem = Problem(
@@ -124,7 +137,8 @@ def build_problem(inp: BuildInput) -> Problem:
     problem.refresh_locks()
     # A rule whose type a plugin should have defined, but didn't load, is off; the plan report says so.
     problem.rules = build_rules(
-        rule.model_dump(exclude={"enabled"}) for rule in settings["rules"] if rule.type in RULE_TYPES and rule.enabled
+        [rule.model_dump(exclude={"enabled"}) for rule in settings["rules"] if rule.type in RULE_TYPES and rule.enabled]
+        + list(MEALS_KEPT)
     )
     for rule in problem.rules:
         rule.prepare(problem)
@@ -338,7 +352,40 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
         travel_before=math.ceil((item.buffer_before_min or 0) / UNIT_MIN),
         travel_after=math.ceil((item.buffer_after_min or 0) / UNIT_MIN),
     )  # fmt: skip
+    if item.preset == "Routine" and item.amount == "elastic" and MEAL.search(item.title) and release and due:
+        engine_item.meal_window = (release, due)  # how far it may reach is settled once events are known: meal_room
     return with_amount(engine_item, item, inp)
+
+
+def meal_room(items: Mapping[str, EngineItem], fixed: list[FixedOcc], grid: Grid) -> None:
+    """Each meal's window as the calendar leaves it: its own when events leave room for its minimum, else reaching
+    up to MEAL_REACH_MIN either side (priced: `meal_window`), else none asked for that day (minimum 0), so a meal
+    that can't be had doesn't count as late work the plan keeps trying to fix."""
+    busy = sorted((f.blocked_lo, f.blocked_hi) for f in fixed if f.blocks_time)
+    for item in items.values():
+        if item.meal_window is None:
+            continue
+        lo, hi = item.meal_window
+        if free_run(grid, busy, lo, hi) >= item.min:
+            continue
+        if free_run(grid, busy, lo - MEAL_REACH_MIN, hi + MEAL_REACH_MIN) >= item.min:
+            item.release_utc, item.due_utc = lo - MEAL_REACH_MIN, hi + MEAL_REACH_MIN
+        else:
+            item.min = 0
+
+
+def free_run(grid: Grid, busy: list[tuple[int, int]], lo: int, hi: int) -> int:
+    """The longest run of whole slots in [lo, hi), from now, that no event (with the time kept around it) touches."""
+    near = [(x, y) for x, y in busy if x < hi and y > lo]
+    best = run = 0
+    for s in grid.slots_in(max(lo, grid.now), hi):
+        a, b = int(grid.start[s]), int(grid.end[s])
+        if a < max(lo, grid.now) or b > hi or any(x < b and y > a for x, y in near):
+            run = 0
+            continue
+        run += int(grid.units[s])
+        best = max(best, run)
+    return best
 
 
 def expires(item: Item, settings: Mapping[str, Any]) -> bool:

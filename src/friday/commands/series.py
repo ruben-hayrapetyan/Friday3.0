@@ -168,8 +168,10 @@ def edit_series_from(
     given: dict[str, Any],
     every: str | None = None,
     per_window: int | None = None,
+    offsets: dict[str, int] | None = None,
 ) -> int:
-    """End the series the day before `from_date` and start a changed copy on it; returns the new series id."""
+    """End the series the day before `from_date` and start a changed copy on it; returns the new series id. `offsets`:
+    a new window (`release_offset_min`, `due_offset_min` from the day's start), as a meal's learned time gives."""
     old = load_series(ctx, series_id)
     day = date.fromisoformat(from_date)
     ctx.db.update("series", {"id": series_id}, {"rrule": ending_before(old["rrule"], day), "updated_utc": ctx.now_text})
@@ -185,6 +187,7 @@ def edit_series_from(
             "per_window": per_window or old["per_window"],
             "release_offset_min": old["release_offset_min"],
             "due_offset_min": old["due_offset_min"],
+            **(offsets or {}),
             "created_utc": ctx.now_text,
             "updated_utc": ctx.now_text,
         },

@@ -956,6 +956,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/meal_use_time": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Plan a meal's routine around when you usually eat it, from today on (what Sleep & meals offers). */
+        post: operations["meal_use_time"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/meal_breakfast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Plan breakfast at the time and length you have it, or stop planning it (what Sleep & meals offers). */
+        post: operations["meal_breakfast"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/meals": {
         parameters: {
             query?: never;
@@ -4610,6 +4644,30 @@ export interface components {
              */
             repeated?: boolean;
         };
+        /** MealBreakfastInput */
+        MealBreakfastInput: {
+            /** Plan */
+            plan: boolean;
+        };
+        /** MealBreakfastResult */
+        MealBreakfastResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
         /** MealChangeOut */
         MealChangeOut: {
             /** Kind */
@@ -4845,8 +4903,45 @@ export interface components {
              */
             repeated?: boolean;
         };
+        /**
+         * MealTimeOut
+         * @description A meal routine planned well off when you eat it: its window moved to sit around your usual time.
+         */
+        MealTimeOut: {
+            /** Kind */
+            kind: string;
+            /** Usual Start */
+            usual_start: string;
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
+            /** New Start */
+            new_start: string;
+            /** New End */
+            new_end: string;
+        };
         /** MealUseLengthResult */
         MealUseLengthResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /** MealUseTimeResult */
+        MealUseTimeResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
@@ -4891,6 +4986,17 @@ export interface components {
              * @default 4
              */
             min_days?: number;
+            /**
+             * Times
+             * @default []
+             */
+            times?: components["schemas"]["MealTimeOut"][];
+            /** Breakfast */
+            breakfast?: ("plan" | "stop") | null;
+            /** Breakfast At */
+            breakfast_at?: string | null;
+            /** Breakfast Min */
+            breakfast_min?: number | null;
         };
         /** MergeGroup */
         MergeGroup: {
@@ -9528,6 +9634,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MealUseLengthResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    meal_use_time: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MealLengthInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MealUseTimeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    meal_breakfast: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MealBreakfastInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MealBreakfastResult"];
                 };
             };
             /** @description Validation Error */

@@ -436,6 +436,14 @@ VERBS = {
         True,
         "Create every active series' missing occurrences (the nightly job runs this).",
     ),
+    "meal_breakfast": Verb(
+        "POST",
+        "/api/c/meal_breakfast",
+        commands.MealBreakfastInput,
+        True,
+        True,
+        "Plan breakfast at the time and length you have it, or stop planning it (what Sleep & meals offers).",
+    ),
     "meal_edit": Verb(
         "POST",
         "/api/c/meal_edit",
@@ -486,6 +494,14 @@ VERBS = {
         True,
         True,
         "Plan a meal's routine at the length you take, from today on (what Sleep & meals offers).",
+    ),
+    "meal_use_time": Verb(
+        "POST",
+        "/api/c/meal_use_time",
+        commands.MealLengthInput,
+        True,
+        True,
+        "Plan a meal's routine around when you usually eat it, from today on (what Sleep & meals offers).",
     ),
     "meals": Verb(
         "GET",

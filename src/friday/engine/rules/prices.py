@@ -324,6 +324,30 @@ class CloseToDue(Rule):
         return self.p.inside == FORBID and self.p.buffer_min > 0 and item.due_utc is not None and self.inside(item, s)
 
 
+@rule_type("meal_window")
+class MealWindow(Rule):
+    """A meal outside its own window (the planner lets it reach out only on a day events leave no room in it): each
+    hour of it there costs `price`, more the further out, so it goes as near its window as it can (dinner at 5pm
+    before a 6pm Zoom, not at 3)."""
+
+    default_stage = "wellbeing"
+    applies_to = {"elastic", "fixed"}
+
+    class Params(Rule.Params):
+        price: float = 2000.0
+
+    def applies_also(self, item):
+        return item.meal_window is not None
+
+    def price(self, item, s):
+        grid = self.problem.grid
+        if s == grid.S or item.meal_window is None:
+            return 0.0
+        lo, hi = item.meal_window
+        away = max(0, lo - int(grid.start[s]), int(grid.end[s]) - hi)
+        return self.p.price * (1 + away / 60) if away else 0.0
+
+
 @rule_type("unscheduled")
 class Unscheduled(Rule):
     applies_to = {"fixed"}

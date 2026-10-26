@@ -603,6 +603,17 @@ class MealChangeOut(Model):
     usual_min: int  # what you take
 
 
+class MealTimeOut(Model):
+    """A meal routine planned well off when you eat it: its window moved to sit around your usual time."""
+
+    kind: str
+    usual_start: str  # HH:MM
+    start: str  # the window planned now, HH:MM
+    end: str
+    new_start: str  # the window offered
+    new_end: str
+
+
 class MealsOut(Model):
     on: bool
     eating: MealOut | None = None  # the meal you're eating now
@@ -611,6 +622,10 @@ class MealsOut(Model):
     learned: list[MealLearnedOut] = []
     changes: list[MealChangeOut] = []  # routine lengths 10 minutes or more off what you take
     min_days: int = 4
+    times: list[MealTimeOut] = []  # routines whose window is well off when you eat
+    breakfast: Literal["plan", "stop"] | None = None  # you have breakfast most days with none planned, or skip it
+    breakfast_at: str | None = None  # HH:MM: when you usually have it
+    breakfast_min: int | None = None
 
 
 class SleepOut(Model):

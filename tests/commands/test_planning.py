@@ -728,3 +728,40 @@ def test_late_work_is_placed_again_by_due_when_a_replan_is_stuck(tmp_path: Path)
     assert fixed is not None and deadline_value(c, fixed) < deadline_value(c, stuck)
     on_time = [s for s in range(grid.S) if fixed[s] == keys[f"item:{pre}"]]
     assert on_time and max(int(grid.end[s]) for s in on_time) <= problem.items[f"item:{pre}"].due_utc
+
+
+def meals_day(app: App) -> None:
+    app.do("series_add", title="Lunch", preset="Routine", every="day", release_offset_min=450, due_offset_min=630,
+           min_min=15, ideal_min=15, max_min=15)  # fmt: skip
+    app.do("series_add", title="Dinner", preset="Routine", every="day", release_offset_min=810, due_offset_min=990,
+           min_min=30, ideal_min=45, max_min=45)  # fmt: skip
+
+
+def meals_on(app: App, day: str) -> dict[str, list[str]]:
+    blocks = app.do("plan", start=f"{day}T00:00", end=f"{day}T23:59")["blocks"]
+    return {m: [b["start"][11:] for b in blocks if b["title"] == m] for m in ("Lunch", "Dinner")}
+
+
+def test_lunch_and_dinner_are_never_given_up_for_work(tmp_path: Path) -> None:
+    # Far more due tonight than fits: work used to take lunch and dinner (meals were a wellbeing cost, below
+    # deadlines). Now they're kept, and only the work is late.
+    app = new_app(tmp_path)
+    meals_day(app)
+    app.do("add", title="Huge essay", duration_min=12 * 60, due="2026-10-19T23:00")
+    replan(app.conn, app.now_utc)
+    eaten = meals_on(app, "2026-10-19")
+    assert eaten["Lunch"] and eaten["Dinner"], eaten
+    assert app.do("status")["late"]
+
+
+def test_a_meal_whose_window_events_fill_goes_just_outside_it(tmp_path: Path) -> None:
+    # Monday: a Zoom and then a lab fill dinner's 5:30-8:30 window: dinner goes just outside it, not nowhere, and not
+    # into the middle of the afternoon.
+    app = new_app(tmp_path)
+    meals_day(app)
+    for title, start, end in (("CUAI zoom", "17:30", "19:00"), ("CS 2112 Lab", "19:00", "20:45")):  # no room at all
+        app.do("add", title=title, when="fixed", start=f"2026-10-19T{start}", end=f"2026-10-19T{end}")
+    app.do("add", title="Problem set", duration_min=4 * 60, due="2026-10-19T23:00")
+    replan(app.conn, app.now_utc)
+    (dinner,) = meals_on(app, "2026-10-19")["Dinner"] or ["none"]
+    assert "15:30" <= dinner < "17:45" or dinner >= "21:00", dinner

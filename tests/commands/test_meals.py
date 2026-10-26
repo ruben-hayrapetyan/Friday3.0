@@ -142,3 +142,35 @@ def test_lunches_taken_longer_offer_a_longer_routine(app: App) -> None:
     assert app.do("meals")["changes"] == []
     with pytest.raises(FieldError, match="no dinner routine"):
         app.do("meal_use_length", kind="dinner")
+
+
+def test_lunch_eaten_well_after_its_window_is_offered_a_later_window(app: App) -> None:
+    on(app)
+    lunch_routine(app)  # 11:30am to 2:30pm
+    for back in range(1, 8):
+        day = date(2026, 10, 19) - timedelta(days=back)
+        app.do("meal_log", kind="lunch", start=f"{day}T13:45", end=f"{day}T14:15")
+    (moved,) = app.do("meals")["times"]
+    assert (moved["kind"], moved["start"], moved["end"]) == ("lunch", "11:30", "14:30")
+    assert moved["new_start"] == "12:30" and moved["new_end"] == "15:30"
+    assert "12:30pm to 3:30pm" in app.do("meal_use_time", kind="lunch")["message"]
+    assert todays_lunch(app)["release_utc"] == "2026-10-19T16:30Z"  # 12:30pm EDT
+    assert app.do("meals")["times"] == []
+
+
+def test_breakfast_is_planned_once_you_have_it_most_days_and_dropped_when_you_skip_it(app: App) -> None:
+    on(app)
+    for back in range(1, 8):
+        day = date(2026, 10, 19) - timedelta(days=back)
+        app.do("meal_log", kind="breakfast", start=f"{day}T08:00", end=f"{day}T08:15")
+    out = app.do("meals")
+    assert (out["breakfast"], out["breakfast_at"], out["breakfast_min"]) == ("plan", "08:00", 15)
+    assert "around 8am, 15 min" in app.do("meal_breakfast", plan=True)["message"]
+    made = [r for r in app.table("items") if r["title"] == "Breakfast" and r["occurrence_date"] == "2026-10-19"]
+    assert made and made[0]["release_utc"] == "2026-10-19T11:15Z"  # 7:15am EDT, 45 minutes before
+    assert app.do("meals")["breakfast"] is None
+    for back in range(8, 16):  # a week and more of skipping it
+        app.do("meal_skip", kind="breakfast", date=(date(2026, 10, 19) - timedelta(days=back)).isoformat())
+    assert app.do("meals")["breakfast"] == "stop"
+    app.do("meal_breakfast", plan=False)
+    assert app.do("meals")["breakfast"] is None

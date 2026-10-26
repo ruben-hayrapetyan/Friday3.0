@@ -33,6 +33,7 @@ EXTRA_RULES = [
     dict(type="before_event", name="early_before_lecture", weight=1,
          params=dict(titles=["CS 1100"], after="22:00", price=2)),
     dict(type="close_to_due", name="prep_close", weight=1, params=dict(buffer_min=720)),
+    dict(type="meal_window", name="meals_near_their_window", weight=1, params=dict(price=50)),
     dict(type="close_to_due", name="prep_buffer_kept", weight=1, scope=dict(firmness="hard"),
          params=dict(buffer_min=1440, inside="forbid")),
 ]  # fmt: skip

@@ -219,6 +219,10 @@ class MealLengthInput(Model):
     kind: MealKind  # its routine is planned at the length you usually take, from today
 
 
+class MealBreakfastInput(Model):
+    plan: bool  # plan breakfast at the time and length you have it, or stop planning it
+
+
 class SleepMarkInput(Model):
     kind: Literal["done", "bed", "up", "ready"]  # done with work, going to bed, up, ready to work
     at: str | None = None  # local time; now when left out

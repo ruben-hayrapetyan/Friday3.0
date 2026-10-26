@@ -107,6 +107,9 @@ def schedule(
     if warm and trace["repair"] > 0 and (reordered := due_order(c, owner, config, cancel)) is not None:
         owner = reordered
         trace["due_order"] = deadline_value(c, owner)
+    if deadline_value(c, owner) > 0 and (fed := meals_first(c, owner, config, cancel)) is not None:
+        owner = fed
+        trace["meals_first"] = deadline_value(c, owner)
     if not warm and trace["repair"] > 0:
         # personal's overload start (COMBINED.md 54): as many tasks on time as can be, kept only if it ends less late.
         other = construct(c, order=fewest_late_order(c))
@@ -170,6 +173,74 @@ def due_order(c: Compiled, owner: np.ndarray, config: SchedulerConfig, cancel: n
     if not valid(c, other) or deadline_value(c, other) >= deadline_value(c, owner):
         return None
     return other
+
+
+def meals_first(c: Compiled, owner: np.ndarray, config: SchedulerConfig, cancel: np.ndarray) -> np.ndarray | None:
+    """Meals short of their minimum placed first: each in the free run nearest its own window (inside it first), what
+    work sat there and in its travel taken out and placed again after; returned when it scores better. A plan with
+    work where dinner could go couldn't trade the two a slot at a time, so lunch and dinner stayed off the plan."""
+    M, problem = c.m, c.problem
+    index = {k: i for i, k in enumerate(c.keys)}
+    meals = [k for k, item in problem.items.items() if item.meal_window is not None]
+    held = {k: int(sum(M.units[s] for s in range(M.S) if owner[s] == index[k])) for k in meals}
+    short = [k for k in meals if held[k] < problem.items[k].min]
+    if not short:
+        return None
+    base, moved = owner.copy(), set()
+
+    def clear(s: int) -> bool:
+        i = int(base[s])
+        if i < 0:
+            return True
+        if M.locked[i, s] or problem.items[c.keys[i]].meal_window is not None:
+            return False
+        moved.add(c.keys[i])
+        base[s] = -1
+        return True
+
+    for k in short:
+        i, item = index[k], problem.items[k]
+        lo, hi = item.meal_window  # type: ignore[misc]
+        for s in range(M.S):
+            if base[s] == i and not M.locked[i, s]:
+                base[s] = -1
+        starts = sorted(
+            item.allowed, key=lambda s: (max(0, lo - int(c.problem.grid.start[s]), int(c.problem.grid.end[s]) - hi), s)
+        )
+        for start in starts:
+            run, units = [], 0
+            for s in range(start, M.S):
+                if s not in item.allowed_set or (base[s] >= 0 and not can_clear(problem, c, base, s)):
+                    break
+                run.append(s)
+                units += int(M.units[s])
+                if units >= item.min:
+                    break
+            if units < item.min:
+                continue
+            travel = [
+                *range(max(0, run[0] - item.travel_before), run[0]),
+                *range(run[-1] + 1, min(M.S, run[-1] + 1 + item.travel_after)),
+            ]
+            for s in run + [t for t in travel if not problem.blocked[t]]:
+                clear(s)
+            for s in run:
+                base[s] = i
+            break
+    for s in range(M.S):
+        if base[s] >= 0 and c.keys[base[s]] in moved and not M.locked[base[s], s]:
+            base[s] = -1
+    other = construct(c, base, only=moved, order=fewest_late_order(c))
+    other = repair(c, other, config.repair_steps, config.sampler.seed, config.sampler.move_weights, cancel)
+    if not valid(c, other) or stage_values(c, other) >= stage_values(c, owner):
+        return None
+    return other
+
+
+def can_clear(problem: Problem, c: Compiled, base: np.ndarray, s: int) -> bool:
+    """Whether the work in slot s may make way for a meal: not locked there, and not a meal itself."""
+    i = int(base[s])
+    return not c.m.locked[i, s] and problem.items[c.keys[i]].meal_window is None
 
 
 def valid(c: Compiled, owner: np.ndarray) -> bool:

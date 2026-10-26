@@ -1,7 +1,8 @@
 // Meals (Insights): what your tracked meals say, while tracking is on (Sleep & meals has the switch, and the meals to
 // log or put right). When you usually eat each meal, how much that moves, how long it takes and how often you skip it,
-// weekdays and weekends apart; the last two weeks on one timeline from 6am to 2am; and a routine planned well off the
-// length you take, offered the length you take with one click.
+// weekdays and weekends apart; the last two weeks on one timeline from 6am to 2am; and what's learned offered with one
+// click each: a routine's length when you take longer or shorter, its window when you eat well outside it, and
+// breakfast planned when you have it most days (or no longer, when you mostly skip it).
 
 import { useState } from "react"
 import { useNavigate } from "react-router"
@@ -54,7 +55,7 @@ export function MealsSection() {
     <Section title="Meals" note="When you eat, for how long, and what you skip" right={log}>
       <Usual learned={meals.learned ?? []} minDays={meals.min_days ?? 4} />
       {days.length ? <Timeline days={days} /> : <span style={{ color: "var(--color-neutral-400)" }}>No meals yet. Tap “Eating now” in the Now bar around a mealtime, or log one in Sleep &amp; meals.</span>}
-      <Lengths changes={meals.changes ?? []} />
+      <Offers meals={meals} />
     </Section>
   )
 }
@@ -146,29 +147,65 @@ function Timeline({ days }: { days: Schemas["MealDayOut"][] }) {
   )
 }
 
-function Lengths({ changes }: { changes: Schemas["MealChangeOut"][] }) {
-  const use = useCommand("meal_use_length", { label: (o) => o.result.message ?? "Saved" })
-  if (!changes.length) return null
+function Offers({ meals }: { meals: Schemas["MealsOut"] }) {
+  const length = useCommand("meal_use_length", { label: (o) => o.result.message ?? "Saved" })
+  const time = useCommand("meal_use_time", { label: (o) => o.result.message ?? "Saved" })
+  const breakfast = useCommand("meal_breakfast", { label: (o) => o.result.message ?? "Saved" })
+  const changes = meals.changes ?? []
+  const times = meals.times ?? []
+  if (!changes.length && !times.length && !meals.breakfast) return null
+  type Kind = "breakfast" | "lunch" | "dinner"
+  const row = { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 13 } as const
+  const button = { fontSize: 12, padding: "2px 10px" }
   return (
     <div className="fr-well" style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px 14px" }}>
       <span style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 500 }}>
         <Icon name="sparkle" size={14} style={{ color: "var(--color-accent-300)" }} />
-        Your meals take a different time from what Friday plans
+        What Friday learned from your meals
       </span>
-      {changes.map((c) => {
-        const length = Math.max(15, Math.round(c.usual_min / 15) * 15)
-        return (
-          <span key={c.kind} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 13 }}>
-            <span>
-              {named(c.kind)} takes you about <b style={{ fontWeight: 500 }}>{dur(c.usual_min)}</b>
-              <span style={{ color: "var(--color-neutral-500)" }}>; Friday plans {dur(c.planned_min)}</span>
-            </span>
-            <button className="btn btn-secondary fr-press" onClick={() => use({ kind: c.kind as "breakfast" | "lunch" | "dinner" })} style={{ fontSize: 12, padding: "2px 10px" }}>
-              Plan {dur(length)}
-            </button>
+      {changes.map((c) => (
+        <span key={`length-${c.kind}`} style={row}>
+          <span>
+            {named(c.kind)} takes you about <b style={{ fontWeight: 500 }}>{dur(c.usual_min)}</b>
+            <span style={{ color: "var(--color-neutral-500)" }}>; Friday plans {dur(c.planned_min)}</span>
           </span>
-        )
-      })}
+          <button className="btn btn-secondary fr-press" onClick={() => length({ kind: c.kind as Kind })} style={button}>
+            Plan {dur(Math.max(15, Math.round(c.usual_min / 15) * 15))}
+          </button>
+        </span>
+      ))}
+      {times.map((t) => (
+        <span key={`time-${t.kind}`} style={row}>
+          <span>
+            You usually have {t.kind} around <b style={{ fontWeight: 500 }}>{ampm(t.usual_start)}</b>
+            <span style={{ color: "var(--color-neutral-500)" }}>; it's planned {ampm(t.start)}–{ampm(t.end)}</span>
+          </span>
+          <button className="btn btn-secondary fr-press" onClick={() => time({ kind: t.kind as Kind })} style={button}>
+            Plan {ampm(t.new_start)}–{ampm(t.new_end)}
+          </button>
+        </span>
+      ))}
+      {meals.breakfast === "plan" && (
+        <span style={row}>
+          <span>
+            You have breakfast most days, around <b style={{ fontWeight: 500 }}>{ampm(meals.breakfast_at ?? "08:00")}</b>
+            <span style={{ color: "var(--color-neutral-500)" }}>; Friday doesn't plan it</span>
+          </span>
+          <button className="btn btn-secondary fr-press" onClick={() => breakfast({ plan: true })} style={button}>
+            Plan breakfast
+          </button>
+        </span>
+      )}
+      {meals.breakfast === "stop" && (
+        <span style={row}>
+          <span>
+            You usually skip breakfast<span style={{ color: "var(--color-neutral-500)" }}>; Friday still plans it</span>
+          </span>
+          <button className="btn btn-secondary fr-press" onClick={() => breakfast({ plan: false })} style={button}>
+            Stop planning it
+          </button>
+        </span>
+      )}
     </div>
   )
 }

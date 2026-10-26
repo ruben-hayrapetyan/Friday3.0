@@ -3510,6 +3510,148 @@
     }
    }
   },
+  "/api/c/meal_use_time": {
+   "post": {
+    "summary": "Plan a meal's routine around when you usually eat it, from today on (what Sleep & meals offers).",
+    "operationId": "meal_use_time",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MealLengthInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MealUseTimeResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/meal_breakfast": {
+   "post": {
+    "summary": "Plan breakfast at the time and length you have it, or stop planning it (what Sleep & meals offers).",
+    "operationId": "meal_breakfast",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MealBreakfastInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MealBreakfastResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/meals": {
    "get": {
     "summary": "Your meals of the last two weeks, what Friday learned from them, the meal to offer now or the one you're",
@@ -14990,6 +15132,79 @@
     ],
     "title": "MaterializeResult"
    },
+   "MealBreakfastInput": {
+    "properties": {
+     "plan": {
+      "type": "boolean",
+      "title": "Plan"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "plan"
+    ],
+    "title": "MealBreakfastInput"
+   },
+   "MealBreakfastResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "MealBreakfastResult"
+   },
    "MealChangeOut": {
     "properties": {
      "kind": {
@@ -15710,6 +15925,46 @@
     ],
     "title": "MealStartResult"
    },
+   "MealTimeOut": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "title": "Kind"
+     },
+     "usual_start": {
+      "type": "string",
+      "title": "Usual Start"
+     },
+     "start": {
+      "type": "string",
+      "title": "Start"
+     },
+     "end": {
+      "type": "string",
+      "title": "End"
+     },
+     "new_start": {
+      "type": "string",
+      "title": "New Start"
+     },
+     "new_end": {
+      "type": "string",
+      "title": "New End"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "kind",
+     "usual_start",
+     "start",
+     "end",
+     "new_start",
+     "new_end"
+    ],
+    "title": "MealTimeOut",
+    "description": "A meal routine planned well off when you eat it: its window moved to sit around your usual time."
+   },
    "MealUseLengthResult": {
     "properties": {
      "command_id": {
@@ -15769,6 +16024,65 @@
     ],
     "title": "MealUseLengthResult"
    },
+   "MealUseTimeResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "MealUseTimeResult"
+   },
    "MealsOut": {
     "properties": {
      "on": {
@@ -15824,6 +16138,51 @@
       "type": "integer",
       "title": "Min Days",
       "default": 4
+     },
+     "times": {
+      "items": {
+       "$ref": "#/components/schemas/MealTimeOut"
+      },
+      "type": "array",
+      "title": "Times",
+      "default": []
+     },
+     "breakfast": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "plan",
+         "stop"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Breakfast"
+     },
+     "breakfast_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Breakfast At"
+     },
+     "breakfast_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Breakfast Min"
      }
     },
     "additionalProperties": false,
