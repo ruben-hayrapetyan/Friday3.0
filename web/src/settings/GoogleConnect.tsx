@@ -132,8 +132,8 @@ export function ConnectGoogle(props: { need?: Need; account?: string; again?: bo
 // What to do when Google turns another account away ("Access blocked: Friday has not completed the Google
 // verification process"): the project you made the key in lets in only the addresses listed as its test users.
 const BLOCKED_STEPS: { what: string; how: string; link?: [string, string] }[] = [
-  { what: "Open your Friday project's Audience page", how: "Sign in there with the account you made the key file with (the first one you connected).", link: ["Audience", "https://console.cloud.google.com/auth/audience"] },
-  { what: "Add the address as a test user", how: "Under Test users, click Add users, type the address you're adding, and click Save." },
+  { what: "Open your Friday project's Audience page in Google Cloud", how: "Sign in there with the account you made the key file with: the first one you connected, not the one you're adding.", link: ["Audience", "https://console.cloud.google.com/auth/audience"] },
+  { what: "Put the new account's email on the list", how: "Scroll to Test users, click Add users, type the email address of the account Google just blocked (the one you're trying to connect, like you@gmail.com), and click Save." },
   { what: "Connect again", how: "Back here, click Add another Google account. When Google says it hasn't verified the app, click Continue (or Advanced, then Go to Friday): it's your own." },
 ]
 
@@ -146,7 +146,7 @@ function Blocked({ open }: { open: boolean }) {
       </summary>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "8px 0 2px" }}>
         <span style={{ fontSize: 12, color: "var(--color-neutral-400)", textWrap: "pretty" }}>
-          Your Friday project only lets in the addresses you list as its test users. Add this one:
+          Google lets an account into Friday only if its email is on your Friday project's list of test users, a list you keep in Google Cloud. The account you just tried isn't on it yet:
         </span>
         <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6, fontSize: 12 }}>
           {BLOCKED_STEPS.map((step) => (
