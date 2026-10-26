@@ -19,7 +19,10 @@ which days), and from a Reading and a strength to one of the planner's rule type
 - `no work after 10pm the night before climbing club`, `if I'm going to climbing club the next day, the day before
   must end at 10`: `before_event`, which holds only when you're going;
 - `30 minutes before and after gym`, `leave 15 minutes around climbing club`, `20 min before gym and 40 after`:
-  `travel`, time kept free around those events (to get there, change, shower), on top of each kind's.
+  `travel`, time kept free around those events (to get there, change, shower), on top of each kind's;
+- `exam prep as close to the exam as possible`, `prep for the math quiz close to the quiz with a day of buffer`,
+  `readings as late as possible`: `close_to_due`, work planned in the last free time before it's due (for prep, the
+  exam), or before a buffer kept clear ahead of it.
 """
 
 import re
@@ -31,7 +34,7 @@ from friday.core.time import ampm_in
 Strength = Literal["Prefer", "Strongly", "Always"]
 Kind = Literal[
     "window", "days", "free", "cap", "early", "after", "pace", "deadlines", "optional", "ahead", "night_before",
-    "around",
+    "around", "close",
 ]  # fmt: skip
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 NAMES = {
@@ -128,8 +131,8 @@ def read(text: str) -> tuple[Reading | None, Strength]:
     t = re.sub(r"\s+", " ", t)
     negated = bool(re.search(r"\b(no|never|don't|not|avoid)\b", t))
     t = re.sub(r"\b(no|never|don't do|don't|do not|not|avoid)\b", " ", t)
-    readers = (read_pace, read_around, read_ahead, read_optional, read_night_before, read_cap, read_early, read_free,
-               read_window, read_days, read_after, read_deadlines)  # fmt: skip
+    readers = (read_pace, read_around, read_ahead, read_optional, read_night_before, read_close, read_cap, read_early,
+               read_free, read_window, read_days, read_after, read_deadlines)  # fmt: skip
     for parse in readers:
         found = parse(" " + " ".join(t.split()) + " ", negated)
         if found:
@@ -272,6 +275,53 @@ def read_ahead(t: str, negated: bool) -> Reading | None:
     )
     titles = titles_in(found[1]) if found else ()
     return Reading("ahead", "events", events=titles) if titles else None
+
+
+PREPARING = {"prep", "preparation", "preparing", "prepping", "study", "studying", "revision", "revise", "revising",
+             "review", "reviewing"}  # fmt: skip
+ANY_EXAM = {"exam", "exams", "test", "tests", "the exam", "the exams", "the test", "it", "them", "event", "the event"}
+WHEN_DUE = r"(?:(?:it'?s|its|they'?re|their|when it'?s|when they'?re|the) ?(?:due|due date|deadline)|(?:the )?deadline)"
+CLOSE = (
+    r"(?:as close (?:as possible )?to (.+?) as (?:possible|i can|can be|it can be)"
+    rf"|as late as possible(?: before {WHEN_DUE})?|just in time"
+    r"|(?:close|closer|right up) to (.+?)(?=,| with | but | leaving | and | ?$))"
+)
+BUFFER = r"(a|an|one|two|three|half a|\d+(?:\.\d+)?) ?(days?|d|hours?|hrs?|h|minutes?|mins?|m)\b"
+SPARE = (
+    rf"(?:{BUFFER} (?:of )?(?:buffer|margin|spare|to spare|before|early|ahead)|(?:buffer|margin) of {BUFFER}"
+    rf"|leaving {BUFFER})"
+)
+
+
+def buffer_minutes(amount: str, unit: str) -> int:
+    n = {"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "half a": 0.5}.get(amount) or float(amount)
+    return round(n * (1440 if unit.startswith("d") else 60 if unit.startswith("h") else 1))
+
+
+def read_close(t: str, negated: bool) -> Reading | None:
+    """Work as close to its due as it can be: `I prefer all sessions of exam prep tasks to be done as close to the exam
+    as possible`, `interview prep as close to the interview as possible`, `prep for the math quiz close to the quiz,
+    with 1 day of buffer`, `readings as late as possible`. Prep (study, review) is the Exam prep kind; a quiz, an
+    interview or a course named, its prep alone; a buffer keeps that much clear before the due."""
+    t = re.sub(r"\s*[()\[\]]\s*", " , ", t)  # `(with 1 day of buffer)` is an aside, as after a comma
+    m = re.search(rf"^ ?(.*?) (?:(?:to )?be (?:done|planned|scheduled) )?{CLOSE}(.*)$", t)
+    if not m or not m[1].strip() or negated:
+        return None
+    spare = re.search(SPARE, m[4] + " ") or re.search(SPARE, " " + m[1] + " ")
+    buffer = buffer_minutes(*[g for g in spare.groups() if g][:2]) if spare else 0
+    filler = r"\b(?:all|every|each|sessions?|tasks?|work on|working on|doing|do|done|my|the|for|of|on|a|an)\b"
+    subject = re.sub(filler, " ", re.sub(SPARE, " ", m[1]))
+    words = subject.split()
+    preparing = [w for w in words if w in PREPARING]
+    named = " ".join(w for w in words if w not in PREPARING and w not in ANY_EXAM) if preparing else ""
+    target = re.sub(r"\b(?:the|my|a|an|its|their)\b", " ", (m[2] or m[3] or "")).strip(" ,")
+    target = " ".join(target.split())
+    specific = target if target and target not in ANY_EXAM and not re.fullmatch(WHEN_DUE, target) else ""
+    events = named if named and set(specific.split()) <= set(named.split()) else specific or named  # math quiz > quiz
+    if preparing:
+        return Reading("close", "exam prep", events=(events,) if events else None, before_min=buffer or None)
+    what = subject_of(" ".join(words))
+    return Reading("close", what, events=(specific,) if specific else None, before_min=buffer or None)
 
 
 def evening(raw: str) -> str | None:
@@ -449,6 +499,14 @@ def said(r: Reading) -> str:
         names = [titled(e) for e in r.events or ()]
         listed = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
         return f"{listed} {'is' if len(names) == 1 else 'are'} optional: work takes the time when it must"
+    if r.kind == "close":
+        spare = f", finished {buffer_said(r.before_min)} before" if r.before_min else ""
+        if r.subject == "exam prep":
+            return f"Exam prep as close to {titled(r.events[0]) if r.events else 'the exam'} as possible{spare}"
+        what = r.subject[:1].upper() + r.subject[1:]
+        if r.events:
+            return f"{what} as close to {titled(r.events[0])} as possible{spare}"
+        return f"{what} as late as possible before it's due{spare}"
     if r.kind == "around":
         names = " and ".join(titled(e) for e in r.events or ())
         b, a = r.before_min or 0, r.after_min or 0
@@ -495,6 +553,17 @@ def said(r: Reading) -> str:
     return f"{subject} right after {r.event}"
 
 
+def buffer_said(minutes: int) -> str:
+    """`1 day`, `2 days`, `12 hours`, `90 min`: as `read_close` reads it back."""
+    if minutes % 1440 == 0:
+        days = minutes // 1440
+        return f"{days} day{'s' if days > 1 else ''}"
+    if minutes % 60 == 0:
+        hours = minutes // 60
+        return f"{hours} hour{'s' if hours > 1 else ''}"
+    return f"{minutes} min"
+
+
 def span_said(minutes: int) -> str:
     """45 min, 1 h, 1 h 30."""
     h, m = divmod(minutes, 60)
@@ -516,6 +585,7 @@ def scope_of(subject: str, areas: list[str], presets: list[str]) -> dict[str, An
 
 
 PRICE = {"Prefer": 2.0, "Strongly": 6.0}
+CLOSE_INSIDE = 10.0  # an hour inside the buffer you keep before a due: more than a week early costs
 AHEAD_PRICE = 1.0  # among your preferences, below a Prefer rule: work takes it before late nights or broken rules
 WEIGHT = {"Prefer": 1.0, "Strongly": 3.0, "Always": 10.0}
 
@@ -539,6 +609,14 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
     if r.kind == "deadlines":  # built in: `rule_add` makes sure it's on rather than adding a second one
         return {"name": "late_work", "type": "late_work", "weight": 10.0, "scope": None, "reason": sentence(r),
                 "params": {}}  # fmt: skip
+    if r.kind == "close":  # each hour costs more the earlier it is; Always rules out the buffer before the due
+        scope = scope_of(r.subject, areas, presets) or {}
+        if r.events:
+            scope = scope | {"title_regex": [title_words(r.events[0])]}
+        inside: Any = "forbid" if strength == "Always" and r.before_min else CLOSE_INSIDE
+        params = {"buffer_min": r.before_min or 0, "inside": inside}
+        return {"name": name, "type": "close_to_due", "weight": WEIGHT[strength], "scope": scope or None,
+                "reason": sentence(r), "params": params}  # fmt: skip
     if r.kind == "pace":  # a setting, not a planner rule: `rule_add` writes `pace.weekly`
         return {"name": name, "type": "pace", "weight": 0.0, "scope": None, "reason": sentence(r),
                 "params": {"weekly": dict(r.paces or ())}}  # fmt: skip
@@ -584,6 +662,11 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
     events = {"event_kind": "class"} if (r.event or "").rstrip("s") in ("class", "lecture") else {"title": r.event}
     params = {"events": events, "measure_from": "last", "slope": 1, "cap": 3}
     return base | {"type": "after_event", "weight": WEIGHT[strength], "params": params}
+
+
+def title_words(words: str) -> str:
+    """A title with all these words in it, any case and order: `math quiz` finds `Prep: Math 1920 Quiz 3`."""
+    return "(?i)" + "".join(rf"(?=.*\b{re.escape(w)})" for w in words.split())
 
 
 def hours_between(start: str, end: str) -> float:

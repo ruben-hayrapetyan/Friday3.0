@@ -1,5 +1,7 @@
 """Rules from sentences: what the grammar reads, and the planner rule each reading becomes."""
 
+import re
+
 import pytest
 
 from friday.core.rule_text import Reading, read, sentence, spec
@@ -256,6 +258,9 @@ def test_around_leaves_other_rules_alone() -> None:
         "no work after 10pm the night before climbing club",
         "20 min before gym and 40 min after",
         "push when necessary so nothing is late",
+        "I prefer all sessions of exam prep tasks to be done as close to the exam as possible",
+        "prep for the math quiz closer to the math quiz (with 1 day of buffer)",
+        "readings as late as possible, leaving 12 hours",
     ],
 )
 def test_the_sentence_friday_writes_for_a_rule_reads_back_as_that_rule(text: str) -> None:
@@ -263,3 +268,39 @@ def test_the_sentence_friday_writes_for_a_rule_reads_back_as_that_rule(text: str
     reading, _ = read(text)
     assert reading is not None
     assert read(sentence(reading))[0] == reading
+
+
+@pytest.mark.parametrize(
+    ("text", "subject", "events", "buffer"),
+    [
+        (
+            "I prefer all sessions of exam prep tasks to be done as close to the exam as possible",
+            "exam prep",
+            None,
+            None,
+        ),
+        ("interview prep as close to the interview as possible", "exam prep", ("interview",), None),
+        ("prep for my interview as close to it as possible", "exam prep", ("interview",), None),
+        ("prep for the math quiz closer to the math quiz (with 1 day of buffer)", "exam prep", ("math quiz",), 1440),
+        ("quiz prep as close to the quiz as possible but finish a day early", "exam prep", ("quiz",), 1440),
+        ("study for exams as late as possible", "exam prep", None, None),
+        ("exam prep as close to the exam as possible, leaving 12 hours", "exam prep", None, 720),
+        ("readings as late as possible", "readings", None, None),
+    ],
+)
+def test_work_as_close_to_its_due_as_possible(
+    text: str, subject: str, events: tuple | None, buffer: int | None
+) -> None:
+    assert read(text)[0] == Reading("close", subject, events=events, before_min=buffer)
+
+
+def test_close_to_the_exam_becomes_a_price_on_that_prep() -> None:
+    reading, strength = read("prep for the math quiz closer to the math quiz (with 1 day of buffer)")
+    assert reading is not None
+    made = spec(reading, strength, "you:quiz", [], ["Exam prep", "Reading"])
+    assert made["type"] == "close_to_due" and made["params"] == {"buffer_min": 1440, "inside": 10.0}
+    assert made["scope"]["preset"] == "Exam prep"
+    (words,) = made["scope"]["title_regex"]
+    assert re.search(words, "Prep: Math 1920 Quiz 3") and not re.search(words, "Prep: Math 1920 Prelim 2")
+    always = spec(reading, "Always", "you:quiz", [], ["Exam prep"])
+    assert always["params"]["inside"] == "forbid"

@@ -32,6 +32,9 @@ EXTRA_RULES = [
     dict(type="skippable", name="club_optional", weight=1, params=dict(titles=["club"], price=8)),
     dict(type="before_event", name="early_before_lecture", weight=1,
          params=dict(titles=["CS 1100"], after="22:00", price=2)),
+    dict(type="close_to_due", name="prep_close", weight=1, params=dict(buffer_min=720)),
+    dict(type="close_to_due", name="prep_buffer_kept", weight=1, scope=dict(firmness="hard"),
+         params=dict(buffer_min=1440, inside="forbid")),
 ]  # fmt: skip
 MIXED = scales(Dials(capacity=0.8, rest=1.5, spread=2.0, growth=0.5))
 

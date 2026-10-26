@@ -279,6 +279,40 @@ class FinishEarly(Rule):
         return min(lead, max(0.0, (end - (item.due_utc - lead * MINUTES_PER_DAY)) / MINUTES_PER_DAY))
 
 
+@rule_type("close_to_due")
+class CloseToDue(Rule):
+    """`Exam prep as close to the exam as possible`: an hour of it costs `per_day` for each day it ends before its due
+    (prep's due is its exam), up to `cap_days`, so it lands in the last free time before. `buffer_min` (`finished a
+    day before`) moves that aim earlier and keeps the stretch after it clear: an hour there costs `inside`, more than a
+    week early does, or (Always) none goes there."""
+
+    applies_to = {"fixed", "elastic", "target"}
+
+    class Params(Rule.Params):
+        buffer_min: int = 0
+        per_day: float = 1.0
+        cap_days: float = 7.0
+        inside: float | Literal["forbid"] = 10.0
+
+    def applies_also(self, item):
+        return item.due_utc is not None
+
+    def inside(self, item, s: int) -> bool:
+        return int(self.problem.grid.end[s]) > item.due_utc - self.p.buffer_min
+
+    def price(self, item, s):
+        grid = self.problem.grid
+        if s == grid.S or item.due_utc is None:
+            return 0.0
+        if self.inside(item, s):
+            return 0.0 if self.p.inside == FORBID else float(self.p.inside) * (self.p.buffer_min > 0)
+        early = (item.due_utc - self.p.buffer_min - int(grid.end[s])) / MINUTES_PER_DAY
+        return self.p.per_day * min(self.p.cap_days, early)
+
+    def forbids(self, item, s):
+        return self.p.inside == FORBID and self.p.buffer_min > 0 and item.due_utc is not None and self.inside(item, s)
+
+
 @rule_type("unscheduled")
 class Unscheduled(Rule):
     applies_to = {"fixed"}

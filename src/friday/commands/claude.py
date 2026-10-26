@@ -41,10 +41,13 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
 - drop: {id}; done: {id}; pin: {id, start, end, kind: "preferred" | "locked"}; unpin: {id}.
 - shove: {range: "HH:MM-HH:MM YYYY-MM-DD"} keeps that time free of work.
 - day_override: {date, bedtime?, wake?, cap_hours?}.
-- rule_add: {text, overrides: {kind, subject, rel, at, until, days, amount, event}, strength: "Prefer" | "Strongly" |
-  "Always"}. kind: window (a time of day: rel before/after/between/not_between with at/until), days (days:
-  ["mon".."sun"], rel on/not_on), free (keep a window free: at/until, days), cap (amount: hours a day), early
-  (amount: days early), after (event: title words). subject: "work", "deep work", a tag, a kind or a title.
+- rule_add: {text, overrides: {kind, subject, rel, at, until, days, amount, event, events, before_min}, strength:
+  "Prefer" | "Strongly" | "Always"}. kind: window (a time of day: rel before/after/between/not_between with
+  at/until), days (days: ["mon".."sun"], rel on/not_on), free (keep a window free: at/until, days), cap (amount: hours
+  a day), early (amount: days early), after (event: title words), close (work as close to its due as possible:
+  subject "exam prep" for studying for an exam, quiz or interview, events: [words in that prep's title, e.g. "math
+  quiz"] or none for all prep, before_min: a buffer kept clear before it, e.g. 1440 for a day). subject: "work",
+  "deep work", a tag, a kind or a title.
 - settings_set: {key, value} for these keys only: kind_order (kinds most important first, e.g. ["Assignment",
   "Reading"] for "prioritize assignments over readings"), short_term_first (true for "prioritize short-term work
   over long-term", meaning the to-do's Short term list over its Long term list), exam_focus ({on: true, days_before}

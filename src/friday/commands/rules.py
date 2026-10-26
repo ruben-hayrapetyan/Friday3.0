@@ -63,6 +63,8 @@ EFFECT = {
     "the plan says when one gives way",
     "before_event": "Friday ends those days early when you're going (not when it plans work into that event)",
     "travel": "Friday keeps that time free around them, to get there and back, on top of each kind's",
+    "close_to_due": "Friday plans it in the last free time before it's due (prep: before its exam), each day earlier "
+    "costing a little more; a buffer you name is kept clear",
     "ahead": "Friday plans work into that time first and leaves it free only when everything fits without it; each "
     "week the plan says go or skip",
     "late_work": "Already built in and always on: when work would be late, Friday plans past your pace and your "

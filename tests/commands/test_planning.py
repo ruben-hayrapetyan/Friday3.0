@@ -559,3 +559,63 @@ def test_the_night_before_holds_when_you_go(tmp_path: Path) -> None:
         b for b in app.do("plan", start="2026-10-19T00:00", end="2026-10-22T00:00")["blocks"] if b["title"] == "Essay"
     ]
     assert not any(b["end"] > "2026-10-20T22:00" and b["start"] < "2026-10-21T04:00" for b in blocks)
+
+
+def test_late_work_takes_climbing_club_before_the_gym(tmp_path: Path) -> None:
+    # Gym is optional, climbing club only when you're ahead: when work would be late, the club's evening goes first
+    # (its price is a preference) and the gym's morning only when the club isn't enough (a wellbeing cost). With one
+    # rule making both optional, the plan took the gym's morning first.
+    def tuesday(hours: int) -> list[dict]:
+        folder = tmp_path / str(hours)
+        folder.mkdir()
+        app = new_app(folder)
+        app.do("add", title="Gym", when="fixed", start="2026-10-20T08:00", end="2026-10-20T10:00")
+        app.do("add", title="Climbing Club", when="fixed", start="2026-10-20T18:00", end="2026-10-20T20:00")
+        for start, end in (("2026-10-19T09:00", "2026-10-20T08:00"), ("2026-10-20T10:00", "2026-10-20T18:00"),
+                           ("2026-10-20T20:00", "2026-10-21T02:00")):  # fmt: skip
+            app.do("add", title="Lab", when="fixed", start=start, end=end)
+        app.do("rule_add", text="gym is optional")
+        app.do("rule_add", text="climbing club only if i'm ahead")
+        app.do("add", title="Essay", duration_min=hours * 60, due="2026-10-21T02:00")
+        app.do("replan")
+        assert not app.do("status")["late"]
+        return [
+            b
+            for b in app.do("plan", start="2026-10-19T00:00", end="2026-10-21T04:00")["blocks"]
+            if b["title"] == "Essay"
+        ]
+
+    two = tuesday(2)
+    assert two and all("2026-10-20T18:00" <= b["start"] < "2026-10-20T20:00" for b in two)  # the club's, not the gym's
+    four = tuesday(4)
+    assert any(b["start"] < "2026-10-20T10:00" for b in four) and any(b["start"] >= "2026-10-20T18:00" for b in four)
+
+
+def test_exam_prep_as_close_to_the_exam_as_possible(tmp_path: Path) -> None:
+    # A quiz on Friday at 1:25pm and an interview at 10am, prep for each due at it: with no rule the prep is spread
+    # through the week; as close as possible, it ends right before each; a day of buffer for the quiz, a day before.
+    def prep(rules: list[str]) -> dict[str, list[dict]]:
+        folder = tmp_path / str(len(list(tmp_path.iterdir())))
+        folder.mkdir()
+        app = new_app(folder)
+        quiz = app.do("add", title="Math 1920 Quiz 3", when="fixed", start="2026-10-23T13:25", end="2026-10-23T14:15",
+                      event_kind="exam")["item"]["id"]  # fmt: skip
+        talk = app.do("add", title="KelAI interview", when="fixed", start="2026-10-23T10:00", end="2026-10-23T11:00")
+        app.do("add", title="Prep: Math 1920 Quiz 3", preset="Exam prep", duration_min=120, due="2026-10-23T13:25",
+               before=[quiz])  # fmt: skip
+        app.do("add", title="Prep for interview", preset="Exam prep", duration_min=180, due="2026-10-23T10:00",
+               before=[talk["item"]["id"]])  # fmt: skip
+        for rule in rules:
+            app.do("rule_add", text=rule)
+        app.do("replan")
+        blocks = app.do("plan", start="2026-10-19T00:00", end="2026-10-24T00:00")["blocks"]
+        return {t: [b for b in blocks if b["title"] == t] for t in ("Prep: Math 1920 Quiz 3", "Prep for interview")}
+
+    spread = prep([])
+    assert any(b["start"] < "2026-10-21" for b in spread["Prep: Math 1920 Quiz 3"] + spread["Prep for interview"])
+    close = prep(["I prefer all sessions of exam prep tasks to be done as close to the exam as possible"])
+    assert all(b["start"] >= "2026-10-22T12:00" for b in close["Prep: Math 1920 Quiz 3"])
+    assert all(b["start"] >= "2026-10-22T12:00" for b in close["Prep for interview"])
+    buffered = prep(["prep for the math quiz closer to the math quiz (with 1 day of buffer)"])
+    quiz = buffered["Prep: Math 1920 Quiz 3"]
+    assert quiz and all(b["end"] <= "2026-10-22T13:25" for b in quiz) and any(b["start"] >= "2026-10-22" for b in quiz)
