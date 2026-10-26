@@ -83,7 +83,9 @@ class Scope:
     energy: Any = None
     firmness: Any = None
     amount: Any = None
-    title: Any = None  # compared as identity text (DESIGN §6.6)
+    # Found as words in the title, compared as identity text (DESIGN §6.6): "chem" is in "Chem 2090 Problem Set 10".
+    # It had to be the whole title, so a rule about chem or homework reached nothing (26 Oct).
+    title: Any = None
     title_regex: Any = None
     except_preset: Any = None  # none of these kinds
 
@@ -105,7 +107,7 @@ class Scope:
         if tags is not None and not any(t in item.tags for t in tags):
             return False
         titles = as_list(self.title)
-        if titles is not None and item.norm_title not in normalized_titles(titles, problem):
+        if titles is not None and not any(within(item.norm_title, t) for t in normalized_titles(titles, problem)):
             return False
         patterns = as_list(self.title_regex)
         return patterns is None or any(re.search(p, item.title) for p in patterns)
@@ -124,6 +126,11 @@ class EventScope:
         if titles is not None and event_title(event, problem) not in normalized_titles(titles, problem):
             return False
         return tags is None or any(t in event.tags for t in tags)
+
+
+def within(title: str, words: str) -> bool:
+    """Whether a title has these words in it, as words: "pe" isn't in "Open"."""
+    return title == words or (bool(words) and re.search(rf"(?<!\w){re.escape(words)}(?!\w)", title) is not None)
 
 
 def normalized_titles(titles: list[str], problem: "Problem") -> set[str]:

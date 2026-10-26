@@ -5,6 +5,8 @@ import re
 from datetime import date, timedelta
 from typing import Any, Literal
 
+import numpy as np
+
 from friday.core.textnorm import identity_text, norm
 from friday.core.time import MINUTES_PER_DAY, UNIT_MIN, local_midnight, planning_date, to_local
 from friday.engine.pwl import Hinge, Measure
@@ -322,6 +324,49 @@ class CloseToDue(Rule):
 
     def forbids(self, item, s):
         return self.p.inside == FORBID and self.p.buffer_min > 0 and item.due_utc is not None and self.inside(item, s)
+
+
+@rule_type("fit_gaps")
+class FitGaps(Rule):
+    """`Short tasks in short gaps, long ones in long stretches`: an hour of a task costs `price` times how far its
+    sitting (all of it, or its longest piece when it's split) is from the free stretch the slot is in, between events
+    and the night: |gap − sitting| ÷ the longer of the two. A half-hour task in the 45 minutes between classes is
+    almost free, and in a four-hour afternoon costs nearly the whole price; a three-hour essay the other way round."""
+
+    applies_to = {"fixed"}
+
+    class Params(Rule.Params):
+        price: float = 2.0
+
+    def prepare(self, problem):
+        super().prepare(problem)
+        grid, free = problem.grid, ~(problem.blocked | problem.core)
+        self.gap = np.zeros(grid.S, dtype=np.int64)  # minutes of the free stretch each slot is in (0: not free)
+        s = 0
+        while s < grid.S:
+            if not free[s]:
+                s += 1
+                continue
+            run = [s]
+            while (
+                run[-1] + 1 < grid.S
+                and free[run[-1] + 1]
+                and grid.end[run[-1]] == grid.start[run[-1] + 1]
+                and grid.slots[run[-1] + 1].day == grid.slots[s].day
+            ):
+                run.append(run[-1] + 1)
+            self.gap[run] = sum(int(grid.units[r]) for r in run) * UNIT_MIN
+            s = run[-1] + 1
+
+    def sitting(self, item) -> int:
+        need = item.need or 1
+        return min(need, item.max_chunk or need) * UNIT_MIN
+
+    def price(self, item, s):
+        if s == self.problem.grid.S or not self.gap[s]:
+            return 0.0
+        gap, sitting = int(self.gap[s]), self.sitting(item)
+        return self.p.price * abs(gap - sitting) / max(gap, sitting)
 
 
 @rule_type("meal_window")

@@ -63,6 +63,7 @@ EFFECT = {
     "the plan says when one gives way",
     "before_event": "Friday ends those days early when you're going (not when it plans work into that event)",
     "travel": "Friday keeps that time free around them, to get there and back, on top of each kind's",
+    "fit_gaps": "Friday puts short tasks in the short gaps between events and keeps long free stretches for long work",
     "meals_kept": "Work never takes that time: when it would, the work is late instead. When events fill a meal's "
     "usual time, Friday plans it just outside",
     "meal_learned": "From what you track in Sleep & meals, each night Friday plans it or stops, and moves it to when "

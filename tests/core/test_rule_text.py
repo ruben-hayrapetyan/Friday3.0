@@ -343,3 +343,95 @@ def test_kept_meals_hold_in_the_deadlines_stage_and_learned_ones_are_the_jobs() 
 def test_skipping_a_meal_when_busy_is_not_keeping_it() -> None:
     reading, _ = read("skip lunch if there's too much work")
     assert reading is not None and reading.kind != "meals_kept"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "have shorter events go with smaller time slots and longer events go in larger time slots",
+        "Short tasks in short gaps, long tasks in long stretches",
+        "fit tasks to the gaps",
+        "use small gaps for small tasks",
+        "save big blocks of time for long work",
+        "Put quick things in the small breaks between classes",
+    ],
+)
+def test_tasks_fitted_to_the_gaps_they_go_in(text: str) -> None:
+    reading, strength = read(text)
+    assert reading == Reading("fit_gaps", "work")
+    made = spec(reading, "Strongly", "you:gaps", [], [])
+    assert (made["type"], made["weight"], made["params"]) == ("fit_gaps", 3.0, {"price": 2.0})
+
+
+@pytest.mark.parametrize(
+    "text", ["small tasks in the morning", "take short breaks between long sessions", "no short breaks"]
+)
+def test_other_sentences_about_size_are_not_gap_fitting(text: str) -> None:
+    reading, _ = read(text)
+    assert reading is None or reading.kind != "fit_gaps"
+
+
+# From a corpus of 522 student-written rules (26 Oct): each was read as something else before. Each now reads as it
+# means, or goes to Claude (None) rather than become a rule that says another thing.
+@pytest.mark.parametrize(
+    ("text", "said"),
+    [
+        ("no work after 10", "No work after 10pm"),
+        ("no work after 11:30", "No work after 11:30pm"),
+        ("no work after 9 on fridays", "No work after 9pm on Fri"),
+        ("no work after 10 p.m.", "No work after 10pm"),
+        ("dinner before 7", "Dinner before 7pm"),
+        ("Must have dinner by 8", "Dinner before 8pm"),
+        ("nothing before 8", "No work before 8am"),
+        ("I don't want to work before 9", "No work before 9am"),
+        ("I don't want to start work before 10 am on weekends", "No work before 10am on weekends"),
+        ("avoid working after 10pm", "No work after 10pm"),
+        ("no wrok after 10pm", "No work after 10pm"),
+        ("dont work on weekends", "No work on weekends"),
+        ("absolutely no work on sundays", "No work on Sun"),
+        ("never ever work past 1am", "No work after 1am"),
+        ("under no circumstances work on sunday", "No work on Sun"),
+        ("preferably no work before 9", "No work before 9am"),
+        ("Done by 9pm every day", "No work after 9pm"),
+        ("finish work by 6pm on fridays", "No work after 6pm on Fri"),
+        ("nothing on sunday mornings", "Keep Sun 8am–12pm free"),
+        ("I'd rather not work on friday nights", "Keep Fri 10pm–2am free"),
+        ("no work after 10pm except on fridays", "No work after 10pm on Mon, Tue, Wed, Thu, Sat, Sun"),
+        ("Stop working by 10:30pm on school nights", "No work after 10:30pm on Mon, Tue, Wed, Thu, Sun"),
+        ("only work between 9am and 6pm", "Work between 9am and 6pm"),
+        ("weekend work only in the afternoon", "Work between 12pm and 5pm on weekends"),
+        (
+            "I'll go to the party only if I'm done with my work",
+            "Party only when you’re ahead: work takes its time first",
+        ),
+        ("leave 45 minutes after soccer to shower", "45 min after Soccer"),
+        ("readings can be late", None),
+        ("I don't eat breakfast", None),
+        ("Eat lunch around noon", None),
+        ("no eating after 9pm", None),
+        ("bed by 11", "No work after 11pm"),
+        ("sleep before 1am", "No work after 1am"),
+        ("sleep in on saturdays", None),
+        ("no work after 10pm and no work on sundays", None),
+        ("only work on sundays if I'm behind", None),
+        ("if a reading is late, skip it", None),
+        ("short break after each lecture", None),
+        ("lunch after my 11am class", None),
+        ("a 30 minute break after every 2 hours of work", None),
+        ("I need time to decompress after labs", None),
+        ("take an hour off in the afternoon", None),
+        ("late dinner on fridays is fine", None),
+        ("easy week after midterms", None),
+        ("no work during movie night on thursdays", None),
+        ("no work after dinner on fridays", None),
+    ],
+)
+def test_sentences_once_misread_read_as_they_mean_or_go_to_claude(text: str, said: str | None) -> None:
+    reading, _ = read(text)
+    assert (sentence(reading) if reading else None) == said
+
+
+def test_kind_words_scope_to_the_kind() -> None:
+    reading, strength = read("no homework after 10pm")
+    assert reading is not None
+    assert spec(reading, strength, "x", [], ["Assignment", "Reading"])["scope"] == {"preset": "Assignment"}

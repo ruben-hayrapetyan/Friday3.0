@@ -264,6 +264,46 @@ def measure_rule_cost(p: Problem, rule: Rule, items: list[EngineItem], X: dict[s
                 busy = sum(int(U[w]) for w in window for it in p.items.values() if X[it.key][w])
                 fixed = sum(int(U[w]) for w in window if p.blocked[w] and not p.core[w])
                 hinges.append(("above", b, 1.0, "units", 1.0, b * started + busy + fixed))
+    elif kind == "travel_kept":
+        # Its items' own travel kept clear: before a sitting, other work or an event in the b units before its start;
+        # after one, other work in a slot with one of its units in the b before it.
+        slope = rule.p.price
+        for side in ("before", "after"):
+            sizes = {}
+            for it in items:
+                if (b := getattr(it, f"travel_{side}")) > 0:
+                    sizes.setdefault(b, []).append(it)
+            for b, members in sorted(sizes.items()):
+                keys = {m.key for m in members}
+                for s in range(grid.S):
+                    window, got, k = [], 0, s - 1
+                    while k >= 0 and got < b and grid.end[k] == grid.start[k + 1]:
+                        window, got, k = [*window, k], got + int(U[k]), k - 1
+                    if not window:
+                        continue
+                    other = lambda w, keys=keys: any(X[i.key][w] for i in p.items.values() if i.key not in keys)  # noqa: E731
+                    mine = lambda w, members=members: any(X[m.key][w] for m in members)  # noqa: E731
+                    if side == "before":
+                        if not any(s in m.allowed_set for m in members):
+                            continue
+                        started = any(X[m.key][s] and not (s > 0 and X[m.key][s - 1]) for m in members)
+                        busy = sum(int(U[w]) for w in window if other(w))
+                        events = sum(int(U[w]) for w in window if p.events[w])
+                        hinges.append(("above", b, slope, "units", 1.0, b * started + busy + events))
+                    else:
+                        if not any(w in m.allowed_set for m in members for w in window):
+                            continue
+                        here = int(U[s]) if other(s) else 0
+                        hinges.append(
+                            (
+                                "above",
+                                b * int(U[s]),
+                                slope,
+                                "units",
+                                1.0,
+                                here * b + sum(int(U[w]) for w in window if mine(w)),
+                            )
+                        )
     else:
         raise KeyError(f"no direct evaluator for rule type {kind}")
     return hinge_cost(p, rule, hinges)

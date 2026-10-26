@@ -19,7 +19,7 @@ import { WeekPaces } from "./WeekPaces"
 
 type Strength = "Prefer" | "Strongly" | "Always"
 const STRENGTHS: Strength[] = ["Prefer", "Strongly", "Always"]
-const EXAMPLES = ["I prefer eating lunch before 1pm", "No work after 10pm", "Keep Saturday mornings free", "At most 6 hours a day", "Deep work in the morning", "Gym right after class", "Finish things a day early", "Go easier on Saturdays", "Gym is optional", "Climbing club only if I'm ahead", "No work after 10pm the night before climbing club", "30 minutes before and after gym", "Exam prep as close to the exam as possible", "Never skip lunch or dinner", "Let Friday decide breakfast"]
+const EXAMPLES = ["I prefer eating lunch before 1pm", "No work after 10pm", "Keep Saturday mornings free", "At most 6 hours a day", "Deep work in the morning", "Gym right after class", "Finish things a day early", "Go easier on Saturdays", "Gym is optional", "Climbing club only if I'm ahead", "No work after 10pm the night before climbing club", "30 minutes before and after gym", "Exam prep as close to the exam as possible", "Never skip lunch or dinner", "Let Friday decide breakfast", "Short tasks in short gaps, long tasks in long stretches"]
 const SOURCES: Record<string, [string, string]> = { you: ["user", "Yours"], learned: ["sparkle", "Learned from you"], default: ["sliders-horizontal", "Built in"] }
 const DAY_OPTS: { value: string; label: string; days: string[] | null }[] = [
   { value: "every", label: "Every day", days: null },
@@ -194,7 +194,7 @@ function NewRule() {
                 <span className="fr-kicker">{preview.effect}. It shows under Your week.</span>
               ) : ["deadlines", "optional", "ahead", "around", "meals_kept", "meals_learned"].includes(reading.kind) ? (
                 <span className="fr-kicker" style={{ textWrap: "pretty" }}>{preview.effect}.</span>
-              ) : reading.kind === "night_before" || reading.kind === "close" ? (
+              ) : ["night_before", "close", "fit_gaps"].includes(reading.kind) ? (
                 <>
                   <span className="fr-kicker" style={{ textWrap: "pretty" }}>{preview.effect}{chosen === "Always" ? ". It never bends." : ", unless work would be late."}</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

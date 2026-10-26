@@ -48,7 +48,8 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
   subject "exam prep" for studying for an exam, quiz or interview, events: [words in that prep's title, e.g. "math
   quiz"] or none for all prep, before_min: a buffer kept clear before it, e.g. 1440 for a day), meals_kept (events:
   the meals work never takes, of "breakfast", "lunch", "dinner"), meals_learned (events: the meals Friday plans or
-  stops, and times, from what meal tracking learns). subject: "work", "deep work", a tag, a kind or a title.
+  stops, and times, from what meal tracking learns), fit_gaps (short tasks in short gaps between events, long ones
+  in long free stretches). subject: "work", "deep work", a tag, a kind or a title.
 - settings_set: {key, value} for these keys only: kind_order (kinds most important first, e.g. ["Assignment",
   "Reading"] for "prioritize assignments over readings"), short_term_first (true for "prioritize short-term work
   over long-term", meaning the to-do's Short term list over its Long term list), exam_focus ({on: true, days_before}

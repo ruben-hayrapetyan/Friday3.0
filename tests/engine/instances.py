@@ -35,6 +35,7 @@ EXTRA_RULES = [
     dict(type="close_to_due", name="prep_close", weight=1, params=dict(buffer_min=720)),
     dict(type="meal_window", name="meals_near_their_window", weight=1, params=dict(price=50)),
     dict(type="travel_kept", name="meals_travel_kept", weight=1, params=dict(price=100)),
+    dict(type="fit_gaps", name="tasks_fit_gaps", weight=1, params=dict(price=2)),
     dict(type="close_to_due", name="prep_buffer_kept", weight=1, scope=dict(firmness="hard"),
          params=dict(buffer_min=1440, inside="forbid")),
 ]  # fmt: skip
