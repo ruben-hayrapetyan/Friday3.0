@@ -1101,7 +1101,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Settle one of today's past blocks before the review ("did you finish it?"); the review keeps the answer. */
+        /** Settle one of the past blocks the plan still holds (today's, or a missed one from the day before) before the */
         post: operations["settle"];
         delete?: never;
         options?: never;
@@ -2798,6 +2798,8 @@ export interface components {
             cost?: {
                 [key: string]: number;
             };
+            /** State */
+            state?: ("done" | "timed" | "missed" | "gone") | null;
         };
         /**
          * BriefOut
@@ -5740,7 +5742,7 @@ export interface components {
         };
         /**
          * SettleInput
-         * @description One block of today settled before the review: done, partly or not done.
+         * @description A past block settled before the review: done, partly or not done.
          */
         SettleInput: {
             /** Block Key */
@@ -5756,6 +5758,8 @@ export interface components {
              * @default 1
              */
             share?: number;
+            /** Until */
+            until?: string | null;
         };
         /** SettleResult */
         SettleResult: {

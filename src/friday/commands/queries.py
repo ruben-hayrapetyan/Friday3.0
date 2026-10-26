@@ -38,7 +38,7 @@ from friday.core.pace import dials_on, pace_label
 from friday.core.quickadd import parse
 from friday.core.rows import item_from_row
 from friday.core.settings import to_json
-from friday.core.time import format_utc, local_midnight, parse_utc, to_local, to_utc
+from friday.core.time import UNIT_MIN, format_utc, local_midnight, parse_utc, to_local, to_utc
 from friday.engine import executor
 from friday.engine.explain import Block
 from friday.planner.build import id_of, key_of
@@ -204,7 +204,7 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
                     pinned=pin_kind(pins, r),
                 )
             )
-    blocks = coalesced(blocks)
+    blocks = coalesced(past_states(ctx, blocks))  # pieces join only with pieces that went the same way
     fixed = [
         item_out(ctx, item_from_row(r))
         for r in rows(
@@ -241,17 +241,81 @@ def sittings(ctx: Ctx, lo: int, hi: int) -> list[BlockOut]:
     return [b.model_copy(update={"key": "S" + b.key[1:]}) for b in out]
 
 
+def past_states(ctx: Ctx, blocks: list[BlockOut]) -> list[BlockOut]:
+    """What became of each block that has ended: the item finished, or this block marked done (or, while unmarked
+    blocks count as done, left unmarked) is done; a timer sitting of the item over it, timed; marked not done, or
+    left unmarked while unmarked blocks are planned again, missed; the item deleted or skipped, gone."""
+    blocks = split_at_now(ctx, blocks)
+    past = [b for b in blocks if b.end <= (ctx.local(ctx.now_text) or "")]
+    if not past:
+        return blocks
+    ids = sorted({b.item_id for b in past})
+    marks = ",".join("?" * len(ids))
+    status = {r["id"]: r["status"] for r in rows(ctx.conn, f"SELECT id, status FROM items WHERE id IN ({marks})", ids)}
+    lo = min(parse_utc(ctx.utc(b.start)) for b in past)
+    recorded = rows(
+        ctx.conn,
+        f"SELECT item_id, source, minutes, start_utc, end_utc FROM progress WHERE item_id IN ({marks}) "
+        "AND source IN ('timer', 'review') AND start_utc IS NOT NULL AND end_utc > ?",
+        [*ids, format_utc(lo)],
+    )
+    counts = ctx.settings["planner"].assume_unreviewed == "done"
+    states = {}
+    for b in past:
+        start, end = parse_utc(ctx.utc(b.start)), parse_utc(ctx.utc(b.end))
+        over = [
+            r
+            for r in recorded
+            if r["item_id"] == b.item_id and parse_utc(r["start_utc"]) < end and parse_utc(r["end_utc"]) > start
+        ]
+        if status.get(b.item_id) == "done":
+            states[b.key] = "done"
+        elif status.get(b.item_id) in ("dropped", "skipped"):
+            states[b.key] = "gone"
+        elif any(r["source"] == "timer" for r in over):
+            states[b.key] = "timed"
+        elif reviewed := [r for r in over if r["source"] == "review"]:
+            states[b.key] = "done" if reviewed[-1]["minutes"] > 0 else "missed"
+        else:
+            states[b.key] = "done" if counts else "missed"
+    return [b.model_copy(update={"state": states[b.key]}) if b.key in states else b for b in blocks]
+
+
+def split_at_now(ctx: Ctx, blocks: list[BlockOut]) -> list[BlockOut]:
+    """A block running across now, apart at the last quarter hour: what's gone of it is past (and says what became
+    of it), the rest is still the plan. A replan keeps the two in one record, so 10–10:30 missed and 10:30–12:30
+    planned read as one block from 10. Not the block you're timing: the timer shows that one."""
+    timer = one(ctx.conn, "SELECT item_id FROM timer WHERE user_id = ?", [ctx.user_id])
+    cut = ctx.local(format_utc(ctx.now_utc // UNIT_MIN * UNIT_MIN)) or ""
+    out = []
+    for b in blocks:
+        if b.start < cut < b.end and not (timer and timer["item_id"] == b.item_id):
+            share = (parse_utc(ctx.utc(cut)) - parse_utc(ctx.utc(b.start))) / max(1, minutes_of_block(ctx, b))
+            gone = {k: round(v * share) for k, v in b.cost.items()}
+            out.append(b.model_copy(update={"end": cut, "cost": gone}))
+            ahead = {k: v - gone[k] for k, v in b.cost.items()}
+            out.append(b.model_copy(update={"key": f"T{b.item_id}@{cut}", "start": cut, "cost": ahead}))
+        else:
+            out.append(b)
+    return out
+
+
+def minutes_of_block(ctx: Ctx, b: BlockOut) -> int:
+    return parse_utc(ctx.utc(b.end)) - parse_utc(ctx.utc(b.start))
+
+
 def coalesced(blocks: list[BlockOut]) -> list[BlockOut]:
     """Touching blocks of one item as one block. Every replan cuts the plan at that moment and the pieces stay in
     the record, so a sitting showed as 12:00–13:00, 13:00–13:15 and 13:15–14:00 side by side (M16)."""
     out: list[BlockOut] = []
     for b in blocks:
         last = out[-1] if out else None
-        joins = last is not None and (last.item_id, last.end, last.tentative, last.pinned) == (
+        joins = last is not None and (last.item_id, last.end, last.tentative, last.pinned, last.state) == (
             b.item_id,
             b.start,
             b.tentative,
             b.pinned,
+            b.state,
         )
         if last is not None and joins:
             cost = {k: last.cost.get(k, 0) + b.cost.get(k, 0) for k in last.cost.keys() | b.cost.keys()}

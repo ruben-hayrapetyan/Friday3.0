@@ -30,3 +30,22 @@ describe("the day's agenda", () => {
     ])
   })
 })
+
+describe("the agenda's past", () => {
+  it("is the work as it went: sittings in, timed and deleted blocks out, missed ones marked", () => {
+    const block = (key: string, start: string, end: string, state?: "done" | "timed" | "missed" | "gone") => ({ key, item_id: 1, title: key, start, end, state })
+    const plan = {
+      plan_id: 1,
+      blocks: [block("T1@a", "2026-10-25T09:00", "2026-10-25T10:00", "missed"), block("T1@b", "2026-10-25T11:00", "2026-10-25T12:00", "timed"), block("T1@c", "2026-10-25T13:00", "2026-10-25T14:00", "gone"), block("T1@d", "2026-10-25T15:00", "2026-10-25T16:00")],
+      sessions: [block("S1@e", "2026-10-25T11:10", "2026-10-25T11:50")],
+      fixed: [],
+      day_hours: {},
+    } as unknown as Schemas["PlanOut"]
+    const agenda = agendaOf("2026-10-25", plan, undefined)
+    expect(agenda.map((e) => [e.key, !!e.missed])).toEqual([
+      ["T1@a", true],
+      ["S1@e", false],
+      ["T1@d", false],
+    ])
+  })
+})

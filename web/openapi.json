@@ -4013,7 +4013,7 @@
   },
   "/api/c/settle": {
    "post": {
-    "summary": "Settle one of today's past blocks before the review (\"did you finish it?\"); the review keeps the answer.",
+    "summary": "Settle one of the past blocks the plan still holds (today's, or a missed one from the day before) before the",
     "operationId": "settle",
     "parameters": [
      {
@@ -9512,6 +9512,23 @@
       "type": "object",
       "title": "Cost",
       "default": {}
+     },
+     "state": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "done",
+         "timed",
+         "missed",
+         "gone"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "State"
      }
     },
     "additionalProperties": false,
@@ -18672,6 +18689,17 @@
       "type": "number",
       "title": "Share",
       "default": 1.0
+     },
+     "until": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Until"
      }
     },
     "additionalProperties": false,
@@ -18680,7 +18708,7 @@
      "block_key"
     ],
     "title": "SettleInput",
-    "description": "One block of today settled before the review: done, partly or not done."
+    "description": "A past block settled before the review: done, partly or not done."
    },
    "SettleResult": {
     "properties": {

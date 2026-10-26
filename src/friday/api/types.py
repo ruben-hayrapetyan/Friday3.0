@@ -111,6 +111,10 @@ class BlockOut(Model):
     tentative: bool = False
     fixed: bool = False  # a class or event at a set time, not planned work
     cost: dict[str, int] = {}
+    # A past block, what became of it: done (finished, marked done, or counted done while unmarked blocks count),
+    # timed (a timer sitting covers it: the sitting shows instead), missed (not done: Friday plans it again), gone
+    # (the item was deleted or skipped). None for what's still ahead.
+    state: Literal["done", "timed", "missed", "gone"] | None = None
 
 
 class ChangeOut(Model):

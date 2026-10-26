@@ -1,5 +1,6 @@
 // The sidebar's agenda (personal's, COMBINED.md 10): the chosen day's events, planned work and deadlines in one
-// timeline by the clock, with today's red line between what's done and what's to come.
+// timeline by the clock, with today's red line between what's done and what's to come. Before the line, the work as
+// it went: what you timed, when you did it, and what was missed struck through (Friday planned it again).
 
 import { useShownPlan } from "@/plan/shown"
 import type { Block, Item, Schemas } from "@/api/client"
@@ -21,6 +22,7 @@ interface Entry {
   area: string | null | undefined
   block: Block
   event?: Item // a calendar event, opened in the drawer
+  missed?: boolean // planned, not done: struck through
 }
 
 export function DayAgenda() {
@@ -54,8 +56,8 @@ export function DayAgenda() {
                 {e.sort === "allday" ? "all day" : e.sort === "due" && e.start.endsWith("T23:59") ? "due" : clock(e.start)}
               </span>
               <span style={{ alignSelf: "stretch", borderRadius: 2, background: e.sort === "due" ? "var(--fr-due)" : e.sort === "work" ? (e.area || e.block.preset ? color(e.area, e.block.preset) : "var(--color-accent)") : e.event ? eventPaint(e.event, light) : "var(--color-neutral-500)" }} />
-              <span style={{ fontSize: 12.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: e.sort === "due" ? "var(--fr-due)" : undefined }}>
-                {e.title}
+              <span style={{ fontSize: 12.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: e.sort === "due" ? "var(--fr-due)" : e.missed ? "var(--color-neutral-500)" : undefined, textDecoration: e.missed ? "line-through" : undefined }}>
+                {e.key.startsWith("S") ? `◷ ${e.title}` : e.title}
               </span>
             </button>
           </div>
@@ -79,8 +81,9 @@ export function agendaOf(day: string, plan: Schemas["PlanOut"] | undefined, cale
     if (allDay ? !(f.start.slice(0, 10) <= day && day < f.end.slice(0, 10)) : !f.start.startsWith(day)) continue
     out.push({ key: `F${f.id}`, start: f.start, end: f.end, title: f.title, sort: allDay ? "allday" : "event", area: f.area, block: fixedBlock(f as Item & { start: string; end: string }), event: f })
   }
-  for (const b of plan?.blocks ?? []) {
-    if (b.start.startsWith(day)) out.push({ key: b.key, start: b.start, end: b.end, title: b.title, sort: "work", area: b.area, block: b })
+  const work = [...(plan?.blocks ?? []).filter((b) => b.state !== "timed" && b.state !== "gone"), ...(plan?.sessions ?? [])]
+  for (const b of work) {
+    if (b.start.startsWith(day)) out.push({ key: b.key, start: b.start, end: b.end, title: b.title, sort: "work", area: b.area, block: b, missed: b.state === "missed" })
   }
   for (const d of calendar?.dues ?? []) {
     if (d.due.startsWith(day)) {

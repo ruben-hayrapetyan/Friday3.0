@@ -756,7 +756,7 @@ VERBS = {
         commands.SettleInput,
         True,
         True,
-        'Settle one of today\'s past blocks before the review ("did you finish it?"); the review keeps the answer.',
+        "Settle one of the past blocks the plan still holds (today's, or a missed one from the day before) before the",
     ),
     "setup": Verb(
         "GET", "/api/q/setup", commands.Empty, False, False, "Setup's questions, answered with what Friday does now."

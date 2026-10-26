@@ -13,8 +13,8 @@ import { runCommand } from "@/hooks/useCommand"
 import { moveBlock } from "@/hooks/useDrop"
 import { useGhosts, useItems, useNow, useStatus } from "@/hooks/queries"
 import { movedSince } from "@/lib/drag"
-import { clock, dur, hms, weekday, when } from "@/lib/format"
-import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, type Placed, type Span, toMin } from "@/lib/time"
+import { clock, hms, weekday, when } from "@/lib/format"
+import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, type Span, toMin } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
 import { useLook } from "@/theme/LookProvider"
 import { draftAt, draftOf } from "@/shell/EventPane"
@@ -49,7 +49,10 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const allDay = timed.filter((f) => f.start.endsWith("T00:00") && f.end.endsWith("T00:00") && f.end > f.start)
   const fixed = timed.filter((f) => !allDay.includes(f)) // what you toggled off is already gone (plan/shown.ts)
   // From the wake time to core sleep, stretched for anything earlier or later on these days.
+  // The past as it went: a block a timer sitting covers gives way to the sitting, and a deleted item's goes; blocks
+  // and sittings are laid out together, side by side where they overlap, rather than one drawn over the other.
   const sessions = plan.sessions ?? []
+  const shown = plan.blocks.filter((b) => b.state !== "timed" && b.state !== "gone")
   const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : fitAxis({ startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }, [...fixed, ...plan.blocks, ...sessions], dates)
   const panel = useRef<HTMLDivElement>(null)
   const head = useRef<HTMLDivElement>(null)
@@ -122,13 +125,14 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                 />
               ))}
               {event && !event.allDay && layout([event], date, axis).map((p) => <DraftBox key="draft" p={p} title={event.title} />)}
-              {layout(plan.blocks, date, axis).map((p) => (
+              {layout([...shown, ...sessions], date, axis).map((p) => (
                 <BlockBox
                   key={p.item.key}
                   p={p}
                   isCur={p.item.key === current}
                   selected={p.item.key === selected?.key}
-                  done={toMin(p.item.end) <= now && !open.has(p.item.item_id)}
+                  done={p.item.state === "done" || (toMin(p.item.end) <= now && !open.has(p.item.item_id))}
+                  look={p.item.key.startsWith("S") ? "sitting" : p.item.state === "missed" ? "missed" : undefined}
                   movedFrom={moved.get(p.item.item_id)}
                   today={today}
                   onOpen={() => !justDragged() && select(p.item)}
@@ -140,9 +144,6 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
               ))}
               {layout(news, date, axis).map((p) => (
                 <GhostBox key={`g${p.item.key}`} p={p} />
-              ))}
-              {layout(sessions, date, axis).map((p) => (
-                <SessionBox key={p.item.key} p={p} selected={p.item.key === selected?.key} onOpen={() => select(p.item)} />
               ))}
               {drag?.moved && drag.at && drag.over === "calendar" && <Preview drag={drag} date={date} axis={axis} today={today} />}
               {timer && date === calendar.today && nowData?.current_source === "timer" && (
@@ -168,49 +169,6 @@ function useHeight(ref: React.RefObject<HTMLElement | null>): number {
     return () => observer.disconnect()
   }, [ref])
   return height
-}
-
-/** A sitting you timed, when you did it: over the right of the column, so what was planned there still shows its
- * title, in the colour of its tag and drawn solid. A click opens it as a block opens. */
-function SessionBox({ p, selected, onOpen }: { p: Placed<Block>; selected: boolean; onOpen: () => void }) {
-  const b = p.item
-  const { skinOf } = useLook()
-  const s = skinOf("planned", b.area, { isCur: false, sel: selected }, b.preset)
-  const minutes = toMin(b.end) - toMin(b.start)
-  const height = Math.max(minutes * PX - 2, 8)
-  const share = 0.62 / p.columns
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      data-block-key={b.key}
-      onClick={onOpen}
-      onKeyDown={(e) => e.key === "Enter" && onOpen()}
-      title={`Timed ${b.title}: ${clock(b.start)}–${clock(b.end)} (${dur(minutes)})`}
-      style={{
-        position: "absolute",
-        top: p.top * PX,
-        height,
-        left: `calc((100% - var(--lane, 0px)) * ${0.38 + p.column * share} + 3px)`,
-        width: `calc((100% - var(--lane, 0px)) * ${share} - 6px)`,
-        zIndex: 2,
-        borderRadius: 5,
-        padding: height < 22 ? "0 6px" : "3px 6px",
-        fontSize: 10.5,
-        lineHeight: height < 22 ? `${height}px` : 1.3,
-        fontWeight: 500,
-        overflow: "hidden",
-        whiteSpace: "nowrap",
-        textOverflow: "ellipsis",
-        cursor: "pointer",
-        color: "var(--color-text)",
-        background: `color-mix(in srgb, ${s.stripe} 30%, var(--color-surface))`,
-        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${s.stripe} ${selected ? 90 : 60}%, transparent)`,
-      }}
-    >
-      {height >= 12 && `◷ ${b.title} · ${dur(minutes)}`}
-    </div>
-  )
 }
 
 /** What you're timing, from when you started to now: drawn from the timer itself, so it shows even when the plan

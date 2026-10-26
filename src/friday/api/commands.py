@@ -489,11 +489,12 @@ class ActInput(Model):
 
 
 class SettleInput(Model):
-    """One block of today settled before the review: done, partly or not done."""
+    """A past block settled before the review: done, partly or not done."""
 
     block_key: str
     status: Literal["done", "partial", "not_done"] = "done"
     share: float = 1.0
+    until: str | None = None  # local: the block as the calendar showed it, pieces joined, to here
 
 
 class PushSubscription(Model):

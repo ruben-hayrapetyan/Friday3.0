@@ -1,6 +1,6 @@
 // Schedule (v22): the shape of a normal day: when it starts, bedtime and the margin past it, a buffer between blocks, the
-// the daily limit, the default pace and the first day of the week. Each sets every day; "By day"
-// sets them one day at a time.
+// the daily limit, the default pace, the first day of the week, and what happens to a block that passes untimed and
+// unmarked (planned again, or counted done). Each sets every day; "By day" sets them one day at a time.
 
 import { useState } from "react"
 import { Seg } from "@/components/fr/controls"
@@ -32,6 +32,8 @@ export function Schedule() {
   const caps = settings.daily_cap as Record<string, number>
   const time = settings.time as { week_start: string }
   const pace = settings.pace as { default: string }
+  const planner = settings.planner as { assume_unreviewed: "done" | "not_done" }
+  const missed = planner.assume_unreviewed
   const mon = sleep.mon
   const allNights = (change: Partial<Night>) => save({ key: "sleep", value: Object.fromEntries(DAYS.map((d) => [d, { ...sleep[d], ...change }])) })
   const differs = (k: keyof Night) => DAYS.some((d) => sleep[d][k] !== mon[k])
@@ -84,6 +86,17 @@ export function Schedule() {
           ]}
           value={time.week_start}
           onPick={(d) => save({ key: "time", value: { ...time, week_start: d } })}
+          size="big"
+        />
+      </Field>
+      <Field name="When a block passes and you didn’t time it or mark it" note={missed === "not_done" ? "Friday plans that work again, so a missed block moves instead of staying on your plan. Click a missed block to say you did it after all." : "Friday counts it as done until your review says otherwise, so the plan doesn’t move unless you tell it."}>
+        <Seg
+          options={[
+            { value: "not_done", label: "Plan it again" },
+            { value: "done", label: "Count it as done" },
+          ]}
+          value={missed}
+          onPick={(v) => save({ key: "planner", value: { ...planner, assume_unreviewed: v } })}
           size="big"
         />
       </Field>

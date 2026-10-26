@@ -26,7 +26,7 @@ from friday.commands.registry import Ctx, command
 from friday.commands.timer import running, started_text, stop_timer, timer_out, write_progress
 from friday.core.db import rows
 from friday.core.items import FieldError, Item
-from friday.core.time import UNIT_MIN, format_utc, local_midnight, parse_local, parse_utc, to_utc
+from friday.core.time import UNIT_MIN, format_utc, local_midnight, parse_local, parse_utc, planning_date, to_utc
 from friday.planner.prepare import block_key
 from friday.planner.progress import minutes_by_item
 from friday.planner.store import current_plan, kv_get
@@ -225,9 +225,19 @@ def write_review(ctx: Ctx, block: dict[str, Any], status: str, share: float) -> 
 
 @command("settle", affects_plan=True)
 def settle(ctx: Ctx, inp: SettleInput) -> Changed:
-    """Settle one of today's past blocks before the review ("did you finish it?"); the review keeps the answer."""
-    block = find_day_block(ctx, ctx.today, inp.block_key)
+    """Settle one of the past blocks the plan still holds (today's, or a missed one from the day before) before the
+    review ("did you finish it?"); the review keeps the answer."""
+    item_id, start = parse_block_key(ctx, inp.block_key)
+    day = planning_date(start, ctx.tz, ctx.day_start)
+    if day > ctx.today:
+        raise FieldError("block_key", "that block hasn't happened yet")
+    block = find_day_block(ctx, day, inp.block_key)
     write_review(ctx, block, inp.status, inp.share)
+    if inp.until:  # the calendar joins a block's pieces (each replan cuts one): the rest of the span goes with it
+        until = parse_utc(ctx.utc(inp.until, "until"))
+        for piece in day_blocks(ctx, day):
+            if piece["item_id"] == item_id and start < piece["start"] < until:
+                write_review(ctx, piece, inp.status, inp.share)
     return Changed(
         message={"done": "Marked done", "partial": "Marked partly done", "not_done": "Marked not done"}[inp.status]
     )

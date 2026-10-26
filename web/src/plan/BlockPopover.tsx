@@ -28,6 +28,8 @@ const KIND: Record<string, string> = {
   due: "Due",
   done: "Done",
   timed: "Timed · when you worked on it",
+  missed: "Missed · Friday planned it again",
+  counted: "Past · counted as done",
 }
 const FIRM: Record<string, string> = { hard: "Hard deadline", soft: "Soft deadline", none: "No deadline" }
 
@@ -61,6 +63,7 @@ export function BlockPopover() {
   const start = useCommand("start", { label: () => `Started ${b?.title}` })
   const done = useCommand("done", { label: () => `${b?.title}: done` })
   const reopen = useCommand("reopen", { label: () => `${b?.title}: open again` })
+  const settle = useCommand("settle", { label: (o) => o.result.message })
   const stop = useCommand("stop", { label: (o) => o.result.message ?? "Paused" })
   const tentative = useCommand("edit", { label: (o) => (o.result.item.certainty === "tentative" ? "Might not happen: planned loosely" : "Planned as usual") })
   const timing = useStatus().data?.timer
@@ -101,8 +104,9 @@ export function BlockPopover() {
   if (!b) return null
   const item = detail?.item
   const close = () => select(null)
-  const kind = b.key.startsWith("F") ? "fixed" : b.key.startsWith("D") ? "due" : b.key.startsWith("S") ? "timed" : kindOf(b)
-  const sitting = kind === "timed" // a sitting you timed: what you did, not a block to move
+  // A past block: what became of it (the server says), as a sitting you timed, a block missed, or one counted done.
+  const kind = b.key.startsWith("F") ? "fixed" : b.key.startsWith("D") ? "due" : b.key.startsWith("S") ? "timed" : b.state === "missed" ? "missed" : b.state === "done" ? "counted" : kindOf(b)
+  const sitting = kind === "timed" || kind === "missed" || kind === "counted" // what happened: nothing to move or pin
   const flexible = kind !== "fixed" && kind !== "due"
   const event = kind === "fixed" ? item : undefined
   const dot = event ? eventPaint(event, light) : color(b.area ?? item?.area)
@@ -144,7 +148,19 @@ export function BlockPopover() {
             </button>
           </div>
         )}
-        {flexible && item?.status !== "done" && (
+        {kind === "missed" && item?.status !== "done" && (
+          // Not done in its time, so planned again; if you did it after all, one click counts it.
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <BigButton icon="check" label="I did it" note="Counts it; comes off the new plan" onClick={run(() => settle({ block_key: b.key, status: "done", until: b.end }))} primary />
+            <BigButton icon="play" label={worked ? "Resume" : "Start"} note="Times it now" onClick={run(() => start({ id: b.item_id }))} />
+          </div>
+        )}
+        {kind === "counted" && item?.status !== "done" && (
+          <button className="fr-link" onClick={run(() => settle({ block_key: b.key, status: "not_done", until: b.end }))} style={{ alignSelf: "flex-start", fontSize: 12 }}>
+            Didn’t do it? Plan it again
+          </button>
+        )}
+        {flexible && item?.status !== "done" && kind !== "missed" && kind !== "counted" && (
           // Large and first: what you came to the block for (personal's popover).
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {timing?.item_id === b.item_id ? (

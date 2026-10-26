@@ -53,6 +53,9 @@ interface BlockProps {
   isCur: boolean
   selected: boolean
   done: boolean
+  // A sitting you timed (drawn solid, when you worked), or a past block not done (a faint outline: Friday planned
+  // it again). Neither moves or stretches.
+  look?: "sitting" | "missed"
   movedFrom?: string
   today: string
   onOpen: () => void
@@ -61,12 +64,14 @@ interface BlockProps {
   retime?: Retime
 }
 
-export function BlockBox({ p, isCur, selected, done, movedFrom, today, onOpen, onGrab, onResize, retime }: BlockProps) {
+export function BlockBox({ p, isCur, selected, done, look, movedFrom, today, onOpen, onGrab, onResize, retime }: BlockProps) {
   const b = p.item
   const { skinOf } = useLook()
-  const kind = done ? "done" : kindOf(b)
+  const kind = done ? "done" : look ? "planned" : kindOf(b)
   const s = skinOf(kind, b.area, { isCur, sel: selected }, b.preset)
   const tall = minutes(b) >= 45
+  const fixedInPlace = done || !!look
+  const missed = look === "missed"
   const [typing, setTyping] = useState(false)
   const time = retime && { typing, span: b, start: () => (setTyping(true), retime.begin()), save: retime.save, stop: () => setTyping(false) }
   return (
@@ -76,41 +81,48 @@ export function BlockBox({ p, isCur, selected, done, movedFrom, today, onOpen, o
       data-block-key={b.key}
       onClick={onOpen}
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
-      onPointerDown={onGrab}
-      title={`${b.title} ${clock(b.start)}–${clock(b.end)}${b.tentative ? " (could fit here)" : ""}`}
+      onPointerDown={look ? undefined : onGrab}
+      title={
+        look === "sitting"
+          ? `Timed ${b.title}: ${clock(b.start)}–${clock(b.end)} (${dur(minutes(b))})`
+          : missed
+            ? `${b.title} was planned ${clock(b.start)}–${clock(b.end)} and not done, so Friday planned it again. Click if you did it.`
+            : `${b.title} ${clock(b.start)}–${clock(b.end)}${b.tentative ? " (could fit here)" : ""}`
+      }
       style={{
         ...box(p),
         touchAction: "none",
         userSelect: "none",
         borderRadius: 6,
-        background: s.bg,
-        border: s.bd,
-        color: s.fg,
-        opacity: s.op,
-        boxShadow: s.shadow,
+        background: missed ? "transparent" : s.bg,
+        border: missed ? `1px dashed color-mix(in srgb, ${s.stripe} 55%, transparent)` : s.bd,
+        color: missed ? "var(--color-neutral-500)" : s.fg,
+        opacity: missed ? 0.75 : s.op,
+        boxShadow: missed ? "none" : s.shadow,
         overflow: typing ? "visible" : "hidden",
         cursor: "pointer",
         zIndex: typing ? 5 : 1,
       }}
     >
-      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: s.stripe }} />
+      {!missed && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: s.stripe }} />}
       <div style={{ display: "flex", alignItems: "center", gap: 4, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden" }}>
-        {b.pinned === "locked" && <Icon name="lock-simple" fill size={11} />}
-        {b.pinned === "preferred" && <Icon name="push-pin" fill size={11} />}
+        {b.pinned === "locked" && !look && <Icon name="lock-simple" fill size={11} />}
+        {b.pinned === "preferred" && !look && <Icon name="push-pin" fill size={11} />}
         {done && <Icon name="check" size={11} />}
+        {look === "sitting" && <Icon name="timer" size={11} />}
         <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{b.title}</span>
-        {!tall && <Inline at={b.start} color={s.sub} time={time} />}
+        {!tall && <Inline at={b.start} color={missed ? "var(--color-neutral-600)" : s.sub} time={look ? undefined : time} />}
       </div>
       {tall && (
-        <TimeLine color={s.sub} time={time}>
-          {clock(b.start)}–{clock(b.end)}
-          {b.estimated ? ` · ~${dur(minutes(b))}` : ""}
+        <TimeLine color={missed ? "var(--color-neutral-600)" : s.sub} time={look ? undefined : time}>
+          {missed ? "Missed · planned again" : `${clock(b.start)}–${clock(b.end)}`}
+          {look === "sitting" ? ` · ${dur(minutes(b))}` : b.estimated && !look ? ` · ~${dur(minutes(b))}` : ""}
         </TimeLine>
       )}
       {movedFrom && (
         <div style={{ fontSize: 10, color: "var(--color-accent-200)", whiteSpace: "nowrap" }}>moved from {when(movedFrom, today)}</div>
       )}
-      {!done && (
+      {!fixedInPlace && (
         <div
           title="Drag to change length"
           onPointerDown={(e) => {
