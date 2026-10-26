@@ -664,3 +664,20 @@ def test_skipping_an_optional_event_frees_the_night_before_too(tmp_path: Path) -
     assert any(
         n.startswith("Skip Climbing Club on Wed at 6pm: Essay needs Tuesday night") for n in app.do("status")["notices"]
     )
+
+
+def test_the_nightly_fresh_plan_keeps_yours_unless_it_is_better(tmp_path: Path) -> None:
+    app = new_app(tmp_path, horizon_days=14)
+    for n in range(12):
+        app.do("add", title=f"run {n}", duration_min=45, release="2026-10-26T08:00", due=f"2026-10-{27 + n % 4}T20:00")
+    app.do("add", text="essay ~3h due fri 5pm")
+    app.do("replan")
+    app.do("replan")
+
+    def blocks() -> list[tuple]:
+        plan = app.do("plan", start="2026-10-19T09:00", end="2026-11-02T00:00")
+        return sorted((b["item_id"], b["start"], b["end"]) for b in plan["blocks"])
+
+    warm = blocks()
+    replan(app.conn, app.now_utc, warm=False)  # as the nightly job does
+    assert blocks() == warm

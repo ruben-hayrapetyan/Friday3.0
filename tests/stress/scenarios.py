@@ -535,6 +535,132 @@ def contradicting(folder: Path) -> World:
     return w
 
 
+def runs_by_itself(folder: Path) -> World:
+    w = World.fresh(folder, "a-task-that-runs-by-itself", at(0, "08:00"), ZONE)
+    w.do("add", title="Lab", when="fixed", start=at(0, "09:00"), end=at(0, "14:00"))
+    w.do("add", title="Lab", when="fixed", start=at(0, "17:00"), end=at(0, "23:30"))
+    w.do("add", title="Laundry", duration_min=120, due=at(0, "17:00"), background=True)
+    w.do("add", title="Essay", duration_min=150, due=at(0, "17:00"))
+    return w
+
+
+def check_runs_by_itself(w: World) -> list[str]:
+    (run,) = blocks_of(w, "Laundry") or [{}]
+    essay = blocks_of(w, "Essay")
+    held = sum(
+        1
+        for b in w.conn.execute(
+            "SELECT b.* FROM blocks b JOIN items i ON i.id = b.item_id "
+            "WHERE i.title = 'Laundry' AND b.plan_id = (SELECT max(id) FROM plans)"
+        )
+    )
+    return (
+        expect(bool(run.get("background")), "the laundry isn't drawn as running by itself")
+        + expect(not w.replans[0].late and bool(essay), "late, though the essay fits beside the laundry")
+        + expect(held == 1, f"the plan holds {held} blocks of the laundry, not its start")
+    )  # fmt: skip
+
+
+def prep_close_to_exam(folder: Path) -> World:
+    w = World.fresh(folder, "exam-prep-close-to-the-exam", at(0, "08:00"), ZONE)
+    exam = w.do("add", title="Chem 2090 Prelim", when="fixed", start=at(4, "19:30"), end=at(4, "21:00"),
+                event_kind="exam")["item"]["id"]  # fmt: skip
+    w.do("add", title="Prep: Chem 2090 Prelim", preset="Exam prep", duration_min=240, due=at(4, "19:30"), before=[exam])
+    quiz = w.do("add", title="Math 1920 Quiz 3", when="fixed", start=at(3, "13:25"), end=at(3, "14:15"),
+                event_kind="exam")["item"]["id"]  # fmt: skip
+    w.do("add", title="Prep: Math 1920 Quiz 3", preset="Exam prep", duration_min=120, due=at(3, "13:25"), before=[quiz])
+    w.do("rule_add", text="I prefer all sessions of exam prep tasks to be done as close to the exam as possible")
+    w.do("rule_add", text="prep for the math quiz closer to the math quiz (with 1 day of buffer)")
+    return w
+
+
+def check_prep_close_to_exam(w: World) -> list[str]:
+    chem = blocks_of(w, "Prep: Chem 2090 Prelim")
+    quiz = blocks_of(w, "Prep: Math 1920 Quiz 3")
+    return expect(
+        bool(chem) and all(b["start"] >= at(3, "00:00")[:10] for b in chem), f"chem prep not close: {chem[:2]}"
+    ) + expect(bool(quiz) and all(b["end"] <= at(2, "13:25") for b in quiz), f"quiz prep inside its buffer: {quiz}")
+
+
+def skip_for_the_night(folder: Path) -> World:
+    w = World.fresh(folder, "skip-the-club-for-the-night-before", at(0, "09:00"), ZONE)
+    w.do("add", title="Climbing Club", when="fixed", start=at(2, "06:00"), end=at(2, "08:00"))
+    w.do("rule_add", text="climbing club only if i'm ahead")
+    w.do("rule_add", text="no work after 10pm the night before climbing club", strength="Always")
+    w.do("add", title="Lab", when="fixed", start=at(0, "09:00"), end=at(1, "01:00"))
+    w.do("add", title="Lab", when="fixed", start=at(1, "07:00"), end=at(1, "20:00"))
+    w.do("add", title="Essay", duration_min=3 * 60, due=at(2, "06:00"))  # due as the club starts: only the night helps
+    return w
+
+
+def check_skip_for_the_night(w: World) -> list[str]:
+    essay = blocks_of(w, "Essay")
+    notices = w.do("status")["notices"]
+    return (
+        expect(not w.replans[0].late, "late: skipping the club should free the night before")
+        + expect(
+            any(b["end"] > at(1, "22:00") and b["start"] < at(2, "04:00") for b in essay),
+            "no work past 10pm the night before a skipped club",
+        )  # fmt: skip
+        + expect(any(n.startswith("Skip Climbing Club") for n in notices), "the plan doesn't say skip")
+    )
+
+
+def done_for_tonight(folder: Path) -> World:
+    w = World.fresh(folder, "done-with-work-tonight", at(0, "20:00"), ZONE)
+    w.do("settings_set", key="sleep_tracking", value={"on": True})
+    w.do("add", title="Reading", duration_min=120, due=at(4, "17:00"))
+    w.do("add", title="Quiz corrections", duration_min=45, due=at(0, "23:00"))
+    w.do("sleep_mark", kind="done")
+    return w
+
+
+def check_done_for_tonight(w: World) -> list[str]:
+    tonight = [b for b in blocks_of(w, "Reading") if b["start"] < at(1, "04:00")]
+    corrections = blocks_of(w, "Quiz corrections")
+    return expect(not tonight, f"work planned tonight after done with work: {tonight}") + expect(
+        bool(corrections) and corrections[0]["start"] < at(0, "23:00"), "work due tonight wasn't kept tonight"
+    )
+
+
+def eating_now(folder: Path) -> World:
+    w = World.fresh(folder, "eating-lunch-now", at(0, "12:00"), ZONE)
+    w.do("settings_set", key="meal_tracking", value={"on": True})
+    w.do("series_add", title="Lunch", preset="Routine", every="day", release_offset_min=450, due_offset_min=630,
+         min_min=15, ideal_min=45, max_min=45)  # fmt: skip
+    w.do("add", title="Essay", duration_min=180, due=at(0, "18:00"))
+    w.do("meal_start", kind="lunch")
+    return w
+
+
+def check_eating_now(w: World) -> list[str]:
+    essay = blocks_of(w, "Essay")
+    return expect(not any(b["start"] < at(0, "12:45") for b in essay), f"work planned while you eat: {essay[:2]}")
+
+
+def repeats_of_every_kind(folder: Path) -> World:
+    w = World.fresh(folder, "monthly-and-every-other-week-errands", at(0, "08:00"), ZONE)
+    for text in (
+        "pay rent every month ~15m",
+        "laundry every other week ~1h",
+        "groceries every week due sunday ~1h",
+        "water plants every 3 days ~10m",
+        "haircut every 4 weeks ~1h",
+        "problem set every week due fri 5pm ~3h",
+    ):
+        w.do("add", text=text)
+    return w
+
+
+def check_repeats_of_every_kind(w: World) -> list[str]:
+    weekly = blocks_of(w, "groceries")
+    rents = w.conn.execute("SELECT count(*) FROM items WHERE title = 'pay rent'").fetchone()[0]
+    return expect(len({b["start"][:10] for b in weekly}) >= 1, "weekly groceries never planned") + expect(
+        rents >= 2,
+        f"{rents} months of rent made",  # due a month out: planned in its last weeks, not yet
+    )
+
+
 EDGES = (
     Edge("DST fall back (1 Nov 2026)", dst_fall_back),
     Edge("DST spring forward (14 Mar 2027)", dst_spring_forward),
@@ -568,4 +694,10 @@ EDGES = (
     Edge("Nothing at all", empty),
     Edge("15 repeating classes, 21 days", series_heavy),
     Edge("Contradicting preferences", contradicting),
+    Edge("A task that runs by itself", runs_by_itself, check_runs_by_itself, {"tick"}),
+    Edge("Exam prep close to the exam, quiz prep a day early", prep_close_to_exam, check_prep_close_to_exam, {"tick"}),
+    Edge("Skip the club for the night before", skip_for_the_night, check_skip_for_the_night, {"tick"}),
+    Edge("Done with work tonight", done_for_tonight, check_done_for_tonight, {"tick"}),
+    Edge("Eating lunch now", eating_now, check_eating_now, {"tick"}),
+    Edge("Monthly, fortnightly and weekly errands", repeats_of_every_kind, check_repeats_of_every_kind),
 )

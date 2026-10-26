@@ -104,7 +104,8 @@ def other_ways(snapshot: Snapshot, n: int = 2, tries: int = 6) -> list[tuple[dic
     for seed in range(1, tries + 1):
         rng = np.random.default_rng(seed)
         factors = {r: round(float(np.exp(rng.normal(0, 1.0))), 3) for r in rules}
-        changed = dataclasses.replace(snapshot, settings=picked(snapshot.settings, factors, seed))
+        # Made afresh on purpose (`cold_once`): the plan you have doesn't stand against it, or every way were yours.
+        changed = dataclasses.replace(snapshot, settings=picked(snapshot.settings, factors, seed), cold_once=True)
         plan = assemble(changed, solve(changed, warm=False))
         blocks = {(b.item_id, b.start_utc, b.end_utc) for b in plan.blocks}
         if any(blocks == other for other in seen):
@@ -133,7 +134,7 @@ def rule_clash(snapshot: Snapshot, name: str) -> Clash | None:
     costs no other rule: deadlines bend it, or nothing would."""
 
     def by_day(settings: dict[str, Any]) -> dict[str, dict[str, int]]:
-        changed = dataclasses.replace(snapshot, settings=settings)
+        changed = dataclasses.replace(snapshot, settings=settings, cold_once=True)  # both from scratch, as said
         totals = assemble(changed, solve(changed, warm=False)).report.get("rule_totals_by_day", {})
         return {d: t for d, t in totals.items() if d != "other"}
 

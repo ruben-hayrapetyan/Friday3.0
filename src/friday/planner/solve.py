@@ -52,7 +52,8 @@ def solve(snapshot: Snapshot, warm: bool, cancel: np.ndarray | None = None, thre
     overloaded = not edf(deadlines.jobs, deadlines.free).feasible
     config = scheduler_config(snapshot.settings, threads)
     warm = warm and bool(snapshot.plan_blocks) and not snapshot.cold_once
-    result = schedule(problem, config, warm=warm, cancel=cancel, overloaded=overloaded)
+    # A way you picked (`cold_once`) is a plan made afresh on purpose: the one you had doesn't stand against it.
+    result = schedule(problem, config, warm=warm, cancel=cancel, overloaded=overloaded, keep=not snapshot.cold_once)
     lifted = not_gone_to(problem, result.plan)
     if result.stage_values["deadlines"] > 0:  # late anyway: any of those nights may be what the work needs
         for name, days in optional_nights(problem).items():

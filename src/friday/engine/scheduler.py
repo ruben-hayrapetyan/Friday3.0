@@ -88,10 +88,12 @@ def schedule(
     warm: bool = False,
     cancel: np.ndarray | None = None,
     overloaded: bool = False,
+    keep: bool = True,
 ) -> Schedule:
     """Plan `problem`. A warm replan starts from the items' current slots and anneals from a low temperature.
 
     `overloaded` is the executor's verdict that the hard deadlines can't all be met; it gives the fallback longer.
+    `keep`: the plan you have stands unless the new one is better (not when you picked another way on purpose).
     """
     seconds: dict[str, float] = {}
     began = clock = time.perf_counter()
@@ -131,7 +133,7 @@ def schedule(
             outcomes, protected = sample_from(c, candidate, config, warm_steps, True, cancel)
             owner = outcomes[0].owner
         seconds["fallback"] += time.perf_counter() - clock
-    if warm and (kept := better_kept(c, owner)) is not None:
+    if keep and (kept := better_kept(c, owner)) is not None:  # warm or the nightly cold one: yours stands
         owner, protected = kept, []
     result = verified(c, owner, protected, fallback, start.demoted, seconds, config, steps)
     result.cancelled = bool(cancel[0])
@@ -157,7 +159,9 @@ def better_kept(c: Compiled, owner: np.ndarray) -> np.ndarray | None:
     """The plan you have, scored now (kept where it still may be, nothing added), when the new one isn't better.
     A warm start adds back what the plan left out (a meal with no room, say) and anneals from there, so with nothing
     changed it could end elsewhere, even somewhere worse, and every tick moved blocks; now a replan moves the plan
-    only for one that is better, deadlines first, then wellbeing, then preferences (where moving costs)."""
+    only for one that is better, deadlines first, then wellbeing, then preferences (where moving costs). The nightly
+    cold plan too: it searches afresh, but replaces yours only when what it finds is better, so the morning's first
+    replan doesn't reshuffle a third of the week from a fresh plan that wasn't."""
     have = {k: tuple(item.current) for k, item in c.problem.items.items() if item.current}
     if not have:
         return None
