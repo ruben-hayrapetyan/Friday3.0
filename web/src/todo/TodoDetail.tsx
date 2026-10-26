@@ -4,7 +4,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router"
 import type { Block } from "@/api/client"
-import { Icon, Seg } from "@/components/fr/controls"
+import { Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useAreas, useItem, useNow, useWhy } from "@/hooks/queries"
 import { clock, dur, weekday, when } from "@/lib/format"
@@ -133,6 +133,15 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
           <span className="fr-kicker">
             {item.expires == null ? (item.pointless_late ? "As for all exam prep. " : "") : "Your choice for this one. "}
             {item.pointless_late ? "Never planned after it's due." : "Planned late if it can't be on time."}
+          </span>
+        </span>
+        <span className="fr-kicker" title="Laundry, a long simulation, a download: you start it, then it runs while you do other work">
+          Runs by itself
+        </span>
+        <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <Switch on={!!item.background} onToggle={() => edit({ id, background: !item.background })} label="Runs by itself" />
+          <span className="fr-kicker">
+            {item.background ? "Friday holds 15 minutes to start it, then plans other work on top while it runs." : "Off: you work on it the whole time."}
           </span>
         </span>
         <span className="fr-kicker">Estimate</span>

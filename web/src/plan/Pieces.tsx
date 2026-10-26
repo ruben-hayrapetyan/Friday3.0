@@ -70,7 +70,10 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, today, onO
   const kind = done ? "done" : look ? "planned" : kindOf(b)
   const s = skinOf(kind, b.area, { isCur, sel: selected }, b.preset)
   const tall = minutes(b) >= 45
-  const fixedInPlace = done || !!look
+  // A task that runs by itself (laundry): its first quarter hour needs you; the rest is it running, with other work on
+  // top of it, so it's drawn faint and striped and isn't dragged (move it from the to-do instead).
+  const running = !!b.background && !look && !done
+  const fixedInPlace = done || !!look || running
   const missed = look === "missed"
   const [typing, setTyping] = useState(false)
   const time = retime && { typing, span: b, start: () => (setTyping(true), retime.begin()), save: retime.save, stop: () => setTyping(false) }
@@ -81,23 +84,29 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, today, onO
       data-block-key={b.key}
       onClick={onOpen}
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
-      onPointerDown={look ? undefined : onGrab}
+      onPointerDown={look || running ? undefined : onGrab}
       title={
         look === "sitting"
           ? `Timed ${b.title}: ${clock(b.start)}–${clock(b.end)} (${dur(minutes(b))})`
           : missed
             ? `${b.title} was planned ${clock(b.start)}–${clock(b.end)} and not done, so Friday planned it again. Click if you did it.`
-            : `${b.title} ${clock(b.start)}–${clock(b.end)}${b.tentative ? " (could fit here)" : ""}`
+            : running
+              ? `${b.title}: start it at ${clock(b.start)}; it runs by itself until ${clock(b.end)}, with other work on top`
+              : `${b.title} ${clock(b.start)}–${clock(b.end)}${b.tentative ? " (could fit here)" : ""}`
       }
       style={{
         ...box(p),
         touchAction: "none",
         userSelect: "none",
         borderRadius: 6,
-        background: missed ? "transparent" : s.bg,
-        border: missed ? `1px dashed color-mix(in srgb, ${s.stripe} 55%, transparent)` : s.bd,
+        background: missed
+          ? "transparent"
+          : running
+            ? `repeating-linear-gradient(135deg, color-mix(in srgb, ${s.stripe} 14%, transparent) 0 6px, transparent 6px 12px)`
+            : s.bg,
+        border: missed || running ? `1px dashed color-mix(in srgb, ${s.stripe} 55%, transparent)` : s.bd,
         color: missed ? "var(--color-neutral-500)" : s.fg,
-        opacity: missed ? 0.75 : s.op,
+        opacity: missed ? 0.75 : running ? 0.85 : s.op,
         boxShadow: missed ? "none" : s.shadow,
         overflow: typing ? "visible" : "hidden",
         cursor: "pointer",
@@ -115,7 +124,7 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, today, onO
       </div>
       {tall && (
         <TimeLine color={missed ? "var(--color-neutral-600)" : s.sub} time={look ? undefined : time}>
-          {missed ? "Missed · planned again" : `${clock(b.start)}–${clock(b.end)}`}
+          {missed ? "Missed · planned again" : running ? `${clock(b.start)} start · runs by itself` : `${clock(b.start)}–${clock(b.end)}`}
           {look === "sitting" ? ` · ${dur(minutes(b))}` : b.estimated && !look ? ` · ~${dur(minutes(b))}` : ""}
         </TimeLine>
       )}

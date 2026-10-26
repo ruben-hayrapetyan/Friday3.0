@@ -169,6 +169,7 @@ def item_out(ctx: Ctx, item: Item, done_minutes: int = 0) -> ItemOut:
         color=item.color,
         notes=item.notes,
         long_term=item.long_term,
+        background=item.background,
         expires=item.expires,
         pointless_late=pointless_late(item, ctx.settings),
         cushion=item_cushion(ctx, item, area),

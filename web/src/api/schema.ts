@@ -2707,6 +2707,8 @@ export interface components {
             long_term?: boolean | null;
             /** Expires */
             expires?: boolean | null;
+            /** Background */
+            background?: boolean | null;
             /** Buffer Before Min */
             buffer_before_min?: number | null;
             /** Buffer After Min */
@@ -2987,6 +2989,11 @@ export interface components {
             };
             /** State */
             state?: ("done" | "timed" | "missed" | "gone") | null;
+            /**
+             * Background
+             * @default false
+             */
+            background?: boolean;
         };
         /**
          * BriefOut
@@ -3557,6 +3564,8 @@ export interface components {
             long_term?: boolean | null;
             /** Expires */
             expires?: boolean | null;
+            /** Background */
+            background?: boolean | null;
             /** Buffer Before Min */
             buffer_before_min?: number | null;
             /** Buffer After Min */
@@ -4044,6 +4053,11 @@ export interface components {
              * @default false
              */
             long_term?: boolean;
+            /**
+             * Background
+             * @default false
+             */
+            background?: boolean;
             /** Expires */
             expires?: boolean | null;
             /**
@@ -6080,6 +6094,8 @@ export interface components {
             long_term?: boolean | null;
             /** Expires */
             expires?: boolean | null;
+            /** Background */
+            background?: boolean | null;
             /** Buffer Before Min */
             buffer_before_min?: number | null;
             /** Buffer After Min */
@@ -6210,6 +6226,8 @@ export interface components {
             long_term?: boolean | null;
             /** Expires */
             expires?: boolean | null;
+            /** Background */
+            background?: boolean | null;
             /** Buffer Before Min */
             buffer_before_min?: number | null;
             /** Buffer After Min */

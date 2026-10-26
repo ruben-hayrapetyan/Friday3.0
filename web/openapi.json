@@ -9378,6 +9378,17 @@
       ],
       "title": "Expires"
      },
+     "background": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Background"
+     },
      "buffer_before_min": {
       "anyOf": [
        {
@@ -10189,6 +10200,11 @@
        }
       ],
       "title": "State"
+     },
+     "background": {
+      "type": "boolean",
+      "title": "Background",
+      "default": false
      }
     },
     "additionalProperties": false,
@@ -11989,6 +12005,17 @@
       ],
       "title": "Expires"
      },
+     "background": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Background"
+     },
      "buffer_before_min": {
       "anyOf": [
        {
@@ -13375,6 +13402,11 @@
      "long_term": {
       "type": "boolean",
       "title": "Long Term",
+      "default": false
+     },
+     "background": {
+      "type": "boolean",
+      "title": "Background",
       "default": false
      },
      "expires": {
@@ -19406,6 +19438,17 @@
       ],
       "title": "Expires"
      },
+     "background": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Background"
+     },
      "buffer_before_min": {
       "anyOf": [
        {
@@ -20031,6 +20074,17 @@
        }
       ],
       "title": "Expires"
+     },
+     "background": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Background"
      },
      "buffer_before_min": {
       "anyOf": [

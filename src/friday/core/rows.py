@@ -7,7 +7,7 @@ from typing import Any
 from friday.core.items import ITEM_FIELDS, Item
 
 JSON_FIELDS = ("tags", "estimate_detail")
-BOOL_FIELDS = ("blocks_time", "free", "long_term", "detached")
+BOOL_FIELDS = ("blocks_time", "free", "long_term", "detached", "background")
 
 
 def item_to_row(item: Item) -> dict[str, Any]:

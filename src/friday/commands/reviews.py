@@ -15,7 +15,7 @@ from friday.commands.registry import Ctx, command, query
 from friday.commands.sleeping import missing, planned_min, recorded
 from friday.core.db import one, rows
 from friday.core.rows import item_from_row
-from friday.core.time import format_utc, parse_utc
+from friday.core.time import UNIT_MIN, format_utc, parse_utc
 from friday.planner.progress import minutes_by_item, remaining_minutes
 from friday.planner.snapshot import day_overrides, pace_periods
 from friday.planner.store import area_names, current_plan, kv_get
@@ -75,8 +75,10 @@ def brief(ctx: Ctx, inp: Empty) -> BriefOut:
     lo, hi = day_bounds(ctx, ctx.today)
     today = plan(ctx, RangeInput(start=ctx.local(format_utc(lo)), end=ctx.local(format_utc(hi))))
     planned: dict[int, int] = defaultdict(int)
-    for b in today.blocks:
-        planned[b.item_id] += int(parse_utc_local(ctx, b.end) - parse_utc_local(ctx, b.start))
+    for b in today.blocks:  # a task that runs by itself asks only its first quarter hour of you
+        planned[b.item_id] += (
+            UNIT_MIN if b.background else int(parse_utc_local(ctx, b.end) - parse_utc_local(ctx, b.start))
+        )
     saved = current_plan(ctx.conn, ctx.user_id)
     slack = json.loads(saved["report"]).get("slack_minutes", {}) if saved else {}
     soon = format_utc(ctx.now_utc + 48 * 60)

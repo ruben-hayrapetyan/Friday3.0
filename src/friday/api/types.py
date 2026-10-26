@@ -49,6 +49,7 @@ class ItemFields(Model):
     free: bool | None = None
     long_term: bool | None = None
     expires: bool | None = None
+    background: bool | None = None  # runs by itself once started: only its first quarter hour needs you
     buffer_before_min: int | None = None
     buffer_after_min: int | None = None
 
@@ -74,6 +75,7 @@ class ItemOut(Model):
     color: str | None = None
     notes: str = ""
     long_term: bool = False
+    background: bool = False  # runs by itself once started: other work is planned on top of it
     expires: bool | None = None  # your own say on pointless-if-late; None follows the kinds in settings
     pointless_late: bool = False  # what's in effect: never planned after its due
     cushion: float = 1.0  # how far over you consistently run on work like this; the plan reserves that much more
@@ -115,6 +117,7 @@ class BlockOut(Model):
     # timed (a timer sitting covers it: the sitting shows instead), missed (not done: Friday plans it again), gone
     # (the item was deleted or skipped). None for what's still ahead.
     state: Literal["done", "timed", "missed", "gone"] | None = None
+    background: bool = False  # it runs by itself: its first quarter hour needs you, other work goes on top of the rest
 
 
 class ChangeOut(Model):

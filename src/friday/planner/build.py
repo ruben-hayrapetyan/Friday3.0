@@ -369,6 +369,17 @@ def importance(item: Item, kind_order: Sequence[str], short_term_first: bool = F
 
 def with_amount(engine_item: EngineItem, item: Item, inp: BuildInput) -> EngineItem | None:
     progress = engine_item.progress
+    if item.amount == "fixed" and item.background:
+        # It runs by itself: only its first quarter hour needs you, early enough for the rest to run before its due;
+        # once started (any of it done), nothing more is yours to plan.
+        if progress > 0 or not item.duration_units:
+            return None
+        engine_item.need = engine_item.min_chunk = 1
+        running = (item.duration_units - 1) * UNIT_MIN
+        if engine_item.due_utc is not None:
+            engine_item.due_utc -= running
+        engine_item.size_hours = UNIT_MIN / 60
+        return engine_item
     if item.amount == "fixed":
         engine_item.need = max(0, (item.duration_units or 0) - progress)
         if engine_item.need == 0:

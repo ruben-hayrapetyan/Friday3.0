@@ -48,9 +48,16 @@ from friday.planner.store import area_names, current_plan, generation, kv_get, s
 from friday.planner.views import Current, fits_view, now_view
 
 
-def block_out(ctx: Ctx, item_id: int, start: int, end: int, cost: dict | None = None, **extra: Any) -> BlockOut:
+def block_out(
+    ctx: Ctx, item_id: int, start: int, end: int, cost: dict | None = None, running: bool = False, **extra: Any
+) -> BlockOut:
+    """`running`: the calendar's block of a task that runs by itself is its whole length, its quarter hour with you
+    first; everywhere else (the Now bar, what's next) it's the quarter hour."""
     begins = ctx.local(format_utc(start)) or ""
     item = require_item(ctx, item_id)
+    if running and item.background and item.duration_units:
+        end = max(end, start + item.duration_units * UNIT_MIN)
+        extra["background"] = True
     return BlockOut(
         key=f"T{item_id}@{begins}",
         item_id=item_id,
@@ -200,6 +207,7 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
                     parse_utc(r["start_utc"]),
                     parse_utc(r["end_utc"]),
                     json.loads(r["cost"]),
+                    running=True,
                     tentative=bool(r["tentative"]),
                     pinned=pin_kind(pins, r),
                 )
@@ -217,7 +225,9 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
     hours: dict[str, float] = {}
     for b in blocks:
         day = b.start[:10]
-        hours[day] = hours.get(day, 0) + (parse_utc(ctx.utc(b.end)) - parse_utc(ctx.utc(b.start))) / 60
+        # A task that runs by itself asks only its first quarter hour of you.
+        minutes = UNIT_MIN if b.background else parse_utc(ctx.utc(b.end)) - parse_utc(ctx.utc(b.start))
+        hours[day] = hours.get(day, 0) + minutes / 60
     plan_id = saved["id"] if saved else None
     return PlanOut(plan_id=plan_id, blocks=blocks, fixed=fixed, day_hours=hours, sessions=sittings(ctx, lo, hi))
 
