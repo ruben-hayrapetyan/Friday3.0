@@ -268,12 +268,12 @@ def past_states(ctx: Ctx, blocks: list[BlockOut]) -> list[BlockOut]:
             for r in recorded
             if r["item_id"] == b.item_id and parse_utc(r["start_utc"]) < end and parse_utc(r["end_utc"]) > start
         ]
-        if status.get(b.item_id) == "done":
-            states[b.key] = "done"
-        elif status.get(b.item_id) in ("dropped", "skipped"):
+        if status.get(b.item_id) in ("dropped", "skipped"):
             states[b.key] = "gone"
         elif any(r["source"] == "timer" for r in over):
-            states[b.key] = "timed"
+            states[b.key] = "timed"  # finished or not, the sitting is what happened there
+        elif status.get(b.item_id) == "done":
+            states[b.key] = "done"
         elif reviewed := [r for r in over if r["source"] == "review"]:
             states[b.key] = "done" if reviewed[-1]["minutes"] > 0 else "missed"
         else:

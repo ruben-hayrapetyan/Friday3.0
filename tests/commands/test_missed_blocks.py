@@ -103,3 +103,12 @@ def minutes(b: dict) -> int:
     h2, m2 = int(b["end"][11:13]), int(b["end"][14:16])
     day = 0 if b["end"][:10] == b["start"][:10] else 24 * 60
     return (h2 * 60 + m2 + day) - (h1 * 60 + m1)
+
+
+def test_a_finished_items_timed_block_still_gives_way_to_the_sitting(app: App) -> None:
+    essay = an_hour_at_nine(app)
+    app.do("start", id=essay)
+    app.at("2026-10-19T09:40").do("stop", done=True)
+    app.at("2026-10-19T10:30")
+    (block,) = [b for b in planned(app, essay) if b["start"] == "2026-10-19T09:00"]
+    assert block["state"] == "timed"  # not drawn again beside its sitting
