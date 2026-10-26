@@ -233,3 +233,33 @@ def test_time_kept_around_events(text: str, before: int, after: int, said: str) 
 def test_around_leaves_other_rules_alone() -> None:
     assert read("gym right after class")[0].kind == "after"  # type: ignore[union-attr]
     assert read("no work after 10pm")[0].kind == "window"  # type: ignore[union-attr]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "I prefer eating lunch before 1pm",
+        "No work after 10pm on weekdays",
+        "deep work in the morning",
+        "no work between 11:30pm and 7am",
+        "never work on sundays",
+        "reading only on weekends",
+        "keep saturday mornings free",
+        "keep friday and saturday evenings lighter",
+        "keep saturday from 2 to 5 free",
+        "no more than 2h of reading a day",
+        "finish things 2 days early",
+        "gym right after class",
+        "go easier on saturdays",
+        "gym and climbing club are optional",
+        "climbing club only if i'm ahead",
+        "no work after 10pm the night before climbing club",
+        "20 min before gym and 40 min after",
+        "push when necessary so nothing is late",
+    ],
+)
+def test_the_sentence_friday_writes_for_a_rule_reads_back_as_that_rule(text: str) -> None:
+    """The Rules list shows each rule in Friday's words: typed back (or edited a little), it must be the same rule."""
+    reading, _ = read(text)
+    assert reading is not None
+    assert read(sentence(reading))[0] == reading

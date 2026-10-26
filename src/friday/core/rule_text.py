@@ -113,7 +113,7 @@ def days_of(text: str) -> tuple[str, ...] | None:
 
 def read(text: str) -> tuple[Reading | None, Strength]:
     """What a sentence asks for, and how strongly; None when the grammar can't read it."""
-    t = " " + re.sub(r"\s+", " ", text.lower().strip().rstrip(".!")) + " "
+    t = " " + re.sub(r"\s+", " ", text.lower().replace("’", "'").strip().rstrip(".!")) + " "
     strength: Strength = "Prefer"
     if re.search(r"\b(always|never|must|absolutely)\b", t):
         strength = "Always"
@@ -248,7 +248,8 @@ def read_around(t: str, negated: bool) -> Reading | None:
 
 
 AHEAD = (
-    r"(?:'m |am |'re |are |im |'ve |have |'ve got |got )?(?:all |fully |completely |well )?(?:ahead|caught up"
+    r"(?:you ?|we ?)?(?:'m |am |'re |are |im |re |'ve |have |'ve got |got )?(?:all |fully |completely |well )?"
+    r"(?:ahead|caught up"
     r"|on top of|on track|up to date|done with|finished with|(?:have |got )?(?:the |spare |free )?time)"
 )
 # The reason people give after naming the event, typos and all: `because of my workload`, `bc of work`, `, so …`.
@@ -304,7 +305,9 @@ def read_night_before(t: str, negated: bool) -> Reading | None:
 def read_deadlines(t: str, negated: bool) -> Reading | None:
     """Work more when it must, so nothing is late: what `late_work` already does, read last so any other rule wins."""
     late = re.search(r"\b(late|on time|deadlines?|overdue|miss(?:ed|ing)?)\b", t)
-    push = re.search(r"\b(push|harder|more|longer|later|necessary|needed|need|must|have to|whatever|sure|let|be)\b", t)
+    push = re.search(
+        r"\b(push|harder|more|longer|later|necessary|needed|need|must|have to|whatever|sure|let|be|first)\b", t
+    )
     return Reading("deadlines", "work") if late and push else None
 
 
@@ -341,10 +344,10 @@ def span_end(start: str | None, end: str | None, said: str) -> str | None:
 
 def read_free(t: str, negated: bool) -> Reading | None:
     """`keep saturday mornings free` keeps all of it; `keep friday and saturday nights lighter` (or `lighter friday
-    evenings`) about half."""
+    evenings`, or the way Friday writes it back, `keep fri, sat 8pm–11:59pm lighter`) about half."""
     m = re.search(
         rf"(?:keep|make) (?:my )?{DAY_WORDS}? ?(mornings?|afternoons?|evenings?|nights?)? ?"
-        rf"(?:from {TIME} (?:to|until|-) {TIME} )?(free|clear|open|{LIGHTER})\b",
+        rf"(?:(?:from )?{TIME} ?(?:to|until|-|–) ?{TIME} )?(free|clear|open|{LIGHTER})\b",
         t,
     )
     if m and (m[1] or m[2] or m[3]):
