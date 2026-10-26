@@ -507,6 +507,7 @@ def scheduler_config(settings: Mapping[str, Any], threads: int | None = None) ->
         fallback_threshold=engine.fallback_threshold,
         fallback_s=engine.fallback_s,
         fallback_overload_s=engine.fallback_overload_s,
+        fallback_overload_warm_s=engine.fallback_overload_warm_s,
         fallback_warm_s=engine.fallback_warm_s,
         fallback_workers=engine.fallback_workers,
     )

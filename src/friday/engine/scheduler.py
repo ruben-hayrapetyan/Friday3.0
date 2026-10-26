@@ -44,6 +44,7 @@ class SchedulerConfig:
     fallback_threshold: int = 60
     fallback_s: float = 5.0
     fallback_overload_s: float = 15.0
+    fallback_overload_warm_s: float = 5.0
     fallback_warm_s: float = 1.0
     fallback_workers: int = 8
     use_fallback: bool = True
@@ -199,7 +200,10 @@ def deadline_fallback(
         return owner, "none"
     overloaded = overloaded or items_late(c, owner) > 2
     # A warm start keeps the previous plan, which already had its full fallback; a short one finds what changed.
-    seconds = config.fallback_overload_s if overloaded else config.fallback_warm_s if warm else config.fallback_s
+    if overloaded:
+        seconds = config.fallback_overload_warm_s if warm else config.fallback_overload_s
+    else:
+        seconds = config.fallback_warm_s if warm else config.fallback_s
     results = deadline_portfolio(c, owner, seconds, config, cancel)
     found = [r for r in results if r.plan is not None and not check(c.problem, r.plan)]
     if not found:

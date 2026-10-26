@@ -118,6 +118,9 @@ class EngineSettings(Model):
     fallback_threshold: int = 60
     fallback_s: float = 5
     fallback_overload_s: float = 15
+    # A warm replan with work late starts from a plan that had the full overload search: 5 s finds what changed as
+    # well as 15 did in the stress worlds (1 s didn't), so ticks and commands with work late take ~7 s, not ~20.
+    fallback_overload_warm_s: float = 5
     fallback_warm_s: float = 1
     fallback_workers: int = 8
     move_weights: dict[str, float] = Field(default_factory=lambda: dict(DEFAULT_MOVE_WEIGHTS))

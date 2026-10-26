@@ -14,4 +14,4 @@ def fast(steps: int = 30_000, chains: int = 1, threads: int = 1, policy: str | N
                              policy=policy or base.sampler.policy, **sampler)  # fmt: skip
     return replace(base, sampler=sampler_config, step_budgets=(StepBudget(10**6, steps, steps // 2),),
                    repair_steps=50_000, use_fallback=fallback, fallback_s=fallback_s, fallback_overload_s=fallback_s,
-                   fallback_workers=4)  # fmt: skip
+                   fallback_overload_warm_s=fallback_s, fallback_workers=4)  # fmt: skip
