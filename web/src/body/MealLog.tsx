@@ -1,6 +1,6 @@
 // Sleep & meals → Meals: the switch, "Eating now" and "Done eating" (the Now bar's taps, for when you missed one), a
 // meal to log after the fact or a skipped one, and every meal of the last two weeks with its times to change or take
-// back. Eating or skipping a meal ticks off that day's Lunch or Dinner routine. What they say is in Insights.
+// back. Eating or skipping a meal ticks off that day's Lunch or Dinner routine. What they say is above it.
 
 import { useState } from "react"
 import type { Schemas } from "@/api/client"

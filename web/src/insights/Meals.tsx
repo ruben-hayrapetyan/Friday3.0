@@ -1,5 +1,5 @@
-// Meals (Insights): what your tracked meals say, while tracking is on (Sleep & meals has the switch, and the meals to
-// log or put right). When you usually eat each meal, how much that moves, how long it takes and how often you skip it,
+// Meals (Sleep & meals → Meals, above the meals to log or put right): what your tracked meals say, while tracking is
+// on (the switch is below it). When you usually eat each meal, how much that moves, how long it takes and how often you skip it,
 // weekdays and weekends apart; the last two weeks on one timeline from 6am to 2am; and what's learned offered with one
 // click each: a routine's length when you take longer or shorter, its window when you eat well outside it, and a meal
 // planned when you have it most days (or no longer, when you mostly skip it). Meals a rule leaves to Friday ("Let
@@ -37,14 +37,16 @@ export function skipSaid(share: number | null | undefined): string {
   return share > 0.4 ? `skipped ${Math.round(share * 100)}% of days` : `skipped about 1 day in ${one}`
 }
 
-export function MealsSection() {
+/** `here`: on Sleep & meals itself, with no link to it, and nothing while tracking is off (its switch is below). */
+export function MealsSection({ here = false }: { here?: boolean }) {
   const meals = useMeals().data
   const navigate = useNavigate()
-  const log = (
+  const log = here ? undefined : (
     <button className="fr-link" onClick={() => navigate("/body?tab=meals")} style={{ fontSize: 12 }}>
       {meals?.on ? "Log or fix a meal" : "Turn it on in Sleep & meals"}
     </button>
   )
+  if (!meals?.on && here) return null
   if (!meals?.on)
     return (
       <Section title="Meals" note="Not tracked. Track your meals and Friday learns when you eat, for how long and what you skip." right={log}>
@@ -55,7 +57,7 @@ export function MealsSection() {
   return (
     <Section title="Meals" note="When you eat, for how long, and what you skip" right={log}>
       <Usual learned={meals.learned ?? []} minDays={meals.min_days ?? 4} />
-      {days.length ? <Timeline days={days} /> : <span style={{ color: "var(--color-neutral-400)" }}>No meals yet. Tap “Eating now” in the Now bar around a mealtime, or log one in Sleep &amp; meals.</span>}
+      {days.length ? <Timeline days={days} /> : <span style={{ color: "var(--color-neutral-400)" }}>No meals yet. Tap “Eating now” in the Now bar around a mealtime, or log one {here ? "below" : <>in Sleep &amp; meals</>}.</span>}
       <Offers meals={meals} />
     </Section>
   )

@@ -1,5 +1,5 @@
 // Sleep & meals → Sleep: the switch, the Now bar's four taps for when you missed one, a night to log after the fact
-// or put right, and every night of the last two weeks with each time to change. What they say is in Insights.
+// or put right, and every night of the last two weeks with each time to change. What they say is above it.
 
 import { useState } from "react"
 import type { Schemas } from "@/api/client"

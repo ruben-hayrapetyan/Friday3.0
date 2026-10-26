@@ -1,5 +1,5 @@
 // Track my sleep and Track my meals (Settings → Schedule, and Sleep & meals): each off until you turn it on. Logging
-// a night or a meal, and putting one right, is in Sleep & meals; what Friday learned from them is in Insights; the Now
+// a night or a meal, and putting one right, is in Sleep & meals, with what Friday learned from them; the Now
 // bar offers the tap that fits the hour. The night rows and their fixable times are shared with Sleep & meals.
 
 import { useState } from "react"
