@@ -350,6 +350,14 @@ VERBS = {
         True,
         "Use, or stop using, learned durations or the learned energy map (your approval in suggest mode).",
     ),
+    "learn_order": Verb(
+        "POST",
+        "/api/c/learn_order",
+        commands.LearnOrderInput,
+        True,
+        True,
+        "Plan one kind ahead of another from now, as you've been doing them (`kind_order`), or don't ask again.",
+    ),
     "learn_reject": Verb(
         "POST", "/api/c/learn_reject", commands.VersionInput, True, False, "Turn down a suggested profile."
     ),

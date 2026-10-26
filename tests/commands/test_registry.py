@@ -385,6 +385,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "template_apply": lambda app: {"template": "Essay", "title": "essay", "hours": 6, "due": "2026-10-30T17:00"},
     "template_save": lambda app: {"name": "Mine", "project_id": template_project(app)},
     "undo": lambda app: {"command_id": app.full("add", payload={"text": "x ~30m"}).command_id},
+    "learn_order": lambda app: {"first": "Reading", "then": "Assignment", "use": True},
     "whatif_keep": lambda app: {
         "changes": [
             {"command": "add", "input": {"text": "coffee with Sam tue 3pm-4pm"}},

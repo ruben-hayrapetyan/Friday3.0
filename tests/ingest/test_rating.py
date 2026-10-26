@@ -73,3 +73,28 @@ def test_a_rating_only_guessed_from_the_title_is_asked_again_once_a_day(tmp_path
     ratings = json.loads(app.conn.execute("SELECT value FROM kv WHERE key = 'event_ratings'").fetchone()[0])
     assert ratings["book club"] == {"level": "optional", "reason": "a hobby"}
     assert rate_upcoming(app.conn, app.now_utc + 2 * 1440, client=ai) == 0  # answered: never asked again
+
+
+def test_an_event_no_category_finds_gets_the_one_the_ai_names() -> None:
+    # 26 Oct: "Dinner with Sam" matched no category's words and wore no colour.
+    ai = Answering(json.dumps({"events": [
+        {"title": "Dinner with Sam", "level": "likely", "reason": "a plan with a friend", "category": "Social"},
+        {"title": "Bike repair", "level": "optional", "reason": "an errand", "category": "Nothing like it"},
+    ]}))  # fmt: skip
+    out = rate(["Dinner with Sam", "Bike repair"], ai, "m", ["Social", "Classes"])
+    assert out["dinner with sam"]["category"] == "Social" and out["bike repair"]["category"] == ""
+    asked = ai.asked[0]
+    assert "Social; Classes" in asked["system"]
+    assert "category" in asked["output_config"]["format"]["schema"]["properties"]["events"]["items"]["required"]
+
+
+def test_the_category_the_ai_named_colours_the_event(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    app.do("settings_set", key="categories", value={"categories": [{"name": "Social", "slug": "social", "color": "pink",
+                                                                    "pattern": "poker"}]})  # fmt: skip
+    app.do("add", title="Dinner with Sam", when="fixed", start="2026-10-20T19:00", end="2026-10-20T21:00")
+    ai = Answering(json.dumps({"events": [
+        {"title": "Dinner with Sam", "level": "likely", "reason": "plans", "category": "Social"}]}))  # fmt: skip
+    rate_upcoming(app.conn, app.now_utc, client=ai)
+    (dinner,) = app.do("plan", start="2026-10-20T00:00", end="2026-10-21T00:00")["fixed"]
+    assert (dinner["category"], dinner["category_color"]) == ("Social", "pink")

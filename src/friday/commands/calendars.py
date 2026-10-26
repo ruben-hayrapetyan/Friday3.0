@@ -11,6 +11,7 @@ from friday.api.commands import CalendarSetInput, Changed
 from friday.api.types import Empty
 from friday.api.views import GoogleCalendarOut
 from friday.commands.registry import Ctx, command, query
+from friday.core.calendars import nearest_pigment
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.time import format_local, format_utc, parse_utc, to_local
@@ -45,6 +46,7 @@ def google_calendars(ctx: Ctx, inp: Empty) -> list[GoogleCalendarOut]:
                 writable=c.get("writable", False),
                 editable=editable(config, c),
                 account=c.get("account") or None,
+                color=nearest_pigment(c.get("color")),
             )
         )
     return sorted(out, key=lambda c: natural(c.name))

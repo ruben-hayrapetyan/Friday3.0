@@ -6,7 +6,8 @@ from typing import Any
 from friday.api.types import ItemFields, ItemOut
 from friday.commands.eventwrites import writes_to
 from friday.commands.registry import Ctx
-from friday.core.calendars import category_of, event_key, is_filtered, left_out
+from friday.core.calendars import Category, category_of, event_key, is_filtered, left_out, nearest_pigment, rating_key
+from friday.core.db import rows
 from friday.core.items import FieldError, Item, apply_preset, validate, with_defaults
 from friday.core.rows import item_to_row
 from friday.core.textnorm import plain_words
@@ -124,20 +125,68 @@ def saves(ctx: Ctx, source_id: int) -> bool:
     return bool(ctx.memo[key])
 
 
+def calendar_colors(ctx: Ctx) -> dict[str, str]:
+    """Each calendar's own colour, as a paint, by name: Google's and the Mac's (the Mac's win, as you see them)."""
+    if "calendar_colors" not in ctx.memo:
+        found: dict[str, str] = {}
+        for key in ("google_calendars", "mac_calendars"):
+            for c in kv_get(ctx.conn, key, [], ctx.user_id) or []:
+                paint = nearest_pigment(c.get("color"))
+                if paint:
+                    found[c.get("source_name", c["name"])] = paint
+                    found[c["name"]] = paint
+        ctx.memo["calendar_colors"] = found
+    return ctx.memo["calendar_colors"]
+
+
+def own_color(ctx: Ctx, calendar: str) -> str | None:
+    """A calendar's colour when you chose none in Settings: its own, in Google or on the Mac (26 Oct: you chose none,
+    so no event wore its calendar's colour)."""
+    return calendar_colors(ctx).get(calendar)
+
+
+def going_to(ctx: Ctx, item_id: int | None) -> str | None:
+    """The calendar an event you made here is on its way to (saved within the minute), by name."""
+    if item_id is None:
+        return None
+    if "going_to" not in ctx.memo:
+        names = {
+            c["id"]: c.get("source_name", c["name"]) for c in kv_get(ctx.conn, "google_calendars", [], ctx.user_id)
+        }
+        found = rows(
+            ctx.conn,
+            "SELECT item_id, calendar_id FROM event_writes WHERE user_id = ? AND calendar_id IS NOT NULL",
+            [ctx.user_id],
+        )
+        ctx.memo["going_to"] = {r["item_id"]: names.get(r["calendar_id"]) for r in found}
+    return ctx.memo["going_to"].get(item_id)
+
+
+def guessed_category(ctx: Ctx, title: str) -> Category | None:
+    """The category Claude chose for an event no category's words find ("Dinner with Sam" is Social), kept with its
+    rating (`commands/rating.py`)."""
+    if "event_ratings" not in ctx.memo:
+        ctx.memo["event_ratings"] = kv_get(ctx.conn, "event_ratings", {}, ctx.user_id) or {}
+    named = (ctx.memo["event_ratings"].get(rating_key(title)) or {}).get("category")
+    return next((c for c in ctx.settings["categories"].categories if c.name == named), None) if named else None
+
+
 def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
     """An event's calendar, category and whether it counts as busy (COMBINED.md 17, 28)."""
     if item.when != "fixed":
         return {}
     link = links(ctx).get(item.id or 0)
-    calendar = link.calendar if link else None
-    category = category_of(item.title, ctx.settings["categories"])
+    calendar = link.calendar if link else going_to(ctx, item.id)
+    category = category_of(item.title, ctx.settings["categories"]) or guessed_category(ctx, item.title)
     reason = left_out(item.title, calendar, item.free, ctx.settings["categories"], ctx.settings["busy"])
     if "chroma_colors" not in ctx.memo:
         ctx.memo["chroma_colors"] = kv_get(ctx.conn, "chroma_colors", {}, ctx.user_id) or {}
     return {
         "chroma_color": ctx.memo["chroma_colors"].get(event_key(link.event_id)) if link else None,
         "calendar": calendar,
-        "calendar_color": ctx.settings["calendar_look"].colors.get(calendar) if calendar else None,
+        "calendar_color": (ctx.settings["calendar_look"].colors.get(calendar) or own_color(ctx, calendar))
+        if calendar
+        else None,
         "saves_to_calendar": bool(link) and saves(ctx, link.source_id),
         "category": category.name if category else None,
         "category_color": category.color if category else None,

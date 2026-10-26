@@ -16,6 +16,7 @@ from friday.planner.prepare import build_input
 from friday.planner.service import plan_snapshot, replan
 from friday.planner.snapshot import take_snapshot
 from friday.planner.solve import prepared_problem
+from friday.planner.store import kv_get
 from tests.commands.helpers import TZ, App, new_app
 
 
@@ -838,3 +839,46 @@ def test_shove_asks_before_clearing_time_work_needs_when_the_rest_is_slivers(tmp
     replan(app.conn, app.now_utc)
     out = app.do("shove", range="20:00-21:30")
     assert [m["title"] for m in out["must_do"]] == ["Report"] and not out["created"]
+
+
+def test_starting_something_else_than_planned_is_learned_as_an_order(tmp_path: Path) -> None:
+    # 26 Oct: doing things in another order than Friday planned taught it nothing. Now each start over what's planned
+    # right then is kept; four Readings started over the planned Assignment offer to plan Readings first.
+    app = new_app(tmp_path)
+    for n in range(4):
+        pset = app.do("add", title=f"PS{n}", preset="Assignment", duration_min=60, due="2026-10-24T23:00")["item"]["id"]
+        read = app.do("add", title=f"Read {n}", preset="Reading", duration_min=60, due="2026-10-25T23:00")["item"]["id"]
+        app.do("pin", id=pset, start="2026-10-19T09:00", end="2026-10-19T10:00", kind="locked")
+        replan(app.conn, app.now_utc)
+        app.do("start", id=read)
+        app.do("stop")
+        app.do("done", id=pset)
+        app.do("done", id=read)
+    kept = kv_get(app.conn, "order_choices", [])
+    assert [(c["chose_kind"], c["over_kind"]) for c in kept] == [("Reading", "Assignment")] * 4
+    assert len([r for r in app.table("comparisons") if r["source"] == "drag"]) >= 3  # your order won, as a drag
+    order = app.do("learning")["order"]
+    assert (order["first"], order["then"], order["chose"], order["of"]) == ("Reading", "Assignment", 4, 4)
+    app.do("learn_order", first="Reading", then="Assignment", use=True)
+    assert app.do("settings")["kind_order"][:2] == ["Reading", "Assignment"]
+    assert app.do("learning")["order"] is None
+
+
+def test_starting_what_is_planned_now_or_in_free_time_is_no_choice(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    essay = app.do("add", title="Essay", duration_min=60, due="2026-10-24T23:00")["item"]["id"]
+    app.do("pin", id=essay, start="2026-10-19T09:00", end="2026-10-19T10:00", kind="locked")
+    replan(app.conn, app.now_utc)
+    app.do("start", id=essay)  # what's planned
+    app.do("stop")
+    assert not kv_get(app.conn, "order_choices", [])
+
+
+def test_a_half_hour_timed_on_other_work_counts_as_worked() -> None:
+    # Working on something else than planned isn't work slipping: the hours you work stay good hours.
+    from friday.commands.learned import timed_through
+
+    worked = [(600, 640), (700, 710)]
+    assert timed_through(worked, 600, 630)  # all of it
+    assert timed_through(worked, 620, 650)  # 20 of 30 minutes
+    assert not timed_through(worked, 690, 720)  # 10 of 30

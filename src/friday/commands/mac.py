@@ -21,6 +21,7 @@ from friday.api.views import GoogleCalendarOut, MacWriteOut
 from friday.commands.calendars import editable, natural, source_of
 from friday.commands.eventwrites import MAX_TRIES, event_body, event_digest, renamed
 from friday.commands.registry import Ctx, command, query
+from friday.core.calendars import nearest_pigment
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.time import format_local, local_midnight, parse_utc, to_local, to_utc
@@ -78,6 +79,7 @@ def mac_calendars(ctx: Ctx, inp: Empty) -> list[GoogleCalendarOut]:
                 last_sync=format_local(to_local(parse_utc(synced), ctx.tz)) if synced else None,
                 error=source["last_error"] if source else None,
                 writable=c.get("writable", False),
+                color=nearest_pigment(c.get("color")),
                 editable=editable(config, c),  # the Mac app saves changes made here back to it
                 account=c.get("account") or None,
                 also_google=c["name"] in google,

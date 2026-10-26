@@ -15,6 +15,7 @@ class AddInput(ItemFields):
     before: list[int] = []
     every: str | None = None  # repeat shorthand (DESIGN §6.3) or `rrule:…`
     per_window: int | None = None
+    calendar: str | None = None  # an event's Google calendar (its id): "" for only Friday, else "New events go to"
 
 
 class AddOutput(Model):
@@ -606,6 +607,12 @@ class VersionInput(Model):
 
 class ResetInput(Model):
     module: Literal["weights", "state", "proposals", "durations", "energy", "all"] = "all"
+
+
+class LearnOrderInput(Model):
+    first: str
+    then: str
+    use: bool  # plan `first` ahead of `then` from now (kind_order), or don't offer it again
 
 
 class LearnModuleInput(Model):

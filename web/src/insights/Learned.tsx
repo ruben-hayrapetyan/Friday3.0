@@ -1,6 +1,6 @@
 // What Friday learned (v22 Insights): each suggestion with why, Approve or Not now; once answered, what you chose
-// with Undo. Suggestions are a new set of weights, a proposed rule, keeping a "never" hard, learned lengths, and the
-// hours your plans tend to slip.
+// with Undo. Suggestions are a new set of weights, a proposed rule, keeping a "never" hard, learned lengths, the
+// hours your plans tend to slip, and a kind you keep doing before another that's planned first.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
@@ -27,6 +27,7 @@ export function Learned() {
   const reject = useCommand("learn_reject", { label: (o) => o.result.message ?? "Kept as it was" })
   const answer = useCommand("proposal_answer", { label: (o) => o.result.message ?? "Thanks" })
   const use = useCommand("learn_module", { label: (o) => o.result.message ?? "Saved" })
+  const order = useCommand("learn_order", { label: (o) => o.result.message ?? "Saved" })
   const client = useQueryClient()
   const toast = useToast()
   const [closed, setClosed] = useState<Record<string, { state: string; id: number | null }>>({})
@@ -59,6 +60,18 @@ export function Learned() {
   const energy = learning?.energy as { in_use: boolean; worst: { day: string; time: string }[] } | null | undefined
   if (energy?.worst.length && !energy.in_use) {
     items.push({ key: "energy", icon: "battery-low", title: "Plan less deep work when it tends to slip", why: `Planned work often slips around ${energy.worst.slice(0, 3).map((w) => `${w.day} ${w.time}`).join(", ")}.`, yes: () => use({ module: "energy", use: true }), no: async () => ({ command_id: null }) })
+  }
+  const first = learning?.order
+  if (first) {
+    const plural = (kind: string) => (kind.endsWith("s") ? kind : `${kind}s`)
+    items.push({
+      key: `order${first.first}>${first.then}`,
+      icon: "sort-ascending",
+      title: `Plan ${plural(first.first)} before ${plural(first.then)}`,
+      why: `You started a ${first.first} instead of the ${first.then} planned then ${first.chose} of ${first.of} times.`,
+      yes: () => order({ first: first.first, then: first.then, use: true }),
+      no: () => order({ first: first.first, then: first.then, use: false }),
+    })
   }
   const shown = [...items, ...Object.keys(closed).filter((k) => !items.some((i) => i.key === k)).map((k) => ({ key: k, closedOnly: true }))]
   const act = async (s: Suggestion, yes: boolean) => {

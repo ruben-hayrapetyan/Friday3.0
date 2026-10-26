@@ -59,3 +59,11 @@ def test_events_left_out_of_planning_say_why() -> None:
     assert left_out("CS 2110 Lec", "Classes", False, RULES, busy) is None
     counted = BusySettings(count_filtered=True, count_free=True, count_reminders=True)
     assert left_out("CS 2110 Office Hours", "Classes", True, RULES, counted) is None
+
+
+def test_a_calendar_s_own_colour_is_matched_to_the_nearest_paint() -> None:
+    from friday.core.calendars import nearest_pigment
+
+    assert [nearest_pigment(c) for c in ("#0088ff", "#ff8d28", "#16a765", "#cb30e0", "#f83a22", "#9e9e9e")] == [
+        "blue", "orange", "green", "violet", "red", "graphite"]  # fmt: skip
+    assert nearest_pigment(None) is None and nearest_pigment("blue") is None

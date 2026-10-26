@@ -159,7 +159,7 @@ export function CalendarsSection() {
       <Field name="This Mac’s calendars" note="Sent by the Mac app. Choose which Friday reads, and whether their events skip the Inbox. One you switch off leaves your calendar, its events and repeats coming back if you switch it on again.">
         <Calendars mac />
       </Field>
-      <Field name="New events go to" note="Events you make in Friday are saved to this Google calendar too, and follow it from then on. Kept only in Friday when none is chosen.">
+      <Field name="New events go to" note="Your default calendar: events you make in Friday are saved to it too, wear its colour, and follow it from then on. Each new event can choose another in its drawer. Kept only in Friday when none is chosen.">
         <select
           className="input"
           value={(settings.gcal as { new_events_to?: string | null }).new_events_to ?? ""}

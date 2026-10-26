@@ -8,6 +8,7 @@ import type { Item } from "@/api/client"
 import { FitLine } from "@/components/Fit"
 import { Icon, Menu, Switch } from "@/components/fr/controls"
 import { useItem, useSettings } from "@/hooks/queries"
+import { useCalendars } from "@/settings/Calendars"
 import { useCommand } from "@/hooks/useCommand"
 import { clock, weekday } from "@/lib/format"
 import { PIGMENTS, pigment, UNMARKED } from "@/lib/pigments"
@@ -108,14 +109,22 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   useEffect(() => setAsking(false), [draft.id])
   const day = draft.start.slice(0, 10)
   const lastDay = draft.allDay ? addDays(draft.end.slice(0, 10), -1) : day
-  const autoName = draft.auto?.color ? `${PIGMENTS.find((p) => p.id === draft.auto?.color)?.name ?? draft.auto.color}, ${draft.auto.from}` : `Unmarked, ${draft.auto?.from ?? "no category matches"}`
+  // Where a new event is saved (26 Oct: they stayed only in Friday, and wore no colour): your choice here, else
+  // Settings' "New events go to". It wears that calendar's colour until a category or a colour of its own says else.
+  const settings = useSettings().data as { gcal?: { new_events_to?: string | null } } | undefined
+  const writable = (useCalendars().data ?? []).filter((c) => c.writable)
+  const accounts = new Set(writable.map((c) => c.account)).size
+  const saveTo = draft.saveTo ?? settings?.gcal?.new_events_to ?? ""
+  const savingTo = writable.find((c) => c.id === saveTo)
+  const auto = draft.auto ?? (isNew && savingTo?.color ? { color: savingTo.color, from: savingTo.name } : undefined)
+  const autoName = auto?.color ? `${PIGMENTS.find((p) => p.id === auto?.color)?.name ?? auto.color}, ${auto.from}` : `Unmarked, ${auto?.from ?? "no category matches"}`
   const valid = draft.title.trim() !== "" && (draft.allDay ? lastDay >= day : toMin(draft.end) > toMin(draft.start))
   const close = () => setEvent(null)
   const save = async () => {
     if (!valid) return
     const fields = { title: draft.title.trim(), start: draft.start, end: draft.end, color: draft.color, notes: draft.notes, blocks_time: !draft.allDay }
     const done = isNew
-      ? await add({ ...fields, when: "fixed", ...(draft.every ? { every: draft.every } : {}) })
+      ? await add({ ...fields, when: "fixed", ...(draft.saveTo !== undefined ? { calendar: savingTo ? saveTo : "" } : {}), ...(draft.every ? { every: draft.every } : {}) })
       : await edit({ id: draft.id as number, ...fields })
     if (done) close()
   }
@@ -210,6 +219,24 @@ export function EventPane({ draft }: { draft: EventDraft }) {
         {summary(draft)}
       </span>
       <EventFit draft={draft} onTime={(start, end) => set({ start, end })} />
+      <Row label="Calendar">
+        {isNew ? (
+          <select className="input" value={savingTo ? saveTo : ""} onChange={(e) => set({ saveTo: e.target.value })} aria-label="Calendar" style={{ ...field, maxWidth: 220 }}>
+            <option value="">Only Friday</option>
+            {writable.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+                {accounts > 1 && c.account && c.account !== c.name ? ` · ${c.account}` : ""}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span style={{ fontSize: 13, color: "var(--color-neutral-300)" }} title={draft.calendar && !draft.savesToCalendar ? "Changes here stay in Friday: switch on “Save changes” for this calendar in Settings → Calendars" : undefined}>
+            {draft.calendar ?? "Only Friday"}
+            {draft.calendar && !draft.savesToCalendar && <span style={{ color: "var(--color-neutral-500)" }}> · changes stay in Friday</span>}
+          </span>
+        )}
+      </Row>
       {isNew ? (
         <Row label="Repeats">
           <Menu options={REPEATS} value={(draft.every ?? "") as (typeof REPEATS)[number]["value"]} onPick={(v) => set({ every: v || null })} label="Repeats" />
@@ -233,7 +260,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
             title={`Automatic: ${autoName}`}
             aria-label="Automatic"
             aria-checked={draft.color === null}
-            style={{ ...swatch, background: pigment(draft.auto?.color, light) ?? UNMARKED, boxShadow: ring(draft.color === null), display: "grid", placeItems: "center" }}
+            style={{ ...swatch, background: pigment(auto?.color, light) ?? UNMARKED, boxShadow: ring(draft.color === null), display: "grid", placeItems: "center" }}
           >
             <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", lineHeight: 1 }}>A</span>
           </button>

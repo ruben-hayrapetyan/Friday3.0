@@ -35,6 +35,7 @@ def calendars(service: Any) -> list[dict[str, Any]]:
             "name": c.get("summaryOverride") or c.get("summary") or c["id"],
             "primary": bool(c.get("primary")),
             "writable": c.get("accessRole", "owner") in ("owner", "writer"),
+            "color": c.get("backgroundColor"),  # its colour in Google, for its events when you chose none
         }
         for c in paged(service.calendarList())
     ]

@@ -118,7 +118,9 @@ def scores(conn: sqlite3.Connection, settings: dict[str, Any], found: list, done
 
 
 def fit_energy(conn: sqlite3.Connection, settings: dict[str, Any], now_utc: int, user_id: int) -> dict | None:
-    """Whether each day's deep and light blocks happened as planned (§21.7), half hour by half hour."""
+    """Whether each day's deep and light blocks happened as planned (§21.7), half hour by half hour. A half hour you
+    timed other work through counts as worked: the map is about when you work, and doing things in another order
+    than planned had marked those hours as ones where work slips (26 Oct)."""
     tz, day_start = settings["time"].timezone, settings["time"].grid_spec().day_start
     today = planning_date(now_utc, tz, day_start)
     is_default = default_pace_days(conn, settings, user_id)
@@ -143,6 +145,7 @@ def fit_energy(conn: sqlite3.Connection, settings: dict[str, Any], now_utc: int,
             [user_id],
         )
     }
+    worked = sorted(s[:2] for found in sessions.values() for s in found)  # every timed session, on anything
     seen = []
     for back in range(1, ENERGY_DAYS + 1):
         day = today - timedelta(days=back)
@@ -157,10 +160,17 @@ def fit_energy(conn: sqlite3.Connection, settings: dict[str, Any], now_utc: int,
             speed = (sum(s[2] for s in timed) / max(1, end - start)) if timed else None
             for minute in range(start, end, 30):
                 local = to_local(minute, tz)
-                seen.append(Seen(local.weekday(), (local.hour * 60 + local.minute) // 30, happened, speed))
+                busy = happened or timed_through(worked, minute, min(end, minute + 30))
+                seen.append(Seen(local.weekday(), (local.hour * 60 + local.minute) // 30, busy, speed))
     if not seen:
         return None
     return {"prices": prices(seen), "observations": len(seen), "fitted_utc": format_utc(now_utc)}
+
+
+def timed_through(worked: list[tuple[int, int]], lo: int, hi: int) -> bool:
+    """Whether timed work, on anything, covers most of [lo, hi)."""
+    covered = sum(max(0, min(b, hi) - max(a, lo)) for a, b in worked if a < hi and b > lo)
+    return covered * 2 >= hi - lo
 
 
 def day_plan(ctx: Ctx, day: date) -> list[dict[str, Any]]:

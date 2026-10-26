@@ -24,9 +24,10 @@ from friday.commands.items import done
 from friday.commands.refit import refit
 from friday.commands.registry import Ctx, command
 from friday.commands.timer import running, started_text, stop_timer, timer_out, write_progress
-from friday.core.db import rows
+from friday.core.db import one, rows
 from friday.core.items import FieldError, Item
 from friday.core.time import UNIT_MIN, format_utc, local_midnight, parse_local, parse_utc, planning_date, to_utc
+from friday.learn.order import KEPT
 from friday.planner.prepare import block_key
 from friday.planner.progress import minutes_by_item
 from friday.planner.store import current_plan, kv_get
@@ -63,7 +64,26 @@ def start(ctx: Ctx, inp: StartInput) -> TimerOut:
     if item.certainty == "tentative":
         ctx.db.update("items", {"id": inp.id}, {"certainty": "planned", "updated_utc": ctx.now_text})
     ctx.db.insert("timer", {"item_id": inp.id, "start_utc": started_text(ctx)})
+    chose_over(ctx, item)
     return timer_out(ctx, running(ctx) or {}, f"Timing {item.title}")
+
+
+def chose_over(ctx: Ctx, item: Item) -> None:
+    """Starting something other than what's planned right now is a choice Friday learns from (26 Oct): which kind
+    you chose over which (`learn/order.py`), and, like a block you dragged, your plan winning over its own."""
+    planned = one(
+        ctx.conn,
+        "SELECT b.item_id, i.preset FROM blocks b JOIN plans p ON p.id = b.plan_id JOIN items i ON i.id = b.item_id "
+        "WHERE p.user_id = ? AND p.status = 'current' AND b.start_utc <= ? AND b.end_utc > ? AND i.status = 'todo' "
+        "AND i.when_kind != 'fixed' ORDER BY b.start_utc LIMIT 1",
+        [ctx.user_id, ctx.now_text, ctx.now_text],
+    )
+    if planned is None or planned["item_id"] == item.id:
+        return
+    kept = kv_get(ctx.conn, "order_choices", [], ctx.user_id) or []
+    chose = {"at": ctx.now_text, "command_id": ctx.command_id, "chose": item.id, "chose_kind": item.preset,
+             "over": planned["item_id"], "over_kind": planned["preset"]}  # fmt: skip
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "order_choices"}, {"value": json.dumps([*kept, chose][-KEPT:])})
 
 
 FRICTION_KEPT = 200

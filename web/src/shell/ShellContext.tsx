@@ -21,6 +21,7 @@ export interface EventDraft {
   every: string | null // a new event's repeat, as `rrule:…`
   seriesId: number | null
   calendar: string | null // the calendar it came from
+  saveTo?: string // a new event's Google calendar (its id), "" for only Friday; Settings' "New events go to" when unset
   savesToCalendar: boolean // changes here are saved back to it
   auto?: { color: string | null; from: string } // the colour it wears with no pigment of its own, and why
 }

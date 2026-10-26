@@ -20,7 +20,7 @@ from friday.planner.learning import learnable
 from friday.planner.prepare import build_input
 from friday.planner.snapshot import Snapshot, read_snapshot, take_snapshot
 from friday.planner.solve import solve
-from friday.planner.store import current_plan
+from friday.planner.store import current_plan, kv_get
 
 MAX_PIN_CHECKS = 10
 
@@ -121,8 +121,13 @@ def write_plan(
 
 def record_drag(conn: sqlite3.Connection, snapshot: Snapshot, before: dict, after: dict) -> None:
     """A block you moved is a comparison your version won (DESIGN §21.1): the plan with your pin against the plan
-    before it, by learnable rule. Not right after a pace or rule change: moves then reflect it, not your taste."""
-    moved = any(c["command"] == "pin" and c["actor"] == "you" for c in snapshot.log_since_plan)
+    before it, by learnable rule. So is starting something other than what was planned right then (`chose_over`):
+    your order won. Not right after a pace or rule change: moves then reflect it, not your taste."""
+    chosen = {c.get("command_id") for c in kv_get(conn, "order_choices", [], snapshot.user_id) or []}
+    moved = any(
+        c["actor"] == "you" and (c["command"] == "pin" or (c["command"] == "start" and c["id"] in chosen))
+        for c in snapshot.log_since_plan
+    )
     if not moved or snapshot.next_stability is not None:
         return
     scale = snapshot.settings["engine"].scale

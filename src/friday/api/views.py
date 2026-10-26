@@ -285,6 +285,13 @@ class QuestionsOut(Model):
     checkin: bool
 
 
+class OrderOut(Model):
+    first: str  # the kind you start first (Reading)
+    then: str  # over this one, planned then (Assignment)
+    chose: int
+    of: int
+
+
 class LearningOut(Model):
     mode: str  # learn.weights
     version: int  # the profile in use; 0 before anything was learned
@@ -298,6 +305,7 @@ class LearningOut(Model):
     digest: list[str]
     durations: dict[str, Any] | None = None  # learned lengths: in use, n, error against the old estimator
     energy: dict[str, Any] | None = None  # learned hours: in use, observations, the hours where work slips most
+    order: OrderOut | None = None  # a kind you keep starting before another that's planned first
 
 
 class SuggestionOut(Model):
@@ -358,6 +366,7 @@ class GoogleCalendarOut(Model):
     editable: bool = False  # changes made in Friday are saved back to it
     account: str | None = None  # the Google account it's read through, or a Mac calendar's account
     also_google: bool = False  # a Mac calendar Friday also reads from Google, under the same name
+    color: str | None = None  # the paint nearest its own colour (in Google, or on the Mac)
 
 
 class GoogleAccountOut(Model):

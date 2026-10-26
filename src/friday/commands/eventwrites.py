@@ -32,15 +32,17 @@ MAX_TRIES = 5
 EDITING = (google_auth.EVENTS_SCOPE,)
 
 
-def queue_event_write(ctx: Ctx, item: Item, op: str) -> None:
+def queue_event_write(ctx: Ctx, item: Item, op: str, target: str | None = None) -> None:
     """Queue a save or a delete of an event, when its calendar takes changes from Friday. Changes the sync makes (an
-    event changed in Google) are never written back."""
+    event changed in Google) are never written back. A new event goes to `target` when given ("" keeps it only in
+    Friday), else to the calendar Settings names for new events."""
     if item.when != "fixed" or item.id is None or ctx.actor.startswith("sync:"):
         return
     link = event_links(ctx.conn, ctx.user_id).get(item.id)
-    target = None
     if link is None:
-        target = ctx.settings["gcal"].new_events_to
+        target = ctx.settings["gcal"].new_events_to if target is None else (target or None)
+        if item.id in (kv_get(ctx.conn, "friday_only_events", [], ctx.user_id) or []):
+            return  # you kept it only in Friday
         if op != "save" or target is None or item.event_kind == "shove":
             return
         if target not in {c["id"] for c in kv_get(ctx.conn, "google_calendars", [], ctx.user_id)}:

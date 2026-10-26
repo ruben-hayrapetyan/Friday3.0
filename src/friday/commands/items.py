@@ -42,7 +42,7 @@ from friday.core.textnorm import identity_text, norm, plain_words
 from friday.core.time import UNIT_MIN, to_local
 from friday.estimate.durations import Estimate, bias_ratio, estimate_length, history
 from friday.planner.progress import actual_minutes, minutes_by_item, progress_rows
-from friday.planner.store import area_names
+from friday.planner.store import area_names, kv_get
 
 PARSED_TIMES = {"start_local": "start", "end_local": "end", "release_local": "release", "due_local": "due"}
 PARSED_UNITS = {
@@ -73,7 +73,12 @@ def add(ctx: Ctx, inp: AddInput) -> AddOutput:
     item = due_is_a_deadline(new_item(ctx, values), values)
     check_parent(ctx, None, item.parent_id)
     item_id = insert_item(ctx, item)
-    queue_event_write(ctx, require_item(ctx, item_id), "save")
+    if inp.calendar == "" and item.when == "fixed":  # kept only in Friday, even after a default calendar is chosen
+        mine = kv_get(ctx.conn, "friday_only_events", [], ctx.user_id) or []
+        ctx.db.upsert(
+            "kv", {"user_id": ctx.user_id, "key": "friday_only_events"}, {"value": json.dumps([*mine, item_id])}
+        )
+    queue_event_write(ctx, require_item(ctx, item_id), "save", target=inp.calendar)
     for other in after:
         add_dependency(ctx, item_id, resolve_ref(ctx, other, warnings), 1.0, 0)
     for other in before:

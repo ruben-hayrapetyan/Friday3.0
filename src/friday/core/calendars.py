@@ -6,6 +6,7 @@ planning, the way personal's Busy.swift left it out, when it is only a reminder 
 filtered (unless you count those), or on a calendar of room bookings (unless you count that calendar). Pure: no I/O.
 """
 
+import colorsys
 import re
 from functools import lru_cache
 
@@ -87,6 +88,29 @@ def is_filtered(title: str, settings: CategorySettings) -> bool:
         return False
     category = category_of(title, settings)
     return category is None or category.slug not in rule.except_
+
+
+# The paints, as the website shows them on paper (web/src/lib/pigments.ts), for matching a calendar's own colour.
+PIGMENT_HEX = {"red": "#c2402d", "orange": "#ce7c22", "yellow": "#be9a1f", "green": "#34877a", "sapgreen": "#74a03a",
+               "blue": "#2a6c9c", "purple": "#4a48a0", "pink": "#a63f76", "graphite": "#6e7a8c",
+               "violet": "#8a4cb5"}  # fmt: skip
+
+
+def nearest_pigment(color: str | None) -> str | None:
+    """The paint nearest a calendar's own colour ("#0088ff" is Cerulean), by hue; a grey one is Payne's Grey."""
+    if not color or not re.fullmatch(r"#?[0-9a-fA-F]{6}", color):
+        return None
+    hue, sat = hue_of(color)
+    if sat < 0.18:
+        return "graphite"
+    choices = {name: hue_of(value) for name, value in PIGMENT_HEX.items() if name != "graphite"}
+    return min(choices, key=lambda name: min(abs(choices[name][0] - hue), 360 - abs(choices[name][0] - hue)))
+
+
+def hue_of(color: str) -> tuple[float, float]:
+    r, g, b = (int(color.lstrip("#")[i : i + 2], 16) / 255 for i in (0, 2, 4))
+    h, _, s = colorsys.rgb_to_hls(r, g, b)
+    return h * 360, s
 
 
 def calendar_counts(calendar: str | None, busy: BusySettings) -> bool:

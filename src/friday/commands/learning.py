@@ -10,12 +10,13 @@ from friday.api.commands import (
     Changed,
     CheckinInput,
     CompareAnswerInput,
+    LearnOrderInput,
     ProposalAnswerInput,
     ResetInput,
     VersionInput,
 )
 from friday.api.types import Empty
-from friday.api.views import LearningOut, Question, QuestionsOut
+from friday.api.views import LearningOut, OrderOut, Question, QuestionsOut
 from friday.commands.estimates import in_use
 from friday.commands.refit import EMPTY_PROFILE, answered, profile
 from friday.commands.registry import Ctx, command, query
@@ -23,6 +24,7 @@ from friday.commands.settings import write_setting
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.time import format_utc, parse_utc
+from friday.learn.order import Choice, reordered, suggest
 from friday.learn.proposals import TEMPLATES
 from friday.planner.learning import learnable
 from friday.planner.store import kv_get
@@ -207,7 +209,28 @@ def learning(ctx: Ctx, inp: Empty) -> LearningOut:
         digest=digest + module_digest(ctx),
         durations=durations_view(ctx),
         energy=energy_view(ctx),
+        order=order_view(ctx),
     )
+
+
+def order_view(ctx: Ctx) -> OrderOut | None:
+    """A kind you keep starting ahead of another that was planned first, to plan first from now (`learn/order.py`)."""
+    kept = kv_get(ctx.conn, "order_choices", [], ctx.user_id) or []
+    choices = [Choice(c["chose_kind"], c["over_kind"]) for c in kept if c.get("chose_kind") and c.get("over_kind")]
+    refused = [tuple(r) for r in kv_get(ctx.conn, "order_refused", [], ctx.user_id) or []]
+    found = suggest(choices, list(ctx.settings["kind_order"]), refused)  # type: ignore[arg-type]
+    return OrderOut(first=found.first, then=found.then, chose=found.chose, of=found.of) if found else None
+
+
+@command("learn_order", affects_plan=True)
+def learn_order(ctx: Ctx, inp: LearnOrderInput) -> Changed:
+    """Plan one kind ahead of another from now, as you've been doing them (`kind_order`), or don't ask again."""
+    if not inp.use:
+        refused = [*(kv_get(ctx.conn, "order_refused", [], ctx.user_id) or []), [inp.first, inp.then]]
+        ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "order_refused"}, {"value": json.dumps(refused)})
+        return Changed(message=f"Friday won't suggest {inp.first} before {inp.then} again")
+    write_setting(ctx, "kind_order", reordered(list(ctx.settings["kind_order"]), inp.first, inp.then))
+    return Changed(message=f"{inp.first} is planned ahead of {inp.then} from now")
 
 
 DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")

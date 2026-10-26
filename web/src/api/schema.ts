@@ -1704,6 +1704,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/learn_order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Plan one kind ahead of another from now, as you've been doing them (`kind_order`), or don't ask again. */
+        post: operations["learn_order"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/mac_sync": {
         parameters: {
             query?: never;
@@ -2814,6 +2831,8 @@ export interface components {
             every?: string | null;
             /** Per Window */
             per_window?: number | null;
+            /** Calendar */
+            calendar?: string | null;
         };
         /** AddOutput */
         AddOutput: {
@@ -3871,6 +3890,8 @@ export interface components {
              * @default false
              */
             also_google?: boolean;
+            /** Color */
+            color?: string | null;
         };
         /**
          * GoogleClientInput
@@ -4357,6 +4378,34 @@ export interface components {
              */
             repeated?: boolean;
         };
+        /** LearnOrderInput */
+        LearnOrderInput: {
+            /** First */
+            first: string;
+            /** Then */
+            then: string;
+            /** Use */
+            use: boolean;
+        };
+        /** LearnOrderResult */
+        LearnOrderResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
         /** LearnRejectResult */
         LearnRejectResult: {
             /** Command Id */
@@ -4433,6 +4482,7 @@ export interface components {
             energy?: {
                 [key: string]: unknown;
             } | null;
+            order?: components["schemas"]["OrderOut"] | null;
         };
         /** LockConflict */
         LockConflict: {
@@ -5182,6 +5232,17 @@ export interface components {
             fits: components["schemas"]["Swap"][];
             /** Gap Minutes */
             gap_minutes: number;
+        };
+        /** OrderOut */
+        OrderOut: {
+            /** First */
+            first: string;
+            /** Then */
+            then: string;
+            /** Chose */
+            chose: number;
+            /** Of */
+            of: number;
         };
         /**
          * OtherWay
@@ -11344,6 +11405,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LearningOut"];
+                };
+            };
+        };
+    };
+    learn_order: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LearnOrderInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearnOrderResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

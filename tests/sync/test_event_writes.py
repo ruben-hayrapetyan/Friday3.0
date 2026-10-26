@@ -1,6 +1,7 @@
 """Your events, changed in Friday, saved back to Google Calendar (COMBINED.md 69): a change is queued by the command
 and sent by the job, the next sync finds nothing new, and a new event lands in the calendar you named."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -151,3 +152,40 @@ def test_skipping_one_time_of_a_repeating_event_deletes_that_time(app: App) -> N
     app.do("skip", id=first["id"])
     write_events(app.conn, app.now_utc, google=google)
     assert [e["id"] for e in google.calendars_by_id["Classes@group"]] == ["r_2"]
+
+
+def test_a_new_event_can_name_its_calendar_or_stay_only_in_friday(app: App) -> None:
+    # 26 Oct: events made in Friday stayed in Friday. The drawer names the calendar per event; "" keeps it here, even
+    # once a default calendar is chosen and it's changed later.
+    google = lecture()
+    read(app, google)
+    party = app.do("add", title="Party", when="fixed", start="2026-10-22T21:00", end="2026-10-22T23:00",
+                   calendar="Classes@group")["item"]["id"]  # fmt: skip
+    mine = app.do("add", title="Dentist", when="fixed", start="2026-10-23T09:00", end="2026-10-23T10:00",
+                  calendar="")["item"]["id"]  # fmt: skip
+    assert [(w["item_id"], w["calendar_id"]) for w in app.table("event_writes")] == [(party, "Classes@group")]
+    app.do("settings_set", key="gcal", value={"read": ["Classes"], "trusted": ["Classes"],
+                                              "new_events_to": "Classes@group"})  # fmt: skip
+    app.do("edit", id=mine, title="Dentist (Dr. Lee)")
+    assert [w["item_id"] for w in app.table("event_writes")] == [party]
+    write_events(app.conn, app.now_utc, google=google)
+    assert [e["summary"] for e in google.calendars_by_id["Classes@group"]] == ["CS 1110 Lecture", "Party"]
+
+
+def test_an_event_wears_its_calendar_s_own_colour_and_a_new_one_the_calendar_it_goes_to(app: App) -> None:
+    # The Mac and Google say each calendar's colour; with none chosen in Settings, no event wore one.
+    google = lecture()
+    read(app, google)
+    calendars = app.table("kv")
+    listed = next(r for r in calendars if r["key"] == "google_calendars")
+    rows = [c | {"color": "#0088ff"} for c in json.loads(listed["value"])]
+    app.conn.execute("UPDATE kv SET value = ? WHERE key = 'google_calendars'", [json.dumps(rows)])
+    plan = app.do("plan", start="2026-10-19T00:00", end="2026-10-26T00:00")
+    (lecture_out,) = [f for f in plan["fixed"] if f["title"].startswith("CS 1110")]
+    assert (lecture_out["calendar"], lecture_out["calendar_color"]) == ("Classes", "blue")
+    app.do(
+        "add", title="Party", when="fixed", start="2026-10-22T21:00", end="2026-10-22T23:00", calendar="Classes@group"
+    )
+    plan = app.do("plan", start="2026-10-19T00:00", end="2026-10-26T00:00")
+    (party,) = [f for f in plan["fixed"] if f["title"] == "Party"]
+    assert party["calendar_color"] == "blue"  # on its way to Classes: its colour already

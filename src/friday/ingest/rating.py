@@ -1,7 +1,8 @@
 """How much an event needs attending (personal's events.py, COMBINED.md 56): so an overloaded week can offer the least
 important ones to skip, as triage's fixes. The AI rates each distinct title once (required, likely or optional, with a
 few words of reason) and the answers are kept; without the AI, titles that say what they are decide, and the rest are
-"likely". Classes, labs, exams, shifts and appointments are required and never offered.
+"likely". Classes, labs, exams, shifts and appointments are required and never offered. Given your categories, it also
+names the one each event fits (26 Oct: an event no category's words found, "Dinner with Sam", wore no colour).
 """
 
 import json
@@ -60,23 +61,45 @@ def guessed(rating: dict[str, str]) -> bool:
     return rating.get("reason") in GUESSED
 
 
-def rate(titles: list[str], client: Any | None, model: str) -> dict[str, dict[str, str]]:
-    """{key(title): {level, reason}} for each title: the AI's answer, or the fallback for what it leaves out."""
+BATCH = 40  # titles a call
+
+
+def rate(
+    titles: list[str], client: Any | None, model: str, categories: list[str] | None = None
+) -> dict[str, dict[str, str]]:
+    """{key(title): {level, reason, category?}} for each title: the AI's answer, or the fallback for what it leaves
+    out. With `categories`, each answer names the one it fits, or none ("")."""
     out = {key(t): fallback(t) for t in titles}
     if not titles or client is None:
         return out
-    try:
-        reply = client.messages.create(
-            model=model,
-            max_tokens=2000,
-            system=SYSTEM,
-            output_config={"format": {"type": "json_schema", "schema": SCHEMA}},
-            messages=[{"role": "user", "content": [{"type": "text", "text": "\n".join(f"- {t}" for t in titles)}]}],
+    named = list(categories or [])
+    system, schema = SYSTEM, SCHEMA
+    if named:
+        system += (
+            '\nAlso give each event the category from this list it fits best, exactly as written, or "" when none '
+            "fits: " + "; ".join(named)
         )
-        text = next((b.text for b in reply.content if getattr(b, "type", "") == "text"), "")
-        for e in json.loads(text).get("events", []) if text else []:
-            if e.get("level") in LEVELS and key(e.get("title", "")) in out:
-                out[key(e["title"])] = {"level": e["level"], "reason": str(e.get("reason", ""))[:80]}
-    except Exception:  # no AI, a timeout, a bad answer: the titles' own words will do
-        pass
+        item = schema["properties"]["events"]["items"]
+        item = item | {"properties": item["properties"] | {"category": {"type": "string"}},
+                       "required": [*item["required"], "category"]}  # fmt: skip
+        schema = {**schema, "properties": {"events": {**schema["properties"]["events"], "items": item}}}
+    for start in range(0, len(titles), BATCH):
+        part = titles[start : start + BATCH]
+        try:
+            reply = client.messages.create(
+                model=model,
+                max_tokens=4000,
+                system=system,
+                output_config={"format": {"type": "json_schema", "schema": schema}},
+                messages=[{"role": "user", "content": [{"type": "text", "text": "\n".join(f"- {t}" for t in part)}]}],
+            )
+            text = next((b.text for b in reply.content if getattr(b, "type", "") == "text"), "")
+            for e in json.loads(text).get("events", []) if text else []:
+                if e.get("level") in LEVELS and key(e.get("title", "")) in out:
+                    found = {"level": e["level"], "reason": str(e.get("reason", ""))[:80]}
+                    if named:
+                        found["category"] = e.get("category") if e.get("category") in named else ""
+                    out[key(e["title"])] = found
+        except Exception:  # no AI, a timeout, a bad answer: the titles' own words will do
+            continue
     return out

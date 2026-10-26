@@ -6145,6 +6145,77 @@
     }
    }
   },
+  "/api/c/learn_order": {
+   "post": {
+    "summary": "Plan one kind ahead of another from now, as you've been doing them (`kind_order`), or don't ask again.",
+    "operationId": "learn_order",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LearnOrderInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LearnOrderResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/mac_sync": {
    "post": {
     "summary": "The Mac's calendars and their events between `since` and `until`, from the Mac app.",
@@ -9788,6 +9859,17 @@
        }
       ],
       "title": "Per Window"
+     },
+     "calendar": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Calendar"
      }
     },
     "additionalProperties": false,
@@ -12923,6 +13005,17 @@
       "type": "boolean",
       "title": "Also Google",
       "default": false
+     },
+     "color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Color"
      }
     },
     "additionalProperties": false,
@@ -14415,6 +14508,89 @@
     ],
     "title": "LearnModuleResult"
    },
+   "LearnOrderInput": {
+    "properties": {
+     "first": {
+      "type": "string",
+      "title": "First"
+     },
+     "then": {
+      "type": "string",
+      "title": "Then"
+     },
+     "use": {
+      "type": "boolean",
+      "title": "Use"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "first",
+     "then",
+     "use"
+    ],
+    "title": "LearnOrderInput"
+   },
+   "LearnOrderResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "LearnOrderResult"
+   },
    "LearnRejectResult": {
     "properties": {
      "command_id": {
@@ -14621,6 +14797,16 @@
        }
       ],
       "title": "Energy"
+     },
+     "order": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/OrderOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "additionalProperties": false,
@@ -16753,6 +16939,35 @@
      "gap_minutes"
     ],
     "title": "NowOut"
+   },
+   "OrderOut": {
+    "properties": {
+     "first": {
+      "type": "string",
+      "title": "First"
+     },
+     "then": {
+      "type": "string",
+      "title": "Then"
+     },
+     "chose": {
+      "type": "integer",
+      "title": "Chose"
+     },
+     "of": {
+      "type": "integer",
+      "title": "Of"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "first",
+     "then",
+     "chose",
+     "of"
+    ],
+    "title": "OrderOut"
    },
    "OtherWay": {
     "properties": {
