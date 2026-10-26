@@ -47,9 +47,17 @@ def key(title: str) -> str:
     return rating_key(title)
 
 
+GUESSED = ("from its title", "no reason to think it optional")  # the reasons a rating without the AI gives
+
+
 def fallback(title: str) -> dict[str, str]:
     level = fallback_level(title)
-    return {"level": level, "reason": "from its title" if level != "likely" else "no reason to think it optional"}
+    return {"level": level, "reason": GUESSED[0] if level != "likely" else GUESSED[1]}
+
+
+def guessed(rating: dict[str, str]) -> bool:
+    """A rating from the title's words alone, for the AI to try again: "Poker night" says nothing of being optional."""
+    return rating.get("reason") in GUESSED
 
 
 def rate(titles: list[str], client: Any | None, model: str) -> dict[str, dict[str, str]]:

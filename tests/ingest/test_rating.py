@@ -58,3 +58,18 @@ def test_the_command_comes_first_then_the_key(monkeypatch: pytest.MonkeyPatch) -
     assert llm.client() is None
     monkeypatch.setattr(llm, "api_key", lambda: "sk-test")
     assert not isinstance(llm.client(), llm.Routed)
+
+
+def test_a_rating_only_guessed_from_the_title_is_asked_again_once_a_day(tmp_path: Path) -> None:
+    # Every AI call had failed (the list went to the command as an option), so every title was guessed: "Book club"
+    # stayed "likely" and was never offered to skip. Guesses are asked again, once a day, until the AI answers.
+    app = new_app(tmp_path)
+    app.do("add", title="Book club", when="fixed", start="2026-10-20T19:00", end="2026-10-20T20:00")
+    failing = Answering("not json")
+    assert rate_upcoming(app.conn, app.now_utc, client=failing) == 1
+    assert rate_upcoming(app.conn, app.now_utc, client=failing) == 0  # not again today
+    ai = Answering(json.dumps({"events": [{"title": "Book club", "level": "optional", "reason": "a hobby"}]}))
+    assert rate_upcoming(app.conn, app.now_utc + 1440, client=ai) == 1  # the next day
+    ratings = json.loads(app.conn.execute("SELECT value FROM kv WHERE key = 'event_ratings'").fetchone()[0])
+    assert ratings["book club"] == {"level": "optional", "reason": "a hobby"}
+    assert rate_upcoming(app.conn, app.now_utc + 2 * 1440, client=ai) == 0  # answered: never asked again

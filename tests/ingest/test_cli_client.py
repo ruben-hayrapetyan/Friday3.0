@@ -58,3 +58,19 @@ def test_a_failing_command_says_why() -> None:
 
     with pytest.raises(RuntimeError, match="Not logged in"):
         llm.CliClient(Path("/bin/claude"), run=fail).messages.create(model="m", system="s", messages=[])
+
+
+def test_a_prompt_that_starts_with_a_dash_goes_in_on_stdin() -> None:
+    # Event titles listed "- Poker night" were read by the command as an option: every rating failed, unseen.
+    handed: dict[str, Any] = {}
+
+    def run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess:
+        handed.update(args=args, input=kwargs.get("input"))
+        return subprocess.CompletedProcess(args, 0, stdout=json.dumps({"result": "{}"}), stderr="")
+
+    titles = [{"type": "text", "text": "- Poker night\n- CS 2112 Lecture"}]
+    llm.CliClient(Path("/bin/claude"), run=run).messages.create(
+        model="m", system="s", messages=[{"role": "user", "content": titles}]
+    )
+    assert handed["input"] == "- Poker night\n- CS 2112 Lecture"
+    assert not any(a.startswith("- Poker") for a in handed["args"])

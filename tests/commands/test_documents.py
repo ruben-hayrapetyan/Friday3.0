@@ -61,7 +61,7 @@ def test_a_pdf_goes_to_the_claude_command_as_its_text() -> None:
     seen = {}
 
     def run(args, **kwargs):  # the claude command, as a fake: what it was handed
-        seen["prompt"] = args[args.index("-p") + 1]
+        seen["prompt"] = kwargs["input"]  # the prompt goes in on stdin
 
         class Out:
             returncode, stdout, stderr = 0, '{"result": "{}", "usage": {}}', ""

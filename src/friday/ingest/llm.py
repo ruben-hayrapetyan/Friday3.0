@@ -94,14 +94,16 @@ class CliClient:
                 "Images (and PDFs with no text in them) need an Anthropic API key (Settings → Integrations)"
             )
         prompt = "\n\n".join(text_of(m.get("content")) for m in messages if m.get("role") == "user")
-        args = [str(self.path), "-p", prompt, "--model", model, "--output-format", "json", "--system-prompt", system,
+        # The prompt goes in on stdin: as an argument, one starting with "-" (a list of event titles, "- Poker night")
+        # was read as an option and every call failed, and a long syllabus could pass the argument limit.
+        args = [str(self.path), "-p", "--model", model, "--output-format", "json", "--system-prompt", system,
                 "--tools", "", "--strict-mcp-config", "--no-session-persistence"]  # fmt: skip
         schema = (output_config or {}).get("format", {}).get("schema")
         if schema is not None:
             args += ["--json-schema", json.dumps(schema)]
         folder = Path(tempfile.gettempdir()) / "friday-claude"
         folder.mkdir(exist_ok=True)
-        out = self.run(args, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=TIMEOUT_S, cwd=folder)
+        out = self.run(args, input=prompt, capture_output=True, text=True, timeout=TIMEOUT_S, cwd=folder)
         if out.returncode != 0:
             raise RuntimeError(f"claude exited {out.returncode}: {(out.stderr or out.stdout).strip()[:300]}")
         envelope = json.loads(out.stdout)
