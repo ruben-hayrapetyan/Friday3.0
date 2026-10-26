@@ -24,6 +24,13 @@ TODAY = date(2026, 10, 18)
         ("day until dec 11", "FREQ=DAILY;UNTIL=20261211T235959", "Every day until Dec 11"),
         ("rrule:FREQ=DAILY;INTERVAL=3", "FREQ=DAILY;INTERVAL=3", "Every 3 days"),
         ("rrule:freq=weekly;interval=2", "FREQ=WEEKLY;INTERVAL=2", "Every other week"),
+        ("month", "FREQ=MONTHLY", "Monthly"),
+        ("other week", "FREQ=WEEKLY;INTERVAL=2", "Every other week"),
+        ("other tue", "FREQ=WEEKLY;INTERVAL=2;BYDAY=TU", "Every other Tuesday"),
+        ("4 weeks", "FREQ=WEEKLY;INTERVAL=4", "Every 4 weeks"),
+        ("3 days", "FREQ=DAILY;INTERVAL=3", "Every 3 days"),
+        ("2 months", "FREQ=MONTHLY;INTERVAL=2", "Every 2 months"),
+        ("fortnight", "FREQ=WEEKLY;INTERVAL=2", "Every other week"),
     ],
 )
 def test_shorthand_becomes_a_rule_and_reads_back_in_words(text: str, rule: str, words: str) -> None:

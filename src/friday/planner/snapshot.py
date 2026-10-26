@@ -18,7 +18,7 @@ from friday.core.pace import Dials, PacePeriod
 from friday.core.rows import item_from_row
 from friday.core.settings import minutes_of
 from friday.core.time import format_utc, parse_utc, planning_date, to_local, to_utc
-from friday.learn.sleep import Mark, learn, nights_from
+from friday.learn.sleep import Mark, evening_of, learn, nights_from
 from friday.learn.state import loadings
 from friday.planner.cushion import cushion, cushioned
 from friday.planner.progress import progress_rows
@@ -58,6 +58,8 @@ class SleepFacts:
     slept_min: dict[date, int]  # each recorded night's sleep, by its evening
     woke_utc: int | None = None  # this morning's "I'm up"
     ready: bool = False  # this morning's "Ready to work", or a timer started since waking
+    wind_down_min: dict[str, int] = field(default_factory=dict)  # done with work to bed, learned, by the evening
+    done_utc: int | None = None  # tonight's "Done with work", before going to bed
 
 
 @dataclass(frozen=True)
@@ -161,18 +163,22 @@ def sleep_facts(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any]
         Mark(r["id"], r["kind"], to_local(parse_utc(r["at_utc"]), tz))
         for r in rows(conn, "SELECT * FROM sleep_marks WHERE user_id = ? AND at_utc >= ?", [user_id, since])
     ]
-    timers = [
-        to_local(parse_utc(r["start_utc"]), tz)
-        for r in rows(
-            conn,
-            "SELECT start_utc FROM progress WHERE user_id = ? AND source = 'timer' AND start_utc >= ?",
-            [user_id, since],
-        )
-    ]
-    nights = nights_from(marks, timers, minutes_of(settings["time"].day_start))
+    timed = rows(
+        conn,
+        "SELECT start_utc, end_utc FROM progress WHERE user_id = ? AND source = 'timer' AND start_utc >= ?",
+        [user_id, since],
+    )
+    starts = [to_local(parse_utc(r["start_utc"]), tz) for r in timed]
+    ends = [to_local(parse_utc(r["end_utc"]), tz) for r in timed if r["end_utc"]]
+    day_start = minutes_of(settings["time"].day_start)
+    nights = nights_from(marks, starts, day_start, ends)
     morning = nights.get(to_local(now_utc, tz).date() - timedelta(days=1))
+    tonight = nights.get(evening_of(to_local(now_utc, tz), day_start))
+    learned = learn(nights.values(), tracking.min_nights)
     return SleepFacts(
-        routine_min=learn(nights.values(), tracking.min_nights).routine_min,
+        routine_min=learned.routine_min,
+        wind_down_min=learned.wind_down_min,
+        done_utc=to_utc(tonight.done.at, tz) if tonight and tonight.done and not tonight.bed else None,
         slept_min={d: n.slept_min for d, n in nights.items() if n.slept_min is not None},
         woke_utc=to_utc(morning.up.at, tz) if morning and morning.up else None,
         ready=bool(morning and morning.ready_at),

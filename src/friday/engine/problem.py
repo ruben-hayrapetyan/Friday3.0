@@ -132,6 +132,8 @@ class Night:
     margin_min: int = 60
     debt_hours: float = 0.0  # sleep debt D_n from the previous nights (DESIGN §12.3)
     routine_min: int | None = None  # the next morning's routine, learned from tracked sleep; None: late_night's own
+    wind_down_min: int | None = None  # the evening's wind-down before bed, learned from tracked sleep
+    done_utc: int | None = None  # tonight's "Done with work": work after it costs as past bedtime does
 
     @property
     def core(self) -> tuple[int, int]:

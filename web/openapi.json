@@ -5007,6 +5007,44 @@
     }
    }
   },
+  "/api/q/fit": {
+   "post": {
+    "summary": "Do I have time for this? A change tried on a copy of your plan, never kept.",
+    "operationId": "fit",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FitInput"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FitOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/import_personal": {
    "post": {
     "summary": "Todo List's open tasks and Chroma's categories, once.",
@@ -7350,7 +7388,7 @@
   },
   "/api/c/sleep_mark": {
    "post": {
-    "summary": "Going to bed, up, or ready to work: now, or at the time you give.",
+    "summary": "Done with work, going to bed, up, or ready to work: now, or at the time you give.",
     "operationId": "sleep_mark",
     "parameters": [
      {
@@ -7634,7 +7672,7 @@
   },
   "/api/q/sleep": {
    "get": {
-    "summary": "Your nights, your morning routine and the bedtimes and wake times Friday has learned, with the tap to offer",
+    "summary": "Your nights, routines and the times Friday has learned, with the tap to offer now.",
     "operationId": "sleep",
     "responses": {
      "200": {
@@ -12239,6 +12277,172 @@
      "planned_finish"
     ],
     "title": "ExamPrepOut"
+   },
+   "FitInput": {
+    "properties": {
+     "command": {
+      "type": "string",
+      "enum": [
+       "add",
+       "edit",
+       "series_add",
+       "shove",
+       "rule_add",
+       "pin",
+       "day_override"
+      ],
+      "title": "Command"
+     },
+     "input": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Input"
+     },
+     "exact": {
+      "type": "boolean",
+      "title": "Exact",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command",
+     "input"
+    ],
+    "title": "FitInput",
+    "description": "Do I have time for this? A change Friday tries on a copy of your plan and never keeps."
+   },
+   "FitLate": {
+    "properties": {
+     "item_id": {
+      "type": "integer",
+      "title": "Item Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "before_h": {
+      "type": "number",
+      "title": "Before H"
+     },
+     "after_h": {
+      "type": "number",
+      "title": "After H"
+     },
+     "short_h": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Short H"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "item_id",
+     "title",
+     "before_h",
+     "after_h"
+    ],
+    "title": "FitLate"
+   },
+   "FitOut": {
+    "properties": {
+     "verdict": {
+      "type": "string",
+      "enum": [
+       "fits",
+       "tight",
+       "late"
+      ],
+      "title": "Verdict"
+     },
+     "said": {
+      "type": "string",
+      "title": "Said"
+     },
+     "exact": {
+      "type": "boolean",
+      "title": "Exact"
+     },
+     "later": {
+      "items": {
+       "$ref": "#/components/schemas/FitLate"
+      },
+      "type": "array",
+      "title": "Later",
+      "default": []
+     },
+     "spare_h": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Spare H"
+     },
+     "later_nights": {
+      "type": "boolean",
+      "title": "Later Nights",
+      "default": false
+     },
+     "moved": {
+      "type": "integer",
+      "title": "Moved",
+      "default": 0
+     },
+     "instead": {
+      "items": {
+       "$ref": "#/components/schemas/FitTime"
+      },
+      "type": "array",
+      "title": "Instead",
+      "default": []
+     },
+     "seconds": {
+      "type": "number",
+      "title": "Seconds",
+      "default": 0.0
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "verdict",
+     "said",
+     "exact"
+    ],
+    "title": "FitOut",
+    "description": "Do I have time for this?: whether everything still fits with the change, in a sentence and in parts."
+   },
+   "FitTime": {
+    "properties": {
+     "start": {
+      "type": "string",
+      "title": "Start"
+     },
+     "end": {
+      "type": "string",
+      "title": "End"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "start",
+     "end"
+    ],
+    "title": "FitTime"
    },
    "GoogleAccountInput": {
     "properties": {
@@ -20757,6 +20961,7 @@
       "enum": [
        "up",
        "ready",
+       "done",
        "bed"
       ],
       "title": "Kind"
@@ -20903,6 +21108,7 @@
      "kind": {
       "type": "string",
       "enum": [
+       "done",
        "bed",
        "up",
        "ready"
@@ -21184,6 +21390,44 @@
        }
       ],
       "title": "Routine Min"
+     },
+     "done": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Done"
+     },
+     "done_timed": {
+      "type": "boolean",
+      "title": "Done Timed",
+      "default": false
+     },
+     "done_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Done Id"
+     },
+     "wind_down_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wind Down Min"
      }
     },
     "additionalProperties": false,
@@ -21207,6 +21451,7 @@
         "enum": [
          "up",
          "ready",
+         "done",
          "bed"
         ]
        },
@@ -21265,6 +21510,25 @@
       "title": "Routine Min",
       "default": {}
      },
+     "wind_down_min": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Wind Down Min",
+      "default": {}
+     },
+     "done": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Done"
+     },
      "changes": {
       "items": {
        "$ref": "#/components/schemas/SleepChangeOut"
@@ -21312,6 +21576,7 @@
      "kind": {
       "type": "string",
       "enum": [
+       "done",
        "bed",
        "up",
        "ready"

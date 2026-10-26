@@ -209,6 +209,8 @@ export function RepeatPicker({ value, onPick }: { value: Repeat; onPick: (v: Rep
     ["Every day", { every: "day", perWindow: null }],
     ["Weekdays", { every: "weekdays", perWindow: null }],
     ["Every week", { every: "week", perWindow: null }],
+    ["Every other week", { every: "rrule:FREQ=WEEKLY;INTERVAL=2", perWindow: null }],
+    ["Every month", { every: "rrule:FREQ=MONTHLY", perWindow: null }],
     ["3× a week", { every: "week", perWindow: 3 }],
   ]
   return (
@@ -320,7 +322,17 @@ export function repeatSummary(r: Repeat): string {
   if (plain === "week") return `Every week${end}.`
   if (plain === "weekdays") return `Every weekday${end}.`
   const days = daysOf(r.every)
-  return days.length ? `Every ${days.map((d) => DOWS[d]).join(", ")}${end}.` : "Repeats."
+  if (days.length) return `Every ${days.map((d) => DOWS[d]).join(", ")}${end}.`
+  return `${everyN(plain ?? "") ?? "Repeats"}${end}.`
+}
+
+/** "Every other week", "Every 4 weeks", "Every month", "Every 3 days" for a rule with no days named. */
+export function everyN(every: string): string | null {
+  const m = /^rrule:FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY)(?:;INTERVAL=(\d+))?$/.exec(every)
+  if (!m) return null
+  const unit = { DAILY: "day", WEEKLY: "week", MONTHLY: "month", YEARLY: "year" }[m[1] as "DAILY"]
+  const n = Number(m[2] ?? 1)
+  return n === 1 ? `Every ${unit}` : n === 2 ? `Every other ${unit}` : `Every ${n} ${unit}s`
 }
 
 export function repeatLabel(r: Repeat): string {

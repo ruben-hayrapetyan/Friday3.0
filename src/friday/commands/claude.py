@@ -58,6 +58,9 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
   [kinds]} for "I like to do things in one go, but split problem sets first": problem sets are the kind
   "Assignment"), pace ({weekly: {mon..sun: "Easy" | "Normal" | "Push"}} for a pace on those weekdays every week:
   "go easier on Saturdays and harder on Sundays" is {weekly: {"sat": "Easy", "sun": "Push"}}).
+When they ask whether they have time for something ("can I go to poker Thursday 8 to 11?", "do I have time for a
+3 h project due Friday?"), propose the command that would add it (an event, or a task with its due and length) and
+say in the reply that Friday shows under it whether it fits before they apply it; don't guess the answer yourself.
 If something can't be expressed with these, say so in the reply and propose nothing for it. Never invent ids."""
 
 SCHEMA = {

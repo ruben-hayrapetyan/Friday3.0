@@ -11,6 +11,7 @@ from friday.commands import (  # noqa: F401
     eating,
     exams,
     explain,
+    fitting,
     horizon,
     importing,
     inbox,

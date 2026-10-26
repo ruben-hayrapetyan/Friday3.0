@@ -239,3 +239,18 @@ STUDENT_LINES = [
 def test_lines_as_students_type_them(text: str, expected: dict) -> None:
     found = quick(text)
     assert {k: found.get(k) for k in expected} == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "rule", "preset"),
+    [
+        ("groceries every week due sunday ~1h", "FREQ=WEEKLY", "Errand"),
+        ("pay rent every month ~15m", "FREQ=MONTHLY", "Errand"),
+        ("haircut every 4 weeks ~1h", "FREQ=WEEKLY;INTERVAL=4", "Errand"),
+        ("call grandma biweekly ~30m", "FREQ=WEEKLY;INTERVAL=2", "Errand"),
+        ("problem set every week due fri 5pm ~3h", "FREQ=WEEKLY", "Assignment"),
+    ],
+)
+def test_repeating_errands_stay_errands_with_a_due(text: str, rule: str, preset: str) -> None:
+    fields = quick(text)
+    assert (fields["rrule"], fields["preset"]) == (rule, preset)

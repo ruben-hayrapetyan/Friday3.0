@@ -1398,6 +1398,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/fit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Do I have time for this? A change tried on a copy of your plan, never kept. */
+        post: operations["fit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/import_personal": {
         parameters: {
             query?: never;
@@ -2138,7 +2155,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Going to bed, up, or ready to work: now, or at the time you give. */
+        /** Done with work, going to bed, up, or ready to work: now, or at the time you give. */
         post: operations["sleep_mark"];
         delete?: never;
         options?: never;
@@ -2204,7 +2221,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Your nights, your morning routine and the bedtimes and wake times Friday has learned, with the tap to offer */
+        /** Your nights, routines and the times Friday has learned, with the tap to offer now. */
         get: operations["sleep"];
         put?: never;
         post?: never;
@@ -3623,6 +3640,88 @@ export interface components {
             item: components["schemas"]["ItemOut"];
             /** Planned Finish */
             planned_finish: string | null;
+        };
+        /**
+         * FitInput
+         * @description Do I have time for this? A change Friday tries on a copy of your plan and never keeps.
+         */
+        FitInput: {
+            /**
+             * Command
+             * @enum {string}
+             */
+            command: "add" | "edit" | "series_add" | "shove" | "rule_add" | "pin" | "day_override";
+            /** Input */
+            input: {
+                [key: string]: unknown;
+            };
+            /**
+             * Exact
+             * @default false
+             */
+            exact?: boolean;
+        };
+        /** FitLate */
+        FitLate: {
+            /** Item Id */
+            item_id: number;
+            /** Title */
+            title: string;
+            /** Before H */
+            before_h: number;
+            /** After H */
+            after_h: number;
+            /** Short H */
+            short_h?: number | null;
+        };
+        /**
+         * FitOut
+         * @description Do I have time for this?: whether everything still fits with the change, in a sentence and in parts.
+         */
+        FitOut: {
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "fits" | "tight" | "late";
+            /** Said */
+            said: string;
+            /** Exact */
+            exact: boolean;
+            /**
+             * Later
+             * @default []
+             */
+            later?: components["schemas"]["FitLate"][];
+            /** Spare H */
+            spare_h?: number | null;
+            /**
+             * Later Nights
+             * @default false
+             */
+            later_nights?: boolean;
+            /**
+             * Moved
+             * @default 0
+             */
+            moved?: number;
+            /**
+             * Instead
+             * @default []
+             */
+            instead?: components["schemas"]["FitTime"][];
+            /**
+             * Seconds
+             * @default 0
+             */
+            seconds?: number;
+        };
+        /** FitTime */
+        FitTime: {
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
         };
         /** GoogleAccountInput */
         GoogleAccountInput: {
@@ -6454,7 +6553,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "up" | "ready" | "bed";
+            kind: "up" | "ready" | "done" | "bed";
             /** Date */
             date: string;
             /** At */
@@ -6508,7 +6607,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "bed" | "up" | "ready";
+            kind: "done" | "bed" | "up" | "ready";
             /** At */
             at?: string | null;
         };
@@ -6586,13 +6685,24 @@ export interface components {
             planned_up?: string | null;
             /** Routine Min */
             routine_min?: number | null;
+            /** Done */
+            done?: string | null;
+            /**
+             * Done Timed
+             * @default false
+             */
+            done_timed?: boolean;
+            /** Done Id */
+            done_id?: number | null;
+            /** Wind Down Min */
+            wind_down_min?: number | null;
         };
         /** SleepOut */
         SleepOut: {
             /** On */
             on: boolean;
             /** Next */
-            next?: ("up" | "ready" | "bed") | null;
+            next?: ("up" | "ready" | "done" | "bed") | null;
             /** Up */
             up?: string | null;
             /** Ready */
@@ -6611,6 +6721,15 @@ export interface components {
             routine_min?: {
                 [key: string]: number;
             };
+            /**
+             * Wind Down Min
+             * @default {}
+             */
+            wind_down_min?: {
+                [key: string]: number;
+            };
+            /** Done */
+            done?: string | null;
             /**
              * Changes
              * @default []
@@ -6639,7 +6758,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "bed" | "up" | "ready";
+            kind: "done" | "bed" | "up" | "ready";
         };
         /** SleepSkipResult */
         SleepSkipResult: {
@@ -10252,6 +10371,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TriageOut"];
+                };
+            };
+        };
+    };
+    fit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FitInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FitOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -155,3 +155,15 @@ def test_a_repeating_chore_is_soft_so_it_stays_in_its_week(app: App) -> None:
     app.do("series_add", title="laundry", preset="Chore", every="week", duration_min=60)
     first = next(i for i in app.do("items") if i["title"] == "laundry")
     assert first["firmness"] == "soft"
+
+
+def test_a_due_given_later_makes_the_task_a_deadline(app: App) -> None:
+    # Brought over without a due ("none": nothing to be late for), then given one: it had stayed "none", so the plan
+    # left CS A4 out of an overloaded week as if it could wait forever.
+    item = app.do("add", title="CS A4 Design Doc", preset="Assignment", duration_min=180, firmness="none")["item"]
+    assert item["firmness"] == "none"
+    assert app.do("edit", id=item["id"], title="CS A4 design doc")["item"]["firmness"] == "none"  # no due yet
+    assert app.do("edit", id=item["id"], due="2026-10-29T23:59")["item"]["firmness"] == "hard"
+    other = app.do("add", title="Form", preset="Errand", duration_min=15)["item"]
+    kept = app.do("edit", id=other["id"], due="2026-10-29T23:59", firmness="none")["item"]
+    assert kept["firmness"] == "none"  # what you set yourself stands

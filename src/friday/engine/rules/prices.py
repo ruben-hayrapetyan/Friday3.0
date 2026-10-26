@@ -112,6 +112,7 @@ class LateNight(Rule):
         # The first hour after waking costs what 23:00 does: free time isn't a reason to start homework at 07:00.
         morning: float = 2
         morning_min: int = 60
+        evening: float = 2  # an hour in your learned wind-down before bed (tracked sleep), as the morning's
 
     def prepare(self, problem):
         super().prepare(problem)
@@ -145,7 +146,17 @@ class LateNight(Rule):
         routine = self.routine_on.get(slot.date)
         morning = self.p.morning_min if routine is None else routine
         waking = self.p.morning if wake is not None and slot.start_utc < wake + morning else 0.0
-        return self.p.a * max(0.0, min(tau, bed) - gradient) + self.p.b * multiplier * max(0.0, tau - bed) + waking
+        night = self.problem.nights[slot.date]
+        if night.done_utc is not None and slot.start_utc >= night.done_utc:
+            return self.p.b * multiplier * max(1.0, tau - bed)  # you said you're done: only deadlines bring work back
+        wind = night.wind_down_min
+        winding = self.p.evening if wind and slot.end_utc > night.bedtime_utc - wind else 0.0
+        return (
+            self.p.a * max(0.0, min(tau, bed) - gradient)
+            + self.p.b * multiplier * max(0.0, tau - bed)
+            + waking
+            + winding
+        )
 
 
 @rule_type("time_preference")

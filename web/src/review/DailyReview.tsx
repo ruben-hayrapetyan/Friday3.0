@@ -141,8 +141,9 @@ function SleepAskRow({ ask }: { ask: Schemas["SleepAsk"] }) {
   const add = useCommand("sleep_mark", { label: (o) => o.result.message ?? "Added" })
   const skip = useCommand("sleep_skip", { label: () => "Skipped" })
   const [time, setTime] = useState(ask.at.slice(11, 16))
-  // A bedtime in the small hours is the next morning's date.
-  const day = ask.kind === "bed" && time < "12:00" ? addDays(ask.date, 1) : ask.kind === "bed" ? ask.date : ask.at.slice(0, 10)
+  // A bedtime (or the end of work) in the small hours is the next morning's date.
+  const evening = ask.kind === "bed" || ask.kind === "done"
+  const day = evening && time < "12:00" ? addDays(ask.date, 1) : evening ? ask.date : ask.at.slice(0, 10)
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
       <span style={{ flex: 1, minWidth: 180 }}>{ask.question}</span>

@@ -6,7 +6,10 @@ from pathlib import Path
 import pytest
 
 from friday.core.items import FieldError
-from tests.commands.helpers import App, new_app
+from friday.core.time import parse_local, to_utc
+from friday.planner.snapshot import take_snapshot
+from friday.planner.solve import prepared_problem
+from tests.commands.helpers import TZ, App, new_app
 
 
 @pytest.fixture
@@ -32,8 +35,10 @@ def test_a_morning_tap_then_ready_then_bed(app: App) -> None:  # it's Monday 9am
     app.do("sleep_mark", kind="ready")
     out = app.do("sleep")
     assert (out["up"], out["ready"], out["next"]) == ("2026-10-19T08:10", "2026-10-19T09:00", None)
-    app.now_utc += 12 * 60 + 30  # 9:30pm, within three hours of an 11:30pm bedtime
-    assert app.do("sleep")["next"] == "bed"
+    app.now_utc += 12 * 60 + 30  # 9:30pm, within four hours of an 11:30pm bedtime
+    assert app.do("sleep")["next"] == "done"
+    assert app.do("sleep_mark", kind="done")["message"] == "Done with work: 9:30pm"
+    assert (app.do("sleep")["next"], app.do("sleep")["done"]) == ("bed", "2026-10-19T21:30")
     app.do("sleep_mark", kind="bed")
     assert app.do("sleep")["next"] is None
 
@@ -129,8 +134,53 @@ def test_the_review_asks_for_the_taps_you_forgot_and_a_skip_stops_it(app: App) -
     assert app.do("review", date="2026-10-18")["sleep"] == []  # off: nothing asked
     on(app)
     asks = {a["kind"]: a for a in app.do("review", date="2026-10-18")["sleep"]}  # yesterday, Sunday
-    assert set(asks) == {"up", "ready", "bed"} and asks["up"]["at"] == "2026-10-18T09:00"  # your usual Sunday wake
+    assert set(asks) == {"up", "ready", "done", "bed"} and asks["up"]["at"] == "2026-10-18T09:00"  # usual Sunday wake
+    assert asks["done"]["at"] == "2026-10-18T23:30"  # an hour before a 12:30am Sunday-night bedtime
     app.do("sleep_mark", kind="up", at="2026-10-18T09:40")
     app.do("sleep_skip", date="2026-10-18", kind="ready")
-    assert [a["kind"] for a in app.do("review", date="2026-10-18")["sleep"]] == ["bed"]
+    assert [a["kind"] for a in app.do("review", date="2026-10-18")["sleep"]] == ["done", "bed"]
     assert [a["kind"] for a in app.do("review")["sleep"]] == ["up", "ready"]  # today: tonight isn't over
+
+
+def test_done_with_work_is_not_offered_while_a_timer_runs(app: App) -> None:
+    on(app)
+    app.now_utc += 11 * 60  # 8pm
+    chore = app.do("add", text="laundry ~1h")["item"]["id"]
+    app.do("start", id=chore)
+    assert app.do("sleep")["next"] is None
+    app.do("stop")
+    assert app.do("sleep")["next"] == "done"
+
+
+def test_after_done_with_work_nothing_more_is_planned_tonight_unless_it_is_due(app: App) -> None:
+    on(app)
+    app.now_utc += 11 * 60  # Monday 8pm
+    app.do("add", text="reading ~2h due fri 5pm")
+
+    def nine_pm() -> float:  # what an hour of work at 9pm tonight costs
+        _, problem, _ = prepared_problem(take_snapshot(app.conn, app.now_utc))
+        rule = next(r for r in problem.rules if r.type == "late_night")
+        at = to_utc(parse_local("2026-10-19T21:00"), TZ)
+        slot = next(s for s in range(problem.grid.S) if problem.grid.slots[s].start_utc == at)
+        return rule.price(next(iter(problem.items.values())), slot)
+
+    assert nine_pm() == 0
+    app.do("sleep_mark", kind="done")
+    assert nine_pm() >= 20  # as an hour past bedtime: only a deadline brings work back
+    urgent = app.do("add", title="Quiz corrections", duration_min=45, due="2026-10-19T23:00")["item"]["id"]
+    app.do("replan")
+    tonight = app.do("plan", start="2026-10-19T20:00", end="2026-10-20T04:00")["blocks"]
+    assert any(b["item_id"] == urgent for b in tonight)
+    assert all(b["item_id"] == urgent for b in tonight if not b.get("fixed"))
+
+
+def test_the_wind_down_is_learned_from_done_to_bed(app: App) -> None:
+    on(app)
+    first = date(2026, 10, 19) - timedelta(days=8)
+    for n in range(8):
+        evening = first + timedelta(days=n)
+        app.do("sleep_mark", kind="done", at=f"{evening}T22:00")
+        app.do("sleep_mark", kind="bed", at=f"{evening}T23:15")
+    out = app.do("sleep")
+    assert out["nights"][0]["wind_down_min"] == 75 and out["nights"][0]["done"].endswith("T22:00")
+    assert out["wind_down_min"]["mon"] == 75

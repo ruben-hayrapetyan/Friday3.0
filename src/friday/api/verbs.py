@@ -221,6 +221,14 @@ VERBS = {
         False,
         "Upcoming exams, soonest first, each with its prep: what it waits on, and exam prep for its course due at it.",
     ),
+    "fit": Verb(
+        "POST",
+        "/api/q/fit",
+        commands.FitInput,
+        False,
+        False,
+        "Do I have time for this? A change tried on a copy of your plan, never kept.",
+    ),
     "fits": Verb(
         "GET",
         "/api/q/fits",
@@ -859,7 +867,7 @@ VERBS = {
         commands.Empty,
         False,
         False,
-        "Your nights, your morning routine and the bedtimes and wake times Friday has learned, with the tap to offer",
+        "Your nights, routines and the times Friday has learned, with the tap to offer now.",
     ),
     "sleep_mark": Verb(
         "POST",
@@ -867,7 +875,7 @@ VERBS = {
         commands.SleepMarkInput,
         True,
         True,
-        "Going to bed, up, or ready to work: now, or at the time you give.",
+        "Done with work, going to bed, up, or ready to work: now, or at the time you give.",
     ),
     "sleep_mark_edit": Verb(
         "POST",

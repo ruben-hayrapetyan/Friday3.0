@@ -15,6 +15,7 @@ from friday.core.dates import (
     parse_time_range,
     read_moment,
 )
+from friday.core.guess import guess_preset
 from friday.core.recurrence import read_repeat
 from friday.core.textnorm import plain_words
 from friday.core.time import UNIT_MIN, format_local, local_midnight
@@ -28,10 +29,20 @@ TOKEN = re.compile(r'(?:after|before):"[^"]*"|\S+')
 LENGTH = re.compile(r"^~([0-9.hm]+)(?:-([0-9.hm]+))?$")
 BARE_LENGTH = re.compile(r"^\d+(\.\d+)?h(\d+m)?$|^\d+m$")  # `30m`, `2h`, `1.5h`, `1h30m`: a length without `~`
 BARE_ELASTIC = re.compile(r"^\d+(\.\d+)?[hm]?-\d+(\.\d+)?[hm]$")  # `30-45m`, `1-2h`: never `3-4pm`, a time
-REPEAT_WORDS = {"daily": "FREQ=DAILY", "weekly": "FREQ=WEEKLY", "weekdays": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR"}
+REPEAT_WORDS = {
+    "daily": "FREQ=DAILY",
+    "weekly": "FREQ=WEEKLY",
+    "weekdays": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+    "biweekly": "FREQ=WEEKLY;INTERVAL=2",
+    "fortnightly": "FREQ=WEEKLY;INTERVAL=2",
+    "monthly": "FREQ=MONTHLY",
+    "yearly": "FREQ=YEARLY",
+    "annually": "FREQ=YEARLY",
+}
 # Meals are routines, and their time range is when they may happen, not a fixed sitting.
 MEAL = re.compile(r"\b(breakfast|brunch|lunch|dinner|supper|meal)s?\b", re.IGNORECASE)
 FLEXIBLE_KINDS = {"Routine", "Habit", "Chore", "Errand"}
+SCHOOLWORK = {"Assignment", "Exam prep", "Project", "Reading"}
 PER_WINDOW = re.compile(r"^(\d+)x$")
 TIMES_A_WEEK = {"once": 1, "twice": 2}  # "twice a week", like "2x a week"
 A_WEEK = (("a", "week"), ("per", "week"), ("times", "a", "week"))
@@ -372,7 +383,10 @@ class Parser:
             return "Class" if "rrule" in self.fields and CLASSLIKE.search(self.fields["title"]) else "Event"
         if self.fields.get("certainty") == "tentative":
             return "Maybe"
-        return "Assignment" if "due_local" in self.fields and not self.bare_day else "Errand"
+        due = "due_local" in self.fields and not self.bare_day
+        if due and "rrule" in self.fields and guess_preset(self.fields["title"], SCHOOLWORK) is None:
+            return "Errand"  # "groceries every week due sunday"; "problem set every week due fri" is schoolwork
+        return "Assignment" if due else "Errand"
 
     def set_amount(self) -> None:
         length = self.fields.pop("length_min", None)

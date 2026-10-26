@@ -1,11 +1,13 @@
 // Adding a to-do (v22): type it the way you'd say it; Friday reads the kind, tag, due, length and repeat as you type,
 // shown as chips. Click a chip to set it yourself (a pin marks what you set), then Add. `compact` is personal's add
 // line at the foot of a to-do section: one ruled line until you type, filling in the section's kind or tag unless
-// the line says otherwise, and keeping its place so you can add the next.
+// the line says otherwise, and keeping its place so you can add the next. With a due date, whether you have time for
+// it shows under the chips by itself (`components/Fit.tsx`).
 
 import { useState } from "react"
 import type { CommandInput } from "@/api/client"
 import { useAreas, useSettings } from "@/hooks/queries"
+import { FitLine } from "@/components/Fit"
 import { Icon } from "@/components/fr/controls"
 import { type Read, readFields, useAdd, useAsk, useParsed } from "@/components/todo/QuickAdd"
 import { dur, when } from "@/lib/format"
@@ -61,8 +63,7 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
   const length = read("duration_min")
   const repeat: Repeat = manual.repeat ?? { every: parsed.every, perWindow: parsed.per_window }
   const set = (change: Manual) => setManual({ ...manual, ...change })
-  const submit = async () => {
-    if (!text.trim()) return
+  const payload = () => {
     const fields = {
       ...(fill.preset ? { preset: fill.preset } : {}),
       ...(fill.area && parsed.area == null ? { area: fill.area } : {}),
@@ -73,7 +74,11 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
       ...(manual.repeat ? { every: manual.repeat.every, per_window: manual.repeat.perWindow } : {}),
       ...(longTerm ? { long_term: true } : {}), // added on the Long term list, it belongs there (COMBINED.md 21)
     }
-    const out = await add(ai.fields ? ({ ...ai.fields, ...fields } as CommandInput<"add">) : { text, ...fields })
+    return ai.fields ? ({ ...ai.fields, ...fields } as CommandInput<"add">) : ({ text, ...fields } as CommandInput<"add">)
+  }
+  const submit = async () => {
+    if (!text.trim()) return
+    const out = await add(payload())
     if (!out) return
     if (out.result.item) onAdded(out.result.item.id)
     setText("")
@@ -146,6 +151,11 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
           {open === "due" && <DuePicker value={due} today={today} onPick={(v) => set({ due: v })} />}
           {open === "length" && <LengthPicker value={length} onPick={(v) => set({ duration_min: v })} />}
           {open === "repeat" && <RepeatPicker value={repeat} onPick={(v) => set({ repeat: v })} />}
+        </div>
+      )}
+      {due && text.trim() && (
+        <div style={{ paddingLeft: compact ? 24 : 28 }}>
+          <FitLine command="add" input={payload() as Record<string, unknown>} compact={compact} />
         </div>
       )}
       {(unread || ai.fields || ai.error) && (

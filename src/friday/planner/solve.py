@@ -58,7 +58,9 @@ def solve(snapshot: Snapshot, warm: bool, cancel: np.ndarray | None = None, thre
         apply_quotas(problem2.items.values(), allocation, problem2.grid.horizon_end, problem2.grid.units)
         for key, item in problem2.items.items():  # from this plan, not the last saved one
             item.current = frozenset(result.plan.get(key, ())) | item.preferred
-        quick = dataclasses.replace(config, fallback_overload_warm_s=config.fallback_warm_s)
+        # From the first pass's plan, only those nights change: an anneal finds it; another deadline search (seconds
+        # of CP-SAT on a big week) bought nothing the first hadn't.
+        quick = dataclasses.replace(config, use_fallback=False)
         again = schedule(problem2, quick, warm=True, cancel=cancel, overloaded=overloaded)
         no_later = again.stage_values["deadlines"] <= result.stage_values["deadlines"]
         if no_later and kept_nights_free(problem, again.plan, lifted):

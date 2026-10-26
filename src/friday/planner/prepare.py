@@ -188,4 +188,6 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
         routine_min=snapshot.sleep.routine_min if snapshot.sleep else {},
         woke_utc=snapshot.sleep.woke_utc if snapshot.sleep else None,
         ready_today=bool(snapshot.sleep and snapshot.sleep.ready),
+        wind_down_min=snapshot.sleep.wind_down_min if snapshot.sleep else {},
+        done_utc=snapshot.sleep.done_utc if snapshot.sleep else None,
     )

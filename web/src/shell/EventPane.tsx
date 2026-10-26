@@ -1,10 +1,13 @@
 // An event in the drawer (personal's inspector and new-event form, COMBINED.md 12): title, all day, date and times,
 // a repeat for a new one, its pigment and notes. The dashed block on the grid is the same draft, so changing the
-// times here moves it there. Return in the title saves; Escape closes.
+// times here moves it there. Return in the title saves; Escape closes. Under the times: whether you have time for a
+// new or moved event, or to go to one you marked optional (`components/Fit.tsx`), with other times when it doesn't.
 
 import { useEffect, useRef, useState } from "react"
 import type { Item } from "@/api/client"
+import { FitLine } from "@/components/Fit"
 import { Icon, Menu, Switch } from "@/components/fr/controls"
+import { useItem, useSettings } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
 import { clock, weekday } from "@/lib/format"
 import { PIGMENTS, pigment, UNMARKED } from "@/lib/pigments"
@@ -53,6 +56,38 @@ export function draftOf(
           ? { color: item.calendar_color, from: item.calendar ?? "its calendar" }
           : { color: null, from: "no category matches" },
   }
+}
+
+/** Whether a title has these words in it, as words: "gym" is in "Gym with Sam", "pe" isn't in "Open". */
+export function hasWords(title: string, words: string): boolean {
+  const escaped = words.trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return !!escaped && new RegExp(`(?<![\\w])${escaped}(?![\\w])`).test(title.toLowerCase())
+}
+
+/** Do I have time for this? A new event, or one moved: what it would make late. One you marked optional ("Gym is
+ * optional", "Climbing club only if I'm ahead"): whether you have time to go, as an event over its time would. */
+function EventFit({ draft, onTime }: { draft: EventDraft; onTime: (start: string, end: string) => void }) {
+  const saved = useItem(draft.id).data?.item
+  const rules = (useSettings().data as { rules?: { type: string; enabled?: boolean; params?: { titles?: string[] } }[] } | undefined)?.rules ?? []
+  if (draft.allDay || !draft.title.trim() || toMin(draft.end) <= toMin(draft.start)) return null
+  const optional = rules.some((r) => r.type === "skippable" && r.enabled !== false && (r.params?.titles ?? []).some((t) => hasWords(draft.title, t)))
+  const times = { start: draft.start, end: draft.end }
+  const moved = saved && (saved.start !== draft.start || saved.end !== draft.end)
+  const check =
+    draft.id === null
+      ? { label: "Do I have time for this?", command: "add" as const, input: { title: draft.title.trim(), when: "fixed", ...times } }
+      : moved
+        ? { label: "Moved here", command: "edit" as const, input: { id: draft.id, ...times } }
+        : optional
+          ? { label: "Do I have time to go?", command: "add" as const, input: { title: `Going to ${draft.title.trim()}`, when: "fixed", ...times } }
+          : null
+  if (!check) return null
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <span className="fr-eyebrow">{check.label}</span>
+      <FitLine command={check.command} input={check.input} onTime={onTime} />
+    </div>
+  )
 }
 
 export function EventPane({ draft }: { draft: EventDraft }) {
@@ -174,6 +209,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
       <span className="tnum fr-kicker" style={{ marginTop: -6 }}>
         {summary(draft)}
       </span>
+      <EventFit draft={draft} onTime={(start, end) => set({ start, end })} />
       {isNew ? (
         <Row label="Repeats">
           <Menu options={REPEATS} value={(draft.every ?? "") as (typeof REPEATS)[number]["value"]} onPick={(v) => set({ every: v || null })} label="Repeats" />

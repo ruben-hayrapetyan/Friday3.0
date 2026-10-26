@@ -1,6 +1,7 @@
-"""Tracking your sleep (Settings → Schedule, off until you turn it on): one tap each for "Going to bed", "I'm up" and
-"Ready to work", a correction for a tap at the wrong time, and what Friday makes of them (`learn/sleep.py`): the last
-two weeks of nights, your morning routine, and learned bedtimes and wake times offered as a change to your schedule.
+"""Tracking your sleep (Settings → Schedule, off until you turn it on): one tap each for "Done with work", "Going to
+bed", "I'm up" and "Ready to work", a correction for a tap at the wrong time, and what Friday makes of them
+(`learn/sleep.py`): the last two weeks of nights, your morning routine and evening wind-down, and learned bedtimes and
+wake times offered as a change to your schedule.
 """
 
 import json
@@ -20,7 +21,8 @@ from friday.planner.store import kv_get
 
 SHOWN_DAYS = 14
 LEARN_DAYS = 56  # the last eight weeks teach the times
-SAID = {"bed": "Good night", "up": "Good morning", "ready": "Ready to work"}
+SAID = {"done": "Done with work", "bed": "Good night", "up": "Good morning", "ready": "Ready to work"}
+DONE_FROM_H = 4  # "Done with work" is offered from this many hours before your bedtime
 
 
 def tracking(ctx: Ctx) -> None:
@@ -37,7 +39,7 @@ def at_utc(ctx: Ctx, local: str | None) -> int:
 
 @command("sleep_mark", affects_plan=True)
 def sleep_mark(ctx: Ctx, inp: SleepMarkInput) -> Changed:
-    """Going to bed, up, or ready to work: now, or at the time you give."""
+    """Done with work, going to bed, up, or ready to work: now, or at the time you give."""
     tracking(ctx)
     moment = at_utc(ctx, inp.at)
     ctx.db.insert("sleep_marks", {"kind": inp.kind, "at_utc": format_utc(moment), "created_utc": ctx.now_text})
@@ -71,12 +73,17 @@ def sleep_skip(ctx: Ctx, inp: SleepSkipInput) -> Changed:
     return Changed(message="Skipped")
 
 
-ASKED = {"up": "When did you get up?", "ready": "When were you ready to work?", "bed": "When did you go to bed?"}
+ASKED = {
+    "up": "When did you get up?",
+    "ready": "When were you ready to work?",
+    "done": "When did you stop working for the night?",
+    "bed": "When did you go to bed?",
+}
 
 
 def missing(ctx: Ctx, day) -> list[SleepAsk]:
-    """The taps a reviewed day is missing: that morning's up and ready, and its night's bedtime once the night is
-    over; not ones you skipped. Each starts from your usual time."""
+    """The taps a reviewed day is missing: that morning's up and ready, and its night's done with work and bedtime
+    once the night is over; not ones you skipped. Each starts from your usual time."""
     if not ctx.settings["sleep_tracking"].on or ctx.settings["sleep"] is None or day > ctx.today:
         return []
     overrides = day_overrides(ctx.conn, ctx.user_id)
@@ -86,20 +93,24 @@ def missing(ctx: Ctx, day) -> list[SleepAsk]:
     _, wake, _ = night_times(ctx.settings, overrides, day - timedelta(days=1), ctx.tz, ctx.day_start)
     bedtime, _, _ = night_times(ctx.settings, overrides, day, ctx.tz, ctx.day_start)
     up = last_night.up.at if last_night and last_night.up else to_local(wake, ctx.tz)
-    routine = learn(nights.values(), ctx.settings["sleep_tracking"].min_nights).routine_min
+    learned = learn(nights.values(), ctx.settings["sleep_tracking"].min_nights)
+    bed = tonight.bed.at if tonight and tonight.bed else to_local(bedtime, ctx.tz)
     usual = {
         "up": to_local(wake, ctx.tz),
-        "ready": up + timedelta(minutes=routine.get(WEEKDAYS[day.weekday()], 60)),
+        "ready": up + timedelta(minutes=learned.routine_min.get(WEEKDAYS[day.weekday()], 60)),
+        "done": bed - timedelta(minutes=learned.wind_down_min.get(WEEKDAYS[day.weekday()], 60)),
         "bed": to_local(bedtime, ctx.tz),
     }
+    over = day >= ctx.today  # tonight isn't over yet
     has = {
         "up": bool(last_night and last_night.up),
         "ready": bool(last_night and last_night.ready_at),
-        "bed": bool(tonight and tonight.bed) or day >= ctx.today,  # tonight isn't over yet
+        "done": bool(tonight and tonight.done_at) or over,
+        "bed": bool(tonight and tonight.bed) or over,
     }
     return [
         SleepAsk(kind=kind, date=day.isoformat(), at=format_local(usual[kind]), question=ASKED[kind])  # type: ignore[arg-type]
-        for kind in ("up", "ready", "bed")
+        for kind in ("up", "ready", "done", "bed")
         if not has[kind] and f"{day.isoformat()}:{kind}" not in skipped
     ]
 
@@ -122,15 +133,14 @@ def recorded(ctx: Ctx, days: int) -> dict:
             [ctx.user_id, since],
         )
     ]
-    timers = [
-        to_local(parse_utc(r["start_utc"]), ctx.tz)
-        for r in rows(
-            ctx.conn,
-            "SELECT start_utc FROM progress WHERE user_id = ? AND source = 'timer' AND start_utc >= ?",
-            [ctx.user_id, since],
-        )
-    ]
-    return nights_from(marks, timers, ctx.day_start)
+    timed = rows(
+        ctx.conn,
+        "SELECT start_utc, end_utc FROM progress WHERE user_id = ? AND source = 'timer' AND start_utc >= ?",
+        [ctx.user_id, since],
+    )
+    starts = [to_local(parse_utc(r["start_utc"]), ctx.tz) for r in timed]
+    ends = [to_local(parse_utc(r["end_utc"]), ctx.tz) for r in timed if r["end_utc"]]
+    return nights_from(marks, starts, ctx.day_start, ends)
 
 
 def planned_min(ctx: Ctx, overrides: dict, evening) -> int:
@@ -140,8 +150,10 @@ def planned_min(ctx: Ctx, overrides: dict, evening) -> int:
 
 @query("sleep")
 def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
-    """Your nights, your morning routine and the bedtimes and wake times Friday has learned, with the tap to offer
-    now: "I'm up" in the morning, "Ready to work" after it, "Going to bed" in the evening."""
+    """Your nights, routines and the times Friday has learned, with the tap to offer now.
+
+    Your morning routine and evening wind-down, learned bedtimes and wake times, and the tap that fits: "I'm up" in
+    the morning, "Ready to work" after it, "Done with work", then "Going to bed"."""
     tracking_on = ctx.settings["sleep_tracking"]
     if not tracking_on.on or ctx.settings["sleep"] is None:
         return SleepOut(on=False, min_nights=tracking_on.min_nights)
@@ -164,6 +176,7 @@ def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
     )
     full = [n.slept_min for n in shown if n.slept_min is not None][:7]
     this_morning = nights.get(now.date() - timedelta(days=1))
+    tonight = nights.get(evening_of(now, ctx.day_start))
     return SleepOut(
         on=True,
         next=offer(ctx, now, nights, overrides, tracking_on.morning_hours),
@@ -172,6 +185,8 @@ def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
         nights=[night_out(ctx, overrides, n) for n in shown],
         average_slept_min=round(sum(full) / len(full)) if full else None,
         routine_min=learned.routine_min,
+        wind_down_min=learned.wind_down_min,
+        done=format_local(tonight.done.at) if tonight and tonight.done and not tonight.bed else None,
         changes=[SleepChangeOut(days=list(c.days), field=c.field, now=c.now, learned=c.learned) for c in found],  # type: ignore[arg-type]
         suggested=suggested,
         recorded_nights=learned.nights,
@@ -180,8 +195,9 @@ def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
 
 
 def offer(ctx: Ctx, now: datetime, nights: dict, overrides: dict, morning_hours: float) -> str | None:
-    """The tap that fits now: up in the morning until it's tapped, ready for a few hours after, bed from three hours
-    before your bedtime until the day starts."""
+    """The tap that fits now: up in the morning until it's tapped, ready for a few hours after; in the evening done
+    with work from four hours before your bedtime (not while a timer runs), then bed once you're done, or from three
+    hours before bedtime if you never said, until the day starts."""
     morning = nights.get(now.date() - timedelta(days=1))
     up = morning.up if morning else None
     if up is None and ctx.day_start <= now.hour * 60 + now.minute < 15 * 60:
@@ -191,8 +207,13 @@ def offer(ctx: Ctx, now: datetime, nights: dict, overrides: dict, morning_hours:
     evening = evening_of(now, ctx.day_start)
     tonight = nights.get(evening)
     bedtime, _, _ = night_times(ctx.settings, overrides, evening, ctx.tz, ctx.day_start)
-    if (tonight is None or tonight.bed is None) and ctx.now_utc >= bedtime - 3 * 60:
+    if tonight is not None and tonight.bed is not None:
+        return None
+    if tonight is not None and tonight.done is not None:
         return "bed"
+    working = one(ctx.conn, "SELECT 1 FROM timer WHERE user_id = ?", [ctx.user_id]) is not None
+    if not working and ctx.now_utc >= bedtime - DONE_FROM_H * 60:
+        return "done"
     return None
 
 
@@ -213,4 +234,8 @@ def night_out(ctx: Ctx, overrides: dict, night: Night) -> SleepNightOut:
         slept_min=night.slept_min,
         planned_min=wake - bedtime,
         routine_min=night.routine_min,
+        done=format_local(night.done_at) if night.done_at else None,
+        done_timed=night.done is None and night.done_from_timer is not None,
+        done_id=night.done.id if night.done else None,
+        wind_down_min=night.wind_down_min,
     )

@@ -26,6 +26,26 @@ def test_ready_is_the_tap_else_the_first_timer_after_waking() -> None:
     assert tapped[date(2026, 10, 19)].routine_min == 45
 
 
+def test_done_with_work_is_the_tap_else_the_last_timer_stopped_before_bed() -> None:
+    bed = mark("bed", "2026-10-20T00:30")
+    ends = [datetime(2026, 10, 19, 18, 0), datetime(2026, 10, 19, 22, 45)]
+    timed = nights_from([bed], [], DAY_START, ends)[date(2026, 10, 19)]
+    assert (timed.done_from_timer, timed.wind_down_min) == (datetime(2026, 10, 19, 22, 45), 105)
+    long_before = nights_from([bed], [], DAY_START, [datetime(2026, 10, 19, 18, 0)])[date(2026, 10, 19)]
+    assert long_before.wind_down_min is None  # six hours before bed: not the end of the evening's work
+    tapped = nights_from([mark("done", "2026-10-19T23:30"), bed], [], DAY_START, ends)[date(2026, 10, 19)]
+    assert (tapped.done_from_timer, tapped.wind_down_min) == (None, 60)
+
+
+def test_the_wind_down_is_learned_by_the_evenings_group() -> None:
+    marks = []
+    for n in range(5):  # Sunday to Thursday nights: done at 10:30pm, bed at 11:30pm
+        evening = date(2026, 10, 18) + timedelta(days=n)
+        marks += [mark("done", f"{evening}T22:30"), mark("bed", f"{evening}T23:30")]
+    learned = learn(nights_from(marks, [], DAY_START).values(), least=4)
+    assert learned.wind_down_min == {d: 60 for d in ("sun", "mon", "tue", "wed", "thu")}
+
+
 def week(start: date, bed: str, up: str, ready: str | None = None, days: int = 7) -> list[Mark]:
     out = []
     for n in range(days):

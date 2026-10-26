@@ -70,9 +70,7 @@ def add(ctx: Ctx, inp: AddInput) -> AddOutput:
         return AddOutput(series_id=series_id, occurrences=made, warnings=warnings)
     values = to_item_values(ctx, given)
     values |= estimated_length(ctx, values, given, warnings)
-    item = new_item(ctx, values)
-    if item.due_utc and item.amount == "fixed" and item.firmness == "none" and "firmness" not in values:
-        item.firmness = "hard"  # a due you give is a deadline, even on a kind that usually has none (a form to send)
+    item = due_is_a_deadline(new_item(ctx, values), values)
     check_parent(ctx, None, item.parent_id)
     item_id = insert_item(ctx, item)
     queue_event_write(ctx, require_item(ctx, item_id), "save")
@@ -246,6 +244,15 @@ def fitted_chunk(ctx: Ctx, before: Item, after: Item) -> int:
     return min(usual, amount) if amount else usual
 
 
+def due_is_a_deadline(item: Item, values: dict[str, Any]) -> Item:
+    """A due you give is a deadline: on a kind that usually has none (a form to send), and on one that had no due
+    yet ("PS 3" added before its date was out, or brought over from your to-do list without one, then given one).
+    Edited in, it had stayed "none", and Friday planned CS A4 as if it could wait forever."""
+    if item.due_utc and item.amount == "fixed" and item.firmness == "none" and "firmness" not in values:
+        return dataclasses.replace(item, firmness="hard")
+    return item
+
+
 @command("edit", affects_plan=True)
 def edit(ctx: Ctx, inp: EditInput) -> ItemResult:
     """Change an item's fields; `from_date` changes a repeating item's series from that date on."""
@@ -255,7 +262,10 @@ def edit(ctx: Ctx, inp: EditInput) -> ItemResult:
         if item.series_id is None:
             raise FieldError("from_date", f"T{item.id} doesn't repeat")
         return edit_from(ctx, item, inp.from_date, given)
-    changed = dataclasses.replace(item, **to_item_values(ctx, given))
+    values = to_item_values(ctx, given)
+    changed = dataclasses.replace(item, **values)
+    if "due_utc" in values:
+        changed = due_is_a_deadline(changed, values)
     if changed.series_id is not None:
         changed.detached = True  # regeneration leaves an edited occurrence alone
     if "min_chunk_min" not in given and amount_units(changed) != amount_units(item):

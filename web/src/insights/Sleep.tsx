@@ -1,7 +1,7 @@
 // Sleep (Insights): what your tracked nights say, while tracking is on (Sleep & meals has the switch, and the nights
 // to log or put right). Your last two weeks of nights on one timeline from 8pm to the next noon (a bar from bed to up,
-// the schedule you set as an outline behind it, a tick where you were ready to work), your usual times, and what
-// Friday learned, to take with one click.
+// the schedule you set as an outline behind it, ticks where you were done with work and ready to work), your usual
+// times, your wind-down and morning routine, and what Friday learned, to take with one click.
 
 import { useState } from "react"
 import { useNavigate } from "react-router"
@@ -18,6 +18,10 @@ const FROM = 20 * 60 // the timeline runs from 8pm on the night's day…
 const SPAN = 17 * 60 // …to 1pm the next day
 const TICKS = [21, 24, 27, 30, 33, 36] // 9pm, 12am, 3am, 6am, 9am, 12pm
 const WEEKDAY_MORNINGS = ["mon", "tue", "wed", "thu", "fri"]
+const SCHOOL_NIGHTS = ["sun", "mon", "tue", "wed", "thu"]
+
+/** The middle value, or null for none. */
+const middle = (values: number[]): number | null => (values.length ? [...values].sort((a, b) => a - b)[Math.floor((values.length - 1) / 2)] : null)
 
 /** Where a local time falls on a night's timeline, 0–100. */
 export function along(date: string, at: string): number {
@@ -62,13 +66,15 @@ function Usual({ sleep }: { sleep: Schemas["SleepOut"] }) {
   const nights = sleep.nights ?? []
   const bed = usual(nights.flatMap((n) => (n.bed ? [n.bed] : [])), true)
   const up = usual(nights.flatMap((n) => (n.up ? [n.up] : [])), false)
-  const routines = nights.flatMap((n) => (n.routine_min != null ? [n.routine_min] : []))
-  const routine = routines.length ? [...routines].sort((a, b) => a - b)[Math.floor((routines.length - 1) / 2)] : null
+  const routine = middle(nights.flatMap((n) => (n.routine_min != null ? [n.routine_min] : [])))
+  const wind = middle(nights.flatMap((n) => (n.wind_down_min != null ? [n.wind_down_min] : [])))
+  const quarter = (m: number) => dur(Math.max(15, Math.round(m / 15) * 15))
   const stats: [string, string][] = [
     [sleep.average_slept_min ? dur(sleep.average_slept_min) : "—", "of sleep a night, lately"],
     [bed ? ampm(bed) : "—", "usually to bed"],
     [up ? ampm(up) : "—", "usually up"],
-    [routine != null ? dur(Math.max(15, Math.round(routine / 15) * 15)) : "—", "from up to ready to work"],
+    [wind != null ? quarter(wind) : "—", "from done with work to bed"],
+    [routine != null ? quarter(routine) : "—", "from up to ready to work"],
   ]
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 20 }}>
@@ -123,6 +129,7 @@ function Timeline({ nights }: { nights: Schemas["SleepNightOut"][] }) {
               [n.bed, n.up].filter(Boolean).map((at) => <span key={at} style={{ position: "absolute", top: 4, width: 8, height: 8, borderRadius: "50%", left: `calc(${along(n.date, at as string)}% - 4px)`, background: "var(--color-accent)" }} />)
             )}
             {n.ready && <span title="Ready to work" style={{ position: "absolute", top: 0, bottom: 0, width: 2, borderRadius: 1, left: `${along(n.date, n.ready)}%`, background: "var(--color-accent-200)" }} />}
+            {n.done && <span title="Done with work" style={{ position: "absolute", top: 0, bottom: 0, width: 2, borderRadius: 1, left: `${along(n.date, n.done)}%`, background: "var(--color-neutral-400)" }} />}
           </span>
           <span className="tnum" style={{ textAlign: "right", fontSize: 12, color: n.slept_min && n.slept_min < n.planned_min - 60 ? "var(--fr-warn)" : "var(--color-neutral-300)" }}>
             {n.slept_min ? dur(n.slept_min) : "—"}
@@ -137,11 +144,14 @@ function Timeline({ nights }: { nights: Schemas["SleepNightOut"][] }) {
           <span style={{ width: 18, height: 12, borderRadius: 4, boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 22%, transparent)" }} /> Your schedule
         </span>
         <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+          <span style={{ width: 2, height: 12, borderRadius: 1, background: "var(--color-neutral-400)" }} /> Done with work
+        </span>
+        <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
           <span style={{ width: 2, height: 12, borderRadius: 1, background: "var(--color-accent-200)" }} /> Ready to work
         </span>
         <span style={{ flex: 1 }} />
         <span className="tnum" style={{ color: "var(--color-neutral-300)" }}>
-          {shown ? `${dayLabel(shown.date)}: ${shown.bed ? `bed ${clock(shown.bed)}` : "no bedtime"}, ${shown.up ? `up ${clock(shown.up)}` : "no wake time"}${shown.ready ? `, ready ${clock(shown.ready)}` : ""}${shown.slept_min ? ` · ${dur(shown.slept_min)} asleep, ${dur(shown.planned_min)} planned` : ""}` : "Point at a night for its times"}
+          {shown ? `${dayLabel(shown.date)}: ${shown.done ? `done ${clock(shown.done)}, ` : ""}${shown.bed ? `bed ${clock(shown.bed)}` : "no bedtime"}, ${shown.up ? `up ${clock(shown.up)}` : "no wake time"}${shown.ready ? `, ready ${clock(shown.ready)}` : ""}${shown.slept_min ? ` · ${dur(shown.slept_min)} asleep, ${dur(shown.planned_min)} planned` : ""}` : "Point at a night for its times"}
         </span>
       </div>
     </div>
@@ -155,6 +165,8 @@ function LearnedSleep({ sleep }: { sleep: Schemas["SleepOut"] }) {
   const routines = Object.entries(sleep.routine_min ?? {})
   const weekdays = routines.find(([d]) => WEEKDAY_MORNINGS.includes(d))?.[1]
   const weekend = routines.find(([d]) => !WEEKDAY_MORNINGS.includes(d))?.[1]
+  const winds = Object.entries(sleep.wind_down_min ?? {})
+  const schoolNight = winds.find(([d]) => SCHOOL_NIGHTS.includes(d))?.[1]
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {!!sleep.changes?.length && (
@@ -185,6 +197,7 @@ function LearnedSleep({ sleep }: { sleep: Schemas["SleepOut"] }) {
         {left ? `Friday suggests your times after ${left} more night${left === 1 ? "" : "s"} with both a bedtime and a wake time.` : "Friday plans your mornings and late nights from these."}
         {weekdays != null && ` Your weekday mornings take about ${dur(weekdays)} from up to ready; Friday keeps them light.`}
         {weekend != null && ` Weekends, about ${dur(weekend)}.`}
+        {schoolNight != null && ` Evenings take about ${dur(schoolNight)} from done with work to bed; Friday keeps that time light.`}
       </span>
     </div>
   )

@@ -222,6 +222,33 @@ def run_in_transaction(
     return CommandResult(command_id=command_id, result=result, provisional=ghosts)
 
 
+def tried[T](
+    conn: sqlite3.Connection,
+    name: str,
+    payload: dict[str, Any],
+    look: Callable[[sqlite3.Connection], T],
+    *,
+    now_utc: int,
+    user_id: int = 1,
+) -> T:
+    """What `look` finds with a command applied that is then undone: the command and the look share one transaction,
+    always rolled back (Do I have time for this?, `commands/fitting.py`). Nothing is logged or kept."""
+    spec = REGISTRY.get(name)
+    if spec is None or not spec.mutates or not spec.logged:
+        raise FieldError("command", f"{name!r} isn't a change Friday can try")
+    inp = spec.input_type.model_validate(payload)
+    settings = load_settings(conn, user_id)
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        command_id = log_start(conn, spec, inp, now_utc, "you", user_id, None)
+        spec.fn(Ctx(conn, Writer(conn, user_id), now_utc, "you", user_id, settings, command_id), inp)
+        if spec.affects_plan:
+            bump_generation(conn, user_id)
+        return look(conn)
+    finally:
+        conn.execute("ROLLBACK")
+
+
 def full_preview(conn: sqlite3.Connection, snapshot: Snapshot, tz: str) -> ChangeOut:
     """Solve a snapshot taken before the rollback, outside the transaction so the solve holds no write lock."""
     plan = plan_snapshot(snapshot, warm=True)

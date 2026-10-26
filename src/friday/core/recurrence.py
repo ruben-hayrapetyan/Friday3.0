@@ -11,6 +11,7 @@ from friday.core.dates import WEEKDAY_NAMES, read_date
 RRULE_DAYS = ("MO", "TU", "WE", "TH", "FR", "SA", "SU")
 WEEKDAYS_SET = {"MO", "TU", "WE", "TH", "FR"}
 EVERY_N_WEEKS = re.compile(r"^(\d+)w$")
+UNITS = {"day": "DAILY", "week": "WEEKLY", "month": "MONTHLY", "year": "YEARLY"}
 
 
 def read_repeat(words: list[str], i: int, today: date) -> tuple[str, int] | None:
@@ -41,6 +42,16 @@ def read_base_rule(words: list[str], i: int) -> tuple[str, int] | None:
         return "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", 1
     if word == "month" and following.isdigit() and 1 <= int(following) <= 31:
         return f"FREQ=MONTHLY;BYMONTHDAY={int(following)}", 2
+    if word in UNITS and not following.isdigit():  # every month, every year ("month 40" is no day of a month)
+        return f"FREQ={UNITS[word]}", 1
+    if word in ("other", "second") and following in UNITS:  # every other week
+        return f"FREQ={UNITS[following]};INTERVAL=2", 2
+    if word in ("other", "second") and (days := byday(following)):  # every other tuesday
+        return f"FREQ=WEEKLY;INTERVAL=2;BYDAY={days}", 2
+    if word == "fortnight":
+        return "FREQ=WEEKLY;INTERVAL=2", 1
+    if word.isdigit() and 1 <= int(word) <= 99 and following.rstrip("s") in UNITS:  # every 4 weeks, every 3 days
+        return f"FREQ={UNITS[following.rstrip('s')]};INTERVAL={int(word)}", 2
     if (match := EVERY_N_WEEKS.match(word)) and (days := byday(following)):
         return f"FREQ=WEEKLY;INTERVAL={int(match[1])};BYDAY={days}", 2
     if byday(word):

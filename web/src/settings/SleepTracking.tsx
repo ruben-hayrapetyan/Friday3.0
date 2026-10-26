@@ -36,7 +36,7 @@ export function Tracking({ what }: { what: "sleep" | "meals" }) {
   const name = what === "sleep" ? "Track my sleep" : "Track my meals"
   const note =
     what === "sleep"
-      ? "Optional. Tap “Going to bed” and “I’m up” in the Now bar (or log a night in Sleep & meals); Friday learns your real bedtime, wake time and morning routine. Off, nothing is recorded or learned."
+      ? "Optional. Tap “Done with work”, “Going to bed” and “I’m up” in the Now bar (or log a night in Sleep & meals); Friday learns your real bedtime, wake time, morning routine and wind-down before bed. Off, nothing is recorded or learned."
       : "Optional. Tap “Eating now” and “Done eating” in the Now bar (or log a meal in Sleep & meals); Friday learns when you eat, for how long and what you skip, and keeps your meal free while you eat. Off, nothing is recorded or learned."
   return (
     <Field name={name} note={note}>
@@ -62,11 +62,12 @@ export function Nights({ nights }: { nights: Schemas["SleepNightOut"][] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       {nights.map((n) => (
-        <div key={n.date} className="fr-row" style={{ display: "grid", gridTemplateColumns: "92px repeat(3, minmax(0,1fr)) 64px", gap: 8, alignItems: "center", padding: "6px 0", fontSize: 12 }}>
+        <div key={n.date} className="fr-row" style={{ display: "grid", gridTemplateColumns: "92px repeat(4, minmax(0,1fr)) 64px", gap: 8, alignItems: "center", padding: "6px 0", fontSize: 12 }}>
           <span style={{ color: "var(--color-neutral-400)" }}>{dayLabel(n.date)}</span>
+          <TapTime label="Done" at={n.done} id={n.done_id} timed={n.done_timed} timedSaid="The last timer you stopped before bed" />
           <TapTime label="Bed" at={n.bed} id={n.bed_id} />
           <TapTime label="Up" at={n.up} id={n.up_id} />
-          <TapTime label="Ready" at={n.ready} id={n.ready_id} timed={n.ready_timed} />
+          <TapTime label="Ready" at={n.ready} id={n.ready_id} timed={n.ready_timed} timedSaid="The first timer you started" />
           <span className="tnum" title={`You plan for ${dur(n.planned_min)}`} style={{ textAlign: "right", color: n.slept_min && n.slept_min < n.planned_min - 60 ? "var(--fr-warn)" : "var(--color-neutral-300)" }}>
             {n.slept_min ? dur(n.slept_min) : "—"}
           </span>
@@ -76,7 +77,7 @@ export function Nights({ nights }: { nights: Schemas["SleepNightOut"][] }) {
   )
 }
 
-function TapTime({ label, at, id, timed }: { label: string; at?: string | null; id?: number | null; timed?: boolean }) {
+function TapTime({ label, at, id, timed, timedSaid }: { label: string; at?: string | null; id?: number | null; timed?: boolean; timedSaid?: string }) {
   const edit = useCommand("sleep_mark_edit", { label: (o) => o.result.message ?? "Moved" })
   const remove = useCommand("sleep_mark_remove", { label: (o) => o.result.message ?? "Removed" })
   const [editing, setEditing] = useState(false)
@@ -101,7 +102,7 @@ function TapTime({ label, at, id, timed }: { label: string; at?: string | null; 
     )
   }
   return (
-    <button className="fr-plain fr-hover-text tnum" disabled={!id} onClick={() => setEditing(true)} title={timed ? "The first timer you started" : id ? "Click to change" : undefined} style={{ textAlign: "left", color: "var(--color-neutral-300)" }}>
+    <button className="fr-plain fr-hover-text tnum" disabled={!id} onClick={() => setEditing(true)} title={timed ? timedSaid : id ? "Click to change" : undefined} style={{ textAlign: "left", color: "var(--color-neutral-300)" }}>
       {label} {clock(at)}
       {timed && <span style={{ color: "var(--color-neutral-500)" }}> (timer)</span>}
     </button>

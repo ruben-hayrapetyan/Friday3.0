@@ -74,6 +74,8 @@ class BuildInput:
     routine_min: Mapping[str, int] = field(default_factory=dict)  # tracked sleep: the morning routine by weekday
     woke_utc: int | None = None  # tracked sleep: this morning's "I'm up"
     ready_today: bool = False  # tracked sleep: ready to work this morning
+    wind_down_min: Mapping[str, int] = field(default_factory=dict)  # tracked sleep: done with work to bed, by evening
+    done_utc: int | None = None  # tracked sleep: tonight's "Done with work"
     end_utc: int | None = None  # truncates the grid (tests, brute force)
 
 
@@ -412,7 +414,9 @@ def nights(inp: BuildInput, spec: GridSpec, first: date, days: int) -> dict[date
         routine = inp.routine_min.get(WEEKDAYS[(day + timedelta(days=1)).weekday()])
         if offset == -1 and inp.woke_utc is not None:  # last night: up early frees the morning, late moves the routine
             wake, routine = inp.woke_utc, 0 if inp.ready_today else routine
-        out[day] = Night(bedtime, wake, margin, inp.debt_hours.get(day, 0.0), routine)
+        wind_down = inp.wind_down_min.get(WEEKDAYS[day.weekday()])
+        done = inp.done_utc if offset == 0 else None  # tonight's: you said you're done with work
+        out[day] = Night(bedtime, wake, margin, inp.debt_hours.get(day, 0.0), routine, wind_down, done)
     return out
 
 

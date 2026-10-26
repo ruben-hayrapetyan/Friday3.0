@@ -175,6 +175,14 @@ class ShoveOutput(Model):
 MealKind = Literal["breakfast", "lunch", "dinner", "snack"]
 
 
+class FitInput(Model):
+    """Do I have time for this? A change Friday tries on a copy of your plan and never keeps."""
+
+    command: Literal["add", "edit", "series_add", "shove", "rule_add", "pin", "day_override"]
+    input: dict[str, Any]  # that command's input, as you'd send it
+    exact: bool = False  # plan the changed week as a replan would (seconds), not just check the deadlines (instant)
+
+
 class MealStartInput(Model):
     kind: MealKind | None = None  # by the time when left out: the routine whose window it is, else the hour
     at: str | None = None  # local time; now when left out
@@ -212,7 +220,7 @@ class MealLengthInput(Model):
 
 
 class SleepMarkInput(Model):
-    kind: Literal["bed", "up", "ready"]
+    kind: Literal["done", "bed", "up", "ready"]  # done with work, going to bed, up, ready to work
     at: str | None = None  # local time; now when left out
 
 
@@ -227,7 +235,7 @@ class SleepMarkRef(Model):
 
 class SleepSkipInput(Model):
     date: str  # the reviewed day
-    kind: Literal["bed", "up", "ready"]
+    kind: Literal["done", "bed", "up", "ready"]
 
 
 class UnshoveInput(Model):

@@ -65,7 +65,7 @@ class ReviewOut(Model):
 
 
 class SleepAsk(Model):
-    kind: Literal["up", "ready", "bed"]
+    kind: Literal["up", "ready", "done", "bed"]
     date: str  # the day the review is of
     at: str  # a local time to start from: your usual one
     question: str
@@ -530,6 +530,10 @@ class SleepNightOut(Model):
     planned_bed: str | None = None  # local: the bedtime and wake time set for that night
     planned_up: str | None = None
     routine_min: int | None = None
+    done: str | None = None  # done with work, that evening
+    done_timed: bool = False  # done is the last timer you stopped before bed, not a tap
+    done_id: int | None = None
+    wind_down_min: int | None = None  # done with work to bed
 
 
 class SleepChangeOut(Model):
@@ -537,6 +541,33 @@ class SleepChangeOut(Model):
     field: Literal["bedtime", "wake"]
     now: str  # HH:MM
     learned: str
+
+
+class FitLate(Model):
+    item_id: int
+    title: str
+    before_h: float  # hours it finishes after its due now (0: on time)
+    after_h: float  # with the change
+    short_h: float | None = None  # quick: hours of its work that would no longer fit before its due
+
+
+class FitTime(Model):
+    start: str  # local
+    end: str
+
+
+class FitOut(Model):
+    """Do I have time for this?: whether everything still fits with the change, in a sentence and in parts."""
+
+    verdict: Literal["fits", "tight", "late"]
+    said: str
+    exact: bool
+    later: list[FitLate] = []  # work that would end later past its due than it does now
+    spare_h: float | None = None  # a new task's free hours before it must start, with everything due before it
+    later_nights: bool = False  # exact: it fits, by working later at night than the plan does now
+    moved: int = 0  # exact: blocks of your plan that would move
+    instead: list[FitTime] = []  # an event that makes work late: nearby times that don't
+    seconds: float = 0.0
 
 
 class MealOut(Model):
@@ -584,12 +615,14 @@ class MealsOut(Model):
 
 class SleepOut(Model):
     on: bool
-    next: Literal["up", "ready", "bed"] | None = None  # the tap the Now bar offers now
+    next: Literal["up", "ready", "done", "bed"] | None = None  # the tap the Now bar offers now
     up: str | None = None  # this morning's, local
     ready: str | None = None
     nights: list[SleepNightOut] = []  # the last two weeks, newest first
     average_slept_min: int | None = None  # over the last seven recorded nights
     routine_min: dict[str, int] = {}  # learned, by the weekday of the morning
+    wind_down_min: dict[str, int] = {}  # learned, done with work to bed, by the weekday of the evening
+    done: str | None = None  # tonight's done with work, local
     changes: list[SleepChangeOut] = []  # learned times half an hour or more off the ones set
     suggested: dict[str, Any] | None = None  # the whole sleep setting with them, for `settings_set`
     recorded_nights: int = 0

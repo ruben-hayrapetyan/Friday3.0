@@ -1,11 +1,13 @@
 // Ask Claude (personal's, COMBINED.md 20, 37): say what you want ("move my 5pm to Thursday", "prioritize assignments
 // over readings"), see what Claude would change as Friday's own commands, tick what to keep, and apply. Nothing runs
 // before Apply; applied, the changes undo together. ⌘↩ asks; Esc closes. Opened with `now` (a rule Friday couldn't
-// read, sent with ↩ from Rules), it asks at once.
+// read, sent with ↩ from Rules), it asks at once. A proposal that adds, moves or clears time says under it whether you
+// have time for it ("can I go to poker Thursday 8 to 11?"), as `components/Fit.tsx` checks it.
 
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { ApiError, type CommandName, command, type Schemas } from "@/api/client"
+import { FIT_COMMANDS, type FitCommand, FitLine } from "@/components/Fit"
 import { Box, Icon } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { undoAll } from "@/hooks/useCommand"
@@ -109,9 +111,10 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
             {answer.actions.length > 0 && <span className="fr-eyebrow">Claude wants to</span>}
             {answer.actions.map((a, i) => {
               const on = kept.includes(i)
+              const checked = !a.error && (FIT_COMMANDS as readonly string[]).includes(a.command)
               return (
+                <div key={i} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 <button
-                  key={i}
                   className="fr-plain fr-hover"
                   disabled={!!a.error}
                   onClick={() => setKept(on ? kept.filter((k) => k !== i) : [...kept, i])}
@@ -125,6 +128,12 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
                     </span>
                   </span>
                 </button>
+                {checked && (
+                  <div style={{ paddingLeft: 38 }}>
+                    <FitLine command={a.command as FitCommand} input={a.input as Record<string, unknown>} compact />
+                  </div>
+                )}
+                </div>
               )
             })}
             <div style={{ display: "flex", gap: 8 }}>
