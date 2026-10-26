@@ -39,11 +39,16 @@ WAIT_S = 300  # how long Google's page may stay open before the sign-in gives up
 
 @dataclass
 class SignIn:
-    state: Literal["waiting", "connected", "failed"] = "waiting"
+    state: Literal["idle", "waiting", "connected", "failed"] = "waiting"
     message: str | None = None
     url: str | None = None
     account: str | None = None  # asked for (None: any account), then the one it connected
     thread: threading.Thread | None = field(default=None, repr=False)
+    cancelled: bool = False
+
+
+class Cancelled(Exception):
+    """Cancel sign-in pressed before Google's page opened."""
 
 
 SIGN_INS: dict[Path, SignIn] = {}  # by data folder: one sign-in at a time for each
@@ -132,11 +137,15 @@ def wait_for_google(
     due."""
 
     def opened(url: str) -> None:
+        if sign_in.cancelled:
+            raise Cancelled
         sign_in.url = url
 
     try:
         account = google_auth.login(client, db.parent, scopes, WAIT_S, opened=opened, account=sign_in.account)
     except Exception as error:
+        if sign_in.cancelled:  # Cancel sign-in already said so
+            return
         log.warning("connecting Google didn't finish: %s: %s", type(error).__name__, error)
         sign_in.state, sign_in.message, sign_in.url = "failed", plainly(error), None
         return
@@ -152,6 +161,21 @@ def wait_for_google(
         log.warning("listing Google calendars after connecting failed: %s", error)
     log.info("Google connected: %s", account)
     sign_in.state, sign_in.message, sign_in.url, sign_in.account = "connected", None, None, account
+
+
+@command("google_connect_cancel", logged=False)
+def google_connect_cancel(ctx: Ctx, inp: Empty) -> GoogleConnectOut:
+    """Cancel a sign-in waiting on Google's page, so you can start again (with another account, say). Google's page,
+    if it's still open, connects nothing after this."""
+    folder, url = data_file(ctx.conn).parent, None
+    with LOCK:
+        sign_in = SIGN_INS.get(folder)
+        if sign_in is not None and sign_in.state == "waiting":
+            url, sign_in.cancelled = sign_in.url, True
+            sign_in.state, sign_in.message, sign_in.url = "idle", "Sign-in cancelled.", None
+    if url:
+        google_auth.stop(url)
+    return google_connect_status(ctx, Empty())
 
 
 # Unlogged: the token it deletes can't be brought back by an undo; connecting the account again does that.

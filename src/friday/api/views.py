@@ -372,7 +372,7 @@ class GoogleAccountOut(Model):
 class GoogleConnectOut(Model):
     """Connecting Google from the app: how the sign-in started there is going, and what Google allows Friday."""
 
-    state: Literal["idle", "waiting", "connected", "failed"]  # idle: no sign-in started since the server started
+    state: Literal["idle", "waiting", "connected", "failed"]  # idle: none started since the server did, or cancelled
     message: str | None = None  # why it failed, in a sentence
     url: str | None = None  # while waiting: Google's page, to open again
     account: str | None = None  # the sign-in's account: the one asked for (None: any), the one it connected after

@@ -769,6 +769,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/google_connect_cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a sign-in waiting on Google's page, so you can start again (with another account, say). Google's page, */
+        post: operations["google_connect_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/google_remove": {
         parameters: {
             query?: never;
@@ -3831,6 +3848,25 @@ export interface components {
         };
         /** GoogleClientSaveResult */
         GoogleClientSaveResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["GoogleConnectOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+        };
+        /** GoogleConnectCancelResult */
+        GoogleConnectCancelResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["GoogleConnectOut"];
@@ -9256,6 +9292,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GoogleConnectResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    google_connect_cancel: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Empty"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleConnectCancelResult"];
                 };
             };
             /** @description Validation Error */

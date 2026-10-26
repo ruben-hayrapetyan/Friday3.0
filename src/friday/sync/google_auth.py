@@ -9,9 +9,11 @@ account (`LEGACY`) until the sync lists its calendars, whose primary one names i
 import json
 import os
 import threading
+import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -94,6 +96,20 @@ def login(
     found = address(build("calendar", "v3", credentials=creds, cache_discovery=False))
     save(folder, found, creds)
     return found
+
+
+def stop(url: str) -> None:
+    """End a sign-in waiting on Google's page `url`: its address on this Mac gets Google's "access denied", as when
+    you click Cancel on Google's page, so the flow stops now instead of when it times out."""
+    asked = parse_qs(urlsplit(url).query)
+    back, state = asked.get("redirect_uri", [""])[0], asked.get("state", [""])[0]
+    if not back.startswith(("http://localhost:", "http://127.0.0.1:")):
+        return
+    try:
+        with urllib.request.urlopen(f"{back}?{urlencode({'error': 'access_denied', 'state': state})}", timeout=3):
+            pass
+    except OSError:  # it had finished or given up already
+        pass
 
 
 def address(service: Any) -> str:

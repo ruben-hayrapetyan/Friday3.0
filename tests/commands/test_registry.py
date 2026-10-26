@@ -470,6 +470,7 @@ def test_unlogged_commands_are_only_those_with_no_undo_or_a_secret_result() -> N
         "mac_written",
         "token_add",
         "google_connect",
+        "google_connect_cancel",
         "google_client_save",
         "google_remove",
     } == UNLOGGED

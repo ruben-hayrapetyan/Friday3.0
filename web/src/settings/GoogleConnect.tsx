@@ -105,9 +105,19 @@ export function ConnectGoogle(props: { need?: Need; account?: string; again?: bo
     }
     setPressed(false)
   }
+  // Stops a sign-in waiting on Google's page (Google's page, if still open, connects nothing after it).
+  const cancel = async () => {
+    setProblem(null)
+    try {
+      client.setQueryData(KEY, (await command("google_connect_cancel", {})).result)
+    } catch (error) {
+      setProblem(said(error))
+    }
+  }
   const failed = problem ?? (access.state === "failed" && mine ? access.message : null)
+  const cancelled = started && access.state === "idle" ? access.message : null
   const worked = started && access.justNow && access.state === "connected" && !small
-  const note = failed ?? (waiting && mine ? WAITING : worked ? `Connected ${accountName(access.account)}.${done ? ` ${done}` : ""}` : small ? null : (why ?? "Opens Google's page in your browser. Allow Friday there, then come back."))
+  const note = failed ?? cancelled ?? (waiting && mine ? WAITING : worked ? `Connected ${accountName(access.account)}.${done ? ` ${done}` : ""}` : small ? null : (why ?? "Opens Google's page in your browser. Allow Friday there, then come back."))
   const look = first ? "btn btn-primary" : "btn btn-secondary"
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
@@ -121,6 +131,11 @@ export function ConnectGoogle(props: { need?: Need; account?: string; again?: bo
             Didn't see it? Open Google's page
           </a>
         )}
+        {waiting && (mine || !small) && (
+          <button className="btn btn-secondary fr-press" onClick={cancel} style={{ fontSize: 12, ...(small ? { padding: "2px 10px" } : {}) }}>
+            Cancel sign-in
+          </button>
+        )}
       </span>
       {note && <span style={{ fontSize: 12, color: failed ? "var(--fr-due)" : worked ? "var(--color-accent-300)" : "var(--color-neutral-300)", textWrap: "pretty" }}>{note}</span>}
       {!first && ((!again && need === "calendar" && !small) || (waiting && mine)) && <Blocked open={waiting && mine && !again} />}
@@ -132,7 +147,7 @@ export function ConnectGoogle(props: { need?: Need; account?: string; again?: bo
 // What to do when Google turns another account away ("Access blocked: Friday has not completed the Google
 // verification process"): the project you made the key in lets in only the addresses listed as its test users.
 const BLOCKED_STEPS: { what: string; how: string; link?: [string, string] }[] = [
-  { what: "Open your Friday project's Audience page in Google Cloud", how: "Sign in there with the account you made the key file with: the first one you connected, not the one you're adding.", link: ["Audience", "https://console.cloud.google.com/auth/audience"] },
+  { what: "Open your Friday project's Audience page in Google Cloud", how: "Sign in there with the account you made the key file with: the first one you connected, not the one you're adding. It's the email Google's blocked page gives under “contact the developer”.", link: ["Audience", "https://console.cloud.google.com/auth/audience"] },
   { what: "Put the new account's email on the list", how: "Scroll to Test users, click Add users, type the email address of the account Google just blocked (the one you're trying to connect, like you@gmail.com), and click Save." },
   { what: "Connect again", how: "Back here, click Add another Google account. When Google says it hasn't verified the app, click Continue (or Advanced, then Go to Friday): it's your own." },
 ]

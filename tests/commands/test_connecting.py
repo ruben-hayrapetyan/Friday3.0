@@ -7,10 +7,12 @@ import json
 import threading
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from google_auth_oauthlib.flow import WSGITimeoutError
+from google_auth_oauthlib.flow import InstalledAppFlow, WSGITimeoutError
+from oauthlib.oauth2.rfc6749.errors import AccessDeniedError
 
 from friday.commands import connecting
 from friday.core.items import FieldError
@@ -30,6 +32,7 @@ CLIENT = {
     }
 }
 PAGE = "https://accounts.google.com/o/oauth2/auth?client_id=123"
+REAL_SIGN_IN = InstalledAppFlow.run_local_server  # as it is before each test blocks it (conftest)
 
 
 @pytest.fixture
@@ -297,3 +300,64 @@ def test_a_key_file_named_in_terminal_is_kept_where_friday_looks(
     main(["--data-dir", str(tmp_path / "data"), "google-login", "--client-file", str(downloaded)])
     kept = no_personal_config / "google_client.json"
     assert json.loads(kept.read_text()) == CLIENT and oct(kept.stat().st_mode & 0o777) == "0o600"
+
+
+def page_up(app: App) -> None:
+    for _ in range(100):  # the page's address comes once the flow has made it
+        if app.do("google_connect_status")["url"]:
+            return
+        threading.Event().wait(0.02)
+    raise AssertionError("Google's page never opened")
+
+
+def test_cancel_sign_in_stops_the_wait_and_another_can_start(
+    app: App, monkeypatch: pytest.MonkeyPatch, no_personal_config: Path
+) -> None:
+    with_client(no_personal_config)
+    assert app.do("google_connect_cancel")["state"] == "idle"  # nothing waiting: nothing to cancel
+    fake = FakeSignIn(error=AccessDeniedError())  # what Google's page answering "access denied" raises
+    monkeypatch.setattr(google_auth, "login", fake)
+    stopped: list[str] = []
+    monkeypatch.setattr(google_auth, "stop", stopped.append)
+    app.do("google_connect")
+    page_up(app)
+    status = app.do("google_connect_cancel")
+    assert (status["state"], status["message"], status["url"]) == ("idle", "Sign-in cancelled.", None)
+    assert stopped == [PAGE]
+    fake.answer.set()
+    thread = connecting.SIGN_INS[connecting.data_file(app.conn).parent].thread
+    assert thread is not None
+    thread.join(5)
+    assert app.do("google_connect_status")["message"] == "Sign-in cancelled."  # not the flow's own failure
+    monkeypatch.setattr(google_auth, "calendar", Accounts({"me@gmail.com": FakeGoogle({"me@gmail.com": []})}))
+    status = signed_in(app, monkeypatch, FakeSignIn())
+    assert status["state"] == "connected" and status["account"] == "me@gmail.com"
+
+
+def test_cancel_ends_googles_real_sign_in_waiting_on_this_mac(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # The library's own loopback flow, with no browser and nothing sent to Google: Cancel answers it "access
+    # denied" at once, where it would otherwise wait out its five minutes.
+    monkeypatch.setattr(InstalledAppFlow, "run_local_server", REAL_SIGN_IN)
+    monkeypatch.setattr("webbrowser.get", lambda *_: SimpleNamespace(open=lambda *_, **__: True))
+    client = tmp_path / "client.json"
+    client.write_text(json.dumps(CLIENT))
+    pages: list[str] = []
+    errors: list[Exception] = []
+
+    def sign_in() -> None:
+        try:
+            google_auth.login(client, tmp_path, wait_s=30, opened=pages.append)
+        except Exception as error:
+            errors.append(error)
+
+    thread = threading.Thread(target=sign_in, daemon=True)
+    thread.start()
+    for _ in range(100):
+        if pages:
+            break
+        threading.Event().wait(0.02)
+    assert pages and "redirect_uri=http%3A%2F%2Flocalhost" in pages[0]
+    google_auth.stop(pages[0])
+    thread.join(5)
+    assert not thread.is_alive() and [type(e) for e in errors] == [AccessDeniedError]
+    assert not google_auth.tokens(tmp_path)  # nothing kept

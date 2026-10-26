@@ -261,6 +261,14 @@ VERBS = {
         False,
         "Connect a Google account: opens Google's page in your browser to let Friday read its calendars, and its mail",
     ),
+    "google_connect_cancel": Verb(
+        "POST",
+        "/api/c/google_connect_cancel",
+        commands.Empty,
+        True,
+        False,
+        "Cancel a sign-in waiting on Google's page, so you can start again (with another account, say). Google's page,",
+    ),
     "google_connect_status": Verb(
         "GET",
         "/api/q/google_connect_status",
