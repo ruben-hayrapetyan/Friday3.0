@@ -9,13 +9,26 @@ from pydantic import Field
 from friday.api.types import BlockOut, Empty, ItemFields, ItemOut, Model
 
 
+class OccurrenceChange(Model):
+    """One time of a repeat that isn't like the others (27 Oct: "salsa every Saturday except 11/14, and this Saturday
+    it's in Willard Straight Hall"): not that day, or another place, time or title that day."""
+
+    date: str  # "YYYY-MM-DD": the occurrence that day
+    skip: bool = False
+    start: str | None = None  # that day's own times, local "YYYY-MM-DDTHH:MM"
+    end: str | None = None
+    location: str | None = None
+    title: str | None = None
+
+
 class AddInput(ItemFields):
     text: str | None = None  # a quick-add line; fields given alongside it win
     after: list[int] = []
     before: list[int] = []
     every: str | None = None  # repeat shorthand (DESIGN §6.3) or `rrule:…`
     per_window: int | None = None
-    calendar: str | None = None  # an event's Google calendar (its id): "" for only Friday, else "New events go to"
+    calendar: str | None = None  # an event's calendar (its id): "" for only Friday, else "New events go to"
+    exceptions: list[OccurrenceChange] = []  # with `every`: the times that differ
 
 
 class AddOutput(Model):

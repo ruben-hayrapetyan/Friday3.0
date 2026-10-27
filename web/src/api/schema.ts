@@ -2886,6 +2886,11 @@ export interface components {
             per_window?: number | null;
             /** Calendar */
             calendar?: string | null;
+            /**
+             * Exceptions
+             * @default []
+             */
+            exceptions?: components["schemas"]["OccurrenceChange"][];
         };
         /** AddOutput */
         AddOutput: {
@@ -5485,6 +5490,28 @@ export interface components {
             fits: components["schemas"]["Swap"][];
             /** Gap Minutes */
             gap_minutes: number;
+        };
+        /**
+         * OccurrenceChange
+         * @description One time of a repeat that isn't like the others (27 Oct: "salsa every Saturday except 11/14, and this Saturday
+         *     it's in Willard Straight Hall"): not that day, or another place, time or title that day.
+         */
+        OccurrenceChange: {
+            /** Date */
+            date: string;
+            /**
+             * Skip
+             * @default false
+             */
+            skip?: boolean;
+            /** Start */
+            start?: string | null;
+            /** End */
+            end?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Title */
+            title?: string | null;
         };
         /** OrderOut */
         OrderOut: {

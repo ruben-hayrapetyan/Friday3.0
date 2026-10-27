@@ -63,15 +63,22 @@ def test_what_a_command_wouldn_t_take_says_why(app: App, monkeypatch: pytest.Mon
     assert "undo" in errors[0] and "server" in errors[1] and "duration_min" in errors[2] and errors[3] is None
 
 
-def test_a_rule_gets_only_rule_shaped_answers(app: App, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_rule_may_be_a_change_to_the_calendar_but_never_what_claude_may_not_do(
+    app: App, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """27 Oct: a scheduling change typed on the Rules page ("add another salsa event on saturday…") was refused as no
+    rule. It's proposed as the change it is; what Claude may never do stays refused there as anywhere."""
+    essay = app.do("add", title="Essay", duration_min=60)["item"]["id"]
     claude = asking(monkeypatch, {"reply": "", "actions": [
         {"sentence": "Focus on exams", "command": "settings_set",
          "input": {"key": "exam_focus", "value": {"on": True, "days_before": 3}}},
-        {"sentence": "Drop the essay", "command": "drop", "input": {"id": 1}},
+        {"sentence": "Drop the essay", "command": "drop", "input": {"id": essay}},
+        {"sentence": "Undo everything", "command": "undo", "input": {}},
+        {"sentence": "Change the port", "command": "settings_set", "input": {"key": "server", "value": {}}},
     ]})  # fmt: skip
     out = app.do("ask_claude", text="focus on an exam before it", purpose="rule")
-    assert out["actions"][0]["error"] is None and out["actions"][1]["error"] is not None
-    assert "only with rule_add" in claude.asked[0]["system"]
+    assert [a["error"] is None for a in out["actions"]] == [True, True, False, False]
+    assert "change to the calendar itself" in claude.asked[0]["system"]
 
 
 def test_gaps_around_events_and_short_term_first_are_rules_claude_may_propose(

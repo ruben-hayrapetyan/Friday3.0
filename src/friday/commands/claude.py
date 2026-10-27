@@ -34,8 +34,11 @@ ANYTHING = (
     "settings_set",
     "day_override",
     "repeat",
+    "skip",
 )
-RULES = ("rule_add", "settings_set", "add")
+# The Rules page sends what its grammar can't read; a change to the calendar typed there is still made (27 Oct: "add
+# another salsa event on saturday…" was refused as no rule).
+RULES = ANYTHING
 SETTINGS = (
     "kind_order", "short_term_first", "exam_focus", "pointless_late", "sittings", "busy", "daily_cap", "event_kinds",
     "pace",
@@ -46,14 +49,22 @@ plan their time: a separate engine does that. You only propose commands, each wi
 does, for the student to confirm.
 
 Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
-- add: a task or event. Task: {title, due?, duration_min?, preset?, area?}. Event: {title, when: "fixed", start, end}.
-  Either repeats with every: "week", "fri", "mon,wed", "other week", "day", "month" (from its first date and time).
+- add: a task or event. Task: {title, due?, duration_min?, preset?, area?}. Event: {title, when: "fixed", start, end,
+  location?}: location is where it is ("Willard Straight Hall, room 215").
+  Either repeats with every: "week", "fri", "mon,wed", "other week", "day", "month" (from its first date and time), or
+  "rrule:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261211T235900" to end it. A repeat whose times aren't all alike takes
+  exceptions: [{date: "YYYY-MM-DD", skip: true}] for a time it doesn't happen ("except the one on 11/14"), or
+  [{date, location?, start?, end?, title?}] for one that's somewhere or sometime else ("this Saturday it's in room
+  601"); start it on its first real date, and give exceptions only for dates it repeats on.
   A daily break such as lunch: {title, preset: "Routine", every: "rrule:FREQ=DAILY", min_min, ideal_min, max_min,
   release and due as the window's first day start and end}.
-- edit: {id, ...fields to change} — use the ids in the context; moving an event changes its start and end.
+- edit: {id, ...fields to change} — use the ids in the context; moving an event changes its start and end; location
+  sets where it is. An event that repeats ("repeats": true in the context) changes that time only, or, with
+  from_date: "YYYY-MM-DD", that time and every later one ("from now on chem lecture is in Baker 200").
 - repeat: {id, every} makes something they already have repeat ("make salsa repeat every week"), from its own date
   and time; never for an event from their calendar.
 - drop: {id}; done: {id}; pin: {id, start, end, kind: "preferred" | "locked"}; unpin: {id}.
+- skip: {id} for one time of a repeating event that won't happen ("no salsa next Saturday").
 - shove: {range: "HH:MM-HH:MM YYYY-MM-DD"} keeps that time free of work.
 - day_override: {date, bedtime?, wake?, cap_hours?}.
 - rule_add: {text, overrides: {kind, subject, rel, at, until, days, amount, event, events, before_min}, strength:
@@ -79,6 +90,14 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
 When they ask whether they have time for something ("can I go to poker Thursday 8 to 11?", "do I have time for a
 3 h project due Friday?"), propose the command that would add it (an event, or a task with its due and length) and
 say in the reply that Friday shows under it whether it fits before they apply it; don't guess the answer yourself.
+One message often asks for several different things at once (rules, moves, new and repeating events, places, weeks
+off): propose a command for every one, in the order asked; a change to the calendar can need several. For example,
+"add a location to salsa on friday which is Willard Straight Hall, room 215. add another salsa event on saturday from
+1:35 - 2:40pm in Helen Newman Hall's dance studio except for the one on saturday on 11/14 and on this saturday, its in
+Willard Straight Hall, room 601", with Friday's Salsa as event 41 and this Saturday the 31st, is: edit {id: 41,
+location: "Willard Straight Hall, room 215"}, then add {title: "Salsa", when: "fixed", start: "2026-10-31T13:35", end:
+"2026-10-31T14:40", location: "Helen Newman Hall, dance studio", every: "sat", exceptions: [{date: "2026-11-14", skip:
+true}, {date: "2026-10-31", location: "Willard Straight Hall, room 601"}]}.
 If something can't be expressed with these, say so in the reply and propose nothing for it. Never invent ids."""
 
 SCHEMA = {
@@ -115,7 +134,8 @@ def ask_claude(ctx: Ctx, inp: AskClaudeInput) -> AskClaudeOut:
         max_tokens=4000,
         system=SYSTEM
         + (
-            "\n\nThis is a rule for how to plan: answer only with rule_add, settings_set or a daily break."
+            "\n\nThis was typed as a rule. A rule for how to plan is rule_add, settings_set or a daily break; but if"
+            " it's a change to the calendar itself (an event to add, move, place, repeat or skip), propose that."
             if inp.purpose == "rule"
             else ""
         ),  # fmt: skip
@@ -190,6 +210,8 @@ def context(ctx: Ctx) -> str:
     until = format_utc(ctx.now_utc + int(timedelta(days=14).total_seconds() // 60))
     events = [
         {"id": r["id"], "title": r["title"], "start": ctx.local(r["start_utc"]), "end": ctx.local(r["end_utc"])}
+        | ({"location": r["location"]} if r["location"] else {})
+        | ({"repeats": True} if r["series_id"] is not None else {})
         for r in rows(
             ctx.conn,
             "SELECT * FROM items WHERE user_id = ? AND status = 'todo' AND when_kind = 'fixed' "

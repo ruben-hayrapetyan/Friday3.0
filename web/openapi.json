@@ -10094,6 +10094,14 @@
        }
       ],
       "title": "Calendar"
+     },
+     "exceptions": {
+      "items": {
+       "$ref": "#/components/schemas/OccurrenceChange"
+      },
+      "type": "array",
+      "title": "Exceptions",
+      "default": []
      }
     },
     "additionalProperties": false,
@@ -17963,6 +17971,70 @@
      "gap_minutes"
     ],
     "title": "NowOut"
+   },
+   "OccurrenceChange": {
+    "properties": {
+     "date": {
+      "type": "string",
+      "title": "Date"
+     },
+     "skip": {
+      "type": "boolean",
+      "title": "Skip",
+      "default": false
+     },
+     "start": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Start"
+     },
+     "end": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End"
+     },
+     "location": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "date"
+    ],
+    "title": "OccurrenceChange",
+    "description": "One time of a repeat that isn't like the others (27 Oct: \"salsa every Saturday except 11/14, and this Saturday\nit's in Willard Straight Hall\"): not that day, or another place, time or title that day."
    },
    "OrderOut": {
     "properties": {

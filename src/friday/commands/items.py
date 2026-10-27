@@ -17,6 +17,7 @@ from friday.api.commands import (
     EditInput,
     ItemRef,
     ItemResult,
+    OccurrenceChange,
 )
 from friday.commands.estimates import learned_minutes
 from friday.commands.eventwrites import queue_event_write
@@ -65,8 +66,11 @@ def add(ctx: Ctx, inp: AddInput) -> AddOutput:
     given, repeat = weekly_target(ctx, given, repeat)
     if inp.per_window:
         repeat["per_window"] = inp.per_window
+    if inp.exceptions and not ("every" in repeat or "rrule" in repeat):
+        raise FieldError("exceptions", "only a repeat has times that differ")
     if "every" in repeat or "rrule" in repeat:
         series_id, made = create_series(ctx, given, repeat)
+        warnings += [said for change in inp.exceptions if (said := excepted(ctx, series_id, change))]
         return AddOutput(series_id=series_id, occurrences=made, warnings=warnings)
     values = to_item_values(ctx, given)
     values |= estimated_length(ctx, values, given, warnings)
@@ -84,6 +88,25 @@ def add(ctx: Ctx, inp: AddInput) -> AddOutput:
     for other in before:
         add_dependency(ctx, resolve_ref(ctx, other, warnings), item_id, 1.0, 0)
     return AddOutput(item=item_out(ctx, require_item(ctx, item_id)), warnings=warnings)
+
+
+def excepted(ctx: Ctx, series_id: int, change: OccurrenceChange) -> str | None:
+    """One time of a new repeat made different: skipped, or its own place, times or title (an edit of that occurrence
+    alone, as any). What couldn't be done, said back; nothing when it was."""
+    found = one(
+        ctx.conn,
+        "SELECT id FROM items WHERE series_id = ? AND occurrence_date = ? AND status = 'todo'",
+        [series_id, change.date],
+    )
+    if found is None:
+        return f"It doesn't happen on {change.date}, so nothing changed that day"
+    if change.skip:
+        ctx.db.update("items", {"id": found["id"]}, {"status": "skipped", "updated_utc": ctx.now_text})
+        return None
+    fields = change.model_dump(exclude={"date", "skip"}, exclude_none=True)
+    if fields:
+        edit(ctx, EditInput(id=found["id"], **fields))
+    return None
 
 
 def with_guesses(ctx: Ctx, given: dict[str, Any]) -> dict[str, Any]:
