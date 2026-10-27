@@ -11,7 +11,8 @@ import type { Item, Schemas } from "@/api/client"
 import { EstimateNudge } from "@/components/EstimateNudge"
 import { Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
-import { useItem, useStatus, useWhy } from "@/hooks/queries"
+import { useItem, useItems, useStatus, useWhy } from "@/hooks/queries"
+import { likelyTask, ranked } from "@/lib/holds"
 import { clock, dur, sittings, weekday, when } from "@/lib/format"
 import { eventPaint, PIGMENTS } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
@@ -189,6 +190,7 @@ export function BlockPopover() {
           </div>
         )}
         {event && <EventFacts event={event} paint={dot} />}
+        {event && event.event_kind !== "shove" && <HeldFor event={event} />}
         {item && !event && (
           <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", fontSize: 12 }}>
             <span style={{ color: "var(--color-neutral-500)" }}>Due</span>
@@ -302,6 +304,73 @@ export function BlockPopover() {
 }
 
 /** An event's calendar, colour and notes, as the drawer has them. */
+/** What an event's time is for (planner/holds.py): a task you'll do in it ("A4dd" is when you write "CS A4 Design
+ * Doc"), or nothing, as for any event. The task is planned there, and other work keeps off it. When a task's title is
+ * clearly in the event's, Friday asks about that one; any other is a search away. */
+function HeldFor({ event }: { event: Item }) {
+  const hold = useCommand("event_hold", { label: (o) => o.result.message })
+  const tasks = (useItems().data ?? []).filter((i) => i.when !== "fixed" && i.status === "todo")
+  const [choosing, setChoosing] = useState(false)
+  const [text, setText] = useState("")
+  useEffect(() => (setChoosing(false), setText("")), [event.id])
+  const held = event.holds as { id: number; title: string } | null | undefined
+  const likely = held ? null : likelyTask(event.title, tasks)
+  const found = ranked(event.title, tasks.filter((t) => t.title.toLowerCase().includes(text.trim().toLowerCase()))).slice(0, 6)
+  const box = { display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: "var(--radius-md)", background: "var(--color-bg)" } as const
+  if (choosing)
+    return (
+      <div style={box}>
+        <span className="fr-kicker">Whose time is this? Friday plans that task here and keeps other work off it.</span>
+        <input className="input" autoFocus value={text} onChange={(e) => setText(e.target.value)} placeholder="Find a task" aria-label="Find a task" style={{ fontSize: 13 }} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {found.map((t) => (
+            <button key={t.id} className="fr-plain fr-hover" onClick={() => (hold({ id: event.id, task_id: t.id }), setChoosing(false))} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "6px 8px", borderRadius: "var(--radius-sm)", textAlign: "left" }}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
+              {t.remaining_min ? <span className="tnum fr-kicker">{dur(t.remaining_min)} left</span> : null}
+            </button>
+          ))}
+          {!found.length && <span className="fr-kicker">No task by that name.</span>}
+        </div>
+        <button className="btn btn-ghost" onClick={() => setChoosing(false)} style={{ alignSelf: "flex-start", fontSize: 12 }}>
+          Cancel
+        </button>
+      </div>
+    )
+  if (held)
+    return (
+      <div style={{ ...box, flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+        <Icon name="tray-arrow-down" size={16} style={{ color: "var(--color-accent-300)" }} />
+        <span style={{ flex: "1 1 160px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+          <span>Time for {held.title}</span>
+          <span className="fr-kicker">Planned here first; other work keeps off it.</span>
+        </span>
+        <button className="btn btn-ghost" onClick={() => setChoosing(true)} style={{ fontSize: 12 }}>
+          Change
+        </button>
+        <button className="btn btn-ghost" onClick={() => hold({ id: event.id })} style={{ fontSize: 12 }} title="An event like any other again: work keeps off it">
+          Free it
+        </button>
+      </div>
+    )
+  return likely ? (
+    <div style={{ ...box, flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+      <Icon name="tray-arrow-down" size={16} style={{ color: "var(--color-accent-300)" }} />
+      <span style={{ flex: "1 1 160px", minWidth: 0 }}>Is this time for {likely.title}?</span>
+      <button className="btn btn-primary" onClick={() => hold({ id: event.id, task_id: likely.id })} style={{ fontSize: 12 }}>
+        Yes
+      </button>
+      <button className="btn btn-ghost" onClick={() => setChoosing(true)} style={{ fontSize: 12 }}>
+        Another task
+      </button>
+    </div>
+  ) : (
+    <button className="btn btn-ghost" onClick={() => setChoosing(true)} style={{ alignSelf: "flex-start", fontSize: 12 }} title="Time set aside on your calendar for a task: Friday plans the task here">
+      <Icon name="tray-arrow-down" />
+      Use this time for a task
+    </button>
+  )
+}
+
 function EventFacts({ event, paint }: { event: Item; paint: string }) {
   const own = [event.color, event.chroma_color, event.category_color, event.calendar_color].find((c) => PIGMENTS.some((p) => p.id === c))
   const name = own ? PIGMENTS.find((p) => p.id === own)?.name : "Unmarked"

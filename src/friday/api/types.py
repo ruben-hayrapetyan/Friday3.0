@@ -92,6 +92,7 @@ class ItemOut(Model):
     gives_way_to: str | None = None
     optional: bool = False
     going: bool = False
+    holds: dict[str, Any] | None = None  # an event whose time is for a task: {id, title} (`event_hold`)
     certainty: str
     event_kind: str | None = None
     status: str

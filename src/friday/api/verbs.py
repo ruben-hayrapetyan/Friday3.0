@@ -205,6 +205,14 @@ VERBS = {
         False,
         "You go to this event: Friday stops offering to skip it.",
     ),
+    "event_hold": Verb(
+        "POST",
+        "/api/c/event_hold",
+        commands.EventHoldInput,
+        True,
+        True,
+        "An event whose time is for a task: the planner puts the task there, from the start for as long as it has",
+    ),
     "event_keep": Verb(
         "POST",
         "/api/c/event_keep",

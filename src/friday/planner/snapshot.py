@@ -21,7 +21,7 @@ from friday.core.time import format_utc, parse_utc, planning_date, to_local, to_
 from friday.learn.sleep import Mark, evening_of, learn, nights_from
 from friday.learn.state import loadings
 from friday.planner.cushion import cushion, cushioned
-from friday.planner.progress import progress_rows
+from friday.planner.progress import progress_rows, recorded_minutes
 from friday.planner.store import (
     area_names,
     current_plan,
@@ -102,6 +102,8 @@ def take_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> S
 
 
 def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snapshot:
+    from friday.planner.holds import held  # it builds PinRows, defined here
+
     settings = with_learned_energy(conn, load_settings(conn, user_id), user_id)
     settings = with_rule_wins(conn, with_picked_way(conn, now_utc, settings, user_id), user_id)
     plan = current_plan(conn, user_id)
@@ -113,22 +115,31 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         if plan
         else ()
     )
+    progress = progress_rows(conn, user_id)
+    # An event that holds a task's time gives it to the task (planner/holds.py).
+    items, pins = held(
+        snapshot_items(conn, now_utc, settings, user_id),
+        tuple(
+            PinRow(r["id"], r["item_id"], parse_utc(r["start_utc"]), parse_utc(r["end_utc"]), r["kind"])
+            for r in rows(conn, "SELECT * FROM pins WHERE user_id = ? ORDER BY id", [user_id])
+        ),
+        event_holds(conn, user_id),
+        {k: recorded_minutes(v) for k, v in progress.items()},
+        now_utc,
+    )
     return Snapshot(
         user_id=user_id,
         now_utc=now_utc,
         generation=generation(conn, user_id),
         settings=settings,
         settings_version=settings_version(conn, user_id),
-        items=snapshot_items(conn, now_utc, settings, user_id),
+        items=items,
         dependencies=tuple(
             (r["item_id"], r["depends_on_id"], r["fraction"], r["lag_min"])
             for r in rows(conn, "SELECT * FROM dependencies WHERE user_id = ?", [user_id])
         ),
-        pins=tuple(
-            PinRow(r["id"], r["item_id"], parse_utc(r["start_utc"]), parse_utc(r["end_utc"]), r["kind"])
-            for r in rows(conn, "SELECT * FROM pins WHERE user_id = ? ORDER BY id", [user_id])
-        ),
-        progress={k: tuple(v) for k, v in progress_rows(conn, user_id).items()},
+        pins=pins,
+        progress={k: tuple(v) for k, v in progress.items()},
         timer=timer(conn, user_id),
         day_overrides=day_overrides(conn, user_id),
         pace_periods=pace_periods(conn, user_id),
@@ -210,6 +221,11 @@ def snapshot_items(conn: sqlite3.Connection, now_utc: int, settings: dict[str, A
         items |= {r["id"]: item_from_row(r) for r in parents}
         missing = {i.parent_id for i in items.values() if i.parent_id is not None} - set(items)
     return tuple(items[k] for k in sorted(items))
+
+
+def event_holds(conn: sqlite3.Connection, user_id: int) -> dict[int, int]:
+    """Each event that holds a task's time, and the task (`event_hold`)."""
+    return {int(e): int(t) for e, t in (kv_get(conn, "event_holds", {}, user_id) or {}).items()}
 
 
 def busy_as_you_count(item: Item, settings: dict[str, Any], calendars: dict[int, str]) -> Item:

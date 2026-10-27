@@ -34,6 +34,7 @@ KV_STATE = {
     "rule_add",
     "event_going",
     "event_keep",  # the optional events you're going to, kept in kv
+    "event_hold",  # the events whose time is for a task, kept in kv
 }  # commands whose whole effect is in kv, which other commands only use for counters
 
 
@@ -341,6 +342,10 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "repeat": lambda app: {"id": essay(app), "every": "week"},
     "event_keep": lambda app: {
         "id": app.do("add", title="Gym", when="fixed", start="2026-10-20T12:00", end="2026-10-20T13:00")["item"]["id"]
+    },
+    "event_hold": lambda app: {
+        "id": app.do("add", title="A4dd", when="fixed", start="2026-10-20T21:00", end="2026-10-20T23:00")["item"]["id"],
+        "task_id": essay(app),
     },
     "series_edit": lambda app: {"id": gym(app)["series_id"], "from_date": "2026-10-26", "duration_min": 90},
     "series_stop": lambda app: {"id": gym(app)["series_id"]},

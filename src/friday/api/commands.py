@@ -461,6 +461,11 @@ class EventKeepInput(Model):
     going: bool = True  # you're going this time, so work keeps off it; False leaves it to Friday again
 
 
+class EventHoldInput(Model):
+    id: int  # the event
+    task_id: int | None = None  # the task its time is for; None makes it an event like any other again
+
+
 class EventsInput(Model):
     text: str = ""
     limit: int = 12

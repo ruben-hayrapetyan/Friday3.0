@@ -7,7 +7,7 @@ from friday.api.types import ItemFields, ItemOut
 from friday.commands.eventwrites import writes_to
 from friday.commands.registry import Ctx
 from friday.core.calendars import Category, category_of, event_key, is_filtered, left_out, nearest_pigment, rating_key
-from friday.core.db import rows
+from friday.core.db import one, rows
 from friday.core.items import FieldError, Item, apply_preset, validate, with_defaults
 from friday.core.rows import item_to_row
 from friday.core.textnorm import plain_words
@@ -171,6 +171,17 @@ def guessed_category(ctx: Ctx, title: str) -> Category | None:
     return next((c for c in ctx.settings["categories"].categories if c.name == named), None) if named else None
 
 
+def held_task(ctx: Ctx, event_id: int | None) -> dict[str, Any] | None:
+    """The task an event's time is for (`event_hold`), while it's still to do."""
+    if "event_holds" not in ctx.memo:
+        ctx.memo["event_holds"] = kv_get(ctx.conn, "event_holds", {}, ctx.user_id) or {}
+    task_id = ctx.memo["event_holds"].get(str(event_id))
+    if task_id is None:
+        return None
+    found = one(ctx.conn, "SELECT id, title, status FROM items WHERE id = ? AND user_id = ?", [task_id, ctx.user_id])
+    return {"id": found["id"], "title": found["title"]} if found and found["status"] == "todo" else None
+
+
 def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
     """An event's calendar, category and whether it counts as busy (COMBINED.md 17, 28)."""
     if item.when != "fixed":
@@ -190,6 +201,7 @@ def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
         "saves_to_calendar": bool(link) and saves(ctx, link.source_id),
         "category": category.name if category else None,
         "category_color": category.color if category else None,
+        "holds": held_task(ctx, item.id),
         "left_out": reason,
         "filtered": is_filtered(item.title, ctx.settings["categories"]),
     }

@@ -68,6 +68,12 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   // the events beside it, rather than take a column from them (27 Oct).
   const going = fixed.filter((f) => !f.gives_way_to)
   const skipped = fixed.filter((f) => f.gives_way_to)
+  // An event whose time is for a task, by the task: its blocks in that time are drawn inside it (planner/holds.py).
+  const holders = new Map(fixed.filter((f) => f.holds).map((f) => [(f.holds as { id: number }).id, f]))
+  const holderOf = (b: Block) => {
+    const event = holders.get(b.item_id)
+    return event && b.start < event.end && b.end > event.start ? event.title : undefined
+  }
   // What was selected, picked too on the first ⌘-click, as the to-do list does.
   const selectedPick = (): Pick | null => {
     const found = selected?.key.startsWith("F") ? fixed.find((f) => f.id === selected.item_id) : undefined
@@ -177,6 +183,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                   done={p.item.state === "done" || (toMin(p.item.end) <= now && !open.has(p.item.item_id))}
                   look={p.item.key.startsWith("S") ? "sitting" : p.item.state === "missed" ? "missed" : undefined}
                   movedFrom={tried ? tried.moved.get(p.item.item_id) : moved.get(p.item.item_id)}
+                  inside={holderOf(p.item)}
                   tried={lookOf(p.item.item_id)}
                   today={today}
                   onOpen={(e) => {

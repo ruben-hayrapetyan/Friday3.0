@@ -2197,6 +2197,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/event_hold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** An event whose time is for a task: the planner puts the task there, from the start for as long as it has */
+        post: operations["event_hold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/event_keep": {
         parameters: {
             query?: never;
@@ -3803,6 +3820,34 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /** EventHoldInput */
+        EventHoldInput: {
+            /** Id */
+            id: number;
+            /** Task Id */
+            task_id?: number | null;
+        };
+        /** EventHoldResult */
+        EventHoldResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
         /** EventKeepInput */
         EventKeepInput: {
             /** Id */
@@ -4346,6 +4391,10 @@ export interface components {
              * @default false
              */
             going?: boolean;
+            /** Holds */
+            holds?: {
+                [key: string]: unknown;
+            } | null;
             /** Certainty */
             certainty: string;
             /** Event Kind */
@@ -12627,6 +12676,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventGoingResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    event_hold: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventHoldInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventHoldResult"];
                 };
             };
             /** @description Validation Error */

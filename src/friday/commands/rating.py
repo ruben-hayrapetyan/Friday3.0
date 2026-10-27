@@ -6,11 +6,12 @@ import json
 import sqlite3
 from typing import Any
 
-from friday.api.commands import Changed, EventGoingInput, EventKeepInput
+from friday.api.commands import Changed, EventGoingInput, EventHoldInput, EventKeepInput
 from friday.commands.fields import require_item
 from friday.commands.registry import Ctx, command
 from friday.core.calendars import rating_key
 from friday.core.db import rows
+from friday.core.items import FieldError
 from friday.core.time import format_utc
 from friday.ingest import llm
 from friday.ingest.rating import guessed, rate
@@ -58,6 +59,28 @@ def event_going(ctx: Ctx, inp: EventGoingInput) -> Changed:
     going = sorted(set(kv_get(ctx.conn, "events_going", [], ctx.user_id)) | {rating_key(inp.title)})
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "events_going"}, {"value": json.dumps(going)})
     return Changed(message=f"Won't suggest skipping {inp.title}")
+
+
+@command("event_hold", affects_plan=True)
+def event_hold(ctx: Ctx, inp: EventHoldInput) -> Changed:
+    """An event whose time is for a task: the planner puts the task there, from the start for as long as it has
+    left, and keeps other work off all of it (planner/holds.py). No task makes it an event like any other again.
+    27 Oct: "A4dd" is when you write "CS A4 Design Doc"."""
+    event = require_item(ctx, inp.id)
+    if event.when != "fixed":
+        raise FieldError("id", f"{event.title} isn't an event")
+    holds = {str(k): v for k, v in (kv_get(ctx.conn, "event_holds", {}, ctx.user_id) or {}).items()}
+    if inp.task_id is None:
+        holds.pop(str(event.id), None)
+        said = f"{event.title} is an event like any other again"
+    else:
+        task = require_item(ctx, inp.task_id)
+        if task.when == "fixed" or task.status != "todo":
+            raise FieldError("task_id", f"{task.title} isn't a task to do")
+        holds[str(event.id)] = task.id
+        said = f"{event.title}'s time is for {task.title}"
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "event_holds"}, {"value": json.dumps(holds)})
+    return Changed(message=said)
 
 
 @command("event_keep", affects_plan=True)

@@ -70,11 +70,12 @@ interface BlockProps {
   today: string
   onOpen: (e?: React.MouseEvent) => void // with the click, whose ⌘ or Shift picks it with others
   onGrab: (e: React.PointerEvent) => void
+  inside?: string // the event whose time it's planned in (planner/holds.py): drawn in it, a little in from its left
   onResize: (e: React.PointerEvent, edge: "top" | "bottom") => void
   retime?: Retime
 }
 
-export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, today, onOpen, onGrab, onResize, retime }: BlockProps) {
+export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, today, onOpen, onGrab, onResize, retime, inside }: BlockProps) {
   const b = p.item
 
   const { skinOf } = useLook()
@@ -107,6 +108,7 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, tod
       }
       style={{
         ...box(p),
+        ...(inside ? { left: `calc(${box(p).left} + 10px)`, width: `calc(${box(p).width} - 10px)` } : {}),
         touchAction: "none",
         userSelect: "none",
         borderRadius: 6,
@@ -142,6 +144,11 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, tod
       )}
       {movedFrom && (
         <div style={{ fontSize: 10, color: "var(--color-accent-200)", whiteSpace: "nowrap" }}>moved from {when(movedFrom, today)}</div>
+      )}
+      {inside && tall && !movedFrom && (
+        <div style={{ fontSize: 10, color: s.sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <Icon name="tray-arrow-down" size={10} /> in {inside}
+        </div>
       )}
       {/* Either edge changes the time from that end (27 Oct: a block had only its bottom edge, which sat just above the
           next block's top, so dragging that block's top stretched the one before it instead). Short ones only at the
@@ -191,8 +198,14 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked }: FixedProp
   // An optional event the plan gives to work (gym, climbing club) is one you're skipping: drawn as skipped, faint and
   // struck through, under the work that takes its time, rather than as if you were going (27 Oct).
   const skipped = !!it.gives_way_to
+  // An event whose time is for a task holds the task's block: drawn as a frame round it, dashed (planner/holds.py).
+  const holds = !!it.holds
   const s =
-    it.left_out || skipped ? { ...painted, bg: "transparent", bd: `1px dashed ${paint}`, fg: "var(--color-neutral-400)" } : painted
+    it.left_out || skipped
+      ? { ...painted, bg: "transparent", bd: `1px dashed ${paint}`, fg: "var(--color-neutral-400)" }
+      : holds
+        ? { ...painted, bd: `1.5px dashed color-mix(in srgb, ${paint} 70%, transparent)` }
+        : painted
   const tall = minutes(it) >= 45
   const [typing, setTyping] = useState(false)
   const time = retime && { typing, span: it, start: () => (setTyping(true), retime.begin()), save: retime.save, stop: () => setTyping(false) }
@@ -226,7 +239,13 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked }: FixedProp
         ...(typing ? { zIndex: 5 } : {}),
         ...(picked ? { boxShadow: "0 0 0 2px var(--color-accent)", zIndex: 2 } : {}),
       }}
-      title={skipped ? `Skipping ${it.title}: ${it.gives_way_to} needs the time. Click to go anyway.` : undefined}
+      title={
+        skipped
+          ? `Skipping ${it.title}: ${it.gives_way_to} needs the time. Click to go anyway.`
+          : holds
+            ? `${it.title}: time for ${(it.holds as { title: string }).title}`
+            : undefined
+      }
     >
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: skipped ? "transparent" : s.stripe }} />
       <div style={{ display: "flex", alignItems: "center", gap: 4, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden" }}>

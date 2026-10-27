@@ -115,6 +115,26 @@ async function sendMoves(client: QueryClient, toast: (t: Toast) => void, moved: 
   if (ids.length) toast({ message: `Moved ${count} ${by < 0 ? "earlier" : "later"}. ⌘Z undoes it`, action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
 }
 
+/** The event a task was just pinned over, if one keeps work off that time and isn't already for a task: the time the
+ * event holds may be the task's ("A4dd" is when you write "CS A4 Design Doc", 27 Oct), so Friday asks. */
+export function eventUnder(client: QueryClient, start: string, end: string): Item | null {
+  for (const [, plan] of client.getQueriesData<{ fixed?: Item[] }>({ queryKey: ["plan"] })) {
+    const found = plan?.fixed?.find((f) => f.start && f.end && f.start < end && f.end > start && !f.left_out && !f.holds && f.event_kind !== "shove" && !f.gives_way_to)
+    if (found) return found
+  }
+  return null
+}
+
+/** Pinned over an event: ask whether the event's time is for the task, and say so with a yes. */
+function askHolds(client: QueryClient, toast: (t: Toast) => void, itemId: number, title: string, start: string, end: string): void {
+  const event = eventUnder(client, start, end)
+  if (!event) return
+  toast({
+    message: `${title} is over ${event.title}. Is ${event.title} time for it?`,
+    action: { label: "Yes", run: () => void runCommand(client, toast, "event_hold", { id: event.id, task_id: itemId }, { label: (o) => o.result.message }) },
+  })
+}
+
 /** The picked blocks' tasks each due on `day`, or each left to Friday again (their pins taken off). */
 async function groupTo(client: QueryClient, toast: (t: Toast) => void, list: Pick[], day: string | null): Promise<void> {
   const ids: number[] = []
@@ -196,7 +216,7 @@ export function useDrop(onSelection: (selection: Selection) => void): (drag: Dra
           ? { id: drag.itemId, start, kind }
           : { id: drag.itemId, start, end, kind, from_start: fromMin(drag.start), from_end: fromMin(drag.end) },
         { optimistic: key ? (c) => moveBlock(c, key, start, end, kind) : undefined },
-      )
+      ).then((out) => out && askHolds(client, toast, drag.itemId as number, drag.title, start, end))
     },
     [client, toast, onSelection],
   )
