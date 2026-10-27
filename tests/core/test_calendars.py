@@ -64,6 +64,19 @@ def test_events_left_out_of_planning_say_why() -> None:
 def test_a_calendar_s_own_colour_is_matched_to_the_nearest_paint() -> None:
     from friday.core.calendars import nearest_pigment
 
-    assert [nearest_pigment(c) for c in ("#0088ff", "#ff8d28", "#16a765", "#cb30e0", "#f83a22", "#9e9e9e")] == [
-        "blue", "orange", "green", "violet", "red", "graphite"]  # fmt: skip
+    assert [nearest_pigment(c) for c in ("#0088ff", "#ff8d28", "#cb30e0", "#a47ae2", "#9e9e9e")] == [
+        "blue", "orange", "violet", "violet", "graphite"]  # fmt: skip
     assert nearest_pigment(None) is None and nearest_pigment("blue") is None
+
+
+def test_a_calendar_s_colour_never_wears_a_paint_that_already_means_something() -> None:
+    """Schoolwork's green, meals' yellow and red for now and overdue (27 Oct: the Cornell calendar's light cyan came out
+    schoolwork green, and an event on it looked like an assignment)."""
+    from friday.core.calendars import SAYS_SOMETHING, nearest_pigment
+
+    cornell, holidays, red, gold = "#9fe1e7", "#16a765", "#f83a22", "#e6c229"
+    assert nearest_pigment(cornell) == "blue"
+    assert nearest_pigment(red) == "orange"
+    assert {nearest_pigment(c) for c in (holidays, gold)} <= {"sapgreen", "blue", "orange"}
+    every = [f"#{r:02x}{g:02x}{b:02x}" for r in range(0, 256, 51) for g in range(0, 256, 51) for b in range(0, 256, 51)]
+    assert not {nearest_pigment(c) for c in every} & set(SAYS_SOMETHING)

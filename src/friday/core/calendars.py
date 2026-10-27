@@ -96,14 +96,22 @@ PIGMENT_HEX = {"red": "#c2402d", "orange": "#ce7c22", "yellow": "#be9a1f", "gree
                "violet": "#8a4cb5"}  # fmt: skip
 
 
+# Paints that already say something: schoolwork's green and meals' yellow (web/src/theme/LookProvider.tsx KIND_PAINT),
+# and red, kept for now and overdue. A calendar's own colour is never matched to one (27 Oct: the Cornell calendar's
+# light cyan came out schoolwork green, so an event on it looked like an assignment). You can still choose one for a
+# calendar in Settings → Calendars.
+SAYS_SOMETHING = ("green", "yellow", "red")
+
+
 def nearest_pigment(color: str | None) -> str | None:
-    """The paint nearest a calendar's own colour ("#0088ff" is Cerulean), by hue; a grey one is Payne's Grey."""
+    """The paint nearest a calendar's own colour ("#0088ff" is Cerulean), by hue, of those that don't already mean
+    something; a grey one is Payne's Grey."""
     if not color or not re.fullmatch(r"#?[0-9a-fA-F]{6}", color):
         return None
     hue, sat = hue_of(color)
     if sat < 0.18:
         return "graphite"
-    choices = {name: hue_of(value) for name, value in PIGMENT_HEX.items() if name != "graphite"}
+    choices = {name: hue_of(value) for name, value in PIGMENT_HEX.items() if name not in ("graphite", *SAYS_SOMETHING)}
     return min(choices, key=lambda name: min(abs(choices[name][0] - hue), 360 - abs(choices[name][0] - hue)))
 
 
