@@ -7,6 +7,7 @@ from friday.commands.registry import Ctx, command
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.planner.service import replan as solve_and_save
+from friday.planner.store import kv_get
 
 
 @command("replan", logged=False)
@@ -40,10 +41,15 @@ def resolve(ctx: Ctx, inp: ResolveInput) -> ReplanOutput:
         locks = {
             r["id"] for r in rows(ctx.conn, "SELECT id FROM pins WHERE user_id = ? AND kind = 'locked'", [ctx.user_id])
         }
+        loose = set(kv_get(ctx.conn, "event_holds_loose", [], ctx.user_id) or [])
         for pin_id in inp.unlock_pin_ids:
+            if pin_id < 0:  # an event's time held for a task (planner/holds.py): the event asks for it instead
+                loose.add(-pin_id)
+                continue
             if pin_id not in locks:
                 raise FieldError("unlock_pin_ids", f"no locked pin {pin_id}")
             ctx.db.update("pins", {"id": pin_id}, {"kind": "preferred"})
+        ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "event_holds_loose"}, {"value": json.dumps(sorted(loose))})
         return ReplanOutput(plan_id=None, status="replanning", message="Unlocked; replanning")
     # Plans aren't undo data: they are derived, and the next replan writes a new one anyway.
     ctx.conn.execute("UPDATE plans SET status = 'replaced' WHERE user_id = ? AND status = 'current'", [ctx.user_id])

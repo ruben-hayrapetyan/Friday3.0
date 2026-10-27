@@ -410,11 +410,21 @@ class SourceOut(Model):
     last_error: str | None
 
 
+class SetAsideOut(Model):
+    """A suggestion the inbox didn't ask because you have it already (commands/duplicates.py)."""
+
+    id: int
+    title: str
+    why: str  # "You have CS A4 Design Doc", "Done: …", "Also waiting"
+    created: str
+
+
 class InboxOut(Model):
     suggestions: list[SuggestionOut]
     sources: list[SourceOut]
     llm: dict[str, Any]  # calls and tokens used today against the budget, and whether a key is set
     repeats: int = 0  # repeating calendar events waiting to be imported in Settings → Repeating
+    set_aside: list[SetAsideOut] = []  # the last two weeks' duplicates of what you have, newest first
 
 
 class TokenOut(Model):

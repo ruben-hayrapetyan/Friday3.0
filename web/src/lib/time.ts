@@ -26,6 +26,21 @@ export function addDays(date: string, days: number): string {
   return fromMin(toMin(date) + days * 1440).slice(0, 10)
 }
 
+// Rolling three-day pages start on this Monday and every third day on, before and after it (27 Oct: "can you not have
+// the first day be the current day? … like set cycles": Mon 26–Wed 28, Thu 29–Sat 31, Sun 1–Tue 3, Wed 4–Fri 6…).
+const THREE_DAY_ANCHOR = "2026-10-26"
+
+/** The first day of the page of `days` holding `date`: a week runs Monday to Sunday, three days run in fixed threes
+ * from a Monday, a day is that day. The pages stay put as the days go by; today is somewhere on one. */
+export function pageStart(date: string, days: number): string {
+  if (days === 7) return addDays(date, -((new Date(toMin(date) * 60000).getUTCDay() + 6) % 7))
+  if (days === 3) {
+    const since = Math.round((toMin(date) - toMin(THREE_DAY_ANCHOR)) / 1440)
+    return addDays(date, -(((since % 3) + 3) % 3))
+  }
+  return date
+}
+
 export function dayRange(first: string, days: number): string[] {
   return Array.from({ length: days }, (_, n) => addDays(first, n))
 }

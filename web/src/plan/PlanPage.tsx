@@ -13,7 +13,7 @@ import { useCalendar, usePaces, useSettings, useStatus } from "@/hooks/queries"
 import { pigment } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
 import { lateBy, weekday, when } from "@/lib/format"
-import { addDays, dayRange, fromMin, toMin } from "@/lib/time"
+import { addDays, dayRange, fromMin, pageStart, toMin } from "@/lib/time"
 import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/components/Toasts"
 import { runCommand } from "@/hooks/useCommand"
@@ -43,7 +43,8 @@ export function PlanPage() {
   const { today, drawer, event, drawerWidth, place, setPlace, layout, drawerOver } = useShell()
   const view: View = place.view === 7 && !layout.weekFits ? 1 : place.view // a week too narrow to read shows its day
   const first = place.first
-  const shown = first ?? (view === "month" ? monthStart(today) : today)
+  // A week is Monday to Sunday and three days a fixed three, whichever day is today or was picked (lib/time.ts).
+  const shown = view === "month" ? (first ?? monthStart(today)) : pageStart(first ?? today, view)
   const setView = (v: View) => setPlace({ view: v, first: v === "month" ? monthStart(shown) : first })
   const setFirst = (f: string | null) => setPlace({ view: place.view, first: f }) // keeps the week you chose, even while it shows a day
   const step = (by: number) => setFirst(view === "month" ? shiftMonth(shown, by) : addDays(shown, by * view))

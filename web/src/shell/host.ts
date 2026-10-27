@@ -2,7 +2,7 @@
 // event, so the Mac app and the page share one implementation of every action. A browser never sends one.
 
 import { useEffect, useRef } from "react"
-import { fromMin } from "@/lib/time"
+import { fromMin, pageStart } from "@/lib/time"
 import { monthStart } from "@/plan/MonthView"
 import type { CalendarPlace } from "./ShellContext"
 
@@ -53,7 +53,7 @@ export function shiftMonth(first: string, by: number): string {
 
 /** Where the calendar goes for today, previous, next or a view; null when the request doesn't move it. */
 export function placeAfter(request: HostRequest, place: CalendarPlace, today: string): CalendarPlace | null {
-  const shown = place.first ?? (place.view === "month" ? monthStart(today) : today)
+  const shown = place.view === "month" ? (place.first ?? monthStart(today)) : pageStart(place.first ?? today, place.view)
   const step = (by: number) => ({
     view: place.view,
     first: place.view === "month" ? shiftMonth(shown, by) : addDaysTo(shown, by * place.view),

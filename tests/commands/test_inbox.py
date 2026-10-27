@@ -71,19 +71,20 @@ def test_a_moved_exam_edits_the_exam_and_its_prep_stays_a_prep(app: App) -> None
     assert found["Prep: CHEM Prelim 2"]["command"] == "add"
 
 
-def test_an_item_you_already_have_is_marked_a_duplicate_and_accepting_edits_it(app: App) -> None:
-    mine = app.do("add", text="PS4 due thu 20:00 ~2h")["item"]["id"]
+def test_an_item_you_already_have_is_set_aside_not_asked(app: App) -> None:
+    """27 Oct: "please scan for duplicates before proposing things to me": PS4, due the same day, is what you have."""
+    app.do("add", text="PS4 due thu 20:00 ~2h")
     feed(app)
-    duplicate = pending(app)["PS4"]
-    assert duplicate["duplicate_of"] == mine
-    app.do("suggestion_accept", id=duplicate["id"])
+    assert "PS4" not in pending(app)
+    assert [(s["title"], s["why"]) for s in app.do("inbox")["set_aside"]] == [("PS4", "You have PS4")]
     assert len([i for i in app.do("items") if i["title"] == "PS4"]) == 1
 
 
 def test_a_course_named_exam_at_the_same_minute_is_the_one_you_have(app: App) -> None:
-    mine = app.do("add", text="Prelim 2 at 10/29 7:30pm for 90m /exam")["item"]["id"]
+    app.do("add", text="Prelim 2 at 10/29 7:30pm for 90m /exam")
     feed(app, PRELIM)
-    assert pending(app)["CHEM Prelim 2"]["duplicate_of"] == mine
+    assert "CHEM Prelim 2" not in pending(app)
+    assert [s["why"] for s in app.do("inbox")["set_aside"]] == ["You have Prelim 2"]
 
 
 def syllabus_answer() -> dict:

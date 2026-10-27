@@ -80,6 +80,9 @@ def event_hold(ctx: Ctx, inp: EventHoldInput) -> Changed:
         holds[str(event.id)] = task.id
         said = f"{event.title}'s time is for {task.title}"
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "event_holds"}, {"value": json.dumps(holds)})
+    # Said again (or let go), it holds as firmly as at first: no longer loosened by a lock that made work late.
+    loose = [e for e in kv_get(ctx.conn, "event_holds_loose", [], ctx.user_id) or [] if e != event.id]
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "event_holds_loose"}, {"value": json.dumps(loose)})
     return Changed(message=said)
 
 

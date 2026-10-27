@@ -228,6 +228,13 @@ def a_suggestion(app: App, batch: str | None = None) -> int:
     return int(cursor.lastrowid or 0)
 
 
+def set_aside(app: App) -> int:
+    """A suggestion the inbox set aside as what you have already (commands/duplicates.py)."""
+    sid = a_suggestion(app)
+    app.conn.execute("UPDATE suggestions SET status = 'superseded' WHERE id = ?", [sid])
+    return sid
+
+
 def a_batch(app: App) -> str:
     a_suggestion(app, "syllabus 1")
     return "syllabus 1"
@@ -388,6 +395,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "document_retry": lambda app: {"id": a_failed_document(app)},
     "suggestion_accept": lambda app: {"id": a_suggestion(app)},
     "suggestion_reject": lambda app: {"id": a_suggestion(app)},
+    "suggestion_restore": lambda app: {"id": set_aside(app)},
     "batch_accept": lambda app: {"batch": a_batch(app)},
     "act": act_sample,
     "push_subscribe": lambda app: {"endpoint": "https://push.example/1", "keys": {"p256dh": "k", "auth": "a"}},

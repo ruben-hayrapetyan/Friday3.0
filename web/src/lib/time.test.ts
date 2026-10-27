@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { addDays, ampm, fitAxis, fromMin, hourMarks, layout, nearestAt, toMin } from "./time"
+import { addDays, ampm, fitAxis, fromMin, hourMarks, layout, nearestAt, pageStart, toMin } from "./time"
 
 const axis = { startMin: 7 * 60 + 30, endMin: 24 * 60 + 30 }
 const block = (start: string, end: string, name = "") => ({ start, end, name })
@@ -78,5 +78,26 @@ describe("a corrected time", () => {
     expect(nearestAt("2026-10-21T00:20", "23:50")).toBe("2026-10-20T23:50") // a bedtime after midnight, made earlier
     expect(nearestAt("2026-10-20T23:40", "00:30")).toBe("2026-10-21T00:30") // and the other way
     expect(nearestAt("2026-10-21T07:30", "08:15")).toBe("2026-10-21T08:15") // the same morning
+  })
+})
+
+describe("calendar pages stay put as the days go by (27 Oct)", () => {
+  it("a week runs Monday to Sunday, whichever day it holds", () => {
+    for (const day of ["2026-10-26", "2026-10-27", "2026-10-29", "2026-11-01"]) expect(pageStart(day, 7)).toBe("2026-10-26")
+    expect(pageStart("2026-11-02", 7)).toBe("2026-11-02")
+    expect(pageStart("2027-01-01", 7)).toBe("2026-12-28") // across a year
+  })
+
+  it("three days run in fixed threes from a Monday: Mon–Wed, Thu–Sat, Sun–Tue, Wed–Fri…", () => {
+    const starts = ["2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-31", "2026-11-01", "2026-11-03", "2026-11-04"]
+    expect(starts.map((d) => pageStart(d, 3))).toEqual(["2026-10-26", "2026-10-26", "2026-10-26", "2026-10-29", "2026-10-29", "2026-11-01", "2026-11-01", "2026-11-04"])
+    expect(pageStart("2026-10-25", 3)).toBe("2026-10-23") // before the Monday they start on, the same threes
+    expect(pageStart("2026-10-23", 3)).toBe("2026-10-23")
+  })
+
+  it("a day is that day; the next page starts where the last one ended", () => {
+    expect(pageStart("2026-10-28", 1)).toBe("2026-10-28")
+    expect(addDays(pageStart("2026-10-30", 3), 3)).toBe(pageStart("2026-11-02", 3))
+    expect(addDays(pageStart("2026-10-30", 7), 7)).toBe("2026-11-02")
   })
 })

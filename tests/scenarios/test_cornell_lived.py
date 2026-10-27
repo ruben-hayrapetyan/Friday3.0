@@ -77,15 +77,17 @@ def test_yesterday_waits_in_review_after_days_that_were_reviewed_timed_and_skipp
 
 
 @pytest.mark.parametrize("key", LIVED)
-def test_the_inbox_keeps_unread_mail_a_moved_event_and_a_likely_duplicate(
+def test_the_inbox_keeps_unread_mail_a_moved_event_and_sets_aside_a_duplicate(
     lived: dict[str, sqlite3.Connection], key: str
 ) -> None:
-    waiting = ask(lived[key], "inbox")["suggestions"]
+    inbox = ask(lived[key], "inbox")
+    waiting = inbox["suggestions"]
     unread = {w.title for letter in STUDENTS[key].letters if letter.unread for w in letter.finds}
     moved = {e.title for e in STUDENTS[key].events if e.was}
     assert unread <= {s["input"].get("title") for s in waiting}
     assert moved <= {s["input"].get("title") for s in waiting if s["command"] == "edit"}
-    assert any(s["duplicate_of"] for s in waiting)
+    # 27 Oct: what you have already isn't asked; the inbox lists it set aside, to add anyway.
+    assert inbox["set_aside"]
 
 
 @pytest.mark.parametrize("key", LIVED)

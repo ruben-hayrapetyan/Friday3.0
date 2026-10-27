@@ -8,17 +8,15 @@ import sqlite3
 from collections.abc import Callable
 from typing import Any
 
+from friday.commands import duplicates
 from friday.commands.inbox import record_spend, spend, with_end
 from friday.commands.registry import run
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.settings import minutes_of
-from friday.core.textnorm import identity_text, norm
 from friday.core.time import format_utc, parse_local, parse_utc, planning_date, to_utc
 from friday.ingest import llm, sort
 from friday.ingest.ics import Found, Proposed
-
-DUPLICATE_WINDOW_MIN = 24 * 60
 
 
 def take(
@@ -55,7 +53,19 @@ def take(
             proposals = []  # your notes say it needs nothing from you
         made += suggest(conn, settings, now_utc, user_id, raw_id, proposals, bool(source["trusted"]), source["name"])
         conn.execute("UPDATE raw_inputs SET status = 'extracted' WHERE id = ?", [raw_id])
-    return made + gone(conn, source, {f.external_id for f in found}, settings, now_utc, user_id, until)
+    made += gone(conn, source, {f.external_id for f in found}, settings, now_utc, user_id, until)
+    duplicates.set_aside_waiting(conn, settings, user_id, now_utc, write_raw(conn))
+    return made
+
+
+def write_raw(conn: sqlite3.Connection) -> duplicates.Write:
+    """A suggestion's fields written as the sync writes, outside any command."""
+
+    def write(suggestion_id: int, fields: dict[str, Any]) -> None:
+        sets = ", ".join(f"{k} = ?" for k in fields)
+        conn.execute(f"UPDATE suggestions SET {sets} WHERE id = ?", [*fields.values(), suggestion_id])
+
+    return write
 
 
 def sized(proposals: list[Proposed], minutes: int | None) -> list[Proposed]:
@@ -209,6 +219,14 @@ def suggest(
     a trusted source's fixed events are accepted at once."""
     made_before = made_items(conn, raw_id)
     conn.execute("UPDATE suggestions SET status = 'superseded' WHERE raw_input_id = ? AND status = 'pending'", [raw_id])
+    found: list[duplicates.Candidate] | None = None
+
+    def mine() -> list[duplicates.Candidate]:
+        nonlocal found
+        if found is None:
+            found = duplicates.candidates(conn, settings, user_id, now_utc)
+        return found
+
     made = 0
     for p in proposals:
         command, fields = p.command, dict(p.input)
@@ -223,8 +241,11 @@ def suggest(
             command, fields = "edit", {"id": earlier["id"]} | fields
         group = batch or (f"repeat:{p.series}" if p.series and command == "add" else None)
         said = said_of_series(conn, group) if group and p.series else None
-        # an instance of a repeating event isn't a duplicate of its neighbours, a day apart
-        duplicate = duplicate_of(conn, settings, user_id, fields) if command == "add" and not p.series else None
+        # What you have already is set aside, not asked (commands/duplicates.py); an instance of a repeating event isn't
+        # a duplicate of its neighbours, a day apart.
+        same = duplicates.duplicate_of(fields, settings, mine()) if command == "add" and not p.series else None
+        duplicate = same.item_id if same is not None else None
+        aside = same is not None and not same.update
         cursor = conn.execute(
             "INSERT INTO suggestions (user_id, raw_input_id, batch, command, input, quotes, confidence, duplicate_of, "
             "created_utc, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -238,12 +259,13 @@ def suggest(
                 p.confidence,
                 duplicate,
                 format_utc(now_utc),
-                "rejected" if said == "rejected" else "pending",  # kept, so switching the repeat on finds it
+                # kept, so switching the repeat on finds it
+                "rejected" if said == "rejected" else "superseded" if aside else "pending",
             ],
         )
-        made += said != "rejected"
+        made += said != "rejected" and not aside
         imported = earlier is not None and command != "add" and follows_calendar(conn, earlier["id"])
-        if (trusted and p.fixed) or said == "accepted" or imported:
+        if not aside and ((trusted and p.fixed) or said == "accepted" or imported):
             accept_trusted(conn, now_utc, user_id, int(cursor.lastrowid or 0), source)
     return made
 
@@ -334,37 +356,3 @@ def accept_trusted(conn: sqlite3.Connection, now_utc: int, user_id: int, suggest
             user_id=user_id,
             provisional=False,
         )
-
-
-def words_within(a: str, b: str) -> bool:
-    shorter, longer = sorted((set(a.split()), set(b.split())), key=len)
-    return bool(shorter) and shorter <= longer
-
-
-def duplicate_of(conn: sqlite3.Connection, settings: dict, user_id: int, fields: dict) -> int | None:
-    """An open item with the same identity text whose due or start is within a day of this one's (§22.1)."""
-    title = fields.get("title")
-    if not title:
-        return None
-    rules, tz = settings["text"].rules(), settings["time"].timezone
-    wanted = identity_text(norm(title, rules))
-    when = fields.get("due") or fields.get("start")
-    moment = to_utc(parse_local(when), tz) if when else None
-    for r in rows(
-        conn, "SELECT id, title, due_utc, start_utc FROM items WHERE user_id = ? AND status = 'todo'", [user_id]
-    ):
-        theirs = r["due_utc"] or r["start_utc"]
-        mine = identity_text(norm(r["title"], rules))
-        # "MATH Prelim 2" at the very minute you have "Prelim 2" is that prelim
-        if (
-            fields.get("start")
-            and r["start_utc"]
-            and parse_utc(r["start_utc"]) == moment
-            and words_within(mine, wanted)
-        ):
-            return int(r["id"])
-        if mine != wanted:
-            continue
-        if moment is None or theirs is None or abs(parse_utc(theirs) - moment) <= DUPLICATE_WINDOW_MIN:
-            return int(r["id"])
-    return None

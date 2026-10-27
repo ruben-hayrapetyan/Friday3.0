@@ -15,10 +15,16 @@ UNIT = 15  # minutes; the grid's quarter hour
 
 
 def held(
-    items: tuple[Item, ...], pins: tuple[PinRow, ...], holds: dict[int, int], done: dict[int, int], now_utc: int
+    items: tuple[Item, ...],
+    pins: tuple[PinRow, ...],
+    holds: dict[int, int],
+    done: dict[int, int],
+    now_utc: int,
+    loose: frozenset[int] = frozenset(),
 ) -> tuple[tuple[Item, ...], tuple[PinRow, ...]]:
     """The items and pins as the planner sees them with each held event given to its task. A task held by two events
-    takes the earlier first, each for what the ones before left; a task done, or an event over, holds nothing."""
+    takes the earlier first, each for what the ones before left; a task done, or an event over, holds nothing. An event
+    in `loose` (you let it move when it made work late, `resolve`) asks for the task there rather than holding it."""
     by_id = {i.id: i for i in items}
     changed: dict[int, Item] = {}
     extra: list[PinRow] = []
@@ -43,7 +49,7 @@ def held(
             continue
         length = min(-(-left[task.id] // UNIT) * UNIT, end - start)
         left[task.id] -= length
-        extra.append(PinRow(-event.id, task.id, start, start + length, "locked"))
+        extra.append(PinRow(-event.id, task.id, start, start + length, "preferred" if event.id in loose else "locked"))
         # What the task doesn't need stays the event's, without the gap its kind keeps before it (the task is there).
         changed[event.id] = (
             replace(event, start_utc=format_utc(start + length), buffer_before_min=0, buffer_after_min=0)

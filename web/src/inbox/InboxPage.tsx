@@ -91,6 +91,7 @@ export function InboxPage() {
             <Source key={name} name={name} items={shown.filter((s) => s.source === name)} pending={pending} resolved={resolved} current={current?.id ?? null} onSelect={setSelected} onResolved={(r) => setResolved((all) => [...all, ...r])} />
           ))}
           {!sources.length && <span style={{ padding: 8, color: "var(--color-neutral-500)" }}>Nothing yet.</span>}
+          {!!inbox?.set_aside?.length && <SetAside items={inbox.set_aside} />}
         </div>
         )}
         {showDetail && (
@@ -124,6 +125,37 @@ export function InboxPage() {
         )}
       </div>
     </>
+  )
+}
+
+/** What Friday didn't ask because you have it already (27 Oct: "please scan for duplicates before proposing things to
+ * me"), folded under the list: each with why, and a way to ask it after all. */
+function SetAside({ items }: { items: { id: number; title: string; why: string }[] }) {
+  const [open, setOpen] = useState(false)
+  const restore = useCommand("suggestion_restore", { label: (o) => o.result.message ?? "Back in your inbox" })
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingTop: 6 }}>
+      <button className="fr-plain fr-hover" onClick={() => setOpen(!open)} style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 8px", borderRadius: "var(--radius-sm)", fontSize: 12, color: "var(--color-neutral-400)" }} aria-expanded={open}>
+        <Icon name={open ? "caret-down" : "caret-right"} size={11} />
+        Set aside: {items.length} you have already
+      </button>
+      {open &&
+        items.map((s) => (
+          <div key={s.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, alignItems: "center", padding: "4px 8px 4px 27px", fontSize: 12 }}>
+            <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={s.title}>
+                {s.title}
+              </span>
+              <span className="fr-kicker" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={s.why}>
+                {s.why}
+              </span>
+            </span>
+            <button className="btn btn-ghost" onClick={() => restore({ id: s.id })} style={{ fontSize: 11.5, padding: "2px 8px" }} title="Not a duplicate: ask me about it">
+              Add anyway
+            </button>
+          </div>
+        ))}
+    </div>
   )
 }
 

@@ -12,9 +12,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from friday.commands.duplicates import set_aside_waiting
 from friday.commands.inbox import record_spend, spend
 from friday.commands.mail import read_mail
-from friday.commands.suggesting import suggest, take
+from friday.commands.suggesting import suggest, take, write_raw
 from friday.core.db import one, rows
 from friday.core.integrations import GcalSettings
 from friday.core.settings import minutes_of
@@ -67,6 +68,8 @@ def sync(
         for account, api in mail_apis.items():
             read_mail(conn, settings, now_utc, user_id, api, account)
     made += extract_pending(conn, settings, now_utc, user_id, client)
+    # What waits is checked again each pass, read or not: something you added since may be what it proposes.
+    set_aside_waiting(conn, settings, user_id, now_utc, write_raw(conn))
     return made
 
 

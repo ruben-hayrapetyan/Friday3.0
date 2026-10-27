@@ -313,7 +313,7 @@ function HeldFor({ event }: { event: Item }) {
   const [choosing, setChoosing] = useState(false)
   const [text, setText] = useState("")
   useEffect(() => (setChoosing(false), setText("")), [event.id])
-  const held = event.holds as { id: number; title: string } | null | undefined
+  const held = event.holds as { id: number; title: string; loose?: boolean } | null | undefined
   const likely = held ? null : likelyTask(event.title, tasks)
   const found = ranked(event.title, tasks.filter((t) => t.title.toLowerCase().includes(text.trim().toLowerCase()))).slice(0, 6)
   const box = { display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: "var(--radius-md)", background: "var(--color-bg)" } as const
@@ -342,8 +342,15 @@ function HeldFor({ event }: { event: Item }) {
         <Icon name="tray-arrow-down" size={16} style={{ color: "var(--color-accent-300)" }} />
         <span style={{ flex: "1 1 160px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
           <span>Time for {held.title}</span>
-          <span className="fr-kicker">Planned here first; other work keeps off it.</span>
+          <span className="fr-kicker">
+            {held.loose ? "Planned here when it can: you let it move when holding it made work late. Yes again holds it." : "Planned here first; other work keeps off it."}
+          </span>
         </span>
+        {held.loose && (
+          <button className="btn btn-ghost" onClick={() => hold({ id: event.id, task_id: held.id })} style={{ fontSize: 12 }}>
+            Hold it
+          </button>
+        )}
         <button className="btn btn-ghost" onClick={() => setChoosing(true)} style={{ fontSize: 12 }}>
           Change
         </button>

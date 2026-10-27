@@ -126,6 +126,7 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         event_holds(conn, user_id),
         {k: recorded_minutes(v) for k, v in progress.items()},
         now_utc,
+        frozenset(kv_get(conn, "event_holds_loose", [], user_id) or []),
     )
     return Snapshot(
         user_id=user_id,

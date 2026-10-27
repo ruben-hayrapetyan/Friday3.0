@@ -1017,6 +1017,14 @@ VERBS = {
     "suggestion_reject": Verb(
         "POST", "/api/c/suggestion_reject", commands.SuggestionInput, True, False, "Turn a suggestion down."
     ),
+    "suggestion_restore": Verb(
+        "POST",
+        "/api/c/suggestion_restore",
+        commands.SuggestionInput,
+        True,
+        False,
+        'Ask about a suggestion set aside as a duplicate after all ("Add anyway"): back in the inbox, never set aside',
+    ),
     "sync_now": Verb(
         "POST",
         "/api/c/sync_now",

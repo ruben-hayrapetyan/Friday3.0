@@ -37,7 +37,7 @@ def test_the_task_is_planned_in_the_event_and_nothing_else_is(app: App) -> None:
     assert blocks(app, doc) == [("2026-10-20T21:00", "2026-10-20T23:00")]
     assert not any(b[0] < "2026-10-20T23:00" and b[1] > "2026-10-20T21:00" for b in blocks(app, other))
     event = next(f for f in app.do("plan")["fixed"] if f["id"] == a4dd)
-    assert event["holds"] == {"id": doc, "title": "CS A4 Design Doc"}  # the calendar shows the event as it is
+    assert event["holds"] == {"id": doc, "title": "CS A4 Design Doc", "loose": False}  # the event shows as it is
     assert (event["start"], event["end"]) == ("2026-10-20T21:00", "2026-10-20T23:00")
 
 
@@ -144,3 +144,27 @@ def test_held_shares_a_task_across_two_events_earliest_first_and_skips_what_is_o
     assert held((task, second), (), {9: 1}, {}, DAY + 23 * H)[1] == ()  # over
     assert held((item(1, status="done"), second), (), {9: 1}, {}, DAY)[1] == ()
     assert held((task,), (), {9: 1}, {}, DAY)[1] == ()  # the event isn't in range
+
+
+def test_a_hold_that_makes_work_late_is_asked_about_and_let_move_when_you_say(app: App) -> None:
+    """27 Oct: A4dd held for the design doc made work 8 h late; the plan waited, and letting it move failed ("no
+    locked pin -1509"). Letting it move makes the event ask for the task rather than hold it."""
+    report = app.do("add", text="report due mon 13:00 ~3h")["item"]["id"]  # needs 10–13, where the doc is held
+    doc = app.do("add", title="Design doc", duration_min=120, due="2026-10-21T23:59")["item"]["id"]
+    held_at = app.do("add", title="Doc time", when="fixed", start="2026-10-19T10:00", end="2026-10-19T12:00")["item"][
+        "id"
+    ]
+    app.do("event_hold", id=held_at, task_id=doc)
+    out = app.do("replan")
+    assert out["status"] == "waiting" and "locked Design doc" in out["message"]
+    app.do("resolve", unlock_pin_ids=[-held_at])
+    assert app.do("replan")["status"] == "current"
+    assert all(e <= "2026-10-19T13:00" for _, e in blocks(app, report))  # on time again
+    assert next(f for f in app.do("plan")["fixed"] if f["id"] == held_at)["holds"]["loose"] is True
+    app.do("event_hold", id=held_at, task_id=doc)  # yes again: it holds
+    assert next(f for f in app.do("plan")["fixed"] if f["id"] == held_at)["holds"]["loose"] is False
+
+
+def test_held_asks_rather_than_holds_for_a_loosened_event() -> None:
+    _, pins = held((item(1, minutes=45), item(9, "fixed", 21 * H, 23 * H)), (), {9: 1}, {}, DAY, frozenset({9}))
+    assert [p.kind for p in pins] == ["preferred"]

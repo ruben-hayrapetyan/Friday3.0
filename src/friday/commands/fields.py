@@ -179,7 +179,11 @@ def held_task(ctx: Ctx, event_id: int | None) -> dict[str, Any] | None:
     if task_id is None:
         return None
     found = one(ctx.conn, "SELECT id, title, status FROM items WHERE id = ? AND user_id = ?", [task_id, ctx.user_id])
-    return {"id": found["id"], "title": found["title"]} if found and found["status"] == "todo" else None
+    if found is None or found["status"] != "todo":
+        return None
+    if "event_holds_loose" not in ctx.memo:
+        ctx.memo["event_holds_loose"] = set(kv_get(ctx.conn, "event_holds_loose", [], ctx.user_id) or [])
+    return {"id": found["id"], "title": found["title"], "loose": event_id in ctx.memo["event_holds_loose"]}
 
 
 def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:

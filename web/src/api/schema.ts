@@ -633,6 +633,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/suggestion_restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask about a suggestion set aside as a duplicate after all ("Add anyway"): back in the inbox, never set aside */
+        post: operations["suggestion_restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/suggestion_reject": {
         parameters: {
             query?: never;
@@ -4260,6 +4277,11 @@ export interface components {
              * @default 0
              */
             repeats?: number;
+            /**
+             * Set Aside
+             * @default []
+             */
+            set_aside?: components["schemas"]["SetAsideOut"][];
         };
         /** InsightsOut */
         InsightsOut: {
@@ -6970,6 +6992,20 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /**
+         * SetAsideOut
+         * @description A suggestion the inbox didn't ask because you have it already (commands/duplicates.py).
+         */
+        SetAsideOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Why */
+            why: string;
+            /** Created */
+            created: string;
+        };
         /** SettingsSetInput */
         SettingsSetInput: {
             /** Key */
@@ -7799,6 +7835,27 @@ export interface components {
         };
         /** SuggestionRejectResult */
         SuggestionRejectResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** SuggestionRestoreResult */
+        SuggestionRestoreResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
@@ -9698,6 +9755,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuggestionAcceptResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggestion_restore: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuggestionInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionRestoreResult"];
                 };
             };
             /** @description Validation Error */

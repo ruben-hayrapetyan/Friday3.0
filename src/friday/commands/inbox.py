@@ -22,7 +22,8 @@ from friday.api.commands import (
     SuggestionInput,
 )
 from friday.api.types import Empty
-from friday.api.views import DocumentOut, InboxOut, SourceOut, SuggestionOut
+from friday.api.views import DocumentOut, InboxOut, SetAsideOut, SourceOut, SuggestionOut
+from friday.commands.duplicates import set_aside_waiting
 from friday.commands.items import add, drop, edit, find_item, guessed_minutes
 from friday.commands.registry import Ctx, command, query
 from friday.commands.series import attach_to_series, imported_fields
@@ -31,6 +32,7 @@ from friday.core.html_text import html_text, looks_like_html
 from friday.core.items import FieldError
 from friday.core.recurrence import describe
 from friday.core.textnorm import course_tag
+from friday.core.time import format_utc
 from friday.ingest import extract, llm
 from friday.planner.store import area_names, kv_get
 
@@ -181,7 +183,24 @@ def suggestion_accept(ctx: Ctx, inp: SuggestionInput) -> Changed:
     ctx.db.update(
         "suggestions", {"id": inp.id}, {"status": "accepted", "decided_utc": ctx.now_text, "item_id": item_id}
     )
-    return Changed(message="Accepted")
+    # What it made may be what another suggestion proposes too (the same assignment from mail and from Canvas).
+    gone = set_aside_waiting(
+        ctx.conn, ctx.settings, ctx.user_id, ctx.now_utc, lambda i, f: ctx.db.update("suggestions", {"id": i}, f)
+    )
+    return Changed(message=f"Accepted; set aside {gone} you now have" if gone else "Accepted")
+
+
+@command("suggestion_restore")
+def suggestion_restore(ctx: Ctx, inp: SuggestionInput) -> Changed:
+    """Ask about a suggestion set aside as a duplicate after all ("Add anyway"): back in the inbox, never set aside
+    again."""
+    found = one(ctx.conn, "SELECT status FROM suggestions WHERE user_id = ? AND id = ?", [ctx.user_id, inp.id])
+    if found is None or found["status"] != "superseded":
+        raise FieldError("id", f"no suggestion {inp.id} set aside")
+    ctx.db.update("suggestions", {"id": inp.id}, {"status": "pending", "duplicate_of": None})
+    kept = [*(kv_get(ctx.conn, "not_duplicates", [], ctx.user_id) or []), inp.id]
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "not_duplicates"}, {"value": json.dumps(kept)})
+    return Changed(message="Back in your inbox")
 
 
 EVENT_MIN = 60  # an event read with a start and no end lasts this long until you say otherwise
@@ -319,6 +338,38 @@ def repeat_words(every: str | None) -> str | None:
     return describe(every.removeprefix("rrule:")) if every.startswith("rrule:") else f"every {every}"
 
 
+SET_ASIDE_DAYS = 14
+
+
+def set_aside_of(ctx: Ctx) -> list[SetAsideOut]:
+    """The last two weeks' suggestions set aside as what you have, newest first, each with why."""
+    twins = kv_get(ctx.conn, "set_aside_twins", {}, ctx.user_id) or {}
+    since = format_utc(ctx.now_utc - SET_ASIDE_DAYS * 1440)
+    found = rows(
+        ctx.conn,
+        "SELECT s.id, s.input, s.created_utc, s.duplicate_of, i.title AS of_title, i.status AS of_status "
+        "FROM suggestions s LEFT JOIN items i ON i.id = s.duplicate_of WHERE s.user_id = ? AND s.status = 'superseded' "
+        "AND s.created_utc >= ? AND s.command = 'add' ORDER BY s.id DESC LIMIT 60",
+        [ctx.user_id, since],
+    )
+    out = []
+    for r in found:
+        if r["duplicate_of"] is None and str(r["id"]) not in twins:
+            continue  # set aside by a newer reading of the same mail or feed, not as a duplicate
+        why = (
+            "Also waiting in your inbox"
+            if r["duplicate_of"] is None
+            else f"You have {r['of_title']}"
+            if r["of_status"] == "todo"
+            else f"Done: {r['of_title']}"
+            if r["of_status"] == "done"
+            else f"You deleted {r['of_title']}"
+        )
+        title = json.loads(r["input"] or "{}").get("title") or ""
+        out.append(SetAsideOut(id=r["id"], title=title, why=why, created=ctx.local(r["created_utc"]) or ""))
+    return out
+
+
 @query("inbox")
 def inbox(ctx: Ctx, inp: Empty) -> InboxOut:
     """Pending suggestions, the newest reads first and each read's in date order, with where each came from; the
@@ -338,6 +389,7 @@ def inbox(ctx: Ctx, inp: Empty) -> InboxOut:
         "AND batch LIKE 'repeat:%'",
         [ctx.user_id],
     )
+    set_aside = set_aside_of(ctx)
     suggestions = [
         SuggestionOut(
             id=s["id"],
@@ -379,4 +431,10 @@ def inbox(ctx: Ctx, inp: Empty) -> InboxOut:
         "daily_tokens": budget.daily_tokens,
         "model": budget.model,
     }
-    return InboxOut(suggestions=suggestions, sources=sources, llm=llm_state, repeats=repeats["n"] if repeats else 0)
+    return InboxOut(
+        set_aside=set_aside,
+        suggestions=suggestions,
+        sources=sources,
+        llm=llm_state,
+        repeats=repeats["n"] if repeats else 0,
+    )

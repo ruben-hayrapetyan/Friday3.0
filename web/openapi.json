@@ -2296,6 +2296,77 @@
     }
    }
   },
+  "/api/c/suggestion_restore": {
+   "post": {
+    "summary": "Ask about a suggestion set aside as a duplicate after all (\"Add anyway\"): back in the inbox, never set aside",
+    "operationId": "suggestion_restore",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SuggestionInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SuggestionRestoreResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/suggestion_reject": {
    "post": {
     "summary": "Turn a suggestion down.",
@@ -14285,6 +14356,14 @@
       "type": "integer",
       "title": "Repeats",
       "default": 0
+     },
+     "set_aside": {
+      "items": {
+       "$ref": "#/components/schemas/SetAsideOut"
+      },
+      "type": "array",
+      "title": "Set Aside",
+      "default": []
      }
     },
     "additionalProperties": false,
@@ -22784,6 +22863,36 @@
     ],
     "title": "SeriesStopResult"
    },
+   "SetAsideOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "why": {
+      "type": "string",
+      "title": "Why"
+     },
+     "created": {
+      "type": "string",
+      "title": "Created"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "title",
+     "why",
+     "created"
+    ],
+    "title": "SetAsideOut",
+    "description": "A suggestion the inbox didn't ask because you have it already (commands/duplicates.py)."
+   },
    "SettingsSetInput": {
     "properties": {
      "key": {
@@ -25213,6 +25322,76 @@
      "result"
     ],
     "title": "SuggestionRejectResult"
+   },
+   "SuggestionRestoreResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "SuggestionRestoreResult"
    },
    "Swap": {
     "properties": {
