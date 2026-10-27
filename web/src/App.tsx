@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { HashRouter } from "react-router"
 import { useServerEvents } from "@/api/events"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { Toasts } from "@/components/Toasts"
 import { useCalendar, useStatus } from "@/hooks/queries"
 import { nowMin } from "@/hooks/useClock"
@@ -18,7 +19,9 @@ export default function App() {
       <LookProvider>
         <Toasts>
           <HashRouter>
-            <Root />
+            <ErrorBoundary whole>
+              <Root />
+            </ErrorBoundary>
           </HashRouter>
         </Toasts>
       </LookProvider>

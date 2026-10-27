@@ -48,8 +48,12 @@ export function PlanPage() {
   const setFirst = (f: string | null) => setPlace({ view: place.view, first: f }) // keeps the week you chose, even while it shows a day
   const step = (by: number) => setFirst(view === "month" ? shiftMonth(shown, by) : addDays(shown, by * view))
   const nudge = useNudge()
-  // Only with a block selected, or several picked, do the arrows move them, not the page.
-  const block = !!useShell().selected?.key.startsWith("T") || usePicks().length > 0
+  // Only with a block selected, or several picked, do the arrows move them, not the page. Both hooks every render:
+  // `selected || usePicks()` skipped the second when a block was selected, and React, finding a hook fewer than the
+  // render before, threw and left the window black (27 Oct, "f.getSnapshot").
+  const selectedBlock = !!useShell().selected?.key.startsWith("T")
+  const picking = usePicks().length > 0
+  const block = selectedBlock || picking
   useKeys({
     day: () => setView(1),
     three: () => setView(3),

@@ -45,6 +45,7 @@ import { Icon } from "@/components/fr/controls"
 import { nowMin } from "@/hooks/useClock"
 import { Sidebar } from "./Sidebar"
 import { closes, type Opener, wasInFront } from "./toggles"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 
 export function Shell() {
   const { today, pop, setPop, dialog, setDialog, drawer, event, layout, drawerOver, drawerWidth, navOpen, setNavOpen, tour } = useShell()
@@ -89,6 +90,7 @@ export function Shell() {
           </>
         )}
         <main style={{ display: "grid", gridTemplateRows: "60px minmax(0,1fr)", minHeight: 0, minWidth: 0 }}>
+          <ErrorBoundary resetKey={location.pathname}>
           <Routes>
             <Route path="/" element={<PlanPage />} />
             <Route path="/todo" element={<TodoPage />} />
@@ -104,6 +106,7 @@ export function Shell() {
             <Route path="/settings/:section?" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </ErrorBoundary>
         </main>
         {event && location.pathname === "/" ? (
           <DrawerFrame>
