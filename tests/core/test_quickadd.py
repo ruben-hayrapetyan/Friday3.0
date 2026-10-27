@@ -213,7 +213,8 @@ STUDENT_LINES = [
                                        "end_local": "2026-10-27T21:00", "preset": "Event"}),
     ("office hours wed 3-4pm", {"title": "office hours", "start_local": "2026-10-21T15:00",
                                 "end_local": "2026-10-21T16:00"}),
-    ("review 11-1pm sat", {"title": "review sat", "start_local": "2026-10-18T11:00", "end_local": "2026-10-18T13:00"}),
+    # The day after the times is still the times' day (it was left in the title, and the times put on today).
+    ("review 11-1pm sat", {"title": "review", "start_local": "2026-10-24T11:00", "end_local": "2026-10-24T13:00"}),
     ("groceries sat", {"title": "groceries", "due_local": "2026-10-24T23:59", "preset": "Errand"}),
     ("email prof about extension today", {"title": "email prof about extension", "due_local": "2026-10-18T23:59"}),
     ("pay bursar bill by 11/15", {"title": "pay bursar bill", "due_local": "2026-11-15T23:59"}),
@@ -282,3 +283,31 @@ def test_a_task_that_runs_by_itself_says_so(text: str) -> None:
 
 def test_by_a_time_is_still_a_due() -> None:
     assert quick("essay by fri")["due_local"] == "2026-10-23T23:59"
+
+
+# 27 Oct: "salsa on friday from 6:15 to 7:30 every friday" made a weekly "salsa on to" at 7:30 in the morning, and
+# "...from 6:15-7:30pm every week" a flexible errand. Each is now Salsa, Friday 6:15 to 7:30pm.
+@pytest.mark.parametrize(
+    ("text", "rrule"),
+    [
+        ("salsa on friday from 6:15 to 7:30 every friday", "FREQ=WEEKLY;BYDAY=FR"),
+        ("salsa on friday from 6:15-7:30pm every week", "FREQ=WEEKLY"),
+        ("salsa every friday from 6:15pm to 7:30pm", "FREQ=WEEKLY;BYDAY=FR"),
+        ("salsa friday from 6:15 to 7:30", None),
+        ("salsa 6:15-7:30 friday", None),
+        ("salsa friday 6:15-7:30", None),
+    ],
+)
+def test_an_evening_event_said_many_ways(text: str, rrule: str | None) -> None:
+    fields = quick(text)
+    assert (fields["title"], fields["preset"], fields.get("rrule")) == ("salsa", "Event", rrule)
+    assert fields["start_local"][11:] == "18:15" and fields["end_local"][11:] == "19:30"
+    assert "due_local" not in fields
+    if rrule is None:
+        assert fields["start_local"][:10] == "2026-10-23"  # the Friday after NOW (Sunday the 18th)
+
+
+def test_morning_hours_written_so_stay_morning() -> None:
+    assert quick("gym 06:30-07:30 tue")["start_local"].endswith("06:30")
+    assert quick("gym 7:30am-9am tue")["start_local"].endswith("07:30")
+    assert quick("lecture 10:10-11:25 mon")["start_local"].endswith("10:10")

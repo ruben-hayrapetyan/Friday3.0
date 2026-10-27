@@ -10,8 +10,10 @@ import math
 from dataclasses import dataclass, field, replace
 from typing import Literal
 
-from friday.core.time import UNIT_MIN
-from friday.engine.compile import compile_problem
+import numpy as np
+
+from friday.core.time import UNIT_MIN, Grid
+from friday.engine.compile import Compiled, compile_problem
 from friday.engine.construct import construct
 from friday.engine.explain import Block, blocks_of
 from friday.engine.problem import EngineItem, Plan, Problem
@@ -273,13 +275,106 @@ def alerts(inp: ExecutorInput, settings: NowSettings) -> list[Alert]:
     return out
 
 
-def provisional_plan(problem: Problem, previous: Plan, changed: set[str]) -> dict[str, tuple[int, ...]]:
-    """The plan shown as ghosts until the scheduler answers (§14.6): the previous plan with pins applied, and what
-    the changed and new items are missing placed in deadline order into the earliest free allowed slots."""
+def provisional_plan(
+    problem: Problem, previous: Plan, changed: set[str], left: dict[str, set[int]] | None = None
+) -> dict[str, tuple[int, ...]]:
+    """The plan shown until the scheduler answers (§14.6): the previous plan with pins applied, and what the changed
+    and new items are missing placed in deadline order into the earliest free allowed slots. `left`: the slots a
+    dragged block left, by item."""
     # Construction checks walls only, so the rules' measures (most of compile time) aren't needed.
     c = compile_problem(replace(problem, rules=[], price_cache={}))
     # Only what the command changed (new items are in `changed` too) is placed, and a changed item keeps its blocks
     # where still allowed: placing all unfinished work painted next week's homework into today on every command, and
     # a started task re-placed whole showed three times over the day (M16). The solve decides the rest.
     kept = {k: v for k, v in previous.items() if k in problem.items}
-    return c.plan_from_owner(construct(c, c.owner_from_plan(kept), only=changed))
+    # A block you dragged is where you put it, and gone from where it was (27 Oct: a preferred pin, what a drag makes,
+    # wasn't applied, so the block showed back where it had been until the solve). Written last, so it wins its slots.
+    gone = left or {}
+    moved = {
+        k: pinned_there(c, k, tuple(s for s in kept.get(k, ()) if s not in gone.get(k, set())))
+        for k in sorted(changed)
+        if k in problem.items and problem.items[k].preferred
+    }
+    kept = {k: v for k, v in kept.items() if k not in moved} | moved
+    base = c.owner_from_plan(kept)
+    held = construct(c, base, only=set())
+    index = {k: i for i, k in enumerate(c.keys)}
+    owner = construct(c, base, only=changed)
+    # Work that an event you just added, or a block you just pinned, now covers steps aside to the nearest free time:
+    # it sat under the event, drawn over it, until the solve (27 Oct), and placed in the earliest free time instead
+    # it jumped days away and slid back when the solve landed.
+    for k, slots in kept.items():
+        gone = [s for s in slots if held[s] != index[k]]
+        if gone and k not in changed:
+            step_aside(c, owner, index[k], gone)
+    return c.plan_from_owner(owner)
+
+
+def step_aside(c: Compiled, owner: np.ndarray, i: int, near: list[int]) -> None:
+    """What item `i` is missing, written into the free time it may use (by a hard due, too) nearest the slots it lost:
+    the nearest free stretch that holds it all, and of a longer one the part nearest; pieces only when none does. A
+    quick placement: chunk sizes and day limits are the solve's."""
+    M, grid = c.m, c.problem.grid
+    missing = int(M.need[i]) - int(M.units[: M.S][owner[: M.S] == i].sum())
+    if missing <= 0:
+        return
+    centre = float(np.mean(grid.start[near]))
+    runs: list[list[int]] = []
+    for s in range(M.S):
+        if owner[s] != -1 or not M.on_time[i, s]:
+            continue
+        if runs and runs[-1][-1] == s - 1 and grid.contiguous(s - 1, s):
+            runs[-1].append(s)
+        else:
+            runs.append([s])
+
+    def gap(run: list[int]) -> float:
+        return min(abs(float(grid.start[s]) - centre) for s in run)
+
+    while missing > 0 and runs:
+        # The nearest stretch that holds all of it, else the nearest: a busy day broke it into quarter hours.
+        run = min(runs, key=lambda r: (int(M.units[r].sum()) < missing, gap(r)))
+        runs.remove(run)
+        part = nearest_part(grid, run, missing, centre)
+        for s in part:
+            owner[s] = i
+        missing -= int(M.units[part].sum())
+
+
+def nearest_part(grid: Grid, run: list[int], units: int, centre: float) -> list[int]:
+    """The stretch of `run` holding `units` whose middle is nearest `centre`; all of it when it holds less."""
+    best: tuple[float, list[int]] | None = None
+    for a in range(len(run)):
+        total = 0
+        for b in range(a, len(run)):
+            total += int(grid.units[run[b]])
+            if total >= units:
+                gap = abs((float(grid.start[run[a]]) + float(grid.end[run[b]])) / 2 - centre)
+                if best is None or gap < best[0]:
+                    best = (gap, run[a : b + 1])
+                break
+    return best[1] if best else run
+
+
+def pinned_there(c: Compiled, key: str, was: tuple[int, ...]) -> tuple[int, ...]:
+    """An item's slots with its preferred pins applied: the pinned slots, and of its other planned stretches as many as
+    still fit what it needs, the one most like the pin in length (the one dragged) let go first."""
+    M = c.m
+    i = c.keys.index(key)
+    pinned = sorted(c.problem.items[key].preferred)
+    room = max(int(M.need[i]), int(M.amount_cap[i]))
+    have = sum(int(M.units[s]) for s in pinned)
+    runs: list[list[int]] = []
+    for s in (s for s in was if s not in c.problem.items[key].preferred):
+        if runs and s == runs[-1][-1] + 1:
+            runs[-1].append(s)
+        else:
+            runs.append([s])
+    size = {id(r): sum(int(M.units[s]) for s in r) for r in runs}
+    over = have + sum(size.values()) - room
+    for run in sorted(runs, key=lambda r: (abs(size[id(r)] - have), r[0])):
+        if over <= 0:
+            break
+        runs.remove(run)
+        over -= size[id(run)]
+    return tuple(sorted(pinned + [s for r in runs for s in r]))

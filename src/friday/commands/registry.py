@@ -205,7 +205,7 @@ def run_in_transaction(
             bump_generation(conn, user_id)
         ghosts = None
         if spec.affects_plan and provisional:
-            ghosts = placement(conn, now_utc, user_id, changed_items(ctx.db.changes))
+            ghosts = placement(conn, now_utc, user_id, changed_items(ctx.db.changes), moved_from(ctx, inp))
         if preview:
             snapshot = read_snapshot(conn, now_utc, user_id) if preview == "full" else None
             conn.execute("ROLLBACK")
@@ -349,6 +349,15 @@ def changed_items(changes: list[dict[str, Any]]) -> set[int]:
         elif "item_id" in row:
             out.add(row["item_id"])
     return out
+
+
+def moved_from(ctx: Ctx, inp: BaseModel) -> dict[int, tuple[int, int]]:
+    """The block a change moved an item from (a dragged block's `from_start`–`from_end`), which the quick placement
+    leaves empty."""
+    item, start, end = (getattr(inp, k, None) for k in ("id", "from_start", "from_end"))
+    if not isinstance(item, int) or not isinstance(start, str) or not isinstance(end, str):
+        return {}
+    return {item: (parse_utc(ctx.utc(start, "from_start")), parse_utc(ctx.utc(end, "from_end")))}
 
 
 def bump_generation(conn: sqlite3.Connection, user_id: int) -> None:

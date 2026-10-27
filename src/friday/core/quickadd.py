@@ -13,6 +13,7 @@ from friday.core.dates import (
     next_weekday,
     parse_duration,
     parse_time_range,
+    read_date,
     read_moment,
 )
 from friday.core.guess import guess_preset
@@ -134,6 +135,8 @@ class Parser:
             return self.mark(i, 1, "rrule", REPEAT_WORDS[word])
         if word == "between":
             return self.read_between(i)
+        if word == "on" and i + 1 < len(self.words) and read_date(self.words, i + 1, self.today):
+            return self.span(i, 1, "on", None)  # "salsa on friday": the day is read next; "on" isn't the title
         if BARE_ELASTIC.match(word):
             return self.read_length(i, bare=True)
         if word in IMPORTANCE:
@@ -203,6 +206,14 @@ class Parser:
         return self.mark(i, used + 1, "due_local", format_local(due))
 
     def read_from(self, i: int) -> int:
+        """`from fri` (released then), or `from 6:15 to 7:30` / `from 6:15pm until 7:30pm`: an event's times."""
+        if used := self.read_between(i, ("to", "until", "till", "-")):
+            return used
+        if i + 1 < len(self.words) and (span := parse_time_range(self.words[i + 1])):  # from 6:15-7:30pm
+            start = local_midnight(self.today) + timedelta(minutes=span[0])
+            self.fields["start_local"] = format_local(start)
+            self.fields["end_local"] = format_local(start + timedelta(minutes=span[1] - span[0]))
+            return self.span(i, 2, "at", self.fields["start_local"])
         found = self.moment_after(i)
         if not found:
             return 0
@@ -225,6 +236,9 @@ class Parser:
             return 0
         day, minute, used = found
         if minute is None:
+            if "start_local" in self.fields and not self.bare_day:  # "salsa 6:15-7:30 friday": the times' day
+                self.move_to(day)
+                return self.span(i, used, "on", day.isoformat())
             if "due_local" in self.fields or "start_local" in self.fields:
                 return 0
             self.bare_day = True
@@ -294,9 +308,9 @@ class Parser:
             return 0
         return self.mark(i, 1, "preset", known)
 
-    def read_between(self, i: int) -> int:
-        """`between 6 and 8pm`, read as the range `6-8pm`."""
-        if i + 3 >= len(self.words) or self.words[i + 2] != "and":
+    def read_between(self, i: int, joins: tuple[str, ...] = ("and",)) -> int:
+        """`between 6 and 8pm`, read as the range `6-8pm` (and `from 6:15 to 7:30`, by `read_from`)."""
+        if i + 3 >= len(self.words) or self.words[i + 2] not in joins:
             return 0
         span = parse_time_range(f"{self.words[i + 1]}-{self.words[i + 3]}")
         if span is None:
@@ -357,7 +371,18 @@ class Parser:
         if match and int(match[1]) <= 12 and int(match[2]) <= 12 and match[1] != match[2]:
             self.result.warnings.append(f"{word} read as {day:%b} {day.day}")
 
+    def move_to(self, day: date) -> None:
+        """An event's times, on this day."""
+        for key in ("start_local", "end_local"):
+            if key in self.fields:
+                was = datetime.fromisoformat(self.fields[key])
+                self.fields[key] = format_local(datetime.combine(day, was.time()))
+
     def finish(self) -> None:
+        # "salsa on friday from 6:15 to 7:30": the day was read before its times, as a due; it's the event's day.
+        if self.bare_day and "start_local" in self.fields and "due_local" in self.fields:
+            self.move_to(datetime.fromisoformat(self.fields.pop("due_local")).date())
+            self.bare_day = False
         self.fields["title"] = " ".join(self.title_parts)
         if not self.title_parts:
             self.result.warnings.append("no title")

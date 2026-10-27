@@ -79,8 +79,11 @@ def test_only_blocks_on_a_pin_show_as_pinned(tmp_path: Path) -> None:
     essay = app.do("add", text="essay ~2h split")["item"]["id"]
     app.do("pin", id=essay, start="2026-10-20T10:00", end="2026-10-20T11:00", kind="preferred")
     app.do("replan")
-    shown = {b["start"]: b["pinned"] for b in app.do("plan")["blocks"] if b["item_id"] == essay}
-    assert shown["2026-10-20T10:00"] == "preferred" and list(shown.values()).count(None) == len(shown) - 1
+    shown = [b for b in app.do("plan")["blocks"] if b["item_id"] == essay]
+    (on_pin,) = [b for b in shown if b["start"] <= "2026-10-20T10:00" < b["end"]]
+    assert on_pin["pinned"] == "preferred"
+    # The rest shows unpinned, unless it touches the pin: then it's one block with it (27 Oct).
+    assert all(b["pinned"] is None for b in shown if b is not on_pin)
 
 
 def test_a_deleted_items_blocks_leave_the_calendar_before_the_replan(tmp_path: Path) -> None:

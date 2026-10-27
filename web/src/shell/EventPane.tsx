@@ -11,6 +11,7 @@ import { useItem, useSettings } from "@/hooks/queries"
 import { useCalendars } from "@/settings/Calendars"
 import { useWhatIf, whatIf } from "@/whatif/store"
 import { useCommand } from "@/hooks/useCommand"
+import { placeEvent } from "@/hooks/useDrop"
 import { clock, weekday } from "@/lib/format"
 import { PIGMENTS, pigment, UNMARKED } from "@/lib/pigments"
 import { addDays, fromMin, toMin } from "@/lib/time"
@@ -96,11 +97,12 @@ function EventFit({ draft, onTime }: { draft: EventDraft; onTime: (start: string
 export function EventPane({ draft }: { draft: EventDraft }) {
   const { setEvent } = useShell()
   const { light } = useLook()
-  const add = useCommand("add", { label: () => `Added ${draft.title || "the event"}` })
-  const edit = useCommand("edit", { label: () => `Saved ${draft.title}` })
+  const add = useCommand("add", { label: () => `Added ${draft.title || "the event"}`, optimistic: placeEvent })
+  const edit = useCommand("edit", { label: () => `Saved ${draft.title}`, optimistic: placeEvent })
   const drop = useCommand("drop", { label: () => `Deleted ${draft.title}` })
   const skip = useCommand("skip", { label: () => "Deleted this one" })
   const deleteSeries = useCommand("series_delete", { label: (o) => o.result.message ?? "Deleted" })
+  const repeat = useCommand("repeat", { label: (o) => `Repeats ${o.result.description}` })
   const [asking, setAsking] = useState(false)
   const title = useRef<HTMLInputElement>(null)
   const set = (change: Partial<EventDraft>) => setEvent({ ...draft, ...change })
@@ -132,6 +134,12 @@ export function EventPane({ draft }: { draft: EventDraft }) {
       const was = w.changes[staged].input as Record<string, unknown>
       whatIf.replace(staged, { ...(was.calendar !== undefined ? { calendar: was.calendar } : {}), ...fields, when: "fixed" })
       return close()
+    }
+    // An event you made once can be made to repeat here too, from its own date and time (`repeat`).
+    if (!isNew && draft.every && draft.seriesId === null) {
+      const saved = await edit({ id: draft.id as number, ...fields })
+      if (saved && (await repeat({ id: draft.id as number, every: draft.every }))) close()
+      return
     }
     const done = isNew
       ? await add({ ...fields, when: "fixed", ...(draft.saveTo !== undefined ? { calendar: savingTo ? saveTo : "" } : {}), ...(draft.every ? { every: draft.every } : {}) })
@@ -248,7 +256,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
           </span>
         )}
       </Row>
-      {isNew ? (
+      {isNew || (draft.seriesId === null && !draft.calendar && staged === null) ? (
         <Row label="Repeats">
           <Menu options={REPEATS} value={(draft.every ?? "") as (typeof REPEATS)[number]["value"]} onPick={(v) => set({ every: v || null })} label="Repeats" />
         </Row>

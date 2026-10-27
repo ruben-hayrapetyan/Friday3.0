@@ -19,6 +19,7 @@ import { useShell } from "@/shell/ShellContext"
 import { useLook } from "@/theme/LookProvider"
 import { draftAt, draftOf } from "@/shell/EventPane"
 import { DueLane } from "./DueLane"
+import { useGlide } from "./glide"
 import { type TrialPlan, useWhatIf, whatIf } from "@/whatif/store"
 import { asBlock, BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, PX, SleepBand, type TriedLook } from "./Pieces"
 
@@ -67,6 +68,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const panel = useRef<HTMLDivElement>(null)
   const head = useRef<HTMLDivElement>(null)
   const headHeight = useHeight(head)
+  useGlide(panel, plan, dates.join())
   // All 24 hours open at the wake time, as a paper calendar opens at the morning.
   useLayoutEffect(() => {
     if (allDay24 && panel.current) panel.current.scrollTop = Math.max(0, calendar.axis_start_min - 30) * PX

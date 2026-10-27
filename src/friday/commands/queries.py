@@ -41,8 +41,10 @@ from friday.core.settings import to_json
 from friday.core.time import UNIT_MIN, format_utc, local_midnight, parse_utc, to_local, to_utc
 from friday.engine import executor
 from friday.engine.explain import Block
+from friday.planner.assemble import PlannedBlock
 from friday.planner.build import id_of, key_of
 from friday.planner.progress import minutes_by_item
+from friday.planner.service import ahead
 from friday.planner.snapshot import pace_periods, take_snapshot
 from friday.planner.store import area_names, current_plan, generation, kv_get, settings_version
 from friday.planner.views import Current, fits_view, now_view
@@ -190,8 +192,10 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
     lo = parse_utc(ctx.utc(inp.start, "start")) if inp.start else ctx.now_utc
     hi = parse_utc(ctx.utc(inp.end, "end")) if inp.end else lo + ctx.settings["time"].horizon_days * 1440
     saved = current_plan(ctx.conn, ctx.user_id)
+    coming = ahead(ctx.conn, ctx.user_id, saved)
     pins = rows(ctx.conn, "SELECT * FROM pins WHERE user_id = ? ORDER BY created_utc DESC", [ctx.user_id])
     blocks = []
+    going: list[tuple[int, int, int]] = []  # the saved plan's blocks under way now: item, start, end
     if saved is not None:
         for r in rows(
             ctx.conn,
@@ -200,18 +204,25 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
             "AND b.start_utc < ? AND (i.status = 'todo' OR b.end_utc <= ?) ORDER BY b.start_utc",
             [saved["id"], format_utc(lo), format_utc(hi), format_utc(ctx.now_utc)],
         ):
+            start, end = parse_utc(r["start_utc"]), parse_utc(r["end_utc"])
+            if coming is not None and start >= ctx.now_utc:
+                continue  # what's ahead is the quick placement's until the replan lands
+            if start < ctx.now_utc < end:
+                going.append((r["item_id"], start, end))
             blocks.append(
                 block_out(
                     ctx,
                     r["item_id"],
-                    parse_utc(r["start_utc"]),
-                    parse_utc(r["end_utc"]),
+                    start,
+                    end,
                     json.loads(r["cost"]),
                     running=True,
                     tentative=bool(r["tentative"]),
                     pinned=pin_kind(pins, r),
                 )
             )
+    if coming is not None:
+        blocks = sorted(blocks + placed_ahead(ctx, coming, max(lo, ctx.now_utc), hi, going), key=lambda b: b.start)
     blocks = coalesced(past_states(ctx, blocks))  # pieces join only with pieces that went the same way
     fixed = [
         item_out(ctx, item_from_row(r))
@@ -229,7 +240,34 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
         minutes = UNIT_MIN if b.background else parse_utc(ctx.utc(b.end)) - parse_utc(ctx.utc(b.start))
         hours[day] = hours.get(day, 0) + minutes / 60
     plan_id = saved["id"] if saved else None
-    return PlanOut(plan_id=plan_id, blocks=blocks, fixed=fixed, day_hours=hours, sessions=sittings(ctx, lo, hi))
+    return PlanOut(
+        plan_id=plan_id,
+        blocks=blocks,
+        fixed=fixed,
+        day_hours=hours,
+        provisional=coming is not None,
+        sessions=sittings(ctx, lo, hi),
+    )
+
+
+def placed_ahead(
+    ctx: Ctx, coming: list[PlannedBlock], lo: int, hi: int, going: list[tuple[int, int, int]]
+) -> list[BlockOut]:
+    """The quick placement's blocks in [lo, hi) of what's still to do, as the plan view shows them while the replan
+    is coming; a block under way stays as the saved plan has it."""
+    todo = {
+        r["id"] for r in rows(ctx.conn, "SELECT id FROM items WHERE user_id = ? AND status = 'todo'", [ctx.user_id])
+    }
+    out = []
+    for b in coming:
+        if b.end_utc <= lo or b.start_utc >= hi or b.item_id not in todo:
+            continue
+        if any(i == b.item_id and s < b.end_utc and b.start_utc < e for i, s, e in going):
+            continue
+        out.append(
+            block_out(ctx, b.item_id, b.start_utc, b.end_utc, running=True, tentative=b.tentative, pinned=b.pinned)
+        )
+    return out
 
 
 def sittings(ctx: Ctx, lo: int, hi: int) -> list[BlockOut]:
@@ -314,22 +352,27 @@ def minutes_of_block(ctx: Ctx, b: BlockOut) -> int:
     return parse_utc(ctx.utc(b.end)) - parse_utc(ctx.utc(b.start))
 
 
+PIN_STRENGTH = {None: 0, "preferred": 1, "locked": 2}
+
+
 def coalesced(blocks: list[BlockOut]) -> list[BlockOut]:
     """Touching blocks of one item as one block. Every replan cuts the plan at that moment and the pieces stay in
-    the record, so a sitting showed as 12:00–13:00, 13:00–13:15 and 13:15–14:00 side by side (M16)."""
+    the record, so a sitting showed as 12:00–13:00, 13:00–13:15 and 13:15–14:00 side by side (M16). A pinned piece
+    and an unpinned one of the same sitting are one block too, pinned as the stronger (27 Oct: a block you dragged
+    next to the rest of its sitting showed as two)."""
     out: list[BlockOut] = []
     for b in blocks:
         last = out[-1] if out else None
-        joins = last is not None and (last.item_id, last.end, last.tentative, last.pinned, last.state) == (
+        joins = last is not None and (last.item_id, last.end, last.tentative, last.state) == (
             b.item_id,
             b.start,
             b.tentative,
-            b.pinned,
             b.state,
         )
         if last is not None and joins:
             cost = {k: last.cost.get(k, 0) + b.cost.get(k, 0) for k in last.cost.keys() | b.cost.keys()}
-            out[-1] = last.model_copy(update={"end": b.end, "cost": cost})
+            pinned = max(last.pinned, b.pinned, key=lambda p: PIN_STRENGTH.get(p, 0))
+            out[-1] = last.model_copy(update={"end": b.end, "cost": cost, "pinned": pinned})
         else:
             out.append(b)
     return out

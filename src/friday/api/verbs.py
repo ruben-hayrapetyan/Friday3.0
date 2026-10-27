@@ -694,6 +694,14 @@ VERBS = {
         False,
         "Put a project's steps in this order (it shows them so; the plan follows their dependencies).",
     ),
+    "repeat": Verb(
+        "POST",
+        "/api/c/repeat",
+        commands.RepeatInput,
+        True,
+        True,
+        'Make something you have repeat from its own date and time ("Salsa every Friday", for this Friday\'s Salsa);',
+    ),
     "repeats_import": Verb(
         "POST",
         "/api/c/repeats_import",

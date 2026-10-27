@@ -18,7 +18,7 @@ type Plan = Schemas["PlanOut"]
 type Fixed = Plan["fixed"][number]
 type Block = Plan["blocks"][number]
 
-const STAGED = new Set<string>(["add", "edit", "series_add", "shove", "rule_add", "pin", "unpin", "day_override", "skip", "drop"])
+const STAGED = new Set<string>(["add", "edit", "series_add", "shove", "rule_add", "pin", "unpin", "day_override", "skip", "drop", "repeat"])
 const ID_KEYS = new Set(["id", "item_id", "depends_on_id", "ids"])
 const PLACE = 1000
 export const SPAN_DAYS = 21 // the trial is planned from yesterday this many days on, so moving around the weeks needs no new try

@@ -22,14 +22,14 @@ function setup() {
 afterEach(() => vi.unstubAllGlobals())
 
 describe("a command", () => {
-  it("shows its change at once, draws the ghosts and offers undo", async () => {
+  it("shows its change at once and offers undo; its quick placement comes with the plan, not as ghosts", async () => {
     const { client, toasts, toast } = setup()
     const ghost = { key: "T1@2026-10-19T10:00", item_id: 1, title: "PS5", start: "2026-10-19T10:00", end: "2026-10-19T11:00" }
     answer(200, { command_id: 7, result: { item: {} }, provisional: [ghost] })
     const running = runCommand(client, toast, "done", { id: 2 }, { optimistic: withoutItem })
     await vi.waitFor(() => expect(client.getQueryData<Item[]>(["items"])?.map((i) => i.id)).toEqual([1]))
     await running
-    expect(client.getQueryData(["ghosts"])).toEqual([ghost])
+    expect(client.getQueryData(["ghosts"])).toBeUndefined()
     expect(toasts.map((t) => [t.message, t.action?.label])).toEqual([["Marked done", "Undo"]])
   })
 

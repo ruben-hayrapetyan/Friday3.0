@@ -43,6 +43,8 @@ def parse_time(text: str) -> int | None:
         return TIME_WORDS[text]
     if match := TIME_24H.match(text):
         hour, minute = int(match[1]), int(match[2])
+        if len(match[1]) == 1 and 1 <= hour <= 6:
+            hour += 12  # "6:15" without am or pm is the evening, as people write it; "06:15" stays the morning
     elif match := TIME_12H.match(text):
         hour, minute = int(match[1]) % 12 + (12 if match[3] == "pm" else 0), int(match[2] or 0)
         if int(match[1]) > 12:
@@ -63,6 +65,8 @@ def parse_time_range(text: str) -> tuple[int, int] | None:
     start = parse_time(first if first.endswith(("am", "pm")) or not suffix else first + suffix)
     if start is not None and end is not None and start >= end and suffix == "pm" and not first.endswith("pm"):
         start = parse_time(first + "am")  # 11-1pm is 11am to 1pm
+    if start is not None and end is not None and start >= end and not suffix and end < 12 * 60:
+        end += 12 * 60  # 6:15-7:30 is 6:15pm to 7:30pm: the end follows the start
     return (start, end) if start is not None and end is not None and start < end else None
 
 

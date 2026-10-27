@@ -1,5 +1,6 @@
-// Live updates over SSE (DESIGN §18.2). Each server event refreshes the queries it affects; provisional placements
-// are kept as ghosts until the solver's plan replaces them.
+// Live updates over SSE (DESIGN §18.2). Each server event refreshes the queries it affects. A change's quick
+// placement comes with the plan query itself until the solver's plan replaces it; ghosts are what Other ways lays
+// over the calendar.
 
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useEffect } from "react"
@@ -27,7 +28,7 @@ export function setGhosts(client: QueryClient, ghosts: Block[]): void {
 
 function refresh(client: QueryClient, event: string): void {
   const stale = refreshFor(event)
-  // Ghosts are put there by hand (a preview, provisional placements): refetching them would only empty them.
+  // Ghosts are put there by hand (Other ways' preview): refetching them would only empty them.
   client.invalidateQueries({ predicate: (q) => q.queryKey[0] !== GHOSTS[0] && (stale.includes(EVERYTHING) || stale.includes(String(q.queryKey[0]))) })
 }
 
@@ -50,7 +51,6 @@ export function useServerEvents(): void {
         refresh(client, event)
       })
     }
-    source.addEventListener("plan.provisional", (e) => setGhosts(client, JSON.parse((e as MessageEvent).data)))
     return () => source.close()
   }, [client])
 }

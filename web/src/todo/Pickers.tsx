@@ -159,6 +159,41 @@ export function LengthInput({ value, onPick, width = 110 }: { value: number | nu
   )
 }
 
+/** One press of − or + on a length: a quarter hour under 2 hours, half an hour under 5, an hour above, landing on
+ * the step (5h 15m and + is 6h). Never under 15 minutes. */
+export function stepLength(min: number, up: boolean): number {
+  const step = (up ? min < 120 : min <= 120) ? 15 : (up ? min < 300 : min <= 300) ? 30 : 60
+  return Math.max(15, up ? Math.floor(min / step) * step + step : Math.ceil(min / step) * step - step)
+}
+
+/** − and + on a length. Presses add up at once and are saved together when you stop (27 Oct: each press read the
+ * length before the last one had saved, so six presses made 5h into 5h 15m). */
+export function LengthStepper({ value, onSave }: { value: number | null; onSave: (min: number) => void }) {
+  const [pending, setPending] = useState<number | null>(null)
+  const shown = pending ?? value
+  useEffect(() => {
+    if (pending === null) return
+    const timer = setTimeout(() => (onSave(pending), setPending(null)), SAVE_AFTER_MS)
+    return () => clearTimeout(timer)
+  }, [pending, onSave])
+  const press = (up: boolean) => shown && setPending(stepLength(shown, up))
+  return (
+    <>
+      <button className="btn btn-icon btn-secondary" disabled={!shown || shown <= 15} onClick={() => press(false)} aria-label={shown ? `Less: ${dur(stepLength(shown, false))}` : "Less time"} title={shown ? dur(stepLength(shown, false)) : undefined} style={{ width: 26, height: 26 }}>
+        <Icon name="minus" />
+      </button>
+      <span className="tnum" style={{ minWidth: 56, textAlign: "center", color: pending !== null ? "var(--color-accent-300)" : undefined }}>
+        {shown ? dur(shown) : "—"}
+      </span>
+      <button className="btn btn-icon btn-secondary" disabled={!shown} onClick={() => press(true)} aria-label={shown ? `More: ${dur(stepLength(shown, true))}` : "More time"} title={shown ? dur(stepLength(shown, true)) : undefined} style={{ width: 26, height: 26 }}>
+        <Icon name="plus" />
+      </button>
+    </>
+  )
+}
+
+const SAVE_AFTER_MS = 600
+
 /** A length in minutes; null leaves it to Friday's estimate. Under 15 minutes still takes one 15-minute slot. */
 export function LengthPicker({ value, onPick }: { value: number | null; onPick: (v: number | null) => void }) {
   return (

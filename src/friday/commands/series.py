@@ -11,6 +11,7 @@ from friday.api.commands import (
     Empty,
     ItemRef,
     ItemResult,
+    RepeatInput,
     SeriesAddInput,
     SeriesEditInput,
     SeriesOut,
@@ -26,7 +27,7 @@ from friday.core.recurrence import describe, ending_before, read_repeat
 from friday.core.rows import item_to_row
 from friday.core.series import Series, materialize
 from friday.core.time import ampm, format_local, local_midnight, parse_local, parse_utc, to_local
-from friday.planner.store import area_names
+from friday.planner.store import area_names, event_links
 
 TIME_KEYS = ("start_utc", "end_utc", "release_utc", "due_utc")
 
@@ -41,8 +42,14 @@ def rule_from(ctx: Ctx, every: str) -> str:
 
 def create_series(ctx: Ctx, given: dict[str, Any], repeat: dict[str, Any]) -> tuple[int, int]:
     """A series from item fields and a repeat (`every` shorthand or a parsed `rrule`); returns its id and count."""
+    series_id = new_series(ctx, to_item_values(ctx, given), repeat)
+    return series_id, materialize_series(ctx, series_id)
+
+
+def new_series(ctx: Ctx, values: dict[str, Any], repeat: dict[str, Any]) -> int:
+    """The series row for item values and a repeat, its occurrences not made yet."""
     rule = repeat.get("rrule") or rule_from(ctx, repeat["every"])
-    values = to_item_values(ctx, given)
+    values = dict(values)
     start = values.get("start_utc")
     if start:
         dtstart = format_local(to_local(parse_utc(start), ctx.tz))
@@ -70,7 +77,34 @@ def create_series(ctx: Ctx, given: dict[str, Any], repeat: dict[str, Any]) -> tu
             "updated_utc": ctx.now_text,
         },
     )
-    return series_id, materialize_series(ctx, series_id)
+    return series_id
+
+
+# What an item's repeat doesn't copy: who it is, and where it stands.
+NOT_REPEATED = ("id", "status", "series_id", "occurrence_date", "occurrence_n", "detached", "created_utc",
+                "updated_utc", "completed_utc")  # fmt: skip
+
+
+@command("repeat", affects_plan=True)
+def repeat(ctx: Ctx, inp: RepeatInput) -> SeriesOut:
+    """Make something you have repeat from its own date and time ("Salsa every Friday", for this Friday's Salsa);
+    it stays the first time, with what you've done on it. One from your calendar repeats there instead."""
+    item = require_item(ctx, inp.id)
+    if item.series_id is not None:
+        raise FieldError("id", f"{item.title} repeats already; change how in its drawer")
+    link = event_links(ctx.conn, ctx.user_id).get(item.id or 0)
+    if link is not None:
+        raise FieldError("id", f"{item.title} comes from {link.calendar or 'your calendar'}: make it repeat there")
+    values = {k: v for k, v in vars(item).items() if v is not None and k not in NOT_REPEATED}
+    series_id = new_series(ctx, values, {"every": inp.every})
+    series = as_series(load_series(ctx, series_id))
+    times = materialize(series, ctx.today, ctx.settings["time"].materialize_days, ctx.tz, set())
+    mine = next((t for t in times if (t.start_utc or t.due_utc) == (item.start_utc or item.due_utc)), None)
+    if mine is not None:  # this one is the first time; the series makes the rest
+        ctx.db.update("items", {"id": item.id}, {"series_id": series_id, "occurrence_date": mine.occurrence_date,
+                                                 "occurrence_n": mine.occurrence_n})  # fmt: skip
+    materialize_series(ctx, series_id)
+    return series_out(ctx, series_id)
 
 
 def template_of(ctx: Ctx, values: dict[str, Any]) -> dict[str, Any]:

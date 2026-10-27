@@ -337,6 +337,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "shove": lambda app: {"range": "1h"},
     "unshove": a_shove,
     "series_add": lambda app: {"title": "gym", "every": "mon,wed", "duration_min": 60},
+    "repeat": lambda app: {"id": essay(app), "every": "week"},
     "series_edit": lambda app: {"id": gym(app)["series_id"], "from_date": "2026-10-26", "duration_min": 90},
     "series_stop": lambda app: {"id": gym(app)["series_id"]},
     "series_delete": lambda app: {"id": gym(app)["series_id"]},

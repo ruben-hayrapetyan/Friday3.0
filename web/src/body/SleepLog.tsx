@@ -1,16 +1,16 @@
-// Sleep & meals → Sleep: the switch, the Now bar's four taps for when you missed one, a night to log after the fact
-// or put right, and every night of the last two weeks with each time to change. What they say is above it.
+// Sleep & meals → Sleep: the switch, the Now bar's four taps for when you missed one, and the last two weeks a night
+// a row, each to change, or to log when it wasn't recorded, in a card under the row. What they say is above it.
 
 import { useState } from "react"
 import type { Schemas } from "@/api/client"
 import { Icon, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings, useSleep } from "@/hooks/queries"
-import { dayLabel, weekday } from "@/lib/format"
+import { clock, dayLabel, dur, weekday } from "@/lib/format"
 import { addDays } from "@/lib/time"
 import { Section } from "@/insights/Section"
-import { Nights } from "@/settings/SleepTracking"
 import { useShell } from "@/shell/ShellContext"
+import { EditCard, minutesBetween, TimeField } from "./Times"
 
 const TAPS = [
   { kind: "done", icon: "laptop", button: "Done with work" },
@@ -42,11 +42,8 @@ export function SleepLog() {
       <Section title="Track my sleep" note="Missed a tap in the Now bar? Make it here." right={toggle}>
         <Taps next={sleep.next ?? null} />
       </Section>
-      <Section title="Log a night" note="After the fact, or to put one right">
-        <LogNight nights={nights} />
-      </Section>
-      <Section title="Your nights" note="The last two weeks. Click a time to change it or take it back.">
-        {nights.length ? <Nights nights={nights} /> : <span style={{ color: "var(--color-neutral-400)" }}>No nights yet.</span>}
+      <Section title="Your nights" note="The last two weeks. Click a night to change its times, or to log one you didn’t tap.">
+        <NightRows nights={nights} />
       </Section>
     </>
   )
@@ -69,69 +66,124 @@ function Taps({ next }: { next: string | null }) {
 }
 
 type Kind = "done" | "bed" | "up" | "ready"
+const KINDS: { kind: Kind; label: string; short: string }[] = [
+  { kind: "done", label: "Done with work", short: "Done" },
+  { kind: "bed", label: "Went to bed", short: "Bed" },
+  { kind: "up", label: "Got up", short: "Up" },
+  { kind: "ready", label: "Ready to work", short: "Ready" },
+]
 
-/** Last night, or any of the two weeks before: the times to add, or to put right. */
-function LogNight({ nights }: { nights: Schemas["SleepNightOut"][] }) {
+const dow = (d: string) => ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date(`${d}T12:00:00Z`).getUTCDay()]
+
+/** The last two weeks of nights, one a row: its four times and how long you slept; a night not recorded too. A row
+ * clicked opens its card under it (`NightCard`). */
+function NightRows({ nights }: { nights: Schemas["SleepNightOut"][] }) {
   const { today } = useShell()
+  const [open, setOpen] = useState<string | null>(null)
+  const byDate = new Map(nights.map((n) => [n.date, n]))
+  const evenings = Array.from({ length: 14 }, (_, n) => addDays(today, -1 - n))
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      {evenings.map((date, n) => {
+        const night = byDate.get(date)
+        const on = open === date
+        return (
+          <div key={date} className="fr-row" style={{ padding: "4px 0", fontSize: 12 }}>
+            <button
+              className="fr-plain fr-hover-text"
+              onClick={() => setOpen(on ? null : date)}
+              aria-expanded={on}
+              title="Change this night"
+              style={{ display: "grid", gridTemplateColumns: "110px repeat(4, minmax(0,1fr)) 64px 16px", gap: 8, alignItems: "center", width: "100%", textAlign: "left", padding: "4px 6px", borderRadius: 6, background: on ? "color-mix(in srgb, var(--color-accent) 12%, transparent)" : undefined }}
+            >
+              <span style={{ color: "var(--color-neutral-400)" }}>{n === 0 ? `Last night (${weekday(date)})` : `${dayLabel(date)} night`}</span>
+              {night ? (
+                <>
+                  {KINDS.map(({ kind, short }) => {
+                    const at = night[kind]
+                    const timed = (kind === "done" && night.done_timed) || (kind === "ready" && night.ready_timed)
+                    return (
+                      <span key={kind} className="tnum" style={{ color: at ? "var(--color-neutral-200)" : "var(--color-neutral-600)" }}>
+                        {short} {at ? clock(at) : "—"}
+                        {timed && <span style={{ color: "var(--color-neutral-500)" }}> (timer)</span>}
+                      </span>
+                    )
+                  })}
+                  <span className="tnum" title={`You plan for ${dur(night.planned_min)}`} style={{ textAlign: "right", color: night.slept_min && night.slept_min < night.planned_min - 60 ? "var(--fr-warn)" : "var(--color-neutral-300)" }}>
+                    {night.slept_min ? dur(night.slept_min) : "—"}
+                  </span>
+                </>
+              ) : (
+                <span style={{ gridColumn: "2 / span 5", color: "var(--color-neutral-600)" }}>Not recorded: click to log it</span>
+              )}
+              <Icon name={on ? "caret-up" : "pencil-simple"} size={11} style={{ color: "var(--color-neutral-600)" }} />
+            </button>
+            {on && <NightCard key={date} evening={date} night={night} onClose={() => setOpen(null)} />}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** One night's card: the four times, each to change or clear, and how long that is asleep; Save and Cancel. */
+function NightCard({ evening, night, onClose }: { evening: string; night?: Schemas["SleepNightOut"]; onClose: () => void }) {
   const sleepSet = (useSettings().data as Record<string, Record<string, { bedtime: string; wake: string }>> | undefined)?.sleep
   const add = useCommand("sleep_mark", { label: (o) => o.result.message ?? "Saved" })
   const edit = useCommand("sleep_mark_edit", { label: (o) => o.result.message ?? "Saved" })
-  const evenings = Array.from({ length: 14 }, (_, n) => addDays(today, -1 - n))
-  const [evening, setEvening] = useState(evenings[0])
-  const night = nights.find((n) => n.date === evening)
+  const remove = useCommand("sleep_mark_remove", { label: (o) => o.result.message ?? "Removed" })
   const morning = addDays(evening, 1)
-  const key = (d: string) => ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date(`${d}T12:00:00Z`).getUTCDay()]
-  const planned = { bed: sleepSet?.[key(evening)]?.bedtime ?? "23:30", up: sleepSet?.[key(morning)]?.wake ?? "08:00" }
-  const start = { done: night?.done?.slice(11, 16) ?? "", bed: night?.bed?.slice(11, 16) ?? planned.bed, up: night?.up?.slice(11, 16) ?? planned.up, ready: night?.ready?.slice(11, 16) ?? "" }
-  const [times, setTimes] = useState<Record<Kind, string>>(start)
-  const [saving, setSaving] = useState(false)
-  const pick = (d: string) => {
-    setEvening(d)
-    const n = nights.find((x) => x.date === d)
-    const m = addDays(d, 1)
-    setTimes({ done: n?.done?.slice(11, 16) ?? "", bed: n?.bed?.slice(11, 16) ?? sleepSet?.[key(d)]?.bedtime ?? "23:30", up: n?.up?.slice(11, 16) ?? sleepSet?.[key(m)]?.wake ?? "08:00", ready: n?.ready?.slice(11, 16) ?? "" })
+  const recorded: Record<Kind, string> = {
+    done: night?.done?.slice(11, 16) ?? "",
+    bed: night?.bed?.slice(11, 16) ?? "",
+    up: night?.up?.slice(11, 16) ?? "",
+    ready: night?.ready?.slice(11, 16) ?? "",
   }
+  // A night not recorded starts from your usual bedtime and wake time, to log in one click; one recorded in part
+  // leaves what's missing empty, so Save doesn't log a time you didn't give.
+  const usual = { ...recorded, bed: sleepSet?.[dow(evening)]?.bedtime ?? "23:30", up: sleepSet?.[dow(morning)]?.wake ?? "08:00" }
+  const [times, setTimes] = useState(night ? recorded : usual)
+  const [busy, setBusy] = useState(false)
   // A bedtime (or the end of work) in the small hours is the next morning's date; up and ready are the morning's.
   const at = (kind: Kind, time: string) => `${(kind === "bed" || kind === "done") && time >= "12:00" ? evening : morning}T${time}`
   const ids: Record<Kind, number | null | undefined> = { done: night?.done_id, bed: night?.bed_id, up: night?.up_id, ready: night?.ready_id }
+  const slept = minutesBetween(times.bed, times.up)
+  const changed = KINDS.some(({ kind }) => times[kind] !== recorded[kind])
+  const fromTimer = (kind: Kind) => (kind === "done" && !!night?.done_timed) || (kind === "ready" && !!night?.ready_timed)
   const save = async () => {
-    setSaving(true)
-    for (const kind of ["done", "bed", "up", "ready"] as Kind[]) {
+    setBusy(true)
+    let ok = true
+    for (const { kind } of KINDS) {
       const time = times[kind]
-      if (!time) continue
-      const was = { done: night?.done_timed ? null : night?.done, bed: night?.bed, up: night?.up, ready: night?.ready_timed ? null : night?.ready }[kind]
-      const timed = (kind === "ready" && night?.ready_timed && night.ready?.slice(11, 16) === time) || (kind === "done" && night?.done_timed && night.done?.slice(11, 16) === time)
-      if (ids[kind] && was?.slice(11, 16) !== time) await edit({ id: ids[kind] as number, at: at(kind, time) })
-      else if (!ids[kind] && !timed) await add({ kind, at: at(kind, time) })
+      const id = ids[kind]
+      if (time === recorded[kind]) continue
+      // A time from a timer (the first you started, the last you stopped) isn't a tap: a new one is.
+      const out = !time ? (id ? await remove({ id }) : true) : id ? await edit({ id, at: at(kind, time) }) : await add({ kind, at: at(kind, time) })
+      ok = ok && out !== undefined
     }
-    setSaving(false)
+    setBusy(false)
+    if (ok) onClose()
   }
-  const field = (kind: Kind, label: string) => (
-    <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, color: "var(--color-neutral-400)" }}>
-      {label}
-      <input type="time" className="input" value={times[kind]} onChange={(e) => setTimes({ ...times, [kind]: e.target.value })} style={{ width: 120, padding: "4px 8px", minHeight: 0, fontSize: 13 }} />
-    </label>
-  )
   return (
-    <div className="fr-well" style={{ display: "flex", alignItems: "flex-end", gap: 14, flexWrap: "wrap", padding: "12px 14px" }}>
-      <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, color: "var(--color-neutral-400)" }}>
-        Night
-        <select className="input" value={evening} onChange={(e) => pick(e.target.value)} style={{ width: 170, padding: "4px 8px", minHeight: 0, fontSize: 13 }}>
-          {evenings.map((d, n) => (
-            <option key={d} value={d}>
-              {n === 0 ? `Last night (${weekday(d)})` : `${dayLabel(d)} night`}
-            </option>
-          ))}
-        </select>
-      </label>
-      {field("done", "Done with work")}
-      {field("bed", "Went to bed")}
-      {field("up", "Got up")}
-      {field("ready", "Ready to work")}
-      <button className="btn btn-primary fr-press" disabled={saving} onClick={save} style={{ fontSize: 12 }}>
-        {saving ? <span className="fr-spinner" /> : <Icon name="check" />}
-        {night ? "Save changes" : "Log it"}
-      </button>
-    </div>
+    <EditCard
+      title={`${dayLabel(evening)} night`}
+      said={slept !== null ? `${dur(slept)} asleep${night?.planned_min ? `, of ${dur(night.planned_min)} planned` : ""}` : undefined}
+      saveLabel={night ? "Save changes" : "Log it"}
+      canSave={changed}
+      busy={busy}
+      onSave={save}
+      onCancel={onClose}
+    >
+      {KINDS.map(({ kind, label }) => (
+        <TimeField
+          key={kind}
+          label={fromTimer(kind) && times[kind] === recorded[kind] ? `${label} (timer)` : label}
+          value={times[kind]}
+          onChange={(v) => setTimes({ ...times, [kind]: v })}
+          // A time from a timer isn't a tap to take back: type over it instead.
+          onClear={fromTimer(kind) && !ids[kind] ? undefined : () => setTimes({ ...times, [kind]: "" })}
+        />
+      ))}
+    </EditCard>
   )
 }

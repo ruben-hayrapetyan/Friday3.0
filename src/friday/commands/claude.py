@@ -22,7 +22,19 @@ from friday.core.time import format_utc
 from friday.ingest import llm
 from friday.planner.store import area_names
 
-ANYTHING = ("add", "edit", "drop", "done", "pin", "unpin", "shove", "rule_add", "settings_set", "day_override")
+ANYTHING = (
+    "add",
+    "edit",
+    "drop",
+    "done",
+    "pin",
+    "unpin",
+    "shove",
+    "rule_add",
+    "settings_set",
+    "day_override",
+    "repeat",
+)
 RULES = ("rule_add", "settings_set", "add")
 SETTINGS = (
     "kind_order", "short_term_first", "exam_focus", "pointless_late", "sittings", "busy", "daily_cap", "event_kinds",
@@ -35,9 +47,12 @@ does, for the student to confirm.
 
 Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
 - add: a task or event. Task: {title, due?, duration_min?, preset?, area?}. Event: {title, when: "fixed", start, end}.
+  Either repeats with every: "week", "fri", "mon,wed", "other week", "day", "month" (from its first date and time).
   A daily break such as lunch: {title, preset: "Routine", every: "rrule:FREQ=DAILY", min_min, ideal_min, max_min,
   release and due as the window's first day start and end}.
 - edit: {id, ...fields to change} — use the ids in the context; moving an event changes its start and end.
+- repeat: {id, every} makes something they already have repeat ("make salsa repeat every week"), from its own date
+  and time; never for an event from their calendar.
 - drop: {id}; done: {id}; pin: {id, start, end, kind: "preferred" | "locked"}; unpin: {id}.
 - shove: {range: "HH:MM-HH:MM YYYY-MM-DD"} keeps that time free of work.
 - day_override: {date, bedtime?, wake?, cap_hours?}.

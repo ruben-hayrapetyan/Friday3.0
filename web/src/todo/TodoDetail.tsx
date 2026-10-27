@@ -1,7 +1,7 @@
 // One to-do's detail (v22 To-do aside): tag, kind, due, how hard the deadline is, the estimate, the sessions planned
 // for it and why, and Start, Done, See on plan, Delete.
 
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { useNavigate } from "react-router"
 import type { Block } from "@/api/client"
 import { Icon, Seg, Switch } from "@/components/fr/controls"
@@ -13,7 +13,7 @@ import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { usePresets } from "./AddBox"
 import { progress } from "./groups"
-import { DuePicker, LengthPicker, ListPicker } from "./Pickers"
+import { DuePicker, LengthPicker, LengthStepper, ListPicker } from "./Pickers"
 
 const TRAVEL = [0, 10, 15, 30] // minutes each way
 
@@ -37,6 +37,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
   const firstKey = detail?.blocks[0]?.key ?? null
   const why = useWhy(firstKey).data
   const edit = useCommand("edit", { label: () => "Saved" })
+  const saveLength = useCallback((min: number) => edit({ id, duration_min: min }), [edit, id])
   const done = useCommand("done", { label: () => "Done" })
   const reopen = useCommand("reopen", { label: () => "Open again" })
   const start = useCommand("start", { label: () => "Started" })
@@ -171,15 +172,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
         </span>
         <span className="fr-kicker">Estimate</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button className="btn btn-icon btn-secondary" disabled={!length} onClick={() => length && edit({ id, duration_min: Math.max(15, length - 15) })} aria-label="Less time" style={{ width: 26, height: 26 }}>
-            <Icon name="minus" />
-          </button>
-          <span className="tnum" style={{ minWidth: 56, textAlign: "center" }}>
-            {length ? dur(length) : "—"}
-          </span>
-          <button className="btn btn-icon btn-secondary" disabled={!length} onClick={() => length && edit({ id, duration_min: length + 15 })} aria-label="More time" style={{ width: 26, height: 26 }}>
-            <Icon name="plus" />
-          </button>
+          <LengthStepper key={id} value={length} onSave={saveLength} />
           {item.guess_min ? <span className="fr-kicker">{item.guess_min === length ? "Friday’s guess" : `Friday guessed ${dur(item.guess_min)}`}</span> : null}
           <button onClick={() => toggle("length")} className="btn btn-ghost" style={{ padding: "2px 8px", fontSize: 12 }}>
             Set

@@ -1,15 +1,16 @@
-// Sleep & meals → Meals: the switch, "Eating now" and "Done eating" (the Now bar's taps, for when you missed one), a
-// meal to log after the fact or a skipped one, and every meal of the last two weeks with its times to change or take
-// back. Eating or skipping a meal ticks off that day's Lunch or Dinner routine. What they say is above it.
+// Sleep & meals → Meals: the switch, "Eating now" and "Done eating" (the Now bar's taps, for when you missed one), and
+// the last two weeks a day a row: each meal to change or delete, and a meal not recorded to log or say skipped, in a
+// card under the row. Eating or skipping a meal ticks off that day's Lunch or Dinner routine. What they say is above.
 
 import { useState } from "react"
 import type { Schemas } from "@/api/client"
-import { Icon, Seg, Switch } from "@/components/fr/controls"
+import { Icon, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useMeals, useSettings } from "@/hooks/queries"
-import { clock, dayLabel, dur, weekday } from "@/lib/format"
+import { clock, dayLabel, dur } from "@/lib/format"
 import { addDays, nearestAt } from "@/lib/time"
 import { Section } from "@/insights/Section"
+import { EditCard, minutesBetween, TimeField } from "./Times"
 import { useShell } from "@/shell/ShellContext"
 
 export const KINDS = ["breakfast", "lunch", "dinner", "snack"] as const
@@ -40,11 +41,8 @@ export function MealLog() {
       <Section title="Track my meals" note="Missed a tap in the Now bar? Make it here." right={toggle}>
         <Now meals={meals} />
       </Section>
-      <Section title="Log a meal" note="One you ate without tapping, or one you skipped">
-        <LogMeal />
-      </Section>
-      <Section title="Your meals" note="The last two weeks. Click a meal to change its times or take it back.">
-        {days.length ? <Days days={days} /> : <span style={{ color: "var(--color-neutral-400)" }}>No meals yet.</span>}
+      <Section title="Your meals" note="The last two weeks. Click a meal to change it, or + to log one you didn’t tap (or skipped).">
+        <Days days={days} />
       </Section>
     </>
   )
@@ -88,116 +86,70 @@ function Now({ meals }: { meals: Schemas["MealsOut"] }) {
   )
 }
 
-/** Today or any of the two weeks before: a meal from when you started to when you finished, or skipped. */
-function LogMeal() {
-  const { today } = useShell()
-  const settings = useSettings().data as Record<string, { day_start?: string }> | undefined
-  const dayStart = settings?.time?.day_start ?? "04:00"
-  const log = useCommand("meal_log", { label: (o) => o.result.message ?? "Saved" })
-  const skip = useCommand("meal_skip", { label: (o) => o.result.message ?? "Saved" })
-  const days = Array.from({ length: 15 }, (_, n) => addDays(today, -n))
-  const [day, setDay] = useState(today)
-  const [kind, setKind] = useState<MealKind>("lunch")
-  const [from, setFrom] = useState("12:30")
-  const [to, setTo] = useState("13:00")
-  const [busy, setBusy] = useState(false)
-  // A meal in the small hours (before your day starts) is the night of the day picked: the next date.
-  const at = (time: string) => `${time < dayStart ? addDays(day, 1) : day}T${time}`
-  const field = (label: string, value: string, set: (v: string) => void) => (
-    <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, color: "var(--color-neutral-400)" }}>
-      {label}
-      <input type="time" className="input" value={value} onChange={(e) => set(e.target.value)} style={{ width: 120, padding: "4px 8px", minHeight: 0, fontSize: 13 }} />
-    </label>
-  )
-  return (
-    <div className="fr-well" style={{ display: "flex", alignItems: "flex-end", gap: 14, flexWrap: "wrap", padding: "12px 14px" }}>
-      <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, color: "var(--color-neutral-400)" }}>
-        Day
-        <select className="input" value={day} onChange={(e) => setDay(e.target.value)} style={{ width: 150, padding: "4px 8px", minHeight: 0, fontSize: 13 }}>
-          {days.map((d, n) => (
-            <option key={d} value={d}>
-              {n === 0 ? "Today" : n === 1 ? `Yesterday (${weekday(d)})` : dayLabel(d)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, color: "var(--color-neutral-400)" }}>
-        Meal
-        <Seg options={KINDS.map((k) => ({ value: k, label: named(k) }))} value={kind} onPick={setKind} />
-      </label>
-      {field("Started", from, setFrom)}
-      {field("Finished", to, setTo)}
-      <button className="btn btn-primary fr-press" disabled={busy || !from || !to} onClick={async () => (setBusy(true), await log({ kind, start: at(from), end: at(to) }), setBusy(false))} style={{ fontSize: 12 }}>
-        {busy ? <span className="fr-spinner" /> : <Icon name="check" />}
-        Log it
-      </button>
-      {kind !== "snack" && (
-        <button className="btn btn-secondary fr-press" disabled={busy} onClick={async () => (setBusy(true), await skip({ kind, date: day }), setBusy(false))} style={{ fontSize: 12 }}>
-          Skipped it
-        </button>
-      )}
-    </div>
-  )
-}
-
+/** The last two weeks, a row a day: each meal as a chip, and a faint "+ Lunch" for a meal not recorded; a chip
+ * clicked opens its card under the row (`MealCard`). */
 function Days({ days }: { days: Schemas["MealDayOut"][] }) {
+  const { today } = useShell()
+  const [open, setOpen] = useState<string | null>(null) // "<date>/<meal id>", or "<date>/+<kind>" for a new one
+  const [shown, setShown] = useState<string | null>(null) // a day with nothing recorded, its "+" choices out
+  const byDate = new Map(days.map((d) => [d.date, d.meals ?? []]))
+  const dates = Array.from({ length: 14 }, (_, n) => addDays(today, -n))
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      {days.map((d) => (
-        <div key={d.date} className="fr-row" style={{ display: "grid", gridTemplateColumns: "92px minmax(0,1fr)", gap: 8, alignItems: "center", padding: "6px 0", fontSize: 12 }}>
-          <span style={{ color: "var(--color-neutral-400)" }}>{dayLabel(d.date)}</span>
-          <span style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
-            {(d.meals ?? []).map((m) => (
-              <MealTimes key={m.id} meal={m} />
-            ))}
-          </span>
-        </div>
-      ))}
+      {dates.map((date) => {
+        const meals = [...(byDate.get(date) ?? [])].sort((a, b) => (a.start ?? "").localeCompare(b.start ?? ""))
+        const missing = KINDS.filter((k) => k !== "snack" && !meals.some((m) => m.kind === k))
+        const here = open?.startsWith(`${date}/`) ? open.slice(date.length + 1) : null
+        const meal = here && !here.startsWith("+") ? meals.find((m) => String(m.id) === here) : undefined
+        const kind = here?.startsWith("+") ? (here.slice(1) as MealKind) : meal ? (meal.kind as MealKind) : null
+        return (
+          <div key={date} className="fr-row" style={{ padding: "6px 0", fontSize: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "92px minmax(0,1fr)", gap: 8, alignItems: "center" }}>
+              <span style={{ color: "var(--color-neutral-400)" }}>{date === today ? "Today" : dayLabel(date)}</span>
+              <span style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                {meals.map((m) => (
+                  <MealChip key={m.id} meal={m} on={here === String(m.id)} onClick={() => setOpen(here === String(m.id) ? null : `${date}/${m.id}`)} />
+                ))}
+                {!meals.length && shown !== date && (
+                  <>
+                    <span style={{ color: "var(--color-neutral-600)" }}>Nothing recorded</span>
+                    <button className="fr-link" onClick={() => setShown(date)} style={{ fontSize: 12 }}>
+                      Log a meal
+                    </button>
+                  </>
+                )}
+                {(meals.length > 0 || shown === date) && [...missing, "snack" as const].map((k) => (
+                  <button
+                    key={k}
+                    className="fr-plain fr-hover-text"
+                    onClick={() => setOpen(here === `+${k}` ? null : `${date}/+${k}`)}
+                    title={k === "snack" ? "Log a snack" : `Log ${k}, or that you skipped it`}
+                    style={{ display: "inline-flex", gap: 4, alignItems: "center", padding: "3px 8px", borderRadius: 999, color: "var(--color-neutral-500)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 10%, transparent)", ...(here === `+${k}` ? { color: "var(--color-text)" } : {}) }}
+                  >
+                    <Icon name="plus" size={11} />
+                    {named(k)}
+                  </button>
+                ))}
+              </span>
+            </div>
+            {kind && <MealCard key={open} date={date} kind={kind} meal={meal} onClose={() => setOpen(null)} />}
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-/** One meal: its times, or (clicked) the times to change and the bin. */
-function MealTimes({ meal }: { meal: Schemas["MealOut"] }) {
-  const edit = useCommand("meal_edit", { label: (o) => o.result.message ?? "Moved" })
-  const remove = useCommand("meal_remove", { label: (o) => o.result.message ?? "Removed" })
-  const [editing, setEditing] = useState(false)
-  const [from, setFrom] = useState(meal.start?.slice(11, 16) ?? "")
-  const [to, setTo] = useState(meal.end?.slice(11, 16) ?? "")
+function MealChip({ meal, on, onClick }: { meal: Schemas["MealOut"]; on: boolean; onClick: () => void }) {
   const label = named(meal.kind)
-  if (editing)
-    return (
-      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <span style={{ color: "var(--color-neutral-400)" }}>{label}</span>
-        {!meal.skipped && (
-          <>
-            <input type="time" aria-label={`${label} start`} className="input" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: 96, padding: "2px 6px", minHeight: 0, fontSize: 12 }} />
-            {meal.end && <input type="time" aria-label={`${label} end`} className="input" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: 96, padding: "2px 6px", minHeight: 0, fontSize: 12 }} />}
-            <button
-              className="btn btn-icon btn-ghost"
-              aria-label="Save"
-              onClick={() => {
-                const start = meal.start && from !== meal.start.slice(11, 16) ? nearestAt(meal.start, from) : undefined
-                const end = meal.end && to !== meal.end.slice(11, 16) ? nearestAt(meal.end, to) : undefined
-                if (start || end) edit({ id: meal.id, start, end })
-                setEditing(false)
-              }}
-              style={{ width: 22, height: 22 }}
-            >
-              <Icon name="check" size={12} />
-            </button>
-          </>
-        )}
-        <button className="btn btn-icon btn-ghost" onClick={() => (remove({ id: meal.id }), setEditing(false))} aria-label={`Remove ${meal.kind}`} style={{ width: 22, height: 22 }}>
-          <Icon name="trash" size={12} />
-        </button>
-        <button className="btn btn-icon btn-ghost" onClick={() => setEditing(false)} aria-label="Cancel" style={{ width: 22, height: 22 }}>
-          <Icon name="x" size={12} />
-        </button>
-      </span>
-    )
   return (
-    <button className="fr-plain fr-hover-text tnum" onClick={() => setEditing(true)} title="Click to change" style={{ display: "inline-flex", gap: 6, alignItems: "center", color: "var(--color-neutral-300)" }}>
+    <button
+      className="fr-plain tnum"
+      onClick={onClick}
+      title="Change it"
+      aria-expanded={on}
+      style={{ display: "inline-flex", gap: 6, alignItems: "center", padding: "3px 9px", borderRadius: 999, background: on ? "color-mix(in srgb, var(--color-accent) 18%, transparent)" : "color-mix(in srgb, var(--color-text) 6%, transparent)", color: "var(--color-neutral-200)" }}
+    >
       <Icon name={MEAL_ICON[meal.kind] ?? "fork-knife"} size={13} style={{ color: "var(--color-neutral-500)" }} />
       {meal.skipped ? (
         <span style={{ color: "var(--color-neutral-500)" }}>{label} skipped</span>
@@ -208,6 +160,74 @@ function MealTimes({ meal }: { meal: Schemas["MealOut"] }) {
           {meal.minutes ? <span style={{ color: "var(--color-neutral-500)" }}> · {dur(meal.minutes)}</span> : null}
         </span>
       )}
+      <Icon name="pencil-simple" size={11} style={{ color: "var(--color-neutral-600)" }} />
     </button>
+  )
+}
+
+const USUAL: Record<MealKind, [string, string]> = { breakfast: ["08:30", "08:50"], lunch: ["12:30", "13:00"], dinner: ["19:00", "19:40"], snack: ["16:00", "16:10"] }
+
+/** One meal's card: when you started and finished, with how long that is; Save, Delete and Cancel. A meal you skipped
+ * can be eaten after all; one not recorded can be logged, or said skipped. */
+function MealCard({ date, kind, meal, onClose }: { date: string; kind: MealKind; meal?: Schemas["MealOut"]; onClose: () => void }) {
+  const settings = useSettings().data as Record<string, { day_start?: string }> | undefined
+  const dayStart = settings?.time?.day_start ?? "04:00"
+  const log = useCommand("meal_log", { label: (o) => o.result.message ?? "Saved" })
+  const edit = useCommand("meal_edit", { label: (o) => o.result.message ?? "Saved" })
+  const remove = useCommand("meal_remove", { label: (o) => o.result.message ?? "Removed" })
+  const skip = useCommand("meal_skip", { label: (o) => o.result.message ?? "Saved" })
+  const eaten = meal && !meal.skipped ? meal : undefined
+  const [from, setFrom] = useState(eaten?.start?.slice(11, 16) ?? USUAL[kind][0])
+  const [to, setTo] = useState(eaten?.end?.slice(11, 16) ?? USUAL[kind][1])
+  const [busy, setBusy] = useState(false)
+  const label = named(kind)
+  const minutes = minutesBetween(from, to)
+  // A meal in the small hours (before your day starts) is the night of its day: the next date.
+  const at = (time: string) => `${time < dayStart ? addDays(date, 1) : date}T${time}`
+  const run = async (act: () => Promise<unknown>) => {
+    setBusy(true)
+    const ok = await act()
+    setBusy(false)
+    if (ok !== undefined) onClose()
+  }
+  const save = () =>
+    run(async () => {
+      if (eaten?.start && eaten.end) {
+        const start = from !== eaten.start.slice(11, 16) ? nearestAt(eaten.start, from) : undefined
+        const end = to !== eaten.end.slice(11, 16) ? nearestAt(eaten.end, to) : undefined
+        return start || end ? edit({ id: eaten.id, start, end }) : true
+      }
+      if (eaten) return edit({ id: eaten.id, start: nearestAt(eaten.start ?? at(from), from) })
+      // Eaten after all: the skip goes, the meal is logged.
+      if (meal?.skipped && !(await remove({ id: meal.id }))) return undefined
+      return log({ kind, start: at(from), end: at(to) })
+    })
+  const title = `${label} · ${dayLabel(date)}`
+  return (
+    <EditCard
+      title={title}
+      said={meal?.skipped ? "You said you skipped it" : minutes ? `${dur(minutes)}` : undefined}
+      saveLabel={eaten ? "Save" : meal?.skipped ? "I ate it after all" : "Log it"}
+      canSave={!!from && (!!to || (!!eaten && !eaten.end)) && (minutes === null || (minutes > 0 && minutes <= 240))}
+      busy={busy}
+      onSave={save}
+      onCancel={onClose}
+      extra={
+        meal ? (
+          <button className="btn btn-ghost" disabled={busy} onClick={() => run(() => remove({ id: meal.id }))} style={{ fontSize: 12, color: "var(--fr-due)" }}>
+            <Icon name="trash" size={12} />
+            {meal.skipped ? "Not skipped after all" : "Delete this meal"}
+          </button>
+        ) : kind !== "snack" ? (
+          <button className="btn btn-ghost" disabled={busy} onClick={() => run(() => skip({ kind, date }))} style={{ fontSize: 12 }}>
+            I skipped it
+          </button>
+        ) : null
+      }
+    >
+      <TimeField label="Started" value={from} onChange={setFrom} />
+      {(!eaten || eaten.end) && <TimeField label="Finished" value={to} onChange={setTo} />}
+      {eaten && !eaten.end && <span style={{ fontSize: 12, color: "var(--color-neutral-400)", paddingBottom: 6 }}>Still eating: “Done eating” ends it</span>}
+    </EditCard>
   )
 }

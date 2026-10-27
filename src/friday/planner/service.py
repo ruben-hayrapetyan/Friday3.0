@@ -20,7 +20,7 @@ from friday.planner.learning import learnable
 from friday.planner.prepare import build_input
 from friday.planner.snapshot import Snapshot, read_snapshot, take_snapshot
 from friday.planner.solve import solve
-from friday.planner.store import current_plan, kv_get
+from friday.planner.store import current_plan, generation, kv_get, kv_set
 
 MAX_PIN_CHECKS = 10
 
@@ -265,8 +265,15 @@ def lock_conflicts(snapshot: Snapshot, plan: AssembledPlan) -> list[dict]:
     return out
 
 
-def provisional(conn: sqlite3.Connection, now_utc: int, user_id: int, changed: set[int]) -> list[BlockOut] | None:
-    """The executor's quick placement after a command, inside its transaction (§14.6); None until set up."""
+def provisional(
+    conn: sqlite3.Connection,
+    now_utc: int,
+    user_id: int,
+    changed: set[int],
+    moved_from: dict[int, tuple[int, int]] | None = None,
+) -> list[BlockOut] | None:
+    """The executor's quick placement after a command, inside its transaction (§14.6); None until set up.
+    `moved_from`: the span a dragged block left, by item."""
     snapshot = read_snapshot(conn, now_utc, user_id)
     if snapshot.settings["time"].timezone is None or snapshot.settings["sleep"] is None:
         return None
@@ -277,10 +284,38 @@ def provisional(conn: sqlite3.Connection, now_utc: int, user_id: int, changed: s
     for block in snapshot.plan_blocks:
         if key_of(block.item_id) in problem.items:
             previous.setdefault(key_of(block.item_id), []).extend(grid.slots_in(block.start_utc, block.end_utc))
-    plan = provisional_plan(problem, {k: tuple(v) for k, v in previous.items()}, {key_of(i) for i in changed})
+    left = {key_of(i): set(grid.slots_in(lo, hi)) for i, (lo, hi) in (moved_from or {}).items()}
+    plan = provisional_plan(problem, {k: tuple(v) for k, v in previous.items()}, {key_of(i) for i in changed}, left)
     blocks, _ = planned_blocks(problem, plan)
+    keep_provisional(conn, user_id, snapshot.generation, blocks)
     titles = {i.id: i.title for i in snapshot.items}
     return [block_out(snapshot.settings, b, titles.get(b.item_id, "")) for b in blocks]
+
+
+def keep_provisional(conn: sqlite3.Connection, user_id: int, made_at: int, blocks: list[PlannedBlock]) -> None:
+    """The quick placement kept for the plan view until the solve for this generation lands (`ahead`): a block you
+    pinned went back where it was when the calendar refreshed before the replan, then jumped (27 Oct). Not undo data,
+    as the generation isn't: an undo places again."""
+    kv_set(
+        conn,
+        "provisional",
+        {"generation": made_at, "blocks": [[b.item_id, b.start_utc, b.end_utc, b.pinned, b.tentative] for b in blocks]},
+        user_id,
+    )
+
+
+def ahead(conn: sqlite3.Connection, user_id: int, saved: dict | None) -> list[PlannedBlock] | None:
+    """The quick placement made since the saved plan, while its replan hasn't landed; None when the saved plan is
+    current, or a change came from somewhere that doesn't place (a job, the command line)."""
+    now = generation(conn, user_id)
+    if saved is not None and saved["generation"] >= now:
+        return None
+    kept = kv_get(conn, "provisional", None, user_id)
+    if not kept or kept.get("generation") != now:
+        return None
+    return [
+        PlannedBlock(i, start, end, {}, bool(tentative), pinned) for i, start, end, pinned, tentative in kept["blocks"]
+    ]
 
 
 def block_out(settings: dict, block: PlannedBlock, title: str) -> BlockOut:

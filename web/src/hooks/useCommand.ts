@@ -5,7 +5,6 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useCallback } from "react"
 import { ApiError, type CommandInput, type CommandName, command, type Output } from "@/api/client"
-import { setGhosts } from "@/api/events"
 import { type Toast, useToast } from "@/components/Toasts"
 import { whatIf } from "@/whatif/store"
 
@@ -44,8 +43,9 @@ export async function runCommand<N extends CommandName>(
   }
   try {
     const out = await command(name, input)
-    const { provisional, command_id: id } = out as { provisional?: unknown; command_id: number | null }
-    if (Array.isArray(provisional)) setGhosts(client, provisional)
+    // The quick placement made with a change is the plan the calendar reads until the replan lands (the plan query
+    // serves it), so it isn't drawn again as ghosts.
+    const { command_id: id } = out as { command_id: number | null }
     const message = label ? label(out) : sentence(name)
     if (id !== null) {
       lastCommands = [id]
@@ -105,8 +105,7 @@ async function undo(client: QueryClient, toast: (toast: Toast) => void, id: numb
 export async function undoAll(client: QueryClient, toast: (toast: Toast) => void, ids: number[]): Promise<void> {
   try {
     for (const id of [...ids].reverse()) {
-      const out = await command("undo", { command_id: id })
-      if (out.provisional) setGhosts(client, out.provisional)
+      await command("undo", { command_id: id })
     }
     toast({ message: "Undone" })
   } catch (error) {

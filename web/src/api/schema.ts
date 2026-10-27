@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/repeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make something you have repeat from its own date and time ("Salsa every Friday", for this Friday's Salsa); */
+        post: operations["repeat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/series_add": {
         parameters: {
             query?: never;
@@ -5783,6 +5800,13 @@ export interface components {
             /** Tag */
             tag?: string | null;
         };
+        /** RepeatInput */
+        RepeatInput: {
+            /** Id */
+            id: number;
+            /** Every */
+            every: string;
+        };
         /** RepeatPick */
         RepeatPick: {
             /** Batch */
@@ -5791,6 +5815,25 @@ export interface components {
             area?: string | null;
             /** Kind */
             kind?: string | null;
+        };
+        /** RepeatResult */
+        RepeatResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["SeriesOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
         };
         /** RepeatsImportInput */
         RepeatsImportInput: {
@@ -7872,7 +7915,7 @@ export interface components {
              * Command
              * @enum {string}
              */
-            command: "add" | "edit" | "series_add" | "shove" | "rule_add" | "pin" | "unpin" | "day_override" | "skip" | "drop";
+            command: "add" | "edit" | "series_add" | "shove" | "rule_add" | "pin" | "unpin" | "day_override" | "skip" | "drop" | "repeat";
             /** Input */
             input: {
                 [key: string]: unknown;
@@ -8149,6 +8192,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalendarSetResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    repeat: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepeatInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepeatResult"];
                 };
             };
             /** @description Validation Error */

@@ -185,7 +185,7 @@ class FitInput(Model):
 
 
 WhatIfCommand = Literal[
-    "add", "edit", "series_add", "shove", "rule_add", "pin", "unpin", "day_override", "skip", "drop"
+    "add", "edit", "series_add", "shove", "rule_add", "pin", "unpin", "day_override", "skip", "drop", "repeat"
 ]
 
 
@@ -279,6 +279,11 @@ class SeriesAddInput(ItemFields):
     per_window: int = 1
     release_offset_min: int | None = None
     due_offset_min: int | None = None
+
+
+class RepeatInput(Model):
+    id: int
+    every: str  # as `every` in add: "week", "fri", "mon,wed", "other week", "day", "month", "3 days"
 
 
 class SeriesOut(Model):
