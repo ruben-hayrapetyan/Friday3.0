@@ -57,7 +57,10 @@ def prune(problem: Problem) -> None:
             owner = problem.lock_owner.get(s)
             if owner is not None and owner != item.key:
                 continue
-            if any(r.forbids(item, s) for r in mine):
+            # A pin you placed is where you said: no rule forbids it there (27 Oct: "no work after 10pm the night before
+            # climbing club" moved a block you'd pinned at 9pm, again each time you put it back). Events and the
+            # night still do.
+            if s not in item.preferred and any(r.forbids(item, s) for r in mine):
                 continue
             keep.append(s)
         item.set_allowed(keep)

@@ -8,6 +8,7 @@ import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { useLocation } from "react-router"
 import type { Item, Schemas } from "@/api/client"
+import { EstimateNudge } from "@/components/EstimateNudge"
 import { Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useItem, useStatus, useWhy } from "@/hooks/queries"
@@ -194,8 +195,12 @@ export function BlockPopover() {
             <span>{item.due ? when(item.due, today) : "—"}</span>
             <span style={{ color: "var(--color-neutral-500)" }}>Deadline</span>
             <span>{FIRM[item.firmness] ?? "—"}</span>
-            <span style={{ color: "var(--color-neutral-500)" }}>Remaining</span>
-            <span>{item.remaining_min != null ? `${dur(item.remaining_min)} left${item.duration_min ? ` of ${dur(item.duration_min)}` : ""}` : "—"}</span>
+            <span style={{ color: "var(--color-neutral-500)" }}>{item.amount === "fixed" && item.duration_min != null ? "Expected" : "Remaining"}</span>
+            {item.amount === "fixed" && item.duration_min != null ? (
+              <EstimateNudge itemId={item.id} runningMin={timing?.item_id === item.id ? (timing.elapsed_s ?? 0) / 60 : 0} />
+            ) : (
+              <span>{item.remaining_min != null ? `${dur(item.remaining_min)} left${item.duration_min ? ` of ${dur(item.duration_min)}` : ""}` : "—"}</span>
+            )}
             {worked > 0 && (
               <>
                 <span style={{ color: "var(--color-neutral-500)" }}>Done so far</span>

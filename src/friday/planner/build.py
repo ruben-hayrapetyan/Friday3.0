@@ -45,6 +45,8 @@ PLANNER_RULES = frozenset({"travel", "meal_learned"})
 MEAL_REACH_MIN = 120
 MEAL_WINDOW = {"type": "meal_window", "name": "meal_window", "weight": 1.0, "stage": "wellbeing",
                "params": {"price": 2000.0}}  # fmt: skip
+# A pin holds: an hour of its time given up costs this, so only work that would be late moves it (27 Oct).
+PIN_HOLD = {"type": "pin_hold", "name": "pin_hold", "weight": 1.0, "stage": "wellbeing", "params": {"price": 100.0}}
 LONG_TERM_SCALE = 0.25  # how much Long term work counts when short-term work comes first
 
 
@@ -139,7 +141,7 @@ def build_problem(inp: BuildInput) -> Problem:
     rules = [
         rule.model_dump(exclude={"enabled"}) for rule in settings["rules"] if rule.type in RULE_TYPES and rule.enabled
     ]
-    problem.rules = build_rules(rules + [MEAL_WINDOW] + travel_kept(rules))
+    problem.rules = build_rules(rules + [MEAL_WINDOW, PIN_HOLD] + travel_kept(rules))
     for rule in problem.rules:
         rule.prepare(problem)
     prune(problem)

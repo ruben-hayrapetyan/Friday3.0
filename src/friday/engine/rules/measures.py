@@ -103,17 +103,30 @@ class Reserve(Rule):
 NIGHT_FROM = 23 * 60 + 30  # a free window ending this late is an evening, which runs on into the night
 
 
+WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
 @rule_type("daily_load")
 class DailyLoad(Rule):
+    """At most `threshold` of work a day; with `days`, on those weekdays only (`at most 4h a day on weekends` held
+    every day, 27 Oct)."""
+
     default_stage = "wellbeing"
 
     class Params(Rule.Params):
         threshold: Units = 32
+        days: list[str] = []  # weekdays, "mon"…"sun"; none is every day
+
+    def on(self, d: int) -> bool:
+        day = self.problem.grid.day_date[d]
+        return not self.p.days or (day is not None and WEEKDAYS[day.weekday()] in self.p.days)
 
     def measures(self, ctx):
         grid, problem = ctx.grid, ctx.problem
         items = self.scoped_items()
         for d in range(grid.n_days):
+            if not self.on(d):
+                continue
             theta = round(self.p.threshold * problem.scales[d].daily_load_threshold)
             expr = lin_sum(ctx.placed_in(item.key, grid.day_slots[d]) for item in items)
             if not expr.is_const() and sum(expr.terms.values()) > theta:
@@ -321,6 +334,28 @@ class MinimizeChanges(Rule):
                 mult = problem.minimize_changes_scale if tag == "n" else 1.0
                 yield Measure(f"{self.name}:{item.key}:{tag}", given_up, "units", (Hinge("above", 0, slope),),
                               mult=mult)  # fmt: skip
+
+
+@rule_type("pin_hold")
+class PinHold(Rule):
+    """A pin holds (27 Oct: "my pinned timeslots keep moving"): each hour of a pin's time given up costs `price`, far
+    above what a later evening or a comfier day costs, in the wellbeing stage, so only work that would be late moves
+    it. Built in beside your rules (planner/build.py); the timer's hold is minimize_changes' alone."""
+
+    default_stage = "wellbeing"
+
+    class Params(Rule.Params):
+        price: float = 100.0
+
+    def measures(self, ctx):
+        grid = ctx.grid
+        for item in self.scoped_items():
+            slots = [s for s in item.preferred if s in item.allowed_set]
+            if not slots:
+                continue
+            units = sum(int(grid.units[s]) for s in slots)
+            given_up = lin_sum(ctx.placed_in(item.key, [s]) * -1 for s in slots) + units
+            yield Measure(f"{self.name}:{item.key}", given_up, "units", (Hinge("above", 0, self.p.price),))
 
 
 @rule_type("buffer")

@@ -173,6 +173,11 @@ def measure_rule_cost(p: Problem, rule: Rule, items: list[EngineItem], X: dict[s
             hinges.append(("above", theta, 1.0, "units", 1.0, busy))
     elif kind == "daily_load":
         for d in range(grid.n_days):
+            if (
+                rule.p.days
+                and ("mon", "tue", "wed", "thu", "fri", "sat", "sun")[grid.day_date[d].weekday()] not in rule.p.days
+            ):
+                continue
             theta = round(rule.p.threshold * p.scales[d].daily_load_threshold)
             if reach(grid.day_slots[d], items) > theta:
                 hinges.append(("above", theta, 1.0, "units", 1.0,
@@ -247,6 +252,12 @@ def measure_rule_cost(p: Problem, rule: Rule, items: list[EngineItem], X: dict[s
                 if slots:
                     given_up = sum(int(U[s]) for s in slots if not X[it.key][s])
                     hinges.append(("above", 0, slope, "units", mult, given_up))
+    elif kind == "pin_hold":
+        for it in items:
+            pinned = [s for s in it.preferred if s in it.allowed_set]
+            if pinned:
+                given_up = sum(int(U[s]) for s in pinned if not X[it.key][s])
+                hinges.append(("above", 0, rule.p.price, "units", 1.0, given_up))
     elif kind == "buffer":
         sizes: dict = {}
         for it in items:

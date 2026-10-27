@@ -424,6 +424,25 @@ def test_other_sentences_about_size_are_not_gap_fitting(text: str) -> None:
         ("easy week after midterms", None),
         ("no work during movie night on thursdays", None),
         ("no work after dinner on fridays", None),
+        # 27 Oct: read as a rule that dropped part of what it said.
+        ("never work on sunday mornings", "Keep Sun 8am–12pm free"),
+        ("don't work on tues and thurs evenings", "Keep Tue, Thu 5pm–10pm free"),
+        ("max 4h a day on weekends", "At most 4 h a day on weekends"),
+        ("no more than 3 hours on saturdays", "At most 3 h a day on Sat"),
+        ("Debate club is optional during midterms", None),
+        ("gym is optional when I have a prelim that week", None),
+        ("no work after 10pm except before exams", None),
+        ("work after class until dinner", None),
+        ("lunch before 1 and dinner before 7", None),
+        ("no work before 9 or after 10", None),
+        ("gym is optional but climbing club is mandatory", None),
+        ("at most 6 hours a day and 4 on weekends", None),
+        ("cap mondays at 4 hours", "At most 4 h a day on Mon"),
+        ("only light work on weekends", None),  # on weekends nothing else: not light work only then
+        ("only reading on sundays", None),
+        ("15 minutes before and after events", None),  # a kind's buffer (event_kinds), not a title
+        ("1h buffer before exams", None),
+        ("an hour before any exam", None),
     ],
 )
 def test_sentences_once_misread_read_as_they_mean_or_go_to_claude(text: str, said: str | None) -> None:
@@ -435,3 +454,33 @@ def test_kind_words_scope_to_the_kind() -> None:
     reading, strength = read("no homework after 10pm")
     assert reading is not None
     assert spec(reading, strength, "x", [], ["Assignment", "Reading"])["scope"] == {"preset": "Assignment"}
+
+
+@pytest.mark.parametrize(
+    ("text", "said"),
+    [
+        ("no more than 90 minutes of reading a day", "At most 1.5 h of reading a day"),
+        ("under 6 hours of work daily", "At most 6 h a day"),
+        ("less than 5 hours a day", "At most 5 h a day"),
+        ("6h/day max", "At most 6 h a day"),
+        ("at most 3 hours of studying a night", "At most 3 h a day"),
+        ("Don't work more than 4 hours on weekends", "At most 4 h a day on weekends"),
+        ("at most 2 hours", None),  # a sitting's length, not a day's
+    ],
+)
+def test_a_day_s_limit_said_other_ways(text: str, said: str | None) -> None:
+    reading, _ = read(text)
+    assert (sentence(reading) if reading else None) == said
+
+
+def test_a_limit_on_some_days_holds_only_on_them() -> None:
+    reading, strength = read("max 4h a day on weekends")
+    assert reading is not None
+    assert spec(reading, strength, "x", [], [])["params"] == {"threshold": "4h", "days": ["sat", "sun"]}
+
+
+@pytest.mark.parametrize("text", ["shallow work after 8pm", "light work in the evening", "easy tasks after 9pm"])
+def test_light_work_is_work_marked_light(text: str) -> None:
+    reading, strength = read(text)
+    assert reading is not None and reading.subject == "light work"
+    assert spec(reading, strength, "x", [], [])["scope"] == {"energy": "light"}

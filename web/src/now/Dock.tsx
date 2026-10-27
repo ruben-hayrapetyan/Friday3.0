@@ -13,6 +13,7 @@ import type { Block } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useClock, useElapsed } from "@/hooks/useClock"
+import { EstimateNudge } from "@/components/EstimateNudge"
 import { useItem, useMeals, useNow, useSleep, useStatus } from "@/hooks/queries"
 import { clock, dur, hms, span, when } from "@/lib/format"
 import { fromMin, toMin } from "@/lib/time"
@@ -192,6 +193,10 @@ function Timing({ cur, elapsed, next, dot, compact, menu, onMenu }: State & { el
           <IconButton icon="swap" label="Do something else" on={menu === "swap"} onClick={() => onMenu("swap")} />
           <IconButton icon="dots-three" label="More" on={menu === "more"} onClick={() => onMenu("more")} />
         </div>
+      </div>
+      {/* Started and finding it's longer (or shorter) than you thought: the estimate, a tap from here. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 14px 10px 18px", fontSize: 12, color: "var(--color-neutral-400)" }}>
+        <EstimateNudge itemId={cur.item_id} runningMin={seconds / 60} />
       </div>
     </>
   )

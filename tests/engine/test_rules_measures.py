@@ -131,6 +131,14 @@ def test_daily_load_is_avoided() -> None:
     assert_avoided(problem([chore(4)], ["unscheduled"], LOAD_1H), "dl")
 
 
+def test_daily_load_on_some_days_leaves_the_others_alone() -> None:
+    weekends = [dict(type="daily_load", name="dl", weight=5, params=dict(threshold="1h", days=["sat", "sun"]))]
+    mondays = [dict(type="daily_load", name="dl", weight=5, params=dict(threshold="1h", days=["mon"]))]
+    six_on_monday = plan(item_1=(0, 1, 2, 3, 4, 5))
+    assert cost(problem([chore(6)], extra=weekends), six_on_monday, "dl") == 0
+    assert cost(problem([chore(6)], extra=mondays), six_on_monday, "dl") == 2 * 125
+
+
 def test_daily_load_across_the_zone_boundary() -> None:
     p = zone_problem([chore(6)], extra=LOAD_1H)
     assert cost(p, plan(item_1=(B, B + 1, B + 2)), "dl") == 2 * 125
