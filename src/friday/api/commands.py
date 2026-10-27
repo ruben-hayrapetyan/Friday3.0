@@ -453,6 +453,11 @@ class EventGoingInput(Model):
     title: str  # an event you go to: never offered to skip again
 
 
+class EventKeepInput(Model):
+    id: int  # one occurrence of an optional event (gym on Thursday)
+    going: bool = True  # you're going this time, so work keeps off it; False leaves it to Friday again
+
+
 class EventsInput(Model):
     text: str = ""
     limit: int = 12

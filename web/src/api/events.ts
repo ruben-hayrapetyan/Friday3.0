@@ -15,6 +15,8 @@ const REFRESH: Record<string, string[]> = {
   "items.changed": [EVERYTHING],
   "plan.changed": ["plan", "now", "items", "item", "calendar", "status", "why", "review", "projects", "exams", "load", "triage", "brief", "week"],
   "status.changed": ["status", "notifications", "questions"],
+  // A change's quick placement, made after it answered (server/placer.py): the calendar draws it.
+  "plan.provisional": ["plan"],
 }
 
 /** The query keys (by their first part) an event makes stale; "*" is all of them. */

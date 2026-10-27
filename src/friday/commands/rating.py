@@ -6,7 +6,8 @@ import json
 import sqlite3
 from typing import Any
 
-from friday.api.commands import Changed, EventGoingInput
+from friday.api.commands import Changed, EventGoingInput, EventKeepInput
+from friday.commands.fields import require_item
 from friday.commands.registry import Ctx, command
 from friday.core.calendars import rating_key
 from friday.core.db import rows
@@ -57,3 +58,15 @@ def event_going(ctx: Ctx, inp: EventGoingInput) -> Changed:
     going = sorted(set(kv_get(ctx.conn, "events_going", [], ctx.user_id)) | {rating_key(inp.title)})
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "events_going"}, {"value": json.dumps(going)})
     return Changed(message=f"Won't suggest skipping {inp.title}")
+
+
+@command("event_keep", affects_plan=True)
+def event_keep(ctx: Ctx, inp: EventKeepInput) -> Changed:
+    """Go to an optional event this time (gym on Thursday): work keeps off it as off any event. `going` false
+    leaves it to Friday again, to give to work when work needs it."""
+    item = require_item(ctx, inp.id)
+    kept = set(kv_get(ctx.conn, "events_kept", [], ctx.user_id))
+    kept = kept | {item.id} if inp.going else kept - {item.id}
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "events_kept"}, {"value": json.dumps(sorted(kept))})
+    said = f"Going to {item.title}: work keeps off it" if inp.going else f"{item.title}: Friday decides"
+    return Changed(message=said)

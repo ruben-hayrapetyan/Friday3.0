@@ -4,9 +4,10 @@
 // with how much, and that day's timed sittings below. A selected event shows its calendar, colour and notes, with
 // Edit to open it in the drawer.
 
+import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { useLocation } from "react-router"
-import type { Item } from "@/api/client"
+import type { Item, Schemas } from "@/api/client"
 import { Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useItem, useStatus, useWhy } from "@/hooks/queries"
@@ -74,6 +75,8 @@ export function BlockPopover() {
   const drop = useCommand("drop", { label: () => `Deleted ${b?.title}` })
   const deleteSeries = useCommand("series_delete", { label: (o) => o.result.message ?? "Deleted" })
   const repeat = useCommand("repeat", { label: (o) => `${b?.title} repeats ${o.result.description.replace(/^Every/, "every")}` })
+  const keep = useCommand("event_keep", { label: (o) => o.result.message })
+  const client = useQueryClient()
   const pattern = useSeriesPattern(detail?.item.series_id)
   const [asking, setAsking] = useState(false)
   const repeats = detail?.item.series_id != null
@@ -269,6 +272,7 @@ export function BlockPopover() {
           )}
         </div>
         {flexible && !sitting && <Elsewhere block={b} onMoved={close} />}
+        {event && <OptionalEvent flags={optionalFlags(client, event.id)} onKeep={(going) => (keep({ id: event.id, going }), close())} />}
         {item?.series_id != null ? (
           <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
             <Icon name="repeat" size={13} />
@@ -313,6 +317,52 @@ function EventFacts({ event, paint }: { event: Item; paint: string }) {
       </span>
       <span style={{ color: "var(--color-neutral-500)" }}>Notes</span>
       <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 120, overflowY: "auto", color: event.notes ? undefined : "var(--color-neutral-500)" }}>{event.notes || "—"}</span>
+    </div>
+  )
+}
+
+type Flags = Pick<Item, "optional" | "going" | "gives_way_to">
+
+/** What the plan says of an optional event (gym, climbing club): the calendar's plan has it (plan query). */
+function optionalFlags(client: QueryClient, id: number): Flags | null {
+  for (const [, plan] of client.getQueriesData<Schemas["PlanOut"]>({ queryKey: ["plan"] })) {
+    const found = plan?.fixed?.find((f) => f.id === id)
+    if (found?.optional) return found
+  }
+  return null
+}
+
+/** An optional event's say: skipped for work (go anyway), or one you're going to (let Friday decide again). */
+function OptionalEvent({ flags, onKeep }: { flags: Flags | null; onKeep: (going: boolean) => void }) {
+  if (!flags?.optional) return null
+  const line = { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12, color: "var(--color-neutral-300)" } as const
+  if (flags.going)
+    return (
+      <div style={line}>
+        <Icon name="check-circle" size={13} />
+        <span style={{ flex: 1 }}>You're going: work keeps off it.</span>
+        <button className="btn btn-ghost" onClick={() => onKeep(false)} style={{ fontSize: 12 }}>
+          Let Friday decide
+        </button>
+      </div>
+    )
+  if (flags.gives_way_to)
+    return (
+      <div style={line}>
+        <Icon name="skip-forward" size={13} />
+        <span style={{ flex: 1 }}>Skipping it: {flags.gives_way_to} needs the time.</span>
+        <button className="btn btn-secondary" onClick={() => onKeep(true)} style={{ fontSize: 12 }}>
+          Go anyway
+        </button>
+      </div>
+    )
+  return (
+    <div style={line}>
+      <Icon name="question" size={13} />
+      <span style={{ flex: 1 }}>Optional: Friday uses its time only if work needs it.</span>
+      <button className="btn btn-ghost" onClick={() => onKeep(true)} style={{ fontSize: 12 }}>
+        I'm going
+      </button>
     </div>
   )
 }

@@ -38,9 +38,11 @@ from friday.core.pace import dials_on, pace_label
 from friday.core.quickadd import parse
 from friday.core.rows import item_from_row
 from friday.core.settings import to_json
+from friday.core.textnorm import identity_text, norm
 from friday.core.time import UNIT_MIN, format_utc, local_midnight, parse_utc, to_local, to_utc
 from friday.engine import executor
 from friday.engine.explain import Block
+from friday.engine.rules.prices import has_words
 from friday.planner.assemble import PlannedBlock
 from friday.planner.build import id_of, key_of
 from friday.planner.progress import minutes_by_item
@@ -233,6 +235,7 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
             [ctx.user_id, format_utc(lo), format_utc(hi)],
         )
     ]
+    fixed = optional_marked(ctx, fixed, blocks)
     hours: dict[str, float] = {}
     for b in blocks:
         day = b.start[:10]
@@ -246,8 +249,38 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
         fixed=fixed,
         day_hours=hours,
         provisional=coming is not None,
+        generation=generation(ctx.conn, ctx.user_id) if coming is not None else saved["generation"] if saved else 0,
         sessions=sittings(ctx, lo, hi),
     )
+
+
+def optional_marked(ctx: Ctx, fixed: list[ItemOut], blocks: list[BlockOut]) -> list[ItemOut]:
+    """Optional events (a `skippable` rule's) marked: one you said you'd go to, and one whose time the plan gives to
+    work, with that work, so the calendar draws it as skipped rather than the work over it as if you were going."""
+    text = ctx.settings["text"].rules()
+    optional = [
+        identity_text(norm(t, text))
+        for r in ctx.settings["rules"]
+        if r.type == "skippable" and r.enabled
+        for t in r.params.get("titles", [])
+        if t.strip()
+    ]
+    if not optional:
+        return fixed
+    going = set(kv_get(ctx.conn, "events_kept", [], ctx.user_id))
+    work = [b for b in blocks if b.state is None and not b.background]
+    out = []
+    for f in fixed:
+        title = identity_text(norm(f.title, text))
+        if not f.start or not f.end or not any(has_words(title, o) for o in optional):
+            out.append(f)
+            continue
+        if f.id in going:
+            out.append(f.model_copy(update={"optional": True, "going": True}))
+            continue
+        takes = [b.title for b in work if b.start < f.end and b.end > f.start]
+        out.append(f.model_copy(update={"optional": True, "gives_way_to": ", ".join(dict.fromkeys(takes)) or None}))
+    return out
 
 
 def placed_ahead(

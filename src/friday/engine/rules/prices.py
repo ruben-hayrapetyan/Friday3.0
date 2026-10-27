@@ -217,13 +217,28 @@ class Skippable(Rule):
         titles: list[str] = []
         price: float = 4.0
         ahead: bool = False  # you go only when you're ahead: said in the plan as "go" when its time is left free
+        # Starts (UTC minutes) of its events the plan already gives to work (planner/solve.py): skipped either way, so
+        # the rest of their time costs nothing more. Priced by the quarter hour, a plan took a corner of the gym and
+        # left the rest, and the calendar drew work over an event you'd be skipping anyway (27 Oct).
+        given: list[int] = []
+        # Starts of its events kept from work for this plan: the plan took only a corner of each, and skipping a whole
+        # gym for a quarter hour of work isn't worth it when the work fits without it (planner/solve.py).
+        kept: list[int] = []
 
     def prepare(self, problem):
         super().prepare(problem)
-        self.covered = problem.slots_covered((f.blocked_lo, f.blocked_hi) for f in titled(problem, self.p.titles))
+        given, kept = set(self.p.given), set(self.p.kept)
+        events = titled(problem, self.p.titles)
+        self.covered = problem.slots_covered(
+            (f.blocked_lo, f.blocked_hi) for f in events if f.start_utc not in given and f.start_utc not in kept
+        )
+        self.walled = problem.slots_covered((f.blocked_lo, f.blocked_hi) for f in events if f.start_utc in kept)
 
     def price(self, item, s):
         return float(self.p.price) if s < self.problem.grid.S and self.covered[s] else 0.0
+
+    def forbids(self, item, s):
+        return s < self.problem.grid.S and bool(self.walled[s])
 
 
 @rule_type("before_event")
@@ -367,6 +382,46 @@ class FitGaps(Rule):
             return 0.0
         gap, sitting = int(self.gap[s]), self.sitting(item)
         return self.p.price * abs(gap - sitting) / max(gap, sitting)
+
+
+@rule_type("runs_while_working")
+class RunsWhileWorking(Rule):
+    """`Things that run by themselves only while I'm working, not during events`: a task that runs by itself (laundry,
+    a long simulation) is started only where the time it then runs misses your events and, with `sleep`, the night,
+    so you're there to tend it and move it on (27 Oct). `price` an hour of its running in them instead, or `forbid`."""
+
+    applies_to = {"fixed"}
+
+    class Params(Rule.Params):
+        price: float | Literal["forbid"] = FORBID
+        sleep: bool = True
+
+    def applies_also(self, item):
+        return item.runs_units > 0
+
+    def prepare(self, problem):
+        super().prepare(problem)
+        grid = problem.grid
+        away = problem.events[: grid.S] | (problem.core[: grid.S] if self.p.sleep else False)
+        # Units away (at an event, asleep) before each slot, so any stretch's are a subtraction.
+        self.away_before = np.concatenate([[0], np.cumsum(np.where(away, grid.units[: grid.S], 0))])
+
+    def away_units(self, item, s) -> int:
+        """Units of its running, started at s, that fall in an event or the night."""
+        grid = self.problem.grid
+        lo = int(grid.end[s])
+        hi = lo + item.runs_units * UNIT_MIN
+        first = int(np.searchsorted(grid.end[: grid.S], lo, side="right"))
+        last = int(np.searchsorted(grid.start[: grid.S], hi, side="left"))
+        return int(self.away_before[last] - self.away_before[first]) if last > first else 0
+
+    def price(self, item, s):
+        if s == self.problem.grid.S or self.p.price == FORBID:
+            return 0.0
+        return float(self.p.price) * self.away_units(item, s) * UNIT_MIN / 60
+
+    def forbids(self, item, s):
+        return self.p.price == FORBID and s < self.problem.grid.S and self.away_units(item, s) > 0
 
 
 @rule_type("meal_window")

@@ -30,7 +30,7 @@ def test_every_rule_type_fires_in_the_extra_variant() -> None:
                      "after_event", "late_night", "reserve", "buffer"}  # fmt: skip
 
 
-@pytest.mark.parametrize("rule_type", ["travel_kept", "fit_gaps"])
+@pytest.mark.parametrize("rule_type", ["travel_kept", "fit_gaps", "runs_while_working"])
 def test_evaluators_agree_on_one_rule_that_fires(rule_type: str) -> None:
     p = single_rule(rule_type)  # travel_kept: the week's routines get a quarter hour there and back
     rng = np.random.default_rng(11)

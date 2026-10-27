@@ -174,7 +174,11 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried }: FixedProps) {
   // Unmarked slate (COMBINED.md 17). One left out of planning sits back, dashed.
   const paint = eventPaint(it, light)
   const painted = it.event_kind === "shove" ? base : { ...base, bg: wash(paint, light), stripe: paint, fg: "var(--color-text)", sub: "var(--color-neutral-400)" }
-  const s = it.left_out ? { ...painted, bg: "transparent", bd: `1px dashed ${paint}`, fg: "var(--color-neutral-400)" } : painted
+  // An optional event the plan gives to work (gym, climbing club) is one you're skipping: drawn as skipped, faint and
+  // struck through, under the work that takes its time, rather than as if you were going (27 Oct).
+  const skipped = !!it.gives_way_to
+  const s =
+    it.left_out || skipped ? { ...painted, bg: "transparent", bd: `1px dashed ${paint}`, fg: "var(--color-neutral-400)" } : painted
   const tall = minutes(it) >= 45
   const [typing, setTyping] = useState(false)
   const time = retime && { typing, span: it, start: () => (setTyping(true), retime.begin()), save: retime.save, stop: () => setTyping(false) }
@@ -204,13 +208,19 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried }: FixedProps) {
         overflow: typing ? "visible" : "hidden",
         userSelect: "none",
         cursor: "pointer",
+        ...(skipped ? { opacity: 0.6 } : {}),
         ...(typing ? { zIndex: 5 } : {}),
       }}
+      title={skipped ? `Skipping ${it.title}: ${it.gives_way_to} needs the time. Click to go anyway.` : undefined}
     >
-      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: s.stripe }} />
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: skipped ? "transparent" : s.stripe }} />
       <div style={{ display: "flex", alignItems: "center", gap: 4, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden" }}>
         {it.series_id != null && <Icon name="repeat" size={11} />}
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }} title={it.left_out ? `${it.title} — not counted as busy (${LEFT_OUT[it.left_out] ?? it.left_out})` : undefined}>
+        {skipped && <Icon name="skip-forward" size={11} />}
+        <span
+          style={{ overflow: "hidden", textOverflow: "ellipsis", ...(skipped ? { textDecoration: "line-through" } : {}) }}
+          title={it.left_out ? `${it.title} — not counted as busy (${LEFT_OUT[it.left_out] ?? it.left_out})` : undefined}
+        >
           {it.event_kind === "shove" ? "Your time" : it.title}
         </span>
         {!tall && <Inline at={it.start} color={s.sub} time={time} />}
@@ -218,6 +228,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried }: FixedProps) {
       {tall && (
         <TimeLine color={s.sub} time={time}>
           {clock(it.start)}–{clock(it.end)}
+          {skipped ? " · skipping for work" : ""}
         </TimeLine>
       )}
     </div>

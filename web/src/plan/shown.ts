@@ -11,6 +11,7 @@ import { useSettings } from "@/hooks/queries"
 import { useShell } from "@/shell/ShellContext"
 import { trialView, useTrial, useWhatIf, within } from "@/whatif/store"
 import { useLook } from "@/theme/LookProvider"
+import { usePending } from "./pending"
 
 export interface Showing {
   toolbar: string[] // calendars with a title-row button
@@ -48,7 +49,8 @@ export function useShownPlan(start: string, end: string) {
   const s = useShowing()
   const key = `${s.toolbar.join("|")}/${s.showing.join("|")}/${s.showFiltered}`
   const select = useCallback((plan: Schemas["PlanOut"]) => withShown(plan, s), [key])
-  const real = useQuery({ queryKey: ["plan", start, end], queryFn: () => query("plan", { start, end }), select })
+  const fetched = useQuery({ queryKey: ["plan", start, end], queryFn: () => query("plan", { start, end }), select })
+  const real = usePending(fetched)
   const w = useWhatIf()
   const trial = useTrial(useShell().today)
   if (!w.on || !w.changes.length || !real.data) return real

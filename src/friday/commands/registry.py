@@ -34,7 +34,7 @@ from friday.core.time import (
 from friday.planner.service import plan_snapshot
 from friday.planner.service import provisional as placement
 from friday.planner.snapshot import Snapshot, read_snapshot
-from friday.planner.store import current_plan, load_item, load_settings
+from friday.planner.store import current_plan, generation, load_item, load_settings
 from friday.planner.views import change_list
 
 
@@ -201,11 +201,15 @@ def run_in_transaction(
         command_id = log_start(conn, spec, inp, now_utc, actor, user_id, None if preview else idempotency_key)
         ctx = Ctx(conn, Writer(conn, user_id), now_utc, actor, user_id, settings, command_id)
         result = dump(spec.fn(ctx, inp))
+        made = None
+        placing = None
         if spec.affects_plan:
             bump_generation(conn, user_id)
+            made = generation(conn, user_id)
+            placing = (made, changed_items(ctx.db.changes), moved_from(ctx, inp))
         ghosts = None
-        if spec.affects_plan and provisional:
-            ghosts = placement(conn, now_utc, user_id, changed_items(ctx.db.changes), moved_from(ctx, inp))
+        if placing is not None and provisional:
+            ghosts = placement(conn, now_utc, user_id, placing[1], placing[2])
         if preview:
             snapshot = read_snapshot(conn, now_utc, user_id) if preview == "full" else None
             conn.execute("ROLLBACK")
@@ -219,7 +223,9 @@ def run_in_transaction(
     except BaseException:
         conn.execute("ROLLBACK")
         raise
-    return CommandResult(command_id=command_id, result=result, provisional=ghosts)
+    out = CommandResult(command_id=command_id, result=result, provisional=ghosts, generation=made)
+    out._placing = placing
+    return out
 
 
 def tried[T](
@@ -351,13 +357,13 @@ def changed_items(changes: list[dict[str, Any]]) -> set[int]:
     return out
 
 
-def moved_from(ctx: Ctx, inp: BaseModel) -> dict[int, tuple[int, int]]:
+def moved_from(ctx: Ctx, inp: BaseModel) -> dict[int, list[tuple[int, int]]]:
     """The block a change moved an item from (a dragged block's `from_start`–`from_end`), which the quick placement
     leaves empty."""
     item, start, end = (getattr(inp, k, None) for k in ("id", "from_start", "from_end"))
     if not isinstance(item, int) or not isinstance(start, str) or not isinstance(end, str):
         return {}
-    return {item: (parse_utc(ctx.utc(start, "from_start")), parse_utc(ctx.utc(end, "from_end")))}
+    return {item: [(parse_utc(ctx.utc(start, "from_start")), parse_utc(ctx.utc(end, "from_end")))]}
 
 
 def bump_generation(conn: sqlite3.Connection, user_id: int) -> None:

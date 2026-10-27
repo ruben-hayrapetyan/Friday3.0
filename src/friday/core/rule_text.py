@@ -27,7 +27,10 @@ which days), and from a Reading and a strength to one of the planner's rule type
   (`elastic_shortfall` in the deadlines stage); `let Friday decide breakfast`, `learn whether I have breakfast`:
   Friday plans that meal or stops, and when, from what meal tracking learns (`meal_learned`, applied each night);
 - `short tasks in short gaps, long tasks in long stretches`, `fit tasks to the gaps`, `save big blocks for long
-  work`: each task priced by how far its sitting is from the free stretch it's in (`fit_gaps`).
+  work`: each task priced by how far its sitting is from the free stretch it's in (`fit_gaps`);
+- `things that run by themselves only while I'm working, not during events`, `background tasks must not run during
+  class`: a task that runs by itself started only where all its running time misses events and the night
+  (`runs_while_working`).
 """
 
 import re
@@ -39,7 +42,7 @@ from friday.core.time import ampm_in
 Strength = Literal["Prefer", "Strongly", "Always"]
 Kind = Literal[
     "window", "days", "free", "cap", "early", "after", "pace", "deadlines", "optional", "ahead", "night_before",
-    "around", "close", "meals_kept", "meals_learned", "fit_gaps",
+    "around", "close", "meals_kept", "meals_learned", "fit_gaps", "runs_while_working",
 ]  # fmt: skip
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 NAMES = {
@@ -205,12 +208,14 @@ def read(text: str) -> tuple[Reading | None, Strength]:
     t = re.sub(r"\s+", " ", t)
     negated = bool(re.search(r"\b(no|never|don't|not|avoid)\b", t))
     t = re.sub(r"\b(no|never|don't do|don't|do not|not|avoid)\b", " ", t)
-    readers = (read_pace, read_meals, read_fit_gaps, read_around, read_ahead, read_optional, read_night_before,
-               read_close, read_cap, read_early, read_free, read_window, read_days, read_after,
+    readers = (read_pace, read_meals, read_running, read_fit_gaps, read_around, read_ahead, read_optional,
+               read_night_before, read_close, read_cap, read_early, read_free, read_window, read_days, read_after,
                read_deadlines)  # fmt: skip
     # Only these read a condition ("only if I'm ahead", "skip it if there's too much work"); after them, a sentence
     # with one goes to Claude rather than lose it ("only work on sundays if I'm behind" isn't "work on Sundays").
-    conditional = {read_ahead, read_optional, read_night_before, read_deadlines, read_pace, read_meals}
+    conditional = {
+        read_ahead, read_optional, read_night_before, read_deadlines, read_pace, read_meals, read_running,
+    }  # fmt: skip
     t = " " + " ".join(t.split()) + " "
     unsure = bool(re.search(r"\b(?:if|unless|when|whenever|depending)\b", t))
     for parse in readers:
@@ -468,6 +473,35 @@ GAP = (
 TASKS = r"(?:tasks?|work|things|to-?dos?|stuff|assignments?|events?|items?)"
 
 
+# What runs by itself, as it's said: "background tasks", "things done in the background", "tasks that run on their
+# own", "anything that runs by itself" ("events" too, as you might call laundry).
+RUNNING = (
+    r"\b(?:(?:background|unattended) (?:tasks?|things?|jobs?|work|events?|stuff)"
+    r"|(?:tasks?|things?|jobs?|work|events?|stuff|anything|what(?:ever)?)(?: that| which)?(?: (?:is|are|gets?|get))?"
+    r" (?:(?:done|run|running|runs|going) )?(?:in the background|(?:by|on) (?:it|them)?sel(?:f|ves)"
+    r"|on (?:its|their) own))\b"
+)
+AWAY = (
+    r"\b(?:during|in|at|through|over|while (?:i'm |i am |am )?(?:in|at))(?: (?:my|an?|the))?"
+    r" (?:events?|class(?:es)?|lectures?|meetings?|appointments?|event times?)\b"
+)
+# ("I" is gone by now: `read` takes it out with the hedges.)
+WORKING = (
+    r"\b(?:(?:during|in|at) (?:other |my )?work(?:ing)?(?: times?| hours?)?"
+    r"|(?:while|when) (?:i'm |i am |am |i )?(?:working|work|at (?:my )?desk|home|around))\b"
+)
+
+
+def read_running(t: str, negated: bool) -> Reading | None:
+    """What runs by itself only while you're there to see to it: `background tasks only during work time, not during
+    events`, `things that run by themselves must not run during class`, `run laundry-like tasks while I work`."""
+    if not re.search(RUNNING, t):
+        return None
+    if re.search(WORKING, t) or (negated and re.search(AWAY, t)):
+        return Reading("runs_while_working", "work")
+    return None
+
+
 def read_fit_gaps(t: str, negated: bool) -> Reading | None:
     """Tasks matched to the free time they fit: `shorter tasks in smaller time slots and longer ones in larger`,
     `fit tasks to the gaps`, `use small gaps for small tasks`, `save long stretches for long work`."""
@@ -675,6 +709,8 @@ def said(r: Reading) -> str:
         return f"{listed} {'is' if len(names) == 1 else 'are'} optional: work takes the time when it must"
     if r.kind == "fit_gaps":
         return "Short tasks in short gaps, long ones in long stretches"
+    if r.kind == "runs_while_working":
+        return "Things that run by themselves run while you work, not during events or your sleep"
     if r.kind == "meals_kept":
         meals = named_meals(r)
         return f"{meals_said(meals)} {'is' if len(meals) == 1 else 'are'} never skipped for work"
@@ -802,6 +838,10 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
     if r.kind == "deadlines":  # built in: `rule_add` makes sure it's on rather than adding a second one
         return {"name": "late_work", "type": "late_work", "weight": 10.0, "scope": None, "reason": sentence(r),
                 "params": {}}  # fmt: skip
+    if r.kind == "runs_while_working":  # Always: never started where it would run through an event or the night
+        price = "forbid" if strength == "Always" else PRICE[strength]
+        return {"name": name, "type": "runs_while_working", "weight": 1.0, "scope": None, "reason": sentence(r),
+                "params": {"price": price}}  # fmt: skip
     if r.kind == "fit_gaps":  # a preference, held harder the stronger you say it
         return {"name": name, "type": "fit_gaps", "weight": FIT_GAPS[strength], "scope": None, "reason": sentence(r),
                 "params": {"price": 2.0}}  # fmt: skip

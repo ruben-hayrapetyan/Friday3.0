@@ -205,6 +205,14 @@ VERBS = {
         False,
         "You go to this event: Friday stops offering to skip it.",
     ),
+    "event_keep": Verb(
+        "POST",
+        "/api/c/event_keep",
+        commands.EventKeepInput,
+        True,
+        True,
+        "Go to an optional event this time (gym on Thursday): work keeps off it as off any event. `going` false",
+    ),
     "events": Verb(
         "GET",
         "/api/q/events",

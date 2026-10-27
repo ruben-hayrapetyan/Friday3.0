@@ -12,6 +12,7 @@ class PlanOut(Model):
     fixed: list[ItemOut]
     day_hours: dict[str, float]
     provisional: bool = False
+    generation: int = 0  # the changes the blocks have seen: a change whose `generation` is this or less is in them
     sessions: list[BlockOut] = []  # what you timed in the range, when you did it (keys S<id>@<start>)
 
 

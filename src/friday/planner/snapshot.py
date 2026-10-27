@@ -90,6 +90,7 @@ class Snapshot:
     cold_once: bool = False  # the next solve starts afresh, not from the current plan (a picked other way)
     sleep: SleepFacts | None = None
     eating: tuple[int, int] | None = None  # the routine of the meal you're eating (Sleep & meals), and its start
+    going: frozenset[int] = frozenset()  # optional events you said you'd go to this time (`event_keep`): walled off
 
 
 def take_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> Snapshot:
@@ -141,6 +142,7 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         cold_once=kv_get(conn, "next_cold", None, user_id) is not None,
         sleep=sleep_facts(conn, now_utc, settings, user_id),
         eating=eating(conn, user_id) if settings["meal_tracking"].on else None,
+        going=frozenset(kv_get(conn, "events_kept", [], user_id)),
         **learned(conn, now_utc, settings, user_id),
         log_since_plan=log_since(conn, json.loads(plan["report"]).get("last_command_id", 0) if plan else 0, user_id),
         last_command_id=int(

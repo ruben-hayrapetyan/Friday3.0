@@ -36,6 +36,7 @@ EXTRA_RULES = [
     dict(type="meal_window", name="meals_near_their_window", weight=1, params=dict(price=50)),
     dict(type="travel_kept", name="meals_travel_kept", weight=1, params=dict(price=100)),
     dict(type="fit_gaps", name="tasks_fit_gaps", weight=1, params=dict(price=2)),
+    dict(type="runs_while_working", name="laundry_while_working", weight=1, params=dict(price=3)),
     dict(type="close_to_due", name="prep_buffer_kept", weight=1, scope=dict(firmness="hard"),
          params=dict(buffer_min=1440, inside="forbid")),
 ]  # fmt: skip
@@ -117,4 +118,8 @@ def single_rule(rule_type: str, seed: int = 0) -> Problem:
         for item in p.items.values():
             if item.amount == "elastic":
                 item.travel_before = item.travel_after = 1
+    if rule_type == "runs_while_working":  # every third fixed task runs by itself for an hour after it's started
+        for n, item in enumerate(i for i in p.items.values() if i.amount == "fixed"):
+            if n % 3 == 0:
+                item.runs_units = 4
     return add_quotas(p) if rule_type == "quota" else p

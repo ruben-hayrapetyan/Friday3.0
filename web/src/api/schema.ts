@@ -2197,6 +2197,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/event_keep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Go to an optional event this time (gym on Thursday): work keeps off it as off any event. `going` false */
+        post: operations["event_keep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/calendar_repeats": {
         parameters: {
             query?: never;
@@ -2751,6 +2768,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** AddInput */
         AddInput: {
@@ -2885,6 +2904,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** Alert */
         Alert: {
@@ -2915,6 +2936,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** AreaEditInput */
         AreaEditInput: {
@@ -2945,6 +2968,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** AreaInput */
         AreaInput: {
@@ -2994,6 +3019,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** AskClaudeInput */
         AskClaudeInput: {
@@ -3031,6 +3058,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** AskInput */
         AskInput: {
@@ -3055,6 +3084,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** BatchInput */
         BatchInput: {
@@ -3202,6 +3233,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ChangeOut */
         ChangeOut: {
@@ -3290,6 +3323,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ChromaColorsInput */
         ChromaColorsInput: {
@@ -3314,6 +3349,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** CompareAnswerInput */
         CompareAnswerInput: {
@@ -3343,6 +3380,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** DateInput */
         DateInput: {
@@ -3380,6 +3419,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** DeadlineWeek */
         DeadlineWeek: {
@@ -3430,6 +3471,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** DocumentAddResult */
         DocumentAddResult: {
@@ -3449,6 +3492,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * DocumentInput
@@ -3519,6 +3564,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** DoneInput */
         DoneInput: {
@@ -3545,6 +3592,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** DropResult */
         DropResult: {
@@ -3564,6 +3613,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** DueMarker */
         DueMarker: {
@@ -3601,6 +3652,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** DuplicatesOut */
         DuplicatesOut: {
@@ -3714,6 +3767,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** Empty */
         Empty: Record<string, never>;
@@ -3745,6 +3800,39 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** EventKeepInput */
+        EventKeepInput: {
+            /** Id */
+            id: number;
+            /**
+             * Going
+             * @default true
+             */
+            going?: boolean;
+        };
+        /** EventKeepResult */
+        EventKeepResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ExamOut */
         ExamOut: {
@@ -3936,6 +4024,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** GoogleConnectCancelResult */
         GoogleConnectCancelResult: {
@@ -3955,6 +4045,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * GoogleConnectInput
@@ -4013,6 +4105,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** GoogleRemoveResult */
         GoogleRemoveResult: {
@@ -4032,6 +4126,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -4068,6 +4164,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ImportPersonalInput */
         ImportPersonalInput: {
@@ -4094,6 +4192,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** InboxOut */
         InboxOut: {
@@ -4234,6 +4334,18 @@ export interface components {
              * @default false
              */
             filtered?: boolean;
+            /** Gives Way To */
+            gives_way_to?: string | null;
+            /**
+             * Optional
+             * @default false
+             */
+            optional?: boolean;
+            /**
+             * Going
+             * @default false
+             */
+            going?: boolean;
             /** Certainty */
             certainty: string;
             /** Event Kind */
@@ -4309,6 +4421,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** KindRemoveInput */
         KindRemoveInput: {
@@ -4335,6 +4449,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** LateItem */
         LateItem: {
@@ -4365,6 +4481,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** LearnModuleInput */
         LearnModuleInput: {
@@ -4394,6 +4512,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** LearnOrderInput */
         LearnOrderInput: {
@@ -4422,6 +4542,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** LearnRejectResult */
         LearnRejectResult: {
@@ -4441,6 +4563,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** LearnResetResult */
         LearnResetResult: {
@@ -4460,6 +4584,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** LearningOut */
         LearningOut: {
@@ -4563,6 +4689,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * MacCalendar
@@ -4661,6 +4789,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * MacWriteOut
@@ -4722,6 +4852,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** MailOut */
         MailOut: {
@@ -4761,6 +4893,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** MaterializeResult */
         MaterializeResult: {
@@ -4780,6 +4914,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** MealChangeOut */
         MealChangeOut: {
@@ -4827,6 +4963,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** MealEndInput */
         MealEndInput: {
@@ -4851,6 +4989,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * MealLearnedOut
@@ -4916,6 +5056,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** MealOut */
         MealOut: {
@@ -4979,6 +5121,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** MealRef */
         MealRef: {
@@ -5003,6 +5147,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** MealSkipInput */
         MealSkipInput: {
@@ -5032,6 +5178,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** MealStartInput */
         MealStartInput: {
@@ -5058,6 +5206,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * MealTimeOut
@@ -5095,6 +5245,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** MealUseTimeResult */
         MealUseTimeResult: {
@@ -5114,6 +5266,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** MealsOut */
         MealsOut: {
@@ -5210,6 +5364,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** NotifyTestResult */
         NotifyTestResult: {
@@ -5229,6 +5385,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** NowOut */
         NowOut: {
@@ -5323,6 +5481,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** OtherWaysOut */
         OtherWaysOut: {
@@ -5356,6 +5516,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** PaceInput */
         PaceInput: {
@@ -5407,6 +5569,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** PaceSaveInput */
         PaceSaveInput: {
@@ -5439,6 +5603,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** PacesOut */
         PacesOut: {
@@ -5512,6 +5678,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** PlanOut */
         PlanOut: {
@@ -5530,6 +5698,11 @@ export interface components {
              * @default false
              */
             provisional?: boolean;
+            /**
+             * Generation
+             * @default 0
+             */
+            generation?: number;
             /**
              * Sessions
              * @default []
@@ -5580,6 +5753,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ProjectOut */
         ProjectOut: {
@@ -5631,6 +5806,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * ProposedAction
@@ -5666,6 +5843,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** PushSubscription */
         PushSubscription: {
@@ -5694,6 +5873,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** Question */
         Question: {
@@ -5754,6 +5935,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ReorderInput */
         ReorderInput: {
@@ -5780,6 +5963,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** RepeatFound */
         RepeatFound: {
@@ -5834,6 +6019,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** RepeatsImportInput */
         RepeatsImportInput: {
@@ -5858,6 +6045,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ReplanOutput */
         ReplanOutput: {
@@ -5886,6 +6075,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * ReportInput
@@ -5917,6 +6108,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ResetInput */
         ResetInput: {
@@ -5953,6 +6146,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ReviewAgainResult */
         ReviewAgainResult: {
@@ -5972,6 +6167,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ReviewEntry */
         ReviewEntry: {
@@ -6050,6 +6247,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ReviewedInput */
         ReviewedInput: {
@@ -6079,6 +6278,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** Rock */
         Rock: {
@@ -6132,6 +6333,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * RuleClashOut
@@ -6265,6 +6468,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** RuleSetInput */
         RuleSetInput: {
@@ -6293,6 +6498,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * RuleWinInput
@@ -6322,6 +6529,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SeriesAddInput */
         SeriesAddInput: {
@@ -6435,6 +6644,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SeriesDeleteResult */
         SeriesDeleteResult: {
@@ -6454,6 +6665,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SeriesEditInput */
         SeriesEditInput: {
@@ -6562,6 +6775,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SeriesOut */
         SeriesOut: {
@@ -6597,6 +6812,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SeriesRow */
         SeriesRow: {
@@ -6640,6 +6857,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SettingsSetInput */
         SettingsSetInput: {
@@ -6666,6 +6885,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * SettleInput
@@ -6706,6 +6927,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SetupCalendar */
         SetupCalendar: {
@@ -6795,6 +7018,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * ShoveInput
@@ -6848,6 +7073,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SkipResult */
         SkipResult: {
@@ -6867,6 +7094,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SleepAsk */
         SleepAsk: {
@@ -6921,6 +7150,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SleepMarkInput */
         SleepMarkInput: {
@@ -6955,6 +7186,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SleepMarkResult */
         SleepMarkResult: {
@@ -6974,6 +7207,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SleepNightOut */
         SleepNightOut: {
@@ -7099,6 +7334,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SourceAddResult */
         SourceAddResult: {
@@ -7118,6 +7355,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SourceEditInput */
         SourceEditInput: {
@@ -7150,6 +7389,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * SourceInput
@@ -7217,6 +7458,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** StartInput */
         StartInput: {
@@ -7241,6 +7484,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** StatsOut */
         StatsOut: {
@@ -7332,6 +7577,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** StuckInput */
         StuckInput: {
@@ -7361,6 +7608,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SuggestionAcceptResult */
         SuggestionAcceptResult: {
@@ -7380,6 +7629,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SuggestionInput */
         SuggestionInput: {
@@ -7449,6 +7700,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** Swap */
         Swap: {
@@ -7481,6 +7734,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * TemplateApplyInput
@@ -7518,6 +7773,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** TemplateSaveInput */
         TemplateSaveInput: {
@@ -7544,6 +7801,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** TimerOut */
         TimerOut: {
@@ -7596,6 +7855,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** TokenInput */
         TokenInput: {
@@ -7651,6 +7912,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** TriageOption */
         TriageOption: {
@@ -7704,6 +7967,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** UndoInput */
         UndoInput: {
@@ -7728,6 +7993,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** UnpinInput */
         UnpinInput: {
@@ -7754,6 +8021,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** UnshoveInput */
         UnshoveInput: {
@@ -7778,6 +8047,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -7853,6 +8124,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * WeekOut
@@ -8038,6 +8311,8 @@ export interface components {
              * @default false
              */
             repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** WhyNotOut */
         WhyNotOut: {
@@ -12328,6 +12603,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventGoingResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    event_keep: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventKeepInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventKeepResult"];
                 };
             };
             /** @description Validation Error */

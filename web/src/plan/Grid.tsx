@@ -10,7 +10,7 @@ import { type Drag, justDragged, minuteAt, selectionFrom, useDragging } from "@/
 import { useToast } from "@/components/Toasts"
 import { useClock, useElapsed } from "@/hooks/useClock"
 import { runCommand } from "@/hooks/useCommand"
-import { moveBlock } from "@/hooks/useDrop"
+import { moveBlock, placeEvent } from "@/hooks/useDrop"
 import { useGhosts, useItems, useNow, useStatus } from "@/hooks/queries"
 import { movedSince } from "@/lib/drag"
 import { clock, hms, weekday, when } from "@/lib/format"
@@ -59,6 +59,10 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   // A birthday or holiday spans whole days: it goes with the day's dues at the top, not as a column-high block.
   const allDay = timed.filter((f) => f.start.endsWith("T00:00") && f.end.endsWith("T00:00") && f.end > f.start)
   const fixed = timed.filter((f) => !allDay.includes(f)) // what you toggled off is already gone (plan/shown.ts)
+  // An optional event the plan gives to work is one you're skipping: it sits behind, full width, out of the way of
+  // the events beside it, rather than take a column from them (27 Oct).
+  const going = fixed.filter((f) => !f.gives_way_to)
+  const skipped = fixed.filter((f) => f.gives_way_to)
   // From the wake time to core sleep, stretched for anything earlier or later on these days.
   // The past as it went: a block a timer sitting covers gives way to the sitting, and a deleted item's goes; blocks
   // and sittings are laid out together, side by side where they overlap, rather than one drawn over the other.
@@ -131,7 +135,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
             >
               {dues.length > 0 && <DueLane dues={dues} stickyTop={headHeight} narrow={dates.length > 1} />}
               <Nights date={date} days={days} axis={axis} />
-              {layout(fixed, date, axis).map((p) => (
+              {[...layout(skipped, date, axis), ...layout(going, date, axis)].map((p) => (
                 // One click shows it in the popover, as a block shows; a double-click opens it in the drawer, or, on its
                 // time, lets you type a new one there.
                 <FixedBox
@@ -365,8 +369,7 @@ function useRetime() {
   return {
     event: (item: Item, span: Span) =>
       runCommand(client, toast, "edit", { id: item.id, start: span.start, end: span.end }, {
-        optimistic: (c) =>
-          c.setQueriesData<Schemas["PlanOut"]>({ queryKey: ["plan"] }, (plan) => plan && { ...plan, fixed: plan.fixed.map((f) => (f.id === item.id ? { ...f, ...span } : f)) }),
+        optimistic: (c) => placeEvent(c, { id: item.id, ...span }),
         label: () => `${item.title}: ${clock(span.start)}–${clock(span.end)}`,
       }),
     block: async (block: Block, span: Span) => {

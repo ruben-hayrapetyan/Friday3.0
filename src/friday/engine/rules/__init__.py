@@ -134,7 +134,12 @@ def within(title: str, words: str) -> bool:
 
 
 def normalized_titles(titles: list[str], problem: "Problem") -> set[str]:
-    return {identity_text(norm(t, problem.text)) for t in titles}
+    """A rule's titles as identity text, worked out once a problem: every item and event asked again."""
+    key = tuple(titles)
+    found = problem.title_cache.get(key)
+    if found is None:
+        found = problem.title_cache[key] = {identity_text(norm(t, problem.text)) for t in titles}
+    return found
 
 
 def event_title(event: "FixedOcc", problem: "Problem") -> str:

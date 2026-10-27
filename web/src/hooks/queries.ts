@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { type Block, query } from "@/api/client"
 import { GHOSTS } from "@/api/events"
+import { usePending } from "@/plan/pending"
 
 export const useStatus = () => useQuery({ queryKey: ["status"], queryFn: () => query("status") })
 
@@ -18,7 +19,7 @@ export const useItem = (id: number | null) =>
 export const useHorizon = () => useQuery({ queryKey: ["plan", "horizon"], queryFn: () => query("plan", {}) })
 
 export const usePlan = (start: string, end: string) =>
-  useQuery({ queryKey: ["plan", start, end], queryFn: () => query("plan", { start, end }) })
+  usePending(useQuery({ queryKey: ["plan", start, end], queryFn: () => query("plan", { start, end }) }))
 
 export const useCalendar = (start: string, days: number) =>
   useQuery({ queryKey: ["calendar", start, days], queryFn: () => query("calendar", { start, days }) })

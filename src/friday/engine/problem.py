@@ -80,6 +80,7 @@ class EngineItem:
     pacing_start_utc: int | None = None  # where the pacing line starts: the release, else creation, else now
     travel_before: int = 0  # units kept clear of other work before each chunk: getting to lunch
     travel_after: int = 0  # and after it: getting back to somewhere you can work
+    runs_units: int = 0  # it runs by itself this long after its first quarter hour (laundry), units
     meal_window: tuple[int, int] | None = None  # a meal's own window (UTC minutes); its allowed window reaches past it
 
     def __post_init__(self) -> None:
@@ -163,6 +164,7 @@ class Problem:
     events: np.ndarray = field(default=None)  # type: ignore[assignment]  # busy events themselves, not their gaps
     lock_owner: dict[int, str] = field(default_factory=dict)
     price_cache: dict[tuple[str, str], np.ndarray] = field(default_factory=dict, repr=False)
+    title_cache: dict[tuple[str, ...], set[str]] = field(default_factory=dict, repr=False)  # rules' titles, normalized
 
     def __post_init__(self) -> None:
         if self.blocked is None:

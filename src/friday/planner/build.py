@@ -88,6 +88,7 @@ class BuildInput:
     wind_down_min: Mapping[str, int] = field(default_factory=dict)  # tracked sleep: done with work to bed, by evening
     done_utc: int | None = None  # tracked sleep: tonight's "Done with work"
     end_utc: int | None = None  # truncates the grid (tests, brute force)
+    going: frozenset[int] = frozenset()  # optional events you said you'd go to this time: they hold their time
 
 
 def key_of(item_id: int) -> str:
@@ -196,7 +197,7 @@ def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOc
         # the plan starts at 10:00 (the next quarter hour from 9:51); dropped as over, its buffer went with it.
         if end_at + after <= now:
             continue
-        skippable = item.blocks_time and any(has_words(title, o) for o in optional)
+        skippable = item.blocks_time and item.id not in inp.going and any(has_words(title, o) for o in optional)
         out.append(FixedOcc(item.title, item.event_kind or "other", start, end_at, tuple(item.tags), before, after,
                             item.blocks_time and not skippable, title, skippable))  # fmt: skip
     return out, by_id
@@ -205,11 +206,12 @@ def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOc
 def flexible_items(inp: BuildInput, grid: Grid, fixed: Mapping[int, Item]) -> dict[str, EngineItem]:
     by_id = {item.id: item for item in inp.items}
     parents = {item.parent_id for item in inp.items if item.parent_id is not None}
+    exams = focus_exams(fixed, inp.settings)
     out: dict[str, EngineItem] = {}
     for item in inp.items:
         if item.when == "fixed" or item.id in parents or item.status != "todo":
             continue
-        engine_item = to_engine_item(item, inp, grid, by_id, fixed)
+        engine_item = to_engine_item(item, inp, grid, by_id, fixed, exams)
         if engine_item is not None:
             out[engine_item.key] = engine_item
     dependencies = [*inp.dependencies, *parts_in_order(inp, out), *long_after_short(inp, out)]
@@ -266,7 +268,7 @@ def natural(title: str) -> list[tuple[int, int, str]]:
 
 
 def window(item: Item, inp: BuildInput, by_id: Mapping[int, Item], fixed: Mapping[int, Item],
-           now: int) -> tuple[int | None, int | None]:  # fmt: skip
+           now: int, exams: list[tuple[int, int, str]]) -> tuple[int | None, int | None]:  # fmt: skip
     """Release and due, with a parent's due inherited and dependencies on fixed items folded in (§6.4)."""
     release = parse_utc(item.release_utc) if item.release_utc else None
     due = parse_utc(item.due_utc) if item.due_utc else None
@@ -281,26 +283,37 @@ def window(item: Item, inp: BuildInput, by_id: Mapping[int, Item], fixed: Mappin
             event_start = parse_utc(fixed[dep.item_id].start_utc)  # type: ignore[arg-type]
             due = min(due, event_start - dep.lag_min) if due is not None else event_start - dep.lag_min
     due = exam_due(item, due, fixed, now)
-    return focused_release(item, release, due, fixed, inp.settings, now), due
+    return focused_release(item, release, due, exams, inp.settings, now), due
+
+
+def focus_exams(fixed: Mapping[int, Item], settings: Mapping[str, Any]) -> list[tuple[int, int, str]]:
+    """The exams exam focus looks at, as start, end and title: found once a build, not once a task (each task
+    searched every event's title, 27 Oct)."""
+    focus = settings["exam_focus"]
+    if not focus.on:
+        return []
+    words = re.compile(r"\b(" + "|".join(re.escape(w) for w in focus.words) + r")\b", re.IGNORECASE)
+    return [
+        (parse_utc(exam.start_utc), parse_utc(exam.end_utc), exam.title)
+        for exam in fixed.values()
+        if exam.start_utc and exam.end_utc and exam.status == "todo" and words.search(exam.title)
+    ]
 
 
 def focused_release(
-    item: Item, release: int | None, due: int | None, fixed: Mapping[int, Item], settings: Mapping[str, Any], now: int
-) -> int | None:
+    item: Item, release: int | None, due: int | None, exams: list[tuple[int, int, str]], settings: Mapping[str, Any],
+    now: int,
+) -> int | None:  # fmt: skip
     """Exam focus (personal's, COMBINED.md 38): while an exam is `days_before` days off or less, another course's work
     due after it waits until the exam ends, when a day and half again its length still fit before its own due."""
     focus = settings["exam_focus"]
     if not focus.on or due is None or item.preset == "Exam prep":
         return release
-    words = re.compile(r"\b(" + "|".join(re.escape(w) for w in focus.words) + r")\b", re.IGNORECASE)
     length = (item.duration_units or 0) * UNIT_MIN
-    for exam in fixed.values():
-        if not exam.start_utc or not exam.end_utc or exam.status != "todo" or not words.search(exam.title):
-            continue
-        start, end = parse_utc(exam.start_utc), parse_utc(exam.end_utc)
+    for start, end, title in exams:
         focusing = start - focus.days_before * 1440 <= now < start
         room_after = due - end >= 1440 + 1.5 * length
-        if focusing and not same_course(item.title, exam.title) and due > end and room_after:
+        if focusing and not same_course(item.title, title) and due > end and room_after:
             release = max(release if release is not None else now, end)
     return release
 
@@ -322,8 +335,8 @@ def exam_due(item: Item, due: int | None, fixed: Mapping[int, Item], now: int) -
 
 
 def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, Item],
-                   fixed: Mapping[int, Item]) -> EngineItem | None:  # fmt: skip
-    release, due = window(item, inp, by_id, fixed, grid.now)
+                   fixed: Mapping[int, Item], exams: list[tuple[int, int, str]]) -> EngineItem | None:  # fmt: skip
+    release, due = window(item, inp, by_id, fixed, grid.now, exams)
     progress = inp.progress_units.get(item.id, 0)
     preset = inp.settings["presets"].get(item.preset) if item.preset else None
     created = parse_utc(item.created_utc) if item.created_utc else None
@@ -418,6 +431,7 @@ def with_amount(engine_item: EngineItem, item: Item, inp: BuildInput) -> EngineI
         if progress > 0 or not item.duration_units:
             return None
         engine_item.need = engine_item.min_chunk = 1
+        engine_item.runs_units = item.duration_units - 1
         running = (item.duration_units - 1) * UNIT_MIN
         if engine_item.due_utc is not None:
             engine_item.due_utc -= running

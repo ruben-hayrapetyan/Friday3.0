@@ -270,10 +270,27 @@ def provisional(
     now_utc: int,
     user_id: int,
     changed: set[int],
-    moved_from: dict[int, tuple[int, int]] | None = None,
+    moved_from: dict[int, list[tuple[int, int]]] | None = None,
 ) -> list[BlockOut] | None:
-    """The executor's quick placement after a command, inside its transaction (§14.6); None until set up.
-    `moved_from`: the span a dragged block left, by item."""
+    """The executor's quick placement after a command, in the caller's transaction (§14.6); None until set up.
+    `moved_from`: the spans dragged blocks left, by item."""
+    placed = placement(conn, now_utc, user_id, changed, moved_from)
+    if placed is None:
+        return None
+    made_at, blocks, shown = placed
+    keep_provisional(conn, user_id, made_at, blocks)
+    return shown
+
+
+def placement(
+    conn: sqlite3.Connection,
+    now_utc: int,
+    user_id: int,
+    changed: set[int],
+    moved_from: dict[int, list[tuple[int, int]]] | None = None,
+) -> tuple[int, list[PlannedBlock], list[BlockOut]] | None:
+    """The quick placement, read only: the generation it has seen, its blocks, and them as the calendar shows them.
+    Kept by `keep_provisional` (the placer writes it apart, so a change made meanwhile doesn't wait on it)."""
     snapshot = read_snapshot(conn, now_utc, user_id)
     if snapshot.settings["time"].timezone is None or snapshot.settings["sleep"] is None:
         return None
@@ -284,12 +301,13 @@ def provisional(
     for block in snapshot.plan_blocks:
         if key_of(block.item_id) in problem.items:
             previous.setdefault(key_of(block.item_id), []).extend(grid.slots_in(block.start_utc, block.end_utc))
-    left = {key_of(i): set(grid.slots_in(lo, hi)) for i, (lo, hi) in (moved_from or {}).items()}
+    left = {
+        key_of(i): {s for lo, hi in spans for s in grid.slots_in(lo, hi)} for i, spans in (moved_from or {}).items()
+    }
     plan = provisional_plan(problem, {k: tuple(v) for k, v in previous.items()}, {key_of(i) for i in changed}, left)
-    blocks, _ = planned_blocks(problem, plan)
-    keep_provisional(conn, user_id, snapshot.generation, blocks)
+    blocks, _ = planned_blocks(problem, plan, priced=False)
     titles = {i.id: i.title for i in snapshot.items}
-    return [block_out(snapshot.settings, b, titles.get(b.item_id, "")) for b in blocks]
+    return snapshot.generation, blocks, [block_out(snapshot.settings, b, titles.get(b.item_id, "")) for b in blocks]
 
 
 def keep_provisional(conn: sqlite3.Connection, user_id: int, made_at: int, blocks: list[PlannedBlock]) -> None:

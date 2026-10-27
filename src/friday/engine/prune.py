@@ -41,6 +41,8 @@ def prune(problem: Problem) -> None:
     grid = problem.grid
     forbidders = [r for r in problem.rules if r.has_forbid]
     for item in problem.items.values():
+        # Whether a rule applies is the item's, not the slot's: asked once a slot, it was most of a build (27 Oct).
+        mine = [r for r in forbidders if r.applies(item)]
         release = grid.now if item.release_utc is None else item.release_utc
         keep = []
         for s in range(grid.S):
@@ -55,7 +57,7 @@ def prune(problem: Problem) -> None:
             owner = problem.lock_owner.get(s)
             if owner is not None and owner != item.key:
                 continue
-            if any(r.applies(item) and r.forbids(item, s) for r in forbidders):
+            if any(r.forbids(item, s) for r in mine):
                 continue
             keep.append(s)
         item.set_allowed(keep)

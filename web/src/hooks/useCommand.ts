@@ -6,9 +6,23 @@ import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useCallback } from "react"
 import { ApiError, type CommandInput, type CommandName, command, type Output } from "@/api/client"
 import { type Toast, useToast } from "@/components/Toasts"
+import { markedDone, mealEnded, mealSkipped, mealStarted, sleepMarked, timerStarted, timerStopped } from "@/now/instant"
+import { pending } from "@/plan/pending"
 import { whatIf } from "@/whatif/store"
 
-const OPTIMISTIC = ["items", "item", "plan", "now"]
+const OPTIMISTIC = ["items", "item", "plan", "now", "status", "meals", "sleep"]
+
+// What these change in the Now bar and the timer, shown before the server answers wherever they're made from: the
+// bar, a block's card, a to-do, Space (now/instant.ts).
+const INSTANT: Record<string, (client: QueryClient, input: never) => void> = {
+  start: timerStarted,
+  stop: timerStopped,
+  done: markedDone,
+  meal_start: mealStarted,
+  meal_end: mealEnded,
+  meal_skip: mealSkipped,
+  sleep_mark: sleepMarked,
+}
 
 // The newest change this page made, for ⌘Z: one command, or several made as one (a change to many to-dos).
 let lastCommands: number[] = []
@@ -37,15 +51,19 @@ export async function runCommand<N extends CommandName>(
   }
   const matches = { predicate: (q: { queryKey: readonly unknown[] }) => OPTIMISTIC.includes(String(q.queryKey[0])) }
   const saved = client.getQueriesData(matches)
-  if (optimistic) {
+  let drawn: number[] = [] // the change's look on the calendar, kept until a plan has it (plan/pending.ts)
+  const instant = INSTANT[name]
+  if (optimistic || instant) {
     await client.cancelQueries(matches)
-    optimistic(client, input)
+    instant?.(client, input as never)
+    if (optimistic) drawn = pending.collect(() => optimistic(client, input))
   }
   try {
     const out = await command(name, input)
-    // The quick placement made with a change is the plan the calendar reads until the replan lands (the plan query
+    // The quick placement made after a change is the plan the calendar reads until the replan lands (the plan query
     // serves it), so it isn't drawn again as ghosts.
-    const { command_id: id } = out as { command_id: number | null }
+    const { command_id: id, generation } = out as { command_id: number | null; generation?: number | null }
+    pending.settle(drawn, generation ?? 0)
     const message = label ? label(out) : sentence(name)
     if (id !== null) {
       lastCommands = [id]
@@ -53,12 +71,13 @@ export async function runCommand<N extends CommandName>(
     }
     return out
   } catch (error) {
+    pending.drop(drawn)
     for (const [key, data] of saved) client.setQueryData(key, data)
     toast({ message: error instanceof ApiError ? error.message : String(error), tone: "error" })
     return undefined
   } finally {
     // The server's events refresh these too; this covers a dropped stream.
-    client.invalidateQueries({ predicate: (q) => ["items", "item", "now", "status", "duplicates", "to_review"].includes(String(q.queryKey[0])) })
+    client.invalidateQueries({ predicate: (q) => ["items", "item", "now", "status", "meals", "sleep", "duplicates", "to_review"].includes(String(q.queryKey[0])) })
   }
 }
 

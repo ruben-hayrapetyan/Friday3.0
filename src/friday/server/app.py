@@ -50,6 +50,7 @@ from friday.server import mcp
 from friday.server.auth import actor_of, user_of
 from friday.server.events import Hub
 from friday.server.jobs import JobLoop, backup
+from friday.server.placer import Placer
 from friday.server.plugins import PLUGIN_DIR, load_plugins
 from friday.server.worker import Supervisor, set_problem
 
@@ -66,6 +67,8 @@ class Services:
         self.hub = Hub()
         self.supervisor: Supervisor | None = None
         self.jobs: JobLoop | None = None
+        self.placer = Placer(db_path, self.hub, clock, plugin_dir)
+        self.placing = False  # the placer's thread is running: a change answers before its quick placement
 
     @contextmanager
     def connection(self) -> Iterator[Any]:
@@ -87,6 +90,8 @@ class Services:
                 [json.dumps(public)],
             )
         if background:
+            self.placer.start()
+            self.placing = True
             self.supervisor = Supervisor(self.db_path, self.hub, self.clock, self.plugin_dir)
             self.supervisor.start()
             self.supervisor.request(0, reason="start")  # also loads the kernel, so the next plan is quick
@@ -95,6 +100,8 @@ class Services:
 
     def stop(self) -> None:
         self.hub.close()
+        if self.placing:
+            self.placer.stop()
         if self.jobs:
             self.jobs.stop()
         if self.supervisor:
@@ -231,8 +238,15 @@ def execute(
             preview=preview,
             idempotency_key=idempotency_key,
             solver=solver,
+            provisional=bool(preview),  # a preview shows its placement; a change answers first (server/placer.py)
         )
         settings = load_settings(conn, user)
+        if out._placing is not None and not out.preview:
+            services.placer.request(user, out._placing)
+            # Placed before answering where there's no thread to do it (tests), or for the command line, which says
+            # where a new task will probably go ("Probably Tue 2pm").
+            if not services.placing or request.headers.get("x-friday-client") == "cli":
+                out.provisional = services.placer.place(conn, user, here=True)
     if not out.preview and not out.repeated and spec.logged:
         announce(services, spec, out, settings["planner"].debounce_s)
         if spec.name == "done":
@@ -257,11 +271,8 @@ def query_by_get(spec: Spec) -> bool:
 
 def announce(services: Services, spec: Spec, out: CommandResult, debounce_s: float) -> None:
     services.hub.publish("items.changed")
-    if spec.affects_plan:
-        if services.supervisor is not None:
-            services.supervisor.request(debounce_s)
-        if out.provisional is not None:
-            services.hub.publish("plan.provisional", [b.model_dump(mode="json") for b in out.provisional])
+    if spec.affects_plan and services.supervisor is not None:
+        services.supervisor.request(debounce_s)
 
 
 def add_query_route(app: FastAPI, spec: Spec, services: Services) -> None:

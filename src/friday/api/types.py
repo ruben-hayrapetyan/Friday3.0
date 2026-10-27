@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, PrivateAttr
 
 
 class Model(BaseModel):
@@ -87,6 +87,11 @@ class ItemOut(Model):
     chroma_color: str | None = None  # the pigment Chroma showed it in, before your own or its category's
     left_out: str | None = None  # why it doesn't count as busy: calendar, reminder, free or filtered
     filtered: bool = False  # the categories' filter hides it (office hours), when you hide what it hides
+    # An optional event (gym, climbing club) the plan gives to work, with the work that takes it: you're skipping it,
+    # and the calendar says so rather than draw the work over it (plan query). `going`: you said you'd go this time.
+    gives_way_to: str | None = None
+    optional: bool = False
+    going: bool = False
     certainty: str
     event_kind: str | None = None
     status: str
@@ -138,6 +143,11 @@ class CommandResult(Model):
     changes: ChangeOut | None = None  # preview "full": what a warm solve would change
     preview: bool = False
     repeated: bool = False  # an idempotency key matched an earlier run
+    # The plan generation this change made: the plan view has seen it once its `generation` is this or later.
+    generation: int | None = None
+    # What the quick placement needs, when it's made after the answer (server/placer.py): the generation, the items
+    # changed, and the span a dragged block left, by item.
+    _placing: tuple[int, set[int], dict[int, list[tuple[int, int]]]] | None = PrivateAttr(default=None)
 
 
 class Empty(Model):

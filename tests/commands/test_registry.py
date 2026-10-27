@@ -33,6 +33,7 @@ KV_STATE = {
     "reorder",
     "rule_add",
     "event_going",
+    "event_keep",  # the optional events you're going to, kept in kv
 }  # commands whose whole effect is in kv, which other commands only use for counters
 
 
@@ -338,6 +339,9 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "unshove": a_shove,
     "series_add": lambda app: {"title": "gym", "every": "mon,wed", "duration_min": 60},
     "repeat": lambda app: {"id": essay(app), "every": "week"},
+    "event_keep": lambda app: {
+        "id": app.do("add", title="Gym", when="fixed", start="2026-10-20T12:00", end="2026-10-20T13:00")["item"]["id"]
+    },
     "series_edit": lambda app: {"id": gym(app)["series_id"], "from_date": "2026-10-26", "duration_min": 90},
     "series_stop": lambda app: {"id": gym(app)["series_id"]},
     "series_delete": lambda app: {"id": gym(app)["series_id"]},

@@ -61,9 +61,11 @@ def pin_edges(problem: Problem) -> dict[str, set[int]]:
     return edges
 
 
-def planned_blocks(problem: Problem, plan: Plan) -> tuple[list[PlannedBlock], dict[str, int]]:
+def planned_blocks(problem: Problem, plan: Plan, priced: bool = True) -> tuple[list[PlannedBlock], dict[str, int]]:
+    """The plan's blocks; `priced`, with each block's cost by rule (half of a quick placement's time went on pricing
+    blocks nobody reads, 27 Oct)."""
     blocks = blocks_of(plan, pin_edges(problem))
-    costs, other = block_costs(problem, plan, blocks)
+    costs, other = block_costs(problem, plan, blocks) if priced else ([{} for _ in blocks], {})
     grid = problem.grid
     out = []
     for block, cost in zip(blocks, costs, strict=True):

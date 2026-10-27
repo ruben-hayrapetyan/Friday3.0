@@ -5,12 +5,13 @@
 
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useCallback } from "react"
-import type { Block, Item, Schemas } from "@/api/client"
+import type { Block, Item } from "@/api/client"
 import type { Drag } from "@/components/calendar/useDrag"
 import { type Toast, useToast } from "@/components/Toasts"
 import { weekday } from "@/lib/format"
 import { fromMin } from "@/lib/time"
 import { placedByHand } from "@/plan/glide"
+import { pending } from "@/plan/pending"
 import { runCommand } from "./useCommand"
 
 export interface Selection {
@@ -20,30 +21,29 @@ export interface Selection {
   y: number
 }
 
-/** Show a pinned block where it was dropped until the server's plan arrives. */
-export function moveBlock(client: QueryClient, key: string, start: string, end: string, kind: Block["pinned"]): void {
+/** Show a pinned block where it was dropped until a plan has the pin (plan/pending.ts). */
+export function moveBlock(_client: QueryClient, key: string, start: string, end: string, kind: Block["pinned"]): void {
   const item = /^T(\d+)@/.exec(key)
   if (item) placedByHand(Number(item[1])) // it's where you let go: it doesn't slide there (plan/glide.ts)
-  client.setQueriesData<Schemas["PlanOut"]>({ queryKey: ["plan"] }, (plan) =>
-    plan && {
-      ...plan,
-      // The key names the start, so the moved block gets a new one and stays selectable by it.
-      blocks: plan.blocks.map((b) => (b.key === key ? { ...b, key: `T${b.item_id}@${start}`, start, end, pinned: kind } : b)),
-    },
-  )
+  pending.add((plan) => ({
+    ...plan,
+    // The key names the start, so the moved block gets a new one and stays selectable by it.
+    blocks: plan.blocks.map((b) => (b.key === key ? { ...b, key: `T${b.item_id}@${start}`, start, end, pinned: kind } : b)),
+  }))
 }
 
 /** Show an event you added or retimed in the drawer where you put it until the server's plan arrives: a new one
  * appeared only when the calendar refreshed, after the drawer had closed (27 Oct). */
-export function placeEvent(client: QueryClient, given: object | null): void {
+export function placeEvent(_client: QueryClient, given: object | null): void {
   const input = (given ?? {}) as Record<string, unknown>
   const { id, start, end } = input
   if (typeof start !== "string" || typeof end !== "string" || (id === undefined && input.when !== "fixed")) return
   const fields = Object.fromEntries(["title", "start", "end", "color", "notes", "blocks_time"].filter((k) => input[k] !== undefined).map((k) => [k, input[k]]))
-  client.setQueriesData<Schemas["PlanOut"]>({ queryKey: ["plan"] }, (plan) => {
-    if (!plan) return plan
+  const made = { ...NEW_EVENT, id: -Date.now(), ...fields } as unknown as Item
+  pending.add((plan) => {
     if (typeof id === "number") return { ...plan, fixed: plan.fixed.map((f) => (f.id === id ? { ...f, ...fields } : f)) }
-    const made = { ...NEW_EVENT, id: -Date.now(), ...fields } as unknown as Item
+    // Until the plan has the event itself: then it's there twice for a moment, so the stand-in steps aside.
+    if (plan.fixed.some((f) => f.title === made.title && f.start === made.start && f.end === made.end)) return plan
     return { ...plan, fixed: [...plan.fixed, made] }
   })
 }
