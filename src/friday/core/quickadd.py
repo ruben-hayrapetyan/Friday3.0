@@ -9,6 +9,7 @@ from typing import Any
 
 from friday.core.dates import (
     MONTH_DAY,
+    OFFSET_DAYS,
     WEEKDAY_NAMES,
     next_weekday,
     parse_duration,
@@ -112,6 +113,7 @@ class Parser:
         self.fields = self.result.fields
         self.title_parts: list[str] = []
         self.bare_day = False  # a day with no `due`, as in "groceries sat": a to-do for that day, not coursework
+        self.timed_length: int | None = None  # a length said after a time (`at 10am 45m`), not a range's
 
     def run(self) -> None:
         i = 0
@@ -149,7 +151,7 @@ class Parser:
             return self.mark(i, 1, "shape", word.replace("-", "_"))
         if word.startswith("#") and len(word) > 1:
             return self.read_area(i)
-        if word.startswith("+") and len(word) > 1:
+        if word.startswith("+") and len(word) > 1 and not OFFSET_DAYS.match(word):  # `+3d` is a day (§9.4)
             self.fields.setdefault("tags", []).append(word[1:])
             return self.span(i, 1, "tag", word[1:])
         if word.startswith("/") and len(word) > 1:
@@ -160,7 +162,7 @@ class Parser:
             return self.read_dependency(i)
         if WEEKDAY_RANGE.match(word):
             return self.read_weekday_range(i)
-        counted = PER_WINDOW.match(word) or word in TIMES_A_WEEK or word.isdigit()
+        counted = PER_WINDOW.match(word) or word in TIMES_A_WEEK or word.isdecimal()
         if counted and "rrule" not in self.fields and (used := self.read_times_a_week(i)):
             return used
         if word == "open" and i == len(self.words) - 1 and i > 0:
@@ -248,9 +250,9 @@ class Parser:
     def read_times_a_week(self, i: int) -> int:
         """`3x a week`, `3 times a week`, `twice a week`: that many each week."""
         word = self.words[i]
-        count = TIMES_A_WEEK.get(word) or (int(word) if word.isdigit() else int(word[:-1]))
+        count = TIMES_A_WEEK.get(word) or (int(word) if word.isdecimal() else int(word[:-1]))
         for tail in A_WEEK:
-            if tuple(self.words[i + 1 : i + 1 + len(tail)]) == tail and not (word.isdigit() and tail[0] != "times"):
+            if tuple(self.words[i + 1 : i + 1 + len(tail)]) == tail and not (word.isdecimal() and tail[0] != "times"):
                 self.fields["rrule"] = "FREQ=WEEKLY"
                 if count > 1:
                     self.fields["per_window"] = count
@@ -267,15 +269,20 @@ class Parser:
             length = parse_duration(self.words[i + used + 1])
             if length is not None:
                 used += 2
+                self.timed_length = length
         elif i + used < len(self.words) and BARE_LENGTH.match(self.words[i + used]):
             length = parse_duration(self.words[i + used])
             if length is not None:
                 used += 1
+                self.timed_length = length
         if length is None:
             length = DEFAULT_FIXED_LENGTH_MIN
             self.result.warnings.append("no length given; 1 h assumed")
-        self.fields["start_local"] = format_local(moment)
-        self.fields["end_local"] = format_local(moment + timedelta(minutes=length))
+        try:
+            start, end = format_local(moment), format_local(moment + timedelta(minutes=length))
+        except OverflowError:  # past the year 9999: no time, left in the title
+            return 0
+        self.fields["start_local"], self.fields["end_local"] = start, end
         return self.span(i, used, "at", self.fields["start_local"])
 
     def read_every(self, i: int) -> int:
@@ -324,7 +331,7 @@ class Parser:
         match = LENGTH.match(self.words[i] if not bare else "~" + self.words[i])
         if not match:
             return 0
-        if match[2] and match[1].replace(".", "").isdigit():  # `30-45m`: the unit is said once, at the end
+        if match[2] and match[1].replace(".", "").isdecimal():  # `30-45m`: the unit is said once, at the end
             match = LENGTH.match(f"~{match[1]}{match[2][-1]}-{match[2]}")
             assert match is not None
         low = parse_duration(match[1])
@@ -372,11 +379,15 @@ class Parser:
             self.result.warnings.append(f"{word} read as {day:%b} {day.day}")
 
     def move_to(self, day: date) -> None:
-        """An event's times, on this day."""
-        for key in ("start_local", "end_local"):
-            if key in self.fields:
-                was = datetime.fromisoformat(self.fields[key])
-                self.fields[key] = format_local(datetime.combine(day, was.time()))
+        """An event's times, on this day, its length kept: `party 11pm 2h sat` ends at 1am Sunday, not 1am Saturday
+        (it ended before it began, 27 Oct)."""
+        if "start_local" not in self.fields:
+            return
+        start = datetime.fromisoformat(self.fields["start_local"])
+        moved = datetime.combine(day, start.time())
+        if "end_local" in self.fields:
+            self.fields["end_local"] = format_local(moved + (datetime.fromisoformat(self.fields["end_local"]) - start))
+        self.fields["start_local"] = format_local(moved)
 
     def finish(self) -> None:
         # "salsa on friday from 6:15 to 7:30": the day was read before its times, as a due; it's the event's day.
@@ -409,6 +420,10 @@ class Parser:
             return False
         self.fields["release_local"] = self.fields.pop("start_local")
         self.fields["due_local"] = self.fields.pop("end_local")
+        # `groceries /errand at 10am 45m`: the 45 minutes is the errand's length, not only its window's (it took the
+        # kind's hour instead, which didn't fit the window, 27 Oct).
+        if self.timed_length is not None and "length_min" not in self.fields and "elastic_min" not in self.fields:
+            self.fields["length_min"] = self.timed_length
         return True
 
     def inferred_preset(self) -> str:
@@ -477,6 +492,8 @@ def format_line(fields: dict[str, Any]) -> str:
         parts.append(f"@{fields['energy']}")
     if fields.get("certainty") == "tentative":
         parts.append("maybe")
+    if fields.get("background"):
+        parts.append("runs by itself")
     if "shape" in fields:
         parts.append(fields["shape"].replace("_", "-"))
     for kind in ("after", "before"):

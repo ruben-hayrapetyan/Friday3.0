@@ -132,7 +132,8 @@ SAID_AS = (
     (r"\b(?:i )?(?:would )?rather not\b", "no"),
     # Asleep by a time means work done by it: "sleep before 1am", "bed by 11" (your bedtime itself is a setting).
     (
-        r"^ ?(?:always |must |i )*(?:go to |be in |in |get to |be )?(?:bed|sleep|asleep)(?: by| before| at)? "
+        r"^ ?(?:always |must |i |please |ideally |really |strongly |definitely |try to |want to |like to |to )*"
+        r"(?:go to |be in |in |get to |be )?(?:bed|sleep|asleep)(?: by| before| at)? "
         r"(noon|midnight|\d{1,2}(?::\d\d)?\s*(?:am|pm)?)\b",
         r" no work after \1",
     ),
@@ -643,7 +644,9 @@ def read_window(t: str, negated: bool) -> Reading | None:
 
 
 def read_days(t: str, negated: bool) -> Reading | None:
-    m = re.search(rf"^ ?([a-z ]*?) ?(only )?on {DAY_WORDS} ", t) or re.search(rf"^ ?(rest|off) {DAY_WORDS} ", t)
+    m = re.search(rf"^ ?([a-z ]*?) ?(only )?(?<![a-z])on {DAY_WORDS} ", t) or re.search(
+        rf"^ ?(rest|off) {DAY_WORDS} ", t
+    )
     if not m:
         return None
     if m[1] in ("rest", "off"):  # `rest sundays` or `rest on sundays`: the days are the last group either way
@@ -782,9 +785,8 @@ def buffer_said(minutes: int) -> str:
 
 
 def span_said(minutes: int) -> str:
-    """45 min, 1 h, 1 h 30."""
-    h, m = divmod(minutes, 60)
-    return f"{m} min" if not h else f"{h} h" + (f" {m}" if m else "")
+    """45 min, 1 h, 90 min: as the rule is read back (`1 h 30` wasn't, 27 Oct)."""
+    return f"{minutes // 60} h" if minutes and not minutes % 60 else f"{minutes} min"
 
 
 # What students call the kinds: "no homework after 10pm" is about Assignments.

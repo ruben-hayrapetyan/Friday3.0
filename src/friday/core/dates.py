@@ -86,7 +86,7 @@ def next_month_day(today: date, month: int, day: int) -> date | None:
     for year in (today.year, today.year + 1):
         try:
             candidate = date(year, month, day)
-        except ValueError:
+        except (ValueError, OverflowError):  # `oct 99999999999999999999` is no day
             return None
         if candidate >= today:
             return candidate
@@ -103,7 +103,7 @@ def read_date(words: list[str], i: int, today: date) -> tuple[date, int] | None:
         return today + timedelta(days=7 - today.weekday()), 2
     if word == "next" and following in WEEKDAY_NAMES:  # that day of next week
         return today + timedelta(days=7 - today.weekday() + WEEKDAY_NAMES[following]), 2
-    if word in MONTH_NAMES and following.isdigit():
+    if word in MONTH_NAMES and following.isdecimal():
         found = next_month_day(today, MONTH_NAMES[word], int(following))
         return (found, 2) if found else None
     single = parse_date_word(word, today)
