@@ -859,6 +859,7 @@ def test_starting_something_else_than_planned_is_learned_as_an_order(tmp_path: P
     assert len([r for r in app.table("comparisons") if r["source"] == "drag"]) >= 3  # your order won, as a drag
     order = app.do("learning")["order"]
     assert (order["first"], order["then"], order["chose"], order["of"]) == ("Reading", "Assignment", 4, 4)
+    assert app.do("learning")["progress"]["order"] == {"have": 4, "need": 4}  # Insights' "So far"
     app.do("learn_order", first="Reading", then="Assignment", use=True)
     assert app.do("settings")["kind_order"][:2] == ["Reading", "Assignment"]
     assert app.do("learning")["order"] is None

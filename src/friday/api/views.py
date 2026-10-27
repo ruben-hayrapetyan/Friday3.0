@@ -311,6 +311,9 @@ class LearningOut(Model):
     durations: dict[str, Any] | None = None  # learned lengths: in use, n, error against the old estimator
     energy: dict[str, Any] | None = None  # learned hours: in use, observations, the hours where work slips most
     order: OrderOut | None = None  # a kind you keep starting before another that's planned first
+    # What each learner has to go on so far, and what it waits for before it can suggest anything: {have, need}.
+    # lengths: finished things you timed; order: times you started one kind before another planned first.
+    progress: dict[str, dict[str, int]] = {}
 
 
 class SuggestionOut(Model):

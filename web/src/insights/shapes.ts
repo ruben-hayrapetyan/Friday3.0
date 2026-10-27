@@ -41,14 +41,41 @@ export function ticks(lo: number, hi: number): { at: number; label: string }[] {
   return out
 }
 
-/** A suggested profile's changes, {rule, from, to}, as one sentence: which rules weigh more and which less. */
-export function weighing(changes: { rule: string; from: number; to: number }[], said: (rule: string) => string): string {
-  const list = (names: string[]) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`)
-  const quoted = (up: boolean) => changes.filter((c) => c.to !== c.from && c.to > c.from === up).map((c) => `“${said(c.rule)}”`)
-  const more = quoted(true)
-  const less = quoted(false)
-  const parts = [more.length ? `more weight on ${list(more)}` : "", less.length ? `less on ${list(less)}` : ""].filter(Boolean)
-  if (!parts.length) return ""
-  const text = parts.join("; ")
-  return `${text[0].toUpperCase()}${text.slice(1)}.`
+export interface Change {
+  rule: string
+  from: number
+  to: number
+}
+
+export interface Weighed {
+  rule: string
+  factor: number // the new weight over the old
+  word: string // how much, in words
+  big: boolean // twice as much or more, half or less
+}
+
+/** How much a change weighs a rule, in words: ×1.16 is "a little more", ×0.4 "much less", ×0.02 "almost none". */
+export function strength(factor: number): { word: string; big: boolean } {
+  if (factor >= 2) return { word: "much more", big: true }
+  if (factor >= 1.3) return { word: "more", big: false }
+  if (factor > 1) return { word: "a little more", big: false }
+  if (factor <= 0.1) return { word: "almost none", big: true }
+  if (factor <= 0.5) return { word: "much less", big: true }
+  if (factor <= 0.77) return { word: "less", big: false }
+  return { word: "a little less", big: false }
+}
+
+/** A suggested profile's changes, {rule, from, to}, as what would matter more and what less, the biggest change
+ * first on each side (27 Oct: one sentence quoting nineteen rules said neither which mattered nor how much). */
+export function sides(changes: Change[]): { more: Weighed[]; less: Weighed[] } {
+  const weighed = changes
+    .filter((c) => c.from > 0 && c.to !== c.from)
+    .map((c) => ({ rule: c.rule, factor: c.to / c.from, ...strength(c.to / c.from) }))
+    .sort((a, b) => Math.abs(Math.log(b.factor)) - Math.abs(Math.log(a.factor)))
+  return { more: weighed.filter((w) => w.factor > 1), less: weighed.filter((w) => w.factor < 1) }
+}
+
+/** "×1.2", "×0.02": a factor to two significant figures. */
+export function times(factor: number): string {
+  return `×${Number(factor.toPrecision(2))}`
 }

@@ -15427,6 +15427,17 @@
         "type": "null"
        }
       ]
+     },
+     "progress": {
+      "additionalProperties": {
+       "additionalProperties": {
+        "type": "integer"
+       },
+       "type": "object"
+      },
+      "type": "object",
+      "title": "Progress",
+      "default": {}
      }
     },
     "additionalProperties": false,

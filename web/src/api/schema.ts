@@ -4631,6 +4631,15 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             order?: components["schemas"]["OrderOut"] | null;
+            /**
+             * Progress
+             * @default {}
+             */
+            progress?: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
         };
         /** LockConflict */
         LockConflict: {

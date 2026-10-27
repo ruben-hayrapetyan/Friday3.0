@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { clock } from "@/lib/format"
 import { toMin } from "@/lib/time"
-import { elsewhere, moved, spanOf, ticks, weighing } from "./shapes"
+import { elsewhere, moved, sides, spanOf, strength, ticks, times } from "./shapes"
 
 const piece = (item_id: number, start: string, end: string) => ({ item_id, title: `#${item_id}`, start: `2026-10-25T${start}`, end: `2026-10-25T${end}` })
 
@@ -28,18 +28,38 @@ describe("the mini day's span", () => {
   })
 })
 
-describe("weighing", () => {
-  it("puts a profile's changes in words, never as objects", () => {
-    const said = (rule: string) => ({ late_night: "Wind down before bed", finish_early: "Finish work a day before it’s due" })[rule] ?? rule.replaceAll("_", " ")
-    const text = weighing(
-      [
-        { rule: "late_night", from: 1, to: 1.13 },
-        { rule: "elastic_shortfall", from: 1, to: 1.19 },
-        { rule: "finish_early", from: 1, to: 0.9 },
-      ],
-      said,
-    )
-    expect(text).toBe("More weight on “Wind down before bed” and “elastic shortfall”; less on “Finish work a day before it’s due”.")
-    expect(weighing([], said)).toBe("")
+describe("a suggested set of weights", () => {
+  // Your 27 Oct suggestion, in part: from 11 blocks you moved.
+  const changes = [
+    { rule: "late_night", from: 1, to: 0.78 },
+    { rule: "deep_run", from: 1, to: 1.16 },
+    { rule: "soft_late", from: 1, to: 0.02 },
+    { rule: "you:keep-fri-sat-lighter", from: 1, to: 0.49 },
+    { rule: "you:climbing-club-only-when-ahead", from: 1, to: 1.21 },
+    { rule: "spread", from: 1, to: 1 },
+    { rule: "new_rule", from: 0, to: 1 },
+  ]
+
+  it("splits into what matters more and what less, the biggest change first on each side", () => {
+    const { more, less } = sides(changes)
+    expect(more.map((w) => w.rule)).toEqual(["you:climbing-club-only-when-ahead", "deep_run"])
+    expect(less.map((w) => w.rule)).toEqual(["soft_late", "you:keep-fri-sat-lighter", "late_night"])
+  })
+
+  it("leaves out what doesn't change, and a weight it can't compare with", () => {
+    const { more, less } = sides(changes)
+    expect([...more, ...less].map((w) => w.rule)).not.toContain("spread")
+    expect([...more, ...less].map((w) => w.rule)).not.toContain("new_rule")
+    expect(sides([])).toEqual({ more: [], less: [] })
+  })
+
+  it("says how much in words, and marks a big change", () => {
+    expect([1.16, 1.4, 2.5, 0.9, 0.7, 0.49, 0.02].map((f) => strength(f).word)).toEqual(["a little more", "more", "much more", "a little less", "less", "much less", "almost none"])
+    expect([1.16, 2, 0.51, 0.5, 0.02].map((f) => strength(f).big)).toEqual([false, true, false, true, true])
+    expect(sides(changes).less.map((w) => w.big)).toEqual([true, true, false])
+  })
+
+  it("writes the factor short", () => {
+    expect([times(1.1612), times(0.0213), times(0.49), times(2)]).toEqual(["×1.2", "×0.021", "×0.49", "×2"])
   })
 })

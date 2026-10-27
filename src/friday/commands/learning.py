@@ -18,13 +18,15 @@ from friday.api.commands import (
 from friday.api.types import Empty
 from friday.api.views import LearningOut, OrderOut, Question, QuestionsOut
 from friday.commands.estimates import in_use
+from friday.commands.learned import MIN_DONE
 from friday.commands.refit import EMPTY_PROFILE, answered, profile
 from friday.commands.registry import Ctx, command, query
 from friday.commands.settings import write_setting
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.time import format_utc, parse_utc
-from friday.learn.order import Choice, reordered, suggest
+from friday.estimate.durations import LEARNED_SOURCES
+from friday.learn.order import MIN_CHOICES, Choice, reordered, suggest
 from friday.learn.proposals import TEMPLATES
 from friday.planner.learning import learnable
 from friday.planner.store import kv_get
@@ -210,7 +212,26 @@ def learning(ctx: Ctx, inp: Empty) -> LearningOut:
         durations=durations_view(ctx),
         energy=energy_view(ctx),
         order=order_view(ctx),
+        progress=progress(ctx),
     )
+
+
+def progress(ctx: Ctx) -> dict[str, dict[str, int]]:
+    """How far each learner has got: the finished things you timed (lengths are learned from `MIN_DONE`), and the times
+    you started one kind of work before another kind planned first (an order is offered after `MIN_CHOICES`)."""
+    since = format_utc(ctx.now_utc - ctx.settings["estimate"].window_days * 1440)
+    timed = one(
+        ctx.conn,
+        f"SELECT COUNT(*) AS n FROM completions WHERE user_id = ? AND completed_utc >= ? AND actual_source IN "
+        f"({', '.join('?' * len(LEARNED_SOURCES))})",
+        [ctx.user_id, since, *LEARNED_SOURCES],
+    )
+    kept = kv_get(ctx.conn, "order_choices", [], ctx.user_id) or []
+    across = sum(1 for c in kept if c.get("chose_kind") and c.get("over_kind") and c["chose_kind"] != c["over_kind"])
+    return {
+        "lengths": {"have": timed["n"] if timed else 0, "need": MIN_DONE},
+        "order": {"have": across, "need": MIN_CHOICES},
+    }
 
 
 def order_view(ctx: Ctx) -> OrderOut | None:

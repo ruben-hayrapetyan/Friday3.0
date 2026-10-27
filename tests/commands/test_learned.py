@@ -82,3 +82,15 @@ def test_a_reset_forgets_both(app: App) -> None:
     learn_nightly(app.conn, app.now_utc)
     app.do("learn_reset", module="durations")
     assert kv_get(app.conn, "learned_durations") is None
+
+
+def test_the_learning_query_says_how_many_timed_things_lengths_wait_for(app: App) -> None:
+    """Insights' "So far" (27 Oct): lengths are learned from five finished things you timed; done without a time
+    teaches nothing."""
+    assert app.do("learning")["progress"]["lengths"] == {"have": 0, "need": 5}
+    for n in range(3):
+        finish(app, f"problem set {n + 1}", 90, n + 1)
+    untimed = app.do("add", text="essay #CS ~1h")["item"]["id"]
+    app.do("done", id=untimed)
+    assert app.do("learning")["progress"]["lengths"] == {"have": 3, "need": 5}
+    assert app.do("learning")["progress"]["order"] == {"have": 0, "need": 4}
