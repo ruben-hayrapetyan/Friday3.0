@@ -185,7 +185,7 @@ function Row({ item }: { item: Item }) {
           {item.due && (
             <>
               {" · "}
-              <DueLabel due={item.due} prefix="due " />
+              <DueLabel due={item.due} prefix="due " routine={item.preset === "Routine"} />
             </>
           )}
         </span>

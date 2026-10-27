@@ -3448,7 +3448,7 @@
   },
   "/api/c/meal_remove": {
    "post": {
-    "summary": "A meal you didn't mean to record; the routine it ticked off is open again.",
+    "summary": "A meal you didn't mean to record; the routine it ticked off is open again, unless another of that meal that",
     "operationId": "meal_remove",
     "parameters": [
      {

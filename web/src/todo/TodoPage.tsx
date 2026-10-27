@@ -340,7 +340,7 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect }: RowProps) {
           {isNow ? <span className="fr-tag accent">Now</span> : next ? when(next.start, today) : isDone ? "done" : "—"}
         </span>
         <span className="fr-hover" onClick={inline("due")} style={{ ...cell, minWidth: 104 }} title={item.due ? "Due. Click to change" : "Click to set a due date"}>
-          {item.due ? <DueLabel due={item.due} prefix="due " /> : <span className="fr-todo-more">+ due</span>}
+          {item.due ? <DueLabel due={item.due} prefix="due " routine={item.preset === "Routine"} /> : <span className="fr-todo-more">+ due</span>}
         </span>
         <span className="fr-todo-more" style={{ display: "inline-flex" }}>
           <Icon name="caret-right" size={10} />
@@ -471,7 +471,7 @@ function Row({ item, fresh, selected, picked, onSelect }: RowProps) {
         ) : (
           <span style={{ color: "var(--color-neutral-300)" }}>{next ? when(next.start, today) : isDone ? "Done" : "not planned"}</span>
         )}
-        <span style={{ color: soon ? "var(--fr-due)" : "var(--color-neutral-500)" }}>{item.due ? <DueLabel due={item.due} /> : "No due date"}</span>
+        <span style={{ color: soon ? "var(--fr-due)" : "var(--color-neutral-500)" }}>{item.due ? <DueLabel due={item.due} routine={item.preset === "Routine"} /> : "No due date"}</span>
         {late && !isDone && <LateTag hours={late.hours} />}
       </div>
     </div>

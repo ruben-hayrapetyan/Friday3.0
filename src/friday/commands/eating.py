@@ -47,6 +47,7 @@ PLAN_BELOW, STOP_FROM = 0.4, 0.6  # skipped on fewer days: plan it; on more: sto
 SHOWN_DAYS = 14
 LEARN_DAYS = 56  # the last eight weeks teach what's usual
 LONGEST_MIN = 4 * 60
+FORGOT_MIN = 2 * 60  # Done eating this long after starting was a tap forgotten, not a two-hour meal
 PLANNED = ("breakfast", "lunch", "dinner")
 # When a meal is yours to eat where no routine of its name says (a breakfast you don't plan): local minutes.
 WINDOWS = {"breakfast": (6 * 60, 10 * 60 + 30), "lunch": (11 * 60, 14 * 60 + 30), "dinner": (17 * 60, 21 * 60)}
@@ -161,8 +162,27 @@ def meal_end(ctx: Ctx, inp: MealEndInput) -> Changed:
     meal = eating(ctx)
     if meal is None:
         raise FieldError("at", "you aren't eating")
-    minutes = finish(ctx, meal, moment_of(ctx, inp.at))
+    end = moment_of(ctx, inp.at)
+    start = parse_utc(meal["start_utc"])
+    if inp.at is None and end - start > FORGOT_MIN:
+        # Done eating tapped hours later: you finished long ago, so it's the meal's usual length, not four hours.
+        usual = usual_length(ctx, meal["kind"])
+        finish(ctx, meal, start + usual)
+        return Changed(
+            message=f"{meal['kind'].capitalize()}: counted as your usual {usual} min (Done eating came "
+            f"{(end - start) // 60} h {(end - start) % 60} min after you started); change it in Sleep & meals"
+        )
+    minutes = finish(ctx, meal, end)
     return Changed(message=f"{meal['kind'].capitalize()}: {minutes} min")
+
+
+def usual_length(ctx: Ctx, kind: str) -> int:
+    """How long this meal usually takes you: what's learned, else its routine's planned length, else half an hour."""
+    found = usual_of(learned(ctx), kind)
+    if found is not None and found.usual_min:
+        return int(found.usual_min)
+    planned = planned_routines(ctx).get(kind)
+    return int(planned[1]) if planned else 30
 
 
 @command("meal_log", affects_plan=True)
@@ -225,13 +245,26 @@ def meal_edit(ctx: Ctx, inp: MealEditInput) -> Changed:
 
 @command("meal_remove", affects_plan=True)
 def meal_remove(ctx: Ctx, inp: MealRef) -> Changed:
-    """A meal you didn't mean to record; the routine it ticked off is open again."""
+    """A meal you didn't mean to record; the routine it ticked off is open again, unless another of that meal that
+    day still says you had it or skipped it (27 Oct: removing a duplicate lunch reopened the day's Lunch, which then
+    showed hours "over" though you'd logged it)."""
     meal = meal_row(ctx, inp.id)
-    if meal["item_id"] and (meal["end_utc"] or meal["skipped"]):
-        routine = one(ctx.conn, "SELECT status FROM items WHERE id = ?", [meal["item_id"]])
-        if routine and routine["status"] in ("done", "skipped"):
-            set_status(ctx, meal["item_id"], "todo")
     ctx.db.delete("meals", {"id": inp.id})
+    found = routine_of(ctx, meal["kind"], date.fromisoformat(meal["date"]))
+    if found is None:
+        return Changed(message=f"Removed {meal['kind']}")
+    others = rows(
+        ctx.conn,
+        "SELECT * FROM meals WHERE user_id = ? AND kind = ? AND date = ?",
+        [ctx.user_id, meal["kind"], meal["date"]],
+    )
+    eaten = [m for m in others if not m["skipped"] and m["end_utc"]]
+    want = "done" if eaten else "skipped" if any(m["skipped"] for m in others) else "todo"
+    if found["status"] != want and found["status"] in ("todo", "done", "skipped"):
+        set_status(ctx, found["id"], want, eaten[-1]["end_utc"] if want == "done" else None)
+    for m in others:
+        if m["item_id"] is None and want != "todo":
+            ctx.db.update("meals", {"id": m["id"]}, {"item_id": found["id"]})
     return Changed(message=f"Removed {meal['kind']}")
 
 

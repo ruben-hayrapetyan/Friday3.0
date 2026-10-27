@@ -40,6 +40,8 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
   const done = useCommand("done", { label: () => "Done" })
   const reopen = useCommand("reopen", { label: () => "Open again" })
   const start = useCommand("start", { label: () => "Started" })
+  // How much is done, set by hand: a click along the bar, or Start over (27 Oct: no way to reset it).
+  const setProgress = useCommand("progress", { label: () => "Progress set" })
   const drop = useCommand("drop", { label: () => "Deleted" })
   const deleteSeries = useCommand("series_delete", { label: (o) => o.result.message ?? "Deleted" })
   const [asking, setAsking] = useState(false)
@@ -85,10 +87,33 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div className="tnum" style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
           <span style={{ color: "var(--color-neutral-300)" }}>{p.text}</span>
-          <span style={{ color: "var(--color-neutral-500)" }}>{item.remaining_min != null ? `${dur(item.remaining_min)} left${item.done_min ? ` · ${dur(item.done_min)} done` : ""}` : ""}</span>
+          <span style={{ display: "flex", gap: 8, color: "var(--color-neutral-500)" }}>
+            {item.remaining_min != null ? `${dur(item.remaining_min)} left${item.done_min ? ` · ${dur(item.done_min)} done` : ""}` : ""}
+            {!!item.done_min && !isDone && (
+              <button className="fr-link" onClick={() => setProgress({ id: item.id, share: 0 })} title="Count nothing as done yet: Friday plans all of it again" style={{ fontSize: 12 }}>
+                Start over
+              </button>
+            )}
+          </span>
         </div>
-        <div style={{ height: 6, borderRadius: 3, background: "color-mix(in srgb, var(--color-text) 8%, transparent)", overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${p.pct}%`, background: color(item.area, item.preset) }} />
+        <div
+          role="slider"
+          aria-label="How much is done"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={p.pct}
+          title={isDone ? undefined : "Click to say how much is done"}
+          onClick={(e) => {
+            if (isDone || item.remaining_min == null) return
+            const box = e.currentTarget.getBoundingClientRect()
+            const share = Math.min(1, Math.max(0, Math.round(((e.clientX - box.left) / box.width) * 20) / 20))
+            setProgress({ id: item.id, share })
+          }}
+          style={{ height: 10, padding: "2px 0", cursor: isDone ? undefined : "pointer" }}
+        >
+          <div style={{ height: 6, borderRadius: 3, background: "color-mix(in srgb, var(--color-text) 8%, transparent)", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${p.pct}%`, background: color(item.area, item.preset) }} />
+          </div>
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "96px minmax(0,1fr)", gap: "12px 14px", alignItems: "center" }}>

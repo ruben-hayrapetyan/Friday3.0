@@ -882,3 +882,21 @@ def test_a_half_hour_timed_on_other_work_counts_as_worked() -> None:
     assert timed_through(worked, 600, 630)  # all of it
     assert timed_through(worked, 620, 650)  # 20 of 30 minutes
     assert not timed_through(worked, 690, 720)  # 10 of 30
+
+
+def test_start_over_counts_nothing_done_and_plans_all_of_it_again(tmp_path: Path) -> None:
+    # 27 Oct: no way to reset an assignment's progress. The bar's Start over sets it to none done.
+    app = new_app(tmp_path)
+    essay = app.do("add", title="Essay", duration_min=180, due="2026-10-22T23:00")["item"]["id"]
+    app.do("log", id=essay, start="2026-10-19T07:00", end="2026-10-19T08:30")
+    item = next(i for i in app.do("items") if i["id"] == essay)
+    assert (item["done_min"], item["remaining_min"]) == (90, 90)
+    app.do("progress", id=essay, share=0)
+    item = next(i for i in app.do("items") if i["id"] == essay)
+    assert (item["done_min"], item["remaining_min"]) == (0, 180)
+    replan(app.conn, app.now_utc)
+    planned = [
+        b for b in app.do("plan", start="2026-10-19T00:00", end="2026-10-23T00:00")["blocks"] if b["item_id"] == essay
+    ]
+    minutes = sum((parse_local(b["end"]) - parse_local(b["start"])).total_seconds() / 60 for b in planned)
+    assert minutes == 180

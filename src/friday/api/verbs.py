@@ -485,7 +485,7 @@ VERBS = {
         commands.MealRef,
         True,
         True,
-        "A meal you didn't mean to record; the routine it ticked off is open again.",
+        "A meal you didn't mean to record; the routine it ticked off is open again, unless another of that meal that",
     ),
     "meal_skip": Verb(
         "POST",

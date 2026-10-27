@@ -948,7 +948,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** A meal you didn't mean to record; the routine it ticked off is open again. */
+        /** A meal you didn't mean to record; the routine it ticked off is open again, unless another of that meal that */
         post: operations["meal_remove"];
         delete?: never;
         options?: never;

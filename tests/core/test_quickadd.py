@@ -270,3 +270,15 @@ def test_a_meal_with_someone_is_an_event_and_your_own_is_a_routine(text: str, pr
     fields = quick(text)
     assert fields["preset"] == preset
     assert ("start_local" in fields) == (preset == "Event")
+
+
+@pytest.mark.parametrize(
+    "text", ["laundry every week ~2h runs by itself", "laundry ~2h in the background", "download dataset background"]
+)
+def test_a_task_that_runs_by_itself_says_so(text: str) -> None:
+    fields = quick(text)
+    assert fields["background"] is True and "itself" not in fields["title"] and "background" not in fields["title"]
+
+
+def test_by_a_time_is_still_a_due() -> None:
+    assert quick("essay by fri")["due_local"] == "2026-10-23T23:59"

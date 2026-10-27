@@ -225,3 +225,35 @@ def test_meals_you_let_friday_decide_are_applied_once_a_night(app: App) -> None:
     app.do("settings_set", key="meal_tracking", value={"on": False})
     app.do("rule_add", text="Let Friday decide dinner")
     assert decide(app.conn, app.now_utc) == []  # nothing to learn from with tracking off
+
+
+def test_removing_a_duplicate_meal_keeps_the_routine_ticked_off(app: App) -> None:
+    # 27 Oct: lunch logged twice, one removed: the day's Lunch opened again and showed hours "over".
+    on(app)
+    lunch_routine(app)
+    at(app, "15:00")
+    first = app.do("meal_log", kind="lunch", start="2026-10-19T12:30", end="2026-10-19T13:00")
+    app.do("meal_log", kind="lunch", start="2026-10-19T12:30", end="2026-10-19T13:00")
+    assert todays_lunch(app)["status"] == "done"
+    meals = [m for m in app.table("meals") if m["kind"] == "lunch"]
+    app.do("meal_remove", id=meals[0]["id"])
+    assert todays_lunch(app)["status"] == "done"  # the other lunch still says you had it
+    app.do("meal_remove", id=meals[1]["id"])
+    assert todays_lunch(app)["status"] == "todo"  # none left: open again
+    assert first["message"].startswith("Logged lunch")
+
+
+def test_done_eating_tapped_hours_late_counts_the_usual_length(app: App) -> None:
+    on(app)
+    lunch_routine(app)  # 30 minutes
+    at(app, "12:00")
+    app.do("meal_start", kind="lunch")
+    at(app, "16:00")
+    out = app.do("meal_end")
+    assert "counted as your usual 30 min" in out["message"]
+    (meal,) = [m for m in app.table("meals") if m["kind"] == "lunch"]
+    assert (meal["start_utc"], meal["end_utc"]) == ("2026-10-19T16:00Z", "2026-10-19T16:30Z")
+    at(app, "18:00")
+    app.do("meal_start", kind="dinner")
+    at(app, "18:40")
+    assert app.do("meal_end")["message"] == "Dinner: 40 min"  # an ordinary dinner is as you tapped

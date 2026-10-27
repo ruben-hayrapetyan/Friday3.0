@@ -124,6 +124,8 @@ class Parser:
 
     def read_token(self, i: int) -> int:
         word = self.words[i]
+        if used := self.read_background(i):
+            return used
         readers = {"due": self.read_due, "by": self.read_due, "from": self.read_from, "at": self.read_at,
                    "every": self.read_every}  # fmt: skip
         if word in readers:
@@ -167,6 +169,14 @@ class Parser:
     def span(self, i: int, used: int, kind: str, value: Any) -> int:
         self.result.spans.append(Span(self.tokens[i].start, self.tokens[i + used - 1].end, kind, value))
         return used
+
+    def read_background(self, i: int) -> int:
+        """`laundry every week ~2h runs by itself`: a task that runs on its own once started (the "Runs by itself"
+        switch): only the quarter hour to start it is planned, and other work goes on top of the rest."""
+        for phrase in (("runs", "by", "itself"), ("by", "itself"), ("in", "the", "background"), ("background",)):
+            if tuple(self.words[i : i + len(phrase)]) == phrase:
+                return self.mark(i, len(phrase), "background", True)
+        return 0
 
     def mark(self, i: int, used: int, name: str, value: Any) -> int:
         self.fields[name] = value
