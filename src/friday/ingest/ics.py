@@ -39,6 +39,16 @@ class Event:
     day_end: str | None
     every: str | None = None
     series: str | None = None
+    location: str | None = None  # where it is: a fixed event made of it is there (27 Oct)
+
+
+def placed(proposals: list[Proposed], e: Event) -> list[Proposed]:
+    """The event's place on what it makes that has a time: the calendar's say, so a place taken off there goes here."""
+    for p in proposals:
+        p.series = e.series
+        if p.fixed:
+            p.input["location"] = e.location
+    return proposals
 
 
 @dataclass
@@ -59,9 +69,7 @@ class Found:
         proposals = classify(
             e.summary, e.start, e.end, e.day, e.day_end, replace(self.read, kind=kind), e.every, title=title
         )
-        for p in proposals:
-            p.series = e.series
-        return proposals
+        return placed(proposals, e)
 
 
 def fetch(url: str) -> str:
@@ -122,11 +130,12 @@ def event(component: Any, tz: str) -> Event | None:
     end_raw = component.get("DTEND")
     duration = component.get("DURATION")
     end_dt = end_raw.dt if end_raw is not None else start_raw.dt + (duration.dt if duration else timedelta(0))
+    where = str(component.get("LOCATION", "")).strip() or None
     if start is None:
-        return Event(summary, None, None, start_raw.dt.isoformat(), end_dt.isoformat())
+        return Event(summary, None, None, start_raw.dt.isoformat(), end_dt.isoformat(), location=where)
     rule = component.get("RRULE")
     every = "rrule:" + rule.to_ical().decode() + skipped(component, tz) if rule is not None else None
-    return Event(summary, start, local(end_dt, tz), None, None, every)
+    return Event(summary, start, local(end_dt, tz), None, None, every, location=where)
 
 
 def skipped(component: Any, tz: str) -> str:
@@ -138,10 +147,7 @@ def skipped(component: Any, tz: str) -> str:
 
 
 def from_facts(e: Event, read: Reading) -> list[Proposed]:
-    proposals = classify(e.summary, e.start, e.end, e.day, e.day_end, read, e.every)
-    for p in proposals:
-        p.series = e.series
-    return proposals
+    return placed(classify(e.summary, e.start, e.end, e.day, e.day_end, read, e.every), e)
 
 
 def classify(
@@ -198,15 +204,18 @@ def google_event(event: dict[str, Any], tz: str, read: Reading, rule: str | None
     summary = (event.get("summary") or "").strip() or "Busy"
     start, end = event.get("start", {}), event.get("end", {})
     series = event.get("recurringEventId")
+    # Where it is: in the text only when it has one, so events without a place read before aren't "changed" (27 Oct).
+    location = (event.get("location") or "").strip()
+    where = {"location": location} if location else {}
     if "dateTime" in start:
         timed = local(datetime.fromisoformat(start["dateTime"]), tz), local(datetime.fromisoformat(end["dateTime"]), tz)
-        facts = Event(summary, *timed, None, None, series=series)
+        facts = Event(summary, *timed, None, None, series=series, location=location or None)
     else:
-        facts = Event(summary, None, None, start.get("date"), end.get("date"), series=series)
-    text = json.dumps({"summary": summary, "start": start, "end": end}, sort_keys=True)
+        facts = Event(summary, None, None, start.get("date"), end.get("date"), series=series, location=location or None)
+    text = json.dumps({"summary": summary, "start": start, "end": end} | where, sort_keys=True)
     digest = hashlib.sha256(text.encode()).hexdigest()  # without the rule, so instances read before aren't "changed"
     if rule:
-        text = json.dumps({"summary": summary, "start": start, "end": end, "recurrence": rule}, sort_keys=True)
+        text = json.dumps({"summary": summary, "start": start, "end": end, "recurrence": rule} | where, sort_keys=True)
     found = Found(event["id"], digest, summary, text, from_facts(facts, read))
     if event.get("transparency") == "transparent":
         # Marked free: kept, but not busy unless you count free events (COMBINED.md 28).

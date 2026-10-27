@@ -41,7 +41,7 @@ export function placeEvent(_client: QueryClient, given: object | null): void {
   const input = (given ?? {}) as Record<string, unknown>
   const { id, start, end } = input
   if (typeof start !== "string" || typeof end !== "string" || (id === undefined && input.when !== "fixed")) return
-  const fields = Object.fromEntries(["title", "start", "end", "color", "notes", "blocks_time"].filter((k) => input[k] !== undefined).map((k) => [k, input[k]]))
+  const fields = Object.fromEntries(["title", "start", "end", "color", "notes", "location", "blocks_time"].filter((k) => input[k] !== undefined).map((k) => [k, input[k]]))
   const made = { ...NEW_EVENT, id: -Date.now(), ...fields } as unknown as Item
   pending.add((plan) => {
     if (typeof id === "number") return { ...plan, fixed: plan.fixed.map((f) => (f.id === id ? { ...f, ...fields } : f)) }

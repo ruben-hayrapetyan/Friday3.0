@@ -78,11 +78,16 @@ final class CalendarBridge {
 }
 
 /// A change Friday asks of one of the Mac's events (api/views.py MacWriteOut), made through EventKit: its times and, when
-/// you renamed it in Friday, its title; or a delete. Only that occurrence of a repeating event changes.
+/// you renamed it or moved it somewhere else in Friday, its title and place; or a delete. Only that occurrence of a
+/// repeating event changes. Or a new event Friday made, for one of the Mac's calendars (27 Oct: your Gmail calendar,
+/// which Friday reads through the Mac, so the event reaches Google through the Mac's own sync).
 enum MacWriter {
     /// Makes one change; the answer for `mac_written`, with the event as it now is.
-    static func apply(_ job: [String: Any], in store: EKEventStore) -> [String: Any] {
+    static func apply(_ job: [String: Any], in store: EKEventStore, made: Made = .shared) -> [String: Any] {
         guard let id = job["id"] as? Int else { return [:] }
+        if job["op"] as? String == "create", let calendar = job["calendar"] as? String {
+            return create(job, id: id, calendar: calendar, in: store, made: made)
+        }
         guard let op = job["op"] as? String, let calendar = job["calendar"] as? String,
               let occurrence = job["event"] as? String else {
             return ["id": id, "ok": false, "error": "Friday's change didn't say which event"]
@@ -106,6 +111,40 @@ enum MacWriter {
         }
     }
 
+    /// A new event on the calendar, as Friday has it. Made once: the job's id and the event are kept until Friday has
+    /// the answer, so a job asked for again (the answer lost on its way) answers with the event made the first time.
+    static func create(_ job: [String: Any], id: Int, calendar: String, in store: EKEventStore, made: Made) -> [String: Any] {
+        if let before = made.event(for: id), let found = find(before.occurrence, calendar: before.calendar, in: store),
+           let now = MacPayload.event(found) {
+            return ["id": id, "ok": true, "event": now]
+        }
+        guard let place = store.calendar(withIdentifier: calendar) else {
+            return ["id": id, "ok": false, "error": "That calendar isn't on this Mac any more"]
+        }
+        guard place.allowsContentModifications else {
+            return ["id": id, "ok": false, "error": "\(place.title) can't be changed from this Mac"]
+        }
+        let event = EKEvent(eventStore: store)
+        event.calendar = place
+        event.title = job["title"] as? String ?? ""
+        if let notes = job["notes"] as? String, !notes.isEmpty { event.notes = notes }
+        _ = change(event, to: job)
+        guard event.startDate != nil, event.endDate != nil else {
+            return ["id": id, "ok": false, "error": "Friday's new event didn't say when"]
+        }
+        do {
+            try store.save(event, span: .thisEvent, commit: true)
+        } catch {
+            store.reset()
+            return ["id": id, "ok": false, "error": error.localizedDescription]
+        }
+        guard let now = MacPayload.event(event), let occurrence = now["id"] as? String else {
+            return ["id": id, "ok": true]
+        }
+        made.keep(id, occurrence: occurrence, calendar: calendar)
+        return ["id": id, "ok": true, "event": now]
+    }
+
     /// The occurrence an id names (MacPayload.occurrenceID): its event, at its occurrence, on its calendar.
     static func find(_ occurrence: String, calendar: String, in store: EKEventStore) -> EKEvent? {
         guard let (identifier, at) = parts(occurrence), let place = store.calendar(withIdentifier: calendar) else { return nil }
@@ -125,11 +164,15 @@ enum MacWriter {
         return (String(occurrence[..<at]), Date(timeIntervalSince1970: TimeInterval(seconds)))
     }
 
-    /// Puts the job's times, and its title if it sends one, on the event; whether that changed anything.
+    /// Puts the job's times, and its title and place if it sends them, on the event; whether that changed anything.
     static func change(_ e: EKEvent, to job: [String: Any], calendar: Calendar = .current) -> Bool {
         var changed = false
         if let title = job["title"] as? String, e.title != title {
             e.title = title
+            changed = true
+        }
+        if let location = job["location"] as? String, (e.location ?? "") != location {
+            e.location = location.isEmpty ? nil : location  // "" takes the place off
             changed = true
         }
         let allDay = job["all_day"] as? Bool ?? false
@@ -165,6 +208,29 @@ enum MacWriter {
     }
 }
 
+/// The new events made for Friday, by the job that asked for each, until Friday has the answer: the Mac app asks for
+/// waiting changes every twenty seconds, and one asked for again mustn't make its event twice.
+final class Made: @unchecked Sendable {
+    static let shared = Made(defaults: .standard)
+    private let defaults: UserDefaults
+    private let key = "fridayMadeEvents"
+
+    init(defaults: UserDefaults) { self.defaults = defaults }
+
+    func keep(_ job: Int, occurrence: String, calendar: String) {
+        var kept = defaults.dictionary(forKey: key) as? [String: [String]] ?? [:]
+        kept[String(job)] = [occurrence, calendar]
+        defaults.set(kept, forKey: key)
+    }
+
+    func event(for job: Int) -> (occurrence: String, calendar: String)? {
+        guard let pair = (defaults.dictionary(forKey: key) as? [String: [String]])?[String(job)], pair.count == 2 else {
+            return nil
+        }
+        return (pair[0], pair[1])
+    }
+}
+
 /// What `mac_sync` takes (api/commands.py MacSyncInput), from EventKit's objects.
 enum MacPayload {
     static func body(calendars: [[String: Any]], events: [[String: Any]], since: Date, until: Date) -> [String: Any] {
@@ -196,6 +262,9 @@ enum MacPayload {
             "free": e.availability == .free,
             "declined": e.attendees?.first(where: \.isCurrentUser)?.participantStatus == .declined,
         ]
+        if let location = e.location?.trimmingCharacters(in: .whitespacesAndNewlines), !location.isEmpty {
+            out["location"] = location
+        }
         if e.isAllDay {
             out["start"] = day(start)
             out["end"] = day(allDayEnd(start: start, end: end))

@@ -5,10 +5,13 @@ did in the Mac app.
 
 Changes go the other way too: an event of a Mac calendar that may be changed, edited or deleted here, is queued
 (`eventwrites.queue_event_write`), and the Mac app makes the change through EventKit (`mac_writes`, then
-`mac_written`), so a Google calendar on the Mac gets it from the Mac's own sync. A one-off event's id carries its
-start, so a move gives it a new one: the answer brings the event as it now is, and its raw input (and the last
-reading the Mac posted) take the new id and times, so the next sync finds nothing new rather than a vanished event
-and a new one."""
+`mac_written`), so a Google calendar on the Mac gets it from the Mac's own sync. So does a new event made here for one
+of the Mac's calendars (27 Oct: your Gmail calendar comes in through the Mac): the Mac app makes it, and the answer
+ties it to the event here, as a calendar's events are tied to theirs, so the next reading finds it, not a new one.
+
+A one-off event's id carries its start, so a move gives it a new one: the answer brings the event as it now is, and
+its raw input (and the last reading the Mac posted) take the new id and times, so the next sync finds nothing new
+rather than a vanished event and a new one."""
 
 import json
 import re
@@ -19,7 +22,15 @@ from friday.api.commands import Changed, MacCalendar, MacEvent, MacSyncInput, Ma
 from friday.api.types import Empty
 from friday.api.views import GoogleCalendarOut, MacWriteOut
 from friday.commands.calendars import editable, natural, source_of
-from friday.commands.eventwrites import MAX_TRIES, event_body, event_digest, renamed
+from friday.commands.eventwrites import (
+    MAX_TRIES,
+    event_body,
+    event_digest,
+    mac_calendar_ids,
+    relocated,
+    remember,
+    renamed,
+)
 from friday.commands.registry import Ctx, command, query
 from friday.core.calendars import nearest_pigment
 from friday.core.db import one, rows
@@ -93,6 +104,7 @@ def mac_writes(ctx: Ctx, inp: Empty) -> list[MacWriteOut]:
     """Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title
     only if you renamed it here (never its notes, which Friday doesn't read from the Mac); or a delete."""
     links = event_links(ctx.conn, ctx.user_id)
+    mac = mac_calendar_ids(ctx.conn, ctx.user_id)
     out = []
     for job in rows(
         ctx.conn,
@@ -100,9 +112,13 @@ def mac_writes(ctx: Ctx, inp: Empty) -> list[MacWriteOut]:
         [ctx.user_id, MAX_TRIES],
     ):
         link = links.get(job["item_id"])
+        item = load_item(ctx.conn, job["item_id"], ctx.user_id)
+        if link is None and job["calendar_id"] in mac and job["op"] == "save":
+            if item is not None and item.status == "todo" and item.start_utc and item.end_utc:
+                out.append(created(ctx, job, item))
+            continue
         if link is None or link.kind != "mac" or not link.calendar_id:
             continue
-        item = load_item(ctx.conn, job["item_id"], ctx.user_id)
         where = {
             "id": job["id"],
             "calendar": link.calendar_id,
@@ -115,9 +131,27 @@ def mac_writes(ctx: Ctx, inp: Empty) -> list[MacWriteOut]:
             day = "date" in body["start"]
             when = "date" if day else "dateTime"
             title = item.title if renamed(ctx.conn, item) else None
+            place = (item.location or "") if relocated(ctx.conn, item) else None
             start, end = body["start"][when], body["end"][when]
-            out.append(MacWriteOut(op="save", title=title, start=start, end=end, all_day=day, **where))
+            out.append(MacWriteOut(op="save", title=title, start=start, end=end, all_day=day, location=place, **where))
     return out
+
+
+def created(ctx: Ctx, job: dict[str, Any], item: Any) -> MacWriteOut:
+    """A new event for the Mac app to make on one of the Mac's calendars: all of it, as Friday has it."""
+    body = event_body(item, ctx.tz)
+    when = "date" if "date" in body["start"] else "dateTime"
+    return MacWriteOut(
+        id=job["id"],
+        op="create",
+        calendar=job["calendar_id"],
+        title=item.title,
+        start=body["start"][when],
+        end=body["end"][when],
+        all_day=when == "date",
+        location=item.location or None,
+        notes=item.notes or None,
+    )
 
 
 @command("mac_written", logged=False)  # the Mac app's report, like `mac_sync`: nothing of yours to undo
@@ -136,8 +170,22 @@ def mac_written(ctx: Ctx, inp: MacWrittenInput) -> Changed:
         return Changed(message="Kept, to try again")
     ctx.db.update("event_writes", {"id": inp.id}, {"done_utc": ctx.now_text, "error": None})
     if inp.event is not None and job["op"] == "save":
-        settle(ctx, job["item_id"], inp.event)
+        if job["item_id"] in event_links(ctx.conn, ctx.user_id):
+            settle(ctx, job["item_id"], inp.event)
+        else:
+            adopt(ctx, job, inp.event)
     return Changed(message="Saved to your calendar" if job["op"] == "save" else "Deleted from your calendar")
+
+
+def adopt(ctx: Ctx, job: dict[str, Any], event: MacEvent) -> None:
+    """A new event the Mac app made becomes one of its calendar's events here: a raw input as the next reading will
+    make it, and the accepted suggestion that ties it to the event (`eventwrites.remember`), so that reading finds it
+    seen rather than new, and later changes here go back to it."""
+    item = load_item(ctx.conn, job["item_id"], ctx.user_id)
+    source = source_of(ctx, job["calendar_id"], "mac")
+    if item is None or source is None:
+        return
+    remember(ctx.conn, source["id"], google_shape(event), ctx.tz, ctx.settings, ctx.now_utc, ctx.user_id, item)
 
 
 def settle(ctx: Ctx, item_id: int, event: MacEvent) -> None:
@@ -231,6 +279,8 @@ def google_shape(e: MacEvent) -> dict[str, Any]:
         shaped["transparency"] = "transparent"
     if e.declined:
         shaped["attendees"] = [{"self": True, "responseStatus": "declined"}]
+    if e.location.strip():
+        shaped["location"] = e.location.strip()
     return shaped
 
 

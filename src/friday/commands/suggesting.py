@@ -8,7 +8,7 @@ import sqlite3
 from collections.abc import Callable
 from typing import Any
 
-from friday.commands.inbox import record_spend, spend
+from friday.commands.inbox import record_spend, spend, with_end
 from friday.commands.registry import run
 from friday.core.db import one, rows
 from friday.core.items import FieldError
@@ -273,6 +273,8 @@ def addable(fields: dict[str, Any], presets: dict) -> dict[str, Any]:
     preset = presets.get(fields.get("preset"))
     if preset is None:
         return fields
+    if preset.when == "fixed" and fields.get("start") and not fields.get("end"):
+        return with_end(fields, presets)  # shown in the inbox with the end it'll have, to change before you accept
     if preset.when == "fixed" and not fields.get("start"):
         rest = {k: v for k, v in fields.items() if k not in ("preset", "end", "blocks_time")}
         return rest | ({"preset": "Errand"} if "Errand" in presets else {})

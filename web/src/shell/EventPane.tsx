@@ -9,7 +9,8 @@ import { type Item, query } from "@/api/client"
 import { FitLine } from "@/components/Fit"
 import { Icon, Menu, Seg, Switch } from "@/components/fr/controls"
 import { useItem, useSettings } from "@/hooks/queries"
-import { useCalendars } from "@/settings/Calendars"
+import { newEventTargets } from "@/lib/calendars"
+import { useCalendars, useMacCalendars } from "@/settings/Calendars"
 import { useWhatIf, whatIf } from "@/whatif/store"
 import { useCommand } from "@/hooks/useCommand"
 import { placeEvent } from "@/hooks/useDrop"
@@ -24,12 +25,12 @@ import { TimeInput } from "@/components/fr/TimeInput"
 
 /** A new event's draft: an hour from the quarter hour it was asked for. */
 export function draftAt(start: string, end?: string): EventDraft {
-  return { id: null, title: "", start, end: end ?? fromMin(toMin(start) + 60), allDay: false, color: null, notes: "", every: null, seriesId: null, calendar: null, savesToCalendar: false }
+  return { id: null, title: "", start, end: end ?? fromMin(toMin(start) + 60), allDay: false, color: null, notes: "", location: "", every: null, seriesId: null, calendar: null, savesToCalendar: false }
 }
 
 /** An event to edit, as the drawer holds it. */
 export function draftOf(
-  item: Pick<Item, "id" | "title" | "start" | "end" | "series_id" | "color" | "notes" | "calendar" | "saves_to_calendar" | "chroma_color" | "category" | "category_color" | "calendar_color">,
+  item: Pick<Item, "id" | "title" | "start" | "end" | "series_id" | "color" | "notes" | "calendar" | "saves_to_calendar" | "chroma_color" | "category" | "category_color" | "calendar_color" | "location">,
 ): EventDraft {
   const start = item.start ?? ""
   const end = item.end ?? start
@@ -42,6 +43,7 @@ export function draftOf(
     allDay,
     color: item.color ?? null,
     notes: item.notes ?? "",
+    location: item.location ?? "",
     every: null,
     seriesId: item.series_id ?? null,
     calendar: item.calendar ?? null,
@@ -115,7 +117,9 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   // Where a new event is saved (26 Oct: they stayed only in Friday, and wore no colour): your choice here, else
   // Settings' "New events go to". It wears that calendar's colour until a category or a colour of its own says else.
   const settings = useSettings().data as { gcal?: { new_events_to?: string | null } } | undefined
-  const writable = (useCalendars().data ?? []).filter((c) => c.writable)
+  // Google's calendars and the Mac's, each once, the way Friday reads it (lib/calendars.ts): your Gmail calendar comes
+  // in through the Mac, so a new event goes there through the Mac app (27 Oct).
+  const writable = newEventTargets(useCalendars().data ?? [], useMacCalendars().data ?? [])
   const accounts = new Set(writable.map((c) => c.account)).size
   const saveTo = draft.saveTo ?? settings?.gcal?.new_events_to ?? ""
   const savingTo = writable.find((c) => c.id === saveTo)
@@ -125,7 +129,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   const close = () => setEvent(null)
   const save = async () => {
     if (!valid) return
-    const fields = { title: draft.title.trim(), start: draft.start, end: draft.end, color: draft.color, notes: draft.notes, blocks_time: !draft.allDay }
+    const fields = { title: draft.title.trim(), start: draft.start, end: draft.end, color: draft.color, notes: draft.notes, location: draft.location.trim() || null, blocks_time: !draft.allDay }
     if (staged !== null) {
       const was = w.changes[staged].input as Record<string, unknown>
       whatIf.replace(staged, { ...(was.calendar !== undefined ? { calendar: was.calendar } : {}), ...fields, when: "fixed" })
@@ -247,6 +251,10 @@ export function EventPane({ draft }: { draft: EventDraft }) {
         <span style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>To repeat it, make it repeat in {draft.calendar}.</span>
       ) : null}
       <EventFit draft={draft} onTime={(start, end) => set({ start, end })} />
+      <Row label="Where">
+        {/* Where it is (27 Oct): the calendar's, read with it, and saved back with it when it saves there. */}
+        <input className="input" value={draft.location} onChange={(e) => set({ location: e.target.value })} placeholder="Add a place" aria-label="Where" style={{ ...field, maxWidth: 260 }} />
+      </Row>
       <Row label="Calendar">
         {isNew ? (
           <select className="input" value={savingTo ? saveTo : ""} onChange={(e) => set({ saveTo: e.target.value })} aria-label="Calendar" style={{ ...field, maxWidth: 220 }}>

@@ -210,3 +210,38 @@ def test_a_task_without_a_length_shows_the_one_it_will_get(app: App) -> None:
     (ps4,) = app.do("items")
     assert ps4["duration_min"] == guess  # here the kind's usual length, as nothing learned says otherwise
     assert [a["name"] for a in app.do("areas")] == [r["name"] for r in app.table("areas")]  # guessing made no tag
+
+
+def test_an_event_read_with_a_start_and_no_end_is_accepted_an_hour_long(app: App) -> None:
+    """27 Oct: "friday proposes something in the inbox but then when i hit accept i get an error": an email gave the
+    Salsa Halloween Social's start and no end, and an event can't be added without one."""
+    app.do("document_add", name="mail.txt", content="Salsa Halloween Social Friday 10pm")
+    raw = app.table("raw_inputs")[-1]["id"]
+    social = '{"title": "Salsa Halloween Social", "preset": "Event", "start": "2026-10-23T22:00"}'
+    app.conn.execute(
+        "INSERT INTO suggestions (user_id, raw_input_id, command, input, status, created_utc) "
+        "VALUES (1, ?, 'add', ?, 'pending', '2026-10-19T13:00Z')",
+        [raw, social],
+    )
+    sid = next(s["id"] for s in app.do("inbox")["suggestions"] if s["input"].get("title") == "Salsa Halloween Social")
+    app.do("suggestion_accept", id=sid)
+    (event,) = [i for i in app.table("items") if i["title"] == "Salsa Halloween Social"]
+    assert (event["when_kind"], event["start_utc"], event["end_utc"]) == (
+        "fixed",
+        "2026-10-24T02:00Z",
+        "2026-10-24T03:00Z",
+    )
+
+
+def test_an_event_suggested_without_an_end_shows_the_end_it_will_have() -> None:
+    from friday.commands.suggesting import addable
+    from friday.core.settings import DEFAULTS
+
+    presets = DEFAULTS["presets"]
+    fields = addable({"title": "Social", "preset": "Event", "start": "2026-10-30T22:00"}, presets)
+    assert fields["end"] == "2026-10-30T23:00"
+    late = addable({"title": "Party", "preset": "Event", "start": "2026-10-30T23:30"}, presets)
+    assert late["end"] == "2026-10-31T00:30"  # past midnight, the next day
+    timed = {"title": "Talk", "preset": "Event", "start": "2026-10-30T18:00", "end": "2026-10-30T20:00"}
+    assert addable(timed, presets) == timed  # an end it was given stays
+    assert "end" not in addable({"title": "PS4", "preset": "Assignment", "due": "2026-10-30T23:59"}, presets)

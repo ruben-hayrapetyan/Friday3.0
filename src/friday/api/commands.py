@@ -789,6 +789,7 @@ class MacEvent(Model):
     series: str | None = None  # the repeating event it is an occurrence of
     free: bool = False  # shown as free (availability)
     declined: bool = False  # you declined the invitation
+    location: str = ""  # where it is, as Calendar has it
 
 
 class MacWrittenInput(Model):

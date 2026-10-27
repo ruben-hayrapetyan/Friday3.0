@@ -378,6 +378,15 @@ function EventFacts({ event, paint }: { event: Item; paint: string }) {
   const from = event.color ? null : event.chroma_color ? "as in Chroma" : event.category_color ? (event.category ?? "its category") : event.calendar_color ? (event.calendar ?? "its calendar") : null
   return (
     <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", fontSize: 12 }}>
+      {event.location && (
+        <>
+          <span style={{ color: "var(--color-neutral-500)" }}>Where</span>
+          <span style={{ display: "flex", gap: 6, alignItems: "center", overflowWrap: "anywhere" }}>
+            <Icon name="map-pin" size={12} style={{ flex: "none" }} />
+            {event.location}
+          </span>
+        </>
+      )}
       <span style={{ color: "var(--color-neutral-500)" }}>Calendar</span>
       <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
         {event.calendar ?? "Friday"}

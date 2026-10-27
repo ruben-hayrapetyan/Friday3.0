@@ -440,16 +440,19 @@ class DocumentOut(Model):
 
 class MacWriteOut(Model):
     """A change to one of the Mac's events, for the Mac app to make through EventKit: its times (timed with an offset,
-    or whole days with the end the day after the last) and, if you renamed it, its title; or a delete."""
+    or whole days with the end the day after the last) and, if you renamed or moved it here, its title and place; a
+    delete; or a new event, made on that calendar (`create`)."""
 
     id: int
-    op: Literal["save", "delete"]
+    op: Literal["save", "delete", "create"]
     calendar: str  # EventKit's calendarIdentifier
-    event: str  # the occurrence's id, as the Mac app sent it ("<identifier>@<occurrence start, Unix seconds>")
-    title: str | None = None  # only when you renamed it in Friday: otherwise the calendar's own stays
+    event: str = ""  # the occurrence's id, as the Mac app sent it ("<identifier>@<occurrence start, Unix seconds>")
+    title: str | None = None  # only when you renamed it in Friday (always for a new one): else the calendar's stays
     start: str | None = None
     end: str | None = None
     all_day: bool = False
+    location: str | None = None  # only when you changed it in Friday ("" clears it); a new one's, if it has one
+    notes: str | None = None  # a new event's notes
 
 
 class RuleReadOut(Model):

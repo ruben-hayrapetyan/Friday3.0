@@ -45,11 +45,31 @@ def queue_event_write(ctx: Ctx, item: Item, op: str, target: str | None = None) 
             return  # you kept it only in Friday
         if op != "save" or target is None or item.event_kind == "shove":
             return
-        if target not in {c["id"] for c in kv_get(ctx.conn, "google_calendars", [], ctx.user_id)}:
+        if target not in new_event_calendars(ctx.conn, ctx.user_id):
             return  # its account was removed: kept only in Friday until you choose another calendar
+        waiting = one(
+            ctx.conn,
+            "SELECT 1 FROM event_writes WHERE user_id = ? AND item_id = ? AND op = 'save' AND done_utc IS NULL "
+            "AND tries < ?",
+            [ctx.user_id, item.id, MAX_TRIES],
+        )
+        if waiting:
+            return  # it's still to be made, and is made as it is then: a second would make it twice
     elif not writes_to(ctx.conn, ctx.user_id, link.source_id):
         return
     ctx.db.insert("event_writes", {"item_id": item.id, "op": op, "calendar_id": target, "queued_utc": ctx.now_text})
+
+
+def new_event_calendars(conn: sqlite3.Connection, user_id: int) -> set[str]:
+    """The calendars a new event can be saved to: Google's, through your accounts, and the Mac's that may be changed,
+    through the Mac app (27 Oct: your Gmail calendar comes in through the Mac, so a new event goes there that way)."""
+    google = {c["id"] for c in kv_get(conn, "google_calendars", [], user_id)}
+    return google | mac_calendar_ids(conn, user_id)
+
+
+def mac_calendar_ids(conn: sqlite3.Connection, user_id: int) -> set[str]:
+    """The Mac's calendars a new event may be made on."""
+    return {c["id"] for c in kv_get(conn, "mac_calendars", [], user_id) if c.get("writable")}
 
 
 def writes_to(conn: sqlite3.Connection, user_id: int, source_id: int) -> bool:
@@ -64,10 +84,12 @@ def writes_to(conn: sqlite3.Connection, user_id: int, source_id: int) -> bool:
 
 
 def event_body(item: Item, tz: str) -> dict[str, Any]:
-    """The fields Friday owns: title, notes and times (whole days for an all-day event)."""
+    """The fields Friday owns: title, notes, place and times (whole days for an all-day event)."""
     assert item.start_utc and item.end_utc
     start, end = parse_utc(item.start_utc), parse_utc(item.end_utc)
     body: dict[str, Any] = {"summary": item.title, "description": item.notes}
+    if item.location:
+        body["location"] = item.location
     local_start, local_end = to_local(start, tz), to_local(end, tz)
     if local_start.hour == local_start.minute == 0 and local_end.hour == local_end.minute == 0 and end > start:
         body |= {"start": {"date": local_start.date().isoformat()}, "end": {"date": local_end.date().isoformat()}}
@@ -82,7 +104,8 @@ def change_body(conn: sqlite3.Connection, item: Item, tz: str) -> dict[str, Any]
     descriptions, so sending either back as it stands would overwrite what the calendar says."""
     body = event_body(item, tz)
     kept = {"start": body["start"], "end": body["end"]}
-    return kept | ({"summary": item.title} if renamed(conn, item) else {})
+    place = {"location": item.location or ""} if relocated(conn, item) else {}
+    return kept | ({"summary": item.title} if renamed(conn, item) else {}) | place
 
 
 def renamed(conn: sqlite3.Connection, item: Item) -> bool:
@@ -98,6 +121,20 @@ def renamed(conn: sqlite3.Connection, item: Item) -> bool:
     return False
 
 
+def relocated(conn: sqlite3.Connection, item: Item) -> bool:
+    """Whether its place isn't the calendar's: the latest Friday accepted from the calendar (none, before places were
+    read, is no place)."""
+    for r in rows(
+        conn,
+        "SELECT input FROM suggestions WHERE item_id = ? AND status = 'accepted' ORDER BY id DESC",
+        [item.id],
+    ):
+        read = json.loads(r["input"] or "{}")
+        if "title" in read or "location" in read:
+            return (read.get("location") or None) != (item.location or None)
+    return False
+
+
 class NeedsSignIn(Exception):
     """The calendar's account signed in before "Edit here", so Google won't take changes until it signs in again."""
 
@@ -108,6 +145,7 @@ def write_events(
     """Send what's queued, each through its calendar's account; returns how many were saved or deleted. Failures are
     kept and tried again later; changes to an account that needs to sign in again wait for it."""
     links = event_links(conn, user_id)
+    mac = mac_calendar_ids(conn, user_id)
     pending = [
         job
         for job in rows(
@@ -115,7 +153,8 @@ def write_events(
             "SELECT * FROM event_writes WHERE user_id = ? AND done_utc IS NULL AND tries < ? ORDER BY id",
             [user_id, MAX_TRIES],
         )
-        if not on_mac(links.get(job["item_id"]))  # the Mac app makes those (`mac_writes`)
+        # The Mac app makes those (`mac_writes`): changes to the Mac's events, and new ones for its calendars.
+        if not on_mac(links.get(job["item_id"])) and not (job["item_id"] not in links and job["calendar_id"] in mac)
     ]
     if not pending:
         return 0
@@ -259,7 +298,7 @@ def remember(
         [user_id, source_id, event["id"], format_utc(now_utc), digest, title, text],
     ).lastrowid
     if new_item is not None:
-        fields = {"title": new_item.title, "when": "fixed"}
+        fields = {"title": new_item.title, "when": "fixed", "location": new_item.location or None}
         conn.execute(
             "INSERT INTO suggestions (user_id, raw_input_id, command, input, status, created_utc, decided_utc, "
             "item_id) VALUES (?, ?, 'add', ?, 'accepted', ?, ?, ?)",
@@ -270,7 +309,10 @@ def remember(
 def event_digest(event: dict[str, Any]) -> tuple[str, str]:
     """An event's text and hash exactly as `ics.google_event` makes them, so the next sync finds it unchanged."""
     summary = (event.get("summary") or "").strip() or "Busy"
+    location = (event.get("location") or "").strip()
     text = json.dumps(
-        {"summary": summary, "start": event.get("start", {}), "end": event.get("end", {})}, sort_keys=True
+        {"summary": summary, "start": event.get("start", {}), "end": event.get("end", {})}
+        | ({"location": location} if location else {}),
+        sort_keys=True,
     )
     return text, hashlib.sha256(text.encode()).hexdigest()

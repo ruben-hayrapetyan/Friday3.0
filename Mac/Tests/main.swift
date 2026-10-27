@@ -171,6 +171,28 @@ test("a change Friday asks of a Mac event: which occurrence, and what it changes
     check(MacPayload.day(end, calendar: york) == "2026-10-24", "and reads back ending the day after, as Friday sent it")
     check(!MacWriter.change(event, to: day, calendar: york), "the same whole day again changes nothing")
     check(MacWriter.moment("2026-10-25T19:30:00Z", allDay: false) == Date(timeIntervalSince1970: 1_792_956_600), "a time")
+
+    // Where it is (27 Oct): sent only when you changed it in Friday; "" takes it off.
+    check(MacWriter.change(event, to: day.merging(["location": "Baker 200"]) { $1 }, calendar: york), "a place")
+    check(event.location == "Baker 200", "the place")
+    check(!MacWriter.change(event, to: day.merging(["location": "Baker 200"]) { $1 }, calendar: york), "the same place again")
+    check(!MacWriter.change(event, to: day, calendar: york) && event.location == "Baker 200", "no place sent: it stays")
+    check(MacWriter.change(event, to: day.merging(["location": ""]) { $1 }, calendar: york) && event.location == nil,
+          "taken off")
+}
+
+test("new events Friday made are made once") {
+    let defaults = UserDefaults(suiteName: "friday-tests-\(UUID().uuidString)")!
+    let made = Made(defaults: defaults)
+    check(made.event(for: 41) == nil, "nothing made yet")
+    made.keep(41, occurrence: "ABC@1761000000", calendar: "gmail-cal")
+    check(made.event(for: 41)?.occurrence == "ABC@1761000000" && made.event(for: 41)?.calendar == "gmail-cal", "kept")
+    check(made.event(for: 42) == nil, "only that job's")
+    let gone = MacWriter.apply(["id": 7, "op": "create", "calendar": "no-such-calendar", "title": "Salsa",
+                                "start": "2026-10-30T22:15:00Z", "end": "2026-10-30T23:15:00Z"],
+                               in: EKEventStore(), made: made)
+    check(gone["ok"] as? Bool == false && (gone["error"] as? String ?? "").contains("isn't on this Mac"),
+          "a calendar not on this Mac says so: \(gone)")
 }
 
 print(failures == 0 ? "All passed" : "\(failures) failed")

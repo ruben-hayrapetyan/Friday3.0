@@ -35,6 +35,7 @@ const FIELDS: [string, string][] = [
   ["due", "Due"],
   ["start", "Starts"],
   ["end", "Ends"],
+  ["location", "Where"],
   ["duration_min", "Length"],
   ["every", "Repeats"],
 ]

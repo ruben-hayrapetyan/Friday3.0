@@ -189,3 +189,21 @@ def test_an_event_wears_its_calendar_s_own_colour_and_a_new_one_the_calendar_it_
     plan = app.do("plan", start="2026-10-19T00:00", end="2026-10-26T00:00")
     (party,) = [f for f in plan["fixed"] if f["title"] == "Party"]
     assert party["calendar_color"] == "blue"  # on its way to Classes: its colour already
+
+
+def test_a_place_is_read_from_google_and_sent_with_a_new_event(tmp_path: Path) -> None:
+    """27 Oct: events had no place, though Google's do."""
+    from friday.ingest.ics import google_event, reading
+
+    found = google_event(
+        {"id": "e1", "summary": "Office hours", "location": "Gates 122",
+         "start": {"dateTime": "2026-10-20T14:00:00-04:00"}, "end": {"dateTime": "2026-10-20T15:00:00-04:00"}},
+        "America/New_York", reading(r"\bdue\b", r"\bexam\b", r"\blecture\b"),
+    )  # fmt: skip
+    assert found is not None and [p.input.get("location") for p in found.proposals if p.fixed] == ["Gates 122"]
+    bare = google_event(
+        {"id": "e1", "summary": "Office hours", "start": {"dateTime": "2026-10-20T14:00:00-04:00"},
+         "end": {"dateTime": "2026-10-20T15:00:00-04:00"}},
+        "America/New_York", reading(r"\bdue\b", r"\bexam\b", r"\blecture\b"),
+    )  # fmt: skip
+    assert bare is not None and "location" not in bare.text and bare.content_hash != found.content_hash

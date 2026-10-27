@@ -424,3 +424,104 @@ def test_one_off_events_read_before_take_their_new_ids(app: App) -> None:
     moved = mac_event(f"CAL:UID1@{ELEVEN_NEXT_DAY}", "home", "Dentist", "2026-10-21T11:00", "2026-10-21T12:00")
     post(app, [HOME], [moved], minutes_later=5)
     assert [i["id"] for i in events(app).values()] == [dentist["id"]] and app.do("inbox")["suggestions"] == []
+
+
+# New events made here for one of the Mac's calendars (27 Oct: "i want new events to go to
+# you@gmail.com", a Google calendar Friday reads through the Mac): made by the Mac app, and tied to
+# the event here, so the next reading finds it, not a second one.
+GMAIL = calendar("gmail-cal", "you@gmail.com", account="Google", writable=True)
+
+
+def test_a_new_event_for_a_mac_calendar_is_made_by_the_mac_app_and_comes_back_as_itself(app: App) -> None:
+    post(app, [GMAIL], [])
+    app.do("settings_set", key="gcal", value={"new_events_to": "gmail-cal"})
+    made = app.do(
+        "add",
+        title="CUAI meeting",
+        when="fixed",
+        start="2026-10-24T16:00",
+        end="2026-10-24T17:00",
+        location="Gates 122",
+    )["item"]
+    (job,) = app.do("mac_writes")
+    assert {k: job[k] for k in ("op", "calendar", "title", "start", "end", "all_day", "location")} == {
+        "op": "create",
+        "calendar": "gmail-cal",
+        "title": "CUAI meeting",
+        "start": "2026-10-24T20:00:00Z",
+        "end": "2026-10-24T21:00:00Z",
+        "all_day": False,
+        "location": "Gates 122",
+    }
+    google = FakeGoogle({"Classes@group": []})
+    assert write_events(app.conn, app.now_utc, google=google) == 0 and google.writes == []  # the Mac app's to make
+    the_one = dict(eid="new1", cid="gmail-cal", title="CUAI meeting", start="2026-10-24T16:00", end="2026-10-24T17:00")
+    written(app, job, **the_one, location="Gates 122")
+    assert app.do("mac_writes") == []
+    assert shown(app, "CUAI meeting")["calendar"] == "you@gmail.com"
+    log = len(app.table("command_log"))
+    post(app, [GMAIL], [mac_event(**the_one, location="Gates 122")], minutes_later=1)
+    assert [i["id"] for i in events(app).values()] == [made["id"]]  # the same event, not a second
+    assert len(app.table("command_log")) == log and app.do("inbox")["suggestions"] == []
+    # From then on it's that calendar's event: a change here goes back to it as a change, not another new one.
+    app.do("edit", id=made["id"], start="2026-10-24T18:00", end="2026-10-24T19:00")
+    (moved,) = app.do("mac_writes")
+    assert moved["op"] == "save" and moved["event"].startswith("new1") and moved["location"] is None
+
+
+def test_a_new_event_changed_before_the_mac_app_makes_it_is_made_once_as_it_is_then(app: App) -> None:
+    post(app, [GMAIL], [])
+    app.do("settings_set", key="gcal", value={"new_events_to": "gmail-cal"})
+    made = app.do("add", title="Salsa", when="fixed", start="2026-10-23T18:15", end="2026-10-23T19:15")["item"]
+    app.do("edit", id=made["id"], start="2026-10-23T18:30", end="2026-10-23T19:30", location="Barton Hall")
+    (job,) = app.do("mac_writes")
+    assert (job["op"], job["start"], job["location"]) == ("create", "2026-10-23T22:30:00Z", "Barton Hall")
+
+
+def test_a_new_event_goes_only_to_a_mac_calendar_that_may_be_changed(app: App) -> None:
+    post(app, [calendar("ro", "Holidays", account="Google")], [])
+    app.do("settings_set", key="gcal", value={"new_events_to": "ro"})
+    app.do("add", title="Party", when="fixed", start="2026-10-23T18:00", end="2026-10-23T19:00")
+    assert app.do("mac_writes") == [] and app.table("event_writes") == []
+
+
+def test_a_new_event_the_mac_couldnt_make_is_tried_again(app: App) -> None:
+    post(app, [GMAIL], [])
+    app.do("settings_set", key="gcal", value={"new_events_to": "gmail-cal"})
+    app.do("add", title="Salsa", when="fixed", start="2026-10-23T18:15", end="2026-10-23T19:15")
+    (job,) = app.do("mac_writes")
+    app.do("mac_written", id=job["id"], ok=False, error="That calendar isn't on this Mac any more")
+    assert [j["op"] for j in app.do("mac_writes")] == ["create"]
+
+
+# Where events are (27 Oct: "add support for adding locations to events").
+def test_a_mac_events_place_comes_with_it_and_a_place_changed_here_goes_back(app: App) -> None:
+    post(
+        app,
+        [WRITABLE],
+        [mac_event("l1", "home", "Dentist", "2026-10-20T10:00", "2026-10-20T11:00", location="Main St 5")],
+    )
+    dentist = events(app)["Dentist"]
+    assert shown(app, "Dentist")["location"] == "Main St 5"
+    app.do("edit", id=dentist["id"], start="2026-10-20T12:00", end="2026-10-20T13:00")
+    assert app.do("mac_writes")[-1]["location"] is None  # a move leaves the calendar's place alone
+    app.do("edit", id=dentist["id"], location="Main St 7")
+    assert app.do("mac_writes")[-1]["location"] == "Main St 7"
+
+
+def test_a_place_changed_on_the_mac_is_changed_here_and_one_taken_off_goes(app: App) -> None:
+    def dentist(**place: str) -> dict[str, Any]:
+        return mac_event("l1", "home", "Dentist", "2026-10-20T10:00", "2026-10-20T11:00", **place)
+
+    post(app, [HOME], [dentist(location="Main St 5")])
+    post(app, [HOME], [dentist(location="Elm St 2")], minutes_later=5)  # the job reads a calendar every few minutes
+    assert shown(app, "Dentist")["location"] == "Elm St 2"
+    post(app, [HOME], [dentist()], minutes_later=10)
+    assert shown(app, "Dentist")["location"] is None
+
+
+def test_events_read_before_places_were_are_not_read_as_changed(app: App) -> None:
+    post(app, [HOME], [LECTURE])
+    log = len(app.table("command_log"))
+    post(app, [HOME], [LECTURE], minutes_later=1)
+    assert len(app.table("command_log")) == log

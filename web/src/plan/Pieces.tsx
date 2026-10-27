@@ -262,7 +262,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked }: FixedProp
       {tall && (
         <TimeLine color={s.sub} time={time}>
           {clock(it.start)}–{clock(it.end)}
-          {skipped ? " · skipping for work" : ""}
+          {skipped ? " · skipping for work" : it.location ? ` · ${it.location}` : ""}
         </TimeLine>
       )}
     </div>

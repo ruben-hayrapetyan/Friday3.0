@@ -5,6 +5,7 @@ loop (`commands/fetching.py`), never in a request.
 
 import hashlib
 import json
+from datetime import datetime, timedelta
 from typing import Any
 
 from friday.api.commands import (
@@ -183,6 +184,22 @@ def suggestion_accept(ctx: Ctx, inp: SuggestionInput) -> Changed:
     return Changed(message="Accepted")
 
 
+EVENT_MIN = 60  # an event read with a start and no end lasts this long until you say otherwise
+
+
+def with_end(fields: dict[str, Any], presets: dict[str, Any]) -> dict[str, Any]:
+    """An event read with a start and no end ("the social starts at 10pm") ends an hour later: without an end it
+    couldn't be added, and accepting it failed (27 Oct, "Salsa Halloween Social"). You can change the end before."""
+    preset = presets.get(fields.get("preset"))
+    if preset is None or preset.when != "fixed" or not fields.get("start") or fields.get("end"):
+        return fields
+    try:
+        start = datetime.fromisoformat(str(fields["start"]))
+    except ValueError:
+        return fields
+    return fields | {"end": (start + timedelta(minutes=EVENT_MIN)).isoformat(timespec="minutes")}
+
+
 def apply(ctx: Ctx, suggestion: dict[str, Any], fields: dict[str, Any]) -> int | None:
     """Run the suggested command; returns the item it made or changed."""
     before = fields.pop("before_title", None)
@@ -190,7 +207,11 @@ def apply(ctx: Ctx, suggestion: dict[str, Any], fields: dict[str, Any]) -> int |
         return drop(ctx, ItemRef(id=fields["id"])).item.id
     if suggestion["command"] == "edit" or suggestion["duplicate_of"]:
         target = fields.pop("id", None) or suggestion["duplicate_of"]
-        keep = {k: v for k, v in fields.items() if k in ("title", "due", "start", "end", "duration_min", "release")}
+        # What a reading says again; an event's place too (27 Oct), when it's an event that changed.
+        kept = ("title", "due", "start", "end", "duration_min", "release") + (
+            ("location",) if suggestion["command"] == "edit" else ()
+        )
+        keep = {k: v for k, v in fields.items() if k in kept}
         return edit(ctx, EditInput(id=target, **keep)).item.id
     if before:
         exam = find_item(ctx, before)
@@ -202,6 +223,7 @@ def apply(ctx: Ctx, suggestion: dict[str, Any], fields: dict[str, Any]) -> int |
     repeating = (suggestion["batch"] or "").startswith("repeat:")
     if repeating:
         fields |= imported_fields(ctx, suggestion["batch"], fields)
+    fields = with_end(fields, ctx.settings["presets"])  # one suggested before events read without an end got one
     made = add(ctx, AddInput(**{k: v for k, v in fields.items() if k in AddInput.model_fields}))
     if made.item and repeating:
         attach_to_series(ctx, made.item.id, suggestion["batch"])

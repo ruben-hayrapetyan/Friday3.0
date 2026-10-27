@@ -14793,6 +14793,17 @@
       ],
       "title": "Buffer After Min"
      },
+     "location": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location"
+     },
      "waiting_on": {
       "items": {
        "type": "integer"
@@ -15929,6 +15940,11 @@
       "type": "boolean",
       "title": "Declined",
       "default": false
+     },
+     "location": {
+      "type": "string",
+      "title": "Location",
+      "default": ""
      }
     },
     "additionalProperties": false,
@@ -16058,7 +16074,8 @@
       "type": "string",
       "enum": [
        "save",
-       "delete"
+       "delete",
+       "create"
       ],
       "title": "Op"
      },
@@ -16068,7 +16085,8 @@
      },
      "event": {
       "type": "string",
-      "title": "Event"
+      "title": "Event",
+      "default": ""
      },
      "title": {
       "anyOf": [
@@ -16107,6 +16125,28 @@
       "type": "boolean",
       "title": "All Day",
       "default": false
+     },
+     "location": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location"
+     },
+     "notes": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Notes"
      }
     },
     "additionalProperties": false,
@@ -16114,11 +16154,10 @@
     "required": [
      "id",
      "op",
-     "calendar",
-     "event"
+     "calendar"
     ],
     "title": "MacWriteOut",
-    "description": "A change to one of the Mac's events, for the Mac app to make through EventKit: its times (timed with an offset,\nor whole days with the end the day after the last) and, if you renamed it, its title; or a delete."
+    "description": "A change to one of the Mac's events, for the Mac app to make through EventKit: its times (timed with an offset,\nor whole days with the end the day after the last) and, if you renamed or moved it here, its title and place; a\ndelete; or a new event, made on that calendar (`create`)."
    },
    "MacWrittenInput": {
     "properties": {

@@ -7,6 +7,7 @@ import { Fragment, useEffect, useState } from "react"
 import { Chip, Icon, Menu, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings } from "@/hooks/queries"
+import { newEventTargets } from "@/lib/calendars"
 import { PIGMENTS, pigment } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
 import { CalendarChoice, saying } from "./calendarChoice"
@@ -89,6 +90,8 @@ export const counts = (name: string, busy: Busy) => busy.calendars[name] ?? !ROO
 export function CalendarsSection() {
   const settings = useSettings().data as Record<string, unknown> | undefined
   const save = useCommand("settings_set", { label: () => "Saved" })
+  // Every calendar a new event can go to: Google's and the Mac's, each once, the way Friday reads it (lib/calendars.ts).
+  const targets = newEventTargets(useCalendars().data ?? [], useMacCalendars().data ?? [])
   const google = (useCalendars().data ?? []).filter((c) => c.on)
   const mac = (useMacCalendars().data ?? []).filter((c) => c.on && !google.some((g) => g.name === c.name))
   const reading = [...google, ...mac] // what the plan shows, by name
@@ -168,25 +171,12 @@ export function CalendarsSection() {
           aria-label="New events go to"
         >
           <option value="">Only Friday</option>
-          {several
-            ? accounts.map((a) => (
-                <optgroup key={a} label={accountName(a)}>
-                  {of(a)
-                    .filter((c) => c.writable)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </optgroup>
-              ))
-            : google
-                .filter((c) => c.writable)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+          {targets.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+              {t.account && t.account !== t.name ? ` · ${t.via === "mac" ? `${t.account}, through this Mac` : accountName(t.account)}` : t.via === "mac" ? " · through this Mac" : ""}
+            </option>
+          ))}
         </select>
       </Field>
       <Categories value={settings.categories as CategorySettings} onSave={(value) => save({ key: "categories", value })} />

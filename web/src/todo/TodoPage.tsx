@@ -7,12 +7,13 @@
 // View options keep v22's grouping by when or tag, sorting, done items and the two-line rows with progress bars.
 
 import { Dropdown } from "@/components/fr/Dropdown"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { NavLink, useSearchParams } from "react-router"
 import { type Item, query } from "@/api/client"
 import { Check, Chip, Icon, Seg } from "@/components/fr/controls"
-import { useCommand } from "@/hooks/useCommand"
+import { useToast } from "@/components/Toasts"
+import { rememberTogether, runCommand, undoAll, useCommand } from "@/hooks/useCommand"
 import { useHorizon, useNow, useStatus } from "@/hooks/queries"
 import { DueLabel } from "@/components/DueLabel"
 import { useClock } from "@/hooks/useClock"
@@ -22,14 +23,36 @@ import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { AddBox } from "./AddBox"
-import { BulkBar, menuOpen, pickWith } from "./Bulk"
+import { BulkBar, menuOpen, pickWith, tasks } from "./Bulk"
 import { addHint, fillFor, GROUPS, type GroupBy, grouped, KINDS_FIRST, OTHER, plural, progress, SORTS, type SortBy, summary } from "./groups"
 import { DuePicker, LengthInput } from "./Pickers"
 import { useDuplicates } from "@/inbox/CheckTasks"
 import { SortPicker } from "./SortPicker"
 import { TodoDetail } from "./TodoDetail"
 
-const DRAG = "text/x-friday-item" // a task dragged to another section
+const DRAG = "text/x-friday-item" // tasks dragged to another section: their ids, comma-separated
+
+/** What a drag from a row carries: every picked task when it's one of them (27 Oct: "dragging multiple items from one
+ * todo to the other"), else that task alone. */
+export function draggedIds(id: number, picked: number[]): number[] {
+  return picked.length > 1 && picked.includes(id) ? picked : [id]
+}
+
+/** The tasks a drop brings, from what the drag carried. */
+export function droppedIds(data: string): number[] {
+  return data.split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0)
+}
+
+/** A drag's picture: "3 tasks" rather than the one row under the pointer. */
+function dragPicture(e: React.DragEvent, n: number): void {
+  if (n < 2) return
+  const tag = document.createElement("div")
+  tag.textContent = tasks(n)
+  Object.assign(tag.style, { position: "fixed", top: "-100px", padding: "4px 10px", borderRadius: "6px", font: "500 12px system-ui", color: "#fff", background: "#3b6fd4" })
+  document.body.appendChild(tag)
+  e.dataTransfer.setDragImage(tag, 12, 12)
+  setTimeout(() => tag.remove(), 0)
+}
 
 export const useAllItems = (done: boolean) =>
   useQuery({ queryKey: ["items", done ? "all" : "todo"], queryFn: () => query("items", { status: done ? "all" : "todo" }) })
@@ -42,6 +65,19 @@ export function TodoPage() {
   const { look, setLook } = useLook()
   const copies = useDuplicates().data?.groups.length ?? 0
   const move = useCommand("edit", { label: (o) => `Moved ${o.result.item?.title ?? ""}` })
+  const client = useQueryClient()
+  const toast = useToast()
+  // Several dropped together: each moved, said once, undone together, as the bar's changes are (todo/Bulk.tsx).
+  const moveAll = async (ids: number[], fields: Record<string, unknown>, where: string) => {
+    if (ids.length === 1) return void move({ id: ids[0], ...fields })
+    const done: number[] = []
+    for (const id of ids) {
+      const out = await runCommand(client, toast, "edit", { id, ...fields }, { quiet: true })
+      if (out?.command_id != null) done.push(out.command_id)
+    }
+    rememberTogether(done)
+    if (done.length) toast({ message: `Moved ${tasks(done.length)} to ${where}. ⌘Z undoes it`, action: { label: "Undo", run: () => undoAll(client, toast, done) } })
+  }
   const [over, setOver] = useState<string | null>(null) // the section a task is being dragged over
   const [by, setBy] = useStored<GroupBy>("friday-todo-group", "Kind", GROUPS)
   const [sort, setSort] = useStored<SortBy>("friday-todo-sort", "Next up", SORTS)
@@ -152,15 +188,15 @@ export function TodoPage() {
                     onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && setOver(null)}
                     onDrop={(e) => {
                       setOver(null)
-                      const id = Number(e.dataTransfer.getData(DRAG))
-                      if (!fill || !id || g.items.some((i) => i.id === id)) return
-                      move(by === "Tag" ? { id, area: fill.area ?? null } : { id, preset: fill.preset ?? null })
+                      const ids = droppedIds(e.dataTransfer.getData(DRAG)).filter((id) => !g.items.some((i) => i.id === id))
+                      if (!fill || !ids.length) return
+                      moveAll(ids, by === "Tag" ? { area: fill.area ?? null } : { preset: fill.preset ?? null }, by === "Kind" ? plural(g.name) : g.name)
                     }}
                     style={{ display: "flex", flexDirection: "column", borderRadius: 6, outline: over === g.name ? "1.5px dashed var(--color-accent)" : undefined, outlineOffset: 4 }}
                   >
                     <SectionRule name={by === "Kind" ? plural(g.name) : g.name} items={g.items} />
                     {g.items.map((i) => (
-                      <RowOf key={i.id} item={i} by={by} fresh={fresh.includes(i.id)} selected={i.id === selected} picked={picked.includes(i.id)} onSelect={(e) => choose(i.id, e)} />
+                      <RowOf key={i.id} item={i} by={by} fresh={fresh.includes(i.id)} selected={i.id === selected} picked={picked.includes(i.id)} onSelect={(e) => choose(i.id, e)} dragging={draggedIds(i.id, picked)} />
                     ))}
                     {fill && <AddBox compact onAdded={added} longTerm={list === "Long term"} fill={fill} placeholder={addHint(by, g.name)} />}
                   </section>
@@ -169,7 +205,7 @@ export function TodoPage() {
             )}
             {!groups.length && list !== "Due" && <div style={{ padding: "40px 8px", color: "var(--color-neutral-400)" }}>Nothing left. Add something above, or turn on Show done to see what you finished.</div>}
             <span className="fr-mono" style={{ fontSize: 10.5, color: "var(--color-neutral-500)" }}>
-              Type it the way you’d say it: <span style={{ color: "var(--color-neutral-300)" }}>ch 4 #psych due fri 5pm ~1h</span>. Click a task for everything about it; ⌘-click or Shift-click to pick several; drag it onto another section to change its kind.
+              Type it the way you’d say it: <span style={{ color: "var(--color-neutral-300)" }}>ch 4 #psych due fri 5pm ~1h</span>. Click a task for everything about it; ⌘-click or Shift-click to pick several; drag one (or one of those picked, and they all go) onto another section to change its kind.
             </span>
           </div>
         </div>
@@ -218,6 +254,17 @@ interface RowProps {
   selected: boolean
   picked: boolean // one of several picked to change together
   onSelect: (e: React.MouseEvent | React.KeyboardEvent) => void
+  dragging?: number[] // what a drag from it carries onto another section: it, or all picked with it
+}
+
+/** A row's drag onto another section: the tasks it carries, and their picture. */
+function dragFrom(dragging: number[] | undefined, id: number) {
+  const ids = dragging ?? [id]
+  return (e: React.DragEvent) => {
+    e.dataTransfer.setData(DRAG, ids.join(","))
+    e.dataTransfer.effectAllowed = "move"
+    dragPicture(e, ids.length)
+  }
 }
 
 /** A section's head, as personal ruled it: its name, a rule to the edge, how many and how long. */
@@ -237,7 +284,7 @@ function SectionRule({ name, items }: { name: string; items: Item[] }) {
 }
 
 /** One line, as personal's notebook drew a task, with what Friday made of it on the right. */
-function CompactRow({ item, by, fresh, selected, picked, onSelect }: RowProps) {
+function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging }: RowProps) {
   const { today } = useShell()
   const { color } = useLook()
   const blocks = useHorizon().data?.blocks ?? []
@@ -274,7 +321,7 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect }: RowProps) {
       onClick={(e) => editing === null && onSelect(e)}
       onMouseDown={(e) => e.shiftKey && e.preventDefault()}
       draggable={editing === null}
-      onDragStart={(e) => (e.dataTransfer.setData(DRAG, String(item.id)), (e.dataTransfer.effectAllowed = "move"))}
+      onDragStart={dragFrom(dragging, item.id)}
       onKeyDown={(e) => e.key === "Enter" && editing === null && onSelect(e)}
       className="fr-hover-soft fr-todo-line"
       title={`${item.title}: click for everything about it, double-click the title to rename`}
@@ -415,7 +462,7 @@ function Pie({ share }: { share: number }) {
 }
 
 /** The two-line row (v22), for those who like progress bars: View options → Rows → Detailed. */
-function Row({ item, fresh, selected, picked, onSelect }: RowProps) {
+function Row({ item, fresh, selected, picked, onSelect, dragging }: RowProps) {
   const { today } = useShell()
   const { color } = useLook()
   const blocks = useHorizon().data?.blocks ?? []
@@ -436,6 +483,8 @@ function Row({ item, fresh, selected, picked, onSelect }: RowProps) {
     <div
       onClick={onSelect}
       onMouseDown={(e) => e.shiftKey && e.preventDefault()}
+      draggable
+      onDragStart={dragFrom(dragging, item.id)}
       className="fr-row fr-hover-soft fr-todo-row"
       style={{
         display: "grid",

@@ -4417,6 +4417,8 @@ export interface components {
             buffer_before_min?: number | null;
             /** Buffer After Min */
             buffer_after_min?: number | null;
+            /** Location */
+            location?: string | null;
             /**
              * Waiting On
              * @default []
@@ -4819,6 +4821,11 @@ export interface components {
              * @default false
              */
             declined?: boolean;
+            /**
+             * Location
+             * @default
+             */
+            location?: string;
         };
         /**
          * MacSyncInput
@@ -4858,7 +4865,8 @@ export interface components {
         /**
          * MacWriteOut
          * @description A change to one of the Mac's events, for the Mac app to make through EventKit: its times (timed with an offset,
-         *     or whole days with the end the day after the last) and, if you renamed it, its title; or a delete.
+         *     or whole days with the end the day after the last) and, if you renamed or moved it here, its title and place; a
+         *     delete; or a new event, made on that calendar (`create`).
          */
         MacWriteOut: {
             /** Id */
@@ -4867,11 +4875,14 @@ export interface components {
              * Op
              * @enum {string}
              */
-            op: "save" | "delete";
+            op: "save" | "delete" | "create";
             /** Calendar */
             calendar: string;
-            /** Event */
-            event: string;
+            /**
+             * Event
+             * @default
+             */
+            event?: string;
             /** Title */
             title?: string | null;
             /** Start */
@@ -4883,6 +4894,10 @@ export interface components {
              * @default false
              */
             all_day?: boolean;
+            /** Location */
+            location?: string | null;
+            /** Notes */
+            notes?: string | null;
         };
         /**
          * MacWrittenInput
