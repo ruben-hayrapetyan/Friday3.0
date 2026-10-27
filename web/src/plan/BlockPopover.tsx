@@ -7,13 +7,14 @@
 import { useEffect, useRef, useState } from "react"
 import { useLocation } from "react-router"
 import type { Item } from "@/api/client"
-import { Icon } from "@/components/fr/controls"
+import { Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useItem, useStatus, useWhy } from "@/hooks/queries"
 import { clock, dur, sittings, weekday, when } from "@/lib/format"
 import { eventPaint, PIGMENTS } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
-import { draftOf } from "@/shell/EventPane"
+import { draftOf, useSeriesPattern } from "@/shell/EventPane"
+import { repeatChoices } from "@/shell/repeats"
 import { useShell } from "@/shell/ShellContext"
 import { Elsewhere } from "./Elsewhere"
 import { kindOf } from "./Pieces"
@@ -72,6 +73,8 @@ export function BlockPopover() {
   const skip = useCommand("skip", { label: () => "Skipped this one" })
   const drop = useCommand("drop", { label: () => `Deleted ${b?.title}` })
   const deleteSeries = useCommand("series_delete", { label: (o) => o.result.message ?? "Deleted" })
+  const repeat = useCommand("repeat", { label: (o) => `${b?.title} repeats ${o.result.description.replace(/^Every/, "every")}` })
+  const pattern = useSeriesPattern(detail?.item.series_id)
   const [asking, setAsking] = useState(false)
   const repeats = detail?.item.series_id != null
   useEffect(() => setAsking(false), [b?.key])
@@ -266,11 +269,22 @@ export function BlockPopover() {
           )}
         </div>
         {flexible && !sitting && <Elsewhere block={b} onMoved={close} />}
-        {item?.series_id != null && (
+        {item?.series_id != null ? (
           <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
             <Icon name="repeat" size={13} />
-            Repeats. Skipping leaves the others as they are.
+            {pattern ? `Repeats ${pattern.replace(/^Every/, "every")}.` : "Repeats."} Skipping leaves the others as they are.
           </div>
+        ) : (
+          // One click to make it repeat, the choices named with its own day, as a calendar app's event card has
+          // them (27 Oct); one from your calendar repeats there.
+          event &&
+          event.event_kind !== "shove" &&
+          !event.calendar && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
+              <Icon name="repeat" size={13} />
+              <Menu options={repeatChoices(b.start)} value="" onPick={(every) => every && (repeat({ id: b.item_id, every }), close())} label="Repeats" />
+            </div>
+          )
         )}
         {(event || (flexible && !sitting)) && <span className="fr-kicker">Double-click its time on the calendar to type a new one</span>}
       </aside>

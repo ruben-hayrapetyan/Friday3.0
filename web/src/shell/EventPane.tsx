@@ -3,10 +3,11 @@
 // times here moves it there. Return in the title saves; Escape closes. Under the times: whether you have time for a
 // new or moved event, or to go to one you marked optional (`components/Fit.tsx`), with other times when it doesn't.
 
+import { useQuery } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
-import type { Item } from "@/api/client"
+import { type Item, query } from "@/api/client"
 import { FitLine } from "@/components/Fit"
-import { Icon, Menu, Switch } from "@/components/fr/controls"
+import { Icon, Menu, Seg, Switch } from "@/components/fr/controls"
 import { useItem, useSettings } from "@/hooks/queries"
 import { useCalendars } from "@/settings/Calendars"
 import { useWhatIf, whatIf } from "@/whatif/store"
@@ -16,16 +17,9 @@ import { clock, weekday } from "@/lib/format"
 import { PIGMENTS, pigment, UNMARKED } from "@/lib/pigments"
 import { addDays, fromMin, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
+import { CUSTOM, dayOf, daysIn, LETTERS, movedRule, onDays, RRULE_DAYS, repeatChoices, sayRepeat, splitCount, withCount } from "./repeats"
 import { type EventDraft, useShell } from "./ShellContext"
 
-const REPEATS = [
-  { value: "", label: "Doesn't repeat" },
-  { value: "rrule:FREQ=DAILY", label: "Every day" },
-  { value: "rrule:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", label: "Every weekday" },
-  { value: "rrule:FREQ=WEEKLY", label: "Every week" },
-  { value: "rrule:FREQ=WEEKLY;INTERVAL=2", label: "Every other week" },
-  { value: "rrule:FREQ=MONTHLY", label: "Every month" },
-] as const
 
 /** A new event's draft: an hour from the quarter hour it was asked for. */
 export function draftAt(start: string, end?: string): EventDraft {
@@ -102,7 +96,8 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   const drop = useCommand("drop", { label: () => `Deleted ${draft.title}` })
   const skip = useCommand("skip", { label: () => "Deleted this one" })
   const deleteSeries = useCommand("series_delete", { label: (o) => o.result.message ?? "Deleted" })
-  const repeat = useCommand("repeat", { label: (o) => `Repeats ${o.result.description}` })
+  const repeat = useCommand("repeat", { label: (o) => `Repeats ${o.result.description.replace(/^Every/, "every")}` })
+  const pattern = useSeriesPattern(draft.seriesId)
   const [asking, setAsking] = useState(false)
   const title = useRef<HTMLInputElement>(null)
   const set = (change: Partial<EventDraft>) => setEvent({ ...draft, ...change })
@@ -157,7 +152,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
     if (!next) return
     const length = toMin(draft.end) - toMin(draft.start)
     const start = `${next}T${draft.start.slice(11, 16)}`
-    set({ start, end: fromMin(toMin(start) + length) })
+    set({ start, end: fromMin(toMin(start) + length), every: movedRule(draft.every, draft.start, start) })
   }
   const setStart = (time: string) => {
     if (!time) return
@@ -236,7 +231,20 @@ export function EventPane({ draft }: { draft: EventDraft }) {
       )}
       <span className="tnum fr-kicker" style={{ marginTop: -6 }}>
         {summary(draft)}
+        {draft.every ? ` · ${sayRepeat(draft.every, draft.start).replace(/^Every/, "every")}` : ""}
       </span>
+      {isNew || (draft.seriesId === null && !draft.calendar && staged === null) ? (
+        <Row label="Repeats">
+          <RepeatChoice every={draft.every} start={draft.start} onChange={(every) => set({ every })} />
+        </Row>
+      ) : draft.seriesId !== null ? (
+        <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
+          <Icon name="repeat" size={13} />
+          {pattern ? `Repeats ${pattern.replace(/^Every/, "every")}.` : "Repeats."} Changes here are to this time only.
+        </span>
+      ) : draft.calendar ? (
+        <span style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>To repeat it, make it repeat in {draft.calendar}.</span>
+      ) : null}
       <EventFit draft={draft} onTime={(start, end) => set({ start, end })} />
       <Row label="Calendar">
         {isNew ? (
@@ -256,18 +264,6 @@ export function EventPane({ draft }: { draft: EventDraft }) {
           </span>
         )}
       </Row>
-      {isNew || (draft.seriesId === null && !draft.calendar && staged === null) ? (
-        <Row label="Repeats">
-          <Menu options={REPEATS} value={(draft.every ?? "") as (typeof REPEATS)[number]["value"]} onPick={(v) => set({ every: v || null })} label="Repeats" />
-        </Row>
-      ) : (
-        draft.seriesId !== null && (
-          <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
-            <Icon name="repeat" size={13} />
-            Repeats. Changes here are to this time only.
-          </span>
-        )
-      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <span className="fr-eyebrow">Colour</span>
         {/* Chroma's picker: rounded squares that wrap, Automatic first, the choice named underneath. */}
@@ -347,4 +343,77 @@ function summary(d: EventDraft): string {
   const h = Math.floor(minutes / 60)
   const length = h && minutes % 60 ? `${h} h ${minutes % 60} min` : h ? `${h} h` : `${minutes} min`
   return `${name(day)}, ${clock(d.start)}–${clock(d.end)} · ${length}`
+}
+
+/** How a repeating event repeats, in words ("every Friday"), from Settings → Repeating's list. */
+export function useSeriesPattern(seriesId: number | null | undefined): string | null {
+  const series = useQuery({ queryKey: ["series_list"], queryFn: () => query("series_list"), enabled: seriesId != null }).data
+  return series?.find((r) => r.id === seriesId)?.pattern ?? null
+}
+
+/** Repeats: the choices with the event's own day, "Certain days…" with a button a day, and how many times. */
+function RepeatChoice({ every, start, onChange }: { every: string | null; start: string; onChange: (every: string | null) => void }) {
+  const choices = repeatChoices(start)
+  const { base, count } = splitCount(every ?? "")
+  const known = choices.some((c) => c.value === base)
+  const [custom, setCustom] = useState(!!every && !known && daysIn(base) !== null)
+  // A rule from before (the old list's "Every week") is shown in words rather than as nothing.
+  const other = every && !known && daysIn(base) === null ? [{ value: base, label: sayRepeat(base, start) }] : []
+  const options = [...choices, ...other, { value: CUSTOM, label: "Certain days…" }]
+  const days = daysIn(base) ?? [dayOf(start)]
+  return (
+    <span style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+      <Menu
+        options={options}
+        value={custom ? CUSTOM : every ? base : ""}
+        onPick={(v) => {
+          setCustom(v === CUSTOM)
+          onChange(v === CUSTOM ? withCount(onDays(days), count) : v ? withCount(v, count) : null)
+        }}
+        label="Repeats"
+      />
+      {custom && (
+        <span role="group" aria-label="On these days" style={{ display: "flex", gap: 4 }}>
+          {LETTERS.map((letter, d) => {
+            const on = days.includes(d)
+            return (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={on}
+                aria-label={RRULE_DAYS[d]}
+                onClick={() => {
+                  const next = on ? days.filter((x) => x !== d) : [...days, d]
+                  if (next.length) onChange(withCount(onDays(next), count))
+                }}
+                style={{ width: 28, height: 28, border: 0, borderRadius: "50%", font: "inherit", fontSize: 12, cursor: "pointer", background: on ? "var(--color-accent)" : "transparent", color: on ? "var(--fr-ink)" : "var(--color-text)", boxShadow: on ? "none" : "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 12%, transparent)" }}
+              >
+                {letter}
+              </button>
+            )
+          })}
+        </span>
+      )}
+      {every && (
+        <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
+          Ends
+          <Seg
+            options={[
+              { value: "never", label: "Never" },
+              { value: "after", label: "After" },
+            ]}
+            value={count ? "after" : "never"}
+            onPick={(v) => onChange(withCount(base, v === "after" ? 10 : null))}
+            size="small"
+          />
+          {count && (
+            <>
+              <input className="input tnum" type="number" min={1} max={500} value={count} onChange={(e) => Number(e.target.value) >= 1 && onChange(withCount(base, Math.min(500, Number(e.target.value))))} aria-label="Times" style={{ width: 64, padding: "2px 6px", minHeight: 0 }} />
+              times
+            </>
+          )}
+        </span>
+      )}
+    </span>
+  )
 }
