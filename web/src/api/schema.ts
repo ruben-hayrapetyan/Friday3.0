@@ -854,6 +854,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/lock_keep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Keep locks that make work late where they are; asked again only if they make work an hour later. */
+        post: operations["lock_keep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/late_accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Leave work late: not asked about again unless it gets an hour later. */
+        post: operations["late_accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/report": {
         parameters: {
             query?: never;
@@ -1347,6 +1381,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/review_task": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer the Review for one task's time that day: all done, some (`minutes`), none, or the whole task finished. */
+        post: operations["review_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/settle": {
         parameters: {
             query?: never;
@@ -1823,108 +1874,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/c/act": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Run a notification's button: start, done, settle a block, snooze, or record that it was opened or dismissed. */
-        post: operations["act"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/c/push_subscribe": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Send Web Push to this browser. */
-        post: operations["push_subscribe"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/c/push_unsubscribe": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Stop Web Push to this browser. */
-        post: operations["push_unsubscribe"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/c/notify_test": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Send a test notification on every channel within the minute. */
-        post: operations["notify_test"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/q/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** The 30 most recent notifications, newest first, and whether each was acted on. */
-        get: operations["notifications"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/q/push_key": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** The server's public key for Web Push, and the channels switched on. */
-        get: operations["push_key"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/c/pin": {
         parameters: {
             query?: never;
@@ -1985,7 +1934,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Settle a waiting plan: listed locks become preferred (and Friday replans), or none accepts it as it is. */
+        /** Let locks that make work late move: a lock becomes a pin, so it still prefers its place, and an event's hold */
         post: operations["resolve"];
         delete?: never;
         options?: never;
@@ -2408,7 +2357,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The week holding a date (this week when left out): planned against actual by area, deadlines hit, moves made */
+        /** The week holding a date (this week when left out): planned against actual by area, deadlines hit and moves */
         get: operations["week_review"];
         put?: never;
         post?: never;
@@ -2779,32 +2728,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** ActInput */
-        ActInput: {
-            /** Token */
-            token: string;
-        };
-        /** ActResult */
-        ActResult: {
-            /** Command Id */
-            command_id: number | null;
-            result: components["schemas"]["Changed"];
-            /** Provisional */
-            provisional?: components["schemas"]["BlockOut"][] | null;
-            changes?: components["schemas"]["ChangeOut"] | null;
-            /**
-             * Preview
-             * @default false
-             */
-            preview?: boolean;
-            /**
-             * Repeated
-             * @default false
-             */
-            repeated?: boolean;
-            /** Generation */
-            generation?: number | null;
-        };
         /** AddInput */
         AddInput: {
             /** Title */
@@ -3475,6 +3398,40 @@ export interface components {
              */
             outcome: "on_time" | "late" | "open";
         };
+        /**
+         * Decision
+         * @description Something only you can decide, waiting in the Inbox (27 Oct: "decisions but in the inbox with a notification
+         *     symbol"): a lock that makes work late (`resolve`), or work that will be late (the options, or `late_accept`).
+         */
+        Decision: {
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "lock" | "late";
+            /** Title */
+            title: string;
+            /** Detail */
+            detail: string;
+            /** Pin Id */
+            pin_id?: number | null;
+            /** Item Id */
+            item_id?: number | null;
+            /** Start */
+            start?: string | null;
+            /**
+             * Hours
+             * @default 0
+             */
+            hours?: number;
+            /**
+             * Items
+             * @default []
+             */
+            items?: components["schemas"]["LateItem"][];
+        };
         /** DependInput */
         DependInput: {
             /** Item Id */
@@ -3811,11 +3768,6 @@ export interface components {
         };
         /** Empty */
         Empty: Record<string, never>;
-        /** EndpointInput */
-        EndpointInput: {
-            /** Endpoint */
-            endpoint: string;
-        };
         /** EventGoingInput */
         EventGoingInput: {
             /** Title */
@@ -4530,6 +4482,32 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /** LateAcceptInput */
+        LateAcceptInput: {
+            /** Item Ids */
+            item_ids: number[];
+        };
+        /** LateAcceptResult */
+        LateAcceptResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
         /** LateItem */
         LateItem: {
             /** Item Id */
@@ -4719,18 +4697,31 @@ export interface components {
                 };
             };
         };
-        /** LockConflict */
-        LockConflict: {
-            /** Pin Id */
-            pin_id: number;
-            /** Item Id */
-            item_id: number;
-            /** Title */
-            title: string;
-            /** Start */
-            start: string;
-            /** Extra Late Hours */
-            extra_late_hours: number;
+        /** LockKeepInput */
+        LockKeepInput: {
+            /** Pin Ids */
+            pin_ids: number[];
+        };
+        /** LockKeepResult */
+        LockKeepResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** LogEntry */
         LogEntry: {
@@ -5472,27 +5463,6 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
-        /** NotifyTestResult */
-        NotifyTestResult: {
-            /** Command Id */
-            command_id: number | null;
-            result: components["schemas"]["Changed"];
-            /** Provisional */
-            provisional?: components["schemas"]["BlockOut"][] | null;
-            changes?: components["schemas"]["ChangeOut"] | null;
-            /**
-             * Preview
-             * @default false
-             */
-            preview?: boolean;
-            /**
-             * Repeated
-             * @default false
-             */
-            repeated?: boolean;
-            /** Generation */
-            generation?: number | null;
-        };
         /** NowOut */
         NowOut: {
             current: components["schemas"]["BlockOut"] | null;
@@ -5957,57 +5927,6 @@ export interface components {
              */
             event?: boolean;
         };
-        /** PushSubscribeResult */
-        PushSubscribeResult: {
-            /** Command Id */
-            command_id: number | null;
-            result: components["schemas"]["Changed"];
-            /** Provisional */
-            provisional?: components["schemas"]["BlockOut"][] | null;
-            changes?: components["schemas"]["ChangeOut"] | null;
-            /**
-             * Preview
-             * @default false
-             */
-            preview?: boolean;
-            /**
-             * Repeated
-             * @default false
-             */
-            repeated?: boolean;
-            /** Generation */
-            generation?: number | null;
-        };
-        /** PushSubscription */
-        PushSubscription: {
-            /** Endpoint */
-            endpoint: string;
-            /** Keys */
-            keys: {
-                [key: string]: string;
-            };
-        };
-        /** PushUnsubscribeResult */
-        PushUnsubscribeResult: {
-            /** Command Id */
-            command_id: number | null;
-            result: components["schemas"]["Changed"];
-            /** Provisional */
-            provisional?: components["schemas"]["BlockOut"][] | null;
-            changes?: components["schemas"]["ChangeOut"] | null;
-            /**
-             * Preview
-             * @default false
-             */
-            preview?: boolean;
-            /**
-             * Repeated
-             * @default false
-             */
-            repeated?: boolean;
-            /** Generation */
-            generation?: number | null;
-        };
         /** Question */
         Question: {
             /** Id */
@@ -6254,11 +6173,8 @@ export interface components {
         };
         /** ResolveInput */
         ResolveInput: {
-            /**
-             * Unlock Pin Ids
-             * @default []
-             */
-            unlock_pin_ids?: number[];
+            /** Unlock Pin Ids */
+            unlock_pin_ids: number[];
         };
         /** ResolveResult */
         ResolveResult: {
@@ -6324,6 +6240,39 @@ export interface components {
             /** End */
             end?: string | null;
         };
+        /**
+         * ReviewGap
+         * @description A task's time that day Friday can't account for (27 Oct: Review asks "only the gaps, by task"): blocks that
+         *     ended without a timer running, an answer, or the task checked off. Once answered, what you said.
+         */
+        ReviewGap: {
+            /** Item Id */
+            item_id: number;
+            /** Title */
+            title: string;
+            /** Planned Min */
+            planned_min: number;
+            /** Spans */
+            spans: string[][];
+            /** Blocks */
+            blocks: string[];
+            /** Due */
+            due?: string | null;
+            /**
+             * Last
+             * @default false
+             */
+            last?: boolean;
+            /** Answer */
+            answer?: ("done" | "partial" | "not_done") | null;
+            /** Done Min */
+            done_min?: number | null;
+            /**
+             * Finished
+             * @default false
+             */
+            finished?: boolean;
+        };
         /** ReviewOut */
         ReviewOut: {
             /** Date */
@@ -6350,6 +6299,11 @@ export interface components {
              * @default []
              */
             sleep?: components["schemas"]["SleepAsk"][];
+            /**
+             * Gaps
+             * @default []
+             */
+            gaps?: components["schemas"]["ReviewGap"][];
         };
         /** ReviewSubmitInput */
         ReviewSubmitInput: {
@@ -6363,6 +6317,41 @@ export interface components {
         };
         /** ReviewSubmitResult */
         ReviewSubmitResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** ReviewTaskInput */
+        ReviewTaskInput: {
+            /** Date */
+            date?: string | null;
+            /** Item Id */
+            item_id: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "done" | "partial" | "not_done" | "finished";
+            /** Minutes */
+            minutes?: number | null;
+        };
+        /** ReviewTaskResult */
+        ReviewTaskResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
@@ -7670,10 +7659,10 @@ export interface components {
              */
             problems?: string[];
             /**
-             * Conflicts
+             * Decisions
              * @default []
              */
-            conflicts?: components["schemas"]["LockConflict"][];
+            decisions?: components["schemas"]["Decision"][];
             /**
              * Config Keys
              * @default []
@@ -8301,7 +8290,7 @@ export interface components {
         };
         /**
          * WeekOut
-         * @description The weekly review (DESIGN §18.9): planned against actual by area, deadlines, moves and notifications.
+         * @description The week (DESIGN §18.9; in Insights since 27 Oct): planned against actual by area, deadlines and moves.
          */
         WeekOut: {
             /** Start */
@@ -8318,10 +8307,6 @@ export interface components {
             deadlines: components["schemas"]["DeadlineWeek"][];
             /** Moves */
             moves: number;
-            /** Notifications */
-            notifications: {
-                [key: string]: number;
-            };
             /**
              * Learned
              * @default []
@@ -10209,6 +10194,80 @@ export interface operations {
             };
         };
     };
+    lock_keep: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LockKeepInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LockKeepResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    late_accept: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LateAcceptInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LateAcceptResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     report: {
         parameters: {
             query?: {
@@ -11219,6 +11278,43 @@ export interface operations {
             };
         };
     };
+    review_task: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewTaskInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewTaskResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     settle: {
         parameters: {
             query?: {
@@ -12124,198 +12220,6 @@ export interface operations {
             };
         };
     };
-    act: {
-        parameters: {
-            query?: {
-                preview?: "false" | "true" | "full";
-            };
-            header?: {
-                "idempotency-key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ActInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ActResult"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    push_subscribe: {
-        parameters: {
-            query?: {
-                preview?: "false" | "true" | "full";
-            };
-            header?: {
-                "idempotency-key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PushSubscription"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PushSubscribeResult"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    push_unsubscribe: {
-        parameters: {
-            query?: {
-                preview?: "false" | "true" | "full";
-            };
-            header?: {
-                "idempotency-key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EndpointInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PushUnsubscribeResult"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    notify_test: {
-        parameters: {
-            query?: {
-                preview?: "false" | "true" | "full";
-            };
-            header?: {
-                "idempotency-key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Empty"] | null;
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotifyTestResult"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    notifications: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
-                };
-            };
-        };
-    };
-    push_key: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
     pin: {
         parameters: {
             query?: {
@@ -12438,9 +12342,9 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": components["schemas"]["ResolveInput"] | null;
+                "application/json": components["schemas"]["ResolveInput"];
             };
         };
         responses: {

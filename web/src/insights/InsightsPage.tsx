@@ -1,7 +1,8 @@
 // Insights (v22): the last few weeks in three numbers, how long things really take by kind (and whether Friday
 // adjusts estimates for you), when you get things done (what your sleep and meals say is with them, in Sleep &
 // meals), what Friday learned for you to approve, one comparison question, and the load ahead
-// against what you can do.
+// against what you can do. This week, the week's look back, moved here from Review (27 Oct); it's suggested on the
+// week's last day.
 
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
@@ -14,6 +15,9 @@ import { useShell } from "@/shell/ShellContext"
 import { Comparison } from "./Comparison"
 import { Learned } from "./Learned"
 import { Section } from "./Section"
+import { WeeklyReview } from "./WeeklyReview"
+import { useSettings } from "@/hooks/queries"
+import { addDays } from "@/lib/time"
 
 export { Section }
 
@@ -26,18 +30,39 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const HOURS = Array.from({ length: 16 }, (_, i) => String(i + 8).padStart(2, "0"))
 
 export function InsightsPage() {
+  const { today } = useShell()
+  const settings = useSettings().data as Record<string, { week_start?: string }> | undefined
+  const lastDay = weekday(addDays(today, 1)).toLowerCase() === (settings?.time?.week_start ?? "mon")
+  const [tab, setTab] = useState<"Trends" | "This week">(lastDay ? "This week" : "Trends")
   const [weeks, setWeeks] = useState(4)
   const data = useQuery({ queryKey: ["insights", weeks], queryFn: () => query("insights", { weeks }) }).data
+  const suggested = lastDay ? "This week" : null
   return (
     <>
       <div className="fr-page-head">
         <span className="fr-h fr-title">Insights</span>
-        <Seg options={RANGES} value={weeks} onPick={setWeeks} />
+        <Seg
+          options={(["Trends", "This week"] as const).map((t) => ({
+            value: t,
+            label: (
+              <>
+                {t}
+                {t === suggested && <span style={{ fontSize: 10, color: "var(--color-accent-300)" }}>suggested</span>}
+              </>
+            ),
+          }))}
+          value={tab}
+          onPick={setTab}
+        />
+        {tab === "Trends" && <Seg options={RANGES} value={weeks} onPick={setWeeks} />}
         <div style={{ flex: 1 }} />
         <span className="fr-kicker fr-head-note" style={{ whiteSpace: "nowrap" }}>
-          {data ? `Based on ${data.done} finished ${data.done === 1 ? "thing" : "things"}` : ""}
+          {tab === "This week" ? "Choices apply when you finish" : data ? `Based on ${data.done} finished ${data.done === 1 ? "thing" : "things"}` : ""}
         </span>
       </div>
+      {tab === "This week" ? (
+        <WeeklyReview />
+      ) : (
       <div className="fr-panel" style={{ overflowY: "auto" }}>
         {data && (
           <div className="fr-gutter" style={{ maxWidth: 1080, padding: "28px 40px 120px", display: "flex", flexDirection: "column", gap: 28 }}>
@@ -63,6 +88,7 @@ export function InsightsPage() {
           </div>
         )}
       </div>
+      )}
     </>
   )
 }

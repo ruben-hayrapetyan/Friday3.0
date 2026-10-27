@@ -16,7 +16,6 @@ dependencies = [
   "httpx>=0.28.1",
   "typer>=0.27.3",
   "rich>=15.0.0",
-  "pywebpush>=2.5.0",
   "scipy>=1.18.1",
   "icalendar>=7.3.0",
   "anthropic>=1.15.0",

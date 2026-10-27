@@ -148,7 +148,7 @@ const STEPS: Step[] = [
   {
     id: "brief",
     title: "Morning brief",
-    note: "Each morning, what's planned and what matters most today, with a notification half an hour after you get up.",
+    note: "Each morning, what's planned and what matters most today, when you first open Friday.",
     body: (a, set) => (
       <Seg
         options={[

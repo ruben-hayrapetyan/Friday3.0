@@ -39,7 +39,6 @@ const PAGES: [string, string, string][] = [
   ["Tags and kinds", "/settings/tags", "tag"],
   ["Schedule", "/settings/schedule", "clock"],
   ["Repeating", "/settings/repeating", "repeat"],
-  ["Notifications settings", "/settings/notifications", "bell"],
   ["Integrations", "/settings/integrations", "plugs"],
   ["Shortcuts", "/settings/shortcuts", "keyboard"],
 ]

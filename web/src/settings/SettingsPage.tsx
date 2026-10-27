@@ -1,4 +1,4 @@
-// Settings (v22): appearance, tags and kinds, schedule, repeating, notifications, integrations, about you and shortcuts, with
+// Settings (v22): appearance, tags and kinds, schedule, repeating, integrations, about you and shortcuts, with
 // Advanced for the rest (learning, plugins, saved paces and any key). Changes apply right away; keys friday.toml
 // sets are read-only here and say so.
 
@@ -13,7 +13,6 @@ import { Appearance } from "./Appearance"
 import { CalendarsSection } from "./CalendarsSection"
 import { Tokens } from "./Assistants"
 import { Integrations } from "./Integrations"
-import { Notifications } from "./Notifications"
 import { Repeating } from "./Repeating"
 import { Schedule } from "./Schedule"
 import { Shortcuts } from "./Shortcuts"
@@ -25,7 +24,6 @@ const SECTIONS = [
   { id: "tags", label: "Tags/Kinds", icon: "tag", page: TagsKinds },
   { id: "schedule", label: "Schedule", icon: "clock", page: Schedule },
   { id: "repeating", label: "Repeating", icon: "repeat", page: Repeating },
-  { id: "notifications", label: "Notifications", icon: "bell", page: Notifications },
   { id: "integrations", label: "Integrations", icon: "plugs", page: Integrations },
   { id: "tokens", label: "Tokens", icon: "key", page: Tokens },
   { id: "about", label: "About you", icon: "user", page: AboutYou },

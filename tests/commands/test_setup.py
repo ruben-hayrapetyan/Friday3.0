@@ -87,8 +87,7 @@ def test_answers_set_sleep_load_focus_free_time_and_the_brief(app: App) -> None:
     assert (evenings["start"], evenings["end"], evenings["free"]) == ("19:00", "23:00", "3h")
     assert rule(app, "weekends").params["free"] == "6h"
     assert rule(app, "finish_early").params["days"] == 2
-    assert s["notify"].types["morning_brief"] is False
-    assert s["notify"].types["evening_review"] is True
+    assert s["notify"].morning_brief is False
     out = app.do("setup")
     assert out["done"] is True
     assert out["answers"]["focus_hours"] == 1.5 and out["answers"]["weekend_bedtime"] == "02:00"
@@ -178,3 +177,14 @@ def test_any_amount_you_type_is_kept_as_typed(app: App) -> None:
     assert rule(app, "deep_run").params["threshold"] == "0.75h"
     out = answers(app)
     assert (out["normal_hours"], out["most_hours"], out["focus_hours"], out["evening_free"]) == (6.25, 11, 0.75, 4.5)
+
+
+def test_a_notifications_setting_saved_before_they_were_removed_still_loads_with_its_brief_switch() -> None:
+    """27 Oct: notifications were removed; what you had saved (channels, quiet hours, kinds) is dropped on reading."""
+    from friday.core.settings import validate_value
+
+    old = {"channels": [], "quiet": None, "max_per_day": 8, "app_url": "https://me.ts.net",
+           "types": {"morning_brief": False, "evening_review": True}}  # fmt: skip
+    kept = validate_value("notify", old)
+    assert (kept.morning_brief, kept.app_url) == (False, "https://me.ts.net")
+    assert validate_value("notify", {}).morning_brief is True

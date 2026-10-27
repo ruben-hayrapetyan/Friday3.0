@@ -28,6 +28,7 @@ import { picks, usePicks } from "./picks"
 import { MonthView, monthStart } from "./MonthView"
 import { useWhatIf, whatIf } from "@/whatif/store"
 import { WhatIfBar } from "@/whatif/WhatIfPanel"
+import { DecisionsButton } from "@/inbox/Decisions"
 
 export type { View }
 
@@ -126,7 +127,7 @@ function Days({ first, view, drawer, aside }: { first: string; view: 1 | 3 | 7; 
 
 function Header(props: { view: View; first: string; onView: (v: View) => void; onStep: (by: number) => void; onToday: () => void }) {
   const { view, first, onView, onStep, onToday } = props
-  const { today, pop, setPop, setDialog, drawer, setDrawer, layout } = useShell()
+  const { today, setDialog, drawer, setDrawer, layout } = useShell()
   const days = view === "month" ? 1 : view
   const views = layout.weekFits ? VIEWS : VIEWS.filter((v) => v.value !== 7)
   return (
@@ -160,7 +161,7 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
       <ShowMenu />
       <PlanMenu views={layout.tight ? { options: views, value: view, onPick: onView, onToday } : undefined} />
       <IconButton tour="search" icon="magnifying-glass" label="Search (⌘K)" onClick={() => setDialog("search")} />
-      {!layout.tight && <IconButton icon="bell" label="Notifications" onClick={() => setPop(pop === "bell" ? null : "bell")} />}
+      <DecisionsButton />
       <button
         className="btn btn-icon btn-secondary"
         data-tour="drawer"
@@ -185,7 +186,7 @@ function IconButton({ icon, label, onClick, tour }: { icon: string; label: strin
 
 /** Everything that changes the plan, in one menu: Ask Claude, other ways, shove, pace, the brief. */
 function PlanMenu({ views }: { views?: { options: typeof VIEWS; value: View; onPick: (v: View) => void; onToday: () => void } }) {
-  const { pop, setPop, setDialog, askClaude, layout } = useShell()
+  const { pop, setPop, setDialog, askClaude } = useShell()
   const paces = usePaces().data
   return (
     <Dropdown tour="plan-menu" icon="sparkle" label="Plan">
@@ -204,7 +205,6 @@ function PlanMenu({ views }: { views?: { options: typeof VIEWS; value: View; onP
           <MenuRow icon="hand-palm" label="Shove" note="Take back a stretch of time" onClick={() => (close(), setPop(pop === "shove" ? null : "shove"))} />
           <MenuRow icon="gauge" label="Pace" note={paces ? paceLabel(paces) : "Push harder or ease off"} onClick={() => (close(), setPop(pop === "pace" ? null : "pace"))} />
           <MenuRow icon="sun-horizon" label="Morning brief" note="Today at a glance" onClick={() => (close(), setDialog("brief"))} />
-          {layout.tight && <MenuRow icon="bell" label="Notifications" onClick={() => (close(), setPop("bell"))} />}
         </>
       )}
     </Dropdown>
@@ -308,7 +308,6 @@ function Attention({ first, days }: { first: string; days: number }) {
   }
   const over = calendar?.days.map((d) => ({ date: d.date, by: (plan?.day_hours[d.date] ?? 0) - d.cap_hours })).find((d) => d.by > 0.05)
   if (over) notes.push({ tone: "mark", icon: "warning", text: `${FULL_DAY[weekday(over.date)]} is ${over.by.toFixed(1)} h over`, action: { label: "See options", run: () => setDialog("triage") } })
-  if (status?.conflicts?.length) notes.push({ tone: "mark", icon: "lock-simple", text: "A lock can't hold", action: { label: "Decide", run: () => setDialog("conflicts") } })
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
   useEffect(() => {

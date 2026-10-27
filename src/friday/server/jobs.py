@@ -4,7 +4,6 @@ after downtime. `job_runs` remembers when each job last ran.
 - `nightly` (at `jobs.nightly_replan_at`): close yesterday (assumed progress), materialize series, refit learned
   durations and the energy map, back up the database, then a cold replan.
 - `tick` (every `jobs.tick_replan_min`): a warm replan if a block boundary passed since the last plan.
-- `notify` (every minute): send what is due (`commands/delivery.py`).
 - `questions` (hourly): draw the day's comparison questions for the evening review, within the budget.
 - `config` (every minute): apply `friday.toml` when it changed (`server/config.py`).
 - `sync` (every minute): read the sources that are due and make suggestions (`commands/fetching.py`).
@@ -21,7 +20,6 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
-from friday.commands.delivery import deliver
 from friday.commands.eating import decide
 from friday.commands.eventwrites import failed_writes, write_events
 from friday.commands.fetching import failing_sources, sync
@@ -76,7 +74,6 @@ def run_due(
     jobs = (
         ("nightly", nightly_due, nightly),
         ("tick", tick_due, tick),
-        ("notify", notify_due, notify),
         ("questions", questions_due, questions),
         ("config", every_minute, config),
         ("sync", every_minute, sync_sources),
@@ -155,23 +152,6 @@ def tick(
 ) -> None:
     if supervisor is not None and boundary_passed(conn, now_utc, user_id):
         supervisor.request(0, reason="tick")
-
-
-def notify_due(last: int | None, now_utc: int, settings: dict[str, Any]) -> bool:
-    return last is None or now_utc - last >= 1
-
-
-def notify(
-    conn: sqlite3.Connection,
-    now_utc: int,
-    settings: dict[str, Any],
-    hub: Hub,
-    supervisor: Supervisor | None,
-    backups: Path,
-    user_id: int,
-) -> None:
-    if deliver(conn, now_utc, backups.parent, user_id):
-        hub.publish("status.changed")
 
 
 def every_minute(last: int | None, now_utc: int, settings: dict[str, Any]) -> bool:

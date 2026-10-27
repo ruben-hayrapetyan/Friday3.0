@@ -7,7 +7,8 @@ import { Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } fr
 import { DragProvider } from "@/components/calendar/useDrag"
 import { SelectionMenu } from "@/components/calendar/SelectionMenu"
 import { AskClaudeDialog } from "@/dialogs/AskClaude"
-import { BriefDialog, briefDue, LockDialog, TriageDialog } from "@/dialogs/Dialogs"
+import { BriefDialog, briefDue, TriageDialog, useBriefSwitch } from "@/dialogs/Dialogs"
+import { useDecisionsTitle } from "@/inbox/Decisions"
 import { SetupDialog, useSetup } from "@/dialogs/Setup"
 import { useToast } from "@/components/Toasts"
 import { useNow, useStatus } from "@/hooks/queries"
@@ -18,7 +19,6 @@ import { Dock } from "@/now/Dock"
 import { BlockPopover } from "@/plan/BlockPopover"
 import { OtherWaysDialog, WayBanner } from "@/plan/OtherWays"
 import { PlanPage } from "@/plan/PlanPage"
-import { BellPop } from "@/pops/BellPop"
 import { PacePop } from "@/pops/PacePop"
 import { markShoved } from "@/pops/shoved"
 import { ShovePop } from "@/pops/ShovePop"
@@ -61,11 +61,13 @@ export function Shell() {
   useShellKeys()
   useHostActions()
   useTriageLink()
+  useDecisionsTitle()
   const setupDone = useSetup().data?.done
+  const [briefOn] = useBriefSwitch()
   useEffect(() => {
     if (setupDone === false) setDialog("setup") // the first time Friday opens: a few questions before anything else
-    else if (setupDone && briefDue(today) && !tourDue()) setDialog("brief")
-  }, [today, setDialog, setupDone])
+    else if (setupDone && briefOn && briefDue(today) && !tourDue()) setDialog("brief")
+  }, [today, setDialog, setupDone, briefOn])
   useEffect(() => setNavOpen(false), [location.pathname, setNavOpen]) // a page picked from the slid-out sidebar
   const narrow = layout.mode === "narrow"
   const w = useWhatIf()
@@ -128,10 +130,8 @@ export function Shell() {
         {pop && <div onClick={() => setPop(null)} style={{ position: "absolute", inset: 0, zIndex: 9 }} />}
         {pop === "shove" && <ShovePop />}
         {pop === "pace" && <PacePop />}
-        {pop === "bell" && <BellPop />}
       </div>
       {selection && <SelectionMenu selection={selection} today={today} onShove={(range) => (setSelection(null), shove(range))} onClose={() => setSelection(null)} />}
-      {dialog === "conflicts" && <LockDialog onClose={() => setDialog(null)} />}
       {dialog === "triage" && <TriageDialog onClose={() => setDialog(null)} />}
       {dialog === "brief" && <BriefDialog onClose={() => setDialog(null)} />}
       {dialog === "search" && <Search />}
@@ -226,7 +226,7 @@ function useHostActions() {
   })
 }
 
-/** A notification's "Options" opens the app at /?triage. */
+/** A link to the app at /?triage opens the options for late work. */
 function useTriageLink() {
   const { setDialog } = useShell()
   const [params, setParams] = useSearchParams()

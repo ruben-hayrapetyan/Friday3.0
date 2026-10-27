@@ -32,24 +32,41 @@ def wall(app: App, start: str, end: str) -> None:
     app.do("add", title="busy", when="fixed", start=start, end=end)
 
 
-def test_03_a_lock_that_makes_other_work_late_is_named_with_its_extra_late_hours(app: App) -> None:
+def lock_asks(app: App) -> list[tuple[int | None, str, str | None]]:
+    return [(d["pin_id"], d["title"], d["start"]) for d in app.do("status")["decisions"] if d["kind"] == "lock"]
+
+
+def test_03_a_lock_that_makes_other_work_late_is_kept_and_asked_about_in_the_inbox(app: App) -> None:
+    """27 Oct: the plan no longer waits on a lock; it keeps it and the Inbox asks."""
     essay = app.do("add", text="essay due mon 12:00 ~3h one-sitting")["item"]["id"]
     wall(app, "2026-10-19T12:00", "2026-10-19T23:30")
     chore = app.do("add", text="call bank ~1h")["item"]["id"]
     pin = app.full("pin", payload={"id": chore, "start": "2026-10-19T10:00", "end": "2026-10-19T11:00"},
                    provisional=False)  # fmt: skip
     answer = app.do("replan")
-    assert answer["status"] == "waiting" and "call bank" in answer["message"]
+    assert answer["status"] == "current" and "call bank" in answer["message"]
+    assert plan_blocks(app, chore) == [("2026-10-19T10:00", "2026-10-19T11:00")]  # kept meanwhile
     pin_id = app.table("pins")[0]["id"]
-    assert [(c["pin_id"], c["title"], c["start"]) for c in app.do("status")["conflicts"]] == [
-        (pin_id, "call bank", "2026-10-19T10:00")
-    ]
+    assert lock_asks(app) == [(pin_id, "Keep call bank where you locked it?", "2026-10-19T10:00")]
     app.do("resolve", unlock_pin_ids=[pin_id])
     assert app.table("pins")[0]["kind"] == "preferred"
     assert app.do("replan")["status"] == "current"
-    assert app.do("status")["conflicts"] == []
+    assert lock_asks(app) == []
     assert plan_blocks(app, essay) == [("2026-10-19T09:00", "2026-10-19T12:00")]
     assert pin.command_id is not None
+
+
+def test_03b_a_lock_you_keep_isnt_asked_about_again(app: App) -> None:
+    app.do("add", text="essay due mon 12:00 ~3h one-sitting")
+    wall(app, "2026-10-19T12:00", "2026-10-19T23:30")
+    chore = app.do("add", text="call bank ~1h")["item"]["id"]
+    app.full("pin", payload={"id": chore, "start": "2026-10-19T10:00", "end": "2026-10-19T11:00"}, provisional=False)
+    app.do("replan")
+    pin_id = app.table("pins")[0]["id"]
+    assert app.do("lock_keep", pin_ids=[pin_id])["message"] == "Kept call bank"
+    app.do("replan")
+    assert lock_asks(app) == [] and app.table("pins")[0]["kind"] == "locked"
+    assert plan_blocks(app, chore) == [("2026-10-19T10:00", "2026-10-19T11:00")]
 
 
 def test_04_shoving_today_returns_the_must_do_list_and_changes_nothing(app: App) -> None:

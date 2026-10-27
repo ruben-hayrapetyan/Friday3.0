@@ -18,7 +18,6 @@ from friday.api.views import (
     Alert,
     ItemDetail,
     LateItem,
-    LockConflict,
     LogEntry,
     NowOut,
     PacesOut,
@@ -28,6 +27,7 @@ from friday.api.views import (
     StatusOut,
     Swap,
 )
+from friday.commands.decisions import decisions
 from friday.commands.fields import item_out, require_item
 from friday.commands.registry import Ctx, query
 from friday.commands.timer import elapsed_seconds, running
@@ -619,7 +619,7 @@ def status(ctx: Ctx, inp: Empty) -> StatusOut:
         late_items=late_items,
         slipping=slipping(ctx, saved, set(late_hours)),
         problems=list(kv_get(ctx.conn, "server_problems", {}, ctx.user_id).values()),
-        conflicts=waiting_conflicts(ctx, saved["id"] if saved else 0),
+        decisions=decisions(ctx, report, late_items),
         config_keys=kv_get(ctx.conn, "config_keys", [], ctx.user_id),
         demo=bool(kv_get(ctx.conn, "demo", False, ctx.user_id)),
         suggestions=(
@@ -633,16 +633,6 @@ def status(ctx: Ctx, inp: Empty) -> StatusOut:
             or {"n": 0}
         )["n"],
     )
-
-
-def waiting_conflicts(ctx: Ctx, current_id: int) -> list[LockConflict]:
-    waiting = one(
-        ctx.conn,
-        "SELECT report FROM plans WHERE user_id = ? AND status = 'waiting' AND id > ? ORDER BY id DESC",
-        [ctx.user_id, current_id],
-    )
-    found = json.loads(waiting["report"]).get("conflicts", []) if waiting else []
-    return [LockConflict(**c | {"start": ctx.local(c["start"]) or ""}) for c in found]
 
 
 @query("settings")

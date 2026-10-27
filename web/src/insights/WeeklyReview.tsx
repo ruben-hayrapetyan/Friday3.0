@@ -1,6 +1,6 @@
-// The weekly review (v22): where the time went by tag, what you finished, what carries over (keep, next week or
-// drop), what's coming up, how the week felt, the pace for next week and a note for next Sunday. Choices apply when
-// you finish.
+// The week's look back (v22; Insights → This week since 27 Oct): where the time went by tag, what you finished, what
+// carries over (keep, next week or drop), what's coming up, how the week felt, the pace for next week and a note for
+// next Sunday. Choices apply when you finish.
 
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"

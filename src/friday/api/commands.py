@@ -144,6 +144,13 @@ class ReviewEntry(Model):
     end: str | None = None
 
 
+class ReviewTaskInput(Model):
+    date: str | None = None  # a planning date; today when left out
+    item_id: int
+    status: Literal["done", "partial", "not_done", "finished"]  # finished: done, and the whole task with it
+    minutes: int | None = None  # partial: how much of the planned time you did
+
+
 class ReviewSubmitInput(Model):
     date: str | None = None  # a planning date; today when left out
     entries: list[ReviewEntry] = []
@@ -367,7 +374,15 @@ class ReplanOutput(Model):
 
 
 class ResolveInput(Model):
-    unlock_pin_ids: list[int] = []
+    unlock_pin_ids: list[int]  # let these move: a lock becomes a pin, an event's hold lets work in
+
+
+class LockKeepInput(Model):
+    pin_ids: list[int]  # keep these where they are: not asked again unless they make work an hour later
+
+
+class LateAcceptInput(Model):
+    item_ids: list[int]  # work you accept will be late: not asked again unless it gets an hour later
 
 
 class UndoInput(Model):
@@ -593,10 +608,6 @@ class TemplateSaveInput(Model):
     project_id: int  # its children, in order, become the steps
 
 
-class ActInput(Model):
-    token: str  # from a notification's button, signed by the server and good once
-
-
 class SettleInput(Model):
     """A past block settled before the review: done, partly or not done."""
 
@@ -604,15 +615,6 @@ class SettleInput(Model):
     status: Literal["done", "partial", "not_done"] = "done"
     share: float = 1.0
     until: str | None = None  # local: the block as the calendar showed it, pieces joined, to here
-
-
-class PushSubscription(Model):
-    endpoint: str
-    keys: dict[str, str]  # p256dh and auth, as the browser gives them
-
-
-class EndpointInput(Model):
-    endpoint: str
 
 
 class CompareAnswerInput(Model):

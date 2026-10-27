@@ -1,7 +1,7 @@
 """Bugs an audit found in the commands and the planner (2026-10-25), each kept fixed: a day override that kept only
 what it was last told, a merge that tied a copy to itself, a series stop that broke on a step or a timer and whose
-undo lost the calendar link, the slider and an unreviewed block counted twice, a waiting plan that dropped the
-day's past blocks, last week's work counted in this week's, yesterday's unreviewed work counting for nothing until
+undo lost the calendar link, the slider and an unreviewed block counted twice, a replan that dropped the day's
+past blocks, last week's work counted in this week's, yesterday's unreviewed work counting for nothing until
 the night after, a shove after midnight on the day before, and a second other way picked unlike it was shown."""
 
 from pathlib import Path
@@ -67,21 +67,14 @@ def test_slider_after_an_assumed_block_isnt_counted_twice(app: App) -> None:
     assert units == 4, f"planner thinks {units * 15} min are done, the item shows 60"
 
 
-def test_resolve_keeps_todays_past_blocks(app: App) -> None:
-    from friday.planner.service import plan_snapshot, save_plan
-
+def test_a_replan_keeps_todays_past_blocks(app: App) -> None:
     item = app.do("add", text="essay due wed ~2h")["item"]["id"]
     app.do("pin", id=item, start="2026-10-19T09:00", end="2026-10-19T10:00", kind="locked")
     replan(app.conn, app.now_utc)
     app.at("2026-10-19T10:00")
     before = build_input(take_snapshot(app.conn, app.now_utc)).progress_units.get(item, 0)
     assert before == 4
-    # a solve that lands as "waiting" (a lock conflict): save it the way save_plan does for such a plan
-    snapshot = take_snapshot(app.conn, app.now_utc)
-    assembled = plan_snapshot(snapshot, warm=True)
-    assembled.status = "waiting"
-    save_plan(app.conn, snapshot, assembled, "replan")
-    app.do("resolve")  # accept the waiting plan as it is
+    replan(app.conn, app.now_utc)  # a later plan carries the day's past blocks
     after = build_input(take_snapshot(app.conn, app.now_utc)).progress_units.get(item, 0)
     review = [b["key"] for b in app.do("review")["blocks"]]
     assert after == 4 and review, f"progress {after * 15} min, review blocks {review}"

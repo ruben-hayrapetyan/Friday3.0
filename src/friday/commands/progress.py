@@ -13,12 +13,14 @@ from friday.api.commands import (
     LogInput,
     ProgressInput,
     ReviewSubmitInput,
+    ReviewTaskInput,
     SettleInput,
     StartInput,
     StopInput,
     StuckInput,
     TimerOut,
 )
+from friday.api.views import ReviewGap
 from friday.commands.fields import insert_item, item_out, new_item, require_item
 from friday.commands.items import done
 from friday.commands.refit import refit
@@ -212,6 +214,102 @@ def review_submit(ctx: Ctx, inp: ReviewSubmitInput) -> Changed:
     ctx.db.upsert("reviews", {"user_id": ctx.user_id, "date": day.isoformat()}, {"submitted_utc": ctx.now_text})
     refit(ctx)  # the review is where comparisons are answered (§21.2)
     return Changed(message=f"Reviewed {day:%a %b} {day.day}")
+
+
+def ended_blocks(ctx: Ctx, day: date, item_id: int | None = None) -> list[dict[str, Any]]:
+    """`day_blocks` that are over (one under way isn't asked about yet), of one item when given."""
+    return [
+        b
+        for b in day_blocks(ctx, day)
+        if parse_utc(b["end_utc"]) <= ctx.now_utc and (item_id is None or b["item_id"] == item_id)
+    ]
+
+
+def day_gaps(ctx: Ctx, day: date) -> list[ReviewGap]:
+    """The day's time Friday can't account for, by task, in the order it was planned (27 Oct: "only the gaps, by
+    task"): ended blocks with no timer, no answer and the task still open, and what you said of those answered.
+    Routines (lunch, dinner) are the meal taps' to record, not the Review's."""
+    found = ended_blocks(ctx, day)
+    if not found:
+        return []
+    ids = sorted({b["item_id"] for b in found})
+    items = {r["id"]: r for r in rows(ctx.conn, f"SELECT * FROM items WHERE id IN ({', '.join('?' * len(ids))})", ids)}
+    plan = current_plan(ctx.conn, ctx.user_id)
+    ahead = (
+        {
+            r["item_id"]
+            for r in rows(
+                ctx.conn,
+                "SELECT DISTINCT item_id FROM blocks WHERE plan_id = ? AND start_utc >= ?",
+                [plan["id"], ctx.now_text],
+            )
+        }
+        if plan
+        else set()
+    )
+    by_item: dict[int, list[dict[str, Any]]] = {}
+    for b in found:
+        by_item.setdefault(b["item_id"], []).append(b)
+    out = []
+    for item_id, blocks in by_item.items():
+        item = items.get(item_id)
+        if item is None or item["preset"] == "Routine":
+            continue
+        said = [reviewed_minutes(ctx, b) for b in blocks]
+        open_ = [b for b, m in zip(blocks, said, strict=True) if m is None]
+        if open_ and item["status"] != "todo":
+            continue  # checked off: done is what happened
+        shown = open_ or blocks
+        planned = sum(b["end"] - b["start"] for b in shown)
+        answer = None
+        if not open_:
+            told = sum(m or 0 for m in said)
+            answer = "not_done" if told == 0 else "done" if told >= planned else "partial"
+        out.append(
+            ReviewGap(
+                item_id=item_id,
+                title=item["title"],
+                planned_min=planned,
+                spans=[[ctx.local(format_utc(b["start"])) or "", ctx.local(format_utc(b["end"])) or ""] for b in shown],
+                blocks=[block_key(item_id, b["start"]) for b in shown],
+                due=ctx.local(item["due_utc"]),
+                last=item_id not in ahead,
+                answer=answer,
+                done_min=None if answer is None else sum(m or 0 for m in said),
+                finished=item["status"] == "done",
+            )
+        )
+    return out
+
+
+@command("review_task", affects_plan=True)
+def review_task(ctx: Ctx, inp: ReviewTaskInput) -> Changed:
+    """Answer the Review for one task's time that day: all done, some (`minutes`), none, or the whole task finished."""
+    day = date.fromisoformat(inp.date) if inp.date else ctx.today
+    blocks = ended_blocks(ctx, day, inp.item_id)
+    if not blocks:
+        raise FieldError("item_id", f"T{inp.item_id} has no time on {day} to answer for")
+    planned = sum(b["end"] - b["start"] for b in blocks)
+    status, share = ("done" if inp.status == "finished" else inp.status), 1.0
+    if inp.status == "partial":
+        if inp.minutes is None:
+            raise FieldError("minutes", "say how much you did")
+        share = min(1.0, max(0.0, inp.minutes / planned))
+    for block in blocks:
+        write_review(ctx, block, status, share)
+    item = require_item(ctx, inp.item_id)
+    if inp.status == "finished" and item.status != "done":
+        done(ctx, DoneInput(id=inp.item_id))
+    if all(g.answer is not None for g in day_gaps(ctx, day)):
+        ctx.db.upsert("reviews", {"user_id": ctx.user_id, "date": day.isoformat()}, {"submitted_utc": ctx.now_text})
+        refit(ctx)  # the review is where comparisons are answered (§21.2)
+    said = {
+        "done": "all done",
+        "partial": f"{round(share * planned)} min done",
+        "not_done": "Friday plans it again",
+        "finished": "finished",
+    }[inp.status]
+    return Changed(message=f"{item.title}: {said}")
 
 
 def find_day_block(ctx: Ctx, day: date, key: str) -> dict[str, Any]:

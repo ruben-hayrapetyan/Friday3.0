@@ -146,8 +146,7 @@ class World:
         t2 = time.perf_counter()
         assembled = assemble(snapshot, solved)
         conflicts = lock_conflicts(snapshot, assembled)
-        if conflicts:
-            assembled.status = "waiting"
+        if conflicts:  # as planner.service.plan_snapshot: the plan keeps them, the Inbox asks
             assembled.report["conflicts"] = conflicts
         t3 = time.perf_counter()
         save_plan(self.conn, snapshot, assembled, step)
@@ -272,7 +271,7 @@ def plan_issues(world: World, status: str, coarse_from: int | None = None) -> li
         mine, theirs = by_item.get(dep["item_id"]), by_item.get(dep["depends_on_id"])
         if mine and theirs and min(s for s, _ in mine) < max(e for _, e in theirs) + (dep["lag_min"] or 0):
             out.append(f"T{dep['item_id']} starts before T{dep['depends_on_id']} it waits on is done")
-    # Locked pins kept (unless the plan is waiting on a lock it can't keep).
+    # Locked pins kept (plans before 27 Oct could wait on a lock they couldn't keep).
     if status != "waiting":
         for pin in rows(conn, "SELECT * FROM pins WHERE kind = 'locked' AND start_utc >= ?", [format_utc(cut)]):
             got = by_item.get(pin["item_id"], [])

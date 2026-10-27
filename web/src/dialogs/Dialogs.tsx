@@ -6,7 +6,7 @@ import { type CommandName, command, query, type Schemas } from "@/api/client"
 import { Box, H, Icon, Seg } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { undoAll, useCommand } from "@/hooks/useCommand"
-import { useHorizon, usePaces, useStatus } from "@/hooks/queries"
+import { useHorizon, usePaces, useSettings } from "@/hooks/queries"
 import { clock, dur, when } from "@/lib/format"
 import { nextBlocks } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
@@ -32,7 +32,12 @@ function Close({ onClose }: { onClose: () => void }) {
   )
 }
 
-export const BRIEF_AUTO = "friday-brief-auto"
+/** The brief's switch, kept with your settings (Settings → Schedule, and setup's question): `notify.morning_brief`. */
+export function useBriefSwitch(): [boolean | undefined, (on: boolean) => void] {
+  const notify = (useSettings().data as Record<string, unknown> | undefined)?.notify as { morning_brief: boolean } | undefined
+  const save = useCommand("settings_set", { label: () => "Saved" })
+  return [notify?.morning_brief, (on) => save({ key: "notify", value: { ...notify, morning_brief: on } })]
+}
 
 export function BriefDialog({ onClose }: { onClose: () => void }) {
   const { today } = useShell()
@@ -42,7 +47,7 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
   const paces = usePaces().data
   const pace = useCommand("pace", { label: (o) => o.result.message })
   const start = useCommand("start", { label: () => "Started" })
-  const [auto, setAuto] = useState(() => localStorage.getItem(BRIEF_AUTO) !== "off")
+  const [auto, setAuto] = useBriefSwitch()
   const next = nextBlocks(blocks.filter((b) => b.start.startsWith(today)))
   const first = brief?.rocks.map((r) => next.get(r.item_id)).find(Boolean)
   return (
@@ -134,11 +139,8 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
       <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--color-neutral-500)", cursor: "pointer" }}>
         <input
           type="checkbox"
-          checked={auto}
-          onChange={(e) => {
-            setAuto(e.target.checked)
-            localStorage.setItem(BRIEF_AUTO, e.target.checked ? "on" : "off")
-          }}
+          checked={auto ?? true}
+          onChange={(e) => setAuto(e.target.checked)}
           style={{ accentColor: "var(--color-accent)" }}
         />
         Show this when I open Friday each morning
@@ -147,10 +149,10 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-/** Whether the brief should open by itself: once a morning, unless switched off. */
+/** Whether the brief should open by itself: once a morning on this device, while its switch is on. */
 export function briefDue(today: string): boolean {
   try {
-    if (localStorage.getItem(BRIEF_AUTO) === "off" || localStorage.getItem("friday-brief-shown") === today) return false
+    if (localStorage.getItem("friday-brief-shown") === today) return false
     localStorage.setItem("friday-brief-shown", today)
   } catch {
     return false // storage blocked: don't open it on every load
@@ -284,59 +286,6 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
         </button>
         <button className="btn btn-primary" onClick={apply} disabled={!chosen.length}>
           Apply {chosen.length > 1 ? `${chosen.length} changes` : ""}
-        </button>
-      </div>
-    </Modal>
-  )
-}
-
-export function LockDialog({ onClose }: { onClose: () => void }) {
-  const { today } = useShell()
-  const conflicts = useStatus().data?.conflicts ?? []
-  const resolve = useCommand("resolve", { label: (o) => o.result.message })
-  const [unlock, setUnlock] = useState(() => new Set(conflicts.map((c) => c.pin_id)))
-  const apply = async (ids: number[]) => (await resolve({ unlock_pin_ids: ids })) && onClose()
-  const toggle = (id: number) => {
-    const next = new Set(unlock)
-    if (!next.delete(id)) next.add(id)
-    setUnlock(next)
-  }
-  return (
-    <Modal onClose={onClose}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <span style={{ flex: "none", width: 34, height: 34, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: "color-mix(in srgb, var(--fr-mark) 16%, transparent)" }}>
-          <Icon name="lock-simple" size={17} style={{ color: "var(--fr-warn)" }} />
-        </span>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
-          <H size={24} style={{ lineHeight: 1.05 }}>
-            {conflicts.length === 1 ? "A lock is making work late" : "Locks are making work late"}
-          </H>
-          <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>Friday can’t keep every lock and every deadline. Choose what gives: unlocked blocks become pinned, so they still prefer their place.</span>
-        </div>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {conflicts.map((c) => (
-          <button key={c.pin_id} onClick={() => toggle(c.pin_id)} className="fr-plain fr-hover" style={{ display: "grid", gridTemplateColumns: "18px minmax(0,1fr) auto", gap: 12, alignItems: "center", padding: "11px 12px", borderRadius: "var(--radius-md)" }}>
-            <Box on={unlock.has(c.pin_id)} />
-            <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontWeight: 500 }}>Unlock {c.title}</span>
-              <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>Locked at {when(c.start, today)}</span>
-            </span>
-            <span className="tnum" style={{ fontSize: 12, color: "var(--fr-warn)" }}>
-              +{c.extra_late_hours} h late if kept
-            </span>
-          </button>
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <button className="btn btn-ghost" onClick={onClose}>
-          Decide later
-        </button>
-        <button className="btn btn-secondary" onClick={() => apply([])}>
-          Keep the locks
-        </button>
-        <button className="btn btn-primary" disabled={!unlock.size} onClick={() => apply([...unlock])}>
-          Unlock {unlock.size}
         </button>
       </div>
     </Modal>

@@ -4,8 +4,8 @@ import ServiceManagement
 import SwiftUI
 
 /// The Mac app around Friday's website (COMBINED.md 1, 5): one window showing the website, and what a browser can't
-/// do — personal's global hotkeys, the live Dock icon, opening at login, the menus, the timer in the menu bar and the
-/// Mac's own notifications. It starts `fridayd` when nothing answers, and stays running with its window closed, so the
+/// do — personal's global hotkeys, the live Dock icon (with the count of decisions waiting in the Inbox), opening at
+/// login, the menus and the timer in the menu bar. It starts `fridayd` when nothing answers, and stays running with its window closed, so the
 /// hotkeys still work.
 enum Hotkeys {
     /// Bring Friday up with the to-do drawer open, or tuck it away.
@@ -20,7 +20,7 @@ enum Hotkeys {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let dockIcon = DockIcon()
     private let timer = MenuBarTimer()
-    private let notifier = Notifier()
+    private let badge = DecisionsBadge()
     private let calendars = CalendarBridge()
     private var hotKeys: [GlobalHotKey] = []
 
@@ -34,7 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task {
             await Server.shared.ensureRunning()
             timer.start()
-            notifier.start()
+            badge.start()
             calendars.start()
         }
         LoginItem.enableOnFirstLaunch()

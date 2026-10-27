@@ -14,7 +14,6 @@ writers.
 """
 
 import inspect
-import json
 import shutil
 import tempfile
 import time
@@ -44,7 +43,6 @@ from friday.commands.tokens import agent
 from friday.core.db import connect
 from friday.core.items import FieldError
 from friday.notify import webhooks
-from friday.notify.channels import vapid_keys
 from friday.planner.store import generation, load_settings
 from friday.server import mcp
 from friday.server.auth import actor_of, user_of
@@ -82,13 +80,6 @@ class Services:
         with self.connection() as conn:
             errors = load_plugins(self.plugin_dir) if load_settings(conn)["server"].allow_plugins else []
             set_problem(conn, 1, "plugins", "; ".join(f"plugin skipped: {e}" for e in errors) or None)
-            # The browser subscribes to Web Push with the server's public key, read through the `push_key` query.
-            public = vapid_keys(self.db_path.parent)[1]
-            conn.execute(
-                "INSERT INTO kv (user_id, key, value) VALUES (1, 'vapid_public', ?) "
-                "ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value",
-                [json.dumps(public)],
-            )
         if background:
             self.placer.start()
             self.placing = True

@@ -5,8 +5,8 @@ import { createContext, type ReactNode, useCallback, useContext, useMemo, useSta
 import type { Block, Schemas } from "@/api/client"
 import { drawerOver, type Layout, layoutFor, useWindowWidth } from "./layout"
 
-export type Pop = "shove" | "pace" | "bell" | null
-export type Dialog = "brief" | "search" | "triage" | "conflicts" | "ways" | "ask" | "setup" | null
+export type Pop = "shove" | "pace" | null
+export type Dialog = "brief" | "search" | "triage" | "ways" | "ask" | "setup" | null
 export type View = 1 | 3 | 7 | "month"
 
 /** An event open in the drawer (COMBINED.md 12): a new one being drafted (no id) or one being edited. */

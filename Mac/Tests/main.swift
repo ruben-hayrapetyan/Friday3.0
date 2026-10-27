@@ -79,12 +79,10 @@ test("the menu-bar label") {
           "24 characters fit")
 }
 
-test("only notifications newer than the last shown, oldest first") {
-    let found: [[String: Any]] = [["id": 9, "title": "c"], ["id": 7, "title": "b"], ["id": 5, "title": "a"]]
-    check(Notifier.unseen(found, after: 6).compactMap { $0["id"] as? Int } == [7, 9], "after 6")
-    check(Notifier.unseen(found, after: 9).isEmpty, "all seen")
-    check(Notifier.unseen([], after: 0).isEmpty, "none")
-    check(Notifier.unseen([["title": "no id"]], after: 0).isEmpty, "one without an id isn't new")
+test("the Dock counts the decisions waiting in the Inbox, and shows nothing when none wait") {
+    check(DecisionsBadge.label(["decisions": [["key": "late"], ["key": "lock:-1509"]]]) == "2", "two")
+    check(DecisionsBadge.label(["decisions": []]) == nil, "none")
+    check(DecisionsBadge.label([:]) == nil, "an older server without decisions")
 }
 
 test("calendar payload: one id per occurrence") {

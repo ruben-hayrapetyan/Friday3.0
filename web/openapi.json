@@ -3102,6 +3102,148 @@
     }
    }
   },
+  "/api/c/lock_keep": {
+   "post": {
+    "summary": "Keep locks that make work late where they are; asked again only if they make work an hour later.",
+    "operationId": "lock_keep",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LockKeepInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LockKeepResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/late_accept": {
+   "post": {
+    "summary": "Leave work late: not asked about again unless it gets an hour later.",
+    "operationId": "late_accept",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LateAcceptInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LateAcceptResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/report": {
    "post": {
     "summary": "Note an error or something that looked wrong in the app: in the daemon's log, and kept (the last 50) for",
@@ -4995,6 +5137,77 @@
     }
    }
   },
+  "/api/c/review_task": {
+   "post": {
+    "summary": "Answer the Review for one task's time that day: all done, some (`minutes`), none, or the whole task finished.",
+    "operationId": "review_task",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ReviewTaskInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ReviewTaskResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/settle": {
    "post": {
     "summary": "Settle one of the past blocks the plan still holds (today's, or a missed one from the day before) before the",
@@ -6544,340 +6757,6 @@
     }
    }
   },
-  "/api/c/act": {
-   "post": {
-    "summary": "Run a notification's button: start, done, settle a block, snooze, or record that it was opened or dismissed.",
-    "operationId": "act",
-    "parameters": [
-     {
-      "name": "preview",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "enum": [
-        "false",
-        "true",
-        "full"
-       ],
-       "type": "string",
-       "default": "false",
-       "title": "Preview"
-      }
-     },
-     {
-      "name": "idempotency-key",
-      "in": "header",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Idempotency-Key"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/ActInput"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ActResult"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/c/push_subscribe": {
-   "post": {
-    "summary": "Send Web Push to this browser.",
-    "operationId": "push_subscribe",
-    "parameters": [
-     {
-      "name": "preview",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "enum": [
-        "false",
-        "true",
-        "full"
-       ],
-       "type": "string",
-       "default": "false",
-       "title": "Preview"
-      }
-     },
-     {
-      "name": "idempotency-key",
-      "in": "header",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Idempotency-Key"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/PushSubscription"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/PushSubscribeResult"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/c/push_unsubscribe": {
-   "post": {
-    "summary": "Stop Web Push to this browser.",
-    "operationId": "push_unsubscribe",
-    "parameters": [
-     {
-      "name": "preview",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "enum": [
-        "false",
-        "true",
-        "full"
-       ],
-       "type": "string",
-       "default": "false",
-       "title": "Preview"
-      }
-     },
-     {
-      "name": "idempotency-key",
-      "in": "header",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Idempotency-Key"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/EndpointInput"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/PushUnsubscribeResult"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/c/notify_test": {
-   "post": {
-    "summary": "Send a test notification on every channel within the minute.",
-    "operationId": "notify_test",
-    "parameters": [
-     {
-      "name": "preview",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "enum": [
-        "false",
-        "true",
-        "full"
-       ],
-       "type": "string",
-       "default": "false",
-       "title": "Preview"
-      }
-     },
-     {
-      "name": "idempotency-key",
-      "in": "header",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Idempotency-Key"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "anyOf": [
-         {
-          "$ref": "#/components/schemas/Empty"
-         },
-         {
-          "type": "null"
-         }
-        ],
-        "title": "Inp"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/NotifyTestResult"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/q/notifications": {
-   "get": {
-    "summary": "The 30 most recent notifications, newest first, and whether each was acted on.",
-    "operationId": "notifications",
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "additionalProperties": true,
-          "type": "object"
-         },
-         "type": "array",
-         "title": "Response Notifications"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/q/push_key": {
-   "get": {
-    "summary": "The server's public key for Web Push, and the channels switched on.",
-    "operationId": "push_key",
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "type": "object",
-         "title": "Response Push Key"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
   "/api/c/pin": {
    "post": {
     "summary": "Place an item at a time; `locked` holds it there, `preferred` asks for it. Replaces the pins it overlaps.",
@@ -7100,7 +6979,7 @@
   },
   "/api/c/resolve": {
    "post": {
-    "summary": "Settle a waiting plan: listed locks become preferred (and Friday replans), or none accepts it as it is.",
+    "summary": "Let locks that make work late move: a lock becomes a pin, so it still prefers its place, and an event's hold",
     "operationId": "resolve",
     "parameters": [
      {
@@ -7136,18 +7015,11 @@
      }
     ],
     "requestBody": {
+     "required": true,
      "content": {
       "application/json": {
        "schema": {
-        "anyOf": [
-         {
-          "$ref": "#/components/schemas/ResolveInput"
-         },
-         {
-          "type": "null"
-         }
-        ],
-        "title": "Inp"
+        "$ref": "#/components/schemas/ResolveInput"
        }
       }
      }
@@ -8329,7 +8201,7 @@
   },
   "/api/q/week_review": {
    "get": {
-    "summary": "The week holding a date (this week when left out): planned against actual by area, deadlines hit, moves made",
+    "summary": "The week holding a date (this week when left out): planned against actual by area, deadlines hit and moves",
     "operationId": "week_review",
     "parameters": [
      {
@@ -9553,90 +9425,6 @@
  },
  "components": {
   "schemas": {
-   "ActInput": {
-    "properties": {
-     "token": {
-      "type": "string",
-      "title": "Token"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "token"
-    ],
-    "title": "ActInput"
-   },
-   "ActResult": {
-    "properties": {
-     "command_id": {
-      "anyOf": [
-       {
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Command Id"
-     },
-     "result": {
-      "$ref": "#/components/schemas/Changed"
-     },
-     "provisional": {
-      "anyOf": [
-       {
-        "items": {
-         "$ref": "#/components/schemas/BlockOut"
-        },
-        "type": "array"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Provisional"
-     },
-     "changes": {
-      "anyOf": [
-       {
-        "$ref": "#/components/schemas/ChangeOut"
-       },
-       {
-        "type": "null"
-       }
-      ]
-     },
-     "preview": {
-      "type": "boolean",
-      "title": "Preview",
-      "default": false
-     },
-     "repeated": {
-      "type": "boolean",
-      "title": "Repeated",
-      "default": false
-     },
-     "generation": {
-      "anyOf": [
-       {
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Generation"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "command_id",
-     "result"
-    ],
-    "title": "ActResult"
-   },
    "AddInput": {
     "properties": {
      "title": {
@@ -11828,6 +11616,86 @@
     ],
     "title": "DeadlineWeek"
    },
+   "Decision": {
+    "properties": {
+     "key": {
+      "type": "string",
+      "title": "Key"
+     },
+     "kind": {
+      "type": "string",
+      "enum": [
+       "lock",
+       "late"
+      ],
+      "title": "Kind"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "detail": {
+      "type": "string",
+      "title": "Detail"
+     },
+     "pin_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pin Id"
+     },
+     "item_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Item Id"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Start"
+     },
+     "hours": {
+      "type": "number",
+      "title": "Hours",
+      "default": 0
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/LateItem"
+      },
+      "type": "array",
+      "title": "Items",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "key",
+     "kind",
+     "title",
+     "detail"
+    ],
+    "title": "Decision",
+    "description": "Something only you can decide, waiting in the Inbox (27 Oct: \"decisions but in the inbox with a notification\nsymbol\"): a lock that makes work late (`resolve`), or work that will be late (the options, or `late_accept`)."
+   },
    "DependInput": {
     "properties": {
      "item_id": {
@@ -13037,20 +12905,6 @@
     "additionalProperties": false,
     "type": "object",
     "title": "Empty"
-   },
-   "EndpointInput": {
-    "properties": {
-     "endpoint": {
-      "type": "string",
-      "title": "Endpoint"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "endpoint"
-    ],
-    "title": "EndpointInput"
    },
    "EventGoingInput": {
     "properties": {
@@ -15167,6 +15021,93 @@
     ],
     "title": "KindRemoveResult"
    },
+   "LateAcceptInput": {
+    "properties": {
+     "item_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Item Ids"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "item_ids"
+    ],
+    "title": "LateAcceptInput"
+   },
+   "LateAcceptResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "LateAcceptResult"
+   },
    "LateItem": {
     "properties": {
      "item_id": {
@@ -15732,39 +15673,92 @@
     ],
     "title": "LearningOut"
    },
-   "LockConflict": {
+   "LockKeepInput": {
     "properties": {
-     "pin_id": {
-      "type": "integer",
-      "title": "Pin Id"
-     },
-     "item_id": {
-      "type": "integer",
-      "title": "Item Id"
-     },
-     "title": {
-      "type": "string",
-      "title": "Title"
-     },
-     "start": {
-      "type": "string",
-      "title": "Start"
-     },
-     "extra_late_hours": {
-      "type": "number",
-      "title": "Extra Late Hours"
+     "pin_ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Pin Ids"
      }
     },
     "additionalProperties": false,
     "type": "object",
     "required": [
-     "pin_id",
-     "item_id",
-     "title",
-     "start",
-     "extra_late_hours"
+     "pin_ids"
     ],
-    "title": "LockConflict"
+    "title": "LockKeepInput"
+   },
+   "LockKeepResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "LockKeepResult"
    },
    "LogEntry": {
     "properties": {
@@ -17911,76 +17905,6 @@
     ],
     "title": "NotDuplicatesResult"
    },
-   "NotifyTestResult": {
-    "properties": {
-     "command_id": {
-      "anyOf": [
-       {
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Command Id"
-     },
-     "result": {
-      "$ref": "#/components/schemas/Changed"
-     },
-     "provisional": {
-      "anyOf": [
-       {
-        "items": {
-         "$ref": "#/components/schemas/BlockOut"
-        },
-        "type": "array"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Provisional"
-     },
-     "changes": {
-      "anyOf": [
-       {
-        "$ref": "#/components/schemas/ChangeOut"
-       },
-       {
-        "type": "null"
-       }
-      ]
-     },
-     "preview": {
-      "type": "boolean",
-      "title": "Preview",
-      "default": false
-     },
-     "repeated": {
-      "type": "boolean",
-      "title": "Repeated",
-      "default": false
-     },
-     "generation": {
-      "anyOf": [
-       {
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Generation"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "command_id",
-     "result"
-    ],
-    "title": "NotifyTestResult"
-   },
    "NowOut": {
     "properties": {
      "current": {
@@ -19340,168 +19264,6 @@
     "title": "ProposedAction",
     "description": "One change Claude proposes, as the command that makes it; nothing runs until you apply it."
    },
-   "PushSubscribeResult": {
-    "properties": {
-     "command_id": {
-      "anyOf": [
-       {
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Command Id"
-     },
-     "result": {
-      "$ref": "#/components/schemas/Changed"
-     },
-     "provisional": {
-      "anyOf": [
-       {
-        "items": {
-         "$ref": "#/components/schemas/BlockOut"
-        },
-        "type": "array"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Provisional"
-     },
-     "changes": {
-      "anyOf": [
-       {
-        "$ref": "#/components/schemas/ChangeOut"
-       },
-       {
-        "type": "null"
-       }
-      ]
-     },
-     "preview": {
-      "type": "boolean",
-      "title": "Preview",
-      "default": false
-     },
-     "repeated": {
-      "type": "boolean",
-      "title": "Repeated",
-      "default": false
-     },
-     "generation": {
-      "anyOf": [
-       {
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Generation"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "command_id",
-     "result"
-    ],
-    "title": "PushSubscribeResult"
-   },
-   "PushSubscription": {
-    "properties": {
-     "endpoint": {
-      "type": "string",
-      "title": "Endpoint"
-     },
-     "keys": {
-      "additionalProperties": {
-       "type": "string"
-      },
-      "type": "object",
-      "title": "Keys"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "endpoint",
-     "keys"
-    ],
-    "title": "PushSubscription"
-   },
-   "PushUnsubscribeResult": {
-    "properties": {
-     "command_id": {
-      "anyOf": [
-       {
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Command Id"
-     },
-     "result": {
-      "$ref": "#/components/schemas/Changed"
-     },
-     "provisional": {
-      "anyOf": [
-       {
-        "items": {
-         "$ref": "#/components/schemas/BlockOut"
-        },
-        "type": "array"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Provisional"
-     },
-     "changes": {
-      "anyOf": [
-       {
-        "$ref": "#/components/schemas/ChangeOut"
-       },
-       {
-        "type": "null"
-       }
-      ]
-     },
-     "preview": {
-      "type": "boolean",
-      "title": "Preview",
-      "default": false
-     },
-     "repeated": {
-      "type": "boolean",
-      "title": "Repeated",
-      "default": false
-     },
-     "generation": {
-      "anyOf": [
-       {
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Generation"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "command_id",
-     "result"
-    ],
-    "title": "PushUnsubscribeResult"
-   },
    "Question": {
     "properties": {
      "id": {
@@ -20267,12 +20029,14 @@
        "type": "integer"
       },
       "type": "array",
-      "title": "Unlock Pin Ids",
-      "default": []
+      "title": "Unlock Pin Ids"
      }
     },
     "additionalProperties": false,
     "type": "object",
+    "required": [
+     "unlock_pin_ids"
+    ],
     "title": "ResolveInput"
    },
    "ResolveResult": {
@@ -20481,6 +20245,98 @@
     "type": "object",
     "title": "ReviewEntry"
    },
+   "ReviewGap": {
+    "properties": {
+     "item_id": {
+      "type": "integer",
+      "title": "Item Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "planned_min": {
+      "type": "integer",
+      "title": "Planned Min"
+     },
+     "spans": {
+      "items": {
+       "items": {
+        "type": "string"
+       },
+       "type": "array"
+      },
+      "type": "array",
+      "title": "Spans"
+     },
+     "blocks": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Blocks"
+     },
+     "due": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Due"
+     },
+     "last": {
+      "type": "boolean",
+      "title": "Last",
+      "default": false
+     },
+     "answer": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "done",
+         "partial",
+         "not_done"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Answer"
+     },
+     "done_min": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Done Min"
+     },
+     "finished": {
+      "type": "boolean",
+      "title": "Finished",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "item_id",
+     "title",
+     "planned_min",
+     "spans",
+     "blocks"
+    ],
+    "title": "ReviewGap",
+    "description": "A task's time that day Friday can't account for (27 Oct: Review asks \"only the gaps, by task\"): blocks that\nended without a timer running, an answer, or the task checked off. Once answered, what you said."
+   },
    "ReviewOut": {
     "properties": {
      "date": {
@@ -20527,6 +20383,14 @@
       },
       "type": "array",
       "title": "Sleep",
+      "default": []
+     },
+     "gaps": {
+      "items": {
+       "$ref": "#/components/schemas/ReviewGap"
+      },
+      "type": "array",
+      "title": "Gaps",
       "default": []
      }
     },
@@ -20636,6 +20500,123 @@
      "result"
     ],
     "title": "ReviewSubmitResult"
+   },
+   "ReviewTaskInput": {
+    "properties": {
+     "date": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Date"
+     },
+     "item_id": {
+      "type": "integer",
+      "title": "Item Id"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "done",
+       "partial",
+       "not_done",
+       "finished"
+      ],
+      "title": "Status"
+     },
+     "minutes": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Minutes"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "item_id",
+     "status"
+    ],
+    "title": "ReviewTaskInput"
+   },
+   "ReviewTaskResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "ReviewTaskResult"
    },
    "ReviewedInput": {
     "properties": {
@@ -24818,12 +24799,12 @@
       "title": "Problems",
       "default": []
      },
-     "conflicts": {
+     "decisions": {
       "items": {
-       "$ref": "#/components/schemas/LockConflict"
+       "$ref": "#/components/schemas/Decision"
       },
       "type": "array",
-      "title": "Conflicts",
+      "title": "Decisions",
       "default": []
      },
      "config_keys": {
@@ -26740,13 +26721,6 @@
       "type": "integer",
       "title": "Moves"
      },
-     "notifications": {
-      "additionalProperties": {
-       "type": "integer"
-      },
-      "type": "object",
-      "title": "Notifications"
-     },
      "learned": {
       "items": {
        "type": "string"
@@ -26796,11 +26770,10 @@
      "areas",
      "fixed_h",
      "deadlines",
-     "moves",
-     "notifications"
+     "moves"
     ],
     "title": "WeekOut",
-    "description": "The weekly review (DESIGN \u00a718.9): planned against actual by area, deadlines, moves and notifications."
+    "description": "The week (DESIGN \u00a718.9; in Insights since 27 Oct): planned against actual by area, deadlines and moves."
    },
    "WhatIfChange": {
     "properties": {

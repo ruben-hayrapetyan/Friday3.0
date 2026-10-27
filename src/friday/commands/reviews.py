@@ -9,7 +9,7 @@ from friday.api.commands import Changed, DateInput, RangeInput, WeekNoteInput
 from friday.api.types import Empty
 from friday.api.views import AreaWeek, BriefOut, DeadlineWeek, ReviewOut, Rock, WeekItem, WeekOut
 from friday.commands.fields import item_out
-from friday.commands.progress import day_blocks, day_bounds, reviewed_minutes
+from friday.commands.progress import day_blocks, day_bounds, day_gaps, reviewed_minutes
 from friday.commands.queries import block_out, now, paces, plan
 from friday.commands.registry import Ctx, command, query
 from friday.commands.sleeping import missing, planned_min, recorded
@@ -66,6 +66,7 @@ def review(ctx: Ctx, inp: DateInput) -> ReviewOut:
         finished=finished,
         settled=settled,
         sleep=missing(ctx, day),
+        gaps=day_gaps(ctx, day),
     )
 
 
@@ -168,8 +169,8 @@ def pace_line(ctx: Ctx) -> str | None:
 
 @query("week_review")
 def week_review(ctx: Ctx, inp: DateInput) -> WeekOut:
-    """The week holding a date (this week when left out): planned against actual by area, deadlines hit, moves made
-    and notifications acted on."""
+    """The week holding a date (this week when left out): planned against actual by area, deadlines hit and moves
+    made."""
     day = date.fromisoformat(inp.date) if inp.date else ctx.today
     first = day - timedelta(days=(day.weekday() - ctx.settings["time"].grid_spec().week_start) % 7)
     days = [first + timedelta(days=n) for n in range(7)]
@@ -212,11 +213,6 @@ def week_review(ctx: Ctx, inp: DateInput) -> WeekOut:
         fixed_h={k: round(v, 1) for k, v in fixed.items()},
         deadlines=deadlines(ctx, lo, hi),
         moves=count(ctx, "command_log", "actor = 'you' AND command IN ('pin', 'unpin', 'shove')", "at_utc", lo, hi),
-        notifications={
-            "sent": count(ctx, "notifications", "kind != 'test'", "sent_utc", lo, hi),
-            "acted": count(ctx, "notifications", "acted = 1", "sent_utc", lo, hi),
-            "dismissed": count(ctx, "notifications", "acted = 0", "sent_utc", lo, hi),
-        },
         finished=week_items(
             ctx, "status = 'done' AND completed_utc >= ? AND completed_utc < ?", [lo, hi], "completed_utc"
         ),

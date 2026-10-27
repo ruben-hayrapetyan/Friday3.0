@@ -16,6 +16,8 @@ import { useLook } from "@/theme/LookProvider"
 import { DayAgenda } from "./DayAgenda"
 import { MiniMonth } from "./MiniMonth"
 import { useShell } from "./ShellContext"
+import { DecisionCount, useDecisions } from "@/inbox/Decisions"
+import { useReviewWaiting } from "@/review/DailyReview"
 
 const PAGES = [
   { to: "/", icon: "calendar-dots", label: "Plan" },
@@ -160,6 +162,7 @@ function Rail() {
   const navigate = useNavigate()
   const { setTour } = useShell()
   const status = useStatus().data
+  const deciding = useDecisions().length
   return (
     <aside data-tour="nav" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "18px 0 16px", minHeight: 0, overflowY: "auto", background: "color-mix(in srgb, var(--color-bg) 70%, transparent)" }}>
       <span style={{ marginBottom: 14 }}>
@@ -186,7 +189,8 @@ function Rail() {
           })}
         >
           <Icon name={p.icon} size={18} />
-          {p.label === "Inbox" && !!status?.suggestions && (
+          {p.label === "Inbox" && !!deciding && <DecisionCount n={deciding} style={{ position: "absolute", top: 2, right: 1 }} />}
+          {p.label === "Inbox" && !deciding && !!status?.suggestions && (
             <span style={{ position: "absolute", top: 6, right: 7, width: 6, height: 6, borderRadius: "50%", background: "var(--color-accent)" }} />
           )}
         </NavLink>
@@ -205,7 +209,9 @@ function Rail() {
 function Pages() {
   const status = useStatus().data
   const questions = useQuery({ queryKey: ["questions"], queryFn: () => query("questions") }).data
-  const reviewPending = !!questions && (questions.comparisons.length > 0 || !!questions.proposal || !!questions.wall)
+  const asking = !!questions && (questions.comparisons.length > 0 || !!questions.proposal || !!questions.wall)
+  const reviewing = useReviewWaiting() > 0
+  const deciding = useDecisions().length
   return (
     <nav data-tour="nav" style={{ display: "flex", flexDirection: "column", gap: 1 }}>
       {status?.demo && (
@@ -235,9 +241,10 @@ function Pages() {
             <>
               <Icon name={p.icon} size={16} style={{ color: isActive ? "var(--color-accent-300)" : "var(--color-neutral-400)" }} />
               <span style={{ flex: 1 }}>{p.label}</span>
-              {p.label === "Review" && reviewPending && (
+              {((p.label === "Review" && reviewing) || (p.label === "Insights" && asking)) && (
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--color-accent)" }} />
               )}
+              {p.label === "Inbox" && !!deciding && <DecisionCount n={deciding} />}
               {p.label === "Inbox" && !!status?.suggestions && (
                 <span className="tnum" style={{ fontSize: 11, color: "var(--color-accent-300)" }}>
                   {status.suggestions}

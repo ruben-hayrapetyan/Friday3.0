@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Any
 
 from friday.commands.all import REGISTRY  # noqa: F401  (registers every command)
-from friday.commands.delivery import deliver
 from friday.commands.learned import learn_nightly
 from friday.commands.refit import prepare_questions
 from friday.commands.registry import run
@@ -50,7 +49,6 @@ class Metrics:
     lived_minutes: int = 0  # planned time the student did: timer sessions and untimed blocks lived
     missed_minutes: int = 0  # planned blocks the student never got to or skipped
     errors: list[str] = field(default_factory=list)
-    notifications: int = 0
     wall_seconds: float = 0.0
     predicted: list[bool] = field(default_factory=list)  # per question: did the weights in use call it right
     recovery: float | None = None  # cosine of the learned weights with the true ones, at the end
@@ -69,7 +67,6 @@ class Metrics:
             "churn hours per day": round(self.moved_hours / max(1, self.days), 2),
             "adherence": round(self.lived_minutes / max(1, self.lived_minutes + self.missed_minutes), 2),
             "command errors": len(self.errors),
-            "notifications": self.notifications,
             "questions": len(self.predicted),
             "accuracy of the weights in use": round(sum(self.predicted) / len(self.predicted), 2)
             if self.predicted
@@ -154,7 +151,6 @@ class World:
         self.replan()
         while self.local_now() < local(day, BED):
             self.tell()
-            self.notifications()
             if not sick:
                 self.step()
             if self.dirty and self.now - self.last_replan >= REPLAN_AFTER_MIN:
@@ -166,14 +162,6 @@ class World:
             self.answer_questions(day)
         self.review(day)
         self.metrics.days += 1
-
-    def notifications(self) -> None:
-        """The real notify job, on the in-app channel. A "did you finish it?" check comes only when nothing was
-        recorded for the block, so the truthful answer is "not yet"."""
-        for key in deliver(self.conn, self.now, self.folder):
-            self.metrics.notifications += 1
-            if key.startswith("check:"):
-                self.do("settle", block_key=key.removeprefix("check:"), status="not_done")
 
     def step(self) -> None:
         if self.working:

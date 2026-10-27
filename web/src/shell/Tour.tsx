@@ -78,7 +78,7 @@ export const STEPS: Step[] = [
   {
     target: "help",
     title: "That’s it",
-    body: "Settings has your calendars, schedule and notifications, and Setup’s questions again. The ? brings this tour back whenever you want it.",
+    body: "Settings has your calendars, schedule and integrations, and Setup’s questions again. The ? brings this tour back whenever you want it.",
   },
 ]
 

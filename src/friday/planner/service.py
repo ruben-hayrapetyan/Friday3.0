@@ -23,6 +23,8 @@ from friday.planner.solve import solve
 from friday.planner.store import current_plan, generation, kv_get, kv_set
 
 MAX_PIN_CHECKS = 10
+# A lock is asked about once keeping it makes work this late or more (27 Oct: asked over a minute, "+0.02 h").
+ASK_FROM_HOURS = 0.25
 
 
 def replan(
@@ -40,11 +42,12 @@ def replan(
 
 
 def plan_snapshot(snapshot: Snapshot, warm: bool, cancel: np.ndarray | None = None) -> AssembledPlan:
+    """The plan keeps your locks; a lock that makes work late is a question in the Inbox (27 Oct: "put that under
+    review… in the inbox"), not a plan that waits for an answer while the calendar shows a placeholder."""
     solved = solve(snapshot, warm, cancel)
     assembled = assemble(snapshot, solved)
     conflicts = lock_conflicts(snapshot, assembled)
     if conflicts:
-        assembled.status = "waiting"
         assembled.report["conflicts"] = conflicts
     return assembled
 
@@ -96,7 +99,7 @@ def write_plan(
         ).lastrowid
         or 0
     )
-    # A plan waiting on a lock carries them too: accepting it (`resolve`) mustn't lose what was planned earlier.
+    # The day's past blocks carry over: a replan mustn't lose what was planned earlier.
     past = past_blocks(conn, saved, snapshot.now_utc)
     conn.executemany(
         "INSERT INTO blocks (plan_id, user_id, item_id, start_utc, end_utc, cost, tentative) "
@@ -238,7 +241,8 @@ def with_pins_preferred(pin_ids: set[int] | None) -> Callable[[BuildInput], Buil
 
 
 def lock_conflicts(snapshot: Snapshot, plan: AssembledPlan) -> list[dict]:
-    """Locked pins that make hard work late (§15.3 step 4). Only checked when something is late at all."""
+    """Locked pins that make hard work a quarter hour late or more (§15.3 step 4), each with how much later. Only
+    checked when something is late at all."""
     locked = [p for p in snapshot.pins if p.kind == "locked"]
     if not locked or plan.stage_values["deadlines"] == 0:
         return []
@@ -252,7 +256,7 @@ def lock_conflicts(snapshot: Snapshot, plan: AssembledPlan) -> list[dict]:
     for pin in locked[:MAX_PIN_CHECKS]:
         _, without = quick_late(with_pins_preferred({pin.id})(inp), with_fallback=False)
         saved = sum(hours.values()) - sum(without.values())
-        if saved > 0:
+        if saved >= ASK_FROM_HOURS:
             out.append(
                 {
                     "pin_id": pin.id,

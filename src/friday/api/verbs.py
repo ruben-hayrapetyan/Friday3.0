@@ -4,14 +4,6 @@ from friday.api import commands
 from friday.api.types import Verb
 
 VERBS = {
-    "act": Verb(
-        "POST",
-        "/api/c/act",
-        commands.ActInput,
-        True,
-        True,
-        "Run a notification's button: start, done, settle a block, snooze, or record that it was opened or dismissed.",
-    ),
     "add": Verb(
         "POST", "/api/c/add", commands.AddInput, True, True, "Create an item from fields or from a quick-add line."
     ),
@@ -350,6 +342,14 @@ VERBS = {
         True,
         "Delete a kind; what used it moves to `move_to`.",
     ),
+    "late_accept": Verb(
+        "POST",
+        "/api/c/late_accept",
+        commands.LateAcceptInput,
+        True,
+        False,
+        "Leave work late: not asked about again unless it gets an hour later.",
+    ),
     "learn_apply": Verb(
         "POST",
         "/api/c/learn_apply",
@@ -400,6 +400,14 @@ VERBS = {
         False,
         False,
         "Planned hours against room, week by week: the plan inside the horizon, the allocator's forecast past it.",
+    ),
+    "lock_keep": Verb(
+        "POST",
+        "/api/c/lock_keep",
+        commands.LockKeepInput,
+        True,
+        False,
+        "Keep locks that make work late where they are; asked again only if they make work an hour later.",
     ),
     "log": Verb(
         "POST",
@@ -551,22 +559,6 @@ VERBS = {
         False,
         "These look alike but aren't the same: stop asking.",
     ),
-    "notifications": Verb(
-        "GET",
-        "/api/q/notifications",
-        commands.Empty,
-        False,
-        False,
-        "The 30 most recent notifications, newest first, and whether each was acted on.",
-    ),
-    "notify_test": Verb(
-        "POST",
-        "/api/c/notify_test",
-        commands.Empty,
-        True,
-        False,
-        "Send a test notification on every channel within the minute.",
-    ),
     "now": Verb(
         "GET",
         "/api/q/now",
@@ -679,20 +671,6 @@ VERBS = {
         True,
         'Yes or no to a proposed rule, or to keeping a "never" rule hard.',
     ),
-    "push_key": Verb(
-        "GET",
-        "/api/q/push_key",
-        commands.Empty,
-        False,
-        False,
-        "The server's public key for Web Push, and the channels switched on.",
-    ),
-    "push_subscribe": Verb(
-        "POST", "/api/c/push_subscribe", commands.PushSubscription, True, False, "Send Web Push to this browser."
-    ),
-    "push_unsubscribe": Verb(
-        "POST", "/api/c/push_unsubscribe", commands.EndpointInput, True, False, "Stop Web Push to this browser."
-    ),
     "questions": Verb(
         "GET",
         "/api/q/questions",
@@ -741,7 +719,7 @@ VERBS = {
         commands.ResolveInput,
         True,
         True,
-        "Settle a waiting plan: listed locks become preferred (and Friday replans), or none accepts it as it is.",
+        "Let locks that make work late move: a lock becomes a pin, so it still prefers its place, and an event's hold",
     ),
     "review": Verb(
         "GET",
@@ -766,6 +744,14 @@ VERBS = {
         True,
         True,
         "Settle a day: each block done, partial or not done, plus anything that happened (§8 rule 4).",
+    ),
+    "review_task": Verb(
+        "POST",
+        "/api/c/review_task",
+        commands.ReviewTaskInput,
+        True,
+        True,
+        "Answer the Review for one task's time that day: all done, some (`minutes`), none, or the whole task finished.",
     ),
     "reviewed": Verb(
         "POST",
@@ -1104,7 +1090,7 @@ VERBS = {
         commands.DateInput,
         False,
         False,
-        "The week holding a date (this week when left out): planned against actual by area, deadlines hit, moves made",
+        "The week holding a date (this week when left out): planned against actual by area, deadlines hit and moves",
     ),
     "whatif": Verb(
         "POST",

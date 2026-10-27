@@ -13,6 +13,7 @@ import { Field, SectionHead } from "./SettingsPage"
 import { TrackMeals, TrackSleep } from "./SleepTracking"
 import { TimeInput } from "@/components/fr/TimeInput"
 import { SLEEP_HOURS } from "@/lib/ampm"
+import { useBriefSwitch } from "@/dialogs/Dialogs"
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 interface Night {
@@ -29,6 +30,7 @@ export function Schedule() {
   const { buffers, set: setBuffers } = useBuffers()
   const navigate = useNavigate()
   const [byDay, setByDay] = useState(false)
+  const [brief, setBrief] = useBriefSwitch()
   if (!settings) return null
   const sleep = settings.sleep as Record<string, Night>
   const caps = settings.daily_cap as Record<string, number>
@@ -99,6 +101,17 @@ export function Schedule() {
           ]}
           value={missed}
           onPick={(v) => save({ key: "planner", value: { ...planner, assume_unreviewed: v } })}
+          size="big"
+        />
+      </Field>
+      <Field name="Morning brief" note="What's planned and what matters most today, when you first open Friday before noon. It's always in the Plan menu too.">
+        <Seg
+          options={[
+            { value: "on", label: "Show it" },
+            { value: "off", label: "Don't" },
+          ]}
+          value={brief === false ? "off" : "on"}
+          onPick={(v) => setBrief(v === "on")}
           size="big"
         />
       </Field>

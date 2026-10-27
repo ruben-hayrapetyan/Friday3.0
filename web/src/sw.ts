@@ -1,22 +1,13 @@
 /// <reference lib="webworker" />
-// The service worker (DESIGN §18.11, §20.1): the app shell offline, the last answer to each query when fridayd
-// can't be reached (marked so the app shows its offline banner), and Web Push with buttons that work from the
-// notification. Plain Cache API; vite-plugin-pwa only injects the list of files to keep.
+// The service worker (DESIGN §18.11): the app shell offline, and the last answer to each query when fridayd can't be
+// reached (marked so the app shows its offline banner). Plain Cache API; vite-plugin-pwa only injects the list of
+// files to keep. (Web Push went with notifications, 27 Oct.)
 
 declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: { url: string; revision: string | null }[] }
 
 const SHELL = "friday-shell"
 const DATA = "friday-data"
 const OFFLINE_HEADER = "x-friday-offline" // read by api/client.ts
-
-interface Pushed {
-  title: string
-  body: string
-  url: string
-  actions: { label: string; token: string | null; url: string | null }[]
-  open_token: string | null
-  dismiss_token: string | null
-}
 
 self.addEventListener("install", (event) => {
   // The plugin lists the manifest's icons a second time, and addAll refuses duplicates.
@@ -65,52 +56,5 @@ async function lastKnown(request: Request): Promise<Response> {
     const headers = new Headers(kept.headers)
     headers.set(OFFLINE_HEADER, "1")
     return new Response(await kept.blob(), { status: kept.status, headers })
-  }
-}
-
-self.addEventListener("push", (event) => {
-  const data = event.data?.json() as Pushed
-  const options: NotificationOptions & { actions?: { action: string; title: string }[] } = {
-    body: data.body,
-    data,
-    tag: data.title,
-    actions: data.actions.slice(0, 2).map((a, i) => ({ action: String(i), title: a.label })),
-  }
-  event.waitUntil(self.registration.showNotification(data.title, options))
-})
-
-self.addEventListener("notificationclick", (event) => {
-  const data = event.notification.data as Pushed
-  event.notification.close()
-  const chosen = event.action ? data.actions[Number(event.action)] : null
-  if (chosen?.token) {
-    event.waitUntil(act(chosen.token))
-    return
-  }
-  event.waitUntil(Promise.all([data.open_token ? act(data.open_token) : null, open(chosen?.url ?? data.url)]))
-})
-
-self.addEventListener("notificationclose", (event) => {
-  const data = event.notification.data as Pushed
-  if (data.dismiss_token) event.waitUntil(act(data.dismiss_token))
-})
-
-async function act(token: string): Promise<void> {
-  await fetch("/api/c/act", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ token }),
-  }).catch(() => undefined)
-}
-
-async function open(path: string): Promise<void> {
-  const target = `${self.location.origin}/#${path}`
-  const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
-  const existing = windows[0] as WindowClient | undefined
-  if (existing) {
-    await existing.focus()
-    await existing.navigate(target)
-  } else {
-    await self.clients.openWindow(target)
   }
 }

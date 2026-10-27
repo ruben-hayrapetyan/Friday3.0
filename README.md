@@ -10,8 +10,8 @@ something changes, learns how long things really take you and what you prefer, a
 than fits.
 
 Friday is **a website served by `fridayd` on your Mac, and a Mac app around the same website**. The Mac app adds what a
-browser can't: global shortcuts, the live Dock icon, the menus, the timer in the menu bar, the Mac's own notifications
-and the Mac's calendars. Open the same address in a browser and you have Friday there too.
+browser can't: global shortcuts, the live Dock icon (with the count of decisions waiting in the Inbox), the menus, the
+timer in the menu bar and the Mac's calendars. Open the same address in a browser and you have Friday there too.
 
 **This is the `personal` branch: the copy of Friday in daily use.** It is two earlier Fridays combined: `friday-m16`'s
 engine, server, learning and pages, and `personal`'s calendar, to-do notebook and look. Each of the 71 decisions that
@@ -82,8 +82,9 @@ cases run from very light to overloaded (`fridayd demo --help`).
 | ⌘J | Ask Claude |
 
 The **Plan** menu has Other Ways, What Gives, Shove, Pace and the morning brief. The **menu bar** shows what you're
-timing and for how long, with Pause and Done. Friday's notifications (the brief, a block starting, overload, "did you
-finish it?") arrive as the Mac's own. Friday → Settings… has the shortcuts, the menu-bar timer, the Mac's calendars,
+timing and for how long, with Pause and Done. Friday sends no notifications: what only you can decide (late work, a
+lock that makes work late) waits at the top of the Inbox, counted on the sidebar, in the title row and on the Dock icon.
+Friday → Settings… has the shortcuts, the menu-bar timer, the Mac's calendars,
 opening at login and where `fridayd` is. The rest of the settings are on the website's Settings page.
 
 The menus and shortcuts don't do anything themselves: each sends a `friday:host` event that the website handles
@@ -93,7 +94,7 @@ The menus and shortcuts don't do anything themselves: each sends a `friday:host`
 
 | | |
 | --- | --- |
-| [`src/friday`](src/friday) | `fridayd` and `friday`: the engine (the allocator, the scheduler and the rules), the planner, learning, the commands (each one an HTTP endpoint, a CLI verb and an MCP tool), Google and the Mac's calendars, notifications, the server |
+| [`src/friday`](src/friday) | `fridayd` and `friday`: the engine (the allocator, the scheduler and the rules), the planner, learning, the commands (each one an HTTP endpoint, a CLI verb and an MCP tool), Google and the Mac's calendars, the server |
 | [`web`](web) | The website: React, Vite and TypeScript |
 | [`Mac`](Mac) | The Mac app around the website, in Swift, with no Xcode project. It reuses the Swift app's hotkeys and Dock icon from `UI/` |
 | [`tests`](tests) | The server's tests, from single rules to whole terms, plus the HTTP flows |

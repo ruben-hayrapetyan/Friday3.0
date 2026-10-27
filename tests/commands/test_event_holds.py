@@ -148,7 +148,8 @@ def test_held_shares_a_task_across_two_events_earliest_first_and_skips_what_is_o
 
 def test_a_hold_that_makes_work_late_is_asked_about_and_let_move_when_you_say(app: App) -> None:
     """27 Oct: A4dd held for the design doc made work 8 h late; the plan waited, and letting it move failed ("no
-    locked pin -1509"). Letting it move makes the event ask for the task rather than hold it."""
+    locked pin -1509"). Now the plan keeps the hold and the Inbox asks; letting it move makes the event ask for the
+    task rather than hold it."""
     report = app.do("add", text="report due mon 13:00 ~3h")["item"]["id"]  # needs 10–13, where the doc is held
     doc = app.do("add", title="Design doc", duration_min=120, due="2026-10-21T23:59")["item"]["id"]
     held_at = app.do("add", title="Doc time", when="fixed", start="2026-10-19T10:00", end="2026-10-19T12:00")["item"][
@@ -156,7 +157,8 @@ def test_a_hold_that_makes_work_late_is_asked_about_and_let_move_when_you_say(ap
     ]
     app.do("event_hold", id=held_at, task_id=doc)
     out = app.do("replan")
-    assert out["status"] == "waiting" and "locked Design doc" in out["message"]
+    assert out["status"] == "current" and "locked Design doc" in out["message"]
+    assert [d["pin_id"] for d in app.do("status")["decisions"] if d["kind"] == "lock"] == [-held_at]
     app.do("resolve", unlock_pin_ids=[-held_at])
     assert app.do("replan")["status"] == "current"
     assert all(e <= "2026-10-19T13:00" for _, e in blocks(app, report))  # on time again

@@ -14,7 +14,7 @@ const REFRESH: Record<string, string[]> = {
   // list kept by hand here went stale whenever a page was added.
   "items.changed": [EVERYTHING],
   "plan.changed": ["plan", "now", "items", "item", "calendar", "status", "why", "review", "projects", "exams", "load", "triage", "brief", "week"],
-  "status.changed": ["status", "notifications", "questions"],
+  "status.changed": ["status", "questions"],
   // A change's quick placement, made after it answered (server/placer.py): the calendar draws it.
   "plan.provisional": ["plan"],
 }

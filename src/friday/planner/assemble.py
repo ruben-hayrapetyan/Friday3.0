@@ -45,7 +45,7 @@ class AssembledPlan:
     stage_values: dict[str, int]
     report: dict[str, Any] = field(default_factory=dict)
     seconds: float = 0.0
-    status: str = "current"  # or waiting, when a lock conflict needs `resolve`
+    status: str = "current"  # plans from before 27 Oct may be "waiting" (on a lock); none waits now
 
 
 def pin_edges(problem: Problem) -> dict[str, set[int]]:

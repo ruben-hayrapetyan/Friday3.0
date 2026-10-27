@@ -6,7 +6,7 @@ from typing import Any, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import tomli_w
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator, model_validator
 
 from friday.core.calendars import BusySettings, CalendarLook, CategorySettings, check_colors
 from friday.core.integrations import INTEGRATION_DEFAULTS, INTEGRATION_TYPES
@@ -383,26 +383,21 @@ class EstimateSettings(Model):
 
 
 class NotifySettings(Model):
-    channels: tuple[Literal["webpush", "ntfy"], ...] = ()
-    ntfy_url: str | None = None
-    app_url: str | None = None  # where the phone reaches Friday (for ntfy's buttons), e.g. a tailnet https URL
-    contact: str = "mailto:friday@localhost"  # the VAPID contact push services ask for
-    brief_at: str | None = None  # None: 30 minutes after wake
-    review_at: str | None = None  # None: an hour before bedtime
-    max_per_day: int = 8
-    quiet: tuple[str, str] | None = None  # quiet hours ("22:00", "08:00"); None: from bedtime to wake
-    hold_while_timing: bool = False  # only deadline warnings get through while a block's timer runs
-    types: dict[str, bool] = Field(
-        default_factory=lambda: {
-            "morning_brief": True,
-            "block_start": False,
-            "slack_low": True,
-            "overload": True,
-            "conflict": True,
-            "evening_review": True,
-            "weekly_review": True,
-        }
-    )
+    """What notifications left when they were removed (27 Oct: "remove notifications"): the morning brief's switch,
+    and the address your phone reaches Friday at, for the links in the Friday calendar's events. A setting saved
+    before then (its channels, quiet hours, kinds) still reads: what's gone is dropped, and its brief switch kept."""
+
+    model_config = ConfigDict(extra="ignore", frozen=True)
+
+    app_url: str | None = None  # e.g. a tailnet https URL
+    morning_brief: bool = True  # open the brief with Friday's first look each morning
+
+    @model_validator(mode="before")
+    @classmethod
+    def brief_from_before(cls, value: Any) -> Any:
+        if isinstance(value, dict) and "morning_brief" not in value and isinstance(value.get("types"), dict):
+            return {**value, "morning_brief": value["types"].get("morning_brief", True)}
+        return value
 
 
 class JobsSettings(Model):

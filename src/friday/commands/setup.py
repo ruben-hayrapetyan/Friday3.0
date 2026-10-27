@@ -68,8 +68,7 @@ def setup_save(ctx: Ctx, inp: SetupInput) -> Changed:
         write_setting(ctx, "calendar_look", {**to_json("calendar_look", look), "toolbar": hidden})
         counted = {**busy.calendars, **{c.name: c.busy for c in inp.calendars}}
         write_setting(ctx, "busy", {**to_json("busy", busy), "calendars": counted})
-    notify = to_json("notify", ctx.settings["notify"])
-    write_setting(ctx, "notify", {**notify, "types": {**notify["types"], "morning_brief": inp.brief}})
+    write_setting(ctx, "notify", {**to_json("notify", ctx.settings["notify"]), "morning_brief": inp.brief})
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "setup_done"}, {"value": "true"})
     return Changed(message="Friday is set up the way you said")
 
@@ -101,7 +100,7 @@ def answers(ctx: Ctx, events: dict[str, int]) -> dict[str, Any]:
         "evening_from": param("weekday_evenings", "start", "18:00") or "18:00",
         "weekend_free": in_hours(param("weekends", "free", "4h")) or 0.0,
         "finish_early_days": param("finish_early", "days", 1) or 0,
-        "brief": ctx.settings["notify"].types.get("morning_brief", True),
+        "brief": ctx.settings["notify"].morning_brief,
         "calendars": [{"name": n, "shown": n not in look.toolbar, "busy": calendar_counts(n, busy)} for n in names],
     }
 

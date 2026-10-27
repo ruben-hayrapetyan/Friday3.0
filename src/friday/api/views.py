@@ -63,6 +63,23 @@ class ReviewOut(Model):
     finished: list[ItemOut]  # remaining reached 0: confirm with `done`
     settled: dict[str, int] = {}  # block key → minutes already answered (by `settle` or an earlier review)
     sleep: list["SleepAsk"] = []  # tracked sleep: the taps that day is missing, to add or skip
+    gaps: list["ReviewGap"] = []  # what to answer, by task (`review_task`), then what you said
+
+
+class ReviewGap(Model):
+    """A task's time that day Friday can't account for (27 Oct: Review asks "only the gaps, by task"): blocks that
+    ended without a timer running, an answer, or the task checked off. Once answered, what you said."""
+
+    item_id: int
+    title: str
+    planned_min: int  # the blocks' minutes
+    spans: list[list[str]]  # each block's [start, end], local
+    blocks: list[str]  # their keys
+    due: str | None = None
+    last: bool = False  # no time planned for it after these: "Finished it" is the likely answer
+    answer: Literal["done", "partial", "not_done"] | None = None  # what you said, once you have
+    done_min: int | None = None  # how much of `planned_min` that was
+    finished: bool = False  # the task is checked off
 
 
 class SleepAsk(Model):
@@ -80,12 +97,19 @@ class PacesOut(Model):
     period_end: str | None
 
 
-class LockConflict(Model):
-    pin_id: int
-    item_id: int
+class Decision(Model):
+    """Something only you can decide, waiting in the Inbox (27 Oct: "decisions but in the inbox with a notification
+    symbol"): a lock that makes work late (`resolve`), or work that will be late (the options, or `late_accept`)."""
+
+    key: str  # "lock:-1509", "late"
+    kind: Literal["lock", "late"]
     title: str
-    start: str
-    extra_late_hours: float
+    detail: str
+    pin_id: int | None = None  # a lock: the pin (an event's hold is the event's id, negative)
+    item_id: int | None = None  # a lock: what it holds
+    start: str | None = None  # a lock: when, local
+    hours: float = 0  # how much later the work it's about is
+    items: list["LateItem"] = []  # late work: what will be late
 
 
 class StatusOut(Model):
@@ -98,7 +122,7 @@ class StatusOut(Model):
     ready: bool  # timezone and sleep are set
     notices: list[str]
     problems: list[str] = []  # the server's banners: a failing worker, plugins that didn't load
-    conflicts: list[LockConflict] = []  # a newer plan waits on these locks (`resolve`)
+    decisions: list[Decision] = []  # waiting in the Inbox, most pressing first
     config_keys: list[str] = []  # settings friday.toml sets: read-only in the app
     suggestions: int = 0  # waiting in the inbox (repeating calendar events wait in Settings → Repeating)
     late: dict[str, float] = {}  # hard work the plan finishes after its due: hours late, by title
@@ -256,7 +280,7 @@ class WeekItem(Model):
 
 
 class WeekOut(Model):
-    """The weekly review (DESIGN §18.9): planned against actual by area, deadlines, moves and notifications."""
+    """The week (DESIGN §18.9; in Insights since 27 Oct): planned against actual by area, deadlines and moves."""
 
     start: str
     end: str  # the last day
@@ -264,7 +288,6 @@ class WeekOut(Model):
     fixed_h: dict[str, float]  # fixed time by event kind
     deadlines: list[DeadlineWeek]
     moves: int  # pins, unpins and shoves you made
-    notifications: dict[str, int]  # sent, acted, dismissed
     learned: list[str] = []  # what Friday learned (M9)
     finished: list[WeekItem] = []  # done this week
     carried: list[WeekItem] = []  # planned this week, still open

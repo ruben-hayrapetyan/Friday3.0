@@ -10,7 +10,6 @@ from typing import Any
 import pytest
 
 from friday.commands.all import REGISTRY
-from friday.commands.notify import make_token
 from friday.core.items import FieldError
 from friday.planner.service import replan
 from tests.commands.helpers import App, new_app
@@ -35,6 +34,8 @@ KV_STATE = {
     "event_going",
     "event_keep",  # the optional events you're going to, kept in kv
     "event_hold",  # the events whose time is for a task, kept in kv
+    "lock_keep",  # the locks you kept, kept in kv
+    "late_accept",  # the lateness you accepted, kept in kv
 }  # commands whose whole effect is in kv, which other commands only use for counters
 
 
@@ -164,18 +165,38 @@ def settle_sample(app: App) -> dict[str, Any]:
     return {"block_key": key, "status": "not_done"}
 
 
-def act_sample(app: App) -> dict[str, Any]:
+def review_task_sample(app: App) -> dict[str, Any]:
     item = chore(app)
-    app.conn.execute(
-        "INSERT INTO notifications (kind, dedup_key, channel, sent_utc) "
-        "VALUES ('slack_low', 'k', 'app', '2026-10-19T13:00Z')"
-    )
-    return {"token": make_token(app.conn, 1, f"start:{item}", app.now_utc)}
+    app.do("pin", id=item, start="2026-10-19T10:00", kind="locked")
+    replan(app.conn, app.now_utc)
+    app.at("2026-10-19T12:00")
+    return {"item_id": item, "status": "not_done"}
 
 
-def subscribed(app: App) -> str:
-    app.do("push_subscribe", endpoint="https://push.example/1", keys={"p256dh": "k", "auth": "a"})
-    return "https://push.example/1"
+def a_lock(app: App) -> int:
+    item = chore(app)
+    app.do("pin", id=item, start="2026-10-19T10:00", kind="locked")
+    replan(app.conn, app.now_utc)
+    return int(app.table("pins")[-1]["id"])
+
+
+def in_report(app: App, path: str, value: str) -> None:
+    """The current plan's report, saying `value` at `path`: the planner's verdict, without a scene to cause it."""
+    app.conn.execute("UPDATE plans SET report = json_set(report, ?, json(?)) WHERE status = 'current'", [path, value])
+
+
+def lock_keep_sample(app: App) -> dict[str, Any]:
+    pin = a_lock(app)
+    conflict = {"pin_id": pin, "item_id": 1, "title": "laundry", "start": "2026-10-19T14:00Z", "extra_late_hours": 2}
+    in_report(app, "$.conflicts", json.dumps([conflict]))
+    return {"pin_ids": [pin]}
+
+
+def late_accept_sample(app: App) -> dict[str, Any]:
+    item = essay(app)
+    replan(app.conn, app.now_utc)
+    in_report(app, "$.late_hours", f'{{"{item}": 2.5}}')
+    return {"item_ids": [item]}
 
 
 def compare_sample(app: App) -> dict[str, Any]:
@@ -397,9 +418,10 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "suggestion_reject": lambda app: {"id": a_suggestion(app)},
     "suggestion_restore": lambda app: {"id": set_aside(app)},
     "batch_accept": lambda app: {"batch": a_batch(app)},
-    "act": act_sample,
-    "push_subscribe": lambda app: {"endpoint": "https://push.example/1", "keys": {"p256dh": "k", "auth": "a"}},
-    "push_unsubscribe": lambda app: {"endpoint": subscribed(app)},
+    "review_task": review_task_sample,
+    "resolve": lambda app: {"unlock_pin_ids": [a_lock(app)]},
+    "lock_keep": lock_keep_sample,
+    "late_accept": late_accept_sample,
     "template_apply": lambda app: {"template": "Essay", "title": "essay", "hours": 6, "due": "2026-10-30T17:00"},
     "template_save": lambda app: {"name": "Mine", "project_id": template_project(app)},
     "undo": lambda app: {"command_id": app.full("add", payload={"text": "x ~30m"}).command_id},
@@ -411,7 +433,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
         ]
     },
 }
-NOT_UNDOABLE = {"resolve"}  # needs a waiting plan; tested with scenario 3
+NOT_UNDOABLE: set[str] = set()
 UNLOGGED = {name for name, spec in REGISTRY.items() if not spec.logged}
 
 
@@ -488,7 +510,6 @@ def test_an_undo_can_be_undone_and_a_command_is_undone_only_once(app: App) -> No
 def test_unlogged_commands_are_only_those_with_no_undo_or_a_secret_result() -> None:
     assert {
         "replan",
-        "notify_test",
         "ask_ai",
         "ask_claude",
         "mac_sync",

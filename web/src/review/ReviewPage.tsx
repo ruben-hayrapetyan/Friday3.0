@@ -1,43 +1,38 @@
-// Review (v22): the day's cards, or the week. The week is suggested on the week's last day.
+// Review (27 Oct): only what Friday can't tell on its own, by task (DailyReview). Yesterday comes first while it has
+// something to answer. The week's look back is in Insights → This week.
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Seg } from "@/components/fr/controls"
-import { useSettings } from "@/hooks/queries"
-import { weekday } from "@/lib/format"
 import { addDays } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
 import { DailyReview, useReviewDay } from "./DailyReview"
-import { WeeklyReview } from "./WeeklyReview"
 
 export function ReviewPage() {
   const { today } = useShell()
-  const settings = useSettings().data as Record<string, { week_start?: string }> | undefined
-  const weekStart = settings?.time?.week_start ?? "mon"
-  const lastDay = weekday(addDays(today, 1)).toLowerCase() === weekStart
-  const [mode, setMode] = useState<"Day" | "Week">(lastDay ? "Week" : "Day")
-  const date = useReviewDay()
-  const suggested = lastDay ? "Week" : "Day"
+  const first = useReviewDay()
+  // The day stays put once chosen: answering yesterday's last row shows it answered, not today.
+  const [date, setDate] = useState<string | null>(null)
+  useEffect(() => {
+    if (first && date === null) setDate(first)
+  }, [first, date])
+  const shown = date ?? first ?? today
+  const yesterday = addDays(today, -1)
   return (
     <>
       <div className="fr-page-head">
         <span className="fr-h fr-title">Review</span>
         <Seg
-          options={(["Day", "Week"] as const).map((m) => ({
-            value: m,
-            label: (
-              <>
-                {m}
-                {m === suggested && <span style={{ fontSize: 10, color: "var(--color-accent-300)" }}>suggested</span>}
-              </>
-            ),
-          }))}
-          value={mode}
-          onPick={setMode}
+          options={[
+            { value: yesterday, label: "Yesterday" },
+            { value: today, label: "Today" },
+          ]}
+          value={shown}
+          onPick={setDate}
         />
         <div style={{ flex: 1 }} />
-        <span className="fr-kicker fr-head-note">{mode === "Day" ? "1–4 to answer, ← to go back" : "Choices apply when you finish"}</span>
+        <span className="fr-kicker fr-head-note">1–4 answer the first row</span>
       </div>
-      {mode === "Day" ? <DailyReview key={date} date={date} onWeek={() => setMode("Week")} /> : <WeeklyReview />}
+      <DailyReview key={shown} date={shown} />
     </>
   )
 }
