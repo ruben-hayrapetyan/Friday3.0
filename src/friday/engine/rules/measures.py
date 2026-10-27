@@ -338,9 +338,9 @@ class MinimizeChanges(Rule):
 
 @rule_type("pin_hold")
 class PinHold(Rule):
-    """A pin holds (27 Oct: "my pinned timeslots keep moving"): each hour of a pin's time given up costs `price`, far
-    above what a later evening or a comfier day costs, in the wellbeing stage, so only work that would be late moves
-    it. Built in beside your rules (planner/build.py); the timer's hold is minimize_changes' alone."""
+    """A pin holds (27 Oct: "my pinned timeslots keep moving"): each hour of a pin's time given up costs `price`. The
+    planner builds it in beside your rules in the deadlines stage (planner/build.py), so a later evening or a heavy
+    day never moves a pin, and work that would be late still does. The timer's hold is minimize_changes' alone."""
 
     default_stage = "wellbeing"
 

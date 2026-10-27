@@ -194,14 +194,15 @@ export function LengthStepper({ value, onSave }: { value: number | null; onSave:
 
 const SAVE_AFTER_MS = 600
 
-/** A length in minutes; null leaves it to Friday's estimate. Under 15 minutes still takes one 15-minute slot. */
-export function LengthPicker({ value, onPick }: { value: number | null; onPick: (v: number | null) => void }) {
+/** A length in minutes; null leaves it to Friday's estimate. Under 15 minutes still takes one 15-minute slot. For
+ * several tasks (`group`), null is lengths that differ, and there's no leaving it to Friday. */
+export function LengthPicker({ value, onPick, group }: { value: number | null; onPick: (v: number | null) => void; group?: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 12, color: "var(--color-neutral-400)" }}>
         <LengthInput value={value} onPick={onPick} />
         <span className="fr-h tnum" style={{ fontSize: 22, color: "var(--color-text)" }}>
-          {value === null ? "Friday decides" : dur(value)}
+          {value === null ? (group ? "Each its own" : "Friday decides") : dur(value)}
         </span>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -210,9 +211,11 @@ export function LengthPicker({ value, onPick }: { value: number | null; onPick: 
             {dur(v)}
           </Chip>
         ))}
-        <Chip on={value === null} onClick={() => onPick(null)}>
-          Friday decides
-        </Chip>
+        {!group && (
+          <Chip on={value === null} onClick={() => onPick(null)}>
+            Friday decides
+          </Chip>
+        )}
       </div>
       {value !== null && value < 15 && <span style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>Planned in a 15-minute slot, the smallest Friday places.</span>}
     </div>

@@ -103,13 +103,17 @@ class StatusOut(Model):
     suggestions: int = 0  # waiting in the inbox (repeating calendar events wait in Settings → Repeating)
     late: dict[str, float] = {}  # hard work the plan finishes after its due: hours late, by title
     late_items: list["LateItem"] = []  # the same, each with its id and due, soonest due first
+    # Work with a soft deadline the plan finishes after its due, and work due in the plan's range it doesn't plan at
+    # all (27 Oct: readings ran days past their due and nothing said so). Soonest due first.
+    slipping: list["LateItem"] = []
 
 
 class LateItem(Model):
     item_id: int
     title: str
     due: str | None  # local
-    hours: float  # how late the plan finishes it
+    hours: float  # how late the plan finishes it (0 when it isn't planned)
+    planned: bool = True  # False: no time for it in the plan at all
 
 
 class KindAccuracy(Model):

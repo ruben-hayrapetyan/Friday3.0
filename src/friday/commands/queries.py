@@ -45,7 +45,7 @@ from friday.engine.explain import Block
 from friday.engine.rules.prices import has_words
 from friday.planner.assemble import PlannedBlock
 from friday.planner.build import id_of, key_of
-from friday.planner.progress import minutes_by_item
+from friday.planner.progress import minutes_by_item, remaining_minutes
 from friday.planner.service import ahead
 from friday.planner.snapshot import pace_periods, take_snapshot
 from friday.planner.store import area_names, current_plan, generation, kv_get, settings_version
@@ -552,6 +552,40 @@ def paces(ctx: Ctx, inp: Empty) -> PacesOut:
     )
 
 
+NOT_SLIPPING = ("Routine", "Habit")  # a meal or a habit missed is missed, not late
+
+
+def slipping(ctx: Ctx, saved: dict | None, late: set[int]) -> list[LateItem]:
+    """Work with a due the plan finishes after it, or doesn't plan at all though it's due in the plan's range: soft
+    deadlines (readings) and anything hard the report doesn't already call late. Soonest due first."""
+    if saved is None:
+        return []
+    horizon_end = ctx.now_utc + ctx.settings["time"].horizon_days * 1440
+    done = minutes_by_item(ctx.conn, ctx.user_id)
+    out = []
+    for r in rows(
+        ctx.conn,
+        "SELECT i.id, i.title, i.due_utc, i.preset, MAX(b.end_utc) AS last FROM items i "
+        "LEFT JOIN blocks b ON b.item_id = i.id AND b.plan_id = ? "
+        "WHERE i.user_id = ? AND i.status = 'todo' AND i.when_kind != 'fixed' AND i.due_utc IS NOT NULL "
+        "AND i.amount != 'open' AND COALESCE(i.duration_units, 1) > 0 GROUP BY i.id",
+        [saved["id"], ctx.user_id],
+    ):
+        if r["id"] in late or r["preset"] in NOT_SLIPPING:
+            continue
+        due = parse_utc(r["due_utc"])
+        if r["last"] is not None and parse_utc(r["last"]) > due:
+            hours = round((parse_utc(r["last"]) - due) / 60, 1)
+            out.append(LateItem(item_id=r["id"], title=r["title"], due=ctx.local(r["due_utc"]), hours=hours))
+        elif (
+            r["last"] is None
+            and due <= horizon_end
+            and (remaining_minutes(require_item(ctx, r["id"]), done.get(r["id"], 0)) or 0) > 0
+        ):
+            out.append(LateItem(item_id=r["id"], title=r["title"], due=ctx.local(r["due_utc"]), hours=0, planned=False))
+    return sorted(out, key=lambda i: i.due or "9999")
+
+
 @query("status")
 def status(ctx: Ctx, inp: Empty) -> StatusOut:
     """The plan generation, the current plan, the timer and whether Friday is set up."""
@@ -583,6 +617,7 @@ def status(ctx: Ctx, inp: Empty) -> StatusOut:
         notices=notices,
         late=late,
         late_items=late_items,
+        slipping=slipping(ctx, saved, set(late_hours)),
         problems=list(kv_get(ctx.conn, "server_problems", {}, ctx.user_id).values()),
         conflicts=waiting_conflicts(ctx, saved["id"] if saved else 0),
         config_keys=kv_get(ctx.conn, "config_keys", [], ctx.user_id),

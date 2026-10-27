@@ -22,7 +22,7 @@ import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { AddBox } from "./AddBox"
-import { BulkBar, pickWith } from "./Bulk"
+import { BulkBar, menuOpen, pickWith } from "./Bulk"
 import { addHint, fillFor, GROUPS, type GroupBy, grouped, KINDS_FIRST, OTHER, plural, progress, SORTS, type SortBy, summary } from "./groups"
 import { DuePicker, LengthInput } from "./Pickers"
 import { useDuplicates } from "@/inbox/CheckTasks"
@@ -77,7 +77,7 @@ export function TodoPage() {
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select, [contenteditable]")) return
-      if (e.key === "Escape" && picked.length) setPicked([])
+      if (e.key === "Escape" && picked.length && !menuOpen()) setPicked([])
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a" && order.length) {
         e.preventDefault()
         setPicked(order)
@@ -246,8 +246,11 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect }: RowProps) {
   const reopen = useCommand("reopen", { label: () => `${item.title}: open again` })
   const next = nextBlocks(blocks).get(item.id)
   const isNow = now?.current?.item_id === item.id
-  const startBy = now?.alerts.find((a) => a.item_id === item.id)?.latest_start
+  const alert = now?.alerts.find((a) => a.item_id === item.id)
   const late = useStatus().data?.late_items?.find((l) => l.item_id === item.id)
+  // Not once it's due: the due beside it says how far over it is.
+  const due = useClock() >= (item.due ? toMin(item.due) : Infinity)
+  const slip = useStatus().data?.slipping?.find((l) => l.item_id === item.id && !due)
   const isDone = item.status === "done"
   const left = item.remaining_min ?? 0
   const share = item.done_min && item.done_min + left ? item.done_min / (item.done_min + left) : 0
@@ -327,11 +330,8 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect }: RowProps) {
       </span>
       <span className="tnum fr-mono fr-todo-meta" style={{ display: "flex", alignItems: "center", gap: 12, paddingLeft: 12, paddingRight: 6 }}>
         {late && !isDone && <LateTag hours={late.hours} />}
-        {startBy && !isDone && (
-          <span title={`Start by ${when(startBy, today)} to finish on time`} style={{ color: "var(--fr-warn)", display: "inline-flex" }}>
-            <Icon name="warning" size={11} />
-          </span>
-        )}
+        {slip && !late && !isDone && <SlipTag slip={slip} />}
+        {alert && !isDone && !late && <StartBy alert={alert} today={today} />}
         {share > 0 && <Pie share={share} />}
         <span className="fr-hover" onClick={inline("length")} style={{ ...cell, minWidth: 40 }} title={`${progress(item).text}. Click to change`}>
           {left > 0 && !isDone ? dur(left) : "·"}
@@ -386,6 +386,21 @@ function LateTag({ hours }: { hours: number }) {
   )
 }
 
+/** Work with a soft deadline the plan finishes after its due, or doesn't plan at all (27 Oct: readings ran days past
+ * their due and nothing said so). In the warning colour, not the late red: a soft deadline may slip. */
+function SlipTag({ slip }: { slip: { hours: number; planned?: boolean } }) {
+  const planned = slip.planned !== false
+  return (
+    <span
+      className="fr-tag"
+      title={planned ? `The plan finishes this about ${lateBy(slip.hours)} after it's due` : "There's no time for this in the plan before it's due"}
+      style={{ color: "var(--fr-warn)", background: "color-mix(in srgb, var(--fr-mark) 14%, transparent)", flex: "none", alignSelf: "flex-start", whiteSpace: "nowrap" }}
+    >
+      {planned ? `${lateBy(slip.hours)} late` : "not planned"}
+    </span>
+  )
+}
+
 /** How much is done, as personal's little pie. */
 function Pie({ share }: { share: number }) {
   const a = Math.min(share, 0.999) * 2 * Math.PI
@@ -409,8 +424,11 @@ function Row({ item, fresh, selected, picked, onSelect }: RowProps) {
   const reopen = useCommand("reopen", { label: () => `${item.title}: open again` })
   const next = nextBlocks(blocks).get(item.id)
   const isNow = now?.current?.item_id === item.id
-  const startBy = now?.alerts.find((a) => a.item_id === item.id)?.latest_start
+  const alert = now?.alerts.find((a) => a.item_id === item.id)
   const late = useStatus().data?.late_items?.find((l) => l.item_id === item.id)
+  // Not once it's due: the due beside it says how far over it is.
+  const due = useClock() >= (item.due ? toMin(item.due) : Infinity)
+  const slip = useStatus().data?.slipping?.find((l) => l.item_id === item.id && !due)
   const p = progress(item)
   const isDone = item.status === "done"
   const soon = item.due && item.firmness === "hard" && toMin(item.due) - toMin(`${today}T00:00`) < 2 * 1440
@@ -448,11 +466,7 @@ function Row({ item, fresh, selected, picked, onSelect }: RowProps) {
               {item.area}
             </span>
           )}
-          {startBy && (
-            <span style={{ color: "var(--fr-warn)" }}>
-              <Icon name="warning" size={11} /> start by {when(startBy, today)}
-            </span>
-          )}
+          {alert && !late && <StartBy alert={alert} today={today} />}
         </span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -473,6 +487,7 @@ function Row({ item, fresh, selected, picked, onSelect }: RowProps) {
         )}
         <span style={{ color: soon ? "var(--fr-due)" : "var(--color-neutral-500)" }}>{item.due ? <DueLabel due={item.due} routine={item.preset === "Routine"} /> : "No due date"}</span>
         {late && !isDone && <LateTag hours={late.hours} />}
+        {slip && !late && !isDone && <SlipTag slip={slip} />}
       </div>
     </div>
   )
@@ -497,4 +512,20 @@ function useStored<T extends string>(key: string, initial: T, allowed: readonly 
     }
   }
   return [value, set]
+}
+
+
+/** When to start to finish on time, in words (27 Oct: a bare ⚠ said nothing until you hovered over it): "start now"
+ * when that's now or past, else "start by 6pm". Work that will be late says so instead (LateTag). */
+function StartBy({ alert, today }: { alert: { kind: string; latest_start: string }; today: string }) {
+  const urgent = alert.kind !== "soon"
+  return (
+    <span
+      className="fr-tag"
+      title={urgent ? "Start now to finish it on time" : `Start by ${when(alert.latest_start, today)} to finish it on time`}
+      style={{ color: "var(--fr-warn)", background: "color-mix(in srgb, var(--fr-mark) 14%, transparent)", flex: "none", alignSelf: "flex-start", whiteSpace: "nowrap" }}
+    >
+      {urgent ? "start now" : `start by ${when(alert.latest_start, today)}`}
+    </span>
+  )
 }

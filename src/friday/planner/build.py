@@ -45,8 +45,9 @@ PLANNER_RULES = frozenset({"travel", "meal_learned"})
 MEAL_REACH_MIN = 120
 MEAL_WINDOW = {"type": "meal_window", "name": "meal_window", "weight": 1.0, "stage": "wellbeing",
                "params": {"price": 2000.0}}  # fmt: skip
-# A pin holds: an hour of its time given up costs this, so only work that would be late moves it (27 Oct).
-PIN_HOLD = {"type": "pin_hold", "name": "pin_hold", "weight": 1.0, "stage": "wellbeing", "params": {"price": 100.0}}
+# A pin holds: its time given up costs in the deadlines stage, beside lateness and far below it, so nothing but work
+# that would be late moves it (27 Oct). In wellbeing, a heavy Tuesday still took two hours of a pinned evening.
+PIN_HOLD = {"type": "pin_hold", "name": "pin_hold", "weight": 1.0, "stage": "deadlines", "params": {"price": 100.0}}
 LONG_TERM_SCALE = 0.25  # how much Long term work counts when short-term work comes first
 
 

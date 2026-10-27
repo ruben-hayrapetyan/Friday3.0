@@ -22,6 +22,7 @@ import { DueLane } from "./DueLane"
 import { useGlide } from "./glide"
 import { type TrialPlan, useWhatIf, whatIf } from "@/whatif/store"
 import { asBlock, BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, PX, SleepBand, type TriedLook } from "./Pieces"
+import { inARow, type Pick, pickOfBlock, pickOfEvent, picks, shifted, usePicks } from "./picks"
 
 interface Props {
   dates: string[]
@@ -50,6 +51,10 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
     if (at >= 0) whatIf.remove(at)
   }
   const retime = useRetime()
+  // Several picked with ⌘ or Shift (plan/picks.ts): drawn as selected, and dragged together.
+  const picked = usePicks()
+  const pickedKeys = new Set(picked.map((p) => p.key))
+  const multi = (e?: React.MouseEvent) => !!e && (e.metaKey || e.ctrlKey || e.shiftKey)
   const now = useClock()
   const { look } = useLook()
   const allDay24 = look.hours === "All day"
@@ -63,6 +68,11 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   // the events beside it, rather than take a column from them (27 Oct).
   const going = fixed.filter((f) => !f.gives_way_to)
   const skipped = fixed.filter((f) => f.gives_way_to)
+  // What was selected, picked too on the first ⌘-click, as the to-do list does.
+  const selectedPick = (): Pick | null => {
+    const found = selected?.key.startsWith("F") ? fixed.find((f) => f.id === selected.item_id) : undefined
+    return found ? pickOfEvent(found) : selected?.key.startsWith("T") ? pickOfBlock(selected) : null
+  }
   // From the wake time to core sleep, stretched for anything earlier or later on these days.
   // The past as it went: a block a timer sitting covers gives way to the sitting, and a deleted item's goes; blocks
   // and sittings are laid out together, side by side where they overlap, rather than one drawn over the other.
@@ -142,12 +152,16 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                   key={`f${p.item.id}`}
                   p={p}
                   tried={lookOf(p.item.id)}
-                  onOpen={() =>
-                    lookOf(p.item.id) === "gone"
-                      ? bringBack(p.item.id)
-                      : tried && whatIf.madeBy(p.item.id) !== null
-                        ? (select(null), setEvent(draftOf(p.item)))
-                        : select(asBlock(p.item))
+                  picked={pickedKeys.has(`F${p.item.id}`)}
+                  onOpen={(e) =>
+                    multi(e) && !tried && p.item.event_kind !== "shove"
+                      ? (picks.toggle(pickOfEvent(p.item), selectedPick()), select(null))
+                      : (picks.clear(),
+                        lookOf(p.item.id) === "gone"
+                          ? bringBack(p.item.id)
+                          : tried && whatIf.madeBy(p.item.id) !== null
+                            ? (select(null), setEvent(draftOf(p.item)))
+                            : select(asBlock(p.item)))
                   }
                   onEdit={p.item.event_kind === "shove" ? undefined : () => (select(null), setEvent(draftOf(p.item)))}
                   retime={{ begin: () => select(null), save: (span) => retime.event(p.item, span) }}
@@ -159,23 +173,30 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                   key={p.item.key}
                   p={p}
                   isCur={p.item.key === current}
-                  selected={p.item.key === selected?.key}
+                  selected={p.item.key === selected?.key || pickedKeys.has(p.item.key)}
                   done={p.item.state === "done" || (toMin(p.item.end) <= now && !open.has(p.item.item_id))}
                   look={p.item.key.startsWith("S") ? "sitting" : p.item.state === "missed" ? "missed" : undefined}
                   movedFrom={tried ? tried.moved.get(p.item.item_id) : moved.get(p.item.item_id)}
                   tried={lookOf(p.item.item_id)}
                   today={today}
-                  onOpen={() => !justDragged() && select(p.item)}
-                  // A selected block let go of, as retyping its time does: its popover would act on where it was.
-                  onGrab={(e) => (p.item.key === selected?.key && select(null), begin(e, grabbed(p.item, "move", minuteAt(e))))}
-                  onResize={(e) => (p.item.key === selected?.key && select(null), begin(e, grabbed(p.item, "resize", minuteAt(e))))}
+                  onOpen={(e) => {
+                    if (justDragged()) return
+                    const pickable = p.item.key.startsWith("T") && p.item.state !== "missed" && p.item.state !== "done"
+                    if (multi(e) && pickable) return (picks.toggle(pickOfBlock(p.item), selectedPick()), select(null))
+                    picks.clear()
+                    select(p.item)
+                  }}
+                  // A selected block let go of, as retyping its time does: its popover would act on where it was. A
+                  // picked one takes the others picked with it.
+                  onGrab={(e) => (p.item.key === selected?.key && select(null), begin(e, { ...grabbed(p.item, "move", minuteAt(e)), group: pickedKeys.has(p.item.key) && picked.length > 1 }))}
+                  onResize={(e, edge) => (p.item.key === selected?.key && select(null), begin(e, grabbed(p.item, edge === "top" ? "resize-top" : "resize", minuteAt(e))))}
                   retime={{ begin: () => select(null), save: (span) => retime.block(p.item, span) }}
                 />
               ))}
               {layout(news, date, axis).map((p) => (
                 <GhostBox key={`g${p.item.key}`} p={p} />
               ))}
-              {drag?.moved && drag.at && drag.over === "calendar" && <Preview drag={drag} date={date} axis={axis} today={today} />}
+              {drag?.moved && drag.at && drag.over === "calendar" && (drag.group || drag.rows ? <GroupPreview drag={drag} list={picked} date={date} axis={axis} /> : <Preview drag={drag} date={date} axis={axis} today={today} />)}
               {timer && date === calendar.today && nowData?.current_source === "timer" && (
                 <TimerBox title={nowData.current?.title ?? ""} top={(now - elapsed / 60 - toMin(date) - axis.startMin) * PX} seconds={elapsed} />
               )}
@@ -342,7 +363,7 @@ function minuteAtMouse(e: React.MouseEvent): number {
   return top + (e.clientY - e.currentTarget.getBoundingClientRect().top) / PX
 }
 
-function grabbed(block: Block, kind: "move" | "resize", minute: number) {
+function grabbed(block: Block, kind: "move" | "resize" | "resize-top", minute: number) {
   const start = toMin(block.start)
   return { kind, start, end: toMin(block.end), grab: minute - start, itemId: block.item_id, blockKey: block.key, title: block.title }
 }
@@ -356,6 +377,19 @@ function Preview({ drag, date, axis, today }: { drag: Drag; date: string; axis: 
       {layout([span], date, axis).map((p) => (
         <DropPreview key={p.top} p={p} label={label} locked={drag.locked} />
       ))}
+    </>
+  )
+}
+
+/** Where each picked block and event would land, dragged together. */
+function GroupPreview({ drag, list, date, axis }: { drag: Drag; list: Pick[]; date: string; axis: Axis }) {
+  if (!drag.at) return null
+  const spans = drag.rows ? inARow(drag.rows, drag.at.start) : shifted(list, drag.at.start - drag.start)
+  return (
+    <>
+      {spans.flatMap((s) =>
+        layout([s], date, axis).map((p) => <DropPreview key={`${s.key}${p.top}`} p={p} label={`${s.title} ${clock(s.start)}–${clock(s.end)}`} locked={drag.locked} />),
+      )}
     </>
   )
 }

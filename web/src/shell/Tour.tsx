@@ -34,7 +34,7 @@ export const STEPS: Step[] = [
   {
     target: "calendar",
     title: "Your calendar",
-    body: "Grey blocks are your events; coloured ones are work Friday planned. Click one to start it, mark it done or move it. Drag to move it; double-click an empty time to add an event.",
+    body: "Grey blocks are your events; coloured ones are work Friday planned. Click one to start it, mark it done or move it. Drag to move it; ⌘-click several to move or change them together; double-click an empty time to add an event.",
   },
   {
     target: "attention",

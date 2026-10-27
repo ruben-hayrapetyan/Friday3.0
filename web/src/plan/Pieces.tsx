@@ -68,9 +68,9 @@ interface BlockProps {
   movedFrom?: string
   tried?: TriedLook
   today: string
-  onOpen: () => void
+  onOpen: (e?: React.MouseEvent) => void // with the click, whose ⌘ or Shift picks it with others
   onGrab: (e: React.PointerEvent) => void
-  onResize: (e: React.PointerEvent) => void
+  onResize: (e: React.PointerEvent, edge: "top" | "bottom") => void
   retime?: Retime
 }
 
@@ -143,14 +143,27 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, tod
       {movedFrom && (
         <div style={{ fontSize: 10, color: "var(--color-accent-200)", whiteSpace: "nowrap" }}>moved from {when(movedFrom, today)}</div>
       )}
+      {/* Either edge changes the time from that end (27 Oct: a block had only its bottom edge, which sat just above the
+          next block's top, so dragging that block's top stretched the one before it instead). Short ones only at the
+          bottom: two edges would cover all of a quarter hour, leaving nothing to grab to move it. */}
+      {!fixedInPlace && minutes(b) >= 30 && (
+        <div
+          title="Drag to change when it starts"
+          onPointerDown={(e) => {
+            e.stopPropagation()
+            onResize(e, "top")
+          }}
+          style={{ position: "absolute", left: 0, right: 0, top: 0, height: 5, cursor: "ns-resize" }}
+        />
+      )}
       {!fixedInPlace && (
         <div
           title="Drag to change length"
           onPointerDown={(e) => {
             e.stopPropagation()
-            onResize(e)
+            onResize(e, "bottom")
           }}
-          style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 7, cursor: "ns-resize" }}
+          style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 5, cursor: "ns-resize" }}
         />
       )}
     </div>
@@ -159,13 +172,14 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, tod
 
 interface FixedProps {
   p: Placed<Item & { start: string; end: string }>
-  onOpen: () => void
+  onOpen: (e?: React.MouseEvent) => void
+  picked?: boolean // one of several picked on the calendar
   onEdit?: () => void // a double-click on it, away from its time
   retime?: Retime
   tried?: TriedLook
 }
 
-export function FixedBox({ p, onOpen, onEdit, retime, tried }: FixedProps) {
+export function FixedBox({ p, onOpen, onEdit, retime, tried, picked }: FixedProps) {
   const it = p.item
   const { skinOf, light } = useLook()
   const base = skinOf(it.event_kind === "shove" ? "shove" : "fixed", it.area)
@@ -210,6 +224,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried }: FixedProps) {
         cursor: "pointer",
         ...(skipped ? { opacity: 0.6 } : {}),
         ...(typing ? { zIndex: 5 } : {}),
+        ...(picked ? { boxShadow: "0 0 0 2px var(--color-accent)", zIndex: 2 } : {}),
       }}
       title={skipped ? `Skipping ${it.title}: ${it.gives_way_to} needs the time. Click to go anyway.` : undefined}
     >

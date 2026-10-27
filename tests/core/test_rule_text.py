@@ -484,3 +484,61 @@ def test_light_work_is_work_marked_light(text: str) -> None:
     reading, strength = read(text)
     assert reading is not None and reading.subject == "light work"
     assert spec(reading, strength, "x", [], [])["scope"] == {"energy": "light"}
+
+
+# 27 Oct, from two corpora of student rules: said these ways, each went to Claude or was read wrongly.
+@pytest.mark.parametrize(
+    ("text", "said"),
+    [
+        ("work 9-5 on weekdays", "Work between 9am and 5pm on weekdays"),
+        ("study from 2pm till 6pm", "Work between 2pm and 6pm"),
+        ("gym from 5pm-7pm", "Gym between 5pm and 7pm"),
+        ("no work 12am-8am", "No work between 12am and 8am"),
+        ("no work mon-fri after 9pm", "No work after 9pm on weekdays"),
+        ("work from 1pm onwards on saturdays", "No work before 1pm on Sat"),
+        ("no work late at night", "No work between 10pm and 2am"),
+        ("the latest I'll work is 11", "No work after 11pm"),
+        ("stop work at 10pm", "No work after 10pm"),
+        ("no work after 2230", "No work after 10:30pm"),
+        ("no work after half past ten", "No work after 10:30pm"),
+        ("work no later than 11pm", "No work after 11pm"),
+        ("can't work mornings", "No work between 8am and 12pm"),
+        ("start my day at 8am", "No work before 8am"),
+        ("lunch b4 1", "Lunch before 1pm"),
+        ("no work after 10pm, except fridays", "No work after 10pm on Mon, Tue, Wed, Thu, Sat, Sun"),
+        ("sundays off", "No work on Sun"),
+        ("Saturday is my day off", "No work on Sat"),
+        ("no work sat/sun", "No work on weekends"),
+        ("I don't work weekends", "No work on weekends"),
+        ("work only mon through thurs", "Work only on Mon, Tue, Wed, Thu"),
+        ("no work on the weekend", "No work on weekends"),
+        ("finish things 36 hours early", "Finish things 36 h before they're due"),
+        ("finish things 1 week early", "Finish things 7 days before they're due"),
+        ("get essays done 3 days before they're due", "Finish essays 3 days before they're due"),
+        ("saturday afternoons free", "Keep Sat 12pm–5pm free"),
+        ("I'd like to have weekends free", "Keep weekends free"),
+        ("don't schedule anything friday evening", "Keep Fri 5pm–10pm free"),
+        ("lock in from 8 to 11pm", "Work between 8pm and 11pm"),
+        ("gym between 6 and 8am", "Gym between 6am and 8am"),
+        ("no work between 23:00 and 07:00", "No work between 11pm and 7am"),
+        ("nothing after 8pm on M/W/F", "No work after 8pm on Mon, Wed, Fri"),
+        ("no work after 8 on wknds", "No work after 8pm on weekends"),
+        ("on fridays I stop at 6pm", "No work after 6pm on Fri"),
+        ("no essays on fri, sat or sun", "No essays on Fri, Sat, Sun"),
+        ("no work on weekends except sunday", "No work on Sat"),
+        ("readings: max 90 min daily", "At most 1.5 h of readings a day"),
+        ("4 hours max on fridays", "At most 4 h a day on Fri"),
+        ("gym straight after my last class", "Gym right after class"),
+        ("Thursday nights stop at 9 (trivia)", "No work after 9pm on Thu"),
+        ("flashcards after 9 at night", "Flashcards after 9pm"),
+        ("no work in the morning before 10", "No work before 10am"),
+    ],
+)
+def test_more_ways_of_saying_a_rule(text: str, said: str) -> None:
+    reading, _ = read(text)
+    assert (sentence(reading) if reading else None) == said
+
+
+@pytest.mark.parametrize("text", ["hard rule: no work after midnight", "no work after 11, no exceptions"])
+def test_a_rule_said_to_be_firm_is_always(text: str) -> None:
+    assert read(text)[1] == "Always"

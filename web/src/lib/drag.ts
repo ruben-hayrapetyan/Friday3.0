@@ -3,7 +3,7 @@
 
 import { ROW_MIN } from "./time"
 
-export type DragKind = "move" | "resize" | "row" | "select"
+export type DragKind = "move" | "resize" | "resize-top" | "row" | "select"
 
 export interface DragStart {
   kind: DragKind
@@ -25,6 +25,8 @@ export function dragged(from: DragStart, minute: number): { start: number; end: 
     }
     case "resize":
       return { start: from.start, end: Math.max(from.start + ROW_MIN, snap(minute)) }
+    case "resize-top": // its top edge: an earlier or later start, the same end
+      return { start: Math.min(from.end - ROW_MIN, snap(minute)), end: from.end }
     case "select": {
       const anchor = from.start
       const at = snap(minute)

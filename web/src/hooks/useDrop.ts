@@ -2,6 +2,8 @@
 // (preferred, or locked with Shift); a block dropped on the to-do pane is unpinned; a selection opens its menu.
 // Resizing a block pins it with its new length. Dropped on a whole day (a month cell, the mini month, a day's
 // header) it is due that day instead, at the time it had or 23:59 (COMBINED.md 16, as personal's Deadlines.swift).
+// A block picked with others (plan/picks.ts) takes them along: all move by as much, all are due that day, or all go
+// back to Friday.
 
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useCallback } from "react"
@@ -12,7 +14,8 @@ import { weekday } from "@/lib/format"
 import { fromMin } from "@/lib/time"
 import { placedByHand } from "@/plan/glide"
 import { pending } from "@/plan/pending"
-import { runCommand } from "./useCommand"
+import { inARow, itemsOf, type Pick, picks, shifted } from "@/plan/picks"
+import { rememberTogether, runCommand, undoAll } from "./useCommand"
 
 export interface Selection {
   start: string
@@ -70,6 +73,84 @@ async function lengthen(client: QueryClient, toast: (t: Toast) => void, id: numb
   await runCommand(client, toast, "edit", { id, duration_min: Math.max(15, item.duration_min + by) })
 }
 
+// Moves are sent one after another, in the order they were made (27 Oct: two quick presses of ↓ sent their pins at
+// once; the second, answered first, was then replaced by the first's, and the block stayed a quarter hour short).
+let moving: Promise<unknown> = Promise.resolve()
+
+/** `run` once every move made before it has been answered. */
+export function inOrder<T>(run: () => Promise<T>): Promise<T> {
+  const next = moving.then(run, run)
+  moving = next.catch(() => undefined)
+  return next
+}
+
+/** Every picked block and event moved `by` minutes together: a block pinned where it lands, as dragging it pins it
+ * (locked if it was, or with Shift), an event retimed as typing its time does. All of them move on the calendar at
+ * once; the changes are then made one by one, in an order where no new pin replaces a block not moved yet, and come
+ * back as one change with one Undo. The picks follow, so they can be moved again. */
+export async function moveGroup(client: QueryClient, toast: (t: Toast) => void, list: Pick[], by: number, locked = false): Promise<void> {
+  if (!by || !list.length) return
+  const moved = shifted(list, by).map((p) => ({ ...p, pinned: p.event ? undefined : locked || p.pinned === "locked" ? ("locked" as const) : ("preferred" as const) }))
+  picks.set(moved.map(({ from: _, ...p }) => p))
+  const drawn = moved.map((p) =>
+    pending.collect(() => (p.event ? placeEvent(client, { id: p.itemId, start: p.start, end: p.end }) : moveBlock(client, p.from.key, p.start, p.end, p.pinned ?? "preferred"))),
+  )
+  return inOrder(() => sendMoves(client, toast, moved, drawn, list.length, by))
+}
+
+async function sendMoves(client: QueryClient, toast: (t: Toast) => void, moved: (Pick & { from: Pick })[], drawn: number[][], count: number, by: number): Promise<void> {
+  const ids: number[] = []
+  for (const [n, p] of moved.entries()) {
+    const out = p.event
+      ? await runCommand(client, toast, "edit", { id: p.itemId, start: p.start, end: p.end }, { quiet: true })
+      : await runCommand(client, toast, "pin", { id: p.itemId, start: p.start, end: p.end, kind: p.pinned ?? "preferred", from_start: p.from.start, from_end: p.from.end }, { quiet: true })
+    if (!out) {
+      drawn.slice(n).forEach((d) => pending.drop(d)) // that one failed and said why: the rest stay where they are
+      break
+    }
+    pending.settle(drawn[n], (out as { generation?: number | null }).generation ?? 0)
+    if (out.command_id != null) ids.push(out.command_id)
+  }
+  rememberTogether(ids)
+  if (ids.length) toast({ message: `Moved ${count} ${by < 0 ? "earlier" : "later"}. ⌘Z undoes it`, action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
+}
+
+/** The picked blocks' tasks each due on `day`, or each left to Friday again (their pins taken off). */
+async function groupTo(client: QueryClient, toast: (t: Toast) => void, list: Pick[], day: string | null): Promise<void> {
+  const ids: number[] = []
+  const tasks = itemsOf(day ? list : list.filter((p) => p.pinned), true)
+  for (const id of tasks) {
+    const out = day
+      ? await runCommand(client, toast, "edit", { id, due: dueOn(day, knownDue(client, id)) }, { quiet: true })
+      : await runCommand(client, toast, "unpin", { id }, { quiet: true })
+    if (out?.command_id != null) ids.push(out.command_id)
+  }
+  rememberTogether(ids)
+  const said = day ? `${tasks.length} due ${weekday(day)} ${Number(day.slice(8, 10))}` : `Friday decides ${tasks.length} again`
+  if (ids.length) toast({ message: `${said}. ⌘Z undoes it`, action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
+  if (!day) picks.clear()
+}
+
+/** To-do rows picked together in the drawer and dropped: on a day, all due that day; on the calendar, pinned one
+ * after another from where they were let go. */
+async function dropRows(client: QueryClient, toast: (t: Toast) => void, drag: Drag): Promise<void> {
+  const rows = drag.rows ?? []
+  const day = drag.over === "day" ? drag.day : null
+  if (!day && !(drag.over === "calendar" && drag.at)) return
+  const kind = drag.locked ? "locked" : "preferred"
+  const placed = drag.at ? inARow(rows, drag.at.start) : []
+  const ids: number[] = []
+  for (const [n, r] of rows.entries()) {
+    const out = day
+      ? await runCommand(client, toast, "edit", { id: r.id, due: dueOn(day, knownDue(client, r.id)) }, { quiet: true })
+      : await runCommand(client, toast, "pin", { id: r.id, start: placed[n].start, end: placed[n].end, kind }, { quiet: true })
+    if (out?.command_id != null) ids.push(out.command_id)
+  }
+  rememberTogether(ids)
+  const said = day ? `${rows.length} due ${weekday(day)} ${Number(day.slice(8, 10))}` : `Planned ${rows.length} one after another`
+  if (ids.length) toast({ message: `${said}. ⌘Z undoes it`, action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
+}
+
 export function useDrop(onSelection: (selection: Selection) => void): (drag: Drag) => void {
   const client = useQueryClient()
   const toast = useToast()
@@ -81,6 +162,14 @@ export function useDrop(onSelection: (selection: Selection) => void): (drag: Dra
         return
       }
       if (drag.itemId === null) return
+      if (drag.rows && drag.rows.length > 1) return void dropRows(client, toast, drag)
+      if (drag.group && drag.kind === "move") {
+        const list = picks.get()
+        if (drag.over === "day" && drag.day) return void groupTo(client, toast, list, drag.day)
+        if (drag.over === "todo") return void groupTo(client, toast, list, null)
+        if (drag.over === "calendar" && drag.at) return void moveGroup(client, toast, list, drag.at.start - drag.start, drag.locked)
+        return
+      }
       if (drag.over === "day" && drag.day) {
         const due = dueOn(drag.day, knownDue(client, drag.itemId))
         const day = drag.day
@@ -96,7 +185,7 @@ export function useDrop(onSelection: (selection: Selection) => void): (drag: Dra
       const end = fromMin(drag.at.end)
       const kind = drag.locked ? "locked" : "preferred"
       const key = drag.blockKey
-      if (drag.kind === "resize") await lengthen(client, toast, drag.itemId, drag.at.end - drag.at.start - (drag.end - drag.start))
+      if (drag.kind === "resize" || drag.kind === "resize-top") await lengthen(client, toast, drag.itemId, drag.at.end - drag.at.start - (drag.end - drag.start))
       runCommand(
         client,
         toast,

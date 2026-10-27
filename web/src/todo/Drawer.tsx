@@ -3,7 +3,7 @@
 // drags to make it wider or narrower, kept for next time (personal's drawer, COMBINED.md 11).
 
 import { useWhatIf } from "@/whatif/store"
-import { type ReactNode, useState } from "react"
+import { type ReactNode, useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import type { Item } from "@/api/client"
 import { useDragging } from "@/components/calendar/useDrag"
@@ -17,6 +17,7 @@ import { nextBlocks } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { Dropdown } from "@/components/fr/Dropdown"
+import { BulkBar, menuOpen, pickWith } from "./Bulk"
 import { grouped, type SortBy } from "./groups"
 import { SortPicker } from "./SortPicker"
 import { ExpiresMark } from "./TodoPage"
@@ -62,6 +63,24 @@ export function Drawer() {
   const blocks = useHorizon().data?.blocks ?? []
   const groups = grouped(items, blocks, today, by, sort)
   const trying = useWhatIf().on
+  // Several at once, as on the To-do page: ⌘ adds one, Shift a run. Dragged together onto the calendar, they're
+  // planned one after another; onto a day, all due that day.
+  const [picked, setPicked] = useState<number[]>([])
+  const [anchor, setAnchor] = useState<number | null>(null)
+  const order = groups.flatMap((g) => g.items.map((i) => i.id))
+  const pickedItems = items.filter((i) => picked.includes(i.id))
+  const choose = (id: number, e: React.MouseEvent) => {
+    const toggle = e.metaKey || e.ctrlKey
+    if (!toggle && !e.shiftKey) return (setPicked([]), navigate(`/todo?item=${id}`))
+    setPicked(pickWith(order, picked, anchor, id, toggle, e.shiftKey))
+    setAnchor(id)
+  }
+  useEffect(() => {
+    if (!picked.length) return
+    const key = (e: KeyboardEvent) => e.key === "Escape" && !menuOpen() && setPicked([])
+    window.addEventListener("keydown", key)
+    return () => window.removeEventListener("keydown", key)
+  }, [picked.length])
   return (
     <DrawerFrame todo>
       <div style={{ display: "flex", alignItems: "center", gap: 8, height: 32 }}>
@@ -105,11 +124,12 @@ export function Drawer() {
               </span>
             </div>
             {g.items.map((i) => (
-              <Row key={i.id} item={i} />
+              <Row key={i.id} item={i} picked={picked.includes(i.id)} together={picked.includes(i.id) && pickedItems.length > 1 ? pickedItems : null} onClick={(e) => choose(i.id, e)} />
             ))}
           </div>
         ))}
       </div>
+      {pickedItems.length > 0 && <BulkBar items={pickedItems} onClear={() => setPicked([])} hint="Drag them onto the calendar or a day" place="drawer" />}
     </DrawerFrame>
   )
 }
@@ -157,22 +177,35 @@ export function QuickLine({ placeholder = "Add a to-do" }: { placeholder?: strin
   )
 }
 
-function Row({ item }: { item: Item }) {
+const lengthOf = (item: Item) => item.remaining_min ?? item.duration_min ?? 60
+
+function Row({ item, picked, together, onClick }: { item: Item; picked: boolean; together: Item[] | null; onClick: (e: React.MouseEvent) => void }) {
   const { today } = useShell()
-  const navigate = useNavigate()
   const { color } = useLook()
   const { begin } = useDragging()
   const blocks = useHorizon().data?.blocks ?? []
   const done = useCommand("done", { label: () => `${item.title}: done` })
   const next = nextBlocks(blocks).get(item.id)
-  const length = item.remaining_min ?? item.duration_min ?? 60
+  const length = lengthOf(item)
   const overdue = !!item.due && item.due < `${today}T00:00`
+  // A picked row takes the others picked with it, in the list's order.
+  const rows = together?.map((i) => ({ id: i.id, title: i.title, length: lengthOf(i) }))
   return (
     <div
-      onClick={() => navigate(`/todo?item=${item.id}`)}
-      onPointerDown={(e) => begin(e, { kind: "row", start: 0, end: length, grab: 0, itemId: item.id, blockKey: null, title: item.title })}
+      onClick={onClick}
+      onPointerDown={(e) => begin(e, { kind: "row", start: 0, end: rows ? rows.reduce((sum, r) => sum + r.length, 0) : length, grab: 0, itemId: item.id, blockKey: null, title: rows ? `${rows.length} to-dos` : item.title, rows })}
       className="fr-hover"
-      style={{ display: "grid", gridTemplateColumns: "16px 3px minmax(0,1fr) auto", gap: 9, alignItems: "center", padding: "6px 4px", borderRadius: "var(--radius-md)", cursor: "pointer", touchAction: "none" }}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "16px 3px minmax(0,1fr) auto",
+        gap: 9,
+        alignItems: "center",
+        padding: "6px 4px",
+        borderRadius: "var(--radius-md)",
+        cursor: "pointer",
+        touchAction: "none",
+        ...(picked ? { background: "color-mix(in srgb, var(--color-accent) 22%, transparent)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 55%, transparent)" } : {}),
+      }}
     >
       <Check small done={false} onToggle={() => done({ id: item.id })} />
       <span style={{ alignSelf: "stretch", borderRadius: 2, background: color(item.area, item.preset) }} />

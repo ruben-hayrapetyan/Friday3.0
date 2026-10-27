@@ -19,6 +19,14 @@ export interface Drag extends DragStart {
   moved: boolean
   x: number
   y: number
+  group?: boolean // a picked block, carrying the others picked with it (plan/picks.ts)
+  rows?: Row[] // to-do rows picked together in the drawer, planned one after another where they're dropped
+}
+
+export interface Row {
+  id: number
+  title: string
+  length: number // minutes
 }
 
 export type DropHandler = (drag: Drag) => void

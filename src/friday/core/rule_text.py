@@ -60,14 +60,18 @@ PARTS = {
     "evening": ("17:00", "22:00"),
     "night": ("22:00", "02:00"),
 }
-EVERYTHING = {"work", "anything", "things", "tasks", "stuff", "it"}
-DEEP = {"deep work", "focused work", "hard work", "focus work", "hard stuff", "hard tasks", "hardest work"}
+EVERYTHING = {"work", "anything", "things", "tasks", "stuff", "it", "everything", "all", "all work", "my work"}
+DEEP = {"deep work", "focused work", "hard work", "focus work", "hard stuff", "hard tasks", "hardest work",
+        "hard focus",
+        "hard focus stuff", "focus stuff", "focused stuff", "deep focus"}  # fmt: skip
 # Light work is work marked light (energy): `shallow work after 8pm` was a rule about a task titled "shallow work".
 LIGHT = {"light work", "shallow work", "easy work", "low energy work", "low energy tasks", "low-energy tasks",
-         "easy tasks", "light tasks", "easy stuff", "light stuff", "low effort work", "low-effort work"}  # fmt: skip
+         "easy tasks", "light tasks", "easy stuff", "light stuff", "low effort work", "low-effort work",
+         "shallow tasks",
+         "shallow stuff"}  # fmt: skip
 TIME = r"(noon|midnight|\d{1,2}(?::\d\d)?\s*(?:am|pm)?)"
 DAY = r"(?:mon|tues?|wed(?:nes)?|thu(?:rs)?|fri|sat(?:ur)?|sun)(?:day)?s?"
-DAY_WORDS = rf"((?:{DAY}|weekdays?|weekends?|every day)(?:\s*(?:,|and|&)\s*{DAY})*)"
+DAY_WORDS = rf"((?:{DAY}|weekdays?|weekends?|every day)(?:\s*(?:,\s*(?:and|or)?|and|&|or)\s*{DAY})*)"
 
 
 @dataclass(frozen=True)
@@ -103,7 +107,7 @@ def clock(text: str) -> str | None:
         hour += 12
     if m[3] == "am" and hour == 12:
         hour = 0
-    if not m[3] and hour < 7:  # "between 5 and 7" means the evening, as people say it
+    if not m[3] and hour < 7 and not m[1].startswith("0"):  # "between 5 and 7" is the evening; "07:00" isn't
         hour += 12
     return f"{hour % 24:02d}:{minute:02d}" if hour < 24 and minute < 60 else None
 
@@ -127,6 +131,146 @@ def days_of(text: str) -> tuple[str, ...] | None:
 
 # Spoken forms put the way the readers read them (a corpus of 522 student rules, 26 Oct, found 71 read wrongly, most
 # from these): typos and contractions, negations said other ways, "done by" as a limit, hours said without am or pm.
+WORD_HOURS = {w: n for n, w in enumerate("one two three four five six seven eight nine ten eleven twelve".split(), 1)}
+HOUR = r"(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)"
+
+
+def night_time(said: str) -> str:
+    """A bedtime said without am or pm: 12:30 and 1 are after midnight, 11 is the evening."""
+    m = re.fullmatch(r"(\d{1,2})(:\d\d)?", said.strip())
+    if m and (int(m[1]) == 12 or int(m[1]) < 6):
+        return f"{said.strip()}am"
+    return said
+
+
+def hour_of(word: str) -> int:
+    return int(word) if word.isdecimal() else WORD_HOURS[word]
+
+
+def through(m: re.Match[str]) -> str:
+    """`mon-fri`, `tues through thurs`: every day from the first to the last, listed."""
+    first, last = days_of(m[1]), days_of(m[2])
+    if not first or not last:
+        return m[0]
+    i, j = DAYS.index(first[0]), DAYS.index(last[0])
+    return ", ".join(DAYS[(i + k) % 7] for k in range((j - i) % 7 + 1))
+
+
+# Ways of saying it the readers don't read, put in the ways they do (27 Oct: each went to Claude): typos and shorthand,
+# 10.30pm and 2230, half past ten, a range as 5-7pm, days as mon-fri or sat/sun, "no later than", "onwards",
+# "sundays off", "weekdays only", finishing so many hours or weeks before, a part of a day free.
+EARLY_SAID = (
+    # Shorthand for days: wknds, M/W/F, T/Th.
+    (r"\bwk ?e?nds?\b", "weekends"),
+    (r"\bwk ?days?\b", "weekdays"),
+    (r"\b(?:m/w/f|mwf|m-w-f)\b", "mon, wed and fri"),
+    (r"\b(?:t/th|tth|tu/th|t/r|tr)\b", "tue and thu"),
+    (r"\b(?:m/w|mw)\b", "mon and wed"),
+    (r"\bduring the week\b", "on weekdays"),
+    (r"\s*\((?![^)]*\d)[a-z' ]{1,25}\)", " "),  # "(trivia)"; "(with 1 day of buffer)" says something
+    # The days first ("on fridays no more than 4 hours", "on fridays I stop at 6pm"): put last, where readers look.
+    (rf"^ ?on {DAY_WORDS},? (.+?) ?$", r" \2 on \1 "),
+    # Work by other names: grinding, school stuff, wrapping up, locking in; the noun after "don't touch / don't do".
+    (r"\bgrind (?=on )", "push "),
+    (r"\b(?:i )?(?:don't|do not|never) (?:touch|do) ", "no "),
+    (r"\b(?:i )?get nothing done (after|before|past)\b", r"no work \1"),
+    (r"\bno more work\b", "no work"),
+    (r"\b(?:i )?stop (?:at|by) (?=\d|noon|midnight)", "no work after "),
+    (
+        r"\b(?:grinding|lock(?:ed|ing)? in|wrap(?:ping)? up|be productive|get (?:stuff|things|work) done"
+        r"|studyin|studyng|school ?(?:stuff|work)|school(?! ?nights)|more work|work hours|scheduling"
+        r"|schedule (?:stuff|things|anything|work))\b",
+        "work",
+    ),
+    # "readings: max 90 min daily", "CS 3110 assignments: finish 2 days ahead".
+    (
+        r"^ ?([a-z0-9 ]+?): ?(max(?:imum)?|at most|no more than|up to|under|less than) (\d+(?:\.\d+)?) ?"
+        r"(h|hrs?|hours?|m|mins?|minutes?)\b",
+        r" \2 \3 \4 of \1",
+    ),
+    (
+        r"^ ?([a-z0-9 ]+?): ?finish (a|one|\d+) (days?|hours?|weeks?) (?:ahead|early|before)\b",
+        r" finish \1 \2 \3 early",
+    ),
+    # "as close to the prelim as I can"; "flashcards for the spanish quiz as close to it as possible".
+    (r"\bas (?:i|we) (?:can|could)\b", "as possible"),
+    (
+        r"\b(?:for|of) (?:the |my )?([a-z0-9 ]+?) as close to (?:it|them) as possible",
+        r" as close to the \1 as possible",
+    ),
+    # 24h times in a range: "0900-1700".
+    (r"\b([01]\d|2[0-3])([0-5]\d) ?(?:-|–) ?([01]\d|2[0-3])([0-5]\d)\b", r"\1:\2 - \3:\4"),
+    (r"\baftr\b", "after"),
+    (
+        rf"^ ?{DAY_WORDS}(?: (?:mornings?|afternoons?|evenings?|nights?))?,? ((?:i )?(?:stop|no work|nothing) .+?) ?$",
+        r" \2 on \1 ",  # DAY_WORDS is group 1 here
+    ),
+    (r"\b(?:b4|befor|bfore)\b", "before"),
+    (r"\btill?\b", "until"),
+    (r"\b(\d{1,2})\.(\d\d)(?=\s*(?:am|pm)?\b)", r"\1:\2"),
+    (r"\b(after|before|by|past|until|from|at|to|and) ([01]\d|2[0-3])([0-5]\d)\b", r"\1 \2:\3"),
+    (rf"\bhalf past {HOUR}\b", lambda m: f"{hour_of(m[1])}:30"),
+    (rf"\b(?:a )?quarter past {HOUR}\b", lambda m: f"{hour_of(m[1])}:15"),
+    (rf"\b(?:a )?quarter to {HOUR}\b", lambda m: f"{(hour_of(m[1]) - 2) % 12 + 1}:45"),
+    (r"\b(?:hard|strict|firm|soft) rule\s*:?\s*|,?\s*no exceptions\b", " "),
+    (r",\s*except\b", " except"),
+    (r"\bthe latest i(?:'ll| will| would)? work is\b", "no work after"),
+    (r"\b(?:no work|work no|no studying) later than\b|\bstop (?:work|working|studying) at\b", "no work after"),
+    (r"\b(?:start|begin) (?:my day|the day|my work|work|working|studying)(?: at| from)\b", "no work before"),
+    (r"\b(?:i )?(?:can't|cannot|can not|dont|don't|do not) (?:work|study)\b", "no work"),
+    (rf"\b(?:from )?{TIME} onwards?\b", r"after \1"),
+    (rf"\b(?:from )?{TIME} ?(?:-|–) ?{TIME}(?=\s)", r"between \1 and \2"),
+    (rf"\b({DAY}) ?(?:-|–|through|thru|to|until) ?({DAY})\b", through),
+    (rf"\b({DAY})/({DAY})\b", r"\1 and \2"),
+    (r"\bthe weekend\b", "weekends"),
+    (r"\b(after|before|by|until|past) (\d{1,2}(?::\d\d)?) (?:at night|in the evening|tonight)\b", r"\1 \2pm"),
+    (r"\b(after|before|by|until|past) (\d{1,2}(?::\d\d)?) (?:in the morning)\b", r"\1 \2am"),
+    (r"\bin the (?:morning|afternoon|evening|night) (before|after|until|past) ", r"\1 "),
+    (r"\b(?:at|late at|late) night\b|\blate nights\b", "in the night"),
+    (r"\b(no work|work) (mornings|afternoons|evenings|nights)\b", r"\1 in the \2"),
+    (
+        rf"\b(?:take )?({DAY_WORDS}) (?:off|are (?:my )?(?:rest|off|free) days?"
+        r"|is (?:my )?(?:day off|rest day|off day|free day)|are (?:my )?days? off"
+        r"|are for (?:rest|resting|fun|chilling))\b",
+        r"no work on \1",
+    ),
+    (rf"\b(?:a )?(?:free|rest|off) day (?:every|on) ({DAY_WORDS})\b", r"no work on \1"),
+    (r"^ ?(?:work )?(weekdays|weekends) only\b", r" work only on \1"),
+    (rf"\bkeep ([a-z0-9 ]+?) to ({DAY_WORDS})\b", r"\1 only on \2"),
+    (rf"\b(no work|work only|work) ({DAY_WORDS})(?= |$)", r"\1 on \2"),
+    (
+        rf"^ ?(?:i(?:'d| would)? (?:like|love|want)(?: to)? |i wanna )?(?:have |keep )?({DAY_WORDS}) "
+        r"?(mornings?|afternoons?|evenings?|nights?)? (?:free|clear)\b",
+        r" keep \1 \3 free",  # DAY_WORDS is a group of its own: \2
+    ),
+    (
+        r"\b(?:get|have|complete|submit|turn in|hand in|do) ([a-z0-9 ]+?) "
+        r"(?:done |in |submitted |finished |completed )?"
+        r"(a|one|\d+(?:\.\d+)?) (days?|hours?|weeks?) "
+        r"(?:before (?:the deadline|deadlines?|they're due|it's due|due)|early|ahead)\b",
+        r"finish \1 \2 \3 early",
+    ),
+    (
+        r"\b(?:finish|get|have|complete|submit) ([a-z0-9 ]+?) (?:done )?(?:by )?the (?:day|night) before"
+        r"(?: (?:it's|they're) due| the deadline)?\b",
+        r"finish \1 1 day early",
+    ),
+    # The whole sentence: "lab reports a day early" (not "… as possible but finish a day early").
+    (
+        r"^ ?(?! ?finish\b)((?:(?!\b(?:but|and|or)\b)[a-z0-9 ])+?) (a|one|\d+) (days?|weeks?) early ?$",
+        r" finish \1 \2 \3 early ",
+    ),
+)
+# After the old ones, which make "don't schedule anything" into "no work": a day straight after it is "on" that day.
+LATE_SAID = (
+    (rf"\b(no work|work only|work) {DAY_WORDS}(?= |$)", r"\1 on \2"),
+    (rf"(?<![\d:]){TIME} {DAY_WORDS}(?= |$)", r"\1 on \2"),
+    # "groceries on sunday afternoons": that part of those days (not all of Sunday); "no work on…" is kept free below.
+    (
+        rf"^ (?!no |never |don't |nothing )([a-z0-9 ]+?) on {DAY_WORDS} (morning|afternoon|evening|night)s?\b",
+        r" \1 in the \3 on \2",
+    ),
+)
 SAID_AS = (
     (r"\b(?:wrok|wokr|wrk)\b", "work"),
     (r"\bnoo+\b", "no"),
@@ -136,9 +280,9 @@ SAID_AS = (
     # Asleep by a time means work done by it: "sleep before 1am", "bed by 11" (your bedtime itself is a setting).
     (
         r"^ ?(?:always |must |i |please |ideally |really |strongly |definitely |try to |want to |like to |to )*"
-        r"(?:go to |be in |in |get to |be )?(?:bed|sleep|asleep)(?: by| before| at)? "
+        r"(?:go to |be in |in |get to |be )?(?:bed|sleep|asleep|lights out)(?: by| before| at)? "
         r"(noon|midnight|\d{1,2}(?::\d\d)?\s*(?:am|pm)?)\b",
-        r" no work after \1",
+        lambda m: f" no work after {night_time(m[1])}",
     ),
     (r"\bhalf an hour\b", "30 minutes"),
     (r"\ba quarter (?:of an )?hour\b", "15 minutes"),
@@ -154,7 +298,7 @@ SAID_AS = (
     (r"\b(?:never|don't|do not) (?:schedule|plan|put) (?:anything|any work|work)\b", "no work"),
     (r"\b(?:don't|do not) (?:schedule|plan|put)\b", "no"),
     (r"\bnothing (?:scheduled|planned)\b", "no work"),
-    (r"^ nothing\b", " no work"),
+    (r"^\s*nothing\b", " no work"),
     (r"\bavoid (?:working|work)\b", "no work"),
     (r"\b(?:stop working|finish (?:work|working|everything)|be done|done) (?:by|before)\b", "no work after"),
     (r"\b(?:school ?nights|weeknights)\b", "sun, mon, tue, wed and thu"),
@@ -163,12 +307,29 @@ SAID_AS = (
 )
 EVENING_HOUR = r"\b(after|past|by|until|till)\s+(7|8|9|10|11)(:\d\d)?(?!\s*(?:am|pm|\d|:))\b"
 WHEN_WORD = r"(?:before|after|by|past|until|till)"
-CAP_WORD = r"(?:at most|no more than|not more than|max(?:imum)?|up to|less than|under)"
+ITEMISH = (
+    r"^ ?(?:add |schedule |put |i have |my |a |an )?[a-z0-9 ]*?\b(?:office hours?|practice|rehearsal|shift|volunteer"
+    r"|meeting|lesson|lecture|seminar|recitation|appointment|lunch break|game|match|service|church|mass|club"
+    r"|ta hours|tutoring|work shift|job)\b"
+)
+ITEM_WHEN = rf"\bevery (?:{DAY}|day|night|week|morning|evening)|{TIME} ?(?:-|–) ?{TIME}|\bat \d|\bis always\b|^ ?add\b"
+RULE_WORDS = (
+    r"\b(?:no|never|don't|not|avoid|optional|skip|before|after|around|only|ahead|free|between|must|end|stop|if"
+    r"|when|unless|done|going)\b"
+)
+CAP_WORD = r"(?:at most|no more than|not more than|max(?:imum)?(?: of)?|up to|less than|under)"
 TWO_RULES = (
     r"\b(?:and|but|;)\s+(?:no|never|don't|nothing|always)\b|, (?:no|never|don't)\b"
     # Two times, each with its own word: "no work before 9 or after 10", "lunch before 1 and dinner before 7".
     rf"|\b{WHEN_WORD} {TIME}\b.*\b(?:and|or|but)\b.*\b{WHEN_WORD} {TIME}"
     # "gym is optional but climbing club is mandatory"; "at most 6 hours a day and 4 on weekends".
+    # A second clause with its own verb ("…, and let Friday figure out breakfast"); "but finish a day early" is a
+    # buffer on the first.
+    r"|\band\s+(?:let|keep|make|plan|put|finish|prioritize|leave|give)\b|\b(?:but|;)\s+(?:let|keep|make|plan|put"
+    r"|prioritize|leave|give)\b|\band (?:none|nothing)\b"
+    r"|,\s*and\s+\d|\band take a\b|\bbut\b.*\b(?:isn't|aren't)\b"
+    rf"|\b{WHEN_WORD} {TIME}\b[^,]*,\s*{WHEN_WORD} {TIME}"
+    r"|\b(?:a|one|\d+) days? (?:early|ahead)\b.*\band\b.*\b(?:a|one|\d+) days? (?:early|ahead)\b"
     rf"|\bbut\b.*\b(?:is|are)\b|\b{CAP_WORD} \d+(?:\.\d+)? ?(?:h|hrs?|hours?)\b.*\band \d"
 )
 # What no reader reads, so a rule would leave it out: a time of the term, a condition on your week, an exception that
@@ -176,6 +337,8 @@ TWO_RULES = (
 UNREAD_QUALIFIER = (
     r"\b(?:during|in|over) (?:midterms|finals|exams?|prelims?|exam week|finals week|reading week|break|the break)\b"
     r"|\bwhen i (?:have|'ve got|got)\b|\b(?:that|this|next) week\b"
+    r"|\b(?:tmrw|tmr|tomorrow|tonight|today|this weekend|this (?:mon|tue|wed|thu|fri|sat|sun)[a-z]*)\b|\bnothing but\b"
+    r"|\bthe week before (?:the |my )?[a-z]+"
     r"|\bexcept (?:before|after|during|when|if|for|on exam|around)\b"
     rf"|\buntil (?!{TIME}|noon|midnight|the morning|morning)[a-z]+"
 )
@@ -188,7 +351,12 @@ NOT_WORK = (
 def spoken(t: str) -> str | None:
     """The sentence in the readers' words, or None when it should go to Claude: two rules in one sentence, or a
     rule about your sleep or eating rather than your work (`bed by 11` is the sleep setting)."""
-    for pattern, put in SAID_AS:
+    typed = t
+    if re.search(ITEMISH, typed) and re.search(ITEM_WHEN, typed) and not re.search(RULE_WORDS, typed):
+        return None  # an event to add, with its times: Claude adds it
+    if re.search(UNREAD_QUALIFIER, typed):
+        return None
+    for pattern, put in (*EARLY_SAID, *SAID_AS, *LATE_SAID):
         t = re.sub(pattern, put, t)
     if not re.search(r"\b(?:breakfast|brunch|lunch|morning)s?\b", t):  # "after 9" in the evening, unless it's lunch
         t = re.sub(EVENING_HOUR, lambda m: f"{m[1]} {m[2]}{m[3] or ''}pm", t)
@@ -198,8 +366,9 @@ def spoken(t: str) -> str | None:
             lambda m: f"{m[1]} {m[2]}{m[3] or ''}pm",
             t,
         )
-    if m := re.search(rf"\bexcept (?:on |for )?{DAY_WORDS}", t):
-        left = [d for d in DAYS if d not in (days_of(m[1]) or DAYS)]
+    if m := re.search(rf"(?:\bon {DAY_WORDS} )?\bexcept (?:on |for )?{DAY_WORDS}", t):
+        base = days_of(m[1]) if m[1] else None
+        left = [d for d in (base or DAYS) if d not in (days_of(m[2]) or DAYS)]
         t = t.replace(m[0], "on " + ", ".join(left) if left else " ")
     if re.search(TWO_RULES, t) or re.search(NOT_WORK, t) or re.search(UNREAD_QUALIFIER, t):
         return None  # Claude splits two rules, reads what no reader does, and knows the sleep and meal settings
@@ -217,7 +386,11 @@ def read(text: str) -> tuple[Reading | None, Strength]:
     """What a sentence asks for, and how strongly; None when the grammar can't read it."""
     t = " " + re.sub(r"\s+", " ", text.lower().replace("’", "'").strip().rstrip(".!")) + " "
     strength: Strength = "Prefer"
-    if re.search(r"\b(always|never|must|absolutely|strictly|under no circumstances)\b", t):
+    if re.search(
+        r"\b(always|never|must|absolutely|strictly|under no circumstances|hard rule|no exceptions"
+        r"|non-?negotiable|strict rule)\b",
+        t,
+    ):
         strength = "Always"
     elif re.search(r"\b(really|strongly|definitely)\b", t):
         strength = "Strongly"
@@ -252,9 +425,24 @@ def read(text: str) -> tuple[Reading | None, Strength]:
     return None, strength
 
 
+WORK_WORDS = {"school", "school stuff", "studying", "study", "grinding", "day", "days", "my day", "school work"}
+EXAM_PREP = (
+    r"^(?:studying|study|prep|preparing|prepping|reviewing|review) for (?:the |my )?"
+    r"(?:exams?|tests?|prelims?|midterms?|finals?)$"
+)
+
+
 def subject_of(words: str) -> str:
+    words = re.sub(r"^ *(?:work|anything|stuff|things) (?:for|on) ", "", words)  # "anything for MATH 2940"
     s = re.sub(r"\b(eating|having|have|doing|do|my|the|a|an|any|of|to|only)\b", " ", words).strip()
     s = " ".join(s.split())
+    if re.fullmatch(EXAM_PREP, s):
+        return "exam prep"
+    if s in WORK_WORDS:
+        return "work"
+    bare = re.sub(r" (?:work|stuff|things|tasks)$", "", s)
+    if bare != s and s not in DEEP | LIGHT | EVERYTHING and (re.search(r"\d", bare) or " " in bare):
+        s = bare  # "CS 3110 work", "hist essay work"; "lab work" stays lab work
     s = "work" if s in ("school work", "schoolwork", "study", "studying", "working", "anything") else s
     if not s or s in EVERYTHING:
         return "work"
@@ -398,6 +586,7 @@ def read_ahead(t: str, negated: bool) -> Reading | None:
 
 
 PREPARING = {"prep", "preparation", "preparing", "prepping", "study", "studying", "revision", "revise", "revising",
+             "flashcards", "flash cards", "anki", "quizlet",
              "review", "reviewing"}  # fmt: skip
 ANY_EXAM = {"exam", "exams", "test", "tests", "the exam", "the exams", "the test", "it", "them", "event", "the event"}
 WHEN_DUE = r"(?:(?:it'?s|its|they'?re|their|when it'?s|when they'?re|the) ?(?:due|due date|deadline)|(?:the )?deadline)"
@@ -602,6 +791,10 @@ def read_cap(t: str, negated: bool) -> Reading | None:
         m = None
     if m is None and (n := re.search(rf"^ ?{AMOUNT}(?:/| a | per )day max(?:imum)? ", t)):
         return Reading("cap", "work", amount=hours_of(n[1], n[2]))
+    if m is None and (
+        n := re.search(rf"^ ?{AMOUNT} max(?:imum)?(?: a day| per day| daily)?(?: on {DAY_WORDS})? ?$", t)
+    ):
+        return Reading("cap", "work", amount=hours_of(n[1], n[2]), days=days_of(n[3]) if n[3] else None)
     if m is None and (n := re.search(rf"^ ?(?:limit|keep|cap) ([a-z0-9 ]+?) (?:to|at) {AMOUNT}{PER_DAY}? ", t)):
         if days := days_of(n[1]):  # `cap mondays at 4 hours`: the days, not a subject
             return Reading("cap", "work", amount=hours_of(n[2], n[3]), days=days)
@@ -620,21 +813,43 @@ def hours_of(amount: str, unit: str) -> float:
 
 
 def read_early(t: str, negated: bool) -> Reading | None:
-    m = re.search(r"finish(?: ([a-z ]+?))? (a|one|two|three|\d+) days? (?:early|before|ahead)", t)
+    m = re.search(
+        r"finish(?: ([a-z0-9 ]+?))? (a|one|two|three|\d+(?:\.\d+)?) (days?|hours?|weeks?) (?:early|before|ahead)", t
+    )
     if not m:
         return None
-    n = {"a": 1, "one": 1, "two": 2, "three": 3}.get(m[2]) or int(m[2])
-    return Reading("early", subject_of(m[1] or "work"), amount=float(n))
+    n = {"a": 1, "one": 1, "two": 2, "three": 3}.get(m[2]) or float(m[2])
+    days = n / 24 if m[3].startswith("hour") else n * 7 if m[3].startswith("week") else n
+    return Reading("early", subject_of(m[1] or "work"), amount=round(float(days), 3))
 
 
 LIGHTER = r"lighter|light|easier|easy|quieter|quiet|calmer|less busy"
 LIGHTER_SHARE = 0.5  # a lighter stretch keeps about half its time free: less work there, not none
 
 
+def start_clock(start: str, end: str) -> str | None:
+    """A span's start as people say it: bare, it takes the end's am or pm when it comes before it on the same clock
+    (`8 to 11pm` is 8pm, `6 and 8am` is 6am, `10-2pm` is 10am)."""
+    bare = re.fullmatch(r"(\d{1,2})(:\d\d)?", start.strip())
+    meridiem = re.search(r"(am|pm)\s*$", end.strip())
+    if not bare or not meridiem or bare[1].startswith("0"):
+        return clock(start)
+    hour, end_hour = int(bare[1]) % 12, int(re.match(r"\d+", end.strip())[0]) % 12  # type: ignore[index]
+    same = meridiem[1] if hour <= end_hour else ("am" if meridiem[1] == "pm" else "pm")
+    return clock(f"{start.strip()}{same}")
+
+
 def span_end(start: str | None, end: str | None, said: str) -> str | None:
     """A span's end as people say it: `from 6 to 9` with no am or pm ends at 9pm, after it began; noon and midnight
     are what they say (`9pm to midnight` ends at midnight, not noon)."""
-    if start and end and end <= start and not re.search(r"(am|pm|noon|midnight)", said) and int(end[:2]) < 12:
+    if (
+        start
+        and end
+        and end <= start
+        and not re.search(r"(am|pm|noon|midnight)", said)
+        and int(end[:2]) < 12
+        and not re.match(r"0\d", said.strip())
+    ):
         return f"{int(end[:2]) + 12:02d}{end[2:]}"
     return end
 
@@ -644,7 +859,7 @@ def read_free(t: str, negated: bool) -> Reading | None:
     evenings`, or the way Friday writes it back, `keep fri, sat 8pm–11:59pm lighter`) about half."""
     m = re.search(
         rf"(?:keep|make) (?:my )?{DAY_WORDS}? ?(mornings?|afternoons?|evenings?|nights?)? ?"
-        rf"(?:(?:from )?{TIME} ?(?:to|until|-|–) ?{TIME} )?(free|clear|open|{LIGHTER})\b",
+        rf"(?:(?:from |between )?{TIME} ?(?:to|until|and|-|–) ?{TIME} )?(free|clear|open|{LIGHTER})\b",
         t,
     )
     if m and (m[1] or m[2] or m[3]):
@@ -653,6 +868,8 @@ def read_free(t: str, negated: bool) -> Reading | None:
         how, days, part, start, end = m[1], m[2], m[3], None, None
     else:
         return None
+    if not days and (on := re.search(rf" on {DAY_WORDS} ", t)):  # "keep my evenings lighter on weekdays"
+        days = on[1]
     begins = clock(start) if start else None
     ends = span_end(begins, clock(end), end) if end else None
     span = PARTS.get((part or "").rstrip("s"), (begins, ends))
@@ -672,16 +889,18 @@ def read_window(t: str, negated: bool) -> Reading | None:
     if on:
         t = t.replace(on[0], " ")
     between = "not_between" if negated else "between"  # "no work between 7 and 10am" keeps those hours free
-    if m := re.search(r"^ ?([a-z ]*?) ?(?:in the|during the) (morning|afternoon|evening|night)s? ", t):
+    if m := re.search(r"^ ?([a-z0-9 ]*?) ?(?:in the|during the) (morning|afternoon|evening|night)s? ", t):
+        if re.search(r"\b(?:best|better|worst|well)\b", m[1]):
+            return None  # "I work best late at night": a liking, Claude's to read
         start, end = PARTS[m[2]]
         return Reading("window", subject_of(m[1]), rel=between, at=start, until=end, days=days)
-    if m := re.search(rf"^ ?([a-z ]*?) ?(?:between|from) {TIME} (?:and|to|until|-) {TIME} ", t):
-        start = clock(m[2])
+    if m := re.search(rf"^ ?([a-z0-9 ]*?) ?(?:between|from) {TIME} (?:and|to|until|-) {TIME} ", t):
+        start = start_clock(m[2], m[3])
         end = span_end(start, clock(m[3]), m[3])
         return (
             Reading("window", subject_of(m[1]), rel=between, at=start, until=end, days=days) if start and end else None
         )
-    if m := re.search(rf"^ ?([a-z ]*?) ?(before|after|by|until|past) {TIME} ", t):
+    if m := re.search(rf"^ ?([a-z0-9 ]*?) ?(before|after|by|until|past) {TIME} ", t):
         at = clock(m[3])
         rel = "before" if m[2] in ("before", "by", "until") else "after"
         if negated:
@@ -692,9 +911,9 @@ def read_window(t: str, negated: bool) -> Reading | None:
 
 
 def read_days(t: str, negated: bool) -> Reading | None:
-    m = re.search(rf"^ ?([a-z ]*?) ?(only )?(?<![a-z])on {DAY_WORDS} ", t) or re.search(
-        rf"^ ?(rest|off) {DAY_WORDS} ", t
-    )
+    m = re.search(
+        rf"^ ?([a-z0-9 ]*?) ?(only )?(?<![a-z0-9])on {DAY_WORDS} (?!mornings?|afternoons?|evenings?|nights?)", t
+    ) or re.search(rf"^ ?(rest|off) {DAY_WORDS} ", t)
     if not m:
         return None
     if m[1] in ("rest", "off"):  # `rest sundays` or `rest on sundays`: the days are the last group either way
@@ -702,6 +921,8 @@ def read_days(t: str, negated: bool) -> Reading | None:
     if re.match(r"^ ?only \w", m[0]) and not re.match(r"^ ?only (?:work|working|study|studying)\b", m[0]):
         return None  # `only light work on weekends`: on those days nothing else, not that work only then (Claude)
     rel = "not_on" if negated else "on"
+    if not days_of(m[3]) or re.search(r"\b\d+ ?(?:minutes?|mins?|hours?|hrs?|h|m)\b|\beach way\b|\bmax\b", m[1]):
+        return None  # "every day" names no days; "commute 40 minutes each way on tuesdays" isn't work on days
     subject = subject_of(m[1])
     if re.search(UNCLEAR, subject):
         return None  # "no work during movie night on thursdays" names no kind of work: Claude reads it
@@ -709,13 +930,18 @@ def read_days(t: str, negated: bool) -> Reading | None:
 
 
 def read_after(t: str, negated: bool) -> Reading | None:
-    m = re.search(r"^ ?([a-z ]+?) (?:right |straight |just )?after (?:my |the )?([a-z ]+?) ", t)
+    m = re.search(r"^ ?([a-z ]+?) (?:right |straight |just )?after (?:my |the )?([a-z ]+?) ?$", t)
     if not m or clock(m[2]) or negated:
         return None
+    event = re.sub(r"^(?:last|first|next|final) ", "", m[2].strip())
+    if re.search(
+        r"^(?:waking|wake|getting up|long|short|busy|heavy|breakfast|brunch|lunch|dinner|supper)\b", event
+    ) or re.search(r"^ ?(?:the )?(?:first|lighter|easier|light|heavy|more|less)\b", m[1]):
+        return None  # "first hour after waking", "lighter evenings after long practice days": not a sitting
     odd = r"\b(?:each|every|my|hours?|minutes?|mins?|to|before|starting)\b"
     if re.search(odd, m[2]) or re.search(r"\d", t) or re.search(r"\b(?:week|day|time|need|break)\b", m[1]):
         return None  # "after each lecture", "after my 11am class", "easy week after midterms": not a sitting
-    return Reading("after", subject_of(m[1]), event=m[2].strip())
+    return Reading("after", subject_of(m[1]), event=event)
 
 
 def with_overrides(r: Reading, overrides: dict[str, Any]) -> Reading:
@@ -817,10 +1043,11 @@ def said(r: Reading) -> str:
         on = f" {days_words(r.days)}" if r.days else ""
         return f"At most {r.amount:g} h{of} a day{on}"
     if r.kind == "early":
-        n = int(r.amount or 1)
-        return (
-            f"Finish {'things' if r.subject == 'work' else r.subject} {n} day{'s' if n > 1 else ''} before they're due"
-        )
+        what, days = "things" if r.subject == "work" else r.subject, r.amount or 1
+        if days != int(days):  # `36 hours early`
+            return f"Finish {what} {days * 24:g} h before they're due"
+        n = int(days)
+        return f"Finish {what} {n} day{'s' if n > 1 else ''} before they're due"
     return f"{subject} right after {r.event}"
 
 
@@ -962,7 +1189,12 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
             "params": {"threshold": f"{r.amount:g}h"} | days,
         }
     if r.kind == "early":
-        return base | {"type": "finish_early", "weight": WEIGHT[strength], "params": {"days": int(r.amount or 1)}}
+        days = r.amount or 1
+        return base | {
+            "type": "finish_early",
+            "weight": WEIGHT[strength],
+            "params": {"days": int(days) if days == int(days) else days},
+        }
     events = {"event_kind": "class"} if (r.event or "").rstrip("s") in ("class", "lecture") else {"title": r.event}
     params = {"events": events, "measure_from": "last", "slope": 1, "cap": 3}
     return base | {"type": "after_event", "weight": WEIGHT[strength], "params": params}

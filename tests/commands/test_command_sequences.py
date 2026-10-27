@@ -19,6 +19,7 @@ from friday.core.rows import item_from_row
 from friday.core.time import UNIT_MIN, format_utc, parse_utc
 from friday.planner.build import build_problem
 from friday.planner.prepare import build_input
+from friday.planner.progress import minutes_by_item
 from friday.planner.service import replan
 from friday.planner.snapshot import take_snapshot
 from friday.planner.store import current_plan
@@ -351,9 +352,9 @@ def walls(conn: sqlite3.Connection, now_utc: int) -> list[tuple[int, int, str]]:
 def left_minutes(conn: sqlite3.Connection, now_utc: int) -> dict[int, int]:
     """What's left of each fixed-length or flexible item, from its (cushioned) length less the work recorded on it."""
     snapshot = take_snapshot(conn, now_utc)
-    done: dict[int, int] = {}
-    for r in conn.execute("SELECT item_id, minutes FROM progress"):
-        done[r[0]] = done.get(r[0], 0) + r[1]
+    # As Friday counts it: progress set by hand (the slider, Start over) sets the total at its time, and the rest adds
+    # to it. Summed, a "Start over" after logged work said less was left than there is (27 Oct).
+    done = minutes_by_item(conn)
     out = {}
     for item in snapshot.items:
         size = {"fixed": item.duration_units, "elastic": item.max_units}.get(item.amount)

@@ -4462,6 +4462,11 @@ export interface components {
             due: string | null;
             /** Hours */
             hours: number;
+            /**
+             * Planned
+             * @default true
+             */
+            planned?: boolean;
         };
         /** LearnApplyResult */
         LearnApplyResult: {
@@ -7550,6 +7555,11 @@ export interface components {
              * @default []
              */
             late_items?: components["schemas"]["LateItem"][];
+            /**
+             * Slipping
+             * @default []
+             */
+            slipping?: components["schemas"]["LateItem"][];
         };
         /** StopInput */
         StopInput: {

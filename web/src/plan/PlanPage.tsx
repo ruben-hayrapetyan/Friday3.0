@@ -17,11 +17,14 @@ import { addDays, dayRange, fromMin, toMin } from "@/lib/time"
 import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/components/Toasts"
 import { runCommand } from "@/hooks/useCommand"
-import { moveBlock } from "@/hooks/useDrop"
+import { inOrder, moveBlock, moveGroup } from "@/hooks/useDrop"
 import { shiftMonth } from "@/shell/host"
 import { useShell, type View } from "@/shell/ShellContext"
 import { DayAside } from "./DayAside"
 import { Grid } from "./Grid"
+import { pending } from "./pending"
+import { PickBar } from "./PickBar"
+import { picks, usePicks } from "./picks"
 import { MonthView, monthStart } from "./MonthView"
 import { useWhatIf, whatIf } from "@/whatif/store"
 import { WhatIfBar } from "@/whatif/WhatIfPanel"
@@ -45,7 +48,8 @@ export function PlanPage() {
   const setFirst = (f: string | null) => setPlace({ view: place.view, first: f }) // keeps the week you chose, even while it shows a day
   const step = (by: number) => setFirst(view === "month" ? shiftMonth(shown, by) : addDays(shown, by * view))
   const nudge = useNudge()
-  const block = !!useShell().selected?.key.startsWith("T") // only then do the arrows move it, not the page
+  // Only with a block selected, or several picked, do the arrows move them, not the page.
+  const block = !!useShell().selected?.key.startsWith("T") || usePicks().length > 0
   useKeys({
     day: () => setView(1),
     three: () => setView(3),
@@ -71,25 +75,27 @@ export function PlanPage() {
   )
 }
 
-/** ↑ and ↓ move the selected block 15 minutes, pinned there; Enter opens its item (COMBINED.md 66). */
+/** ↑ and ↓ move the selected block 15 minutes, pinned there, or all those picked; Enter opens its item (COMBINED.md
+ * 66). */
 function useNudge(): (by: number) => void {
   const { selected, select } = useShell()
   const client = useQueryClient()
   const toast = useToast()
   const navigate = useNavigate()
   return (by: number) => {
+    if (picks.get().length) return void (by && moveGroup(client, toast, picks.get(), by))
     if (!selected || !selected.key.startsWith("T")) return
     if (by === 0) return navigate(`/todo?item=${selected.item_id}`)
     const start = fromMin(toMin(selected.start) + by)
     const end = fromMin(toMin(selected.end) + by)
     const key = selected.key
-    runCommand(
-      client,
-      toast,
-      "pin",
-      { id: selected.item_id, start, end, kind: selected.pinned === "locked" ? "locked" : "preferred", from_start: selected.start, from_end: selected.end },
-      { optimistic: (c) => moveBlock(c, key, start, end, selected.pinned === "locked" ? "locked" : "preferred"), label: () => `Moved ${by < 0 ? "earlier" : "later"}` },
-    )
+    const kind = selected.pinned === "locked" ? "locked" : "preferred"
+    const drawn = pending.collect(() => moveBlock(client, key, start, end, kind)) // at once, though sent after the moves before it
+    inOrder(async () => {
+      const out = await runCommand(client, toast, "pin", { id: selected.item_id, start, end, kind, from_start: selected.start, from_end: selected.end }, { label: () => `Moved ${by < 0 ? "earlier" : "later"}` })
+      if (out) pending.settle(drawn, (out as { generation?: number | null }).generation ?? 0)
+      else pending.drop(drawn)
+    })
     select({ ...selected, key: `T${selected.item_id}@${start}`, start, end })
   }
 }
@@ -107,6 +113,7 @@ function Days({ first, view, drawer, aside }: { first: string; view: 1 | 3 | 7; 
   return (
     <>
       <Grid dates={dayRange(first, view)} calendar={calendar} plan={plan} marginRight={margin} />
+      <PickBar plan={plan} />
       {view === 1 && !drawer && aside && !trying && <DayAside date={first} calendar={calendar} plan={plan} />}
     </>
   )
@@ -277,6 +284,22 @@ function Attention({ first, days }: { first: string; days: number }) {
     const text = late.length === 1 ? `${late[0].title} will be late` : `${late.length} things will be late`
     const list = late.map((i) => ({ key: i.item_id, title: i.title, sub: `${i.due ? `due ${when(i.due, today)} · ` : ""}about ${lateBy(i.hours)} late`, onOpen: () => navigate(`/todo?item=${i.item_id}`) }))
     notes.push({ tone: "now", icon: "warning", text, action: { label: "See options", run: () => setDialog("triage") }, list })
+  }
+  // Soft deadlines slipping, and work due soon with no time for it: less urgent than late work, still said.
+  const slipping = status?.slipping ?? []
+  if (slipping.length) {
+    const unplanned = slipping.filter((i) => i.planned === false).length
+    const text =
+      slipping.length === 1
+        ? `${slipping[0].title} ${slipping[0].planned === false ? "isn't planned before it's due" : "is planned after it's due"}`
+        : `${slipping.length} to-dos past their due${unplanned ? `, ${unplanned} not planned` : ""}`
+    const list = slipping.map((i) => ({
+      key: i.item_id,
+      title: i.title,
+      sub: `${i.due ? `due ${when(i.due, today)} · ` : ""}${i.planned === false ? "not planned" : `planned about ${lateBy(i.hours)} late`}`,
+      onOpen: () => navigate(`/todo?item=${i.item_id}`),
+    }))
+    notes.push({ tone: "mark", icon: "clock-countdown", text, action: { label: "See options", run: () => setDialog("triage") }, list })
   }
   const over = calendar?.days.map((d) => ({ date: d.date, by: (plan?.day_hours[d.date] ?? 0) - d.cap_hours })).find((d) => d.by > 0.05)
   if (over) notes.push({ tone: "mark", icon: "warning", text: `${FULL_DAY[weekday(over.date)]} is ${over.by.toFixed(1)} h over`, action: { label: "See options", run: () => setDialog("triage") } })

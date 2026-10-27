@@ -13,6 +13,12 @@ describe("dragging", () => {
     expect(dragged({ kind: "resize", ...block }, 560)).toEqual({ start: 600, end: 615 })
   })
 
+  it("resizes from the top edge, keeping its end, never below 15 minutes", () => {
+    expect(dragged({ kind: "resize-top", ...block }, 553)).toEqual({ start: 555, end: 690 }) // dragged up: earlier
+    expect(dragged({ kind: "resize-top", ...block }, 640)).toEqual({ start: 645, end: 690 })
+    expect(dragged({ kind: "resize-top", ...block }, 700)).toEqual({ start: 675, end: 690 })
+  })
+
   it("selects empty time either way from where it began", () => {
     const from = { kind: "select" as const, start: 600, end: 615, grab: 0 }
     expect(dragged(from, 668)).toEqual({ start: 600, end: 675 })

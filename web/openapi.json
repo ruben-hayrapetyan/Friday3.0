@@ -14915,6 +14915,11 @@
      "hours": {
       "type": "number",
       "title": "Hours"
+     },
+     "planned": {
+      "type": "boolean",
+      "title": "Planned",
+      "default": true
      }
     },
     "additionalProperties": false,
@@ -24434,6 +24439,14 @@
       },
       "type": "array",
       "title": "Late Items",
+      "default": []
+     },
+     "slipping": {
+      "items": {
+       "$ref": "#/components/schemas/LateItem"
+      },
+      "type": "array",
+      "title": "Slipping",
       "default": []
      }
     },
