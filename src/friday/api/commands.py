@@ -442,6 +442,9 @@ class ProposedAction(Model):
     command: str
     input: dict[str, Any]
     error: str | None = None  # the command wouldn't take it as written
+    # It only adds, moves, repeats or deletes a calendar event: with claude.events_without_asking on, it applies at
+    # once.
+    event: bool = False
 
 
 class AskClaudeOut(Model):

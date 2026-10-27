@@ -17,6 +17,12 @@ class LlmSettings(Model):
     daily_tokens: int = Field(500_000, ge=0)
 
 
+class ClaudeSettings(Model):
+    """Ask Claude (commands/claude.py). Claude only proposes; this says which proposals wait for your yes."""
+
+    events_without_asking: bool = False  # changes to calendar events apply at once, with Undo; the rest still ask
+
+
 class GoogleSettings(Model):
     client_file: str | None = None  # the Desktop OAuth client JSON from Google Cloud
 
@@ -70,6 +76,7 @@ class Webhook(Model):
 
 INTEGRATION_TYPES = {
     "llm": LlmSettings,
+    "claude": ClaudeSettings,
     "google": GoogleSettings,
     "gcal": GcalSettings,
     "gmail": GmailSettings,
@@ -79,6 +86,7 @@ INTEGRATION_TYPES = {
 }
 INTEGRATION_DEFAULTS = {
     "llm": LlmSettings(),
+    "claude": ClaudeSettings(),
     "google": GoogleSettings(),
     "gcal": GcalSettings(),
     "gmail": GmailSettings(),

@@ -121,3 +121,48 @@ def test_the_daily_ai_budget_holds(app: App, monkeypatch: pytest.MonkeyPatch) ->
     app.do("ask_claude", text="one")
     with pytest.raises(FieldError, match="budget"):
         app.do("ask_claude", text="two")
+
+
+def test_a_proposal_that_only_changes_a_calendar_event_says_so(app: App, monkeypatch: pytest.MonkeyPatch) -> None:
+    """27 Oct: "have the claude requesting approval be a toggle for changing calendar events". The toggle applies
+    these at once; tasks, rules and settings still ask."""
+    event = app.do("add", title="Advisor meeting", when="fixed", start="2026-10-20T17:00", end="2026-10-20T17:30")
+    task = app.do("add", title="Essay", duration_min=60, due="2026-10-23T23:00")
+    eid, tid = event["item"]["id"], task["item"]["id"]
+    thursday = {"start": "2026-10-22T17:00", "end": "2026-10-22T17:30"}
+    poker = {"title": "Poker", "when": "fixed", "start": "2026-10-22T20:00", "end": "2026-10-22T23:00"}
+    morning = {"start": "2026-10-20T09:00", "end": "2026-10-20T10:00", "kind": "preferred"}
+    asking(monkeypatch, {"reply": "", "actions": [
+        {"sentence": "Move it", "command": "edit", "input": {"id": eid, **thursday}},
+        {"sentence": "Add poker", "command": "add", "input": poker},
+        {"sentence": "Make it weekly", "command": "repeat", "input": {"id": eid, "every": "week"}},
+        {"sentence": "Delete it", "command": "drop", "input": {"id": eid}},
+        {"sentence": "Make it a task", "command": "edit", "input": {"id": eid, "when": "anytime"}},
+        {"sentence": "Move the essay's due", "command": "edit", "input": {"id": tid, "due": "2026-10-24T23:00"}},
+        {"sentence": "Add a task", "command": "add", "input": {"title": "Read ch 4", "duration_min": 30}},
+        {"sentence": "Pin the essay", "command": "pin", "input": {"id": tid, **morning}},
+        {"sentence": "A rule", "command": "rule_add", "input": {"text": "no work after 11pm"}},
+        {"sentence": "Someone else's", "command": "drop", "input": {"id": 99999}},
+        {"sentence": "Broken", "command": "add", "input": {"title": "X", "when": "fixed", "start": 5}},
+    ]})  # fmt: skip
+    out = app.do("ask_claude", text="sort my week out")
+    assert [a["event"] for a in out["actions"]] == [
+        True,
+        True,
+        True,
+        True,
+        False,
+        False,
+        False,
+        False,
+        False,
+        False,
+        False,
+    ]
+    assert out["actions"][-1]["error"]  # one that wouldn't run is never applied without asking
+
+
+def test_changing_events_without_asking_is_off_until_you_turn_it_on(app: App) -> None:
+    assert app.do("settings")["claude"] == {"events_without_asking": False}
+    app.do("settings_set", key="claude", value={"events_without_asking": True})
+    assert app.do("settings")["claude"]["events_without_asking"] is True

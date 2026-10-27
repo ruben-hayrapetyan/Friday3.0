@@ -2,20 +2,31 @@
 // over readings"), see what Claude would change as Friday's own commands, tick what to keep, and apply. Nothing runs
 // before Apply; applied, the changes undo together. ⌘↩ asks; Esc closes. Opened with `now` (a rule Friday couldn't
 // read, sent with ↩ from Rules), it asks at once. A proposal that adds, moves or clears time says under it whether you
-// have time for it ("can I go to poker Thursday 8 to 11?"), as `components/Fit.tsx` checks it.
+// have time for it ("can I go to poker Thursday 8 to 11?"), as `components/Fit.tsx` checks it. With "Change calendar
+// events without asking" on (27 Oct), what only adds, moves, repeats or deletes an event applies as the answer comes,
+// with one Undo; the rest still waits for Apply.
 
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { ApiError, type CommandName, command, type Schemas } from "@/api/client"
 import { FIT_COMMANDS, type FitCommand, FitLine } from "@/components/Fit"
-import { Box, Icon } from "@/components/fr/controls"
+import { Box, Icon, Switch } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
-import { undoAll } from "@/hooks/useCommand"
+import { useSettings } from "@/hooks/queries"
+import { undoAll, useCommand } from "@/hooks/useCommand"
 import { useShell } from "@/shell/ShellContext"
 
 /** Claude's proposals you kept, run in order as one change: Undo takes them all back, and one that fails takes back
  * those before it. Whether they all ran. */
 export async function applyActions(actions: Schemas["ProposedAction"][], client: QueryClient, toast: ReturnType<typeof useToast>): Promise<boolean> {
+  const ids = await runActions(actions, client, toast)
+  if (ids === null) return false
+  toast({ message: `Applied ${ids.length} change${ids.length === 1 ? "" : "s"}`, action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
+  return true
+}
+
+/** The actions run in order, as `applyActions` runs them: the changes' ids, or null when one failed. */
+async function runActions(actions: Schemas["ProposedAction"][], client: QueryClient, toast: ReturnType<typeof useToast>): Promise<number[] | null> {
   const ids: number[] = []
   try {
     for (const a of actions) {
@@ -25,11 +36,15 @@ export async function applyActions(actions: Schemas["ProposedAction"][], client:
   } catch (e) {
     toast({ message: e instanceof Error ? e.message : String(e), tone: "error" })
     await undoAll(client, toast, ids)
-    return false
+    return null
   }
-  toast({ message: `Applied ${ids.length} change${ids.length === 1 ? "" : "s"}`, action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
   client.invalidateQueries()
-  return true
+  return ids
+}
+
+/** Which of Claude's proposals apply as the answer comes: those that only change calendar events, when you said so. */
+export function withoutAsking(actions: Schemas["ProposedAction"][], on: boolean): number[] {
+  return on ? actions.flatMap((a, i) => (a.event && !a.error ? [i] : [])) : []
 }
 
 export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
@@ -41,8 +56,12 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null)
   const [answer, setAnswer] = useState<Schemas["AskClaudeOut"] | null>(null)
   const [kept, setKept] = useState<number[]>([])
+  const [done, setDone] = useState<{ at: number[]; ids: number[] } | null>(null) // applied without asking
   const field = useRef<HTMLTextAreaElement>(null)
   const purpose = ask?.purpose ?? "anything"
+  const claude = (useSettings().data as { claude?: { events_without_asking?: boolean } } | undefined)?.claude
+  const auto = !!claude?.events_without_asking
+  const saveSetting = useCommand("settings_set", { label: () => (auto ? "Claude asks before changing events" : "Claude changes events without asking") })
   useEffect(() => field.current?.focus(), [])
   const run = async () => {
     if (!text.trim() || busy) return
@@ -50,8 +69,15 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
     setError(null)
     try {
       const out = await command("ask_claude", { text, purpose })
+      const now = withoutAsking(out.result.actions, auto)
       setAnswer(out.result)
-      setKept(out.result.actions.map((a, i) => (a.error ? -1 : i)).filter((i) => i >= 0))
+      setDone(null)
+      setKept(out.result.actions.map((a, i) => (a.error || now.includes(i) ? -1 : i)).filter((i) => i >= 0))
+      if (now.length) {
+        const ids = await runActions(now.map((i) => out.result.actions[i]), client, toast)
+        if (ids) setDone({ at: now, ids })
+        else setKept((was) => [...was, ...now].sort((a, b) => a - b)) // they failed and were taken back: yours to apply
+      }
     } catch (e) {
       setError(e instanceof ApiError || e instanceof Error ? e.message : String(e))
     }
@@ -105,7 +131,7 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
             <button className="btn btn-primary" onClick={run} disabled={busy || !text.trim()}>
               {busy ? "Asking…" : "Ask"}
             </button>
-            <span className="fr-kicker">⌘↩ asks. Claude only proposes; nothing changes until you apply it.</span>
+            <span className="fr-kicker">⌘↩ asks. {auto ? "Changes to calendar events apply at once; the rest wait for you." : "Claude only proposes; nothing changes until you apply it."}</span>
           </div>
         )}
         {error && <span style={{ color: "var(--fr-due)" }}>{error}</span>}
@@ -115,6 +141,16 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
             {!answer.reply && !answer.actions.length && <span className="fr-kicker">Claude had no changes to suggest for this. Try saying it another way.</span>}
             {answer.actions.length > 0 && <span className="fr-eyebrow">Claude wants to</span>}
             {answer.actions.map((a, i) => {
+              if (done?.at.includes(i))
+                return (
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: "18px minmax(0,1fr)", gap: 10, alignItems: "start", padding: 10 }}>
+                    <Icon name="check-circle" fill size={16} style={{ color: "var(--color-accent-300)" }} />
+                    <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span>{a.sentence}</span>
+                      <span className="fr-kicker">Done: a change to your calendar</span>
+                    </span>
+                  </div>
+                )
               const on = kept.includes(i)
               const checked = !a.error && (FIT_COMMANDS as readonly string[]).includes(a.command)
               return (
@@ -141,7 +177,13 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
                 </div>
               )
             })}
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {done && (
+                <button className="btn btn-secondary" onClick={async () => (await undoAll(client, toast, done.ids), setKept((was) => [...was, ...done.at].sort((a, b) => a - b)), setDone(null))}>
+                  <Icon name="arrow-counter-clockwise" />
+                  Undo {done.at.length === 1 ? "the change" : `the ${done.at.length} changes`} made
+                </button>
+              )}
               <button className="btn btn-primary" onClick={apply} disabled={!kept.length}>
                 <Icon name="check" />
                 Apply {kept.length || ""}
@@ -150,10 +192,19 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
                 Ask again
               </button>
               <button className="btn btn-ghost" onClick={onClose}>
-                Discard
+                {done && !kept.length ? "Close" : "Discard"}
               </button>
             </div>
           </div>
+        )}
+        {purpose !== "rule" && (
+          <label style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 4, fontSize: 12, color: "var(--color-neutral-400)" }}>
+            <Switch on={auto} onToggle={() => saveSetting({ key: "claude", value: { ...claude, events_without_asking: !auto } })} label="Change calendar events without asking" />
+            <span style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <span style={{ color: "var(--color-text)" }}>Change calendar events without asking</span>
+              <span className="fr-kicker">Adding, moving, repeating or deleting events applies at once, with Undo. Tasks, rules and settings still ask.</span>
+            </span>
+          </label>
         )}
       </div>
     </div>

@@ -18955,6 +18955,11 @@
        }
       ],
       "title": "Error"
+     },
+     "event": {
+      "type": "boolean",
+      "title": "Event",
+      "default": false
      }
     },
     "additionalProperties": false,

@@ -44,6 +44,7 @@ import { FirstTour, Tour, tourDue } from "./Tour"
 import { Icon } from "@/components/fr/controls"
 import { nowMin } from "@/hooks/useClock"
 import { Sidebar } from "./Sidebar"
+import { closes, type Opener, wasInFront } from "./toggles"
 
 export function Shell() {
   const { today, pop, setPop, dialog, setDialog, drawer, event, layout, drawerOver, drawerWidth, navOpen, setNavOpen, tour } = useShell()
@@ -142,7 +143,8 @@ export function Shell() {
 
 /** Keys that work on every page: search, shove, pace, the timer, undo, a new to-do, Escape. */
 function useShellKeys() {
-  const { setPop, setDialog, select, setDrawer, drawer } = useShell()
+  const { setPop, setDialog, select, setDrawer, drawer, pop, dialog, event } = useShell()
+  const opened = { dialog, pop, newEvent: event?.id === null }
   const client = useQueryClient()
   const toast = useToast()
   const navigate = useNavigate()
@@ -150,9 +152,10 @@ function useShellKeys() {
   const now = useNow().data
   const running = useStatus().data?.timer
   useKeys({
-    palette: () => setDialog("search"),
-    shove: () => setPop("shove"),
-    pace: () => setPop("pace"),
+    // Each again closes what it opened (shell/toggles.ts): the page has the key, so Friday is in front.
+    palette: () => setDialog(closes("search", opened, true) ? null : "search"),
+    shove: () => setPop(closes("shove", opened, true) ? null : "shove"),
+    pace: () => setPop(closes("pace", opened, true) ? null : "pace"),
     // While trying, ⌘Z takes back the last change you tried, never one of your real ones.
     undo: () => (whatIf.get().on && location.pathname === "/" ? whatIf.undoLast() : undoLast(client, toast)),
     drawer: () => setDrawer(!drawer),
@@ -176,7 +179,9 @@ function useShellKeys() {
 
 /** The Mac app's menus and hotkeys (COMBINED.md 5). The calendar's actions bring you to the calendar first. */
 function useHostActions() {
-  const { today, place, setPlace, setPop, setDialog, setDrawer, drawer, setEvent, askClaude, setTour } = useShell()
+  const { today, place, setPlace, setPop, setDialog, setDrawer, drawer, setEvent, askClaude, setTour, pop, dialog, event } = useShell()
+  // A menu's shortcut or a hotkey again closes what it opened, when Friday was already in front (shell/toggles.ts).
+  const again = (opener: Opener) => closes(opener, { dialog, pop, newEvent: event?.id === null }, wasInFront())
   const navigate = useNavigate()
   const location = useLocation()
   const toPlan = () => location.pathname !== "/" && navigate("/")
@@ -185,14 +190,15 @@ function useHostActions() {
     if (moved) return (toPlan(), setPlace(moved))
     switch (request.action) {
       case "newEvent":
+        if (again("newEvent")) return setEvent(null)
         toPlan()
         return setEvent(draftAt(nextHour(nowMin())))
       case "newTodo":
         return location.pathname === "/" ? setDrawer(true) : navigate("/todo")
       case "search":
-        return setDialog("search")
+        return setDialog(again("search") ? null : "search")
       case "ask":
-        return askClaude()
+        return again("ask") ? setDialog(null) : askClaude()
       case "drawer":
         toPlan()
         return setDrawer(request.argument === "open" || !drawer)
@@ -203,6 +209,7 @@ function useHostActions() {
         return setDialog("ways")
       case "shove":
       case "pace":
+        if (again(request.action)) return setPop(null)
         toPlan()
         return setPop(request.action)
       case "brief":

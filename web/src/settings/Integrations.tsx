@@ -27,6 +27,7 @@ export function Integrations() {
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <Google />
         <Gmail />
+        <AskClaude />
         <Feeds />
         <Card icon="file-pdf" title="Syllabus upload" note="One syllabus (a PDF, or a page saved from Canvas or a course site) becomes class times, readings, assignments and exam prep, reviewed together in your Inbox." right={<Upload />}>
           <Documents />
@@ -85,6 +86,28 @@ function Command({ text }: { text: string }) {
 const usePart = <T,>(key: string) => (useSettings().data as Record<string, unknown> | undefined)?.[key] as T | undefined
 
 const CONSENT = "https://console.cloud.google.com/auth/audience"
+
+/** Ask Claude's one setting (27 Oct): whether a change to calendar events waits for your yes, as everything else does. */
+function AskClaude() {
+  const claude = usePart<{ events_without_asking: boolean }>("claude")
+  const status = useStatus().data
+  const save = useCommand("settings_set", { label: () => "Saved" })
+  const on = !!claude?.events_without_asking
+  return (
+    <Card icon="sparkle" title="Ask Claude" note="Say what you want in your own words (⌘J); Claude proposes the changes as Friday's own, each to keep or not.">
+      <label style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <Switch on={on} onToggle={() => save({ key: "claude", value: { ...claude, events_without_asking: !on } })} label="Change calendar events without asking" />
+        <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span>Change calendar events without asking</span>
+          <span className="fr-kicker" style={{ textWrap: "pretty" }}>
+            {on ? "Adding, moving, repeating or deleting events applies as soon as Claude answers, with Undo." : "Off: Claude asks before every change."} Tasks, rules and settings always ask.
+            {(status?.config_keys ?? []).includes("claude") ? " Set in friday.toml." : ""}
+          </span>
+        </span>
+      </label>
+    </Card>
+  )
+}
 
 function Google() {
   const { today } = useShell()

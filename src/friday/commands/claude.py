@@ -16,7 +16,7 @@ from pydantic import ValidationError
 from friday.api.commands import AskClaudeInput, AskClaudeOut, ProposedAction
 from friday.commands.inbox import record_spend, spend_check
 from friday.commands.registry import REGISTRY, Ctx, command
-from friday.core.db import rows
+from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.time import format_utc
 from friday.ingest import llm
@@ -127,10 +127,27 @@ def ask_claude(ctx: Ctx, inp: AskClaudeInput) -> AskClaudeOut:
     used = reply.usage.input_tokens + reply.usage.output_tokens
     record_spend(ctx.conn, ctx.user_id, ctx.today.isoformat(), used)
     text = next((b.text for b in reply.content if getattr(b, "type", "") == "text"), "")
-    return proposals(json.loads(text) if text else {}, allowed)
+    return proposals(json.loads(text) if text else {}, allowed, lambda name, given: touches_event(ctx, name, given))
 
 
-def proposals(answer: dict[str, Any], allowed: tuple[str, ...]) -> AskClaudeOut:
+EVENT_COMMANDS = ("edit", "drop", "repeat")
+
+
+def touches_event(ctx: Ctx, name: str, given: dict[str, Any]) -> bool:
+    """Whether a proposal only adds, moves, repeats or deletes a calendar event (27 Oct: "have the claude requesting
+    approval be a toggle for changing calendar events"): a new event, or an edit, a delete or a repeat of one you have
+    that stays an event. Tasks, rules, settings, pins and shoves never are."""
+    if name == "add":
+        return given.get("when") == "fixed"
+    if name not in EVENT_COMMANDS or not isinstance(given.get("id"), int):
+        return False
+    row = one(ctx.conn, "SELECT when_kind FROM items WHERE id = ? AND user_id = ?", [given["id"], ctx.user_id])
+    return bool(row) and row["when_kind"] == "fixed" and given.get("when") in (None, "fixed")
+
+
+def proposals(
+    answer: dict[str, Any], allowed: tuple[str, ...], is_event: Any = lambda name, given: False
+) -> AskClaudeOut:
     """Claude's answer as actions, each checked against its command's input; what isn't allowed is refused."""
     actions = []
     for a in answer.get("actions") or []:
@@ -146,7 +163,15 @@ def proposals(answer: dict[str, Any], allowed: tuple[str, ...]) -> AskClaudeOut:
             except ValidationError as problem:
                 first = problem.errors()[0]
                 error = f"{'.'.join(str(p) for p in first['loc'])}: {first['msg']}"
-        actions.append(ProposedAction(sentence=str(a.get("sentence", name)), command=name, input=given, error=error))
+        actions.append(
+            ProposedAction(
+                sentence=str(a.get("sentence", name)),
+                command=name,
+                input=given,
+                error=error,
+                event=error is None and is_event(name, given),
+            )
+        )
     return AskClaudeOut(reply=str(answer.get("reply", "")), actions=actions)
 
 

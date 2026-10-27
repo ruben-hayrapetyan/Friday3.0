@@ -5838,6 +5838,11 @@ export interface components {
             };
             /** Error */
             error?: string | null;
+            /**
+             * Event
+             * @default false
+             */
+            event?: boolean;
         };
         /** PushSubscribeResult */
         PushSubscribeResult: {
