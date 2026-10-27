@@ -13,6 +13,8 @@ import { dur } from "@/lib/format"
 import { addDays, fromMin, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
+import { TimeInput } from "@/components/fr/TimeInput"
+import { EXAM_HOURS } from "@/lib/ampm"
 
 const LENGTHS = [
   { value: 60, label: "1h" },
@@ -72,7 +74,7 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <span className="fr-kicker">Starts</span>
-            <input className="input" type="time" value={time} step={300} onChange={(e) => e.target.value && setTime(e.target.value)} />
+            <TimeInput value={time} step={300} onChange={(t) => t && setTime(t)} label="Starts" expect={{ hours: EXAM_HOURS }} />
           </label>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <span className="fr-kicker">Length</span>

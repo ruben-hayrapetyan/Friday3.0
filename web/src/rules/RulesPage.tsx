@@ -16,6 +16,7 @@ import { useStatus } from "@/hooks/queries"
 import { useInbox } from "@/inbox/InboxPage"
 import { dayLabel } from "@/lib/format"
 import { WeekPaces } from "./WeekPaces"
+import { TimeInput } from "@/components/fr/TimeInput"
 
 type Strength = "Prefer" | "Strongly" | "Always"
 const STRENGTHS: Strength[] = ["Prefer", "Strongly", "Always"]
@@ -319,9 +320,9 @@ function Fields(props: { reading: Reading; overrides: Record<string, unknown>; o
           <span className="fr-kicker">When</span>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <Seg options={rels} value={reading.rel} onPick={(v) => onSet("rel", v)} onBg />
-            <input type="time" step={900} className="input" value={reading.at ?? ""} onChange={(e) => onSet("at", e.target.value)} style={{ width: 110, padding: "4px 8px", fontSize: 12, minHeight: 0 }} />
+            <TimeInput step={900} value={reading.at ?? ""} onChange={(t) => onSet("at", t)} label="At" style={{ width: 110, padding: "4px 8px", fontSize: 12, minHeight: 0 }} />
             {(reading.rel === "between" || reading.rel === "not_between") && (
-              <input type="time" step={900} className="input" value={reading.until ?? ""} onChange={(e) => onSet("until", e.target.value)} style={{ width: 110, padding: "4px 8px", fontSize: 12, minHeight: 0 }} />
+              <TimeInput step={900} value={reading.until ?? ""} onChange={(t) => onSet("until", t)} label="Until" expect={{ after: reading.at ?? undefined }} style={{ width: 110, padding: "4px 8px", fontSize: 12, minHeight: 0 }} />
             )}
             {pin("at")}
           </div>

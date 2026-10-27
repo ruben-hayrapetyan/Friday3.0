@@ -19,6 +19,7 @@ import { addDays, fromMin, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { CUSTOM, dayOf, daysIn, LETTERS, movedRule, onDays, RRULE_DAYS, repeatChoices, sayRepeat, splitCount, withCount } from "./repeats"
 import { type EventDraft, useShell } from "./ShellContext"
+import { TimeInput } from "@/components/fr/TimeInput"
 
 
 /** A new event's draft: an hour from the quarter hour it was asked for. */
@@ -223,9 +224,9 @@ export function EventPane({ draft }: { draft: EventDraft }) {
       ) : (
         <Row label="Time">
           <span style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", minWidth: 0 }}>
-            <input className="input tnum" type="time" step={300} value={draft.start.slice(11, 16)} onChange={(e) => setStart(e.target.value)} aria-label="Starts" style={field} />
+            <TimeInput className="input tnum" step={300} value={draft.start.slice(11, 16)} onChange={setStart} label="Starts" style={field} />
             <span style={{ color: "var(--color-neutral-500)" }}>–</span>
-            <input className="input tnum" type="time" step={300} value={draft.end.slice(11, 16)} onChange={(e) => setEnd(e.target.value)} aria-label="Ends" style={field} />
+            <TimeInput className="input tnum" step={300} value={draft.end.slice(11, 16)} onChange={setEnd} label="Ends" expect={{ after: draft.start.slice(11, 16) }} style={field} />
           </span>
         </Row>
       )}

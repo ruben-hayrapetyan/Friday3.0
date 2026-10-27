@@ -15,6 +15,8 @@ import { addDays } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { type Answer, known, length, type Status } from "./answers"
+import { TimeInput } from "@/components/fr/TimeInput"
+import { SLEEP_HOURS } from "@/lib/ampm"
 
 const OPTIONS: { status: Status; key: string; label: string; desc: string; icon: string; ic: string }[] = [
   { status: "done", key: "1", label: "Done", desc: "Did what was planned", icon: "check", ic: "var(--color-accent-300)" },
@@ -147,7 +149,7 @@ function SleepAskRow({ ask }: { ask: Schemas["SleepAsk"] }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
       <span style={{ flex: 1, minWidth: 180 }}>{ask.question}</span>
-      <input type="time" className="input" value={time} onChange={(e) => setTime(e.target.value)} aria-label={ask.question} style={{ width: 110, padding: "3px 6px", minHeight: 0, fontSize: 12 }} />
+      <TimeInput value={time} onChange={setTime} label={ask.question} expect={{ hours: SLEEP_HOURS[ask.kind as keyof typeof SLEEP_HOURS] }} style={{ width: 110, padding: "3px 6px", minHeight: 0, fontSize: 12 }} />
       <button className="btn btn-secondary fr-press" disabled={!time} onClick={() => add({ kind: ask.kind, at: `${day}T${time}` })} style={{ fontSize: 12, padding: "3px 10px" }}>
         Add
       </button>

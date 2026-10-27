@@ -11,6 +11,7 @@ import { clock, dayLabel, dur } from "@/lib/format"
 import { addDays, nearestAt } from "@/lib/time"
 import { Section } from "@/insights/Section"
 import { EditCard, minutesBetween, TimeField } from "./Times"
+import { MEAL_HOURS } from "@/lib/ampm"
 import { useShell } from "@/shell/ShellContext"
 
 export const KINDS = ["breakfast", "lunch", "dinner", "snack"] as const
@@ -225,8 +226,8 @@ function MealCard({ date, kind, meal, onClose }: { date: string; kind: MealKind;
         ) : null
       }
     >
-      <TimeField label="Started" value={from} onChange={setFrom} />
-      {(!eaten || eaten.end) && <TimeField label="Finished" value={to} onChange={setTo} />}
+      <TimeField label="Started" value={from} onChange={setFrom} expect={kind === "snack" ? undefined : { hours: MEAL_HOURS[kind] }} />
+      {(!eaten || eaten.end) && <TimeField label="Finished" value={to} onChange={setTo} expect={{ after: from }} />}
       {eaten && !eaten.end && <span style={{ fontSize: 12, color: "var(--color-neutral-400)", paddingBottom: 6 }}>Still eating: “Done eating” ends it</span>}
     </EditCard>
   )

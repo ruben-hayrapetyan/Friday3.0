@@ -7,6 +7,7 @@ import { query } from "@/api/client"
 import { H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings } from "@/hooks/queries"
+import { TimeInput } from "@/components/fr/TimeInput"
 
 
 interface Notify {
@@ -90,7 +91,7 @@ export function Notifications() {
                     <span />
                     <label style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
                       At
-                      <input type="time" step={900} className="input" value={saved[k.time] ?? ""} onChange={(e) => save({ [k.time as string]: e.target.value || null })} style={{ width: 110, padding: "3px 8px", minHeight: 0 }} />
+                      <TimeInput step={900} value={saved[k.time] ?? ""} onChange={(t) => save({ [k.time as string]: t || null })} label={`${k.name} time`} style={{ width: 110, padding: "3px 8px", minHeight: 0 }} />
                       <span className="fr-kicker">Empty: {k.time === "brief_at" ? "30 min after you wake" : "an hour before bed"}</span>
                     </label>
                   </>
@@ -121,9 +122,9 @@ export function Notifications() {
               <Switch on={!!saved.quiet} onToggle={() => save({ quiet: saved.quiet ? null : ["22:00", "08:00"] })} label="Quiet hours" />
               {saved.quiet ? (
                 <>
-                  <input type="time" step={900} className="input" value={saved.quiet[0]} onChange={(e) => save({ quiet: [e.target.value, saved.quiet?.[1] ?? "08:00"] })} style={{ width: 100, padding: "3px 8px", minHeight: 0 }} />
+                  <TimeInput step={900} value={saved.quiet[0]} onChange={(t) => save({ quiet: [t, saved.quiet?.[1] ?? "08:00"] })} label="Quiet from" expect={{ hours: ["18:00", "03:59"] }} style={{ width: 100, padding: "3px 8px", minHeight: 0 }} />
                   <span className="fr-kicker">to</span>
-                  <input type="time" step={900} className="input" value={saved.quiet[1]} onChange={(e) => save({ quiet: [saved.quiet?.[0] ?? "22:00", e.target.value] })} style={{ width: 100, padding: "3px 8px", minHeight: 0 }} />
+                  <TimeInput step={900} value={saved.quiet[1]} onChange={(t) => save({ quiet: [saved.quiet?.[0] ?? "22:00", t] })} label="Quiet until" expect={{ hours: ["04:00", "13:59"] }} style={{ width: 100, padding: "3px 8px", minHeight: 0 }} />
                 </>
               ) : (
                 <span className="fr-kicker">From bedtime until you wake</span>

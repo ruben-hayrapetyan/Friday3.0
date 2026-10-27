@@ -16,6 +16,8 @@ import { ConnectedAccounts } from "@/settings/GoogleAccounts"
 import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess } from "@/settings/GoogleConnect"
 import { AddFeed, Upload } from "@/settings/Integrations"
 import { Modal } from "./Dialogs"
+import { TimeInput as TimeBox } from "@/components/fr/TimeInput"
+import { type Expect, SLEEP_HOURS } from "@/lib/ampm"
 
 export type Answers = Schemas["SetupInput"]
 type Calendar = Schemas["SetupCalendar"]
@@ -102,7 +104,7 @@ const STEPS: Step[] = [
           <Question label="Evenings start at">
             <span style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
               <Seg options={["17:00", "18:00", "19:00", "20:00"].map((t) => ({ value: t, label: ampm(t) }))} value={a.evening_from} onPick={(evening_from) => set({ evening_from })} size="big" label="Evenings start at" />
-              <TimeInput value={a.evening_from} onPick={(evening_from) => set({ evening_from })} label="Evenings start at, another time" />
+              <TimeInput value={a.evening_from} onPick={(evening_from) => set({ evening_from })} label="Evenings start at, another time" expect={{ hours: ["14:00", "23:59"] }} />
             </span>
           </Question>
         )}
@@ -293,8 +295,8 @@ function Question({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** Any time, to the minute, shown on the Mac's clock (12-hour here). */
-function TimeInput({ value, onPick, label }: { value: string; onPick: (t: string) => void; label: string }) {
-  return <input className="input tnum" type="time" step={300} value={value} onChange={(e) => e.target.value && onPick(e.target.value)} aria-label={label} style={{ width: 130 }} />
+function TimeInput({ value, onPick, label, expect }: { value: string; onPick: (t: string) => void; label: string; expect?: Expect }) {
+  return <TimeBox className="input tnum" step={300} value={value} onChange={(t) => t && onPick(t)} label={label} expect={expect} style={{ width: 130 }} />
 }
 
 /** Quick picks, and a box to type any other amount: hours by default ("6", "6.5h", "90 min"), or what `read` reads. */
@@ -342,10 +344,10 @@ function TimeRow({ label, wake, bedtime, onWake, onBedtime }: { label: string; w
     <div className="fr-stack" style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
       <span style={{ fontSize: 13, fontWeight: 500, width: 90 }}>{label}</span>
       <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
-        Up at <TimeInput value={wake} onPick={onWake} label={`${label}: up at`} />
+        Up at <TimeInput value={wake} onPick={onWake} label={`${label}: up at`} expect={{ hours: SLEEP_HOURS.up }} />
       </span>
       <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
-        Bed at <TimeInput value={bedtime} onPick={onBedtime} label={`${label}: bed at`} />
+        Bed at <TimeInput value={bedtime} onPick={onBedtime} label={`${label}: bed at`} expect={{ hours: SLEEP_HOURS.bed }} />
       </span>
     </div>
   )

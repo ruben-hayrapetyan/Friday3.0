@@ -11,6 +11,7 @@ import { addDays } from "@/lib/time"
 import { Section } from "@/insights/Section"
 import { useShell } from "@/shell/ShellContext"
 import { EditCard, minutesBetween, TimeField } from "./Times"
+import { SLEEP_HOURS } from "@/lib/ampm"
 
 const TAPS = [
   { kind: "done", icon: "laptop", button: "Done with work" },
@@ -180,6 +181,7 @@ function NightCard({ evening, night, onClose }: { evening: string; night?: Schem
           label={fromTimer(kind) && times[kind] === recorded[kind] ? `${label} (timer)` : label}
           value={times[kind]}
           onChange={(v) => setTimes({ ...times, [kind]: v })}
+          expect={{ hours: SLEEP_HOURS[kind], after: kind === "ready" ? times.up : undefined }}
           // A time from a timer isn't a tap to take back: type over it instead.
           onClear={fromTimer(kind) && !ids[kind] ? undefined : () => setTimes({ ...times, [kind]: "" })}
         />

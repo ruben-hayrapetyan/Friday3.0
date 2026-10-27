@@ -14,6 +14,7 @@ import { ampm, weekday } from "@/lib/format"
 import { addDays, fromMin } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
 import { markShoved } from "./shoved"
+import { TimeInput } from "@/components/fr/TimeInput"
 
 type Decision = "ask" | "shove_anyway" | "keep_must_dos"
 
@@ -115,9 +116,9 @@ export function ShovePop() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>From</span>
-                    <input type="time" step={900} className="input" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From" style={{ flex: 1, minWidth: 0, padding: "4px 6px", minHeight: 0 }} />
+                    <TimeInput step={900} value={from} onChange={setFrom} label="From" style={{ flex: 1, minWidth: 0, padding: "4px 6px", minHeight: 0 }} />
                     <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>to</span>
-                    <input type="time" step={900} className="input" value={until} onChange={(e) => setUntil(e.target.value)} aria-label="To" style={{ flex: 1, minWidth: 0, padding: "4px 6px", minHeight: 0 }} />
+                    <TimeInput step={900} value={until} onChange={setUntil} label="To" expect={{ after: from }} style={{ flex: 1, minWidth: 0, padding: "4px 6px", minHeight: 0 }} />
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Menu options={days} value={String(on)} onPick={(v) => setOn(Number(v))} label="Which day" />

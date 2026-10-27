@@ -11,6 +11,8 @@ import { useNavigate } from "react-router"
 import { BUFFER_OPTIONS, bufferLabel, useBuffers } from "./buffers"
 import { Field, SectionHead } from "./SettingsPage"
 import { TrackMeals, TrackSleep } from "./SleepTracking"
+import { TimeInput } from "@/components/fr/TimeInput"
+import { SLEEP_HOURS } from "@/lib/ampm"
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 interface Night {
@@ -126,8 +128,8 @@ function ByDay({ sleep, caps }: { sleep: Record<string, Night>; caps: Record<str
       {DAYS.map((d) => (
         <Row key={d}>
           <span style={{ textTransform: "capitalize" }}>{d}</span>
-          <input type="time" className="input" value={sleep[d].wake} onChange={(e) => night(d, { wake: e.target.value })} style={input} />
-          <input type="time" className="input" value={sleep[d].bedtime} onChange={(e) => night(d, { bedtime: e.target.value })} style={input} />
+          <TimeInput value={sleep[d].wake} onChange={(wake) => night(d, { wake })} expect={{ hours: SLEEP_HOURS.up }} label={`${d} wake`} style={input} />
+          <TimeInput value={sleep[d].bedtime} onChange={(bedtime) => night(d, { bedtime })} expect={{ hours: SLEEP_HOURS.bed }} label={`${d} bedtime`} style={input} />
           <input type="number" className="input" min={0} max={240} step={15} value={sleep[d].margin_min} onChange={(e) => night(d, { margin_min: Number(e.target.value) })} style={input} />
           <input type="number" className="input" min={0} max={16} step={0.5} value={caps[d]} onChange={(e) => save({ key: "daily_cap", value: { ...caps, [d]: Number(e.target.value) } })} style={input} />
         </Row>

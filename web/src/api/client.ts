@@ -37,7 +37,8 @@ async function read<T>(response: Response): Promise<T> {
   let message = `${response.status} ${response.statusText}`
   try {
     const body = await response.json()
-    if (body.message) message = body.field ? `${body.field}: ${body.message}` : body.message
+    // The server's message names its field already ("end: that's later than now"): said once, not "end: end: …".
+    if (body.message) message = body.field && !String(body.message).startsWith(`${body.field}:`) ? `${body.field}: ${body.message}` : body.message
     else if (Array.isArray(body.detail)) message = body.detail.map((d: { msg: string }) => d.msg).join("; ")
   } catch {
     // not JSON: keep the status line

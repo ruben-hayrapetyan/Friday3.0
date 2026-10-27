@@ -4,13 +4,15 @@
 
 import type { ReactNode } from "react"
 import { Icon } from "@/components/fr/controls"
+import { TimeInput } from "@/components/fr/TimeInput"
+import type { Expect } from "@/lib/ampm"
 
-export function TimeField({ label, value, onChange, onClear }: { label: string; value: string; onChange: (v: string) => void; onClear?: () => void }) {
+export function TimeField({ label, value, onChange, onClear, expect }: { label: string; value: string; onChange: (v: string) => void; onClear?: () => void; expect?: Expect }) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, color: "var(--color-neutral-400)" }}>
       {label}
       <span style={{ display: "flex", alignItems: "center", gap: 2 }}>
-        <input type="time" className="input" aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} style={{ width: 118, padding: "4px 8px", minHeight: 0, fontSize: 13 }} />
+        <TimeInput label={label} value={value} onChange={onChange} expect={expect} style={{ width: 118, padding: "4px 8px", minHeight: 0, fontSize: 13 }} />
         {onClear && value && (
           <button type="button" className="btn btn-icon btn-ghost" onClick={onClear} aria-label={`Clear ${label.toLowerCase()}`} title="Clear" style={{ width: 22, height: 22 }}>
             <Icon name="x" size={11} />
