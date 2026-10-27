@@ -10,10 +10,8 @@ import { Icon, Seg, Switch } from "@/components/fr/controls"
 import { useKeys } from "@/hooks/useKeys"
 import { followServer } from "@/hooks/useClock"
 import { useCalendar, usePaces, useSettings, useStatus } from "@/hooks/queries"
-import { useCommand } from "@/hooks/useCommand"
 import { pigment } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
-import { LEFT_OUT } from "./Pieces"
 import { lateBy, weekday, when } from "@/lib/format"
 import { addDays, dayRange, fromMin, toMin } from "@/lib/time"
 import { useQueryClient } from "@tanstack/react-query"
@@ -259,8 +257,10 @@ interface Note {
   list?: { key: number; title: string; sub: string; onOpen: () => void }[] // what it's about, one line each
 }
 
-/** What needs you, in one pill (late work, a day over its limit, a lock that can't hold, overlapping events, the
- * server's problems, events not counted as busy), opening to the whole list with what to do about each. */
+/** What needs you, in one pill (late work, a day over its limit, a lock that can't hold, the server's problems,
+ * being offline), opening to the whole list with what to do about each. The plan's notes and the events not counted
+ * as busy were here too: long, rarely anything to do, and taking the top bar (27 Oct); the calendar shows a skipped
+ * event as skipped, and Settings → Calendars says what isn't counted. */
 function Attention({ first, days }: { first: string; days: number }) {
   const { setDialog, layout, today } = useShell()
   const navigate = useNavigate()
@@ -268,8 +268,6 @@ function Attention({ first, days }: { first: string; days: number }) {
   const status = useStatus().data
   const calendar = useCalendar(first, days).data
   const plan = useShownPlan(`${first}T00:00`, `${addDays(first, days)}T00:00`).data
-  const settings = useSettings().data as Record<string, unknown> | undefined
-  const save = useCommand("settings_set", { label: () => "Planning around it now" })
   const solving = !!status && status.plan_generation !== null && status.plan_generation < status.generation
   const notes: Note[] = []
   if (offline) notes.push({ tone: "plain", icon: "wifi-slash", text: "Offline: showing the last plan. Changes wait until you're back." })
@@ -283,20 +281,6 @@ function Attention({ first, days }: { first: string; days: number }) {
   const over = calendar?.days.map((d) => ({ date: d.date, by: (plan?.day_hours[d.date] ?? 0) - d.cap_hours })).find((d) => d.by > 0.05)
   if (over) notes.push({ tone: "mark", icon: "warning", text: `${FULL_DAY[weekday(over.date)]} is ${over.by.toFixed(1)} h over`, action: { label: "See options", run: () => setDialog("triage") } })
   if (status?.conflicts?.length) notes.push({ tone: "mark", icon: "lock-simple", text: "A lock can't hold", action: { label: "Decide", run: () => setDialog("conflicts") } })
-  const overlaps = status?.notices ?? []
-  if (overlaps.length) notes.push({ tone: "plain", icon: "info", text: overlaps.length === 1 ? overlaps[0] : `${overlaps.length} notes about this plan, like: ${overlaps[0]}` })
-  const out = (plan?.fixed ?? []).filter((f) => f.left_out)
-  if (out.length && settings) {
-    const busy = settings.busy as { calendars: Record<string, boolean> } & Record<string, unknown>
-    const by = new Map<string, number>()
-    for (const f of out) by.set(f.left_out as string, (by.get(f.left_out as string) ?? 0) + 1)
-    for (const [reason, n] of by) {
-      const calendars = Object.fromEntries(out.filter((f) => f.left_out === "calendar" && f.calendar).map((f) => [f.calendar as string, true]))
-      const flag = { reminder: "count_reminders", free: "count_free", filtered: "count_filtered" }[reason]
-      const count = () => save({ key: "busy", value: flag ? { ...busy, [flag]: true } : { ...busy, calendars: { ...busy.calendars, ...calendars } } })
-      notes.push({ tone: "plain", icon: "calendar-x", text: `${n} not counted as busy: ${LEFT_OUT[reason] ?? reason}`, action: { label: "Count them", run: count } })
-    }
-  }
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
   useEffect(() => {
@@ -342,21 +326,6 @@ function Attention({ first, days }: { first: string; days: number }) {
               )}
             </div>
           ))}
-          {overlaps.length > 1 && (
-            <details style={{ padding: "0 8px 6px 36px" }}>
-              <summary className="fr-kicker" style={{ cursor: "pointer" }}>
-                All {overlaps.length} notes
-              </summary>
-              <ul style={{ margin: "6px 0 0", paddingLeft: 16, fontSize: 12, color: "var(--color-neutral-400)" }}>
-                {overlaps.map((o) => (
-                  <li key={o}>{o}</li>
-                ))}
-              </ul>
-            </details>
-          )}
-          <button className="fr-link" onClick={() => (setOpen(false), navigate("/settings/calendars"))} style={{ alignSelf: "flex-start", fontSize: 12, padding: "4px 8px 6px 36px" }}>
-            Calendars settings
-          </button>
         </div>
       )}
     </span>
