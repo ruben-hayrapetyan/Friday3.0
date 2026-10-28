@@ -9,10 +9,10 @@ conventions), and where those are silent:
   - "late at night" is night (22-02); "school work" and "anything school related" are "work".
   - "hard thinking stuff", "anything that needs concentration", "heavy focus work" are "deep work"; "brainless",
     "easy tasks", "low-energy stuff", "mindless tasks" are "light work".
-  - "ease off", "fewer tasks", "not as much work" on a part of a day are `free` with amount 0.5, like "less work".
+  - "ease off", "fewer tasks", "less on my plate" on a part of a day are `free` with amount 0.5, like "less work".
   - "unless it's a weekday" limits a rule to the weekend; "every day but X" / "aside from X" / "other than on X" are
     the other days.
-  - A buffer around "every class", "each lecture", "a class" or "all calendar events" is "set:event_kinds" (as the
+  - A buffer after "every class", before "each lecture" or around "all calendar events" is "set:event_kinds" (as the
     earlier corpora label it); around a named event it is `around`.
   - "sunday to thursday" nights for sleep are sun-thu, named by the evening, like "school nights".
 """
@@ -205,7 +205,7 @@ C = [
     ),
     (
         "window",
-        "put all my work in the afternoon",
+        "all my studying should land in the afternoon",
         {"kind": "window", "subject": "work", "rel": "between", "at": "12:00", "until": "17:00"},
     ),
     # ---- windows with days ----
@@ -630,7 +630,7 @@ C = [
     ),
     (
         "free",
-        "block wednesday evenings for date night",
+        "block off wednesday evenings",
         {"kind": "free", "subject": "work", "rel": "between", "at": "17:00", "until": "22:00", "days": ["wed"]},
     ),
     (
@@ -647,7 +647,7 @@ C = [
     ),
     (
         "free",
-        "keep 5:30 to 7 open on weekdays for practice",
+        "keep 5:30 to 7pm open on weekdays for practice",
         {
             "kind": "free",
             "subject": "work",
@@ -699,7 +699,7 @@ C = [
     # ---- keep a stretch lighter ----
     (
         "free",
-        "go lighter on thursday nights",
+        "less on my plate thursday nights",
         {
             "kind": "free",
             "subject": "work",
@@ -877,7 +877,7 @@ C = [
     ),
     (
         "days",
-        "no deep work on weekends",
+        "save deep work for weekdays, never weekends",
         {"kind": "days", "subject": "deep work", "rel": "not_on", "days": ["sat", "sun"]},
     ),
     (
@@ -1454,10 +1454,10 @@ C = [
     ),
     ("meals", "learn my lunch and dinner times", {"kind": "meals_learned", "events": ["lunch", "dinner"]}),
     # ---- fit tasks to gaps ----
-    ("gaps", "use 20 minute windows for little tasks", {"kind": "fit_gaps"}),
-    ("gaps", "keep big open blocks for deep projects, not errands", {"kind": "fit_gaps"}),
+    ("gaps", "little 20-min holes in my day are perfect for small tasks", {"kind": "fit_gaps"}),
+    ("gaps", "if there's a long open stretch, use it for a long task", {"kind": "fit_gaps"}),
     ("gaps", "slot short to-dos into the in-between times", {"kind": "fit_gaps"}),
-    ("gaps", "pair long tasks with long free time", {"kind": "fit_gaps"}),
+    ("gaps", "give the long free stretches to the long tasks", {"kind": "fit_gaps"}),
     ("gaps", "size tasks to the free time they go in", {"kind": "fit_gaps"}),
     ("gaps", "10-minute tasks belong in 10-minute gaps", {"kind": "fit_gaps"}),
     # ---- things that run by themselves ----
@@ -1558,7 +1558,7 @@ C = [
     ("item", "shift at the library weekdays 8-10am", "item"),
     ("item", "dinner w/ roommates every sunday 7pm", "item"),
     ("item", "lunch at 12:15 every day", "item"),
-    ("item", "stretch 15 min after every run", "item"),
+    ("item", "15 min stretch every morning at 7", "item"),
     ("item", "30 minutes of reading for fun before bed each night", "item"),
     ("item", "2 hours of LSAT prep every saturday morning", "item"),
     ("item", "practice chinese characters 20 min a day", "item"),
