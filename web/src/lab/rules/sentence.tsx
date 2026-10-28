@@ -2,6 +2,7 @@
 // the sentence the Rules page already shows.
 
 import type { CSSProperties, ReactNode } from "react"
+import { TimeInput } from "@/components/fr/TimeInput"
 import { hours } from "@/lib/format"
 import type { RuleSpec } from "./model"
 
@@ -84,7 +85,7 @@ function subject(rule: RuleSpec): string {
 const minutes = (text: string) => Math.round(hours(text) * 60)
 
 function TimeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return <input type="time" step={900} value={value} onChange={(e) => e.target.value && onChange(e.target.value)} style={{ ...INLINE, width: 112 }} />
+  return <TimeInput step={900} value={value} onChange={(t) => t && onChange(t)} className="" style={{ ...INLINE, width: 90 }} />
 }
 
 function HoursField({ value, onChange }: { value: string; onChange: (v: string) => void }) {

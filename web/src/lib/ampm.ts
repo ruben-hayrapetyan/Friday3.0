@@ -1,9 +1,9 @@
-// A time typed into a 12-hour box keeps the am or pm the box showed: lunch at 12:30pm retyped as 11 became 11pm
-// (27 Oct: "i didn't eat lunch at 11PM, that doesn't make sense"). So a typed time is read as the half of the day it
-// most likely means: inside the hours the thing happens at, after what it follows, else nearest what the box had, as
-// a time typed over the calendar already is (lib/timeRange.ts). Turning am into pm, or back, yourself is kept.
+// A time typed into a 12-hour box kept the am or pm the box showed: lunch at 12:30pm retyped as 11 became 11pm
+// (27 Oct: "i didn't eat lunch at 11PM, that doesn't make sense"). So a time typed without am or pm is read as the
+// half of the day it most likely means: inside the hours the thing happens at, after what it follows, else nearest
+// what the box had, as a time typed over the calendar already is (lib/timeRange.ts). An am or pm typed is kept.
 
-import { ampm } from "./time"
+import { readTime } from "./timeRange"
 
 export interface Expect {
   hours?: readonly [string, string] // when it happens at all, "HH:MM" to "HH:MM"; past midnight when the end is earlier
@@ -26,6 +26,8 @@ export const SLEEP_HOURS = {
 } as const satisfies Record<string, readonly [string, string]>
 
 export const EXAM_HOURS = ["07:00", "23:59"] as const
+// A due or an event typed in the Inbox: in the day, not the small hours ("5" over a due's 11:59pm is 5pm, not 5am).
+export const DAY_HOURS = ["06:00", "23:59"] as const
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 const minute = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
@@ -46,21 +48,24 @@ export function inHours(time: string, [from, to]: readonly [string, string]): bo
 const forward = (from: string, to: string) => (minute(to) - minute(from) + 1440) % 1440
 const apart = (a: string, b: string) => Math.min(forward(a, b), forward(b, a))
 
-/** The time meant when `typed` replaces `was` in a box expecting `expect`: what was typed, or the same time in the
- * other half of the day when only that one fits, or, both fitting or neither, when it's nearer what's expected. */
-export function meant(typed: string, was: string, expect: Expect = {}): string {
-  if (!TIME.test(typed)) return typed
-  if (TIME.test(was) && typed === otherHalf(was)) return typed // you turned am into pm, or back
-  const other = otherHalf(typed)
+/** A time typed in words into a time box, as "HH:MM", with whether Friday chose its half: "11:30", "1130" or "11" over
+ * lunch is 11:30am; "11:30p", "11 pm" or "23:30" are as typed; "noon". An empty box takes the half the time is usually
+ * meant in, 7 to 11 in the morning and noon to 6:59 in the afternoon, when nothing expected chooses (28 Oct: "the
+ * AM/PM doesn't autofill in all time boxes": a box with no time yet left am or pm blank until it was typed). Null
+ * when it can't be read. */
+export function typedTime(text: string, was: string, expect: Expect = {}): { time: string; guessed: boolean } | null {
+  const t = readTime(text)
+  if (!t) return null
+  if (t.half !== null || t.minute >= 720) return { time: clockOf(t.minute), guessed: false }
+  const am = clockOf(t.minute)
+  const pm = otherHalf(am)
   const after = expect.after && TIME.test(expect.after) ? expect.after : null
-  const fits = (t: string) => (!expect.hours || inHours(t, expect.hours)) && (!after || forward(after, t) < 720)
-  if (fits(typed) !== fits(other)) return fits(typed) ? typed : other
-  const near = expect.near ?? was
-  if (!TIME.test(near)) return typed
-  return apart(other, near) < apart(typed, near) ? other : typed
-}
-
-/** What to say when a typed time was read the other way: "Made it 11:30am" and "keep 11:30pm". */
-export function readAs(typed: string, as: string): { made: string; keep: string } | null {
-  return typed === as || !TIME.test(typed) ? null : { made: ampm(as), keep: ampm(typed) }
+  const fits = (x: string) => (!expect.hours || inHours(x, expect.hours)) && (!after || forward(after, x) < 720)
+  if (fits(am) !== fits(pm)) return { time: fits(am) ? am : pm, guessed: true }
+  // Both fitting, or neither: the half nearer what the box had (a 1pm event retyped as 3 is 3pm); a tie, or nothing to
+  // be near, the half it's usually meant in.
+  const near = expect.near ?? (TIME.test(was) ? was : null)
+  if (near && TIME.test(near) && apart(pm, near) !== apart(am, near)) return { time: apart(pm, near) < apart(am, near) ? pm : am, guessed: true }
+  const hour = Math.floor(t.minute / 60) || 12
+  return { time: hour >= 7 && hour <= 11 ? am : pm, guessed: true }
 }

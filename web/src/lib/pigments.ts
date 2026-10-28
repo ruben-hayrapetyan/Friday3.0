@@ -21,8 +21,15 @@ export const PIGMENTS: Pigment[] = [
   { id: "violet", name: "Cobalt Violet", light: "#8a4cb5", dark: "#b689d8" },
 ]
 
+// Paints only work wears, never offered for an event, so work painted with one can't be taken for an event (28 Oct:
+// "errands have the same color as events"). The pigments above take every hue family, so Manganese Blue sits in the
+// widest gap between them (Verdigris to Cerulean), lighter and brighter than either: further from every pigment than
+// the closest two of them are from each other (OKLab), and a sky blue of its own, as a block, on paper and on the
+// dark page. (Raw Umber, tried first, came out the olive of meals' yellow on the dark page.)
+export const WORK_PIGMENTS: Pigment[] = [{ id: "manganese", name: "Manganese Blue", light: "#17a7d2", dark: "#19c4ec" }]
+
 export function pigment(id: string | null | undefined, light: boolean): string | null {
-  const found = PIGMENTS.find((p) => p.id === id)
+  const found = PIGMENTS.find((p) => p.id === id) ?? WORK_PIGMENTS.find((p) => p.id === id)
   return found ? (light ? found.light : found.dark) : null
 }
 

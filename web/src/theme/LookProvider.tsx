@@ -1,7 +1,7 @@
 // The look in effect, for every component: change it from Settings, read area colours anywhere.
 
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react"
-import { useAreas } from "@/hooks/queries"
+import { useAreas, useSettings } from "@/hooks/queries"
 import { PIGMENTS, pigment } from "@/lib/pigments"
 import { applyLook, areaHex, isLight, loadLook, type Look, saveLook } from "./look"
 import { type Kind, type Skin, skin } from "./skin"
@@ -39,18 +39,20 @@ export function LookProvider({ children }: { children: ReactNode }) {
     })
   }, [])
   const hues = useAreaHues()
+  const taken = useEventPaints()
   const value = useMemo<LookContext>(() => {
+    const kinds = kindPaints(taken)
     // A tag's own paint, else (work with no tag) its kind's, else the neutral grey of meals and routines.
     const color = (area: string | null | undefined, preset?: string | null) => {
       const tagged = area ? hues.get(area) : undefined
       if (tagged !== undefined) return paintOf(tagged, light)
-      return pigment(preset ? KIND_PAINT[preset] : null, light) ?? areaHex("n", light)
+      return pigment(preset ? kinds[preset] : null, light) ?? areaHex("n", light)
     }
     // Work with neither a tag nor a kind with a paint wears the ink Friday writes in, not grey.
     const paint = (kind: Kind, area: string | null | undefined, preset?: string | null) =>
-      area || kind === "routine" || kind === "fixed" || (preset && KIND_PAINT[preset]) ? color(area, preset) : "var(--color-accent)"
+      area || kind === "routine" || kind === "fixed" || (preset && kinds[preset]) ? color(area, preset) : "var(--color-accent)"
     return { look, light, setLook, color, skinOf: (kind, area, x, preset) => skin(kind, paint(kind, area, preset), look, light, x) }
-  }, [look, light, setLook, hues])
+  }, [look, light, setLook, hues, taken])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
@@ -69,15 +71,49 @@ export function useLook(): LookContext {
 // Vermilion is left out: red is kept for now and overdue.
 export const AUTO_PAINTS = ["blue", "orange", "green", "violet", "yellow", "pink", "sapgreen", "purple", "graphite"]
 // Work with no tag wears its kind's paint (soft, as an event's): everything towards finishing schoolwork is one green,
-// meals are yellow, and the rest each have a paint of their own.
+// meals are yellow, errands Manganese Blue (a paint no event wears), and the rest each have a paint of their own.
 export const SCHOOLWORK = ["Assignment", "Reading", "Exam prep", "Project"]
 export const KIND_PAINT: Record<string, string> = {
   ...Object.fromEntries(SCHOOLWORK.map((kind) => [kind, "green"])),
   Routine: "yellow",
-  Errand: "pink",
+  Errand: "manganese",
   "Side project": "violet",
   Habit: "purple",
   Maybe: "graphite",
+}
+// Where a kind goes when an event category or calendar wears its paint, nearest the look first.
+const SPARE_PAINTS = ["violet", "graphite", "purple", "pink", "orange", "blue", "sapgreen"]
+// The kinds whose paint gives way; schoolwork's green and meals' yellow are yours (COMBINED.md colours) and stay, and
+// errands' is one no event wears.
+const MOVABLE = ["Side project", "Habit", "Maybe"]
+
+/** Each kind's paint, moved off paints your events wear (`taken`: their categories' and calendars' pigments) where a
+ * spare one is left: "Professional meetings" in Ultramarine sends habits to another paint. Two kinds never share
+ * one they were moved to. */
+export function kindPaints(taken: Set<string>): Record<string, string> {
+  const paints = { ...KIND_PAINT }
+  const used = new Set(Object.entries(paints).filter(([k]) => !MOVABLE.includes(k)).map(([, p]) => p))
+  for (const kind of MOVABLE) {
+    const own = paints[kind]
+    const free = (p: string) => !taken.has(p) && !used.has(p)
+    paints[kind] = free(own) ? own : (SPARE_PAINTS.find(free) ?? own)
+    used.add(paints[kind])
+  }
+  return paints
+}
+
+/** The pigments your events wear by category or by a calendar's chosen colour. */
+function useEventPaints(): Set<string> {
+  const settings = useSettings().data as { categories?: { categories?: { color?: string }[] }; calendar_look?: { colors?: Record<string, string> } } | undefined
+  return useMemo(
+    () =>
+      new Set(
+        [...(settings?.categories?.categories ?? []).map((c) => c.color), ...Object.values(settings?.calendar_look?.colors ?? {})].filter(
+          (p): p is string => !!p,
+        ),
+      ),
+    [settings],
+  )
 }
 // Kept for older tags given a hue: the swatches now offer Chroma's paints.
 export const AUTO_HUES = [265, 60, 155, 0, 290, 200, 30, 120, 330, 230, 90, 180]

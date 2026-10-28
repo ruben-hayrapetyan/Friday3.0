@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { query, type Schemas } from "@/api/client"
 import { Chip, H, Icon } from "@/components/fr/controls"
+import { DateTimeInput } from "@/components/fr/TimeInput"
 import { undoAll, useCommand } from "@/hooks/useCommand"
 import { useAllItems } from "@/todo/TodoPage"
 import { useQueryClient } from "@tanstack/react-query"
@@ -424,7 +425,7 @@ function EditField({ k, value, presets, areas, onChange }: { k: string; value: u
   if (k === "area") return <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{areas.map((a) => <Chip key={a} on={value === a} onClick={() => onChange(a)}>{a}</Chip>)}</div>
   if (k === "duration_min") return <LengthInput value={value == null ? null : Number(value)} onPick={onChange} width={130} />
   if (k === "every") return null
-  if (["due", "start", "end", "release"].includes(k)) return <input type="datetime-local" step={900} className="input" value={String(value ?? "")} onChange={(e) => onChange(e.target.value || null)} style={{ maxWidth: 220, padding: "4px 8px", minHeight: 0 }} />
+  if (["due", "start", "end", "release"].includes(k)) return <DateTimeInput value={value == null ? null : String(value)} onChange={onChange} time={k === "due" ? "23:59" : "09:00"} label={k} />
   return <input className="input" value={String(value ?? "")} onChange={(e) => onChange(e.target.value || null)} style={{ maxWidth: 280, padding: "4px 8px", minHeight: 0 }} />
 }
 

@@ -9,14 +9,15 @@ export function rangeText(span: Span): string {
   return `${ampm(span.start)}–${ampm(span.end)}`
 }
 
-interface Typed {
+export interface Typed {
   minute: number // after midnight; with no am or pm, on the 12-hour clock (0 to 719)
   half: "am" | "pm" | null // null when it could be either
 }
 
-const TIME = /^(\d{1,2})(?::?(\d{2}))?\s*(a|p)?\.?\s*(?:m\.?)?$/
+const TIME = /^(\d{1,2})(?:[:.h]?(\d{2}))?\s*(a|p)?\.?\s*(?:m\.?)?$/
 
-function readTime(text: string): Typed | null {
+/** One time as typed: "3", "930", "11:30", "11.30", "2pm", "9:15 a.m.", "14:30", "noon". */
+export function readTime(text: string): Typed | null {
   const t = text.trim().toLowerCase()
   if (t === "noon" || t === "midday") return { minute: 720, half: "pm" }
   if (t === "midnight") return { minute: 0, half: "am" }
@@ -33,8 +34,8 @@ function readTime(text: string): Typed | null {
     return { minute: ((hour % 12) + (pm ? 12 : 0)) * 60 + minute, half: pm ? "pm" : "am" }
   }
   if (hour > 23) return null
-  // On the 24-hour clock ("14:30", "0:15"), it can only be the one time.
-  if (hour === 0 || hour > 12) return { minute: hour * 60 + minute, half: hour < 12 ? "am" : "pm" }
+  // On the 24-hour clock ("14:30", "0:15", "07:30"), it can only be the one time.
+  if (hour === 0 || hour > 12 || match[1].startsWith("0")) return { minute: hour * 60 + minute, half: hour < 12 ? "am" : "pm" }
   return { minute: (hour % 12) * 60 + minute, half: null }
 }
 

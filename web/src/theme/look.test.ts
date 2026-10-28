@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { accentHex, oklch } from "./look"
-import { PIGMENTS, pigment } from "@/lib/pigments"
-import { AUTO_PAINTS, hueOf, KIND_PAINT, paintOf, SCHOOLWORK } from "./LookProvider"
+import { PIGMENTS, pigment, WORK_PIGMENTS } from "@/lib/pigments"
+import { AUTO_PAINTS, hueOf, KIND_PAINT, kindPaints, paintOf, SCHOOLWORK } from "./LookProvider"
 
 describe("area colours", () => {
   it("reads a pigment, a stored hue, the grey, an old hex colour's hue, or deals Chroma's paints by position", () => {
@@ -16,7 +16,7 @@ describe("area colours", () => {
   })
 
   it("paints schoolwork green and meals yellow, gives the other kinds and tags distinct paints, and keeps red", () => {
-    const ids = PIGMENTS.map((p) => p.id)
+    const ids = [...PIGMENTS, ...WORK_PIGMENTS].map((p) => p.id)
     expect(new Set(AUTO_PAINTS).size).toBe(AUTO_PAINTS.length)
     expect(SCHOOLWORK.map((k) => KIND_PAINT[k])).toEqual(["green", "green", "green", "green"])
     expect(KIND_PAINT.Routine).toBe("yellow")
@@ -25,6 +25,33 @@ describe("area colours", () => {
     expect(rest).not.toContain("green")
     for (const paint of [...AUTO_PAINTS, ...Object.values(KIND_PAINT)]) expect(ids).toContain(paint)
     expect([...AUTO_PAINTS, ...Object.values(KIND_PAINT)]).not.toContain("red")
+  })
+
+  it("paints errands with a paint no event can wear, offered nowhere for events", () => {
+    expect(KIND_PAINT.Errand).toBe("manganese")
+    expect(PIGMENTS.map((p) => p.id)).not.toContain("manganese")
+    expect(pigment("manganese", true)).toBe(WORK_PIGMENTS[0].light)
+    expect(pigment("manganese", false)).toBe(WORK_PIGMENTS[0].dark)
+  })
+
+  it("moves a kind off a paint your events wear, to a spare one, and never two kinds onto one", () => {
+    expect(kindPaints(new Set())).toEqual(KIND_PAINT)
+    // The categories of 28 Oct: Ultramarine is Professional meetings, so habits move; violet and graphite are spare.
+    const yours = kindPaints(new Set(["red", "blue", "sapgreen", "green", "purple", "orange", "yellow", "pink"]))
+    expect(yours.Habit).not.toBe("purple")
+    expect(yours["Side project"]).toBe("violet")
+    expect(new Set([yours["Side project"], yours.Habit]).size).toBe(2)
+    expect(yours.Assignment).toBe("green") // schoolwork stays green, meals yellow, errands Manganese Blue
+    expect(yours.Routine).toBe("yellow")
+    expect(yours.Errand).toBe("manganese")
+    // Every paint taken: a kind keeps its own rather than wear nothing.
+    const all = kindPaints(new Set(PIGMENTS.map((p) => p.id)))
+    expect(all.Habit).toBe("purple")
+    for (const taken of [["violet"], ["violet", "graphite"], ["purple", "violet", "graphite"]]) {
+      const moved = kindPaints(new Set(taken))
+      const rest = ["Side project", "Habit", "Maybe"].map((k) => moved[k]).filter((p) => !taken.includes(p))
+      expect(new Set(rest).size).toBe(rest.length)
+    }
   })
 
   it("writes the chrome in ink: navy by default, dark on paper and light on the dark page", () => {
