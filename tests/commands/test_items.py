@@ -167,3 +167,18 @@ def test_a_due_given_later_makes_the_task_a_deadline(app: App) -> None:
     other = app.do("add", title="Form", preset="Errand", duration_min=15)["item"]
     kept = app.do("edit", id=other["id"], due="2026-10-29T23:59", firmness="none")["item"]
     assert kept["firmness"] == "none"  # what you set yourself stands
+
+
+def test_an_assignment_added_in_its_section_with_no_due_date_is_added(app: App) -> None:
+    # 28 Oct: added on the Assignments list ("Add an assignment…"), the kind came with the line, and with no due date
+    # it was refused: "a hard deadline needs a due time". Guessed from the title, it was already let through.
+    item = app.do("add", text="Chem prelab", preset="Assignment")["item"]
+    assert (item["preset"], item["due"], item["firmness"]) == ("Assignment", None, "none")
+    named = app.do("add", title="CS A5 design doc", preset="Assignment")["item"]
+    assert named["firmness"] == "none"
+    # Given a due later, it's a deadline, as one guessed is.
+    later = app.do("edit", id=item["id"], due="2026-10-30T17:00")["item"]
+    assert later["firmness"] == "hard"
+    # With a due in the line or the fields, still a hard deadline.
+    assert app.do("add", text="Psych essay due fri 5pm", preset="Assignment")["item"]["firmness"] == "hard"
+    assert app.do("add", title="PS 6", preset="Assignment", due="2026-10-30T17:00")["item"]["firmness"] == "hard"

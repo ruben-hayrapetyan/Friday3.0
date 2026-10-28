@@ -119,8 +119,11 @@ def with_guesses(ctx: Ctx, given: dict[str, Any]) -> dict[str, Any]:
         guessed = guess_preset(title, ctx.settings["presets"])
         if guessed:
             out["preset"] = guessed
-            if ctx.settings["presets"][guessed].firmness == "hard" and not out.get("due") and not out.get("firmness"):
-                out["firmness"] = "none"  # "PS 3" with no due date yet is still a problem set, just not a deadline
+    # "PS 3" with no due date yet is still a problem set, just not a deadline: guessed, or the kind of the section it
+    # was added in (28 Oct: an assignment added with no due date was refused, "a hard deadline needs a due time").
+    kind = ctx.settings["presets"].get(out.get("preset") or "")
+    if kind is not None and kind.firmness == "hard" and not out.get("due") and not out.get("firmness"):
+        out["firmness"] = "none"
     if not out.get("area"):
         course = course_of(title)
         if course:

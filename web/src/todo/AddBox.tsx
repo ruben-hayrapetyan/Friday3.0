@@ -3,9 +3,13 @@
 // line at the foot of a to-do section: one ruled line until you type, filling in the section's kind or tag unless
 // the line says otherwise, and keeping its place so you can add the next. With a due date, whether you have time for
 // it shows under the chips by itself (`components/Fit.tsx`).
+//
+// Enter on the line, or Shift-Enter anywhere in the box (in a field's picker too), adds it, without a click (28 Oct:
+// "i don't like the fact that you have to click into each box"). One with no due date asks first, in the box: Enter or
+// Yes adds it as it is (an assignment can have none), or type when it's due ("today") and Enter adds it with that.
 
-import { useState } from "react"
-import type { CommandInput } from "@/api/client"
+import { type KeyboardEvent, useRef, useState } from "react"
+import { type CommandInput, query } from "@/api/client"
 import { useAreas, useSettings } from "@/hooks/queries"
 import { FitLine } from "@/components/Fit"
 import { Icon } from "@/components/fr/controls"
@@ -45,6 +49,11 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
   const [focused, setFocused] = useState(false)
   const [manual, setManual] = useState<Manual>({})
   const [open, setOpen] = useState<Field | null>(null)
+  const [asking, setAsking] = useState(false) // no due date: add it anyway?
+  // What you set, as of now: Shift-Enter in a field sets it and adds in the same moment, before a render.
+  const mine = useRef<Manual>({})
+  const line = useRef<HTMLInputElement | null>(null)
+  const sending = useRef(false)
   const reading = useParsed(text)
   const ai = useAsk(text)
   // What the AI read, when you asked it, stands in for the grammar's reading until the line changes.
@@ -62,8 +71,17 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
   const due = read("due")
   const length = read("duration_min")
   const repeat: Repeat = manual.repeat ?? { every: parsed.every, perWindow: parsed.per_window }
-  const set = (change: Manual) => setManual({ ...manual, ...change })
-  const payload = () => {
+  const set = (change: Manual) => {
+    mine.current = { ...mine.current, ...change }
+    setManual(mine.current)
+  }
+  const reset = () => {
+    mine.current = {}
+    setManual({})
+    setOpen(null)
+    setAsking(false)
+  }
+  const payload = (manual: Manual = mine.current) => {
     const fields = {
       ...(fill.preset ? { preset: fill.preset } : {}),
       ...(fill.area && parsed.area == null ? { area: fill.area } : {}),
@@ -76,14 +94,34 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
     }
     return ai.fields ? ({ ...ai.fields, ...fields } as CommandInput<"add">) : ({ text, ...fields } as CommandInput<"add">)
   }
-  const submit = async () => {
-    if (!text.trim()) return
-    const out = await add(payload())
-    if (!out) return
-    if (out.result.item) onAdded(out.result.item.id)
-    setText("")
-    setManual({})
-    setOpen(null)
+  /** Adds the line with what you set (and `extra`, the due typed in the question). With no due date, no repeat and
+   * not on the Long term list, it asks first unless `anyway`. */
+  const submit = async (extra: Manual = {}, anyway = false) => {
+    if (!text.trim() || sending.current) return
+    sending.current = true // a second Enter while this one is on its way adds nothing more
+    try {
+      const manual = { ...mine.current, ...extra }
+      if (!anyway && !("due" in manual) && !manual.repeat && !longTerm) {
+        // The line as read now, not the reading of a moment ago: "pset due today" and a quick Enter has a due.
+        const now = ai.fields ? readFields(ai.fields) : await query("parse", { text }).then((p) => readFields(p.fields ?? {}), () => parsed)
+        if (!now.due && !now.every) return setAsking(true)
+      }
+      const out = await add(payload(manual))
+      if (!out) return
+      if (out.result.item) onAdded(out.result.item.id)
+      setText("")
+      reset()
+      line.current?.focus()
+    } finally {
+      sending.current = false
+    }
+  }
+  // Shift-Enter anywhere in the box adds it; a field still being typed (a length) is set as it's left.
+  const sendFromAnywhere = (e: KeyboardEvent) => {
+    if (e.key !== "Enter" || !e.shiftKey || e.defaultPrevented) return
+    e.preventDefault()
+    if (document.activeElement instanceof HTMLElement && document.activeElement !== line.current) document.activeElement.blur()
+    submit()
   }
   const chips: { field: Field; icon?: string; swatch?: string; text: string; tip: string; manual: boolean }[] = [
     { field: "preset", icon: "shapes", text: preset ?? "Kind", tip: "What sort of work", manual: "preset" in manual },
@@ -94,14 +132,17 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
   ]
   const field = (
     <input
-      ref={inputRef}
+      ref={(el) => {
+        line.current = el
+        inputRef?.(el)
+      }}
       value={text}
-      onChange={(e) => setText(e.target.value)}
+      onChange={(e) => (setText(e.target.value), setAsking(false))}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onKeyDown={(e) => {
-        if (e.key === "Enter") submit()
-        if (e.key === "Escape") (text ? (setText(""), setManual({})) : e.currentTarget.blur())
+        if (e.key === "Enter") (e.preventDefault(), submit())
+        if (e.key === "Escape") (text ? (setText(""), reset()) : e.currentTarget.blur())
       }}
       placeholder={placeholder ?? "Add a to-do, the way you’d say it"}
       aria-label={placeholder ?? "Add a to-do"}
@@ -148,9 +189,35 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
               onPick={(v) => (set({ area: v }), setOpen(null))}
             />
           )}
-          {open === "due" && <DuePicker value={due} today={today} onPick={(v) => set({ due: v })} />}
+          {open === "due" && <DuePicker value={due} today={today} onPick={(v) => (set({ due: v }), setOpen(null), line.current?.focus())} onSend={(v) => submit(v === undefined ? {} : { due: v })} />}
           {open === "length" && <LengthPicker value={length} onPick={(v) => set({ duration_min: v })} />}
           {open === "repeat" && <RepeatPicker value={repeat} onPick={(v) => set({ repeat: v })} />}
+        </div>
+      )}
+      {asking && (
+        <div
+          role="group"
+          aria-label="No due date"
+          style={{ marginLeft: compact ? 24 : 28, padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--color-surface)", boxShadow: "0 0 0 1px color-mix(in srgb, var(--color-accent) 35%, transparent)", display: "flex", flexDirection: "column", gap: 8 }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13 }}>No due date. Add it anyway?</span>
+            <button className="btn btn-primary fr-press" onMouseDown={(e) => e.preventDefault()} onClick={() => submit({}, true)} style={{ fontSize: 12, padding: "3px 10px", minHeight: 0 }}>
+              Yes, add <span className="fr-mono" style={{ opacity: 0.7, fontSize: 10 }}>↵</span>
+            </button>
+            <button className="fr-link" onMouseDown={(e) => e.preventDefault()} onClick={() => (setAsking(false), line.current?.focus())} style={{ fontSize: 12 }}>
+              Cancel
+            </button>
+          </div>
+          <DuePicker
+            value={null}
+            today={today}
+            placeholder="or type when it's due: today, fri 5pm…"
+            onPick={(v) => submit({ due: v }, true)}
+            onEnterEmpty={() => submit({}, true)}
+            onSend={(v) => submit(v === undefined ? {} : { due: v }, true)}
+            onDone={() => (setAsking(false), line.current?.focus())}
+          />
         </div>
       )}
       {due && text.trim() && (
@@ -179,7 +246,7 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
   if (compact) {
     const ink = longTerm ? "var(--fr-aged)" : "var(--color-accent)"
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div onKeyDown={sendFromAnywhere} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ display: "flex", alignItems: "center", padding: "7px 0 5px", boxShadow: focused ? `inset 0 -1.5px 0 ${ink}` : "inset 0 -1px 0 var(--fr-rule)", transition: "box-shadow 0.15s" }}>
           <span className="fr-mono" aria-hidden style={{ width: 24, flex: "none", textAlign: "center", fontSize: 12, color: focused ? ink : "var(--color-neutral-500)" }}>
             +
@@ -187,7 +254,7 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
           {field}
           {text && (
             <span className="fr-mono" style={{ fontSize: 10, color: "var(--color-neutral-500)", paddingLeft: 8 }}>
-              ↵ add
+              ↵ add · ⇧↵ from any field
             </span>
           )}
         </div>
@@ -196,11 +263,11 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
     )
   }
   return (
-    <div className="fr-well" style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: "var(--radius-lg)" }}>
+    <div className="fr-well" onKeyDown={sendFromAnywhere} style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: "var(--radius-lg)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <Icon name="plus" size={18} style={{ color: "var(--color-accent-300)" }} />
         {field}
-        <button className="btn btn-primary" onClick={submit} disabled={!text.trim()}>
+        <button className="btn btn-primary" onClick={() => submit()} disabled={!text.trim()}>
           Add
         </button>
       </div>

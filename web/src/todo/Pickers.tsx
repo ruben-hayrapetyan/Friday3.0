@@ -31,10 +31,20 @@ export function ListPicker<T>({ options, value, onPick }: { options: PickOption<
 
 const dowOf = (date: string) => (new Date(toMin(date) * 60000).getUTCDay() + 6) % 7 // Monday is 0
 
-/** "in 3 days", "in 2 hours", "eod": what the quick-add grammar leaves to personal's DueParser. Null otherwise. */
+// A day's names as typed, Monday first: read here, at once, the way the server reads them (its next one, today
+// included), so "today" and Enter, typed quickly, set the day before the server could answer (28 Oct: "sometimes
+// when i type today and hit enter quickly it doesn't save").
+const DAY_NAMES = [/^mon(day)?$/, /^tue(s|sday)?$/, /^wed(s|nesday)?$/, /^thu(r|rs|rsday)?$/, /^fri(day)?$/, /^sat(urday)?$/, /^sun(day)?$/]
+
+/** "in 3 days", "in 2 hours", "eod", and the plain days ("today", "tomorrow", "fri", "this fri"), each at the end of
+ * the day: what's read without asking the server. Null otherwise. */
 export function readRelative(text: string, now: string): string | null {
-  const t = text.trim().toLowerCase()
-  if (/^(eod|end of (the )?day|tonight|midnight)$/.test(t)) return `${now.slice(0, 10)}T23:59`
+  const t = text.trim().toLowerCase().replace(/\s+/g, " ")
+  const today = now.slice(0, 10)
+  if (/^(eod|end of (the )?day|tonight|midnight|today|tod)$/.test(t)) return `${today}T23:59`
+  if (/^(tomorrow|tmrw|tmr|tom|tmw)$/.test(t)) return `${addDays(today, 1)}T23:59`
+  const day = DAY_NAMES.findIndex((name) => name.test(t.replace(/^this /, "")))
+  if (day >= 0) return `${addDays(today, (day - dowOf(today) + 7) % 7)}T23:59`
   const m = /^in\s+(\d+(?:\.\d+)?|an?|one)\s*(m|mins?|minutes?|h|hrs?|hours?|d|days?|w|wks?|weeks?)$/.exec(t)
   if (!m) return null
   const n = /^\d/.test(m[1]) ? Number(m[1]) : 1
@@ -73,10 +83,29 @@ export function useDueReading(text: string, now: string): { due: string | null |
 /** A due date typed the way you'd say it ("fri 5pm", "tomorrow", "oct 30", "in 3 days", "none"), read as you type and
  * set on Enter; quick picks for the usual ones. personal's DuePicker, in place of a month grid and a time box.
  * `value` is local `YYYY-MM-DDTHH:MM` or null. */
-export function DuePicker({ value, today, onPick, onDone, autoFocus = true }: { value: string | null; today: string; onPick: (v: string | null) => void; onDone?: () => void; stacked?: boolean; autoFocus?: boolean }) {
+export function DuePicker(props: {
+  value: string | null
+  today: string
+  onPick: (v: string | null) => void
+  onDone?: () => void
+  stacked?: boolean
+  autoFocus?: boolean
+  onEnterEmpty?: () => void // Enter with nothing typed
+  onSend?: (due: string | null | undefined) => void // Shift-Enter: the due typed, if it reads, and send what it's for
+  placeholder?: string
+}) {
+  const { value, today, onPick, onDone, autoFocus = true, onEnterEmpty, onSend, placeholder } = props
   const now = fromMin(useClock())
   const [text, setText] = useState("")
   const { due, reading } = useDueReading(text, now)
+  // Enter pressed while the server is still reading what was typed: kept, and done once it has read it.
+  const [waiting, setWaiting] = useState<"enter" | "send" | null>(null)
+  useEffect(() => {
+    if (!waiting || reading) return
+    setWaiting(null)
+    if (waiting === "send") onSend?.(due)
+    else if (due !== undefined) set(due)
+  })
   const friday = addDays(today, (4 - dowOf(today) + 7) % 7 || 7)
   const quick: [string, string | null][] = [
     ["Today", `${today}T23:59`],
@@ -99,10 +128,20 @@ export function DuePicker({ value, today, onPick, onDone, autoFocus = true }: { 
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && readable) set(due ?? null)
+          if (e.key === "Enter" && e.shiftKey && onSend) {
+            e.preventDefault()
+            e.stopPropagation()
+            if (reading) setWaiting("send")
+            else onSend(readable ? due : undefined)
+          } else if (e.key === "Enter") {
+            e.preventDefault()
+            if (!text.trim()) onEnterEmpty?.()
+            else if (readable) set(due ?? null)
+            else if (reading) setWaiting("enter")
+          }
           if (e.key === "Escape") (e.stopPropagation(), text ? setText("") : onDone?.())
         }}
-        placeholder="fri 5pm, tomorrow, oct 30, in 3 days…"
+        placeholder={placeholder ?? "fri 5pm, tomorrow, oct 30, in 3 days…"}
         aria-label="Due"
         style={{ padding: "6px 10px", minHeight: 0, fontSize: 13 }}
       />
