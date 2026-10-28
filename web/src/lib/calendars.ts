@@ -37,3 +37,16 @@ export function newEventTargets(google: Listed[], mac: Listed[]): Target[] {
   mac.forEach((c) => consider(c, "mac"))
   return [...chosen.values()].map(({ on: _, ...t }) => t)
 }
+
+/** The paint of the first category whose pattern finds an event's title, as the server reads it (core/calendars.py
+ * `category_of`: in order, without regard to case), so an event just made wears it before the server answers. */
+export function categoryPaint(title: string, categories: { color: string; pattern: string }[]): string | null {
+  for (const c of categories) {
+    try {
+      if (c.pattern && new RegExp(c.pattern, "i").test(title)) return c.color
+    } catch {
+      // A pattern JavaScript reads differently from Python: the server's answer says.
+    }
+  }
+  return null
+}

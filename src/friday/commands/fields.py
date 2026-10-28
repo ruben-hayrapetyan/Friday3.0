@@ -150,8 +150,12 @@ def going_to(ctx: Ctx, item_id: int | None) -> str | None:
     if item_id is None:
         return None
     if "going_to" not in ctx.memo:
+        # Google's calendars and the Mac's: your Gmail calendar is written through the Mac, and until the Mac reads
+        # the event back it wore no calendar and so no colour (28 Oct: "it added in as grey").
         names = {
-            c["id"]: c.get("source_name", c["name"]) for c in kv_get(ctx.conn, "google_calendars", [], ctx.user_id)
+            c["id"]: c.get("source_name", c["name"])
+            for key in ("google_calendars", "mac_calendars")
+            for c in kv_get(ctx.conn, key, [], ctx.user_id) or []
         }
         found = rows(
             ctx.conn,

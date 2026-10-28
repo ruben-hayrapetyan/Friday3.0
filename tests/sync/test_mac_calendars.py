@@ -469,6 +469,20 @@ def test_a_new_event_for_a_mac_calendar_is_made_by_the_mac_app_and_comes_back_as
     assert moved["op"] == "save" and moved["event"].startswith("new1") and moved["location"] is None
 
 
+def test_a_new_event_for_a_mac_calendar_wears_its_colour_before_the_mac_app_makes_it(app: App) -> None:
+    # 28 Oct: "Bike Inspection" came in grey: the calendar it was going to was looked up among Google's only, and the
+    # Gmail calendar is the Mac's, so it had no calendar, and no colour, until the Mac read it back.
+    post(app, [GMAIL | {"color": "#0088ff"}], [])
+    app.do("settings_set", key="gcal", value={"new_events_to": "gmail-cal"})
+    made = app.do("add", title="Bike Inspection", when="fixed", start="2026-10-30T13:30", end="2026-10-30T14:30")
+    assert app.do("mac_writes")  # not made on the Mac yet
+    shown_now = app.do("item", id=made["item"]["id"])["item"]
+    assert (shown_now["calendar"], shown_now["calendar_color"]) == ("you@gmail.com", "blue")
+    plan = app.do("plan", start="2026-10-26T00:00", end="2026-11-02T00:00")
+    (bike,) = [f for f in plan["fixed"] if f["title"] == "Bike Inspection"]
+    assert bike["calendar_color"] == "blue"
+
+
 def test_a_new_event_changed_before_the_mac_app_makes_it_is_made_once_as_it_is_then(app: App) -> None:
     post(app, [GMAIL], [])
     app.do("settings_set", key="gcal", value={"new_events_to": "gmail-cal"})

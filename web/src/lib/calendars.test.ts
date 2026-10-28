@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { newEventTargets } from "./calendars"
+import { categoryPaint, newEventTargets } from "./calendars"
 
 // Your calendars on 27 Oct, in part: Gmail read through the Mac, Cornell through Google.
 const google = [
@@ -34,5 +34,25 @@ describe("the calendars a new event can go to", () => {
   it("a Mac-only calendar is offered, and none that can't be changed", () => {
     expect(byName("Home")).toEqual([expect.objectContaining({ id: "MAC-HOME", via: "mac" })])
     expect(targets.some((t) => t.name.startsWith("Holidays") || t.name === "Birthdays")).toBe(false)
+  })
+})
+
+describe("the category a new event wears before the server answers", () => {
+  // The categories of 28 Oct, in order: the first whose pattern finds the title wins, without regard to case.
+  const categories = [
+    { color: "red", pattern: "prelim|quiz|exam\\b|\\bdue\\b" },
+    { color: "blue", pattern: "\\b(lec|disc|lab)\\b|psych 1130" },
+    { color: "green", pattern: "office hours|advising" },
+    { color: "pink", pattern: "salsa|poker" },
+  ]
+  it("takes the first category whose pattern finds the title", () => {
+    expect(categoryPaint("Math 1920 Quiz 4", categories)).toBe("red")
+    expect(categoryPaint("PSYCH 1130 review", categories)).toBe("blue")
+    expect(categoryPaint("Exam office hours", categories)).toBe("red") // listed first
+    expect(categoryPaint("Salsa", categories)).toBe("pink")
+  })
+  it("has none when no pattern finds it, or a pattern can't be read here", () => {
+    expect(categoryPaint("Bike Inspection", categories)).toBeNull()
+    expect(categoryPaint("anything", [{ color: "red", pattern: "(?<" }, { color: "", pattern: "" }])).toBeNull()
   })
 })

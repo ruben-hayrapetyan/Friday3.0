@@ -37,18 +37,26 @@ export function moveBlock(_client: QueryClient, key: string, start: string, end:
 
 /** Show an event you added or retimed in the drawer where you put it until the server's plan arrives: a new one
  * appeared only when the calendar refreshed, after the drawer had closed (27 Oct). */
-export function placeEvent(_client: QueryClient, given: object | null): void {
+export function placeEvent(_client: QueryClient, given: object | null, paint: Paint = {}): void {
   const input = (given ?? {}) as Record<string, unknown>
   const { id, start, end } = input
   if (typeof start !== "string" || typeof end !== "string" || (id === undefined && input.when !== "fixed")) return
   const fields = Object.fromEntries(["title", "start", "end", "color", "notes", "location", "blocks_time"].filter((k) => input[k] !== undefined).map((k) => [k, input[k]]))
-  const made = { ...NEW_EVENT, id: -Date.now(), ...fields } as unknown as Item
+  // A new event wears its category's paint or its calendar's from the moment it's made, not grey until the plan has
+  // it (28 Oct: "it added in as grey").
+  const made = { ...NEW_EVENT, id: -Date.now(), ...paint, ...fields } as unknown as Item
   pending.add((plan) => {
     if (typeof id === "number") return { ...plan, fixed: plan.fixed.map((f) => (f.id === id ? { ...f, ...fields } : f)) }
     // Until the plan has the event itself: then it's there twice for a moment, so the stand-in steps aside.
     if (plan.fixed.some((f) => f.title === made.title && f.start === made.start && f.end === made.end)) return plan
     return { ...plan, fixed: [...plan.fixed, made] }
   })
+}
+
+/** What a new event will wear, known before the server answers. */
+export interface Paint {
+  category_color?: string | null
+  calendar_color?: string | null
 }
 
 const NEW_EVENT = { preset: "Event", area: null, tags: [], when: "fixed", status: "todo", event_kind: "other", blocks_time: true, notes: "" }

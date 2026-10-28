@@ -9,7 +9,7 @@ import { type Item, query } from "@/api/client"
 import { FitLine } from "@/components/Fit"
 import { Icon, Menu, Seg, Switch } from "@/components/fr/controls"
 import { useItem, useSettings } from "@/hooks/queries"
-import { newEventTargets } from "@/lib/calendars"
+import { categoryPaint, newEventTargets } from "@/lib/calendars"
 import { useCalendars, useMacCalendars } from "@/settings/Calendars"
 import { useWhatIf, whatIf } from "@/whatif/store"
 import { useCommand } from "@/hooks/useCommand"
@@ -94,7 +94,7 @@ function EventFit({ draft, onTime }: { draft: EventDraft; onTime: (start: string
 export function EventPane({ draft }: { draft: EventDraft }) {
   const { setEvent } = useShell()
   const { light } = useLook()
-  const add = useCommand("add", { label: () => `Added ${draft.title || "the event"}`, optimistic: placeEvent })
+  const add = useCommand("add", { label: () => `Added ${draft.title || "the event"}`, optimistic: (c, input) => placeEvent(c, input, standIn()) })
   const edit = useCommand("edit", { label: () => `Saved ${draft.title}`, optimistic: placeEvent })
   const drop = useCommand("drop", { label: () => `Deleted ${draft.title}` })
   const skip = useCommand("skip", { label: () => "Deleted this one" })
@@ -116,7 +116,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   const lastDay = draft.allDay ? addDays(draft.end.slice(0, 10), -1) : day
   // Where a new event is saved (26 Oct: they stayed only in Friday, and wore no colour): your choice here, else
   // Settings' "New events go to". It wears that calendar's colour until a category or a colour of its own says else.
-  const settings = useSettings().data as { gcal?: { new_events_to?: string | null } } | undefined
+  const settings = useSettings().data as { gcal?: { new_events_to?: string | null }; categories?: { categories?: { color: string; pattern: string }[] } } | undefined
   // Google's calendars and the Mac's, each once, the way Friday reads it (lib/calendars.ts): your Gmail calendar comes
   // in through the Mac, so a new event goes there through the Mac app (27 Oct).
   const writable = newEventTargets(useCalendars().data ?? [], useMacCalendars().data ?? [])
@@ -124,6 +124,8 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   const saveTo = draft.saveTo ?? settings?.gcal?.new_events_to ?? ""
   const savingTo = writable.find((c) => c.id === saveTo)
   const auto = draft.auto ?? (isNew && savingTo?.color ? { color: savingTo.color, from: savingTo.name } : undefined)
+  // What it wears the moment it's saved: its category's paint, else the calendar it's going to.
+  const standIn = () => ({ category_color: categoryPaint(draft.title, settings?.categories?.categories ?? []), calendar_color: savingTo?.color ?? null })
   const autoName = auto?.color ? `${PIGMENTS.find((p) => p.id === auto?.color)?.name ?? auto.color}, ${auto.from}` : `Unmarked, ${auto?.from ?? "no category matches"}`
   const valid = draft.title.trim() !== "" && (draft.allDay ? lastDay >= day : toMin(draft.end) > toMin(draft.start))
   const close = () => setEvent(null)
