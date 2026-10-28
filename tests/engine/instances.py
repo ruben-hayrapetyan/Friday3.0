@@ -37,6 +37,7 @@ EXTRA_RULES = [
     dict(type="travel_kept", name="meals_travel_kept", weight=1, params=dict(price=100)),
     dict(type="fit_gaps", name="tasks_fit_gaps", weight=1, params=dict(price=2)),
     dict(type="runs_while_working", name="laundry_while_working", weight=1, params=dict(price=3)),
+    dict(type="sleep_min", name="nine_hours_of_sleep", weight=1, params=dict(hours=9, price=40)),
     dict(type="pin_hold", name="pins_hold", weight=1, stage="wellbeing", params=dict(price=100)),
     dict(type="close_to_due", name="prep_buffer_kept", weight=1, scope=dict(firmness="hard"),
          params=dict(buffer_min=1440, inside="forbid")),

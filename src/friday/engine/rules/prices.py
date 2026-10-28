@@ -424,6 +424,41 @@ class RunsWhileWorking(Rule):
         return self.p.price == FORBID and s < self.problem.grid.S and self.away_units(item, s) > 0
 
 
+@rule_type("sleep_min")
+class SleepMin(Rule):
+    """`At least 7 hours of sleep a night` (27 Oct: "I thought that there was some sleep penalty"): the `hours` before
+    each morning's wake are kept for sleep. Your bedtime and wake stay as set; what this guards is how far past bedtime
+    a deadline may push (the night's margin, which `late_night` only prices) and a bedtime set later than `hours`
+    before waking. Work there costs `price` an hour, on top of `late_night`'s, or with `forbid` never goes there, so
+    work is late before your night is short. `days`: the nights it holds on, by the evening's weekday."""
+
+    default_stage = "wellbeing"
+
+    class Params(Rule.Params):
+        hours: float = 7.0
+        days: Any = None
+        price: float | Literal["forbid"] = 40.0
+
+    def prepare(self, problem):
+        super().prepare(problem)
+        grid = problem.grid
+        nights = matching_weekdays(self.p.days, None)
+        span = round(self.p.hours * 60)
+        kept = np.zeros(grid.S, dtype=bool)
+        for day, night in problem.nights.items():
+            if day.weekday() in nights:
+                kept |= (grid.start[: grid.S] < night.wake_utc) & (grid.end[: grid.S] > night.wake_utc - span)
+        self.kept = kept
+
+    def price(self, item, s):
+        if s == self.problem.grid.S or self.p.price == FORBID or not self.kept[s]:
+            return 0.0
+        return float(self.p.price)
+
+    def forbids(self, item, s):
+        return self.p.price == FORBID and s < self.problem.grid.S and bool(self.kept[s])
+
+
 @rule_type("meal_window")
 class MealWindow(Rule):
     """A meal outside its own window (the planner lets it reach out only on a day events leave no room in it): each

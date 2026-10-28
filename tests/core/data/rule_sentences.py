@@ -1106,7 +1106,7 @@ C = [
     ("sleep", "lights out by 12:30", "set:sleep"),
     ("sleep", "in bed by 11:30 on school nights", "set:sleep"),
     ("sleep", "I wake up at 7:30 on weekdays", "set:sleep"),
-    ("sleep", "need 8 hrs of sleep minimum", "set:sleep"),
+    ("sleep", "need 8 hrs of sleep minimum", {"kind": "sleep_min", "amount": 8.0}),
     ("sleep", "up at 6 for crew practice", "set:sleep"),
     ("sleep", "bedtime 11pm, wake 7am", "set:sleep"),
     ("sleep", "sleep till 10 on saturdays", "set:sleep"),

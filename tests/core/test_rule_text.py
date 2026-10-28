@@ -341,8 +341,9 @@ def test_kept_meals_hold_in_the_deadlines_stage_and_learned_ones_are_the_jobs() 
 
 
 def test_skipping_a_meal_when_busy_is_not_keeping_it() -> None:
+    """Nor an event to skip (28 Oct): lunch is a routine, so Claude reads it."""
     reading, _ = read("skip lunch if there's too much work")
-    assert reading is not None and reading.kind != "meals_kept"
+    assert reading is None or reading.kind not in ("meals_kept", "optional")
 
 
 @pytest.mark.parametrize(
@@ -397,7 +398,7 @@ def test_other_sentences_about_size_are_not_gap_fitting(text: str) -> None:
         ("nothing on sunday mornings", "Keep Sun 8am–12pm free"),
         ("I'd rather not work on friday nights", "Keep Fri 10pm–2am free"),
         ("no work after 10pm except on fridays", "No work after 10pm on Mon, Tue, Wed, Thu, Sat, Sun"),
-        ("Stop working by 10:30pm on school nights", "No work after 10:30pm on Mon, Tue, Wed, Thu, Sun"),
+        ("Stop working by 10:30pm on school nights", "No work after 10:30pm on school nights"),
         ("only work between 9am and 6pm", "Work between 9am and 6pm"),
         ("weekend work only in the afternoon", "Work between 12pm and 5pm on weekends"),
         (
@@ -434,7 +435,7 @@ def test_other_sentences_about_size_are_not_gap_fitting(text: str) -> None:
         ("no work after 10pm except before exams", None),
         ("work after class until dinner", None),
         ("lunch before 1 and dinner before 7", None),
-        ("no work before 9 or after 10", None),
+        ("no work before 9 or after 10", "Work between 9am and 10pm"),  # both ends, read as one since 27 Oct
         ("gym is optional but climbing club is mandatory", None),
         ("at most 6 hours a day and 4 on weekends", None),
         ("cap mondays at 4 hours", "At most 4 h a day on Mon"),

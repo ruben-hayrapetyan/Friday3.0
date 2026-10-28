@@ -195,7 +195,7 @@ function NewRule() {
                 <span className="fr-kicker">{preview.effect}. It shows under Your week.</span>
               ) : ["deadlines", "optional", "ahead", "around", "meals_kept", "meals_learned"].includes(reading.kind) ? (
                 <span className="fr-kicker" style={{ textWrap: "pretty" }}>{preview.effect}.</span>
-              ) : ["night_before", "close", "fit_gaps", "runs_while_working"].includes(reading.kind) ? (
+              ) : ["night_before", "close", "fit_gaps", "runs_while_working", "sleep_min"].includes(reading.kind) ? (
                 <>
                   <span className="fr-kicker" style={{ textWrap: "pretty" }}>{preview.effect}{chosen === "Always" ? ". It never bends." : ", unless work would be late."}</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

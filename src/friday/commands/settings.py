@@ -53,6 +53,10 @@ def settings_set(ctx: Ctx, inp: SettingsSetInput) -> Changed:
         value = {k: v.model_dump() for k, v in ctx.settings["event_kinds"].items()} | value
     if inp.key == "pace" and isinstance(value, dict):
         value = ctx.settings["pace"].model_dump() | value  # "easier on Saturdays" keeps the default pace
+    if inp.key == "sleep" and isinstance(value, dict) and ctx.settings["sleep"] is not None:
+        # "bed by 11 on weeknights": the nights and times named change, the rest stay (27 Oct).
+        now = to_json("sleep", ctx.settings["sleep"])
+        value = {day: {**now.get(day, {}), **(value.get(day) or {})} for day in now}
     write_setting(ctx, inp.key, value)
     if inp.key == "gcal" and validate_value("gcal", inp.value).include_all_day != all_day:
         reread_calendars(ctx)  # events seen before would otherwise keep the old reading

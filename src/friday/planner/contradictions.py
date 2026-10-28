@@ -19,7 +19,7 @@ from friday.engine.rules import as_list, in_hour_window, matching_weekdays, pars
 QUARTER = 15
 FULL = (1 << (MINUTES_PER_DAY // QUARTER)) - 1  # every quarter hour of a day
 EXCLUDING = {"except_preset"}  # a scope that only leaves kinds out is still about work in general
-AMOUNTS = {"daily_load": "threshold", "finish_early": "days"}
+AMOUNTS = {"daily_load": "threshold", "finish_early": "days", "sleep_min": "hours"}
 
 
 @dataclass(frozen=True)
@@ -82,6 +82,12 @@ def amounts(a: dict[str, Any], b: dict[str, Any], subject: str) -> Conflict | No
             return Conflict(b["name"], f"the same daily limit for {subject}", overlap=True)
         said = f"{short(lo)} and {short(hi)}"
         return Conflict(b["name"], f"both limit {subject} a day ({said}); the lower one is what counts", overlap=True)
+    if a["type"] == "sleep_min":
+        lo, hi = sorted((float(x), float(y)))
+        if lo == hi:
+            return Conflict(b["name"], "the same night's sleep", overlap=True)
+        return Conflict(b["name"], f"both keep sleep ({lo:g} and {hi:g} h a night); the longer one is what counts",
+                        overlap=True)  # fmt: skip
     lo, hi = sorted((int(x), int(y)))
     if lo == hi:
         return Conflict(b["name"], f"the same head start for {subject}", overlap=True)

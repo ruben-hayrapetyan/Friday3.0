@@ -41,7 +41,7 @@ ANYTHING = (
 RULES = ANYTHING
 SETTINGS = (
     "kind_order", "short_term_first", "exam_focus", "pointless_late", "sittings", "busy", "daily_cap", "event_kinds",
-    "pace",
+    "pace", "sleep",
 )  # fmt: skip
 
 SYSTEM = """You turn what a student asks for into changes to Friday, a planner, as Friday's own commands. You never
@@ -76,7 +76,9 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
   the meals work never takes, of "breakfast", "lunch", "dinner"), meals_learned (events: the meals Friday plans or
   stops, and times, from what meal tracking learns), fit_gaps (short tasks in short gaps between events, long ones
   in long free stretches), runs_while_working (things that run by themselves, laundry, run only while you're working:
-  never through an event or the night). subject: "work", "deep work", a tag, a kind or a title.
+  never through an event or the night), sleep_min (amount: hours of sleep a night that work never cuts into, e.g. 7
+  for "at least 7 hours of sleep"; days: the nights it holds, by the evening's weekday). subject: "work", "deep
+  work", a tag, a kind or a title. A bedtime or wake time ("bed by 11") is the sleep setting, not a rule.
 - settings_set: {key, value} for these keys only: kind_order (kinds most important first, e.g. ["Assignment",
   "Reading"] for "prioritize assignments over readings"), short_term_first (true for "prioritize short-term work
   over long-term", meaning the to-do's Short term list over its Long term list), exam_focus ({on: true, days_before}
@@ -86,7 +88,9 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
   after events" sets all four to 15 and 15; only the kinds given change), sittings ({one_go: true, split_first:
   [kinds]} for "I like to do things in one go, but split problem sets first": problem sets are the kind
   "Assignment"), pace ({weekly: {mon..sun: "Easy" | "Normal" | "Push"}} for a pace on those weekdays every week:
-  "go easier on Saturdays and harder on Sundays" is {weekly: {"sat": "Easy", "sun": "Push"}}).
+  "go easier on Saturdays and harder on Sundays" is {weekly: {"sat": "Easy", "sun": "Push"}}), sleep ({mon..sun:
+  {bedtime, wake, margin_min}} for "bed by 11 on weeknights" or "up at 8 on weekends": only the nights and times
+  named, as "HH:MM"; a night is named by its evening, a wake time by its morning).
 When they ask whether they have time for something ("can I go to poker Thursday 8 to 11?", "do I have time for a
 3 h project due Friday?"), propose the command that would add it (an event, or a task with its due and length) and
 say in the reply that Friday shows under it whether it fits before they apply it; don't guess the answer yourself.

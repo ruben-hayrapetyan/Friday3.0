@@ -66,6 +66,8 @@ EFFECT = {
     "fit_gaps": "Friday puts short tasks in the short gaps between events and keeps long free stretches for long work",
     "runs_while_working": "Friday starts a task that runs by itself (laundry) only where the time it runs misses your "
     "events and your sleep, so you're there to see to it",
+    "sleep_min": "Friday keeps that much of the night before you wake for sleep: a deadline can push past your bedtime "
+    "only as far as it leaves you that",
     "meals_kept": "Work never takes that time: when it would, the work is late instead. When events fill a meal's "
     "usual time, Friday plans it just outside",
     "meal_learned": "From what you track in Sleep & meals, each night Friday plans it or stops, and moves it to when "

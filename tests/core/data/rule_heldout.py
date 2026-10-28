@@ -1,0 +1,1577 @@
+"""A held-out set of rule sentences a college student might type into Friday's Rules box, written 28 Oct after the
+grammar was tuned on rule_sentences.py and rule_wordings.py, and never used to tune it: it measures how the reader
+does on wording it has not seen. Each is labelled with what the writer means, judged by hand and never by running
+Friday's reader. None repeat either earlier corpus.
+
+Labels follow rule_sentences.py's and rule_wordings.py's module docstrings exactly (the same `want` forms, the same
+conventions), and where those are silent:
+  - A misspelt word is labelled as meant ("wensdays" is wed, "homwork" is homework, "thrusdays" is thu).
+  - "late at night" is night (22-02); "school work" and "anything school related" are "work".
+  - "hard thinking stuff", "anything that needs concentration", "heavy focus work" are "deep work"; "brainless",
+    "easy tasks", "low-energy stuff", "mindless tasks" are "light work".
+  - "ease off", "fewer tasks", "not as much work" on a part of a day are `free` with amount 0.5, like "less work".
+  - "unless it's a weekday" limits a rule to the weekend; "every day but X" / "aside from X" / "other than on X" are
+    the other days.
+  - A buffer around "every class", "each lecture", "a class" or "all calendar events" is "set:event_kinds" (as the
+    earlier corpora label it); around a named event it is `around`.
+  - "sunday to thursday" nights for sleep are sun-thu, named by the evening, like "school nights".
+"""
+
+C = [
+    # ---- windows: when work ends ----
+    (
+        "window",
+        "I'm cooked after 10:45pm so nothing past that",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "22:45"},
+    ),
+    ("window", "9:30pm is when I clock out", {"kind": "window", "subject": "work", "rel": "before", "at": "21:30"}),
+    ("window", "anything past 23:30 is a no", {"kind": "window", "subject": "work", "rel": "before", "at": "23:30"}),
+    (
+        "window",
+        "pls stop giving me stuff after like 10",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "22:00"},
+    ),
+    (
+        "window",
+        "i turn into a pumpkin at midnight, nothing after",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "00:00"},
+    ),
+    ("window", "no tasks later than 21:00", {"kind": "window", "subject": "work", "rel": "before", "at": "21:00"}),
+    (
+        "window",
+        "I'd rather not be working past eleven thirty",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "23:30"},
+    ),
+    (
+        "window",
+        "don't book any work after 10:30 at night",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "22:30"},
+    ),
+    ("window", "nightly cutoff 2245", {"kind": "window", "subject": "work", "rel": "before", "at": "22:45"}),
+    (
+        "window",
+        "studying has to end by quarter past eleven",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "23:15"},
+    ),
+    (
+        "window",
+        "nothing should be on my plate after 10 p.m.",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "22:00"},
+    ),
+    (
+        "window",
+        "past 12:30 at night I'm useless, dont put anything there",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "00:30"},
+    ),
+    ("window", "keep all my work before 10pm", {"kind": "window", "subject": "work", "rel": "before", "at": "22:00"}),
+    ("window", "11:45 PM = absolute latest", {"kind": "window", "subject": "work", "rel": "before", "at": "23:45"}),
+    (
+        "window",
+        "i stop doing school at 8:30 every night",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "20:30"},
+    ),
+    (
+        "window",
+        "dont have me working any later than 1 in the morning",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "01:00"},
+    ),
+    (
+        "window",
+        "schedule NOTHING after 11. nothing.",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "23:00"},
+    ),
+    ("window", "the day's work wraps at 7:30pm", {"kind": "window", "subject": "work", "rel": "before", "at": "19:30"}),
+    # ---- windows: when work may start ----
+    (
+        "window",
+        "I don't function until 10, nothing before then",
+        {"kind": "window", "subject": "work", "rel": "after", "at": "10:00"},
+    ),
+    (
+        "window",
+        "mornings before 9:30 are off the table",
+        {"kind": "window", "subject": "work", "rel": "after", "at": "09:30"},
+    ),
+    (
+        "window",
+        "first task no earlier than 8:15am",
+        {"kind": "window", "subject": "work", "rel": "after", "at": "08:15"},
+    ),
+    (
+        "window",
+        "the day doesnt start till 9:45 for me",
+        {"kind": "window", "subject": "work", "rel": "after", "at": "09:45"},
+    ),
+    ("window", "no studying before 0700", {"kind": "window", "subject": "work", "rel": "after", "at": "07:00"}),
+    (
+        "window",
+        "ten thirty a.m. is the soonest I can start",
+        {"kind": "window", "subject": "work", "rel": "after", "at": "10:30"},
+    ),
+    (
+        "window",
+        "I have a slow morning routine so nothing til 9",
+        {"kind": "window", "subject": "work", "rel": "after", "at": "09:00"},
+    ),
+    (
+        "window",
+        "noon is the earliest anything should start",
+        {"kind": "window", "subject": "work", "rel": "after", "at": "12:00"},
+    ),
+    ("window", "Not before 8:45 AM please", {"kind": "window", "subject": "work", "rel": "after", "at": "08:45"}),
+    ("window", "hold off on any work till 11am", {"kind": "window", "subject": "work", "rel": "after", "at": "11:00"}),
+    # ---- windows: a range ----
+    (
+        "window",
+        "my study hours are 1pm-11pm",
+        {"kind": "window", "subject": "work", "rel": "between", "at": "13:00", "until": "23:00"},
+    ),
+    (
+        "window",
+        "everything has to fit between 7:30am and 7:30pm",
+        {"kind": "window", "subject": "work", "rel": "between", "at": "07:30", "until": "19:30"},
+    ),
+    (
+        "window",
+        "schedule me 11 to 7, nothing outside that",
+        {"kind": "window", "subject": "work", "rel": "between", "at": "11:00", "until": "19:00"},
+    ),
+    (
+        "window",
+        "work happens 8am-2pm, then im done",
+        {"kind": "window", "subject": "work", "rel": "between", "at": "08:00", "until": "14:00"},
+    ),
+    (
+        "window",
+        "studying window 15:00-23:00",
+        {"kind": "window", "subject": "work", "rel": "between", "at": "15:00", "until": "23:00"},
+    ),
+    (
+        "window",
+        "no earlier than 10, no later than midnight",
+        {"kind": "window", "subject": "work", "rel": "between", "at": "10:00", "until": "00:00"},
+    ),
+    (
+        "window",
+        "I like to get stuff done between 9:30 and 5:30",
+        {"kind": "window", "subject": "work", "rel": "between", "at": "09:30", "until": "17:30"},
+    ),
+    # ---- windows: a stretch kept out of work ----
+    (
+        "window",
+        "2-3pm is nap time so no work then",
+        {"kind": "window", "subject": "work", "rel": "not_between", "at": "14:00", "until": "15:00"},
+    ),
+    (
+        "window",
+        "6 to 7:30pm is off limits for work",
+        {"kind": "window", "subject": "work", "rel": "not_between", "at": "18:00", "until": "19:30"},
+    ),
+    (
+        "window",
+        "nothing scheduled from 1am to 9am",
+        {"kind": "window", "subject": "work", "rel": "not_between", "at": "01:00", "until": "09:00"},
+    ),
+    (
+        "window",
+        "dont put anything between 11:30 and 12:30, i eat then",
+        {"kind": "window", "subject": "work", "rel": "not_between", "at": "11:30", "until": "12:30"},
+    ),
+    (
+        "window",
+        "no studying 3:30-4:30 pm",
+        {"kind": "window", "subject": "work", "rel": "not_between", "at": "15:30", "until": "16:30"},
+    ),
+    # ---- windows: a part of the day ----
+    (
+        "window",
+        "no work in the evening, that's family time",
+        {"kind": "window", "subject": "work", "rel": "not_between", "at": "17:00", "until": "22:00"},
+    ),
+    (
+        "window",
+        "afternoons are a no-study zone",
+        {"kind": "window", "subject": "work", "rel": "not_between", "at": "12:00", "until": "17:00"},
+    ),
+    (
+        "window",
+        "nighttime is for sleeping, not homework",
+        {"kind": "window", "subject": "homework", "rel": "not_between", "at": "22:00", "until": "02:00"},
+    ),
+    (
+        "window",
+        "schedule my studying for mornings only",
+        {"kind": "window", "subject": "work", "rel": "between", "at": "08:00", "until": "12:00"},
+    ),
+    (
+        "window",
+        "put all my work in the afternoon",
+        {"kind": "window", "subject": "work", "rel": "between", "at": "12:00", "until": "17:00"},
+    ),
+    # ---- windows with days ----
+    (
+        "window_days",
+        "sun thru thurs nights I'm done at 11:30",
+        {
+            "kind": "window",
+            "subject": "work",
+            "rel": "before",
+            "at": "23:30",
+            "days": ["mon", "tue", "wed", "thu", "sun"],
+        },
+    ),
+    (
+        "window_days",
+        "on school nights wrap up by 10:45",
+        {
+            "kind": "window",
+            "subject": "work",
+            "rel": "before",
+            "at": "22:45",
+            "days": ["mon", "tue", "wed", "thu", "sun"],
+        },
+    ),
+    (
+        "window_days",
+        "Fri + Sat no work after 7pm",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "19:00", "days": ["fri", "sat"]},
+    ),
+    (
+        "window_days",
+        "mondays dont start before 10:30",
+        {"kind": "window", "subject": "work", "rel": "after", "at": "10:30", "days": ["mon"]},
+    ),
+    (
+        "window_days",
+        "tues & thurs: start no earlier than 1pm",
+        {"kind": "window", "subject": "work", "rel": "after", "at": "13:00", "days": ["tue", "thu"]},
+    ),
+    (
+        "window_days",
+        "on wednesdays i'm done at 5",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "17:00", "days": ["wed"]},
+    ),
+    (
+        "window_days",
+        "weekend mornings: nothing before 11",
+        {"kind": "window", "subject": "work", "rel": "after", "at": "11:00", "days": ["sat", "sun"]},
+    ),
+    (
+        "window_days",
+        "saturday and sunday, work only 10am-4pm",
+        {
+            "kind": "window",
+            "subject": "work",
+            "rel": "between",
+            "at": "10:00",
+            "until": "16:00",
+            "days": ["sat", "sun"],
+        },
+    ),
+    (
+        "window_days",
+        "M-Th work 9a-6p",
+        {
+            "kind": "window",
+            "subject": "work",
+            "rel": "between",
+            "at": "09:00",
+            "until": "18:00",
+            "days": ["mon", "tue", "wed", "thu"],
+        },
+    ),
+    (
+        "window_days",
+        "fridays: no work after 3pm, I go home for the weekend",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "15:00", "days": ["fri"]},
+    ),
+    (
+        "window_days",
+        "sundays I can't start until 1, church",
+        {"kind": "window", "subject": "work", "rel": "after", "at": "13:00", "days": ["sun"]},
+    ),
+    (
+        "window_days",
+        "every weeknight cut it off at 11",
+        {
+            "kind": "window",
+            "subject": "work",
+            "rel": "before",
+            "at": "23:00",
+            "days": ["mon", "tue", "wed", "thu", "sun"],
+        },
+    ),
+    (
+        "window_days",
+        "no work after 9pm on mon wed and fri",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "21:00", "days": ["mon", "wed", "fri"]},
+    ),
+    (
+        "window_days",
+        "thrusdays: no studying 4-6pm",
+        {"kind": "window", "subject": "work", "rel": "not_between", "at": "16:00", "until": "18:00", "days": ["thu"]},
+    ),
+    (
+        "window_days",
+        "on weekdays, work stops at 7pm",
+        {
+            "kind": "window",
+            "subject": "work",
+            "rel": "before",
+            "at": "19:00",
+            "days": ["mon", "tue", "wed", "thu", "fri"],
+        },
+    ),
+    (
+        "window_days",
+        "tuesday nights stop by 8:30, rehearsal",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "20:30", "days": ["tue"]},
+    ),
+    (
+        "window_days",
+        "sat/sun dont schedule anything before 12",
+        {"kind": "window", "subject": "work", "rel": "after", "at": "12:00", "days": ["sat", "sun"]},
+    ),
+    (
+        "window_days",
+        "weekday work hours are 8:30 to 4:30",
+        {
+            "kind": "window",
+            "subject": "work",
+            "rel": "between",
+            "at": "08:30",
+            "until": "16:30",
+            "days": ["mon", "tue", "wed", "thu", "fri"],
+        },
+    ),
+    (
+        "window_days",
+        "sundays 3pm-9pm only",
+        {"kind": "window", "subject": "work", "rel": "between", "at": "15:00", "until": "21:00", "days": ["sun"]},
+    ),
+    (
+        "window_days",
+        "no work 12-1:30 on tues/thurs",
+        {
+            "kind": "window",
+            "subject": "work",
+            "rel": "not_between",
+            "at": "12:00",
+            "until": "13:30",
+            "days": ["tue", "thu"],
+        },
+    ),
+    # ---- windows with days, said as exceptions ----
+    (
+        "window_except",
+        "except saturday, no work after 10",
+        {
+            "kind": "window",
+            "subject": "work",
+            "rel": "before",
+            "at": "22:00",
+            "days": ["mon", "tue", "wed", "thu", "fri", "sun"],
+        },
+    ),
+    (
+        "window_except",
+        "every day but friday, no work before 9am",
+        {
+            "kind": "window",
+            "subject": "work",
+            "rel": "after",
+            "at": "09:00",
+            "days": ["mon", "tue", "wed", "thu", "sat", "sun"],
+        },
+    ),
+    (
+        "window_except",
+        "no work past 11pm other than on saturdays",
+        {
+            "kind": "window",
+            "subject": "work",
+            "rel": "before",
+            "at": "23:00",
+            "days": ["mon", "tue", "wed", "thu", "fri", "sun"],
+        },
+    ),
+    (
+        "window_except",
+        "aside from sundays, start at 8:30am",
+        {
+            "kind": "window",
+            "subject": "work",
+            "rel": "after",
+            "at": "08:30",
+            "days": ["mon", "tue", "wed", "thu", "fri", "sat"],
+        },
+    ),
+    (
+        "window_except",
+        "on weeknights no studying after 10, except thursdays",
+        {"kind": "window", "subject": "work", "rel": "before", "at": "22:00", "days": ["mon", "tue", "wed", "sun"]},
+    ),
+    (
+        "window_except",
+        "nothing before 10am unless it's a weekday",
+        {"kind": "window", "subject": "work", "rel": "after", "at": "10:00", "days": ["sat", "sun"]},
+    ),
+    # ---- windows for a kind, course or title ----
+    (
+        "window_subject",
+        "do problem sets in the morning, I think better then",
+        {"kind": "window", "subject": "problem sets", "rel": "between", "at": "08:00", "until": "12:00"},
+    ),
+    (
+        "window_subject",
+        "no calc problems past 10pm",
+        {"kind": "window", "subject": "calc problems", "rel": "before", "at": "22:00"},
+    ),
+    (
+        "window_subject",
+        "write essays between 9 and noon",
+        {"kind": "window", "subject": "essays", "rel": "between", "at": "09:00", "until": "12:00"},
+    ),
+    (
+        "window_subject",
+        "keep coding to after 8pm",
+        {"kind": "window", "subject": "coding", "rel": "after", "at": "20:00"},
+    ),
+    (
+        "window_subject",
+        "spanish vocab before 11am",
+        {"kind": "window", "subject": "spanish vocab", "rel": "before", "at": "11:00"},
+    ),
+    (
+        "window_subject",
+        "flashcards are an evening thing",
+        {"kind": "window", "subject": "flashcards", "rel": "between", "at": "17:00", "until": "22:00"},
+    ),
+    (
+        "window_subject",
+        "psych readings 7-9pm",
+        {"kind": "window", "subject": "psych readings", "rel": "between", "at": "19:00", "until": "21:00"},
+    ),
+    (
+        "window_subject",
+        "hard thinking stuff before 1pm",
+        {"kind": "window", "subject": "deep work", "rel": "before", "at": "13:00"},
+    ),
+    (
+        "window_subject",
+        "anything that needs concentration goes in the morning",
+        {"kind": "window", "subject": "deep work", "rel": "between", "at": "08:00", "until": "12:00"},
+    ),
+    (
+        "window_subject",
+        "brainless tasks after 9pm",
+        {"kind": "window", "subject": "light work", "rel": "after", "at": "21:00"},
+    ),
+    (
+        "window_subject",
+        "easy tasks late at night",
+        {"kind": "window", "subject": "light work", "rel": "between", "at": "22:00", "until": "02:00"},
+    ),
+    (
+        "window_subject",
+        "no heavy focus work once it's past 7pm",
+        {"kind": "window", "subject": "deep work", "rel": "before", "at": "19:00"},
+    ),
+    (
+        "window_subject",
+        "PHYS 1112 between 2 and 5",
+        {"kind": "window", "subject": "phys 1112", "rel": "between", "at": "14:00", "until": "17:00"},
+    ),
+    (
+        "window_subject",
+        "BIO 1350 stuff only in the mornings",
+        {"kind": "window", "subject": "bio 1350", "rel": "between", "at": "08:00", "until": "12:00"},
+    ),
+    (
+        "window_subject",
+        "test prep goes in the evening",
+        {"kind": "window", "subject": "exam prep", "rel": "between", "at": "17:00", "until": "22:00"},
+    ),
+    (
+        "window_subject",
+        "workouts have to be done by 7:30am",
+        {"kind": "window", "subject": "workouts", "rel": "before", "at": "07:30"},
+    ),
+    (
+        "window_subject",
+        "CS 4820 never after 10pm",
+        {"kind": "window", "subject": "cs 4820", "rel": "before", "at": "22:00"},
+    ),
+    (
+        "window_subject",
+        "no thesis writing after 4pm",
+        {"kind": "window", "subject": "thesis writing", "rel": "before", "at": "16:00"},
+    ),
+    (
+        "window_subject",
+        "statistics hw: 1pm to 4pm",
+        {"kind": "window", "subject": "statistics hw", "rel": "between", "at": "13:00", "until": "16:00"},
+    ),
+    (
+        "window_subject",
+        "no homwork before 3pm, i have class all morning",
+        {"kind": "window", "subject": "homework", "rel": "after", "at": "15:00"},
+    ),
+    (
+        "window_subject",
+        "essay writing at night when it's quiet",
+        {"kind": "window", "subject": "essay writing", "rel": "between", "at": "22:00", "until": "02:00"},
+    ),
+    (
+        "window_subject",
+        "studying for midterms between 10am and 4pm",
+        {"kind": "window", "subject": "exam prep", "rel": "between", "at": "10:00", "until": "16:00"},
+    ),
+    (
+        "window_subject",
+        "low-energy stuff after 8:30pm",
+        {"kind": "window", "subject": "light work", "rel": "after", "at": "20:30"},
+    ),
+    (
+        "window_subject",
+        "readings on weekends before noon",
+        {"kind": "window", "subject": "readings", "rel": "before", "at": "12:00", "days": ["sat", "sun"]},
+    ),
+    (
+        "window_subject",
+        "hw on weekdays between 4 and 8pm",
+        {
+            "kind": "window",
+            "subject": "hw",
+            "rel": "between",
+            "at": "16:00",
+            "until": "20:00",
+            "days": ["mon", "tue", "wed", "thu", "fri"],
+        },
+    ),
+    (
+        "window_subject",
+        "no coding on weeknights after 11",
+        {
+            "kind": "window",
+            "subject": "coding",
+            "rel": "before",
+            "at": "23:00",
+            "days": ["mon", "tue", "wed", "thu", "sun"],
+        },
+    ),
+    (
+        "window_subject",
+        "deep work 9-12 on MWF",
+        {
+            "kind": "window",
+            "subject": "deep work",
+            "rel": "between",
+            "at": "09:00",
+            "until": "12:00",
+            "days": ["mon", "wed", "fri"],
+        },
+    ),
+    (
+        "window_subject",
+        "orgo in the evenings on tuesdays and thursdays",
+        {
+            "kind": "window",
+            "subject": "orgo",
+            "rel": "between",
+            "at": "17:00",
+            "until": "22:00",
+            "days": ["tue", "thu"],
+        },
+    ),
+    # ---- meals by the clock ----
+    ("meals", "have lunch before 1:30", {"kind": "window", "subject": "lunch", "rel": "before", "at": "13:30"}),
+    (
+        "meals",
+        "dinner somewhere between 6 and 8pm",
+        {"kind": "window", "subject": "dinner", "rel": "between", "at": "18:00", "until": "20:00"},
+    ),
+    (
+        "meals",
+        "breakfast after 9 on weekends",
+        {"kind": "window", "subject": "breakfast", "rel": "after", "at": "09:00", "days": ["sat", "sun"]},
+    ),
+    (
+        "meals",
+        "don't put dinner later than 8:30",
+        {"kind": "window", "subject": "dinner", "rel": "before", "at": "20:30"},
+    ),
+    (
+        "meals",
+        "breakfast has to happen before 8:30am on weekdays",
+        {
+            "kind": "window",
+            "subject": "breakfast",
+            "rel": "before",
+            "at": "08:30",
+            "days": ["mon", "tue", "wed", "thu", "fri"],
+        },
+    ),
+    # ---- keep a stretch free ----
+    (
+        "free",
+        "keep tuesday nights open for dnd",
+        {"kind": "free", "subject": "work", "rel": "between", "at": "22:00", "until": "02:00", "days": ["tue"]},
+    ),
+    (
+        "free",
+        "hold my saturday mornings clear, farmers market",
+        {"kind": "free", "subject": "work", "rel": "between", "at": "08:00", "until": "12:00", "days": ["sat"]},
+    ),
+    (
+        "free",
+        "I want sunday afternoons left empty",
+        {"kind": "free", "subject": "work", "rel": "between", "at": "12:00", "until": "17:00", "days": ["sun"]},
+    ),
+    (
+        "free",
+        "block wednesday evenings for date night",
+        {"kind": "free", "subject": "work", "rel": "between", "at": "17:00", "until": "22:00", "days": ["wed"]},
+    ),
+    (
+        "free",
+        "keep 7 to 8am clear every day",
+        {"kind": "free", "subject": "work", "rel": "between", "at": "07:00", "until": "08:00"},
+    ),
+    ("free", "leave fridays completely open", {"kind": "free", "subject": "work", "days": ["fri"]}),
+    ("free", "keep the whole of saturday free", {"kind": "free", "subject": "work", "days": ["sat"]}),
+    (
+        "free",
+        "my monday mornings are protected, keep them clear",
+        {"kind": "free", "subject": "work", "rel": "between", "at": "08:00", "until": "12:00", "days": ["mon"]},
+    ),
+    (
+        "free",
+        "keep 5:30 to 7 open on weekdays for practice",
+        {
+            "kind": "free",
+            "subject": "work",
+            "rel": "between",
+            "at": "17:30",
+            "until": "19:00",
+            "days": ["mon", "tue", "wed", "thu", "fri"],
+        },
+    ),
+    (
+        "free",
+        "leave tues and thurs afternoons empty",
+        {"kind": "free", "subject": "work", "rel": "between", "at": "12:00", "until": "17:00", "days": ["tue", "thu"]},
+    ),
+    (
+        "free",
+        "keep my evenings clear on friday and saturday",
+        {"kind": "free", "subject": "work", "rel": "between", "at": "17:00", "until": "22:00", "days": ["fri", "sat"]},
+    ),
+    (
+        "free",
+        "hold 9 to 10 pm open every night",
+        {"kind": "free", "subject": "work", "rel": "between", "at": "21:00", "until": "22:00"},
+    ),
+    ("free", "keep sundays empty, it's my reset day", {"kind": "free", "subject": "work", "days": ["sun"]}),
+    (
+        "free",
+        "protect my evenings",
+        {"kind": "free", "subject": "work", "rel": "between", "at": "17:00", "until": "22:00"},
+    ),
+    (
+        "free",
+        "block off thursday from 1 to 4",
+        {"kind": "free", "subject": "work", "rel": "between", "at": "13:00", "until": "16:00", "days": ["thu"]},
+    ),
+    (
+        "free",
+        "keep an empty hour from 12 to 1 on MWF",
+        {
+            "kind": "free",
+            "subject": "work",
+            "rel": "between",
+            "at": "12:00",
+            "until": "13:00",
+            "days": ["mon", "wed", "fri"],
+        },
+    ),
+    ("free", "hold tuesdays totally free", {"kind": "free", "subject": "work", "days": ["tue"]}),
+    # ---- keep a stretch lighter ----
+    (
+        "free",
+        "go lighter on thursday nights",
+        {
+            "kind": "free",
+            "subject": "work",
+            "rel": "between",
+            "at": "22:00",
+            "until": "02:00",
+            "days": ["thu"],
+            "amount": 0.5,
+        },
+    ),
+    (
+        "free",
+        "sunday evenings should be lighter",
+        {
+            "kind": "free",
+            "subject": "work",
+            "rel": "between",
+            "at": "17:00",
+            "until": "22:00",
+            "days": ["sun"],
+            "amount": 0.5,
+        },
+    ),
+    (
+        "free",
+        "less work wednesday afternoons",
+        {
+            "kind": "free",
+            "subject": "work",
+            "rel": "between",
+            "at": "12:00",
+            "until": "17:00",
+            "days": ["wed"],
+            "amount": 0.5,
+        },
+    ),
+    (
+        "free",
+        "go easy on the evenings",
+        {"kind": "free", "subject": "work", "rel": "between", "at": "17:00", "until": "22:00", "amount": 0.5},
+    ),
+    (
+        "free",
+        "fewer tasks on friday afternoons",
+        {
+            "kind": "free",
+            "subject": "work",
+            "rel": "between",
+            "at": "12:00",
+            "until": "17:00",
+            "days": ["fri"],
+            "amount": 0.5,
+        },
+    ),
+    (
+        "free",
+        "keep saturday mornings light",
+        {
+            "kind": "free",
+            "subject": "work",
+            "rel": "between",
+            "at": "08:00",
+            "until": "12:00",
+            "days": ["sat"],
+            "amount": 0.5,
+        },
+    ),
+    (
+        "free",
+        "lighter load in the mornings on weekends",
+        {
+            "kind": "free",
+            "subject": "work",
+            "rel": "between",
+            "at": "08:00",
+            "until": "12:00",
+            "days": ["sat", "sun"],
+            "amount": 0.5,
+        },
+    ),
+    (
+        "free",
+        "ease off a bit on weeknight evenings",
+        {
+            "kind": "free",
+            "subject": "work",
+            "rel": "between",
+            "at": "17:00",
+            "until": "22:00",
+            "days": ["mon", "tue", "wed", "thu", "sun"],
+            "amount": 0.5,
+        },
+    ),
+    # ---- days ----
+    (
+        "days",
+        "Saturdays I'm off the clock, nothing school related",
+        {"kind": "days", "subject": "work", "rel": "not_on", "days": ["sat"]},
+    ),
+    (
+        "days",
+        "sunday is my day of rest, no schoolwork",
+        {"kind": "days", "subject": "work", "rel": "not_on", "days": ["sun"]},
+    ),
+    (
+        "days",
+        "no studying on fridays, i go home every weekend",
+        {"kind": "days", "subject": "work", "rel": "not_on", "days": ["fri"]},
+    ),
+    ("days", "nada on sundays", {"kind": "days", "subject": "work", "rel": "not_on", "days": ["sun"]}),
+    (
+        "days",
+        "work six days a week, sunday off",
+        {"kind": "days", "subject": "work", "rel": "not_on", "days": ["sun"]},
+    ),
+    (
+        "days",
+        "don't touch anything school-related on saturday or sunday",
+        {"kind": "days", "subject": "work", "rel": "not_on", "days": ["sat", "sun"]},
+    ),
+    (
+        "days",
+        "only work tues thru fri",
+        {"kind": "days", "subject": "work", "rel": "on", "days": ["tue", "wed", "thu", "fri"]},
+    ),
+    (
+        "days",
+        "no work on mondays or fridays",
+        {"kind": "days", "subject": "work", "rel": "not_on", "days": ["mon", "fri"]},
+    ),
+    (
+        "days",
+        "thursday is off, I commute home",
+        {"kind": "days", "subject": "work", "rel": "not_on", "days": ["thu"]},
+    ),
+    (
+        "days",
+        "weekends belong to me, no homework",
+        {"kind": "days", "subject": "homework", "rel": "not_on", "days": ["sat", "sun"]},
+    ),
+    (
+        "days",
+        "stats problem sets only on mondays and thursdays",
+        {"kind": "days", "subject": "stats problem sets", "rel": "on", "days": ["mon", "thu"]},
+    ),
+    (
+        "days",
+        "never any writing on weekends",
+        {"kind": "days", "subject": "writing", "rel": "not_on", "days": ["sat", "sun"]},
+    ),
+    (
+        "days",
+        "orgo stays off fridays, i'm fried",
+        {"kind": "days", "subject": "orgo", "rel": "not_on", "days": ["fri"]},
+    ),
+    (
+        "days",
+        "philosophy readings on weekends only",
+        {"kind": "days", "subject": "philosophy readings", "rel": "on", "days": ["sat", "sun"]},
+    ),
+    (
+        "days",
+        "keep math to tuesdays and thursdays",
+        {"kind": "days", "subject": "math", "rel": "on", "days": ["tue", "thu"]},
+    ),
+    (
+        "days",
+        "do coding projects mon/wed only",
+        {"kind": "days", "subject": "coding projects", "rel": "on", "days": ["mon", "wed"]},
+    ),
+    (
+        "days",
+        "ECON 2010 problem sets on wednesdays",
+        {"kind": "days", "subject": "econ 2010 problem sets", "rel": "on", "days": ["wed"]},
+    ),
+    (
+        "days",
+        "no deep work on weekends",
+        {"kind": "days", "subject": "deep work", "rel": "not_on", "days": ["sat", "sun"]},
+    ),
+    (
+        "days",
+        "hard stuff never on fridays",
+        {"kind": "days", "subject": "deep work", "rel": "not_on", "days": ["fri"]},
+    ),
+    (
+        "days",
+        "gym only mon-thu",
+        {"kind": "days", "subject": "gym", "rel": "on", "days": ["mon", "tue", "wed", "thu"]},
+    ),
+    (
+        "days",
+        "every day except tuesday is fine for work",
+        {"kind": "days", "subject": "work", "rel": "not_on", "days": ["tue"]},
+    ),
+    (
+        "days",
+        "fri and sun are off limits for school",
+        {"kind": "days", "subject": "work", "rel": "not_on", "days": ["fri", "sun"]},
+    ),
+    (
+        "days",
+        "no lab reports mon or tue",
+        {"kind": "days", "subject": "lab reports", "rel": "not_on", "days": ["mon", "tue"]},
+    ),
+    (
+        "days",
+        "study only on mon, tue, thu and sat",
+        {"kind": "days", "subject": "work", "rel": "on", "days": ["mon", "tue", "thu", "sat"]},
+    ),
+    (
+        "days",
+        "spanish on M W F",
+        {"kind": "days", "subject": "spanish", "rel": "on", "days": ["mon", "wed", "fri"]},
+    ),
+    (
+        "days",
+        "I don't open a textbook on saturdays",
+        {"kind": "days", "subject": "work", "rel": "not_on", "days": ["sat"]},
+    ),
+    (
+        "days",
+        "no school work on sat. EVER.",
+        {"kind": "days", "subject": "work", "rel": "not_on", "days": ["sat"]},
+    ),
+    (
+        "days",
+        "monday thru saturday only, sundays are mine",
+        {"kind": "days", "subject": "work", "rel": "on", "days": ["mon", "tue", "wed", "thu", "fri", "sat"]},
+    ),
+    (
+        "days",
+        "no french on wensdays or fridays",
+        {"kind": "days", "subject": "french", "rel": "not_on", "days": ["wed", "fri"]},
+    ),
+    (
+        "days",
+        "do my history essays on saturdays",
+        {"kind": "days", "subject": "history essays", "rel": "on", "days": ["sat"]},
+    ),
+    # ---- pace on weekdays ----
+    ("pace", "tuesdays are my heavy days", {"kind": "pace", "paces": [["tue", "Push"]]}),
+    ("pace", "mondays should be relaxed", {"kind": "pace", "paces": [["mon", "Easy"]]}),
+    ("pace", "go hard thursdays, easy fridays", {"kind": "pace", "paces": [["thu", "Push"], ["fri", "Easy"]]}),
+    ("pace", "keep wednesdays light", {"kind": "pace", "paces": [["wed", "Easy"]]}),
+    ("pace", "weekends should be low key", {"kind": "pace", "paces": [["sat", "Easy"], ["sun", "Easy"]]}),
+    ("pace", "normal pace tue and thu", {"kind": "pace", "paces": [["tue", "Normal"], ["thu", "Normal"]]}),
+    ("pace", "saturday chill, sunday grind", {"kind": "pace", "paces": [["sat", "Easy"], ["sun", "Push"]]}),
+    (
+        "pace",
+        "mon-thu are grind days",
+        {"kind": "pace", "paces": [["mon", "Push"], ["tue", "Push"], ["wed", "Push"], ["thu", "Push"]]},
+    ),
+    (
+        "pace",
+        "fridays should be a regular day, not light or heavy",
+        {"kind": "pace", "paces": [["fri", "Normal"]]},
+    ),
+    ("pace", "I want to go all in on wednesdays", {"kind": "pace", "paces": [["wed", "Push"]]}),
+    # ---- caps on all work ----
+    (
+        "cap",
+        "five hours of studying in a day, that's my ceiling",
+        {"kind": "cap", "subject": "work", "amount": 5.0},
+    ),
+    ("cap", "anything over 7 hrs a day is too much", {"kind": "cap", "subject": "work", "amount": 7.0}),
+    ("cap", "ceiling of 8h/day", {"kind": "cap", "subject": "work", "amount": 8.0}),
+    ("cap", "4 hrs of schoolwork per day, never more", {"kind": "cap", "subject": "work", "amount": 4.0}),
+    ("cap", "I max out at like 6.5 hours a day", {"kind": "cap", "subject": "work", "amount": 6.5}),
+    ("cap", "total work per day: 9 hours max", {"kind": "cap", "subject": "work", "amount": 9.0}),
+    ("cap", "put no more than 3 hours of work on any one day", {"kind": "cap", "subject": "work", "amount": 3.0}),
+    ("cap", "past 5 hours a day I crash, so 5 is the max", {"kind": "cap", "subject": "work", "amount": 5.0}),
+    ("cap", "keep me under 4 and a half hours a day", {"kind": "cap", "subject": "work", "amount": 4.5}),
+    ("cap", "5hr/day cap on school", {"kind": "cap", "subject": "work", "amount": 5.0}),
+    (
+        "cap",
+        "no single day should have more than seven and a half hours",
+        {"kind": "cap", "subject": "work", "amount": 7.5},
+    ),
+    ("cap", "a 3-hour daily max, I work two jobs", {"kind": "cap", "subject": "work", "amount": 3.0}),
+    # ---- caps for a kind, course or title ----
+    ("cap", "reading capped at 120 min per day", {"kind": "cap", "subject": "reading", "amount": 2.0}),
+    (
+        "cap",
+        "cap organic chem at an hour and a half daily",
+        {"kind": "cap", "subject": "organic chem", "amount": 1.5},
+    ),
+    ("cap", "only one hour of essay writing a day", {"kind": "cap", "subject": "essay writing", "amount": 1.0}),
+    ("cap", "30 minutes a day of piano max", {"kind": "cap", "subject": "piano", "amount": 0.5}),
+    (
+        "cap",
+        "flashcards for no more than 20 minutes a day",
+        {"kind": "cap", "subject": "flashcards", "amount": 0.33},
+    ),
+    ("cap", "max 2.5h of lab reports per day", {"kind": "cap", "subject": "lab reports", "amount": 2.5}),
+    ("cap", "PSYC 1101 no more than 1 hour a day", {"kind": "cap", "subject": "psyc 1101", "amount": 1.0}),
+    ("cap", "exam prep shouldn't go over 6 hours a day", {"kind": "cap", "subject": "exam prep", "amount": 6.0}),
+    ("cap", "deep work: 3.5 hours a day tops", {"kind": "cap", "subject": "deep work", "amount": 3.5}),
+    ("cap", "cap mindless tasks at 1 hour a day", {"kind": "cap", "subject": "light work", "amount": 1.0}),
+    ("cap", "homework gets 2.5 hours a night, max", {"kind": "cap", "subject": "homework", "amount": 2.5}),
+    ("cap", "studying for tests: 4 hrs/day max", {"kind": "cap", "subject": "exam prep", "amount": 4.0}),
+    (
+        "cap",
+        "anything that needs real focus, cap it at 3 hours a day",
+        {"kind": "cap", "subject": "deep work", "amount": 3.0},
+    ),
+    # ---- caps on some days ----
+    ("cap", "on sundays keep it to 3 hours", {"kind": "cap", "subject": "work", "amount": 3.0, "days": ["sun"]}),
+    ("cap", "saturdays I'll do 2 hours max", {"kind": "cap", "subject": "work", "amount": 2.0, "days": ["sat"]}),
+    (
+        "cap",
+        "weekend days max 4h each",
+        {"kind": "cap", "subject": "work", "amount": 4.0, "days": ["sat", "sun"]},
+    ),
+    (
+        "cap",
+        "mon/wed/fri: 5 hours is the most",
+        {"kind": "cap", "subject": "work", "amount": 5.0, "days": ["mon", "wed", "fri"]},
+    ),
+    (
+        "cap",
+        "on thursdays limit me to 3 hours, long lab",
+        {"kind": "cap", "subject": "work", "amount": 3.0, "days": ["thu"]},
+    ),
+    (
+        "cap",
+        "weekdays: 6h cap",
+        {"kind": "cap", "subject": "work", "amount": 6.0, "days": ["mon", "tue", "wed", "thu", "fri"]},
+    ),
+    (
+        "cap",
+        "tue and thu no more than 3.5 hours of work",
+        {"kind": "cap", "subject": "work", "amount": 3.5, "days": ["tue", "thu"]},
+    ),
+    (
+        "cap",
+        "max 7 hours every day but sunday",
+        {"kind": "cap", "subject": "work", "amount": 7.0, "days": ["mon", "tue", "wed", "thu", "fri", "sat"]},
+    ),
+    (
+        "cap",
+        "sunday through thursday cap work at 6 hours",
+        {"kind": "cap", "subject": "work", "amount": 6.0, "days": ["mon", "tue", "wed", "thu", "sun"]},
+    ),
+    (
+        "cap",
+        "keep wednesdays under 4 hours since i work",
+        {"kind": "cap", "subject": "work", "amount": 4.0, "days": ["wed"]},
+    ),
+    (
+        "cap",
+        "Max of 10 hours on saturdays, that's my catch-up day",
+        {"kind": "cap", "subject": "work", "amount": 10.0, "days": ["sat"]},
+    ),
+    # ---- caps: what settings or nothing say ----
+    ("cap", "mondays 5 hrs, tuesdays 7 hrs", "set:daily_cap"),
+    ("cap", "weekend limit 3h, weekday limit 7h", "set:daily_cap"),
+    ("cap", "4 hours on fridays and 8 the rest of the week", "set:daily_cap"),
+    ("cap", "no more than 35 hours a week of schoolwork", "new:weekly cap"),
+    ("cap", "chem capped at 8 hrs per week", "new:weekly cap"),
+    ("cap", "at least an hour on my thesis every day", "new:daily minimum"),
+    ("cap", "max two essays in a day", "new:count cap"),
+    # ---- finish early ----
+    ("early", "get psets in 24 hours before they're due", {"kind": "early", "subject": "psets", "amount": 1.0}),
+    (
+        "early",
+        "essays need to be wrapped 3 days before the deadline",
+        {"kind": "early", "subject": "essays", "amount": 3.0},
+    ),
+    (
+        "early",
+        "I want everything done at least 36 hours early",
+        {"kind": "early", "subject": "work", "amount": 1.5},
+    ),
+    ("early", "turn stuff in with a day to spare", {"kind": "early", "subject": "work", "amount": 1.0}),
+    ("early", "projects should be done a full week ahead", {"kind": "early", "subject": "projects", "amount": 7.0}),
+    (
+        "early",
+        "have problem sets done 1 day ahead of time",
+        {"kind": "early", "subject": "problem sets", "amount": 1.0},
+    ),
+    (
+        "early",
+        "build in a 2-day cushion before every due date",
+        {"kind": "early", "subject": "work", "amount": 2.0},
+    ),
+    ("early", "i like being done 3 days before stuff is due", {"kind": "early", "subject": "work", "amount": 3.0}),
+    (
+        "early",
+        "CS 2110 assignments wrapped up a day early",
+        {"kind": "early", "subject": "cs 2110 assignments", "amount": 1.0},
+    ),
+    ("early", "team projects done 4 days early", {"kind": "early", "subject": "team projects", "amount": 4.0}),
+    ("early", "I want a 12 hr buffer on all deadlines", {"kind": "early", "subject": "work", "amount": 0.5}),
+    (
+        "early",
+        "don't leave essays till the due date, finish them 2 days out",
+        {"kind": "early", "subject": "essays", "amount": 2.0},
+    ),
+    (
+        "early",
+        "everything submitted at least half a day early",
+        {"kind": "early", "subject": "work", "amount": 0.5},
+    ),
+    ("early", "pre-labs done a day early", {"kind": "early", "subject": "pre-labs", "amount": 1.0}),
+    (
+        "early",
+        "finish math homework 2 days before it's due",
+        {"kind": "early", "subject": "math homework", "amount": 2.0},
+    ),
+    ("early", "final projects done 5 days early", {"kind": "early", "subject": "final projects", "amount": 5.0}),
+    (
+        "early",
+        "take-home quizzes finished the day before",
+        {"kind": "early", "subject": "take-home quizzes", "amount": 1.0},
+    ),
+    ("early", "72 hours early for research papers", {"kind": "early", "subject": "research papers", "amount": 3.0}),
+    # ---- deadlines and lateness ----
+    ("deadlines", "I'd rather pull a late night than turn something in late", {"kind": "deadlines"}),
+    ("deadlines", "missing a due date is not happening", {"kind": "deadlines"}),
+    ("deadlines", "on-time submissions above all else", {"kind": "deadlines"}),
+    ("deadlines", "break my other rules if that's what it takes to not be late", {"kind": "deadlines"}),
+    ("deadlines", "I have never turned in late work and I don't plan to start", {"kind": "deadlines"}),
+    ("deadlines", "due dates are sacred", {"kind": "deadlines"}),
+    ("deadlines", "squeeze in extra hours before letting anything go overdue", {"kind": "deadlines"}),
+    ("deadlines", "once a quiz is over, don't plan prep for it", "set:pointless_late"),
+    ("deadlines", "no use doing lecture quizzes once they close", "set:pointless_late"),
+    ("deadlines", "it's fine if reading responses come in a day late", "new:soft deadline for kind"),
+    ("deadlines", "don't start studying for a test more than 5 days out", "new:start window before due"),
+    # ---- as close to the due as possible ----
+    (
+        "close",
+        "study for midterms right up to the midterm",
+        {"kind": "close", "subject": "exam prep", "events": ["midterms"]},
+    ),
+    (
+        "close",
+        "review for the chem final as late as possible",
+        {"kind": "close", "subject": "exam prep", "events": ["chem final"]},
+    ),
+    (
+        "close",
+        "lab quizzes: prep as close to them as possible",
+        {"kind": "close", "subject": "exam prep", "events": ["lab quizzes"]},
+    ),
+    (
+        "close",
+        "reading quizzes, study right before",
+        {"kind": "close", "subject": "exam prep", "events": ["reading quizzes"]},
+    ),
+    (
+        "close",
+        "do discussion board posts as close to the deadline as I can",
+        {"kind": "close", "subject": "discussion board posts"},
+    ),
+    ("close", "weekly reflections last minute pls", {"kind": "close", "subject": "weekly reflections"}),
+    (
+        "close",
+        "prep for tests close to test day, leaving 4 hours",
+        {"kind": "close", "subject": "exam prep", "before_min": 240},
+    ),
+    (
+        "close",
+        "do problem sets as late as possible, with a 1 hour buffer",
+        {"kind": "close", "subject": "problem sets", "before_min": 60},
+    ),
+    (
+        "close",
+        "exam studying as late as I can with 2 days of breathing room",
+        {"kind": "close", "subject": "exam prep", "before_min": 2880},
+    ),
+    (
+        "close",
+        "GRE studying: as close to test day as I can get",
+        {"kind": "close", "subject": "exam prep", "events": ["gre"]},
+    ),
+    (
+        "close",
+        "stats midterm prep should be last-minute",
+        {"kind": "close", "subject": "exam prep", "events": ["stats midterm"]},
+    ),
+    (
+        "close",
+        "prep for oral exams just before them",
+        {"kind": "close", "subject": "exam prep", "events": ["oral exams"]},
+    ),
+    (
+        "close",
+        "studying for prelims should happen as close to the prelim as possible, keep 3 hrs before free",
+        {"kind": "close", "subject": "exam prep", "events": ["prelims"], "before_min": 180},
+    ),
+    (
+        "close",
+        "don't start test prep until right before the test",
+        {"kind": "close", "subject": "exam prep"},
+    ),
+    (
+        "close",
+        "leave studying for exams until the last possible moment, minus a 1 hr cushion",
+        {"kind": "close", "subject": "exam prep", "before_min": 60},
+    ),
+    # ---- time kept around events ----
+    (
+        "around",
+        "I need 15 min to walk to orchestra",
+        {"kind": "around", "events": ["orchestra"], "before_min": 15, "after_min": 0},
+    ),
+    (
+        "around",
+        "after swim practice give me 40 min to shower and eat",
+        {"kind": "around", "events": ["swim practice"], "before_min": 0, "after_min": 40},
+    ),
+    (
+        "around",
+        "30 min padding on both ends of my tutoring job",
+        {"kind": "around", "events": ["tutoring job"], "before_min": 30, "after_min": 30},
+    ),
+    (
+        "around",
+        "my lab job is a 25 min bus ride each way",
+        {"kind": "around", "events": ["lab job"], "before_min": 25, "after_min": 25},
+    ),
+    (
+        "around",
+        "after rowing I need an hour to recover",
+        {"kind": "around", "events": ["rowing"], "before_min": 0, "after_min": 60},
+    ),
+    (
+        "around",
+        "buffer 20 mins on each side of debate practice",
+        {"kind": "around", "events": ["debate practice"], "before_min": 20, "after_min": 20},
+    ),
+    (
+        "around",
+        "give me 30 min before improv shows to warm up",
+        {"kind": "around", "events": ["improv shows"], "before_min": 30, "after_min": 0},
+    ),
+    (
+        "around",
+        "need 45 minutes after water polo to dry off and eat",
+        {"kind": "around", "events": ["water polo"], "before_min": 0, "after_min": 45},
+    ),
+    (
+        "around",
+        "travel: 1 hr each way to my nannying job",
+        {"kind": "around", "events": ["nannying job"], "before_min": 60, "after_min": 60},
+    ),
+    (
+        "around",
+        "riding lessons need 20 min of driving beforehand",
+        {"kind": "around", "events": ["riding lessons"], "before_min": 20, "after_min": 0},
+    ),
+    (
+        "around",
+        "pad volunteer shifts with 15 min before and 15 after",
+        {"kind": "around", "events": ["volunteer shifts"], "before_min": 15, "after_min": 15},
+    ),
+    (
+        "around",
+        "need 1.5 hrs before away meets for the bus",
+        {"kind": "around", "events": ["away meets"], "before_min": 90, "after_min": 0},
+    ),
+    (
+        "around",
+        "keep 10 mins around my advisor meetings",
+        {"kind": "around", "events": ["advisor meetings"], "before_min": 10, "after_min": 10},
+    ),
+    (
+        "around",
+        "20 min before the a cappella rehearsal to warm up, 10 after",
+        {"kind": "around", "events": ["a cappella rehearsal"], "before_min": 20, "after_min": 10},
+    ),
+    (
+        "around",
+        "it takes half an hour to get to my co-op and half an hour back",
+        {"kind": "around", "events": ["co-op"], "before_min": 30, "after_min": 30},
+    ),
+    (
+        "around",
+        "two hours after cross country races to recover",
+        {"kind": "around", "events": ["cross country races"], "before_min": 0, "after_min": 120},
+    ),
+    ("around", "give me 10 minutes after every class to decompress", "set:event_kinds"),
+    ("around", "5 min buffer before each lecture", "set:event_kinds"),
+    ("around", "15 minutes of padding around all calendar events", "set:event_kinds"),
+    # ---- work right after an event ----
+    (
+        "after",
+        "notes review right after seminar",
+        {"kind": "after", "subject": "notes review", "event": "seminar"},
+    ),
+    (
+        "after",
+        "do econ problems immediately after econ section",
+        {"kind": "after", "subject": "econ problems", "event": "econ section"},
+    ),
+    ("after", "Anki right after my japanese class", {"kind": "after", "subject": "anki", "event": "japanese class"}),
+    (
+        "after",
+        "send follow-up emails straight after meetings",
+        {"kind": "after", "subject": "follow-up emails", "event": "meetings"},
+    ),
+    ("after", "debrief notes right after clinic", {"kind": "after", "subject": "debrief notes", "event": "clinic"}),
+    (
+        "after",
+        "as soon as choir ends, do music theory hw",
+        {"kind": "after", "subject": "music theory hw", "event": "choir"},
+    ),
+    # ---- events that give way to work ----
+    ("optional", "the gym can wait when I've got a deadline", {"kind": "optional", "events": ["gym"]}),
+    ("optional", "skip ballet if I'm behind on assignments", {"kind": "optional", "events": ["ballet"]}),
+    ("optional", "when deadlines pile up, cut volleyball first", {"kind": "optional", "events": ["volleyball"]}),
+    ("optional", "my morning jog is negotiable if work is behind", {"kind": "optional", "events": ["morning jog"]}),
+    ("optional", "meditation group is skippable during crunch", {"kind": "optional", "events": ["meditation group"]}),
+    (
+        "optional",
+        "Econ lecture is recorded so I can miss it if needed",
+        {"kind": "optional", "events": ["econ lecture"]},
+    ),
+    ("optional", "it's ok to bail on club soccer when i'm swamped", {"kind": "optional", "events": ["club soccer"]}),
+    (
+        "optional",
+        "drop spin and pilates if work needs the time",
+        {"kind": "optional", "events": ["spin", "pilates"]},
+    ),
+    (
+        "optional",
+        "greek life events are expendable when I'm behind",
+        {"kind": "optional", "events": ["greek life events"]},
+    ),
+    (
+        "optional",
+        "swim practice isn't mandatory, skip it if needed",
+        {"kind": "optional", "events": ["swim practice"]},
+    ),
+    (
+        "optional",
+        "badminton and rock climbing can both be skipped",
+        {"kind": "optional", "events": ["badminton", "rock climbing"]},
+    ),
+    ("optional", "lab is never skippable", "new:mark event required"),
+    # ---- events only when ahead ----
+    ("ahead", "I'll do hackathons only if my work's done", {"kind": "ahead", "events": ["hackathons"]}),
+    ("ahead", "I hardly ever go to the career fair talks", {"kind": "ahead", "events": ["career fair talks"]}),
+    (
+        "ahead",
+        "symphony concerts only if I'm on top of everything",
+        {"kind": "ahead", "events": ["symphony concerts"]},
+    ),
+    ("ahead", "pub trivia only once all my work is done", {"kind": "ahead", "events": ["pub trivia"]}),
+    (
+        "ahead",
+        "I seldom make it to the writing center workshops",
+        {"kind": "ahead", "events": ["writing center workshops"]},
+    ),
+    ("ahead", "ski trips only if I'm ahead on schoolwork", {"kind": "ahead", "events": ["ski trips"]}),
+    (
+        "ahead",
+        "unless i'm ahead, skip the newspaper meetings",
+        {"kind": "ahead", "events": ["newspaper meetings"]},
+    ),
+    ("ahead", "I typically skip guest lectures", {"kind": "ahead", "events": ["guest lectures"]}),
+    # ---- the night before an event ----
+    (
+        "night_before",
+        "before an exam day, nothing past 9:30pm",
+        {"kind": "night_before", "at": "21:30", "events": ["exam"]},
+    ),
+    (
+        "night_before",
+        "if there's a midterm in the morning, I stop studying at 11",
+        {"kind": "night_before", "at": "23:00", "events": ["midterm"]},
+    ),
+    (
+        "night_before",
+        "the night before a big test, done by ten",
+        {"kind": "night_before", "at": "22:00", "events": ["test"]},
+    ),
+    (
+        "night_before",
+        "the evening before a triathlon, no work after 8:30",
+        {"kind": "night_before", "at": "20:30", "events": ["triathlon"]},
+    ),
+    (
+        "night_before",
+        "if I have a performance the next day, wrap up by 9",
+        {"kind": "night_before", "at": "21:00", "events": ["performance"]},
+    ),
+    (
+        "night_before",
+        "night before a lab practical: nothing after 10:30",
+        {"kind": "night_before", "at": "22:30", "events": ["lab practical"]},
+    ),
+    (
+        "night_before",
+        "the night before a job interview I want to be done at 9",
+        {"kind": "night_before", "at": "21:00", "events": ["job interview"]},
+    ),
+    (
+        "night_before",
+        "if the MCAT is the next morning, stop working at 7pm",
+        {"kind": "night_before", "at": "19:00", "events": ["mcat"]},
+    ),
+    (
+        "night_before",
+        "on the eve of a final, nothing after 9",
+        {"kind": "night_before", "at": "21:00", "events": ["final"]},
+    ),
+    (
+        "night_before",
+        "if I have an early flight the next day stop by 9",
+        {"kind": "night_before", "at": "21:00", "events": ["flight"]},
+    ),
+    (
+        "night_before",
+        "the day before a debate tournament, end by 10pm",
+        {"kind": "night_before", "at": "22:00", "events": ["debate tournament"]},
+    ),
+    # ---- meals kept ----
+    ("meals", "never let studying bump breakfast", {"kind": "meals_kept", "events": ["breakfast"]}),
+    ("meals", "dinner stays on the schedule even during crunch", {"kind": "meals_kept", "events": ["dinner"]}),
+    ("meals", "lunch never gets skipped, I'll pass out", {"kind": "meals_kept", "events": ["lunch"]}),
+    (
+        "meals",
+        "all three meals are untouchable",
+        {"kind": "meals_kept", "events": ["breakfast", "lunch", "dinner"]},
+    ),
+    (
+        "meals",
+        "don't take away my breakfast or lunch for work",
+        {"kind": "meals_kept", "events": ["breakfast", "lunch"]},
+    ),
+    ("meals", "I always eat dinner, don't schedule through it", {"kind": "meals_kept", "events": ["dinner"]}),
+    (
+        "meals",
+        "eating is not optional, keep every meal",
+        {"kind": "meals_kept", "events": ["breakfast", "lunch", "dinner"]},
+    ),
+    ("meals", "dinner can be quick when I'm behind", "new:meal shrink when busy"),
+    # ---- meals learned ----
+    ("meals", "figure out whether I even eat lunch", {"kind": "meals_learned", "events": ["lunch"]}),
+    ("meals", "learn from my tracking when I have breakfast", {"kind": "meals_learned", "events": ["breakfast"]}),
+    (
+        "meals",
+        "I'm inconsistent with dinner, let friday work it out",
+        {"kind": "meals_learned", "events": ["dinner"]},
+    ),
+    (
+        "meals",
+        "decide if breakfast is a thing for me based on what I log",
+        {"kind": "meals_learned", "events": ["breakfast"]},
+    ),
+    ("meals", "learn my lunch and dinner times", {"kind": "meals_learned", "events": ["lunch", "dinner"]}),
+    # ---- fit tasks to gaps ----
+    ("gaps", "use 20 minute windows for little tasks", {"kind": "fit_gaps"}),
+    ("gaps", "keep big open blocks for deep projects, not errands", {"kind": "fit_gaps"}),
+    ("gaps", "slot short to-dos into the in-between times", {"kind": "fit_gaps"}),
+    ("gaps", "pair long tasks with long free time", {"kind": "fit_gaps"}),
+    ("gaps", "size tasks to the free time they go in", {"kind": "fit_gaps"}),
+    ("gaps", "10-minute tasks belong in 10-minute gaps", {"kind": "fit_gaps"}),
+    # ---- things that run by themselves ----
+    ("running", "the washer should only go while I'm at my desk", {"kind": "runs_while_working"}),
+    ("running", "GPU training runs only while I'm working so I can babysit them", {"kind": "runs_while_working"}),
+    ("running", "unattended stuff like renders can't overlap with lectures", {"kind": "runs_while_working"}),
+    ("running", "kick off backups only during my work time", {"kind": "runs_while_working"}),
+    (
+        "running",
+        "dough rising should happen while I'm studying at home, not while I'm out",
+        {"kind": "runs_while_working"},
+    ),
+    (
+        "running",
+        "tasks that run themselves shouldn't be going while I'm at practice or in class",
+        {"kind": "runs_while_working"},
+    ),
+    # ---- a minimum of sleep ----
+    ("sleep_min", "don't let me sleep less than seven and a half hours", {"kind": "sleep_min", "amount": 7.5}),
+    (
+        "sleep_min",
+        "8 hours in bed minimum on school nights",
+        {"kind": "sleep_min", "amount": 8.0, "days": ["mon", "tue", "wed", "thu", "sun"]},
+    ),
+    (
+        "sleep_min",
+        "6.5 hours of sleep minimum sunday to thursday",
+        {"kind": "sleep_min", "amount": 6.5, "days": ["mon", "tue", "wed", "thu", "sun"]},
+    ),
+    ("sleep_min", "plan so I always get 6+ hours of sleep", {"kind": "sleep_min", "amount": 6.0}),
+    ("sleep_min", "my body needs at least 7 hours of shuteye", {"kind": "sleep_min", "amount": 7.0}),
+    (
+        "sleep_min",
+        "friday nights at least 9 hours of sleep",
+        {"kind": "sleep_min", "amount": 9.0, "days": ["fri"]},
+    ),
+    # ---- sleep said other ways ----
+    ("sleep", "I'm usually asleep by 12:30", "set:sleep"),
+    ("sleep", "alarm goes off at 7:15 on weekdays", "set:sleep"),
+    ("sleep", "bedtime 1am on fridays and saturdays", "set:sleep"),
+    ("sleep", "I go to sleep around 11 and get up at 7", "set:sleep"),
+    ("sleep", "asleep by midnight on school nights", "set:sleep"),
+    ("sleep", "give me an hour of no work before I go to sleep", "new:wind-down before bed"),
+    ("sleep", "don't schedule anything in the first hour I'm awake", "new:wake buffer"),
+    ("sleep", "never pull an all-nighter", "new:no all-nighters"),
+    # ---- settings worded like rules ----
+    ("priority", "lab reports outrank readings", "set:kind_order"),
+    ("priority", "if something has to give, let it be the readings", "set:kind_order"),
+    ("priority", "exam prep first, then psets, then everything else", "set:kind_order"),
+    ("priority", "knock out the near-term stuff before touching long-range projects", "set:short_term_first"),
+    ("priority", "the 2 days before a final are only for that class", "set:exam_focus"),
+    ("priority", "the last 4 days before a midterm, nothing but that subject", "set:exam_focus"),
+    ("sitting", "I'd rather do each task in a single block", "set:sittings"),
+    ("sitting", "big essays can be split, everything else in one shot", "set:sittings"),
+    ("busy", "birthdays on my calendar don't take up time", "set:busy"),
+    ("busy", "ignore the holidays calendar when planning", "set:busy"),
+    # ---- what nothing says yet, worded like rules ----
+    ("window_new", "don't schedule homework right after rugby", "new:not after event"),
+    ("window_new", "go over flashcards before my spanish class", "new:before event"),
+    ("window_new", "after 9pm only light stuff", "new:only light work in a window"),
+    ("sitting", "no more than 75 minutes on one thing at a time", "new:max session length"),
+    ("sitting", "dont give me chunks shorter than 40 min", "new:min session length"),
+    ("breaks", "25 on 5 off, pomodoro style", "new:break every N minutes"),
+    ("days_new", "I need at least one full rest day each week", "new:days off per week"),
+    ("batch", "swim at least 3 times a week", "new:frequency goal"),
+    ("pace", "do the bulk of my work mon-tue so the end of the week is light", "new:front-load week"),
+    ("priority", "easy stuff first thing, then the hard stuff", "new:order within day"),
+    (
+        "cond_new",
+        "I can stay up past midnight only when something is due the next day",
+        "new:condition on due soon",
+    ),
+    ("cond_new", "in midterm season, max 9 hours a day", "new:condition on exam period"),
+    ("cond_new", "on days I have work shifts, keep studying under 2 hours", "new:condition on day load"),
+    ("cond_new", "if I fall behind, saturdays become work days", "new:condition on being behind"),
+    ("cond_new", "if I slept badly, no hard stuff that day", "new:condition on sleep"),
+    ("except", "nothing after 10pm except flashcards", "new:exception for a kind"),
+    # ---- compounds ----
+    ("compound", "nothing before 9am, and keep sunday clear", "multi"),
+    ("compound", "4 hours a day max, nothing past 10pm", "multi"),
+    ("compound", "projects done a week early, and no work on saturdays", "multi"),
+    ("compound", "skip choir if I'm behind and 20 min after it to walk home", "multi"),
+    ("compound", "go hard on tuesdays but leave thursday evenings open", "multi"),
+    ("compound", "never skip breakfast and don't work past midnight", "multi"),
+    ("compound", "no work on fridays, and on other days stop by 9", "multi"),
+    ("compound", "learn when i eat breakfast, but dinner is non-negotiable", "multi"),
+    ("compound", "cram for quizzes last minute, but stop by 11 the night before", "multi"),
+    ("compound", "no more than 6 hours a day and keep saturday nights free", "multi"),
+    ("compound", "lights out at 11:30 and at least 8 hrs of sleep", "multi"),
+    ("compound", "short tasks in the little gaps, and nothing before 10am", "multi"),
+    ("compound", "cut tennis when I'm swamped and keep lunch no matter what", "multi"),
+    ("compound", "work 10-6 on weekdays and 12-4 on weekends", "multi"),
+    ("compound", "gym is optional and take sundays off", "multi"),
+    # ---- really items, though they sound like rules ----
+    ("item", "study session with Maya every wednesday 4-6pm", "item"),
+    ("item", "tutoring at 7pm on tuesdays", "item"),
+    ("item", "piano lesson every thursday at 5:30", "item"),
+    ("item", "shift at the library weekdays 8-10am", "item"),
+    ("item", "dinner w/ roommates every sunday 7pm", "item"),
+    ("item", "lunch at 12:15 every day", "item"),
+    ("item", "stretch 15 min after every run", "item"),
+    ("item", "30 minutes of reading for fun before bed each night", "item"),
+    ("item", "2 hours of LSAT prep every saturday morning", "item"),
+    ("item", "practice chinese characters 20 min a day", "item"),
+    ("item", "physical therapy tues/thurs 2-3pm", "item"),
+    ("item", "work-study in the mailroom mon/wed 1-4", "item"),
+    ("item", "chem lab every other wednesday 1:25-4:25", "item"),
+    ("item", "15 minute nap at 3pm every weekday", "item"),
+    ("item", "rehearsals for the musical are mon-thu 6-9pm", "item"),
+    ("item", "I have class MWF 9-10:15", "item"),
+    # ---- not rules at all ----
+    ("offtopic", "how many rules do i have", "new:not a rule"),
+    ("offtopic", "ugh i have so much to do", "new:not a rule"),
+    ("offtopic", "why did you put orgo at 7am", "new:not a rule"),
+    ("offtopic", "my sleep schedule is a mess", "new:not a rule"),
+    ("offtopic", "I studied 4 hours yesterday", "new:not a rule"),
+]
