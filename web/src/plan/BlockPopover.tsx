@@ -9,9 +9,11 @@ import { useEffect, useRef, useState } from "react"
 import { useLocation } from "react-router"
 import type { Item, Schemas } from "@/api/client"
 import { EstimateNudge } from "@/components/EstimateNudge"
+import { TimeInput } from "@/components/fr/TimeInput"
 import { Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useItem, useItems, useStatus, useWhy } from "@/hooks/queries"
+import { spanOn } from "@/lib/ampm"
 import { likelyTask, ranked } from "@/lib/holds"
 import { clock, dur, sittings, weekday, when } from "@/lib/format"
 import { eventPaint, PIGMENTS } from "@/lib/pigments"
@@ -224,6 +226,7 @@ export function BlockPopover() {
             )}
           </div>
         )}
+        {kind === "timed" && b.item_id != null && <SittingTimes itemId={b.item_id} start={b.start} end={b.end} onDone={close} />}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {event && event.event_kind !== "shove" && (
             <button className="btn btn-secondary" onClick={run(() => setEvent(draftOf(event)))} title="Open it in the drawer: title, day, times, colour, notes">
@@ -307,6 +310,54 @@ export function BlockPopover() {
 /** What an event's time is for (planner/holds.py): a task you'll do in it ("A4dd" is when you write "CS A4 Design
  * Doc"), or nothing, as for any event. The task is planned there, and other work keeps off it. When a task's title is
  * clearly in the event's, Friday asks about that one; any other is a search away. */
+/** A timed sitting's times, to put right (28 Oct: "what if i forgot to turn the timer off"): when you really started
+ * and stopped, or take it away. The time counted as done, and what Friday learns of how long it takes, follow. */
+function SittingTimes({ itemId, start, end, onDone }: { itemId: number; start: string; end: string; onDone: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [from, setFrom] = useState(start.slice(11, 16))
+  const [to, setTo] = useState(end.slice(11, 16))
+  const edit = useCommand("sitting_edit", { label: () => "Sitting changed" })
+  const remove = useCommand("sitting_delete", { label: (o) => o.result.message ?? "Sitting removed" })
+  const span = { id: itemId, start, end }
+  if (!open)
+    return (
+      <div style={{ display: "flex", gap: 12, fontSize: 12 }}>
+        <button className="fr-link" onClick={() => setOpen(true)}>
+          Change when you worked
+        </button>
+        <button className="fr-link" onClick={async () => (await remove(span)) && onDone()} style={{ color: "var(--fr-due)" }}>
+          Remove this sitting
+        </button>
+      </div>
+    )
+  const typed = spanOn(start.slice(0, 10), from, to)
+  const save = async () => {
+    if (await edit({ ...span, new_start: typed.start, new_end: typed.end })) onDone()
+  }
+  return (
+    <div role="group" aria-label="When you worked" onKeyDown={(e) => e.key === "Enter" && save()} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>When you really worked on it (a timer left running counts only this):</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <TimeInput value={from} onChange={(t) => t && setFrom(t)} label="Started" expect={{ near: from }} style={{ width: 96, padding: "4px 8px", minHeight: 0, fontSize: 13 }} />
+        <span style={{ color: "var(--color-neutral-500)" }}>–</span>
+        <TimeInput value={to} onChange={(t) => t && setTo(t)} label="Stopped" expect={{ after: from }} style={{ width: 96, padding: "4px 8px", minHeight: 0, fontSize: 13 }} />
+        <span className="tnum" style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>
+          {dur(Math.max(0, (Date.parse(`${typed.end}:00Z`) - Date.parse(`${typed.start}:00Z`)) / 60000))}
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className="btn btn-primary fr-press" onClick={save} style={{ fontSize: 12 }}>
+          <Icon name="check" />
+          Save
+        </button>
+        <button className="btn btn-ghost" onClick={() => setOpen(false)} style={{ fontSize: 12 }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function HeldFor({ event }: { event: Item }) {
   const hold = useCommand("event_hold", { label: (o) => o.result.message })
   const tasks = (useItems().data ?? []).filter((i) => i.when !== "fixed" && i.status === "todo")

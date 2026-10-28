@@ -539,3 +539,100 @@ def test_events_read_before_places_were_are_not_read_as_changed(app: App) -> Non
     log = len(app.table("command_log"))
     post(app, [HOME], [LECTURE], minutes_later=1)
     assert len(app.table("command_log")) == log
+
+
+# 28 Oct: "put all new events that are in friday also on google". Repeating events made here (Gym, CUAI, Salsa) never
+# went to a calendar: only one-off events were sent. Each time of a repeat now goes as an event of its own.
+
+
+def gym(app: App, **extra: Any) -> dict:
+    return app.do(
+        "add", title="Gym", when="fixed", start="2026-10-20T07:30", end="2026-10-20T09:00", every="week", **extra
+    )
+
+
+def every_time(app: App, title: str) -> list[dict]:
+    return [i for i in app.table("items") if i["title"] == title and i["status"] == "todo"]
+
+
+def creates(app: App) -> list[dict]:
+    return [j for j in app.do("mac_writes") if j["op"] == "create"]
+
+
+def test_each_time_of_a_repeating_event_made_here_goes_to_the_calendar(app: App) -> None:
+    post(app, [GMAIL], [])
+    app.do("settings_set", key="gcal", value={"new_events_to": "gmail-cal"})
+    made = gym(app)
+    times = every_time(app, "Gym")
+    assert made["occurrences"] == len(times) > 4
+    jobs = creates(app)
+    assert len(jobs) == len(times) and {j["calendar"] for j in jobs} == {"gmail-cal"}
+    assert sorted(j["start"] for j in jobs)[0] == "2026-10-20T11:30:00Z"
+    # The Mac app makes each; from then on each is that calendar's event, tied to its time here.
+    for job in jobs:
+        start = job["start"].replace(":00Z", "")
+        written(app, job, eid=f"gym{job['id']}", cid="gmail-cal", title="Gym",
+                start=local(start), end=local(job["end"].replace(":00Z", "")))  # fmt: skip
+    assert app.do("mac_writes") == []
+    # A change to the repeat from a date on goes to each of those times there.
+    first = min(times, key=lambda i: i["start_utc"])
+    app.do("edit", id=first["id"], from_date="2026-10-27", location="Teagle Hall")
+    saves = [j for j in app.do("mac_writes") if j["op"] == "save"]
+    assert saves and all(j["location"] == "Teagle Hall" for j in saves)
+    assert len(saves) == len([i for i in times if i["occurrence_date"] >= "2026-10-27"])
+
+
+def local(utc: str) -> str:
+    """A UTC time from a write as New York's wall time, the way `mac_event` takes it (before 1 November)."""
+    from datetime import datetime, timedelta
+
+    return (datetime.fromisoformat(utc) - timedelta(hours=4)).strftime("%Y-%m-%dT%H:%M")
+
+
+def test_deleting_a_repeat_on_a_calendar_takes_each_time_off_it(app: App) -> None:
+    post(app, [GMAIL], [])
+    app.do("settings_set", key="gcal", value={"new_events_to": "gmail-cal"})
+    series = gym(app)["series_id"]
+    (job, *_) = sorted(creates(app), key=lambda j: j["start"])
+    written(app, job, eid="gym1", cid="gmail-cal", title="Gym", start="2026-10-20T07:30", end="2026-10-20T09:00")
+    linked = next(i for i in every_time(app, "Gym") if i["start_utc"] == "2026-10-20T11:30Z")
+    app.do("series_delete", id=series)
+    # The one on the calendar is taken off it (and kept here, dropped, so its copy there stays tied to it); the times
+    # still waiting to be made are never made.
+    (gone,) = [j for j in app.do("mac_writes") if j["op"] == "delete"]
+    assert gone["event"].startswith("gym1")
+    assert creates(app) == []
+    assert app.do("item", id=linked["id"])["item"]["status"] == "dropped"
+    assert every_time(app, "Gym") == []
+
+
+def test_a_repeat_kept_only_in_friday_stays_there(app: App) -> None:
+    post(app, [GMAIL], [])
+    app.do("settings_set", key="gcal", value={"new_events_to": "gmail-cal"})
+    gym(app, calendar="")
+    assert creates(app) == []
+    app.do("materialize")
+    assert creates(app) == []
+    assert "Every event" in app.do("events_to_calendar")["message"]
+
+
+def test_events_made_before_a_calendar_was_chosen_are_put_on_it_once_asked(app: App) -> None:
+    post(app, [GMAIL], [])
+    gym(app)
+    one = app.do("add", title="Options Pricing Group Meeting", when="fixed", start="2026-10-21T19:00",
+                 end="2026-10-21T20:00")["item"]  # fmt: skip
+    mine = app.do("add", title="Therapy", when="fixed", start="2026-10-22T10:00", end="2026-10-22T11:00",
+                  calendar="")["item"]  # fmt: skip
+    assert app.do("mac_writes") == []  # nowhere to go yet
+    assert "Choose where new events go" in app.do("events_to_calendar")["message"]
+    app.do("settings_set", key="gcal", value={"new_events_to": "gmail-cal"})
+    gyms = every_time(app, "Gym")
+    said = app.do("events_to_calendar")["message"]
+    assert said == f"{len(gyms) + 1} events on the way to your calendar"
+    titles = sorted(j["title"] for j in creates(app))
+    assert titles == sorted(["Gym"] * len(gyms) + ["Options Pricing Group Meeting"])
+    assert mine["id"] not in {j.get("item_id") for j in app.table("event_writes")}
+    assert one["id"] in {w["item_id"] for w in app.table("event_writes")}
+    # Asked again before the Mac app has made them, nothing is sent twice.
+    assert "Every event" in app.do("events_to_calendar")["message"]
+    assert len(creates(app)) == len(gyms) + 1

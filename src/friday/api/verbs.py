@@ -221,6 +221,14 @@ VERBS = {
         False,
         "Calendar events whose title has the text, one per series (its next time, else its last), soonest first.",
     ),
+    "events_to_calendar": Verb(
+        "POST",
+        "/api/c/events_to_calendar",
+        commands.Empty,
+        True,
+        False,
+        "Put the events made in Friday that are still to come and on no calendar yet on the one new events go to, so",
+    ),
     "exams": Verb(
         "GET",
         "/api/q/exams",
@@ -902,6 +910,22 @@ VERBS = {
         True,
         "Clear time: `30m`, `12:00-13:30`, `rest`, `day fri`. Nothing is made later without your say.",
     ),
+    "sitting_delete": Verb(
+        "POST",
+        "/api/c/sitting_delete",
+        commands.SittingInput,
+        True,
+        True,
+        "Take a timed sitting away (timed by mistake): it no longer counts as done, nor as how long the work takes.",
+    ),
+    "sitting_edit": Verb(
+        "POST",
+        "/api/c/sitting_edit",
+        commands.SittingEditInput,
+        True,
+        True,
+        'Change when a timed sitting began and ended (28 Oct: "what if i forgot to turn the timer off"): the time',
+    ),
     "skip": Verb("POST", "/api/c/skip", commands.ItemRef, True, True, "Skip one occurrence of a repeating item."),
     "sleep": Verb(
         "GET",
@@ -982,7 +1006,12 @@ VERBS = {
         "The plan generation, the current plan, the timer and whether Friday is set up.",
     ),
     "stop": Verb(
-        "POST", "/api/c/stop", commands.StopInput, True, True, "Stop the timer; with `done`, also complete the item."
+        "POST",
+        "/api/c/stop",
+        commands.StopInput,
+        True,
+        True,
+        "Stop the timer; with `done`, also complete the item; with `at`, as of when you really stopped.",
     ),
     "stuck": Verb(
         "POST",

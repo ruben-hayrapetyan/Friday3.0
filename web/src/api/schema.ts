@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/events_to_calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put the events made in Friday that are still to come and on no calendar yet on the one new events go to, so */
+        post: operations["events_to_calendar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/repeat": {
         parameters: {
             query?: never;
@@ -1339,8 +1356,42 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Stop the timer; with `done`, also complete the item. */
+        /** Stop the timer; with `done`, also complete the item; with `at`, as of when you really stopped. */
         post: operations["stop"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/sitting_edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change when a timed sitting began and ended (28 Oct: "what if i forgot to turn the timer off"): the time */
+        post: operations["sitting_edit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/sitting_delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take a timed sitting away (timed by mistake): it no longer counts as done, nor as how long the work takes. */
+        post: operations["sitting_delete"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3834,6 +3885,27 @@ export interface components {
         };
         /** EventKeepResult */
         EventKeepResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** EventsToCalendarResult */
+        EventsToCalendarResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
@@ -7211,6 +7283,73 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /** SittingDeleteResult */
+        SittingDeleteResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** SittingEditInput */
+        SittingEditInput: {
+            /** Id */
+            id: number;
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
+            /** New Start */
+            new_start: string;
+            /** New End */
+            new_end: string;
+        };
+        /** SittingEditResult */
+        SittingEditResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["ItemResult"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
+         * SittingInput
+         * @description A timed sitting as the calendar shows it: the item and its span (local), every timer record in it.
+         */
+        SittingInput: {
+            /** Id */
+            id: number;
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
+        };
         /** SkipResult */
         SkipResult: {
             /** Command Id */
@@ -7698,6 +7837,8 @@ export interface components {
              * @default false
              */
             done?: boolean;
+            /** At */
+            at?: string | null;
         };
         /** StopResult */
         StopResult: {
@@ -8624,6 +8765,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalendarSetResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    events_to_calendar: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Empty"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventsToCalendarResult"];
                 };
             };
             /** @description Validation Error */
@@ -11191,6 +11369,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StopResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sitting_edit: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SittingEditInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SittingEditResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sitting_delete: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SittingInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SittingDeleteResult"];
                 };
             };
             /** @description Validation Error */

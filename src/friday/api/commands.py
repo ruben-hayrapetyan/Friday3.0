@@ -104,6 +104,20 @@ class StuckInput(Model):
 
 class StopInput(Model):
     done: bool = False
+    at: str | None = None  # when you stopped, if it was earlier than now (you forgot the timer): local time
+
+
+class SittingInput(Model):
+    """A timed sitting as the calendar shows it: the item and its span (local), every timer record in it."""
+
+    id: int
+    start: str
+    end: str
+
+
+class SittingEditInput(SittingInput):
+    new_start: str  # when you really started and stopped (local)
+    new_end: str
 
 
 class ReportInput(Model):

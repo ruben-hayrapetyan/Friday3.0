@@ -32,7 +32,7 @@ from friday.commands.fields import (
     to_item_values,
 )
 from friday.commands.registry import Ctx, command
-from friday.commands.series import create_series, load_series, without_times
+from friday.commands.series import calendar_of, create_series, load_series, without_times
 from friday.commands.timer import stop_timer
 from friday.core.db import one, rows
 from friday.core.guess import course_of, guess_preset
@@ -69,7 +69,7 @@ def add(ctx: Ctx, inp: AddInput) -> AddOutput:
     if inp.exceptions and not ("every" in repeat or "rrule" in repeat):
         raise FieldError("exceptions", "only a repeat has times that differ")
     if "every" in repeat or "rrule" in repeat:
-        series_id, made = create_series(ctx, given, repeat)
+        series_id, made = create_series(ctx, given, repeat, calendar=inp.calendar)
         warnings += [said for change in inp.exceptions if (said := excepted(ctx, series_id, change))]
         return AddOutput(series_id=series_id, occurrences=made, warnings=warnings)
     values = to_item_values(ctx, given)
@@ -329,6 +329,8 @@ def edit_from(ctx: Ctx, item: Item, from_date: str, given: dict[str, Any]) -> It
             after.min_chunk_units = fitted_chunk(ctx, before, after)
         validate(after)
         update_item(ctx, before, after)
+        # On its calendar too: each time is its own event there (series.materialize_series).
+        queue_event_write(ctx, after, "save", target=calendar_of(ctx, item.series_id))
     return ItemResult(
         item=item_out(ctx, require_item(ctx, item.id), minutes_by_item(ctx.conn, ctx.user_id).get(item.id, 0))
     )

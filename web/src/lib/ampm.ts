@@ -69,3 +69,14 @@ export function typedTime(text: string, was: string, expect: Expect = {}): { tim
   const hour = Math.floor(t.minute / 60) || 12
   return { time: hour >= 7 && hour <= 11 ? am : pm, guessed: true }
 }
+
+/** A span typed as two times of day, as local times from the day `day`: the end the next day when it's before the
+ * start (a sitting from 11:30pm to 12:40am). */
+export function spanOn(day: string, start: string, end: string): { start: string; end: string } {
+  const next = (d: string) => {
+    const t = new Date(`${d}T12:00:00Z`)
+    t.setUTCDate(t.getUTCDate() + 1)
+    return t.toISOString().slice(0, 10)
+  }
+  return { start: `${day}T${start}`, end: `${minute(end) <= minute(start) ? next(day) : day}T${end}` }
+}

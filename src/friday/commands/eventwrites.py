@@ -21,7 +21,9 @@ from pathlib import Path
 from typing import Any
 
 from friday.commands.calendars import editable
-from friday.commands.registry import Ctx
+from friday.api.commands import Changed
+from friday.api.types import Empty
+from friday.commands.registry import Ctx, command
 from friday.core.db import one, rows
 from friday.core.items import Item
 from friday.core.time import format_utc, parse_utc, to_local
@@ -32,21 +34,21 @@ MAX_TRIES = 5
 EDITING = (google_auth.EVENTS_SCOPE,)
 
 
-def queue_event_write(ctx: Ctx, item: Item, op: str, target: str | None = None) -> None:
-    """Queue a save or a delete of an event, when its calendar takes changes from Friday. Changes the sync makes (an
-    event changed in Google) are never written back. A new event goes to `target` when given ("" keeps it only in
-    Friday), else to the calendar Settings names for new events."""
+def queue_event_write(ctx: Ctx, item: Item, op: str, target: str | None = None) -> bool:
+    """Queue a save or a delete of an event, when its calendar takes changes from Friday; says whether it did. Changes
+    the sync makes (an event changed in Google) are never written back. A new event goes to `target` when given (""
+    keeps it only in Friday), else to the calendar Settings names for new events."""
     if item.when != "fixed" or item.id is None or ctx.actor.startswith("sync:"):
-        return
+        return False
     link = event_links(ctx.conn, ctx.user_id).get(item.id)
     if link is None:
         target = ctx.settings["gcal"].new_events_to if target is None else (target or None)
         if item.id in (kv_get(ctx.conn, "friday_only_events", [], ctx.user_id) or []):
-            return  # you kept it only in Friday
+            return False  # you kept it only in Friday
         if op != "save" or target is None or item.event_kind == "shove":
-            return
+            return False
         if target not in new_event_calendars(ctx.conn, ctx.user_id):
-            return  # its account was removed: kept only in Friday until you choose another calendar
+            return False  # its account was removed: kept only in Friday until you choose another calendar
         waiting = one(
             ctx.conn,
             "SELECT 1 FROM event_writes WHERE user_id = ? AND item_id = ? AND op = 'save' AND done_utc IS NULL "
@@ -54,10 +56,49 @@ def queue_event_write(ctx: Ctx, item: Item, op: str, target: str | None = None) 
             [ctx.user_id, item.id, MAX_TRIES],
         )
         if waiting:
-            return  # it's still to be made, and is made as it is then: a second would make it twice
+            return False  # it's still to be made, and is made as it is then: a second would make it twice
     elif not writes_to(ctx.conn, ctx.user_id, link.source_id):
-        return
+        return False
     ctx.db.insert("event_writes", {"item_id": item.id, "op": op, "calendar_id": target, "queued_utc": ctx.now_text})
+    return True
+
+
+@command("events_to_calendar")
+def events_to_calendar(ctx: Ctx, inp: Empty) -> Changed:
+    """Put the events made in Friday that are still to come and on no calendar yet on the one new events go to, so
+    your calendar has what Friday has (28 Oct: "put all new events that are in friday also on google"): those made
+    before a calendar was chosen for new events, and every time of a repeat made here. One you kept only in Friday
+    stays there, and one read from a calendar feed (Canvas) is that feed's."""
+    if not ctx.settings["gcal"].new_events_to:
+        return Changed(message="Choose where new events go first, in Settings → Calendars")
+    from friday.commands.series import calendar_of  # series imports this module
+
+    links = event_links(ctx.conn, ctx.user_id)
+    fed = {
+        r["item_id"]
+        for r in rows(
+            ctx.conn,
+            "SELECT s.item_id FROM suggestions s JOIN raw_inputs r ON r.id = s.raw_input_id "
+            "JOIN sources src ON src.id = r.source_id WHERE s.user_id = ? AND s.item_id IS NOT NULL AND src.kind = 'ics'",
+            [ctx.user_id],
+        )
+    }
+    sent = 0
+    for r in rows(
+        ctx.conn,
+        "SELECT i.id, i.series_id, s.external_id FROM items i LEFT JOIN series s ON s.id = i.series_id "
+        "WHERE i.user_id = ? AND i.when_kind = 'fixed' AND i.status = 'todo' AND i.end_utc > ? ORDER BY i.start_utc",
+        [ctx.user_id, ctx.now_text],
+    ):
+        if r["id"] in links or r["id"] in fed or r["external_id"]:
+            continue
+        item = load_item(ctx.conn, r["id"], ctx.user_id)
+        target = calendar_of(ctx, r["series_id"]) if r["series_id"] else None
+        if item is not None and queue_event_write(ctx, item, "save", target=target):
+            sent += 1
+    if not sent:
+        return Changed(message="Every event of yours is on a calendar already")
+    return Changed(message=f"{sent} event{'s' if sent != 1 else ''} on the way to your calendar")
 
 
 def new_event_calendars(conn: sqlite3.Connection, user_id: int) -> set[str]:

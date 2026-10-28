@@ -9,6 +9,7 @@ from friday.api.commands import TimerOut
 from friday.commands.fields import require_item
 from friday.commands.registry import Ctx
 from friday.core.db import one
+from friday.core.items import FieldError
 from friday.core.time import EPOCH, format_utc, parse_utc
 
 
@@ -68,15 +69,22 @@ def timer_out(ctx: Ctx, timer: dict[str, Any], message: str = "") -> TimerOut:
     )
 
 
-def stop_timer(ctx: Ctx) -> TimerOut:
+def stop_timer(ctx: Ctx, at: int | None = None) -> TimerOut:
     """Write the running session as `timer` progress (to the nearest minute; under half a minute, nothing) and
-    clear the timer."""
+    clear the timer. `at`: when you really stopped, earlier than now (28 Oct: a timer left running counted, and
+    taught Friday, hours you didn't work)."""
     timer = running(ctx)
     if timer is None:
         return TimerOut(item_id=None, started=None, message="No timer running")
     seconds = elapsed_seconds(ctx, timer)
-    minutes = round(seconds / 60)
     start = parse_utc(timer["start_utc"])
+    if at is not None:
+        if at <= start:
+            raise FieldError("at", f"must be after you started, at {ctx.local(timer['start_utc'])[11:16]}")
+        if at > ctx.now_utc:
+            raise FieldError("at", "must not be later than now")
+        seconds = min(seconds, (at - start) * 60)
+    minutes = round(seconds / 60)
     if minutes:
         write_progress(ctx, timer["item_id"], minutes, "timer", start, start + minutes)
     ctx.db.delete("timer", {"user_id": ctx.user_id})

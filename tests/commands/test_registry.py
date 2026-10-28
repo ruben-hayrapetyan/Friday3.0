@@ -143,6 +143,25 @@ def stop_sample(app: App) -> dict[str, Any]:
     return {"done": True}
 
 
+def unsent_event(app: App) -> dict[str, Any]:
+    """An event made before a calendar was chosen for new events, then one chosen: the Mac's Gmail calendar."""
+    from tests.sync.test_mac_calendars import GMAIL, SINCE, UNTIL
+
+    app.do("mac_sync", calendars=[GMAIL], events=[], since=SINCE, until=UNTIL)
+    app.do("add", title="Gym", when="fixed", start="2026-10-20T07:30", end="2026-10-20T09:00")
+    app.do("settings_set", key="gcal", value={"new_events_to": "gmail-cal"})
+    return {}
+
+
+def timed(app: App) -> dict[str, Any]:
+    """A sitting timed 9:00 to 9:40 on the chore, as the calendar shows it."""
+    item = chore(app)
+    app.do("start", id=item)
+    app.at("2026-10-19T09:40")
+    app.do("stop")
+    return {"id": item, "start": "2026-10-19T09:00", "end": "2026-10-19T09:40"}
+
+
 def materialize_sample(app: App) -> dict[str, Any]:
     gym(app)
     app.at("2026-10-26T09:00")
@@ -360,6 +379,8 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "progress": lambda app: {"id": essay(app), "share": 0.5},
     "start": lambda app: {"id": chore(app)},
     "stop": stop_sample,
+    "sitting_edit": lambda app: timed(app) | {"new_start": "2026-10-19T09:00", "new_end": "2026-10-19T09:20"},
+    "sitting_delete": timed,
     "log": lambda app: {"id": essay(app), "start": "2026-10-19T07:45", "end": "2026-10-19T08:30"},
     "review_submit": review_sample,
     "pin": lambda app: {"id": chore(app), "start": "2026-10-19T15:00", "kind": "locked"},
@@ -409,6 +430,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "mail_retry": lambda app: {"id": a_skipped_mail(app)},
     "repeats_import": lambda app: {"repeats": [{"batch": a_waiting_repeat(app)}]},
     "calendar_set": lambda app: {"id": a_calendar(app), "on": True, "kind": "Class"},
+    "events_to_calendar": unsent_event,
     "kind_add": lambda app: {"name": "Lab report", "like": "Assignment"},
     "kind_remove": lambda app: {"name": "Errand", "move_to": "Chore"},
     "token_remove": lambda app: {"name": app.do("token_add", name="claude")["name"]},

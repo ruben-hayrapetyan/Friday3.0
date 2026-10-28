@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { DAY_HOURS, EXAM_HOURS, type Expect, inHours, MEAL_HOURS, otherHalf, SLEEP_HOURS, typedTime } from "./ampm"
+import { DAY_HOURS, EXAM_HOURS, type Expect, inHours, MEAL_HOURS, otherHalf, SLEEP_HOURS, spanOn, typedTime } from "./ampm"
 
 const at = (text: string, was = "", expect: Expect = {}) => typedTime(text, was, expect)?.time ?? null
 
@@ -123,5 +123,13 @@ describe("the parts", () => {
         }
       }
     }
+  })
+})
+
+describe("a span typed as two times of day", () => {
+  it("is on the day given, the end the next day when it's before the start", () => {
+    expect(spanOn("2026-10-28", "09:10", "10:40")).toEqual({ start: "2026-10-28T09:10", end: "2026-10-28T10:40" })
+    expect(spanOn("2026-10-28", "23:30", "00:40")).toEqual({ start: "2026-10-28T23:30", end: "2026-10-29T00:40" })
+    expect(spanOn("2026-10-31", "22:00", "01:00").end).toBe("2026-11-01T01:00")
   })
 })

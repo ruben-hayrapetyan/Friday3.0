@@ -14,6 +14,8 @@ import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useClock, useElapsed } from "@/hooks/useClock"
 import { EstimateNudge } from "@/components/EstimateNudge"
+import { TimeInput } from "@/components/fr/TimeInput"
+import { spanOn } from "@/lib/ampm"
 import { useItem, useMeals, useNow, useSleep, useStatus } from "@/hooks/queries"
 import { clock, dur, hms, span, when } from "@/lib/format"
 import { fromMin, toMin } from "@/lib/time"
@@ -55,7 +57,7 @@ export function Dock() {
       <SleepTap />
       <MealTap />
       {cur && timer && timer.item_id === cur.item_id ? (
-        <Timing cur={cur} elapsed={timer.elapsed_s ?? 0} next={next} dot={color(cur.area, cur.preset)} compact={compact} menu={menu} onMenu={toggle} />
+        <Timing cur={cur} elapsed={timer.elapsed_s ?? 0} started={timer.started ?? null} next={next} dot={color(cur.area, cur.preset)} compact={compact} menu={menu} onMenu={toggle} />
       ) : cur?.fixed ? (
         <InEvent cur={cur} next={next} dot={color(cur.area, cur.preset)} />
       ) : cur ? (
@@ -159,7 +161,7 @@ const clamp = (x: number) => Math.max(0, Math.min(100, x))
 const share = (cur: Block, nowMin: number) => clamp(((nowMin - toMin(cur.start)) / Math.max(1, toMin(cur.end) - toMin(cur.start))) * 100)
 
 /** The timer running on what you're doing: the seconds, the plan's room for it, then what's next. */
-function Timing({ cur, elapsed, next, dot, compact, menu, onMenu }: State & { elapsed: number }) {
+function Timing({ cur, elapsed, started, next, dot, compact, menu, onMenu }: State & { elapsed: number; started: string | null }) {
   const seconds = useElapsed(elapsed)
   const nowMin = useClock()
   const pause = useCommand("stop", { label: (o) => o.result.message ?? "Paused" })
@@ -197,8 +199,43 @@ function Timing({ cur, elapsed, next, dot, compact, menu, onMenu }: State & { el
       {/* Started and finding it's longer (or shorter) than you thought: the estimate, a tap from here. */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 14px 10px 18px", fontSize: 12, color: "var(--color-neutral-400)" }}>
         <EstimateNudge itemId={cur.item_id} runningMin={seconds / 60} />
+        {started && <ForgotToStop started={started} />}
       </div>
     </>
+  )
+}
+
+/** A timer left running (28 Oct: "what if i forgot to turn the timer off"): stop it as of when you really stopped, so
+ * only that counts as done and as how long it took. */
+function ForgotToStop({ started }: { started: string }) {
+  const [open, setOpen] = useState(false)
+  const [at, setAt] = useState("")
+  const stop = useCommand("stop", { label: (o) => o.result.message ?? "Stopped" })
+  const end = (done: boolean) => {
+    if (!at) return
+    stop({ at: spanOn(started.slice(0, 10), started.slice(11, 16), at).end, done })
+    setOpen(false)
+  }
+  if (!open)
+    return (
+      <button className="fr-link" onClick={() => setOpen(true)} style={{ marginLeft: "auto", fontSize: 12 }}>
+        Forgot to stop?
+      </button>
+    )
+  return (
+    <span role="group" aria-label="When you stopped" onKeyDown={(e) => e.key === "Enter" && end(false)} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}>
+      Stopped at
+      <TimeInput value={at} onChange={setAt} label="Stopped at" expect={{ after: started.slice(11, 16) }} style={{ width: 92, padding: "2px 8px", minHeight: 0, fontSize: 12 }} />
+      <button className="btn btn-secondary" disabled={!at} onClick={() => end(false)} style={{ fontSize: 12, padding: "2px 8px", minHeight: 0 }}>
+        Stop then
+      </button>
+      <button className="btn btn-secondary" disabled={!at} onClick={() => end(true)} style={{ fontSize: 12, padding: "2px 8px", minHeight: 0 }}>
+        Done then
+      </button>
+      <button className="fr-link" onClick={() => setOpen(false)} style={{ fontSize: 12 }}>
+        Cancel
+      </button>
+    </span>
   )
 }
 

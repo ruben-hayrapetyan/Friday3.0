@@ -15,6 +15,8 @@ from friday.api.commands import (
     ReviewSubmitInput,
     ReviewTaskInput,
     SettleInput,
+    SittingEditInput,
+    SittingInput,
     StartInput,
     StopInput,
     StuckInput,
@@ -105,13 +107,54 @@ def stuck(ctx: Ctx, inp: StuckInput) -> Changed:
 
 @command("stop", affects_plan=True)
 def stop(ctx: Ctx, inp: StopInput) -> TimerOut:
-    """Stop the timer; with `done`, also complete the item."""
+    """Stop the timer; with `done`, also complete the item; with `at`, as of when you really stopped."""
     timer = running(ctx)
-    out = stop_timer(ctx)
+    out = stop_timer(ctx, parse_utc(ctx.utc(inp.at, "at")) if inp.at else None)
     if inp.done and timer is not None:
         done(ctx, DoneInput(id=timer["item_id"]))
         out.message += " and marked it done"
     return out
+
+
+def timed_in(ctx: Ctx, inp: SittingInput) -> list[dict[str, Any]]:
+    """The timer's records of an item within a sitting the calendar shows (touching ones are shown as one)."""
+    start, end = ctx.utc(inp.start, "start"), ctx.utc(inp.end, "end")
+    found = rows(
+        ctx.conn,
+        "SELECT * FROM progress WHERE user_id = ? AND item_id = ? AND source = 'timer' AND start_utc IS NOT NULL "
+        "AND end_utc IS NOT NULL AND start_utc < ? AND end_utc > ? ORDER BY start_utc",
+        [ctx.user_id, inp.id, end, start],
+    )
+    if not found:
+        raise FieldError("start", "no timed sitting of that there then")
+    return found
+
+
+@command("sitting_edit", affects_plan=True)
+def sitting_edit(ctx: Ctx, inp: SittingEditInput) -> ItemResult:
+    """Change when a timed sitting began and ended (28 Oct: "what if i forgot to turn the timer off"): the time
+    counted as done, and what Friday learns of how long that takes, are the corrected time."""
+    found = timed_in(ctx, inp)
+    start, end = parse_utc(ctx.utc(inp.new_start, "new_start")), parse_utc(ctx.utc(inp.new_end, "new_end"))
+    if end <= start:
+        raise FieldError("new_end", "must be after the start")
+    if end > ctx.now_utc:
+        raise FieldError("new_end", "must not be later than now")
+    for r in found:
+        ctx.db.delete("progress", {"id": r["id"]})
+    write_progress(ctx, inp.id, end - start, "timer", start, end)
+    item = require_item(ctx, inp.id)
+    return ItemResult(item=item_out(ctx, item, minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0)))
+
+
+@command("sitting_delete", affects_plan=True)
+def sitting_delete(ctx: Ctx, inp: SittingInput) -> Changed:
+    """Take a timed sitting away (timed by mistake): it no longer counts as done, nor as how long the work takes."""
+    found = timed_in(ctx, inp)
+    for r in found:
+        ctx.db.delete("progress", {"id": r["id"]})
+    minutes = sum(r["minutes"] for r in found)
+    return Changed(message=f"Removed {minutes} min timed on {require_item(ctx, inp.id).title}")
 
 
 @command("log", affects_plan=True)

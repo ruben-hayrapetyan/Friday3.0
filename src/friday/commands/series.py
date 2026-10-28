@@ -27,7 +27,7 @@ from friday.core.recurrence import describe, ending_before, read_repeat
 from friday.core.rows import item_to_row
 from friday.core.series import Series, materialize
 from friday.core.time import ampm, format_local, local_midnight, parse_local, parse_utc, to_local
-from friday.planner.store import area_names, event_links
+from friday.planner.store import area_names, event_links, kv_get
 
 TIME_KEYS = ("start_utc", "end_utc", "release_utc", "due_utc")
 
@@ -40,10 +40,32 @@ def rule_from(ctx: Ctx, every: str) -> str:
     return found[0]
 
 
-def create_series(ctx: Ctx, given: dict[str, Any], repeat: dict[str, Any]) -> tuple[int, int]:
-    """A series from item fields and a repeat (`every` shorthand or a parsed `rrule`); returns its id and count."""
+def create_series(
+    ctx: Ctx, given: dict[str, Any], repeat: dict[str, Any], calendar: str | None = None
+) -> tuple[int, int]:
+    """A series from item fields and a repeat (`every` shorthand or a parsed `rrule`); returns its id and count. A
+    repeating event goes to `calendar` ("" keeps it only in Friday), else where new events go, as a one-off does."""
     series_id = new_series(ctx, to_item_values(ctx, given), repeat)
+    if calendar is not None:
+        keep_calendar(ctx, series_id, calendar)
     return series_id, materialize_series(ctx, series_id)
+
+
+def calendar_of(ctx: Ctx, series_id: int) -> str | None:
+    """The calendar a repeating event made here goes to: the one you named for it ("" for only in Friday), else None
+    (where new events go)."""
+    return (kv_get(ctx.conn, "series_calendars", {}, ctx.user_id) or {}).get(str(series_id))
+
+
+def keep_calendar(ctx: Ctx, series_id: int, calendar: str | None) -> None:
+    if calendar is None:
+        return
+    kept = kv_get(ctx.conn, "series_calendars", {}, ctx.user_id) or {}
+    ctx.db.upsert(
+        "kv",
+        {"user_id": ctx.user_id, "key": "series_calendars"},
+        {"value": json.dumps(kept | {str(series_id): calendar})},
+    )
 
 
 def new_series(ctx: Ctx, values: dict[str, Any], repeat: dict[str, Any]) -> int:
@@ -144,15 +166,21 @@ def as_series(row: dict[str, Any]) -> Series:
 
 
 def materialize_series(ctx: Ctx, series_id: int) -> int:
-    """Create the missing occurrences from today to `materialize_days` ahead; returns how many."""
-    series = as_series(load_series(ctx, series_id))
+    """Create the missing occurrences from today to `materialize_days` ahead; returns how many. Each time of a
+    repeating event made here goes to its calendar, as a one-off event does (28 Oct: Gym, CUAI and Salsa, repeats,
+    were never put on Google): one event there per time, so each changes or goes on its own."""
+    row = load_series(ctx, series_id)
+    series = as_series(row)
     existing = {
         (r["occurrence_date"], r["occurrence_n"])
         for r in rows(ctx.conn, "SELECT occurrence_date, occurrence_n FROM items WHERE series_id = ?", [series_id])
     }
     made = materialize(series, ctx.today, ctx.settings["time"].materialize_days, ctx.tz, existing)
+    calendar = calendar_of(ctx, series_id)
     for item in made:
-        insert_item(ctx, with_defaults(item))
+        item_id = insert_item(ctx, with_defaults(item))
+        if not row["external_id"]:  # a calendar's own repeat is that calendar's already
+            queue_event_write(ctx, require_item(ctx, item_id), "save", target=calendar)
     return len(made)
 
 
@@ -161,6 +189,7 @@ def remove_future_occurrences(ctx: Ctx, series_id: int, from_day: date) -> list[
     (you're on it now, so it isn't taken from under the timer)."""
     kept = []
     timer = one(ctx.conn, "SELECT item_id FROM timer WHERE user_id = ?", [ctx.user_id])
+    links = event_links(ctx.conn, ctx.user_id)
     for row in rows(
         ctx.conn,
         "SELECT id, detached FROM items WHERE series_id = ? AND status = 'todo' AND occurrence_date >= ?",
@@ -168,6 +197,12 @@ def remove_future_occurrences(ctx: Ctx, series_id: int, from_day: date) -> list[
     ):
         if row["detached"] or (timer is not None and timer["item_id"] == row["id"]):
             kept.append(row["id"])
+        elif row["id"] in links:
+            # On a calendar: taken off it too, and kept here as dropped so the calendar's copy stays tied to it until
+            # it's gone (deleted outright, the calendar would bring it back as an event of its own).
+            dropped = replace(require_item(ctx, row["id"]), status="dropped")
+            ctx.db.update("items", {"id": row["id"]}, {"status": "dropped", "updated_utc": ctx.now_text})
+            queue_event_write(ctx, dropped, "delete")
         else:
             delete_item(ctx, row["id"])
     return kept
@@ -226,6 +261,7 @@ def edit_series_from(
             "updated_utc": ctx.now_text,
         },
     )
+    keep_calendar(ctx, new_id, calendar_of(ctx, series_id))  # the changed copy goes where the series went
     materialize_series(ctx, new_id)
     return new_id
 
