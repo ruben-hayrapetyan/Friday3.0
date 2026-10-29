@@ -5,7 +5,8 @@
 // the plan, never a change to it (DESIGN §8), so Start and Pause move nothing on the calendar. With sleep tracking on
 // (Settings → Schedule), a slim row on top offers the tap that fits the hour: I'm up, Ready to work, Done with work
 // (with Going to bed beside it, for a night you go straight to bed), then Going to bed; with
-// meal tracking on, another offers Eating now around a mealtime (or Skip), and Done eating while you eat.
+// meal tracking on, another offers Eating now around a mealtime (or Skip), and Done eating while you eat. Napping, a
+// row says since when, with I'm up; More and free time offer a nap and a snack (`breaks.ts`).
 
 import { useState } from "react"
 import { useNavigate } from "react-router"
@@ -21,6 +22,7 @@ import { clock, dur, hms, span, when } from "@/lib/format"
 import { fromMin, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
+import { useBreaks } from "./breaks"
 
 type Menu = "time" | "more" | "swap" | null
 type Fit = { item_id: number; title: string; minutes: number }
@@ -77,11 +79,28 @@ const TAPS = {
   bed: { icon: "moon", ask: "Heading to sleep?", button: "Going to bed" },
 } as const
 
-/** Tracked sleep's one tap, when there's one to make; Friday learns your nights, mornings and evenings from them. */
+/** Tracked sleep's one tap, when there's one to make; Friday learns your nights, mornings and evenings from them.
+ * Napping, the nap and I'm up instead. */
 function SleepTap() {
   const sleep = useSleep().data
   const mark = useCommand("sleep_mark", { label: (o) => o.result.message ?? "Saved" })
+  const up = useCommand("nap_end", { label: (o) => o.result.message ?? "Saved" })
   const [busy, setBusy] = useState(false)
+  const nowMin = useClock()
+  if (sleep?.on && sleep.napping) {
+    const since = sleep.napping.start
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 14px 6px 18px", boxShadow: "inset 0 -1px 0 var(--fr-hairline)", fontSize: 12, color: "var(--color-neutral-400)" }}>
+        <Icon name="bed" size={14} style={{ color: "var(--color-accent-300)" }} />
+        <span className="tnum" style={{ flex: 1 }}>
+          Napping since {clock(since)} · {dur(Math.max(1, nowMin - toMin(since)))}
+        </span>
+        <button className="btn btn-secondary fr-press" disabled={busy} onClick={async () => (setBusy(true), await up({}), setBusy(false))} style={{ fontSize: 12, padding: "2px 10px" }}>
+          I'm up
+        </button>
+      </div>
+    )
+  }
   if (!sleep?.on || !sleep.next) return null
   const kind = sleep.next
   const tap = TAPS[kind]
@@ -313,6 +332,8 @@ interface FreeProps {
 /** Nothing on: how long you're free, what's next, and what to start, one tap each. */
 function Free({ until, gap, next, fits, today }: FreeProps) {
   const start = useCommand("start", { label: (o) => o.result.message ?? "Timing" })
+  const breaks = useBreaks()
+  const quiet = { fontSize: 12, display: "inline-flex", gap: 4, alignItems: "center" } as const
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 14px 12px 18px" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, minWidth: 0 }}>
@@ -349,6 +370,19 @@ function Free({ until, gap, next, fits, today }: FreeProps) {
           </>
         ) : (
           <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>Nothing needs this time. It's yours.</span>
+        )}
+        <span style={{ flex: 1 }} />
+        {breaks.nap && (
+          <button className="fr-link" onClick={breaks.nap} title="Taking a nap: the plan keeps the time clear" style={quiet}>
+            <Icon name="bed" size={12} />
+            Nap
+          </button>
+        )}
+        {breaks.snack && (
+          <button className="fr-link" onClick={breaks.snack} title="Having a snack: the plan keeps the time clear" style={{ ...quiet, marginLeft: 8 }}>
+            <Icon name="cookie" size={12} />
+            Snack
+          </button>
         )}
       </div>
     </div>
@@ -388,12 +422,15 @@ function MoreMenu({ itemId, onSwitch, onClose }: { itemId: number; onSwitch: () 
   const navigate = useNavigate()
   const { setPop } = useShell()
   const stuck = useCommand("stuck", { label: (o) => o.result.message ?? "Noted" })
+  const breaks = useBreaks()
   const options = [
     { icon: "swap", label: "Switch", desc: "Do something else now", run: onSwitch },
     { icon: "warning-circle", label: "Stuck", desc: "Note it, and see what else fits", run: () => (stuck({ id: itemId }), onSwitch()) },
     { icon: "hand-palm", label: "Shove", desc: "Take time back", run: () => (onClose(), setPop("shove")) },
     { icon: "gauge", label: "Pace", desc: "Push harder or ease off", run: () => (onClose(), setPop("pace")) },
     { icon: "arrow-square-out", label: "Open", desc: "Details, sessions and why", run: () => (onClose(), navigate(`/todo?item=${itemId}`)) },
+    ...(breaks.nap ? [{ icon: "bed", label: "Nap", desc: "Pause and nap; work waits", run: () => (onClose(), breaks.nap?.()) }] : []),
+    ...(breaks.snack ? [{ icon: "cookie", label: "Snack", desc: "Eat something; work waits", run: () => (onClose(), breaks.snack?.()) }] : []),
   ]
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 4, padding: "10px 12px 6px", boxShadow: "inset 0 -1px 0 color-mix(in srgb, var(--color-text) 7%, transparent)" }}>

@@ -25,6 +25,7 @@ from friday.commands import (  # noqa: F401
     learning,
     mac,
     mail,
+    napping,
     pins,
     planning,
     progress,

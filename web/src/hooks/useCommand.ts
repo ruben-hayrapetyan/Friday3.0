@@ -6,7 +6,7 @@ import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useCallback } from "react"
 import { ApiError, type CommandInput, type CommandName, command, type Output } from "@/api/client"
 import { type Toast, useToast } from "@/components/Toasts"
-import { markedDone, mealEnded, mealSkipped, mealStarted, sleepMarked, timerStarted, timerStopped } from "@/now/instant"
+import { markedDone, mealEnded, mealSkipped, mealStarted, napEnded, napStarted, sleepMarked, timerStarted, timerStopped } from "@/now/instant"
 import { pending } from "@/plan/pending"
 import { whatIf } from "@/whatif/store"
 
@@ -22,6 +22,8 @@ const INSTANT: Record<string, (client: QueryClient, input: never) => void> = {
   meal_end: mealEnded,
   meal_skip: mealSkipped,
   sleep_mark: sleepMarked,
+  nap_start: napStarted,
+  nap_end: napEnded,
 }
 
 // The newest change this page made, for ⌘Z: one command, or several made as one (a change to many to-dos).

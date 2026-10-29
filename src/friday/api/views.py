@@ -653,6 +653,14 @@ class SleepNightOut(Model):
     wind_down_min: int | None = None  # done with work to bed
 
 
+class NapOut(Model):
+    id: int
+    date: str  # the planning day
+    start: str  # local
+    end: str | None = None  # local; None while you nap
+    minutes: int | None = None
+
+
 class SleepChangeOut(Model):
     days: list[str]
     field: Literal["bedtime", "wake"]
@@ -798,3 +806,6 @@ class SleepOut(Model):
     against: list[str] = []  # how the suggested times would break your sleep rule, said before you take them
     recorded_nights: int = 0
     min_nights: int = 4
+    napping: NapOut | None = None  # the nap you're taking now
+    naps: list[NapOut] = []  # the last two weeks, newest first
+    usual_nap_min: int | None = None  # how long you usually nap, once Friday has three naps to go on

@@ -7,6 +7,7 @@ import json
 import sqlite3
 from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
+from statistics import median
 from typing import Any
 
 import numpy as np
@@ -19,7 +20,7 @@ from friday.core.rows import item_from_row
 from friday.core.settings import minutes_of
 from friday.core.time import format_utc, parse_utc, planning_date, to_local, to_utc
 from friday.learn import guard
-from friday.learn.sleep import Mark, evening_of, learn, nights_from
+from friday.learn.sleep import NAP_USUAL_MIN, Mark, evening_of, learn, nights_from, usual_nap
 from friday.learn.state import loadings
 from friday.planner.cushion import cushion, cushioned
 from friday.planner.progress import progress_rows, recorded_minutes
@@ -61,6 +62,7 @@ class SleepFacts:
     ready: bool = False  # this morning's "Ready to work", or a timer started since waking
     wind_down_min: dict[str, int] = field(default_factory=dict)  # done with work to bed, learned, by the evening
     done_utc: int | None = None  # tonight's "Done with work", before going to bed
+    napped_min: dict[date, int] = field(default_factory=dict)  # naps, by their planning day
 
 
 @dataclass(frozen=True)
@@ -92,6 +94,7 @@ class Snapshot:
     sleep: SleepFacts | None = None
     eating: tuple[int, int] | None = None  # the routine of the meal you're eating (Sleep & meals), and its start
     going: frozenset[int] = frozenset()  # optional events you said you'd go to this time (`event_keep`): walled off
+    away: tuple[str, int, int] | None = None  # a nap or a snack now (`away`): what, since when, until when
 
 
 def take_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> Snapshot:
@@ -155,6 +158,7 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         cold_once=kv_get(conn, "next_cold", None, user_id) is not None,
         sleep=sleep_facts(conn, now_utc, settings, user_id),
         eating=eating(conn, user_id) if settings["meal_tracking"].on else None,
+        away=away(conn, now_utc, settings, user_id),
         going=frozenset(kv_get(conn, "events_kept", [], user_id)),
         **learned(conn, now_utc, settings, user_id),
         log_since_plan=log_since(conn, json.loads(plan["report"]).get("last_command_id", 0) if plan else 0, user_id),
@@ -190,6 +194,11 @@ def sleep_facts(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any]
     morning = nights.get(to_local(now_utc, tz).date() - timedelta(days=1))
     tonight = nights.get(evening_of(to_local(now_utc, tz), day_start))
     learned = learn(nights.values(), tracking.min_nights)
+    napped: dict[date, int] = {}
+    for r in rows(conn, "SELECT * FROM naps WHERE user_id = ? AND end_utc IS NOT NULL AND start_utc >= ?",
+                  [user_id, since]):  # fmt: skip
+        day = date.fromisoformat(r["date"])
+        napped[day] = napped.get(day, 0) + parse_utc(r["end_utc"]) - parse_utc(r["start_utc"])
     return SleepFacts(
         routine_min=learned.routine_min,
         wind_down_min=learned.wind_down_min,
@@ -197,6 +206,7 @@ def sleep_facts(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any]
         slept_min={d: n.slept_min for d, n in nights.items() if n.slept_min is not None},
         woke_utc=to_utc(morning.up.at, tz) if morning and morning.up else None,
         ready=bool(morning and morning.ready_at),
+        napped_min=napped,
     )
 
 
@@ -251,6 +261,47 @@ def eating(conn: sqlite3.Connection, user_id: int) -> tuple[int, int] | None:
         [user_id],
     ).fetchone()
     return (found["item_id"], parse_utc(found["start_utc"])) if found else None
+
+
+FORGOTTEN_MIN = 3 * 60  # a nap or a snack running this long was a tap forgotten: nothing is held for it
+MEAL_USUAL_MIN = {"snack": 15}  # a meal's length until you've had a few (else half an hour)
+
+
+def away(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any], user_id: int) -> tuple[str, int, int] | None:
+    """What you're doing now that no planned item stands for (29 Oct: naps and snacks): a nap, or a meal with no
+    routine of its name (a snack, a breakfast you don't plan), since when and until it should end: as long as you
+    usually nap, or take over that meal."""
+    since = format_utc(now_utc - LEARN_DAYS * 1440)
+    nap = settings["sleep_tracking"].on and one(
+        conn, "SELECT start_utc FROM naps WHERE user_id = ? AND end_utc IS NULL ORDER BY id DESC LIMIT 1", [user_id]
+    )
+    if nap and now_utc - (start := parse_utc(nap["start_utc"])) <= FORGOTTEN_MIN:
+        found = rows(
+            conn,
+            "SELECT start_utc, end_utc FROM naps WHERE user_id = ? AND end_utc IS NOT NULL AND start_utc >= ?",
+            [user_id, since],
+        )
+        usual = usual_nap(parse_utc(r["end_utc"]) - parse_utc(r["start_utc"]) for r in found) or NAP_USUAL_MIN
+        return ("Nap", start, start + usual)
+    meal = settings["meal_tracking"].on and one(
+        conn,
+        "SELECT kind, start_utc FROM meals WHERE user_id = ? AND end_utc IS NULL AND start_utc IS NOT NULL "
+        "AND skipped = 0 AND item_id IS NULL ORDER BY id DESC LIMIT 1",
+        [user_id],
+    )
+    if meal and now_utc - (start := parse_utc(meal["start_utc"])) <= FORGOTTEN_MIN:
+        lengths = [
+            parse_utc(r["end_utc"]) - parse_utc(r["start_utc"])
+            for r in rows(
+                conn,
+                "SELECT start_utc, end_utc FROM meals WHERE user_id = ? AND kind = ? AND end_utc IS NOT NULL "
+                "AND start_utc >= ?",
+                [user_id, meal["kind"], since],
+            )
+        ]
+        usual = round(median(lengths)) if len(lengths) >= 3 else MEAL_USUAL_MIN.get(meal["kind"], 30)
+        return (meal["kind"].capitalize(), start, start + usual)
+    return None
 
 
 def with_picked_way(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any], user_id: int) -> dict[str, Any]:

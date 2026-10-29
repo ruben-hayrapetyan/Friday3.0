@@ -1,5 +1,5 @@
 // What a tap in the Now bar changes, shown the moment you tap (27 Oct): Start, Pause, Done, Eating now, Done eating,
-// Skip and the sleep taps changed the bar only once the server had answered and the bar's query had come back, a
+// Skip, the sleep taps and naps changed the bar only once the server had answered and the bar's query had come back, a
 // quarter of a second or more, so a tap looked like it hadn't taken. Each is used as its command's `optimistic`
 // (hooks/useCommand.ts), which puts things back if the command fails; the refresh after it brings the server's own.
 
@@ -47,4 +47,14 @@ export function mealSkipped(client: QueryClient): void {
 /** A sleep tap made: the row goes until the server says which tap fits next. */
 export function sleepMarked(client: QueryClient): void {
   client.setQueryData<Sleep>(["sleep"], (s) => s && { ...s, next: null })
+}
+
+/** Taking a nap: the bar says so at once, and offers no other sleep tap while you nap. */
+export function napStarted(client: QueryClient): void {
+  const start = fromMin(nowMin())
+  client.setQueryData<Sleep>(["sleep"], (s) => s && { ...s, next: null, napping: { id: -1, date: start.slice(0, 10), start, end: null, minutes: null } })
+}
+
+export function napEnded(client: QueryClient): void {
+  client.setQueryData<Sleep>(["sleep"], (s) => s && { ...s, napping: null })
 }

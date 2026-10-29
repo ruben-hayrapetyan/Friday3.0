@@ -111,6 +111,16 @@ def timer_hold(snapshot: Snapshot) -> tuple[int, int, int] | None:
     return (snapshot.eating[0], at, at + max(UNIT_MIN, left + (-left) % UNIT_MIN))
 
 
+def away_hold(snapshot: Snapshot) -> tuple[str, int, int] | None:
+    """A nap or a snack (`Snapshot.away`), kept clear of work from the plan's first slot until it should end: a quarter
+    hour at least while it runs."""
+    if snapshot.away is None:
+        return None
+    title, _, until = snapshot.away
+    at = snapshot.now_utc + (-snapshot.now_utc) % UNIT_MIN
+    return (title, at, max(at + UNIT_MIN, until + (-until) % UNIT_MIN))
+
+
 def day_scales(snapshot: Snapshot) -> list:
     settings = snapshot.settings
     first = today(snapshot)
@@ -154,7 +164,8 @@ def debt_hours(snapshot: Snapshot) -> dict[date, float]:
         bedtime, wake, margin = night_times(settings, snapshot.day_overrides, night, time.timezone, start)
         hours = sum(max(0, min(end, bedtime + margin) - max(begin, bedtime)) for begin, end in sessions) / 60
         if snapshot.sleep and night in snapshot.sleep.slept_min:  # a tracked night: what it fell short by, if more
-            hours = max(hours, (wake - bedtime - snapshot.sleep.slept_min[night]) / 60)
+            napped = snapshot.sleep.napped_min.get(night + timedelta(days=1), 0)  # less the next day's naps
+            hours = max(hours, (wake - bedtime - snapshot.sleep.slept_min[night] - napped) / 60)
         for later in range(1, DEBT_NIGHTS + 1):  # it is owed on each of the three nights after it, from tonight on
             if (owed_on := night + timedelta(days=later)) >= first:
                 owed[owed_on] = owed.get(owed_on, 0.0) + hours
@@ -181,6 +192,7 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
         day_scales=day_scales(snapshot),
         minimize_changes_scale=stability,
         hold=timer_hold(snapshot),
+        away=away_hold(snapshot),
         day_overrides=snapshot.day_overrides,
         end_utc=end_utc,
         multipliers=snapshot.multipliers,

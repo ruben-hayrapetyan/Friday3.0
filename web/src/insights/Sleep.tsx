@@ -1,7 +1,7 @@
 // Sleep (Sleep & meals → Sleep, above the nights to log or put right): what your tracked nights say, while tracking
 // is on (the switch is below it). Your last two weeks of nights on one timeline from 8pm to the next noon (a bar from bed to up,
 // the schedule you set as an outline behind it, ticks where you were done with work and ready to work), your usual
-// times, your wind-down and morning routine, and what Friday learned, to take with one click.
+// times, your wind-down and morning routine, your naps, and what Friday learned, to take with one click.
 
 import { useState } from "react"
 import { useNavigate } from "react-router"
@@ -78,6 +78,9 @@ function Usual({ sleep }: { sleep: Schemas["SleepOut"] }) {
     [wind != null ? quarter(wind) : "—", "from done with work to bed"],
     [routine != null ? quarter(routine) : "—", "from up to ready to work"],
   ]
+  // Naps (29 Oct), once there are any: how many lately, and how long you usually nap.
+  const naps = sleep.naps ?? []
+  if (naps.length) stats.push([sleep.usual_nap_min ? dur(sleep.usual_nap_min) : String(naps.length), sleep.usual_nap_min ? `a nap, usually (${naps.length} in two weeks)` : `nap${naps.length === 1 ? "" : "s"} in two weeks`])
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 20 }}>
       {stats.map(([big, line]) => (

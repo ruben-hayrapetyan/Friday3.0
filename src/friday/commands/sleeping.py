@@ -1,7 +1,7 @@
 """Tracking your sleep (Settings → Schedule, off until you turn it on): one tap each for "Done with work", "Going to
 bed", "I'm up" and "Ready to work", a correction for a tap at the wrong time, and what Friday makes of them
 (`learn/sleep.py`): the last two weeks of nights, your morning routine and evening wind-down, and learned bedtimes and
-wake times offered as a change to your schedule.
+wake times offered as a change to your schedule. Naps are `commands/napping.py`; the sleep view shows them too.
 """
 
 import json
@@ -11,6 +11,8 @@ from friday.api.commands import Changed, SleepMarkEditInput, SleepMarkInput, Sle
 from friday.api.types import Empty
 from friday.api.views import SleepAsk, SleepChangeOut, SleepNightOut, SleepOut
 from friday.commands.conflicts import minutes, short_nights
+from friday.commands.napping import shown as naps_shown
+from friday.commands.napping import taking, usual_min, wake
 from friday.commands.registry import Ctx, command, query
 from friday.core.db import one, rows
 from friday.core.items import FieldError
@@ -44,6 +46,7 @@ def sleep_mark(ctx: Ctx, inp: SleepMarkInput) -> Changed:
     """Done with work, going to bed, up, or ready to work: now, or at the time you give."""
     tracking(ctx)
     moment = at_utc(ctx, inp.at)
+    wake(ctx, moment)  # a nap left running ends
     ctx.db.insert("sleep_marks", {"kind": inp.kind, "at_utc": format_utc(moment), "created_utc": ctx.now_text})
     return Changed(message=f"{SAID[inp.kind]}: {ampm(to_local(moment, ctx.tz))}")
 
@@ -189,9 +192,10 @@ def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
     full = [n.slept_min for n in shown if n.slept_min is not None][:7]
     this_morning = nights.get(now.date() - timedelta(days=1))
     tonight = nights.get(evening_of(now, ctx.day_start))
+    nap = taking(ctx)
     return SleepOut(
         on=True,
-        next=offer(ctx, now, nights, overrides, tracking_on.morning_hours),
+        next=None if nap else offer(ctx, now, nights, overrides, tracking_on.morning_hours),
         up=format_local(this_morning.up.at) if this_morning and this_morning.up else None,
         ready=format_local(this_morning.ready_at) if this_morning and this_morning.ready_at else None,
         nights=[night_out(ctx, overrides, n) for n in shown],
@@ -204,6 +208,9 @@ def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
         against=against,
         recorded_nights=learned.nights,
         min_nights=tracking_on.min_nights,
+        napping=nap,
+        naps=naps_shown(ctx),
+        usual_nap_min=usual_min(ctx.conn, ctx.now_utc, ctx.user_id),
     )
 
 

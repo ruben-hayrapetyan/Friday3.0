@@ -233,7 +233,7 @@ function SoFar({ learning }: { learning?: Schemas["LearningOut"] }) {
         ? "Off: turn it on to learn your bedtime and wake time"
         : nights < needNights
           ? `${nights} of ${needNights} nights recorded`
-          : `Learned from ${many(nights, "night")}${sleep.changes?.length ? ": suggests a new time" : ", in step with your settings"}`,
+          : `Learned from ${many(nights, "night")}${sleep.changes?.length ? ": suggests a new time" : ", in step with your settings"}${sleep.usual_nap_min ? `; you nap about ${dur(sleep.usual_nap_min)}` : ""}`,
       to: "/body",
     },
     {

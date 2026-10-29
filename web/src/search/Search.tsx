@@ -15,6 +15,7 @@ import { nextBlocks } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
 import { draftOf } from "@/shell/EventPane"
 import { useShell } from "@/shell/ShellContext"
+import { useBreaks } from "@/now/breaks"
 import { useAllItems } from "@/todo/TodoPage"
 
 interface Hit {
@@ -58,6 +59,7 @@ export function Search() {
   const text = q.trim()
   const events = useQuery({ queryKey: ["events", text], queryFn: () => query("events", { text, limit: 8 }), enabled: text.length > 1 }).data ?? []
   const add = useAdd()
+  const breaks = useBreaks()
   useEffect(() => ref.current?.focus(), [])
   const close = () => setDialog(null)
   const go = (f: () => void) => () => (f(), close())
@@ -101,6 +103,8 @@ export function Search() {
       { key: "ways", label: "Other ways to plan the week", icon: "shuffle", run: () => setDialog("ways") },
       { key: "tour", label: "Take the tour of Friday", icon: "question", run: () => (setDialog(null), setTour(true)) },
       { key: "setup", label: "Set up Friday: your day, load, free time, calendars", icon: "sliders-horizontal", run: () => setDialog("setup") },
+      ...(breaks.nap ? [{ key: "nap", label: "Taking a nap", icon: "bed", run: go(breaks.nap) }] : []),
+      ...(breaks.snack ? [{ key: "snack", label: "Having a snack", icon: "cookie", run: go(breaks.snack) }] : []),
       { key: "ask", label: `Ask ${ai.name}${text ? `: ${text}` : ""}`, icon: "sparkle", run: () => askClaude(text) },
     ].filter((a) => has(a.label))
     return [
@@ -110,7 +114,7 @@ export function Search() {
       ["Go to", pages],
       ["Actions", actions],
     ].filter(([, hits]) => (hits as Hit[]).length) as [string, Hit[]][]
-  }, [q, text, items, events, projects, next, today, color, place.view])
+  }, [q, text, items, events, projects, next, today, color, place.view, breaks])
   const flat = groups.flatMap(([, hits]) => hits)
   const key = async (e: React.KeyboardEvent) => {
     if (e.key === "Escape") close()

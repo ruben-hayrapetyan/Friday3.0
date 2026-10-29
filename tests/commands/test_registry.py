@@ -58,6 +58,12 @@ def slept(app: App) -> int:
     return app.do("sleep")["nights"][0]["up_id"]
 
 
+def napped(app: App) -> int:
+    app.do("settings_set", key="sleep_tracking", value={"on": True})
+    app.do("nap_log", start="2026-10-18T15:00", end="2026-10-18T15:30")
+    return app.do("sleep")["naps"][0]["id"]
+
+
 def eating(app: App) -> int:
     app.do("settings_set", key="meal_tracking", value={"on": True})
     app.do("meal_log", kind="breakfast", start="2026-10-19T07:40", end="2026-10-19T08:00")
@@ -357,6 +363,15 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "sleep_mark_edit": lambda app: {"id": slept(app), "at": "2026-10-19T07:30"},
     "sleep_mark_remove": lambda app: {"id": slept(app)},
     "sleep_skip": lambda app: {"date": "2026-10-18", "kind": "bed"},
+    "nap_start": lambda app: (app.do("settings_set", key="sleep_tracking", value={"on": True}), {})[1],
+    "nap_end": lambda app: (
+        app.do("settings_set", key="sleep_tracking", value={"on": True}),
+        app.do("nap_start", at="2026-10-19T08:30"),
+        {},
+    )[2],
+    "nap_log": lambda app: (napped(app), {"start": "2026-10-17T15:00", "end": "2026-10-17T15:30"})[1],
+    "nap_edit": lambda app: {"id": napped(app), "start": "2026-10-18T14:50"},
+    "nap_remove": lambda app: {"id": napped(app)},
     "meal_start": lambda app: (app.do("settings_set", key="meal_tracking", value={"on": True}), {})[1],
     "meal_end": lambda app: (
         app.do("settings_set", key="meal_tracking", value={"on": True}),

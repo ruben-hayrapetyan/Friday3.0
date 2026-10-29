@@ -313,6 +313,31 @@ class SleepMarkRef(Model):
     id: int
 
 
+class NapStartInput(Model):
+    at: str | None = None  # local time you lay down; now when left out
+
+
+class NapEndInput(Model):
+    at: str | None = None  # local time you got up; now when left out
+
+
+class NapLogInput(Model):
+    """A nap you didn't tap: when you lay down and when you got up, after the fact."""
+
+    start: str  # local
+    end: str  # local
+
+
+class NapEditInput(Model):
+    id: int
+    start: str | None = None  # local
+    end: str | None = None  # local
+
+
+class NapRef(Model):
+    id: int
+
+
 class SleepSkipInput(Model):
     date: str  # the reviewed day
     kind: Literal["done", "bed", "up", "ready"]

@@ -28,6 +28,8 @@ export const SLEEP_HOURS = {
 export const EXAM_HOURS = ["07:00", "23:59"] as const
 // A due or an event typed in the Inbox: in the day, not the small hours ("5" over a due's 11:59pm is 5pm, not 5am).
 export const DAY_HOURS = ["06:00", "23:59"] as const
+// A nap: in the day ("3" is 3pm), or a late evening's.
+export const NAP_HOURS = ["09:00", "23:59"] as const
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 const minute = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))

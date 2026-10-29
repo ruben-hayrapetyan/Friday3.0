@@ -10,7 +10,8 @@
   set is offered as a change, never made without a yes.
 - The morning routine is the median minutes from up to ready, by the same groups; the planner keeps it light. The
   wind-down is the median minutes from done with work to bed, by the evening's group; the planner keeps it light too.
-- Sleep debt: the hours a night fell short of the sleep you plan for.
+- Sleep debt: the hours a night fell short of the sleep you plan for, less the next day's naps.
+- Naps: how long you usually nap is the median of your naps once there are three, to five minutes.
 """
 
 from collections.abc import Iterable, Mapping
@@ -26,6 +27,9 @@ WIND_DOWN_MAX = 4 * 60  # a timer stopped longer before bed than this wasn't the
 OWN = 3  # a weekday's own nights that are enough without its group
 OFF_BY = 30  # minutes a learned time must differ from the one set to be worth offering
 QUARTER = 15
+NAP_USUAL_MIN = 30  # a nap, until you've napped enough for Friday to know yours
+NAP_LONGEST_MIN = 4 * 60
+NAPS_TO_LEARN = 3
 
 
 @dataclass(frozen=True)
@@ -209,3 +213,24 @@ def shortfall_hours(night: Night, planned_min: int) -> float:
     """How far a night fell short of the sleep you plan for, in hours; 0 for a full night or one not recorded."""
     slept = night.slept_min
     return max(0.0, (planned_min - slept) / 60) if slept is not None else 0.0
+
+
+@dataclass(frozen=True)
+class Nap:
+    id: int
+    date: date  # the planning day
+    start: datetime  # local
+    end: datetime | None = None  # None while you nap
+
+    @property
+    def minutes(self) -> int | None:
+        if self.end is None:
+            return None
+        minutes = int((self.end - self.start).total_seconds() // 60)
+        return minutes if 0 < minutes <= NAP_LONGEST_MIN else None
+
+
+def usual_nap(minutes: Iterable[int | None]) -> int | None:
+    """How long you nap: the median of your naps once there are three, to five minutes; None until then."""
+    lengths = [m for m in minutes if m is not None and 0 < m <= NAP_LONGEST_MIN]
+    return max(5, round(median(lengths) / 5) * 5) if len(lengths) >= NAPS_TO_LEARN else None

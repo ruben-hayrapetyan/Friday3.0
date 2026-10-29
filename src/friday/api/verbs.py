@@ -607,6 +607,34 @@ VERBS = {
         False,
         "Your meals of the last two weeks, what Friday learned from them, the meal to offer now or the one you're",
     ),
+    "nap_edit": Verb(
+        "POST",
+        "/api/c/nap_edit",
+        commands.NapEditInput,
+        True,
+        True,
+        "A nap's times put right; an end given to the nap you're taking ends it.",
+    ),
+    "nap_end": Verb(
+        "POST", "/api/c/nap_end", commands.NapEndInput, True, True, "Up from your nap, now or at the time you give."
+    ),
+    "nap_log": Verb(
+        "POST",
+        "/api/c/nap_log",
+        commands.NapLogInput,
+        True,
+        True,
+        "A nap you didn't tap, from when you lay down to when you got up.",
+    ),
+    "nap_remove": Verb("POST", "/api/c/nap_remove", commands.NapRef, True, True, "A nap you didn't mean to record."),
+    "nap_start": Verb(
+        "POST",
+        "/api/c/nap_start",
+        commands.NapStartInput,
+        True,
+        True,
+        "Taking a nap, now or since the time you give: the plan keeps the time clear for as long as you usually nap.",
+    ),
     "not_duplicates": Verb(
         "POST",
         "/api/c/not_duplicates",

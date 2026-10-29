@@ -110,6 +110,7 @@ class BuildInput:
     done_utc: int | None = None  # tracked sleep: tonight's "Done with work"
     end_utc: int | None = None  # truncates the grid (tests, brute force)
     going: frozenset[int] = frozenset()  # optional events you said you'd go to this time: they hold their time
+    away: tuple[str, int, int] | None = None  # a nap or a snack now: no work from start to end (`prepare.away_hold`)
 
 
 def key_of(item_id: int) -> str:
@@ -124,6 +125,8 @@ def build_problem(inp: BuildInput) -> Problem:
     settings = inp.settings
     grid = make_grid(inp.now_utc, settings["time"].grid_spec(), inp.end_utc)
     fixed, fixed_items = fixed_occurrences(inp, grid.now, grid.horizon_end)
+    if inp.away is not None:  # napping, or a snack: no work until it should be over
+        fixed.append(FixedOcc(inp.away[0], "other", inp.away[1], inp.away[2], norm_title=inp.away[0].lower()))
     items = flexible_items(inp, grid, fixed_items)
     meal_room(items, fixed, grid)
     pins = pin_slots(inp, grid, items)

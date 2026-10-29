@@ -51,3 +51,18 @@ describe("a command", () => {
     expect(toasts.map((t) => t.message)).toEqual(["Undone"])
   })
 })
+
+describe("a nap", () => {
+  it("shows in the Now bar the moment you tap, with no other sleep tap, and goes when you're up", async () => {
+    const { client, toast } = setup()
+    client.setQueryData(["sleep"], { on: true, next: "done", napping: null })
+    answer(200, { command_id: 9, result: { message: "Napping since 2:10pm" } })
+    await runCommand(client, toast, "nap_start", {})
+    const sleep = client.getQueryData<{ next: string | null; napping: { start: string } | null }>(["sleep"])
+    expect(sleep?.next).toBeNull()
+    expect(sleep?.napping?.start).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d$/)
+    answer(200, { command_id: 10, result: { message: "Nap: 25 min" } })
+    await runCommand(client, toast, "nap_end", {})
+    expect(client.getQueryData<{ napping: unknown }>(["sleep"])?.napping).toBeNull()
+  })
+})
