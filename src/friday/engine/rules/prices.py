@@ -427,10 +427,12 @@ class RunsWhileWorking(Rule):
 @rule_type("sleep_min")
 class SleepMin(Rule):
     """`At least 7 hours of sleep a night` (27 Oct: "I thought that there was some sleep penalty"): the `hours` before
-    each morning's wake are kept for sleep. Your bedtime and wake stay as set; what this guards is how far past bedtime
-    a deadline may push (the night's margin, which `late_night` only prices) and a bedtime set later than `hours`
-    before waking. Work there costs `price` an hour, on top of `late_night`'s, or with `forbid` never goes there, so
-    work is late before your night is short. `days`: the nights it holds on, by the evening's weekday."""
+    each morning's wake are kept for sleep, and before them the evening's wind-down learned from tracked sleep (29 Oct:
+    "don't count wind down inside [the] hours, it should be from sleep to wakeup"), so work that ends there still
+    leaves the whole `hours` asleep. Your bedtime and wake stay as set; what this guards is how far past bedtime a
+    deadline may push (the night's margin, which `late_night` only prices) and a bedtime set later than that before
+    waking. Work there costs `price` an hour, on top of `late_night`'s, or with `forbid` never goes there, so work is
+    late before your night is short. `days`: the nights it holds on, by the evening's weekday."""
 
     default_stage = "wellbeing"
 
@@ -447,7 +449,8 @@ class SleepMin(Rule):
         kept = np.zeros(grid.S, dtype=bool)
         for day, night in problem.nights.items():
             if day.weekday() in nights:
-                kept |= (grid.start[: grid.S] < night.wake_utc) & (grid.end[: grid.S] > night.wake_utc - span)
+                asleep_by = night.wake_utc - span - (night.wind_down_min or 0)
+                kept |= (grid.start[: grid.S] < night.wake_utc) & (grid.end[: grid.S] > asleep_by)
         self.kept = kept
 
     def price(self, item, s):
