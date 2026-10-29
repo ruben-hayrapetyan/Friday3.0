@@ -21,7 +21,7 @@ import { useInbox } from "@/inbox/InboxPage"
 import { SLEEP_HOURS } from "@/lib/ampm"
 import { ampm, parseLength } from "@/lib/format"
 import { AiConnect, useAi } from "@/settings/AiConnect"
-import { CalendarChoice, saying } from "@/settings/calendarChoice"
+import { CHOICES, choiceOf, fromChoice, saying } from "@/settings/calendarChoice"
 import { ConnectedAccounts } from "@/settings/GoogleAccounts"
 import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess } from "@/settings/GoogleConnect"
 import { AddFeed, Upload } from "@/settings/Integrations"
@@ -69,7 +69,17 @@ export function stepsFor(answers: Answers): string[] {
 
 const EVENINGS = ["17:00", "18:00", "19:00", "20:00"]
 
-const QUESTIONS = ["day", "load", "focus", "free", "early", "calendars", "brief", "ai", "bring"]
+// The calendars come after bringing things in (29 Oct: "why does the choosing for calendars come before the calendar
+// integration"), so the ones you just connected are asked about too.
+const QUESTIONS = ["day", "load", "focus", "free", "early", "brief", "ai", "bring", "calendars"]
+
+/** The draft with calendars Friday has come to read since setup opened (connected a moment ago, in Bring things in)
+ * added, as the server would first set them; the ones already there keep what you chose. */
+export function withCalendars(draft: Answers, listed: Calendar[] | null | undefined): Answers {
+  const have = new Set((draft.calendars ?? []).map((c) => c.name))
+  const fresh = (listed ?? []).filter((c) => !have.has(c.name))
+  return fresh.length ? { ...draft, calendars: [...(draft.calendars ?? []), ...fresh] } : draft
+}
 
 /** Every screen, in order: Friday introduced, the questions, and your answers read back. */
 export function screensFor(answers: Answers): string[] {
@@ -310,7 +320,9 @@ const SCREENS: Record<string, Screen> = {
 }
 
 export function SetupDialog({ onClose }: { onClose: () => void }) {
-  const setup = useSetup().data
+  const at = useRef("welcome")
+  // Read again every few seconds while things are brought in: a calendar connected then is asked about next.
+  const setup = useQuery({ queryKey: ["setup"], queryFn: () => query("setup"), refetchInterval: () => (at.current === "bring" ? 3000 : false) }).data
   const save = useCommand("setup_save", { label: (o) => o.result.message ?? "Saved" })
   const ai = useAi()
   const [draft, setDraft] = useState<Answers | null>(null)
@@ -321,10 +333,12 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
   const title = useRef<HTMLHeadingElement>(null)
   const main = useRef<HTMLElement>(null)
   useEffect(() => {
-    if (setup && !draft) setDraft(setup.answers as unknown as Answers)
-  }, [setup, draft])
+    if (!setup) return
+    setDraft((d) => (d ? withCalendars(d, setup.answers.calendars as Calendar[]) : (setup.answers as unknown as Answers)))
+  }, [setup])
   const ids = draft ? screensFor(draft) : []
   const id = ids[Math.min(n, ids.length - 1)] ?? "welcome"
+  at.current = id
   useEffect(() => {
     main.current?.scrollTo({ top: 0 })
     title.current?.focus({ preventScroll: true })
@@ -543,29 +557,104 @@ function Point({ icon, hue, title, children, i }: { icon: string; hue: string; t
   )
 }
 
-/** Bringing things in: each source is added (or connected) the moment you do it, not with the answers. */
+/** Whether this is the Mac app's window (it names itself in its user agent), where the Mac's calendars come in. */
+export const inMacApp = () => typeof navigator !== "undefined" && navigator.userAgent.includes("FridayMac")
+
+// System Settings, from the Mac app's window: Internet Accounts, where Google is added; Calendars' privacy pane.
+const ACCOUNTS = "x-apple.systempreferences:com.apple.Internet-Accounts-Settings.extension"
+const PRIVACY = "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars"
+
+type MacCalendar = Schemas["GoogleCalendarOut"]
+
+/** The Mac's calendars by account ("iCloud", an address), each account's names in order. */
+export function byAccount(calendars: MacCalendar[]): [string, MacCalendar[]][] {
+  const out = new Map<string, MacCalendar[]>()
+  for (const c of calendars) out.set(c.account || "On this Mac", [...(out.get(c.account || "On this Mac") ?? []), c])
+  return [...out].sort(([, x], [, y]) => Number(!x.some((c) => c.on)) - Number(!y.some((c) => c.on))) // all left off: last
+}
+
+/** Bringing things in, simplest first (29 Oct: "i also don't love the more technical aspects of the setup - eg the
+ * google calendar implementation. also is there a way not to use the api"). In the Mac app every calendar on the Mac
+ * comes in, so Google is added to the Mac, as your own Friday reads your Gmail calendar; elsewhere a calendar's
+ * private link does it. Google's own connection, a key file from Google Cloud, is only for Gmail, under More. Each is
+ * done the moment you do it, not with the answers. */
 function BringIn() {
+  const mac = useQuery({ queryKey: ["mac_calendars"], queryFn: () => query("mac_calendars"), refetchInterval: 3000 }).data ?? []
   const feeds = (useInbox().data?.sources ?? []).filter((s) => s.kind === "ics")
   const accounts = useGoogleAccess()?.accounts ?? []
+  const [more, setMore] = useState(accounts.length > 0)
+  const onMac = inMacApp() || mac.length > 0
   return (
     <div className="st-group">
-      <Source icon="google-logo" hue="var(--st-class)" title="Google Calendar" note="Its events become fixed time Friday plans around. Connect your school's account too, if you have one." i={0}>
-        <ConnectedAccounts accounts={accounts} />
-        <ConnectGoogle why={accounts.length ? "Google's page asks which account." : undefined} done="Choose the calendars it reads in Settings → Integrations." />
-      </Source>
-      <Source icon="rss" hue="var(--st-free)" title="Course feeds" note="A calendar link from Canvas or your school; new dates go to your Inbox." i={1}>
+      {onMac ? (
+        <Source icon="calendar-dots" hue="var(--st-class)" title="The calendars on this Mac" note="Friday reads every calendar the Mac's Calendar has: iCloud, Google, Outlook, your school's. To bring in Google, add your Google account to the Mac." i={0}>
+          {mac.length > 0 && <Accounts calendars={mac} />}
+          <span className="st-chips">
+            <a className="st-chip st-chip-link" href={ACCOUNTS}>
+              <Icon name="plus" size={14} /> Add an account to this Mac…
+            </a>
+          </span>
+          <span className="st-source-note">In System Settings choose Google, sign in, and keep Calendars on. Its calendars appear here within a few seconds.</span>
+          {mac.length === 0 && (
+            <span className="st-source-note">
+              Nothing here yet? Friday needs your permission to see them: <a className="st-link" href={PRIVACY}>Privacy & Security → Calendars</a>.
+            </span>
+          )}
+        </Source>
+      ) : (
+        <Source icon="google-logo" hue="var(--st-class)" title="Google Calendar" note="Paste your calendar's private link: in Google Calendar's settings, choose your calendar, then copy “Secret address in iCal format”. Friday reads it; it can't change it." i={0}>
+          <a className="st-link" href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noreferrer">
+            Open Google Calendar's settings
+          </a>
+          <AddFeed trusted />
+        </Source>
+      )}
+      <Source icon="link-simple" hue="var(--st-free)" title="A calendar link" note="From Canvas, your school or Outlook: paste its address, and new dates go to your Inbox." i={1}>
         <AddFeed />
         {feeds.length > 0 && <span className="st-source-note">Added: {feeds.map((f) => f.name).join(", ")}</span>}
       </Source>
-      <Source icon="file-pdf" hue="var(--st-work)" title="Syllabus" note="A PDF becomes classes, readings, assignments and exam prep, in your Inbox." i={2}>
+      <Source icon="file-pdf" hue="var(--st-work)" title="Syllabus" note="A PDF or a course page becomes classes, readings, assignments and exam prep, in your Inbox." i={2}>
         <span>
           <Upload />
         </span>
       </Source>
-      <Source icon="envelope-simple" hue="var(--st-gold)" title="Gmail" note="Friday suggests due dates and events from your mail. It never sends or deletes." i={3}>
-        <GmailSwitch />
-        <GmailConnect />
-      </Source>
+      <button type="button" className="st-link st-rise" style={{ ["--i" as string]: 3 }} onClick={() => setMore(!more)} aria-expanded={more}>
+        {more ? "Fewer options" : "More: Gmail, and connecting to Google directly"}
+      </button>
+      {more && (
+        <Source icon="envelope-simple" hue="var(--st-gold)" title="Gmail, and Google's own connection" note="Friday can suggest due dates and events from your mail (it never sends or deletes). That needs Google's own connection, a one-time setup of about five minutes, step by step. It also reads Google Calendar without the Mac." i={0}>
+          <ConnectedAccounts accounts={accounts} />
+          <ConnectGoogle why={accounts.length ? "Google's page asks which account." : undefined} done="Choose the calendars it reads in Settings → Integrations." />
+          <GmailSwitch />
+          <GmailConnect />
+        </Source>
+      )}
+    </div>
+  )
+}
+
+/** The Mac's calendars Friday reads, by account; the ones it leaves off (birthdays, subscriptions) said as a count. */
+function Accounts({ calendars }: { calendars: MacCalendar[] }) {
+  return (
+    <div className="st-accounts">
+      {byAccount(calendars).map(([account, list]) => {
+        const on = list.filter((c) => c.on)
+        const off = list.filter((c) => !c.on)
+        return (
+          <div key={account} className="st-account">
+            <Icon name={/@gmail\.com$|google/i.test(account) ? "google-logo" : /icloud/i.test(account) ? "cloud" : "calendar-blank"} size={15} />
+            <span>
+              <b>{account}</b> {on.map((c) => c.name).join(", ")}
+              {off.length > 0 && (
+                <span className="st-source-note">
+                  {on.length ? " · " : ""}
+                  {off.map((c) => c.name).join(", ")} left off
+                </span>
+              )}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -581,7 +670,13 @@ function CalendarCard({ c, events, onChange, i }: { c: Calendar; events: number;
           {events ? `${events} event${events === 1 ? "" : "s"} in the next two weeks` : "Nothing in the next two weeks"} · {saying(c.shown !== false, c.busy !== false)}
         </span>
       </span>
-      <CalendarChoice name={c.name} shown={c.shown !== false} busy={c.busy !== false} onPick={onChange} />
+      <span className="st-chips" role="radiogroup" aria-label={`${c.name} on your calendar`}>
+        {CHOICES.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={choiceOf(c.shown !== false, c.busy !== false) === o.value} className="st-chip" onClick={() => onChange(fromChoice(o.value))}>
+            {o.label}
+          </button>
+        ))}
+      </span>
     </div>
   )
 }

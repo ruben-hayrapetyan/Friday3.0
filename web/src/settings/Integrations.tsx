@@ -278,20 +278,32 @@ function Feeds() {
 }
 
 /** A box to paste a calendar feed's link into, named after its site ("canvas"). */
-export function AddFeed() {
+/** A calendar link as Friday fetches it: a webcal:// link (Canvas's, Outlook's) is the same address over https. */
+export function feedUrl(link: string): string {
+  return link.trim().replace(/^webcal:\/\//i, "https://")
+}
+
+/** A feed's name from its link: Google's and Outlook's by name, else the site's ("canvas"). */
+export function feedName(link: string): string {
+  try {
+    const host = new URL(feedUrl(link)).hostname.replace(/^www\./, "")
+    if (host === "calendar.google.com") return "Google Calendar"
+    if (/(^|\.)outlook\.(live|office365|office)\.com$/.test(host)) return "Outlook"
+    return host.split(".")[0]
+  } catch {
+    return "Feed"
+  }
+}
+
+/** A calendar link added; `trusted`, its events go straight on the calendar (your own calendar's), else they're
+ * suggested in the Inbox first (a course feed's). */
+export function AddFeed({ trusted = false }: { trusted?: boolean }) {
   const add = useCommand("source_add", { label: (o) => o.result.message ?? "Added" })
   const [url, setUrl] = useState("")
-  const name = (u: string) => {
-    try {
-      return new URL(u).hostname.replace(/^www\./, "").split(".")[0]
-    } catch {
-      return "Feed"
-    }
-  }
   return (
     <div style={{ display: "flex", gap: 6 }}>
-      <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste a calendar link (.ics)" aria-label="Calendar link" style={{ flex: 1, maxWidth: 380, padding: "5px 8px", minHeight: 0 }} />
-      <button className="btn btn-secondary" disabled={!/^https?:\/\//.test(url.trim())} onClick={async () => (await add({ kind: "ics", name: name(url), url: url.trim(), trusted: false })) && setUrl("")} style={{ fontSize: 12 }}>
+      <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste a calendar link" aria-label="Calendar link" style={{ flex: 1, maxWidth: 380, padding: "5px 8px", minHeight: 0 }} />
+      <button className="btn btn-secondary" disabled={!/^(https?|webcal):\/\//i.test(url.trim())} onClick={async () => (await add({ kind: "ics", name: feedName(url), url: feedUrl(url), trusted })) && setUrl("")} style={{ fontSize: 12 }}>
         Add feed
       </button>
     </div>

@@ -764,6 +764,36 @@
   box-shadow: inset 0 0 0 1px var(--st-line);
 }
 
+.st-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--st-night) 45%, transparent);
+}
+.st-account {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--st-mist);
+}
+.st-account b {
+  color: var(--st-paper);
+  font-weight: 600;
+  margin-right: 4px;
+}
+.st-chip-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  line-height: 36px;
+}
+
 /* The way on. */
 
 .st-foot {

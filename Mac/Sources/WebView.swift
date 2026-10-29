@@ -15,6 +15,7 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
     override init() {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()  // keeps the look and other per-device settings between launches
+        config.applicationNameForUserAgent = "FridayMac"  // the page knows it's in the Mac app: the Mac's calendars come in here
         view = WKWebView(frame: .zero, configuration: config)
         view.isInspectable = true
         view.allowsBackForwardNavigationGestures = false

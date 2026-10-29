@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { type Answers, hoursLabel, hoursWords, readDays, readHours, screensFor, shift, stepsFor, summaryOf } from "./Setup"
+import { type Answers, byAccount, hoursLabel, hoursWords, readDays, readHours, screensFor, shift, stepsFor, summaryOf, withCalendars } from "./Setup"
 
 const ANSWERS: Answers = {
   wake: "07:30",
@@ -23,11 +23,31 @@ describe("setup", () => {
     expect(stepsFor({ ...ANSWERS, calendars: [{ name: "Home", shown: true, busy: true }] })).toContain("calendars")
   })
 
-  it("ends by bringing things in: Google, feeds, a syllabus and Gmail, after every question", () => {
+  it("brings things in after choosing the AI, and asks about the calendars after that (29 Oct)", () => {
     const steps = stepsFor({ ...ANSWERS, calendars: [{ name: "Home", shown: true, busy: true }] })
     expect(steps).toHaveLength(9)
-    expect(steps.at(-1)).toBe("bring")
-    expect(steps.at(-2)).toBe("ai") // the AI is chosen before what it reads: syllabi and mail (28 Oct)
+    expect(steps.slice(-3)).toEqual(["ai", "bring", "calendars"]) // the AI before what it reads; calendars once connected
+    expect(stepsFor(ANSWERS).at(-1)).toBe("bring") // none yet: no question about them
+  })
+
+  it("adds the calendars connected while setup is open, keeping what you chose for the others", () => {
+    const chosen = { ...ANSWERS, calendars: [{ name: "Home", shown: false, busy: false }] }
+    const listed = [{ name: "Home", shown: true, busy: true }, { name: "Classes", shown: true, busy: true }]
+    expect(withCalendars(chosen, listed).calendars).toEqual([{ name: "Home", shown: false, busy: false }, { name: "Classes", shown: true, busy: true }])
+    expect(withCalendars(chosen, [{ name: "Home", shown: true, busy: true }])).toBe(chosen) // nothing new: the same draft
+    expect(withCalendars(ANSWERS, null)).toBe(ANSWERS)
+    expect(stepsFor(withCalendars(ANSWERS, listed))).toContain("calendars") // connected in Bring things in: asked next
+  })
+
+  it("groups the Mac's calendars by account", () => {
+    const cal = (name: string, account: string | null, on = true) => ({ id: name, name, account, on }) as never
+    const groups = byAccount([cal("Birthdays", "Other", false), cal("Home", "iCloud"), cal("Personal", "me@gmail.com"), cal("Work", "iCloud"), cal("Local", null), cal("Scratch", "")])
+    expect(groups.map(([a, list]) => [a, list.map((c: { name: string }) => c.name)])).toEqual([
+      ["iCloud", ["Home", "Work"]],
+      ["me@gmail.com", ["Personal"]],
+      ["On this Mac", ["Local", "Scratch"]],
+      ["Other", ["Birthdays"]], // only calendars left off: last
+    ])
   })
 
   it("reads any amount you type: a bare number is hours", () => {
