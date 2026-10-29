@@ -22,7 +22,8 @@ from friday.core.textnorm import TextRules, expand_abbreviations, normalize_numb
 FILLER = frozenset("a an the of for on to and in at with my your by due".split())
 COURSE_SUBJECT = re.compile(r"^[a-z]{2,6}$")
 COURSE_NUMBER = re.compile(r"^\d{4}$")
-WHERE_WORDS = frozenset({"room", "rm", "hall", "building", "floor"})
+WHERE_WORDS = frozenset({"room", "rm", "hall", "building", "floor", "fl", "flr", "level"})
+ORDINAL = frozenset({"st", "nd", "rd", "th"})  # "3rd", split by plain_words into "3" and "rd"
 # Words that say which course or what to do, not which thing: two readings for CS ("CS read Sorting", "CS read
 # Recursive sorting algorithm") share them and are still two (27 Oct, your to-dos). They don't count towards a match.
 PLAIN = frozenset(
@@ -64,8 +65,14 @@ def read_title(title: str, rules: TextRules) -> Reading:
             numbers.add(f"{w}{nxt}")  # "A4", "Q3": a letter and its number, split by plain_words
             i += 2
             continue
+        if w.isdigit() and nxt in ORDINAL and i + 2 < len(raw) and raw[i + 2] in WHERE_WORDS:
+            # "(3rd floor, Appel)": where it is, not which one (29 Oct: the same table tennis practice from two
+            # calendars, one saying its floor, was asked about every week)
+            places.add(f"{w} {raw[i + 2]}")
+            i += 3
+            continue
         if w.isdigit():
-            (numbers if len(w) <= 2 else places).add(w)
+            (numbers if len(w) <= 2 and prev not in WHERE_WORDS else places).add(w)  # "Room 12" is a place
         elif len(w) == 1 and w.isalpha():
             # A lone letter is a part ("Part B", "Write-Up 'B'"), but "a" and "i" only when quoted, after a word like
             # "part", or last: elsewhere they're an article or a pronoun ("a dentist appointment").

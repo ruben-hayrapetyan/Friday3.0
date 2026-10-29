@@ -2724,6 +2724,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/suggestion_effect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** For a waiting suggestion of an event (at `start`–`end` when you've edited its time): what accepting it would */
+        get: operations["suggestion_effect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/to_review": {
         parameters: {
             query?: never;
@@ -3942,6 +3959,47 @@ export interface components {
             repeated?: boolean;
             /** Generation */
             generation?: number | null;
+        };
+        /** EffectLate */
+        EffectLate: {
+            /** Title */
+            title: string;
+            /** Hours */
+            hours: number;
+            /** Due */
+            due: string | null;
+        };
+        /**
+         * EffectOut
+         * @description What accepting a suggested event would do (commands/effects.py). `event` False: not an event, nothing said.
+         */
+        EffectOut: {
+            /** Event */
+            event: boolean;
+            /**
+             * Clashes
+             * @default []
+             */
+            clashes?: components["schemas"]["EffectSpan"][];
+            /**
+             * Takes
+             * @default []
+             */
+            takes?: components["schemas"]["EffectSpan"][];
+            /**
+             * Later
+             * @default []
+             */
+            later?: components["schemas"]["EffectLate"][];
+        };
+        /** EffectSpan */
+        EffectSpan: {
+            /** Title */
+            title: string;
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
         };
         /** Empty */
         Empty: Record<string, never>;
@@ -14226,6 +14284,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusOut"];
+                };
+            };
+        };
+    };
+    suggestion_effect: {
+        parameters: {
+            query: {
+                id: number;
+                start?: string | null;
+                end?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EffectOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

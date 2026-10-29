@@ -47,6 +47,14 @@ class ItemRef(Model):
     id: int
 
 
+class EffectInput(Model):
+    """A waiting suggestion of an event, at its own time or at one you've edited it to (local)."""
+
+    id: int
+    start: str | None = None
+    end: str | None = None
+
+
 class DoneInput(Model):
     id: int
     actual_min: int | None = None

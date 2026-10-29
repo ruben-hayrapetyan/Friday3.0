@@ -10,6 +10,7 @@ from friday.commands import (  # noqa: F401
     decisions,
     diagnose,
     eating,
+    effects,
     exams,
     explain,
     fitting,

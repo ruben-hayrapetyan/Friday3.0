@@ -1069,6 +1069,14 @@ VERBS = {
         True,
         "Accept a suggestion (with your edits): its item is added, or the item it duplicates or changes is edited,",
     ),
+    "suggestion_effect": Verb(
+        "GET",
+        "/api/q/suggestion_effect",
+        commands.EffectInput,
+        False,
+        False,
+        "For a waiting suggestion of an event (at `start`–`end` when you've edited its time): what accepting it would",
+    ),
     "suggestion_reject": Verb(
         "POST", "/api/c/suggestion_reject", commands.SuggestionInput, True, False, "Turn a suggestion down."
     ),

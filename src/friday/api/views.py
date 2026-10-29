@@ -132,6 +132,27 @@ class StatusOut(Model):
     slipping: list["LateItem"] = []
 
 
+class EffectSpan(Model):
+    title: str
+    start: str  # local
+    end: str
+
+
+class EffectLate(Model):
+    title: str
+    hours: float  # how much later accepting would make it
+    due: str | None  # local
+
+
+class EffectOut(Model):
+    """What accepting a suggested event would do (commands/effects.py). `event` False: not an event, nothing said."""
+
+    event: bool
+    clashes: list[EffectSpan] = []  # events of yours at that time
+    takes: list[EffectSpan] = []  # work planned in that time now, which moves
+    later: list[EffectLate] = []  # work that would finish later for it
+
+
 class LateItem(Model):
     item_id: int
     title: str

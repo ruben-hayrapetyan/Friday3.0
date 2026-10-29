@@ -194,11 +194,17 @@ PLACES = [
     ("CS 2112 Lecture (room 155)", "CS 2112 Lecture (room 155)"),
     ("Psych 1130 (room 312)", "PSYCH 1130"),
     ("Olin 603 study room", "Olin 603 study room booking"),
+    # 29 Oct: a floor is where it is, not which one ("3rd" had read as the number 3, like "PS 3")
+    ("Open Table Tennis Practice", "Open Table Tennis Practice (3rd floor, Appel)"),
+    ("Cornell Poker", "Cornell Poker (2nd floor, Olin)"),
+    ("Study group", "Study group (room 12)"),
 ]
 
 OTHER_PLACES = [
     ("CS 2112 Lecture (room 155)", "CS 2112 Lecture (room 200)"),  # another section
     ("Olin 603 study room", "Olin 605 study room"),
+    ("Open Table Tennis Practice (3rd floor, Appel)", "Open Table Tennis Practice (4th floor, Appel)"),
+    ("Study group (room 12)", "Study group (room 14)"),
 ]
 
 

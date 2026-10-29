@@ -196,9 +196,12 @@ class TestWhatChangesWhileItWaits:
         app.do("document_add", name="feed.txt", content="a feed")
         raw = app.table("raw_inputs")[-1]["id"]
         settings = load_settings(app.conn, 1)
-        weekly = Proposed("add", event("Chem Lecture", "2026-10-21T12:20", "2026-10-21T13:10"), fixed=True, series="s1")
+        weekly = Proposed("add", event("Chem Lecture", "2026-10-28T12:20", "2026-10-28T13:10"), fixed=True, series="s1")
         suggest(app.conn, settings, app.now_utc, 1, raw, [weekly], False, "Canvas")
-        assert aside(app) == {}  # its instances are read as one repeat, not checked against each other
+        assert aside(app) == {}  # next week's: not the one you have, a week from it
+        same = Proposed("add", event("Chem Lecture", "2026-10-21T12:20", "2026-10-21T13:10"), fixed=True, series="s1")
+        suggest(app.conn, settings, app.now_utc, 1, raw, [same], False, "Canvas")
+        assert aside(app) == {"Chem Lecture": "You have Chem Lecture"}  # this week's is the one you have (29 Oct)
 
 
 class TestAddingOneAnyway:
@@ -216,3 +219,66 @@ class TestAddingOneAnyway:
         propose(app, task("Fresh thing", "2026-10-22T23:59"))
         with pytest.raises(Exception, match="set aside"):
             app.do("suggestion_restore", id=waiting(app)["Fresh thing"]["id"])
+
+
+def propose_series(app: App, series: str, *fields: dict[str, Any], source: str = "Calendar") -> None:
+    """A calendar's repeating event: each instance proposed as one of `series`, as a calendar read proposes them."""
+    n = len(app.table("raw_inputs"))
+    app.do("document_add", name=f"{source} {n}.txt", content=f"read {n}")
+    raw = app.table("raw_inputs")[-1]["id"]
+    settings = load_settings(app.conn, 1)
+    proposals = [Proposed("add", dict(f), fixed=True, series=series) for f in fields]
+    suggest(app.conn, settings, app.now_utc, 1, raw, proposals, False, source)
+    sync(app.conn, app.now_utc)
+
+
+def statuses(app: App, title: str) -> list[str]:
+    return [s["status"] for s in app.table("suggestions") if title in s["input"]]
+
+
+SATURDAYS = [("2026-10-24T15:30", "2026-10-24T17:30"), ("2026-10-31T15:30", "2026-10-31T17:30"),
+             ("2026-11-07T15:30", "2026-11-07T17:30")]  # fmt: skip
+
+
+class TestRepeatingEvents:
+    """29 Oct: 197 of 224 waiting suggestions were events already on the calendar, nearly all instances of repeating
+    events from a second calendar, which were never checked against what you have."""
+
+    def test_a_weekly_event_you_have_from_another_calendar_is_set_aside_every_week(self, app: App) -> None:
+        for start, end in SATURDAYS:
+            app.do("add", title="Open Table Tennis Practice (3rd floor, Appel)", when="fixed", start=start, end=end)
+        propose_series(app, "ttp", *(event("Open Table Tennis Practice", s, e) for s, e in SATURDAYS))
+        assert statuses(app, "Open Table Tennis Practice") == ["superseded"] * 3
+
+    def test_a_weekly_event_you_don_t_have_is_still_asked(self, app: App) -> None:
+        propose_series(app, "chess", *(event("Chess Club", s, e) for s, e in SATURDAYS))
+        assert statuses(app, "Chess Club") == ["pending"] * 3
+
+    def test_only_the_weeks_you_have_are_set_aside(self, app: App) -> None:
+        start, end = SATURDAYS[0]
+        app.do("add", title="Chess Club", when="fixed", start=start, end=end)
+        propose_series(app, "chess", *(event("Chess Club", s, e) for s, e in SATURDAYS))
+        assert statuses(app, "Chess Club") == ["superseded", "pending", "pending"]
+
+    def test_waiting_weeks_are_set_aside_once_you_have_them(self, app: App) -> None:
+        propose_series(app, "ttp", *(event("Open Table Tennis Practice", s, e) for s, e in SATURDAYS))
+        for start, end in SATURDAYS:  # the same practice, from the other calendar, accepted meanwhile
+            app.do("add", title="Open Table Tennis Practice (3rd floor, Appel)", when="fixed", start=start, end=end)
+        sync(app.conn, app.now_utc)
+        assert statuses(app, "Open Table Tennis Practice") == ["superseded"] * 3
+
+    def test_the_same_series_from_two_calendars_is_asked_once(self, app: App) -> None:
+        propose_series(app, "a", *(event("Cornell Poker", s, e) for s, e in SATURDAYS), source="Mine")
+        propose_series(app, "b", *(event("Cornell Poker (Olin 245)", s, e) for s, e in SATURDAYS), source="School")
+        assert statuses(app, "Cornell Poker") == ["pending"] * 3 + ["superseded"] * 3
+
+    def test_a_repeating_task_s_days_are_not_one_another_s_twins(self, app: App) -> None:
+        settings = load_settings(app.conn, 1)
+        app.do("document_add", name="Feed.txt", content="read")
+        raw = app.table("raw_inputs")[-1]["id"]
+        days = [task("Daily reflection", f"2026-10-2{d}T20:00") for d in (2, 3, 4)]
+        suggest(
+            app.conn, settings, app.now_utc, 1, raw, [Proposed("add", f, series="refl") for f in days], False, "Feed"
+        )
+        sync(app.conn, app.now_utc)
+        assert statuses(app, "Daily reflection") == ["pending"] * 3

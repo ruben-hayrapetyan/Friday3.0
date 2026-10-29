@@ -11,7 +11,9 @@ The same numbered task with another date ("PS 9" due Friday, read again due Mond
 as a change to it (accepting moves it). Without a number ("Attendance", every week) another date is another one.
 
 Suggestions waiting are checked again as things come in and as you accept: one you accepted makes the same thing from
-another source a duplicate, and of two waiting suggestions of the same thing the later is set aside."""
+another source a duplicate, and of two waiting suggestions of the same thing the later is set aside. Instances of a
+repeating event are checked too (29 Oct: 197 waiting were events you had already): an event matches only within half
+an hour, so never the same series' next week. A repeating task's are not."""
 
 import json
 import sqlite3
@@ -122,8 +124,8 @@ def set_aside_waiting(conn: sqlite3.Connection, settings: dict, user_id: int, no
     found = candidates(conn, settings, user_id, now_utc)
     waiting = rows(
         conn,
-        "SELECT id, input, duplicate_of FROM suggestions WHERE user_id = ? AND status = 'pending' AND command = 'add' "
-        "AND (batch IS NULL OR batch NOT LIKE 'repeat:%') ORDER BY id",
+        "SELECT id, input, duplicate_of, batch FROM suggestions WHERE user_id = ? AND status = 'pending' "
+        "AND command = 'add' ORDER BY id",
         [user_id],
     )
     rules, tz = settings["text"].rules(), settings["time"].timezone
@@ -134,7 +136,11 @@ def set_aside_waiting(conn: sqlite3.Connection, settings: dict, user_id: int, no
         if s["id"] in kept:
             continue
         fields = json.loads(s["input"] or "{}")
-        same = duplicate_of(fields, settings, found)
+        repeat = (s["batch"] or "").startswith("repeat:")
+        if repeat and not is_event(fields, settings):
+            continue  # a repeating task's instances are a day apart, within a task's day: never one another's twin
+        # a repeating event's against the events you still have: one switched off and on again comes back whole
+        same = duplicate_of(fields, settings, [c for c in found if c.open] if repeat else found)
         if same is not None and not same.update:
             write(s["id"], {"status": "superseded", "duplicate_of": same.item_id})
             gone += 1

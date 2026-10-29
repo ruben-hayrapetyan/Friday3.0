@@ -241,9 +241,14 @@ def suggest(
             command, fields = "edit", {"id": earlier["id"]} | fields
         group = batch or (f"repeat:{p.series}" if p.series and command == "add" else None)
         said = said_of_series(conn, group) if group and p.series else None
-        # What you have already is set aside, not asked (commands/duplicates.py); an instance of a repeating event isn't
-        # a duplicate of its neighbours, a day apart.
-        same = duplicates.duplicate_of(fields, settings, mine()) if command == "add" and not p.series else None
+        # What you have already is set aside, not asked (commands/duplicates.py). An instance of a repeating event is
+        # checked against your events too, which only match within half an hour, so never its neighbours (29 Oct: a
+        # club's weekly practice from a second calendar was asked about though every Saturday was on yours); a
+        # repeating task isn't, as a task due within a day of yours counts and a daily one has neighbours a day apart.
+        # Only events you still have: a repeat switched off and on again brings back the times it took away.
+        repeat_task = p.series and not duplicates.is_event(fields, settings)
+        have = [c for c in mine() if c.open] if p.series else mine()
+        same = duplicates.duplicate_of(fields, settings, have) if command == "add" and not repeat_task else None
         duplicate = same.item_id if same is not None else None
         aside = same is not None and not same.update
         cursor = conn.execute(

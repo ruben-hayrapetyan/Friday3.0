@@ -9675,6 +9675,77 @@
     }
    }
   },
+  "/api/q/suggestion_effect": {
+   "get": {
+    "summary": "For a waiting suggestion of an event (at `start`\u2013`end` when you've edited its time): what accepting it would",
+    "operationId": "suggestion_effect",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Id"
+      }
+     },
+     {
+      "name": "start",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Start"
+      }
+     },
+     {
+      "name": "end",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "End"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EffectOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/to_review": {
    "get": {
     "summary": "What's left to go over, soonest due first.",
@@ -13548,6 +13619,100 @@
      "result"
     ],
     "title": "EditResult"
+   },
+   "EffectLate": {
+    "properties": {
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "hours": {
+      "type": "number",
+      "title": "Hours"
+     },
+     "due": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Due"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "title",
+     "hours",
+     "due"
+    ],
+    "title": "EffectLate"
+   },
+   "EffectOut": {
+    "properties": {
+     "event": {
+      "type": "boolean",
+      "title": "Event"
+     },
+     "clashes": {
+      "items": {
+       "$ref": "#/components/schemas/EffectSpan"
+      },
+      "type": "array",
+      "title": "Clashes",
+      "default": []
+     },
+     "takes": {
+      "items": {
+       "$ref": "#/components/schemas/EffectSpan"
+      },
+      "type": "array",
+      "title": "Takes",
+      "default": []
+     },
+     "later": {
+      "items": {
+       "$ref": "#/components/schemas/EffectLate"
+      },
+      "type": "array",
+      "title": "Later",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "event"
+    ],
+    "title": "EffectOut",
+    "description": "What accepting a suggested event would do (commands/effects.py). `event` False: not an event, nothing said."
+   },
+   "EffectSpan": {
+    "properties": {
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "start": {
+      "type": "string",
+      "title": "Start"
+     },
+     "end": {
+      "type": "string",
+      "title": "End"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "title",
+     "start",
+     "end"
+    ],
+    "title": "EffectSpan"
    },
    "Empty": {
     "properties": {},

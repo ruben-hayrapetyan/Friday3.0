@@ -11,7 +11,7 @@ import { undoAll, useCommand } from "@/hooks/useCommand"
 import { useAllItems } from "@/todo/TodoPage"
 import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/components/Toasts"
-import { dur, when } from "@/lib/format"
+import { clock, dur, lateBy, when } from "@/lib/format"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { usePresets } from "@/todo/AddBox"
@@ -369,6 +369,9 @@ function Detail({ s, all, resolved, onResolved, onReopen }: DetailProps) {
           </div>
         ) : null}
         {resolved && !resolved.accepted ? <TellWhy title={String(fields.title ?? s.origin)} /> : null}
+        {!resolved && fields.start != null && fields.end != null && (s.command === "add" || s.command === "edit") && (
+          <Effects id={s.id} start={String(fields.start)} end={String(fields.end)} />
+        )}
         {!resolved && (
           <>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", paddingTop: 4 }}>
@@ -393,6 +396,54 @@ function Detail({ s, all, resolved, onResolved, onReopen }: DetailProps) {
         )}
       </div>
       <SourceText s={s} all={all} />
+    </div>
+  )
+}
+
+/** What answering a suggested event would do (29 Oct: "when i am looking at whether to accept or decline events, can
+ * you provide an idea of the repercussions"): accepting, what it clashes with, the work planned in its time (which
+ * moves) and the work it makes later, worked out in a few seconds (commands/effects.py); declining, nothing in the
+ * plan. At an edited time, that time is weighed. */
+function Effects({ id, start, end }: { id: number; start: string; end: string }) {
+  const { today } = useShell()
+  const effect = useQuery({ queryKey: ["suggestion_effect", id, start, end], queryFn: () => query("suggestion_effect", { id, start, end }), staleTime: 60_000, retry: false })
+  const e = effect.data && { event: effect.data.event, clashes: effect.data.clashes ?? [], takes: effect.data.takes ?? [], later: effect.data.later ?? [] }
+  const span = (x: { start: string; end: string }) => `${when(x.start, today)}–${clock(x.end)}`
+  const line = (icon: string, color: string, text: React.ReactNode) => (
+    <span style={{ display: "grid", gridTemplateColumns: "16px minmax(0,1fr)", gap: 8, alignItems: "baseline", fontSize: 13, lineHeight: 1.45 }}>
+      <Icon name={icon} size={13} style={{ color, position: "relative", top: 2 }} />
+      <span>{text}</span>
+    </span>
+  )
+  const quiet = e?.event && !e.clashes.length && !e.takes.length && !e.later.length
+  return (
+    <div className="fr-well" style={{ display: "flex", flexDirection: "column", gap: 12, padding: "12px 14px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <span className="fr-kicker">If you accept</span>
+        {effect.isLoading && line("hourglass-medium", "var(--color-neutral-500)", "Working out what it changes…")}
+        {effect.isError && line("warning-circle", "var(--fr-warn)", "Couldn't work out what it changes right now.")}
+        {e?.event &&
+          e.clashes.map((c) =>
+            line("calendar-x", "var(--fr-warn)", <>Clashes with <b style={{ fontWeight: 500 }}>{c.title}</b> ({span(c)})</>),
+          )}
+        {e?.event && e.takes.length > 0 &&
+          line(
+            "arrows-left-right",
+            "var(--color-neutral-400)",
+            <>
+              Takes the time planned for {e.takes.map((t, i) => <span key={i}>{i ? ", " : ""}<b style={{ fontWeight: 500 }}>{t.title}</b> ({span(t)})</span>)}; Friday plans {e.takes.length === 1 ? "it" : "them"} elsewhere.
+            </>,
+          )}
+        {e?.event &&
+          e.later.map((l) =>
+            line("clock-countdown", "var(--fr-due)", <><b style={{ fontWeight: 500 }}>{l.title}</b> finishes about {lateBy(l.hours)} later{l.due ? ` (due ${when(l.due, today)})` : ""}</>),
+          )}
+        {quiet && line("check-circle", "var(--color-accent-300)", "Nothing else changes: the time is free and no work finishes later.")}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <span className="fr-kicker">If you decline</span>
+        {line("minus-circle", "var(--color-neutral-400)", "Nothing in your plan changes. Friday won't suggest it again unless the email or calendar changes.")}
+      </div>
     </div>
   )
 }
