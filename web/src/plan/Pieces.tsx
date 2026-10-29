@@ -150,29 +150,7 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, tod
           <Icon name="tray-arrow-down" size={10} /> in {inside}
         </div>
       )}
-      {/* Either edge changes the time from that end (27 Oct: a block had only its bottom edge, which sat just above the
-          next block's top, so dragging that block's top stretched the one before it instead). Short ones only at the
-          bottom: two edges would cover all of a quarter hour, leaving nothing to grab to move it. */}
-      {!fixedInPlace && minutes(b) >= 30 && (
-        <div
-          title="Drag to change when it starts"
-          onPointerDown={(e) => {
-            e.stopPropagation()
-            onResize(e, "top")
-          }}
-          style={{ position: "absolute", left: 0, right: 0, top: 0, height: 5, cursor: "ns-resize" }}
-        />
-      )}
-      {!fixedInPlace && (
-        <div
-          title="Drag to change length"
-          onPointerDown={(e) => {
-            e.stopPropagation()
-            onResize(e, "bottom")
-          }}
-          style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 5, cursor: "ns-resize" }}
-        />
-      )}
+      {!fixedInPlace && <Edges length={minutes(b)} onResize={onResize} />}
     </div>
   )
 }
@@ -184,9 +162,10 @@ interface FixedProps {
   onEdit?: () => void // a double-click on it, away from its time
   retime?: Retime
   tried?: TriedLook
+  onResize?: (e: React.PointerEvent, edge: "top" | "bottom") => void // none: it can't be stretched here
 }
 
-export function FixedBox({ p, onOpen, onEdit, retime, tried, picked }: FixedProps) {
+export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize }: FixedProps) {
   const it = p.item
   const { skinOf, light } = useLook()
   const base = skinOf(it.event_kind === "shove" ? "shove" : "fixed", it.area)
@@ -265,7 +244,30 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked }: FixedProp
           {skipped ? " · skipping for work" : it.location ? ` · ${it.location}` : ""}
         </TimeLine>
       )}
+      {onResize && !typing && <Edges length={minutes(it)} onResize={onResize} />}
     </div>
+  )
+}
+
+/** A box's top and bottom edges, each dragged to change its time from that end (27 Oct: a block had only its bottom
+ * edge, which sat just above the next block's top, so dragging that block's top stretched the one before it instead).
+ * Short ones only at the bottom: two edges would cover all of a quarter hour, leaving nothing to grab to move it. */
+function Edges({ length, onResize }: { length: number; onResize: (e: React.PointerEvent, edge: "top" | "bottom") => void }) {
+  const edge = (which: "top" | "bottom", title: string) => (
+    <div
+      title={title}
+      onPointerDown={(e) => {
+        e.stopPropagation()
+        onResize(e, which)
+      }}
+      style={{ position: "absolute", left: 0, right: 0, [which]: 0, height: 5, cursor: "ns-resize" }}
+    />
+  )
+  return (
+    <>
+      {length >= 30 && edge("top", "Drag to change when it starts")}
+      {edge("bottom", "Drag to change when it ends")}
+    </>
   )
 }
 

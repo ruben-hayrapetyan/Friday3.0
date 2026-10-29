@@ -10,7 +10,7 @@ import { type Drag, justDragged, minuteAt, selectionFrom, useDragging } from "@/
 import { useToast } from "@/components/Toasts"
 import { useClock, useElapsed } from "@/hooks/useClock"
 import { runCommand } from "@/hooks/useCommand"
-import { moveBlock, placeEvent } from "@/hooks/useDrop"
+import { moveBlock, retimeEvent } from "@/hooks/useDrop"
 import { useGhosts, useItems, useNow, useStatus } from "@/hooks/queries"
 import { movedSince } from "@/lib/drag"
 import { clock, hms, weekday, when } from "@/lib/format"
@@ -160,7 +160,9 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                   tried={lookOf(p.item.id)}
                   picked={pickedKeys.has(`F${p.item.id}`)}
                   onOpen={(e) =>
-                    multi(e) && !tried && p.item.event_kind !== "shove"
+                    justDragged()
+                      ? undefined
+                      : multi(e) && !tried && p.item.event_kind !== "shove"
                       ? (picks.toggle(pickOfEvent(p.item), selectedPick()), select(null))
                       : (picks.clear(),
                         lookOf(p.item.id) === "gone"
@@ -171,6 +173,12 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                   }
                   onEdit={p.item.event_kind === "shove" ? undefined : () => (select(null), setEvent(draftOf(p.item)))}
                   retime={{ begin: () => select(null), save: (span) => retime.event(p.item, span) }}
+                  // Its edges stretch it as a block's do (29 Oct); one skipped for work, or deleted in What if, stays put.
+                  onResize={
+                    p.item.gives_way_to || lookOf(p.item.id) === "gone"
+                      ? undefined
+                      : (e, edge) => (select(null), begin(e, { kind: edge === "top" ? "resize-top" : "resize", start: toMin(p.item.start), end: toMin(p.item.end), grab: 0, itemId: p.item.id, blockKey: null, title: p.item.title, event: true }))
+                  }
                 />
               ))}
               {event && !event.allDay && layout([event], date, axis).map((p) => <DraftBox key="draft" p={p} title={event.title} />)}
@@ -378,11 +386,12 @@ function grabbed(block: Block, kind: "move" | "resize" | "resize-top", minute: n
 function Preview({ drag, date, axis, today }: { drag: Drag; date: string; axis: Axis; today: string }) {
   if (!drag.at) return null
   const span = { start: fromMin(drag.at.start), end: fromMin(drag.at.end) }
-  const label = `${drag.title} ${when(span.start, today)}–${clock(span.end)}${drag.locked ? " · locked" : ""}`
+  const locked = drag.locked && !drag.event // an event isn't pinned: Shift changes nothing
+  const label = `${drag.title} ${when(span.start, today)}–${clock(span.end)}${locked ? " · locked" : ""}`
   return (
     <>
       {layout([span], date, axis).map((p) => (
-        <DropPreview key={p.top} p={p} label={label} locked={drag.locked} />
+        <DropPreview key={p.top} p={p} label={label} locked={locked} />
       ))}
     </>
   )
@@ -408,11 +417,7 @@ function useRetime() {
   const client = useQueryClient()
   const toast = useToast()
   return {
-    event: (item: Item, span: Span) =>
-      runCommand(client, toast, "edit", { id: item.id, start: span.start, end: span.end }, {
-        optimistic: (c) => placeEvent(c, { id: item.id, ...span }),
-        label: () => `${item.title}: ${clock(span.start)}–${clock(span.end)}`,
-      }),
+    event: (item: Item, span: Span) => retimeEvent(client, toast, item.id, item.title, span),
     block: async (block: Block, span: Span) => {
       const { start, end } = span
       const kind = block.pinned === "locked" ? "locked" : "preferred"

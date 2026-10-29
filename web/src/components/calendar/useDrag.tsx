@@ -21,6 +21,7 @@ export interface Drag extends DragStart {
   y: number
   group?: boolean // a picked block, carrying the others picked with it (plan/picks.ts)
   rows?: Row[] // to-do rows picked together in the drawer, planned one after another where they're dropped
+  event?: boolean // an event's edge (29 Oct): its new time is saved as typing it over the event saves it
 }
 
 export interface Row {

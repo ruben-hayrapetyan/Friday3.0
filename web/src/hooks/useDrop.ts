@@ -3,14 +3,14 @@
 // Resizing a block pins it with its new length. Dropped on a whole day (a month cell, the mini month, a day's
 // header) it is due that day instead, at the time it had or 23:59 (COMBINED.md 16, as personal's Deadlines.swift).
 // A block picked with others (plan/picks.ts) takes them along: all move by as much, all are due that day, or all go
-// back to Friday.
+// back to Friday. An event's edge, dragged, gives it a new start or end, saved as typing its time saves it.
 
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useCallback } from "react"
 import type { Block, Item } from "@/api/client"
 import type { Drag } from "@/components/calendar/useDrag"
 import { type Toast, useToast } from "@/components/Toasts"
-import { weekday } from "@/lib/format"
+import { clock, weekday } from "@/lib/format"
 import { fromMin } from "@/lib/time"
 import { placedByHand } from "@/plan/glide"
 import { pending } from "@/plan/pending"
@@ -51,6 +51,22 @@ export function placeEvent(_client: QueryClient, given: object | null, paint: Pa
     if (plan.fixed.some((f) => f.title === made.title && f.start === made.start && f.end === made.end)) return plan
     return { ...plan, fixed: [...plan.fixed, made] }
   })
+}
+
+/** An event's new time, saved as the drawer saves it (this time only, for a repeat; back to its calendar if it saves
+ * there), shown at once where you put it. */
+export function retimeEvent(client: QueryClient, toast: (t: Toast) => void, id: number, title: string, span: { start: string; end: string }) {
+  return runCommand(client, toast, "edit", { id, start: span.start, end: span.end }, {
+    optimistic: (c) => placeEvent(c, { id, ...span }),
+    label: () => `${title}: ${clock(span.start)}–${clock(span.end)}`,
+  })
+}
+
+/** The time an event's dragged edge gives it, or null when it was let go off the calendar or where it was. */
+export function eventDrop(drag: Drag): { start: string; end: string } | null {
+  if (!drag.event || !drag.moved || drag.over !== "calendar" || !drag.at || (drag.kind !== "resize" && drag.kind !== "resize-top")) return null
+  if (drag.at.start === drag.start && drag.at.end === drag.end) return null
+  return { start: fromMin(drag.at.start), end: fromMin(drag.at.end) }
 }
 
 /** What a new event will wear, known before the server answers. */
@@ -190,6 +206,11 @@ export function useDrop(onSelection: (selection: Selection) => void): (drag: Dra
         return
       }
       if (drag.itemId === null) return
+      if (drag.event) {
+        const span = eventDrop(drag)
+        if (span) retimeEvent(client, toast, drag.itemId, drag.title, span)
+        return
+      }
       if (drag.rows && drag.rows.length > 1) return void dropRows(client, toast, drag)
       if (drag.group && drag.kind === "move") {
         const list = picks.get()
