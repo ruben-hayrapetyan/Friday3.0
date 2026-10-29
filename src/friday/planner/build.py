@@ -48,6 +48,24 @@ MEAL_WINDOW = {"type": "meal_window", "name": "meal_window", "weight": 1.0, "sta
 # A pin holds: its time given up costs in the deadlines stage, beside lateness and far below it, so nothing but work
 # that would be late moves it (27 Oct). In wellbeing, a heavy Tuesday still took two hours of a pinned evening.
 PIN_HOLD = {"type": "pin_hold", "name": "pin_hold", "weight": 1.0, "stage": "deadlines", "params": {"price": 100.0}}
+
+
+def steady(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Your minimize_changes, split (29 Oct): work with a due, and pinned or timed time, held where it was as before;
+    the rest of undated work's place weighed among preferences, beside soft lateness, so a reading due Sunday takes
+    the evening an undated task had been given rather than going unplanned."""
+    out = []
+    for rule in rules:
+        if rule["type"] != "minimize_changes":
+            out.append(rule)
+            continue
+        params = rule.get("params") or {}
+        out.append({**rule, "params": {**params, "which": "dated"}})
+        undated = {"name": f"{rule['name']}_undated", "stage": "preferences", "params": {**params, "which": "undated"}}
+        out.append({**rule, **undated})
+    return out
+
+
 LONG_TERM_SCALE = 0.25  # how much Long term work counts when short-term work comes first
 
 
@@ -142,7 +160,7 @@ def build_problem(inp: BuildInput) -> Problem:
     rules = [
         rule.model_dump(exclude={"enabled"}) for rule in settings["rules"] if rule.type in RULE_TYPES and rule.enabled
     ]
-    problem.rules = build_rules(rules + [MEAL_WINDOW, PIN_HOLD] + travel_kept(rules))
+    problem.rules = build_rules(steady(rules) + [MEAL_WINDOW, PIN_HOLD] + travel_kept(rules))
     for rule in problem.rules:
         rule.prepare(problem)
     prune(problem)

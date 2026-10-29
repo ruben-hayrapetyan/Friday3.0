@@ -312,11 +312,19 @@ class OpenValue(Rule):
 
 @rule_type("minimize_changes")
 class MinimizeChanges(Rule):
+    """Where work was planned stays, unless something matters more. `which` splits it (29 Oct: "why is friday
+    scheduling 'Email professors for research opportunities' that doesn't have a deadline over something that has
+    one"): "dated", work with a due, and any pinned or timed time; "undated", the rest of undated work's place, which
+    the planner weighs among preferences, so work that's due takes that time first."""
+
     class Params(Rule.Params):
         preferred_multiplier: float = 10.0
+        which: Literal["all", "dated", "undated"] = "all"
 
     def applies_also(self, item):
-        return item.amount != "open" and not item.tentative and bool(item.current)
+        if item.amount == "open" or item.tentative or not item.current:
+            return False
+        return self.p.which != "undated" or item.due_utc is None
 
     def measures(self, ctx):
         grid, problem = ctx.grid, ctx.problem
@@ -326,7 +334,7 @@ class MinimizeChanges(Rule):
                 ("n", [s for s in kept if s not in item.preferred and s not in item.held], 1.0),
                 ("p", [s for s in kept if s in item.preferred or s in item.held], self.p.preferred_multiplier),
             ):
-                if not slots:
+                if not slots or not self.holds(item, tag):
                     continue
                 units = sum(int(grid.units[s]) for s in slots)
                 given_up = lin_sum(ctx.placed_in(item.key, [s]) * -1 for s in slots) + units
@@ -334,6 +342,13 @@ class MinimizeChanges(Rule):
                 mult = problem.minimize_changes_scale if tag == "n" else 1.0
                 yield Measure(f"{self.name}:{item.key}:{tag}", given_up, "units", (Hinge("above", 0, slope),),
                               mult=mult)  # fmt: skip
+
+    def holds(self, item, tag: str) -> bool:
+        """Whether this rule holds `tag`'s slots ("n" planned, "p" pinned or timed) of `item`."""
+        if self.p.which == "all":
+            return True
+        undated_plain = item.due_utc is None and tag == "n"
+        return undated_plain if self.p.which == "undated" else not undated_plain
 
 
 @rule_type("pin_hold")

@@ -141,6 +141,7 @@ def schedule(
         seconds["fallback"] += time.perf_counter() - clock
     if keep and (kept := better_kept(c, owner)) is not None:  # warm or the nightly cold one: yours stands
         owner, protected = kept, []
+    owner = dated_first(c, owner, cancel)
     result = verified(c, owner, protected, fallback, start.demoted, seconds, config, steps)
     result.cancelled = bool(cancel[0])
     result.deadlines_after = trace | {"final": result.stage_values["deadlines"]}
@@ -274,6 +275,50 @@ def better_kept(c: Compiled, owner: np.ndarray) -> np.ndarray | None:
     if not valid(c, kept) or check(c.problem, c.plan_from_owner(kept)):
         return None
     return kept if stage_values(c, kept) <= stage_values(c, owner) and (kept != owner).any() else None
+
+
+def dated_first(c: Compiled, owner: np.ndarray, cancel: np.ndarray | None = None) -> np.ndarray:
+    """Time the plan gave undated work, given instead to work due inside the horizon that has too little, wherever the
+    plan is better for it in the stages' order and no wall breaks (29 Oct: "why is friday scheduling 'Email professors
+    for research opportunities' that doesn't have a deadline over something that has one but that hasn't been
+    scheduled"). The annealer moves and fills work but never takes one item's time for another it left out, so a
+    reading due Sunday sat unplanned beside an evening given to an undated task, though the swap was cheaper by every
+    count. Pinned, locked and timed time stays its own."""
+    problem, grid = c.problem, c.problem.grid
+    items = list(problem.items.values())
+    units = grid.units
+    has = lambda i: int(units[np.flatnonzero(owner == i)].sum())  # noqa: E731
+    due = [i for i, it in enumerate(items) if it.amount == "fixed" and it.due_utc is not None]
+    short = sorted((i for i in due if items[i].due_utc <= grid.horizon_end and has(i) < items[i].need),
+                   key=lambda i: items[i].due_utc)  # fmt: skip
+    if not short:
+        return owner
+    best = stage_values(c, owner)
+    for u, item in enumerate(items):
+        if item.due_utc is not None:
+            continue
+        kept = set(item.locked) | set(item.preferred) | set(item.held)
+        for d in short:
+            if cancel is not None and cancel[0]:
+                return owner
+            slots = [int(s) for s in np.flatnonzero(owner == u) if s not in kept and c.m.allowed[d, s]]
+            missing = items[d].need - has(d)
+            take, got = [], 0
+            for s in slots:
+                if got >= missing:
+                    break
+                take.append(s)
+                got += int(units[s])
+            if not take:
+                continue
+            trial = owner.copy()
+            trial[take] = d
+            if not valid(c, trial):
+                continue
+            values = stage_values(c, trial)
+            if values < best:
+                owner, best = trial, values
+    return owner
 
 
 def current_owner(problem: Problem) -> np.ndarray | None:

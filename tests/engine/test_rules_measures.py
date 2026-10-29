@@ -384,7 +384,8 @@ def test_open_value_across_the_zone_boundary() -> None:
     assert cost(p, plan(item_1=(B,)), "open_value") == 98 + 24
 
 
-# minimize_changes: units of the current plan given up, 1 pt/h, preferred pins × 10
+# minimize_changes: units of the current plan given up, 1 pt/h, preferred pins × 10. Split in two by the planner
+# (29 Oct): undated work's planned place is held by minimize_changes_undated, among preferences; the rest as before.
 
 
 def test_minimize_changes_is_zero_when_nothing_moves() -> None:
@@ -394,10 +395,21 @@ def test_minimize_changes_is_zero_when_nothing_moves() -> None:
 
 def test_minimize_changes_counts_units_given_up_and_preferred_pins_more() -> None:
     p = problem([chore(4)], ["minimize_changes"], current={1: [(MON10, MON10 + 60)]})
-    assert cost(p, plan(item_1=(0, 1, 6, 7)), "minimize_changes") == 50
+    assert cost(p, plan(item_1=(0, 1, 6, 7)), "minimize_changes_undated") == 50  # an undated chore's place
+    assert cost(p, plan(item_1=(0, 1, 6, 7)), "minimize_changes") == 0
     pinned = problem([chore(4)], ["minimize_changes"], current={1: [(MON10, MON10 + 60)]},
                      pins=[Pin(1, MON10, MON10 + 30, "preferred")])  # fmt: skip
-    assert cost(pinned, plan(item_1=(1, 3, 6, 7)), "minimize_changes") == 25 * 10 + 25
+    assert cost(pinned, plan(item_1=(1, 3, 6, 7)), "minimize_changes") == 25 * 10  # its pin, held as before
+    assert cost(pinned, plan(item_1=(1, 3, 6, 7)), "minimize_changes_undated") == 25
+
+
+def test_minimize_changes_holds_dated_work_in_wellbeing_and_undated_among_preferences() -> None:
+    due = item("chore", 1, duration_units=4, shape="split", min_chunk_units=1, due_utc=MON10 + 600)
+    p = problem([due], ["minimize_changes"], current={1: [(MON10, MON10 + 60)]})
+    assert cost(p, plan(item_1=(0, 1, 6, 7)), "minimize_changes") == 50
+    assert cost(p, plan(item_1=(0, 1, 6, 7)), "minimize_changes_undated") == 0
+    stages = {r.name: r.stage for r in p.rules}
+    assert stages["minimize_changes"] == "wellbeing" and stages["minimize_changes_undated"] == "preferences"
 
 
 def test_minimize_changes_is_avoided_by_staying_put() -> None:
@@ -407,7 +419,7 @@ def test_minimize_changes_is_avoided_by_staying_put() -> None:
 
 def test_minimize_changes_across_the_zone_boundary() -> None:
     p = zone_problem([chore(3)], ["minimize_changes"], current={1: [(at(1, "04:00"), at(1, "04:30"))]})
-    assert cost(p, plan(item_1=(B + 2,)), "minimize_changes") == 50
+    assert cost(p, plan(item_1=(B + 2,)), "minimize_changes_undated") == 50
 
 
 # buffer: weight 3; a chunk that starts right after other work costs, per unit of that work inside its buffer

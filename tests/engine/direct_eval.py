@@ -249,6 +249,10 @@ def measure_rule_cost(p: Problem, rule: Rule, items: list[EngineItem], X: dict[s
             pinned = [s for s in kept if s in it.preferred or s in it.held]
             for slots, slope, mult in ((loose, 1.0, p.minimize_changes_scale),
                                        (pinned, rule.p.preferred_multiplier, 1.0)):  # fmt: skip
+                # split in two (29 Oct): undated work's planned place by itself, the rest by the "dated" half
+                undated_plain = it.due_utc is None and slots is loose
+                if rule.p.which == "dated" and undated_plain or rule.p.which == "undated" and not undated_plain:
+                    continue
                 if slots:
                     given_up = sum(int(U[s]) for s in slots if not X[it.key][s])
                     hinges.append(("above", 0, slope, "units", mult, given_up))

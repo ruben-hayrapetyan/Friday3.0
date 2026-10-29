@@ -18,7 +18,9 @@ if TYPE_CHECKING:
 STAGES = ("deadlines", "wellbeing", "preferences")
 Amount = Literal["fixed", "elastic", "target", "open"]
 Plan = Mapping[str, tuple[int, ...]]  # item key → sorted slot indices
-NEVER_LEARNED = frozenset({"late_work", "late_tasks", "quota"})
+# Lateness is never a taste learned from your moves: soft deadlines too (29 Oct, soft_late had been learned down to a
+# thirtieth of its weight, and undated work took the time of readings due that Sunday).
+NEVER_LEARNED = frozenset({"late_work", "late_tasks", "quota", "soft_late"})
 
 
 @dataclass(frozen=True)
