@@ -46,6 +46,22 @@ describe("an event's edge, dragged (29 Oct: events stretch as blocks do)", () =>
     expect(eventDrop(drag({ over: "todo", at: null }))).toBeNull()
     expect(eventDrop(drag({ moved: false, at: { start: lecture.start, end: toMin("2026-10-29T12:00") } }))).toBeNull()
     expect(eventDrop(drag({ event: false, at: { start: lecture.start, end: toMin("2026-10-29T12:00") } }))).toBeNull()
-    expect(eventDrop(drag({ kind: "move", at: { start: toMin("2026-10-29T12:00"), end: toMin("2026-10-29T12:50") } }))).toBeNull()
+    expect(eventDrop(drag({ kind: "select", at: { start: lecture.start, end: toMin("2026-10-29T12:00") } }))).toBeNull()
+  })
+
+  it("moves it whole: to another time, or another day on the calendar (29 Oct: events that moved)", () => {
+    const moved = (more: Partial<Drag>) => eventDrop(drag({ kind: "move", ...more }))
+    expect(moved({ at: { start: toMin("2026-10-29T13:25"), end: toMin("2026-10-29T14:15") } })).toEqual({ start: "2026-10-29T13:25", end: "2026-10-29T14:15" })
+    expect(moved({ at: { start: toMin("2026-10-31T10:10"), end: toMin("2026-10-31T11:00") } })).toEqual({ start: "2026-10-31T10:10", end: "2026-10-31T11:00" })
+    expect(moved({ at: { ...lecture } })).toBeNull() // let go where it was
+    expect(moved({ over: "todo", at: null })).toBeNull() // an event has no place in the to-do list
+  })
+
+  it("let go on a whole day, keeps its time and length", () => {
+    expect(eventDrop(drag({ kind: "move", over: "day", day: "2026-11-02", at: null }))).toEqual({ start: "2026-11-02T10:10", end: "2026-11-02T11:00" })
+    expect(eventDrop(drag({ kind: "move", over: "day", day: "2026-10-29", at: null }))).toBeNull() // its own day
+    expect(eventDrop(drag({ kind: "resize", over: "day", day: "2026-11-02", at: null }))).toBeNull() // an edge isn't a move
+    const late = { start: toMin("2026-10-29T23:30"), end: toMin("2026-10-30T00:30") } // past midnight: still an hour
+    expect(eventDrop(drag({ kind: "move", ...late, over: "day", day: "2026-11-02", at: null }))).toEqual({ start: "2026-11-02T23:30", end: "2026-11-03T00:30" })
   })
 })

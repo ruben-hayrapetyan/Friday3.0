@@ -51,6 +51,8 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
     if (at >= 0) whatIf.remove(at)
   }
   const retime = useRetime()
+  const stays = (f: Item) => !!f.gives_way_to || lookOf(f.id) === "gone"
+  const letGo = (f: Item) => selected?.key === `F${f.id}` && select(null) // its popover would act on where it was
   // Several picked with ⌘ or Shift (plan/picks.ts): drawn as selected, and dragged together.
   const picked = usePicks()
   const pickedKeys = new Set(picked.map((p) => p.key))
@@ -173,12 +175,14 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                   }
                   onEdit={p.item.event_kind === "shove" ? undefined : () => (select(null), setEvent(draftOf(p.item)))}
                   retime={{ begin: () => select(null), save: (span) => retime.event(p.item, span) }}
-                  // Its edges stretch it as a block's do (29 Oct); one skipped for work, or deleted in What if, stays put.
-                  onResize={
-                    p.item.gives_way_to || lookOf(p.item.id) === "gone"
+                  // It moves, and its edges stretch it, as a block's do (29 Oct); a picked one takes the others picked
+                  // with it. One skipped for work, or deleted in What if, stays put.
+                  onGrab={
+                    stays(p.item)
                       ? undefined
-                      : (e, edge) => (select(null), begin(e, { kind: edge === "top" ? "resize-top" : "resize", start: toMin(p.item.start), end: toMin(p.item.end), grab: 0, itemId: p.item.id, blockKey: null, title: p.item.title, event: true }))
+                      : (e) => (letGo(p.item), begin(e, { ...grabbedEvent(p.item, "move", minuteAt(e)), group: pickedKeys.has(`F${p.item.id}`) && picked.length > 1 }))
                   }
+                  onResize={stays(p.item) ? undefined : (e, edge) => (letGo(p.item), begin(e, grabbedEvent(p.item, edge === "top" ? "resize-top" : "resize", minuteAt(e))))}
                 />
               ))}
               {event && !event.allDay && layout([event], date, axis).map((p) => <DraftBox key="draft" p={p} title={event.title} />)}
@@ -376,6 +380,11 @@ function Nights({ date, days, axis }: { date: string; days: Map<string, Schemas[
 function minuteAtMouse(e: React.MouseEvent): number {
   const top = Number((e.currentTarget as HTMLElement).dataset.topMin)
   return top + (e.clientY - e.currentTarget.getBoundingClientRect().top) / PX
+}
+
+function grabbedEvent(event: Item & { start: string; end: string }, kind: "move" | "resize" | "resize-top", minute: number) {
+  const start = toMin(event.start)
+  return { kind, start, end: toMin(event.end), grab: minute - start, itemId: event.id, blockKey: null, title: event.title, event: true }
 }
 
 function grabbed(block: Block, kind: "move" | "resize" | "resize-top", minute: number) {

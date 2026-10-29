@@ -163,9 +163,10 @@ interface FixedProps {
   retime?: Retime
   tried?: TriedLook
   onResize?: (e: React.PointerEvent, edge: "top" | "bottom") => void // none: it can't be stretched here
+  onGrab?: (e: React.PointerEvent) => void // none: it can't be moved here
 }
 
-export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize }: FixedProps) {
+export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, onGrab }: FixedProps) {
   const it = p.item
   const { skinOf, light } = useLook()
   const base = skinOf(it.event_kind === "shove" ? "shove" : "fixed", it.area)
@@ -204,8 +205,10 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize }:
       onClick={onOpen}
       onDoubleClick={onEdit}
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
+      onPointerDown={typing ? undefined : onGrab}
       style={{
         ...box(p),
+        ...(onGrab ? { touchAction: "none" } : {}),
         borderRadius: 6,
         background: s.bg,
         border: s.bd,
