@@ -11,7 +11,7 @@ import { clock, dur, when } from "@/lib/format"
 import { nextBlocks } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
-import { dayName } from "@/review/DailyReview"
+import { dayName } from "@/inbox/DailyReview"
 
 export function Modal({ onClose, children, top, width = 560 }: { onClose: () => void; children: ReactNode; top?: boolean; width?: number }) {
   return (

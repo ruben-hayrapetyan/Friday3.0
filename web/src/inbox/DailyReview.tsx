@@ -1,6 +1,6 @@
-// The daily Review (27 Oct: "only the gaps, by task"): what Friday can't know on its own. A task's time that ended
-// with no timer running, no answer on the calendar and the task still open is one row: all of it, some, none, or
-// the whole task finished, saved the moment you pick. Timed work, checked-off tasks and meals (their taps) aren't
+// Your day, in the Inbox (Review until 29 Oct; 27 Oct: "only the gaps, by task"): what Friday can't know on its own.
+// A task's time that ended with no timer running, no answer on the calendar and the task still open is one row: all
+// of it, some, none, or the whole task finished, saved the moment you pick. Timed work, checked-off tasks and meals (their taps) aren't
 // asked about. Your answers are what Friday learns lengths and your working hours from; one left unanswered counts
 // the way Settings → Schedule says (done, or not done and planned again). Below, forgotten sleep taps.
 
@@ -33,10 +33,16 @@ export function useReviewDay(): string | null {
   return before === undefined ? null : open(before.gaps) ? yesterday : today
 }
 
-/** How many rows yesterday and today have to answer: the dot on Review. */
-export function useReviewWaiting(): number {
+/** How many rows yesterday and today have to answer, each. */
+export function useReviewOpen(): { yesterday: number; today: number } {
   const { today } = useShell()
-  return open(useReview(addDays(today, -1))?.gaps) + open(useReview(today)?.gaps)
+  return { yesterday: open(useReview(addDays(today, -1))?.gaps), today: open(useReview(today)?.gaps) }
+}
+
+/** How many rows yesterday and today have to answer, together: the dot on the Inbox. */
+export function useReviewWaiting(): number {
+  const { yesterday, today } = useReviewOpen()
+  return yesterday + today
 }
 
 const SAID: Record<Status, string> = { done: "All of it", partial: "Some", not_done: "None", finished: "Finished it" }

@@ -11,7 +11,7 @@ enum HostAction: Equatable {
     case view(String)  // "day" | "week" | "month"
     case drawer  // opens or closes it
     case openDrawer  // the summon hotkey: open, whatever it was
-    case go(String)  // a page: "/", "/todo", "/projects", "/review", "/inbox", "/insights", "/rules", "/settings"
+    case go(String)  // a page: "/", "/todo", "/projects", "/inbox", "/insights", "/rules", "/settings"
     case otherWays, shove, pace, brief, triage
     case tour  // the tour of Friday
     case setup  // Setup's questions again

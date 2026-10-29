@@ -1,6 +1,7 @@
 // The Inbox (v22): what came in from mail, feeds, calendars and documents, by source. Each suggestion shows the item
 // it would make, each field with the words it came from, and the source with those words highlighted. Nothing
-// reaches the plan until you accept it (A), edit it (E) or reject it (R).
+// reaches the plan until you accept it (A), edit it (E) or reject it (R). Your day (what was Review, 29 Oct) is a
+// link under the decisions, to the planned time Friday can't account for on its own.
 
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
@@ -21,6 +22,8 @@ import { useAreas } from "@/hooks/queries"
 import { NavLink } from "react-router"
 import { useDuplicates } from "./CheckTasks"
 import { Decisions, useDecisions } from "./Decisions"
+import { useReviewWaiting } from "./DailyReview"
+import { YourDayLink } from "./YourDay"
 
 type Suggestion = Schemas["SuggestionOut"]
 interface Resolved {
@@ -48,6 +51,7 @@ export function InboxPage() {
   const inbox = useInbox().data
   const copies = useDuplicates().data?.groups.length ?? 0
   const deciding = useDecisions().length
+  const answering = useReviewWaiting()
   const [selected, setSelected] = useState<number | null>(null)
   const [resolved, setResolved] = useState<Resolved[]>([])
   const pending = inbox?.suggestions ?? []
@@ -62,7 +66,7 @@ export function InboxPage() {
       <div className="fr-page-head">
         <span className="fr-h fr-title">Inbox</span>
         <span className="tnum" style={{ color: "var(--color-neutral-500)" }}>
-          {[deciding ? `${deciding} to decide` : "", pending.length ? `${pending.length} to check from ${new Set(pending.map((s) => s.source)).size} ${new Set(pending.map((s) => s.source)).size === 1 ? "source" : "sources"}` : ""].filter(Boolean).join(" · ") || "All clear"}
+          {[deciding ? `${deciding} to decide` : "", answering ? `${answering} to answer` : "", pending.length ? `${pending.length} to check from ${new Set(pending.map((s) => s.source)).size} ${new Set(pending.map((s) => s.source)).size === 1 ? "source" : "sources"}` : ""].filter(Boolean).join(" · ") || "All clear"}
         </span>
         <div style={{ flex: 1 }} />
         <span className="fr-head-note" style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12, color: "var(--color-neutral-500)" }}>
@@ -74,6 +78,7 @@ export function InboxPage() {
         {showList && (
         <div style={{ overflowY: "auto", minHeight: 0, padding: "12px 10px 40px", boxShadow: "inset -1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 14 }}>
           <Decisions />
+          <YourDayLink />
           <NavLink to="/inbox/check" className="fr-well fr-hover" style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", color: "var(--color-text)", textDecoration: "none" }}>
             <Icon name="list-checks" size={16} style={{ color: "var(--color-accent-300)" }} />
             <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 1, fontSize: 12 }}>

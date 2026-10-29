@@ -91,7 +91,7 @@ cases run from very light to overloaded (`fridayd demo --help`).
 | ⌘N, ⇧⌘N | A new event, a new to-do |
 | ⌘1, ⌘2, ⌘3 | Day, week, month |
 | ⌘T | Today (`[` and `]` step back and forward, as in the browser) |
-| ⌥⌘1 … ⌥⌘7 | Plan, To-do, Projects, Review, Inbox, Insights, Rules |
+| ⌥⌘1 … ⌥⌘6 | Plan, To-do, Projects, Inbox (how your day went is there too), Insights, Rules |
 | ⌘J | Ask Claude |
 
 The **Plan** menu has Other Ways, What Gives, Shove, Pace and the morning brief. The **menu bar** shows what you're

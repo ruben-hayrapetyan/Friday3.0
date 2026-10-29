@@ -24,11 +24,11 @@ import { markShoved } from "@/pops/shoved"
 import { ShovePop } from "@/pops/ShovePop"
 import { CheckTasks } from "@/inbox/CheckTasks"
 import { InboxPage } from "@/inbox/InboxPage"
+import { YourDay } from "@/inbox/YourDay"
 import { InsightsPage } from "@/insights/InsightsPage"
 import { BodyPage } from "@/body/BodyPage"
 import { RulesLab } from "@/lab/rules/RulesLab"
 import { ProjectsPage } from "@/projects/ProjectsPage"
-import { ReviewPage } from "@/review/ReviewPage"
 import { RulesPage } from "@/rules/RulesPage"
 import { SettingsPage } from "@/settings/SettingsPage"
 import { Search } from "@/search/Search"
@@ -98,8 +98,10 @@ export function Shell() {
             <Route path="/todo" element={<TodoPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/exams" element={<Navigate to="/projects" replace />} />
-            <Route path="/review" element={<ReviewPage />} />
+            {/* Review is Your day in the Inbox now (29 Oct): old links and the Mac app's menu still get there */}
+            <Route path="/review" element={<Navigate to="/inbox/day" replace />} />
             <Route path="/inbox" element={<InboxPage />} />
+            <Route path="/inbox/day" element={<YourDay />} />
             <Route path="/inbox/check" element={<CheckTasks />} />
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/body" element={<BodyPage />} />
