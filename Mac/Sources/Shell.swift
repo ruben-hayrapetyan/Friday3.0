@@ -198,7 +198,7 @@ struct MacSettings: View {
                     if panel.runModal() == .OK, let url = panel.url { fridaydPath = url.path }
                 }
             }
-            Text("Friday's server. Found in ~/.local/bin or the Friday-planner checkout when left empty.")
+            Text("Friday's server. Found in ~/.local/bin or the Friday2.0 checkout when left empty.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding(20)

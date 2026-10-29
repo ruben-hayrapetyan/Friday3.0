@@ -55,7 +55,7 @@ test("fridayd: what you chose first, then the usual places") {
     let found = Server.candidates(chosen: "/opt/friday/fridayd", home: home).map(\.path)
     check(found.first == "/opt/friday/fridayd", "chosen first: \(found)")
     check(found.contains("/Users/someone/.local/bin/fridayd"), "uv tool install's place")
-    check(found.contains("/Users/someone/Downloads/Code/Friday-planner/.venv/bin/fridayd"), "the checkout")
+    check(found.contains("/Users/someone/Downloads/Code/FridayVersionedRepos/Friday2.0/.venv/bin/fridayd"), "the checkout")
     check(Server.candidates(chosen: "", home: home).first == home.appendingPathComponent(".local/bin/fridayd"),
           "an empty choice is no choice")
     check(Server.candidates(chosen: nil, home: home).count == 4, "four usual places")
