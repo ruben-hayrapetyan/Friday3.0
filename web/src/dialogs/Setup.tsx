@@ -5,11 +5,18 @@
 // optional and done the moment you do it, with the same controls as Settings → Integrations.
 //
 // 29 Oct, "like Opal... animations, information, and you also select things but its very nice ui": a stage of its
-// own (setup.css) in the colours of Friday's icon, one question a screen, choices as cards with a picture of what
-// each means, and beside them the week your answers make, redrawn as you answer (setupWeek.ts). Friday's ring fills
-// as you go and closes gold at the end, where your answers read back as a sentence, each part a way back to its
-// question.
+// own, one question a screen, choices as cards with a picture of what each means, and beside them the week your
+// answers make, redrawn as you answer (setupWeek.ts). At the end your answers read back as a sentence, each part a way
+// back to its question.
+//
+// Later on 29 Oct, "the introduction looks extremely like 'ai'... try having it be animation based (pixel art might
+// be cool here!)": a small pixel game on graph paper (setup.css, pixel.tsx). Friday asks each question in a text
+// box, typed out a letter at a time; the week is a board where work drops into the gaps around your classes
+// (SetupBoard.tsx); a block a screen fills along the top.
 
+import "@fontsource/pixelify-sans/500.css"
+import "@fontsource/pixelify-sans/600.css"
+import "@fontsource/silkscreen/400.css"
 import "./setup.css"
 import { useQuery } from "@tanstack/react-query"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
@@ -25,8 +32,10 @@ import { CHOICES, choiceOf, fromChoice, saying } from "@/settings/calendarChoice
 import { ConnectedAccounts } from "@/settings/GoogleAccounts"
 import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess } from "@/settings/GoogleConnect"
 import { AddFeed, Upload } from "@/settings/Integrations"
-import { Choices, EarlyGlyph, HourBar, LengthGlyph, Other, Ring, Source, TimeCard, WeekPanel } from "./SetupParts"
-import { ALL_EVENING, ALL_WEEKEND, shift, sleepHours, weekOf } from "./setupWeek"
+import { AGAIN, ARROW, CURSOR, DROP, LOGO, MOON, MORE, SUN, Sprite, Steps, useTyped, WATCH } from "./pixel"
+import { Board } from "./SetupBoard"
+import { Choices, EarlyGlyph, HourBar, LengthGlyph, Other, Source, TimeCard } from "./SetupParts"
+import { ALL_EVENING, ALL_WEEKEND, bedOf, shift, sleepHours, wakeOf, weekOf } from "./setupWeek"
 
 export { shift }
 export type Answers = Schemas["SetupInput"]
@@ -136,13 +145,13 @@ const SCREENS: Record<string, Screen> = {
     title: "You bring the deadlines. Friday finds the time.",
     body: () => (
       <div className="st-points">
-        <Point icon="calendar-check" hue="var(--st-work)" title="Work goes where you have time" i={0}>
+        <Point art={DROP} title="Work goes where you have time" i={0}>
           Around your classes and events, never while you sleep, in sittings you can focus for.
         </Point>
-        <Point icon="arrows-clockwise" hue="var(--st-gold)" title="When your week changes, so does the plan" i={1}>
+        <Point art={AGAIN} title="When your week changes, so does the plan" i={1}>
           Something runs over or comes up, and the rest of the week is planned again.
         </Point>
-        <Point icon="timer" hue="var(--st-class)" title="It learns how long things take you" i={2}>
+        <Point art={WATCH} title="It learns how long things take you" i={2}>
           Time what you work on, and Friday plans with how long things really take.
         </Point>
       </div>
@@ -158,14 +167,14 @@ const SCREENS: Record<string, Screen> = {
         <>
           <div className="st-group">
             {different && <span className="st-label st-rise">Weekdays</span>}
-            <TimeCard icon="sun-horizon" hue="var(--st-gold)" label="Up at" value={a.wake} expect={{ hours: SLEEP_HOURS.up }} onPick={(wake) => set(different ? { wake } : { wake, weekend_wake: wake })} i={0} />
-            <TimeCard icon="moon-stars" hue="var(--st-class)" label="Bed at" value={a.bedtime} expect={{ hours: SLEEP_HOURS.bed }} onPick={(bedtime) => set(different ? { bedtime } : { bedtime, weekend_bedtime: bedtime })} i={1} />
+            <TimeCard glyph={<Sprite art={SUN} scale={2} />} hue="var(--px-gold)" label="Up at" value={a.wake} expect={{ hours: SLEEP_HOURS.up }} onPick={(wake) => set(different ? { wake } : { wake, weekend_wake: wake })} i={0} />
+            <TimeCard glyph={<Sprite art={MOON} scale={3} />} hue="var(--px-class)" label="Bed at" value={a.bedtime} expect={{ hours: SLEEP_HOURS.bed }} onPick={(bedtime) => set(different ? { bedtime } : { bedtime, weekend_bedtime: bedtime })} i={1} />
           </div>
           {different && (
             <div className="st-group">
               <span className="st-label st-rise">Weekends</span>
-              <TimeCard icon="sun-horizon" hue="var(--st-gold)" label="Up at, weekends" value={a.weekend_wake} expect={{ hours: SLEEP_HOURS.up }} onPick={(weekend_wake) => set({ weekend_wake })} i={2} />
-              <TimeCard icon="moon-stars" hue="var(--st-class)" label="Bed at, weekends" value={a.weekend_bedtime} expect={{ hours: SLEEP_HOURS.bed }} onPick={(weekend_bedtime) => set({ weekend_bedtime })} i={3} />
+              <TimeCard glyph={<Sprite art={SUN} scale={2} />} hue="var(--px-gold)" label="Up at, weekends" value={a.weekend_wake} expect={{ hours: SLEEP_HOURS.up }} onPick={(weekend_wake) => set({ weekend_wake })} i={2} />
+              <TimeCard glyph={<Sprite art={MOON} scale={3} />} hue="var(--px-class)" label="Bed at, weekends" value={a.weekend_bedtime} expect={{ hours: SLEEP_HOURS.bed }} onPick={(weekend_bedtime) => set({ weekend_bedtime })} i={3} />
             </div>
           )}
           <label className="st-toggle st-rise" style={{ ["--i" as string]: 3 }}>
@@ -206,7 +215,7 @@ const SCREENS: Record<string, Screen> = {
             label="Longest stretch"
             value={picks.includes(a.focus_hours) ? a.focus_hours : null}
             onPick={(focus_hours) => set({ focus_hours })}
-            choices={picks.map((v) => ({ value: v, title: hoursWords(v).replace(/^an/, "An"), note: notes[v], glyph: <LengthGlyph hours={v} />, hue: "var(--st-work)" }))}
+            choices={picks.map((v) => ({ value: v, title: hoursWords(v).replace(/^an/, "An"), note: notes[v], glyph: <LengthGlyph hours={v} />, hue: "var(--px-work)" }))}
           />
           <Other value={a.focus_hours} picked={picks.includes(a.focus_hours)} read={readHours} say={hoursLabel} min={0.5} max={8} example="2.5h or 100 min" ask="Another length" label="Longest stretch, typed" onPick={(focus_hours) => set({ focus_hours })} />
         </>
@@ -219,7 +228,7 @@ const SCREENS: Record<string, Screen> = {
     note: "Time Friday keeps clear of work when it can. A deadline can still need it.",
     body: (a, set) => (
       <>
-        <HourBar label="Of each weekday evening" value={a.evening_free} min={0} segments={ALL_EVENING} names={{ 0: "None", [ALL_EVENING]: "All of it" }} hue="var(--st-free)" say={hoursLabel} onPick={(evening_free) => set({ evening_free })} i={0} />
+        <HourBar label="Of each weekday evening" value={a.evening_free} min={0} segments={ALL_EVENING} names={{ 0: "None", [ALL_EVENING]: "All of it" }} hue="var(--px-free)" say={hoursLabel} onPick={(evening_free) => set({ evening_free })} i={0} />
         {a.evening_free > 0 && (
           <div className="st-group st-rise" style={{ ["--i" as string]: 1 }}>
             <span className="st-label">Evenings start at</span>
@@ -233,7 +242,7 @@ const SCREENS: Record<string, Screen> = {
             </div>
           </div>
         )}
-        <HourBar label="Of each weekend day" value={a.weekend_free} min={0} segments={ALL_WEEKEND} names={{ 0: "None", [ALL_WEEKEND]: "All of it" }} hue="var(--st-free)" say={hoursLabel} onPick={(weekend_free) => set({ weekend_free })} i={2} />
+        <HourBar label="Of each weekend day" value={a.weekend_free} min={0} segments={ALL_WEEKEND} names={{ 0: "None", [ALL_WEEKEND]: "All of it" }} hue="var(--px-free)" say={hoursLabel} onPick={(weekend_free) => set({ weekend_free })} i={2} />
       </>
     ),
   },
@@ -251,7 +260,7 @@ const SCREENS: Record<string, Screen> = {
             label="Finish work"
             value={picks.includes(a.finish_early_days) ? a.finish_early_days : null}
             onPick={(finish_early_days) => set({ finish_early_days })}
-            choices={picks.map((d) => ({ value: d, title: titles[d], note: notes[d], glyph: <EarlyGlyph days={d} />, hue: "var(--st-work)" }))}
+            choices={picks.map((d) => ({ value: d, title: titles[d], note: notes[d], glyph: <EarlyGlyph days={d} />, hue: "var(--px-work)" }))}
           />
           <Other value={a.finish_early_days} picked={picks.includes(a.finish_early_days)} read={readDays} say={(d) => `${d} day${d === 1 ? "" : "s"} early`} min={0} max={7} example="5 days" ask="Further ahead" label="Days early, typed" onPick={(finish_early_days) => set({ finish_early_days })} />
         </>
@@ -281,8 +290,8 @@ const SCREENS: Record<string, Screen> = {
         value={a.brief ? "on" : "off"}
         onPick={(v) => set({ brief: v === "on" })}
         choices={[
-          { value: "on", title: "Yes, show it", note: "A minute's read, then your plan.", glyph: <Icon name="sun-horizon" fill size={22} />, hue: "var(--st-gold)" },
-          { value: "off", title: "No thanks", note: "Open straight to your plan. It's in Settings if you change your mind.", glyph: <Icon name="arrow-right" size={22} />, hue: "var(--st-class)" },
+          { value: "on", title: "Yes, show it", note: "A minute's read, then your plan.", glyph: <Sprite art={SUN} scale={2} />, hue: "var(--px-gold)" },
+          { value: "off", title: "No thanks", note: "Open straight to your plan. It's in Settings if you change your mind.", glyph: <Sprite art={ARROW} scale={3} />, hue: "var(--px-class)" },
         ]}
       />
     ),
@@ -352,6 +361,9 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
   }, [id])
   const week = useMemo(() => (draft ? weekOf(draft, id, beat) : null), [draft, id, beat])
   const done = !!setup?.done
+  const screen = SCREENS[id]
+  const shown = id === "welcome" && done ? { ...screen, title: "Fit Friday to your week again.", note: "Your answers are filled in: change what's different." } : screen
+  const [typed, typing, showAll] = useTyped(shown.title)
   const last = n >= ids.length - 1
   const finish = async (answers: Answers) => {
     setSaving(true)
@@ -371,23 +383,23 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
       if (e.key !== "Enter" || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || saving) return
       if (target?.closest("input, textarea, select, button, a, [contenteditable]")) return // they answer Return themselves
       e.preventDefault()
-      next()
+      if (typing) showAll() // as a game's text box: the first Return shows the whole line
+      else next()
     }
     window.addEventListener("keydown", key)
     return () => window.removeEventListener("keydown", key)
   })
   if (!draft || !setup || !week) return null
-  const screen = SCREENS[id]
   const set = (change: Partial<Answers>) => setDraft({ ...draft, ...change })
   const ctx: Ctx = { events: setup.events ?? {}, again: done, go: (step) => to(ids.indexOf(step)) }
-  const shown = id === "welcome" && done ? { ...screen, title: "Fit Friday to your week again.", note: "Your answers are filled in: change what's different." } : screen
   return (
     <div className="st-stage" role="dialog" aria-modal="true" aria-labelledby="st-title" data-quiet={["ai", "bring", "calendars"].includes(id) || undefined}>
       <header className="st-top">
-        <Ring progress={n / Math.max(1, ids.length - 1)} closed={id === "ready"} />
+        <Sprite art={LOGO} scale={2} className="px-logo" />
         <span className="st-top-name">Friday</span>
+        <Steps at={n} of={ids.length} done={id === "ready"} />
         <span className="st-count">
-          {n + 1} of {ids.length}
+          {n + 1}/{ids.length}
         </span>
         <button type="button" className="st-skip" onClick={() => (done ? onClose() : finish(setup.answers as unknown as Answers))} disabled={saving}>
           {done ? "Cancel" : "Skip: keep Friday's guesses"}
@@ -396,19 +408,30 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
       <div className="st-frame">
         <main ref={main} className="st-main">
           <section key={id} className="st-q" data-back={back || undefined}>
-            <div className="st-eyebrow st-rise">{shown.eyebrow}</div>
-            <h1 ref={title} id="st-title" className="st-title st-rise" data-big={shown.big || undefined} tabIndex={-1} style={{ ["--i" as string]: 0.5 }}>
-              {shown.title}
-            </h1>
-            {shown.note && (
-              <p className="st-note st-rise" style={{ ["--i" as string]: 1 }}>
-                {shown.note}
-              </p>
-            )}
+            {/* Friday asks in a text box, the question typed out; a click shows it whole */}
+            <div className="px-say" data-big={shown.big || undefined} onClick={() => typing && showAll()}>
+              <span className="px-plate">{shown.eyebrow}</span>
+              <h1 ref={title} id="st-title" className="st-title" tabIndex={-1}>
+                <span className="sr-only">{shown.title}</span>
+                <span className="px-type" aria-hidden>
+                  <span className="px-ghost">{shown.title}</span>
+                  <span className="px-typed">
+                    {typed}
+                    {typing && <i className="px-caret" />}
+                  </span>
+                </span>
+              </h1>
+              {shown.note && (
+                <p className="st-note" data-on={!typing || undefined}>
+                  {shown.note}
+                </p>
+              )}
+              <Sprite art={MORE} scale={2} className="px-more" />
+            </div>
             {shown.body && <div className="st-body">{shown.body(draft, set, ctx)}</div>}
           </section>
           <aside className="st-side" aria-label="Your week, as your answers make it">
-            <WeekPanel bits={week.bits} stage={id} legend={["welcome", "how", "ready"].includes(id)} readout={readout(draft, id, week.workHours, beat, ai.ready ? ai.name : null)} />
+            <Board bits={week.bits} stage={id} wake={wakeOf(draft, 0)} bed={bedOf(draft, 0)} legend={["welcome", "how", "ready"].includes(id)} readout={readout(draft, id, week.workHours, beat, ai.ready ? ai.name : null)} />
           </aside>
         </main>
         <footer className="st-foot">
@@ -416,14 +439,14 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
             <div className="st-foot-row">
               {n > 0 && (
                 <button type="button" className="st-back" onClick={() => to(n - 1)} disabled={saving}>
-                  <Icon name="arrow-left" size={15} />
+                  <Sprite art={CURSOR} scale={2} className="px-flip" />
                   Back
                 </button>
               )}
-              {id === "welcome" && <span className="st-foot-hint">Press Return to go on</span>}
+              {id === "welcome" && <span className="st-foot-hint">Press Return</span>}
               <button type="button" className="st-go" onClick={next} disabled={saving}>
                 {saving ? "Saving…" : (screen.go ?? "Continue")}
-                {!saving && <Icon name="arrow-right" size={16} />}
+                {!saving && <Sprite art={CURSOR} scale={2} />}
               </button>
             </div>
           </div>
@@ -465,7 +488,7 @@ function readout(a: Answers, id: string, workHours: number, beat: number, ai: st
           About <b>{workHours}h</b> of work in a normal week.{" "}
           {a.most_hours > a.normal_hours && (
             <>
-              A heavy day (hatched) goes up to <b>{hoursLabel(a.most_hours)}</b>.
+              A heavy day (checkered) goes up to <b>{hoursLabel(a.most_hours)}</b>.
             </>
           )}
         </>
@@ -543,11 +566,11 @@ function readout(a: Answers, id: string, workHours: number, beat: number, ai: st
   }
 }
 
-function Point({ icon, hue, title, children, i }: { icon: string; hue: string; title: string; children: ReactNode; i: number }) {
+function Point({ art, title, children, i }: { art: string[]; title: string; children: ReactNode; i: number }) {
   return (
-    <div className="st-point st-rise" style={{ ["--i" as string]: i + 1 }}>
-      <span className="st-glyph" style={{ ["--hue" as string]: hue }}>
-        <Icon name={icon} fill size={20} />
+    <div className="st-point st-rise" style={{ ["--i" as string]: i * 3 + 4 }}>
+      <span className="st-glyph">
+        <Sprite art={art} scale={3} />
       </span>
       <span>
         <b>{title}</b>
@@ -587,7 +610,7 @@ function BringIn() {
   return (
     <div className="st-group">
       {onMac ? (
-        <Source icon="calendar-dots" hue="var(--st-class)" title="The calendars on this Mac" note="Friday reads every calendar the Mac's Calendar has: iCloud, Google, Outlook, your school's. To bring in Google, add your Google account to the Mac." i={0}>
+        <Source icon="calendar-dots" hue="var(--px-class)" title="The calendars on this Mac" note="Friday reads every calendar the Mac's Calendar has: iCloud, Google, Outlook, your school's. To bring in Google, add your Google account to the Mac." i={0}>
           {mac.length > 0 && <Accounts calendars={mac} />}
           <span className="st-chips">
             <a className="st-chip st-chip-link" href={ACCOUNTS}>
@@ -602,18 +625,18 @@ function BringIn() {
           )}
         </Source>
       ) : (
-        <Source icon="google-logo" hue="var(--st-class)" title="Google Calendar" note="Paste your calendar's private link: in Google Calendar's settings, choose your calendar, then copy “Secret address in iCal format”. Friday reads it; it can't change it." i={0}>
+        <Source icon="google-logo" hue="var(--px-class)" title="Google Calendar" note="Paste your calendar's private link: in Google Calendar's settings, choose your calendar, then copy “Secret address in iCal format”. Friday reads it; it can't change it." i={0}>
           <a className="st-link" href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noreferrer">
             Open Google Calendar's settings
           </a>
           <AddFeed trusted />
         </Source>
       )}
-      <Source icon="link-simple" hue="var(--st-free)" title="A calendar link" note="From Canvas, your school or Outlook: paste its address, and new dates go to your Inbox." i={1}>
+      <Source icon="link-simple" hue="var(--px-free)" title="A calendar link" note="From Canvas, your school or Outlook: paste its address, and new dates go to your Inbox." i={1}>
         <AddFeed />
         {feeds.length > 0 && <span className="st-source-note">Added: {feeds.map((f) => f.name).join(", ")}</span>}
       </Source>
-      <Source icon="file-pdf" hue="var(--st-work)" title="Syllabus" note="A PDF or a course page becomes classes, readings, assignments and exam prep, in your Inbox." i={2}>
+      <Source icon="file-pdf" hue="var(--px-work)" title="Syllabus" note="A PDF or a course page becomes classes, readings, assignments and exam prep, in your Inbox." i={2}>
         <span>
           <Upload />
         </span>
@@ -622,7 +645,7 @@ function BringIn() {
         {more ? "Fewer options" : "More: Gmail, and connecting to Google directly"}
       </button>
       {more && (
-        <Source icon="envelope-simple" hue="var(--st-gold)" title="Gmail, and Google's own connection" note="Friday can suggest due dates and events from your mail (it never sends or deletes). That needs Google's own connection, a one-time setup of about five minutes, step by step. It also reads Google Calendar without the Mac." i={0}>
+        <Source icon="envelope-simple" hue="var(--px-gold)" title="Gmail, and Google's own connection" note="Friday can suggest due dates and events from your mail (it never sends or deletes). That needs Google's own connection, a one-time setup of about five minutes, step by step. It also reads Google Calendar without the Mac." i={0}>
           <ConnectedAccounts accounts={accounts} />
           <ConnectGoogle why={accounts.length ? "Google's page asks which account." : undefined} done="Choose the calendars it reads in Settings → Integrations." />
           <GmailSwitch />

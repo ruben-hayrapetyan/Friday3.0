@@ -1,40 +1,15 @@
-// The pieces of setup's stage (Setup.tsx, setup.css): Friday's ring, choice cards with a picture of what each means,
-// a bar of hours you fill, a time with steps either side, and the week your answers make.
+// The pieces of setup's stage (Setup.tsx, setup.css): choice cards with a picture of what each means, a bar of hours
+// you fill block by block, a time with steps either side, and things to bring in. Pixel art since 29 Oct (pixel.tsx);
+// the week beside them is SetupBoard.tsx.
 
 import { type CSSProperties, type KeyboardEvent, type ReactNode, type Ref, useEffect, useRef, useState } from "react"
 import { Icon } from "@/components/fr/controls"
 import { TimeInput } from "@/components/fr/TimeInput"
 import type { Expect } from "@/lib/ampm"
-import { type Bit, FOCUS, shift, VIEW } from "./setupWeek"
+import { CHECK, earlyArt, lengthArt, Sprite } from "./pixel"
+import { shift } from "./setupWeek"
 
 const vars = (v: Record<string, string | number | undefined>) => v as CSSProperties
-
-/** Friday's ring, as on its icon: as full as setup has come, closed in gold at the end. */
-export function Ring({ progress, closed }: { progress: number; closed: boolean }) {
-  const r = 13
-  const around = 2 * Math.PI * r
-  const level = closed ? 1 : Math.max(0.04, Math.min(0.97, progress))
-  return (
-    <svg className="st-ring" data-closed={closed || undefined} width={34} height={34} viewBox="0 0 34 34" aria-hidden>
-      <circle cx={17} cy={17} r={r} fill="none" stroke="currentColor" strokeOpacity={0.16} strokeWidth={3.2} />
-      <circle
-        cx={17}
-        cy={17}
-        r={r}
-        fill="none"
-        stroke={closed ? "var(--st-gold)" : "var(--st-paper)"}
-        strokeWidth={3.2}
-        strokeLinecap="round"
-        strokeDasharray={around}
-        strokeDashoffset={around * (1 - level)}
-        transform="rotate(-90 17 17)"
-      />
-      <text x={17} y={17.5} textAnchor="middle" dominantBaseline="central" fontFamily="ui-rounded, system-ui, sans-serif" fontWeight={800} fontSize={13} fill="currentColor">
-        F
-      </text>
-    </svg>
-  )
-}
 
 /** One choice: its picture, what it is, a line on what it means, and the tick when it's yours. */
 export function Card(props: {
@@ -64,7 +39,7 @@ export function Card(props: {
         {note && <span className="st-card-note">{note}</span>}
       </span>
       <span className="st-tick" aria-hidden>
-        <Icon name="check" size={13} style={{ fontWeight: 700 }} />
+        <Sprite art={CHECK} scale={2} />
       </span>
     </button>
   )
@@ -148,7 +123,7 @@ export function Other(props: { value: number; picked: boolean; read: (t: string)
 }
 
 /** Hours as a bar you fill: a click or a drag sets whole hours, the arrow keys half hours; `base` (a normal day, under
- * a heavy one) is drawn solid and the rest hatched. */
+ * a heavy one) is drawn solid and the rest checkered. */
 export function HourBar(props: { label: string; value: number; min: number; segments: number; onPick: (v: number) => void; say: (v: number) => string; names?: Record<number, string>; hue?: string; base?: number; i?: number }) {
   const { label, value, min, segments, onPick, say, names, hue, base, i = 0 } = props
   const bar = useRef<HTMLDivElement>(null)
@@ -218,11 +193,11 @@ export function HourBar(props: { label: string; value: number; min: number; segm
 }
 
 /** A time of day, typed or stepped a quarter hour at a time. */
-export function TimeCard({ icon, hue, label, value, onPick, expect, i = 0 }: { icon: string; hue: string; label: string; value: string; onPick: (t: string) => void; expect?: Expect; i?: number }) {
+export function TimeCard({ glyph, hue, label, value, onPick, expect, i = 0 }: { glyph: ReactNode; hue: string; label: string; value: string; onPick: (t: string) => void; expect?: Expect; i?: number }) {
   return (
     <div className="st-time st-rise" style={vars({ "--i": i })}>
       <span className="st-glyph" style={vars({ "--hue": hue })}>
-        <Icon name={icon} fill size={22} />
+        {glyph}
       </span>
       <span style={{ minWidth: 0 }}>
         <span className="st-time-label">{label}</span>
@@ -230,103 +205,24 @@ export function TimeCard({ icon, hue, label, value, onPick, expect, i = 0 }: { i
       </span>
       <span className="st-steps">
         <button type="button" className="st-step" aria-label={`${label}, a quarter hour earlier`} onClick={() => onPick(shift(value, -15))}>
-          <Icon name="minus" size={15} />
+          −
         </button>
         <button type="button" className="st-step" aria-label={`${label}, a quarter hour later`} onClick={() => onPick(shift(value, 15))}>
-          <Icon name="plus" size={15} />
+          +
         </button>
       </span>
     </div>
   )
 }
 
-/** A sitting's length: the bar is as long as the sitting, out of four hours. */
+/** A sitting's length: as many blocks as it is long, out of four hours. */
 export function LengthGlyph({ hours }: { hours: number }) {
-  const w = 3 + 23 * Math.min(1, hours / 4)
-  return (
-    <svg width={30} height={30} viewBox="0 0 30 30" aria-hidden>
-      <rect x={2} y={12.5} width={26} height={5} rx={2.5} fill="currentColor" opacity={0.22} />
-      <rect x={2} y={12.5} width={w} height={5} rx={2.5} fill="currentColor" />
-    </svg>
-  )
+  return <Sprite art={lengthArt(hours)} scale={2} />
 }
 
-/** Days up to a deadline, its flag at the end; the dot is the day the work is done. */
+/** Days up to a deadline, its flag on the last; the day the work is done filled in. */
 export function EarlyGlyph({ days }: { days: number }) {
-  const xs = [4, 11, 18, 25]
-  const done = xs[3 - Math.max(0, Math.min(3, days))]
-  return (
-    <svg width={30} height={30} viewBox="0 0 30 30" aria-hidden>
-      <line x1={3} y1={21} x2={27} y2={21} stroke="currentColor" strokeOpacity={0.3} strokeWidth={2} strokeLinecap="round" />
-      {xs.map((x) => (
-        <circle key={x} cx={x} cy={21} r={1.5} fill="currentColor" opacity={0.5} />
-      ))}
-      <path d="M25 21V7.5l5 2.4-5 2.4" fill="none" stroke="var(--st-gold)" strokeWidth={1.8} strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={done} cy={21} r={3.8} fill="currentColor" />
-    </svg>
-  )
-}
-
-const DAYS = ["M", "T", "W", "T", "F", "S", "S"]
-const MARKS: [number, string][] = [
-  [6 * 60, "6am"],
-  [12 * 60, "noon"],
-  [18 * 60, "6pm"],
-  [24 * 60, "12am"],
-]
-const LEGEND: [string, string][] = [
-  ["Sleep", "var(--st-sleep)"],
-  ["Classes (an example)", "color-mix(in srgb, var(--st-class) 60%, transparent)"],
-  ["Work", "color-mix(in srgb, var(--st-work) 70%, transparent)"],
-  ["Free time", "color-mix(in srgb, var(--st-free) 50%, transparent)"],
-]
-
-/** The week, Monday to Sunday, 6 AM to 2 AM: what the question on screen changes drawn brightest. */
-export function WeekPanel({ bits, stage, readout, legend }: { bits: Bit[]; stage: string; readout: ReactNode; legend: boolean }) {
-  const lit = FOCUS[stage]
-  const span = VIEW.to - VIEW.from
-  const pct = (t: number) => ((Math.min(Math.max(t, VIEW.from), VIEW.to) - VIEW.from) / span) * 100
-  return (
-    <div>
-      <div className="st-week-title">Your week</div>
-      <div className="st-week" data-focus={lit ? "" : undefined} aria-hidden>
-        <div className="st-week-head">
-          {DAYS.map((d, i) => (
-            <span key={i}>{d}</span>
-          ))}
-        </div>
-        <div className="st-week-grid">
-          {MARKS.map(([t, name]) => (
-            <span key={t} className="st-axis" style={{ top: `${pct(t)}%` }}>
-              {name}
-            </span>
-          ))}
-          {DAYS.map((_, day) => (
-            <div key={day} className="st-day">
-              {bits
-                .filter((b) => b.day === day)
-                .map((b, k) => (
-                  <span key={b.id} className="st-bit" data-kind={b.kind} data-lit={lit?.includes(b.kind) || undefined} style={vars({ top: `${pct(b.start)}%`, height: `${pct(b.end) - pct(b.start)}%`, "--k": k })} />
-                ))}
-            </div>
-          ))}
-        </div>
-      </div>
-      <p className="st-readout" aria-live="polite">
-        {readout}
-      </p>
-      {legend && (
-        <div className="st-legend" aria-hidden>
-          {LEGEND.map(([name, swatch]) => (
-            <span key={name}>
-              <i style={vars({ "--sw": swatch })} />
-              {name}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+  return <Sprite art={earlyArt(days)} scale={2} />
 }
 
 /** Something to bring in, on a card: its picture, what it is, and its controls. */
