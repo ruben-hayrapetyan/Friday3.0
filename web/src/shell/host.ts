@@ -31,6 +31,7 @@ export interface HostRequest {
 }
 
 const NAMES = new Set<string>(["newEvent", "newTodo", "search", "ask", "today", "previous", "next", "view", "drawer", "go", "ways", "shove", "pace", "brief", "triage", "tour", "setup"])
+// "/review" stays for a Mac app built before Review moved into the Inbox: its menu still sends it, and it opens Your day.
 const PAGES = ["/", "/todo", "/projects", "/review", "/inbox", "/insights", "/body", "/rules", "/settings"]
 
 /** The request in an event's detail, or null for anything Friday doesn't know. */

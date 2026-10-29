@@ -17,13 +17,13 @@ import { DayAgenda } from "./DayAgenda"
 import { MiniMonth } from "./MiniMonth"
 import { useShell } from "./ShellContext"
 import { DecisionCount, useDecisions } from "@/inbox/Decisions"
-import { useReviewWaiting } from "@/review/DailyReview"
+import { useReviewWaiting } from "@/inbox/DailyReview"
 
+// No Review (29 Oct: "I don't want a review section anymore"): it's Your day in the Inbox, its dot on the Inbox.
 const PAGES = [
   { to: "/", icon: "calendar-dots", label: "Plan" },
   { to: "/todo", icon: "check-square", label: "To-do" },
   { to: "/projects", icon: "tree-structure", label: "Projects & exams" },
-  { to: "/review", icon: "cards", label: "Review" },
   { to: "/inbox", icon: "tray", label: "Inbox" },
   { to: "/insights", icon: "chart-line", label: "Insights" },
   { to: "/body", icon: "moon-stars", label: "Sleep & meals" },
@@ -241,7 +241,7 @@ function Pages() {
             <>
               <Icon name={p.icon} size={16} style={{ color: isActive ? "var(--color-accent-300)" : "var(--color-neutral-400)" }} />
               <span style={{ flex: 1 }}>{p.label}</span>
-              {((p.label === "Review" && reviewing) || (p.label === "Insights" && asking)) && (
+              {((p.label === "Inbox" && reviewing) || (p.label === "Insights" && asking)) && (
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--color-accent)" }} />
               )}
               {p.label === "Inbox" && !!deciding && <DecisionCount n={deciding} />}

@@ -23,12 +23,12 @@ export const STEPS: Step[] = [
   {
     target: "nav",
     title: "Your pages",
-    body: "Plan is home: your calendar with the work Friday planned. To-do has every task. Inbox holds what Friday found on your calendars and mail, for you to accept. Review asks how the day went, which is how Friday learns. Rules are how you like your days.",
+    body: "Plan is home: your calendar with the work Friday planned. To-do has every task. Inbox holds what Friday found on your calendars and mail, for you to accept, what only you can decide, and Your day: how the day went, which is how Friday learns. Rules are how you like your days.",
   },
   {
     target: "menu",
     title: "Your pages",
-    body: "The menu opens your pages: Plan, To-do, Inbox, Review, Rules and the rest.",
+    body: "The menu opens your pages: Plan, To-do, Inbox, Rules and the rest.",
     optional: true,
   },
   {

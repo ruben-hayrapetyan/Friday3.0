@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { spans } from "./DailyReview"
 
-describe("when a task's time was, in the Review's rows", () => {
+describe("when a task's time was, in the rows of Your day", () => {
   it("drops the first am or pm when both ends share it", () => {
     expect(spans({ spans: [["2026-10-28T08:00", "2026-10-28T08:45"]] })).toBe("8–8:45am")
   })
