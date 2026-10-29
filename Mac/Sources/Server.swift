@@ -107,13 +107,14 @@ final class Server: ObservableObject {
     }
 
     /// Stops the server only if this app started it.
-    /// On quit: ask fridayd to stop and give it three seconds before insisting, so a Friday opened straight after
-    /// finds the port free rather than "Friday's server isn't running".
+    /// On quit: ask fridayd to stop, and wait only until it has (about a quarter of a second since it ends its live
+    /// streams at once), at most a second and a half before insisting, so a Friday opened straight after finds the
+    /// port free rather than "Friday's server isn't running" (28 Oct: quitting took about three seconds).
     func stop() {
         guard let running = process else { return }
         process = nil
         running.terminate()
-        let deadline = Date().addingTimeInterval(3)
+        let deadline = Date().addingTimeInterval(1.5)
         while running.isRunning, Date() < deadline { usleep(50_000) }
         if running.isRunning { kill(running.processIdentifier, SIGKILL) }
     }

@@ -16,6 +16,7 @@ writers.
 import inspect
 import shutil
 import tempfile
+import threading
 import time
 from collections.abc import AsyncIterable, Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager
@@ -90,13 +91,15 @@ class Services:
             self.jobs.start()
 
     def stop(self) -> None:
+        """The placer, the job loop and the solver stop side by side: one after another, each waiting on its own
+        process, made quitting the Mac app take a second (28 Oct)."""
         self.hub.close()
-        if self.placing:
-            self.placer.stop()
-        if self.jobs:
-            self.jobs.stop()
-        if self.supervisor:
-            self.supervisor.stop()
+        parts = [part for part in (self.placer if self.placing else None, self.jobs, self.supervisor) if part]
+        stopping = [threading.Thread(target=part.stop, name=f"stop-{type(part).__name__}") for part in parts]
+        for thread in stopping:
+            thread.start()
+        for thread in stopping:
+            thread.join()
 
 
 def create_app(

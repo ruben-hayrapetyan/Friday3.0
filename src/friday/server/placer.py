@@ -9,7 +9,6 @@ it worked, and a change made meanwhile waited for it (a tenth of a second each).
 keeps what comes back and tells the app.
 """
 
-import contextlib
 import logging
 import multiprocessing as mp
 import sqlite3
@@ -81,15 +80,14 @@ class Placer:
         self.thread.start()
 
     def stop(self) -> None:
+        """The placing process only reads, so at shutdown it's ended at once rather than asked (as the solver's)."""
         self.stopping.set()
         self.wake.set()
+        if self.pipe is not None:
+            self.process.terminate()  # first: the thread may be waiting on its answer
         self.thread.join(5)
         if self.pipe is not None:
-            with contextlib.suppress(OSError):
-                self.pipe.send(None)
-            self.process.join(5)
-            if self.process.is_alive():
-                self.process.terminate()
+            self.process.join(2)
 
     def request(self, user_id: int, placing: Placing) -> None:
         with self.lock:

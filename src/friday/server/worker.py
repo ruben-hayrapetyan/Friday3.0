@@ -88,13 +88,12 @@ class Supervisor:
         self.thread.start()
 
     def stop(self) -> None:
+        """At shutdown the solve in hand is of no use and the child holds nothing to save (the plan is saved here), so
+        it's ended at once rather than asked: letting Python wind down in it made quitting slower (28 Oct)."""
         self.stopping.set()
+        self.process.terminate()  # first: the thread may be waiting on it, handing it the next snapshot mid-solve
         self.thread.join(5)
-        with contextlib.suppress(OSError):
-            self.pipe.send(None)
-        self.process.join(5)
-        if self.process.is_alive():
-            self.process.terminate()
+        self.process.join(2)
 
     def spawn(self) -> None:
         orphaned_streams()

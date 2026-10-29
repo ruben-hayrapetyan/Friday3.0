@@ -52,8 +52,10 @@ class JobLoop:
         self.thread.start()
 
     def stop(self) -> None:
+        """A job mid-way (a sync waiting on Google) isn't waited out at shutdown: the thread goes with the process,
+        what it was writing rolls back, and the job runs again at the next start."""
         self.stopping.set()
-        self.thread.join(5)
+        self.thread.join(1)
 
     def loop(self) -> None:
         conn = connect(self.db_path)

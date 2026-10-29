@@ -8,19 +8,20 @@ import SwiftUI
 /// under a second), so it creeps: quickly at first, then ever more slowly, never stopping and never closing on its
 /// own. Only the app being ready closes it.
 enum LaunchCurve {
-    static let fill = 0.45  // seconds to close the ring from wherever it is
-    static let goldAt = 0.30  // the ring turns gold as it closes
-    static let gold = 0.30
-    static let openAt = 0.80  // a moment in gold, then the tile opens
-    static let open = 0.45
+    // Quick through the middle, a pause on the gold (28 Oct: "pauses more on the golden ring then the middle").
+    static let fill = 0.30  // seconds to close the ring from wherever it is
+    static let goldAt = 0.15  // the ring turns gold as it closes
+    static let gold = 0.20
+    static let openAt = 0.95  // over half a second in gold, then the tile opens
+    static let open = 0.35
     /// From "ready" to the app shown.
     static var total: Double { openAt + open }
 
-    /// The ring while waiting, `t` seconds in: about a third at one second, two thirds at three, 0.77 at ten, 0.9 at a
-    /// minute; it never reaches 0.92.
+    /// The ring while waiting, `t` seconds in: over two fifths at half a second, nearly two thirds at one, 0.83 at
+    /// ten, 0.91 at a minute; it never reaches 0.92.
     static func creep(_ t: Double) -> Double {
         let t = max(t, 0)
-        return max(0.02, 0.7 * (1 - exp(-t / 1.5)) + 0.22 * (1 - exp(-t / 25)))
+        return max(0.02, 0.78 * (1 - exp(-t / 0.6)) + 0.14 * (1 - exp(-t / 25)))
     }
 
     struct Frame: Equatable {

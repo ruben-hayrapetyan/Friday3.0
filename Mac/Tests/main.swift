@@ -224,6 +224,8 @@ test("ready, it closes from where it was, turns gold, then opens, without a jump
         }
     }
     check(LaunchCurve.total < 1.5, "the app waits \(LaunchCurve.total) s after it's ready")
+    let inGold = LaunchCurve.openAt - (LaunchCurve.goldAt + LaunchCurve.gold)
+    check(inGold >= 0.5 && inGold > LaunchCurve.fill, "the gold is held \(inGold) s, the close takes \(LaunchCurve.fill) s")
 }
 
 print(failures == 0 ? "All passed" : "\(failures) failed")

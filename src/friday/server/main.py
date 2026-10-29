@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 from pathlib import Path
+from typing import Any
 
 import uvicorn
 
@@ -84,8 +85,25 @@ def serve_forever(db_path: Path, host: str, port: int | None) -> None:
         "fridayd starting on %s:%s, data in %s, log %s", host, port or server.port, db_path.parent, where
     )
     app = create_app(db_path, web_dist=WEB_DIST)
-    # Open SSE streams never end on their own; without a limit they would hold shutdown forever.
-    uvicorn.run(app, host=host, port=port or server.port, log_level=server.log_level, timeout_graceful_shutdown=2)
+    # Open SSE streams never end on their own; the limit stays for a request that's slow to finish.
+    config = uvicorn.Config(
+        app, host=host, port=port or server.port, log_level=server.log_level, timeout_graceful_shutdown=2
+    )
+    Quick(config, app.state.services.hub).run()
+
+
+class Quick(uvicorn.Server):
+    """Ends the live-update streams the moment shutdown starts. They never end on their own, so shutdown waited out
+    its whole grace period for them, and quitting the Mac app took three seconds (28 Oct: "quitting the app takes a
+    while")."""
+
+    def __init__(self, config: uvicorn.Config, hub: Any) -> None:
+        super().__init__(config)
+        self.hub = hub
+
+    def handle_exit(self, sig: int, frame: Any) -> None:
+        self.hub.close()
+        super().handle_exit(sig, frame)
 
 
 def initialize(db_path: Path, timezone: str | None, bedtime: str, wake: str, margin_min: int) -> None:
