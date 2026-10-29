@@ -228,5 +228,94 @@ test("ready, it closes from where it was, turns gold, then opens, without a jump
     check(inGold >= 0.5 && inGold > LaunchCurve.fill, "the gold is held \(inGold) s, the close takes \(LaunchCurve.fill) s")
 }
 
+// Friday Test (TestUser): a new user's Friday beside yours.
+
+func scratch() -> URL {
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("friday-test-\(UUID().uuidString)")
+    try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    return url
+}
+
+test("this is your Friday unless its Info.plist says Friday Test") {
+    check(!TestUser.isTest && TestUser.current == nil, "the tests aren't Friday Test")
+    check(Server.port == 8765, "yours stays on 8765: \(Server.port)")
+}
+
+test("a test user's server: its folder, its port, calendars read only, no keys") {
+    let user = TestUser(folder: "/tmp/fresh/mac-1", port: 8771, claude: true)
+    let mac = ["PATH": "/usr/bin", "HOME": "/Users/x", "ANTHROPIC_API_KEY": "sk-a", "OPENAI_API_KEY": "sk-o",
+               "FRIDAY_AI_KEY": "k", "FRIDAY_CLAUDE": "/opt/claude", "FRIDAY_DATA_DIR": "/Users/x/.local/share/friday"]
+    let serve = user.launch(["serve"], environment: mac)
+    check(serve.arguments == ["--data-dir", "/tmp/fresh/mac-1/data", "serve", "--port", "8771"], "\(serve.arguments)")
+    check(serve.environment["FRIDAY_DATA_DIR"] == "/tmp/fresh/mac-1/data", "your data folder replaced")
+    check(serve.environment["FRIDAY_CONFIG"] == "/tmp/fresh/mac-1/config/friday.toml", "its own config")
+    check(serve.environment["FRIDAY_CALENDARS_READ_ONLY"] == "1", "calendars read only")
+    check(serve.environment.keys.allSatisfy { !$0.hasSuffix("_API_KEY") } && serve.environment["FRIDAY_AI_KEY"] == nil,
+          "no key from the Mac's environment: \(serve.environment.keys.sorted())")
+    check(serve.environment["FRIDAY_CLAUDE"] == nil, "with Claude: the usual claude command")
+    check(serve.environment["PATH"] == "/usr/bin" && serve.environment["HOME"] == "/Users/x", "the rest kept")
+    let without = TestUser(folder: "/tmp/fresh/mac-1", port: 8771, claude: false).launch(["serve"], environment: mac)
+    check(without.environment["FRIDAY_CLAUDE"] == "none", "without Claude: none")
+    let initial = user.launch(["init", "--timezone", "America/New_York"], environment: mac)
+    check(initial.arguments == ["--data-dir", "/tmp/fresh/mac-1/data", "init", "--timezone", "America/New_York"],
+          "init takes no port: \(initial.arguments)")
+}
+
+test("Server.prepare: yours as before, a test user's in its folder") {
+    let yours = Process()
+    Server.prepare(yours, ["serve"], user: nil)
+    check(yours.arguments == ["serve"] && yours.environment == nil, "yours inherits the app's environment")
+    let theirs = Process()
+    Server.prepare(theirs, ["serve"], user: TestUser(folder: "/tmp/f", port: 8770, claude: true))
+    check(theirs.arguments == ["--data-dir", "/tmp/f/data", "serve", "--port", "8770"], "\(theirs.arguments ?? [])")
+    check(theirs.environment?["FRIDAY_CALENDARS_READ_ONLY"] == "1", "its environment")
+}
+
+test("a new test user: a folder of its own, kept, a port nothing uses") {
+    let root = scratch(), defaults = UserDefaults(suiteName: "friday-test-\(UUID().uuidString)")!
+    var parts = DateComponents()
+    (parts.year, parts.month, parts.day, parts.hour, parts.minute, parts.second) = (2026, 10, 29, 0, 30, 12)
+    let now = Calendar.current.date(from: parts)!
+    check(TestUser.kept(defaults: defaults) == nil, "none kept at first")
+    let first = TestUser.make(claude: true, root: root, now: now, defaults: defaults, isFree: { $0 != 8770 })
+    check(first.name == "mac-2026-10-29-003012", "named for when: \(first.name)")
+    check(first.port == 8771, "8770 is busy: \(first.port)")
+    var isDir: ObjCBool = false
+    check(FileManager.default.fileExists(atPath: first.folder + "/config", isDirectory: &isDir) && isDir.boolValue,
+          "its config folder made")
+    check(TestUser.kept(defaults: defaults) == first, "kept for the next start")
+    let again = TestUser.make(claude: false, root: root, now: now, defaults: defaults, isFree: { _ in true })
+    check(again.name == "mac-2026-10-29-003012-2", "the same second: another folder, \(again.name)")
+    check(TestUser.kept(defaults: defaults) == again && !again.claude, "the newest is the one kept")
+    check(FileManager.default.fileExists(atPath: first.folder), "the old user's folder stays")
+    try? FileManager.default.removeItem(at: root)
+}
+
+test("a port: the first free from where it starts, never yours") {
+    check(TestUser.freePort(from: 8770, isFree: { _ in true }) == 8770, "the first")
+    check(TestUser.freePort(from: 8764, isFree: { $0 != 8764 }) == 8766, "skips the busy one and 8765")
+    check(TestUser.freePort(from: 8770, isFree: { $0 > 8775 }) == 8776, "past several")
+    let s = socket(AF_INET, SOCK_STREAM, 0)
+    var address = sockaddr_in()
+    address.sin_family = sa_family_t(AF_INET)
+    address.sin_addr.s_addr = inet_addr("127.0.0.1")
+    address.sin_port = 0
+    var length = socklen_t(MemoryLayout<sockaddr_in>.size)
+    _ = withUnsafePointer(to: &address) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(s, $0, length) } }
+    listen(s, 1)
+    _ = withUnsafeMutablePointer(to: &address) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(s, $0, &length) } }
+    let taken = Int(UInt16(bigEndian: address.sin_port))
+    check(!TestUser.isFree(taken), "a port something listens on is busy (\(taken))")
+    close(s)
+    check(TestUser.isFree(taken), "free again once closed (\(taken))")
+}
+
+test("Friday Test refuses every change to the Mac's calendars, saying why") {
+    let refused = TestCalendars.refuse(["id": 7, "op": "create", "calendar": "Home"])
+    check(refused["id"] as? Int == 7 && refused["ok"] as? Bool == false, "\(refused)")
+    check(refused["error"] as? String == "Friday Test never changes this Mac's calendars", "said")
+    check(TestCalendars.refuse(["op": "delete"]).isEmpty, "a job without an id: nothing to answer")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

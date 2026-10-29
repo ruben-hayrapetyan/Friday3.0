@@ -77,7 +77,8 @@ WEB_PORT="$(free_port 5190)"
 # Everything that could reach your Friday's files points into the new folders instead.
 export FRIDAY_DATA_DIR="$DIR/data"
 export FRIDAY_CONFIG="$DIR/config/friday.toml"
-unset ANTHROPIC_API_KEY
+export FRIDAY_CALENDARS_READ_ONLY=1  # signed in to your real Google, it still never changes a calendar
+unset ANTHROPIC_API_KEY OPENAI_API_KEY GEMINI_API_KEY XAI_API_KEY META_API_KEY FRIDAY_AI_KEY
 $NO_CLAUDE && export FRIDAY_CLAUDE=none
 
 cd "$REPO"

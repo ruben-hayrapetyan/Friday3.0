@@ -1,0 +1,95 @@
+import Foundation
+
+/// Friday Test (29 Oct: "work on the startup sequence but I don't want to do this on my personal friday... assuming a
+/// completely new user"): this app built by `build.sh --test`, a brand-new user's Friday beside yours and apart from it.
+/// Its data and config in a folder of its own under ~/.local/share/friday-fresh (a new one at each Start Over), its own
+/// port, its own settings and website data (another app id), no global shortcuts (yours keeps them), never opened at
+/// login, and it changes no real calendar: the Mac's are read and never written, and its server only reads Google's
+/// (FRIDAY_CALENDARS_READ_ONLY). Your Friday, its data in ~/.local/share/friday and its server on 8765, isn't touched.
+struct TestUser: Codable, Equatable {
+    var folder: String  // its data in data/, its config (no keys, no Google) in config/
+    var port: Int
+    var claude: Bool  // false: a user without the `claude` command
+
+    /// Whether this app is Friday Test: its Info.plist says so.
+    static let isTest = Bundle.main.object(forInfoDictionaryKey: "FridayTest") as? Bool == true
+
+    /// The user this app is: the one kept, else a new one. nil in your Friday.
+    static let current: TestUser? = isTest ? (kept() ?? make(claude: true)) : nil
+
+    static let key = "testUser"
+    static let firstPort = 8770  // yours is 8765; scripts/fresh_user.sh's start at 8790
+    static var root: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/share/friday-fresh")
+    }
+
+    var name: String { URL(fileURLWithPath: folder).lastPathComponent }
+    var data: String { folder + "/data" }
+    var config: String { folder + "/config/friday.toml" }
+
+    static func kept(defaults: UserDefaults = .standard) -> TestUser? {
+        defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(TestUser.self, from: $0) }
+    }
+
+    /// A new user, its folder made and kept as the one this app is from its next start.
+    @discardableResult
+    static func make(claude: Bool, root: URL = TestUser.root, now: Date = Date(), defaults: UserDefaults = .standard,
+                     isFree: (Int) -> Bool = TestUser.isFree) -> TestUser {
+        let stamp = DateFormatter()
+        stamp.locale = Locale(identifier: "en_US_POSIX")
+        stamp.dateFormat = "yyyy-MM-dd-HHmmss"
+        let name = "mac-" + stamp.string(from: now)
+        var folder = root.appendingPathComponent(name), n = 2
+        while FileManager.default.fileExists(atPath: folder.path) {  // twice in one second
+            folder = root.appendingPathComponent("\(name)-\(n)")
+            n += 1
+        }
+        try? FileManager.default.createDirectory(at: folder.appendingPathComponent("config"), withIntermediateDirectories: true)
+        let user = TestUser(folder: folder.path, port: freePort(from: firstPort, isFree: isFree), claude: claude)
+        defaults.set(try? JSONEncoder().encode(user), forKey: key)
+        return user
+    }
+
+    /// The first port from `start` nothing listens on, never yours.
+    static func freePort(from start: Int, isFree: (Int) -> Bool = TestUser.isFree) -> Int {
+        (start ..< 65535).first { $0 != 8765 && isFree($0) } ?? start
+    }
+
+    static func isFree(_ port: Int) -> Bool {
+        let s = socket(AF_INET, SOCK_STREAM, 0)
+        guard s >= 0 else { return false }
+        defer { close(s) }
+        var yes: Int32 = 1
+        setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &yes, socklen_t(MemoryLayout<Int32>.size))  // as the server binds
+        var address = sockaddr_in()
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = in_port_t(UInt16(port).bigEndian)
+        address.sin_addr.s_addr = inet_addr("127.0.0.1")
+        return withUnsafePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(s, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) == 0 }
+        }
+    }
+
+    /// How `fridayd` runs for this user: its folder named twice over (the flag and the variables, which its config and
+    /// plugins follow), its port, calendars read only, no AI key from the Mac's environment, and no `claude` if so chosen.
+    func launch(_ subcommand: [String], environment: [String: String]) -> (arguments: [String], environment: [String: String]) {
+        var env = environment.filter { !$0.key.hasSuffix("_API_KEY") && $0.key != "FRIDAY_AI_KEY" }
+        env["FRIDAY_DATA_DIR"] = data
+        env["FRIDAY_CONFIG"] = config
+        env["FRIDAY_CALENDARS_READ_ONLY"] = "1"
+        if claude { env["FRIDAY_CLAUDE"] = nil } else { env["FRIDAY_CLAUDE"] = "none" }
+        let port = subcommand.first == "serve" ? ["--port", String(port)] : []
+        return (["--data-dir", data] + subcommand + port, env)
+    }
+}
+
+/// What Friday Test answers when Friday asks it to change one of the Mac's calendars: no, said so the status line
+/// shows it ("Couldn't save … to your calendar").
+enum TestCalendars {
+    static let refusal = "Friday Test never changes this Mac's calendars"
+
+    static func refuse(_ job: [String: Any]) -> [String: Any] {
+        guard let id = job["id"] as? Int else { return [:] }
+        return ["id": id, "ok": false, "error": refusal]
+    }
+}

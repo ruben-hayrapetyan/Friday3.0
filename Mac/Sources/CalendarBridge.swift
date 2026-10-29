@@ -45,7 +45,7 @@ final class CalendarBridge {
         defer { writing = false }
         guard let jobs = await Server.get("api/q/mac_writes") as? [[String: Any]] else { return }
         for job in jobs {
-            let answer = MacWriter.apply(job, in: store)
+            let answer = TestUser.isTest ? TestCalendars.refuse(job) : MacWriter.apply(job, in: store)
             if answer["id"] != nil { await Server.post("mac_written", answer) }
         }
     }

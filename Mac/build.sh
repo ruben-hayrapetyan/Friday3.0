@@ -2,17 +2,22 @@
 # Builds the Mac app around Friday's website (COMBINED.md 1, 5) with the Swift compiler from the Command Line Tools.
 # It reuses the Swift app's hotkeys and live Dock icon from UI/Sources/App rather than copying them.
 #
-#   ./build.sh            build into build/ for this Mac
-#   ./build.sh --install  build, then replace /Applications/Friday.app and launch it (the switch, C11)
+#   ./build.sh                build into build/ for this Mac
+#   ./build.sh --install      build, then replace /Applications/Friday.app and launch it (the switch, C11)
+#   ./build.sh --test [--open]  Friday Test, a brand-new user's Friday beside yours (Sources/TestUser.swift), into
+#                               build/ only: never /Applications. --open opens it.
 set -euo pipefail
 
-INSTALL=false
+INSTALL=false TEST=false OPEN=false
 for arg in "$@"; do
   case "$arg" in
     --install) INSTALL=true ;;
-    *) echo "usage: $0 [--install]" >&2; exit 2 ;;
+    --test) TEST=true ;;
+    --open) OPEN=true ;;
+    *) echo "usage: $0 [--install | --test [--open]]" >&2; exit 2 ;;
   esac
 done
+if $TEST && $INSTALL; then echo "Friday Test stays in build/: no --install" >&2; exit 2; fi
 
 cd "$(dirname "$0")"
 
@@ -21,6 +26,15 @@ EXECUTABLE="Friday"
 # Its own id, so it runs beside the Swift app until the switch without sharing its settings or login item.
 BUNDLE_ID="com.rubenhayrapetyan.friday.web"
 VERSION="2.0.0"
+TEST_PLIST="" RIBBON=()
+if $TEST; then
+  # Another name and id: its own settings, website data and permissions, so macOS asks it as it would a new user.
+  APP_NAME="Friday Test"
+  EXECUTABLE="Friday Test"
+  BUNDLE_ID="com.rubenhayrapetyan.friday.test"
+  TEST_PLIST="<key>FridayTest</key>              <true/>"
+  RIBBON=(--ribbon TEST)
+fi
 
 BUILD_DIR="build"
 APP="$BUILD_DIR/$APP_NAME.app"
@@ -42,7 +56,7 @@ echo "==> Rendering app icon"
 ICONSET="$BUILD_DIR/AppIcon.iconset"
 xcrun swiftc -swift-version 5 -target "$TARGET" -sdk "$SDK" \
   ../UI/tools/MakeIcon/main.swift "$SHARED/FridayIcon.swift" "$SHARED/FridayCountdown.swift" -o "$BUILD_DIR/makeicon"
-"$BUILD_DIR/makeicon" "$ICONSET" >/dev/null
+"$BUILD_DIR/makeicon" "$ICONSET" ${RIBBON[@]+"${RIBBON[@]}"} >/dev/null
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 rm -r "$ICONSET" "$BUILD_DIR/makeicon"
 
@@ -63,6 +77,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>LSMinimumSystemVersion</key>    <string>14.0</string>
     <key>LSApplicationCategoryType</key> <string>public.app-category.productivity</string>
     <key>NSHighResolutionCapable</key>   <true/>
+    $TEST_PLIST
     <key>NSAppTransportSecurity</key>
     <dict><key>NSAllowsLocalNetworking</key><true/></dict>
     <key>NSCalendarsFullAccessUsageDescription</key>
@@ -76,6 +91,7 @@ echo "==> Signing (ad-hoc)"
 codesign --force --sign - --timestamp=none "$APP"
 touch "$APP"
 echo "==> Built $APP"
+if $OPEN; then open "$APP"; fi
 
 if $INSTALL; then
   echo "==> Installing to /Applications"

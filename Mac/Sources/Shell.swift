@@ -25,8 +25,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKeys: [GlobalHotKey] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if TestUser.isTest { dockIcon.ribbon = "TEST" }
         dockIcon.start()
-        if UserDefaults.standard.object(forKey: "hotkeys") as? Bool ?? true {
+        if !TestUser.isTest, UserDefaults.standard.object(forKey: "hotkeys") as? Bool ?? true {  // yours keeps them
             register(Hotkeys.summon) { [weak self] in self?.toggle() }
             register(Hotkeys.newEvent) { [weak self] in self?.show(then: .newEvent) }
             register(Hotkeys.askClaude) { [weak self] in self?.show(then: .askClaude) }
@@ -37,7 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             badge.start()
             calendars.start()
         }
-        LoginItem.enableOnFirstLaunch()
+        if !TestUser.isTest { LoginItem.enableOnFirstLaunch() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -99,11 +100,14 @@ struct FridayShell: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var app
 
     var body: some Scene {
-        Window("Friday", id: Self.windowID) {
+        Window(TestUser.isTest ? "Friday Test" : "Friday", id: Self.windowID) {
             RootView()
         }
         .defaultSize(width: 1440, height: 900)
-        .commands { FridayMenus() }
+        .commands {
+            FridayMenus()
+            if TestUser.isTest { TestMenu() }
+        }
 
         Settings {
             MacSettings()
@@ -170,13 +174,21 @@ struct MacSettings: View {
 
     var body: some View {
         Form {
-            Toggle("Global shortcuts: ⌃⌥Space Friday, ⌥Space new event, ⌃Space Ask Claude", isOn: $hotkeys)
-            Text("Takes effect the next time Friday opens.").font(.caption).foregroundStyle(.secondary)
+            if TestUser.isTest {
+                Text("Friday Test leaves the global shortcuts and opening at login to your Friday, and never changes a "
+                     + "real calendar: this Mac's and Google's are only read.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Toggle("Global shortcuts: ⌃⌥Space Friday, ⌥Space new event, ⌃Space Ask Claude", isOn: $hotkeys)
+                Text("Takes effect the next time Friday opens.").font(.caption).foregroundStyle(.secondary)
+            }
             Toggle("The running timer in the menu bar", isOn: $menuBarTimer)
             Toggle("Send this Mac's calendars to Friday", isOn: $macCalendars)
             Text("Choose which ones Friday reads in Settings → Calendars. Takes effect the next time Friday opens.")
                 .font(.caption).foregroundStyle(.secondary)
-            Toggle("Open at login", isOn: Binding(get: { opensAtLogin }, set: { LoginItem.set($0); opensAtLogin = LoginItem.isEnabled }))
+            if !TestUser.isTest {
+                Toggle("Open at login", isOn: Binding(get: { opensAtLogin }, set: { LoginItem.set($0); opensAtLogin = LoginItem.isEnabled }))
+            }
             HStack {
                 TextField("fridayd", text: $fridaydPath, prompt: Text(Server.shared.executable?.path ?? "~/.local/bin/fridayd"))
                 Button("Choose…") {

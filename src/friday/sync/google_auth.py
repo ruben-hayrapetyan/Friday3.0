@@ -202,9 +202,45 @@ def credentials(folder: Path, account: str | None = None) -> Credentials | None:
 
 
 def calendar(folder: Path, account: str | None = None) -> Any | None:
-    """The Calendar API for an account (the first's when none is named), or None when not connected."""
+    """The Calendar API for an account (the first's when none is named), or None when not connected; only for reading
+    in a test Friday (`READ_ONLY`)."""
     creds = credentials(folder, account)
-    return build("calendar", "v3", credentials=creds, cache_discovery=False) if creds else None
+    if creds is None:
+        return None
+    api = build("calendar", "v3", credentials=creds, cache_discovery=False)
+    return Reading(api) if os.environ.get(READ_ONLY) == "1" else api
+
+
+READ_ONLY = "FRIDAY_CALENDARS_READ_ONLY"  # set by Friday Test (Mac/build.sh --test) and scripts/fresh_user.sh
+
+
+class ReadOnlyCalendars(Exception):
+    """A change to a Google calendar, refused: this Friday only reads them."""
+
+
+class Reading:
+    """The Calendar API, reading only (29 Oct): a test Friday, a brand-new user's beside yours, may be signed in with
+    your real account, and must never change its calendars. Lists and gets go through; asking for a change fails as
+    Google failing would, so an event's change is kept and the status line says it couldn't be saved."""
+
+    CHANGES = frozenset({"insert", "patch", "update", "delete", "move", "import_", "quickAdd", "clear", "watch"})
+
+    def __init__(self, api: Any) -> None:
+        self.api = api
+
+    def __getattr__(self, name: str) -> Any:
+        if name in self.CHANGES:
+            raise ReadOnlyCalendars("a test Friday never changes a real calendar")
+        found = getattr(self.api, name)
+        if not callable(found):
+            return found
+
+        def call(*args: Any, **kwargs: Any) -> Any:
+            out = found(*args, **kwargs)
+            data = name == "execute" or out is None or isinstance(out, (dict, list, str, bytes, int, float))
+            return out if data else Reading(out)  # events(), calendars(), a request: more of the API
+
+        return call
 
 
 def gmail(folder: Path, account: str | None = None) -> Any | None:

@@ -12,7 +12,7 @@ final class Server: ObservableObject {
     }
 
     static let shared = Server()
-    nonisolated static let port = 8765
+    nonisolated static let port = TestUser.current?.port ?? 8765  // Friday Test: its own (TestUser)
     nonisolated static var base: URL { URL(string: "http://127.0.0.1:\(port)/")! }
 
     @Published private(set) var state: State = .looking
@@ -50,7 +50,7 @@ final class Server: ObservableObject {
         state = .starting
         let started = Process()
         started.executableURL = executable
-        started.arguments = ["serve"]
+        Self.prepare(started, ["serve"])
         started.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser  // not wherever the app was opened from
         let pipe = Pipe()
         started.standardOutput = pipe
@@ -94,12 +94,23 @@ final class Server: ObservableObject {
             let init_ = Process()
             init_.executableURL = executable
             init_.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser
-            init_.arguments = ["init", "--timezone", TimeZone.current.identifier, "--bedtime", "23:30", "--wake", "07:30"]
+            Self.prepare(init_, ["init", "--timezone", TimeZone.current.identifier, "--bedtime", "23:30", "--wake", "07:30"])
             try? init_.run()
             init_.waitUntilExit()
         }
         slow = false
         state = .ready
+    }
+
+    /// `fridayd` with `subcommand`: as it is for you; for Friday Test, in its user's folder on its port.
+    nonisolated static func prepare(_ process: Process, _ subcommand: [String], user: TestUser? = TestUser.current) {
+        guard let user else {
+            process.arguments = subcommand
+            return
+        }
+        let launch = user.launch(subcommand, environment: ProcessInfo.processInfo.environment)
+        process.arguments = launch.arguments
+        process.environment = launch.environment
     }
 
     private func keep(_ text: String) {

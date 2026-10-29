@@ -39,6 +39,19 @@ Mac/build.sh --install   # replace /Applications/Friday.app with it, and open it
 
 It starts `fridayd` itself when nothing is answering, and stops it when you quit. The checkout lives under
 ~/Downloads, so the first time, macOS asks whether Friday may open files there: allow it, or `fridayd` can't start.
+
+To see Friday as a brand-new user without touching yours:
+
+```bash
+Mac/build.sh --test --open   # Friday Test (Mac/build/Friday Test.app): the Mac app, start to finish
+scripts/fresh_user.sh        # the website alone, in your browser (stop, list, --no-claude, --no-init, --built)
+```
+
+Each starts a new user in its own folder under ~/.local/share/friday-fresh, on its own port, with no keys, no Google
+and no setup answers. Neither ever changes a real calendar: signed in to your Google or reading this Mac's calendars,
+they only read. Friday Test has a TEST band on its icon, leaves the global shortcuts to your Friday, and its Test User
+menu starts over as another new user (with or without the `claude` command).
+
 Or run Friday in a browser:
 
 ```bash
