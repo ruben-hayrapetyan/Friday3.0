@@ -1,0 +1,950 @@
+/* Setup's stage (dialogs/Setup.tsx; 29 Oct: "like Opal... animations, information, and you also select things but its
+   very nice ui"): the first thing a new user sees after the Mac app's launch, in the launch's own colours, the navy of
+   Friday's icon and the gold its ring closes in. One question a screen; beside it, the week your answers make. Always
+   night, whatever the app's look: the app's own tokens are set to a dark page here, for the controls setup borrows
+   (the AI's, Google's, a calendar's). */
+
+.st-stage {
+  --st-night: #0e1a30;
+  --st-navy: #1d365d;
+  --st-lift: #305689;
+  --st-paper: #f3f1ea;
+  --st-gold: #f2c14e;
+  --st-mist: color-mix(in srgb, #f3f1ea 66%, transparent);
+  --st-faint: color-mix(in srgb, #f3f1ea 42%, transparent);
+  --st-line: color-mix(in srgb, #f3f1ea 11%, transparent);
+  --st-card: color-mix(in srgb, #f3f1ea 5.5%, transparent);
+  --st-work: #9ccb97;
+  --st-free: #f0c08f;
+  --st-class: #8aaedc;
+  --st-sleep: #08111f;
+  --st-serif: ui-serif, "New York", "Source Serif 4", Georgia, serif;
+  --st-round: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
+  --st-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --st-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --color-bg: #12223d;
+  --color-surface: #1a2f52;
+  --color-text: #f3f1ea;
+  --color-accent: #f2c14e;
+  --color-neutral-100: color-mix(in oklch, #f3f1ea 92%, #12223d);
+  --color-neutral-200: color-mix(in oklch, #f3f1ea 80%, #12223d);
+  --color-neutral-300: color-mix(in oklch, #f3f1ea 66%, #12223d);
+  --color-neutral-400: color-mix(in oklch, #f3f1ea 52%, #12223d);
+  --color-neutral-500: color-mix(in oklch, #f3f1ea 40%, #12223d);
+  --color-neutral-600: color-mix(in oklch, #f3f1ea 30%, #12223d);
+  --color-neutral-700: color-mix(in oklch, #f3f1ea 22%, #12223d);
+  --color-neutral-800: color-mix(in oklch, #f3f1ea 15%, #12223d);
+  --color-neutral-900: color-mix(in oklch, #f3f1ea 10%, #12223d);
+  --color-accent-100: color-mix(in oklch, #f3f1ea 70%, #f2c14e);
+  --color-accent-200: color-mix(in oklch, #f3f1ea 50%, #f2c14e);
+  --color-accent-300: color-mix(in oklch, #f3f1ea 30%, #f2c14e);
+  --color-accent-400: color-mix(in oklch, #f3f1ea 14%, #f2c14e);
+  --color-accent-500: #f2c14e;
+  --color-divider: color-mix(in srgb, #f3f1ea 12%, transparent);
+  --fr-ink: #12223d;
+  --fr-knob: #12223d;
+  --fr-float-bg: #1a2f52;
+  --fr-chip-bg: color-mix(in srgb, #f3f1ea 8%, transparent);
+  --fr-hairline: color-mix(in srgb, #f3f1ea 7%, transparent);
+  --fr-rule: color-mix(in srgb, #f3f1ea 12%, transparent);
+  --fr-warn: #f2c14e;
+  --fr-due: #ee6a5e;
+
+  position: fixed;
+  inset: 0;
+  z-index: 45; /* over the app and its dialogs, under its toasts */
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  color: var(--st-paper);
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, "SF Pro Text", "Inter", sans-serif;
+  font-size: 15px;
+  background:
+    radial-gradient(1100px 680px at 12% -14%, color-mix(in srgb, var(--st-lift) 80%, transparent), transparent 62%),
+    radial-gradient(900px 640px at 108% 112%, color-mix(in srgb, var(--st-gold) 6%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--st-navy), #12223d 55%, var(--st-night));
+  animation: st-fade 0.5s var(--st-ease) both;
+}
+
+/* The top: Friday's ring, which fills as you go and closes gold at the end. */
+
+.st-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 28px 6px;
+}
+.st-top-name {
+  font: 600 14px var(--st-round);
+}
+.st-count {
+  font: 500 12px var(--st-round);
+  color: var(--st-faint);
+  font-variant-numeric: tabular-nums;
+}
+.st-skip {
+  margin-left: auto;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--st-faint);
+  font: 500 13px var(--st-round);
+  padding: 8px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+.st-skip:hover {
+  color: var(--st-paper);
+  background: var(--st-card);
+}
+.st-ring circle {
+  transition: stroke-dashoffset 0.7s var(--st-ease), stroke 0.5s, opacity 0.5s;
+}
+.st-ring[data-closed] {
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--st-gold) 55%, transparent));
+}
+
+/* The question and, beside it, your week; the way on under them. Together at most 860 high, in the middle of a tall
+   window, so the buttons stay near what they answer; in a short one the question scrolls and the buttons stay put. */
+
+.st-frame {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: min(100%, 860px);
+  min-height: 0;
+  align-self: center;
+}
+
+.st-main,
+.st-foot-in {
+  display: grid;
+  grid-template-columns: minmax(0, 560px) minmax(0, 440px);
+  justify-content: center;
+  gap: 64px;
+}
+.st-main {
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-content: start;
+  padding: 34px 28px 12px;
+}
+.st-q {
+  min-width: 0;
+  animation: st-enter 0.5s var(--st-ease) both;
+}
+.st-q[data-back] {
+  animation-name: st-enter-back;
+}
+.st-side {
+  min-width: 0;
+  position: sticky;
+  top: 0;
+  align-self: start;
+}
+
+.st-eyebrow {
+  font: 600 11px var(--st-round);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--st-gold);
+}
+.st-title {
+  margin: 12px 0 12px;
+  font: 600 40px/1.08 var(--st-serif);
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+  outline: none;
+}
+.st-title[data-big] {
+  font-size: 52px;
+}
+.st-note {
+  margin: 0;
+  max-width: 34em;
+  color: var(--st-mist);
+  font-size: 16px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+.st-body {
+  margin-top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.st-label {
+  font: 600 13px var(--st-round);
+  color: var(--st-mist);
+  letter-spacing: 0.02em;
+}
+.st-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.st-rise {
+  animation: st-rise 0.55s var(--st-ease) both;
+  animation-delay: calc(90ms + var(--i, 0) * 45ms);
+}
+
+/* Choices: a card each, with a picture of what it means. */
+
+.st-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.st-cards[data-one] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.st-card {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 14px;
+  border-radius: 16px;
+  background: var(--st-card);
+  box-shadow: inset 0 0 0 1px var(--st-line);
+  transition: background 0.2s, box-shadow 0.25s, transform 0.18s var(--st-ease);
+}
+.st-card:hover {
+  background: color-mix(in srgb, var(--st-paper) 8.5%, transparent);
+  transform: translateY(-1px);
+}
+.st-card:active {
+  transform: scale(0.985);
+}
+.st-card[aria-checked="true"] {
+  background: color-mix(in srgb, var(--st-gold) 10%, transparent);
+  box-shadow:
+    inset 0 0 0 1.5px var(--st-gold),
+    0 0 0 4px color-mix(in srgb, var(--st-gold) 12%, transparent),
+    0 14px 30px -16px color-mix(in srgb, var(--st-gold) 45%, transparent);
+}
+.st-card:focus-visible,
+.st-go:focus-visible,
+.st-back:focus-visible,
+.st-skip:focus-visible,
+.st-bar:focus-visible,
+.st-step:focus-visible,
+.st-sum button:focus-visible {
+  outline: 2px solid var(--st-gold);
+  outline-offset: 3px;
+}
+.st-card-title {
+  display: block;
+  font-weight: 600;
+  font-size: 15px;
+}
+.st-card-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--st-mist);
+  text-wrap: pretty;
+}
+.st-card-badge {
+  margin-left: 6px;
+  font: 600 10px var(--st-round);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--st-faint);
+}
+.st-tick {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--st-night);
+  font-size: 13px;
+  box-shadow: inset 0 0 0 1.5px var(--st-faint);
+}
+.st-tick > i {
+  opacity: 0;
+}
+.st-card[aria-checked="true"] .st-tick {
+  background: var(--st-gold);
+  box-shadow: none;
+  animation: st-pop 0.4s var(--st-spring);
+}
+.st-card[aria-checked="true"] .st-tick > i {
+  opacity: 1;
+}
+.st-glyph {
+  --hue: var(--st-paper);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  color: var(--hue);
+  background: color-mix(in srgb, var(--hue) 15%, transparent);
+  transition: background 0.25s, transform 0.3s var(--st-spring);
+}
+.st-card[aria-checked="true"] .st-glyph {
+  background: color-mix(in srgb, var(--hue) 24%, transparent);
+  transform: scale(1.04);
+}
+.st-glyph svg {
+  display: block;
+  overflow: visible;
+}
+.st-other {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.st-other input,
+.st-input {
+  width: 120px;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--st-paper) 8%, transparent);
+  box-shadow: inset 0 0 0 1px var(--st-line);
+  color: var(--st-paper);
+  font: 600 15px var(--st-round);
+  outline: none;
+}
+.st-other input:focus,
+.st-input:focus {
+  box-shadow: inset 0 0 0 1.5px var(--st-gold);
+}
+.st-other input[data-bad] {
+  box-shadow: inset 0 0 0 1.5px var(--fr-due);
+}
+.st-problem {
+  font-size: 12px;
+  color: var(--fr-due);
+}
+
+/* Hours: a bar you fill. */
+
+.st-hours {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.st-hours-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+.st-big {
+  font: 700 44px/1 var(--st-round);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  animation: st-tick 0.35s var(--st-ease);
+}
+.st-big small {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--st-mist);
+  margin-left: 3px;
+}
+.st-hours-say {
+  font-size: 14px;
+  color: var(--st-mist);
+}
+.st-bar {
+  --hue: var(--st-work);
+  display: flex;
+  gap: 4px;
+  height: 34px;
+  padding: 4px;
+  margin: -4px;
+  border-radius: 12px;
+  touch-action: none;
+  cursor: pointer;
+  user-select: none;
+}
+.st-seg {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--st-paper) 9%, transparent);
+  transition: background 0.2s;
+}
+.st-bar:hover .st-seg {
+  background: color-mix(in srgb, var(--st-paper) 12%, transparent);
+}
+.st-seg > i {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(var(--fill, 0));
+  background: var(--hue);
+  transition: transform 0.3s var(--st-ease);
+  transition-delay: calc(var(--k, 0) * 10ms);
+}
+.st-seg[data-extra] > i {
+  background: repeating-linear-gradient(135deg, var(--hue) 0 4px, color-mix(in srgb, var(--hue) 45%, transparent) 4px 7px);
+}
+.st-scale {
+  display: flex;
+  justify-content: space-between;
+  font: 500 11px var(--st-round);
+  color: var(--st-faint);
+  font-variant-numeric: tabular-nums;
+}
+.st-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--st-mist);
+  font: 500 13px var(--st-round);
+  text-decoration: underline;
+  text-decoration-color: var(--st-line);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.st-link:hover {
+  color: var(--st-paper);
+}
+
+/* Times: up and to bed. */
+
+.st-time {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--st-card);
+  box-shadow: inset 0 0 0 1px var(--st-line);
+}
+.st-time-label {
+  display: block;
+  font: 600 12px var(--st-round);
+  color: var(--st-mist);
+  letter-spacing: 0.02em;
+}
+.st-time input {
+  width: 100%;
+  max-width: 170px;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  margin-top: 2px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--st-paper);
+  font: 700 26px/1.1 var(--st-round);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+.st-time:focus-within {
+  box-shadow: inset 0 0 0 1.5px var(--st-gold);
+}
+.st-steps {
+  display: flex;
+  gap: 6px;
+}
+.st-step {
+  appearance: none;
+  border: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--st-paper);
+  background: color-mix(in srgb, var(--st-paper) 8%, transparent);
+  transition: background 0.2s, transform 0.15s;
+}
+.st-step:hover {
+  background: color-mix(in srgb, var(--st-paper) 14%, transparent);
+}
+.st-step:active {
+  transform: scale(0.92);
+}
+.st-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--st-mist);
+}
+.st-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.st-chip {
+  appearance: none;
+  border: 0;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--st-paper);
+  font: 600 14px var(--st-round);
+  background: var(--st-card);
+  box-shadow: inset 0 0 0 1px var(--st-line);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.st-chip:hover {
+  background: color-mix(in srgb, var(--st-paper) 9%, transparent);
+}
+.st-chip[aria-checked="true"] {
+  background: color-mix(in srgb, var(--st-gold) 14%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--st-gold);
+}
+
+/* Your week. */
+
+.st-week {
+  position: relative;
+  padding: 16px 14px 14px 40px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--st-night) 58%, transparent);
+  box-shadow:
+    inset 0 0 0 1px var(--st-line),
+    0 40px 70px -40px rgba(0, 0, 0, 0.7);
+}
+.st-week-title {
+  margin: 0 0 10px 4px;
+  font: 600 11px var(--st-round);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--st-faint);
+}
+.st-week-head,
+.st-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+.st-week-head {
+  margin-bottom: 8px;
+  font: 600 11px var(--st-round);
+  color: var(--st-faint);
+  text-align: center;
+}
+.st-week-grid {
+  position: relative;
+  height: 380px;
+}
+.st-day {
+  position: relative;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--st-paper) 3%, transparent);
+}
+.st-axis {
+  position: absolute;
+  left: -34px;
+  transform: translateY(-50%);
+  font: 500 10px var(--st-round);
+  color: var(--st-faint);
+}
+.st-bit {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 4px;
+  transition:
+    top 0.6s var(--st-ease),
+    height 0.6s var(--st-ease),
+    opacity 0.4s,
+    background 0.4s,
+    filter 0.4s;
+  animation: st-bit-in 0.5s var(--st-ease) both;
+  animation-delay: calc(var(--k, 0) * 14ms);
+}
+.st-bit[data-kind="sleep"] {
+  border-radius: 6px;
+  background:
+    radial-gradient(1px 1px at 30% 22%, color-mix(in srgb, var(--st-paper) 55%, transparent), transparent),
+    radial-gradient(1px 1px at 70% 58%, color-mix(in srgb, var(--st-paper) 40%, transparent), transparent),
+    radial-gradient(1px 1px at 45% 82%, color-mix(in srgb, var(--st-paper) 30%, transparent), transparent),
+    var(--st-sleep);
+}
+.st-week[data-focus] .st-bit[data-kind="sleep"][data-lit] {
+  background:
+    radial-gradient(1.2px 1.2px at 30% 22%, var(--st-paper), transparent),
+    radial-gradient(1px 1px at 70% 58%, color-mix(in srgb, var(--st-paper) 80%, transparent), transparent),
+    radial-gradient(1px 1px at 45% 82%, color-mix(in srgb, var(--st-paper) 60%, transparent), transparent),
+    color-mix(in srgb, var(--st-class) 34%, var(--st-sleep));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--st-class) 45%, transparent);
+}
+.st-bit[data-kind="class"] {
+  background: color-mix(in srgb, var(--st-class) 30%, transparent);
+  box-shadow: inset 2px 0 0 var(--st-class);
+}
+.st-bit[data-kind="work"] {
+  background: color-mix(in srgb, var(--st-work) 40%, transparent);
+  box-shadow: inset 2px 0 0 var(--st-work);
+}
+.st-bit[data-kind="heavy"] {
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--st-work) 32%, transparent) 0 4px, transparent 4px 7px);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--st-work) 55%, transparent);
+}
+.st-bit[data-kind="free"] {
+  border-radius: 6px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--st-free) 52%, transparent), color-mix(in srgb, var(--st-free) 26%, transparent));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--st-free) 70%, transparent);
+}
+.st-bit[data-kind="essay"] {
+  background: color-mix(in srgb, var(--st-gold) 52%, transparent);
+  box-shadow: inset 2px 0 0 var(--st-gold);
+}
+.st-bit[data-kind="event"] {
+  background: color-mix(in srgb, var(--st-gold) 16%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--st-gold);
+}
+.st-bit[data-kind="due"] {
+  height: 2px !important;
+  left: -3px;
+  right: -3px;
+  background: var(--st-gold);
+  border-radius: 2px;
+}
+.st-bit[data-kind="due"]::after {
+  content: "due";
+  position: absolute;
+  right: 0;
+  bottom: 4px;
+  font: 700 9px var(--st-round);
+  letter-spacing: 0.06em;
+  color: var(--st-gold);
+}
+.st-bit[data-kind="brief"] {
+  left: 50%;
+  right: auto;
+  width: 7px;
+  height: 7px !important;
+  border-radius: 50%;
+  margin: -3px 0 0 -3.5px;
+  background: var(--st-gold);
+  box-shadow: 0 0 8px var(--st-gold);
+}
+.st-week[data-focus] .st-bit:not([data-lit]) {
+  opacity: 0.34;
+  filter: saturate(0.5);
+}
+.st-week[data-focus] .st-bit[data-kind="sleep"]:not([data-lit]) {
+  opacity: 0.8;
+}
+.st-readout {
+  margin: 14px 4px 0;
+  min-height: 3em;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--st-mist);
+  text-wrap: pretty;
+}
+.st-readout b {
+  color: var(--st-paper);
+  font: 700 14px var(--st-round);
+}
+.st-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 10px 4px 0;
+  font-size: 12px;
+  color: var(--st-faint);
+}
+.st-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.st-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--sw);
+}
+
+/* Information: what Friday does, said once. */
+
+.st-points {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.st-point {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.st-point .st-glyph {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+}
+.st-point b {
+  display: block;
+  font-weight: 600;
+  font-size: 15px;
+}
+.st-point span {
+  color: var(--st-mist);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* The end: your answers in a sentence, each part a way back to its question. */
+
+.st-sum {
+  margin: 0;
+  font: 500 23px/1.62 var(--st-serif);
+  color: var(--st-mist);
+  text-wrap: pretty;
+}
+.st-sum button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0 1px;
+  margin: 0;
+  cursor: pointer;
+  color: var(--st-paper);
+  font: 700 0.92em var(--st-round);
+  border-bottom: 2px solid color-mix(in srgb, var(--st-gold) 55%, transparent);
+  transition: color 0.2s, border-color 0.2s;
+  animation: st-rise 0.6s var(--st-ease) both;
+  animation-delay: calc(250ms + var(--i, 0) * 90ms);
+}
+.st-sum button:hover {
+  color: var(--st-gold);
+  border-color: var(--st-gold);
+}
+
+/* Sources and the AI, borrowed from Settings, on cards. */
+
+.st-source {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--st-card);
+  box-shadow: inset 0 0 0 1px var(--st-line);
+}
+.st-source-title {
+  font-weight: 600;
+}
+.st-source-note {
+  font-size: 13px;
+  color: var(--st-mist);
+  line-height: 1.4;
+}
+.st-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--st-card);
+  box-shadow: inset 0 0 0 1px var(--st-line);
+}
+
+/* The way on. */
+
+.st-foot {
+  padding: 14px 28px 24px;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--st-night) 70%, transparent));
+}
+.st-foot-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.st-foot-hint {
+  font-size: 12px;
+  color: var(--st-faint);
+}
+.st-go {
+  margin-left: auto;
+  appearance: none;
+  border: 0;
+  height: 50px;
+  padding: 0 26px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--st-gold);
+  color: #12223d;
+  font: 700 16px var(--st-round);
+  box-shadow: 0 14px 30px -14px color-mix(in srgb, var(--st-gold) 75%, transparent);
+  transition: transform 0.18s var(--st-ease), filter 0.2s, box-shadow 0.2s;
+}
+.st-go:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+.st-go:active {
+  transform: scale(0.97);
+}
+.st-go:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.st-go i {
+  transition: transform 0.2s var(--st-ease);
+}
+.st-go:hover i {
+  transform: translateX(3px);
+}
+.st-back {
+  appearance: none;
+  border: 0;
+  height: 50px;
+  padding: 0 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--st-mist);
+  font: 600 15px var(--st-round);
+  transition: color 0.2s, background 0.2s;
+}
+.st-back:hover {
+  color: var(--st-paper);
+  background: var(--st-card);
+}
+
+@keyframes st-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes st-enter {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+@keyframes st-enter-back {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+@keyframes st-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes st-pop {
+  0% {
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.15);
+  }
+}
+@keyframes st-tick {
+  from {
+    opacity: 0.3;
+    transform: translateY(6px);
+  }
+}
+@keyframes st-bit-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0.4);
+  }
+}
+
+/* Narrower: the week above the question, smaller, and left out where it has nothing to show. */
+@media (max-width: 980px) {
+  .st-main,
+  .st-foot-in {
+    grid-template-columns: minmax(0, 600px);
+    gap: 26px;
+  }
+  .st-side {
+    order: -1;
+    position: static;
+  }
+  .st-week-grid {
+    height: 190px;
+  }
+  .st-legend {
+    display: none;
+  }
+  .st-stage[data-quiet] .st-side {
+    display: none;
+  }
+  .st-main {
+    padding-top: 40px;
+  }
+}
+@media (max-width: 560px) {
+  .st-top,
+  .st-main,
+  .st-foot {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .st-title {
+    font-size: 31px;
+  }
+  .st-title[data-big] {
+    font-size: 38px;
+  }
+  .st-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .st-week {
+    padding-left: 32px;
+  }
+  .st-week-grid {
+    height: 140px;
+  }
+  .st-axis {
+    left: -28px;
+  }
+  .st-sum {
+    font-size: 19px;
+  }
+}
+
+@media (max-width: 560px), (hover: none) {
+  .st-foot-hint {
+    display: none; /* no Return key to press */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st-stage,
+  .st-stage *,
+  .st-stage *::before,
+  .st-stage *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+}

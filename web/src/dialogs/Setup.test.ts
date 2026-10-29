@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { type Answers, hoursLabel, readDays, readHours, shift, stepsFor } from "./Setup"
+import { type Answers, hoursLabel, hoursWords, readDays, readHours, screensFor, shift, stepsFor, summaryOf } from "./Setup"
 
 const ANSWERS: Answers = {
   wake: "07:30",
@@ -47,5 +47,31 @@ describe("setup", () => {
     expect(shift("07:30", 90)).toBe("09:00")
     expect(shift("23:30", 60)).toBe("00:30")
     expect(shift("00:30", -60)).toBe("23:30")
+  })
+
+  it("introduces Friday first and reads your answers back last (29 Oct)", () => {
+    expect(screensFor(ANSWERS)).toEqual(["welcome", "how", ...stepsFor(ANSWERS), "ready"])
+  })
+
+  it("reads your answers back as sentences, each answer a way back to its question", () => {
+    const parts = summaryOf(ANSWERS)
+    const text = parts.map((p) => (typeof p === "string" ? p : p.text)).join("")
+    expect(text).toContain("You're up at 7:30am and in bed by 11:30pm, or 9am and 12:30am at weekends.")
+    expect(text).toContain("Friday plans 8 hours of work on a normal day and up to 10 hours on a heavy one, in sittings of up to 3 hours.")
+    expect(text).toContain("2 hours of each weekday evening is yours from 6pm, and 4 hours of each weekend day.")
+    expect(text).toContain("Work is done a day early")
+    expect(text).toContain("Each morning opens with your brief.")
+    const steps = new Set(parts.flatMap((p) => (typeof p === "string" ? [] : [p.step])))
+    expect([...steps].sort()).toEqual(["brief", "day", "early", "focus", "free", "load"])
+  })
+
+  it("says none and all of it plainly", () => {
+    const text = (a: Answers) => summaryOf(a).map((p) => (typeof p === "string" ? p : p.text)).join("")
+    expect(text({ ...ANSWERS, evening_free: 0, weekend_free: 0, brief: false, finish_early_days: 0, most_hours: 8 })).toContain(
+      "Weekday evenings are open for work, and weekends are open for work. Work is done on the day it's due",
+    )
+    expect(text({ ...ANSWERS, evening_free: 5, weekend_free: 13 })).toContain("Weekday evenings are yours from 6pm, and weekends are yours.")
+    expect(text({ ...ANSWERS, most_hours: 8 })).not.toContain("heavy")
+    expect([hoursWords(1), hoursWords(1.5), hoursWords(0.75)]).toEqual(["an hour", "1.5 hours", "45 minutes"])
   })
 })

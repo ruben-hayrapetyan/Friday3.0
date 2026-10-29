@@ -9,6 +9,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { query, type Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
+import { Card } from "@/dialogs/SetupParts"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings, useStatus } from "@/hooks/queries"
 import { useInbox } from "@/inbox/InboxPage"
@@ -53,6 +54,17 @@ export const CHOICES: { id: Provider; title: string; note: string; keyFrom?: str
   { id: "local", title: "On this Mac", note: "An open model, downloaded here and run by Ollama: free and private, but slow." },
 ]
 
+/** Each service's mark and colour, on its card in setup. */
+const MARKS: Record<Provider, [string, string]> = {
+  claude: ["asterisk", "#e8a07a"],
+  openai: ["open-ai-logo", "var(--st-paper)"],
+  gemini: ["star-four", "var(--st-class)"],
+  grok: ["x-logo", "var(--st-paper)"],
+  muse: ["meta-logo", "var(--st-class)"],
+  compatible: ["plugs-connected", "var(--st-free)"],
+  local: ["laptop", "var(--st-work)"],
+}
+
 type Llm = { provider: Provider; model: string; small_model: string; base_url: string | null; daily_calls: number; daily_tokens: number }
 type Local = Schemas["LocalModelsOut"]
 
@@ -87,38 +99,47 @@ export function AiConnect({ compact = false }: { compact?: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {demo && <span className="fr-kicker">The demo uses a stand-in AI; nothing you choose here is asked.</span>}
-      <div role="radiogroup" aria-label="Which AI" style={{ display: "grid", gridTemplateColumns: `repeat(auto-fill, minmax(${compact ? 150 : 170}px, 1fr))`, gap: 8 }}>
-        {CHOICES.map((c) => {
-          const on = c.id === llm.provider
-          return (
-            <button
-              key={c.id}
-              role="radio"
-              aria-checked={on}
-              className="fr-plain"
-              onClick={() => choose(c.id)}
-              style={{
-                textAlign: "left",
-                display: "flex",
-                flexDirection: "column",
-                gap: 3,
-                padding: "10px 12px",
-                borderRadius: "var(--radius-md)",
-                background: on ? "color-mix(in srgb, var(--color-accent) 14%, var(--color-surface))" : "var(--color-surface)",
-                boxShadow: on ? "inset 0 0 0 1.5px var(--color-accent)" : "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 8%, transparent)",
-              }}
-            >
-              <span style={{ fontWeight: 500, display: "flex", gap: 6, alignItems: "center" }}>
-                {c.title}
-                {c.id === "muse" && <span className="fr-kicker">preview</span>}
-              </span>
-              <span className="fr-kicker" style={{ textWrap: "pretty", lineHeight: 1.35 }}>
-                {c.note}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+      {compact ? (
+        // In setup (29 Oct): its cards, each service's mark on it
+        <div className="st-cards" role="radiogroup" aria-label="Which AI">
+          {CHOICES.map((c, i) => (
+            <Card key={c.id} on={c.id === llm.provider} glyph={<Icon name={MARKS[c.id][0]} fill size={22} />} hue={MARKS[c.id][1]} title={c.title} badge={c.id === "muse" ? "preview" : undefined} note={c.note} onPick={() => choose(c.id)} i={i} />
+          ))}
+        </div>
+      ) : (
+        <div role="radiogroup" aria-label="Which AI" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 8 }}>
+          {CHOICES.map((c) => {
+            const on = c.id === llm.provider
+            return (
+              <button
+                key={c.id}
+                role="radio"
+                aria-checked={on}
+                className="fr-plain"
+                onClick={() => choose(c.id)}
+                style={{
+                  textAlign: "left",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 3,
+                  padding: "10px 12px",
+                  borderRadius: "var(--radius-md)",
+                  background: on ? "color-mix(in srgb, var(--color-accent) 14%, var(--color-surface))" : "var(--color-surface)",
+                  boxShadow: on ? "inset 0 0 0 1.5px var(--color-accent)" : "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 8%, transparent)",
+                }}
+              >
+                <span style={{ fontWeight: 500, display: "flex", gap: 6, alignItems: "center" }}>
+                  {c.title}
+                  {c.id === "muse" && <span className="fr-kicker">preview</span>}
+                </span>
+                <span className="fr-kicker" style={{ textWrap: "pretty", lineHeight: 1.35 }}>
+                  {c.note}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
       {leaving && (
         <Confirm
           text={`Friday will remove ${llm.model}, which it downloaded to this Mac, and read with ${CHOICES.find((c) => c.id === leaving)?.title}. Models you had before are kept. Downloading it again later takes a while.`}
