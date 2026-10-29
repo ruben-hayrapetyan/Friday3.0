@@ -162,11 +162,11 @@ def test_ask_ai_reads_a_line_the_grammar_cant_and_runs_nothing(app: App, monkeyp
         "confidence": 0.9,
         "quotes": {},
     }
-    monkeypatch.setattr(llm, "client", lambda: FakeClient(answer))
+    monkeypatch.setattr(llm, "client", lambda *_: FakeClient(answer))
     fields = app.do("ask_ai", text="ring mum saturday afternoon around 3 for half an hour")
     assert fields["start"] == "2026-10-24T15:00" and app.do("items") == []
-    monkeypatch.setattr(llm, "client", lambda: None)
-    with pytest.raises(FieldError, match="no Anthropic key"):
+    monkeypatch.setattr(llm, "client", lambda *_: None)
+    with pytest.raises(FieldError, match="an Anthropic API key"):
         app.do("ask_ai", text="anything")
 
 

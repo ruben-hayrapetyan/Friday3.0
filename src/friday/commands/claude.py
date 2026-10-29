@@ -128,9 +128,9 @@ SCHEMA = {
 @command("ask_claude", logged=False)
 def ask_claude(ctx: Ctx, inp: AskClaudeInput) -> AskClaudeOut:
     """What Claude would change for what you asked, as commands for you to confirm; nothing is changed."""
-    client = llm.client()
+    client = llm.client(ctx.settings["llm"])
     if client is None:
-        raise FieldError("text", "no AI: install Claude Code (the claude command) or set an Anthropic API key")
+        raise FieldError("text", llm.missing(ctx.settings["llm"]))
     spend_check(ctx)
     allowed = RULES if inp.purpose == "rule" else ANYTHING
     reply = client.messages.create(

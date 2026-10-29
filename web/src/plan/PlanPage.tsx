@@ -1,6 +1,7 @@
 // The Plan page (v22): the header (range, views, Shove, Pace, search, notifications, brief, to-do drawer) over the
 // week, three days, day or month view (COMBINED.md 13 had no three days; you asked for them).
 
+import { useAi } from "@/settings/AiConnect"
 import { useShownPlan } from "@/plan/shown"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
@@ -187,6 +188,7 @@ function IconButton({ icon, label, onClick, tour }: { icon: string; label: strin
 /** Everything that changes the plan, in one menu: Ask Claude, other ways, shove, pace, the brief. */
 function PlanMenu({ views }: { views?: { options: typeof VIEWS; value: View; onPick: (v: View) => void; onToday: () => void } }) {
   const { pop, setPop, setDialog, askClaude } = useShell()
+  const ai = useAi()
   const paces = usePaces().data
   return (
     <Dropdown tour="plan-menu" icon="sparkle" label="Plan">
@@ -200,7 +202,7 @@ function PlanMenu({ views }: { views?: { options: typeof VIEWS; value: View; onP
               </button>
             </div>
           )}
-          <MenuRow icon="sparkle" label="Ask Claude" note="Say what you want changed" onClick={() => (close(), askClaude())} />
+          <MenuRow icon="sparkle" label={`Ask ${ai.name}`} note="Say what you want changed" onClick={() => (close(), askClaude())} />
           <MenuRow icon="shuffle" label="Other ways" note="Two more ways to plan the same work" onClick={() => (close(), setDialog("ways"))} />
           <MenuRow icon="hand-palm" label="Shove" note="Take back a stretch of time" onClick={() => (close(), setPop(pop === "shove" ? null : "shove"))} />
           <MenuRow icon="gauge" label="Pace" note={paces ? paceLabel(paces) : "Push harder or ease off"} onClick={() => (close(), setPop(pop === "pace" ? null : "pace"))} />

@@ -83,7 +83,7 @@ def test_a_skipped_message_can_be_read_anyway(app: App) -> None:
 
 
 def test_without_an_api_key_mail_waits_and_the_source_says_why(app: App, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(llm, "client", lambda: None)
+    monkeypatch.setattr(llm, "client", lambda *_: None)
     sync(app.conn, app.now_utc, mail=inbox())
-    assert "No Anthropic API key" in next(s for s in app.table("sources") if s["kind"] == "gmail")["last_error"]
+    assert "an Anthropic API key" in next(s for s in app.table("sources") if s["kind"] == "gmail")["last_error"]
     assert statuses(app)["m3"] == "new"

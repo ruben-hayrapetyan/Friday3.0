@@ -15,6 +15,22 @@ VERBS = {
         False,
         "Ask each model Friday uses for a one-word answer, the way Friday asks; say what came back.",
     ),
+    "ai_key_set": Verb(
+        "POST",
+        "/api/c/ai_key_set",
+        commands.AiKeyInput,
+        True,
+        False,
+        "Keep an AI service's key in secrets.toml beside friday.toml, readable by you alone (28 Oct: connect the AI in",
+    ),
+    "ai_models": Verb(
+        "GET",
+        "/api/q/ai_models",
+        commands.AiModelsInput,
+        False,
+        False,
+        "The models a provider offers, to choose from: the service's own list once its key is in (names change too",
+    ),
     "area_add": Verb("POST", "/api/c/area_add", commands.AreaInput, True, False, "Add an area."),
     "area_edit": Verb(
         "POST", "/api/c/area_edit", commands.AreaEditInput, True, True, "Rename, recolour or archive an area."
@@ -408,6 +424,30 @@ VERBS = {
         False,
         False,
         "Planned hours against room, week by week: the plan inside the horizon, the allocator's forecast past it.",
+    ),
+    "local_model_cancel": Verb(
+        "POST",
+        "/api/c/local_model_cancel",
+        commands.Empty,
+        True,
+        False,
+        "Stop the download under way; the AI you had stays.",
+    ),
+    "local_model_use": Verb(
+        "POST",
+        "/api/c/local_model_use",
+        commands.LocalModelInput,
+        True,
+        False,
+        "Read with an open model on this Mac: at once if it's here, else once Ollama has downloaded it. The model you",
+    ),
+    "local_models": Verb(
+        "GET",
+        "/api/q/local_models",
+        commands.Empty,
+        False,
+        False,
+        "The open models Friday offers to run on this Mac, which are here (and which Friday downloaded), the download",
     ),
     "lock_keep": Verb(
         "POST",

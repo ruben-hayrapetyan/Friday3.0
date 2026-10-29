@@ -51,7 +51,7 @@ def run_demo(
     sample = cornell.term(student, date.today()) if student else term(date.today())
     address = f"{student.netid}@cornell.edu" if student else "student@cornell.edu"  # the stand-in account
     jobs.SAMPLE_APIS.update(google={address: sample.google}, mail={address: sample.gmail}, client=sample.ai)
-    llm.client = lambda: sample.ai  # "Ask AI" too
+    llm.client = lambda *_: sample.ai  # "Ask AI" too, whichever AI is chosen
     who = f"{student.name}: {student.about}" if student else "a sample term"
     print(f"Made-up sample data ({who}; not your calendars or mail) in {folder}, at http://localhost:{port}.")
     serve(db_path, "127.0.0.1", port)

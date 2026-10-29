@@ -4,6 +4,7 @@
 // A rule the plan bends can ask what it's up against, and you say which should win (COMBINED.md 66); the answer shows
 // on both rules, and clicking it changes it. Rules that contradict each other say so, before you add one and after.
 
+import { useAi } from "@/settings/AiConnect"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router"
@@ -98,9 +99,10 @@ function NewRule() {
   const client = useQueryClient()
   const toast = useToast()
   const [claude, setClaude] = useState<ClaudeReading | null>(null)
-  const llm = useInbox().data?.llm as { key?: boolean } | undefined
+  const llm = useInbox().data?.llm as { ready?: boolean } | undefined
   const demo = !!useStatus().data?.demo // the demo's stand-in AI
-  const ai = !!llm?.key || demo // a key or the claude command
+  const ai = !!llm?.ready || demo // an AI that can be asked (whichever is chosen)
+  const aiName = useAi().name
   const strengths = new Map((useRules().data ?? []).map((r) => [r.name, r.strength]))
   const [text, setText] = useState("")
   const [overrides, setOverrides] = useState<Record<string, unknown>>({})
@@ -160,7 +162,7 @@ function NewRule() {
         <input value={text} onChange={(e) => (setText(e.target.value), setOverrides({}), setStrength(null), setClaude(null))} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="I prefer eating lunch before 1pm" aria-label="New rule" style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontSize: 16 }} />
         <button className="btn btn-primary" onClick={() => submit()} disabled={!text.trim() || (unread && !ai) || !!claude?.busy || (!!claude?.answer && !claude.kept.length && !!claude.answer.actions.length)}>
           {unread && ai && !claude?.answer && <Icon name="sparkle" />}
-          {!unread || !ai ? "Add rule" : claude?.busy ? "Asking Claude…" : claude?.answer?.actions.length ? `Add ${claude.kept.length > 1 ? `${claude.kept.length} rules` : "rule"}` : claude?.answer ? "Ask again" : "Ask Claude"}
+          {!unread || !ai ? "Add rule" : claude?.busy ? `Asking ${aiName}…` : claude?.answer?.actions.length ? `Add ${claude.kept.length > 1 ? `${claude.kept.length} rules` : "rule"}` : claude?.answer ? "Ask again" : `Ask ${aiName}`}
         </button>
       </div>
       {text.trim() && preview ? (
@@ -172,12 +174,12 @@ function NewRule() {
             <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12, color: ai ? "var(--color-neutral-300)" : "var(--fr-warn)", textWrap: "pretty" }}>
               <Icon name={ai ? "sparkle" : "question"} size={13} style={{ color: ai ? "var(--color-accent-300)" : undefined, flexShrink: 0, alignSelf: "center" }} />
               {ai ? (
-                <span>Friday can’t read this one itself. Press ↩ and Claude will turn it into rules, shown here for you to check before anything changes.</span>
+                <span>Friday can’t read this one itself. Press ↩ and {aiName === "AI" ? "the AI" : aiName} will turn it into rules, shown here for you to check before anything changes.</span>
               ) : (
                 <span>
-                  Friday can’t read that as a rule yet, and Claude isn’t connected to read it instead.{" "}
+                  Friday can’t read that as a rule yet, and no AI is set up to read it instead.{" "}
                   <button className="fr-link" onClick={() => navigate("/settings/integrations")} style={{ fontSize: 12 }}>
-                    Connect Claude
+                    Set up an AI
                   </button>{" "}
                   or try one of the examples.
                 </span>
@@ -237,19 +239,20 @@ function NewRule() {
 
 /** Claude's reading, in the rule box: asking, what went wrong, or what it said and the rules it proposes, ticked to add. */
 function ClaudeRules({ claude, onTick }: { claude: ClaudeReading; onTick: (kept: number[]) => void }) {
+  const name = useAi().name
   const head = (icon: string, words: string, ink = "var(--color-accent-300)") => (
     <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: ink }}>
       {claude.busy ? <span className="fr-spinner" /> : <Icon name={icon} size={13} />}
       {words}
     </span>
   )
-  if (claude.busy) return head("sparkle", "Claude is reading it…")
-  if (claude.error) return head("warning", `Claude couldn’t read it: ${claude.error}`, "var(--fr-due)")
+  if (claude.busy) return head("sparkle", `${name} is reading it…`)
+  if (claude.error) return head("warning", `${name} couldn’t read it: ${claude.error}`, "var(--fr-due)")
   const answer = claude.answer
   if (!answer) return null
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {head("sparkle", answer.actions.length ? "Claude read this as" : "Claude had no rule to suggest for this")}
+      {head("sparkle", answer.actions.length ? `${name} read this as` : `${name} had no rule to suggest for this`)}
       {answer.reply && <span style={{ fontSize: 12, color: "var(--color-neutral-300)", textWrap: "pretty" }}>{answer.reply}</span>}
       {answer.actions.map((a, i) => {
         const on = claude.kept.includes(i)

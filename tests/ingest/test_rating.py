@@ -52,11 +52,11 @@ def test_upcoming_events_are_rated_once(tmp_path: Path) -> None:
 
 def test_the_command_comes_first_then_the_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(llm, "cli_path", lambda: Path("/bin/claude"))
-    monkeypatch.setattr(llm, "api_key", lambda: None)
+    monkeypatch.setattr(llm, "api_key", lambda *_: None)
     assert isinstance(llm.client(), llm.Routed) and llm.client().api is None
     monkeypatch.setattr(llm, "cli_path", lambda: None)
     assert llm.client() is None
-    monkeypatch.setattr(llm, "api_key", lambda: "sk-test")
+    monkeypatch.setattr(llm, "api_key", lambda *_: "sk-test")
     assert not isinstance(llm.client(), llm.Routed)
 
 

@@ -98,7 +98,7 @@ def sort_fresh(
     events = {sort_key(f): f.event for f in fresh if f.event is not None}
     if not events or json.loads(source["config"] or "{}").get("kind"):
         return {}
-    client = client or llm.client()
+    client = client or llm.client(settings["llm"])
     budget, today = (
         settings["llm"],
         planning_date(now_utc, settings["time"].timezone, minutes_of(settings["time"].day_start)),

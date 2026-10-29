@@ -297,11 +297,11 @@ def extract_pending(conn: sqlite3.Connection, settings: dict, now_utc: int, user
     )
     if not pending:
         return 0
-    client = client or llm.client()
+    client = client or llm.client(settings["llm"])
     if client is None:
         waiting = {r["source_id"] for r in pending}
         for source_id in waiting:
-            why = "No Anthropic API key (secrets.toml), so this waits unread"
+            why = f"{llm.missing(settings['llm'])}, so this waits unread"
             conn.execute("UPDATE sources SET last_error = ? WHERE id = ?", [why, source_id])
         return 0
     tz, budget = settings["time"].timezone, settings["llm"]
@@ -328,7 +328,7 @@ def extract_pending(conn: sqlite3.Connection, settings: dict, now_utc: int, user
             if provider_down(error):  # every input would fail the same way; they wait, the source shows why
                 status = getattr(error, "status_code", None)
                 said = (
-                    f"The AI refused the key from {llm.key_source()[1]}"
+                    f"The AI refused the key from {llm.key_source(settings['llm'].provider)[1]}"
                     if status in (401, 403)
                     else f"{settings['llm'].model} won't take Friday's request"
                     if status in (400, 404)

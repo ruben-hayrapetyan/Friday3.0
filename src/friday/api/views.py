@@ -363,6 +363,38 @@ class ModelCheck(Model):
     said: str  # "Answered", or the error
 
 
+class AiModelsOut(Model):
+    models: list[str]
+    error: str | None = None  # why they couldn't be listed (a bad key), in the service's words
+
+
+class LocalModel(Model):
+    name: str
+    label: str
+    size_gb: float | None  # roughly what it downloads, or takes here
+    note: str = ""
+    here: bool = False  # on this Mac now
+    friday: bool = False  # downloaded by Friday (so removed by Friday when you change models); yours stay
+
+
+class LocalDownload(Model):
+    name: str
+    status: Literal["downloading", "done", "failed", "cancelled"]
+    completed: int  # bytes
+    total: int
+    said: str = ""
+    error: str | None = None
+
+
+class LocalModelsOut(Model):
+    running: bool  # Ollama answers
+    warning: str  # what running a model here means: downloaded here, slow
+    catalog: list[LocalModel]  # the open models offered
+    others: list[LocalModel]  # the rest Ollama has here
+    download: LocalDownload | None
+    active: str | None  # the local model Friday reads with, if it reads with one
+
+
 class RepeatFound(Model):
     batch: str
     title: str

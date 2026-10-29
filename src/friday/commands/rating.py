@@ -46,7 +46,9 @@ def rate_upcoming(conn: sqlite3.Connection, now_utc: int, user_id: int = 1, clie
     )
     if not new:
         return 0
-    rated = rate(new, client if client is not None else llm.client(), settings["llm"].small_model, categories)
+    rated = rate(
+        new, client if client is not None else llm.client(settings["llm"]), settings["llm"].small_model, categories
+    )
     kv_set(conn, "event_ratings", kept | rated, user_id)
     if retry:
         kv_set(conn, "event_ratings_retried", today, user_id)

@@ -99,7 +99,7 @@ def test_a_repeating_event_is_asked_about_once_and_unchanged_ones_not_again(app:
 def test_without_a_key_or_answer_the_rules_sort_and_a_failure_shows_on_the_calendar(
     app: App, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(llm, "client", lambda: None)
+    monkeypatch.setattr(llm, "client", lambda *_: None)
     read(app, {"5. Homework": HOMEWORK})
     assert inbox(app)["CHEM Prelim 2"]["preset"] == "Exam" and "PHYS Project Proposal (TWR)" not in inbox(app)
 
@@ -143,7 +143,7 @@ class Noted(Sorter):
 
 
 def test_what_you_told_friday_skips_entries_and_sets_lengths(app: App, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(llm, "api_key", lambda: "test-key")
+    monkeypatch.setattr(llm, "api_key", lambda *_: "test-key")
     notes = ["PHYS lab write-ups are done in the lab session", "Project proposals take me about 3 hours"]
     app.do("settings_set", key="notes", value=notes)
     noted = Noted({})

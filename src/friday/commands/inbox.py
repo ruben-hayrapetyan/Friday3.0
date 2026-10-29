@@ -287,9 +287,9 @@ def pending_batch(ctx: Ctx, batch: str) -> list[dict[str, Any]]:
 @command("ask_ai", logged=False)
 def ask_ai(ctx: Ctx, inp: AskInput) -> dict[str, Any]:
     """Read a quick-add line the grammar can't, with the LLM (§22.7): the fields it would add, for you to confirm."""
-    client = llm.client()
+    client = llm.client(ctx.settings["llm"])
     if client is None:
-        raise FieldError("text", "no Anthropic key: set ANTHROPIC_API_KEY or secrets.toml")
+        raise FieldError("text", llm.missing(ctx.settings["llm"]))
     spend_check(ctx)
     fields, used = extract.quick_add(
         client,
@@ -424,7 +424,7 @@ def inbox(ctx: Ctx, inp: Empty) -> InboxOut:
     budget = ctx.settings["llm"]
     used = spend(ctx.conn, ctx.user_id, ctx.today.isoformat())
     llm_state = {
-        "key": llm.api_key() is not None or llm.cli_path() is not None,  # an AI to read with: a key or the command
+        **llm.describe(budget),  # which AI, whether it can be asked ("ready"), whether a key is saved ("key")
         "calls": used["calls"],
         "daily_calls": budget.daily_calls,
         "tokens": used["tokens"],

@@ -32,7 +32,7 @@ def app(tmp_path: Path) -> App:
 
 def asking(monkeypatch: pytest.MonkeyPatch, answer: dict[str, Any]) -> Claude:
     claude = Claude(answer)
-    monkeypatch.setattr(llm, "client", lambda: claude)
+    monkeypatch.setattr(llm, "client", lambda *_: claude)
     return claude
 
 

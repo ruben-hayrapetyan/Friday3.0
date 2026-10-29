@@ -20,6 +20,7 @@ from friday.core.db import rows
 from friday.core.items import FieldError
 from friday.core.pace import Dials, PacePeriod, adjust_dials, dials_on, pace_label, switch_pace
 from friday.core.settings import SleepDay, check_hhmm, to_json, validate_value
+from friday.ingest import local_models
 from friday.planner.snapshot import pace_periods
 from friday.planner.store import kv_get, settings_version
 
@@ -53,11 +54,22 @@ def settings_set(ctx: Ctx, inp: SettingsSetInput) -> Changed:
         value = {k: v.model_dump() for k, v in ctx.settings["event_kinds"].items()} | value
     if inp.key == "pace" and isinstance(value, dict):
         value = ctx.settings["pace"].model_dump() | value  # "easier on Saturdays" keeps the default pace
+    if inp.key == "llm" and isinstance(value, dict):
+        # A change to the AI changes only what it names: the daily limit set alone keeps the provider (28 Oct). A
+        # different provider brings its own models, unless the change names them: Claude's don't run on OpenAI.
+        now = ctx.settings["llm"].model_dump()
+        if value.get("provider", now["provider"]) != now["provider"]:
+            del now["model"], now["small_model"]
+        value = now | value
     if inp.key == "sleep" and isinstance(value, dict) and ctx.settings["sleep"] is not None:
         # "bed by 11 on weeknights": the nights and times named change, the rest stay (27 Oct).
         now = to_json("sleep", ctx.settings["sleep"])
         value = {day: {**now.get(day, {}), **(value.get(day) or {})} for day in now}
+    before = ctx.settings["llm"]  # saving refreshes ctx.settings: the AI as it was, kept first
     write_setting(ctx, inp.key, value)
+    if inp.key == "llm":
+        # A local model no longer read with goes, if Friday downloaded it (ingest/local_models.py).
+        local_models.forget(ctx.conn, ctx.user_id, before, validate_value("llm", value))
     if inp.key == "gcal" and validate_value("gcal", inp.value).include_all_day != all_day:
         reread_calendars(ctx)  # events seen before would otherwise keep the old reading
     return Changed(message=f"Saved {inp.key}")

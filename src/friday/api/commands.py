@@ -728,6 +728,26 @@ class AskInput(Model):
     text: str
 
 
+class AiKeyInput(Model):
+    """An AI service's key, kept in secrets.toml (never in settings, never sent back); "" forgets it."""
+
+    provider: Literal["claude", "openai", "gemini", "grok", "muse", "compatible"]
+    key: str = Field(max_length=500)
+
+
+class AiModelsInput(Model):
+    """Whose models to list: a provider (and the address you gave, for another service), chosen or not yet."""
+
+    provider: Literal["claude", "openai", "gemini", "grok", "muse", "compatible", "local"]
+    base_url: str | None = None
+
+
+class LocalModelInput(Model):
+    """An open model for Ollama to run on this Mac, by its name ("llama3.2:3b", "nate/instinct")."""
+
+    name: str = Field(min_length=1, max_length=120)
+
+
 class TokenInput(Model):
     name: str = Field(min_length=1, max_length=40)
     scope: Literal["read", "read-write"] = "read"

@@ -1,20 +1,94 @@
 """Settings for the outside world (DESIGN §22): the LLM, Google, Calendar, Gmail, feeds and webhooks. Every one can
 also be set in `friday.toml` (§22.9). Secrets never live here."""
 
+from dataclasses import dataclass
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class Model(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+# The AI Friday reads with (28 Oct: "check whether friday only works with claude or whether it is compatible with
+# OpenAI, or any other agent"; "what about for muse, instinct, gemini, grok, and some open source ones too").
+Provider = Literal["claude", "openai", "gemini", "grok", "muse", "compatible", "local"]
+
+
+@dataclass(frozen=True)
+class ProviderInfo:
+    name: str  # what the app calls it
+    address: str | None  # its OpenAI-style chat API (None: Claude's own, or the one you give)
+    section: str  # its key's section of secrets.toml
+    variable: str | None  # and the variable that can hold it instead
+    models: tuple[str, str] | None  # (model, small_model) when you haven't named them; None: chosen from its list
+    needs_key: bool = True
+    note: str = ""
+
+
+PROVIDERS: dict[str, ProviderInfo] = {
+    "claude": ProviderInfo("Claude", None, "anthropic", "ANTHROPIC_API_KEY", ("claude-sonnet-5-5", "claude-haiku-5-5")),
+    "openai": ProviderInfo("GPT", "https://api.openai.com/v1", "openai", "OPENAI_API_KEY", ("gpt-5", "gpt-5-mini")),
+    # Model names change too often to guess: chosen from the service's own list once its key is in.
+    "gemini": ProviderInfo(
+        "Gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini", "GEMINI_API_KEY", None
+    ),  # fmt: skip
+    "grok": ProviderInfo("Grok", "https://api.x.ai/v1", "xai", "XAI_API_KEY", None),
+    "muse": ProviderInfo(
+        "Muse",
+        "https://api.meta.ai/v1",
+        "meta",
+        "META_API_KEY",
+        None,
+        note="Meta's API is in preview: if the check fails, its address may have changed",
+    ),  # fmt: skip
+    "compatible": ProviderInfo("AI", None, "compatible", "FRIDAY_AI_KEY", None, needs_key=False),
+    # Open models run on this Mac by Ollama (ingest/local_models.py): no key, no account, slow.
+    "local": ProviderInfo("AI", None, "local", None, None, needs_key=False),
+}
+DEFAULT_MODELS = {p: info.models for p, info in PROVIDERS.items() if info.models}
+KNOWN_DEFAULTS = {m for pair in DEFAULT_MODELS.values() for m in pair}
+
+
 class LlmSettings(Model):
-    model: str = "claude-sonnet-5-5"  # reads mail and documents
-    small_model: str = "claude-haiku-5-5"  # sorts what comes in: each item's kind, title, deadline or time
+    provider: Provider = "claude"
+    model: str = DEFAULT_MODELS["claude"][0]  # reads mail and documents; "" until one is chosen
+    small_model: str = DEFAULT_MODELS["claude"][1]  # sorts what comes in: each item's kind, title, deadline or time
+    base_url: str | None = None  # another service's OpenAI-style address, or a named one's when it moved
     daily_calls: int = Field(50, ge=0)
     daily_tokens: int = Field(500_000, ge=0)
+
+    @field_validator("base_url")
+    @classmethod
+    def an_address(cls, url: str | None) -> str | None:
+        url = (url or "").strip() or None
+        if url is not None and not url.startswith(("http://", "https://")):
+            raise ValueError('an address starting http:// or https:// ("http://localhost:11434/v1")')
+        return url
+
+    @model_validator(mode="after")
+    def models_of_the_provider(self) -> "LlmSettings":
+        """Another provider's model names, kept after a switch, become this one's own (or none, to choose from its
+        list): a provider set alone (friday.toml) still reads with models it has. Names you gave are left as given; one
+        model serves for both unless you name a second."""
+        mine = DEFAULT_MODELS.get(self.provider)
+        if self.model in KNOWN_DEFAULTS and (mine is None or self.model not in mine):
+            self.model = mine[0] if mine else ""
+        if self.small_model in KNOWN_DEFAULTS and (mine is None or self.small_model not in mine):
+            self.small_model = mine[1] if mine else ""
+        if mine and not self.model:
+            self.model = mine[0]
+        if mine and not self.small_model:
+            self.small_model = mine[1]
+        if not self.small_model:
+            self.small_model = self.model
+        return self
+
+    @property
+    def address(self) -> str | None:
+        """Where its chat API is: the one you gave, else the provider's own."""
+        return self.base_url or PROVIDERS[self.provider].address
 
 
 class ClaudeSettings(Model):

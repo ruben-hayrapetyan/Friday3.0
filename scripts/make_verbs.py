@@ -19,7 +19,13 @@ OPENAPI = ROOT / "web" / "openapi.json"
 
 
 def openapi() -> str:
-    return json.dumps(create_app(Path("unused.db"), background=False).openapi(), indent=1) + "\n"
+    """The API's description, its routes and schemas in name order: the order commands register in follows which
+    modules were imported first, which a test importing one early changed (28 Oct)."""
+    spec = create_app(Path("unused.db"), background=False).openapi()
+    spec["paths"] = dict(sorted(spec["paths"].items()))
+    if "components" in spec and "schemas" in spec["components"]:
+        spec["components"]["schemas"] = dict(sorted(spec["components"]["schemas"].items()))
+    return json.dumps(spec, indent=1) + "\n"
 
 
 def verbs() -> dict[str, Verb]:

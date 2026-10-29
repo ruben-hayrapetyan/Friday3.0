@@ -24,6 +24,7 @@ from datetime import date
 from pathlib import Path
 from types import UnionType
 from typing import Annotated, Any, Literal, Union, get_args, get_origin
+from urllib.parse import urlsplit
 
 import anyio
 from fastapi import Body, FastAPI, Header, Query, Request
@@ -148,6 +149,21 @@ def create_app(
             path = backup(conn, folder, 1, today)
         return FileResponse(path, filename=path.name, background=BackgroundTask(shutil.rmtree, folder))
 
+    @app.middleware("http")
+    async def own_pages_only(request: Request, call_next: Any) -> Any:
+        """A change comes only from Friday's own pages (the app, the Mac app's window, a dev server on this Mac), an
+        assistant or a script: a page from anywhere else in the same browser is refused, so it can't change where
+        your mail is read or what your plan holds (28 Oct)."""
+        if (
+            request.method != "GET"
+            and request.url.path.startswith("/api/")
+            and foreign(request.headers.get("origin"), request.headers.get("host"))
+        ):
+            return JSONResponse(
+                {"field": "origin", "message": "Friday takes changes only from its own pages"}, status_code=403
+            )
+        return await call_next(request)
+
     @app.get("/events", response_class=EventSourceResponse)
     async def events() -> AsyncIterable[ServerSentEvent]:
         async for message in services.hub.stream():
@@ -156,6 +172,20 @@ def create_app(
     if web_dist is not None and web_dist.is_dir():
         app.mount("/", Website(directory=web_dist, html=True), name="web")
     return app
+
+
+LOOPBACK = ("localhost", "127.0.0.1", "::1")
+
+
+def foreign(origin: str | None, host: str | None) -> bool:
+    """Whether a request's Origin is another site's: neither this server's own (the Host it was sent to) nor this
+    Mac's (localhost, at any port: the Vite dev server). No Origin at all is a script, the CLI or an assistant."""
+    if origin is None:
+        return False
+    parts = urlsplit(origin)
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        return True  # "null": a file, a sandboxed frame
+    return parts.hostname not in LOOPBACK and parts.netloc != (host or "")
 
 
 class Website(StaticFiles):

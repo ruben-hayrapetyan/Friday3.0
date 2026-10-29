@@ -20,9 +20,9 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from friday.commands.calendars import editable
 from friday.api.commands import Changed
 from friday.api.types import Empty
+from friday.commands.calendars import editable
 from friday.commands.registry import Ctx, command
 from friday.core.db import one, rows
 from friday.core.items import Item
@@ -79,7 +79,8 @@ def events_to_calendar(ctx: Ctx, inp: Empty) -> Changed:
         for r in rows(
             ctx.conn,
             "SELECT s.item_id FROM suggestions s JOIN raw_inputs r ON r.id = s.raw_input_id "
-            "JOIN sources src ON src.id = r.source_id WHERE s.user_id = ? AND s.item_id IS NOT NULL AND src.kind = 'ics'",
+            "JOIN sources src ON src.id = r.source_id "
+            "WHERE s.user_id = ? AND s.item_id IS NOT NULL AND src.kind = 'ics'",
             [ctx.user_id],
         )
     }

@@ -1,8 +1,8 @@
 """Rule sentences a student might type, each labelled with what the writer means (tests/core/data): 510 from 27 Oct,
-1,057 more for wider coverage (28 Oct: "the barebones rules parsing [should be] much more comprehensive instead of having
-to ask claude for everything"), 413 written as a held-out set, and 327 more as a final one. Each reads as it means or
-goes to Claude: none is read as another rule, half of two rules, or a rule made of something to add or of something
-Friday can't do. How many are read without Claude is held per set.
+1,057 more for wider coverage (28 Oct: "the barebones rules parsing [should be] much more comprehensive instead of
+having to ask claude for everything"), 413 written as a held-out set, and 327 more as a final one. Each reads as it
+means or goes to Claude: none is read as another rule, half of two rules, or a rule made of something to add or of
+something Friday can't do. How many are read without Claude is held per set.
 
 The grammar was tuned on the first three. The final set, measured once before anything was changed for it, read 64 of
 its 263 rules right and misread 32 (the grammar of 27 Oct morning: 16 right, 49 misread); only its misreads were then

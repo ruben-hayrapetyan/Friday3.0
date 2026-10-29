@@ -4,6 +4,7 @@
 // step brings things in (Google Calendar, course feeds, a syllabus, Gmail), each optional and done the moment you do
 // it, with the same controls as Settings → Integrations.
 
+import { AiConnect } from "@/settings/AiConnect"
 import { useQuery } from "@tanstack/react-query"
 import { type ReactNode, useEffect, useState } from "react"
 import { query, type Schemas } from "@/api/client"
@@ -161,6 +162,12 @@ const STEPS: Step[] = [
         label="Morning brief"
       />
     ),
+  },
+  {
+    id: "ai",
+    title: "Your AI",
+    note: "Friday uses an AI to read syllabi and mail and to understand what you type. Choose whose, or skip this: Friday plans without one, and you can choose later in Settings → Integrations.",
+    body: () => <AiConnect compact />,
   },
   {
     id: "bring",

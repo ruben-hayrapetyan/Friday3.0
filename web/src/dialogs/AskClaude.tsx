@@ -6,6 +6,7 @@
 // events without asking" on (27 Oct), what only adds, moves, repeats or deletes an event applies as the answer comes,
 // with one Undo; the rest still waits for Apply.
 
+import { useAi } from "@/settings/AiConnect"
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { ApiError, type CommandName, command, type Schemas } from "@/api/client"
@@ -61,7 +62,8 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
   const purpose = ask?.purpose ?? "anything"
   const claude = (useSettings().data as { claude?: { events_without_asking?: boolean } } | undefined)?.claude
   const auto = !!claude?.events_without_asking
-  const saveSetting = useCommand("settings_set", { label: () => (auto ? "Claude asks before changing events" : "Claude changes events without asking") })
+  const ai = useAi().name
+  const saveSetting = useCommand("settings_set", { label: () => (auto ? `${ai} asks before changing events` : `${ai} changes events without asking`) })
   useEffect(() => field.current?.focus(), [])
   const run = async () => {
     if (!text.trim() || busy) return
@@ -100,7 +102,7 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Ask Claude"
+        aria-label={`Ask ${ai}`}
         className="fr-float fr-dialog"
         style={{ width: "min(640px, 100%)" }}
         onKeyDown={(e) => {
@@ -111,7 +113,7 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Icon name="sparkle" size={18} style={{ color: "var(--color-accent-300)" }} />
           <span className="fr-h" style={{ fontSize: 22, flex: 1 }}>
-            {purpose === "rule" ? "A rule, in your words" : "Ask Claude"}
+            {purpose === "rule" ? "A rule, in your words" : `Ask ${ai}`}
           </span>
           <button className="btn btn-icon btn-ghost" onClick={onClose} aria-label="Close" style={{ width: 28, height: 28 }}>
             <Icon name="x" />
@@ -131,15 +133,15 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
             <button className="btn btn-primary" onClick={run} disabled={busy || !text.trim()}>
               {busy ? "Asking…" : "Ask"}
             </button>
-            <span className="fr-kicker">⌘↩ asks. {auto ? "Changes to calendar events apply at once; the rest wait for you." : "Claude only proposes; nothing changes until you apply it."}</span>
+            <span className="fr-kicker">⌘↩ asks. {auto ? "Changes to calendar events apply at once; the rest wait for you." : `${ai} only proposes; nothing changes until you apply it.`}</span>
           </div>
         )}
         {error && <span style={{ color: "var(--fr-due)" }}>{error}</span>}
         {answer && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {answer.reply && <span style={{ textWrap: "pretty" }}>{answer.reply}</span>}
-            {!answer.reply && !answer.actions.length && <span className="fr-kicker">Claude had no changes to suggest for this. Try saying it another way.</span>}
-            {answer.actions.length > 0 && <span className="fr-eyebrow">Claude wants to</span>}
+            {!answer.reply && !answer.actions.length && <span className="fr-kicker">{ai} had no changes to suggest for this. Try saying it another way.</span>}
+            {answer.actions.length > 0 && <span className="fr-eyebrow">{ai} wants to</span>}
             {answer.actions.map((a, i) => {
               if (done?.at.includes(i))
                 return (

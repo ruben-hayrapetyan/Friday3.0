@@ -57,7 +57,7 @@ export const STEPS: Step[] = [
   {
     target: "plan-menu",
     title: "Change the plan",
-    body: "Ask Claude in your own words (“move my 5pm to Thursday”), see other ways to plan your week, shove work out of a busy stretch, or set the pace.",
+    body: "Ask the AI in your own words (“move my 5pm to Thursday”), see other ways to plan your week, shove work out of a busy stretch, or set the pace.",
   },
   {
     target: "drawer",

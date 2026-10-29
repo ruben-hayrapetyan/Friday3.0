@@ -2,6 +2,7 @@
 // projects, pages and settings, and actions, filtered as you type; ↑↓ and Enter to open. With nothing matching,
 // Enter adds what you typed as a to-do (COMBINED.md 57).
 
+import { useAi } from "@/settings/AiConnect"
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router"
@@ -45,6 +46,7 @@ const PAGES: [string, string, string][] = [
 
 export function Search() {
   const { today, setDialog, setPop, setPlace, place, setEvent, setAgendaDay, askClaude, setTour } = useShell()
+  const ai = useAi()
   const navigate = useNavigate()
   const { color } = useLook()
   const [q, setQ] = useState("")
@@ -99,7 +101,7 @@ export function Search() {
       { key: "ways", label: "Other ways to plan the week", icon: "shuffle", run: () => setDialog("ways") },
       { key: "tour", label: "Take the tour of Friday", icon: "question", run: () => (setDialog(null), setTour(true)) },
       { key: "setup", label: "Set up Friday: your day, load, free time, calendars", icon: "sliders-horizontal", run: () => setDialog("setup") },
-      { key: "ask", label: `Ask Claude${text ? `: ${text}` : ""}`, icon: "sparkle", run: () => askClaude(text) },
+      { key: "ask", label: `Ask ${ai.name}${text ? `: ${text}` : ""}`, icon: "sparkle", run: () => askClaude(text) },
     ].filter((a) => has(a.label))
     return [
       ["To-dos", todos],

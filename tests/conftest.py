@@ -1,6 +1,6 @@
-"""Every test runs away from your own files and keys: `friday.toml` points into a temporary folder, no Anthropic key
-is visible, the `claude` command isn't found and Google's sign-in page never opens, so nothing reads your config,
-calls the AI or reaches Google."""
+"""Every test runs away from your own files and keys: `friday.toml` points into a temporary folder, no AI service's
+key is visible, the `claude` command isn't found, Ollama is looked for where nothing answers and Google's sign-in page
+never opens, so nothing reads your config, calls an AI, downloads a model or reaches Google."""
 
 from pathlib import Path
 from typing import Any
@@ -16,7 +16,10 @@ def no_google_page(*args: Any, **kwargs: Any) -> Any:
 def no_personal_config(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> Path:
     folder = tmp_path_factory.mktemp("config")
     monkeypatch.setenv("FRIDAY_CONFIG", str(folder / "friday.toml"))
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    for key in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "FRIDAY_AI_KEY", "GEMINI_API_KEY", "XAI_API_KEY", "META_API_KEY",
+                "FRIDAY_CLAUDE"):  # fmt: skip
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("OLLAMA_HOST", "127.0.0.1:9")  # a closed port: a real Ollama here is never reached
     monkeypatch.setattr("friday.ingest.llm.cli_path", lambda: None)
     monkeypatch.setattr("google_auth_oauthlib.flow.InstalledAppFlow.run_local_server", no_google_page)
     return folder

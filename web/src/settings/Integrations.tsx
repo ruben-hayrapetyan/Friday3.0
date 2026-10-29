@@ -6,7 +6,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
-import { query, type Schemas } from "@/api/client"
+import { query } from "@/api/client"
 import { H, Icon, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings, useStatus } from "@/hooks/queries"
@@ -18,6 +18,7 @@ import { Calendars, useCalendars } from "./Calendars"
 import { AccountList, signInAgain } from "./GoogleAccounts"
 import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess, wantsSignIn } from "./GoogleConnect"
 import { MailLog } from "./MailLog"
+import { AiConnect, useAi } from "./AiConnect"
 import { SectionHead } from "./SettingsPage"
 
 export function Integrations() {
@@ -25,6 +26,7 @@ export function Integrations() {
     <>
       <SectionHead title="Integrations" note="Bring in fixed events and deadlines. Anything Friday reads from mail or files goes to your Inbox first." />
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <Ai />
         <Google />
         <Gmail />
         <AskClaude />
@@ -93,14 +95,15 @@ function AskClaude() {
   const status = useStatus().data
   const save = useCommand("settings_set", { label: () => "Saved" })
   const on = !!claude?.events_without_asking
+  const ai = useAi().name
   return (
-    <Card icon="sparkle" title="Ask Claude" note="Say what you want in your own words (⌘J); Claude proposes the changes as Friday's own, each to keep or not.">
+    <Card icon="chat-circle-text" title={`Ask ${ai}`} note={`Say what you want in your own words (⌘J); ${ai === "AI" ? "the AI" : ai} proposes the changes as Friday's own, each to keep or not.`}>
       <label style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Switch on={on} onToggle={() => save({ key: "claude", value: { ...claude, events_without_asking: !on } })} label="Change calendar events without asking" />
         <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <span>Change calendar events without asking</span>
           <span className="fr-kicker" style={{ textWrap: "pretty" }}>
-            {on ? "Adding, moving, repeating or deleting events applies as soon as Claude answers, with Undo." : "Off: Claude asks before every change."} Tasks, rules and settings always ask.
+            {on ? `Adding, moving, repeating or deleting events applies as soon as ${ai === "AI" ? "the AI" : ai} answers, with Undo.` : `Off: ${ai === "AI" ? "the AI" : ai} asks before every change.`} Tasks, rules and settings always ask.
             {(status?.config_keys ?? []).includes("claude") ? " Set in friday.toml." : ""}
           </span>
         </span>
@@ -164,10 +167,8 @@ function Google() {
 function Gmail() {
   const status = useStatus().data
   const gmail = usePart<{ enabled: boolean; query: string; sender_domains: string[]; keywords: string[] }>("gmail")
-  const llmSettings = usePart<{ model: string; daily_calls: number; daily_tokens: number }>("llm")
   const owned = status?.config_keys ?? []
   const save = useCommand("settings_set", { label: () => "Saved" })
-  const llm = useInbox().data?.llm as { key: boolean; calls: number; daily_calls: number; tokens: number; daily_tokens: number; model: string } | undefined
   const access = useGoogleAccess()
   const granted = !!access?.gmail
   const { today } = useShell()
@@ -203,20 +204,27 @@ function Gmail() {
           </div>
         </>
       )}
-      <span className="fr-kicker" style={{ paddingTop: 6 }}>
-        Anthropic API key
-      </span>
-      <span style={{ fontSize: 12, color: llm?.key ? "var(--color-accent-300)" : "var(--fr-warn)" }}>
-        {status?.demo ? "The demo uses a stand-in AI; no key is read." : llm?.key ? "Set in secrets.toml." : <>No key yet: add <Command text="[anthropic] api_key = …" /> to secrets.toml beside friday.toml, or set ANTHROPIC_API_KEY.</>}
-      </span>
-      <AiCheck />
+    </Card>
+  )
+}
+
+/** The AI Friday reads with (28 Oct): which, its key and model, a check, and the day's limit. */
+function Ai() {
+  const ai = useAi()
+  const llm = useInbox().data?.llm as { calls: number; daily_calls: number; tokens: number } | undefined
+  const llmSettings = usePart<{ daily_calls: number }>("llm")
+  const owned = (useStatus().data?.config_keys ?? []) as string[]
+  const save = useCommand("settings_set", { label: () => "Saved" })
+  return (
+    <Card icon="sparkle" title="AI" status={ai.ready ? ["Ready", "var(--color-accent-300)"] : ["Not set up", "var(--fr-warn)"]} note="Reads syllabi and mail into your Inbox, rules Friday can't read itself, and what you ask it. Choose whose.">
+      {owned.includes("llm") ? <span className="fr-kicker">Set in friday.toml: change it there.</span> : <AiConnect />}
       {llm && llmSettings && (
         <>
           <span className="fr-kicker" style={{ paddingTop: 6 }}>
             Daily limit
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <input type="range" min={5} max={200} step={5} value={llmSettings.daily_calls} disabled={owned.includes("llm")} onChange={(e) => save({ key: "llm", value: { ...llmSettings, daily_calls: Number(e.target.value) } })} aria-label="Daily reads" style={{ flex: 1, maxWidth: 300, accentColor: "var(--color-accent)" }} />
+            <input type="range" min={5} max={200} step={5} value={llmSettings.daily_calls} disabled={owned.includes("llm")} onChange={(e) => save({ key: "llm", value: { daily_calls: Number(e.target.value) } })} aria-label="Daily reads" style={{ flex: 1, maxWidth: 300, accentColor: "var(--color-accent)" }} />
             <span className="fr-h tnum" style={{ fontSize: 20 }}>
               {llmSettings.daily_calls} reads
             </span>
@@ -403,33 +411,6 @@ function Imported() {
 }
 
 /** One tiny call to each model, the way Friday asks, and what came back. */
-function AiCheck() {
-  const [checks, setChecks] = useState<Schemas["ModelCheck"][] | null>(null)
-  const [busy, setBusy] = useState(false)
-  const run = async () => {
-    setBusy(true)
-    setChecks(await query("ai_check").catch((e) => [{ model: "", job: "", ok: false, said: String(e) }]))
-    setBusy(false)
-  }
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {checks?.map((c) => (
-        <span key={c.model + c.job} style={{ display: "flex", gap: 8, fontSize: 12, alignItems: "baseline" }}>
-          <Icon name={c.ok ? "check-circle" : "x-circle"} size={14} style={{ color: c.ok ? "var(--color-accent-300)" : "var(--fr-due)", flex: "none" }} />
-          <span>
-            <b style={{ fontWeight: 500 }}>{c.model}</b> <span className="fr-kicker">({c.job.toLowerCase()})</span>: {c.ok ? "works" : c.said}
-          </span>
-        </span>
-      ))}
-      <button className="btn btn-secondary" onClick={run} disabled={busy} style={{ alignSelf: "flex-start", fontSize: 12 }}>
-        <Icon name="plugs-connected" />
-        {busy ? "Asking…" : "Test the AI"}
-      </button>
-    </div>
-  )
-}
-
-
 /** A comma-separated list, saved when you leave the field. */
 function ListField(props: { label: string; value: string[]; placeholder?: string; locked: boolean; onSave: (v: string[]) => void }) {
   const shown = props.value.join(", ")
