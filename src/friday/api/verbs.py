@@ -124,6 +124,14 @@ VERBS = {
         False,
         "Answer a comparison: which version of the day looks better (or skip).",
     ),
+    "conflict_resolve": Verb(
+        "POST",
+        "/api/c/conflict_resolve",
+        commands.ConflictInput,
+        True,
+        True,
+        "Answer a disagreement between what Friday learned and a rule: the change the answer names, and it isn't asked",
+    ),
     "day_override": Verb(
         "POST",
         "/api/c/day_override",

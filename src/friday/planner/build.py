@@ -503,10 +503,28 @@ def nights(inp: BuildInput, spec: GridSpec, first: date, days: int) -> dict[date
         routine = inp.routine_min.get(WEEKDAYS[(day + timedelta(days=1)).weekday()])
         if offset == -1 and inp.woke_utc is not None:  # last night: up early frees the morning, late moves the routine
             wake, routine = inp.woke_utc, 0 if inp.ready_today else routine
+        else:  # an event you're going to before you'd be ready (Gym at 7:30, up at 8): up for it, routine and all
+            early = early_event(inp, bedtime + margin, wake + (routine or 0))
+            if early is not None:
+                wake = max(bedtime + margin, min(wake, early - (routine or 0)))
         wind_down = inp.wind_down_min.get(WEEKDAYS[day.weekday()])
         done = inp.done_utc if offset == 0 else None  # tonight's: you said you're done with work
         out[day] = Night(bedtime, wake, margin, inp.debt_hours.get(day, 0.0), routine, wind_down, done)
     return out
+
+
+def early_event(inp: BuildInput, after: int, before: int) -> int | None:
+    """The start of the first event you're going to between `after` (your night, past bedtime's margin) and `before`
+    (up and ready, as your sleep times say), or None (29 Oct: Gym at 7:30 and Climbing Club at 6 on mornings Friday
+    took you to be asleep until 8, so the 7 hours of sleep were counted back from 8 on those nights too). A whole-day
+    event isn't one to get up for."""
+    starts = [
+        start
+        for i in inp.items
+        if i.when == "fixed" and i.status == "todo" and i.blocks_time and i.start_utc and i.end_utc
+        and after < (start := parse_utc(i.start_utc)) < before and parse_utc(i.end_utc) - start < 12 * 60
+    ]  # fmt: skip
+    return min(starts, default=None)
 
 
 def night_times(

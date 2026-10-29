@@ -10,9 +10,11 @@ from datetime import datetime, timedelta
 from friday.api.commands import Changed, SleepMarkEditInput, SleepMarkInput, SleepMarkRef, SleepSkipInput
 from friday.api.types import Empty
 from friday.api.views import SleepAsk, SleepChangeOut, SleepNightOut, SleepOut
+from friday.commands.conflicts import minutes, short_nights
 from friday.commands.registry import Ctx, command, query
 from friday.core.db import one, rows
 from friday.core.items import FieldError
+from friday.core.rule_text import days_spoken
 from friday.core.time import ampm, format_local, format_utc, parse_utc, to_local
 from friday.learn.sleep import WEEKDAYS, Mark, Night, changes, evening_of, learn, nights_from
 from friday.planner.build import night_times
@@ -162,12 +164,22 @@ def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
     learned = learn(nights.values(), tracking_on.min_nights)
     found = changes(learned, ctx.settings["sleep"])
     suggested = None
+    against: list[str] = []
     if found:
         sleep_now = {d: s.model_dump() for d, s in ctx.settings["sleep"].items()}
         for change in found:
             for day in change.days:
                 sleep_now[day][change.field] = change.learned
         suggested = sleep_now
+        # Checked against your sleep rule before you take them (29 Oct: learned times must not quietly break a rule)
+        for (bed, wake, down, hours, _), days in short_nights(
+            sleep_now, ctx.settings["rules"], learned.wind_down_min
+        ).items():
+            asleep = (minutes(wake) - minutes(bed)) % (24 * 60) - down
+            against.append(
+                f"{days_spoken(tuple(days))}: bed at {ampm(bed)} and up at {ampm(wake)} leave {asleep // 60} h "
+                f"{asleep % 60:02d} m asleep{' after winding down' if down else ''}, under your {hours:g} h rule"
+            )
     now = to_local(ctx.now_utc, ctx.tz)
     shown = sorted(
         (n for n in nights.values() if n.date >= now.date() - timedelta(days=SHOWN_DAYS)),
@@ -189,6 +201,7 @@ def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
         done=format_local(tonight.done.at) if tonight and tonight.done and not tonight.bed else None,
         changes=[SleepChangeOut(days=list(c.days), field=c.field, now=c.now, learned=c.learned) for c in found],  # type: ignore[arg-type]
         suggested=suggested,
+        against=against,
         recorded_nights=learned.nights,
         min_nights=tracking_on.min_nights,
     )

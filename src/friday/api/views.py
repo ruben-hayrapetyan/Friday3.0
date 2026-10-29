@@ -101,8 +101,8 @@ class Decision(Model):
     """Something only you can decide, waiting in the Inbox (27 Oct: "decisions but in the inbox with a notification
     symbol"): a lock that makes work late (`resolve`), or work that will be late (the options, or `late_accept`)."""
 
-    key: str  # "lock:-1509", "late"
-    kind: Literal["lock", "late"]
+    key: str  # "lock:-1509", "late", "learned:sleep:mon,tue"
+    kind: Literal["lock", "late", "learned"]
     title: str
     detail: str
     pin_id: int | None = None  # a lock: the pin (an event's hold is the event's id, negative)
@@ -110,6 +110,17 @@ class Decision(Model):
     start: str | None = None  # a lock: when, local
     hours: float = 0  # how much later the work it's about is
     items: list["LateItem"] = []  # late work: what will be late
+    # learned: what Friday learned against a rule of yours (commands/conflicts.py), its answers, and which side
+    # Friday would change: the rule, or what it learned
+    options: list["DecisionOption"] = []
+    update: Literal["rule", "learned"] | None = None
+
+
+class DecisionOption(Model):
+    id: str
+    label: str
+    detail: str
+    recommended: bool = False
 
 
 class StatusOut(Model):
@@ -784,5 +795,6 @@ class SleepOut(Model):
     done: str | None = None  # tonight's done with work, local
     changes: list[SleepChangeOut] = []  # learned times half an hour or more off the ones set
     suggested: dict[str, Any] | None = None  # the whole sleep setting with them, for `settings_set`
+    against: list[str] = []  # how the suggested times would break your sleep rule, said before you take them
     recorded_nights: int = 0
     min_nights: int = 4

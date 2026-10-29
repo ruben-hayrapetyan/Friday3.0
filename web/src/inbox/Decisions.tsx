@@ -63,7 +63,15 @@ export function Decisions() {
         <Icon name="hand-pointing" size={13} />
         To decide
       </span>
-      {shown.map((d) => (d.kind === "lock" ? <LockCard key={d.key} decision={d} onAnswer={() => answer(d.key)} /> : <LateCard key={d.key} decision={d} onAnswer={() => answer(d.key)} />))}
+      {shown.map((d) =>
+        d.kind === "lock" ? (
+          <LockCard key={d.key} decision={d} onAnswer={() => answer(d.key)} />
+        ) : d.kind === "learned" ? (
+          <LearnedCard key={d.key} decision={d} onAnswer={() => answer(d.key)} />
+        ) : (
+          <LateCard key={d.key} decision={d} onAnswer={() => answer(d.key)} />
+        ),
+      )}
     </section>
   )
 }
@@ -130,3 +138,33 @@ function LateCard({ decision, onAnswer }: { decision: Decision; onAnswer: () => 
     </Card>
   )
 }
+
+/** What Friday learned against a rule of yours (29 Oct: "make sure that there is guards against any of friday's
+ * learned behaviours and the rules contradicting (and whether the rules need to be updated or the behaviours)"): which
+ * side Friday would change, and each answer with what it does. */
+function LearnedCard({ decision, onAnswer }: { decision: Decision; onAnswer: () => void }) {
+  const resolve = useCommand("conflict_resolve", { label: (o) => o.result.message ?? "Done" })
+  const options = decision.options ?? []
+  const side = decision.update === "rule" ? "Friday would update the rule." : "Friday would keep your rule and change what it learned."
+  const detail = (
+    <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <span>{decision.detail}</span>
+      <span style={{ color: "var(--color-neutral-300)" }}>{side}</span>
+      {options.map((o) => (
+        <span key={o.id} style={{ color: "var(--color-neutral-500)" }}>
+          <b style={{ fontWeight: 500, color: "var(--color-neutral-300)" }}>{o.label}:</b> {o.detail}
+        </span>
+      ))}
+    </span>
+  )
+  return (
+    <Card icon="scales" title={decision.title} detail={detail}>
+      {options.map((o) => (
+        <button key={o.id} className={`btn ${o.recommended ? "btn-primary" : "btn-secondary"}`} style={BUTTON} onClick={() => (onAnswer(), resolve({ key: decision.key.replace(/^learned:/, ""), option: o.id }))}>
+          {o.label}
+        </button>
+      ))}
+    </Card>
+  )
+}
+

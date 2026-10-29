@@ -18,6 +18,7 @@ from friday.core.pace import Dials, PacePeriod
 from friday.core.rows import item_from_row
 from friday.core.settings import minutes_of
 from friday.core.time import format_utc, parse_utc, planning_date, to_local, to_utc
+from friday.learn import guard
 from friday.learn.sleep import Mark, evening_of, learn, nights_from
 from friday.learn.state import loadings
 from friday.planner.cushion import cushion, cushioned
@@ -308,7 +309,8 @@ def learned(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any], us
     )
     if found is None:
         return {}
-    theta = json.loads(found["theta"])
+    held, freed = kv_get(conn, guard.HELD, [], user_id) or [], kv_get(conn, guard.FREED, [], user_id) or []
+    theta = guard.guarded(json.loads(found["theta"]), settings["rules"], held, freed)  # never past what you said
     state = json.loads(found["state"]) if found["state"] else None
     today = planning_date(now_utc, settings["time"].timezone, minutes_of(settings["time"].day_start))
     paced = any(

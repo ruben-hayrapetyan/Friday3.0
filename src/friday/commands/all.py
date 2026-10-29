@@ -6,6 +6,7 @@ from friday.commands import (  # noqa: F401
     calendars,
     checking,
     claude,
+    conflicts,
     connecting,
     decisions,
     diagnose,

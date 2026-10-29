@@ -47,6 +47,13 @@ class ItemRef(Model):
     id: int
 
 
+class ConflictInput(Model):
+    """An answer to a disagreement between what Friday learned and a rule (commands/conflicts.py)."""
+
+    key: str
+    option: str
+
+
 class EffectInput(Model):
     """A waiting suggestion of an event, at its own time or at one you've edited it to (local)."""
 

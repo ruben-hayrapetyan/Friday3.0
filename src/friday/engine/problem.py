@@ -141,7 +141,10 @@ class Night:
 
     @property
     def core(self) -> tuple[int, int]:
-        return self.bedtime_utc + self.margin_min, self.wake_utc
+        """Never planned in: past bedtime's margin until waking, and the morning routine after it (29 Oct: "if it
+        assumes that i have a 45 minute morning routine then how does it give me work at 8am sharp?"). "Ready to
+        work" ends the routine early (its routine is 0 then)."""
+        return self.bedtime_utc + self.margin_min, self.wake_utc + (self.routine_min or 0)
 
 
 @dataclass

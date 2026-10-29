@@ -183,6 +183,12 @@ function LearnedSleep({ sleep }: { sleep: Schemas["SleepOut"] }) {
               <span style={{ color: "var(--color-neutral-500)" }}>, not {ampm(c.now)}</span>
             </span>
           ))}
+          {(sleep.against ?? []).map((a) => (
+            <span key={a} style={{ display: "flex", gap: 6, fontSize: 12, color: "var(--fr-warn)" }}>
+              <Icon name="warning" size={13} style={{ flex: "none", marginTop: 2 }} />
+              <span>{a}. Taking these times leaves a question in your Inbox: your bedtime or the rule.</span>
+            </span>
+          ))}
           {sleep.suggested && (
             <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <button className="btn btn-primary fr-press" onClick={() => use({ key: "sleep", value: sleep.suggested })} style={{ fontSize: 12 }}>

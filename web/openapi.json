@@ -800,6 +800,77 @@
     }
    }
   },
+  "/api/c/conflict_resolve": {
+   "post": {
+    "summary": "Answer a disagreement between what Friday learned and a rule: the change the answer names, and it isn't asked",
+    "operationId": "conflict_resolve",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ConflictInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConflictResolveResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/day_override": {
    "post": {
     "summary": "One date's bedtime, wake, sleep margin or daily cap, over the weekday settings; what you leave out stays.",
@@ -12156,6 +12227,96 @@
     ],
     "title": "CompareAnswerResult"
    },
+   "ConflictInput": {
+    "properties": {
+     "key": {
+      "type": "string",
+      "title": "Key"
+     },
+     "option": {
+      "type": "string",
+      "title": "Option"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "key",
+     "option"
+    ],
+    "title": "ConflictInput",
+    "description": "An answer to a disagreement between what Friday learned and a rule (commands/conflicts.py)."
+   },
+   "ConflictResolveResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "ConflictResolveResult"
+   },
    "DateInput": {
     "properties": {
      "date": {
@@ -12346,7 +12507,8 @@
       "type": "string",
       "enum": [
        "lock",
-       "late"
+       "late",
+       "learned"
       ],
       "title": "Kind"
      },
@@ -12403,6 +12565,29 @@
       "type": "array",
       "title": "Items",
       "default": []
+     },
+     "options": {
+      "items": {
+       "$ref": "#/components/schemas/DecisionOption"
+      },
+      "type": "array",
+      "title": "Options",
+      "default": []
+     },
+     "update": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "rule",
+         "learned"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Update"
      }
     },
     "additionalProperties": false,
@@ -12415,6 +12600,35 @@
     ],
     "title": "Decision",
     "description": "Something only you can decide, waiting in the Inbox (27 Oct: \"decisions but in the inbox with a notification\nsymbol\"): a lock that makes work late (`resolve`), or work that will be late (the options, or `late_accept`)."
+   },
+   "DecisionOption": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "detail": {
+      "type": "string",
+      "title": "Detail"
+     },
+     "recommended": {
+      "type": "boolean",
+      "title": "Recommended",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "label",
+     "detail"
+    ],
+    "title": "DecisionOption"
    },
    "DependInput": {
     "properties": {
@@ -25518,6 +25732,14 @@
        }
       ],
       "title": "Suggested"
+     },
+     "against": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Against",
+      "default": []
      },
      "recorded_nights": {
       "type": "integer",

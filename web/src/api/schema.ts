@@ -191,6 +191,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/conflict_resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer a disagreement between what Friday learned and a rule: the change the answer names, and it isn't asked */
+        post: operations["conflict_resolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/day_override": {
         parameters: {
             query?: never;
@@ -3539,6 +3556,37 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /**
+         * ConflictInput
+         * @description An answer to a disagreement between what Friday learned and a rule (commands/conflicts.py).
+         */
+        ConflictInput: {
+            /** Key */
+            key: string;
+            /** Option */
+            option: string;
+        };
+        /** ConflictResolveResult */
+        ConflictResolveResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
         /** DateInput */
         DateInput: {
             /** Date */
@@ -3604,7 +3652,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "lock" | "late";
+            kind: "lock" | "late" | "learned";
             /** Title */
             title: string;
             /** Detail */
@@ -3625,6 +3673,27 @@ export interface components {
              * @default []
              */
             items?: components["schemas"]["LateItem"][];
+            /**
+             * Options
+             * @default []
+             */
+            options?: components["schemas"]["DecisionOption"][];
+            /** Update */
+            update?: ("rule" | "learned") | null;
+        };
+        /** DecisionOption */
+        DecisionOption: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Detail */
+            detail: string;
+            /**
+             * Recommended
+             * @default false
+             */
+            recommended?: boolean;
         };
         /** DependInput */
         DependInput: {
@@ -7863,6 +7932,11 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /**
+             * Against
+             * @default []
+             */
+            against?: string[];
+            /**
              * Recorded Nights
              * @default 0
              */
@@ -9336,6 +9410,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompareAnswerResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    conflict_resolve: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConflictInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictResolveResult"];
                 };
             };
             /** @description Validation Error */

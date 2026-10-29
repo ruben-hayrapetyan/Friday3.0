@@ -337,6 +337,12 @@ def chroma_sample(app: App) -> dict[str, Any]:
     return {"colors_path": str(folder / "colors.json")}
 
 
+def conflict_sample(app: App) -> dict:
+    """A sleep rule asking more than the nights give (commands/conflicts.py): answered with an earlier bedtime."""
+    app.do("rule_add", text="at least 9 hours of sleep", strength="Strongly")
+    return {"key": "sleep:mon,tue,wed,thu", "option": "bedtime"}
+
+
 SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "import_personal": import_sample,
     "import_chroma_colors": chroma_sample,
@@ -444,6 +450,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "resolve": lambda app: {"unlock_pin_ids": [a_lock(app)]},
     "lock_keep": lock_keep_sample,
     "late_accept": late_accept_sample,
+    "conflict_resolve": conflict_sample,
     "template_apply": lambda app: {"template": "Essay", "title": "essay", "hours": 6, "due": "2026-10-30T17:00"},
     "template_save": lambda app: {"name": "Mine", "project_id": template_project(app)},
     "undo": lambda app: {"command_id": app.full("add", payload={"text": "x ~30m"}).command_id},

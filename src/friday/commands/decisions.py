@@ -12,7 +12,7 @@ when the work it's about gets an hour later than when you answered."""
 import json
 
 from friday.api.commands import Changed, LateAcceptInput, LockKeepInput
-from friday.api.views import Decision, LateItem
+from friday.api.views import Decision, DecisionOption, LateItem
 from friday.commands.registry import Ctx, command
 from friday.core.items import FieldError
 from friday.core.time import ampm, parse_utc, to_local
@@ -22,7 +22,8 @@ AGAIN_HOURS = 1.0  # an answer is asked again once the work it's about is this m
 
 
 def decisions(ctx: Ctx, report: dict, late: list[LateItem]) -> list[Decision]:
-    """The current plan's questions for you, late work first, without those you answered."""
+    """The current plan's questions for you, late work first, without those you answered; then where what Friday
+    learned disagrees with what you said (commands/conflicts.py)."""
     out = []
     accepted = kv_get(ctx.conn, "late_accepted", {}, ctx.user_id) or {}
     asked = [i for i in late if not answered(accepted, i.item_id, i.hours)]
@@ -52,6 +53,22 @@ def decisions(ctx: Ctx, report: dict, late: list[LateItem]) -> list[Decision]:
                 item_id=c["item_id"],
                 start=ctx.local(c["start"]),
                 hours=c["extra_late_hours"],
+            )
+        )
+    from friday.commands.conflicts import clashes  # noqa: PLC0415 (conflicts reads the rules, which read the plan)
+
+    for c in clashes(ctx):
+        out.append(
+            Decision(
+                key=f"learned:{c.key}",
+                kind="learned",
+                title=c.title,
+                detail=c.detail,
+                update=c.update,
+                options=[
+                    DecisionOption(id=o.id, label=o.label, detail=o.detail, recommended=o.recommended)
+                    for o in c.options
+                ],  # fmt: skip
             )
         )
     return out
