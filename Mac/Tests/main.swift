@@ -193,5 +193,38 @@ test("new events Friday made are made once") {
           "a calendar not on this Mac says so: \(gone)")
 }
 
+test("the start's ring creeps while it waits, never closing on its own") {
+    var last = 0.0
+    for tenth in 0 ... 1200 {  // two minutes
+        let at = LaunchCurve.frame(at: Double(tenth) / 10, readyAt: nil)
+        check(at.fill >= last && at.fill < 0.92, "fill \(at.fill) at \(tenth)")
+        check(at.gold == 0 && at.open == 0, "gold or open before ready at \(tenth)")
+        last = at.fill
+    }
+    check(LaunchCurve.creep(1) > 0.3 && LaunchCurve.creep(3) > 0.6, "slow to start: \(LaunchCurve.creep(1)), \(LaunchCurve.creep(3))")
+    check(LaunchCurve.creep(0) > 0, "the ring shows where it starts")
+}
+
+test("ready, it closes from where it was, turns gold, then opens, without a jump") {
+    for ready in [0.2, 1.5, 9.0, 61.0] {
+        let before = LaunchCurve.frame(at: ready, readyAt: nil)
+        let at = LaunchCurve.frame(at: ready, readyAt: ready)
+        check(abs(at.fill - before.fill) < 1e-9, "fill jumps when ready at \(ready)")
+        let closed = LaunchCurve.frame(at: ready + LaunchCurve.fill, readyAt: ready)
+        check(abs(closed.fill - 1) < 1e-9 && closed.open == 0, "closed but not yet open at \(ready)")
+        let gold = LaunchCurve.frame(at: ready + LaunchCurve.goldAt + LaunchCurve.gold, readyAt: ready)
+        check(gold.gold == 1 && gold.open == 0, "gold before opening at \(ready)")
+        let shown = LaunchCurve.frame(at: ready + LaunchCurve.total, readyAt: ready)
+        check(shown.open == 1 && shown.fill == 1, "open by the end at \(ready)")
+        var last = LaunchCurve.Frame(fill: 0, gold: 0, open: 0)
+        for step in 0 ... 100 {
+            let f = LaunchCurve.frame(at: ready + LaunchCurve.total * Double(step) / 100, readyAt: ready)
+            check(f.fill >= last.fill && f.gold >= last.gold && f.open >= last.open, "goes back at step \(step)")
+            last = f
+        }
+    }
+    check(LaunchCurve.total < 1.5, "the app waits \(LaunchCurve.total) s after it's ready")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

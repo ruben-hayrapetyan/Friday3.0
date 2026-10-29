@@ -9,6 +9,8 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
     static let shared = Page()
     let view: WKWebView
     private var loaded = false
+    /// The app has drawn itself: the start's ring can close (`LaunchView`).
+    @Published private(set) var shown = false
 
     override init() {
         let config = WKWebViewConfiguration()
@@ -89,6 +91,23 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
         return nil
     }
 
+    /// Loaded, then drawn: the page's script fills `#root` once React has run, a moment after the load itself.
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        waitForApp()
+    }
+
+    private func waitForApp(tries: Int = 0) {
+        guard !shown else { return }
+        view.evaluateJavaScript("(document.getElementById('root')?.childElementCount ?? 0) > 0") { [weak self] drawn, _ in
+            guard let self else { return }
+            if drawn as? Bool == true || tries >= 40 {  // four seconds at most: never kept from the app
+                self.shown = true
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.waitForApp(tries: tries + 1) }
+            }
+        }
+    }
+
     /// A page that failed to load (the server restarting) tries again shortly.
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         retry()
@@ -115,40 +134,42 @@ struct WebPage: NSViewRepresentable {
     func updateNSView(_ view: WKWebView, context: Context) {}
 }
 
-/// The window: the page once the server answers; until then, what's happening.
+/// The window: the app once it has drawn; until then, its icon filling while Friday starts (`LaunchView`), which
+/// closes in gold and opens into the app. The page loads underneath the whole time, so it's there when it opens.
 struct RootView: View {
     @ObservedObject var server = Server.shared
+    @ObservedObject var page = Page.shared
+    @State private var opened = false
 
     var body: some View {
         Group {
-            switch server.state {
-            case .ready:
-                WebPage()
-            case .looking, .starting:
-                VStack(spacing: 12) {
-                    ProgressView()
-                    Text(server.state == .starting ? "Starting Friday… the first start takes up to a minute." : "Finding Friday…")
-                        .foregroundStyle(.secondary)
-                    if server.slow {
-                        // fridayd in ~/Downloads or ~/Documents waits on the Mac's privacy prompt until it's answered
-                        Text("If macOS asks whether Friday may open files in a folder, allow it: that's where fridayd lives.")
-                            .font(.callout).foregroundStyle(.secondary)
+            if case .failed(let why) = server.state {
+                failed(why)
+            } else {
+                ZStack {
+                    if server.state == .ready { WebPage() }
+                    if !opened {
+                        LaunchView(state: server.state, slow: server.slow, ready: server.state == .ready && page.shown) {
+                            opened = true
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            case .failed(let why):
-                VStack(spacing: 12) {
-                    Text("Friday's server isn't running").font(.title2)
-                    Text(why).font(.callout.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
-                    HStack {
-                        Button("Try again") { Task { await Server.shared.ensureRunning() } }
-                        SettingsLink { Text("Settings…") }
-                    }
-                }
-                .padding(40)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(minWidth: 360, minHeight: 480)  // the website fits any width (web/src/shell/layout.ts)
+    }
+
+    private func failed(_ why: String) -> some View {
+        VStack(spacing: 12) {
+            FridayMark(size: 72, fill: 0.35, gold: 0).opacity(0.55).padding(.bottom, 6)
+            Text("Friday's server isn't running").font(.title2)
+            Text(why).font(.callout.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+            HStack {
+                Button("Try again") { Task { await Server.shared.ensureRunning() } }
+                SettingsLink { Text("Settings…") }
+            }
+        }
+        .padding(40)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
