@@ -110,14 +110,23 @@ class GcalSettings(Model):
     new_events_to: str | None = None  # a calendar's id: events you make in Friday are saved there too (COMBINED.md 69)
 
 
+# An email about an event is one for the Inbox (29 Oct: "this is an email about an event so it should be put into
+# inbox", a film screening sent to a Cornell list): the words such a subject says it with, beside the deadlines'.
+EVENT_WORDS = (
+    "join us", "screening", "talk", "seminar", "info session", "information session", "workshop", "panel",
+    "lecture", "event", "conversation with", "reception", "symposium", "webinar", "career fair", "showcase",
+)  # fmt: skip
+
+
 class GmailSettings(Model):
     enabled: bool = False
-    query: str = "newer_than:14d -category:promotions -category:social -category:forums"
+    # Not promotions or social media; the Forums tab is read, where a university's lists put its talks and events.
+    query: str = "newer_than:14d -category:promotions -category:social"
     max_per_sync: int = Field(50, ge=1)
     sender_domains: tuple[str, ...] = ()
     keywords: tuple[str, ...] = (
         "due", "deadline", "exam", "quiz", "assignment", "submit", "meeting", "invite", "reschedule", "cancelled",
-        "prelim", "midterm", "homework", "problem set", "lab report", "rsvp", "form", "application",
+        "prelim", "midterm", "homework", "problem set", "lab report", "rsvp", "form", "application", *EVENT_WORDS,
     )  # fmt: skip
 
 

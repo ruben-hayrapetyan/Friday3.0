@@ -87,3 +87,26 @@ def test_without_an_api_key_mail_waits_and_the_source_says_why(app: App, monkeyp
     sync(app.conn, app.now_utc, mail=inbox())
     assert "an Anthropic API key" in next(s for s in app.table("sources") if s["kind"] == "gmail")["last_error"]
     assert statuses(app)["m3"] == "new"
+
+
+def test_an_email_about_an_event_is_read_from_a_list_and_the_forums_tab(tmp_path: Path) -> None:
+    """29 Oct: a film screening sent to a Cornell list, bulk and in the Forums tab, never reached the Inbox."""
+    from friday.core.integrations import GmailSettings  # noqa: PLC0415
+
+    plain = new_app(tmp_path)
+    plain.do("settings_set", key="gmail", value={"enabled": True})  # Friday's own keywords, no sender listed
+    assert "-category:forums" not in GmailSettings().query
+    screening = "Please Join us for an Advance Film Screening and Conversation with Shyam Sankar '03, CTO of Palantir"
+    gmail = FakeGmail(
+        [
+            mail(
+                "film", "Kristie Blake <kristie.blake@cornell.edu>", screening, "<p>Nov 4, 7pm, Statler</p>", bulk=True
+            ),
+            mail("talk", "CS <cs@cornell.edu>", "Talk: Robots that learn", "<p>Friday 4pm</p>", bulk=True),
+            mail("sale", "Shop <deals@store.com>", "Big sale this weekend", "<p>Everything 50% off</p>", bulk=True),
+        ]
+    )
+    sync(plain.conn, plain.now_utc, mail=gmail, client=FakeClient(NOTHING))
+    log = {m["subject"]: m["status"] for m in plain.do("mail_log")}
+    assert log[screening] == "read" and log["Talk: Robots that learn"] == "read"
+    assert log["Big sale this weekend"] == "skipped"
