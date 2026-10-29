@@ -317,5 +317,40 @@ test("Friday Test refuses every change to the Mac's calendars, saying why") {
     check(TestCalendars.refuse(["op": "delete"]).isEmpty, "a job without an id: nothing to answer")
 }
 
+test("Friday Test opens as a new user each time, unless kept and not started over") {
+    check(TestUser.startsNew(keep: false, asked: false), "not kept: new")
+    check(!TestUser.startsNew(keep: true, asked: false), "kept: the same user")
+    check(TestUser.startsNew(keep: true, asked: true), "Start Over beats keeping")
+    let root = scratch(), defaults = UserDefaults(suiteName: "friday-test-\(UUID().uuidString)")!
+    let first = TestUser.opening(defaults: defaults, root: root, isFree: { _ in true })
+    let second = TestUser.opening(defaults: defaults, root: root, isFree: { _ in true })
+    check(first != second && TestUser.kept(defaults: defaults) == second, "two openings, two users")
+    defaults.set(true, forKey: TestUser.keepKey)
+    check(TestUser.opening(defaults: defaults, root: root, isFree: { _ in true }) == second, "kept: opens as the last one")
+    defaults.set(true, forKey: TestUser.askedKey)
+    defaults.set(false, forKey: TestUser.claudeKey)
+    let over = TestUser.opening(defaults: defaults, root: root, isFree: { _ in true })
+    check(over != second && !over.claude, "Start Over without Claude: a new user without it")
+    check(!defaults.bool(forKey: TestUser.askedKey), "asked once: the next opening keeps it again")
+    check(TestUser.opening(defaults: defaults, root: root, isFree: { _ in true }) == over, "kept from then on")
+    try? FileManager.default.removeItem(at: root)
+}
+
+test("only the newest test users' folders stay; nothing else there is touched") {
+    let root = scratch()
+    let names = (1 ... 11).map { String(format: "mac-2026-10-%02d-120000", $0) } + ["mac-2026-10-05-120000-2", "2026-10-28-225128", "current"]
+    for n in names { try? FileManager.default.createDirectory(at: root.appendingPathComponent(n), withIntermediateDirectories: true) }
+    let stale = TestUser.stale(in: root, keeping: 8).map(\.lastPathComponent)
+    check(stale == ["mac-2026-10-01-120000", "mac-2026-10-02-120000", "mac-2026-10-03-120000", "mac-2026-10-04-120000"],
+          "the four oldest of twelve: \(stale)")
+    check(!stale.contains("2026-10-28-225128") && !stale.contains("current"), "fresh_user.sh's are never Friday Test's")
+    let defaults = UserDefaults(suiteName: "friday-test-\(UUID().uuidString)")!
+    _ = TestUser.opening(defaults: defaults, root: root, isFree: { _ in true })
+    let left = ((try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? []).filter { $0.hasPrefix("mac-") }
+    check(left.count == TestUser.keeping, "a new user, and the newest \(TestUser.keeping) kept: \(left.count)")
+    check(FileManager.default.fileExists(atPath: root.appendingPathComponent("2026-10-28-225128").path), "the website's test user stays")
+    try? FileManager.default.removeItem(at: root)
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

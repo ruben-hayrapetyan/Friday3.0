@@ -2,7 +2,7 @@ import Foundation
 
 /// Friday Test (29 Oct: "work on the startup sequence but I don't want to do this on my personal friday... assuming a
 /// completely new user"): this app built by `build.sh --test`, a brand-new user's Friday beside yours and apart from it.
-/// Its data and config in a folder of its own under ~/.local/share/friday-fresh (a new one at each Start Over), its own
+/// Its data and config in a folder of its own under ~/.local/share/friday-fresh (a new one each time it opens), its own
 /// port, its own settings and website data (another app id), no global shortcuts (yours keeps them), never opened at
 /// login, and it changes no real calendar: the Mac's are read and never written, and its server only reads Google's
 /// (FRIDAY_CALENDARS_READ_ONLY). Your Friday, its data in ~/.local/share/friday and its server on 8765, isn't touched.
@@ -14,10 +14,19 @@ struct TestUser: Codable, Equatable {
     /// Whether this app is Friday Test: its Info.plist says so.
     static let isTest = Bundle.main.object(forInfoDictionaryKey: "FridayTest") as? Bool == true
 
-    /// The user this app is: the one kept, else a new one. nil in your Friday.
-    static let current: TestUser? = isTest ? (kept() ?? make(claude: true)) : nil
+    /// The user this app is: a new one each time it opens (29 Oct: "my version of friday test is not loading the
+    /// initialization anymore": a user who had been through setup opened straight to the app), unless Keep This User
+    /// Next Time is on and Start Over wasn't asked for. nil in your Friday.
+    static let current: TestUser? = isTest ? opening() : nil
+
+    /// Whether this run's user was made as the app opened: the window forgets the last one's looks and tour first.
+    private(set) static var fresh = false
 
     static let key = "testUser"
+    static let keepKey = "keepTestUser"  // Keep This User Next Time
+    static let claudeKey = "testUserClaude"  // a new user has the `claude` command
+    static let askedKey = "testUserAsked"  // Start Over, for the next opening
+    static let keeping = 8  // test users' folders kept, the newest
     static let firstPort = 8770  // yours is 8765; scripts/fresh_user.sh's start at 8790
     static var root: URL {
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/share/friday-fresh")
@@ -29,6 +38,27 @@ struct TestUser: Codable, Equatable {
 
     static func kept(defaults: UserDefaults = .standard) -> TestUser? {
         defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(TestUser.self, from: $0) }
+    }
+
+    /// The user an opening is: the kept one only when asked to keep it and not asked to start over; else a new one,
+    /// with the `claude` command or without as last chosen, and the oldest test users' folders beyond `keeping` gone.
+    static func opening(defaults: UserDefaults = .standard, root: URL = TestUser.root, isFree: (Int) -> Bool = TestUser.isFree) -> TestUser {
+        let asked = defaults.bool(forKey: askedKey)
+        defaults.removeObject(forKey: askedKey)
+        if let kept = kept(defaults: defaults), !startsNew(keep: defaults.bool(forKey: keepKey), asked: asked) { return kept }
+        fresh = true
+        let user = make(claude: defaults.object(forKey: claudeKey) as? Bool ?? true, root: root, defaults: defaults, isFree: isFree)
+        for old in stale(in: root, keeping: keeping) { try? FileManager.default.removeItem(at: old) }
+        return user
+    }
+
+    static func startsNew(keep: Bool, asked: Bool) -> Bool { asked || !keep }
+
+    /// Friday Test's own users' folders (named mac-…, which sort by when) beyond the newest `keeping`, oldest first; a
+    /// folder of scripts/fresh_user.sh's, or anything else there, is never one.
+    static func stale(in root: URL, keeping: Int) -> [URL] {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? []
+        return names.filter { $0.hasPrefix("mac-") }.sorted().dropLast(keeping).map { root.appendingPathComponent($0) }
     }
 
     /// A new user, its folder made and kept as the one this app is from its next start.

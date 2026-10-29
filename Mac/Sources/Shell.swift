@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             register(Hotkeys.askClaude) { [weak self] in self?.show(then: .askClaude) }
         }
         Task {
+            if TestUser.current != nil, TestUser.fresh { await StartOver.forget() }  // before the new user's page loads
             await Server.shared.ensureRunning()
             timer.start()
             badge.start()

@@ -4,11 +4,14 @@ import WebKit
 
 /// Friday Test's own menu (TestUser): which user this is, starting over as a new one, and its folder.
 struct TestMenu: Commands {
+    @AppStorage(TestUser.keepKey) private var keep = false
+
     var body: some Commands {
         CommandMenu("Test User") {
             if let user = TestUser.current {
                 Text(user.name + (user.claude ? "" : ", without Claude"))
                 Divider()
+                Toggle("Keep This User Next Time", isOn: $keep)  // off: a new user each time Friday Test opens
                 Button("Start Over as a New User") { StartOver.now(claude: true) }
                 Button("Start Over as a New User without Claude") { StartOver.now(claude: false) }
                 Divider()
@@ -20,18 +23,21 @@ struct TestMenu: Commands {
     }
 }
 
-/// A new user from the very start: this one's server stopped, everything the window kept (looks, the tour seen, the
-/// website's cache) cleared, a new folder and port, and the app opened again, so the launch is a first one. The old
-/// user's folder stays, for a look afterwards.
+/// A new user from the very start: this one's server stopped and the app opened again, asked for a new user, so the
+/// launch is a first one (`TestUser.opening`). The old user's folder stays, for a look afterwards.
 @MainActor
 enum StartOver {
     static func now(claude: Bool) {
         Server.shared.stop()
-        TestUser.make(claude: claude)
-        let store = WKWebsiteDataStore.default()  // this app's own: Friday Test's id, not yours
-        store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast) {
-            reopen()
-        }
+        UserDefaults.standard.set(true, forKey: TestUser.askedKey)
+        UserDefaults.standard.set(claude, forKey: TestUser.claudeKey)
+        reopen()
+    }
+
+    /// Everything the window kept for the last user (looks, the tour seen, the website's cache), cleared before a new
+    /// user's page loads: this app's own website data, Friday Test's id, not yours.
+    static func forget() async {
+        await WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
     }
 
     /// Opens this app again once this copy has quit.
