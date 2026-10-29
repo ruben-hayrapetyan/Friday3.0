@@ -47,6 +47,13 @@ class Candidate:
     at: int | None
     open: bool
     reading: Reading
+    skipped: bool = False  # you skipped this time of it: decided, so a repeat's copy from another calendar isn't asked
+
+    @property
+    def held(self) -> bool:
+        """Whether a repeating event's instance counts it as yours: open, or skipped by you. Not one taken away
+        with a repeat switched off, which a repeat switched on again brings back."""
+        return self.open or self.skipped
 
 
 def candidates(conn: sqlite3.Connection, settings: dict, user_id: int, now_utc: int) -> list[Candidate]:
@@ -67,6 +74,7 @@ def candidates(conn: sqlite3.Connection, settings: dict, user_id: int, now_utc: 
             parse_utc(at) if (at := r["start_utc"] if r["when_kind"] == "fixed" else r["due_utc"]) else None,
             r["status"] == "todo",
             read_title(r["title"], rules),
+            r["status"] == "skipped",
         )
         for r in found
     ]
@@ -140,7 +148,7 @@ def set_aside_waiting(conn: sqlite3.Connection, settings: dict, user_id: int, no
         if repeat and not is_event(fields, settings):
             continue  # a repeating task's instances are a day apart, within a task's day: never one another's twin
         # a repeating event's against the events you still have: one switched off and on again comes back whole
-        same = duplicate_of(fields, settings, [c for c in found if c.open] if repeat else found)
+        same = duplicate_of(fields, settings, [c for c in found if c.held] if repeat else found)
         if same is not None and not same.update:
             write(s["id"], {"status": "superseded", "duplicate_of": same.item_id})
             gone += 1

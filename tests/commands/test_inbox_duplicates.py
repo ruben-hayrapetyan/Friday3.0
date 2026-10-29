@@ -272,6 +272,12 @@ class TestRepeatingEvents:
         propose_series(app, "b", *(event("Cornell Poker (Olin 245)", s, e) for s, e in SATURDAYS), source="School")
         assert statuses(app, "Cornell Poker") == ["pending"] * 3 + ["superseded"] * 3
 
+    def test_a_week_you_skipped_is_yours_too(self, app: App) -> None:
+        made = [app.do("add", title="Cornell Poker", when="fixed", start=s, end=e)["item"]["id"] for s, e in SATURDAYS]
+        app.conn.execute("UPDATE items SET status = 'skipped' WHERE id = ?", [made[1]])  # not going that week
+        propose_series(app, "poker", *(event("Cornell Poker", s, e) for s, e in SATURDAYS))
+        assert statuses(app, "Cornell Poker") == ["superseded"] * 3
+
     def test_a_repeating_task_s_days_are_not_one_another_s_twins(self, app: App) -> None:
         settings = load_settings(app.conn, 1)
         app.do("document_add", name="Feed.txt", content="read")

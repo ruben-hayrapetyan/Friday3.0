@@ -247,7 +247,7 @@ def suggest(
         # repeating task isn't, as a task due within a day of yours counts and a daily one has neighbours a day apart.
         # Only events you still have: a repeat switched off and on again brings back the times it took away.
         repeat_task = p.series and not duplicates.is_event(fields, settings)
-        have = [c for c in mine() if c.open] if p.series else mine()
+        have = [c for c in mine() if c.held] if p.series else mine()
         same = duplicates.duplicate_of(fields, settings, have) if command == "add" and not repeat_task else None
         duplicate = same.item_id if same is not None else None
         aside = same is not None and not same.update
