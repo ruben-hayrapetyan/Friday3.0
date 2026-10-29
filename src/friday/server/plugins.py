@@ -5,7 +5,11 @@ import importlib.util
 import traceback
 from pathlib import Path
 
-PLUGIN_DIR = Path("~/.config/friday/rules").expanduser()
+from friday.core.paths import config_path
+
+# Beside friday.toml (~/.config/friday/rules), so a Friday given its own config (FRIDAY_CONFIG: a fresh-user sandbox,
+# scripts/fresh_user.sh) has its own plugins, none at first, rather than yours.
+PLUGIN_DIR = config_path().with_name("rules")
 
 
 def load_plugins(directory: Path = PLUGIN_DIR) -> list[str]:

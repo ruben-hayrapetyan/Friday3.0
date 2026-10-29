@@ -32,3 +32,21 @@ def test_a_rule_of_an_unknown_type_is_off_with_a_notice(tmp_path: Path) -> None:
     app.do("add", text="essay ~1h")
     replan(app.conn, app.now_utc)
     assert "Rule mine is off: no rule type 'not_loaded' is loaded" in app.do("status")["notices"]
+
+
+def test_the_plugin_folder_is_beside_the_config_a_server_is_given(tmp_path: Path) -> None:
+    # 28 Oct: a fresh-user sandbox (scripts/fresh_user.sh) has its own config; it must not load your plugins.
+    import os
+    import subprocess
+    import sys
+
+    def folder(config: str | None) -> str:
+        env = {k: v for k, v in os.environ.items() if k != "FRIDAY_CONFIG"}
+        if config:
+            env["FRIDAY_CONFIG"] = config
+        script = "from friday.server.plugins import PLUGIN_DIR; print(PLUGIN_DIR)"
+        ran = subprocess.run([sys.executable, "-c", script], env=env, capture_output=True, text=True, check=True)
+        return ran.stdout.strip()
+
+    assert folder(str(tmp_path / "config" / "friday.toml")) == str(tmp_path / "config" / "rules")
+    assert folder(None) == str(Path("~/.config/friday/rules").expanduser())

@@ -39,12 +39,22 @@ def key_source() -> tuple[str | None, str]:
 
 
 def cli_path() -> Path | None:
-    """The `claude` command, if it is installed."""
+    """The `claude` command, if it is installed, or the one `FRIDAY_CLAUDE` names (`named_cli`)."""
+    chosen = os.environ.get("FRIDAY_CLAUDE")
+    if chosen is not None:
+        return named_cli(chosen)
     for path in CANDIDATES:
         if path.exists() and os.access(path, os.X_OK):
             return path
     found = shutil.which("claude")
     return Path(found) if found else None
+
+
+def named_cli(chosen: str) -> Path | None:
+    """`FRIDAY_CLAUDE`: another `claude` command, or "none" for a Friday that acts as if there were none (a fresh
+    user without Claude, scripts/fresh_user.sh --no-claude)."""
+    named = Path(chosen).expanduser()
+    return named if chosen not in ("", "none") and named.exists() and os.access(named, os.X_OK) else None
 
 
 def client() -> Any | None:
