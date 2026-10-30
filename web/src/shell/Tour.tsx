@@ -23,7 +23,7 @@ export const STEPS: Step[] = [
   {
     target: "nav",
     title: "Your pages",
-    body: "Plan is home: your calendar with the work Friday planned. To-do has every task. Inbox holds what Friday found on your calendars and mail, for you to accept, what only you can decide, and Your day: how the day went, which is how Friday learns. Rules are how you like your days.",
+    body: "Plan is home: your calendar with the work Friday planned. To-do has every task. Inbox holds everything that needs you, a message each: what only you can decide, how much of your planned work you did (which is how Friday learns), and what it found on your calendars and mail, for you to accept. Rules are how you like your days.",
   },
   {
     target: "menu",

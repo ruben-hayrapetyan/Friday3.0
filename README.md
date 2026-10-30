@@ -95,8 +95,10 @@ cases run from very light to overloaded (`fridayd demo --help`).
 | ⌘J | Ask Claude |
 
 The **Plan** menu has Other Ways, What Gives, Shove, Pace and the morning brief. The **menu bar** shows what you're
-timing and for how long, with Pause and Done. Friday sends no notifications: what only you can decide (late work, a
-lock that makes work late) waits at the top of the Inbox, counted on the sidebar, in the title row and on the Dock icon.
+timing and for how long, with Pause and Done. Friday sends no notifications: everything that needs you waits in the
+Inbox, a message each (what only you can decide first, then how much of your planned work you did, then what came in
+from mail and calendars), counted on the sidebar, in the title row and in the window's title; the Dock icon counts
+what only you can decide.
 Friday → Settings… has the shortcuts, the menu-bar timer, the Mac's calendars,
 opening at login and where `fridayd` is. The rest of the settings are on the website's Settings page.
 

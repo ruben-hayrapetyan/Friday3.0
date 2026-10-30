@@ -10,6 +10,7 @@ import { query } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useAdd } from "@/components/todo/QuickAdd"
 import { useHorizon, useProjects } from "@/hooks/queries"
+import { useCommand } from "@/hooks/useCommand"
 import { when } from "@/lib/format"
 import { nextBlocks } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
@@ -31,8 +32,7 @@ const PAGES: [string, string, string][] = [
   ["Plan", "/", "calendar-dots"],
   ["To-do", "/todo", "check-square"],
   ["Projects & exams", "/projects", "tree-structure"],
-  ["Inbox", "/inbox", "tray"],
-  ["Your day: review how it went (Inbox)", "/inbox/day", "cards"],
+  ["Inbox: what's waiting, how your day went", "/inbox", "tray"],
   ["Insights", "/insights", "chart-line"],
   ["Sleep & meals", "/body", "moon-stars"],
   ["Rules", "/rules", "sliders-horizontal"],
@@ -60,6 +60,7 @@ export function Search() {
   const events = useQuery({ queryKey: ["events", text], queryFn: () => query("events", { text, limit: 8 }), enabled: text.length > 1 }).data ?? []
   const add = useAdd()
   const breaks = useBreaks()
+  const goOver = useCommand("review_again", { label: (o) => o.result.message ?? "Ready" })
   useEffect(() => ref.current?.focus(), [])
   const close = () => setDialog(null)
   const go = (f: () => void) => () => (f(), close())
@@ -105,6 +106,8 @@ export function Search() {
       { key: "setup", label: "Set up Friday: your day, load, free time, calendars", icon: "sliders-horizontal", run: () => setDialog("setup") },
       ...(breaks.nap ? [{ key: "nap", label: "Taking a nap", icon: "bed", run: go(breaks.nap) }] : []),
       ...(breaks.snack ? [{ key: "snack", label: "Having a snack", icon: "cookie", run: go(breaks.snack) }] : []),
+      // The tasks Friday brought in, a message each in the Inbox, to keep or take off your list (29 Oct)
+      { key: "again", label: "Go over everything Friday brought in again", icon: "arrow-counter-clockwise", run: go(() => (goOver({}), navigate("/inbox"))) },
       { key: "ask", label: `Ask ${ai.name}${text ? `: ${text}` : ""}`, icon: "sparkle", run: () => askClaude(text) },
     ].filter((a) => has(a.label))
     return [

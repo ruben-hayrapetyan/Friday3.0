@@ -26,7 +26,7 @@ import { AddBox } from "./AddBox"
 import { BulkBar, menuOpen, pickWith, tasks } from "./Bulk"
 import { addHint, fillFor, GROUPS, type GroupBy, grouped, KINDS_FIRST, OTHER, plural, progress, SORTS, type SortBy, summary } from "./groups"
 import { DuePicker, LengthInput } from "./Pickers"
-import { useDuplicates } from "@/inbox/CheckTasks"
+import { useDuplicates } from "@/inbox/queries"
 import { SortPicker } from "./SortPicker"
 import { TodoDetail } from "./TodoDetail"
 
@@ -131,9 +131,9 @@ export function TodoPage() {
           {summary(items)}
         </span>
         {copies > 0 && (
-          <NavLink to="/inbox/check" className="fr-pill fr-hover" style={{ fontSize: 12, color: "var(--fr-warn)", textDecoration: "none" }} title="The same task more than once">
+          <NavLink to="/inbox" className="fr-pill fr-hover" style={{ fontSize: 12, color: "var(--fr-warn)", textDecoration: "none" }} title="The same task more than once: a message each in your Inbox">
             <Icon name="copy" size={12} />
-            {copies} with copies · Check
+            {copies} with copies · In your Inbox
           </NavLink>
         )}
         {solving && (

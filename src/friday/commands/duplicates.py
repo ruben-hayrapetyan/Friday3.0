@@ -29,6 +29,14 @@ from friday.planner.store import kv_get
 TASK_WINDOW_MIN = 24 * 60  # a task due within a day of yours is yours
 EVENT_WINDOW_MIN = 30  # an event within half an hour of yours is yours
 REMEMBERED_DAYS = 120  # what you finished or deleted is remembered this long
+RESTORED = "suggestions_restored"  # kv: suggestions you asked about anyway ("Add anyway"), never set aside again
+
+
+def restored(conn: sqlite3.Connection, user_id: int) -> set[int]:
+    """The suggestions you asked about anyway. Until 29 Oct they were kept under "not_duplicates" beside the pairs of
+    tasks kept apart, and a single id there broke the check for copies; those ids still count."""
+    old = [x for x in kv_get(conn, "not_duplicates", [], user_id) or [] if isinstance(x, int)]
+    return {*old, *(kv_get(conn, RESTORED, [], user_id) or [])}
 
 
 @dataclass(frozen=True)
@@ -128,7 +136,7 @@ Write = Callable[[int, dict[str, Any]], None]
 def set_aside_waiting(conn: sqlite3.Connection, settings: dict, user_id: int, now_utc: int, write: Write) -> int:
     """Check the suggestions waiting to add something again, as what you have changed: each that's now what you have
     is set aside, one that moves it says so, and of two waiting for the same thing the later goes. How many went."""
-    kept = set(kv_get(conn, "not_duplicates", [], user_id) or [])
+    kept = restored(conn, user_id)
     found = candidates(conn, settings, user_id, now_utc)
     waiting = rows(
         conn,
