@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { type Answers, badgesOf, byAccount, hoursLabel, hoursWords, numbersOf, readDays, readHours, shift, storyFor, withCalendars } from "./Setup"
+import { type Answers, badgesOf, byAccount, hoursLabel, hoursWords, numbersOf, readDays, readHours, shift, storyFor, whereOf, withCalendars } from "./Setup"
 
 const ANSWERS: Answers = {
   wake: "07:30",
@@ -18,8 +18,17 @@ const ANSWERS: Answers = {
 }
 
 describe("setup", () => {
-  it("asks about your day from getting up to bed, then mornings, the AI and your things, then builds the week (29 Oct, as Opal does)", () => {
-    expect(storyFor(ANSWERS)).toEqual(["hello", "wake", "bed", "work", "heavy", "focus", "deadline", "evening", "weekend", "brief", "ai", "bring", "build", "reveal", "start"])
+  it("asks along the walk: a Monday from getting up to bed, Saturday, a morning, the AI and your things, then the week", () => {
+    expect(storyFor(ANSWERS)).toEqual(["hello", "wake", "work", "heavy", "focus", "deadline", "evening", "bed", "weekend", "brief", "ai", "bring", "build", "reveal", "start"])
+  })
+
+  it("says where and when each question is asked on the walk", () => {
+    expect(whereOf("hello", ANSWERS)).toBe("Monday · 6:40 AM")
+    expect(whereOf("wake", ANSWERS)).toBe("Monday · 7:30 AM · Your room")
+    expect(whereOf("bed", { ...ANSWERS, bedtime: "00:30" })).toBe("Monday · 12:30 AM · Bedtime")
+    expect(whereOf("evening", ANSWERS)).toBe("Monday · 6:00 PM · Home") // from when the evening starts
+    expect(whereOf("evening", { ...ANSWERS, evening_free: 0 })).toBe("Monday · 7:00 PM · Home")
+    expect(whereOf("nowhere", ANSWERS)).toBeNull()
   })
 
   it("asks about calendars only when there are some, after bringing them in", () => {

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Walk preview</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+      canvas { display: block; width: 100vw; height: 100vh; }
+      #say { position: fixed; left: 12px; bottom: 12px; color: #fff; font: 13px/1.4 system-ui; background: rgba(0,0,0,.5); padding: 6px 10px; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <canvas></canvas>
+    <div id="say"></div>
+    <script type="module" src="./preview.ts"></script>
+  </body>
+</html>
