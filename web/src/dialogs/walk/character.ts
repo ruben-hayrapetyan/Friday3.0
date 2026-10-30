@@ -10,7 +10,31 @@
 
 import * as THREE from "three"
 
-export type Action = "stand" | "wave" | "wake" | "sleep" | "study" | "read" | "tv" | "laptop" | "picnic" | "coffee" | "counter" | "boxes" | "mail" | "calendar" | "point" | "present" | "think"
+export type Action = "stand" | "wave" | "wake" | "sleep" | "study" | "read" | "tv" | "laptop" | "picnic" | "coffee" | "counter" | "boxes" | "mail" | "calendar" | "point" | "present" | "think" | GuideAction
+
+/** What the guide does showing you round Friday (Guide.ts; 30 Oct: "be creative, have the guide do unique actions"):
+ * moving a block in both hands, a stopwatch, hands on the head, a magnifying glass, a look at the watch, writing on a
+ * notepad, a book, an idea, a yawn and a sandwich, a wrench, and a dance for the weekend. */
+export type GuideAction = "drag" | "timer" | "worry" | "search" | "watch" | "write" | "book" | "eureka" | "yawn" | "fix" | "dance"
+
+/** What's in hand for each: a block of the calendar, a stopwatch, a magnifying glass, a notepad and pencil, a book, a
+ * wrench (and after the yawn, a sandwich). */
+const PROPS: Partial<Record<Action, string[]>> = { drag: ["block"], timer: ["stopwatch"], search: ["magnifier"], watch: ["wristwatch"], write: ["notepad", "pencil"], book: ["book"], fix: ["wrench"] }
+
+/** Where each of the guide's things sits: by which hand (or between both), how far from it and turned how, in the
+ * frame they face (x their left, y up, z toward you), so it shows in front of the hand from any pose. */
+const HELD: Record<string, { hand: 0 | 1 | "both"; at: [number, number, number]; turn: [number, number, number] }> = {
+  block: { hand: "both", at: [0, 0.02, 0.06], turn: [0, 0, 0] },
+  stopwatch: { hand: 1, at: [0, 0.07, 0.05], turn: [0, 0, 0] },
+  magnifier: { hand: 1, at: [0, 0.13, 0.03], turn: [0, 0, 0] },
+  pencil: { hand: 1, at: [0, 0.03, 0.05], turn: [0.3, 0, 0.7] },
+  wrench: { hand: 1, at: [0, 0.08, 0.05], turn: [0, 0, 0.5] },
+  notepad: { hand: 0, at: [-0.02, 0.03, 0.05], turn: [-1.0, 0, 0] },
+  wristwatch: { hand: 0, at: [0, 0.07, 0.04], turn: [0, 0, 0] },
+  sandwich: { hand: 1, at: [0, 0.04, 0.07], turn: [0.3, 0, 0] }, // after the yawn
+  book: { hand: "both", at: [0, 0.03, 0.05], turn: [-0.9, 0, 0] },
+}
+const GUIDE_SIZE = 1.6 // drawn bigger than life, so they read at the guide's few pixels
 
 /** How high each action sits: the seat's height above the floor. */
 export const SEATED: Partial<Record<Action, number>> = { study: 0.48, tv: 0.48, laptop: 0.48, coffee: 0.48, picnic: 0.06, wake: 0.56, sleep: 0.56 }
@@ -229,6 +253,9 @@ export interface Mood {
   restless?: number // a late night: turning over in their sleep
   aim?: number // pointing (showing you round Friday): which way, facing you, from straight down; toward their left +
   talk?: number // saying something: the head moving with it
+  crouch?: number // a hop (showing you round): bent for it and landing from it, 0 to 1
+  cheer?: number // both arms up in the air, 0 to 1
+  shades?: boolean // sunglasses on: it's the weekend
 }
 
 /** What a body doing `action` looks like `t` seconds in, feeling `mood`; all slow, all smooth. */
@@ -449,6 +476,141 @@ function acting(action: Action, t: number, on: number | undefined, mood: Mood): 
       p.headZ = 0.08
       break
     }
+    case "drag": {
+      // a block of the calendar held in both hands, moved along a day and back (the angles put the hands together in
+      // front, worked out against this body, as the others below)
+      const along = Math.sin(t * 1.1)
+      p.armX = [-0.62, -0.62]
+      p.armZ = [0.045, -0.045]
+      p.elbow = [-0.9, -0.9]
+      p.elbowIn = [-0.59, 0.59]
+      p.twist = along * 0.3
+      p.headY = along * 0.25
+      p.headX = 0.15
+      p.legZ = [0.04 + along * 0.03, -0.04 + along * 0.03]
+      break
+    }
+    case "timer": {
+      // a stopwatch held up in front and looked at, clicked now and then
+      const click = span(cycle(t, 2.4), 1.6, 1.9, 0.08)
+      p.armX = [0.05, -0.61]
+      p.armZ = [0.1, -0.04]
+      p.elbow = [-0.15, -1.49 - click * 0.15]
+      p.elbowIn = [0, 0.61]
+      p.headY = -0.15
+      p.headX = 0.25
+      break
+    }
+    case "worry": {
+      // hands on the sides of the head, a shake of it: that's late
+      const shake = span(cycle(t, 3), 0.3, 1.5, 0.2) * Math.sin(t * 9)
+      p.armX = [-2.2, -2.2]
+      p.armZ = [0.34, -0.34]
+      p.elbow = [-1.94, -1.94]
+      p.elbowIn = [-0.35, 0.35]
+      p.twist = shake * 0.08
+      p.headX = 0.05
+      p.lean = 0.04
+      break
+    }
+    case "search": {
+      // a magnifying glass to the right eye, turning from the waist to look along, so it stays at the eye
+      const look = Math.sin(t * 0.9)
+      p.armX = [0.05, -1.69]
+      p.armZ = [0.1, -0.25]
+      p.elbow = [-0.15, -1.6]
+      p.elbowIn = [0, 1.03]
+      p.twist = look * 0.28
+      p.lean = 0.08
+      break
+    }
+    case "watch": {
+      // the left wrist across in front and looked at, the right hand tapping it
+      const tap = span(cycle(t, 3.2), 1.8, 2.6, 0.2) * Math.abs(Math.sin(t * 6))
+      p.armX = [-1.04, -0.75]
+      p.armZ = [0.04, -0.04]
+      p.elbow = [-0.07, -1.08 - tap * 0.15]
+      p.elbowIn = [-1.14, 0.62]
+      p.headX = 0.4
+      p.headY = 0.08
+      break
+    }
+    case "write": {
+      // a notepad in the left hand, the pencil going in the right, the head down at it
+      const scribble = Math.sin(t * 11) * 0.04 + Math.sin(t * 2.3) * 0.06
+      p.armX = [-0.73, -1.11]
+      p.armZ = [0.04, -0.04]
+      p.elbow = [-0.7, -0.06 - Math.abs(scribble)]
+      p.elbowIn = [-0.62, 0.87 + scribble]
+      p.headX = 0.45
+      p.headY = 0.1
+      p.lean = 0.06
+      break
+    }
+    case "book": {
+      // an open book in both hands, a page turned now and then
+      const turn = span(cycle(t, 4.5), 3.2, 3.9, 0.25)
+      p.armX = [-0.67, -0.67 - turn * 0.2]
+      p.armZ = [0.04, -0.04 + turn * 0.3]
+      p.elbow = [-0.68, -0.68 - turn * 0.3]
+      p.elbowIn = [-0.53, 0.53]
+      p.headX = 0.38
+      p.headY = Math.sin(t * 0.8) * 0.1
+      break
+    }
+    case "eureka": {
+      // got it: a finger up high, the other hand on the hip, chin up
+      const beat = span(cycle(t, 3), 0.2, 0.7, 0.15)
+      p.armX = [0.55, -0.35 - beat * 0.2]
+      p.armZ = [0.1, -2.75]
+      p.elbow = [-1.08, -0.1]
+      p.elbowIn = [-0.05, 0]
+      p.headX = -0.22
+      p.headY = -0.15
+      p.lean = -0.04
+      break
+    }
+    case "yawn": {
+      // a big stretch and a yawn, eyes shut; then a sandwich
+      const c = cycle(t, 7)
+      const stretch = span(c, 0.2, 2.6, 0.6)
+      const bite = span(c, 3.4, 4.4, 0.3) + span(c, 5.2, 6.2, 0.3)
+      p.armX = [-0.4 * stretch, -0.4 * stretch - (1 - stretch) * (0.75 + bite * 0.55)]
+      p.armZ = [0.1 + stretch * 2.55, -0.1 - stretch * 2.55]
+      p.elbow = [-0.15 - stretch * 0.25, -0.15 - stretch * 0.25 - (1 - stretch) * (0.95 + bite * 1.15)]
+      p.lean = -0.18 * stretch
+      p.headX = -0.35 * stretch + 0.05 * (1 - stretch) - bite * 0.08
+      p.eyes = stretch > 0.5 ? 0 : 1
+      break
+    }
+    case "fix": {
+      // a wrench at a bolt in front, turned a quarter and back, the other hand on the knee, leaning to it
+      const turn = Math.sin(t * 2.6)
+      p.armX = [-0.32, -0.9]
+      p.armZ = [0.1, -0.1 + turn * 0.15]
+      p.elbow = [-1.06, -0.95 + turn * 0.12]
+      p.elbowIn = [-0.18, 0.45]
+      p.lean = 0.18
+      p.headX = 0.35
+      p.twist = turn * 0.06
+      break
+    }
+    case "dance": {
+      // the weekend: arms up in turn, a bounce in the knees, a sway
+      const beat = t * 4.2
+      const up = Math.sin(beat / 2)
+      const bounce = Math.abs(Math.sin(beat))
+      p.armX = [-0.3, -0.3]
+      p.armZ = [0.4 + Math.max(0, up) * 2.2, -0.4 - Math.max(0, -up) * 2.2]
+      p.elbow = [-0.6 - Math.max(0, -up) * 0.6, -0.6 - Math.max(0, up) * 0.6]
+      p.knee = [0.25 * bounce, 0.25 * bounce]
+      p.legX = [-0.12 * bounce, -0.12 * bounce]
+      p.lift -= 0.015 * bounce
+      p.twist = Math.sin(beat / 2) * 0.18
+      p.headZ = Math.sin(beat / 2) * 0.12
+      p.headY = Math.sin(beat / 4) * 0.2
+      break
+    }
     case "calendar": {
       const c = cycle(t, 8)
       const point = span(c, 0.6, 3.6, 0.6)
@@ -469,6 +631,24 @@ function acting(action: Action, t: number, on: number | undefined, mood: Mood): 
   if (talk > 0) {
     p.headX += talk * (Math.sin(t * 7.3) * 0.035 + Math.sin(t * 3.1) * 0.025)
     p.headZ += talk * Math.sin(t * 2.3) * 0.03
+  }
+  // a hop (30 Oct: "have the sprite do more (like jump and point to something)"): thighs forward and knees bent,
+  // the hips lowered by just what keeps the feet on the floor (thigh 0.36, shin and shoe 0.38), leaning into it
+  const crouch = mood.crouch ?? 0
+  if (crouch > 0) {
+    const thigh = 0.55 * crouch
+    const bend = 1.1 * crouch
+    p.legX = [p.legX[0] - thigh, p.legX[1] - thigh]
+    p.knee = [p.knee[0] + bend, p.knee[1] + bend]
+    p.lift -= HIPS - (0.36 * Math.cos(thigh) + 0.38 * Math.cos(bend - thigh))
+    p.lean += 0.3 * crouch
+  }
+  const cheer = mood.cheer ?? 0
+  if (cheer > 0) {
+    p.armZ = [p.armZ[0] + (2.5 - p.armZ[0]) * cheer, p.armZ[1] + (-2.5 - p.armZ[1]) * cheer]
+    p.armX = [p.armX[0] + (-0.25 - p.armX[0]) * cheer, p.armX[1] + (-0.25 - p.armX[1]) * cheer]
+    p.elbow = [p.elbow[0] + (-0.3 - p.elbow[0]) * cheer, p.elbow[1] + (-0.3 - p.elbow[1]) * cheer]
+    p.headX -= 0.15 * cheer
   }
   return p
 }
@@ -601,6 +781,7 @@ export class Character {
   private lap = new THREE.Group() // a laptop on the lap, on the sofa
   private lid = new THREE.Group() // its lid, on its hinge at the far edge
   private screenGlow: THREE.MeshBasicMaterial
+  private shades = new THREE.Group() // sunglasses, for the weekend
   private phase = 0
   private blink = 2
 
@@ -699,6 +880,59 @@ export class Character {
       hand.add(thing)
       this.held.set(name, thing)
     }
+    // what the guide shows you round Friday with (Guide.ts): in the right hand a stopwatch, a magnifying glass, a
+    // pencil or a wrench; in the left a notepad or a book; and sunglasses for the weekend
+    const left = this.elbows[0]
+    const stopwatch = new THREE.Group()
+    const dial = part(new THREE.CylinderGeometry(0.055, 0.055, 0.024, 16), 0xc9ccd2)
+    dial.rotation.x = Math.PI / 2
+    stopwatch.add(dial)
+    stopwatch.add(part(new THREE.BoxGeometry(0.075, 0.075, 0.004), 0xfdfaf2, 0, 0, 0.013)) // its face
+    stopwatch.add(part(new THREE.BoxGeometry(0.004, 0.032, 0.004), 0x1e1a26, 0, 0.012, 0.016)) // a hand
+    stopwatch.add(part(new THREE.BoxGeometry(0.022, 0.022, 0.018), 0xc9ccd2, 0, 0.066, 0)) // the button
+    stopwatch.position.set(0, -0.3, 0.05)
+    const magnifier = new THREE.Group()
+    const ring = part(new THREE.TorusGeometry(0.06, 0.012, 6, 18), 0x3a2820)
+    magnifier.add(ring)
+    magnifier.add(part(new THREE.CircleGeometry(0.056, 18), toon(0xbfe3ff)))
+    magnifier.add(part(new THREE.CylinderGeometry(0.012, 0.012, 0.11, 6), 0x7a4a2a, 0, -0.115, 0))
+    magnifier.position.set(0, -0.2, 0.08)
+    const pencil = part(new THREE.CylinderGeometry(0.008, 0.008, 0.13, 6), 0xf2a33a, 0, -0.28, 0.05)
+    pencil.rotation.x = 1.2
+    const wrench = new THREE.Group()
+    wrench.add(part(new THREE.BoxGeometry(0.025, 0.2, 0.012), 0x8a8f99, 0, -0.06, 0))
+    wrench.add(part(new THREE.TorusGeometry(0.03, 0.012, 6, 10, Math.PI * 1.4), 0x8a8f99, 0, 0.055, 0))
+    wrench.position.set(0, -0.3, 0.05)
+    wrench.rotation.x = 1.4
+    const notepad = new THREE.Group()
+    notepad.add(part(new THREE.BoxGeometry(0.13, 0.008, 0.17), 0xf6e27a))
+    notepad.add(part(new THREE.BoxGeometry(0.13, 0.012, 0.02), 0xc0392b, 0, 0.002, -0.085)) // its binding
+    notepad.position.set(0.02, -0.29, 0.07)
+    const book = new THREE.Group()
+    const page = (side: number) => {
+      const half = new THREE.Group()
+      half.add(part(new THREE.BoxGeometry(0.11, 0.012, 0.16), 0xb5532e, side * 0.055, 0, 0)) // the cover
+      half.add(part(new THREE.BoxGeometry(0.1, 0.008, 0.15), 0xfdfaf2, side * 0.055, 0.009, 0)) // the pages
+      half.rotation.z = side * -0.2
+      return half
+    }
+    book.add(page(1), page(-1))
+    const wristwatch = new THREE.Group() // on the left wrist, its face to you
+    wristwatch.add(part(new THREE.BoxGeometry(0.06, 0.035, 0.02), 0x2b2f3a))
+    wristwatch.add(part(new THREE.BoxGeometry(0.036, 0.036, 0.012), 0xf2c14e, 0, 0, 0.012))
+    const block = new THREE.Group() // a planned block of the calendar, picked up
+    block.add(part(rounded(0.2, 0.09, 0.035, 0.012), 0x7fca73))
+    block.add(part(new THREE.BoxGeometry(0.012, 0.09, 0.037), 0x3f8a3a, -0.094, 0, 0))
+    for (const [name, thing, at] of [["block", block, hand], ["stopwatch", stopwatch, hand], ["magnifier", magnifier, hand], ["pencil", pencil, hand], ["wrench", wrench, hand], ["notepad", notepad, left], ["book", book, left], ["wristwatch", wristwatch, left]] as const) {
+      thing.visible = false
+      thing.scale.setScalar(GUIDE_SIZE)
+      at.add(thing)
+      this.held.set(name, thing)
+    }
+    this.shades.add(part(new THREE.BoxGeometry(0.3, 0.018, 0.02), 0x15131c, 0, 0.21, 0.19)) // the bar
+    for (const side of [1, -1]) this.shades.add(part(new THREE.BoxGeometry(0.12, 0.07, 0.02), 0x15131c, side * 0.075, 0.17, 0.2))
+    this.shades.visible = false
+    this.head.add(this.shades)
   }
 
   private reaction: { kind: Reaction; at: number; aim: number } | null = null
@@ -771,7 +1005,29 @@ export class Character {
     }
     const fetched = r?.kind === "fetch" && t - r.at > 1.0
     const holding = !s.pose && weight > 0.6 ? (fetched ? "letter" : ({ coffee: "cup", picnic: "sandwich", mail: "letter" } as Partial<Record<Action, string>>)[action]) : undefined
-    for (const [name, thing] of this.held) thing.visible = name === holding && !(action === "picnic" && (mood.happy ?? 0) > 0.75)
+    // the guide's: what the action has in hand, the sandwich after the yawn
+    const props = !s.pose && weight > 0.6 ? [...(PROPS[action] ?? []), ...(action === "yawn" && cycle(t, 7) > 3 ? ["sandwich"] : [])] : []
+    for (const [name, thing] of this.held) thing.visible = (name === holding || props.includes(name)) && !(action === "picnic" && (mood.happy ?? 0) > 0.75)
+    this.shades.visible = !!mood.shades
+    if (props.length) this.placeHeld(props)
+  }
+
+  /** The guide's things, in front of the hand holding them (HELD), wherever the arm is. */
+  private placeHeld(names: string[]): void {
+    this.root.updateMatrixWorld(true)
+    const facing = this.root.getWorldQuaternion(new THREE.Quaternion())
+    const hands = [0, 1].map((i) => this.elbows[i].localToWorld(new THREE.Vector3(0, -0.24, 0)))
+    for (const name of names) {
+      const spot = HELD[name]
+      const thing = this.held.get(name)
+      if (!spot || !thing) continue
+      const parent = thing.parent as THREE.Object3D
+      const from = spot.hand === "both" ? hands[0].clone().lerp(hands[1], 0.5) : hands[spot.hand].clone()
+      const where = from.add(new THREE.Vector3(...spot.at).applyQuaternion(facing))
+      thing.position.copy(parent.worldToLocal(where))
+      const turn = facing.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(...spot.turn)))
+      thing.quaternion.copy(parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(turn))
+    }
   }
 
   /** The backpack on (walking about) or off (in bed, or sitting back in a seat). */

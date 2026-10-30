@@ -7,20 +7,28 @@
 
 import * as THREE from "three"
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js"
-import { type Action, Character, type Reaction } from "./character"
+import { type Action, Character, ease, type GuideAction, type Reaction, Signs } from "./character"
 import { PixelOut, Pixels } from "./pixels"
 import { STRIP } from "./strip"
 
-export type Gesture = "wave" | "point" | "present" | "think" | "mail" | "stand"
+export type Gesture = "wave" | "point" | "present" | "think" | "mail" | "stand" | GuideAction
 const TALL = 1.72 // metres, head to toe
 const PIXEL = 3 // CSS pixels to one of theirs, as in setup's town
 const RUN = 5 // metres a second at most: a run across the window takes about two seconds
 const ACCEL = 9 // metres a second, a second
+const HOP = 0.8 // seconds: down for it, up, and landing
+const HIGH = 0.32 // metres off the floor at the top of a hop
 
 export interface Cue {
   x: number // where to stand: CSS pixels from the window's left
   gesture: Gesture
   aim?: { x: number; y: number } | null // what to point at, in the window's CSS pixels
+  jump?: boolean // a hop on getting there (30 Oct: "have the sprite do more (like jump and point to something)")
+  cheer?: boolean // both arms up for it
+  sweep?: { top: number; bottom: number } // the pointing runs up and down this, as a finger down a list
+  sign?: string // over the head on getting there: "?", "z", "sweat", "!", "heart", "note" (character.ts Signs)
+  after?: string // and once they've said their piece
+  shades?: boolean // sunglasses on: the weekend
 }
 
 export class Guide {
@@ -45,6 +53,19 @@ export class Guide {
   private talking = false
   private arrived = false
   private leaving = 0 // which way off the window: -1, 1, or 0 not leaving
+  private floor = 0 // the strip's foot, where they stand
+  private hopNext: { cheer: boolean } | null = null // a hop to make on getting there
+  private hopAt: number | null = null // when the hop under way began
+  private cheering = false
+  private glanceAt = 0
+  private signs = new Signs()
+  private sign: string | null = null
+  private after: string | null = null
+  private sweep: { top: number; bottom: number } | null = null
+  private shades = false
+  private noteAt = 0
+  /** Called once they're off the side of the window, leaving. */
+  onGone: (() => void) | null = null
   private started = performance.now()
   private last = 0
   private frame = 0
@@ -67,7 +88,7 @@ export class Guide {
     sun.position.set(-3, 6, 8)
     this.scene.add(sun, new THREE.HemisphereLight(0xdfe8ff, 0x7a6a58, 1.5))
     this.hero.wearPack(true)
-    this.scene.add(this.hero.root)
+    this.scene.add(this.hero.root, this.signs.group)
     this.last = performance.now()
     this.loop = this.loop.bind(this)
     this.frame = requestAnimationFrame(this.loop)
@@ -96,6 +117,7 @@ export class Guide {
     ray.setFromCamera(new THREE.Vector2(0, -1 + (2 * 9) / STRIP), this.camera)
     const hit = new THREE.Vector3()
     ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), hit)
+    this.floor = hit.y
     this.hero.root.position.y = hit.y
   }
 
@@ -105,6 +127,11 @@ export class Guide {
     this.aim = cue.aim ?? null
     this.arrived = false
     this.leaving = 0
+    this.hopNext = cue.jump && !this.reduced ? { cheer: !!cue.cheer } : null
+    this.sign = cue.sign ?? null
+    this.after = cue.after ?? null
+    this.sweep = cue.sweep ?? null
+    this.shades = !!cue.shades
     if (cue.gesture !== this.gesture) {
       this.before = this.gesture
       this.change = 0
@@ -126,14 +153,34 @@ export class Guide {
     this.hero.react(kind, this.seconds())
   }
 
-  /** A wave and off the side of the window. */
-  leave(): void {
-    this.leaving = this.x > 0 ? 1 : -1
+  /** They've said their piece: a nod, and the sign for it ("!" once the rules make sense). */
+  said(): void {
+    if (this.gesture !== "dance" && this.gesture !== "yawn") this.react("nod")
+    if (this.after) this.emit(this.after)
+    this.after = null
+  }
+
+  private emit(kind: string): void {
+    this.signs.emit(kind, this.hero.headAt().add(new THREE.Vector3(0.22, 0.05, 0.2)), this.seconds(), 0.34)
+  }
+
+  /** A hop where they stand, now. */
+  hop(cheer = false): void {
+    if (this.reduced) return
+    this.hopAt = this.seconds()
+    this.cheering = cheer
+  }
+
+  /** Off the side of the window: the way they face, or (`right`) skipping off that way, to the weekend. */
+  leave(right = false): void {
+    this.leaving = right || this.x > 0 ? 1 : -1
     this.goal = this.leaving * (this.width / 2 + 80) * this.metres
     this.arrived = false
+    this.skipping = right
     this.gesture = "stand"
     this.before = null
   }
+  private skipping = false
 
   /** Where they are now, in the window's CSS pixels from its left. */
   at(): number {
@@ -173,7 +220,13 @@ export class Guide {
       this.v = 0
       if (!this.arrived) {
         this.arrived = true
-        if (!this.leaving) this.onArrive?.()
+        if (this.hopNext) this.hop(this.hopNext.cheer)
+        this.hopNext = null
+        this.glanceAt = t + 7
+        if (this.sign && !this.leaving) this.emit(this.sign)
+        this.sign = null
+        if (this.leaving) this.onGone?.()
+        else this.onArrive?.()
       }
     }
     const moving = this.v > 0.05
@@ -184,7 +237,37 @@ export class Guide {
     this.weight = moving ? Math.max(0, this.weight - dt * 5) : Math.min(1, this.weight + dt * 2.6)
     this.change = Math.min(1, this.change + dt / 0.6)
     this.talk += ((this.talking && !moving ? 1 : 0) - this.talk) * Math.min(1, dt * 6)
-    this.hero.root.position.x = this.x
+    // a hop: bending for it, up with the legs tucked a little (and the arms up, cheering), and landing on bent knees
+    let crouch = 0
+    let cheer = 0
+    let lift = 0
+    if (this.hopAt !== null) {
+      const u = (t - this.hopAt) / HOP
+      if (u >= 1) this.hopAt = null
+      else if (u < 0.25) crouch = ease(u / 0.25)
+      else if (u < 0.7) {
+        const v = (u - 0.25) / 0.45
+        lift = HIGH * 4 * v * (1 - v)
+        crouch = 0.25
+      } else crouch = 0.8 * Math.sin((Math.PI * (u - 0.7)) / 0.3)
+      if (this.cheering) cheer = Math.max(0, Math.sin(Math.PI * Math.min(1, Math.max(0, (u - 0.1) / 0.8))))
+    }
+    // skipping off to the weekend: a hop in every other step, an arm up
+    if (this.skipping && moving) {
+      lift = Math.max(lift, 0.1 * Math.abs(Math.sin(t * 7.5)))
+      cheer = Math.max(cheer, 0.45)
+    }
+    // dancing: music
+    if (this.gesture === "dance" && this.arrived && t > this.noteAt) {
+      this.emit("note")
+      this.noteAt = t + 1.3
+    }
+    // now and then, while you read, a look at you
+    if (this.arrived && !moving && !this.talking && this.hopAt === null && t > this.glanceAt && this.gesture !== "think") {
+      this.hero.react("glance", t)
+      this.glanceAt = t + 7 + Math.random() * 4
+    }
+    this.hero.root.position.set(this.x, this.floor + lift, 0)
     this.hero.root.rotation.y = this.yaw
     this.hero.update(dt, t, {
       speed: this.v,
@@ -192,8 +275,9 @@ export class Guide {
       weight: this.weight,
       before: this.before && this.change < 1 ? (this.before as Action) : undefined,
       change: this.change,
-      mood: { aim: this.pointing(), talk: this.talk },
+      mood: { aim: this.pointing(), talk: this.talk, crouch, cheer, shades: this.shades },
     })
+    this.signs.update(t, dt)
     this.composer.render(dt)
   }
 
@@ -201,9 +285,11 @@ export class Guide {
    * left (the window's right) positive. */
   private pointing(): number {
     if (!this.aim) return 2.4
+    // down a list and back up, as a finger runs down it
+    const y = this.sweep ? this.sweep.top + (this.sweep.bottom - this.sweep.top) * (0.5 - 0.5 * Math.cos(this.seconds() * 1.4)) : this.aim.y
     const shoulder = new THREE.Vector3(this.x, this.hero.root.position.y + 1.25, 0).project(this.camera)
     const sx = ((shoulder.x + 1) / 2) * this.width
     const sy = window.innerHeight - STRIP + ((1 - shoulder.y) / 2) * STRIP
-    return Math.atan2(this.aim.x - sx, this.aim.y - sy)
+    return Math.atan2(this.aim.x - sx, y - sy)
   }
 }

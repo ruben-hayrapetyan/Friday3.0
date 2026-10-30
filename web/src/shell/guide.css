@@ -28,7 +28,6 @@
   box-shadow:
     0 0 0 9999px color-mix(in srgb, #000 55%, transparent),
     0 0 0 3px var(--gd-gold);
-  transition: all 220ms ease;
   pointer-events: none;
 }
 /* the strip the guide stands in, over the dimmed page and under the box */
@@ -37,9 +36,42 @@
   left: 0;
   bottom: 0;
   width: 100vw;
-  height: 200px;
   z-index: 1;
   pointer-events: none;
+}
+/* the end: a wooden sign to the weekend at the window's right, that the guide skips off past */
+.gd-sign {
+  position: fixed;
+  right: 34px;
+  bottom: 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  animation: gd-in 0.28s steps(4) both;
+}
+.gd-sign span {
+  padding: 8px 14px 7px;
+  background: #d39a5c;
+  color: #2b1a10;
+  border: 3px solid #4f2e15;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 -4px 0 #b77d42,
+    0 4px 0 rgba(0, 0, 0, 0.35);
+  font: 700 18px/1 var(--gd-pixel);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.gd-sign i {
+  width: 14px;
+  height: 104px;
+  margin-top: -2px;
+  background: #8a5a33;
+  border: 3px solid #4f2e15;
+  border-bottom: 0;
 }
 .gd-box {
   position: fixed;
@@ -88,12 +120,35 @@
   color: var(--gd-bone);
   text-wrap: balance;
 }
+/* a few words a line, each with a pixel square, shown as it's said */
 .gd-body {
   margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
   font-size: 14.5px;
-  line-height: 1.5;
+  line-height: 1.4;
   color: var(--gd-text);
   text-wrap: pretty;
+}
+.gd-body li {
+  position: relative;
+  padding-left: 16px;
+}
+.gd-body li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  width: 6px;
+  height: 6px;
+  background: var(--gd-gold);
+  visibility: hidden;
+}
+.gd-body li[data-said]::before {
+  visibility: visible;
 }
 /* the words still to come take their room already, so the box doesn't grow as they're said */
 .gd-rest {
@@ -186,10 +241,10 @@
   outline: 2px solid var(--gd-gold);
   outline-offset: 3px;
 }
+/* in where it is, not sliding in (30 Oct: "don't have blocks sliding in from the left/right/top/bottom") */
 @keyframes gd-in {
   from {
     opacity: 0;
-    translate: 0 10px;
   }
 }
 @keyframes gd-blink {
@@ -201,8 +256,5 @@
   .gd-box,
   .gd-caret {
     animation: none;
-  }
-  .gd-spot {
-    transition: none;
   }
 }

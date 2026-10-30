@@ -1,6 +1,7 @@
-// The guide alone (`pnpm dev`, then /src/dialogs/walk/guide.html): ← and → go between the spots. Not part of the build.
+// The guide alone (`pnpm dev`, then /src/dialogs/walk/guide.html): ← and → go through what they do; guide.cue({...})
+// tries one. Not part of the build.
 
-import { type Gesture, Guide } from "./Guide"
+import { type Cue, type Gesture, Guide } from "./Guide"
 
 const canvas = document.querySelector("canvas") as HTMLCanvasElement
 const guide = new Guide(canvas)
@@ -11,19 +12,28 @@ const centre = (id: string) => {
   const r = (document.getElementById(id) as HTMLElement).getBoundingClientRect()
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
 }
-const spots: [number, Gesture, string | null][] = [
-  [innerWidth * 0.4, "wave", null],
-  [260, "point", "nav"],
-  [innerWidth - 240, "point", "menu"],
-  [innerWidth * 0.55, "present", null],
-  [innerWidth * 0.5, "think", null],
-  [innerWidth * 0.3, "mail", null],
+const nav = (document.getElementById("nav") as HTMLElement).getBoundingClientRect()
+const mid = innerWidth * 0.5
+const spots: Omit<Cue, "gesture">[] & { gesture: Gesture }[] = [
+  { x: mid, gesture: "wave", jump: true, cheer: true, after: "heart" },
+  { x: 124, gesture: "point", aim: centre("nav"), sweep: { top: nav.top + 20, bottom: nav.bottom - 240 } },
+  { x: mid, gesture: "drag" },
+  { x: mid, gesture: "timer" },
+  { x: mid, gesture: "worry", sign: "sweat" },
+  { x: innerWidth - 80, gesture: "point", aim: centre("menu"), jump: true },
+  { x: mid, gesture: "search" },
+  { x: mid, gesture: "watch" },
+  { x: mid, gesture: "write" },
+  { x: mid, gesture: "mail", after: "heart" },
+  { x: mid, gesture: "book" },
+  { x: mid, gesture: "think", sign: "?", after: "!" },
+  { x: mid, gesture: "eureka", sign: "!" },
+  { x: mid, gesture: "yawn", sign: "z" },
+  { x: mid, gesture: "fix" },
+  { x: innerWidth - 230, gesture: "dance", jump: true, cheer: true, shades: true },
 ]
 let i = 0
-const go = () => {
-  const [x, gesture, at] = spots[i]
-  guide.cue({ x, gesture, aim: at ? centre(at) : null })
-}
+const go = () => guide.cue(spots[i] as Cue)
 go()
 addEventListener("keydown", (e) => {
   if (e.key === "ArrowRight") i = Math.min(spots.length - 1, i + 1)

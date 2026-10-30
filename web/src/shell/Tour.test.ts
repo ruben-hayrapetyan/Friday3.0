@@ -31,6 +31,30 @@ describe("the tour's steps", () => {
   })
 })
 
+describe("what the tour says", () => {
+  it("is short, in a few bullet points a step", () => {
+    // 30 Oct: "make it a little shorter... keep text to bullet points"
+    expect(STEPS.filter((s) => !s.optional).length).toBeLessThanOrEqual(13)
+    for (const s of STEPS) {
+      expect(s.bullets.length).toBeGreaterThanOrEqual(1)
+      expect(s.bullets.length).toBeLessThanOrEqual(3)
+      for (const line of s.bullets) expect(line.length).toBeLessThanOrEqual(52)
+    }
+  })
+
+  it("hops and cheers at the start, and ends off to the weekend", () => {
+    expect(STEPS[0].jump && STEPS[0].cheer).toBe(true)
+    const end = STEPS[STEPS.length - 1]
+    expect(end.finale && end.gesture === "dance").toBe(true)
+  })
+
+  it("does something of its own at nearly every step", () => {
+    // 30 Oct: "dont just have the guide jump - be creative, have the guide do unique actions"
+    const doing = STEPS.filter((s) => !s.optional).map((s) => s.gesture ?? "point")
+    expect(new Set(doing).size).toBeGreaterThanOrEqual(doing.length - 2)
+  })
+})
+
 describe("where the guide stands and their box goes", () => {
   const fits = (s: ReturnType<typeof spotFor>, size = win) => s.left >= 12 && s.left + s.width <= size.width - 12
 

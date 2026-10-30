@@ -17,150 +17,142 @@ export interface Step {
   page?: string // the page it's on: the calendar's when not said
   target?: string // the control's data-tour name ("block": a planned block on the calendar); none: no control
   title: string
-  body: string
+  bullets: string[] // what it says, a few words a line (30 Oct: "keep text to bullet points")
   gesture?: Gesture // what they do there: point at the control when not said
+  jump?: boolean // a hop on getting there; when not said, a hop to point at something up the window
+  cheer?: boolean // both arms up for the hop
+  sweep?: boolean // pointing down the control and back, as a finger down a list
+  sign?: string // over their head on getting there ("?", "z", "sweat", "!", "heart", "note")
+  after?: string // and once they've said it
+  finale?: boolean // the end: sunglasses on, a dance by the sign to the weekend, and off to it
   optional?: boolean // skipped when its control isn't there; otherwise said anyway
 }
 
+// 30 Oct: "make it a little shorter, have the sprite do more (like jump and point to something)... keep text to
+// bullet points", then "be creative, have the guide do unique actions. and have the final animation be something to
+// do with friday and going to the weekend"
 export const STEPS: Step[] = [
   {
     title: "Welcome to Friday",
-    body: "That’s your week set up! Friday fits your to-dos into the free time around your events, and replans whenever something changes. Let me show you round: every page, about two minutes.",
+    bullets: ["Your week is set up", "Friday plans your to-dos around your events", "A quick look round: about a minute"],
     gesture: "wave",
+    jump: true,
+    cheer: true,
+    after: "heart",
   },
   {
     target: "nav",
     title: "Your pages",
-    body: "Plan is home: your calendar with the work Friday planned. To-do has every task, Projects & exams the big ones, Inbox whatever needs you, Rules how you like your days. Insights and Sleep & meals show what Friday learns.",
+    bullets: ["Plan: your calendar, with the work planned", "To-do, Projects, Inbox and Rules", "Insights and Sleep & meals: what Friday learns"],
+    sweep: true,
   },
   {
     target: "menu",
     title: "Your pages",
-    body: "The menu opens your pages: Plan, To-do, Inbox, Rules and the rest.",
+    bullets: ["The menu opens every page"],
     optional: true,
   },
   {
     target: "calendar",
     title: "Your week",
-    body: "Grey blocks are your events; coloured ones are work Friday planned. Drag one to move it, drag its edge to change its length, ⌘-click to pick several. Double-click an empty time to add an event.",
-    gesture: "present",
+    bullets: ["Grey: your events · coloured: planned work", "Drag to move; drag an edge to resize", "Double-click empty time to add an event"],
+    gesture: "drag",
   },
   {
     target: "block",
     title: "A planned block",
-    body: "Click one when you sit down to it. Start times it, Pause keeps the time for later, Done ticks it off: Friday learns how long things really take you. Pin keeps it where it is; double-click its time to type a new one.",
+    bullets: ["Start when you sit down to it, Done when it’s done", "Friday learns how long things take you", "Pin it to keep it where it is"],
+    gesture: "timer",
     optional: true,
   },
   {
     target: "attention",
-    title: "When something needs you",
-    body: "If work will be late, a day is too full or two events overlap, it shows here, with ways out: skip an event, move something, or ease off.",
+    title: "When work runs late",
+    bullets: ["Late work and too-full days show here", "With ways out: skip, move or ease off"],
+    gesture: "worry",
+    sign: "sweat",
     optional: true,
   },
   {
     target: "plan-menu",
     title: "Change the plan",
-    body: "Ask the AI in your own words (“move my 5pm to Thursday”), see two other ways to plan the same work, Shove work out of a busy stretch, set the Pace, or open the morning brief.",
-  },
-  {
-    target: "whatif",
-    title: "What if",
-    body: "Try changes on the calendar, like skipping a club or adding a shift, and see what they’d cost before you make them.",
-    gesture: "think",
-    optional: true,
-  },
-  {
-    target: "views",
-    title: "Day, week or month",
-    body: "Switch the view here, or press D, 3, W or M. The arrows beside the date step back and forward; [ and ] do too.",
-    optional: true,
-  },
-  {
-    target: "show",
-    title: "What’s hidden",
-    body: "Office hours and calendars with a toggle stay off your calendar. Switch them on here when you want to see them; they never change the plan.",
-    optional: true,
-  },
-  {
-    target: "drawer",
-    title: "Your to-do list",
-    body: "Slides out beside the calendar (or press T). Type a task the way you’d say it: “essay 3h due Fri”.",
+    bullets: ["Ask the AI: “move my 5pm to Thursday”", "Shove work out of a busy stretch", "What if (beside it): try a change first"],
   },
   {
     target: "search",
     title: "Find anything",
-    body: "Tasks, events, projects, settings and actions, from anywhere with ⌘K. When nothing matches, Enter adds what you typed as a to-do.",
+    bullets: ["Tasks, events, settings: ⌘K", "No match? Enter adds it as a to-do"],
+    gesture: "search",
   },
   {
     target: "now",
     title: "Right now",
-    body: "What Friday suggests doing now. Start the timer when you begin (Space starts and pauses it), and Friday learns how long things take you.",
+    bullets: ["What to do now", "Start the timer (Space) when you begin"],
+    gesture: "watch",
     optional: true,
   },
   {
     page: "/todo",
     target: "todo-list",
     title: "To-do",
-    body: "Every task, by kind. Type in a section’s line the way you’d say it: “ch 4 #psych due fri ~1h”. Leave the length out and Friday guesses it. Click a task for everything about it; ⌘- or Shift-click picks several.",
-  },
-  {
-    page: "/todo",
-    target: "todo-lists",
-    title: "Now, later, or by date",
-    body: "Short term is what’s on the plan; Long term waits until you move it in. Due lists everything by its date.",
-    optional: true,
+    bullets: ["Type it as you’d say it: “essay 3h due Fri”", "No length? Friday guesses", "T opens this list beside the calendar"],
+    gesture: "write",
   },
   {
     page: "/inbox",
     target: "inbox",
     title: "Inbox",
-    body: "What needs you, a message each: what only you can decide, how much of your planned work you did (that’s how Friday learns your pace), and what it found in your mail, calendars and syllabi, for you to accept or not.",
+    bullets: ["What only you can decide", "How much of the plan you did", "Events found in your mail and calendars"],
     gesture: "mail",
+    after: "heart",
   },
   {
     page: "/projects",
     target: "projects-new",
     title: "Projects & exams",
-    body: "Exams come in from your class calendar, and Friday plans their prep before them. A project is something with steps, like an essay: Friday spreads the steps out before it’s due.",
+    bullets: ["Exams come from your class calendar, prep planned", "Projects: big things, split into steps"],
+    gesture: "book",
   },
   {
     page: "/rules",
     target: "rule-new",
     title: "Rules",
-    body: "How you like your days, in your own words: “no work after 10pm”, “gym Tuesday and Thursday mornings”. Friday shows how it read it, and you say how much it matters: Prefer, Strongly or Always.",
+    bullets: ["How you like your days, in your own words", "Prefer, Strongly or Always"],
     gesture: "think",
-  },
-  {
-    page: "/rules",
-    target: "week-paces",
-    title: "Easier days, harder days",
-    body: "Days that go easier or harder, every week. Click a day to change it.",
-    optional: true,
+    sign: "?",
+    after: "!",
   },
   {
     page: "/insights",
     target: "insights",
     title: "Insights",
-    body: "What you finished, how long things take you against your guesses, and what Friday learned from how you work. Nothing it learns changes your plan until you approve it.",
-    gesture: "present",
+    bullets: ["How long things really take you", "What Friday learned, for you to approve"],
+    gesture: "eureka",
+    sign: "!",
   },
   {
     page: "/body",
     target: "tracking",
     title: "Sleep & meals",
-    body: "Turn tracking on and the Now bar offers “Going to bed”, “I’m up” and “Eating now”. Friday learns when you really sleep and eat, and plans around it.",
+    bullets: ["Track them in a tap from the Now bar", "Friday plans around when you really sleep and eat"],
+    gesture: "yawn",
+    sign: "z",
   },
   {
     page: "/settings",
     target: "settings-nav",
     title: "Settings",
-    body: "Your calendars and Google accounts, your schedule, the AI Friday uses, how it looks and its shortcuts. “Answer Setup’s questions again” walks you back through your week.",
+    bullets: ["Calendars, Google accounts and the AI", "Setup’s questions again, any time"],
+    gesture: "fix",
   },
   {
     target: "help",
-    title: "That’s it",
-    body: "The ? brings this tour back whenever you want it. Have a good week!",
-    gesture: "wave",
+    title: "That’s Friday!",
+    bullets: ["The ? brings this tour back", "Next stop: the weekend"],
+    gesture: "dance",
+    jump: true,
+    cheer: true,
+    finale: true,
   },
 ]
 
@@ -219,14 +211,20 @@ export const BOX = 380 // the box's width, at most
 const BODY = 48 // half the guide's width with an arm out
 const GAP = 14
 const MARGIN = 16
+const SIGN = 170 // the room the sign to the weekend takes at the window's right
 
 /** Where the guide stands (`x`, from the window's left) and where their box goes (`left`, and `bottom` up from the
  * window's foot): below the control, pointing up at it, with the box beside them on the side with room; beside a
  * control down where they stand, the box on its far side; the two side by side in the middle with no control; and on
  * a phone, the box above them. */
-export function spotFor(rect: Box | null, win: Size): { x: number; left: number; bottom: number; width: number } {
+export function spotFor(rect: Box | null, win: Size, byTheSign = false): { x: number; left: number; bottom: number; width: number } {
   const width = Math.min(BOX, win.width - 2 * MARGIN)
   if (win.width < 2 * BODY + GAP + width + 2 * MARGIN) return { x: MARGIN + BODY, left: (win.width - width) / 2, bottom: STRIP - 12, width }
+  if (byTheSign) {
+    // the end: beside the sign to the weekend at the window's right, the box on their other side
+    const x = Math.max(MARGIN + width + GAP + BODY, win.width - SIGN - BODY - 10)
+    return { x, left: x - BODY - GAP - width, bottom: 18, width }
+  }
   const inside = (x: number) => Math.min(Math.max(x, MARGIN + BODY), win.width - MARGIN - BODY)
   const fitsRight = (x: number) => x + BODY + GAP + width <= win.width - MARGIN
   const fitsLeft = (x: number) => x - BODY - GAP - width >= MARGIN
@@ -272,6 +270,8 @@ export function Tour() {
   const [loaded, setLoaded] = useState(false) // the guide's there (a moment after the tour opens)
   const since = useRef(performance.now())
   const step = STEPS[n]
+  const text = step.bullets.join("") // typed out line by line
+  const starts = step.bullets.map((_, i) => step.bullets.slice(0, i).join("").length)
   const page = step.page ?? "/"
   const here = page === "/" ? location.pathname === "/" : location.pathname.startsWith(page)
 
@@ -338,7 +338,7 @@ export function Tour() {
     return () => cancelAnimationFrame(frame)
   }, [n, here, found, step, win])
 
-  const spot = spotFor(found ? rect : null, win)
+  const spot = spotFor(found ? rect : null, win, step.finale)
   const aim = rect && found ? { x: rect.left + rect.width / 2, y: rect.top + Math.min(rect.height / 2, 40) } : null
   const gesture: Gesture = step.gesture ?? (aim ? "point" : "wave")
 
@@ -351,7 +351,10 @@ export function Tour() {
       return
     }
     g.onArrive = () => setTalking(true)
-    g.cue({ x: spot.x, gesture, aim })
+    // a hop on getting there when the step says, or to point at something up the window; the step's own action,
+    // its signs, and for the end, sunglasses
+    const sweep = step.sweep && rect ? { top: Math.max(rect.top + 20, 10), bottom: Math.min(rect.bottom - 20, win.height - STRIP) } : undefined
+    g.cue({ x: spot.x, gesture, aim, jump: step.jump ?? (gesture === "point" && !!aim && aim.y < win.height * 0.25), cheer: step.cheer, sweep, sign: step.sign, after: step.after, shades: step.finale })
     const anyway = setTimeout(() => setTalking(true), 1600)
     return () => clearTimeout(anyway)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -359,7 +362,7 @@ export function Tour() {
 
   // the words, a few at a time, as a game's box shows them
   useEffect(() => {
-    const length = step.body.length
+    const length = text.length
     if (!talking) return
     if (reduced) {
       setShown(length)
@@ -373,6 +376,7 @@ export function Tour() {
       setShown(now)
       guide.current?.say(now < length)
       if (now < length) frame = requestAnimationFrame(type)
+      else guide.current?.said() // a nod, or a sign
     }
     type()
     return () => {
@@ -382,16 +386,18 @@ export function Tour() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [talking, n])
 
-  const all = () => setShown(step.body.length)
+  const all = () => setShown(text.length)
   const finish = () => {
     markSeen()
     setLeaving(true)
     if (!guide.current) return setTour(false)
-    guide.current.leave()
-    setTimeout(() => setTour(false), 1100) // a wave and off the side of the window
+    // off the side of the window; at the end, skipping off to the weekend past its sign
+    guide.current.onGone = () => setTour(false)
+    guide.current.leave(!!step.finale)
+    setTimeout(() => setTour(false), 4000)
   }
   const next = () => {
-    if (shown < step.body.length) return all()
+    if (shown < text.length) return all()
     if (n + 1 >= STEPS.length) return finish()
     way.current = 1
     setN(n + 1)
@@ -415,7 +421,7 @@ export function Tour() {
 
   const pad = 6
   const lit = found && rect
-  const at = PAGES.findIndex(([p]) => p === page)
+  const at = step.finale ? PAGES.length : PAGES.findIndex(([p]) => p === page) // the end: every page seen
   return (
     <div role="dialog" aria-modal="true" aria-label="Tour of Friday" className="gd-tour" data-leaving={leaving ? "" : undefined}>
       {!leaving &&
@@ -424,26 +430,40 @@ export function Tour() {
         ) : (
           <div className="gd-dim" />
         ))}
+      {step.finale && (found || leaving) && (
+        <div className="gd-sign" aria-hidden="true">
+          <span>Weekend →</span>
+          <i />
+        </div>
+      )}
       {/* over the dimmed page, under the box; still there after it, while they wave and go */}
-      <canvas ref={canvas} className="gd-strip" aria-hidden="true" />
+      <canvas ref={canvas} className="gd-strip" aria-hidden="true" style={{ height: STRIP }} />
       {!leaving && (
         <div key={n} className="gd-box" style={{ left: spot.left, bottom: spot.bottom, width: spot.width }} onClick={all}>
           <div className="gd-where">
-            <span>{PAGES[at]?.[1] ?? "Plan"}</span>
-            <span className="gd-pages" aria-label={`Page ${at + 1} of ${PAGES.length}`}>
+            <span>{step.finale ? "Weekend" : (PAGES[at]?.[1] ?? "Plan")}</span>
+            <span className="gd-pages" aria-label={step.finale ? "Every page" : `Page ${at + 1} of ${PAGES.length}`}>
               {PAGES.map(([p], i) => (
                 <i key={p} data-on={i === at ? "" : undefined} data-done={i < at ? "" : undefined} />
               ))}
             </span>
           </div>
           <h2 className="gd-title">{step.title}</h2>
-          <p className="gd-body" aria-hidden="true">
-            {step.body.slice(0, shown)}
-            <span className="gd-rest">{step.body.slice(shown)}</span>
-            {shown >= step.body.length && <span className="gd-caret" />}
-          </p>
+          <ul className="gd-body" aria-hidden="true">
+            {step.bullets.map((line, i) => {
+              const from = starts[i]
+              const said = Math.max(0, Math.min(line.length, shown - from))
+              return (
+                <li key={i} data-said={said > 0 ? "" : undefined}>
+                  {line.slice(0, said)}
+                  <span className="gd-rest">{line.slice(said)}</span>
+                  {i === step.bullets.length - 1 && shown >= text.length && <span className="gd-caret" />}
+                </li>
+              )
+            })}
+          </ul>
           <p className="gd-heard" aria-live="polite">
-            {step.body}
+            {step.bullets.join(". ")}
           </p>
           <div className="gd-foot">
             <button className="gd-skip" onClick={finish}>

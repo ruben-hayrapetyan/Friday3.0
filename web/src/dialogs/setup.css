@@ -837,22 +837,21 @@
   margin-right: 4px;
 }
 
+/* boxes and blocks appear where they are, never sliding in from a side (30 Oct: "don't have blocks sliding in from
+   the left/right/top/bottom") */
 @keyframes wk-in {
   from {
     opacity: 0;
-    transform: translateX(28px) scale(0.97);
   }
 }
 @keyframes wk-in-back {
   from {
     opacity: 0;
-    transform: translateX(-28px) scale(0.97);
   }
 }
 @keyframes wk-rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
   }
 }
 @keyframes wk-blink {
@@ -863,7 +862,6 @@
 @keyframes wk-block {
   from {
     opacity: 0;
-    transform: scaleY(0.2);
   }
 }
 
