@@ -58,7 +58,7 @@ export function RulesPage() {
               </span>
             </div>
             {owned ? <span className="fr-kicker">Your rules are set in friday.toml; change them there.</span> : <NewRule />}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "6px 0 4px" }}>
+            <div data-tour="week-paces" style={{ display: "flex", flexDirection: "column", gap: 8, padding: "6px 0 4px" }}>
               <span style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 500 }}>Your week</span>
                 <span className="fr-kicker">Days that go easier or harder, every week. Click a day to change it.</span>
@@ -156,7 +156,7 @@ function NewRule() {
   }
   const set = (k: string, v: unknown) => setOverrides({ ...overrides, [k]: v })
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, borderRadius: "var(--radius-lg)", background: "var(--color-bg)" }}>
+    <div data-tour="rule-new" style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, borderRadius: "var(--radius-lg)", background: "var(--color-bg)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <Icon name="plus" size={18} style={{ color: "var(--color-accent-300)" }} />
         <input value={text} onChange={(e) => (setText(e.target.value), setOverrides({}), setStrength(null), setClaude(null))} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="I prefer eating lunch before 1pm" aria-label="New rule" style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontSize: 16 }} />

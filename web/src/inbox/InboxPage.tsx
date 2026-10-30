@@ -152,7 +152,7 @@ export function InboxPage() {
       </div>
       <div className="fr-panel" style={{ display: "grid", gridTemplateColumns: tight ? "minmax(0,1fr)" : "320px minmax(0,1fr)", overflow: "hidden" }}>
         {showList && (
-          <div role="list" aria-label="Waiting for you" style={{ overflowY: "auto", minHeight: 0, padding: "10px 8px 40px", boxShadow: "inset -1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 2 }}>
+          <div role="list" aria-label="Waiting for you" data-tour="inbox" style={{ overflowY: "auto", minHeight: 0, padding: "10px 8px 40px", boxShadow: "inset -1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 2 }}>
             {list.map((m) => (
               <Row key={m.key} m={m} on={m.key === current?.key} answered={resolved.find((r) => m.kind === "suggestion" && r.s.id === m.s.id)} onClick={() => open(m.key)} />
             ))}

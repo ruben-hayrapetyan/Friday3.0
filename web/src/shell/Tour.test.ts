@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { cardPlace, STEPS, stepsFor } from "./Tour"
+import { STRIP } from "@/dialogs/walk/strip"
+import { BOX, STEPS, spotFor, stepsFor } from "./Tour"
 
-const rect = (left: number, top: number, width: number, height: number) =>
-  ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect
-const card = { width: 340, height: 190 }
+const rect = (left: number, top: number, width: number, height: number) => ({ left, top, width, height, right: left + width, bottom: top + height })
 const win = { width: 1440, height: 900 }
 
 describe("the tour's steps", () => {
@@ -21,29 +20,52 @@ describe("the tour's steps", () => {
     expect(STEPS[STEPS.length - 1].target).toBe("help")
     expect(new Set(STEPS.map((s) => `${s.target}${s.title}`)).size).toBe(STEPS.length)
   })
+
+  it("go round every page, a page's steps together, and back to the calendar to end", () => {
+    // 30 Oct: "make it more in depth"
+    const pages = STEPS.map((s) => s.page ?? "/")
+    expect(new Set(pages)).toEqual(new Set(["/", "/todo", "/inbox", "/projects", "/rules", "/insights", "/body", "/settings"]))
+    const runs = pages.filter((p, i) => i === 0 || p !== pages[i - 1])
+    expect(runs.slice(0, -1)).toEqual([...new Set(pages)]) // each page visited once, then home
+    expect(runs[runs.length - 1]).toBe("/")
+  })
 })
 
-describe("where the tour's card goes", () => {
-  it("in the middle when it points at nothing", () => {
-    expect(cardPlace(null, card, win)).toEqual({ left: 550, top: 355 })
+describe("where the guide stands and their box goes", () => {
+  const fits = (s: ReturnType<typeof spotFor>, size = win) => s.left >= 12 && s.left + s.width <= size.width - 12
+
+  it("the two side by side in the middle when the step points at nothing", () => {
+    const s = spotFor(null, win)
+    expect(s.left).toBeGreaterThan(s.x)
+    expect(Math.abs(s.x + (s.left + s.width - s.x) / 2 - win.width / 2)).toBeLessThan(60)
   })
 
-  it("below a control with room under it, above one near the bottom", () => {
-    expect(cardPlace(rect(1000, 10, 80, 30), card, win)).toEqual({ left: 1000, top: 52 })
-    expect(cardPlace(rect(400, 820, 400, 60), card, win)).toEqual({ left: 400, top: 820 - 12 - 190 })
+  it("below a control up the window, pointing at it, the box on the side with room", () => {
+    const nav = spotFor(rect(0, 0, 248, 900), win)
+    expect(nav.x).toBeCloseTo(124)
+    expect(nav.left).toBeGreaterThan(nav.x)
+    const menu = spotFor(rect(1330, 14, 90, 34), win)
+    expect(menu.x).toBeGreaterThan(1300)
+    expect(menu.left + menu.width).toBeLessThan(menu.x)
+    expect(fits(nav) && fits(menu)).toBe(true)
   })
 
-  it("beside a tall one, and in the middle of one as big as the calendar", () => {
-    expect(cardPlace(rect(0, 60, 248, 820), card, win)).toEqual({ left: 260, top: 60 })
-    const placed = cardPlace(rect(248, 60, 1180, 840), card, win)
-    expect(placed.left).toBeCloseTo(248 + (1180 - 340) / 2)
+  it("beside a control down where they stand, with the box on its far side", () => {
+    const dock = rect(260, 900 - 70, 520, 56)
+    const s = spotFor(dock, win)
+    expect(s.x).toBeGreaterThan(dock.right)
+    expect(s.left).toBeGreaterThan(s.x)
+    const right = rect(1000, 900 - 70, 420, 56)
+    const t = spotFor(right, win)
+    expect(t.x).toBeLessThan(right.left)
+    expect(t.left + t.width).toBeLessThan(t.x)
   })
 
-  it("stays inside a phone's screen", () => {
+  it("on a phone, the box above them, inside the screen", () => {
     const phone = { width: 390, height: 800 }
-    const small = { width: 366, height: 190 }
-    const at = cardPlace(rect(330, 14, 34, 34), small, phone)
-    expect(at.left).toBeGreaterThanOrEqual(12)
-    expect(at.left + small.width).toBeLessThanOrEqual(phone.width - 12)
+    const s = spotFor(rect(330, 14, 34, 34), phone)
+    expect(s.bottom).toBeGreaterThan(STRIP / 2)
+    expect(s.width).toBeLessThanOrEqual(BOX)
+    expect(fits(s, phone)).toBe(true)
   })
 })

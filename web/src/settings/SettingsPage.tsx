@@ -76,6 +76,7 @@ export function SettingsPage() {
       </div>
       <div className="fr-panel" style={{ display: "grid", ...(tight ? { gridTemplateRows: "auto minmax(0,1fr)" } : { gridTemplateColumns: "208px minmax(0,1fr)" }), overflow: "hidden" }}>
         <nav
+          data-tour="settings-nav"
           style={
             tight
               ? { padding: "10px 12px", display: "flex", gap: 4, overflowX: "auto", boxShadow: "inset 0 -1px 0 color-mix(in srgb, var(--color-text) 8%, transparent)" }

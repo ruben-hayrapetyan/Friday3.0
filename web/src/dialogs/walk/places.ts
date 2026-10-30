@@ -58,6 +58,7 @@ const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
 export interface Extra {
   ai: { provider: string; name: string; ready: boolean; model?: string; progress?: number | null } | null
   reading: boolean
+  brought?: number // how many things have been brought in (uploads, calendars, accounts): one more, a letter comes
 }
 
 /** A bed to get into: where they stand beside it, sit on its edge, lie and sit up (feet on the floor under the
@@ -1066,7 +1067,7 @@ function home(): Built {
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    scene: (_spot, a) => ({ walk: V(-2.1, FLOOR, -3.2), at: V(-2.86, FLOOR, -3.7), yaw: Math.PI / 2, front: 0.42, action: a.evening_free > 0 ? "tv" : "laptop", seat: 0.56, mood: { happy: a.evening_free / 5 }, cam: { look: V(-2.5, 0.95, -3.0), pos: V(0.2, 2.75, 0.4) } }),
+    scene: (_spot, a) => ({ walk: V(-2.1, FLOOR, -3.2), at: V(-2.86, FLOOR, -3.7), yaw: Math.PI / 2, front: 0.42, action: a.evening_free > 0 ? "tv" : "laptop", seat: 0.56, mood: { happy: a.evening_free / 5, lid: 1 - Math.min(1, a.evening_free / 5) }, cam: { look: V(-2.5, 0.95, -3.0), pos: V(0.2, 2.75, 0.4) } }),
     door: { inside: V(-2.3, 0, -1.0), outside: V(-2.3, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-3.1, 0, -1.5, 2.8]],
@@ -1608,6 +1609,7 @@ function post(): Built {
   sockets.push({ at: V(0, FLOOR + h - 0.4, -3.4), color: 0xfff0dc, power: 18, range: 10, night: false })
   finish(g, cut, stub)
   let reading = false
+  let openUntil = -10
   return {
     group: g,
     cut,
@@ -1617,7 +1619,7 @@ function post(): Built {
       [
         // beside the screen, so you can read the AI on it over their shoulder
         { walk: V(0.0, FLOOR, -3.62), at: V(0.0, FLOOR, -3.62), yaw: Math.PI - 0.45, action: "counter" as const, cam: { look: V(0.22, 1.6, -4.05), pos: V(1.55, 2.35, -1.25) } },
-        { walk: V(-3.85, FLOOR, -3.4), at: V(-3.85, FLOOR, -3.4), yaw: extra.reading ? -Math.PI / 2 + 1.25 : -Math.PI / 2, action: extra.reading ? ("mail" as const) : ("boxes" as const), cam: cam(V(-3.9, 1.35, -3.4), [3.4, 2.4, 4.6]) },
+        { walk: V(-3.82, FLOOR, -3.4), at: V(-3.82, FLOOR, -3.4), yaw: extra.reading ? -Math.PI / 2 + 1.25 : -Math.PI / 2, action: extra.reading ? ("mail" as const) : ("boxes" as const), cam: cam(V(-3.9, 1.35, -3.4), [3.4, 2.4, 4.6]) },
         { walk: V(3.85, FLOOR, -3.2), at: V(3.85, FLOOR, -3.2), yaw: Math.PI / 2, action: "calendar" as const, cam: cam(V(3.8, 1.4, -3.2), [-3.4, 2.7, 5.4]) },
       ][Math.min(spot, 2)],
     door: { inside: V(0, 0, -1.0), outside: V(0, 0, 1.6) },
@@ -1629,10 +1631,14 @@ function post(): Built {
       showAi(e.ai)
       reading = e.reading
     },
-    tick: (_s, _m, step) => {
-      // the box's door swings open while something is being read (and they're at it), and shut after
-      const target = reading && step === "bring" ? -1.9 : 0
-      hinge.rotation.y += (target - hinge.rotation.y) * 0.08
+    cue: (name, seconds) => {
+      if (name === "open") openUntil = seconds + 6.5
+    },
+    tick: (seconds, _m, step) => {
+      // the box's door swings open when a letter comes (walk/World.ts cues it as they reach for it), and while
+      // something's being read, and shut after
+      const target = step === "bring" && (reading || seconds < openUntil) ? -1.9 : 0
+      hinge.rotation.y += (target - hinge.rotation.y) * 0.18
     },
   }
 }

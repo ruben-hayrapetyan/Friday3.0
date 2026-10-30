@@ -37,14 +37,16 @@ export function ProjectsPage() {
           {note}
         </span>
         <div style={{ flex: 1 }} />
-        <button className="btn btn-secondary" onClick={() => setCreating("exam")} aria-label="New exam" title="New exam" style={{ whiteSpace: "nowrap", flex: "none" }}>
-          <Icon name="exam" />
-          {!icons && "New exam"}
-        </button>
-        <button className="btn btn-primary" onClick={() => setCreating("project")} aria-label="New project" title="New project" style={{ whiteSpace: "nowrap", flex: "none" }}>
-          <Icon name="plus" />
-          {!icons && "New project"}
-        </button>
+        <span data-tour="projects-new" style={{ display: "flex", gap: "inherit", flex: "none" }}>
+          <button className="btn btn-secondary" onClick={() => setCreating("exam")} aria-label="New exam" title="New exam" style={{ whiteSpace: "nowrap", flex: "none" }}>
+            <Icon name="exam" />
+            {!icons && "New exam"}
+          </button>
+          <button className="btn btn-primary" onClick={() => setCreating("project")} aria-label="New project" title="New project" style={{ whiteSpace: "nowrap", flex: "none" }}>
+            <Icon name="plus" />
+            {!icons && "New project"}
+          </button>
+        </span>
       </div>
       <div className="fr-panel" style={{ overflowY: "auto", overflowX: "hidden" }}>
         {current ? (

@@ -1,0 +1,208 @@
+/* The tour's dialog box beside the guide (Tour.tsx): setup's game boxes (dialogs/setup.css), the same in light and
+   dark, since the guide is drawn the same either way. */
+
+.gd-tour {
+  --gd-ink: #1b1a2b;
+  --gd-bone: #f2ead8;
+  --gd-text: #ddd5c3;
+  --gd-muted: #b9b09e;
+  --gd-line: rgba(242, 234, 216, 0.14);
+  --gd-gold: #f2c14e;
+  --gd-gold-dark: #a77b1c;
+  --gd-pixel: "Pixelify Sans", "Inter", system-ui, sans-serif;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+.gd-tour[data-leaving] {
+  pointer-events: none;
+}
+.gd-dim {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, #000 55%, transparent);
+}
+.gd-spot {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 9999px color-mix(in srgb, #000 55%, transparent),
+    0 0 0 3px var(--gd-gold);
+  transition: all 220ms ease;
+  pointer-events: none;
+}
+/* the strip the guide stands in, over the dimmed page and under the box */
+.gd-strip {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 200px;
+  z-index: 1;
+  pointer-events: none;
+}
+.gd-box {
+  position: fixed;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px 14px;
+  background: var(--gd-ink);
+  color: var(--gd-bone);
+  border: 3px solid var(--gd-bone);
+  border-radius: 8px;
+  outline: 3px solid var(--gd-ink);
+  box-shadow: 0 9px 0 3px rgba(0, 0, 0, 0.35);
+  font-family: "Inter", system-ui, sans-serif;
+  animation: gd-in 0.28s steps(5) both;
+}
+.gd-where {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font: 500 13px/1 var(--gd-pixel);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gd-gold);
+}
+.gd-pages {
+  display: flex;
+  gap: 4px;
+}
+.gd-pages i {
+  width: 7px;
+  height: 7px;
+  background: var(--gd-line);
+}
+.gd-pages i[data-done] {
+  background: var(--gd-muted);
+}
+.gd-pages i[data-on] {
+  background: var(--gd-gold);
+}
+.gd-title {
+  margin: 0;
+  font: 600 22px/1.2 var(--gd-pixel);
+  color: var(--gd-bone);
+  text-wrap: balance;
+}
+.gd-body {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--gd-text);
+  text-wrap: pretty;
+}
+/* the words still to come take their room already, so the box doesn't grow as they're said */
+.gd-rest {
+  visibility: hidden;
+}
+.gd-caret {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.45em;
+  margin-left: 6px;
+  background: var(--gd-gold);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  animation: gd-blink 0.8s steps(2) infinite;
+}
+.gd-heard {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.gd-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 2px dashed var(--gd-line);
+}
+.gd-skip {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--gd-muted);
+  font: 500 12px "Inter", sans-serif;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.gd-back {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 6px 2px;
+  color: var(--gd-muted);
+  font: 500 15px var(--gd-pixel);
+  cursor: pointer;
+}
+.gd-back:hover,
+.gd-skip:hover {
+  color: var(--gd-bone);
+}
+.gd-go {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 2px solid var(--gd-ink);
+  border-radius: 6px;
+  padding: 9px 16px;
+  background: var(--gd-gold);
+  color: var(--gd-ink);
+  font: 700 16px/1 var(--gd-pixel);
+  cursor: pointer;
+  box-shadow:
+    0 4px 0 var(--gd-gold-dark),
+    0 4px 0 2px var(--gd-ink);
+}
+.gd-go:hover {
+  background: #f6cd68;
+}
+.gd-go:active {
+  transform: translateY(3px);
+  box-shadow:
+    0 1px 0 var(--gd-gold-dark),
+    0 1px 0 2px var(--gd-ink);
+}
+.gd-go i {
+  width: 0;
+  height: 0;
+  border-left: 7px solid currentColor;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+}
+.gd-go:focus-visible,
+.gd-back:focus-visible,
+.gd-skip:focus-visible {
+  outline: 2px solid var(--gd-gold);
+  outline-offset: 3px;
+}
+@keyframes gd-in {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+@keyframes gd-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gd-box,
+  .gd-caret {
+    animation: none;
+  }
+  .gd-spot {
+    transition: none;
+  }
+}

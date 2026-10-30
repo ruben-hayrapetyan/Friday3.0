@@ -398,11 +398,17 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
   const local = useLocal(ai.provider === "local").data
   const docs = useQuery({ queryKey: ["documents"], queryFn: () => query("documents"), refetchInterval: (q) => (at.current === "bring" || q.state.data?.some((d) => d.status === "reading") ? 3000 : false) }).data
   const reading = !!docs?.some((d) => d.status === "reading")
+  // all that's been brought in, so one more (an upload, a calendar link, the Mac's calendars, a Google account) is a
+  // letter in the walk's mailbox
+  const sources = useInbox().data?.sources ?? []
+  const mac = useQuery({ queryKey: ["mac_calendars"], queryFn: () => query("mac_calendars"), refetchInterval: () => (at.current === "bring" ? 3000 : false) }).data ?? []
+  const accounts = useGoogleAccess()?.accounts ?? []
+  const brought = (docs?.length ?? 0) + sources.length + mac.filter((c) => c.on).length + accounts.length
   useEffect(() => {
     const download = local?.download
     const progress = ai.provider === "local" && download && download.status === "downloading" ? (download.total ? download.completed / download.total : 0) : null
-    world?.setExtra({ ai: llmKnown ? { provider: ai.provider, name: ai.name, ready: ai.ready, model: ai.model, progress } : null, reading })
-  }, [world, llmKnown, ai.provider, ai.name, ai.ready, ai.model, local, reading])
+    world?.setExtra({ ai: llmKnown ? { provider: ai.provider, name: ai.name, ready: ai.ready, model: ai.model, progress } : null, reading, brought })
+  }, [world, llmKnown, ai.provider, ai.name, ai.ready, ai.model, local, reading, brought])
   const finish = async (answers: Answers) => {
     setSaving(true)
     const out = await save(answers)

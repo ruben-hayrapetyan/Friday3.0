@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Guide preview</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #f4f2ee; overflow: hidden; font: 14px system-ui; }
+      .box { position: fixed; border: 2px solid #999; border-radius: 8px; background: #fff; display: grid; place-items: center; color: #555; }
+      canvas { position: fixed; left: 0; bottom: 0; width: 100vw; height: 200px; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div class="box" id="nav" style="left: 10px; top: 10px; width: 200px; height: calc(100% - 20px)">nav</div>
+    <div class="box" id="menu" style="right: 20px; top: 14px; width: 90px; height: 34px">Plan ▾</div>
+    <div class="box" id="cal" style="left: 230px; top: 64px; right: 20px; bottom: 20px">calendar</div>
+    <canvas></canvas>
+    <script type="module" src="./guide-preview.ts"></script>
+  </body>
+</html>

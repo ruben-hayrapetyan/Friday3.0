@@ -47,7 +47,7 @@ export function WhatIfBar({ tight }: { tight: boolean }) {
   const keep = useKeep()
   if (!w.on)
     return (
-      <button className="btn btn-secondary" onClick={whatIf.start} title="What if: try changes on the calendar and see what they cost, without making them" style={{ flex: "none", fontSize: 12, gap: 6 }}>
+      <button className="btn btn-secondary" data-tour="whatif" onClick={whatIf.start} title="What if: try changes on the calendar and see what they cost, without making them" style={{ flex: "none", fontSize: 12, gap: 6 }}>
         <Icon name="flask" size={15} />
         {!tight && "What if"}
       </button>

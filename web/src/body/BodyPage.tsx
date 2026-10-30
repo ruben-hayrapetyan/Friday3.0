@@ -25,7 +25,7 @@ export function BodyPage() {
         <Seg options={TABS} value={tab} onPick={(t) => setParams({ tab: t }, { replace: true })} />
       </div>
       <div className="fr-panel" style={{ overflowY: "auto" }}>
-        <div className="fr-gutter" style={{ maxWidth: 1080, padding: "12px 40px 120px", display: "flex", flexDirection: "column", gap: 28 }}>
+        <div className="fr-gutter" data-tour="tracking" style={{ maxWidth: 1080, padding: "12px 40px 120px", display: "flex", flexDirection: "column", gap: 28 }}>
           {tab === "sleep" ? (
             <>
               <SleepSection here />

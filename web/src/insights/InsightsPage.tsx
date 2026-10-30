@@ -66,7 +66,7 @@ export function InsightsPage() {
       <div className="fr-panel" style={{ overflowY: "auto" }}>
         {data && (
           <div className="fr-gutter" style={{ maxWidth: 1080, padding: "28px 40px 120px", display: "flex", flexDirection: "column", gap: 28 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 28 }}>
+            <div data-tour="insights" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 28 }}>
               <Big big={String(data.done)} line={`things finished in ${data.weeks} weeks`} />
               <Big big={`${data.hours} h`} line="of work recorded" />
               <Big big={data.estimate_ratio ? `${data.estimate_ratio}×` : "—"} line={data.estimate_ratio ? "how long things take against the estimate" : "Finish a few things to compare with estimates"} />

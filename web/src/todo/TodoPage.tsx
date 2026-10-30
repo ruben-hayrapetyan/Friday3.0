@@ -126,7 +126,9 @@ export function TodoPage() {
     <>
       <div className="fr-page-head" style={{ gap: 12 }}>
         <span className="fr-h fr-title">To-do</span>
-        <Seg options={LISTS} value={list} onPick={pickList} label="List" />
+        <span data-tour="todo-lists" style={{ flex: "none", display: "flex" }}>
+          <Seg options={LISTS} value={list} onPick={pickList} label="List" />
+        </span>
         <span className="tnum fr-head-note" style={{ color: "var(--color-neutral-500)" }}>
           {summary(items)}
         </span>
@@ -173,7 +175,7 @@ export function TodoPage() {
       <div className="fr-panel fr-todo-split" data-open={selected ? "" : undefined} style={{ display: "grid", gridTemplateColumns: selected ? "minmax(0,1fr) 400px" : "minmax(0,1fr)", overflow: "hidden", position: "relative" }}>
         {pickedItems.length > 0 && <BulkBar items={pickedItems} onClear={() => setPicked([])} />}
         <div className="fr-gutter" style={{ overflowY: "auto", minHeight: 0, padding: "16px 22px 140px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+          <div data-tour="todo-list" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
             {(by === "When" || list === "Due") && <AddBox compact onAdded={added} longTerm={list === "Long term"} placeholder="Add a to-do…" />}
             {list === "Due" ? (
               <DueList items={items} fresh={fresh} selected={selected} picked={picked} onSelect={choose} Row={RowOf} />

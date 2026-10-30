@@ -10,7 +10,7 @@
 
 import * as THREE from "three"
 
-export type Action = "stand" | "wave" | "wake" | "sleep" | "study" | "read" | "tv" | "laptop" | "picnic" | "coffee" | "counter" | "boxes" | "mail" | "calendar"
+export type Action = "stand" | "wave" | "wake" | "sleep" | "study" | "read" | "tv" | "laptop" | "picnic" | "coffee" | "counter" | "boxes" | "mail" | "calendar" | "point" | "present" | "think"
 
 /** How high each action sits: the seat's height above the floor. */
 export const SEATED: Partial<Record<Action, number>> = { study: 0.48, tv: 0.48, laptop: 0.48, coffee: 0.48, picnic: 0.06, wake: 0.56, sleep: 0.56 }
@@ -225,7 +225,10 @@ export interface Mood {
   energy?: number // getting up: 0 dragging themselves up, 1 bright-eyed
   happy?: number // how much of the time is theirs
   paper?: boolean // the brief on paper, or the phone instead
+  lid?: number // the laptop's lid on the sofa: 0 shut (the evening's yours), 1 open (it's work)
   restless?: number // a late night: turning over in their sleep
+  aim?: number // pointing (showing you round Friday): which way, facing you, from straight down; toward their left +
+  talk?: number // saying something: the head moving with it
 }
 
 /** What a body doing `action` looks like `t` seconds in, feeling `mood`; all slow, all smooth. */
@@ -298,14 +301,15 @@ function acting(action: Action, t: number, on: number | undefined, mood: Mood): 
       break
     }
     case "tv": {
-      // back in the sofa, legs crossed, an arm along its back; now and then a laugh, slowly
-      p.lean = -0.32
-      p.legX = [-1.78, -1.42]
-      p.legZ = [-0.3, 0.06]
-      p.knee = [1.55, 1.35]
-      p.armX = [-0.3, -0.5]
-      p.armZ = [0.75, -0.12]
-      p.elbow = [-0.55, -1.15]
+      // back in the sofa, the laptop on the lap, ankles crossed, an arm along the sofa's back, a hand on the
+      // laptop; now and then a laugh, slowly
+      p.lean = -0.3
+      p.legX = [-1.48, -1.48]
+      p.legZ = [-0.07, 0.07]
+      p.knee = [1.15, 1.15]
+      p.armX = [-0.3, -0.62]
+      p.armZ = [0.75, 0.0]
+      p.elbow = [-0.55, -0.95]
       const laugh = span(cycle(t, 9), 5.5, 7.0, 0.5)
       p.lean -= laugh * 0.08
       p.headX = -0.04 - laugh * 0.18
@@ -319,9 +323,12 @@ function acting(action: Action, t: number, on: number | undefined, mood: Mood): 
       const read = span(c, 5, 7.4, 0.6)
       p.lean = -0.05 - read * 0.12
       p.headX = 0.45 - read * 0.12
-      p.armX = [-0.55, -0.55]
-      p.armZ = [-0.05, 0.05]
-      p.elbow = [-0.75 + Math.sin(t * 9) * 0.02 * (1 - read), -0.75 + Math.sin(t * 9 + 1.8) * 0.02 * (1 - read)]
+      p.legX = [-1.48, -1.48]
+      p.knee = [1.3, 1.3]
+      p.legZ = [0.04, -0.04]
+      p.armX = [-0.62, -0.62]
+      p.armZ = [-0.02, 0.02]
+      p.elbow = [-0.62 + Math.sin(t * 9) * 0.02 * (1 - read), -0.62 + Math.sin(t * 9 + 1.8) * 0.02 * (1 - read)]
       break
     }
     case "picnic": {
@@ -396,6 +403,44 @@ function acting(action: Action, t: number, on: number | undefined, mood: Mood): 
       p.headY = Math.sin(t * 0.9) * 0.1
       break
     }
+    case "point": {
+      // showing you something on the screen: the arm on its side straight out toward it, the head turned to it, a
+      // small beat of the hand now and then
+      const aim = Math.max(-2.95, Math.min(2.95, mood.aim ?? 2.4))
+      const i = aim >= 0 ? 0 : 1
+      const beat = span(cycle(t, 4), 0.4, 1.1, 0.3) * 0.08
+      p.armX[i] = -0.22 - beat
+      p.armZ[i] = aim
+      p.elbow[i] = -0.06 - beat
+      p.armX[1 - i] = -0.1
+      p.armZ[1 - i] = i === 0 ? -0.12 : 0.12
+      p.elbow[1 - i] = -0.35
+      p.headY = Math.sin(aim) * 0.5
+      p.headX = -0.32 * Math.max(0, -Math.cos(aim)) + 0.1 * Math.max(0, Math.cos(aim))
+      p.lean = 0.02
+      break
+    }
+    case "present": {
+      // here it all is: both arms opened out toward it, a little lift
+      const lift = Math.sin(t * 1.2) * 0.04
+      p.armX = [-0.42 - lift, -0.42 - lift]
+      p.armZ = [0.72, -0.72]
+      p.elbow = [-0.32, -0.32]
+      p.lean = -0.04
+      p.headX = -0.06
+      p.headY = Math.sin(t * 0.4) * 0.12
+      break
+    }
+    case "think": {
+      // a hand at the chin, the other arm across, looking up and off a little
+      p.armX = [-0.5, -0.95]
+      p.armZ = [-0.3, -0.05]
+      p.elbow = [-1.7, -2.25]
+      p.headX = -0.14
+      p.headY = 0.2 + Math.sin(t * 0.5) * 0.06
+      p.headZ = 0.08
+      break
+    }
     case "calendar": {
       const c = cycle(t, 8)
       const point = span(c, 0.6, 3.6, 0.6)
@@ -410,6 +455,12 @@ function acting(action: Action, t: number, on: number | undefined, mood: Mood): 
     default: {
       p.headY = Math.sin(t * 0.35) * 0.25
     }
+  }
+  // talking: the head moving a little with the words
+  const talk = mood.talk ?? 0
+  if (talk > 0) {
+    p.headX += talk * (Math.sin(t * 7.3) * 0.035 + Math.sin(t * 3.1) * 0.025)
+    p.headZ += talk * Math.sin(t * 2.3) * 0.03
   }
   return p
 }
@@ -505,14 +556,16 @@ function reacting(kind: Reaction, t: number, base: Pose, look: number, aim: numb
       p.headY = -aim * 0.3
       break
     }
-    case "fetch":
-      // a box opened, the hand in it, and out with the letter
-      p.armX = [base.armX[0], -1.55]
-      p.armZ = [base.armZ[0], -0.12]
-      p.elbow = [base.elbow[0], -0.25 + Math.max(0, t - 1.0) * 0.6]
-      p.headX = -0.2
-      p.lean = base.lean + 0.06
+    case "fetch": {
+      // the box's door opened, the hand to its opening (angled in, to the box in front of them, not into the wall
+      // beside it), the letter taken, and the hand back down with it
+      const reach = span(t, 0.15, 1.35, 0.45)
+      p.armX = [base.armX[0], base.armX[1] + (-1.48 - base.armX[1]) * reach]
+      p.armZ = [base.armZ[0], base.armZ[1] + (0.32 - base.armZ[1]) * reach]
+      p.elbow = [base.elbow[0], base.elbow[1] + (-0.55 - base.elbow[1]) * reach]
+      p.headX = -0.15 * reach
       break
+    }
     case "typing":
       // a few keys at the counter: the screen changes
       p.armX = [-1.55, -1.55]
@@ -537,7 +590,9 @@ export class Character {
   private eyes: THREE.Mesh[] = []
   private held = new Map<string, THREE.Object3D>()
   private pack = new THREE.Group()
-  private lap = new THREE.Group() // a laptop on the lap, for working on the sofa
+  private lap = new THREE.Group() // a laptop on the lap, on the sofa
+  private lid = new THREE.Group() // its lid, on its hinge at the far edge
+  private screenGlow: THREE.MeshBasicMaterial
   private phase = 0
   private blink = 2
 
@@ -572,16 +627,19 @@ export class Character {
     this.pack.add(part(rounded(0.22, 0.12, 0.05, 0.02), 0x9a4426, 0, 0.14, -0.27))
     for (const x of [-0.11, 0.11]) this.pack.add(part(new THREE.BoxGeometry(0.045, 0.32, 0.03), 0x7a3a22, x, 0.3, 0.11))
     this.chest.add(this.pack)
-    // the laptop on the lap: on the thighs, its screen up toward the face
+    // the laptop on the lap (30 Oct: "the laptop on his lap on the couch is the wrong way around"): the keys toward
+    // them, the hinge at the far edge toward the knees, the screen facing them
     const silver = toon(0xb9bcc2)
     this.lap.add(part(new THREE.BoxGeometry(0.34, 0.018, 0.24), silver, 0, 0, 0))
-    const lid = part(new THREE.BoxGeometry(0.34, 0.22, 0.012), silver, 0, 0.11, -0.12)
-    lid.rotation.x = -0.35
-    this.lap.add(lid)
-    const glow = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.18), new THREE.MeshBasicMaterial({ color: 0xdfe8f5 }))
-    glow.position.set(0, 0.112, -0.112)
-    glow.rotation.x = -0.35
-    this.lap.add(glow)
+    this.lap.add(part(new THREE.BoxGeometry(0.3, 0.004, 0.12), 0x2c2e33, 0, 0.011, -0.02)) // the keys
+    this.lid.position.set(0, 0.009, 0.12)
+    this.lid.add(part(new THREE.BoxGeometry(0.34, 0.22, 0.012), silver, 0, 0.11, 0))
+    this.screenGlow = new THREE.MeshBasicMaterial({ color: 0xdfe8f5 })
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.18), this.screenGlow)
+    glow.position.set(0, 0.11, -0.0075)
+    glow.rotation.y = Math.PI
+    this.lid.add(glow)
+    this.lap.add(this.lid)
     this.lap.visible = false
     this.hips.add(this.lap)
     // arms: shoulder, elbow, hand
@@ -636,7 +694,13 @@ export class Character {
   }
 
   private reaction: { kind: Reaction; at: number; aim: number } | null = null
+  private snapped = false
   private last: Pose = stand()
+
+  /** A cut to a new shot: the next pose is taken at once, not eased into at a joint's pace. */
+  cut(): void {
+    this.snapped = true
+  }
 
   /** Do something in a moment, over what they're doing (an answer just changed, or a fidget while you decide). */
   react(kind: Reaction, now: number, aim = 0): void {
@@ -679,15 +743,23 @@ export class Character {
         pose = mix(pose, reacting(r.kind, age, pose, look, r.aim), into)
       }
     }
-    pose = this.limited(pose, dt, speed > 0.1 ? 30 : 9)
+    if (!this.snapped) pose = this.limited(pose, dt, speed > 0.1 ? 30 : 9)
+    this.snapped = false
     this.last = pose
     this.apply(pose, t, dt)
-    // the laptop on the lap: sitting forward on the thighs, wherever the thighs are
-    this.lap.visible = !s.pose && action === "laptop" && weight > 0.7 && (seat ?? 0.48) > 0.3
+    // the laptop on the lap on the sofa, whatever they're doing there; its lid as open as the evening is work
+    this.lap.visible = !s.pose && (action === "laptop" || action === "tv") && weight > 0.7
     if (this.lap.visible) {
+      // on the thighs, along them: `along` the way they point, `up` off their top
       const thigh = (pose.legX[0] + pose.legX[1]) / 2
-      this.lap.position.set(0, 0.11, 0.24)
-      this.lap.rotation.set(-(thigh + Math.PI / 2), 0, 0)
+      const along = new THREE.Vector3(0, -Math.cos(thigh), -Math.sin(thigh)).multiplyScalar(0.25)
+      const up = new THREE.Vector3(0, -Math.sin(thigh), Math.cos(thigh)).multiplyScalar(0.09)
+      this.lap.position.copy(along).add(up)
+      this.lap.rotation.set(thigh + Math.PI / 2, 0, 0)
+      // the lid: shut (lying on the keys, toward them) to open past upright (110°)
+      const open = Math.max(0, Math.min(1, mood.lid ?? 1))
+      this.lid.rotation.x = open * ((110 * Math.PI) / 180) - Math.PI / 2
+      this.screenGlow.color.setHex(open > 0.25 ? 0xdfe8f5 : 0x2c2e33)
     }
     const fetched = r?.kind === "fetch" && t - r.at > 1.0
     const holding = !s.pose && weight > 0.6 ? (fetched ? "letter" : ({ coffee: "cup", picnic: "sandwich", mail: "letter" } as Partial<Record<Action, string>>)[action]) : undefined

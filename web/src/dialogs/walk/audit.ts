@@ -44,6 +44,7 @@ export class Audit {
   private ray = new THREE.Raycaster()
   private history: number[][] = []
   private walked: boolean[] = [] // walking, in each frame of the history
+  private shut = false // the iris was shut last frame
   private sides = new Map<THREE.Material, THREE.Side>()
 
   constructor(world: unknown) {
@@ -208,6 +209,10 @@ export class Audit {
       this.walked.shift()
     }
     if (!last) return
+    // the wipe's shut (or just was): the cut to the next place, its pose and its spot, is what it's for
+    const dark = w.iris < 0.05 || this.shut
+    this.shut = w.iris < 0.05
+    if (dark) return
     const nj = JOINTS.length
     for (let j = 0; j < nj; j++) {
       const speed = Math.abs(row[j] - last[j]) * FPS
@@ -247,6 +252,7 @@ export class Audit {
   /** The body inside something; the camera inside something, or not seeing them, or seeing them off to the side. */
   private collisions(): void {
     const w = this.w
+    if (w.iris < 0.05) return // nothing to see
     const near = this.nearSolids()
     const body: { p: THREE.Vector3; r: number }[] = w.hero.samples()
     const head = w.hero.head.localToWorld(new THREE.Vector3(0, 0.18, 0))
@@ -267,6 +273,9 @@ export class Audit {
     const inCam = this.inside(cam, near)
     if (inCam) this.note(`camera inside ${this.name(inCam)}`)
     for (const post of w.posts) if (cam.y < post.h && Math.hypot(cam.x - post.x, cam.z - post.z) < post.r + 0.1) this.note("camera inside a post or trunk")
+    // filling the picture with the back of their head (30 Oct: walking in under the camera by the door)
+    const close = cam.distanceTo(w.hero.headAt())
+    if (close < 2 && w.iris > 0.15) this.note(`camera too close (${close.toFixed(1)} m)`)
     const chest = w.hero.samples()[2].p
     const to = chest.clone().sub(cam)
     const far = to.length()
@@ -276,7 +285,8 @@ export class Audit {
     const block = this.ray.intersectObjects(seen, false)[0]
     if (block) this.note(`hidden by ${this.name(block.object)}`)
     const ndc = chest.clone().project(w.camera)
-    const crane = ["reveal", "start"].includes(w.step) // the end looks out over the town, past them
+    // the end looks out over the town, past them; going back from it, the camera comes down to them
+    const crane = ["reveal", "start"].includes(w.step) || w.camera.position.distanceTo(chest) > 20
     if (crane) return
     if (Math.abs(ndc.x) > 0.95 || Math.abs(ndc.y) > 0.95 || ndc.z > 1) this.note("off the picture")
     else if (ndc.x > 2 * ((1080 - 32 - 440) / 1080) - 1) this.note("behind the question's box")
