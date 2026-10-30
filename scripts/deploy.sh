@@ -44,11 +44,24 @@ echo "    $PREFIX"
 if $RESTART && pgrep -f "fridayd serve$" >/dev/null; then
   echo "==> Restarting Friday"
   osascript -e 'quit app "Friday"' >/dev/null 2>&1 || true
-  for _ in $(seq 1 60); do pgrep -f "fridayd serve$" >/dev/null || break; sleep 0.5; done
-  open -a /Applications/Friday.app
+  # until the old server has let go of its port: a new one started sooner can't bind it, and Friday won't open
   for _ in $(seq 1 120); do
-    [ "$(curl -s -o /dev/null -w '%{http_code}' 127.0.0.1:8765/api/q/status)" = "200" ] && break
+    pgrep -f "fridayd serve$" >/dev/null || lsof -ti tcp:8765 -sTCP:LISTEN >/dev/null 2>&1 || break
     sleep 0.5
   done
+  if lsof -ti tcp:8765 -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "The old server is still holding port 8765; quit Friday and open it again." >&2
+    exit 1
+  fi
+  open -a /Applications/Friday.app
+  up=false
+  for _ in $(seq 1 120); do
+    [ "$(curl -s -o /dev/null -w '%{http_code}' 127.0.0.1:8765/api/q/status)" = "200" ] && up=true && break
+    sleep 0.5
+  done
+  if ! $up; then
+    echo "Friday didn't answer within a minute; open it again." >&2
+    exit 1
+  fi
 fi
 echo "Done."
