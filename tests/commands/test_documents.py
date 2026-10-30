@@ -2,7 +2,9 @@
 and a PDF read for the claude command, which takes text, by pdftotext."""
 
 import base64
+import json
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -75,12 +77,19 @@ def test_a_pdf_goes_to_the_claude_command_as_its_text() -> None:
     assert "CHEM 2090 Problem Set 3 due October 30" in seen["prompt"] and "Find the due dates." in seen["prompt"]
 
 
-def test_an_image_still_needs_the_api() -> None:
+def test_an_image_goes_to_the_command_as_a_file_it_reads() -> None:
+    """29 Oct ("friday should use the cli whenever it can to not use the API"): no key for a photo either."""
     image = {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "iVBORw0KGgo="}}
-    with pytest.raises(RuntimeError, match="Images"):
-        CliClient(Path("/bin/claude"), run=lambda *a, **k: None).create(
-            model="m", system="s", messages=[{"role": "user", "content": [image]}]
-        )
+    handed: dict = {}
+
+    def run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+        handed.update(args=args, files=[p.name for p in Path(str(kwargs["cwd"])).iterdir()])
+        return subprocess.CompletedProcess(args, 0, stdout=json.dumps({"result": "a photo"}), stderr="")
+
+    reply = CliClient(Path("/bin/claude"), run=run).create(
+        model="m", system="s", messages=[{"role": "user", "content": [image]}]
+    )
+    assert reply.content[0].text == "a photo" and handed["files"] == ["image-1.png"] and "Read" in handed["args"]
 
 
 SYLLABUS_PAGE = """<!DOCTYPE html><html><head><title>CS 2112</title><style>p{color:red}</style>

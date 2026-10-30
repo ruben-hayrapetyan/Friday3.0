@@ -67,10 +67,14 @@ terminal, once per account, with the file at `google.client_file` in [`friday.ex
 **The Mac's calendars** come through the Mac app: allow it to read them, and choose the ones Friday reads under This
 Mac's calendars. One that is also read from Google starts off, so nothing comes in twice.
 
-**Claude.** Ask Claude, rules in your own words, judging which events you could skip and sorting new calendar events
-use Claude Code's `claude` command. An Anthropic API key (`[anthropic] api_key` in `secrets.toml` beside `friday.toml`,
-or `ANTHROPIC_API_KEY`) also reads PDFs and images dropped into the Inbox. Without either, Friday still plans, and
-events are judged by their titles alone.
+**The AI.** Ask Claude, rules in your own words, judging which events you could skip and sorting new calendar events
+go through the AI chosen in Settings → Integrations → AI, and through its command line tool whenever it is installed on
+this Mac, signed in as you, so no API key is needed: Claude Code's `claude` (PDFs and photos included, which it may only
+read, in a folder of their own), OpenAI's `codex` (signed in with ChatGPT), or Google's `agy` (or the older `gemini`).
+An API key in `secrets.toml` beside `friday.toml` (`[anthropic]`, `[openai]`, `[gemini]`… `api_key`, or
+`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`) is used where there's no command, and behind one when it
+fails; `codex` and `agy` can't be handed photos or scanned PDFs, which need the key. Grok, Meta's Muse and other
+services have no command: a key. Without any, Friday still plans, and events are judged by their titles alone.
 
 ### Try it on someone else's term
 
@@ -124,7 +128,8 @@ scripts/check.sh   # ruff, pytest, the website's typecheck and tests, and the Ma
 Mac/test.sh        # the Mac app's alone: what each menu sends, the timer's label, the calendar payload
 ```
 
-Tests never call the real AI: `tests/conftest.py` switches off the `claude` command and the API key.
+Tests never call the real AI: `tests/conftest.py` switches off the `claude`, `codex`, `agy` and `gemini` commands and
+the API keys.
 
 ## Where it comes from
 
