@@ -1,12 +1,10 @@
-// The pieces of setup's stage (Setup.tsx, setup.css): choice cards with a picture of what each means, a bar of hours
-// you fill block by block, a time with steps either side, and things to bring in. Pixel art since 29 Oct (pixel.tsx);
-// the week beside them is SetupBoard.tsx.
+// The pieces of setup's stage (Setup.tsx, setup.css): choices as rows you tap, a bar of hours you fill, a time with
+// steps either side, and things to bring in. The pictures above them are onboard/Visuals.tsx.
 
 import { type CSSProperties, type KeyboardEvent, type ReactNode, type Ref, useEffect, useRef, useState } from "react"
 import { Icon } from "@/components/fr/controls"
 import { TimeInput } from "@/components/fr/TimeInput"
 import type { Expect } from "@/lib/ampm"
-import { CHECK, earlyArt, lengthArt, Sprite } from "./pixel"
 import { shift } from "./setupWeek"
 
 const vars = (v: Record<string, string | number | undefined>) => v as CSSProperties
@@ -14,7 +12,7 @@ const vars = (v: Record<string, string | number | undefined>) => v as CSSPropert
 /** One choice: its picture, what it is, a line on what it means, and the tick when it's yours. */
 export function Card(props: {
   on: boolean
-  glyph: ReactNode
+  glyph?: ReactNode
   hue?: string
   title: ReactNode
   note?: ReactNode
@@ -27,10 +25,12 @@ export function Card(props: {
 }) {
   const { on, glyph, hue, title, note, badge, onPick, i = 0, tabIndex, onKeyDown, ref } = props
   return (
-    <button ref={ref} type="button" role="radio" aria-checked={on} className="st-card st-rise" style={vars({ "--i": i })} onClick={onPick} tabIndex={tabIndex} onKeyDown={onKeyDown}>
-      <span className="st-glyph" style={vars({ "--hue": hue })}>
-        {glyph}
-      </span>
+    <button ref={ref} type="button" role="radio" aria-checked={on} className="st-card st-rise" data-glyph={glyph ? "" : undefined} style={vars({ "--i": i, "--hue": hue })} onClick={onPick} tabIndex={tabIndex} onKeyDown={onKeyDown}>
+      {glyph && (
+        <span className="st-glyph" style={vars({ "--hue": hue })}>
+          {glyph}
+        </span>
+      )}
       <span style={{ minWidth: 0 }}>
         <span className="st-card-title">
           {title}
@@ -39,7 +39,7 @@ export function Card(props: {
         {note && <span className="st-card-note">{note}</span>}
       </span>
       <span className="st-tick" aria-hidden>
-        <Sprite art={CHECK} scale={2} />
+        <Icon name="check" size={13} />
       </span>
     </button>
   )
@@ -49,7 +49,7 @@ export interface Choice<T> {
   value: T
   title: ReactNode
   note?: ReactNode
-  glyph: ReactNode
+  glyph?: ReactNode
   hue?: string
 }
 
@@ -205,24 +205,14 @@ export function TimeCard({ glyph, hue, label, value, onPick, expect, i = 0 }: { 
       </span>
       <span className="st-steps">
         <button type="button" className="st-step" aria-label={`${label}, a quarter hour earlier`} onClick={() => onPick(shift(value, -15))}>
-          −
+          <Icon name="minus" size={15} />
         </button>
         <button type="button" className="st-step" aria-label={`${label}, a quarter hour later`} onClick={() => onPick(shift(value, 15))}>
-          +
+          <Icon name="plus" size={15} />
         </button>
       </span>
     </div>
   )
-}
-
-/** A sitting's length: as many blocks as it is long, out of four hours. */
-export function LengthGlyph({ hours }: { hours: number }) {
-  return <Sprite art={lengthArt(hours)} scale={2} />
-}
-
-/** Days up to a deadline, its flag on the last; the day the work is done filled in. */
-export function EarlyGlyph({ days }: { days: number }) {
-  return <Sprite art={earlyArt(days)} scale={2} />
 }
 
 /** Something to bring in, on a card: its picture, what it is, and its controls. */

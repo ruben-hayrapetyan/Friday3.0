@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { type Answers, badgesOf, byAccount, hoursLabel, hoursWords, readDays, readHours, screenScale, shift, storyFor, withCalendars } from "./Setup"
+import { type Answers, badgesOf, byAccount, hoursLabel, hoursWords, numbersOf, readDays, readHours, shift, storyFor, withCalendars } from "./Setup"
 
 const ANSWERS: Answers = {
   wake: "07:30",
@@ -18,13 +18,13 @@ const ANSWERS: Answers = {
 }
 
 describe("setup", () => {
-  it("lives through a week: hello, the day from the alarm to bed, the next morning, packing up, the week (29 Oct)", () => {
-    expect(storyFor(ANSWERS)).toEqual(["title", "hello", "hello2", "wake", "classes", "work", "heavy", "focus", "deadline", "evening", "weekend", "bed", "brief", "ai", "bring", "week"])
+  it("asks about your day from getting up to bed, then mornings, the AI and your things, then builds the week (29 Oct, as Opal does)", () => {
+    expect(storyFor(ANSWERS)).toEqual(["hello", "wake", "bed", "work", "heavy", "focus", "deadline", "evening", "weekend", "brief", "ai", "bring", "build", "reveal", "start"])
   })
 
   it("asks about calendars only when there are some, after bringing them in", () => {
     const story = storyFor({ ...ANSWERS, calendars: [{ name: "Home", shown: true, busy: true }] })
-    expect(story.slice(-4)).toEqual(["ai", "bring", "calendars", "week"]) // the AI before what it reads; calendars once connected
+    expect(story.slice(-6)).toEqual(["ai", "bring", "calendars", "build", "reveal", "start"]) // the AI before what it reads; calendars once connected
     expect(storyFor(ANSWERS)).not.toContain("calendars")
   })
 
@@ -85,10 +85,11 @@ describe("setup", () => {
     expect([hoursWords(1), hoursWords(1.5), hoursWords(0.75)]).toEqual(["an hour", "1.5 hours", "45 minutes"])
   })
 
-  it("draws the screen at whole pixels when there's room, so the art stays sharp", () => {
-    expect(screenScale(1100, 700)).toBe(4) // 1024 × 576
-    expect(screenScale(800, 900)).toBe(3)
-    expect(screenScale(400, 300)).toBeCloseTo(400 / 256) // a small window: as big as fits
-    expect(screenScale(100, 50)).toBe(1)
+  it("shows your week in four numbers: work a week, hours kept yours, sleep a night, days spare", () => {
+    const k = numbersOf(ANSWERS) // up 7:30, bed 11:30; 2h of evenings from 6pm, 4h of weekend days
+    expect(k.sleep).toBe(8)
+    expect(k.free).toBe(2 * 5 + 4 * 2)
+    expect(k.early).toBe(1)
+    expect(k.work).toBeGreaterThan(20)
   })
 })

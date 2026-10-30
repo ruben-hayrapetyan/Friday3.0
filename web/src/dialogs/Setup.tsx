@@ -4,41 +4,36 @@
 // the end the AI is chosen and things are brought in (Google Calendar, course feeds, a syllabus, Gmail), each
 // optional and done the moment you do it, with the same controls as Settings → Integrations.
 //
-// 29 Oct, "the pixel art thing is just the same intro from before but pixelated. no i mean like actually have cool
-// game-like animations where an animated sprite is taking you through for example a week... not just random
-// questions with at the end a fill in the blank": a little game. Friday, a calendar page with a face, lives through a
-// week on screen (intro/scenes.ts), and asks each question as it comes to it, in a text box below: the alarm as it
-// sleeps, how much work as books pile up on its desk, when you finish the essay as it walks to that day's sign, your
-// free evening as the evening plays in fast forward. Answers change the world at once. At the end it runs across your
-// week and the blocks drop in.
+// 29 Oct, after a pixel game: "the intro is going in the right direction. i dont like the pixel art or the sprite
+// though. look at how opal the app on the app store does its intro and take inspiration but for friday". As Opal
+// does it: a dark stage, one question a screen under a picture of the answer that moves as you choose
+// (onboard/Visuals.tsx), a progress bar along the top, then "Building your week…", your week in numbers, and hold to
+// start, Friday's ring where Opal has its gem, your week building itself behind it. No gradients (29 Oct: "i don't
+// want gradients in the startup page"): every colour flat.
 
-import "@fontsource/pixelify-sans/500.css"
-import "@fontsource/pixelify-sans/600.css"
-import "@fontsource/silkscreen/400.css"
 import "./setup.css"
 import { useQuery } from "@tanstack/react-query"
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react"
 import { query, type Schemas } from "@/api/client"
 import { Icon, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useInbox } from "@/inbox/InboxPage"
 import { SLEEP_HOURS } from "@/lib/ampm"
 import { ampm, parseLength } from "@/lib/format"
-import { AiConnect, useAi } from "@/settings/AiConnect"
+import { AiConnect } from "@/settings/AiConnect"
 import { CHOICES, choiceOf, fromChoice, saying } from "@/settings/calendarChoice"
 import { ConnectedAccounts } from "@/settings/GoogleAccounts"
 import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess } from "@/settings/GoogleConnect"
 import { AddFeed, Upload } from "@/settings/Integrations"
-import { friday, MOON, SUN } from "./intro/art"
-import { G, H, W } from "./intro/draw"
-import { clockOf, finishAt, type Mem, paint, placeOf, type World } from "./intro/scenes"
-import { Sprite, Steps, useTyped } from "./pixel"
-import { Choices, EarlyGlyph, HourBar, LengthGlyph, Other, Source, TimeCard } from "./SetupParts"
-import { ALL_EVENING, ALL_WEEKEND, shift } from "./setupWeek"
+import { BriefCard, Count, DeadlineLine, Evening, FocusDial, freeSpan, minutesOf, Ring, Sky, WeekBars, Weekend, WeekGrid } from "./onboard/Visuals"
+import { Choices, HourBar, Other, Source, TimeCard } from "./SetupParts"
+import { ALL_EVENING, ALL_WEEKEND, shift, sleepHours, weekOf } from "./setupWeek"
 
 export { shift }
 export type Answers = Schemas["SetupInput"]
 type Calendar = Schemas["SetupCalendar"]
+
+const vars = (v: Record<string, string | number | undefined>) => v as CSSProperties
 
 export const useSetup = () => useQuery({ queryKey: ["setup"], queryFn: () => query("setup") })
 
@@ -78,18 +73,17 @@ export function withCalendars(draft: Answers, listed: Calendar[] | null | undefi
   return fresh.length ? { ...draft, calendars: [...(draft.calendars ?? []), ...fresh] } : draft
 }
 
-// The week, in order: Friday says hello, gets up, goes to class and to work, finishes an essay, has an evening and a
-// Saturday, goes to bed, reads the morning's brief, packs its bag, and shows you the week. The calendars are asked
-// about after bringing things in (29 Oct: "why does the choosing for calendars come before the calendar
-// integration"), and only when there are some.
-const STORY = ["title", "hello", "hello2", "wake", "classes", "work", "heavy", "focus", "deadline", "evening", "weekend", "bed", "brief", "ai", "bring", "calendars", "week"]
+// In order: hello; your day from getting up to bed, work, focus, deadlines, evenings and weekends; mornings; the AI and
+// where your things are (the calendars after bringing them in, 29 Oct, and only when there are some); then Friday
+// builds the week, shows it, and you hold to start.
+const STORY = ["hello", "wake", "bed", "work", "heavy", "focus", "deadline", "evening", "weekend", "brief", "ai", "bring", "calendars", "build", "reveal", "start"]
 
-/** The steps of the story for these answers. */
+/** The screens for these answers. */
 export function storyFor(answers: Answers): string[] {
   return STORY.filter((id) => id !== "calendars" || (answers.calendars ?? []).length > 0)
 }
 
-/** What the end shows of your answers, each a way back to where it was asked. */
+/** Your answers as the end shows them, each a way back to where it was asked. */
 export function badgesOf(a: Answers): { label: string; value: string; step: string }[] {
   const free = a.evening_free <= 0 ? "none" : a.evening_free >= ALL_EVENING ? `from ${ampm(a.evening_from)}` : `${hoursLabel(a.evening_free)} from ${ampm(a.evening_from)}`
   const weekend = a.weekend_free <= 0 ? "none" : a.weekend_free >= ALL_WEEKEND ? "all day" : `${hoursLabel(a.weekend_free)} a day`
@@ -105,41 +99,97 @@ export function badgesOf(a: Answers): { label: string; value: string; step: stri
   ]
 }
 
+/** Your week in four numbers, for the reveal: sleep a night, work a week, hours kept yours, and done early. */
+export function numbersOf(a: Answers): { sleep: number; work: number; free: number; early: number } {
+  const span = (s: [number, number] | null) => (s ? (s[1] - s[0]) / 60 : 0)
+  return {
+    sleep: sleepHours(a).weekday,
+    work: weekOf(a, "ready").workHours,
+    free: Math.round((span(freeSpan(a, false)) * 5 + span(freeSpan(a, true)) * 2) * 2) / 2,
+    early: a.finish_early_days,
+  }
+}
+
 interface Ctx {
   events: Record<string, number>
   go: (id: string) => void
 }
 
 interface Step {
-  say: (a: Answers) => string
+  kicker?: string
+  title: (a: Answers) => string
+  note?: (a: Answers) => string
+  picture?: (a: Answers) => ReactNode
   control?: (a: Answers, set: (change: Partial<Answers>) => void, ctx: Ctx) => ReactNode
-  outro?: (a: Answers) => number // ms the ending plays after you answer, before the next step
-  wide?: boolean // its answer needs room: the screen gets smaller
   go?: string
+  wide?: boolean // the answer needs the room: no picture
 }
 
+const WAKES = ["06:30", "07:00", "07:30", "08:00", "08:30", "09:00"]
+const BEDS = ["22:30", "23:00", "23:30", "00:00", "00:30", "01:00"]
 const FOCUS_PICKS = [0.75, 1, 1.5, 2, 3, 4]
-const FOCUS_NOTES: Record<number, string> = { 0.75: "Short sprints", 1: "About a lecture", 1.5: "Most of a problem set", 2: "A long sitting", 3: "Deep work", 4: "As long as it takes" }
+const FOCUS_NOTES: Record<number, string> = { 0.75: "Short sprints, many breaks", 1: "About a lecture's length", 1.5: "Most of a problem set", 2: "A long sitting", 3: "Deep work, few breaks", 4: "As long as it takes" }
 const EARLY_TITLES = ["On the day", "A day early", "2 days early", "3 days early"]
-const EARLY_NOTES = ["Done by 5pm Friday", "Thursday, with a day spare", "Wednesday: room for a bad day", "Tuesday: well ahead"]
+const EARLY_NOTES = ["Done by the deadline itself", "A day spare for surprises", "Room for a bad day", "Done well ahead"]
 const EVENINGS = ["17:00", "18:00", "19:00", "20:00"]
 
+/** A time to pick: a row of the usual ones, and the exact one stepped or typed. */
+function TimePick({ value, presets, label, glyph, expect, onPick }: { value: string; presets: string[]; label: string; glyph: string; expect: { hours: readonly [string, string] }; onPick: (t: string) => void }) {
+  return (
+    <div className="st-group">
+      <div className="st-chips" role="radiogroup" aria-label={`${label}: the usual times`}>
+        {presets.map((t) => (
+          <button key={t} type="button" role="radio" aria-checked={value === t} className="st-chip" onClick={() => onPick(t)}>
+            {ampm(t)}
+          </button>
+        ))}
+      </div>
+      <TimeCard glyph={<Icon name={glyph} fill size={22} />} hue="var(--ob-gold)" label={label} value={value} expect={expect} onPick={onPick} />
+    </div>
+  )
+}
+
 const STEPS: Record<string, Step> = {
-  title: { say: () => "", go: "Start" },
-  hello: { say: () => "Hi! I'm Friday, a day on your calendar. I find time for your work around everything else in your life." },
-  hello2: { say: () => "Let's live through one of your weeks together, so I learn how yours goes. About a minute, and you can change any of it later." },
-  wake: {
-    say: () => "First, the alarm. When do you get up?",
-    control: (a, set) => {
-      const same = a.weekend_wake === a.wake
-      return <TimeCard glyph={<Sprite art={SUN} scale={2} />} hue="var(--px-gold)" label="Up at" value={a.wake} expect={{ hours: SLEEP_HOURS.up }} onPick={(wake) => set(same ? { wake, weekend_wake: wake } : { wake })} />
-    },
-    outro: () => 3000,
-    go: "Wake up",
+  hello: {
+    title: () => "Your week, planned around your life.",
+    note: () => "A few questions about how your days go, and Friday builds your first week from them. About a minute.",
+    go: "Get started",
   },
-  classes: { say: () => "Mornings bring classes. I plan around everything on your calendars, and never while you're asleep." },
+  wake: {
+    kicker: "Mornings",
+    title: () => "When do you usually get up?",
+    picture: (a) => <Sky minutes={minutesOf(a.wake)} />,
+    control: (a, set) => <TimePick value={a.wake} presets={WAKES} label="Up at" glyph="sun-horizon" expect={{ hours: SLEEP_HOURS.up }} onPick={(wake) => set(a.weekend_wake === a.wake ? { wake, weekend_wake: wake } : { wake })} />,
+  },
+  bed: {
+    kicker: "Nights",
+    title: () => "And when do you go to bed?",
+    note: () => "Friday never plans anything while you sleep.",
+    picture: (a) => <Sky minutes={minutesOf(a.bedtime)} caption={`${hoursLabel(sleepHours(a).weekday)} of sleep a night`} />,
+    control: (a, set) => {
+      const different = a.weekend_wake !== a.wake || a.weekend_bedtime !== a.bedtime
+      return (
+        <div className="st-group">
+          <TimePick value={a.bedtime} presets={BEDS} label="Bed at" glyph="moon-stars" expect={{ hours: SLEEP_HOURS.bed }} onPick={(bedtime) => set(different ? { bedtime } : { bedtime, weekend_bedtime: bedtime })} />
+          <label className="st-toggle">
+            <Switch on={different} onToggle={() => set(different ? { weekend_wake: a.wake, weekend_bedtime: a.bedtime } : { weekend_wake: shift(a.wake, 90), weekend_bedtime: shift(a.bedtime, 60) })} label="Weekends are different" />
+            Weekends are different
+          </label>
+          {different && (
+            <div className="ob-pair">
+              <TimeCard glyph={<Icon name="sun-horizon" fill size={20} />} hue="var(--ob-gold)" label="Up at, weekends" value={a.weekend_wake} expect={{ hours: SLEEP_HOURS.up }} onPick={(weekend_wake) => set({ weekend_wake })} />
+              <TimeCard glyph={<Icon name="moon-stars" fill size={20} />} hue="var(--ob-class)" label="Bed at, weekends" value={a.weekend_bedtime} expect={{ hours: SLEEP_HOURS.bed }} onPick={(weekend_bedtime) => set({ weekend_bedtime })} />
+            </div>
+          )}
+        </div>
+      )
+    },
+  },
   work: {
-    say: () => "Then the real work. How much fits in a normal day?",
+    kicker: "Work",
+    title: () => "How much work fits in a normal day?",
+    note: () => "Friday aims for this, and goes past it only when deadlines need it.",
+    picture: (a) => <WeekBars normal={a.normal_hours} most={a.most_hours} heavy={false} />,
     control: (a, set) => (
       <div className="st-group">
         <HourBar label="On a normal day" value={a.normal_hours} min={1} segments={12} say={hoursLabel} onPick={(normal_hours) => set({ normal_hours, most_hours: Math.max(a.most_hours, normal_hours) })} />
@@ -148,7 +198,10 @@ const STEPS: Record<string, Step> = {
     ),
   },
   heavy: {
-    say: (a) => (a.most_hours >= 10 ? "Phew. Some days are heavier. When deadlines pile up, how much at most?" : "Some days are heavier. When deadlines pile up, how much at most?"),
+    kicker: "Work",
+    title: () => "And when deadlines pile up?",
+    note: () => "The most work Friday will put in one day.",
+    picture: (a) => <WeekBars normal={a.normal_hours} most={a.most_hours} heavy />,
     control: (a, set) => (
       <div className="st-group">
         <HourBar label="At most, on a heavy day" value={a.most_hours} min={1} segments={16} base={a.normal_hours} say={hoursLabel} onPick={(most_hours) => set({ most_hours, normal_hours: Math.min(a.normal_hours, most_hours) })} />
@@ -157,71 +210,60 @@ const STEPS: Record<string, Step> = {
     ),
   },
   focus: {
-    say: () => "How long can you work in one go, before you need a break?",
+    kicker: "Focus",
+    title: () => "How long can you work in one go?",
+    picture: (a) => <FocusDial hours={a.focus_hours} />,
     control: (a, set) => (
       <>
-        <Choices label="Longest stretch" value={FOCUS_PICKS.includes(a.focus_hours) ? a.focus_hours : null} onPick={(focus_hours) => set({ focus_hours })} choices={FOCUS_PICKS.map((v) => ({ value: v, title: hoursLabel(v), note: FOCUS_NOTES[v], glyph: <LengthGlyph hours={v} />, hue: "var(--px-work)" }))} />
+        <Choices label="Longest stretch" value={FOCUS_PICKS.includes(a.focus_hours) ? a.focus_hours : null} onPick={(focus_hours) => set({ focus_hours })} choices={FOCUS_PICKS.map((v) => ({ value: v, title: hoursWords(v).replace(/^an/, "An"), note: FOCUS_NOTES[v] }))} />
         <Other value={a.focus_hours} picked={FOCUS_PICKS.includes(a.focus_hours)} read={readHours} say={hoursLabel} min={0.5} max={8} example="2.5h or 100 min" ask="Another length" label="Longest stretch, typed" onPick={(focus_hours) => set({ focus_hours })} />
       </>
     ),
   },
   deadline: {
-    say: () => "An essay's due Friday at 5pm. When do you like to be done with it?",
+    kicker: "Deadlines",
+    title: () => "An essay's due Friday at 5pm. When do you want it done?",
+    note: () => "Exam prep always goes in the days just before the exam.",
+    picture: (a) => <DeadlineLine early={a.finish_early_days} />,
     control: (a, set) => (
       <>
-        <Choices label="Finish work" value={[0, 1, 2, 3].includes(a.finish_early_days) ? a.finish_early_days : null} onPick={(finish_early_days) => set({ finish_early_days })} choices={[0, 1, 2, 3].map((d) => ({ value: d, title: EARLY_TITLES[d], note: EARLY_NOTES[d], glyph: <EarlyGlyph days={d} />, hue: "var(--px-work)" }))} />
+        <Choices label="Finish work" value={[0, 1, 2, 3].includes(a.finish_early_days) ? a.finish_early_days : null} onPick={(finish_early_days) => set({ finish_early_days })} choices={[0, 1, 2, 3].map((d) => ({ value: d, title: EARLY_TITLES[d], note: EARLY_NOTES[d] }))} />
         <Other value={a.finish_early_days} picked={[0, 1, 2, 3].includes(a.finish_early_days)} read={readDays} say={(d) => `${d} day${d === 1 ? "" : "s"} early`} min={0} max={7} example="5 days" ask="Further ahead" label="Days early, typed" onPick={(finish_early_days) => set({ finish_early_days })} />
       </>
     ),
-    outro: () => 1500,
   },
   evening: {
-    say: (a) => (a.evening_free <= 0 ? "Evenings. None kept free? Then I may plan work right up to bedtime." : "Evenings. How much of each one stays yours, no work?"),
+    kicker: "Evenings",
+    title: () => "How much of each evening stays yours?",
+    note: () => "Time Friday keeps clear of work when it can. A deadline can still need it.",
+    picture: (a) => <Evening a={a} />,
     control: (a, set) => (
       <div className="st-group">
-        <HourBar label="Of each weekday evening" value={a.evening_free} min={0} segments={ALL_EVENING} names={{ 0: "None", [ALL_EVENING]: "All of it" }} hue="var(--px-free)" say={hoursLabel} onPick={(evening_free) => set({ evening_free })} />
+        <HourBar label="Of each weekday evening" value={a.evening_free} min={0} segments={ALL_EVENING} names={{ 0: "None", [ALL_EVENING]: "All of it" }} hue="var(--ob-free)" say={hoursLabel} onPick={(evening_free) => set({ evening_free })} />
         {a.evening_free > 0 && (
-          <span className="st-chips" role="radiogroup" aria-label="Evenings start at">
+          <div className="st-chips" role="radiogroup" aria-label="Evenings start at">
             <span className="st-label">From</span>
             {EVENINGS.map((t) => (
               <button key={t} type="button" role="radio" aria-checked={a.evening_from === t} className="st-chip" onClick={() => set({ evening_from: t })}>
                 {ampm(t)}
               </button>
             ))}
-          </span>
+          </div>
         )}
       </div>
     ),
   },
   weekend: {
-    say: (a) => (a.weekend_free >= ALL_WEEKEND ? "And weekends are all yours. Nice." : "And on weekend days, how much is yours?"),
-    control: (a, set) => <HourBar label="Of each weekend day" value={a.weekend_free} min={0} segments={ALL_WEEKEND} names={{ 0: "None", [ALL_WEEKEND]: "All of it" }} hue="var(--px-free)" say={hoursLabel} onPick={(weekend_free) => set({ weekend_free })} />,
-  },
-  bed: {
-    say: () => "It's getting late. When do you go to bed?",
-    control: (a, set) => {
-      const different = a.weekend_wake !== a.wake || a.weekend_bedtime !== a.bedtime
-      return (
-        <div className="st-group">
-          <TimeCard glyph={<Sprite art={MOON} scale={3} />} hue="var(--px-class)" label="Bed at" value={a.bedtime} expect={{ hours: SLEEP_HOURS.bed }} onPick={(bedtime) => set(different ? { bedtime } : { bedtime, weekend_bedtime: bedtime })} />
-          <label className="st-toggle">
-            <Switch on={different} onToggle={() => set(different ? { weekend_wake: a.wake, weekend_bedtime: a.bedtime } : { weekend_wake: shift(a.wake, 90), weekend_bedtime: shift(a.bedtime, 60) })} label="Weekends are different" />
-            Weekends are different
-          </label>
-          {different && (
-            <div className="in-pair">
-              <TimeCard glyph={<Sprite art={SUN} scale={2} />} hue="var(--px-gold)" label="Up at, weekends" value={a.weekend_wake} expect={{ hours: SLEEP_HOURS.up }} onPick={(weekend_wake) => set({ weekend_wake })} />
-              <TimeCard glyph={<Sprite art={MOON} scale={3} />} hue="var(--px-class)" label="Bed at, weekends" value={a.weekend_bedtime} expect={{ hours: SLEEP_HOURS.bed }} onPick={(weekend_bedtime) => set({ weekend_bedtime })} />
-            </div>
-          )}
-        </div>
-      )
-    },
-    outro: () => 2300,
-    go: "Good night",
+    kicker: "Weekends",
+    title: () => "And of each weekend day?",
+    picture: (a) => <Weekend a={a} />,
+    control: (a, set) => <HourBar label="Of each weekend day" value={a.weekend_free} min={0} segments={ALL_WEEKEND} names={{ 0: "None", [ALL_WEEKEND]: "All of it" }} hue="var(--ob-free)" say={hoursLabel} onPick={(weekend_free) => set({ weekend_free })} />,
   },
   brief: {
-    say: () => "Morning! Want a quick brief like this each day? What's planned, and what matters most.",
+    kicker: "Mornings",
+    title: () => "Start each day with a brief?",
+    note: () => "When you first open Friday each morning: what's planned, and what matters most.",
+    picture: (a) => <BriefCard on={a.brief} />,
     control: (a, set) => (
       <Choices
         one
@@ -229,133 +271,70 @@ const STEPS: Record<string, Step> = {
         value={a.brief ? "on" : "off"}
         onPick={(v) => set({ brief: v === "on" })}
         choices={[
-          { value: "on", title: "Yes, every morning", note: "A minute's read, then your plan.", glyph: <Sprite art={SUN} scale={2} />, hue: "var(--px-gold)" },
-          { value: "off", title: "No thanks", note: "Straight to your plan. It's in Settings if you change your mind.", glyph: <Icon name="arrow-right" size={22} />, hue: "var(--px-class)" },
+          { value: "on", title: "Yes, every morning", note: "A minute's read, then your plan." },
+          { value: "off", title: "No thanks", note: "Straight to your plan. It's in Settings if you change your mind." },
         ]}
       />
     ),
-    outro: (a) => (a.brief ? 1900 : 1000),
   },
-  ai: { say: () => "Let's pack your bag. Which AI should I read your syllabi and mail with? You can skip this.", control: () => <AiConnect compact />, wide: true },
-  bring: { say: () => "Where are your classes and deadlines now? Bring them in and I'll take it from there.", control: () => <BringIn />, wide: true },
+  ai: {
+    kicker: "Your AI",
+    title: () => "Which AI should Friday read with?",
+    note: () => "It reads syllabi and mail and understands what you type. Friday plans without one, so you can skip this.",
+    control: () => <AiConnect compact />,
+    wide: true,
+  },
+  bring: {
+    kicker: "Bring things in",
+    title: () => "Where are your classes and deadlines now?",
+    note: () => "Each happens right away and is optional; they're all in Settings → Integrations too.",
+    control: () => <BringIn />,
+    wide: true,
+  },
   calendars: {
-    say: () => "What should I do with each of your calendars?",
+    kicker: "Your calendars",
+    title: () => "What should Friday do with each calendar?",
+    note: () => "Plan around its events, just show them, or hide it.",
     control: (a, set, ctx) => (
       <div className="st-group">
-        {(a.calendars ?? []).map((c) => (
-          <CalendarCard key={c.name} c={c} events={ctx.events[c.name] ?? 0} i={0} onChange={(change) => set({ calendars: (a.calendars ?? []).map((x) => (x.name === c.name ? { ...x, ...change } : x)) })} />
+        {(a.calendars ?? []).map((c, i) => (
+          <CalendarCard key={c.name} c={c} events={ctx.events[c.name] ?? 0} i={i} onChange={(change) => set({ calendars: (a.calendars ?? []).map((x) => (x.name === c.name ? { ...x, ...change } : x)) })} />
         ))}
       </div>
     ),
     wide: true,
   },
-  week: {
-    say: () => "Here's your week. Anything look off? Click it to change it.",
-    control: (a, _set, ctx) => (
-      <div className="in-badges">
-        {badgesOf(a).map((b) => (
-          <button key={b.label} type="button" className="in-badge" onClick={() => ctx.go(b.step)}>
-            <span>{b.label}</span>
-            <b>{b.value}</b>
-          </button>
-        ))}
-      </div>
-    ),
-    go: "Start planning",
-  },
+  build: { title: () => "Building your week…" },
+  reveal: { kicker: "Your week", title: () => "Here's your week.", go: "Continue" },
+  start: { title: () => "Ready when you are.", note: () => "Hold to start planning." },
 }
 
-const still = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-
-/** The size the screen is drawn at: whole pixels when there's room, so the pixel art stays sharp. */
-export function screenScale(width: number, height: number): number {
-  const s = Math.min(width / W, height / H)
-  return s >= 2 ? Math.floor(s) : Math.max(1, s)
-}
+const BUILDING = ["Reading your nights", "Keeping your evenings", "Fitting work around your classes", "Leaving room before deadlines"]
 
 export function SetupDialog({ onClose }: { onClose: () => void }) {
-  const at = useRef("title")
+  const at = useRef("hello")
   // Read again every few seconds while things are brought in: a calendar connected then is asked about next.
   const setup = useQuery({ queryKey: ["setup"], queryFn: () => query("setup"), refetchInterval: () => (at.current === "bring" ? 3000 : false) }).data
   const save = useCommand("setup_save", { label: (o) => o.result.message ?? "Saved" })
-  const ai = useAi()
-  const feeds = (useInbox().data?.sources ?? []).length
   const [draft, setDraft] = useState<Answers | null>(null)
-  // While building it (`pnpm dev` only), ?step=evening opens the story at that step.
-  const [n, setN] = useState(() => (import.meta.env.DEV ? Math.max(0, STORY.indexOf(new URLSearchParams(location.search).get("step") ?? "")) : 0))
+  // While building it (`pnpm dev` only), ?step=focus opens at that screen.
+  const jump = import.meta.env.DEV ? new URLSearchParams(location.search).get("step") : null
+  const [n, setN] = useState(0)
+  const [back, setBack] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [ending, setEnding] = useState<number | null>(null) // when the step's ending began
-  const [scale, setScale] = useState(3)
-  const canvas = useRef<HTMLCanvasElement>(null)
-  const stage = useRef<HTMLDivElement>(null)
-  const world = useRef<{ step: string; began: number; ending: number | null; a: Answers | null; bag: World["bag"]; mem: Mem; pick?: string; fresh: boolean }>({ step: "title", began: 0, ending: null, a: null, bag: { ai: false, connected: 0 }, mem: { books: [] }, fresh: true })
   useEffect(() => {
     if (!setup) return
     setDraft((d) => (d ? withCalendars(d, setup.answers.calendars as Calendar[]) : (setup.answers as unknown as Answers)))
   }, [setup])
+  useEffect(() => {
+    if (jump && draft) setN(Math.max(0, storyFor(draft).indexOf(jump)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!draft])
   const ids = draft ? storyFor(draft) : STORY
   const id = ids[Math.min(n, ids.length - 1)]
   at.current = id
   const step = STEPS[id]
   const done = !!setup?.done
-  const line = id === "title" && done ? "" : draft ? step.say(draft) : ""
-  const [typed, typing, showAll] = useTyped(line)
-  const [clock, setClock] = useState<string | null>(null)
-  const ready = !!draft && !!setup
-
-  // The world the canvas draws, kept current without redrawing React.
-  const w = world.current
-  if (w.step !== id) {
-    w.fresh = placeOf(w.step) !== placeOf(id)
-    w.step = id
-    w.began = performance.now()
-    w.ending = null
-    if (id === "deadline") w.mem.x = finishAt(4) + 1 // it walks there from Monday
-    else w.mem.x = undefined
-  }
-  w.a = draft
-  w.ending = ending
-  w.bag = { ai: ai.ready, connected: feeds + (draft?.calendars?.length ?? 0) }
-  w.pick = draft?.brief ? "on" : "off"
-
-  // The screen: a frame a refresh, drawn from the world above, once there's a canvas to draw on.
-  useEffect(() => {
-    const ctx = canvas.current?.getContext("2d")
-    if (!ctx) return
-    const g = new G(ctx)
-    const calm = still()
-    let last = performance.now()
-    let raf = 0
-    let shown = ""
-    const frame = (now: number) => {
-      const s = world.current
-      if (s.a) {
-        const view: World = { step: s.step, t: now - s.began, done: s.ending === null ? null : now - s.ending, now, dt: Math.min(100, now - last), a: s.a, still: calm, bag: s.bag, pick: s.pick, mem: s.mem, fresh: s.fresh }
-        paint(g, view)
-        const c = clockOf(view)
-        const said = c ? `${c.day} ${ampm(clockText(c.minutes))}` : ""
-        if (said !== shown) setClock((shown = said) || null)
-      }
-      last = now
-      raf = requestAnimationFrame(frame)
-    }
-    raf = requestAnimationFrame(frame)
-    return () => cancelAnimationFrame(raf)
-  }, [ready])
-
-  // Whole-pixel scaling to the room there is, the answer's box below.
-  useLayoutEffect(() => {
-    const fit = () => {
-      const box = stage.current
-      if (!box) return
-      const room = step.wide ? 0.46 : 0.6
-      setScale(screenScale(box.clientWidth - 32, box.clientHeight * room - 60))
-    }
-    fit()
-    window.addEventListener("resize", fit)
-    return () => window.removeEventListener("resize", fit)
-  }, [step.wide, ready])
-
   const finish = async (answers: Answers) => {
     setSaving(true)
     const out = await save(answers)
@@ -363,40 +342,26 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
     if (out) onClose()
   }
   const to = (next: number) => {
-    setEnding(null)
+    setBack(next < n)
     setN(Math.max(0, Math.min(ids.length - 1, next)))
   }
-  const last = n >= ids.length - 1
-  const next = () => {
-    if (!draft) return
-    if (ending !== null) return to(n + 1) // the ending playing: on at once
-    if (last) return finish(draft)
-    const length = still() ? 0 : (step.outro?.(draft) ?? 0)
-    if (!length) return to(n + 1)
-    setEnding(performance.now())
-  }
-  // The ending plays, then the next step.
+  const next = () => to(n + 1)
+  // Building the week takes a moment, as Opal's report does, then shows it.
   useEffect(() => {
-    if (ending === null || !draft) return
-    const timer = setTimeout(() => to(n + 1), step.outro?.(draft) ?? 0)
+    if (id !== "build") return
+    const timer = setTimeout(next, 3400)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ending])
+  }, [id])
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
       if (e.key === "Escape" && done) return onClose()
-      const own = target?.closest("input, textarea, select, a, [contenteditable], .st-step, .in-own")
-      if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && draft && !own && !target?.closest("[role=slider], [role=radio]") && (id === "wake" || id === "bed")) {
-        e.preventDefault()
-        const by = e.key === "ArrowLeft" ? -15 : 15
-        setDraft(id === "wake" ? { ...draft, wake: shift(draft.wake, by), ...(draft.weekend_wake === draft.wake ? { weekend_wake: shift(draft.wake, by) } : {}) } : { ...draft, bedtime: shift(draft.bedtime, by), ...(draft.weekend_bedtime === draft.bedtime ? { weekend_bedtime: shift(draft.bedtime, by) } : {}) })
-        return
-      }
-      if (e.key !== "Enter" || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || saving || own) return
+      if (e.key !== "Enter" || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || saving) return
+      if (target?.closest("input, textarea, select, button, a, [contenteditable]")) return // they answer Return themselves
+      if (id === "build" || id === "start") return
       e.preventDefault()
-      if (typing) showAll() // as a game's text box: the first Return shows the whole line
-      else next()
+      next()
     }
     window.addEventListener("keydown", key)
     return () => window.removeEventListener("keydown", key)
@@ -404,71 +369,161 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
   if (!draft || !setup) return null
   const set = (change: Partial<Answers>) => setDraft({ ...draft, ...change })
   const ctx: Ctx = { events: setup.events ?? {}, go: (s) => to(ids.indexOf(s)) }
-  const talking = typing && Math.floor(typed.length / 3) % 2 === 0
+  const title = id === "hello" && done ? "Fit Friday to your week again." : step.title(draft)
+  const note = id === "hello" && done ? "Your answers are filled in: change what's different." : step.note?.(draft)
+  const asking = !["hello", "build", "reveal", "start"].includes(id)
   return (
-    <div ref={stage} className="st-stage in-stage" role="dialog" aria-modal="true" aria-label="Set up Friday" data-wide={step.wide || undefined}>
-      <header className="st-top">
-        <Steps at={n} of={ids.length} done={last} />
-        <span className="st-count">
-          {n + 1}/{ids.length}
-        </span>
-        <button type="button" className="st-skip in-own" onClick={() => (done ? onClose() : finish(setup.answers as unknown as Answers))} disabled={saving}>
-          {done ? "Cancel" : "Skip: keep Friday's guesses"}
+    <div className="st-stage ob-stage" role="dialog" aria-modal="true" aria-labelledby="ob-title" data-screen={id}>
+      <header className="ob-top">
+        {n > 0 && id !== "build" ? (
+          <button type="button" className="ob-back" onClick={() => to(n - 1)} aria-label="Back" disabled={saving}>
+            <Icon name="caret-left" size={20} />
+          </button>
+        ) : (
+          <span className="ob-back" />
+        )}
+        <div className="ob-progress" role="progressbar" aria-valuemin={0} aria-valuemax={ids.length - 1} aria-valuenow={n} aria-label="Setup">
+          <i style={vars({ "--p": n / (ids.length - 1) })} />
+        </div>
+        <button type="button" className="ob-skip" onClick={() => (done ? onClose() : finish(setup.answers as unknown as Answers))} disabled={saving}>
+          {done ? "Cancel" : "Skip"}
         </button>
       </header>
-      <div className="in-screen" style={{ width: W * scale, height: H * scale }} onClick={() => (typing ? showAll() : id === "title" ? next() : undefined)}>
-        <canvas ref={canvas} width={W} height={H} aria-hidden />
-        {clock && <span className="in-clock">{clock}</span>}
-      </div>
-      {id !== "title" && (
-        <div className="in-box" style={{ width: Math.max(W * scale, Math.min(720, (stage.current?.clientWidth ?? 800) - 32)) }}>
-          <div className="in-say" onClick={() => typing && showAll()}>
-            <span className="in-face" aria-hidden>
-              <Sprite art={friday(talking ? "happy" : "open", "none").slice(0, 15)} scale={3} />
-            </span>
-            <p className="in-line" aria-live="polite">
-              <span className="sr-only">{line}</span>
-              <span className="px-type" aria-hidden>
-                <span className="px-ghost">{line}</span>
-                <span className="px-typed">
-                  {typed}
-                  {typing && <i className="px-caret" />}
-                </span>
-              </span>
-            </p>
-          </div>
-          {step.control && (
-            <div className="in-control" data-on={!typing || undefined} inert={ending !== null || undefined}>
-              {step.control(draft, set, ctx)}
+      <main className="ob-main">
+        <section key={id} className="ob-screen" data-back={back || undefined} data-wide={step.wide || undefined}>
+          {id === "hello" && (
+            <div className="ob-hero">
+              <Ring size={190} />
             </div>
           )}
-          <div className="in-foot">
-            {n > 1 && (
-              <button type="button" className="st-back in-own" onClick={() => to(n - 1)} disabled={saving}>
-                ◀ Back
-              </button>
-            )}
-            <span className="in-hint">{typing ? "Return: the whole line" : "Return: go on"}</span>
-            <button type="button" className="st-go in-own" onClick={() => (typing ? showAll() : next())} disabled={saving}>
-              {saving ? "Saving…" : ending !== null ? "Skip ▶" : (step.go ?? "Next")}
-              {!saving && ending === null && " ▶"}
-            </button>
-          </div>
-        </div>
-      )}
-      {id === "title" && (
-        <button type="button" className="st-go in-start in-own" onClick={next}>
-          {done ? "Fit Friday to your week again ▶" : "Start ▶"}
-        </button>
+          {step.picture && <div className="ob-picture">{step.picture(draft)}</div>}
+          {id === "build" && <Building />}
+          {(step.kicker || asking) && <div className="ob-kicker ob-in">{step.kicker}</div>}
+          {id !== "build" && (
+            <h1 id="ob-title" className="ob-title" data-big={id === "hello" || id === "start" || undefined}>
+              <Words text={title} />
+            </h1>
+          )}
+          {note && id !== "start" && <p className="ob-note ob-in" style={vars({ "--i": 3 })}>{note}</p>}
+          {step.control && <div className="ob-control">{step.control(draft, set, ctx)}</div>}
+          {id === "reveal" && <Reveal a={draft} go={ctx.go} />}
+          {id === "start" && <Hold onDone={() => finish(draft)} busy={saving} />}
+        </section>
+      </main>
+      {id !== "build" && id !== "start" && (
+        <footer className="ob-foot">
+          <button type="button" className="ob-go" onClick={next} disabled={saving}>
+            {step.go ?? "Continue"}
+          </button>
+        </footer>
       )}
     </div>
   )
 }
 
-/** Minutes past midnight (past 24:00 the next day's) as "HH:MM". */
-function clockText(minutes: number): string {
-  const m = ((Math.round(minutes / 5) * 5) % 1440 + 1440) % 1440
-  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`
+/** A headline arriving a word at a time. */
+function Words({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(" ").map((word, i) => (
+        <span key={`${i}${word}`} className="ob-word" style={vars({ "--i": i })}>
+          {word}{" "}
+        </span>
+      ))}
+    </>
+  )
+}
+
+/** "Building your week…": the ring turning, a bar filling, and what Friday does, ticked off one by one. */
+function Building() {
+  const [done, setDone] = useState(0)
+  useEffect(() => {
+    const timers = BUILDING.map((_, i) => setTimeout(() => setDone(i + 1), 500 + i * 700))
+    return () => timers.forEach(clearTimeout)
+  }, [])
+  return (
+    <div className="ob-building">
+      <Ring size={150} />
+      <h1 id="ob-title" className="ob-title">
+        Building your week…
+      </h1>
+      <div className="ob-bar-line">
+        <i />
+      </div>
+      <ul>
+        {BUILDING.map((line, i) => (
+          <li key={line} data-done={i < done || undefined}>
+            <Icon name={i < done ? "check-circle" : "circle-dashed"} fill={i < done} size={18} />
+            {line}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/** Your week in numbers, counted up, and the week itself building; your answers below, each a way back. */
+function Reveal({ a, go }: { a: Answers; go: (step: string) => void }) {
+  const k = numbersOf(a)
+  const tiles: [ReactNode, string, string][] = [
+    [<Count key="w" to={k.work} suffix="h" />, "of work a week, each with a time", "var(--ob-work)"],
+    [<Count key="f" to={k.free} suffix="h" />, "kept yours, evenings and weekends", "var(--ob-free)"],
+    [<Count key="s" to={k.sleep} suffix="h" />, "of sleep a night, never planned over", "var(--ob-class)"],
+    [k.early ? <Count key="e" to={k.early} suffix={k.early === 1 ? " day" : " days"} /> : "0", "spare before every deadline", "var(--ob-gold)"],
+  ]
+  return (
+    <div className="ob-reveal">
+      <div className="ob-tiles">
+        {tiles.map(([big, line, tint], i) => (
+          <div key={line} className="ob-tile ob-in" style={vars({ "--i": 2 + i, "--tint": tint })}>
+            <b>{big}</b>
+            <span>{line}</span>
+          </div>
+        ))}
+      </div>
+      <WeekGrid a={a} />
+      <div className="ob-answers">
+        {badgesOf(a).map((b) => (
+          <button key={b.label} type="button" onClick={() => go(b.step)} title="Change it">
+            {b.label} <b>{b.value}</b>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Hold to start, as Opal has you commit: the ring fills while you hold, and lets go if you do. Return or Space on the
+ * button starts at once. */
+function Hold({ onDone, busy }: { onDone: () => void; busy: boolean }) {
+  const [holding, setHolding] = useState(false)
+  const [burst, setBurst] = useState(false)
+  const complete = () => {
+    if (burst) return
+    setBurst(true)
+    setTimeout(onDone, 650)
+  }
+  return (
+    <div className="ob-hold" data-holding={holding || undefined} data-burst={burst || undefined}>
+      <button
+        type="button"
+        className="ob-hold-button"
+        disabled={busy}
+        onPointerDown={() => setHolding(true)}
+        onPointerUp={() => setHolding(false)}
+        onPointerLeave={() => setHolding(false)}
+        onPointerCancel={() => setHolding(false)}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), complete())}
+        aria-label="Hold to start planning"
+      >
+        <Ring size={170} />
+        <svg viewBox="0 0 200 200" className="ob-hold-ring">
+          <circle cx="100" cy="100" r="94" pathLength={100} onAnimationEnd={complete} />
+        </svg>
+      </button>
+      <span className="ob-hold-say">{burst ? "Here's your week" : holding ? "Keep holding…" : "Hold to start planning"}</span>
+    </div>
+  )
 }
 
 /** Whether this is the Mac app's window (it names itself in its user agent), where the Mac's calendars come in. */
