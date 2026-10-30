@@ -34,22 +34,57 @@ def test_a_structured_answer_comes_back_as_the_api_would_give_it() -> None:
     assert args[args.index("--tools") + 1] == "" and "--no-session-persistence" in args
 
 
-def test_documents_go_to_the_api_when_there_is_a_key_and_are_refused_without() -> None:
-    class Api:
-        def __init__(self) -> None:
-            self.messages = self
-            self.asked = 0
+class Api:
+    def __init__(self) -> None:
+        self.messages = self
+        self.asked = 0
 
-        def create(self, **_: Any) -> str:
-            self.asked += 1
-            return "from the api"
+    def create(self, **_: Any) -> str:
+        self.asked += 1
+        return "from the api"
 
-    api, seen = Api(), []
-    routed = llm.Routed(llm.CliClient(Path("/bin/claude"), run=answering({"result": "{}"}, seen)), api)
-    pdf = [{"role": "user", "content": [{"type": "document", "source": {"data": "JVBE"}}]}]
-    assert routed.messages.create(model="m", system="s", messages=pdf) == "from the api" and seen == []
-    with pytest.raises(RuntimeError, match="API key"):
-        llm.Routed(llm.CliClient(Path("/bin/claude")), None).messages.create(model="m", system="s", messages=pdf)
+
+def test_a_scan_or_an_image_goes_to_the_command_as_a_file_it_may_only_read() -> None:
+    """29 Oct: "friday should use the cli whenever it can to not use the API": no key for a scan or a photo either."""
+    handed: dict[str, Any] = {}
+
+    def run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess:
+        folder = Path(kwargs["cwd"])
+        handed.update(args=args, input=kwargs["input"], files=sorted(p.name for p in folder.iterdir()), folder=folder)
+        return subprocess.CompletedProcess(args, 0, stdout=json.dumps({"structured_output": {"ok": True}}), stderr="")
+
+    api = Api()
+    routed = llm.Routed(llm.CliClient(Path("/bin/claude"), run=run), api)
+    scan = {"type": "document", "source": {"media_type": "application/pdf", "data": "JVBERi0="}}
+    photo = {"type": "image", "source": {"media_type": "image/jpeg", "data": "/9j/"}}
+    reply = routed.messages.create(model="m", system="s", messages=[{"role": "user", "content": [scan, photo]}],
+                                   output_config={"format": {"schema": {"type": "object"}}})  # fmt: skip
+    assert reply.content[0].text == '{"ok": true}' and api.asked == 0  # no key, no API
+    assert handed["files"] == ["document-1.pdf", "image-2.jpg"]
+    args = handed["args"]
+    assert args[args.index("--tools") + 1] == "Read" and args[args.index("--allowedTools") + 1] == "Read"
+    assert "--restricted" in args and "--strict-mcp-config" in args
+    assert str(handed["folder"] / "document-1.pdf") in handed["input"] and "Read tool" in handed["input"]
+    assert not handed["folder"].exists()  # the files are gone once it has answered
+
+
+def test_text_alone_gives_the_command_no_tools_at_all() -> None:
+    seen: list[list[str]] = []
+    llm.CliClient(Path("/bin/claude"), run=answering({"result": "{}"}, seen)).messages.create(
+        model="m", system="s", messages=[{"role": "user", "content": "Ping"}]
+    )
+    assert seen[0][seen[0].index("--tools") + 1] == "" and "--restricted" not in seen[0]
+
+
+def test_the_api_answers_only_when_the_command_fails_and_there_is_a_key() -> None:
+    def fail(args: list[str], **_: Any) -> subprocess.CompletedProcess:
+        return subprocess.CompletedProcess(args, 1, stdout="", stderr="Not logged in")
+
+    api = Api()
+    ask = {"model": "m", "system": "s", "messages": [{"role": "user", "content": "Ping"}]}
+    assert llm.Routed(llm.CliClient(Path("/bin/claude"), run=fail), api).messages.create(**ask) == "from the api"
+    with pytest.raises(RuntimeError, match="Not logged in"):
+        llm.Routed(llm.CliClient(Path("/bin/claude"), run=fail), None).messages.create(**ask)
 
 
 def test_a_failing_command_says_why() -> None:

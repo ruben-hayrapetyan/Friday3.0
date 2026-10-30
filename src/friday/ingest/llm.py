@@ -1,10 +1,16 @@
 """The AI Friday reads with (DESIGN §22.5, COMBINED.md 34), chosen in Settings → Integrations → AI (`llm.provider`):
 
 - Claude: the `claude` command first, signed in as you, the way personal's Mac app used it, so no key is needed while
-  the server runs on your Mac; and the Anthropic API when a key is set, for PDFs and images (which the command can't
-  be handed here) and wherever the command isn't installed.
-- OpenAI, with its API key (28 Oct: "check whether friday only works with claude or whether it is compatible with
-  OpenAI, or any other agent").
+  the server runs on your Mac: PDFs and images too, handed to it as files it may only read (`CliClient`); the Anthropic
+  API when a key is set and the command fails, and wherever it isn't installed.
+- OpenAI: the `codex` command when it's installed, signed in with ChatGPT (`CodexClient`); else its API key (28 Oct:
+  "check whether friday only works with claude or whether it is compatible with OpenAI, or any other agent").
+- Gemini: Google's command when it's installed, signed in with your Google account: Antigravity's `agy`, where
+  Google moved a Google account's own use in 2026, or the older `gemini` command (`GeminiCliClient`); else its key.
+
+29 Oct: "friday should use the cli whenever it can to not use the API... pasting in the api key seems pointless for
+some things". A provider with a command uses it first, its key only behind it (`Routed`). Grok, Meta's Muse, another
+service and a model on this Mac have no command of their own: a key or an address, as before.
 - Any other service that speaks OpenAI's chat API at an address of its own (`llm.base_url`): OpenRouter, Ollama, LM
   Studio, Groq, Gemini's OpenAI endpoint…; a key only if it asks for one.
 
@@ -30,11 +36,13 @@ from typing import Any
 import anthropic
 import httpx
 
-from friday.core.integrations import PROVIDERS
+from friday.core.integrations import KNOWN_DEFAULTS, PROVIDERS
 from friday.core.paths import secrets_path
 from friday.ingest import local_models
 
-CANDIDATES = (Path.home() / ".local/bin/claude", Path("/opt/homebrew/bin/claude"), Path("/usr/local/bin/claude"))
+# Where a command line tool installs itself, for a server started without your shell's PATH (the Mac app's).
+FOLDERS = (Path.home() / ".local/bin", Path("/opt/homebrew/bin"), Path("/usr/local/bin"))
+CANDIDATES = tuple(folder / "claude" for folder in FOLDERS)
 TIMEOUT_S = 180
 OPENAI_URL = PROVIDERS["openai"].address
 # Each provider's section of secrets.toml and its variable (core/integrations.PROVIDERS).
@@ -69,6 +77,42 @@ def cli_path() -> Path | None:
     return Path(found) if found else None
 
 
+def command(names: tuple[str, ...], variable: str) -> Path | None:
+    """The first of a provider's commands installed here, or the one `variable` names ("none": as if none were)."""
+    chosen = os.environ.get(variable)
+    if chosen is not None:
+        return named_cli(chosen)
+    for name in names:
+        for path in (folder / name for folder in FOLDERS):
+            if path.exists() and os.access(path, os.X_OK):
+                return path
+        found = shutil.which(name)
+        if found:
+            return Path(found)
+    return None
+
+
+def codex_path() -> Path | None:
+    """OpenAI's `codex` command, or the one `FRIDAY_CODEX` names."""
+    return command(("codex",), "FRIDAY_CODEX")
+
+
+def gemini_path() -> Path | None:
+    """Google's command: Antigravity's `agy` first, else `gemini`; or the one `FRIDAY_GEMINI` names."""
+    return command(("agy", "gemini"), "FRIDAY_GEMINI")
+
+
+def command_for(provider: str) -> Path | None:
+    """The command a provider is asked through when it's installed; None for one without a command."""
+    if provider == "claude":
+        return cli_path()
+    if provider == "openai":
+        return codex_path()
+    if provider == "gemini":
+        return gemini_path()
+    return None
+
+
 def named_cli(chosen: str) -> Path | None:
     """`FRIDAY_CLAUDE`: another `claude` command, or "none" for a Friday that acts as if there were none (a fresh
     user without Claude, scripts/fresh_user.sh --no-claude)."""
@@ -77,9 +121,9 @@ def named_cli(chosen: str) -> Path | None:
 
 
 def client(settings: Any = None) -> Any | None:
-    """The AI `settings` (`llm`) choose; None when it can't be asked yet (`missing` says why). For Claude: the command
-    when installed (and the API behind it for documents), else the API. Any other speaks OpenAI's chat API: OpenAI
-    itself, Gemini, Grok, Muse, a service at an address you give, or an open model Ollama runs on this Mac."""
+    """The AI `settings` (`llm`) choose; None when it can't be asked yet (`missing` says why). Claude, OpenAI and
+    Gemini: their command when installed (the API behind it when there's a key), else the API. The others speak
+    OpenAI's chat API: Grok, Muse, a service at an address you give, or an open model Ollama runs on this Mac."""
     provider = getattr(settings, "provider", "claude")
     if provider == "local":
         model = getattr(settings, "model", "")
@@ -90,9 +134,13 @@ def client(settings: Any = None) -> Any | None:
     if provider != "claude":
         info, key = PROVIDERS[provider], api_key(provider)
         address = address_of(settings)
-        if (info.needs_key and not key) or not address or not getattr(settings, "model", ""):
-            return None
-        return OpenAIClient(address, key, "openai" if provider == "openai" else "compatible")
+        api = None
+        if not (info.needs_key and not key) and address and getattr(settings, "model", ""):
+            api = OpenAIClient(address, key, "openai" if provider == "openai" else "compatible")
+        path = command_for(provider)
+        if path is None:
+            return api
+        return Routed(CodexClient(path) if provider == "openai" else GeminiCliClient(path), api)
     key = api_key()
     api = anthropic.Anthropic(api_key=key) if key else None
     path = cli_path()
@@ -128,8 +176,10 @@ def missing(settings: Any = None) -> str:
         return f"Name the model the service runs {where}"
     if provider != "claude":
         name = {"openai": "OpenAI"}.get(provider, PROVIDERS[provider].name)
+        tool = {"openai": ", or install the codex command and sign in with ChatGPT",
+                "gemini": ", or install Google's agy command and sign in"}.get(provider, "")  # fmt: skip
         if not api_key(provider):
-            return f"No {name} API key: add one {where}"
+            return f"No {name} API key: add one {where}{tool}"
         return f"Choose a {name} model {where}"
     return (
         "No AI: install Claude Code (the claude command), add an Anthropic API key, or choose another AI in"
@@ -141,9 +191,10 @@ def describe(settings: Any = None) -> dict[str, Any]:
     """What the app shows of the AI: which, what it's called, and whether it can be asked."""
     provider = getattr(settings, "provider", "claude")
     has_key = (api_key() if provider == "claude" else api_key(provider)) is not None
-    cli = provider == "claude" and cli_path() is not None
-    ready = (cli or has_key) if provider == "claude" else client(settings) is not None
-    return {"provider": provider, "name": NAMES[provider], "key": has_key, "cli": cli, "ready": ready,
+    path = command_for(provider)
+    ready = path is not None or (has_key if provider == "claude" else client(settings) is not None)
+    return {"provider": provider, "name": NAMES[provider], "key": has_key, "cli": path is not None,
+            "command": path.name if path else None, "ready": ready,
             "base_url": getattr(settings, "base_url", None), "note": PROVIDERS[provider].note or None,
             "why": None if ready else missing(settings)}  # fmt: skip
 
@@ -331,16 +382,20 @@ def json_in(text: str) -> str:
 
 
 class Routed:
-    """The command for text, the API for PDFs and images (when there is a key)."""
+    """A provider's command first, for everything it can be handed; its API behind it (when there's a key), should the
+    command fail: not signed in, a file it can't take, a model it doesn't know."""
 
-    def __init__(self, cli: "CliClient", api: Any | None):
+    def __init__(self, cli: Any, api: Any | None):
         self.cli, self.api = cli, api
         self.messages = self
 
     def create(self, **request: Any) -> Any:
-        if self.api is not None and has_files(request.get("messages", [])):
+        try:
+            return self.cli.messages.create(**request)
+        except (RuntimeError, ValueError, OSError, subprocess.SubprocessError):
+            if self.api is None:
+                raise
             return self.api.messages.create(**request)
-        return self.cli.messages.create(**request)
 
 
 def has_files(messages: list[dict[str, Any]]) -> bool:
@@ -351,9 +406,67 @@ def has_files(messages: list[dict[str, Any]]) -> bool:
     )
 
 
+EXTENSIONS = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp",
+              "application/pdf": ".pdf"}  # fmt: skip
+
+
+def as_files(messages: list[dict[str, Any]], folder: Path) -> tuple[list[dict[str, Any]], list[Path]]:
+    """The messages with each image and PDF written into `folder` and named in the text where it was, for a command
+    that reads files rather than taking them inline; and the files."""
+    files: list[Path] = []
+    out = []
+    for m in messages:
+        content = m.get("content")
+        if not isinstance(content, list):
+            out.append(m)
+            continue
+        blocks = []
+        for block in content:
+            kind = block.get("type") if isinstance(block, dict) else None
+            if kind not in ("image", "document"):
+                blocks.append(block)
+                continue
+            source = block.get("source", {})
+            media = source.get("media_type") or ("application/pdf" if kind == "document" else "image/png")
+            path = folder / f"{'image' if kind == 'image' else 'document'}-{len(files) + 1}{EXTENSIONS.get(media, '')}"
+            path.write_bytes(base64.b64decode(source.get("data", "")))
+            files.append(path)
+            blocks.append({"type": "text", "text": f"The attached {'image' if kind == 'image' else 'PDF'}: {path}"})
+        out.append(m | {"content": blocks})
+    return out, files
+
+
+def usage_of(found: Any) -> SimpleNamespace:
+    """Tokens as a command reports them, where it does; nothing counted where it doesn't."""
+    found = found if isinstance(found, dict) else {}
+    take = lambda *keys: next((int(found[k]) for k in keys if isinstance(found.get(k), int | float)), 0)  # noqa: E731
+    return SimpleNamespace(input_tokens=take("input_tokens", "prompt_tokens"),
+                           output_tokens=take("output_tokens", "completion_tokens", "candidates_tokens"))  # fmt: skip
+
+
+def answered(text: str, usage: Any = None) -> SimpleNamespace:
+    return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)], usage=usage_of(usage))
+
+
+def asked_for_json(system: str, schema: dict[str, Any] | None) -> str:
+    """The system prompt, with the JSON Schema spelled out for a command that can't be held to one."""
+    if schema is None:
+        return system
+    return f"{system}\n\nAnswer with one JSON object only, matching this JSON Schema:\n{json.dumps(schema)}"
+
+
+def explicit(model: str | None) -> str | None:
+    """A model you named: one of Friday's own defaults (the API's names) is left to the command, which knows its own."""
+    return model if model and model not in KNOWN_DEFAULTS else None
+
+
 class CliClient:
     """The `claude` command in print mode, standing in for `anthropic.Anthropic().messages`: no tools, no MCP servers
-    and no saved session, the answer held to the JSON schema asked for (personal's parse.py did the same)."""
+    and no saved session, the answer held to the JSON schema asked for (personal's parse.py did the same).
+
+    An image, or a PDF with no text in it (a scan), goes over as a file in a folder of its own, the command given only
+    its Read tool and only that folder to read in (`--restricted`), so it needs no key either (29 Oct: "friday should
+    use the cli whenever it can to not use the API")."""
 
     def __init__(self, path: Path, run: Any = subprocess.run):
         self.path, self.run = path, run
@@ -361,34 +474,128 @@ class CliClient:
 
     def create(self, *, model: str, system: str, messages: list[dict[str, Any]], output_config: dict | None = None,
                **_: Any) -> Any:  # fmt: skip
-        messages = [pdfs_as_text(m) for m in messages]  # the command takes text: a PDF's is read out here
-        if has_files(messages):
-            raise RuntimeError(
-                "Images (and PDFs with no text in them) need an Anthropic API key (Settings → Integrations)"
-            )
-        prompt = "\n\n".join(text_of(m.get("content")) for m in messages if m.get("role") == "user")
-        # The prompt goes in on stdin: as an argument, one starting with "-" (a list of event titles, "- Poker night")
-        # was read as an option and every call failed, and a long syllabus could pass the argument limit.
-        args = [str(self.path), "-p", "--model", model, "--output-format", "json", "--system-prompt", system,
-                "--tools", "", "--strict-mcp-config", "--no-session-persistence"]  # fmt: skip
-        schema = (output_config or {}).get("format", {}).get("schema")
-        if schema is not None:
-            args += ["--json-schema", json.dumps(schema)]
-        folder = Path(tempfile.gettempdir()) / "friday-claude"
-        folder.mkdir(exist_ok=True)
-        out = self.run(args, input=prompt, capture_output=True, text=True, timeout=TIMEOUT_S, cwd=folder)
+        messages = [pdfs_as_text(m) for m in messages]  # a PDF with text in it goes over as its text
+        with tempfile.TemporaryDirectory(prefix="friday-claude-") as here:
+            messages, files = as_files(messages, Path(here))
+            prompt = "\n\n".join(text_of(m.get("content")) for m in messages if m.get("role") == "user")
+            if files:
+                prompt += "\n\nRead each attached file named above with the Read tool before answering."
+            # The prompt goes in on stdin: as an argument, one starting with "-" (a list of event titles, "- Poker
+            # night") was read as an option and every call failed, and a long syllabus could pass the argument limit.
+            tools = ["--restricted", "--tools", "Read", "--allowedTools", "Read"] if files else ["--tools", ""]
+            args = [str(self.path), "-p", "--model", model, "--output-format", "json", "--system-prompt", system,
+                    *tools, "--strict-mcp-config", "--no-session-persistence"]  # fmt: skip
+            schema = (output_config or {}).get("format", {}).get("schema")
+            if schema is not None:
+                args += ["--json-schema", json.dumps(schema)]
+            out = self.run(args, input=prompt, capture_output=True, text=True, timeout=TIMEOUT_S, cwd=here)
         if out.returncode != 0:
             raise RuntimeError(f"claude exited {out.returncode}: {(out.stderr or out.stdout).strip()[:300]}")
         envelope = json.loads(out.stdout)
         structured = envelope.get("structured_output")
         text = json.dumps(structured) if structured is not None else str(envelope.get("result", ""))
-        usage = envelope.get("usage") or {}
-        return SimpleNamespace(
-            content=[SimpleNamespace(type="text", text=text)],
-            usage=SimpleNamespace(
-                input_tokens=int(usage.get("input_tokens", 0)), output_tokens=int(usage.get("output_tokens", 0))
-            ),
-        )
+        return answered(text, envelope.get("usage"))
+
+
+class CodexClient:
+    """OpenAI's `codex` command (signed in with ChatGPT, or its own key) standing in for the messages API: `codex exec`
+    with the prompt on stdin, in a folder of its own with a read-only sandbox, no saved session and none of your
+    Codex config or rules (MCP servers, instructions), and the last message read from a file (`-o`). Images go with
+    `--image`; a PDF with text goes over as its text, one without (a scan) it can't be handed. The answer is held to
+    the schema with `--output-schema`; should Codex refuse the schema (its strict mode wants every field required),
+    it's asked once more for JSON in words.
+
+    Flags as documented for `codex exec` (developers.openai.com/codex/noninteractive; openai/codex
+    codex-rs/exec/src/cli.rs, Oct 2026)."""
+
+    def __init__(self, path: Path, run: Any = subprocess.run):
+        self.path, self.run = path, run
+        self.messages = self
+
+    def create(self, *, model: str, system: str, messages: list[dict[str, Any]], output_config: dict | None = None,
+               **_: Any) -> Any:  # fmt: skip
+        messages = [pdfs_as_text(m) for m in messages]
+        schema = (output_config or {}).get("format", {}).get("schema")
+        with tempfile.TemporaryDirectory(prefix="friday-codex-") as here:
+            folder = Path(here)
+            messages, files = as_files(messages, folder)
+            if any(f.suffix == ".pdf" for f in files):
+                raise RuntimeError("The codex command can't be handed a scanned PDF (no text in it): it needs a key")
+            text = "\n\n".join(text_of(m.get("content")) for m in messages if m.get("role") == "user")
+            said = self.ask(folder, f"{system}\n\n{text}", explicit(model), schema, files)
+            if said is None:  # the schema turned down: once more, the JSON asked for in words
+                said = self.ask(folder, f"{asked_for_json(system, schema)}\n\n{text}", explicit(model), None, files)
+        return answered(json_in(said or "") if schema is not None else (said or "").strip())
+
+    def ask(self, folder: Path, prompt: str, model: str | None, schema: dict | None, images: list[Path]) -> str | None:
+        """One `codex exec`; None when it turned the schema down (to ask again without it)."""
+        last = folder / "answer.txt"
+        args = [str(self.path), "exec", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config",
+                "--ignore-rules", "--sandbox", "read-only", "--color", "never", "-o", str(last)]  # fmt: skip
+        if model:
+            args += ["--model", model]
+        if schema is not None:
+            (folder / "schema.json").write_text(json.dumps(schema))
+            args += ["--output-schema", str(folder / "schema.json")]
+        for image in images:
+            args += ["--image", str(image)]
+        out = self.run([*args, "-"], input=prompt, capture_output=True, text=True, timeout=TIMEOUT_S, cwd=folder)
+        if out.returncode != 0:
+            said = (out.stderr or out.stdout).strip()
+            if schema is not None and "schema" in said.lower():
+                return None
+            raise RuntimeError(f"codex exited {out.returncode}: {said[-300:]}")
+        return last.read_text() if last.exists() else out.stdout
+
+
+class GeminiCliClient:
+    """Google's command standing in for the messages API, signed in with your Google account. Antigravity's `agy`
+    (where Google moved a Google account's own use of its CLI in 2026; antigravity.google/docs/cli/headless): `-p`
+    with the prompt, `--output-format json`, the answer held to `--json-schema`. The older `gemini` command
+    (google-gemini/gemini-cli docs/cli/headless.md, cli-reference.md): the text on stdin with `-p` appended,
+    `--output-format json`, read-only (`--approval-mode plan`), the schema spelled out in words. Both run in a folder of
+    their own; neither can be handed an image or a scanned PDF here (no flag for it in headless mode)."""
+
+    def __init__(self, path: Path, run: Any = subprocess.run):
+        self.path, self.run = path, run
+        self.messages = self
+
+    def create(self, *, model: str, system: str, messages: list[dict[str, Any]], output_config: dict | None = None,
+               **_: Any) -> Any:  # fmt: skip
+        messages = [pdfs_as_text(m) for m in messages]
+        if has_files(messages):
+            raise RuntimeError(f"The {self.path.name} command can't be handed images or scanned PDFs: it needs a key")
+        schema = (output_config or {}).get("format", {}).get("schema")
+        text = "\n\n".join(text_of(m.get("content")) for m in messages if m.get("role") == "user")
+        agy = self.path.name.startswith("agy")
+        args = [str(self.path), "--output-format", "json"]
+        if explicit(model):
+            args += ["--model", str(explicit(model))]
+        if agy:
+            prompt = f"{system}\n\n{text}"
+            if schema is not None:
+                args += ["--json-schema", json.dumps(schema)]
+            args.append(f"--prompt={prompt}")  # one value, whatever it starts with
+            stdin = None
+        else:
+            # The text goes in on stdin and the instruction after it (-p is appended to what comes in on stdin).
+            args += ["--approval-mode=plan", f"--prompt={asked_for_json(system, schema)}"]
+            stdin = text
+        with tempfile.TemporaryDirectory(prefix="friday-gemini-") as here:
+            out = self.run(args, input=stdin, capture_output=True, text=True, timeout=TIMEOUT_S, cwd=here)
+        try:
+            envelope = json.loads(out.stdout)
+        except ValueError:
+            envelope = None
+        if not isinstance(envelope, dict):
+            raise RuntimeError(f"{self.path.name} exited {out.returncode}: {(out.stderr or out.stdout).strip()[-300:]}")
+        error = envelope.get("error")
+        if out.returncode != 0 or error or envelope.get("status") not in (None, "SUCCESS"):
+            said = error.get("message") if isinstance(error, dict) else error or out.stderr or envelope.get("status")
+            raise RuntimeError(f"{self.path.name} didn't answer: {str(said).strip()[:300]}")
+        structured = envelope.get("structured_output")
+        found = json.dumps(structured) if structured is not None else str(envelope.get("response", ""))
+        return answered(json_in(found) if schema is not None else found.strip(), envelope.get("usage"))
 
 
 PDFTOTEXT = (Path("/opt/homebrew/bin/pdftotext"), Path("/usr/local/bin/pdftotext"))

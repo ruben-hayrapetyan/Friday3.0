@@ -4,6 +4,11 @@
 // shown again; a model is chosen from the service's own list once its key is in. An open model says what it costs
 // first (downloaded here, slow), downloads with its progress shown, and the one it replaces is removed only if Friday
 // downloaded it: one you had is never.
+//
+// 29 Oct, "friday should use the cli whenever it can to not use the API... pasting in the api key seems pointless
+// for some things": Claude, OpenAI and Gemini are asked through their command when it's on this Mac (claude, codex,
+// agy or gemini), signed in as you, and then no key is asked for. Claude Code reads photos and scans itself; OpenAI's
+// and Google's commands can't be handed those, so a key for them is offered, quietly, for that alone.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
@@ -22,6 +27,7 @@ export interface AiState {
   ready: boolean
   key: boolean
   cli: boolean
+  command: string | null // the command it's asked through ("claude", "codex", "agy", "gemini"), when installed
   why: string | null
   note: string | null
   base_url: string | null
@@ -37,6 +43,7 @@ export function useAi(): AiState {
     ready: !!llm?.ready,
     key: !!llm?.key,
     cli: !!llm?.cli,
+    command: llm?.command ?? null,
     why: llm?.why ?? null,
     note: llm?.note ?? null,
     base_url: llm?.base_url ?? null,
@@ -45,9 +52,9 @@ export function useAi(): AiState {
 }
 
 export const CHOICES: { id: Provider; title: string; note: string; keyFrom?: string }[] = [
-  { id: "claude", title: "Claude", note: "Anthropic's. Uses Claude Code if it's installed here, or an API key.", keyFrom: "console.anthropic.com" },
-  { id: "openai", title: "OpenAI", note: "GPT models, with an API key.", keyFrom: "platform.openai.com" },
-  { id: "gemini", title: "Gemini", note: "Google's, with an API key.", keyFrom: "aistudio.google.com" },
+  { id: "claude", title: "Claude", note: "Anthropic's. Uses Claude Code on this Mac: no key needed. Else an API key.", keyFrom: "console.anthropic.com" },
+  { id: "openai", title: "OpenAI", note: "GPT. Uses the codex command if it's installed (signed in with ChatGPT), else an API key.", keyFrom: "platform.openai.com" },
+  { id: "gemini", title: "Gemini", note: "Google's. Uses Google's agy or gemini command if installed (signed in with Google), else an API key.", keyFrom: "aistudio.google.com" },
   { id: "grok", title: "Grok", note: "xAI's, with an API key.", keyFrom: "console.x.ai" },
   { id: "muse", title: "Muse", note: "Meta's, in preview, with an API key from Meta." },
   { id: "compatible", title: "Another service", note: "Anything that speaks OpenAI's API: OpenRouter, Groq, Together, LM Studio…" },
@@ -181,20 +188,49 @@ function Status({ ai }: { ai: AiState }) {
 }
 
 function ClaudeSetup({ ai }: { ai: AiState }) {
+  if (ai.cli)
+    return <span style={{ fontSize: 13 }}>Uses Claude Code on this Mac, signed in as you: no key needed, photos and scanned PDFs included.</span>
   return (
     <>
-      <span style={{ fontSize: 13 }}>{ai.cli ? "Claude Code is installed here, so Friday uses it: no key needed." : "Claude Code isn't installed here: add an Anthropic API key, or install Claude Code."}</span>
-      <KeyField provider="claude" label="Anthropic API key" has={ai.key} optional={ai.cli} from="console.anthropic.com" note={ai.cli ? "Optional: needed only to read images and scanned PDFs." : undefined} />
+      <span style={{ fontSize: 13 }}>Claude Code isn’t installed here: install it (then no key is needed), or add an Anthropic API key.</span>
+      <KeyField provider="claude" label="Anthropic API key" has={ai.key} from="console.anthropic.com" />
     </>
   )
 }
 
+/** What each command is signed in with, said plainly. */
+const SIGNED_IN: Record<string, string> = { codex: "signed in with ChatGPT", agy: "signed in with your Google account", gemini: "signed in with your Google account" }
+const TO_INSTALL: Partial<Record<Provider, string>> = {
+  openai: "Or install OpenAI’s codex command and sign in with ChatGPT: then no key is needed.",
+  gemini: "Or install Google’s agy command and sign in with your Google account: then no key is needed.",
+}
+
 function ServiceSetup({ llm, ai, keyFrom }: { llm: Llm; ai: AiState; keyFrom?: string }) {
   const [moved, setMoved] = useState(!!llm.base_url)
+  const [withKey, setWithKey] = useState(ai.key)
+  const label = `${CHOICES.find((c) => c.id === llm.provider)?.title} API key`
+  // Its command on this Mac: no key, and no model to choose (the command picks its own). Photos and scanned PDFs are
+  // what it can't be handed, so a key for those alone is offered, out of the way.
+  if (ai.command)
+    return (
+      <>
+        <span style={{ fontSize: 13 }}>
+          Uses the {ai.command} command on this Mac{SIGNED_IN[ai.command] ? `, ${SIGNED_IN[ai.command]}` : ""}: no key needed.
+        </span>
+        {withKey ? (
+          <KeyField provider={llm.provider} label={label} has={ai.key} optional from={keyFrom} note="Only for photos and scanned PDFs, which the command can't be handed." />
+        ) : (
+          <button className="fr-link" onClick={() => setWithKey(true)} style={{ alignSelf: "flex-start", fontSize: 12 }}>
+            Photos and scanned PDFs need a key: add one
+          </button>
+        )}
+      </>
+    )
   return (
     <>
       {ai.note && <span className="fr-kicker">{ai.note}.</span>}
-      <KeyField provider={llm.provider} label={`${CHOICES.find((c) => c.id === llm.provider)?.title} API key`} has={ai.key} from={keyFrom} />
+      <KeyField provider={llm.provider} label={label} has={ai.key} from={keyFrom} />
+      {TO_INSTALL[llm.provider] && <span className="fr-kicker">{TO_INSTALL[llm.provider]}</span>}
       {ai.key && <ModelPicker llm={llm} />}
       {llm.provider === "muse" &&
         (moved ? <AddressField llm={llm} label="Meta's API address, if it moved" /> : (
