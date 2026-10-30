@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { type Answers, byAccount, hoursLabel, hoursWords, readDays, readHours, screensFor, shift, stepsFor, summaryOf, withCalendars } from "./Setup"
+import { type Answers, badgesOf, byAccount, hoursLabel, hoursWords, readDays, readHours, screenScale, shift, storyFor, withCalendars } from "./Setup"
 
 const ANSWERS: Answers = {
   wake: "07:30",
@@ -18,16 +18,14 @@ const ANSWERS: Answers = {
 }
 
 describe("setup", () => {
-  it("asks about calendars only when there are some", () => {
-    expect(stepsFor(ANSWERS)).toEqual(["day", "load", "focus", "free", "early", "brief", "ai", "bring"])
-    expect(stepsFor({ ...ANSWERS, calendars: [{ name: "Home", shown: true, busy: true }] })).toContain("calendars")
+  it("lives through a week: hello, the day from the alarm to bed, the next morning, packing up, the week (29 Oct)", () => {
+    expect(storyFor(ANSWERS)).toEqual(["title", "hello", "hello2", "wake", "classes", "work", "heavy", "focus", "deadline", "evening", "weekend", "bed", "brief", "ai", "bring", "week"])
   })
 
-  it("brings things in after choosing the AI, and asks about the calendars after that (29 Oct)", () => {
-    const steps = stepsFor({ ...ANSWERS, calendars: [{ name: "Home", shown: true, busy: true }] })
-    expect(steps).toHaveLength(9)
-    expect(steps.slice(-3)).toEqual(["ai", "bring", "calendars"]) // the AI before what it reads; calendars once connected
-    expect(stepsFor(ANSWERS).at(-1)).toBe("bring") // none yet: no question about them
+  it("asks about calendars only when there are some, after bringing them in", () => {
+    const story = storyFor({ ...ANSWERS, calendars: [{ name: "Home", shown: true, busy: true }] })
+    expect(story.slice(-4)).toEqual(["ai", "bring", "calendars", "week"]) // the AI before what it reads; calendars once connected
+    expect(storyFor(ANSWERS)).not.toContain("calendars")
   })
 
   it("adds the calendars connected while setup is open, keeping what you chose for the others", () => {
@@ -36,7 +34,7 @@ describe("setup", () => {
     expect(withCalendars(chosen, listed).calendars).toEqual([{ name: "Home", shown: false, busy: false }, { name: "Classes", shown: true, busy: true }])
     expect(withCalendars(chosen, [{ name: "Home", shown: true, busy: true }])).toBe(chosen) // nothing new: the same draft
     expect(withCalendars(ANSWERS, null)).toBe(ANSWERS)
-    expect(stepsFor(withCalendars(ANSWERS, listed))).toContain("calendars") // connected in Bring things in: asked next
+    expect(storyFor(withCalendars(ANSWERS, listed))).toContain("calendars") // connected in Bring things in: asked next
   })
 
   it("groups the Mac's calendars by account", () => {
@@ -69,29 +67,28 @@ describe("setup", () => {
     expect(shift("00:30", -60)).toBe("23:30")
   })
 
-  it("introduces Friday first and reads your answers back last (29 Oct)", () => {
-    expect(screensFor(ANSWERS)).toEqual(["welcome", "how", ...stepsFor(ANSWERS), "ready"])
-  })
-
-  it("reads your answers back as sentences, each answer a way back to its question", () => {
-    const parts = summaryOf(ANSWERS)
-    const text = parts.map((p) => (typeof p === "string" ? p : p.text)).join("")
-    expect(text).toContain("You're up at 7:30am and in bed by 11:30pm, or 9am and 12:30am at weekends.")
-    expect(text).toContain("Friday plans 8 hours of work on a normal day and up to 10 hours on a heavy one, in sittings of up to 3 hours.")
-    expect(text).toContain("2 hours of each weekday evening is yours from 6pm, and 4 hours of each weekend day.")
-    expect(text).toContain("Work is done a day early")
-    expect(text).toContain("Each morning opens with your brief.")
-    const steps = new Set(parts.flatMap((p) => (typeof p === "string" ? [] : [p.step])))
-    expect([...steps].sort()).toEqual(["brief", "day", "early", "focus", "free", "load"])
-  })
-
-  it("says none and all of it plainly", () => {
-    const text = (a: Answers) => summaryOf(a).map((p) => (typeof p === "string" ? p : p.text)).join("")
-    expect(text({ ...ANSWERS, evening_free: 0, weekend_free: 0, brief: false, finish_early_days: 0, most_hours: 8 })).toContain(
-      "Weekday evenings are open for work, and weekends are open for work. Work is done on the day it's due",
-    )
-    expect(text({ ...ANSWERS, evening_free: 5, weekend_free: 13 })).toContain("Weekday evenings are yours from 6pm, and weekends are yours.")
-    expect(text({ ...ANSWERS, most_hours: 8 })).not.toContain("heavy")
+  it("ends on your week, each answer a badge that goes back to where it was asked (no fill-in-the-blank)", () => {
+    const badges = badgesOf(ANSWERS)
+    expect(badges.map((b) => [b.label, b.value])).toEqual([
+      ["Up", "7:30am"],
+      ["Bed", "11:30pm"],
+      ["Work", "8h, up to 10h"],
+      ["Focus", "3h"],
+      ["Done", "a day early"],
+      ["Evenings free", "2h from 6pm"],
+      ["Weekends free", "4h a day"],
+      ["Morning brief", "yes"],
+    ])
+    expect(new Set(badges.map((b) => b.step))).toEqual(new Set(["wake", "bed", "work", "focus", "deadline", "evening", "weekend", "brief"]))
+    const plain = badgesOf({ ...ANSWERS, evening_free: 0, weekend_free: 13, most_hours: 8, finish_early_days: 0, brief: false }).map((b) => b.value)
+    expect(plain).toEqual(["7:30am", "11:30pm", "8h", "3h", "on the day", "none", "all day", "no"])
     expect([hoursWords(1), hoursWords(1.5), hoursWords(0.75)]).toEqual(["an hour", "1.5 hours", "45 minutes"])
+  })
+
+  it("draws the screen at whole pixels when there's room, so the art stays sharp", () => {
+    expect(screenScale(1100, 700)).toBe(4) // 1024 × 576
+    expect(screenScale(800, 900)).toBe(3)
+    expect(screenScale(400, 300)).toBeCloseTo(400 / 256) // a small window: as big as fits
+    expect(screenScale(100, 50)).toBe(1)
   })
 })

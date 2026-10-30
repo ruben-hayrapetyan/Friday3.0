@@ -103,13 +103,12 @@
 }
 
 /* An ink outline with its corners notched out, as a pixel box is drawn; --b is its colour, --w its width. */
-.px-say,
-.px-frame,
+.in-box,
+.in-badge,
 .st-card,
 .st-time,
 .st-source,
 .st-calendar,
-.st-point,
 .st-chip,
 .st-step {
   --b: var(--px-ink);
@@ -121,7 +120,7 @@
     var(--w) 0 0 0 var(--b);
 }
 
-/* The top: Friday's ring, and a block a screen. */
+/* The top: a block a step, and the way out. */
 
 .st-top {
   display: flex;
@@ -178,142 +177,6 @@
 }
 .st-skip:hover {
   color: var(--px-ink);
-}
-
-/* The question and, beside it, your week; the way on under them. Together at most 860 high, in the middle of a tall
-   window, so the buttons stay near what they answer; in a short one the question scrolls and the buttons stay put. */
-
-.st-frame {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  height: min(100%, 860px);
-  min-height: 0;
-  align-self: center;
-}
-.st-main,
-.st-foot-in {
-  display: grid;
-  grid-template-columns: minmax(0, 560px) minmax(0, 430px);
-  justify-content: center;
-  gap: 60px;
-}
-.st-main {
-  overflow-y: auto;
-  overflow-x: hidden;
-  align-content: start;
-  padding: 34px 28px 16px;
-}
-.st-q {
-  min-width: 0;
-  padding: 0 8px 8px 4px; /* room for the outlines and shadows */
-  animation: px-enter 280ms steps(4, end) both;
-}
-.st-q[data-back] {
-  animation-name: px-enter-back;
-}
-.st-side {
-  min-width: 0;
-  position: sticky;
-  top: 0;
-  align-self: start;
-  padding: 0 8px 8px 4px;
-}
-
-/* Friday's text box: the topic on its tab, the question typed out, the note once it's said, and the arrow that bobs
-   to say Return goes on. */
-
-.px-say {
-  --w: 3px;
-  position: relative;
-  margin-top: 14px;
-  padding: 26px 26px 26px;
-  background: var(--px-white);
-  filter: drop-shadow(6px 6px 0 var(--px-shadow));
-}
-.px-plate {
-  position: absolute;
-  top: -15px;
-  left: 18px;
-  padding: 5px 10px 4px;
-  background: var(--px-ink);
-  color: var(--px-white);
-  font: 400 11px var(--px-small);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  clip-path: polygon(2px 0, calc(100% - 2px) 0, calc(100% - 2px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px), 0 2px, 2px 2px);
-}
-.st-title {
-  margin: 0;
-  font: 600 32px/1.18 var(--px-display);
-  letter-spacing: 0.005em;
-  text-wrap: balance;
-  outline: none;
-}
-.px-say[data-big] .st-title {
-  font-size: 44px;
-  line-height: 1.1;
-}
-.px-type {
-  display: grid;
-}
-.px-ghost,
-.px-typed {
-  grid-area: 1 / 1;
-}
-.px-ghost {
-  visibility: hidden;
-}
-.px-caret {
-  display: inline-block;
-  width: 0.42em;
-  height: 0.8em;
-  margin-left: 0.08em;
-  vertical-align: -0.04em;
-  background: var(--px-ink);
-}
-.st-note {
-  margin: 12px 0 0;
-  max-width: 34em;
-  color: var(--px-ink-2);
-  font-size: 15.5px;
-  line-height: 1.5;
-  text-wrap: pretty;
-  visibility: hidden;
-}
-.st-note[data-on] {
-  visibility: visible;
-  animation: px-fade 200ms steps(2, end) both;
-}
-.px-more {
-  position: absolute;
-  right: 16px;
-  bottom: 10px;
-  animation: px-bob 0.9s steps(1, end) infinite;
-}
-.st-q:has(.px-caret) .px-more {
-  visibility: hidden;
-}
-
-.st-body {
-  margin-top: 30px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-.st-label {
-  font: 400 11px var(--px-small);
-  color: var(--px-ink-2);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-.st-group {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.st-rise {
-  animation: px-pop-in 300ms steps(3, end) both;
-  animation-delay: calc(60ms + var(--i, 0) * 60ms);
 }
 
 /* Choices: a card each, with a picture of what it means, a tick when it's yours. */
@@ -645,277 +508,6 @@
   text-decoration: none;
 }
 
-/* The week: a board of falling blocks (SetupBoard.tsx). */
-
-.px-board-title {
-  margin-bottom: 12px;
-  font: 400 11px var(--px-small);
-  color: var(--px-ink-2);
-  text-transform: uppercase;
-}
-.px-frame {
-  --w: 3px;
-  padding: 10px 6px 12px 0;
-  background: var(--px-board);
-  filter: drop-shadow(6px 6px 0 var(--px-shadow));
-}
-.px-head {
-  display: grid;
-  grid-template-columns: repeat(7, var(--col));
-  gap: var(--gap);
-  margin: 0 0 8px var(--axis);
-  font: 400 10px var(--px-small);
-  color: var(--px-ink-2);
-  text-align: center;
-}
-.px-body {
-  display: grid;
-  grid-template-columns: var(--axis) auto var(--sky);
-}
-.px-axis,
-.px-sky {
-  position: relative;
-  height: calc(80 * var(--q));
-}
-.px-axis span {
-  position: absolute;
-  right: 6px;
-  top: calc(var(--top) * var(--q));
-  transform: translateY(-50%);
-  font: 400 8px var(--px-small);
-  color: var(--px-ink-3);
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.px-grid {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(7, var(--col));
-  gap: var(--gap);
-  height: calc(80 * var(--q));
-  overflow: hidden;
-}
-.px-day {
-  position: relative;
-  background-color: var(--px-col);
-  background-image: linear-gradient(var(--px-line) 2px, transparent 2px);
-  background-size: 100% calc(8 * var(--q));
-}
-.px-mark {
-  position: absolute;
-  left: 6px;
-  top: calc(var(--top) * var(--q));
-  transform: translateY(-50%);
-  transition: top 300ms steps(5, end);
-}
-.px-mark svg {
-  display: block;
-}
-
-.px-piece {
-  --c: var(--px-work);
-  --hi: var(--px-work-hi);
-  --lo: var(--px-work-lo);
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(var(--top) * var(--q));
-  height: calc(var(--size) * var(--q));
-  background: var(--c);
-  box-shadow:
-    inset 2px 2px 0 0 var(--hi),
-    inset -2px -2px 0 0 var(--lo);
-  animation: px-drop 560ms steps(7, end) var(--delay) both;
-  transition:
-    top 280ms steps(4, end),
-    height 280ms steps(4, end);
-}
-.px-piece[data-kind="class"] {
-  --c: var(--px-class);
-  --hi: var(--px-class-hi);
-  --lo: var(--px-class-lo);
-  animation: px-blink-in 640ms steps(1, end) var(--delay) both;
-}
-.px-piece[data-kind="essay"] {
-  --c: var(--px-gold);
-  --hi: var(--px-gold-hi);
-  --lo: var(--px-gold-lo);
-}
-.px-piece[data-kind="event"] {
-  --c: var(--px-event);
-  --hi: var(--px-event-hi);
-  --lo: var(--px-event-lo);
-}
-.px-piece[data-kind="heavy"] {
-  background: conic-gradient(var(--px-work) 25%, var(--px-work-hi) 0 50%, var(--px-work) 0 75%, var(--px-work-hi) 0) 0 0 / 4px 4px;
-}
-.px-piece[data-kind="free"] {
-  background: conic-gradient(var(--px-free-hi) 25%, color-mix(in srgb, var(--px-free-hi) 40%, var(--px-white)) 0 50%, var(--px-free-hi) 0 75%, color-mix(in srgb, var(--px-free-hi) 40%, var(--px-white)) 0) 0 0 / 4px 4px;
-  box-shadow: inset 0 2px 0 0 var(--px-free);
-  animation: px-blink-in 640ms steps(1, end) var(--delay) both;
-}
-.px-piece[data-kind="sleep"] {
-  background: var(--px-night);
-  box-shadow: none;
-  overflow: hidden;
-  transform-origin: bottom;
-  animation: px-close 420ms steps(6, end) var(--delay) both;
-}
-.px-piece[data-kind="sleep"][data-from="top"] {
-  transform-origin: top;
-}
-.px-piece[data-kind="sleep"]::after {
-  /* stars, a pixel each, twinkling */
-  content: "";
-  position: absolute;
-  left: 30%;
-  top: 6px;
-  width: 2px;
-  height: 2px;
-  background: var(--px-star);
-  box-shadow:
-    14px 10px var(--px-star),
-    -8px 22px var(--px-star),
-    10px 36px var(--px-star),
-    2px 54px var(--px-star),
-    16px 70px var(--px-star),
-    -6px 88px var(--px-star);
-  animation: px-twinkle 1.8s steps(1, end) infinite;
-  animation-delay: calc(var(--top) * -70ms);
-}
-.px-piece[data-kind="brief"] {
-  --c: var(--px-gold);
-  left: auto;
-  right: 3px;
-  width: 8px;
-  height: 8px;
-  z-index: 1;
-  box-shadow: 0 0 0 2px var(--px-ink);
-  animation: px-pop 300ms steps(3, end) var(--delay) both;
-}
-.px-flag {
-  position: absolute;
-  right: 0;
-  top: calc(var(--top) * var(--q) - 18px);
-  z-index: 2;
-  line-height: 0;
-  animation: px-pop 300ms steps(3, end) var(--delay) both;
-}
-/* What the question on screen changes stays solid; the rest steps back. */
-.px-grid[data-focus] .px-piece:not([data-lit]) {
-  opacity: 0.32;
-}
-.px-grid[data-focus] .px-piece[data-kind="sleep"]:not([data-lit]) {
-  opacity: 0.55;
-}
-/* All set: the week hops, day after day. */
-.px-board[data-done] .px-day {
-  animation: px-hop 420ms steps(4, end) calc(240ms + var(--d) * 80ms) 2 both;
-}
-
-.px-readout {
-  margin: 16px 2px 0;
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--px-ink-2);
-  text-wrap: pretty;
-}
-.px-readout b {
-  font: 600 1.1em var(--px-display);
-  color: var(--px-ink);
-}
-.px-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  margin: 10px 2px 0;
-  font-size: 12px;
-  color: var(--px-ink-2);
-}
-.px-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.px-legend i {
-  width: 12px;
-  height: 12px;
-  box-shadow: inset 0 0 0 2px var(--px-ink);
-}
-.px-legend i[data-kind="sleep"] {
-  background: var(--px-night);
-}
-.px-legend i[data-kind="class"] {
-  background: var(--px-class);
-}
-.px-legend i[data-kind="work"] {
-  background: var(--px-work);
-}
-.px-legend i[data-kind="free"] {
-  background: var(--px-free-hi);
-}
-
-/* Information: what Friday does, said once, each with its picture. */
-
-.st-points {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.st-point {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
-  gap: 14px;
-  align-items: center;
-  padding: 12px 14px 12px 12px;
-  background: var(--px-white);
-  filter: drop-shadow(4px 4px 0 var(--px-shadow));
-}
-.st-point b {
-  display: block;
-  font: 500 17px/1.25 var(--px-display);
-}
-.st-point span {
-  color: var(--px-ink-2);
-  font-size: 14px;
-  line-height: 1.45;
-}
-
-/* The end: your answers in a sentence, each part a way back to its question. */
-
-.st-sum {
-  --b: var(--px-ink);
-  --w: 2px;
-  margin: 0;
-  padding: 18px 22px 20px;
-  background: var(--px-white);
-  box-shadow:
-    0 calc(-1 * var(--w)) 0 0 var(--b),
-    0 var(--w) 0 0 var(--b),
-    calc(-1 * var(--w)) 0 0 0 var(--b),
-    var(--w) 0 0 0 var(--b);
-  filter: drop-shadow(4px 4px 0 var(--px-shadow));
-  font: 500 19px/1.8 var(--px-body);
-  color: var(--px-ink-2);
-  text-wrap: pretty;
-}
-.st-sum button {
-  appearance: none;
-  border: 0;
-  margin: 0 1px;
-  padding: 0 5px;
-  cursor: pointer;
-  color: var(--px-ink);
-  background: var(--px-gold-hi);
-  box-shadow: 0 3px 0 0 var(--px-gold-lo);
-  font: 600 1.02em var(--px-display);
-  animation: px-pop-in 300ms steps(3, end) both;
-  animation-delay: calc(200ms + var(--i, 0) * 80ms);
-}
-.st-sum button:hover {
-  background: var(--px-gold);
-}
-
 /* Sources and the AI, borrowed from Settings, on cards. */
 
 .st-source {
@@ -984,37 +576,231 @@
   box-shadow: inset 0 0 0 2px var(--px-ink);
 }
 
-/* The way on. */
+/* The game: the screen Friday's week plays on, framed like a handheld's, its clock in the corner; under it Friday's
+   text box, its face talking while the line types out, and your answer once it's said. */
 
-.st-foot {
-  padding: 14px 28px 24px;
+.in-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px 22px;
+  overflow-y: auto;
+  background-color: #1b1930;
+  background-image:
+    linear-gradient(#24213e 2px, transparent 2px),
+    linear-gradient(90deg, #24213e 2px, transparent 2px);
+  background-size: 24px 24px;
 }
-.st-foot-row {
+.in-stage .st-top {
+  align-self: stretch;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+.in-stage .st-count,
+.in-stage .st-skip {
+  color: #b9b6d6;
+}
+.in-stage .st-skip:hover {
+  color: var(--px-white);
+}
+.in-stage .px-steps {
+  margin-left: 0;
+}
+.in-stage .px-steps i {
+  box-shadow: inset 0 0 0 2px #0e0d1a;
+}
+.in-screen {
+  position: relative;
+  flex: none;
+  margin-top: auto !important; /* the game in the middle of the window when there's room; scrolled when not */
+  box-shadow:
+    0 0 0 4px var(--px-ink),
+    0 0 0 9px #3d3a63,
+    0 0 0 12px var(--px-ink),
+    10px 14px 0 12px rgba(0, 0, 0, 0.35);
+  margin: 12px 0 6px;
+}
+.in-screen canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+.in-clock {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 7px 10px 6px;
+  background: var(--px-ink);
+  color: var(--px-gold-hi);
+  font: 400 12px var(--px-small);
+  letter-spacing: 0.04em;
+  box-shadow:
+    inset 0 0 0 2px var(--px-gold-lo),
+    3px 3px 0 0 rgba(0, 0, 0, 0.3);
+}
+
+.in-box,
+.in-stage .in-start {
+  margin-bottom: auto;
+}
+.in-box {
+  --w: 3px;
+  flex: none;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 18px 14px;
+  background: var(--px-white);
+  filter: drop-shadow(6px 6px 0 rgba(0, 0, 0, 0.35));
+}
+.in-stage[data-wide] .in-box {
+  max-height: 54vh;
+  overflow-y: auto;
+}
+.in-say {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.in-face {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--px-work) 22%, var(--px-white));
+  box-shadow: inset 0 0 0 2px var(--px-ink);
+}
+.in-line {
+  margin: 4px 0 0;
+  font: 500 20px/1.4 var(--px-display);
+  text-wrap: pretty;
+}
+.px-type {
+  display: grid;
+}
+.px-ghost,
+.px-typed {
+  grid-area: 1 / 1;
+}
+.px-ghost {
+  visibility: hidden;
+}
+.px-caret {
+  display: inline-block;
+  width: 0.42em;
+  height: 0.8em;
+  margin-left: 0.08em;
+  vertical-align: -0.04em;
+  background: var(--px-ink);
+}
+.in-control {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 4px 4px;
+  visibility: hidden;
+}
+.in-control:not([data-on]) * {
+  visibility: hidden !important; /* the answer waits until Friday has asked */
+}
+.in-control[data-on] {
+  visibility: visible;
+  animation: px-pop-in 260ms steps(3, end) both;
+}
+.in-control[inert] {
+  opacity: 0.5;
+}
+.in-foot {
   display: flex;
   align-items: center;
   gap: 14px;
+  padding-top: 2px;
 }
-.st-foot-hint {
-  font: 400 11px var(--px-small);
+.in-hint {
+  margin-left: auto;
+  font: 400 10px var(--px-small);
+  color: var(--px-ink-3);
+  text-transform: uppercase;
+}
+.in-foot .st-go {
+  margin-left: 0;
+}
+.in-stage .in-start {
+  margin-left: 0;
+  animation: px-blink-soft 1.2s steps(1, end) infinite;
+}
+.in-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 18px;
+}
+.in-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 16px;
+}
+.in-badge {
+  appearance: none;
+  border: 0;
+  --w: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 11px 8px;
+  background: var(--px-white);
+  color: var(--px-ink);
+  text-align: left;
+  cursor: pointer;
+  animation: px-pop-in 300ms steps(3, end) both;
+}
+.in-badge:hover {
+  background: var(--px-gold-hi);
+}
+.in-badge span {
+  font: 400 9px var(--px-small);
   color: var(--px-ink-2);
   text-transform: uppercase;
-  animation: px-blink-soft 1.1s steps(1, end) infinite;
 }
+.in-badge b {
+  font: 600 16px var(--px-display);
+}
+
+.st-label {
+  font: 400 11px var(--px-small);
+  color: var(--px-ink-2);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.st-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.st-rise {
+  animation: px-pop-in 300ms steps(3, end) both;
+  animation-delay: calc(60ms + var(--i, 0) * 60ms);
+}
+
 .st-go {
   --b: var(--px-ink);
   --w: 3px;
   margin-left: auto;
   appearance: none;
   border: 0;
-  height: 52px;
-  padding: 0 22px 3px 24px;
+  height: 48px;
+  padding: 0 20px 3px 22px;
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   cursor: pointer;
   background: var(--px-work);
   color: var(--px-ink);
-  font: 600 20px var(--px-display);
+  font: 600 19px var(--px-display);
+  white-space: nowrap;
   box-shadow:
     0 calc(-1 * var(--w)) 0 0 var(--b),
     0 var(--w) 0 0 var(--b),
@@ -1025,9 +811,6 @@
 }
 .st-go:hover {
   background: color-mix(in srgb, var(--px-work) 82%, var(--px-work-hi));
-}
-.st-go:hover svg {
-  transform: translateX(3px);
 }
 .st-go:active {
   transform: translateY(2px);
@@ -1042,46 +825,20 @@
   opacity: 0.6;
   cursor: default;
 }
-.st-go svg {
-  transition: transform 100ms steps(1, end);
-}
 .st-back {
   appearance: none;
   border: 0;
-  height: 52px;
-  padding: 0 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  height: 48px;
+  padding: 0 8px;
   cursor: pointer;
   background: transparent;
   color: var(--px-ink-2);
-  font: 500 18px var(--px-display);
+  font: 500 17px var(--px-display);
 }
 .st-back:hover {
   color: var(--px-ink);
 }
-.px-flip {
-  transform: scaleX(-1);
-}
 
-@keyframes px-fade {
-  from {
-    opacity: 0;
-  }
-}
-@keyframes px-enter {
-  from {
-    opacity: 0;
-    transform: translateX(24px);
-  }
-}
-@keyframes px-enter-back {
-  from {
-    opacity: 0;
-    transform: translateX(-24px);
-  }
-}
 @keyframes px-pop-in {
   from {
     opacity: 0;
@@ -1096,128 +853,21 @@
     transform: scale(1.2);
   }
 }
-@keyframes px-drop {
-  0% {
-    transform: translateY(calc(-1 * (var(--top) * var(--q) + var(--size) * var(--q) + 8px)));
-  }
-  82% {
-    transform: none;
-  }
-  90% {
-    transform: translateY(2px);
-  }
-}
-@keyframes px-close {
-  from {
-    transform: scaleY(0);
-  }
-}
-@keyframes px-blink-in {
-  0% {
-    opacity: 0;
-  }
-  25% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
-  75%,
-  100% {
-    opacity: 1;
-  }
-}
 @keyframes px-blink-soft {
   50% {
     opacity: 0.35;
   }
 }
-@keyframes px-bob {
-  50% {
-    transform: translateY(3px);
-  }
-}
-@keyframes px-twinkle {
-  50% {
-    opacity: 0.25;
-  }
-}
-@keyframes px-hop {
-  50% {
-    transform: translateY(-6px);
-  }
-}
-
-/* Tall windows: a bigger board. */
-@media (min-width: 1200px) and (min-height: 900px) {
-  .st-stage {
-    --q: 5px;
-    --col: 48px;
-  }
-}
-
-/* Narrower: the week above the question, smaller, and left out where it has nothing to show. */
-@media (max-width: 980px) {
-  .st-stage {
-    --q: 2px;
-    --col: minmax(0, 1fr);
-  }
-  .st-main,
-  .st-foot-in {
-    grid-template-columns: minmax(0, 600px);
-    gap: 26px;
-  }
-  .st-side {
-    order: -1;
-    position: static;
-  }
-  .px-frame {
-    padding-right: 10px;
-  }
-  .px-body {
-    grid-template-columns: var(--axis) minmax(0, 1fr) 0;
-  }
-  .px-sky,
-  .px-legend {
-    display: none;
-  }
-  .st-stage[data-quiet] .st-side {
-    display: none;
-  }
-  .st-main {
-    padding-top: 36px;
-  }
-}
-@media (max-width: 560px) {
-  .st-top,
-  .st-main,
-  .st-foot {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-  .px-steps {
-    display: none;
-  }
-  .st-title {
-    font-size: 26px;
-  }
-  .px-say[data-big] .st-title {
-    font-size: 32px;
-  }
-  .px-say {
-    padding: 24px 18px 22px;
-  }
+@media (max-width: 640px) {
+  .in-pair,
   .st-cards {
     grid-template-columns: minmax(0, 1fr);
   }
-  .st-sum {
-    font-size: 18px;
+  .in-line {
+    font-size: 17px;
   }
-}
-
-@media (max-width: 560px), (hover: none) {
-  .st-foot-hint {
-    display: none; /* no Return key to press */
+  .in-hint {
+    display: none;
   }
 }
 

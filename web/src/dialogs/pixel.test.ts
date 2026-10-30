@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest"
 import { AGAIN, ARROW, CHECK, CURSOR, DROP, earlyArt, FLAG, lengthArt, letterDelay, LOGO, MOON, MORE, runs, SUN, WATCH } from "./pixel"
-import { introDelay, quarters } from "./SetupBoard"
-import type { Bit } from "./setupWeek"
 
 const square = (art: readonly string[]) => new Set(art.map((r) => r.length)).size === 1
 
@@ -37,24 +35,5 @@ describe("the typed question", () => {
   it("waits a beat after a sentence or a clause, and not between letters", () => {
     expect(letterDelay(".")).toBeGreaterThan(letterDelay(","))
     expect(letterDelay(",")).toBeGreaterThan(letterDelay("a"))
-  })
-})
-
-describe("the board", () => {
-  const bit = (kind: Bit["kind"], day = 0): Bit => ({ id: `${kind}-${day}`, day, start: 9 * 60, end: 10 * 60, kind })
-
-  it("places a time in quarter hours from 6 AM, kept on the board", () => {
-    expect(quarters(6 * 60)).toBe(0)
-    expect(quarters(9 * 60 + 30)).toBe(14)
-    expect(quarters(26 * 60)).toBe(80)
-    expect(quarters(3 * 60)).toBe(0)
-    expect(quarters(28 * 60)).toBe(80)
-  })
-
-  it("draws the nights first, then the classes, free time and the work, day by day", () => {
-    const order = ["sleep", "class", "free", "work"] as const
-    const at = order.map((kind) => introDelay(bit(kind), 0))
-    expect([...at].sort((a, b) => a - b)).toEqual(at)
-    expect(introDelay(bit("work", 4), 0)).toBeGreaterThan(introDelay(bit("work", 0), 0))
   })
 })
