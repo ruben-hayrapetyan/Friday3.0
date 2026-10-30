@@ -24,7 +24,7 @@ export interface Step {
   sweep?: boolean // pointing down the control and back, as a finger down a list
   sign?: string // over their head on getting there ("?", "z", "sweat", "!", "heart", "note")
   after?: string // and once they've said it
-  finale?: boolean // the end: sunglasses on, a dance by the sign to the weekend, and off to it
+  finale?: boolean // the end: Friday's page torn off the calendar, sunglasses on, a dance, and off to the weekend
   optional?: boolean // skipped when its control isn't there; otherwise said anyway
 }
 
@@ -38,7 +38,6 @@ export const STEPS: Step[] = [
     gesture: "wave",
     jump: true,
     cheer: true,
-    after: "heart",
   },
   {
     target: "nav",
@@ -104,7 +103,6 @@ export const STEPS: Step[] = [
     title: "Inbox",
     bullets: ["What only you can decide", "How much of the plan you did", "Events found in your mail and calendars"],
     gesture: "mail",
-    after: "heart",
   },
   {
     page: "/projects",
@@ -150,8 +148,8 @@ export const STEPS: Step[] = [
     title: "That’s Friday!",
     bullets: ["The ? brings this tour back", "Next stop: the weekend"],
     gesture: "dance",
-    jump: true,
     cheer: true,
+    jump: true,
     finale: true,
   },
 ]
@@ -211,7 +209,7 @@ export const BOX = 380 // the box's width, at most
 const BODY = 48 // half the guide's width with an arm out
 const GAP = 14
 const MARGIN = 16
-const SIGN = 170 // the room the sign to the weekend takes at the window's right
+const SIGN = 320 // the room the calendar and the sign to the weekend take at the window's right
 
 /** Where the guide stands (`x`, from the window's left) and where their box goes (`left`, and `bottom` up from the
  * window's foot): below the control, pointing up at it, with the box beside them on the side with room; beside a
@@ -268,6 +266,10 @@ export function Tour() {
   const canvas = useRef<HTMLCanvasElement>(null)
   const guide = useRef<Guide | null>(null)
   const [loaded, setLoaded] = useState(false) // the guide's there (a moment after the tour opens)
+  const [torn, setTorn] = useState(false) // the end: Friday's page torn off the calendar
+  const [glowing, setGlowing] = useState(false) // and the sign to the weekend lit, off to it
+  const [where, setWhere] = useState<{ x: number; width: number; height: number } | null>(null) // the guide, to poke
+  const calendar = useRef<HTMLDivElement>(null)
   const since = useRef(performance.now())
   const step = STEPS[n]
   const text = step.bullets.join("") // typed out line by line
@@ -320,6 +322,8 @@ export function Tour() {
       const el = here ? find(step.target) : null
       const r = el?.getBoundingClientRect() ?? null
       setRect((was) => (rounded(was) === rounded(r) ? was : r))
+      const at = guide.current?.box()
+      if (at) setWhere((was) => (was && Math.abs(was.x - at.x) < 2 && was.height === at.height ? was : at))
       if (window.innerWidth !== win.width || window.innerHeight !== win.height) {
         setWin({ width: window.innerWidth, height: window.innerHeight })
         guide.current?.resize(window.innerWidth)
@@ -350,11 +354,21 @@ export function Tour() {
       setTalking(true)
       return
     }
-    g.onArrive = () => setTalking(true)
+    g.onArrive = () => {
+      setTalking(true)
+      if (step.finale) weekend(g)
+    }
     // a hop on getting there when the step says, or to point at something up the window; the step's own action,
     // its signs, and for the end, sunglasses
     const sweep = step.sweep && rect ? { top: Math.max(rect.top + 20, 10), bottom: Math.min(rect.bottom - 20, win.height - STRIP) } : undefined
-    g.cue({ x: spot.x, gesture, aim, jump: step.jump ?? (gesture === "point" && !!aim && aim.y < win.height * 0.25), cheer: step.cheer, sweep, sign: step.sign, after: step.after, shades: step.finale })
+    if (step.finale) {
+      // the end: up to the calendar, pointing at Friday's page (weekend() does the rest)
+      const page = calendar.current?.getBoundingClientRect()
+      const at = page ? { x: page.left + page.width / 2, y: page.top + page.height / 2 } : null
+      setTorn(false)
+      g.cue({ x: spot.x, gesture: "point", aim: at })
+    } else
+      g.cue({ x: spot.x, gesture, aim, jump: step.jump ?? (gesture === "point" && !!aim && aim.y < win.height * 0.25), cheer: step.cheer, sweep, sign: step.sign, after: step.after })
     const anyway = setTimeout(() => setTalking(true), 1600)
     return () => clearTimeout(anyway)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -386,6 +400,18 @@ export function Tour() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [talking, n])
 
+  // The end (30 Oct: "the last animation can be better"): Friday's page torn off the calendar for Saturday's, a jump
+  // for joy, sunglasses on, and a dance; then, Done, off past the sign to the weekend.
+  const later = useRef<number[]>([])
+  useEffect(() => () => later.current.forEach(clearTimeout), [])
+  const weekend = (g: Guide) => {
+    later.current.forEach(clearTimeout)
+    const at = (ms: number, then: () => void) => later.current.push(window.setTimeout(then, reduced ? 0 : ms))
+    at(500, () => setTorn(true))
+    at(900, () => g.hop(true))
+    at(1700, () => g.act("dance", { shades: true }))
+  }
+
   const all = () => setShown(text.length)
   const finish = () => {
     markSeen()
@@ -393,6 +419,7 @@ export function Tour() {
     if (!guide.current) return setTour(false)
     // off the side of the window; at the end, skipping off to the weekend past its sign
     guide.current.onGone = () => setTour(false)
+    if (step.finale) setGlowing(true)
     guide.current.leave(!!step.finale)
     setTimeout(() => setTour(false), 4000)
   }
@@ -431,13 +458,28 @@ export function Tour() {
           <div className="gd-dim" />
         ))}
       {step.finale && (found || leaving) && (
-        <div className="gd-sign" aria-hidden="true">
-          <span>Weekend →</span>
-          <i />
-        </div>
+        <>
+          <div className="gd-cal" ref={calendar} aria-hidden="true">
+            <span className="gd-cal-under">
+              Sat
+              <b />
+            </span>
+            <span className="gd-cal-page" data-torn={torn ? "" : undefined}>
+              Fri
+            </span>
+          </div>
+          <div className="gd-sign" data-lit={glowing ? "" : undefined} aria-hidden="true">
+            <span>Weekend →</span>
+            <i />
+          </div>
+        </>
       )}
       {/* over the dimmed page, under the box; still there after it, while they wave and go */}
       <canvas ref={canvas} className="gd-strip" aria-hidden="true" style={{ height: STRIP }} />
+      {where && loaded && !leaving && (
+        // a click on the guide: a twirl (poke them three times and they get dizzy)
+        <button className="gd-poke" tabIndex={-1} aria-label="Poke the guide" onClick={() => guide.current?.poke()} style={{ left: where.x - where.width / 2, width: where.width, height: where.height }} />
+      )}
       {!leaving && (
         <div key={n} className="gd-box" style={{ left: spot.left, bottom: spot.bottom, width: spot.width }} onClick={all}>
           <div className="gd-where">

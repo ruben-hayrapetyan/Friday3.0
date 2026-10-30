@@ -48,6 +48,11 @@ describe("what the tour says", () => {
     expect(end.finale && end.gesture === "dance").toBe(true)
   })
 
+  it("shows only signs that mean something", () => {
+    // 30 Oct: "there are random harts"
+    expect(STEPS.flatMap((s) => [s.sign, s.after]).filter(Boolean)).not.toContain("heart")
+  })
+
   it("does something of its own at nearly every step", () => {
     // 30 Oct: "dont just have the guide jump - be creative, have the guide do unique actions"
     const doing = STEPS.filter((s) => !s.optional).map((s) => s.gesture ?? "point")

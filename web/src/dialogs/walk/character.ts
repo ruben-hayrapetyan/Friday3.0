@@ -1124,6 +1124,10 @@ export class Signs {
     if (kind === "heart") px(["", "", "   oo   oo", "  owwo owwo", " owwwwowwwwo", " owwwwwwwwwo", " owwwwwwwwwo", "  owwwwwwwo", "   owwwwwo", "    owwwo", "     owo", "      o"], { o: "#7a1d2e", w: "#ff7b8f" })
     if (kind === "?") px(["    oooooo", "   owwwwwwo", "  owwooowwwo", "  owwo  owwo", "   oo  owwwo", "      owwo", "     owwo", "     owwo", "     oooo", "     owwo", "     oooo"], { o: "#2b2f55", w: "#f4f6ff" })
     if (kind === "steam") px(["", "", "     ww", "    w", "    w", "     ww", "       w", "       w", "     ww"], { w: "rgba(255,255,255,0.8)" })
+    // the guide's (Guide.ts): a puff of dust off the floor, a star for being poked, swirls for dizzy
+    if (kind === "dust") px(["", "", "", "", "", "", "     oo", "   ooddo  oo", "  oddddddoddo", "  oddddddddddo", "   oooooooooo"], { o: "#8f877a", d: "#e4dccb" })
+    if (kind === "star") px(["       o", "      owo", "      owo", "  ooooowwoooo", "  owwwwwwwwwo", "   owwwwwwwo", "    owwwwwo", "   owwwowwwo", "   owwo owwo", "   ooo   ooo"], { o: "#7a4a12", w: "#ffdf4a" })
+    if (kind === "dizzy") px(["", "    oooo", "   o    o", "  o  oo  o", "  o o  o o", "  o o oo o", "  o  o   o", "   o    o", "    oooo"], { o: "#c3a2f2" })
     const tex = new THREE.CanvasTexture(c)
     tex.magFilter = tex.minFilter = THREE.NearestFilter
     tex.generateMipmaps = false
@@ -1132,13 +1136,15 @@ export class Signs {
     return tex
   }
 
-  /** A sign rising from `at`. */
-  emit(kind: string, at: THREE.Vector3, now: number, size = 0.32): void {
+  /** A sign rising from `at` (a puff of dust drifting off along the floor `away` instead, briefly). */
+  emit(kind: string, at: THREE.Vector3, now: number, size = 0.32, away = 0): void {
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.texture(kind), transparent: true, depthWrite: false, fog: false }))
     sprite.scale.setScalar(size)
     sprite.position.copy(at)
     this.group.add(sprite)
-    this.live.push({ sprite, born: now, life: kind === "!" ? 1.2 : 2.6, drift: new THREE.Vector3((Math.sin(now * 3.1) * 0.5 + 0.2) * 0.1, 0.22, 0) })
+    const dust = kind === "dust"
+    const drift = dust ? new THREE.Vector3(away * 0.6, 0.12, 0) : new THREE.Vector3((Math.sin(now * 3.1) * 0.5 + 0.2) * 0.1, 0.22, 0)
+    this.live.push({ sprite, born: now, life: dust ? 0.45 : kind === "!" || kind === "star" ? 1.2 : 2.6, drift })
   }
 
   /** What's showing for an action now and then: z's in bed, steam off the coffee. */

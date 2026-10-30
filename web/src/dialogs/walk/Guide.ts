@@ -64,6 +64,11 @@ export class Guide {
   private sweep: { top: number; bottom: number } | null = null
   private shades = false
   private noteAt = 0
+  private spinAt: number | null = null // a twirl, poked
+  private spins = 1
+  private wobbleAt: number | null = null // dizzy, poked again and again
+  private pokes: number[] = []
+  private wasMoving = false
   /** Called once they're off the side of the window, leaving. */
   onGone: (() => void) | null = null
   private started = performance.now()
@@ -164,6 +169,37 @@ export class Guide {
     this.signs.emit(kind, this.hero.headAt().add(new THREE.Vector3(0.22, 0.05, 0.2)), this.seconds(), 0.34)
   }
 
+  /** Something else to do where they stand, now (the end's tearing off Friday, then dancing). */
+  act(gesture: Gesture, options: { shades?: boolean } = {}): void {
+    if (gesture !== this.gesture) {
+      this.before = this.gesture
+      this.change = 0
+      this.gesture = gesture
+    }
+    if (options.shades !== undefined) this.shades = options.shades
+  }
+
+  /** Poked (a click on them): a twirl and a hop, a star; poked three times quickly, dizzy. */
+  poke(): void {
+    if (this.reduced || this.leaving) return
+    const t = this.seconds()
+    this.pokes = [...this.pokes.filter((at) => t - at < 4), t]
+    const dizzy = this.pokes.length >= 3
+    this.spinAt = t
+    this.spins = dizzy ? 2 : 1
+    this.hop(false)
+    this.emit(dizzy ? "dizzy" : this.pokes.length === 2 ? "note" : "star")
+    if (dizzy) {
+      this.wobbleAt = t + 0.7
+      this.pokes = []
+    }
+  }
+
+  /** Where they stand on the page, for a click on them: the middle of them, in the window's CSS pixels. */
+  box(): { x: number; width: number; height: number } {
+    return { x: this.at(), width: 0.7 / this.metres, height: (TALL + 0.1) / this.metres }
+  }
+
   /** A hop where they stand, now. */
   hop(cheer = false): void {
     if (this.reduced) return
@@ -230,6 +266,13 @@ export class Guide {
       }
     }
     const moving = this.v > 0.05
+    // a puff of dust off the floor setting off, and skidding to a stop
+    if (moving !== this.wasMoving && Math.abs(left) + this.v > 0.2) {
+      const back = -Math.sign(left || 1)
+      this.signs.emit("dust", new THREE.Vector3(this.x + back * 0.25, this.floor + 0.08, 0.2), t, 0.3, back)
+      this.signs.emit("dust", new THREE.Vector3(this.x + back * 0.05, this.floor + 0.05, 0.25), t, 0.22, back)
+    }
+    this.wasMoving = moving
     // turned along the way while going; to you once there
     const facing = moving ? Math.sign(left || 1) * (Math.PI / 2) : 0
     const k = 1 - Math.pow(0.0001, dt)
@@ -267,8 +310,21 @@ export class Guide {
       this.hero.react("glance", t)
       this.glanceAt = t + 7 + Math.random() * 4
     }
+    // a twirl, poked; dizzy after, swaying
+    let spin = 0
+    if (this.spinAt !== null) {
+      const u = (t - this.spinAt) / (0.55 * this.spins)
+      if (u >= 1) this.spinAt = null
+      else spin = Math.PI * 2 * this.spins * ease(u)
+    }
+    let sway = 0
+    if (this.wobbleAt !== null && t >= this.wobbleAt) {
+      const u = (t - this.wobbleAt) / 1.6
+      if (u >= 1) this.wobbleAt = null
+      else sway = Math.sin(u * Math.PI * 6) * 0.12 * (1 - u)
+    }
     this.hero.root.position.set(this.x, this.floor + lift, 0)
-    this.hero.root.rotation.y = this.yaw
+    this.hero.root.rotation.set(0, this.yaw + spin, sway)
     this.hero.update(dt, t, {
       speed: this.v,
       action: this.gesture as Action,

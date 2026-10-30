@@ -73,6 +73,93 @@
   border: 3px solid #4f2e15;
   border-bottom: 0;
 }
+.gd-sign[data-lit] span {
+  background: #f6cd68;
+  box-shadow:
+    inset 0 -4px 0 #d39a5c,
+    0 4px 0 rgba(0, 0, 0, 0.35),
+    0 0 22px rgba(246, 205, 104, 0.7);
+}
+/* and a desk calendar beside it, on Friday: its page torn off for Saturday's */
+.gd-cal {
+  position: fixed;
+  right: 224px;
+  bottom: 0;
+  z-index: 0;
+  width: 86px;
+  height: 98px;
+  background: var(--gd-bone);
+  border: 3px solid var(--gd-ink);
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  animation: gd-in 0.28s steps(4) both;
+}
+.gd-cal::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 18px;
+  background: #c0392b;
+  border-bottom: 3px solid var(--gd-ink);
+}
+.gd-cal::after {
+  /* two binder rings */
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 18px;
+  width: 8px;
+  height: 14px;
+  background: var(--gd-ink);
+  box-shadow: 34px 0 0 var(--gd-ink);
+}
+.gd-cal-page,
+.gd-cal-under {
+  position: absolute;
+  inset: 21px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--gd-bone);
+  color: var(--gd-ink);
+  font: 700 26px/1 var(--gd-pixel);
+  text-transform: uppercase;
+}
+.gd-cal-under b {
+  width: 12px;
+  height: 12px;
+  background: var(--gd-gold);
+  box-shadow:
+    0 0 0 3px #f6cd68,
+    0 0 0 6px rgba(242, 193, 78, 0.35);
+}
+.gd-cal-page[data-torn] {
+  transform-origin: 0 0;
+  animation: gd-tear 0.8s steps(8) forwards;
+}
+@keyframes gd-tear {
+  25% {
+    transform: rotate(-12deg);
+  }
+  100% {
+    transform: translate(-30px, 150px) rotate(-48deg);
+    opacity: 0;
+  }
+}
+/* the guide, to click on */
+.gd-poke {
+  position: fixed;
+  bottom: 6px;
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
 .gd-box {
   position: fixed;
   z-index: 2;
@@ -256,5 +343,9 @@
   .gd-box,
   .gd-caret {
     animation: none;
+  }
+  .gd-cal-page[data-torn] {
+    animation: none;
+    opacity: 0;
   }
 }
