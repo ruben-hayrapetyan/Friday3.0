@@ -16,6 +16,7 @@ export const useDuplicates = () => useQuery({ queryKey: ["duplicates"], queryFn:
 export const useToReview = () => useQuery({ queryKey: ["to_review"], queryFn: () => query("to_review") })
 export const useReview = (date: string) => useQuery({ queryKey: ["review", date], queryFn: () => query("review", { date }) }).data
 export const useDecisions = (): Schemas["Decision"][] => useStatus().data?.decisions ?? []
+export const useCalendarRepeats = () => useQuery({ queryKey: ["calendar_repeats"], queryFn: () => query("calendar_repeats") })
 
 const NONE: Schemas["SuggestionOut"][] = []
 
@@ -30,6 +31,7 @@ export function useInboxMessages(answered: Schemas["SuggestionOut"][] = NONE): M
   const inbox = useInbox().data
   const copies = useDuplicates().data
   const again = useToReview().data
+  const repeats = useCalendarRepeats().data
   return useMemo(
     () =>
       messagesOf({
@@ -41,9 +43,9 @@ export function useInboxMessages(answered: Schemas["SuggestionOut"][] = NONE): M
         copySources: copies?.sources ?? {},
         again: again?.items ?? [],
         againSources: again?.sources ?? {},
-        repeats: inbox?.repeats ?? 0,
+        repeats: repeats ?? [],
       }),
-    [decisions, before, now, inbox, copies, again, answered],
+    [decisions, before, now, inbox, copies, again, repeats, answered],
   )
 }
 

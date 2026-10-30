@@ -1228,6 +1228,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/repeats_leave_out": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A repeating calendar event you don't go to: its weeks aren't planned around, now or as they come in. */
+        post: operations["repeats_leave_out"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/replan": {
         parameters: {
             query?: never;
@@ -6688,6 +6705,11 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /** RepeatBatch */
+        RepeatBatch: {
+            /** Batch */
+            batch: string;
+        };
         /** RepeatFound */
         RepeatFound: {
             /** Batch */
@@ -6706,6 +6728,8 @@ export interface components {
             first: string | null;
             /** Tag */
             tag?: string | null;
+            /** Location */
+            location?: string | null;
         };
         /** RepeatInput */
         RepeatInput: {
@@ -6751,6 +6775,27 @@ export interface components {
         };
         /** RepeatsImportResult */
         RepeatsImportResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** RepeatsLeaveOutResult */
+        RepeatsLeaveOutResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
@@ -11912,6 +11957,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RepeatsImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    repeats_leave_out: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepeatBatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepeatsLeaveOutResult"];
                 };
             };
             /** @description Validation Error */

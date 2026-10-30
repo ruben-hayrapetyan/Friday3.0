@@ -5222,6 +5222,77 @@
     }
    }
   },
+  "/api/c/repeats_leave_out": {
+   "post": {
+    "summary": "A repeating calendar event you don't go to: its weeks aren't planned around, now or as they come in.",
+    "operationId": "repeats_leave_out",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RepeatBatch"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RepeatsLeaveOutResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/replan": {
    "post": {
     "summary": "Solve now.",
@@ -21806,6 +21877,20 @@
     ],
     "title": "ReorderResult"
    },
+   "RepeatBatch": {
+    "properties": {
+     "batch": {
+      "type": "string",
+      "title": "Batch"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "batch"
+    ],
+    "title": "RepeatBatch"
+   },
    "RepeatFound": {
     "properties": {
      "batch": {
@@ -21853,6 +21938,17 @@
        }
       ],
       "title": "Tag"
+     },
+     "location": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location"
      }
     },
     "additionalProperties": false,
@@ -22080,6 +22176,76 @@
      "result"
     ],
     "title": "RepeatsImportResult"
+   },
+   "RepeatsLeaveOutResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "RepeatsLeaveOutResult"
    },
    "ReplanOutput": {
     "properties": {

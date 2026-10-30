@@ -2,7 +2,8 @@
 // everything just a message the user needs to deal with in inbox"): each thing waiting is a message with a line to
 // say what it is, opened beside the list to deal with, and gone once you have. Most pressing first: what only you can
 // decide; then the planned time Friday can't account for, yesterday's before today's, and sleep taps you missed; what
-// came in from mail, calendars and syllabi; copies of a task; a go-over you started; repeating events to import.
+// came in from mail, calendars and syllabi; copies of a task; a go-over you started; each repeating calendar event not
+// planned around yet (29 Oct: "i don't see any concrete action": go, or leave it out).
 
 import type { Item, Schemas } from "@/api/client"
 import { ampm, clock, dayLabel, dur, lateBy, weekday, when } from "@/lib/format"
@@ -13,6 +14,7 @@ type Gap = Schemas["ReviewGap"]
 type SleepAsk = Schemas["SleepAsk"]
 type Suggestion = Schemas["SuggestionOut"]
 type Group = Schemas["DuplicateGroup"]
+type Repeat = Schemas["RepeatFound"]
 
 export type Message =
   | { kind: "decision"; key: string; decision: Decision }
@@ -21,7 +23,7 @@ export type Message =
   | { kind: "suggestion"; key: string; s: Suggestion; answered?: boolean }
   | { kind: "copies"; key: string; group: Group; from: Record<number, string> }
   | { kind: "again"; key: string; item: Item; from?: string }
-  | { kind: "repeats"; key: string; n: number }
+  | { kind: "repeat"; key: string; found: Repeat }
 
 export interface Sources {
   decisions: Decision[]
@@ -32,7 +34,7 @@ export interface Sources {
   copySources?: Record<number, string>
   again: Item[]
   againSources?: Record<number, string>
-  repeats: number
+  repeats: Repeat[] // repeating calendar events waiting to come in, one message each
 }
 
 /** A gap still to answer: no answer yet and the task not checked off. */
@@ -48,7 +50,7 @@ export function messagesOf(src: Sources): Message[] {
   for (const s of src.answered ?? []) if (!waiting.has(s.id)) out.push({ kind: "suggestion", key: `s:${s.id}`, s, answered: true })
   for (const group of src.copies) out.push({ kind: "copies", key: `copies:${group.key}`, group, from: src.copySources ?? {} })
   for (const item of src.again) out.push({ kind: "again", key: `again:${item.id}`, item, from: src.againSources?.[item.id] })
-  if (src.repeats > 0) out.push({ kind: "repeats", key: "repeats", n: src.repeats })
+  for (const found of src.repeats) out.push({ kind: "repeat", key: found.batch, found })
   return out
 }
 
@@ -105,8 +107,8 @@ export function rowOf(m: Message, today: string): Row {
       return { icon: "copy", title: m.group.items[0]?.title ?? m.group.key, line: `On your list ${m.group.items.length} times: keep one`, meta: "Copies" }
     case "again":
       return { icon: "arrow-counter-clockwise", title: m.item.title, line: `${m.item.preset ?? "No kind"} · from ${m.from ?? "you"}: keep it?`, meta: "Go over" }
-    case "repeats":
-      return { icon: "repeat", title: `${m.n} repeating ${m.n === 1 ? "event" : "events"} from your calendars`, line: "Not in Repeating yet: bring them in", meta: "Calendars" }
+    case "repeat":
+      return { icon: "repeat", title: m.found.title, line: `${m.found.pattern}${m.found.location ? ` · ${m.found.location}` : ""}: do you go?`, meta: "Repeats" }
   }
 }
 

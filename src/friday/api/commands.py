@@ -759,6 +759,10 @@ class SuggestionInput(Model):
     edits: dict[str, Any] = {}  # fields to change before accepting
 
 
+class RepeatBatch(Model):
+    batch: str  # a repeating calendar event waiting to come in: "repeat:<its id>"
+
+
 class BatchInput(Model):
     batch: str
     edits: dict[str, Any] = {}  # applied to every suggestion in it: a repeating event's kind or tag, say

@@ -450,6 +450,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "rule_remove": lambda app: {"name": "cluster"},
     "mail_retry": lambda app: {"id": a_skipped_mail(app)},
     "repeats_import": lambda app: {"repeats": [{"batch": a_waiting_repeat(app)}]},
+    "repeats_leave_out": lambda app: {"batch": a_waiting_repeat(app)},
     "calendar_set": lambda app: {"id": a_calendar(app), "on": True, "kind": "Class"},
     "events_to_calendar": unsent_event,
     "kind_add": lambda app: {"name": "Lab report", "like": "Assignment"},

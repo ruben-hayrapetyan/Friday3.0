@@ -436,6 +436,7 @@ class RepeatFound(Model):
     count: int  # how many times within the planning horizon
     first: str | None  # the next one's start or due, local
     tag: str | None = None  # the course its title names, as a tag to start with ("CS 2110")
+    location: str | None = None  # where it is, as the calendar says
 
 
 class MailOut(Model):

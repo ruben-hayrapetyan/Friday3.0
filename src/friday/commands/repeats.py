@@ -1,11 +1,13 @@
-"""Repeating calendar events, imported in Settings → Repeating (v22): each series comes in as one repeat, not as
-separate events, with the tag and kind you pick. Until then its instances wait here rather than in the inbox; once
-imported, the calendar keeps making its occurrences (`series.external_id`)."""
+"""Repeating calendar events (v22): each series comes in as one repeat, not as separate events, with the tag and kind
+you pick. Until then its instances wait here rather than as suggestions one by one; once imported, the calendar keeps
+making its occurrences (`series.external_id`). Each waits in the Inbox as one message (29 Oct: "what does this mean?
+1 repeating event to bring in. i don't see any concrete action"): plan around it, or leave it out, which holds for its
+later weeks too (`suggesting.said_of_series`). Settings → Repeating imports them as well."""
 
 import json
 from typing import Any
 
-from friday.api.commands import Changed, RepeatsImportInput
+from friday.api.commands import Changed, RepeatBatch, RepeatsImportInput
 from friday.api.types import Empty
 from friday.api.views import RepeatFound
 from friday.commands.inbox import apply
@@ -49,7 +51,11 @@ def lead(instances: list[dict[str, Any]]) -> dict[str, Any]:
 def pattern(ctx: Ctx, batch: str, instances: list[dict[str, Any]]) -> str:
     """The repeat in words, like "Every Mon, Wed and Fri, 12:20pm–1:10pm" or "Yearly, all day": the calendar's own
     rule (the instances' weekdays when it is unknown) and the first's times."""
-    words = describe(calendar_rule(ctx, batch) or weekdays_rule([when(s) for s in instances]))
+    seen = weekdays_rule([when(s) for s in instances])
+    rule = calendar_rule(ctx, batch) or seen
+    if "FREQ=WEEKLY" in rule and "BYDAY=" not in rule and "BYDAY=" in seen:
+        rule += ";BYDAY=" + seen.split("BYDAY=")[1]  # a calendar's plain weekly event is on its first day's weekday
+    words = describe(rule)
     first = lead(instances)["fields"]
     if first.get("blocks_time") is False and first.get("start", "").endswith("T00:00"):
         return f"{words}, all day"
@@ -75,6 +81,7 @@ def calendar_repeats(ctx: Ctx, inp: Empty) -> list[RepeatFound]:
                 count=len({when(s)[:10] for s in instances}),
                 first=when(instances[0]) or None,
                 tag=first["fields"].get("area") or course_tag(first["fields"].get("title", ""), tags),
+                location=first["fields"].get("location"),
             )
         )
     return sorted(out, key=lambda r: (r.calendar, r.title))
@@ -100,3 +107,15 @@ def repeats_import(ctx: Ctx, inp: RepeatsImportInput) -> Changed:
             )
     count = len(inp.repeats)
     return Changed(message=f"Imported {count} repeat{'s' if count != 1 else ''}")
+
+
+@command("repeats_leave_out", affects_plan=True)
+def repeats_leave_out(ctx: Ctx, inp: RepeatBatch) -> Changed:
+    """A repeating calendar event you don't go to: its weeks aren't planned around, now or as they come in."""
+    found = waiting(ctx).get(inp.batch)
+    if not found:
+        raise FieldError("batch", "that repeating event isn't waiting any more; sync and look again")
+    for s in found:
+        ctx.db.update("suggestions", {"id": s["id"]}, {"status": "rejected", "decided_utc": ctx.now_text})
+    title = lead(found)["fields"].get("title", "it")
+    return Changed(message=f"Left out {title}, its later weeks too")

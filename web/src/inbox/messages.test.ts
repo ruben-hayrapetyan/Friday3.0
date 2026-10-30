@@ -28,14 +28,14 @@ const SOURCES: Sources = {
   answered: [suggestion(99, "Accepted earlier")],
   copies: [{ key: "ps 9", keep: 1, items: [item(1, "PS 9"), item(2, "PS 9")] }],
   again: [item(30, "Read ch. 4")],
-  repeats: 2,
+  repeats: [{ batch: "repeat:club", title: "CS Theory Club", kind: "Meeting", calendar: "student@school.edu", pattern: "Every Wednesday until May 31, 5pm–6:30pm", count: 12, first: "2026-11-04T17:00", location: "CIS Building" }],
 }
 
 describe("the Inbox as one list of messages", () => {
   const list = messagesOf(SOURCES)
 
   it("puts what only you can decide first, then yesterday's gaps and today's, missed sleep taps, what came in, copies, a go-over and repeating events", () => {
-    expect(list.map((m) => m.key)).toEqual(["d:late", `gap:${YESTERDAY}:10`, `gap:${TODAY}:20`, `sleep:${YESTERDAY}:bed`, "s:100", "s:101", "s:99", "copies:ps 9", "again:30", "repeats"])
+    expect(list.map((m) => m.key)).toEqual(["d:late", `gap:${YESTERDAY}:10`, `gap:${TODAY}:20`, `sleep:${YESTERDAY}:bed`, "s:100", "s:101", "s:99", "copies:ps 9", "again:30", "repeat:club"])
   })
 
   it("asks only the gaps not answered and not checked off", () => {
@@ -44,7 +44,7 @@ describe("the Inbox as one list of messages", () => {
 
   it("counts what's waiting, not suggestions you've already answered here", () => {
     expect(waitingCount(list)).toBe(9)
-    expect(waitingCount(messagesOf({ ...SOURCES, repeats: 0, answered: [] }))).toBe(8)
+    expect(waitingCount(messagesOf({ ...SOURCES, repeats: [], answered: [] }))).toBe(8)
   })
 
   it("an answered suggestion still waiting on the server isn't listed twice", () => {
@@ -58,14 +58,14 @@ describe("the Inbox as one list of messages", () => {
     expect(rowOf(list[2], TODAY).meta).toBe("Today")
     expect(rowOf(list[4], TODAY)).toMatchObject({ title: "Palantir screening", meta: "Gmail", icon: "envelope-simple" })
     expect(rowOf(list[7], TODAY).line).toBe("On your list 2 times: keep one")
-    expect(rowOf(list[9], TODAY).title).toBe("2 repeating events from your calendars")
+    expect(rowOf(list[9], TODAY)).toMatchObject({ title: "CS Theory Club", line: "Every Wednesday until May 31, 5pm–6:30pm · CIS Building: do you go?" })
   })
 
   it("opens the next one once you've dealt with one, else the one before", () => {
     expect(nextAfter(list, "d:late", new Set())).toBe(`gap:${YESTERDAY}:10`)
     expect(nextAfter(list, "s:101", new Set())).toBe("copies:ps 9") // the answered one is passed over
-    expect(nextAfter(list, "repeats", new Set())).toBe("again:30")
-    expect(nextAfter(list, "copies:ps 9", new Set(["again:30", "repeats"]))).toBe("s:101")
+    expect(nextAfter(list, "repeat:club", new Set())).toBe("again:30")
+    expect(nextAfter(list, "copies:ps 9", new Set(["again:30", "repeat:club"]))).toBe("s:101")
     expect(nextAfter([list[0]], "d:late", new Set())).toBeNull()
   })
 })

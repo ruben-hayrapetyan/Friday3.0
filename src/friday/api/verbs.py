@@ -788,6 +788,14 @@ VERBS = {
         True,
         "Import repeating calendar events, each as one repeat with the tag and kind you pick.",
     ),
+    "repeats_leave_out": Verb(
+        "POST",
+        "/api/c/repeats_leave_out",
+        commands.RepeatBatch,
+        True,
+        True,
+        "A repeating calendar event you don't go to: its weeks aren't planned around, now or as they come in.",
+    ),
     "replan": Verb("POST", "/api/c/replan", commands.Empty, True, False, "Solve now."),
     "report": Verb(
         "POST",

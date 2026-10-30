@@ -9,9 +9,8 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router"
 import { query, type Schemas } from "@/api/client"
-import { Chip, H, Icon } from "@/components/fr/controls"
+import { Chip, H, Icon, Menu } from "@/components/fr/controls"
 import { DateTimeInput } from "@/components/fr/TimeInput"
 import { useToast } from "@/components/Toasts"
 import { useAreas } from "@/hooks/queries"
@@ -26,7 +25,7 @@ import { useAllItems } from "@/todo/TodoPage"
 import { GapPane, SleepPane } from "./DayPanes"
 import { DecisionPane } from "./Decisions"
 import { type Message, nextAfter, rowOf, waitingCount } from "./messages"
-import { Actions, Pane } from "./Pane"
+import { Actions, After, Pane } from "./Pane"
 import { useDuplicates, useInbox, useInboxMessages, useToReview } from "./queries"
 import { AgainPane, CopiesPane } from "./TaskPanes"
 
@@ -133,8 +132,8 @@ export function InboxPage() {
         const all = going?.items ?? [m.item]
         return <AgainPane key={m.key} item={m.item} from={m.from} all={all} onDone={deal(m.key)} onAllDone={deal(...all.map((i) => `again:${i.id}`))} />
       }
-      case "repeats":
-        return <RepeatsPane key={m.key} n={m.n} />
+      case "repeat":
+        return <RepeatPane key={m.key} found={m.found} onDone={deal(m.key)} />
     }
   }
   return (
@@ -221,20 +220,55 @@ function Row({ m, on, answered, onClick }: { m: Message; on: boolean; answered?:
   )
 }
 
-/** Repeating events from your calendars not brought in yet: Settings → Repeating does that. */
-function RepeatsPane({ n }: { n: number }) {
-  const navigate = useNavigate()
+/** A repeating event on one of your calendars that Friday doesn't plan around yet (29 Oct: "what does this mean? 1
+ * repeating event to bring in. i don't see any concrete action"): when and where it is, and the answer. Going, it
+ * comes in as one weekly event with the tag and kind chosen here; not going, it stays out, its later weeks too. */
+function RepeatPane({ found, onDone }: { found: Schemas["RepeatFound"]; onDone: Done }) {
+  const { today } = useShell()
+  const go = useCommand("repeats_import", { label: () => `${found.title} is in your plan` })
+  const skip = useCommand("repeats_leave_out", { label: (o) => o.result.message ?? "Left out" })
+  const known = (useAreas().data ?? []).map((a) => a.name)
+  const areas = found.tag && !known.includes(found.tag) ? [...known, found.tag] : known
+  const presets = usePresets()
+  const [area, setArea] = useState(found.tag ?? "")
+  const [kind, setKind] = useState(found.kind)
+  const facts: [string, string | null | undefined][] = [
+    ["When", found.pattern],
+    ["Where", found.location],
+    ["Next", found.first ? when(found.first, today) : null],
+    ["From", found.calendar],
+  ]
   return (
-    <Pane icon="repeat" kicker="From your calendars" title={`${n} repeating ${n === 1 ? "event" : "events"} to bring in`}>
+    <Pane icon="repeat" kicker="A repeating event on your calendar" title={found.title}>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {facts
+          .filter(([, v]) => !!v)
+          .map(([k, v]) => (
+            <div key={k} className="fr-row" style={{ display: "grid", gridTemplateColumns: "72px minmax(0,1fr)", gap: 14, padding: "8px 0" }}>
+              <span className="fr-kicker">{k}</span>
+              <span className="tnum" style={{ fontWeight: 500 }}>
+                {v}
+              </span>
+            </div>
+          ))}
+      </div>
       <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>
-        Weekly classes and other repeating events on your calendars that Friday doesn't plan around as repeats yet. Bring them in as repeating, or leave them out.
+        Friday isn’t planning around it yet, so work can land in its time. Do you go?
       </span>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", fontSize: 12 }}>
+        <span className="fr-kicker">As</span>
+        <Menu options={presets.map((p) => ({ value: p, label: p }))} value={kind} onPick={setKind} label={`Kind for ${found.title}`} />
+        <Menu options={[{ value: "", label: "No tag" }, ...areas.map((a) => ({ value: a, label: a }))]} value={area} onPick={setArea} label={`Tag for ${found.title}`} />
+      </div>
       <Actions>
-        <button className="btn btn-primary" onClick={() => navigate("/settings/repeating")}>
-          <Icon name="repeat" />
-          Open Repeating
+        <button className="btn btn-primary" onClick={() => onDone(go({ repeats: [{ batch: found.batch, area: area || null, kind: kind === found.kind ? null : kind }] }))}>
+          <Icon name="check" />I go: plan around it
+        </button>
+        <button className="btn btn-secondary" onClick={() => onDone(skip({ batch: found.batch }))}>
+          <Icon name="x" />I don’t go: leave it out
         </button>
       </Actions>
+      <After>Planned around, it’s in your plan every week and follows your calendar; stop it any time in Settings → Repeating. Left out, its later weeks stay out too.</After>
     </Pane>
   )
 }

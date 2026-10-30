@@ -79,6 +79,34 @@ def test_a_repeating_event_waits_in_repeating_rather_than_the_inbox(app: App) ->
     assert found["pattern"] == "Every Mon and Wed, 12:20pm–1:10pm" and found["count"] == 2
 
 
+def test_a_repeating_event_left_out_stays_out_as_its_later_weeks_come_in(app: App) -> None:
+    """29 Oct: "1 repeating event to bring in. i don't see any concrete action": in the Inbox, plan around it or leave
+    it out, and out holds for the weeks the calendar adds later."""
+    google = FakeGoogle({"School@group": [lecture(1, "2026-10-19"), lecture(2, "2026-10-21")]})
+    read(app, google)
+    assert (
+        app.do("repeats_leave_out", batch="repeat:chem")["message"]
+        == "Left out CHEM 2090, Lecture, its later weeks too"
+    )
+    assert app.do("calendar_repeats") == [] and app.do("inbox")["repeats"] == 0
+    google.calendars_by_id["School@group"].append(lecture(3, "2026-10-23"))
+    read(app, google, minutes_later=60)
+    assert app.do("calendar_repeats") == [] and not [
+        i for i in app.table("items") if i["title"] == "CHEM 2090, Lecture"
+    ]
+
+
+def test_a_plain_weekly_event_says_its_day(app: App) -> None:
+    club = [event(f"club_{n}", "CS Theory Club", f"2026-10-{d}T17:00", f"2026-10-{d}T18:30", recurringEventId="club",
+                  location="CIS Building") for n, d in ((1, "21"), (2, "28"))]  # fmt: skip
+    google = FakeGoogle({"School@group": club})
+    read(app, google)
+    rule = "FREQ=WEEKLY;UNTIL=20270531T210000Z"  # as Google gives a plain weekly event: no day named
+    app.conn.execute("UPDATE raw_inputs SET content = json_set(content, '$.recurrence', ?)", [rule])
+    [found] = app.do("calendar_repeats")
+    assert found["pattern"] == "Every Wednesday until May 31, 5pm–6:30pm" and found["location"] == "CIS Building"
+
+
 def test_an_imported_repeat_is_one_series_with_your_tag_and_kind_and_its_later_times_follow(app: App) -> None:
     app.do("area_add", name="Chemistry")
     google = FakeGoogle({"School@group": [lecture(1, "2026-10-19"), lecture(2, "2026-10-21")]})
