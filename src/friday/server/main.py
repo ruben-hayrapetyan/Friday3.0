@@ -5,6 +5,7 @@
 import argparse
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +25,26 @@ from friday.sim.students import STUDENTS
 from friday.sync import gcal, google_auth
 
 DATA_DIR = Path(os.environ.get("FRIDAY_DATA_DIR", "~/.local/share/friday")).expanduser()
-WEB_DIST = Path(__file__).resolve().parents[3] / "web" / "dist"
+
+
+HERE = Path(__file__).resolve()
+
+
+def web_dist(prefix: Path = Path(sys.prefix), source: Path = HERE) -> Path:
+    """The web app the server shows: `FRIDAY_WEB_DIST` if set; else the copy installed beside this Python
+    (scripts/deploy.sh puts it in <prefix>/share/friday/web); else the repo's web/dist, while working on it.
+
+    29 Oct: "“Friday Test.app” would like to access files in your Downloads folder... they keep coming". The repo
+    lives in ~/Downloads, which macOS guards: a server run from it (an editable install) read its code and pages
+    there, and every solver worker it started asked again on the app's behalf. Installed, it reads nothing there."""
+    chosen = os.environ.get("FRIDAY_WEB_DIST")
+    if chosen:
+        return Path(chosen).expanduser()
+    installed = prefix / "share" / "friday" / "web"
+    return installed if (installed / "index.html").exists() else source.parents[3] / "web" / "dist"
+
+
+WEB_DIST = web_dist()
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
 
