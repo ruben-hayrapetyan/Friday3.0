@@ -97,12 +97,16 @@ if $INSTALL; then
   echo "==> Installing to /Applications"
   osascript -e 'tell application id "com.rubenhayrapetyan.friday" to quit' 2>/dev/null || true
   osascript -e "tell application id \"$BUNDLE_ID\" to quit" 2>/dev/null || true
-  for _ in {1..50}; do
+  # Quitting stops its server first, which can take a while; opening while it's still going fails (30 Oct: error -600)
+  for _ in {1..150}; do
     pgrep -f "/Applications/$APP_NAME.app/" >/dev/null || break
     sleep 0.1
   done
   [ -d "/Applications/$APP_NAME.app" ] && rm -r "/Applications/$APP_NAME.app"
   cp -R "$APP" /Applications/
-  open "/Applications/$APP_NAME.app"
+  for _ in 1 2 3; do
+    open "/Applications/$APP_NAME.app" && break
+    sleep 2
+  done
   echo "==> Installed and launched /Applications/$APP_NAME.app"
 fi

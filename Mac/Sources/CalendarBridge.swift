@@ -80,7 +80,8 @@ final class CalendarBridge {
 /// A change Friday asks of one of the Mac's events (api/views.py MacWriteOut), made through EventKit: its times and, when
 /// you renamed it or moved it somewhere else in Friday, its title and place; or a delete. Only that occurrence of a
 /// repeating event changes. Or a new event Friday made, for one of the Mac's calendars (27 Oct: your Gmail calendar,
-/// which Friday reads through the Mac, so the event reaches Google through the Mac's own sync).
+/// which Friday reads through the Mac, so the event reaches Google through the Mac's own sync). Or a one-off event made
+/// to repeat (30 Oct: "the friday night salsa that's on this week should be a weekly event").
 enum MacWriter {
     /// Makes one change; the answer for `mac_written`, with the event as it now is.
     static func apply(_ job: [String: Any], in store: EKEventStore, made: Made = .shared) -> [String: Any] {
@@ -100,6 +101,16 @@ enum MacWriter {
             if op == "delete" {
                 try store.remove(event, span: .thisEvent, commit: true)
                 return ["id": id, "ok": true]
+            }
+            if op == "repeat" {
+                guard let text = job["rule"] as? String, let rule = recurrence(text) else {
+                    return ["id": id, "ok": false, "error": "Friday's repeat couldn't be read"]
+                }
+                event.recurrenceRules = [rule]
+                try store.save(event, span: .futureEvents, commit: true)
+                var answer: [String: Any] = ["id": id, "ok": true]
+                if let now = MacPayload.event(event) { answer["event"] = now }
+                return answer
             }
             if change(event, to: job) { try store.save(event, span: .thisEvent, commit: true) }
             var answer: [String: Any] = ["id": id, "ok": true]
@@ -154,6 +165,35 @@ enum MacWriter {
             (e.eventIdentifier ?? e.calendarItemIdentifier) == identifier
                 && Int((e.occurrenceDate ?? e.startDate).timeIntervalSince1970) == Int(at.timeIntervalSince1970)
         }
+    }
+
+    /// An RRULE as Friday writes them ("FREQ=WEEKLY;BYDAY=FR", "FREQ=WEEKLY;INTERVAL=2;BYDAY=TH",
+    /// "FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261211T235959" in this Mac's time, or with a Z in UTC, or a COUNT) as EventKit's.
+    static func recurrence(_ rule: String, zone: TimeZone = .current) -> EKRecurrenceRule? {
+        var parts: [String: String] = [:]
+        for part in rule.split(separator: ";") {
+            let pair = part.split(separator: "=", maxSplits: 1).map(String.init)
+            if pair.count == 2 { parts[pair[0]] = pair[1] }
+        }
+        let frequencies: [String: EKRecurrenceFrequency] = ["DAILY": .daily, "WEEKLY": .weekly, "MONTHLY": .monthly, "YEARLY": .yearly]
+        guard let frequency = parts["FREQ"].flatMap({ frequencies[$0] }) else { return nil }
+        let weekdays: [String: EKWeekday] = ["SU": .sunday, "MO": .monday, "TU": .tuesday, "WE": .wednesday, "TH": .thursday, "FR": .friday, "SA": .saturday]
+        let days = (parts["BYDAY"] ?? "").split(separator: ",").compactMap { day in weekdays[String(day.suffix(2))].map { EKRecurrenceDayOfWeek($0) } }
+        var end: EKRecurrenceEnd?
+        if let count = parts["COUNT"].flatMap(Int.init) {
+            end = EKRecurrenceEnd(occurrenceCount: count)
+        } else if let until = parts["UNTIL"] {
+            let format = DateFormatter()
+            format.locale = Locale(identifier: "en_US_POSIX")
+            format.timeZone = until.hasSuffix("Z") ? TimeZone(identifier: "UTC") : zone
+            format.dateFormat = until.count <= 8 ? "yyyyMMdd" : (until.hasSuffix("Z") ? "yyyyMMdd'T'HHmmss'Z'" : "yyyyMMdd'T'HHmmss")
+            if let date = format.date(from: until) { end = EKRecurrenceEnd(end: date) }
+        }
+        return EKRecurrenceRule(
+            recurrenceWith: frequency, interval: max(1, Int(parts["INTERVAL"] ?? "1") ?? 1),
+            daysOfTheWeek: days.isEmpty ? nil : days, daysOfTheMonth: nil, monthsOfTheYear: nil, weeksOfTheYear: nil,
+            daysOfTheYear: nil, setPositions: nil, end: end
+        )
     }
 
     /// "<identifier>@<Unix seconds>" apart; the identifier may hold an @ of its own.

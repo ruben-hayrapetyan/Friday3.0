@@ -18016,7 +18016,8 @@
       "enum": [
        "save",
        "delete",
-       "create"
+       "create",
+       "repeat"
       ],
       "title": "Op"
      },
@@ -18088,6 +18089,17 @@
        }
       ],
       "title": "Notes"
+     },
+     "rule": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rule"
      }
     },
     "additionalProperties": false,

@@ -126,6 +126,8 @@ def mac_writes(ctx: Ctx, inp: Empty) -> list[MacWriteOut]:
         }
         if job["op"] == "delete":
             out.append(MacWriteOut(op="delete", **where))
+        elif job["op"] == "repeat":
+            out.append(MacWriteOut(op="repeat", rule=job["rule"], **where))
         elif item is not None and item.status == "todo" and item.start_utc and item.end_utc:
             body = event_body(item, ctx.tz)
             day = "date" in body["start"]
@@ -169,12 +171,14 @@ def mac_written(ctx: Ctx, inp: MacWrittenInput) -> Changed:
         )
         return Changed(message="Kept, to try again")
     ctx.db.update("event_writes", {"id": inp.id}, {"done_utc": ctx.now_text, "error": None})
-    if inp.event is not None and job["op"] == "save":
+    if inp.event is not None and job["op"] in ("save", "repeat"):
+        # repeating now, this time's id carries its start, as every occurrence's does: the raw input takes it
         if job["item_id"] in event_links(ctx.conn, ctx.user_id):
             settle(ctx, job["item_id"], inp.event)
         else:
             adopt(ctx, job, inp.event)
-    return Changed(message="Saved to your calendar" if job["op"] == "save" else "Deleted from your calendar")
+    said = {"save": "Saved to your calendar", "repeat": "Repeats in your calendar"}
+    return Changed(message=said.get(job["op"], "Deleted from your calendar"))
 
 
 def adopt(ctx: Ctx, job: dict[str, Any], event: MacEvent) -> None:

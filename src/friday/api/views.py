@@ -544,7 +544,7 @@ class MacWriteOut(Model):
     delete; or a new event, made on that calendar (`create`)."""
 
     id: int
-    op: Literal["save", "delete", "create"]
+    op: Literal["save", "delete", "create", "repeat"]
     calendar: str  # EventKit's calendarIdentifier
     event: str = ""  # the occurrence's id, as the Mac app sent it ("<identifier>@<occurrence start, Unix seconds>")
     title: str | None = None  # only when you renamed it in Friday (always for a new one): else the calendar's stays
@@ -553,6 +553,7 @@ class MacWriteOut(Model):
     all_day: bool = False
     location: str | None = None  # only when you changed it in Friday ("" clears it); a new one's, if it has one
     notes: str | None = None  # a new event's notes
+    rule: str | None = None  # a repeat's RRULE ("FREQ=WEEKLY;BYDAY=FR"; an UNTIL in the Mac's own time)
 
 
 class RuleReadOut(Model):

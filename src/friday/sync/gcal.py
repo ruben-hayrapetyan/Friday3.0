@@ -64,6 +64,15 @@ def events(service: Any, calendar_id: str, time_min: str, time_max: str | None =
     return paged(service.events(), calendarId=calendar_id, singleEvents=True, maxResults=2500, **window)
 
 
+def first_instance(service: Any, calendar_id: str, event_id: str, time_min: str) -> dict[str, Any] | None:
+    """A repeating event's first time ending after `time_min`, as Google lists its instances."""
+    found = (
+        service.events().instances(calendarId=calendar_id, eventId=event_id, timeMin=time_min, maxResults=1).execute()
+    )
+    items = found.get("items") or []
+    return items[0] if items else None
+
+
 def repeat_rules(service: Any, calendar_id: str, series_ids: set[str]) -> dict[str, str]:
     """Each repeating event's RRULE (like `FREQ=YEARLY`), from the event its instances come from; instances alone
     can't tell a yearly birthday from a weekly lecture. One that can't be read is left out."""

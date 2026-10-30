@@ -7,9 +7,11 @@ import itertools
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import Any
+
+from dateutil.rrule import rrulestr
 
 EASTERN = timezone(timedelta(hours=-4))
 
@@ -111,10 +113,25 @@ class Events:
             events = self.google.calendars_by_id[calendarId]
             found = next(e for e in events if e["id"] == eventId)
             patched = found | local_times(body)
+            if body.get("recurrence"):  # made to repeat: listed from now on as its times, as singleEvents gives them
+                rule = body["recurrence"][0].removeprefix("RRULE:")
+                self.google.rules[eventId] = rule
+                events[:] = [e for e in events if e["id"] != eventId] + repeated(patched, rule)
+                return self.write("patch", patched)
             events[:] = [patched if e["id"] == eventId else e for e in events]
             return self.write("patch", patched)
 
         return Call(change)
+
+    def instances(
+        self, calendarId: str, eventId: str, timeMin: str | None = None, maxResults: int | None = None
+    ) -> Call:  # noqa: N803
+        def found() -> dict[str, Any]:
+            times = [e for e in self.google.calendars_by_id[calendarId] if e.get("recurringEventId") == eventId]
+            times = [e for e in times if timeMin is None or instant(e["end"]) > datetime.fromisoformat(timeMin)]
+            return {"items": sorted(times, key=lambda e: instant(e["start"]))[: maxResults or None]}
+
+        return Call(found)
 
     def delete(self, calendarId: str, eventId: str) -> Call:  # noqa: N803
         def remove() -> None:
@@ -127,6 +144,24 @@ class Events:
     def write(self, kind: str, event: dict[str, Any]) -> dict[str, Any]:
         self.google.writes.append(kind)
         return event
+
+
+def repeated(master: dict[str, Any], rule: str, times: int = 12) -> list[dict[str, Any]]:
+    """A repeating event's first `times` times, each with an id of its own and its event's as `recurringEventId`."""
+    start, end = instant(master["start"]), instant(master["end"])
+    out = []
+    for at in itertools.islice(rrulestr(rule, dtstart=start), times):
+        stamp = at.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
+        out.append(
+            {k: v for k, v in master.items() if k != "recurrence"}
+            | {
+                "id": f"{master['id']}_{stamp}",
+                "recurringEventId": master["id"],
+                "start": {"dateTime": at.astimezone(EASTERN).isoformat()},
+                "end": {"dateTime": (at + (end - start)).astimezone(EASTERN).isoformat()},
+            }
+        )
+    return out
 
 
 def local(body: dict[str, Any]) -> dict[str, Any]:

@@ -636,3 +636,31 @@ def test_events_made_before_a_calendar_was_chosen_are_put_on_it_once_asked(app: 
     # Asked again before the Mac app has made them, nothing is sent twice.
     assert "Every event" in app.do("events_to_calendar")["message"]
     assert len(creates(app)) == len(gyms) + 1
+
+
+def test_an_event_made_to_repeat_here_repeats_on_the_mac_and_comes_back_as_one_series(app: App) -> None:
+    # 30 Oct: "the friday night salsa that's on this week should be a weekly event" failed with "Salsa comes from
+    # ruben...@gmail.com: make it repeat there"; that calendar comes in through the Mac. The Mac app makes it repeat
+    # there, and its occurrences come back as this one series, this week's the same event.
+    from datetime import datetime
+
+    def secs(day: str) -> int:
+        return int(datetime.fromisoformat(f"2026-{day}T18:15:00-04:00").timestamp())
+
+    one_off = mac_event(f"s1@{secs('10-23')}", "home", "Salsa", "2026-10-23T18:15", "2026-10-23T19:30")
+    post(app, [WRITABLE], [one_off])
+    salsa = events(app)["Salsa"]
+    app.do("repeat", id=salsa["id"], every="fri")
+    (job,) = app.do("mac_writes")
+    assert (job["op"], job["rule"], job["event"]) == ("repeat", "FREQ=WEEKLY;BYDAY=FR", f"s1@{secs('10-23')}")
+    weekly = [
+        mac_event(f"s1@{secs(d)}", "home", "Salsa", f"2026-{d}T18:15", f"2026-{d}T19:30", series="s1")
+        for d in ("10-23", "10-30", "11-06", "11-13")
+    ]
+    app.do("mac_written", id=job["id"], ok=True, event=weekly[0])
+    assert app.do("mac_writes") == []
+    post(app, [WRITABLE], weekly, minutes_later=1)
+    assert app.do("inbox")["suggestions"] == []
+    salsas = [i for i in app.table("items") if i["title"] == "Salsa" and i["status"] == "todo"]
+    assert len(salsas) == 4 and salsa["id"] in {i["id"] for i in salsas}  # this week's kept, the rest come in
+    assert len({i["series_id"] for i in salsas}) == 1 and salsas[0]["series_id"] is not None

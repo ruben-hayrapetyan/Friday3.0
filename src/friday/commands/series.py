@@ -2,6 +2,7 @@
 
 import contextlib
 import json
+import re
 from dataclasses import replace
 from datetime import date, datetime, timedelta
 from typing import Any
@@ -18,7 +19,7 @@ from friday.api.commands import (
     SeriesRef,
 )
 from friday.api.views import SeriesRow
-from friday.commands.eventwrites import queue_event_write
+from friday.commands.eventwrites import queue_event_write, writes_to
 from friday.commands.fields import given_fields, insert_item, item_out, new_item, require_item, to_item_values
 from friday.commands.registry import Ctx, command, query
 from friday.core.db import one, rows
@@ -110,13 +111,23 @@ NOT_REPEATED = ("id", "status", "series_id", "occurrence_date", "occurrence_n", 
 @command("repeat", affects_plan=True)
 def repeat(ctx: Ctx, inp: RepeatInput) -> SeriesOut:
     """Make something you have repeat from its own date and time ("Salsa every Friday", for this Friday's Salsa);
-    it stays the first time, with what you've done on it. One from your calendar repeats there instead."""
+    it stays the first time, with what you've done on it. One from a Google calendar Friday may change repeats there
+    (30 Oct: "the friday night salsa that's on this week should be a weekly event" failed with "make it repeat
+    there"): the calendar gets the repeat, and its later times come in from it as this series' occurrences."""
     item = require_item(ctx, inp.id)
     if item.series_id is not None:
         raise FieldError("id", f"{item.title} repeats already; change how in its drawer")
     link = event_links(ctx.conn, ctx.user_id).get(item.id or 0)
     if link is not None:
-        raise FieldError("id", f"{item.title} comes from {link.calendar or 'your calendar'}: make it repeat there")
+        if (
+            link.kind not in ("gcal", "mac")
+            or not link.event_id
+            or not writes_to(ctx.conn, ctx.user_id, link.source_id)
+        ):
+            raise FieldError("id", f"{item.title} comes from {link.calendar or 'your calendar'}: make it repeat there")
+        # the repeat's id in the calendar: Google's event, or EventKit's identifier (an occurrence's start dropped)
+        found = re.match(r"^(.*)@\d+$", link.event_id) if link.kind == "mac" else None
+        return repeat_in_calendar(ctx, item, found[1] if found else link.event_id, rule_from(ctx, inp.every))
     values = {k: v for k, v in vars(item).items() if v is not None and k not in NOT_REPEATED}
     series_id = new_series(ctx, values, {"every": inp.every})
     series = as_series(load_series(ctx, series_id))
@@ -126,6 +137,21 @@ def repeat(ctx: Ctx, inp: RepeatInput) -> SeriesOut:
         ctx.db.update("items", {"id": item.id}, {"series_id": series_id, "occurrence_date": mine.occurrence_date,
                                                  "occurrence_n": mine.occurrence_n})  # fmt: skip
     materialize_series(ctx, series_id)
+    return series_out(ctx, series_id)
+
+
+def repeat_in_calendar(ctx: Ctx, item: Any, event_id: str, rule: str) -> SeriesOut:
+    """The repeat goes to the event's calendar (`event_writes` op `repeat`: sent to Google, or made by the Mac app
+    through EventKit for one of the Mac's calendars), and the series that mirrors a calendar's repeat is made now,
+    this time its first: the next sync takes the later times in as its occurrences without asking
+    (`suggesting.said_of_series`), and keeps this one (the write ties it to the repeat's first time)."""
+    batch = f"repeat:{event_id}"
+    row = ctx.db.fetch("items", {"id": item.id})
+    assert row is not None
+    series_id = mirror(ctx, row, batch, f"gcal:{event_id}", rule)
+    on = format_local(to_local(parse_utc(item.start_utc), ctx.tz))[:10]
+    ctx.db.update("items", {"id": item.id}, {"series_id": series_id, "occurrence_date": on, "occurrence_n": 1})
+    ctx.db.insert("event_writes", {"item_id": item.id, "op": "repeat", "rule": rule, "queued_utc": ctx.now_text})
     return series_out(ctx, series_id)
 
 
@@ -446,8 +472,9 @@ def weekdays_rule(starts: list[str]) -> str:
     return "FREQ=WEEKLY;BYDAY=" + ",".join(DAYS[d] for d in days) if days else "FREQ=WEEKLY"
 
 
-def mirror(ctx: Ctx, item: dict[str, Any], batch: str, external: str) -> int:
-    """The series for a calendar event: its first item's fields and the event's repeat, for describing."""
+def mirror(ctx: Ctx, item: dict[str, Any], batch: str, external: str, rule: str | None = None) -> int:
+    """The series for a calendar event: its first item's fields and the event's repeat (`rule`, when Friday made it
+    repeat), for describing."""
     starts = [
         json.loads(r[0]).get("start") or json.loads(r[0]).get("due")
         for r in ctx.conn.execute("SELECT input FROM suggestions WHERE user_id = ? AND batch = ?", [ctx.user_id, batch])
@@ -460,7 +487,7 @@ def mirror(ctx: Ctx, item: dict[str, Any], batch: str, external: str) -> int:
         "series",
         {
             "template": json.dumps(template),
-            "rrule": calendar_rule(ctx, batch) or weekdays_rule(starts),
+            "rrule": rule or calendar_rule(ctx, batch) or weekdays_rule(starts),
             "dtstart_local": first,
             "external_id": external,
             "created_utc": ctx.now_text,

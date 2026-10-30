@@ -207,3 +207,36 @@ def test_a_place_is_read_from_google_and_sent_with_a_new_event(tmp_path: Path) -
         "America/New_York", reading(r"\bdue\b", r"\bexam\b", r"\blecture\b"),
     )  # fmt: skip
     assert bare is not None and "location" not in bare.text and bare.content_hash != found.content_hash
+
+
+def test_an_event_from_the_calendar_made_to_repeat_repeats_there_and_comes_back_as_one_series(app: App) -> None:
+    # 30 Oct: "the friday night salsa that's on this week should be a weekly event"; accepting it failed with "Salsa
+    # comes from ruben...@gmail.com: make it repeat there". Friday may change that calendar, so it makes the event
+    # repeat there; the next sync keeps this week's as the repeat's first time and brings the later weeks in as its
+    # occurrences, without asking about them or dropping this week's.
+    google = FakeGoogle({"Clubs@group": [event("s1", "Salsa", "2026-10-23T18:15", "2026-10-23T19:30")]})
+    app.do("settings_set", key="gcal", value={"read": ["Clubs"]})
+    sync(app.conn, app.now_utc, google=google)
+    app.do("suggestion_accept", id=app.do("inbox")["suggestions"][0]["id"])
+    salsa = next(i for i in app.table("items") if i["title"] == "Salsa")
+    app.do("repeat", id=salsa["id"], every="fri")
+    assert write_events(app.conn, app.now_utc, google=google) == 1
+    assert google.rules["s1"] == "FREQ=WEEKLY;BYDAY=FR"
+    sync(app.conn, app.now_utc + 60, google=google)
+    assert app.do("inbox")["suggestions"] == []  # nothing to ask: you made it repeat
+    times = sorted(
+        (i["start_utc"], i["series_id"]) for i in app.table("items") if i["title"] == "Salsa" and i["status"] == "todo"
+    )
+    assert len(times) >= 4 and times[0][0] == salsa["start_utc"]  # this week's kept, the later weeks in
+    assert len({s for _, s in times}) == 1 and times[0][1] is not None  # all one series
+    assert next(i for i in app.table("items") if i["id"] == salsa["id"])["status"] == "todo"
+
+
+def test_an_event_from_a_calendar_friday_may_not_change_still_says_to_repeat_it_there(app: App) -> None:
+    google = FakeGoogle({"Clubs@group": [event("s1", "Salsa", "2026-10-23T18:15", "2026-10-23T19:30")]})
+    app.do("settings_set", key="gcal", value={"read": ["Clubs"], "trusted": ["Clubs"]})
+    sync(app.conn, app.now_utc, google=google)
+    app.do("calendar_set", id="Clubs@group", editable=False)
+    salsa = next(i for i in app.table("items") if i["title"] == "Salsa")
+    with pytest.raises(Exception, match="repeat there"):
+        app.do("repeat", id=salsa["id"], every="fri")

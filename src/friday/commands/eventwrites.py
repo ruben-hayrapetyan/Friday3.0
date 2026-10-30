@@ -17,8 +17,10 @@ import hashlib
 import json
 import sqlite3
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from friday.api.commands import Changed
 from friday.api.types import Empty
@@ -271,6 +273,10 @@ def send(
     tz = settings["time"].timezone
     if link is not None and link.kind != "gcal":
         return  # queued before its calendar turned out to be the Mac's: nothing to send to Google
+    if job["op"] == "repeat":
+        if item is not None and item.start_utc and link is not None and link.calendar_id:
+            repeat_there(conn, google_for(link.calendar_id), link, item, job["rule"], tz)
+        return
     if job["op"] == "delete" or item is None:
         if link is not None and link.calendar_id:
             gcal.delete_event(google_for(link.calendar_id), link.calendar_id, link.event_id)
@@ -293,6 +299,33 @@ def send(
     # next change patches this event (instead of making another) and a delete finds it.
     source_id = source["id"] if source is not None else quiet_source(conn, calendar, user_id)
     remember(conn, source_id, made, tz, settings, now_utc, user_id, item)
+
+
+def repeat_there(conn: sqlite3.Connection, service: Any, link: Any, item: Item, rule: str, tz: str) -> None:
+    """The event made to repeat in its calendar; this time is now the repeat's first, which Google lists under an id
+    of its own, so the event's raw input takes that id and what Google says of it: the next sync finds this time
+    unchanged, instead of dropping it as gone and asking about it again (the later times join the series)."""
+    gcal.save_event(service, link.calendar_id, link.event_id, {"recurrence": [f"RRULE:{google_rule(rule, tz)}"]})
+    first = gcal.first_instance(service, link.calendar_id, link.event_id, gcal.rfc3339(parse_utc(item.start_utc)))
+    if first is None:
+        return
+    text, digest = event_digest(first)
+    conn.execute(
+        "UPDATE raw_inputs SET external_id = ?, content = ?, content_hash = ?, title = ? "
+        "WHERE source_id = ? AND external_id = ?",
+        [first["id"], text, digest, (first.get("summary") or "").strip(), link.source_id, link.event_id],
+    )
+
+
+def google_rule(rule: str, tz: str) -> str:
+    """A rule as Google takes it for a timed event: an end (`UNTIL`) in UTC, as RFC 5545 asks."""
+    parts = []
+    for part in rule.split(";"):
+        if part.startswith("UNTIL=") and not part.endswith("Z") and "T" in part:
+            local = datetime.strptime(part.removeprefix("UNTIL="), "%Y%m%dT%H%M%S").replace(tzinfo=ZoneInfo(tz))
+            part = f"UNTIL={local.astimezone(UTC):%Y%m%dT%H%M%SZ}"
+        parts.append(part)
+    return ";".join(parts)
 
 
 def quiet_source(conn: sqlite3.Connection, calendar: str, user_id: int) -> int:

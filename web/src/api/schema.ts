@@ -5439,7 +5439,7 @@ export interface components {
              * Op
              * @enum {string}
              */
-            op: "save" | "delete" | "create";
+            op: "save" | "delete" | "create" | "repeat";
             /** Calendar */
             calendar: string;
             /**
@@ -5462,6 +5462,8 @@ export interface components {
             location?: string | null;
             /** Notes */
             notes?: string | null;
+            /** Rule */
+            rule?: string | null;
         };
         /**
          * MacWrittenInput

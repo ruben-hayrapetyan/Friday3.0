@@ -352,5 +352,21 @@ test("only the newest test users' folders stay; nothing else there is touched") 
     try? FileManager.default.removeItem(at: root)
 }
 
+test("a repeat Friday asks of a Mac event, as EventKit's rule") {
+    // 30 Oct: "the friday night salsa that's on this week should be a weekly event"
+    let weekly = MacWriter.recurrence("FREQ=WEEKLY;BYDAY=FR")!
+    check(weekly.frequency == .weekly && weekly.interval == 1, "every week")
+    check(weekly.daysOfTheWeek?.map(\.dayOfTheWeek) == [.friday], "on Fridays")
+    check(weekly.recurrenceEnd == nil, "for good")
+    let fortnight = MacWriter.recurrence("FREQ=WEEKLY;INTERVAL=2;BYDAY=TH")!
+    check(fortnight.interval == 2 && fortnight.daysOfTheWeek?.map(\.dayOfTheWeek) == [.thursday], "every other Thursday")
+    let york = TimeZone(identifier: "America/New_York")!
+    let until = MacWriter.recurrence("FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261211T235959", zone: york)!
+    check(until.daysOfTheWeek?.count == 2, "two days")
+    check(until.recurrenceEnd?.endDate == Date(timeIntervalSince1970: 1_797_051_599), "until the 11th, in this Mac's time")
+    check(MacWriter.recurrence("FREQ=DAILY;COUNT=5")?.recurrenceEnd?.occurrenceCount == 5, "five times")
+    check(MacWriter.recurrence("FREQ=HOURLY") == nil && MacWriter.recurrence("nonsense") == nil, "what it can't read")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)
