@@ -173,10 +173,12 @@ def build_problem(inp: BuildInput) -> Problem:
 
 
 def travel_kept(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Beside each rule keeping routines from work, the time to get to and from them kept the same way."""
+    """Beside each rule keeping routines from work, the time to get to and from them kept the same way, at the same
+    price (a must's travel is a must too)."""
     return [
         {"type": "travel_kept", "name": f"{r['name']}:travel", "weight": 1.0, "stage": "deadlines",
-         "scope": r.get("scope"), "reason": r.get("reason"), "params": {}}
+         "scope": r.get("scope"), "reason": r.get("reason"),
+         "params": {"price": (r.get("params") or {}).get("steep", 10000.0)}}
         for r in rules
         if r["type"] == "elastic_shortfall" and r.get("stage") == "deadlines"
     ]  # fmt: skip

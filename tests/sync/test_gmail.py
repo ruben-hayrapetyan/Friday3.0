@@ -82,11 +82,33 @@ def test_a_skipped_message_can_be_read_anyway(app: App) -> None:
     assert len(client.calls) == 1 and statuses(app)["m2"] == "extracted"
 
 
+def test_a_message_read_with_nothing_found_can_be_read_again(app: App) -> None:
+    # 30 Oct: an invitation to a Morgan Stanley webinar was read as marketing; one that made suggestions isn't
+    # read twice.
+    sync(app.conn, app.now_utc, mail=inbox(), client=FakeClient(NOTHING))
+    read = [m for m in app.do("mail_log") if m["status"] == "read"]
+    assert read and not read[0]["found"]
+    app.do("mail_retry", id=read[0]["id"])
+    client = FakeClient(NOTHING)
+    sync(app.conn, app.now_utc + 60, mail=inbox(), client=client)
+    assert len(client.calls) == 1
+    app.conn.execute(
+        "INSERT INTO suggestions (raw_input_id, command, input, created_utc) VALUES (?, 'add', '{}', ?)",
+        [read[0]["id"], "2026-10-19T09:00Z"],
+    )
+    with pytest.raises(Exception, match="nothing found"):
+        app.do("mail_retry", id=read[0]["id"])
+
+
 def test_without_an_api_key_mail_waits_and_the_source_says_why(app: App, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(llm, "client", lambda *_: None)
     sync(app.conn, app.now_utc, mail=inbox())
     assert "an Anthropic API key" in next(s for s in app.table("sources") if s["kind"] == "gmail")["last_error"]
     assert statuses(app)["m3"] == "new"
+
+
+CAREERS = "Invitation to Global Careers Week | Nov 2-6"
+WEBINAR = "You're Invited | Morgan Stanley Research: AI and the Stock Market"
 
 
 def test_an_email_about_an_event_is_read_from_a_list_and_the_forums_tab(tmp_path: Path) -> None:
@@ -104,9 +126,13 @@ def test_an_email_about_an_event_is_read_from_a_list_and_the_forums_tab(tmp_path
             ),
             mail("talk", "CS <cs@cornell.edu>", "Talk: Robots that learn", "<p>Friday 4pm</p>", bulk=True),
             mail("sale", "Shop <deals@store.com>", "Big sale this weekend", "<p>Everything 50% off</p>", bulk=True),
+            # 30 Oct: "invite" didn't match "Invitation" or "Invited", so these were skipped as bulk mail
+            mail("careers", "Careers <careers@cornell.edu>", CAREERS, "<p>Nov 2-6</p>", bulk=True),
+            mail("ms", "Olivia <olivia@morganstanley.com>", WEBINAR, "<p>Wed, Nov 11, 5-6pm ET</p>", bulk=True),
         ]
     )
     sync(plain.conn, plain.now_utc, mail=gmail, client=FakeClient(NOTHING))
     log = {m["subject"]: m["status"] for m in plain.do("mail_log")}
     assert log[screening] == "read" and log["Talk: Robots that learn"] == "read"
+    assert log[CAREERS] == "read" and log[WEBINAR] == "read"
     assert log["Big sale this weekend"] == "skipped"

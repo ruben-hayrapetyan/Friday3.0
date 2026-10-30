@@ -761,7 +761,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Read a skipped or failed message with the AI after all (on the next sync). */
+        /** Read a message with the AI after all (on the next sync): a skipped or failed one, or one read with nothing */
         post: operations["mail_retry"];
         delete?: never;
         options?: never;

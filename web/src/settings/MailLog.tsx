@@ -34,9 +34,9 @@ export function MailLog() {
             </span>
             {m.status !== "read" && m.why && <span style={{ fontSize: 12, color: m.status === "failed" ? "var(--fr-due)" : "var(--color-neutral-400)", textWrap: "pretty" }}>{m.why}</span>}
           </span>
-          {m.status === "skipped" || m.status === "failed" ? (
+          {m.status === "skipped" || m.status === "failed" || (m.status === "read" && !m.found) ? (
             <button className="fr-link" onClick={() => retry({ id: m.id })} style={{ fontSize: 12, whiteSpace: "nowrap" }}>
-              Read it anyway
+              {m.status === "read" ? "Read it again" : "Read it anyway"}
             </button>
           ) : (
             <span />

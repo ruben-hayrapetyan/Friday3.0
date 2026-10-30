@@ -1596,7 +1596,11 @@ def scope_of(subject: str, areas: list[str], presets: list[str]) -> dict[str, An
 PRICE = {"Prefer": 2.0, "Strongly": 6.0}
 SLEEP_PRICE = {"Prefer": 40.0, "Strongly": 120.0}  # an hour of it: twice and six times an hour past bedtime
 FIT_GAPS = {"Prefer": 1.0, "Strongly": 3.0, "Always": 10.0}  # a price, never a wall: the right gap may not exist
-MEAL_KEPT = 10000.0  # a quarter hour short of a kept meal: far above what work being late can cost
+MEAL_KEPT = 10000.0  # a quarter hour short of a kept meal: above what work a day or two late costs
+# Always: above anything lateness can cost. A quarter hour of work due weeks ago and left off the plan costs about
+# 1e5 (late_tasks grows with the square of the hours late), so 10000 lost to it (30 Oct: "i put having lunch and
+# dinner as a must and it didn't schedule that").
+MEAL_ALWAYS = 10_000_000.0
 CLOSE_INSIDE = 10.0  # an hour inside the buffer you keep before a due: more than a week early costs
 AHEAD_PRICE = 1.0  # among your preferences, below a Prefer rule: work takes it before late nights or broken rules
 WEIGHT = {"Prefer": 1.0, "Strongly": 3.0, "Always": 10.0}
@@ -1637,7 +1641,8 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
         names = "|".join(named_meals(r)).replace("dinner", "dinner|supper").replace("lunch", "lunch|brunch")
         scope = {"preset": "Routine", "title_regex": [rf"(?i)\b({names})s?\b"]}
         return {"name": name, "type": "elastic_shortfall", "weight": 1.0, "stage": "deadlines", "scope": scope,
-                "reason": sentence(r), "params": {"steep": MEAL_KEPT, "gentle": 0.0}}  # fmt: skip
+                "reason": sentence(r), "params": {"steep": MEAL_ALWAYS if strength == "Always" else MEAL_KEPT,
+                                                  "gentle": 0.0}}  # fmt: skip
     if r.kind == "meals_learned":  # not a priced rule: each night the learned meal routines are planned or stopped
         return {"name": name, "type": "meal_learned", "weight": 0.0, "scope": None, "reason": sentence(r),
                 "params": {"meals": list(named_meals(r))}}  # fmt: skip

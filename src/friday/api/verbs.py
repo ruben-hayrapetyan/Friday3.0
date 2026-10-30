@@ -522,7 +522,7 @@ VERBS = {
         commands.ItemRef,
         True,
         False,
-        "Read a skipped or failed message with the AI after all (on the next sync).",
+        "Read a message with the AI after all (on the next sync): a skipped or failed one, or one read with nothing",
     ),
     "materialize": Verb(
         "POST",

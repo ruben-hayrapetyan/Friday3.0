@@ -112,9 +112,12 @@ class GcalSettings(Model):
 
 # An email about an event is one for the Inbox (29 Oct: "this is an email about an event so it should be put into
 # inbox", a film screening sent to a Cornell list): the words such a subject says it with, beside the deadlines'.
+# 30 Oct: "Invitation to Global Careers Week" was skipped as bulk mail: a keyword matches itself and its plural, and
+# "invite" isn't in "invitation" or "invited".
 EVENT_WORDS = (
     "join us", "screening", "talk", "seminar", "info session", "information session", "workshop", "panel",
     "lecture", "event", "conversation with", "reception", "symposium", "webinar", "career fair", "showcase",
+    "invitation", "invited", "careers week", "social",
 )  # fmt: skip
 
 

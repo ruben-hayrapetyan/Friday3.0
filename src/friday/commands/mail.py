@@ -217,9 +217,15 @@ def mail_log(ctx: Ctx, inp: MailLogInput) -> list[MailOut]:
 
 @command("mail_retry")
 def mail_retry(ctx: Ctx, inp: ItemRef) -> Changed:
-    """Read a skipped or failed message with the AI after all (on the next sync)."""
+    """Read a message with the AI after all (on the next sync): a skipped or failed one, or one read with nothing
+    found in it (30 Oct: an invitation read as marketing)."""
     found = ctx.db.fetch("raw_inputs", {"id": inp.id})
-    if found is None or found["status"] not in ("ignored", "failed"):
-        raise FieldError("id", "only a skipped or failed message can be read again")
+    nothing = (
+        found is not None
+        and found["status"] == "extracted"
+        and not ctx.conn.execute("SELECT 1 FROM suggestions WHERE raw_input_id = ? LIMIT 1", [inp.id]).fetchone()
+    )
+    if found is None or (found["status"] not in ("ignored", "failed") and not nothing):
+        raise FieldError("id", "only a skipped or failed message, or one with nothing found, can be read again")
     ctx.db.update("raw_inputs", {"id": inp.id}, {"status": "new", "error": None})
     return Changed(message="It's read on the next sync")

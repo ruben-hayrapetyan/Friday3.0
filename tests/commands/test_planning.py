@@ -758,6 +758,24 @@ def test_lunch_and_dinner_are_given_up_for_work_only_without_a_rule(tmp_path: Pa
     assert app.do("status")["late"]
 
 
+@pytest.mark.parametrize("strength", ["Strongly", "Always"])
+def test_a_meal_kept_always_beats_even_work_days_overdue(tmp_path: Path, strength: str) -> None:
+    # 30 Oct: "i put having lunch and dinner as a must and it didn't schedule that". With days of work already
+    # overdue, a quarter hour of it left off the plan cost more than a kept meal a quarter hour short (lateness grows
+    # with its square), so the plan dropped lunch and dinner, however strongly the rule was set. Always is a must:
+    # the meals stay and only the work is late. Strongly may still give a meal up to work this late.
+    app = new_app(tmp_path)
+    meals_day(app)
+    app.do("rule_add", text="Never skip lunch or dinner", strength=strength)
+    for n in range(6):
+        app.do("add", title=f"Overdue {n}", duration_min=8 * 60, due="2026-10-16T23:00")
+    replan(app.conn, app.now_utc)
+    eaten = meals_on(app, "2026-10-19")
+    if strength == "Always":
+        assert eaten["Lunch"] and eaten["Dinner"], eaten
+    assert app.do("status")["late"]
+
+
 def test_a_meal_whose_window_events_fill_goes_just_outside_it(tmp_path: Path) -> None:
     # Monday: a Zoom and then a lab fill dinner's 5:30-8:30 window: dinner goes just outside it, not nowhere, and not
     # into the middle of the afternoon.

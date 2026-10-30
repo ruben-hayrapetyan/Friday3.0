@@ -3194,7 +3194,7 @@
   },
   "/api/c/mail_retry": {
    "post": {
-    "summary": "Read a skipped or failed message with the AI after all (on the next sync).",
+    "summary": "Read a message with the AI after all (on the next sync): a skipped or failed one, or one read with nothing",
     "operationId": "mail_retry",
     "parameters": [
      {

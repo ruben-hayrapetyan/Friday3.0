@@ -101,12 +101,14 @@ def system(today: date, tz: str, areas: Sequence[str], presets: Sequence[str], n
     return (
         f"Today is {today:%A %Y-%m-%d}; the person's timezone is {tz}. Their areas: {', '.join(areas) or 'none'}. "
         f"Their kinds, one per item: {kinds}. Propose only real tasks, deadlines and events for them; newsletters, "
-        "receipts and marketing propose nothing. Resolve dates to local YYYY-MM-DDTHH:MM (a due date with no time "
-        "is 23:59). Quote the source exactly for every field you fill. A syllabus gives the class meetings as a "
-        "repeating Class, each assignment and exam, an 'Exam prep' item before each exam, and each assigned reading "
-        "as a Reading: titled by what to read ('Read ch. 4', 'Read Smith 2019'), due at the start of the class it is "
-        "for (or by its own date), with its pages when the syllabus gives them. Leave out readings marked optional "
-        "or recommended."
+        "receipts and marketing (selling them something) propose nothing. An invitation to something at a set time (a "
+        "talk, webinar, info session, career or recruiting event, club social, screening, interview) is an event to "
+        "propose, even from a company or a mailing list: they decide in their Inbox whether to go. Resolve dates to "
+        "local YYYY-MM-DDTHH:MM (a due date with no time is 23:59). Quote the source exactly for every field you fill. "
+        "A syllabus gives the class meetings as a repeating Class, each assignment and exam, an 'Exam prep' item before"
+        " each exam, and each assigned reading as a Reading: titled by what to read ('Read ch. 4', 'Read Smith 2019'), "
+        "due at the start of the class it is for (or by its own date), with its pages when the syllabus gives them. "
+        "Leave out readings marked optional or recommended."
     ) + told(notes)
 
 
