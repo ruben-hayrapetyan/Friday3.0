@@ -21,6 +21,15 @@ export interface Town {
   sockets: Socket[]
   trees: Planting[]
   leaves: [number, number][]
+  posts: Post[] // lamps, hydrants and poles, as round things to keep clear of
+}
+
+/** Something round standing on the street, to walk round (and for walk/audit.ts to check). */
+export interface Post {
+  x: number
+  z: number
+  r: number
+  h: number
 }
 
 const CURB = 3.5
@@ -81,6 +90,7 @@ export function street(from: number, to: number, lots: Lot[]): Town {
   const sockets: Socket[] = []
   const trees: Planting[] = []
   const leaves: [number, number][] = []
+  const posts: Post[] = []
   const length = from - to
   const mid = (from + to) / 2
   const rnd = random(2026)
@@ -158,6 +168,7 @@ export function street(from: number, to: number, lots: Lot[]): Town {
       lamp.add(ball(0.22, M.lamp(), 0, 4.3, 0, 18))
       lamp.add(cylinder(0.04, 0.18, 0.16, M.metal(0x1c241f, 0.55), 0, 4.48, 0, 12))
       lamp.position.set(side * 5.0, 0.12, z)
+      posts.push({ x: side * 5.0, z, r: 0.2, h: 4.6 })
       group.add(lamp)
       sockets.push({ at: new THREE.Vector3(side * 5.0, 4.2, z), color: 0xffcf8f, power: 22, range: 16, night: true })
     }
@@ -167,6 +178,7 @@ export function street(from: number, to: number, lots: Lot[]): Town {
       const red = M.paint(0xb3261e, 0.45)
       hydrant.add(cylinder(0.13, 0.13, 0.55, red, 0, 0, 0, 14), ball(0.13, red, 0, 0.55, 0, 12), cylinder(0.05, 0.05, 0.32, red, 0, 0.32, 0, 10).rotateZ(Math.PI / 2))
       hydrant.position.set(side * 4.0, 0.12, z)
+      posts.push({ x: side * 4.0, z, r: 0.2, h: 0.7 })
       group.add(hydrant)
     }
   }
@@ -182,6 +194,7 @@ export function street(from: number, to: number, lots: Lot[]): Town {
     pole.add(block(2.4, 0.12, 0.12, wood, 0, 8.2, 0))
     for (const x of [-1.0, 0, 1.0]) pole.add(cylinder(0.04, 0.05, 0.16, M.paint(0x3a5a4a, 0.3), x, 8.32, 0, 8))
     pole.position.set(-4.6, 0.12, z)
+    posts.push({ x: -4.6, z, r: 0.18, h: 9 })
     group.add(pole)
     poles.push(new THREE.Vector3(-4.6, 8.62, z))
   }
@@ -199,7 +212,7 @@ export function street(from: number, to: number, lots: Lot[]): Town {
     }
   }
   bakeHouses(group)
-  return { group, clear, sockets, trees, leaves }
+  return { group, clear, sockets, trees, leaves, posts }
 }
 
 /** Paint on the road: a strip `w` wide and `l` long, lying flat. */

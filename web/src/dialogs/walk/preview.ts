@@ -2,6 +2,7 @@
 // steps; ?i=3 starts at the fourth, ?still=1 cuts instead of walking. Not part of the app's build.
 
 import type { Schemas } from "@/api/client"
+import { Audit, PARTS } from "./audit"
 import { World } from "./World"
 
 const answers: Schemas["SetupInput"] = {
@@ -52,4 +53,9 @@ const set = (change: Partial<typeof answers>) => {
   Object.assign(answers, change)
   world.update({ ...answers })
 }
-Object.assign(window, { walk: { world, answers, set, step: (n: number) => ((i = n), go()) } })
+// walk.audit() plays everything and lists what looks wrong (walk/audit.ts)
+const audit = (part: string) => new Audit(world).run({ ...answers }, part)
+/** Every part, as lines: where, what, how many frames, when. */
+const auditAll = () =>
+  PARTS.flatMap((part) => audit(part).map((f) => `${f.where} | ${f.what} x${f.n} @${f.t}`))
+Object.assign(window, { walk: { world, answers, set, audit, auditAll, parts: PARTS, step: (n: number) => ((i = n), go()) } })

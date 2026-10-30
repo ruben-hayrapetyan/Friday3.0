@@ -371,7 +371,8 @@ function ModelPicker({ llm, free = false }: { llm: Llm; free?: boolean }) {
   )
 }
 
-function useLocal(on: boolean) {
+/** The open models on this Mac and the download, read often while it's going. */
+export function useLocal(on: boolean) {
   const [fast, setFast] = useState(false)
   const out = useQuery({
     queryKey: ["local_models"],
