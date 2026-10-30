@@ -7,7 +7,7 @@
 
 import * as THREE from "three"
 import type { Schemas } from "@/api/client"
-import type { Action } from "./character"
+import type { Action, Mood } from "./character"
 import { ball, bake, block, cylinder, gable, M, panel, span } from "./props"
 import { clockTime, minutesOf, type Place } from "./stops"
 import { Board, hash, random } from "./textures"
@@ -46,8 +46,11 @@ export interface Scene {
   action: Action
   seat?: number // what they sit on, when it isn't the usual height
   bedding?: number
+  mood?: Mood // how your answers have them feeling there
   cam: Spot
 }
+
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
 
 export interface Built {
   group: THREE.Group
@@ -501,7 +504,8 @@ function dorm(): Built {
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    scene: () => ({ walk: V(1.85, FLOOR, -3.5), at: V(w / 2 - 0.56, FLOOR, zb + 0.5), yaw: 0, action: "stretch", bedding: 0x7d9cc4, cam: cam(V(0.9, 1.0, -4.0), [-1.6, 3.9, 8.2]) }),
+    // up at 6:15 they drag themselves up; by 9 they're bright-eyed
+    scene: (_spot, a) => ({ walk: V(1.85, FLOOR, -3.5), at: V(w / 2 - 0.56, FLOOR, zb + 0.5), yaw: 0, action: "stretch", bedding: 0x7d9cc4, mood: { energy: clamp01((minutesOf(a.wake) - 375) / 165) }, cam: cam(V(0.9, 1.0, -4.0), [-1.6, 3.9, 8.2]) }),
     door: { inside: V(-2, 0, -1.0), outside: V(-2, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-2.8, 0, -1.2, 2.8]],
@@ -588,12 +592,15 @@ function library(): Built {
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    scene: (spot) =>
-      [
-        { ...seat, action: "type" as const, cam: cam(V(0.6, 1.0, -3.9), [1.0, 3.4, 6.2]) },
-        { ...seat, action: "stress" as const, cam: cam(V(0.1, 0.95, -3.7), [0.5, 2.6, 4.6]) },
-        { ...seat, action: "focus" as const, cam: cam(V(0.6, 1.8, -5.2), [0.9, 2.3, 6.6]) },
-      ][Math.min(spot, 2)],
+    // a long day is harder going; a heavy one piles up; they type in bursts as long as they can focus
+    scene: (spot, a) => {
+      const burst = 2 + a.focus_hours * 2.6
+      return [
+        { ...seat, action: "type" as const, mood: { stress: clamp01((a.normal_hours - 3) / 9), burst }, cam: cam(V(0.6, 1.0, -3.9), [1.0, 3.4, 6.2]) },
+        { ...seat, action: "stress" as const, mood: { stress: clamp01((a.most_hours - 6) / 8), burst }, cam: cam(V(0.1, 0.95, -3.7), [0.5, 2.6, 4.6]) },
+        { ...seat, action: "focus" as const, mood: { stress: 0.3, burst }, cam: cam(V(0.6, 1.8, -5.2), [0.9, 2.3, 6.6]) },
+      ][Math.min(spot, 2)]
+    },
     door: { inside: V(0, 0, -1.0), outside: V(0, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-0.9, 0, 0.9, 2.8]],
@@ -723,7 +730,8 @@ function hall(): Built {
     size: { w: w + 8, d: -back + d + 1 },
     cut: null,
     stub: null,
-    scene: () => ({ walk: V(1.8, 0.16, 2.1), at: V(1.8, 0.16, 2.0), yaw: Math.PI, action: "look", cam: cam(V(1.6, 1.5, 1.4), [3.8, 2.6, 5.6]) }),
+    // done on the day, they're worried; three days early, at ease
+    scene: (_spot, a) => ({ walk: V(1.8, 0.16, 2.1), at: V(1.8, 0.16, 2.0), yaw: Math.PI, action: "look", mood: { stress: [1, 0.45, 0.2, 0.05][Math.max(0, Math.min(3, a.finish_early_days))] }, cam: cam(V(1.6, 1.5, 1.4), [3.8, 2.6, 5.6]) }),
     door: null,
     sockets,
     clear: [[-w / 2 - 4.5, back - d - 0.5, w / 2 + 0.5, back + 2.8], [-1.3, back + 2.6, 1.3, 2.8], [0.1, 0, 3.5, 2.8]],
@@ -856,7 +864,7 @@ function home(): Built {
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    scene: (_spot, a) => ({ walk: V(-2.25, FLOOR, -2.9), at: V(-2.82, FLOOR, -3.7), yaw: Math.PI / 2, action: a.evening_free > 0 ? "tv" : "laptop", cam: cam(V(-1.9, 1.0, -3.8), [0.9, 3.7, 7.6]) }),
+    scene: (_spot, a) => ({ walk: V(-2.25, FLOOR, -2.9), at: V(-2.82, FLOOR, -3.7), yaw: Math.PI / 2, action: a.evening_free > 0 ? "tv" : "laptop", mood: { happy: a.evening_free / 5, stress: a.evening_free > 0 ? 0.2 : 0.6 }, cam: cam(V(-2.3, 0.95, -3.7), [1.1, 3.4, 6.8]) }),
     door: { inside: V(-2.3, 0, -1.0), outside: V(-2.3, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-3.1, 0, -1.5, 2.8]],
@@ -904,7 +912,8 @@ function night(): Built {
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    scene: () => ({ walk: V(0.3, FLOOR, -3.4), at: V(1.2, FLOOR, -4.75), yaw: 0, action: "sleep", bedding: 0xa3b2c8, cam: cam(V(1.0, 0.9, -4.6), [-2.6, 3.5, 5.8]) }),
+    // to bed late, they toss and turn
+    scene: (_spot, a) => ({ walk: V(0.3, FLOOR, -3.4), at: V(1.2, FLOOR, -4.75), yaw: 0, action: "sleep", bedding: 0xa3b2c8, mood: { restless: clamp01(((minutesOf(a.bedtime) + 1440 - 12 * 60) % 1440 - 11 * 60) / 150) }, cam: cam(V(1.0, 0.9, -4.6), [-2.6, 3.5, 5.8]) }),
     door: { inside: V(-2.0, 0, -1.0), outside: V(-2.0, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-2.8, 0, -1.2, 2.8]],
@@ -985,7 +994,7 @@ function park(): Built {
     size: { w: 22, d: 18 },
     scene: (_spot, a) =>
       a.weekend_free > 0
-        ? { walk: V(-1.1, 0.15, -4.6), at: V(-1.95, 0.13, -5.65), yaw: 0.35, action: "picnic", cam: cam(V(-1.5, 0.7, -5.4), [2.6, 3.4, 6.6]) }
+        ? { walk: V(-1.1, 0.15, -4.6), at: V(-1.95, 0.13, -5.65), yaw: 0.35, action: "picnic", mood: { happy: a.weekend_free / 13 }, cam: cam(V(-1.5, 0.7, -5.4), [2.6, 3.4, 6.6]) }
         : { via: [V(0, 0.15, -7.6)], walk: V(-2.2, 0.15, -7.5), at: V(-2.9, 0.13, -8.12), yaw: 0, action: "laptop", seat: 0.48, cam: cam(V(-2.6, 0.9, -7.7), [2.6, 3.0, 6.2]) },
     door: { inside: V(0.2, 0, -0.5), outside: V(0, 0, 2.0) },
     sockets,
@@ -1113,7 +1122,7 @@ function cafe(): Built {
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    scene: () => ({ via: [V(0.2, FLOOR, -2.4)], walk: V(-0.3, FLOOR, -3.55), at: V(-0.9, FLOOR, -3.28), yaw: 0, action: "coffee", cam: cam(V(-0.8, 1.0, -2.9), [1.8, 2.9, 6.0]) }),
+    scene: (_spot, a) => ({ via: [V(0.2, FLOOR, -2.4)], walk: V(-0.3, FLOOR, -3.55), at: V(-0.9, FLOOR, -3.28), yaw: 0, action: "coffee", mood: { paper: a.brief }, cam: cam(V(-0.8, 1.0, -2.9), [1.8, 2.9, 6.0]) }),
     door: { inside: V(0.6, 0, -1.0), outside: V(0.6, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-0.2, 0, 1.4, 2.8]],

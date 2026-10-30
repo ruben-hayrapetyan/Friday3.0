@@ -15,11 +15,11 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
 import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js"
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
 import type { Schemas } from "@/api/client"
-import { type Action, Character, SEATED, Signs } from "./character"
+import { type Action, Character, type Mood, type Reaction, SEATED, Signs } from "./character"
 import { fallen, forest, type Planting, woods } from "./nature"
 import { type Built, buildPlace, FLOOR, FRONT, type Scene, SIDEWALK, type Socket } from "./places"
 import { hazeColor, type Light, lightAt, timeStep } from "./sky"
-import { type Place, placeZ, ROUTE, STOPS } from "./stops"
+import { minutesOf, type Place, placeZ, ROUTE, STOPS } from "./stops"
 import { moonFace } from "./textures"
 import { type Lot, street } from "./town"
 
@@ -125,18 +125,88 @@ interface Act {
   yaw: number
   action: Action
   seat?: number
+  mood?: Mood
   cam: { pos: THREE.Vector3; look: THREE.Vector3 }
 }
 
+/** Going from one thing to the next: getting up first if they were sitting or lying, walking the path (speeding up,
+ * going steadily, slowing down), then settling into what's next while the camera arrives. */
 interface Trip {
   path: THREE.CatmullRomCurve3 | null
   length: number
-  t0: number
-  dur: number
+  clock: number // seconds into it
+  fast: number // how much quicker than life (Return again hurries it)
+  rise: number // seconds getting up
+  walk: number // seconds walking (0: staying where they are)
+  cruise: number // metres a second, once going
+  dir: THREE.Vector3 // the way it goes overall: the camera swings to in front of them on it
   from: { minutes: number; cam: { pos: THREE.Vector3; look: THREE.Vector3 }; act: Act | null }
   to: Act
   minutes: number
   delta: number
+}
+
+const SPEED_UP = 0.55 // seconds getting going
+const SLOW_DOWN = 0.7 // and stopping
+const ARRIVE = 0.7 // the camera's last stretch, while they settle
+
+/** How far along a walk of `length` metres they are `t` seconds in: speeding up to `cruise`, steady, slowing down. */
+export function along(t: number, length: number, cruise: number): number {
+  const total = length / cruise + (SPEED_UP + SLOW_DOWN) / 2
+  if (t <= 0) return 0
+  if (t >= total) return length
+  if (t < SPEED_UP) return 0.5 * (cruise / SPEED_UP) * t * t
+  if (t > total - SLOW_DOWN) {
+    const left = total - t
+    return length - 0.5 * (cruise / SLOW_DOWN) * left * left
+  }
+  return 0.5 * cruise * SPEED_UP + cruise * (t - SPEED_UP)
+}
+
+/** A walk's pace: a stroll across a room, a quick walk up the street, a jog for a long way; never much over five
+ * seconds. */
+export function paceFor(length: number): number {
+  const cruise = Math.max(1.4, Math.min(5.2, length / 4))
+  return Math.min(cruise, length / ((SPEED_UP + SLOW_DOWN) / 2) - 0.001)
+}
+
+/** What they do when an answer changes: glad of more time, a gulp at more work, a yawn at an early alarm. */
+export function reactionTo(was: Answers, now: Answers): Reaction | null {
+  const after = (t: string) => (minutesOf(t) + 1440 - 12 * 60) % 1440 // a bedtime's lateness, from noon
+  const more = (k: keyof Answers, yes: Reaction, no: Reaction) => ((now[k] as number) > (was[k] as number) ? yes : no)
+  if (now.wake !== was.wake) return minutesOf(now.wake) < minutesOf(was.wake) ? "yawn" : "cheer"
+  if (now.bedtime !== was.bedtime) return after(now.bedtime) > after(was.bedtime) ? "yawn" : "nod"
+  if (now.weekend_wake !== was.weekend_wake || now.weekend_bedtime !== was.weekend_bedtime) return "nod"
+  if (now.normal_hours !== was.normal_hours) return more("normal_hours", "gulp", "relief")
+  if (now.most_hours !== was.most_hours) return more("most_hours", "gulp", "relief")
+  if (now.focus_hours !== was.focus_hours) return more("focus_hours", "flex", "nod")
+  if (now.finish_early_days !== was.finish_early_days) return more("finish_early_days", "cheer", "gulp")
+  if (now.evening_free !== was.evening_free) return more("evening_free", "cheer", "gulp")
+  if (now.evening_from !== was.evening_from) return "nod"
+  if (now.weekend_free !== was.weekend_free) return more("weekend_free", "cheer", "gulp")
+  if (now.brief !== was.brief) return now.brief ? "cheer" : "shrug"
+  if (JSON.stringify(now.calendars ?? []) !== JSON.stringify(was.calendars ?? [])) return "nod"
+  return null
+}
+
+const SIGN_FOR: Partial<Record<Reaction, string>> = { cheer: "note", gulp: "sweat", yawn: "z", relief: "heart", shrug: "?", flex: "!", scratch: "?" }
+
+/** What they do now and then while you decide, by what they're doing. */
+const FIDGETS: Partial<Record<Action, Reaction[]>> = {
+  stand: ["glance", "scratch"],
+  wave: ["glance"],
+  stretch: ["yawn", "glance"],
+  type: ["glance", "scratch"],
+  focus: ["glance"],
+  stress: ["scratch", "gulp"],
+  look: ["scratch", "glance"],
+  tv: ["glance", "relief"],
+  laptop: ["scratch", "glance"],
+  picnic: ["glance", "relief"],
+  coffee: ["glance"],
+  counter: ["glance", "scratch"],
+  boxes: ["glance"],
+  calendar: ["glance", "nod"],
 }
 
 const smooth = (a: number, b: number, x: number) => {
@@ -174,7 +244,8 @@ export class World {
   private last = performance.now()
   private started = performance.now()
   private trip: Trip | null = null
-  private heading = 0 // where the camera swings to while walking: ahead of them
+  private answers: Answers | null = null
+  private fidgetAt = 6 // seconds: when they next do something while you decide
   private act: Act | null = null // what they're doing now (null while walking)
   private weight = 0 // how far into it
   private before: Action | null = null // what they were doing at the same place, fading out
@@ -293,7 +364,9 @@ export class World {
       const inside = built?.door ? toWorld(built.door.inside) : null
       const outside = built?.door ? toWorld(built.door.outside) : null
       const front = outside ?? (built ? toWorld(built.scene(0, this.sample()).walk) : V(0, 0, z))
-      const walkway = side === 0 ? V(place === "end" ? 0 : -(SIDEWALK[0] + SIDEWALK[1]) / 2, 0.15, z) : V(side * ((SIDEWALK[0] + SIDEWALK[1]) / 2), 0.15, front.z)
+      // up the street they walk the near side of the road, clear of the trees and poles along the curb, so the
+      // camera ahead of them over the road always sees them
+      const walkway = side === 0 ? V(place === "end" ? 0 : -1.6, 0, z) : V(side * 1.6, 0, front.z)
       this.sites.set(place, { place, side, built, group, street: walkway, inside, outside, room })
     }
     const end = placeZ("end")
@@ -365,6 +438,7 @@ export class World {
   /** Go to a step's place (back through the week when going back), and show your answers there. */
   go(step: string, a: Answers, back = false): void {
     this.step = step
+    this.answers = { ...a }
     this.show(a)
     const stop = STOPS[step] ?? STOPS.hello
     const act = this.actFor(stop.place, stop.spot, a)
@@ -373,14 +447,27 @@ export class World {
     const points = this.route(act)
     const path = points.length > 1 ? new THREE.CatmullRomCurve3(points, false, "centripetal", 0.5) : null
     const length = path ? path.getLength() : 0
-    const dur = this.options.still ? 0 : length < 0.2 ? 900 : Math.min(6000, 700 + length * 135)
-    if (path) {
-      const d = path.getTangentAt(0.02)
-      this.heading = Math.atan2(d.x, d.z) + 0.35
+    const walking = !!path && length > 0.2
+    const cruise = walking ? paceFor(length) : 1
+    // sitting or lying down: up first
+    const seated = this.act && (this.act.seat !== undefined || SEATED[this.act.action] !== undefined) && this.weight > 0.3
+    const dir = walking && path ? path.getPointAt(1).sub(path.getPointAt(0)).setY(0) : V(0, 0, -1)
+    if (dir.lengthSq() < 0.01) dir.set(Math.sin(this.yaw), 0, Math.cos(this.yaw))
+    this.trip = {
+      path: walking ? path : null,
+      length: walking ? length : 0,
+      clock: 0,
+      fast: this.options.still ? 1000 : 1,
+      rise: walking && seated ? 0.5 : 0,
+      walk: walking ? length / cruise + (SPEED_UP + SLOW_DOWN) / 2 : 0,
+      cruise,
+      dir: dir.normalize(),
+      from: { minutes: this.minutes, cam: { pos: this.cam.pos.clone(), look: this.cam.look.clone() }, act: this.act },
+      to: act,
+      minutes,
+      delta: timeStep(this.minutes, minutes, back),
     }
-    this.trip = { path, length, t0: performance.now(), dur, from: { minutes: this.minutes, cam: { pos: this.cam.pos.clone(), look: this.cam.look.clone() }, act: this.act }, to: act, minutes, delta: timeStep(this.minutes, minutes, back) }
-    if (length > 0.2) this.act = null
-    else this.change(act)
+    if (!walking) this.change(act)
   }
 
   /** The same place, something else to do: from one pose into the other. */
@@ -392,9 +479,20 @@ export class World {
     this.act = act
   }
 
-  /** Answers changed where you are: the place shows them, the sky follows the time, the scene what's now done there. */
+  /** Answers changed where you are: the place shows them, they react, the sky follows the time, and what they do
+   * there follows what you chose. */
   update(a: Answers): void {
     this.show(a)
+    const was = this.answers
+    this.answers = { ...a }
+    const now = (performance.now() - this.started) / 1000
+    const reaction = was ? reactionTo(was, a) : null
+    if (reaction && !this.trip) {
+      this.hero.react(reaction, now)
+      const sign = SIGN_FOR[reaction]
+      if (sign) this.signs.emit(sign, this.hero.headAt().add(V(0.15, 0.05, 0)), now, 0.34)
+      this.fidgetAt = now + 8
+    }
     const stop = STOPS[this.step] ?? STOPS.hello
     const minutes = stop.at(a)
     const act = this.actFor(stop.place, stop.spot, a)
@@ -402,23 +500,18 @@ export class World {
       this.trip.minutes = minutes
       this.trip.delta = timeStep(this.trip.from.minutes, minutes, false)
       if (act) this.trip.to = act
-    } else if (act && this.act && (act.action !== this.act.action || act.at.distanceTo(this.act.at) > 0.1)) {
-      this.go(this.step, a) // somewhere else in the same place now (the park: the blanket, or the bench)
-    } else if (Math.abs(this.minutes - minutes) > 0.5) {
-      this.trip = { path: null, length: 0, t0: performance.now(), dur: this.options.still ? 0 : 1100, from: { minutes: this.minutes, cam: { pos: this.cam.pos.clone(), look: this.cam.look.clone() }, act: this.act }, to: this.act ?? (act as Act), minutes, delta: minutes - this.minutes }
+      return
+    }
+    if (act && this.act && act.at.distanceTo(this.act.at) > 0.1) return this.go(this.step, a) // elsewhere in the same place now (the park: the blanket, or the bench)
+    if (act) this.change(act) // the same place, done another way (TV or the laptop; how hard they're working)
+    if (Math.abs(this.minutes - minutes) > 0.5 && this.act) {
+      this.trip = { path: null, length: 0, clock: 0, fast: this.options.still ? 1000 : 1, rise: 0, walk: 0, cruise: 1, dir: V(0, 0, -1), from: { minutes: this.minutes, cam: { pos: this.cam.pos.clone(), look: this.cam.look.clone() }, act: this.act }, to: this.act, minutes, delta: minutes - this.minutes }
     }
   }
 
-  /** Get there now (another Return while walking): the rest of the way in under half a second. */
+  /** Get there now (another Return while walking): the rest of the way four times as fast. */
   hurry(): void {
-    const t = this.trip
-    if (!t || !t.dur) return
-    const now = performance.now()
-    const done = (now - t.t0) / t.dur
-    if (done >= 1 || done <= 0) return
-    const left = 420 / (1 - done)
-    t.dur = Math.max(left, 1)
-    t.t0 = now - done * t.dur
+    if (this.trip) this.trip.fast = 4
   }
 
   dispose(): void {
@@ -467,6 +560,7 @@ export class World {
       yaw: s.yaw - site.side * (Math.PI / 2),
       action: s.action,
       seat: s.seat,
+      mood: s.mood,
       cam: { pos: w(s.cam.pos), look: w(s.cam.look) },
       via: s.via?.map(w),
     }
@@ -496,7 +590,7 @@ export class World {
       if (here.inside && here.room?.containsPoint(new THREE.Vector2(this.pos.x, this.pos.z))) points.push(here.inside.clone())
       if (here.outside) points.push(here.outside.clone())
       points.push(here.street.clone())
-    } else points.push(V(Math.sign(this.pos.x || -1) * 5.9, 0.15, this.pos.z))
+    } else points.push(V(Math.sign(this.pos.x || -1) * 1.6, 0, this.pos.z))
     points.push(to.site.street.clone())
     if (to.site.outside && to.site.inside) points.push(to.site.outside.clone(), to.site.inside.clone())
     for (const v of to.via ?? []) points.push(v.clone())
@@ -525,38 +619,46 @@ export class World {
     let walking = false
     let follow: { pos: THREE.Vector3; look: THREE.Vector3 } | null = null
     if (trip) {
-      const p = trip.dur ? Math.min(1, Math.max(0, (time - trip.t0) / trip.dur)) : 1
-      const e = ease(p)
-      this.minutes = trip.from.minutes + trip.delta * e
-      if (trip.path && trip.length > 0.2) {
-        walking = p < 1
-        const at = trip.path.getPointAt(e)
-        const before = this.pos.clone()
-        this.pos.set(at.x, 0, at.z)
-        const moved = Math.hypot(this.pos.x - before.x, this.pos.z - before.z)
-        this.speed = dt > 0 ? moved / dt : 0
-        if (moved > 0.0005) this.yaw = turn(this.yaw, Math.atan2(this.pos.x - before.x, this.pos.z - before.z), 1 - Math.pow(0.0001, dt))
-        // the camera: from the last scene's, round to in front of them as they walk, into the next scene's; always
-        // looking at them, swinging round them rather than chasing
-        const s = trip.length * e
-        const dir = trip.path.getTangentAt(Math.min(1, e + 0.01)).setY(0).normalize()
-        this.heading = turn(this.heading, Math.atan2(dir.x, dir.z) + 0.35, 1 - Math.pow(0.03, dt))
-        const chase: Rig = { yaw: this.heading, pitch: 0.46, dist: 10, look: V(this.pos.x, this.ground + 0.85, this.pos.z) }
-        const first = smooth(0, Math.min(5, trip.length * 0.3), s)
-        const last = smooth(trip.length - Math.min(9, trip.length * 0.45), trip.length - 1, s)
-        follow = camOf(mixRig(mixRig(rigOf(trip.from.cam), chase, first), rigOf(trip.to.cam), last))
-        this.weight = Math.max(0, this.weight - dt * 3)
-        if (p >= 1) this.arrive(trip)
-      } else {
-        follow = blend(trip.from.cam, trip.to.cam, e)
-        if (p >= 1) this.arrive(trip)
-      }
+      trip.clock += dt * trip.fast
+      const going = trip.rise + trip.walk
+      const total = going + ARRIVE
+      const p = Math.min(1, trip.clock / Math.max(total, 0.001))
+      this.minutes = trip.from.minutes + trip.delta * ease(Math.min(1, trip.clock / Math.max(going || 1, 0.001)))
+      if (trip.path) {
+        const t = trip.clock - trip.rise
+        if (t < 0) {
+          // getting up from where they were
+          this.weight = Math.max(0, this.weight - (dt * trip.fast) / trip.rise)
+          this.speed = 0
+        } else if (t < trip.walk) {
+          walking = true
+          this.act = null
+          this.weight = 0
+          const s = along(t, trip.length, trip.cruise)
+          const at = trip.path.getPointAt(Math.min(1, s / trip.length))
+          const step = s - along(t - dt * trip.fast, trip.length, trip.cruise)
+          this.speed = dt > 0 ? Math.max(0, step / dt) : 0
+          const ahead = trip.path.getTangentAt(Math.min(1, s / trip.length + 0.02))
+          this.pos.set(at.x, 0, at.z)
+          this.yaw = turn(this.yaw, Math.atan2(ahead.x, ahead.z), 1 - Math.pow(0.0005, dt))
+        } else if (this.act !== trip.to) {
+          this.change(trip.to)
+          this.fidgetAt = seconds + 5
+        }
+        // the camera: from the last scene's to ahead of them over the road, looking back as they come up the street,
+        // then to the next scene's, in front of the room they go into (never round through its walls)
+        const ahead = Math.sign(trip.dir.z) || -1
+        const look = V(this.pos.x, this.ground + 0.85, this.pos.z)
+        const lead = { look, pos: V(Math.max(-2, Math.min(2, this.pos.x * 0.35)), this.ground + 5.8, this.pos.z + ahead * 8.5) }
+        follow = blend(blend(trip.from.cam, lead, smooth(0, 0.3, p)), trip.to.cam, smooth(0.6, 1, p))
+      } else follow = blend(trip.from.cam, trip.to.cam, ease(p))
+      if (p >= 1) this.arrive(trip)
     }
-    // doing what they came for: settle into place, then the action
-    if (!walking && this.act) {
+    // doing what they came for: into place, then the action
+    if (!walking && this.act && (!trip || trip.clock >= trip.rise)) {
       this.speed = 0
       this.weight = Math.min(1, this.weight + dt * 2.2)
-      const k = 1 - Math.pow(0.002, dt)
+      const k = 1 - Math.pow(0.004, dt)
       this.pos.lerp(V(this.act.at.x, 0, this.act.at.z), k)
       this.yaw = turn(this.yaw, this.act.yaw, k)
       follow ??= this.act.cam
@@ -567,9 +669,18 @@ export class World {
     this.ground += (floor - this.ground) * Math.min(1, dt * 12)
     this.hero.root.position.set(this.pos.x, this.ground, this.pos.z)
     this.hero.root.rotation.y = this.yaw
+    // now and then, while you decide, they do something: look up at you, scratch their head, yawn
+    const settled = !this.trip && this.act && this.weight > 0.95
+    if (settled && this.act && seconds > this.fidgetAt && !this.hero.busy(seconds) && !this.options.still) {
+      const choices = FIDGETS[this.act.action] ?? []
+      if (choices.length) this.hero.react(choices[Math.floor(Math.random() * choices.length)], seconds)
+      this.fidgetAt = seconds + 7 + Math.random() * 5
+    }
     const action = this.act?.action ?? "stand"
     this.changed = Math.min(1, this.changed + dt * 2.5)
-    this.hero.update(dt, seconds, walking ? this.speed : 0, action, this.act ? this.weight : 0, this.act?.seat ?? SEATED[action], this.changed < 1 ? (this.before ?? undefined) : undefined, this.changed)
+    const toYou = Math.atan2(this.camera.position.x - this.pos.x, this.camera.position.z - this.pos.z)
+    const look = Math.max(-1.1, Math.min(1.1, turn(0, toYou - this.yaw, 1)))
+    this.hero.update(dt, seconds, walking ? this.speed : 0, action, this.act ? this.weight : 0, this.act?.seat ?? SEATED[action], this.changed < 1 ? (this.before ?? undefined) : undefined, this.changed, this.act?.mood ?? {}, look)
     this.signs.every(action, this.act ? this.weight : 0, this.hero.headAt(), seconds)
     this.signs.update(seconds, dt)
     // the camera eases after where it should be
@@ -602,8 +713,8 @@ export class World {
       v.addScaledVector(accel, dt)
       x.addScaledVector(v, dt)
     }
-    spring(c.pos, c.vPos, to.pos, 6)
-    spring(c.look, c.vLook, to.look, 7)
+    spring(c.pos, c.vPos, to.pos, 6.5)
+    spring(c.look, c.vLook, to.look, 13)
   }
 
   /** Cut away the front of the house they're in (or going into), so you can see in. What's cut still casts shadows. */
@@ -704,28 +815,5 @@ function turn(from: number, to: number, k: number): number {
 }
 
 function blend(a: { pos: THREE.Vector3; look: THREE.Vector3 }, b: { pos: THREE.Vector3; look: THREE.Vector3 }, t: number) {
-  return camOf(mixRig(rigOf(a), rigOf(b), t))
-}
-
-/** A camera as where it looks, and from which way, how high and how far: so moving between two swings round. */
-interface Rig {
-  yaw: number
-  pitch: number
-  dist: number
-  look: THREE.Vector3
-}
-
-function rigOf(c: { pos: THREE.Vector3; look: THREE.Vector3 }): Rig {
-  const o = c.pos.clone().sub(c.look)
-  const dist = Math.max(0.01, o.length())
-  return { yaw: Math.atan2(o.x, o.z), pitch: Math.asin(Math.max(-1, Math.min(1, o.y / dist))), dist, look: c.look.clone() }
-}
-
-function mixRig(a: Rig, b: Rig, t: number): Rig {
-  return { yaw: turn(a.yaw, b.yaw, t), pitch: a.pitch + (b.pitch - a.pitch) * t, dist: a.dist + (b.dist - a.dist) * t, look: a.look.clone().lerp(b.look, t) }
-}
-
-function camOf(r: Rig): { pos: THREE.Vector3; look: THREE.Vector3 } {
-  const c = Math.cos(r.pitch)
-  return { look: r.look, pos: r.look.clone().add(new THREE.Vector3(Math.sin(r.yaw) * c, Math.sin(r.pitch), Math.cos(r.yaw) * c).multiplyScalar(r.dist)) }
+  return { pos: a.pos.clone().lerp(b.pos, t), look: a.look.clone().lerp(b.look, t) }
 }

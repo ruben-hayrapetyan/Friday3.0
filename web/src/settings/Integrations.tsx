@@ -6,7 +6,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
-import { query } from "@/api/client"
+import { query, type Schemas } from "@/api/client"
 import { H, Icon, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings, useStatus } from "@/hooks/queries"
@@ -331,16 +331,29 @@ export function Upload() {
   )
 }
 
+/** What an upload came to, in a line: being read, couldn't be read and why, or what it found and where that went
+ * (some may be what you have already, or what's waiting from a calendar: 29 Oct, a syllabus whose five assignments
+ * were all on the Mac's calendar looked as if it had failed). */
+export function documentSays(d: Schemas["DocumentOut"]): string {
+  if (d.status === "reading") return "being read…"
+  if (d.status === "failed") return `couldn't be read: ${d.error ?? "unknown error"}`
+  if (d.status === "skipped") return "skipped"
+  if (!d.found) return "read; nothing to plan in it"
+  const parts = [d.waiting && `${d.waiting} waiting in your Inbox`, d.accepted && `${d.accepted} added`, d.aside && `${d.aside} you have already`].filter(Boolean)
+  return `found ${d.found}${parts.length ? ` · ${parts.join(" · ")}` : ""}`
+}
+
 /** What you've uploaded: each syllabus read or not, what it found and what's still in the Inbox; one that failed can
- * be read again (a PDF's text is read out for the claude command now, so no API key is needed). */
-function Documents() {
+ * be read again (a PDF's text is read out for the claude command now, so no API key is needed). `compact` for setup:
+ * the lines only, no way off to the Inbox. */
+export function Documents({ compact }: { compact?: boolean }) {
   const { today } = useShell()
   const navigate = useNavigate()
   const docs = useQuery({ queryKey: ["documents"], queryFn: () => query("documents"), refetchInterval: (q) => (q.state.data?.some((d) => d.status === "reading") ? 5000 : false) }).data ?? []
   const retry = useCommand("document_retry", { label: (o) => o.result.message ?? "Reading it again" })
   if (!docs.length) return null
   return (
-    <div style={{ display: "flex", flexDirection: "column", paddingLeft: 50 }}>
+    <div style={{ display: "flex", flexDirection: "column", paddingLeft: compact ? 0 : 50 }}>
       <span className="fr-kicker" style={{ paddingBottom: 4 }}>
         Uploaded ({docs.length})
       </span>
@@ -352,23 +365,14 @@ function Documents() {
               {d.name}
             </span>
             <span style={{ color: d.status === "failed" ? "var(--fr-warn)" : "var(--color-neutral-500)", textWrap: "pretty" }}>
-              {when(d.received, today)} ·{" "}
-              {d.status === "reading"
-                ? "being read…"
-                : d.status === "failed"
-                  ? `couldn't be read: ${d.error ?? "unknown error"}`
-                  : d.status === "skipped"
-                    ? "skipped"
-                    : d.found
-                      ? `found ${d.found}${d.waiting ? ` · ${d.waiting} waiting in your Inbox` : ""}${d.accepted ? ` · ${d.accepted} added` : ""}`
-                      : "read; nothing to plan in it"}
+              {when(d.received, today)} · {documentSays(d)}
             </span>
           </span>
           {d.status === "failed" ? (
             <button className="btn btn-secondary" onClick={() => retry({ id: d.id })} style={{ fontSize: 12, padding: "2px 10px" }}>
               Read again
             </button>
-          ) : d.waiting ? (
+          ) : d.waiting && !compact ? (
             <button className="fr-link" onClick={() => navigate("/inbox")} style={{ fontSize: 12 }}>
               Review
             </button>

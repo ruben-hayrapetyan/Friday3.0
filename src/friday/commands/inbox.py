@@ -108,6 +108,14 @@ def document_add(ctx: Ctx, inp: DocumentInput) -> Changed:
     source = one(ctx.conn, "SELECT id FROM sources WHERE user_id = ? AND kind = 'upload'", [ctx.user_id])
     source_id = source["id"] if source else ctx.db.insert("sources", {"kind": "upload", "name": "Uploads"})
     digest = hashlib.sha256(inp.content.encode()).hexdigest()
+    # The same file again (29 Oct: a syllabus uploaded twice was a server error): what became of it, or, if it
+    # couldn't be read, read again.
+    before = one(ctx.conn, "SELECT * FROM raw_inputs WHERE source_id = ? AND external_id = ?", [source_id, digest[:24]])
+    if before is not None:
+        if before["status"] == "failed":
+            ctx.db.update("raw_inputs", {"id": before["id"]}, {"status": "new", "error": None})
+            return Changed(message=f"Reading {inp.name} again; its suggestions come into the inbox within a minute")
+        return Changed(message=f"You uploaded {inp.name} already: {became(ctx, before)}")
     ctx.db.insert(
         "raw_inputs",
         {
@@ -123,6 +131,26 @@ def document_add(ctx: Ctx, inp: DocumentInput) -> Changed:
     return Changed(message=f"Reading {inp.name}; its suggestions come into the inbox within a minute")
 
 
+def became(ctx: Ctx, raw: dict) -> str:
+    """What an uploaded document came to, in a few words: still being read, or what it found and where that went."""
+    if raw["status"] == "new":
+        return "it's still being read"
+    count = {
+        s["status"]: s["n"]
+        for s in rows(
+            ctx.conn,
+            "SELECT status, count(*) AS n FROM suggestions WHERE raw_input_id = ? GROUP BY status",
+            [raw["id"]],
+        )
+    }
+    found = sum(count.values())
+    if not found:
+        return "it was read, and had nothing to plan in it"
+    parts = [f"{count[k]} {say}" for k, say in [("pending", "waiting in your Inbox"), ("accepted", "added"),
+             ("superseded", "you have already"), ("rejected", "turned down")] if count.get(k)]  # fmt: skip
+    return f"it found {found}: " + ", ".join(parts)
+
+
 @query("documents")
 def documents(ctx: Ctx, inp: Empty) -> list[DocumentOut]:
     """Every syllabus or handout you uploaded, newest first: read or not (and why), and what it found."""
@@ -131,7 +159,8 @@ def documents(ctx: Ctx, inp: Empty) -> list[DocumentOut]:
         ctx.conn,
         "SELECT r.*, (SELECT count(*) FROM suggestions s WHERE s.raw_input_id = r.id) AS found, "
         "(SELECT count(*) FROM suggestions s WHERE s.raw_input_id = r.id AND s.status = 'pending') AS waiting, "
-        "(SELECT count(*) FROM suggestions s WHERE s.raw_input_id = r.id AND s.status = 'accepted') AS accepted "
+        "(SELECT count(*) FROM suggestions s WHERE s.raw_input_id = r.id AND s.status = 'accepted') AS accepted, "
+        "(SELECT count(*) FROM suggestions s WHERE s.raw_input_id = r.id AND s.status = 'superseded') AS aside "
         "FROM raw_inputs r JOIN sources src ON src.id = r.source_id WHERE r.user_id = ? AND src.kind = 'upload' "
         "ORDER BY r.received_utc DESC, r.id DESC",
         [ctx.user_id],
@@ -149,6 +178,7 @@ def documents(ctx: Ctx, inp: Empty) -> list[DocumentOut]:
                 found=r["found"],
                 waiting=r["waiting"],
                 accepted=r["accepted"],
+                aside=r["aside"],
             )
         )
     return out

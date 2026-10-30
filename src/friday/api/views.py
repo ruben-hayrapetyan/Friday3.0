@@ -534,6 +534,7 @@ class DocumentOut(Model):
     found: int = 0  # suggestions it made
     waiting: int = 0  # of those, still in your inbox
     accepted: int = 0
+    aside: int = 0  # set aside: you have them already, or they're waiting from somewhere else (a calendar)
 
 
 class MacWriteOut(Model):

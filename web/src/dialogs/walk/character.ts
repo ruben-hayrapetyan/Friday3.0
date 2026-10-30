@@ -118,13 +118,27 @@ function mix(a: Pose, b: Pose, t: number): Pose {
 const cycle = (t: number, period: number) => ((t % period) + period) % period
 const ease = (x: number) => x * x * (3 - 2 * x)
 const window_ = (t: number, a: number, b: number, fade = 0.35) => Math.min(ease(Math.min(1, Math.max(0, (t - a) / fade))), ease(Math.min(1, Math.max(0, (b - t) / fade))))
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
 
-/** What a body doing `action` looks like `t` seconds in. */
-function acting(action: Action, t: number, on?: number): Pose {
+/** How your answers have them feeling, so the same action looks different: up early or late, how much work, how
+ * long they can focus, how much is theirs. Each 0 to 1 unless said. */
+export interface Mood {
+  energy?: number // 0 dragging themselves up, 1 bright-eyed
+  stress?: number // 0 calm, 1 overwhelmed
+  happy?: number // how much of the time is theirs
+  burst?: number // seconds of work before they look up for a breather (how long they can focus)
+  paper?: boolean // the brief on paper, or the phone instead
+  restless?: number // a late night: tossing and turning
+}
+
+/** What a body doing `action` looks like `t` seconds in, feeling `mood`. */
+function acting(action: Action, t: number, on: number | undefined, mood: Mood): Pose {
   const seat = on ?? SEATED[action]
   const p = seat !== undefined ? sitting(seat) : stand()
   const breath = Math.sin(t * 1.7) * 0.02
   p.lean += breath
+  const energy = mood.energy ?? 0.6
+  const stress = mood.stress ?? 0.3
   switch (action) {
     case "wave": {
       p.armX[1] = -0.3
@@ -135,19 +149,22 @@ function acting(action: Action, t: number, on?: number): Pose {
       break
     }
     case "stretch": {
-      // sitting up in bed: a big stretch and a yawn, then looking about
+      // sitting up in bed: a stretch and a yawn, then looking about. Up early, it's slow and small, eyes half shut,
+      // a hand rubbing them; up late, a big stretch and bright eyes.
       p.legX = [-1.52, -1.52]
       p.knee = [0.05, 0.05]
       p.blanket = 0.5
-      const c = cycle(t, 5)
-      const up = window_(c, 0.2, 2.3, 0.5)
-      p.armX = [-0.6 - up * 2.3, -0.6 - up * 2.3]
-      p.armZ = [0.15 + up * 0.15, -0.15 - up * 0.15]
-      p.elbow = [-0.7 + up * 0.55, -0.7 + up * 0.55]
-      p.headX = -0.3 * up + Math.sin(t * 0.7) * 0.05
-      p.headY = (1 - up) * Math.sin(t * 0.9) * 0.35
-      p.lean = -0.08 * up
-      p.eyes = up > 0.5 ? 0 : 1
+      const period = 6.5 - energy * 2.5
+      const c = cycle(t, period)
+      const up = window_(c, 0.2, 1.4 + energy * 1.2, 0.6 - energy * 0.25) * (0.55 + energy * 0.45)
+      const rub = (1 - energy) * window_(c, period * 0.55, period * 0.85, 0.3)
+      p.armX = [-0.6 - up * 2.3, -0.6 - up * 2.3 - rub * 1.0]
+      p.armZ = [0.15 + up * 0.2, -0.15 - up * 0.2 + rub * 0.2]
+      p.elbow = [-0.7 + up * 0.55, -0.7 + up * 0.55 - rub * 1.6 + Math.sin(t * 9) * rub * 0.15]
+      p.headX = -0.3 * up + (1 - energy) * 0.25 * (1 - up) + Math.sin(t * 0.7) * 0.05
+      p.headY = (1 - up) * Math.sin(t * (0.5 + energy)) * (0.15 + energy * 0.3)
+      p.lean = -0.08 * up + (1 - energy) * 0.12 * (1 - up)
+      p.eyes = up > 0.5 || rub > 0.3 ? 0 : 0.35 + energy * 0.65
       break
     }
     case "sleep": {
@@ -162,63 +179,97 @@ function acting(action: Action, t: number, on?: number): Pose {
       p.lean = Math.sin(t * 1.1) * 0.025
       p.eyes = 0
       p.blanket = 1
+      // a late night: turning over now and then
+      const toss = (mood.restless ?? 0) * window_(cycle(t, 7), 4.5, 6.2, 0.4)
+      p.twist = toss * 0.5
+      p.headY = 0.35 - toss * 0.7
+      p.armX = [0.1 - toss * 0.9, 0.1]
       break
     }
     case "type":
     case "focus":
     case "laptop": {
-      const fast = action === "focus" ? 2 : 1
-      p.armX = [-0.7, -0.7]
-      p.armZ = [-0.12, 0.12]
-      p.elbow = [-1.05 + Math.sin(t * 14 * fast) * 0.06, -1.05 + Math.sin(t * 14 * fast + 1.7) * 0.06]
-      p.headX = 0.32 + Math.sin(t * 0.8) * 0.04
-      p.lean = 0.12
+      // typing in bursts as long as they can focus, then a breather: lean back, stretch, look up
+      const burst = mood.burst ?? 6
+      const c = cycle(t, burst + 1.8)
+      const rest = window_(c, burst, burst + 1.8, 0.3)
+      const quick = 1 + stress * 1.2 + (action === "focus" ? 0.5 : 0)
+      p.armX = [-0.7 - rest * 1.9, -0.7 - rest * 1.9]
+      p.armZ = [-0.12 + rest * 0.4, 0.12 - rest * 0.4]
+      p.elbow = [-1.05 + Math.sin(t * 14 * quick) * 0.06 * (1 - rest) + rest * 0.4, -1.05 + Math.sin(t * 14 * quick + 1.7) * 0.06 * (1 - rest) + rest * 0.4]
+      p.headX = (0.32 + stress * 0.12) * (1 - rest) - rest * 0.3 + Math.sin(t * 0.8) * 0.04
+      p.lean = (0.12 + stress * 0.12) * (1 - rest) - rest * 0.15
+      p.eyes = rest > 0.6 ? 0.2 : 1
       if (action === "laptop") {
-        p.lean = 0.28
-        p.headX = 0.4
-      }
-      if (action === "type" && cycle(t, 7) > 5.6) {
-        // a pause to think, looking up
-        p.armX = [-0.4, -1.6]
-        p.elbow = [-0.9, -2.3]
-        p.headX = -0.2
-        p.headY = 0.25
+        p.lean += 0.16 * (1 - rest)
+        p.headX += 0.08 * (1 - rest)
       }
       break
     }
     case "stress": {
-      p.armX = [-2.55, -2.55]
-      p.armZ = [0.55, -0.55]
-      p.elbow = [-1.95, -1.95]
-      p.headX = 0.15
-      p.headY = Math.sin(t * 5) * 0.18
-      p.lean = 0.18
-      p.eyes = cycle(t, 1.6) < 0.8 ? 0 : 1
+      // the more the work piles up, the more of their head is in their hands
+      const hold = clamp01((stress - 0.25) / 0.5)
+      const c = cycle(t, 4)
+      const grab = hold * window_(c, 0.3, 3.4, 0.4)
+      p.armX = [-0.7 - grab * 1.85, -0.7 - grab * 1.85]
+      p.armZ = [-0.12 + grab * 0.67, 0.12 - grab * 0.67]
+      p.elbow = [-1.05 - grab * 0.9 + Math.sin(t * 20) * 0.06 * (1 - grab), -1.05 - grab * 0.9 + Math.sin(t * 20 + 1.7) * 0.06 * (1 - grab)]
+      p.headX = 0.3 - grab * 0.15
+      p.headY = Math.sin(t * 5) * 0.18 * grab
+      p.lean = 0.2 + grab * 0.05
+      p.eyes = grab > 0.5 && cycle(t, 1.6) < 0.8 ? 0 : 1
       break
     }
     case "look": {
+      // at the essay's week: worried a day before, at ease three days ahead
       p.headX = -0.12
-      p.headZ = 0.1
+      p.headZ = 0.1 - stress * 0.05
       const pointing = window_(cycle(t, 5), 2.6, 4.4, 0.3)
-      p.armX = [-1.55, 0.05 - pointing * 1.65]
-      p.armZ = [-0.25, -0.08]
-      p.elbow = [-2.35, -0.15 + pointing * 0.1]
+      if (stress > 0.6) {
+        p.armX = [-1.4, -1.4]
+        p.armZ = [0.3, -0.3]
+        p.elbow = [-2.2, -2.2] // hands at the mouth
+        p.headY = Math.sin(t * 3.5) * 0.12
+      } else if (stress < 0.25) {
+        p.armX = [-0.25, -0.25]
+        p.armZ = [-0.35, 0.35]
+        p.elbow = [-1.9, -1.9] // arms folded
+        p.headX = -0.12 + Math.abs(Math.sin(t * 1.6)) * 0.12 // nodding along
+      } else {
+        p.armX = [-1.55, 0.05 - pointing * 1.65]
+        p.armZ = [-0.25, -0.08]
+        p.elbow = [-2.35, -0.15 + pointing * 0.1]
+      }
       break
     }
     case "tv": {
-      p.lean = -0.28
+      const happy = mood.happy ?? 0.5
+      p.lean = -0.28 - happy * 0.08
       p.armX = [-0.35, -0.5]
       p.armZ = [0.55, -0.12]
       p.elbow = [-0.6, -1.3]
       p.headX = -0.05
       p.headY = Math.sin(t * 0.4) * 0.05
-      if (cycle(t, 6) > 4.8) p.lean = -0.28 + Math.abs(Math.sin(t * 16)) * 0.08 // a laugh
+      if (happy > 0.6) p.legX = [-1.15, -1.15] // feet up, the whole evening theirs
+      if (cycle(t, 6 - happy * 2) > 4.6 - happy * 2) p.lean += Math.abs(Math.sin(t * 16)) * 0.08 // a laugh
       break
     }
     case "picnic": {
       p.legX = [-1.25, -1.25]
       p.legZ = [0.95, -0.95]
       p.knee = [2.3, 2.3]
+      const happy = mood.happy ?? 0.5
+      if (happy > 0.75) {
+        // all day theirs: lying back on the blanket, hands behind the head
+        p.body = -1.25
+        p.lift = (seat ?? 0.06) + 0.18
+        p.armX = [-2.8, -2.8]
+        p.armZ = [0.5, -0.5]
+        p.elbow = [-2.0, -2.0]
+        p.headX = 0.35
+        p.eyes = cycle(t, 5) > 3.5 ? 0.15 : 1
+        break
+      }
       const bite = window_(cycle(t, 4.5), 0.4, 1.6, 0.3)
       p.armX = [-0.55, -0.7 - bite * 0.75]
       p.elbow = [-0.6, -1.2 - bite * 1.1]
@@ -234,6 +285,13 @@ function acting(action: Action, t: number, on?: number): Pose {
       p.elbow = [-0.9, -0.95 - sip * 1.35]
       p.headX = 0.35 - sip * 0.45
       p.lean = 0.08
+      if (mood.paper === false) {
+        // the phone in the other hand instead of the paper on the table
+        p.armX[0] = -1.0
+        p.elbow[0] = -1.6
+        p.armZ[0] = -0.3
+        p.headX = 0.5 - sip * 0.55
+      }
       break
     }
     case "counter": {
@@ -270,21 +328,99 @@ function acting(action: Action, t: number, on?: number): Pose {
   return p
 }
 
-/** Walking and running: legs and arms swinging with the stride, the body bobbing and leaning into it. */
+/** Walking and running: stride, knees lifting on the swing, arms against the legs, a bob twice a stride, a sway, and
+ * leaning into it as it quickens. `phase` follows the ground covered, so feet don't slide. */
 function moving(phase: number, speed: number): Pose {
   const p = stand()
-  const run = Math.min(1, Math.max(0, (speed - 2.2) / 2.5))
-  const swing = 0.55 + run * 0.35
+  const run = clamp01((speed - 2.0) / 2.2)
+  const swing = 0.5 + run * 0.4
   const s = Math.sin(phase)
+  const c = Math.cos(phase)
   p.legX = [s * swing, -s * swing]
-  p.knee = [Math.max(0, -Math.cos(phase)) * (0.5 + run * 0.9) + 0.1, Math.max(0, Math.cos(phase)) * (0.5 + run * 0.9) + 0.1]
-  p.armX = [-s * (0.45 + run * 0.4), s * (0.45 + run * 0.4)]
-  p.armZ = [0.12, -0.12]
-  p.elbow = [-0.35 - run * 1.0, -0.35 - run * 1.0]
-  p.lift = HIPS - 0.02 - run * 0.04 + Math.abs(Math.cos(phase)) * (0.035 + run * 0.05)
-  p.lean = 0.06 + run * 0.22
-  p.twist = s * 0.08
-  p.headX = -0.04 - run * 0.1
+  // the knee bends as the leg swings through, more when running
+  p.knee = [Math.max(0, c) * (0.55 + run * 0.95) + 0.08, Math.max(0, -c) * (0.55 + run * 0.95) + 0.08]
+  p.armX = [-s * (0.42 + run * 0.35), s * (0.42 + run * 0.35)]
+  p.armZ = [0.1 + run * 0.08, -0.1 - run * 0.08]
+  p.elbow = [-0.3 - run * 1.05, -0.3 - run * 1.05]
+  p.lift = HIPS - 0.015 - run * 0.05 + Math.abs(c) * (0.03 + run * 0.06)
+  p.lean = 0.05 + run * 0.2
+  p.twist = s * (0.1 + run * 0.06)
+  p.headX = -0.03 - run * 0.08
+  p.headY = -s * 0.04 // the head keeps looking where it goes
+  return p
+}
+
+/** Something done in a moment, over whatever they're doing: a reaction to an answer, or a fidget while you decide. */
+export type Reaction = "cheer" | "gulp" | "yawn" | "relief" | "nod" | "shrug" | "flex" | "glance" | "scratch"
+
+const REACT_FOR: Record<Reaction, number> = { cheer: 1.2, gulp: 1.1, yawn: 1.6, relief: 1.1, nod: 0.8, shrug: 1.1, flex: 1.1, glance: 2.2, scratch: 1.6 }
+
+/** The upper body during a reaction `t` seconds in (the legs stay as they are); `look` turns the head toward you. */
+function reacting(kind: Reaction, t: number, base: Pose, look: number, standing: boolean): Pose {
+  const p: Pose = { ...base, armX: [...base.armX], armZ: [...base.armZ], elbow: [...base.elbow] }
+  switch (kind) {
+    case "cheer":
+      p.armX = [-2.7, -2.7]
+      p.armZ = [0.55, -0.55]
+      p.elbow = [-0.25, -0.25]
+      p.headX = -0.25
+      if (standing) p.lift = base.lift + Math.max(0, Math.sin(Math.min(1, t / 0.5) * Math.PI)) * 0.14
+      break
+    case "gulp":
+      p.lean = base.lean - 0.22
+      p.armX = [-0.95, -0.95]
+      p.armZ = [-0.15, 0.15]
+      p.elbow = [-1.7, -1.7]
+      p.headX = -0.1
+      p.headY = Math.sin(t * 18) * 0.12
+      break
+    case "yawn":
+      p.armX = [base.armX[0], -1.55]
+      p.armZ = [base.armZ[0], -0.2]
+      p.elbow = [base.elbow[0], -2.35]
+      p.headX = -0.4
+      p.eyes = 0
+      p.lean = base.lean - 0.08
+      break
+    case "relief":
+      p.lean = base.lean - 0.12 + Math.sin(Math.min(1, t / 1.1) * Math.PI) * 0.18
+      p.armZ = [0.35, -0.35]
+      p.armX = [0.1, 0.1]
+      p.elbow = [-0.2, -0.2]
+      p.eyes = t < 0.6 ? 0 : 1
+      break
+    case "nod":
+      p.headX = base.headX + Math.sin(t * 15) * 0.22
+      break
+    case "shrug":
+      p.armX = [-0.35, -0.35]
+      p.armZ = [0.95, -0.95]
+      p.elbow = [-1.5, -1.5]
+      p.headZ = 0.22
+      break
+    case "flex":
+      p.armX = [base.armX[0], -1.5]
+      p.armZ = [base.armZ[0], -1.0]
+      p.elbow = [base.elbow[0], -2.3]
+      p.headX = -0.15
+      break
+    case "glance":
+      p.headY = look
+      p.headX = -0.05
+      if (standing) {
+        p.armX = [base.armX[0], -0.3]
+        p.armZ = [base.armZ[0], -2.5]
+        p.elbow = [base.elbow[0], -0.35 + Math.sin(t * 9) * 0.35]
+      }
+      break
+    case "scratch":
+      p.armX = [base.armX[0], -2.55]
+      p.armZ = [base.armZ[0], -0.55]
+      p.elbow = [base.elbow[0], -2.25 + Math.sin(t * 22) * 0.12]
+      p.headZ = 0.15
+      p.headX = -0.05
+      break
+  }
   return p
 }
 
@@ -393,16 +529,42 @@ export class Character {
     ;(this.covers.material as THREE.MeshToonMaterial).color.setHex(color)
   }
 
-  /** Each frame: `speed` while moving (metres a second), else the action `weight` of the way in. */
-  update(dt: number, t: number, speed: number, action: Action, weight: number, seat?: number, before?: Action, change = 1): void {
-    const stride = speed > 3 ? 1.7 : 1.15
+  private reaction: { kind: Reaction; at: number } | null = null
+
+  /** Do something in a moment, over what they're doing (an answer just changed, or a fidget while you decide). */
+  react(kind: Reaction, now: number): void {
+    this.reaction = { kind, at: now }
+  }
+
+  /** Whether a reaction is still going. */
+  busy(now: number): boolean {
+    return !!this.reaction && now - this.reaction.at < REACT_FOR[this.reaction.kind]
+  }
+
+  /** Each frame: `speed` while moving (metres a second), else the action `weight` of the way in, feeling `mood`;
+   * `before` is what they were doing at the same place, `change` of the way into the new action; `look` is where
+   * you are, turned from where they face. */
+  update(dt: number, t: number, speed: number, action: Action, weight: number, seat?: number, before?: Action, change = 1, mood: Mood = {}, look = 0): void {
+    // a stride longer the faster they go, so the feet keep to the ground
+    const stride = 1.1 + clamp01((speed - 1.5) / 3) * 0.9
     this.phase += (speed * dt * Math.PI * 2) / stride
-    const doing = before ? mix(acting(before, t, seat), acting(action, t, seat), ease(change)) : acting(action, t, seat)
-    const pose = mix(speed > 0.05 ? moving(this.phase, speed) : stand(), doing, weight)
+    const doing = before ? mix(acting(before, t, seat, mood), acting(action, t, seat, mood), ease(change)) : acting(action, t, seat, mood)
+    let pose = mix(speed > 0.05 ? moving(this.phase, speed) : stand(), doing, weight)
     if (speed <= 0.05 && weight < 1) pose.headY += Math.sin(t * 0.35) * 0.15 * (1 - weight)
+    const r = this.reaction
+    if (r && speed <= 0.05) {
+      const age = t - r.at
+      const span = REACT_FOR[r.kind]
+      if (age >= span) this.reaction = null
+      else {
+        const into = Math.min(ease(clamp01(age / 0.25)), ease(clamp01((span - age) / 0.3)))
+        const standing = (SEATED[action] === undefined && seat === undefined) || weight < 0.5
+        pose = mix(pose, reacting(r.kind, age, pose, look, standing), into)
+      }
+    }
     this.apply(pose, t, dt)
     const holding = weight > 0.6 ? ({ coffee: "cup", picnic: "sandwich", boxes: "letter" } as Partial<Record<Action, string>>)[action] : undefined
-    for (const [name, thing] of this.held) thing.visible = name === holding
+    for (const [name, thing] of this.held) thing.visible = name === holding && !(action === "picnic" && (mood.happy ?? 0) > 0.75)
   }
 
   /** Where the head is, for the little signs over it. */
@@ -466,6 +628,8 @@ export class Signs {
     if (kind === "!") px(["      oooo", "      owwo", "      owwo", "      owwo", "      owwo", "      owwo", "      owwo", "      oooo", "      owwo", "      oooo"], { o: "#7a1d14", w: "#ffdf4a" })
     if (kind === "sweat") px(["", "", "      oo", "     obbo", "    obbbbo", "   obbwbbbo", "   obwbbbbo", "   obbbbbbo", "    obbbbo", "     oooo"], { o: "#1f4a8a", b: "#8fd0ff", w: "#ffffff" })
     if (kind === "note") px(["", "      oooooo", "      owwwwo", "      oo  oo", "      o    o", "      o    o", "   oooo  oooo", "  owwwo owwwo", "  owwwo owwwo", "   ooo   ooo"], { o: "#3a2a4a", w: "#f2c14e" })
+    if (kind === "heart") px(["", "", "   oo   oo", "  owwo owwo", " owwwwowwwwo", " owwwwwwwwwo", " owwwwwwwwwo", "  owwwwwwwo", "   owwwwwo", "    owwwo", "     owo", "      o"], { o: "#7a1d2e", w: "#ff7b8f" })
+    if (kind === "?") px(["    oooooo", "   owwwwwwo", "  owwooowwwo", "  owwo  owwo", "   oo  owwwo", "      owwo", "     owwo", "     owwo", "     oooo", "     owwo", "     oooo"], { o: "#2b2f55", w: "#f4f6ff" })
     if (kind === "steam") px(["", "", "     ww", "    w", "    w", "     ww", "       w", "       w", "     ww"], { w: "rgba(255,255,255,0.8)" })
     const tex = new THREE.CanvasTexture(c)
     tex.magFilter = tex.minFilter = THREE.NearestFilter

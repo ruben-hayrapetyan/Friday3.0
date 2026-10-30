@@ -29,7 +29,7 @@ import { AiConnect } from "@/settings/AiConnect"
 import { CHOICES, choiceOf, fromChoice, saying } from "@/settings/calendarChoice"
 import { ConnectedAccounts } from "@/settings/GoogleAccounts"
 import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess } from "@/settings/GoogleConnect"
-import { AddFeed, Upload } from "@/settings/Integrations"
+import { AddFeed, Documents, Upload } from "@/settings/Integrations"
 import { Count, freeSpan, WeekGrid } from "./onboard/Visuals"
 import { Choices, HourBar, Other, Source, TimeCard } from "./SetupParts"
 import { ALL_EVENING, ALL_WEEKEND, shift, sleepHours, weekOf } from "./setupWeek"
@@ -604,6 +604,7 @@ function BringIn() {
         <span>
           <Upload />
         </span>
+        <Documents compact />
       </Source>
       <button type="button" className="st-link st-rise" style={{ ["--i" as string]: 3 }} onClick={() => setMore(!more)} aria-expanded={more}>
         {more ? "Fewer options" : "More: Gmail, and connecting to Google directly"}

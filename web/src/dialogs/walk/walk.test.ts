@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { hazeColor, hourOf, lightAt, moonAt, skyColor, sunAt, timeStep } from "./sky"
+import { along, paceFor, reactionTo } from "./World"
 import { clockTime, GAP, minutesOf, placeZ, ROUTE, sideOf, STOPS } from "./stops"
 
 const ANSWERS = {
@@ -100,5 +101,49 @@ describe("the walk's route", () => {
     expect(clockTime(0)).toBe("12:00 AM")
     expect(clockTime(12 * 60 + 5)).toBe("12:05 PM")
     expect(clockTime(1440 + 23 * 60)).toBe("11:00 PM")
+  })
+})
+
+describe("walking", () => {
+  it("speeds up, keeps a steady pace, slows down, and arrives exactly", () => {
+    const length = 20
+    const cruise = paceFor(length)
+    expect(cruise).toBeGreaterThan(1.4)
+    expect(cruise).toBeLessThanOrEqual(5.2)
+    const total = length / cruise + (0.55 + 0.7) / 2
+    let last = 0
+    let fastest = 0
+    for (let t = 0; t <= total + 0.2; t += 0.05) {
+      const s = along(t, length, cruise)
+      expect(s).toBeGreaterThanOrEqual(last - 1e-9) // never backward
+      fastest = Math.max(fastest, (s - last) / 0.05)
+      last = s
+    }
+    expect(last).toBeCloseTo(length)
+    expect(fastest).toBeLessThanOrEqual(cruise + 0.01) // no lurch past its pace
+    expect(along(0.1, length, cruise)).toBeLessThan(cruise * 0.1 * 0.5) // a gentle start
+  })
+
+  it("strolls across a room and hurries up the street, never much over five seconds", () => {
+    expect(paceFor(3)).toBeLessThan(paceFor(30))
+    expect(30 / paceFor(30)).toBeLessThan(6)
+    expect(100 / paceFor(100)).toBeLessThan(20)
+  })
+})
+
+describe("what they do when you change an answer", () => {
+  const was = { wake: "07:30", bedtime: "23:30", weekend_wake: "09:00", weekend_bedtime: "00:30", normal_hours: 6, most_hours: 9, focus_hours: 1.5, evening_free: 2, evening_from: "19:00", weekend_free: 4, finish_early_days: 1, brief: true, calendars: [] }
+  it("yawns at an earlier alarm and a later night, cheers at more of their time, gulps at more work", () => {
+    expect(reactionTo(was, { ...was, wake: "06:30" })).toBe("yawn")
+    expect(reactionTo(was, { ...was, wake: "08:30" })).toBe("cheer")
+    expect(reactionTo(was, { ...was, bedtime: "00:30" })).toBe("yawn") // past midnight is later
+    expect(reactionTo(was, { ...was, bedtime: "22:30" })).toBe("nod")
+    expect(reactionTo(was, { ...was, normal_hours: 9 })).toBe("gulp")
+    expect(reactionTo(was, { ...was, normal_hours: 4 })).toBe("relief")
+    expect(reactionTo(was, { ...was, evening_free: 4 })).toBe("cheer")
+    expect(reactionTo(was, { ...was, weekend_free: 0 })).toBe("gulp")
+    expect(reactionTo(was, { ...was, finish_early_days: 3 })).toBe("cheer")
+    expect(reactionTo(was, { ...was, brief: false })).toBe("shrug")
+    expect(reactionTo(was, { ...was })).toBeNull()
   })
 })

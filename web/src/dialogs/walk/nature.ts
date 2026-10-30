@@ -13,8 +13,29 @@ export const wind = { value: 0 }
 /** A two-sided card lit by its own normal on both faces (a leaf, a blade), not turned dark on its back. */
 export const BOTH_SIDES = THREE.ShaderChunk.normal_fragment_begin.replace("normal *= faceDirection;", "")
 
+/** Thinned out close to the camera, so it swings through a tree's crown without a wall of leaves filling the
+ * screen (what a game does with what's between you and the hero). Its shadow stays. */
+function nearFade(shader: { vertexShader: string; fragmentShader: string }): void {
+  shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vNearWorld;").replace(
+    "#include <fog_vertex>",
+    `#include <fog_vertex>
+    vec4 nearAt = vec4(transformed, 1.0);
+    #ifdef USE_INSTANCING
+      nearAt = instanceMatrix * nearAt;
+    #endif
+    vNearWorld = (modelMatrix * nearAt).xyz;`,
+  )
+  shader.fragmentShader = shader.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec3 vNearWorld;").replace(
+    "#include <clipping_planes_fragment>",
+    `#include <clipping_planes_fragment>
+    float nearD = distance(vNearWorld, cameraPosition);
+    if (nearD < 5.5 && (nearD - 2.5) / 3.0 < fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453)) discard;`,
+  )
+}
+
 function swaying(m: THREE.MeshStandardMaterial, strength: number): void {
   m.onBeforeCompile = (shader) => {
+    nearFade(shader)
     shader.uniforms.uTime = wind
     shader.fragmentShader = shader.fragmentShader.replace("#include <normal_fragment_begin>", BOTH_SIDES)
     shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nuniform float uTime;").replace(
@@ -103,7 +124,8 @@ export interface Planting {
 export function forest(plantings: Planting[]): THREE.Group {
   const group = new THREE.Group()
   const kinds = PALETTES.map((_, i) => grow(1000 + i * 77, [9, 11, 10][i], [6.5, 5, 7][i], [420, 340, 460][i]))
-  const barkMat = M.bark()
+  const barkMat = M.bark().clone()
+  barkMat.onBeforeCompile = (shader) => nearFade(shader)
   PALETTES.forEach((palette, k) => {
     const mine = plantings.filter((p, i) => (p.kind ?? i % 3) === k)
     if (!mine.length) return

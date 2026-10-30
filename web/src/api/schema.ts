@@ -3906,6 +3906,11 @@ export interface components {
              * @default 0
              */
             accepted?: number;
+            /**
+             * Aside
+             * @default 0
+             */
+            aside?: number;
         };
         /** DocumentRetryResult */
         DocumentRetryResult: {

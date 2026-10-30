@@ -52,6 +52,37 @@ def test_what_a_read_syllabus_found_is_counted(app: App) -> None:
     assert (doc["status"], doc["found"], doc["waiting"], doc["accepted"]) == ("read", 3, 1, 1)
 
 
+def test_the_same_file_again_says_what_became_of_it(app: App) -> None:
+    # 29 Oct: a syllabus uploaded twice was a server error (the second copy broke a unique key)
+    app.do("document_add", name="Psych.txt", content="WA8 due Friday.")
+    assert app.do("document_add", name="Psych.txt", content="WA8 due Friday.")["message"] == (
+        "You uploaded Psych.txt already: it's still being read"
+    )
+    raw = app.table("raw_inputs")[-1]["id"]
+    app.conn.execute("UPDATE raw_inputs SET status = 'extracted' WHERE id = ?", [raw])
+    for status in ("pending", "superseded", "superseded"):
+        app.conn.execute(
+            "INSERT INTO suggestions (user_id, raw_input_id, command, input, status, created_utc) "
+            "VALUES (1, ?, 'add', '{}', ?, '2026-10-19T13:00Z')",
+            [raw, status],
+        )
+    out = app.do("document_add", name="Psych (1).txt", content="WA8 due Friday.")
+    said = "You uploaded Psych (1).txt already: it found 3: 1 waiting in your Inbox, 2 you have already"
+    assert out["message"] == said
+    (doc,) = app.do("documents")
+    assert (doc["found"], doc["waiting"], doc["aside"]) == (3, 1, 2)
+    assert len(app.table("raw_inputs")) == 1
+
+
+def test_a_file_that_failed_uploaded_again_is_read_again(app: App) -> None:
+    app.do("document_add", name="Chem.pdf", media_type="application/pdf", content="JVBERi0=")
+    raw = app.table("raw_inputs")[-1]["id"]
+    app.conn.execute("UPDATE raw_inputs SET status = 'failed', error = 'no key' WHERE id = ?", [raw])
+    out = app.do("document_add", name="Chem.pdf", media_type="application/pdf", content="JVBERi0=")
+    assert out["message"].startswith("Reading Chem.pdf again")
+    assert app.do("documents")[0]["status"] == "reading"
+
+
 NO_PDFTOTEXT = shutil.which("pdftotext") is None and not Path("/opt/homebrew/bin/pdftotext").exists()
 
 

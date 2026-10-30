@@ -47,4 +47,9 @@ addEventListener("keydown", (e) => {
     go(true)
   } else if (e.key === " ") world.hurry()
 })
-Object.assign(window, { walk: { world, answers, step: (n: number) => ((i = n), go()) } })
+// walk.set({ wake: "06:30" }) changes an answer, as a click in setup would
+const set = (change: Partial<typeof answers>) => {
+  Object.assign(answers, change)
+  world.update({ ...answers })
+}
+Object.assign(window, { walk: { world, answers, set, step: (n: number) => ((i = n), go()) } })
