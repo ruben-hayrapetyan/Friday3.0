@@ -8,7 +8,7 @@
 import * as THREE from "three"
 import type { Schemas } from "@/api/client"
 import type { Action, Mood } from "./character"
-import { ball, bake, block, cylinder, gable, M, meterUV, panel, span } from "./props"
+import { ball, bake, block, cylinder, gable, M, panel, span } from "./props"
 import { clockTime, minutesOf, type Place } from "./stops"
 import { Board, hash, random } from "./textures"
 
@@ -46,8 +46,17 @@ export interface Scene {
   action: Action
   seat?: number // what they sit on, when it isn't the usual height
   bed?: Bed // in bed: how they get in and out of it
+  front?: number // sitting: how far in front of the seat they stand before sitting down
   mood?: Mood // how your answers have them feeling there
   cam: Spot
+}
+
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
+
+/** What setup knows besides your answers: the AI you chose, and whether something you brought in is being read. */
+export interface Extra {
+  ai: string | null
+  reading: boolean
 }
 
 /** A bed to get into: where they stand beside it, sit on its edge, lie and sit up (feet on the floor under the
@@ -66,21 +75,22 @@ export interface Bed {
   open: number // thrown back, to get in or out
 }
 
-/** A duvet that folds back and is pulled up, puffed when someone's under it. In its bed's space: the head end toward
- * -z, the mattress's top at `top`. `set(fold, full)`: where its top edge is (folded back over itself beyond `head`),
- * and how much someone is under it. */
+/** A duvet that lies over whoever is in the bed (30 Oct: "i want the bedsheets to bend around his legs"): a sheet of
+ * cloth over the mattress, hanging over its sides and foot, lifted wherever the body under it is, folded back from
+ * its top edge at `fold` (in its bed's space: the head end toward -z, the mattress's top at `top`). */
 export class Duvet {
   readonly group = new THREE.Group()
   fold: number
   full = 0
-  private base: THREE.Mesh
-  private sides: THREE.Mesh[]
-  private flap: THREE.Mesh
-  private roll: THREE.Mesh
+  private geo: THREE.BufferGeometry
   private width: number
   private head: number
   private foot: number
   private top: number
+  private body: { p: THREE.Vector3; r: number; torso?: boolean; arm?: boolean }[] = []
+  private static NX = 20
+  private static NZ = 34
+  private static HANG = 0.24
 
   constructor(width: number, head: number, foot: number, top: number, color: number) {
     this.width = width
@@ -88,63 +98,97 @@ export class Duvet {
     this.foot = foot
     this.top = top
     this.group.userData.live = true
-    const cloth = M.fabric(color)
-    const box = () => {
-      const mesh = new THREE.Mesh(meterUV(new THREE.BoxGeometry(1, 1, 1)), cloth)
-      mesh.castShadow = true
-      mesh.receiveShadow = true
-      this.group.add(mesh)
-      return mesh
-    }
-    this.base = box()
-    this.sides = [box(), box()]
-    this.flap = box()
-    this.roll = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 12).rotateZ(Math.PI / 2), cloth)
-    this.roll.castShadow = true
-    this.group.add(this.roll)
+    const { NX, NZ } = Duvet
+    this.geo = new THREE.PlaneGeometry(1, 1, NX, NZ)
+    const cloth = M.fabric(color).clone()
+    cloth.side = THREE.DoubleSide
+    const mesh = new THREE.Mesh(this.geo, cloth)
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    this.group.add(mesh)
     this.fold = head
-    this.set(head + 0.15, 0)
+    this.set(head + 0.1, 0)
   }
 
-  set(fold: number, full: number): void {
+  /** Where its top edge is folded to, and (unused now) how full it is. */
+  set(fold: number, full = 0): void {
     this.fold = fold
     this.full = full
-    const th = 0.07 + full * 0.2
-    const length = this.foot - fold
-    const mid = (fold + this.foot) / 2
-    this.base.scale.set(this.width, th, length)
-    this.base.position.set(0, this.top + th / 2, mid)
-    this.sides.forEach((side, i) => {
-      side.scale.set(0.03, th + 0.16, length)
-      side.position.set((i ? 1 : -1) * (this.width / 2 + 0.015), this.top + th / 2 - 0.08, mid)
-    })
-    const back = Math.min(this.foot - 0.02, fold + (fold - this.head)) - fold // the part turned back over itself
-    const folded = back > 0.03
-    this.flap.visible = folded
-    this.roll.visible = folded
-    if (folded) {
-      this.flap.scale.set(this.width * 0.98, 0.05, back)
-      this.flap.position.set(0, this.top + th + 0.025, fold + back / 2)
-      const r = (th + 0.05) / 2
-      this.roll.scale.set(this.width * 0.98, r * 2, r * 2)
-      this.roll.position.set(0, this.top + r, fold)
+    this.shape()
+  }
+
+  /** The body under it, as lumps in the world (Character.samples), or none. */
+  over(body: { p: THREE.Vector3; r: number; torso?: boolean; arm?: boolean }[]): void {
+    this.group.updateMatrixWorld(true)
+    this.body = body.map((b) => ({ p: this.group.worldToLocal(b.p.clone()), r: b.r, torso: b.torso, arm: b.arm }))
+    this.shape()
+  }
+
+  private shape(): void {
+    const { NX, NZ, HANG } = Duvet
+    const pos = this.geo.attributes.position as THREE.BufferAttribute
+    const uv = this.geo.attributes.uv as THREE.BufferAttribute
+    const half = this.width / 2
+    const fold = Math.min(this.fold, this.foot - 0.1)
+    const back = Math.max(0, Math.min(0.42, fold - this.head)) // how much is turned back over itself
+    const rest = this.top + 0.045
+    for (let j = 0; j <= NZ; j++) {
+      const v = j / NZ
+      const zFlat = fold + (this.foot + HANG - fold) * v
+      for (let i = 0; i <= NX; i++) {
+        const u = i / NX
+        const xFlat = -half - HANG + (this.width + 2 * HANG) * u
+        // past the mattress's sides and foot, the cloth hangs down, drawn in a little as it falls
+        const outX = Math.max(0, Math.abs(xFlat) - half)
+        const outZ = Math.max(0, zFlat - this.foot)
+        const drop = Math.min(1, Math.hypot(outX, outZ) / HANG)
+        const fall = drop * drop * (3 - 2 * drop)
+        let x = Math.sign(xFlat) * (Math.min(Math.abs(xFlat), half) + outX * 0.35)
+        let z = Math.min(zFlat, this.foot) + outZ * 0.35
+        let y = rest - fall * 0.28
+        // lifted over the body, smoothly, as cloth lies over a leg
+        for (const b of this.body) {
+          // sitting up, the cloth stays in the lap: it doesn't climb an upright chest, and arms lifted out of the bed
+          // lie on top of it (only what's lying in the bed is under it)
+          if (b.p.y - this.top > (b.torso ? 0.15 : b.arm ? 0.12 : 0.26)) continue
+          const lift = b.p.y + b.r + 0.015
+          if (lift <= y) continue
+          const d = Math.hypot(x - b.p.x, z - b.p.z)
+          const k = 1 - Math.min(1, Math.max(0, (d - b.r * 0.55) / (b.r * 0.45 + 0.17)))
+          const lifted = y + (lift - y) * (k * k * (3 - 2 * k))
+          if (lifted > y) y = lifted
+        }
+        // the band turned back at the top edge: a second layer, thickest at the fold
+        if (back > 0.02 && zFlat < fold + back) y += 0.035 + 0.03 * (1 - (zFlat - fold) / back)
+        if (j === 0) {
+          // the top edge rolls under a little
+          y -= 0.01
+          z -= 0.01
+        }
+        if (outX === 0 && outZ === 0) x = xFlat
+        pos.setXYZ(j * (NX + 1) + i, x, y, z)
+        uv.setXY(j * (NX + 1) + i, xFlat, zFlat)
+      }
     }
+    pos.needsUpdate = true
+    uv.needsUpdate = true
+    this.geo.computeVertexNormals()
+    this.geo.computeBoundingSphere()
   }
 }
-
-const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
 
 export interface Built {
   group: THREE.Group
   cut: THREE.Group | null // the front and what's above the room, hidden while you're inside
   stub: THREE.Group | null // the front wall cut down low, shown instead
   size: { w: number; d: number } // along the street, and back from the front
-  scene: (spot: number, a: Answers) => Scene
+  scene: (spot: number, a: Answers, extra: Extra) => Scene
   door: { inside: THREE.Vector3; outside: THREE.Vector3 } | null // the way in and out
   sockets: Socket[]
   clear: [number, number, number, number][] // no grass here: x0, z0, x1, z1
   room: [number, number, number, number] | null // indoors: x0, z0, x1, z1
   show: (a: Answers) => void
+  extra?: (e: Extra) => void
   tick?: (seconds: number, minutes: number, step: string) => void
   cue?: (name: string, seconds: number) => void // something the scene does now (the alarm going off)
 }
@@ -561,12 +605,12 @@ function dorm(): Built {
   bed.add(block(1.06, 0.95, 0.06, M.wood(0x9a7a5a), 0, 0, -1.03, 0.02))
   bed.position.set(w / 2 - 0.56, FLOOR, zb + 1.06)
   g.add(bed)
-  const duvet = new Duvet(1.04, -0.6, 1.03, 0.56, 0x5f84b8)
+  const duvet = new Duvet(1.04, -0.62, 1.03, 0.56, 0x5f84b8)
   duvet.group.position.copy(bed.position)
   g.add(duvet.group)
   const bedX = w / 2 - 0.56
   const bedZ = zb + 1.06
-  const inBed: Bed = { side: V(1.6, FLOOR, -4.15), edge: V(2.3, FLOOR, -4.15), lie: V(bedX, FLOOR, bedZ + 0.1), up: V(bedX, FLOOR, bedZ - 0.5), yawEdge: -Math.PI / 2, yawIn: 0, top: 0.56, duvet, closed: -0.27, waist: -0.4, open: 0.18 }
+  const inBed: Bed = { side: V(1.62, FLOOR, bedZ - 0.05), edge: V(2.32, FLOOR, bedZ - 0.05), lie: V(bedX, FLOOR, bedZ - 0.05), up: V(bedX, FLOOR, bedZ - 0.05), yawEdge: -Math.PI / 2, yawIn: 0, top: 0.56, duvet, closed: -0.6, waist: 0.1, open: 0.42 }
   // the nightstand, and the clock on it facing you
   g.add(block(0.46, 0.56, 0.42, M.wood(0x8a6a4c), 1.55, FLOOR, zb + 0.24, 0.015))
   const clock = alarmClock()
@@ -603,7 +647,7 @@ function dorm(): Built {
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
     // into bed, the alarm, sitting up: at 6:15 they drag themselves up; by 9 they're bright-eyed
-    scene: (_spot, a) => ({ walk: inBed.side, at: inBed.up, yaw: inBed.yawIn, action: "wake", seat: inBed.top, bed: inBed, mood: { energy: clamp01((minutesOf(a.wake) - 375) / 165) }, cam: cam(V(1.2, 0.9, -4.1), [-1.7, 3.6, 7.4]) }),
+    scene: (_spot, a) => ({ walk: inBed.side, at: inBed.up, yaw: inBed.yawIn, action: "wake", seat: inBed.top, bed: inBed, mood: { energy: clamp01((minutesOf(a.wake) - 375) / 165) }, cam: cam(V(1.5, 0.85, -4.4), [-2.3, 3.9, 6.4]) }),
     door: { inside: V(-2, 0, -1.0), outside: V(-2, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-2.8, 0, -1.2, 2.8]],
@@ -644,7 +688,9 @@ function library(): Built {
   for (const z of [-3.4, -6.0]) {
     g.add(table(3.4, 1.15, 0.76, dark, 0, z))
     for (const x of [-1.1, 1.1]) {
-      g.add(chair(dark, x, z - 0.85, 0.08))
+      // your chair (the near table's, on the right) pulled out from the table, to sit on
+      if (z === -3.4 && x === 1.1) g.add(chair(dark, x, z - 1.12, 0))
+      else g.add(chair(dark, x, z - 0.85, 0.08))
       g.add(chair(dark, x + 0.1, z + 0.85, Math.PI - 0.1))
     }
     for (const x of [-0.9, 0.9]) {
@@ -673,7 +719,7 @@ function library(): Built {
   // your place at the nearer table: the laptop, a notebook, and the books for a day's work
   const screen = new Board(512, 320)
   const lap = laptop(screen)
-  lap.position.set(1.1, FLOOR + 0.76, -3.7)
+  lap.position.set(1.1, FLOOR + 0.76, -3.78)
   lap.rotation.y = Math.PI
   g.add(lap)
   // a day's books at their right hand, what a heavy day adds at their left, the timer for a sitting in front
@@ -682,7 +728,7 @@ function library(): Built {
   normal.position.set(0.48, FLOOR + 0.76, -3.72)
   const extra = new THREE.Group()
   extra.userData.live = true
-  extra.position.set(1.74, FLOOR + 0.76, -3.72)
+  extra.position.set(1.52, FLOOR + 0.76, -3.7)
   g.add(normal, extra)
   const timer = new THREE.Group()
   timer.userData.live = true
@@ -700,7 +746,8 @@ function library(): Built {
   let since = -1
   let focus = 1
   let piles: [number, number] = [0, 0]
-  const seat = { via: [V(2.3, FLOOR, -2.4), V(2.3, FLOOR, -4.75)], walk: V(1.6, FLOOR, -4.75), at: V(1.1, FLOOR, -4.28), yaw: 0 }
+  // round the table's end, along between it and the chair, and sit (30 Oct: "he walks through the table")
+  const seat = { via: [V(2.35, FLOOR, -2.5), V(2.35, FLOOR, -4.16)], walk: V(1.8, FLOOR, -4.16), at: V(1.1, FLOOR, -4.44), yaw: 0, front: 0.3 }
   return {
     group: g,
     cut,
@@ -1012,7 +1059,7 @@ function home(): Built {
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    scene: (_spot, a) => ({ walk: V(-2.25, FLOOR, -2.9), at: V(-2.82, FLOOR, -3.7), yaw: Math.PI / 2, action: a.evening_free > 0 ? "tv" : "laptop", seat: 0.56, mood: { happy: a.evening_free / 5 }, cam: cam(V(-2.3, 0.95, -3.7), [1.1, 3.4, 6.8]) }),
+    scene: (_spot, a) => ({ walk: V(-2.1, FLOOR, -3.2), at: V(-2.86, FLOOR, -3.7), yaw: Math.PI / 2, front: 0.42, action: a.evening_free > 0 ? "tv" : "laptop", seat: 0.56, mood: { happy: a.evening_free / 5 }, cam: cam(V(-2.3, 0.95, -3.7), [1.1, 3.4, 6.8]) }),
     door: { inside: V(-2.3, 0, -1.0), outside: V(-2.3, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-3.1, 0, -1.5, 2.8]],
@@ -1041,10 +1088,10 @@ function night(): Built {
   bed.add(block(1.66, 1.05, 0.08, M.wood(0x6a5040), 0, 0, -1.08, 0.02))
   bed.position.set(1.2, FLOOR, zb + 1.12)
   g.add(bed)
-  const duvet = new Duvet(1.6, -0.55, 1.05, 0.54, 0x9aa8c2)
+  const duvet = new Duvet(1.6, -0.62, 1.05, 0.54, 0x9aa8c2)
   duvet.group.position.copy(bed.position)
   g.add(duvet.group)
-  const inBed: Bed = { side: V(-0.1, FLOOR, -4.35), edge: V(0.56, FLOOR, -4.35), lie: V(0.82, FLOOR, zb + 1.12 + 0.12), up: V(0.82, FLOOR, zb + 1.12 - 0.45), yawEdge: -Math.PI / 2, yawIn: 0, top: 0.54, duvet, closed: -0.25, waist: -0.38, open: 0.18 }
+  const inBed: Bed = { side: V(-0.12, FLOOR, zb + 1.07), edge: V(0.58, FLOOR, zb + 1.07), lie: V(0.84, FLOOR, zb + 1.07), up: V(0.84, FLOOR, zb + 1.07), yawEdge: -Math.PI / 2, yawIn: 0, top: 0.54, duvet, closed: -0.6, waist: 0.1, open: 0.42 }
   for (const x of [-0.05, 2.45]) g.add(block(0.46, 0.52, 0.4, M.wood(0x6a5040), x, FLOOR, zb + 0.24, 0.015))
   g.add(lampShade(-0.05, FLOOR + 0.52 + 0.24, zb + 0.22, M.fabric(0xf1e4cc), sockets, 0xffb86a, 7))
   g.add(cylinder(0.05, 0.07, 0.24, M.paint(0xc9b48a, 0.4, true), -0.05, FLOOR + 0.52, zb + 0.22, 14))
@@ -1109,11 +1156,11 @@ function park(): Built {
   const basket = new THREE.Group()
   basket.add(block(0.5, 0.28, 0.34, M.wood(0xb8905a), 0, 0, 0, 0.03))
   basket.add(block(0.5, 0.02, 0.36, M.fabric(0xc8302a), 0, 0.28, 0, 0.01))
-  basket.position.set(-1.0, 0.145, -5.0)
+  basket.position.set(-0.85, 0.145, -5.25)
   basket.rotation.y = 0.4
   free.add(basket)
-  free.add(cylinder(0.13, 0.13, 0.02, M.paint(0xe94e2a, 0.4), -2.4, 0.145, -4.9, 20))
-  free.add(pile(2, 9).translateX(-2.0).translateY(0.145).translateZ(-5.9))
+  free.add(cylinder(0.13, 0.13, 0.02, M.paint(0xe94e2a, 0.4), -2.55, 0.145, -4.75, 20))
+  free.add(pile(2, 9).translateX(-0.95).translateY(0.145).translateZ(-5.95))
   g.add(free)
   const busy = new THREE.Group()
   busy.userData.live = true
@@ -1144,7 +1191,7 @@ function park(): Built {
     size: { w: 22, d: 18 },
     scene: (_spot, a) =>
       a.weekend_free > 0
-        ? { walk: V(-1.1, 0.15, -4.6), at: V(-1.95, 0.13, -5.65), yaw: 0.35, action: "picnic", mood: { happy: a.weekend_free / 13 }, cam: cam(V(-1.5, 0.7, -5.4), [2.6, 3.4, 6.6]) }
+        ? { walk: V(-1.2, 0.15, -4.6), at: V(-1.95, 0.13, -5.7), yaw: 0.35, front: 0.32, action: "picnic", mood: { happy: a.weekend_free / 13 }, cam: cam(V(-1.5, 0.7, -5.4), [2.6, 3.4, 6.6]) }
         : { via: [V(0, 0.15, -7.6)], walk: V(-2.2, 0.15, -7.5), at: V(-2.9, 0.13, -8.12), yaw: 0, action: "laptop", seat: 0.48, cam: cam(V(-2.6, 0.9, -7.7), [2.6, 3.0, 6.2]) },
     door: { inside: V(0.2, 0, -0.5), outside: V(0, 0, 2.0) },
     sockets,
@@ -1230,7 +1277,7 @@ function cafe(): Built {
     return t
   }
   g.add(round(-0.9, -2.6), round(-2.8, -2.2), round(2.4, -3.2))
-  g.add(chair(M.wood(0x6a4a34), -0.9, -3.25, 0), chair(M.wood(0x6a4a34), -2.8, -1.6, Math.PI), chair(M.wood(0x6a4a34), 2.4, -3.8, 0))
+  g.add(chair(M.wood(0x6a4a34), -0.9, -3.42, 0), chair(M.wood(0x6a4a34), -2.8, -1.6, Math.PI), chair(M.wood(0x6a4a34), 2.4, -3.8, 0))
   // a saucer for the coffee in hand, and the morning brief beside it if you'd like one
   g.add(cylinder(0.08, 0.08, 0.01, M.paint(0xf6f3ec, 0.3, true), -0.65, FLOOR + 0.75, -2.5, 20))
   const brief = new Board(420, 594)
@@ -1288,7 +1335,7 @@ function cafe(): Built {
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    scene: (_spot, a) => ({ via: [V(0.2, FLOOR, -2.4)], walk: V(-0.3, FLOOR, -3.55), at: V(-0.9, FLOOR, -3.28), yaw: 0, action: "coffee", mood: { paper: a.brief }, cam: cam(V(-0.8, 1.0, -2.9), [1.8, 2.9, 6.0]) }),
+    scene: (_spot, a) => ({ via: [V(0.25, FLOOR, -2.4)], walk: V(-0.3, FLOOR, -3.08), at: V(-0.9, FLOOR, -3.38), yaw: 0, front: 0.3, action: "coffee", mood: { paper: a.brief }, cam: cam(V(-0.8, 1.0, -2.9), [1.8, 2.9, 6.0]) }),
     door: { inside: V(0.6, 0, -1.0), outside: V(0.6, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-0.2, 0, 1.4, 2.8]],
@@ -1321,28 +1368,31 @@ function post(): Built {
   // the counter, its screen, parcels
   g.add(span(-2.4, 3.6, FLOOR, FLOOR + 1.05, -4.9, -4.25, M.wood(0x6a5040)))
   g.add(span(-2.45, 3.65, FLOOR + 1.05, FLOOR + 1.1, -4.95, -4.2, M.paint(0xd9d2c4, 0.35, true)))
+  // the screen shows the AI you chose (30 Oct: "the computer screen should change with his choice of AI")
   const screen = new Board(640, 400)
-  screen.draw("ai", (ctx, cw, ch) => {
-    ctx.fillStyle = "#f5f4f0"
-    ctx.fillRect(0, 0, cw, ch)
-    ctx.fillStyle = "#1f2430"
-    ctx.font = FONT(800, 34)
-    ctx.fillText("Friday", 36, 62)
-    ctx.font = FONT(500, 22)
-    ctx.fillStyle = "#6a6f7a"
-    ctx.fillText("Reads your syllabi and mail", 36, 98)
-    for (let i = 0; i < 3; i++) {
-      ctx.fillStyle = "#e7e5df"
-      ctx.fillRect(36, 130 + i * 76, cw - 72, 60)
-      ctx.fillStyle = "#1f2430"
-      ctx.font = FONT(700, 24)
-      ctx.fillText(["Claude", "Codex", "Gemini"][i], 60, 168 + i * 76)
-    }
-  })
+  const showAi = (ai: string | null) =>
+    screen.draw(ai ?? "-", (ctx, cw, ch) => {
+      // big enough to read in pixels: the name filling the screen, one line over it
+      ctx.fillStyle = ai ? "#f5f4f0" : "#2a2d36"
+      ctx.fillRect(0, 0, cw, ch)
+      ctx.fillStyle = ai ? "#6a6f7a" : "#a9adb6"
+      ctx.font = FONT(700, 40)
+      ctx.textAlign = "center"
+      ctx.fillText(ai ? "READS WITH" : "NO AI YET", cw / 2, 100)
+      ctx.fillStyle = ai ? "#1f2430" : "#e6e3dc"
+      const name = ai ?? "?"
+      ctx.font = FONT(900, Math.min(180, (cw * 1.5) / Math.max(3, name.length)))
+      ctx.fillText(name, cw / 2, 290)
+      if (ai) {
+        ctx.fillStyle = "#3f8f5a"
+        ctx.fillRect(cw / 2 - 60, 330, 120, 18)
+      }
+    })
+  showAi(null)
   const monitor = new THREE.Group()
-  monitor.add(block(0.62, 0.4, 0.04, M.paint(0x1d1d1d, 0.3, true), 0, 0.28, 0, 0.01))
+  monitor.add(block(0.92, 0.6, 0.04, M.paint(0x1d1d1d, 0.3, true), 0, 0.22, 0, 0.01))
   monitor.add(block(0.06, 0.28, 0.06, M.paint(0x1d1d1d, 0.3, true), 0, 0, -0.03), block(0.24, 0.02, 0.18, M.paint(0x1d1d1d, 0.3, true), 0, 0, -0.03))
-  monitor.add(panel(0.58, 0.36, new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffffff, emissiveMap: screen.texture, emissiveIntensity: 1.1, roughness: 0.2 }), 0, 0.48, 0.021))
+  monitor.add(panel(0.86, 0.54, new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffffff, emissiveMap: screen.texture, emissiveIntensity: 1.1, roughness: 0.2 }), 0, 0.52, 0.021))
   monitor.position.set(0.8, FLOOR + 1.1, -4.6)
   monitor.rotation.y = -0.15
   g.add(monitor)
@@ -1352,14 +1402,30 @@ function post(): Built {
   const boxes = new THREE.Group()
   const brass = M.metal(0xb89a5a, 0.3)
   boxes.add(span(-2.8, 2.8, 0, 2.3, -0.05, 0, M.wood(0x5a4232)))
+  // theirs: a door that opens, with a letter inside (30 Oct: "when something is being read make him interact with
+  // one of the mailboxes")
+  const MINE = [3, 5] // row, column: in front of where they stand, at chest height
+  const hinge = new THREE.Group()
+  hinge.userData.live = true
   for (let r = 0; r < 7; r++) {
     for (let c = 0; c < 12; c++) {
       const x = -2.6 + c * 0.44 + 0.2
       const y = 0.25 + r * 0.29
+      if (r === MINE[0] && c === MINE[1]) {
+        boxes.add(block(0.38, 0.24, 0.02, M.paint(0x15110d, 0.9, true), x, y, -0.03))
+        const letter = block(0.2, 0.012, 0.14, M.paint(0xf6f1e4, 0.8, true), x + 0.02, y + 0.03, -0.05)
+        letter.rotation.x = Math.PI / 2 - 0.25
+        boxes.add(letter)
+        hinge.position.set(x - 0.19, y, 0.01)
+        hinge.add(block(0.38, 0.24, 0.03, brass, 0.19, 0, 0, 0.005))
+        hinge.add(block(0.08, 0.04, 0.02, M.paint(0x1d1d1d, 0.4), 0.09, 0.16, 0.025))
+        continue
+      }
       boxes.add(block(0.38, 0.24, 0.03, brass, x, y, 0.01, 0.005))
       boxes.add(block(0.08, 0.04, 0.02, M.paint(0x1d1d1d, 0.4), x - 0.1, y + 0.16, 0.035))
     }
   }
+  boxes.add(hinge)
   boxes.position.set(-w / 2 + 0.05, FLOOR, -3.6)
   boxes.rotation.y = Math.PI / 2
   g.add(boxes)
@@ -1393,15 +1459,17 @@ function post(): Built {
   }
   sockets.push({ at: V(0, FLOOR + h - 0.4, -3.4), color: 0xfff0dc, power: 18, range: 10, night: false })
   finish(g, cut, stub)
+  let reading = false
   return {
     group: g,
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    scene: (spot) =>
+    scene: (spot, _a, extra) =>
       [
-        { walk: V(0.8, FLOOR, -3.8), at: V(0.8, FLOOR, -3.8), yaw: Math.PI, action: "counter" as const, cam: cam(V(0.6, 1.3, -4.1), [-1.6, 2.9, 6.2]) },
-        { walk: V(-3.85, FLOOR, -3.3), at: V(-3.85, FLOOR, -3.3), yaw: -Math.PI / 2, action: "boxes" as const, cam: cam(V(-3.8, 1.3, -3.3), [3.6, 2.7, 5.2]) },
+        // beside the screen, so you can read the AI on it over their shoulder
+        { walk: V(0.0, FLOOR, -3.8), at: V(0.0, FLOOR, -3.8), yaw: Math.PI - 0.5, action: "counter" as const, cam: cam(V(0.35, 1.5, -4.35), [1.4, 1.7, 3.7]) },
+        { walk: V(-3.85, FLOOR, -3.4), at: V(-3.85, FLOOR, -3.4), yaw: -Math.PI / 2, action: extra.reading ? ("mail" as const) : ("boxes" as const), cam: cam(V(-3.9, 1.35, -3.4), [3.4, 2.4, 4.6]) },
         { walk: V(3.85, FLOOR, -3.2), at: V(3.85, FLOOR, -3.2), yaw: Math.PI / 2, action: "calendar" as const, cam: cam(V(3.8, 1.4, -3.2), [-3.4, 2.7, 5.4]) },
       ][Math.min(spot, 2)],
     door: { inside: V(0, 0, -1.0), outside: V(0, 0, 1.6) },
@@ -1409,6 +1477,15 @@ function post(): Built {
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-0.9, 0, 0.9, 2.8]],
     room: [-w / 2, -d - T, w / 2, -T],
     show: () => {},
+    extra: (e) => {
+      showAi(e.ai)
+      reading = e.reading
+    },
+    tick: (_s, _m, step) => {
+      // the box's door swings open while something is being read (and they're at it), and shut after
+      const target = reading && step === "bring" ? -1.9 : 0
+      hinge.rotation.y += (target - hinge.rotation.y) * 0.08
+    },
   }
 }
 

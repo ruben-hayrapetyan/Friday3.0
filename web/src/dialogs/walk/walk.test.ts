@@ -136,15 +136,16 @@ describe("walking", () => {
 
 describe("what they do when you change an answer", () => {
   const was = { wake: "07:30", bedtime: "23:30", weekend_wake: "09:00", weekend_bedtime: "00:30", normal_hours: 6, most_hours: 9, focus_hours: 1.5, evening_free: 2, evening_from: "19:00", weekend_free: 4, finish_early_days: 1, brief: true, calendars: [] }
-  it("acts the answer out where it's asked, or has a moment's feeling about it", () => {
-    expect(reactionTo(was, { ...was, wake: "06:30" })?.kind).toBe("yawn")
-    expect(reactionTo(was, { ...was, wake: "08:30" })?.kind).toBe("cheer")
+  it("acts the answer out where it's asked, and does nothing that doesn't mean something (30 Oct)", () => {
+    expect(reactionTo(was, { ...was, wake: "06:30" })?.kind).toBe("clock") // a look at the alarm clock
     expect(reactionTo(was, { ...was, normal_hours: 9 })?.kind).toBe("stackRight") // a book onto the day's pile
     expect(reactionTo(was, { ...was, normal_hours: 4 })?.kind).toBe("stackRight") // or off it
     expect(reactionTo(was, { ...was, most_hours: 12 })?.kind).toBe("stackLeft")
     expect(reactionTo(was, { ...was, focus_hours: 2 })?.kind).toBe("timer")
-    expect(reactionTo(was, { ...was, evening_free: 4 })?.kind).toBe("relax")
-    expect(reactionTo(was, { ...was, evening_free: 0 })).toBeNull() // the laptop comes out instead
+    // shown another way (the TV or the laptop, the blanket or the bench, the paper or the phone, asleep): nothing more
+    for (const change of [{ evening_free: 4 }, { evening_free: 0 }, { weekend_free: 0 }, { brief: false }, { bedtime: "00:30" }, { evening_from: "18:00" }]) {
+      expect(reactionTo(was, { ...was, ...change })).toBeNull()
+    }
     expect(reactionTo(was, { ...was })).toBeNull()
   })
 

@@ -15,11 +15,11 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"
 import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js"
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js"
 import type { Schemas } from "@/api/client"
-import { type Action, BED, Character, type Mood, mixPose, type Pose, type Reaction, SEATED, Signs } from "./character"
+import { type Action, BED, Character, type Mood, type Pose, poseFrom, poseNumbers, type Reaction, SEATED, Signs } from "./character"
 import { fallen, forest, type Planting, woods } from "./nature"
-import { type Built, buildPlace, type Duvet, FLOOR, FRONT, type Scene, SIDEWALK, type Socket, sittingFor } from "./places"
+import { type Built, buildPlace, type Duvet, type Extra, FLOOR, FRONT, type Scene, SIDEWALK, type Socket, sittingFor } from "./places"
 import { hazeColor, type Light, lightAt, timeStep } from "./sky"
-import { minutesOf, type Place, placeZ, ROUTE, STOPS } from "./stops"
+import { type Place, placeZ, ROUTE, STOPS } from "./stops"
 import { moonFace } from "./textures"
 import { type Lot, street } from "./town"
 
@@ -125,6 +125,7 @@ interface Act {
   yaw: number
   action: Action
   seat?: number
+  front?: THREE.Vector3 // seated: where they stand before sitting down (and stand up to), in front of the seat
   mood?: Mood
   bed?: BedHere
   cam: { pos: THREE.Vector3; look: THREE.Vector3 }
@@ -152,7 +153,6 @@ interface Key {
   pos: THREE.Vector3
   yaw: number
   fold: number
-  full: number
   cue?: string
 }
 
@@ -174,6 +174,7 @@ interface Trip {
   clock: number // seconds into the walk (after getting up)
   fast: number // how much quicker than life (Return again hurries it)
   rise: number // seconds standing up from a seat
+  stand: [THREE.Vector3, THREE.Vector3] | null // from the seat to in front of it, while standing up
   out: Script | null // or getting out of bed
   walk: number // seconds walking (0: staying where they are)
   cruise: number // metres a second, once going
@@ -213,12 +214,13 @@ export function shortest(d: number): number {
   return ((((d + 720) % 1440) + 1440) % 1440) - 720
 }
 
-/** What they do when an answer changes: the answer acted out where it's asked (a book onto the day's pile, the
- * timer set, the note moved along the week), or a moment's feeling about it (a yawn at an earlier alarm, hands
- * behind the head at more time of their own). `aim` is where along the board, for the note. */
+/** What they do when an answer changes, where it's asked, and only what it means (30 Oct: "why do the arms randomly
+ * go up when you click - that's a bad reaction because it doesn't mean anything"): a look at the alarm clock when the
+ * alarm moves, a book onto the day's pile (or off it), one onto the heavy day's, the timer turned, the note moved
+ * along the week. Answers shown some other way (the TV or the laptop, the blanket or the bench, the paper or the
+ * phone) need nothing more. `aim` is which way: along the board, or toward the clock. */
 export function reactionTo(was: Answers, now: Answers): { kind: Reaction; aim?: number } | null {
-  if (now.wake !== was.wake) return { kind: minutesOf(now.wake) < minutesOf(was.wake) ? "yawn" : "cheer" }
-  if (now.bedtime !== was.bedtime || now.weekend_wake !== was.weekend_wake || now.weekend_bedtime !== was.weekend_bedtime) return { kind: "nod" }
+  if (now.wake !== was.wake) return { kind: "clock", aim: -1 }
   if (now.normal_hours !== was.normal_hours) return { kind: "stackRight" }
   if (now.most_hours !== was.most_hours) return { kind: "stackLeft" }
   if (now.focus_hours !== was.focus_hours) return { kind: "timer" }
@@ -226,24 +228,17 @@ export function reactionTo(was: Answers, now: Answers): { kind: Reaction; aim?: 
     const day = 4 - Math.max(0, Math.min(4, now.finish_early_days))
     return { kind: "pin", aim: (-0.448 + day * 0.224) / 0.45 }
   }
-  if (now.evening_free !== was.evening_free) return now.evening_free > was.evening_free && was.evening_free > 0 ? { kind: "relax" } : null
-  if (now.evening_from !== was.evening_from) return { kind: "nod" }
-  if (now.weekend_free !== was.weekend_free) return now.weekend_free > was.weekend_free && was.weekend_free > 0 ? { kind: "relax" } : null
-  if (JSON.stringify(now.calendars ?? []) !== JSON.stringify(was.calendars ?? [])) return { kind: "nod" }
   return null
 }
 
-const SIGN_FOR: Partial<Record<Reaction, string>> = { cheer: "note", yawn: "z", relax: "heart" }
-
-/** What they do now and then while you decide, by what they're doing: small, and not often. */
+/** What they do now and then while you decide: a glance up at you, not often. */
 const FIDGETS: Partial<Record<Action, Reaction[]>> = {
   stand: ["glance"],
   wave: ["glance"],
-  wake: ["yawn", "glance"],
-  study: ["glance", "scratch"],
-  read: ["glance", "scratch"],
-  tv: ["glance", "relax"],
-  laptop: ["scratch", "glance"],
+  study: ["glance"],
+  read: ["glance"],
+  tv: ["glance"],
+  laptop: ["glance"],
   picnic: ["glance"],
   coffee: ["glance"],
   counter: ["glance"],
@@ -289,8 +284,10 @@ export class World {
   private script: Script | null = null // into bed, now
   private release: { pose: Pose; t: number } | null = null // easing from a scene's last pose into the action
   private answers: Answers | null = null
+  private extra: Extra = { ai: null, reading: false }
   private fidgetAt = 6 // seconds: when they next do something while you decide
   private rings = -1 // the focus timer's rings so far
+  private covered: Duvet | null = null // the covers over them now
   private act: Act | null = null // what they're doing now (null while walking)
   private weight = 0 // how far into it
   private before: Action | null = null // what they were doing at the same place, fading out
@@ -408,7 +405,7 @@ export class World {
       }
       const inside = built?.door ? toWorld(built.door.inside) : null
       const outside = built?.door ? toWorld(built.door.outside) : null
-      const front = outside ?? (built ? toWorld(built.scene(0, this.sample()).walk) : V(0, 0, z))
+      const front = outside ?? (built ? toWorld(built.scene(0, this.sample(), this.extra).walk) : V(0, 0, z))
       // where they step off the curb, in front of its path (the trees along the curb leave the paths clear); the
       // street is crossed straight from one to the next
       const walkway = place === "start" ? V(-4.0, 0, 6) : place === "end" ? V(0.4, 0, z + 3) : V(side * 4.0, 0, front.z)
@@ -497,23 +494,23 @@ export class World {
       if (this.script.t >= 1.4 && act.site !== this.script.site) out = this.keysOut(this.script.bed, this.script.site)
     } else if (this.act?.bed && act.site !== this.act.site && !this.trip?.path) out = this.keysOut(this.act.bed, this.act.site)
     this.script = null
-    const from = out ? out.keys[out.keys.length - 1].pos : this.pos
+    const seated = !out && this.act && !this.act.bed && this.act.front && this.weight > 0.3 ? this.act : null
+    const from = out ? out.keys[out.keys.length - 1].pos : seated?.front ? seated.front : this.pos
     const points = this.route(act, from)
     const path = points.length > 1 ? new THREE.CatmullRomCurve3(points, false, "centripetal", 0.5) : null
     const length = path ? path.getLength() : 0
     const walking = !!path && length > 0.25
-    const cruise = walking ? paceFor(length) : 1
-    const seated = !out && this.act && !this.act.bed && (this.act.seat !== undefined || SEATED[this.act.action] !== undefined) && this.weight > 0.3
     const ahead = walking && path ? Math.sign(path.getPointAt(1).z - path.getPointAt(0).z) || -1 : -1
     this.trip = {
       path: walking ? path : null,
       length: walking ? length : 0,
       clock: 0,
       fast: this.options.still ? 1000 : 1,
-      rise: walking && seated ? 0.45 : 0,
+      rise: walking && seated ? 0.55 : 0,
+      stand: walking && seated?.front ? [this.pos.clone(), seated.front.clone()] : null,
       out,
-      walk: walking ? length / cruise + (SPEED_UP + SLOW_DOWN) / 2 : 0,
-      cruise,
+      walk: walking ? length / paceFor(length) + (SPEED_UP + SLOW_DOWN) / 2 : 0,
+      cruise: walking ? paceFor(length) : 1,
       ahead,
       from: { minutes: this.minutes, cam: { pos: this.cam.pos.clone(), look: this.cam.look.clone() }, act: this.act },
       to: act,
@@ -543,8 +540,6 @@ export class World {
     const settled = !this.trip && !this.script && this.act && this.act.action !== "sleep"
     if (reaction && settled) {
       this.hero.react(reaction.kind, now, reaction.aim ?? 0)
-      const sign = SIGN_FOR[reaction.kind]
-      if (sign) this.signs.emit(sign, this.hero.headAt().add(V(0.15, 0.05, 0)), now, 0.34)
       this.fidgetAt = now + 10
     }
     const stop = STOPS[this.step] ?? STOPS.hello
@@ -561,7 +556,24 @@ export class World {
     else if (act && this.script) this.act = act
     const d = shortest(minutes - this.minutes)
     if (Math.abs(d) > 0.5 && this.act) {
-      this.trip = { path: null, length: 0, clock: 0, fast: this.options.still ? 1000 : 1, rise: 0, out: null, walk: 0, cruise: 1, ahead: -1, from: { minutes: this.minutes, cam: { pos: this.cam.pos.clone(), look: this.cam.look.clone() }, act: this.act }, to: this.act, minutes, delta: d }
+      this.trip = { path: null, length: 0, clock: 0, fast: this.options.still ? 1000 : 1, rise: 0, stand: null, out: null, walk: 0, cruise: 1, ahead: -1, from: { minutes: this.minutes, cam: { pos: this.cam.pos.clone(), look: this.cam.look.clone() }, act: this.act }, to: this.act, minutes, delta: d }
+    }
+  }
+
+  /** What setup knows besides the answers: the AI you chose (on the post office's screen), and whether something
+   * you brought in is being read (they take a letter from a box and read it). */
+  setExtra(extra: Extra): void {
+    const was = this.extra
+    this.extra = { ...extra }
+    for (const site of this.sites.values()) site.built?.extra?.(extra)
+    const now = (performance.now() - this.started) / 1000
+    if (this.trip || this.script || !this.act) return
+    if (extra.ai !== was.ai && was.ai !== null && this.step === "ai") this.hero.react("typing", now)
+    if (extra.reading !== was.reading && this.step === "bring") {
+      if (extra.reading) this.hero.react("fetch", now)
+      const stop = STOPS[this.step]
+      const act = this.answers && this.actFor(stop.place, stop.spot, this.answers)
+      if (act) this.change(act)
     }
   }
 
@@ -607,18 +619,24 @@ export class World {
       return { site, walk: at, at, yaw: Math.PI, action: "wave", cam: cams[Math.min(spot, 2)] }
     }
     if (!site.built || !site.group) return null
-    const s: Scene = site.built.scene(spot, a)
+    const s: Scene = site.built.scene(spot, a, this.extra)
     const group = site.group
     const w = (v: THREE.Vector3) => group.localToWorld(v.clone())
     const turned = (yaw: number) => yaw - site.side * (Math.PI / 2)
     const bed = s.bed && { ...s.bed, side: w(s.bed.side), edge: w(s.bed.edge), lie: w(s.bed.lie), up: w(s.bed.up), yawEdge: turned(s.bed.yawEdge), yawIn: turned(s.bed.yawIn) }
+    const yaw = turned(s.yaw)
+    const at = w(s.at)
+    // sitting: they stand in front of the seat, turned round, and sit back onto it (and stand up to there)
+    const seated = !bed && (s.seat !== undefined || SEATED[s.action] !== undefined)
+    const front = seated ? at.clone().add(V(Math.sin(yaw), 0, Math.cos(yaw)).multiplyScalar(s.front ?? 0.36)) : undefined
     return {
       site,
       walk: w(s.walk),
-      at: w(s.at),
-      yaw: turned(s.yaw),
+      at,
+      yaw,
       action: s.action,
       seat: s.seat,
+      front,
       mood: s.mood,
       bed,
       cam: { pos: w(s.cam.pos), look: w(s.cam.look) },
@@ -636,18 +654,25 @@ export class World {
     return null
   }
 
-  /** The way on foot from `from` to what's next: out this door, down the path, straight across the street, up the
-   * other path, in that door. */
+  /** The way on foot from `from` to what's next: out this door the way they came in (round the furniture), down the
+   * path, straight across the street, up the other path, in that door, round the furniture to the seat or the spot. */
   private route(to: Act, from: THREE.Vector3): THREE.Vector3[] {
     const points = [from.clone()]
+    const end = to.front ?? to.walk
     const here = this.act?.site ?? this.siteAt(from)
     if (here && here === to.site) {
       // staying put (the library's three questions), or across the room
-      if (!(this.act && this.act.at.distanceTo(to.at) < 0.1) && from.distanceTo(to.walk) > 0.2) points.push(to.walk.clone())
-      return points
+      if (!(this.act && this.act.at.distanceTo(to.at) < 0.1) && from.distanceTo(end) > 0.2) {
+        if (to.front && to.walk.distanceTo(from) > 0.3) points.push(to.walk.clone())
+        points.push(end.clone())
+      }
+      return points.filter((p, i) => i === 0 || p.distanceTo(points[i - 1]) > 0.25)
     }
     if (here) {
-      if (this.act && !this.act.bed && this.act.walk.distanceTo(from) > 0.3) points.push(this.act.walk.clone())
+      if (this.act && !this.act.bed) {
+        if (this.act.walk.distanceTo(from) > 0.3) points.push(this.act.walk.clone())
+        for (const v of [...(this.act.via ?? [])].reverse()) points.push(v.clone())
+      }
       if (here.inside && here.room?.containsPoint(new THREE.Vector2(from.x, from.z))) points.push(here.inside.clone())
       if (here.outside) points.push(here.outside.clone())
       points.push(here.street.clone())
@@ -656,7 +681,8 @@ export class World {
     if (to.site.outside && to.site.inside) points.push(to.site.outside.clone(), to.site.inside.clone())
     for (const v of to.via ?? []) points.push(v.clone())
     points.push(to.walk.clone())
-    return points.filter((p, i) => i === 0 || p.distanceTo(points[i - 1]) > 0.35)
+    if (to.front) points.push(to.front.clone())
+    return points.filter((p, i) => i === 0 || p.distanceTo(points[i - 1]) > 0.3)
   }
 
   private show(a: Answers): void {
@@ -671,57 +697,64 @@ export class World {
 
   // ---- in and out of bed ---------------------------------------------------------------------------------------------
 
-  /** Into bed: up to it, the covers thrown back, sitting on its edge, legs up and round, lying back, the covers pulled
-   * up; when it's the alarm's scene, asleep a moment, the alarm, and sitting up with the covers at the waist. */
+  /** Into bed (30 Oct: "make the covers open, him get in and then tuck himself in to the covers"): up to it, the
+   * covers thrown back, turning and sitting on its edge, the legs lifted straight out and swung round up onto it
+   * (over the mattress, never through it), shuffling over, lying back, taking the covers' edge and pulling them up
+   * to the chin. For the alarm's scene: asleep a moment, the alarm, a look, and sitting up with the covers at the
+   * waist. */
   private keysIn(bed: BedHere, site: Site, wake: boolean): Script {
     const top = bed.top
-    const face = bed.yawEdge + Math.PI
-    const rest = BED.lie(top)
+    const facing = bed.yawEdge + Math.PI
+    const shuffle = bed.edge.clone().lerp(bed.lie, 0.35)
+    const lifted = turn(bed.yawEdge, bed.yawIn, 0.12)
     const asleep = { ...BED.lie(top), eyes: 0 }
     const keys: Key[] = [
-      { at: 0, pose: this.hero.posed(), pos: this.pos.clone(), yaw: this.yaw, fold: bed.duvet.fold, full: bed.duvet.full },
-      { at: 0.4, pose: BED.stand(), pos: bed.side, yaw: face, fold: bed.duvet.fold, full: 0 },
-      { at: 1.0, pose: BED.reach(), pos: bed.side, yaw: face, fold: bed.open, full: 0 },
-      { at: 1.5, pose: BED.stand(), pos: bed.side, yaw: bed.yawEdge, fold: bed.open, full: 0 },
-      { at: 2.0, pose: BED.edge(top), pos: bed.edge, yaw: bed.yawEdge, fold: bed.open, full: 0 },
-      { at: 2.45, pose: BED.lift(top), pos: bed.edge, yaw: bed.yawEdge, fold: bed.open, full: 0 },
-      { at: 3.35, pose: BED.lie(top), pos: bed.lie, yaw: bed.yawIn, fold: bed.open, full: 0.15 },
-      { at: 4.0, pose: BED.tuck(top), pos: bed.lie, yaw: bed.yawIn, fold: bed.closed, full: 1 },
-      { at: 4.5, pose: wake ? rest : asleep, pos: bed.lie, yaw: bed.yawIn, fold: bed.closed, full: 1 },
+      { at: 0, pose: this.hero.posed(), pos: this.pos.clone(), yaw: this.yaw, fold: bed.duvet.fold },
+      { at: 0.45, pose: BED.stand(), pos: bed.side, yaw: facing, fold: bed.duvet.fold },
+      { at: 1.0, pose: BED.reach(), pos: bed.side, yaw: facing, fold: bed.open },
+      { at: 1.5, pose: BED.stand(), pos: bed.side.clone().lerp(bed.edge, 0.4), yaw: bed.yawEdge, fold: bed.open },
+      { at: 2.0, pose: BED.edge(top), pos: bed.edge, yaw: bed.yawEdge, fold: bed.open },
+      { at: 2.6, pose: BED.lift(top), pos: bed.edge, yaw: lifted, fold: bed.open },
+      { at: 3.4, pose: BED.up(top), pos: shuffle, yaw: bed.yawIn, fold: bed.open },
+      { at: 3.85, pose: BED.up(top), pos: bed.lie, yaw: bed.yawIn, fold: bed.open },
+      { at: 4.55, pose: BED.take(top), pos: bed.lie, yaw: bed.yawIn, fold: bed.open },
+      { at: 5.3, pose: BED.tuck(top), pos: bed.lie, yaw: bed.yawIn, fold: bed.closed },
+      { at: 5.9, pose: wake ? BED.lie(top) : asleep, pos: bed.lie, yaw: bed.yawIn, fold: bed.closed },
     ]
     if (wake) {
-      keys.push({ at: 5.0, pose: asleep, pos: bed.lie, yaw: bed.yawIn, fold: bed.closed, full: 1 })
-      keys.push({ at: 6.1, pose: asleep, pos: bed.lie, yaw: bed.yawIn, fold: bed.closed, full: 1, cue: "alarm" })
-      keys.push({ at: 6.6, pose: { ...asleep, eyes: 1, headY: 0.35 }, pos: bed.lie, yaw: bed.yawIn, fold: bed.closed, full: 1 })
-      keys.push({ at: 7.6, pose: BED.up(top), pos: bed.up, yaw: bed.yawIn, fold: bed.waist, full: 0.45 })
+      keys.push({ at: 6.5, pose: asleep, pos: bed.lie, yaw: bed.yawIn, fold: bed.closed })
+      keys.push({ at: 7.1, pose: asleep, pos: bed.lie, yaw: bed.yawIn, fold: bed.closed, cue: "alarm" })
+      keys.push({ at: 7.6, pose: { ...asleep, eyes: 1, headY: -0.6 }, pos: bed.lie, yaw: bed.yawIn, fold: bed.closed })
+      keys.push({ at: 8.5, pose: BED.up(top), pos: bed.up, yaw: bed.yawIn, fold: bed.waist })
     }
     return { keys, t: 0, bed, site, cued: new Set(), fast: 1 }
   }
 
-  /** Out of bed: sitting up with the covers thrown back, legs swung round over the edge (above the mattress, not
-   * through it), feet down, standing. */
+  /** Out of bed, the same way back: the covers thrown back, shuffling to the edge, the legs swung round off it
+   * (lifted clear, then down), standing. */
   private keysOut(bed: BedHere, site: Site): Script {
     const top = bed.top
+    const shuffle = bed.edge.clone().lerp(bed.lie, 0.35)
+    const lifted = turn(bed.yawEdge, bed.yawIn, 0.12)
+    const away = bed.edge.clone().lerp(bed.side, 0.75)
     const keys: Key[] = [
-      { at: 0, pose: this.hero.posed(), pos: this.pos.clone(), yaw: this.yaw, fold: bed.duvet.fold, full: bed.duvet.full },
-      { at: 0.5, pose: BED.up(top), pos: bed.up, yaw: bed.yawIn, fold: bed.open, full: 0.3 },
-      { at: 1.1, pose: BED.lift(top), pos: bed.edge, yaw: bed.yawEdge, fold: bed.open, full: 0.35 },
-      { at: 1.45, pose: BED.edge(top), pos: bed.edge, yaw: bed.yawEdge, fold: bed.open, full: 0 },
-      { at: 1.85, pose: BED.stand(), pos: bed.side, yaw: bed.yawEdge, fold: bed.open, full: 0 },
+      { at: 0, pose: this.hero.posed(), pos: this.pos.clone(), yaw: this.yaw, fold: bed.duvet.fold },
+      { at: 0.55, pose: BED.up(top), pos: bed.lie, yaw: bed.yawIn, fold: bed.open },
+      { at: 0.95, pose: BED.up(top), pos: shuffle, yaw: bed.yawIn, fold: bed.open },
+      { at: 1.6, pose: BED.lift(top), pos: bed.edge, yaw: lifted, fold: bed.open },
+      { at: 2.0, pose: BED.edge(top), pos: bed.edge, yaw: bed.yawEdge, fold: bed.open },
+      { at: 2.5, pose: BED.stand(), pos: away, yaw: bed.yawEdge, fold: bed.open },
     ]
     return { keys, t: 0, bed, site, cued: new Set(), fast: 1 }
   }
 
-  /** Where a scene has them at its time: the pose, place, heading and duvet between its keys; true when it's over. */
+  /** Where a scene has them at its time: a smooth curve through its keys (moving on through each, not stopping at
+   * each), for the pose, place, heading and covers; true when it's over. */
   private play(script: Script, seconds: number): { pose: Pose; done: boolean } {
     const keys = script.keys
-    const last = keys[keys.length - 1]
+    const n = keys.length
+    const last = keys[n - 1]
     const t = Math.min(script.t, last.at)
-    let i = 0
-    while (i < keys.length - 2 && keys[i + 1].at <= t) i++
-    const a = keys[i]
-    const b = keys[i + 1] ?? a
-    const k = b.at > a.at ? ease((t - a.at) / (b.at - a.at)) : 1
     for (const key of keys) {
       if (key.cue && script.t >= key.at && !script.cued.has(key.cue)) {
         script.cued.add(key.cue)
@@ -729,10 +762,38 @@ export class World {
         if (key.cue === "alarm") this.signs.emit("!", this.hero.headAt().add(V(0.1, 0.1, 0)), seconds, 0.4)
       }
     }
-    this.pos.lerpVectors(a.pos, b.pos, k).setY(0)
-    this.yaw = turn(a.yaw, b.yaw, k)
-    script.bed.duvet.set(a.fold + (b.fold - a.fold) * k, a.full + (b.full - a.full) * k)
-    return { pose: mixPose(a.pose, b.pose, k), done: script.t >= last.at }
+    // each key as a row of numbers, its heading unwound from the one before
+    const rows: number[][] = []
+    let yaw = keys[0].yaw
+    for (const key of keys) {
+      yaw = turn(yaw, key.yaw, 1)
+      rows.push([...poseNumbers(key.pose), key.pos.x, key.pos.z, yaw, key.fold])
+    }
+    let i = 0
+    while (i < n - 2 && keys[i + 1].at <= t) i++
+    const j = Math.min(n - 1, i + 1)
+    const span = keys[j].at - keys[i].at
+    const u = span > 0 ? Math.max(0, Math.min(1, (t - keys[i].at) / span)) : 1
+    const tension = 0.75
+    const slope = (a: number, b: number, c: number) => {
+      // the tangent at key b, from its neighbours, in this segment's time; none at the ends (they ease in and out)
+      if (a === b || c === b) return () => 0
+      const dt = keys[c].at - keys[a].at
+      return (k: number) => (dt > 0 ? ((rows[c][k] - rows[a][k]) / dt) * span * tension : 0)
+    }
+    const m1 = slope(Math.max(0, i - 1), i, j)
+    const m2 = slope(i, j, Math.min(n - 1, j + 1))
+    const u2 = u * u
+    const u3 = u2 * u
+    const out = rows[i].map((p0, k) => {
+      const p1 = rows[j][k]
+      return (2 * u3 - 3 * u2 + 1) * p0 + (u3 - 2 * u2 + u) * m1(k) + (-2 * u3 + 3 * u2) * p1 + (u3 - u2) * m2(k)
+    })
+    const npose = poseNumbers(keys[0].pose).length
+    this.pos.set(out[npose], 0, out[npose + 1])
+    this.yaw = out[npose + 2]
+    script.bed.duvet.set(out[npose + 3])
+    return { pose: poseFrom(out.slice(0, npose)), done: script.t >= last.at }
   }
 
   // ---- each frame ----------------------------------------------------------------------------------------------------
@@ -759,7 +820,9 @@ export class World {
         const going = trip.rise + trip.walk
         this.minutes = trip.from.minutes + trip.delta * ease(going ? trip.clock / going : trip.clock / 1.1)
         if (trip.clock < trip.rise) {
-          this.weight = Math.max(0, this.weight - step / trip.rise)
+          // standing up out of the seat, to in front of it
+          this.weight = Math.max(0, 1 - trip.clock / trip.rise)
+          if (trip.stand) this.pos.copy(trip.stand[1]).lerp(trip.stand[0], ease(this.weight))
           follow = trip.from.cam
         } else if (trip.path && trip.clock - trip.rise < trip.walk) {
           walking = true
@@ -806,14 +869,23 @@ export class World {
         this.fidgetAt = seconds + 8
       }
     }
-    // doing what they came for: into place, then the action
+    // doing what they came for: into place, then the action. To a seat: turned round in front of it first, then
+    // sitting back onto it (30 Oct: "his legs phase through the sofa")
     if (!walking && !scripted && this.act && (!this.trip || this.trip.clock >= this.trip.rise)) {
       this.speed = 0
-      this.weight = Math.min(1, this.weight + dt * 2.2)
-      const k = 1 - Math.pow(0.004, dt)
-      this.pos.lerp(V(this.act.at.x, 0, this.act.at.z), k)
-      this.yaw = turn(this.yaw, this.act.yaw, k)
-      follow ??= this.act.cam
+      const act = this.act
+      if (act.front && this.weight < 1) {
+        const left = Math.abs(turn(0, act.yaw - this.yaw, 1))
+        this.yaw = turn(this.yaw, act.yaw, 1 - Math.pow(0.0004, dt))
+        if (left < 0.4 || this.weight > 0) this.weight = Math.min(1, this.weight + dt * 1.5)
+        this.pos.copy(act.front).lerp(V(act.at.x, 0, act.at.z), ease(this.weight))
+      } else {
+        this.weight = Math.min(1, this.weight + dt * 2.2)
+        const k = 1 - Math.pow(0.004, dt)
+        this.pos.lerp(V(act.at.x, 0, act.at.z), k)
+        this.yaw = turn(this.yaw, act.yaw, k)
+      }
+      follow ??= act.cam
     }
     follow ??= { pos: this.cam.pos, look: this.cam.look }
     // their feet on the floor they're over
@@ -821,6 +893,9 @@ export class World {
     this.ground += (floor - this.ground) * Math.min(1, dt * 12)
     this.hero.root.position.set(this.pos.x, this.ground, this.pos.z)
     this.hero.root.rotation.y = this.yaw
+    // the backpack off in bed and sitting back in a seat
+    const inBed = !!this.script || !!(this.trip?.out && this.trip.clock === 0) || (!!this.act?.bed && !this.trip)
+    this.hero.wearPack(!inBed && !(this.act?.front && this.weight > 0.45))
     // now and then, while you decide, they do something small: look up at you, scratch their head, yawn
     const settled = !this.trip && !this.script && this.act && this.weight > 0.95
     if (settled && this.act && seconds > this.fidgetAt && !this.hero.busy(seconds) && !this.options.still) {
@@ -833,7 +908,7 @@ export class World {
       const ring = Math.floor(seconds / sittingFor(this.answers.focus_hours))
       if (ring !== this.rings) {
         if (this.rings >= 0) {
-          this.hero.react("deskStretch", seconds)
+          this.hero.react("restBack", seconds)
           this.signs.emit("!", this.hero.headAt().add(V(0.25, -0.3, 0.2)), seconds, 0.32)
         }
         this.rings = ring
@@ -852,6 +927,11 @@ export class World {
       if (this.release.t >= 0.6) this.release = null
     }
     this.hero.update(dt, seconds, { speed: walking ? this.speed : 0, action, weight: this.act ? this.weight : 0, seat: this.act?.seat ?? SEATED[action], before: this.changed < 1 ? (this.before ?? undefined) : undefined, change: this.changed, mood: this.act?.mood ?? {}, look, pose: scripted ?? undefined, from, into })
+    // the covers over whoever's in the bed, as they lie (30 Oct: "i want the bedsheets to bend around his legs")
+    const bed = this.script?.bed ?? (this.trip?.out && this.trip.clock === 0 ? this.trip.out.bed : null) ?? (this.act?.bed && !this.trip ? this.act.bed : null)
+    if (bed) bed.duvet.over(this.hero.samples())
+    if (this.covered && this.covered !== bed?.duvet) this.covered.over([])
+    this.covered = bed?.duvet ?? null
     this.signs.every(action, this.act && !this.script && !this.trip ? this.weight : 0, this.hero.headAt(), seconds)
     this.signs.update(seconds, dt)
     // the camera eases after where it should be; walking, it keeps them dead centre

@@ -20,12 +20,12 @@ import "@fontsource/pixelify-sans/700.css"
 import { useQuery } from "@tanstack/react-query"
 import { type CSSProperties, type ReactNode, type RefObject, useEffect, useRef, useState } from "react"
 import { query, type Schemas } from "@/api/client"
-import { Icon, Switch } from "@/components/fr/controls"
+import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useInbox } from "@/inbox/InboxPage"
 import { SLEEP_HOURS } from "@/lib/ampm"
 import { ampm, parseLength } from "@/lib/format"
-import { AiConnect } from "@/settings/AiConnect"
+import { AiConnect, useAi } from "@/settings/AiConnect"
 import { CHOICES, choiceOf, fromChoice, saying } from "@/settings/calendarChoice"
 import { ConnectedAccounts } from "@/settings/GoogleAccounts"
 import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess } from "@/settings/GoogleConnect"
@@ -154,6 +154,28 @@ function TimePick({ value, presets, label, glyph, expect, onPick }: { value: str
   )
 }
 
+/** The weekend's time for one thing, getting up or going to bed, on its own (30 Oct: "one click shouldn't
+ * encompass both sleep and wake up"): the same as weekdays, or another time, picked like the weekday one. */
+function WeekendTime({ label, glyph, other, value, weekday, later, expect, onPick }: { label: string; glyph: string; other: string; value: string; weekday: string; later: number; expect: { hours: readonly [string, string] }; onPick: (t: string) => void }) {
+  const same = value === weekday
+  return (
+    <div className="wk-weekend">
+      <div className="wk-weekend-row">
+        <span className="st-label">Weekends</span>
+        <span className="st-chips" role="radiogroup" aria-label={label}>
+          <button type="button" role="radio" aria-checked={same} className="st-chip" onClick={() => onPick(weekday)}>
+            Same
+          </button>
+          <button type="button" role="radio" aria-checked={!same} className="st-chip" onClick={() => same && onPick(shift(weekday, later))}>
+            {other}
+          </button>
+        </span>
+      </div>
+      {!same && <TimeCard glyph={<Icon name={glyph} fill size={20} />} hue="var(--ob-gold)" label={label} value={value} expect={expect} onPick={onPick} />}
+    </div>
+  )
+}
+
 const STEPS: Record<string, Step> = {
   hello: {
     title: () => "Let's walk through your week.",
@@ -162,29 +184,22 @@ const STEPS: Record<string, Step> = {
   },
   wake: {
     title: () => "When do you usually get up?",
-    control: (a, set) => <TimePick value={a.wake} presets={WAKES} label="Up at" glyph="sun-horizon" expect={{ hours: SLEEP_HOURS.up }} onPick={(wake) => set(a.weekend_wake === a.wake ? { wake, weekend_wake: wake } : { wake })} />,
+    control: (a, set) => (
+      <div className="st-group">
+        <TimePick value={a.wake} presets={WAKES} label="Up at" glyph="sun-horizon" expect={{ hours: SLEEP_HOURS.up }} onPick={(wake) => set(a.weekend_wake === a.wake ? { wake, weekend_wake: wake } : { wake })} />
+        <WeekendTime label="Up at on weekends" glyph="sun-horizon" other="Later" value={a.weekend_wake} weekday={a.wake} later={90} expect={{ hours: SLEEP_HOURS.up }} onPick={(weekend_wake) => set({ weekend_wake })} />
+      </div>
+    ),
   },
   bed: {
-    title: () => "And when do you go to bed?",
+    title: () => "When do you go to bed?",
     note: () => "Friday never plans anything while you sleep.",
-    control: (a, set) => {
-      const different = a.weekend_wake !== a.wake || a.weekend_bedtime !== a.bedtime
-      return (
-        <div className="st-group">
-          <TimePick value={a.bedtime} presets={BEDS} label="Bed at" glyph="moon-stars" expect={{ hours: SLEEP_HOURS.bed }} onPick={(bedtime) => set(different ? { bedtime } : { bedtime, weekend_bedtime: bedtime })} />
-          <label className="st-toggle">
-            <Switch on={different} onToggle={() => set(different ? { weekend_wake: a.wake, weekend_bedtime: a.bedtime } : { weekend_wake: shift(a.wake, 90), weekend_bedtime: shift(a.bedtime, 60) })} label="Weekends are different" />
-            Weekends are different
-          </label>
-          {different && (
-            <div className="wk-pair">
-              <TimeCard glyph={<Icon name="sun-horizon" fill size={20} />} hue="var(--ob-gold)" label="Up at, weekends" value={a.weekend_wake} expect={{ hours: SLEEP_HOURS.up }} onPick={(weekend_wake) => set({ weekend_wake })} />
-              <TimeCard glyph={<Icon name="moon-stars" fill size={20} />} hue="var(--ob-class)" label="Bed at, weekends" value={a.weekend_bedtime} expect={{ hours: SLEEP_HOURS.bed }} onPick={(weekend_bedtime) => set({ weekend_bedtime })} />
-            </div>
-          )}
-        </div>
-      )
-    },
+    control: (a, set) => (
+      <div className="st-group">
+        <TimePick value={a.bedtime} presets={BEDS} label="Bed at" glyph="moon-stars" expect={{ hours: SLEEP_HOURS.bed }} onPick={(bedtime) => set(a.weekend_bedtime === a.bedtime ? { bedtime, weekend_bedtime: bedtime } : { bedtime })} />
+        <WeekendTime label="Bed at on weekends" glyph="moon-stars" other="Later" value={a.weekend_bedtime} weekday={a.bedtime} later={60} expect={{ hours: SLEEP_HOURS.bed }} onPick={(weekend_bedtime) => set({ weekend_bedtime })} />
+      </div>
+    ),
   },
   work: {
     title: () => "How much work fits in a normal day?",
@@ -377,6 +392,13 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     if (world && draft) world.update(draft)
   }, [world, draft])
+  // the AI you chose shows on the post office's screen; something being read, they take a letter from a box
+  const ai = useAi()
+  const docs = useQuery({ queryKey: ["documents"], queryFn: () => query("documents"), refetchInterval: (q) => (at.current === "bring" || q.state.data?.some((d) => d.status === "reading") ? 3000 : false) }).data
+  const reading = !!docs?.some((d) => d.status === "reading")
+  useEffect(() => {
+    world?.setExtra({ ai: ai.ready ? ai.name : null, reading })
+  }, [world, ai.ready, ai.name, reading])
   const finish = async (answers: Answers) => {
     setSaving(true)
     const out = await save(answers)
@@ -384,8 +406,11 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
     if (out) onClose()
   }
   const to = (next: number) => {
-    setBack(next < n)
-    setN(Math.max(0, Math.min(ids.length - 1, next)))
+    // back from your week skips "Building your week…", which would only build it and come forward again (30 Oct:
+    // "if i want to go back before 'building your week' after i have clicked next - it is impossible")
+    const going = next < n && ids[next] === "build" ? next - 1 : next
+    setBack(going < n)
+    setN(Math.max(0, Math.min(ids.length - 1, going)))
   }
   const next = () => (id === "start" && draft ? finish(draft) : to(n + 1))
   // Building the week takes a moment, then shows it.
@@ -436,7 +461,7 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
           {step.control && <div className="wk-control">{step.control(draft, set, ctx)}</div>}
           {id === "build" && <Building />}
           {id === "reveal" && <Reveal a={draft} go={ctx.go} />}
-          {id !== "build" && (
+          {(
             <footer className="wk-foot">
               {n > 0 && (
                 <button type="button" className="wk-back" onClick={() => to(n - 1)} disabled={saving}>
@@ -448,10 +473,12 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
                   Skip: keep Friday's guesses
                 </button>
               )}
-              <button type="button" className="wk-go" onClick={next} disabled={saving}>
-                {step.go ?? "Next stop"}
-                <i aria-hidden />
-              </button>
+              {id !== "build" && (
+                <button type="button" className="wk-go" onClick={next} disabled={saving}>
+                  {step.go ?? "Next stop"}
+                  <i aria-hidden />
+                </button>
+              )}
             </footer>
           )}
         </aside>

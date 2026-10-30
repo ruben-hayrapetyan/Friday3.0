@@ -306,6 +306,21 @@
   outline-offset: 3px;
 }
 
+/* the weekend's time for one thing: same, or another */
+.wk-weekend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 2px dashed var(--wk-line);
+}
+.wk-weekend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 /* an example morning brief, as a small page */
 .wk-brief {
   display: flex;

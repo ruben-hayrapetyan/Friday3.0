@@ -2,14 +2,15 @@
 // thing but make it more engaging not just a sprite going from left to right - make the sprite a lot better"): a
 // student in a hoodie with a backpack, built in 3D and drawn as pixel art with the rest of the town (walk/World.ts
 // renders everything at a low resolution with outlines). Because it's a real body with joints, it can do what the
-// week has in it, from any side: walk and run, get into bed and tuck in, sleep, sit up and stretch when the alarm
-// goes, study, pin a note on a board, sit back with crossed legs, picnic, sip coffee, wave. Every pose is a few joint
-// angles, blended; everything moves slowly and smoothly (30 Oct: "some of the actions/camera movements/reactions are
-// super unnatural"): no shaking, nothing faster than a breath, a wave or a step.
+// week has in it, from any side: walk and run, get into bed and pull the covers up, sleep, sit up when the alarm goes,
+// study, pin a note on a board, sit back with crossed legs, picnic, sip coffee, take a letter from a mailbox, wave.
+// Every pose is a few joint angles, blended; everything moves slowly and smoothly (30 Oct: "some of the
+// actions/camera movements/reactions are super unnatural"), and every movement means something: no arms thrown up
+// at a click (30 Oct: "that's a bad reaction because it doesn't mean anything").
 
 import * as THREE from "three"
 
-export type Action = "stand" | "wave" | "wake" | "sleep" | "study" | "read" | "tv" | "laptop" | "picnic" | "coffee" | "counter" | "boxes" | "calendar"
+export type Action = "stand" | "wave" | "wake" | "sleep" | "study" | "read" | "tv" | "laptop" | "picnic" | "coffee" | "counter" | "boxes" | "mail" | "calendar"
 
 /** How high each action sits: the seat's height above the floor. */
 export const SEATED: Partial<Record<Action, number>> = { study: 0.48, tv: 0.48, laptop: 0.48, coffee: 0.48, picnic: 0.06, wake: 0.56, sleep: 0.56 }
@@ -73,6 +74,7 @@ export interface Pose {
   armX: [number, number] // left, right: forward and up
   armZ: [number, number] // out to the side
   elbow: [number, number]
+  elbowIn: [number, number] // the forearm bent in across the body (left arm negative, right positive)
   legX: [number, number]
   legZ: [number, number]
   knee: [number, number]
@@ -82,7 +84,7 @@ export interface Pose {
 const HIPS = 0.74
 
 function stand(): Pose {
-  return { lift: HIPS, body: 0, lean: 0, twist: 0, headX: 0, headY: 0, headZ: 0, armX: [0.05, 0.05], armZ: [0.1, -0.1], elbow: [-0.15, -0.15], legX: [0, 0], legZ: [0.02, -0.02], knee: [0, 0], eyes: 1 }
+  return { lift: HIPS, body: 0, lean: 0, twist: 0, headX: 0, headY: 0, headZ: 0, armX: [0.05, 0.05], armZ: [0.1, -0.1], elbow: [-0.15, -0.15], elbowIn: [0, 0], legX: [0, 0], legZ: [0.02, -0.02], knee: [0, 0], eyes: 1 }
 }
 
 function sitting(seat: number): Pose {
@@ -110,6 +112,7 @@ export function mixPose(a: Pose, b: Pose, t: number): Pose {
     armX: two(a.armX, b.armX),
     armZ: two(a.armZ, b.armZ),
     elbow: two(a.elbow, b.elbow),
+    elbowIn: two(a.elbowIn, b.elbowIn),
     legX: two(a.legX, b.legX),
     legZ: two(a.legZ, b.legZ),
     knee: two(a.knee, b.knee),
@@ -128,72 +131,91 @@ const span = (t: number, a: number, b: number, fade = 0.5) => Math.min(ease((t -
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
 
 /** In bed and getting in and out of it: the poses the scenes in walk/World.ts move between. `top` is the mattress's
- * height above the floor. */
+ * height above the floor. Nothing raises the arms. */
 export const BED = {
   stand,
-  /** Standing by the bed, reaching down to throw the covers back. */
+  /** Standing by the bed, bending to take the covers' edge and throw them back. */
   reach(): Pose {
     const p = stand()
-    p.lean = 0.45
-    p.headX = 0.35
-    p.armX = [-0.5, -1.05]
-    p.armZ = [0.15, -0.1]
-    p.elbow = [-0.4, -0.3]
-    p.knee = [0.15, 0.15]
-    p.lift = HIPS - 0.03
+    p.lean = 0.5
+    p.headX = 0.3
+    p.armX = [-0.55, -0.85]
+    p.armZ = [0.12, -0.08]
+    p.elbow = [-0.35, -0.3]
+    p.knee = [0.18, 0.18]
+    p.legX = [-0.12, -0.12]
+    p.lift = HIPS - 0.04
     return p
   },
-  /** Sitting on its edge, feet on the floor. */
+  /** Sitting on its edge, feet on the floor, hands on the mattress either side. */
   edge(top: number): Pose {
     const p = sitting(top)
-    p.armX = [0.25, 0.25]
-    p.armZ = [0.35, -0.35]
-    p.elbow = [-0.1, -0.1] // hands on the mattress either side
+    p.armX = [0.22, 0.22]
+    p.armZ = [0.32, -0.32]
+    p.elbow = [-0.08, -0.08]
     return p
   },
-  /** Sitting on its edge with the legs up off the floor, straight out over it, to swing them round. */
+  /** On its edge with the legs raised straight out, leaning back on the hands, ready to swing them up. */
   lift(top: number): Pose {
     const p = BED.edge(top)
-    p.legX = [-1.55, -1.55]
-    p.knee = [0.25, 0.25]
-    p.lean = -0.18
-    p.armX = [0.45, 0.45]
+    p.legX = [-1.62, -1.62]
+    p.knee = [0.2, 0.2]
+    p.lean = -0.28
+    p.armX = [0.5, 0.5]
+    p.armZ = [0.28, -0.28]
+    p.headX = 0.12
     return p
   },
-  /** Lying on the back, head on the pillow. */
+  /** Sitting up in it, legs out along it, hands in the lap. */
+  up(top: number): Pose {
+    const p = sitting(top)
+    p.legX = [-1.56, -1.56]
+    p.knee = [0.04, 0.04]
+    p.legZ = [0.05, -0.05]
+    p.armX = [-0.38, -0.38]
+    p.armZ = [0.12, -0.12]
+    p.elbow = [-0.7, -0.7]
+    return p
+  },
+  /** Lying on the back, head on the pillow, arms by the sides. */
   lie(top: number): Pose {
     const p = stand()
     p.body = -Math.PI / 2
-    p.lift = top + 0.07 // sunk a little into the mattress, so the toes don't tent the covers
+    p.lift = top + 0.06
     p.legX = [0, 0]
     p.legZ = [0.04, -0.04]
-    p.knee = [0.06, 0.06]
-    p.armX = [-0.45, -0.45]
-    p.armZ = [0.12, -0.12]
-    p.elbow = [-1.05, -1.05] // hands on the covers
-    p.headX = 0.32 // the head up on the pillow
+    p.knee = [0.05, 0.05]
+    p.armX = [0.02, 0.02]
+    p.armZ = [0.1, -0.1]
+    p.elbow = [-0.15, -0.15]
+    p.headX = 0.28
     return p
   },
-  /** Pulling the covers up to the chin. */
+  /** Lying, the forearms folded in across the chest, holding the covers' edge under the chin. */
   tuck(top: number): Pose {
     const p = BED.lie(top)
-    p.armX = [-1.05, -1.05]
-    p.armZ = [-0.1, 0.1]
-    p.elbow = [-1.9, -1.9]
-    p.headX = 0.4
+    p.armX = [-0.15, -0.15]
+    p.armZ = [0.22, -0.22]
+    p.elbow = [-0.45, -0.45]
+    p.elbowIn = [-1.75, 1.75]
     return p
   },
-  /** Sitting up in bed, legs out under the covers. */
-  up(top: number): Pose {
-    const p = sitting(top)
-    p.legX = [-1.55, -1.55]
-    p.knee = [0.05, 0.05]
-    p.legZ = [0.05, -0.05]
-    p.armX = [-0.2, -0.2]
-    p.armZ = [0.25, -0.25]
-    p.elbow = [-0.5, -0.5]
+  /** Lying, the hands down by the hips, taking the covers' edge. */
+  take(top: number): Pose {
+    const p = BED.lie(top)
+    p.armX = [-0.05, -0.05]
+    p.armZ = [0.28, -0.28]
+    p.elbow = [-0.35, -0.35]
     return p
   },
+}
+
+/** A pose as a row of numbers, and back: for scenes that move through poses as a smooth curve. */
+export function poseNumbers(p: Pose): number[] {
+  return [p.lift, p.body, p.lean, p.twist, p.headX, p.headY, p.headZ, ...p.armX, ...p.armZ, ...p.elbow, ...p.elbowIn, ...p.legX, ...p.legZ, ...p.knee, p.eyes]
+}
+export function poseFrom(n: number[]): Pose {
+  return { lift: n[0], body: n[1], lean: n[2], twist: n[3], headX: n[4], headY: n[5], headZ: n[6], armX: [n[7], n[8]], armZ: [n[9], n[10]], elbow: [n[11], n[12]], elbowIn: [n[13], n[14]], legX: [n[15], n[16]], legZ: [n[17], n[18]], knee: [n[19], n[20]], eyes: Math.max(0, Math.min(1, n[21])) }
 }
 
 /** How your answers have them feeling, so the same action looks different. */
@@ -224,21 +246,15 @@ function acting(action: Action, t: number, on: number | undefined, mood: Mood): 
       break
     }
     case "wake": {
-      // sitting up in bed: a long, slow stretch and a yawn, arms down, a rub of the eyes when it's early, then a
-      // look round the room. Up early it's a small, slow stretch; up late a big one.
+      // sitting up in bed, hands in the lap. Up early: slumped, eyes half shut, the head nodding forward and lifting;
+      // up late: upright, eyes open, looking round the room.
       Object.assign(p, BED.up(seat ?? 0.56))
       const energy = mood.energy ?? 0.6
-      const c = cycle(t, 8)
-      const up = span(c, 0.3, 3.0, 1.1) * (0.6 + energy * 0.4)
-      const rub = (1 - energy) * span(c, 3.3, 4.8, 0.45)
-      p.armX = [-0.2 - up * 2.65, -0.2 - up * 2.65 - rub * 1.0]
-      p.armZ = [0.25 - up * 0.05, -0.25 + up * 0.05 + rub * 0.15]
-      p.elbow = [-0.5 + up * 0.35, -0.5 + up * 0.35 - rub * 1.45 + Math.sin(t * 5) * rub * 0.08]
-      p.lean = -0.1 * up + (1 - energy) * 0.1 * (1 - up) + breath * 0.02
-      p.headX = -0.35 * up + (1 - energy) * 0.18 * (1 - up)
-      const look = span(c, 5.0, 7.8, 0.8)
-      p.headY = look * Math.sin((c - 5) * 1.1) * 0.55
-      p.eyes = up > 0.6 || rub > 0.4 ? 0 : 0.45 + energy * 0.55
+      const nod = (1 - energy) * span(cycle(t, 7), 1.5, 5.5, 1.6)
+      p.lean = 0.06 + (1 - energy) * 0.18 + breath * 0.02
+      p.headX = 0.05 + (1 - energy) * 0.18 + nod * 0.22
+      p.headY = energy * Math.sin(t * 0.45) * 0.45
+      p.eyes = 1 - (1 - energy) * 0.6 - nod * 0.3
       break
     }
     case "sleep": {
@@ -247,12 +263,11 @@ function acting(action: Action, t: number, on: number | undefined, mood: Mood): 
       p.lean = breath * 0.03 // a slow breath
       p.headY = 0.25 + Math.sin(t * 0.13) * 0.08
       // a late night: now and then turning onto the side and back, slowly
-      const roll = (mood.restless ?? 0) * span(cycle(t, 11), 3, 8.5, 1.4)
-      p.twist = roll * 0.55
-      p.headY += roll * 0.5
-      p.armX = [-0.45 - roll * 0.3, -0.45]
-      p.legX = [-roll * 0.35, -roll * 0.2]
-      p.knee = [0.06 + roll * 0.5, 0.06 + roll * 0.35]
+      const roll = (mood.restless ?? 0) * span(cycle(t, 11), 3, 8.5, 1.6)
+      p.twist = roll * 0.45
+      p.headY += roll * 0.45
+      p.legX = [-roll * 0.3, -roll * 0.15]
+      p.knee = [0.05 + roll * 0.45, 0.05 + roll * 0.3]
       break
     }
     case "study": {
@@ -310,27 +325,28 @@ function acting(action: Action, t: number, on: number | undefined, mood: Mood): 
       const happy = mood.happy ?? 0.5
       if (happy > 0.75) {
         // all day theirs: leaning back on their hands, legs out, face to the sun
-        p.legX = [-1.45, -1.45]
-        p.knee = [0.15, 0.4]
-        p.legZ = [0.12, -0.05]
-        p.lean = -0.55
-        p.armX = [0.7, 0.7]
-        p.armZ = [0.3, -0.3]
-        p.elbow = [0, 0]
-        p.headX = -0.35 + Math.sin(t * 0.4) * 0.05
-        p.eyes = span(cycle(t, 7), 2, 5, 0.5) > 0.5 ? 0.15 : 1
+        p.legX = [-1.5, -1.46]
+        p.knee = [0.12, 0.32]
+        p.legZ = [0.08, -0.03]
+        p.lean = -0.45
+        p.armX = [0.22, 0.22]
+        p.armZ = [0.22, -0.22]
+        p.elbow = [-0.04, -0.04]
+        p.headX = -0.3 + Math.sin(t * 0.4) * 0.04
+        p.eyes = span(cycle(t, 8), 2, 5.5, 0.6) > 0.5 ? 0.15 : 1
         break
       }
-      // cross-legged on the blanket, eating, looking about
-      p.legX = [-1.25, -1.25]
-      p.legZ = [0.95, -0.95]
-      p.knee = [2.3, 2.3]
-      const bite = span(cycle(t, 5.5), 0.5, 2.0, 0.45)
-      p.armX = [-0.55, -0.7 - bite * 0.75]
-      p.elbow = [-0.6, -1.2 - bite * 1.1]
-      p.armZ = [0.25, -0.1]
-      p.headX = 0.12 - bite * 0.1
-      p.headY = Math.sin(t * 0.45) * 0.3 * (1 - bite)
+      // sitting on the blanket with the knees up, forearms on them, now and then a bite, looking about
+      p.legX = [-2.1, -2.1]
+      p.legZ = [0.14, -0.14]
+      p.knee = [2.12, 2.12]
+      const bite = span(cycle(t, 6), 0.8, 2.4, 0.5)
+      p.lean = 0.12
+      p.armX = [-0.95, -0.95 - bite * 0.55]
+      p.armZ = [0.12, -0.12]
+      p.elbow = [-0.55, -0.55 - bite * 1.15]
+      p.headX = 0.05 - bite * 0.08
+      p.headY = Math.sin(t * 0.4) * 0.35 * (1 - bite)
       break
     }
     case "coffee": {
@@ -360,13 +376,20 @@ function acting(action: Action, t: number, on: number | undefined, mood: Mood): 
       break
     }
     case "boxes": {
-      const c = cycle(t, 7)
-      const reach = span(c, 0.4, 2.6, 0.6)
-      const read = span(c, 3.0, 6.2, 0.6)
-      p.armX = [0.05 - read * 1.2, -0.1 - reach * 2.0 - read * 1.2]
-      p.armZ = [0.1, -0.1]
-      p.elbow = [-0.15 - read * 1.0, -0.2 + reach * 0.1 - read * 1.0]
-      p.headX = -0.25 * reach + 0.25 * read
+      // in front of the wall of boxes, looking along them for theirs
+      p.headX = -0.15
+      p.headY = Math.sin(t * 0.35) * 0.35
+      p.legZ = [0.02 + Math.sin(t * 0.6) * 0.03, -0.02 + Math.sin(t * 0.6) * 0.03]
+      break
+    }
+    case "mail": {
+      // reading what came, the letter in both hands
+      p.armX = [-0.7, -0.7]
+      p.armZ = [0.05, -0.05]
+      p.elbow = [-0.9, -0.9]
+      p.elbowIn = [-0.6, 0.6]
+      p.headX = 0.38 + Math.sin(t * 0.7) * 0.03
+      p.headY = Math.sin(t * 0.9) * 0.1
       break
     }
     case "calendar": {
@@ -408,61 +431,33 @@ function moving(phase: number, speed: number): Pose {
   return p
 }
 
-/** Something done in a moment, over whatever they're doing: an answer you just gave, acted out (a book onto the
- * pile, the timer set, the note moved), or a little thing while you decide (a glance at you, a yawn). */
-export type Reaction = "cheer" | "yawn" | "nod" | "shrug" | "glance" | "scratch" | "relax" | "stackRight" | "stackLeft" | "timer" | "deskStretch" | "pin"
+/** Something done in a moment, over whatever they're doing, because of an answer you just gave: a book onto the pile,
+ * the timer set, the note moved, a look at the alarm clock, a letter taken out of a box; or, while you decide, a
+ * glance at you. Nothing for no reason. */
+export type Reaction = "glance" | "nod" | "clock" | "stackRight" | "stackLeft" | "timer" | "restBack" | "pin" | "fetch" | "typing"
 
-export const REACT_FOR: Record<Reaction, number> = { cheer: 1.5, yawn: 2.0, nod: 1.2, shrug: 1.4, glance: 2.6, scratch: 2.0, relax: 3.0, stackRight: 1.3, stackLeft: 1.3, timer: 1.5, deskStretch: 2.6, pin: 1.6 }
+export const REACT_FOR: Record<Reaction, number> = { glance: 2.6, nod: 1.2, clock: 2.2, stackRight: 1.3, stackLeft: 1.3, timer: 1.5, restBack: 2.6, pin: 1.6, fetch: 2.0, typing: 1.6 }
 
 /** The upper body during a reaction `t` seconds in (the legs stay as they are). `look` turns the head toward you;
- * `aim` is where along a board the hand goes, -1 to 1. */
-function reacting(kind: Reaction, t: number, base: Pose, look: number, aim: number, standing: boolean): Pose {
-  const p: Pose = { ...base, armX: [...base.armX], armZ: [...base.armZ], elbow: [...base.elbow] }
+ * `aim` is which way: where along a board the hand goes, or where the clock is (-1 to 1). */
+function reacting(kind: Reaction, t: number, base: Pose, look: number, aim: number): Pose {
+  const p: Pose = { ...base, armX: [...base.armX], armZ: [...base.armZ], elbow: [...base.elbow], elbowIn: [...base.elbowIn] }
   const swing = (period: number) => Math.sin((t / period) * Math.PI * 2)
   switch (kind) {
-    case "cheer":
-      p.armX = [-2.6, -2.6]
-      p.armZ = [0.45, -0.45]
-      p.elbow = [-0.3, -0.3]
-      p.headX = -0.2
-      if (standing) p.lift = base.lift + Math.max(0, Math.sin(clamp01((t - 0.2) / 0.55) * Math.PI)) * 0.1
-      break
-    case "yawn":
-      p.armX = [base.armX[0], -1.5]
-      p.armZ = [base.armZ[0], -0.15]
-      p.elbow = [base.elbow[0], -2.3]
-      p.headX = base.headX - 0.35
-      p.eyes = 0
-      p.lean = base.lean - 0.06
-      break
-    case "nod":
-      p.headX = base.headX + Math.max(0, swing(0.6)) * 0.22
-      break
-    case "shrug":
-      p.armX = [-0.35, -0.35]
-      p.armZ = [0.8, -0.8]
-      p.elbow = [-1.4, -1.4]
-      p.headZ = 0.18
-      break
     case "glance":
       p.headY = look
       p.headX = -0.05
       p.eyes = 1
       break
-    case "scratch":
-      p.armX = [base.armX[0], -2.45]
-      p.armZ = [base.armZ[0], -0.5]
-      p.elbow = [base.elbow[0], -2.2 + swing(0.5) * 0.08]
-      p.headZ = 0.12
+    case "nod":
+      p.headX = base.headX + Math.max(0, swing(0.6)) * 0.22
       break
-    case "relax":
-      // hands behind the head, leaning back
-      p.armX = [-2.7, -2.7]
-      p.armZ = [0.55, -0.55]
-      p.elbow = [-2.1, -2.1]
-      p.lean = base.lean - 0.15
-      p.headX = base.headX - 0.1
-      p.eyes = t > 0.8 && t < 2.4 ? 0.2 : 1
+    case "clock":
+      // turning to look at the alarm clock: what time is it?
+      p.headY = aim * 1.0
+      p.headX = base.headX + 0.15
+      p.twist = base.twist + aim * 0.2
+      p.eyes = 1
       break
     case "stackRight":
     case "stackLeft": {
@@ -487,13 +482,13 @@ function reacting(kind: Reaction, t: number, base: Pose, look: number, aim: numb
       p.headX = 0.45
       p.headY = -0.15
       break
-    case "deskStretch":
-      // the timer's gone: hands up, a long stretch back
-      p.armX = [-2.85, -2.85]
-      p.armZ = [0.18, -0.18]
-      p.elbow = [-0.25, -0.25]
-      p.lean = base.lean - 0.3
-      p.headX = -0.3
+    case "restBack":
+      // the timer's gone: a sitting done, so a breather, sitting back, shoulders down, eyes shut a moment
+      p.lean = base.lean - 0.32
+      p.armX = [0.05, 0.05]
+      p.armZ = [0.25, -0.25]
+      p.elbow = [-0.2, -0.2]
+      p.headX = -0.25
       p.eyes = t > 0.6 && t < 2.0 ? 0 : 1
       break
     case "pin": {
@@ -507,6 +502,22 @@ function reacting(kind: Reaction, t: number, base: Pose, look: number, aim: numb
       p.twist = base.twist - aim * 0.15
       break
     }
+    case "fetch":
+      // a box opened, the hand in it, and out with the letter
+      p.armX = [base.armX[0], -1.55]
+      p.armZ = [base.armZ[0], -0.12]
+      p.elbow = [base.elbow[0], -0.25 + Math.max(0, t - 1.0) * 0.6]
+      p.headX = -0.2
+      p.lean = base.lean + 0.06
+      break
+    case "typing":
+      // a few keys at the counter: the screen changes
+      p.armX = [-1.05, -1.05]
+      p.armZ = [-0.1, 0.1]
+      p.elbow = [-0.5 + swing(0.22) * 0.04, -0.5 - swing(0.22) * 0.04]
+      p.headX = 0.25
+      p.lean = base.lean + 0.1
+      break
   }
   return p
 }
@@ -522,6 +533,7 @@ export class Character {
   private knees: THREE.Group[] = []
   private eyes: THREE.Mesh[] = []
   private held = new Map<string, THREE.Object3D>()
+  private pack = new THREE.Group()
   private phase = 0
   private blink = 2
 
@@ -552,9 +564,10 @@ export class Character {
     hood.rotation.x = Math.PI / 2 - 0.3
     this.chest.add(hood)
     for (const x of [-0.045, 0.045]) this.chest.add(part(new THREE.CylinderGeometry(0.008, 0.008, 0.13, 5), 0xf3f0ea, x, 0.33, 0.125))
-    this.chest.add(part(rounded(0.32, 0.36, 0.14, 0.05), PACK, 0, 0.24, -0.19))
-    this.chest.add(part(rounded(0.22, 0.12, 0.05, 0.02), 0x9a4426, 0, 0.14, -0.27))
-    for (const x of [-0.11, 0.11]) this.chest.add(part(new THREE.BoxGeometry(0.045, 0.32, 0.03), 0x7a3a22, x, 0.3, 0.11))
+    this.pack.add(part(rounded(0.32, 0.36, 0.14, 0.05), PACK, 0, 0.24, -0.19))
+    this.pack.add(part(rounded(0.22, 0.12, 0.05, 0.02), 0x9a4426, 0, 0.14, -0.27))
+    for (const x of [-0.11, 0.11]) this.pack.add(part(new THREE.BoxGeometry(0.045, 0.32, 0.03), 0x7a3a22, x, 0.3, 0.11))
+    this.chest.add(this.pack)
     // arms: shoulder, elbow, hand
     for (const side of [1, -1]) {
       const shoulder = new THREE.Group()
@@ -616,7 +629,7 @@ export class Character {
 
   /** The pose they're in now: where a scene (getting out of bed) starts from. */
   posed(): Pose {
-    return { ...this.last, armX: [...this.last.armX], armZ: [...this.last.armZ], elbow: [...this.last.elbow], legX: [...this.last.legX], legZ: [...this.last.legZ], knee: [...this.last.knee] }
+    return { ...this.last, armX: [...this.last.armX], armZ: [...this.last.armZ], elbow: [...this.last.elbow], elbowIn: [...this.last.elbowIn], legX: [...this.last.legX], legZ: [...this.last.legZ], knee: [...this.last.knee] }
   }
 
   /** Whether a reaction is still going. */
@@ -647,14 +660,36 @@ export class Character {
       if (age >= length) this.reaction = null
       else {
         const into = span(age, 0, length, Math.min(0.5, length / 3))
-        const standing = (SEATED[action] === undefined && seat === undefined) || weight < 0.5
-        pose = mix(pose, reacting(r.kind, age, pose, look, r.aim, standing), into)
+        pose = mix(pose, reacting(r.kind, age, pose, look, r.aim), into)
       }
     }
     this.last = pose
     this.apply(pose, t, dt)
-    const holding = !s.pose && weight > 0.6 ? ({ coffee: "cup", picnic: "sandwich", boxes: "letter" } as Partial<Record<Action, string>>)[action] : undefined
+    const fetched = r?.kind === "fetch" && t - r.at > 1.0
+    const holding = !s.pose && weight > 0.6 ? (fetched ? "letter" : ({ coffee: "cup", picnic: "sandwich", mail: "letter" } as Partial<Record<Action, string>>)[action]) : undefined
     for (const [name, thing] of this.held) thing.visible = name === holding && !(action === "picnic" && (mood.happy ?? 0) > 0.75)
+  }
+
+  /** The backpack on (walking about) or off (in bed, or sitting back in a seat). */
+  wearPack(on: boolean): void {
+    this.pack.visible = on
+  }
+
+  /** Where the body is, as round lumps (a point and a radius, in the world): what the covers lie over. The head
+   * stays out. */
+  samples(): { p: THREE.Vector3; r: number; torso?: boolean; arm?: boolean }[] {
+    const at = (o: THREE.Object3D, x: number, y: number, z: number, r: number) => ({ p: o.localToWorld(new THREE.Vector3(x, y, z)), r })
+    this.root.updateMatrixWorld(true)
+    const out: { p: THREE.Vector3; r: number; torso?: boolean; arm?: boolean }[] = [at(this.hips, 0, 0, 0, 0.12)]
+    // the chest is as wide as the shoulders: lumps across it, not only down the middle
+    for (const x of [-0.13, 0, 0.13]) for (const y of [0.1, 0.28]) out.push({ ...at(this.chest, x, y, 0, x ? 0.1 : 0.12), torso: true })
+    for (const x of [-0.1, 0.1]) out.push(at(this.hips, x, 0, 0, 0.1))
+    for (let i = 0; i < 2; i++) {
+      out.push(at(this.legs[i], 0, -0.12, 0, 0.08), at(this.legs[i], 0, -0.26, 0, 0.075), at(this.knees[i], 0, 0, 0, 0.07))
+      out.push(at(this.knees[i], 0, -0.16, 0, 0.065), at(this.knees[i], 0, -0.31, 0.05, 0.065), at(this.knees[i], 0, -0.33, 0.15, 0.05))
+      for (const [o, y, r] of [[this.arms[i], -0.13, 0.055], [this.elbows[i], 0, 0.05], [this.elbows[i], -0.12, 0.05], [this.elbows[i], -0.24, 0.055]] as const) out.push({ ...at(o, 0, y, 0, r), arm: true })
+    }
+    return out
   }
 
   /** Where the head is, for the little signs over it. */
@@ -669,7 +704,7 @@ export class Character {
     this.head.rotation.set(p.headX, p.headY, p.headZ)
     for (let i = 0; i < 2; i++) {
       this.arms[i].rotation.set(p.armX[i], 0, p.armZ[i])
-      this.elbows[i].rotation.set(p.elbow[i], 0, 0)
+      this.elbows[i].rotation.set(p.elbow[i], 0, p.elbowIn[i])
       this.legs[i].rotation.set(p.legX[i], 0, p.legZ[i])
       this.knees[i].rotation.set(p.knee[i], 0, 0)
     }
