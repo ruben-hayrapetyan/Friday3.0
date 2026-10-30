@@ -16,7 +16,8 @@ const KEYS: [string, string[]][] = [
   ["Open the selected block's to-do", ["Enter"]],
   ["Undo", ["⌘", "Z"]],
   ["Close a panel", ["Esc"]],
-  ["Answer the first row of Your day, in the Inbox", ["1", "2", "3", "4"]],
+  ["The next or previous message in the Inbox", ["↑", "↓"]],
+  ["Answer how much of a task you did, in the Inbox", ["1", "2", "3", "4"]],
   ["Accept, edit or reject in the Inbox", ["A", "E", "R"]],
 ]
 

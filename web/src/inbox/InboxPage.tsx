@@ -1,29 +1,36 @@
-// The Inbox (v22): what came in from mail, feeds, calendars and documents, by source. Each suggestion shows the item
-// it would make, each field with the words it came from, and the source with those words highlighted. Nothing
-// reaches the plan until you accept it (A), edit it (E) or reject it (R). Your day (what was Review, 29 Oct) is a
-// link under the decisions, to the planned time Friday can't account for on its own.
+// The Inbox: everything waiting for you, one message each (29 Oct: "there are too many subcategories of inbox,
+// simplify it and make everything just a message the user needs to deal with in inbox"). One list, most pressing
+// first (messages.ts), and the message you're on opened beside it, the way mail is read: what only you can decide,
+// the planned time Friday can't account for, sleep taps you missed, what came in from mail, calendars and syllabi,
+// copies of a task, a go-over you started, repeating events to import. A message you deal with leaves the list at once
+// and the next opens; ↑/↓ (or J/K) move between them. A suggestion shows the item it would make, each field with the
+// words it came from, and the source with those words highlighted; nothing reaches the plan until you accept it (A),
+// edit it (E) or reject it (R).
 
-import { useQuery } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router"
 import { query, type Schemas } from "@/api/client"
 import { Chip, H, Icon } from "@/components/fr/controls"
 import { DateTimeInput } from "@/components/fr/TimeInput"
-import { undoAll, useCommand } from "@/hooks/useCommand"
-import { useAllItems } from "@/todo/TodoPage"
-import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/components/Toasts"
+import { useAreas } from "@/hooks/queries"
+import { undoAll, useCommand } from "@/hooks/useCommand"
 import { clock, dur, lateBy, when } from "@/lib/format"
-import { useLook } from "@/theme/LookProvider"
+import { useNotes } from "@/settings/AboutYou"
 import { useShell } from "@/shell/ShellContext"
+import { useLook } from "@/theme/LookProvider"
 import { usePresets } from "@/todo/AddBox"
 import { LengthInput } from "@/todo/Pickers"
-import { useNotes } from "@/settings/AboutYou"
-import { useAreas } from "@/hooks/queries"
-import { NavLink } from "react-router"
-import { useDuplicates } from "./CheckTasks"
-import { Decisions, useDecisions } from "./Decisions"
-import { useReviewWaiting } from "./DailyReview"
-import { YourDayLink } from "./YourDay"
+import { useAllItems } from "@/todo/TodoPage"
+import { GapPane, SleepPane } from "./DayPanes"
+import { DecisionPane } from "./Decisions"
+import { type Message, nextAfter, rowOf, waitingCount } from "./messages"
+import { Actions, Pane } from "./Pane"
+import { useDuplicates, useInbox, useInboxMessages, useToReview } from "./queries"
+import { AgainPane, CopiesPane } from "./TaskPanes"
+
+export { useInbox } from "./queries"
 
 type Suggestion = Schemas["SuggestionOut"]
 interface Resolved {
@@ -31,8 +38,8 @@ interface Resolved {
   accepted: boolean
   commandId: number | null
 }
+type Done = (sent?: Promise<unknown>) => void
 
-const ICONS: Record<string, string> = { gmail: "envelope-simple", ics: "rss", gcal: "google-logo", upload: "file-text" }
 const FIELDS: [string, string][] = [
   ["title", "Title"],
   ["preset", "Kind"],
@@ -45,95 +52,190 @@ const FIELDS: [string, string][] = [
   ["every", "Repeats"],
 ]
 
-export const useInbox = () => useQuery({ queryKey: ["inbox"], queryFn: () => query("inbox") })
+const typing = (e: KeyboardEvent) => e.target instanceof HTMLElement && !!e.target.closest("input, textarea, select, [contenteditable]")
 
 export function InboxPage() {
-  const inbox = useInbox().data
-  const copies = useDuplicates().data?.groups.length ?? 0
-  const deciding = useDecisions().length
-  const answering = useReviewWaiting()
-  const [selected, setSelected] = useState<number | null>(null)
   const [resolved, setResolved] = useState<Resolved[]>([])
-  const pending = inbox?.suggestions ?? []
-  const shown: Suggestion[] = [...pending, ...resolved.map((r) => r.s).filter((s) => !pending.some((p) => p.id === s.id))]
-  const current = shown.find((s) => s.id === selected) ?? pending[0] ?? null
-  const sources = [...new Set(shown.map((s) => s.source))]
-  const tight = useShell().layout.tight // a narrow window: the list, then one suggestion with a way back
-  const showList = !tight || selected === null
-  const showDetail = !tight || selected !== null
+  const answered = useMemo(() => resolved.map((r) => r.s), [resolved])
+  const messages = useInboxMessages(answered)
+  const inbox = useInbox().data
+  const copies = useDuplicates().data
+  const going = useToReview().data
+  const goOver = useCommand("review_again", { label: (o) => o.result.message ?? "Ready" })
+  // Dealt with here: gone from the list at once, before the server says so; back if the command fails.
+  const [gone, setGone] = useState<string[]>([])
+  const [selected, setSelected] = useState<string | null>(null)
+  const list = messages.filter((m) => !gone.includes(m.key))
+  const live = (m: Message) => !(m.kind === "suggestion" && m.answered)
+  const current = list.find((m) => m.key === selected) ?? list.find(live) ?? null
+  const count = waitingCount(list)
+  const tight = useShell().layout.tight // a narrow window: the list, then one message with a way back
+  const [reading, setReading] = useState(false)
+  const showList = !tight || !reading
+  const showPane = !tight || reading
+  useEffect(() => setGone((was) => was.filter((k) => messages.some((m) => m.key === k))), [messages])
+  useEffect(() => {
+    const press = (e: KeyboardEvent) => {
+      if (typing(e) || e.metaKey || e.ctrlKey || e.altKey) return
+      const step = ({ ArrowDown: 1, j: 1, ArrowUp: -1, k: -1 } as Record<string, number>)[e.key]
+      if (!step || !current) return
+      const at = list.findIndex((m) => m.key === current.key)
+      const next = list[Math.max(0, Math.min(list.length - 1, at + step))]
+      if (!next) return
+      e.preventDefault()
+      setSelected(next.key)
+    }
+    window.addEventListener("keydown", press)
+    return () => window.removeEventListener("keydown", press)
+  })
+  /** Dealt with: the next opens, and it's back if the command fails. */
+  const deal =
+    (...keys: string[]): Done =>
+    (sent) => {
+      const without = new Set([...gone, ...keys])
+      setSelected(nextAfter(list, keys[0], without))
+      setGone((was) => [...was, ...keys])
+      sent?.then((out) => out === undefined && setGone((was) => was.filter((k) => !keys.includes(k))))
+    }
+  const resolve = (rs: Resolved[]) => {
+    const without = new Set([...gone, ...rs.map((r) => `s:${r.s.id}`)])
+    if (current) setSelected(nextAfter(list, current.key, without))
+    setResolved((all) => [...all.filter((r) => !rs.some((x) => x.s.id === r.s.id)), ...rs])
+  }
+  const open = (key: string) => (setSelected(key), setReading(true))
+  const pane = (m: Message) => {
+    switch (m.kind) {
+      case "decision":
+        return <DecisionPane key={m.key} decision={m.decision} onDone={deal(m.key)} />
+      case "gap":
+        return <GapPane key={m.key} date={m.date} gap={m.gap} onDone={deal(m.key)} />
+      case "sleep":
+        return <SleepPane key={m.key} ask={m.ask} onDone={deal(m.key)} />
+      case "suggestion": {
+        const waiting = list.filter((x): x is Extract<Message, { kind: "suggestion" }> => x.kind === "suggestion" && !x.answered && x.s.source === m.s.source).map((x) => x.s)
+        return (
+          <Detail
+            key={m.key}
+            s={m.s}
+            all={list.flatMap((x) => (x.kind === "suggestion" ? [x.s] : []))}
+            waiting={waiting}
+            resolved={resolved.find((r) => r.s.id === m.s.id) ?? null}
+            onResolved={resolve}
+            onReopen={() => setResolved((all) => all.filter((r) => r.s.id !== m.s.id))}
+          />
+        )
+      }
+      case "copies": {
+        const all = copies?.groups ?? [m.group]
+        return <CopiesPane key={m.key} group={m.group} from={m.from} all={all} onDone={deal(m.key)} onAllDone={deal(...all.map((g) => `copies:${g.key}`))} />
+      }
+      case "again": {
+        const all = going?.items ?? [m.item]
+        return <AgainPane key={m.key} item={m.item} from={m.from} all={all} onDone={deal(m.key)} onAllDone={deal(...all.map((i) => `again:${i.id}`))} />
+      }
+      case "repeats":
+        return <RepeatsPane key={m.key} n={m.n} />
+    }
+  }
   return (
     <>
       <div className="fr-page-head">
         <span className="fr-h fr-title">Inbox</span>
         <span className="tnum" style={{ color: "var(--color-neutral-500)" }}>
-          {[deciding ? `${deciding} to decide` : "", answering ? `${answering} to answer` : "", pending.length ? `${pending.length} to check from ${new Set(pending.map((s) => s.source)).size} ${new Set(pending.map((s) => s.source)).size === 1 ? "source" : "sources"}` : ""].filter(Boolean).join(" · ") || "All clear"}
+          {count ? `${count} to deal with` : "All clear"}
         </span>
         <div style={{ flex: 1 }} />
-        <span className="fr-head-note" style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12, color: "var(--color-neutral-500)" }}>
-          <Icon name="shield-check" size={14} />
-          Nothing here reaches your plan until you accept it
-        </span>
-      </div>
-      <div className="fr-panel" style={{ display: "grid", gridTemplateColumns: tight ? "minmax(0,1fr)" : "300px minmax(0,1fr)", overflow: "hidden" }}>
-        {showList && (
-        <div style={{ overflowY: "auto", minHeight: 0, padding: "12px 10px 40px", boxShadow: "inset -1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 14 }}>
-          <Decisions />
-          <YourDayLink />
-          <NavLink to="/inbox/check" className="fr-well fr-hover" style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", color: "var(--color-text)", textDecoration: "none" }}>
-            <Icon name="list-checks" size={16} style={{ color: "var(--color-accent-300)" }} />
-            <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 1, fontSize: 12 }}>
-              <span>Check your tasks{copies ? `: ${copies} with copies` : ""}</span>
-              <span style={{ color: "var(--color-neutral-500)" }}>Copies, and going over what Friday brought in again</span>
-            </span>
-            <Icon name="caret-right" size={13} />
-          </NavLink>
-          {!!inbox?.repeats && (
-            <NavLink to="/settings/repeating" className="fr-well fr-hover" style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", color: "var(--color-text)", textDecoration: "none" }}>
-              <Icon name="repeat" size={16} style={{ color: "var(--color-accent-300)" }} />
-              <span style={{ flex: 1, fontSize: 12 }}>
-                {inbox.repeats} repeating {inbox.repeats === 1 ? "event" : "events"} from your calendars to import in Repeating
-              </span>
-              <Icon name="caret-right" size={13} />
-            </NavLink>
-          )}
-          {sources.map((name) => (
-            <Source key={name} name={name} items={shown.filter((s) => s.source === name)} pending={pending} resolved={resolved} current={current?.id ?? null} onSelect={setSelected} onResolved={(r) => setResolved((all) => [...all, ...r])} />
-          ))}
-          {!sources.length && <span style={{ padding: 8, color: "var(--color-neutral-500)" }}>Nothing yet.</span>}
-          {!!inbox?.set_aside?.length && <SetAside items={inbox.set_aside} />}
-        </div>
-        )}
-        {showDetail && (
-        <div style={{ display: "grid", gridTemplateRows: tight ? "auto minmax(0,1fr)" : "minmax(0,1fr)", minHeight: 0, minWidth: 0 }}>
-        {tight && (
-          <button className="fr-plain fr-link" onClick={() => setSelected(null)} style={{ justifySelf: "start", padding: "12px 16px 0", fontSize: 13 }}>
-            ← All {pending.length}
+        {!going?.items.length && (
+          <button className="fr-plain fr-link fr-head-note" onClick={() => goOver({})} title="Every open task Friday brought in from your calendars and mail, a message each, to keep or take off your list" style={{ fontSize: 12 }}>
+            Go over everything again
           </button>
         )}
-        {current ? (
-          <Detail
-            key={current.id}
-            s={current}
-            all={shown}
-            resolved={resolved.find((r) => r.s.id === current.id) ?? null}
-            onResolved={(rs) => {
-              setResolved((all) => [...all, ...rs])
-              const next = pending.find((p) => !rs.some((r) => r.s.id === p.id))
-              setSelected(next?.id ?? current.id)
-            }}
-            onReopen={() => setResolved((all) => all.filter((r) => r.s.id !== current.id))}
-          />
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "60px 40px", maxWidth: 440 }}>
-            <Icon name="tray" size={28} style={{ color: "var(--color-neutral-400)" }} />
-            <H size={26}>Inbox is clear</H>
-            <span style={{ color: "var(--color-neutral-400)" }}>New items from your email, course feeds and uploaded syllabi land here for you to check first.</span>
+      </div>
+      <div className="fr-panel" style={{ display: "grid", gridTemplateColumns: tight ? "minmax(0,1fr)" : "320px minmax(0,1fr)", overflow: "hidden" }}>
+        {showList && (
+          <div role="list" aria-label="Waiting for you" style={{ overflowY: "auto", minHeight: 0, padding: "10px 8px 40px", boxShadow: "inset -1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 2 }}>
+            {list.map((m) => (
+              <Row key={m.key} m={m} on={m.key === current?.key} answered={resolved.find((r) => m.kind === "suggestion" && r.s.id === m.s.id)} onClick={() => open(m.key)} />
+            ))}
+            {!list.length && <span style={{ padding: 10, color: "var(--color-neutral-500)" }}>Nothing waiting.</span>}
+            {!!inbox?.set_aside?.length && <SetAside items={inbox.set_aside} />}
           </div>
         )}
-        </div>
+        {showPane && (
+          <div style={{ display: "grid", gridTemplateRows: tight ? "auto minmax(0,1fr)" : "minmax(0,1fr)", minHeight: 0, minWidth: 0 }}>
+            {tight && (
+              <button className="fr-plain fr-link" onClick={() => setReading(false)} style={{ justifySelf: "start", padding: "12px 16px 0", fontSize: 13 }}>
+                ← All {count}
+              </button>
+            )}
+            {current ? (
+              pane(current)
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "60px 40px", maxWidth: 460 }}>
+                <Icon name="tray" size={28} style={{ color: "var(--color-neutral-400)" }} />
+                <H size={26}>Inbox is clear</H>
+                <span style={{ color: "var(--color-neutral-400)" }}>What needs you lands here, a message each: what only you can decide, planned time Friday can't account for, and what it finds in your mail, calendars and syllabi.</span>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </>
+  )
+}
+
+/** A message in the list: what kind it is, what it's about in a line, and when or where it's from. */
+function Row({ m, on, answered, onClick }: { m: Message; on: boolean; answered?: Resolved; onClick: () => void }) {
+  const { today } = useShell()
+  const r = rowOf(m, today)
+  return (
+    <button
+      role="listitem"
+      aria-current={on || undefined}
+      className="fr-plain fr-hover"
+      onClick={onClick}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "18px minmax(0,1fr) auto",
+        gap: 10,
+        alignItems: "start",
+        padding: "9px 10px",
+        borderRadius: "var(--radius-md)",
+        textAlign: "left",
+        background: on ? "color-mix(in srgb, var(--color-accent) 13%, transparent)" : undefined,
+        boxShadow: r.warn ? "inset 2px 0 0 var(--fr-warn)" : undefined,
+        opacity: answered ? 0.5 : 1,
+      }}
+    >
+      <Icon name={r.icon} size={15} style={{ color: r.warn ? "var(--fr-warn)" : "var(--color-neutral-400)", marginTop: 2 }} />
+      <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+        <span style={{ fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textDecoration: answered && !answered.accepted ? "line-through" : undefined }}>{r.title}</span>
+        <span className="tnum" style={{ fontSize: 12, color: "var(--color-neutral-500)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {r.line}
+        </span>
+      </span>
+      <span style={{ fontSize: 11, color: answered ? "var(--color-accent-300)" : "var(--color-neutral-500)", whiteSpace: "nowrap", maxWidth: 96, overflow: "hidden", textOverflow: "ellipsis", paddingTop: 2 }}>
+        {answered ? (answered.accepted ? "Accepted" : "Rejected") : r.meta}
+      </span>
+    </button>
+  )
+}
+
+/** Repeating events from your calendars not brought in yet: Settings → Repeating does that. */
+function RepeatsPane({ n }: { n: number }) {
+  const navigate = useNavigate()
+  return (
+    <Pane icon="repeat" kicker="From your calendars" title={`${n} repeating ${n === 1 ? "event" : "events"} to bring in`}>
+      <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>
+        Weekly classes and other repeating events on your calendars that Friday doesn't plan around as repeats yet. Bring them in as repeating, or leave them out.
+      </span>
+      <Actions>
+        <button className="btn btn-primary" onClick={() => navigate("/settings/repeating")}>
+          <Icon name="repeat" />
+          Open Repeating
+        </button>
+      </Actions>
+    </Pane>
   )
 }
 
@@ -143,7 +245,7 @@ function SetAside({ items }: { items: { id: number; title: string; why: string }
   const [open, setOpen] = useState(false)
   const restore = useCommand("suggestion_restore", { label: (o) => o.result.message ?? "Back in your inbox" })
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingTop: 6 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingTop: 10 }}>
       <button className="fr-plain fr-hover" onClick={() => setOpen(!open)} style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 8px", borderRadius: "var(--radius-sm)", fontSize: 12, color: "var(--color-neutral-400)" }} aria-expanded={open}>
         <Icon name={open ? "caret-down" : "caret-right"} size={11} />
         Set aside: {items.length} you have already
@@ -168,106 +270,16 @@ function SetAside({ items }: { items: { id: number; title: string; why: string }
   )
 }
 
-interface SourceProps {
-  name: string
-  items: Suggestion[]
-  pending: Suggestion[]
-  resolved: Resolved[]
-  current: number | null
-  onSelect: (id: number) => void
-  onResolved: (r: Resolved[]) => void
-}
-
-function Source({ name, items, pending, resolved, current, onSelect, onResolved }: SourceProps) {
-  const { today } = useShell()
-  const { color } = useLook()
-  const inbox = useInbox().data
-  const source = inbox?.sources.find((s) => s.name === name)
-  const open = items.filter((s) => pending.some((p) => p.id === s.id))
-  const rows = items
-  const openRows = open.length
-  const batch = useCommand("batch_accept", { label: (o) => o.result.message ?? "Accepted" })
-  const accept = useCommand("suggestion_accept", { label: () => "Accepted" })
-  const acceptAll = async () => {
-    const batches = [...new Set(open.map((s) => s.batch).filter((b): b is string => !!b))]
-    for (const b of batches) {
-      const out = await batch({ batch: b })
-      if (out) onResolved(open.filter((s) => s.batch === b).map((s) => ({ s, accepted: true, commandId: out.command_id })))
-    }
-    for (const s of open.filter((x) => !x.batch)) {
-      const out = await accept({ id: s.id, edits: {} })
-      if (out) onResolved([{ s, accepted: true, commandId: out.command_id }])
-    }
-  }
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "28px minmax(0,1fr) auto", gap: 10, alignItems: "center", padding: "4px 6px 6px" }}>
-        <span className="fr-well" style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Icon name={ICONS[items[0]?.source_kind ?? ""] ?? "tray"} size={15} style={{ color: "var(--color-neutral-300)" }} />
-        </span>
-        <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-          <span style={{ fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
-          <span style={{ fontSize: 11, color: "var(--color-neutral-500)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {openRows} new{source?.last_sync ? ` · synced ${when(source.last_sync, today)}` : ""}
-          </span>
-        </span>
-        {openRows > 1 && (
-          <button className="btn btn-secondary" onClick={acceptAll} style={{ padding: "3px 9px", fontSize: 11, whiteSpace: "nowrap" }}>
-            Accept all {openRows}
-          </button>
-        )}
-      </div>
-      {rows.map((s) => {
-        const r = resolved.find((x) => x.s.id === s.id)
-        const fields = s.input as Record<string, unknown>
-        const at = (fields.due ?? fields.start) as string | undefined
-        return (
-          <div
-            key={s.id}
-            onClick={() => onSelect(s.id)}
-            className="fr-hover"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "3px minmax(0,1fr) auto",
-              gap: 10,
-              alignItems: "center",
-              padding: "8px 8px 8px 10px",
-              marginLeft: 16,
-              borderRadius: "var(--radius-md)",
-              background: s.id === current ? "color-mix(in srgb, var(--color-accent) 12%, transparent)" : undefined,
-              cursor: "pointer",
-              opacity: r ? 0.55 : 1,
-            }}
-          >
-            <span style={{ alignSelf: "stretch", borderRadius: 2, background: color(fields.area as string | undefined) }} />
-            <span style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textDecoration: r && !r.accepted ? "line-through" : undefined }}>{String(fields.title ?? s.origin)}</span>
-              <span className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {s.command === "edit" ? "A change · " : s.command === "drop" ? "Gone · " : ""}
-                {at ? `${fields.due ? "due " : ""}${when(at, today)}` : ((fields.preset as string) ?? "")}
-              </span>
-            </span>
-            <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              {s.duplicate_of != null && !r && <span className="fr-tag warn">Duplicate?</span>}
-              {r?.accepted && <Icon name="check-circle" size={15} style={{ color: "var(--color-accent-300)" }} />}
-              {r && !r.accepted && <Icon name="x-circle" size={15} style={{ color: "var(--color-neutral-500)" }} />}
-            </span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 interface DetailProps {
   s: Suggestion
   all: Suggestion[]
+  waiting: Suggestion[] // still to answer from the same source, this one too
   resolved: Resolved | null
   onResolved: (r: Resolved[]) => void
   onReopen: () => void
 }
 
-function Detail({ s, all, resolved, onResolved, onReopen }: DetailProps) {
+function Detail({ s, all, waiting, resolved, onResolved, onReopen }: DetailProps) {
   const { today } = useShell()
   const { color } = useLook()
   const client = useQueryClient()
@@ -279,6 +291,7 @@ function Detail({ s, all, resolved, onResolved, onReopen }: DetailProps) {
   const [edits, setEdits] = useState<Record<string, unknown>>({})
   const accept = useCommand("suggestion_accept", { label: () => "Accepted" })
   const reject = useCommand("suggestion_reject", { label: () => "Rejected" })
+  const batch = useCommand("batch_accept", { label: (o) => o.result.message ?? "Accepted" })
   const fields: Record<string, unknown> = { ...(s.input as Record<string, unknown>), ...edits }
   const dup = s.duplicate_of != null ? items.find((i) => i.id === s.duplicate_of) : null
   const doAccept = async () => {
@@ -289,10 +302,22 @@ function Detail({ s, all, resolved, onResolved, onReopen }: DetailProps) {
     const out = await reject({ id: s.id })
     if (out) onResolved([{ s, accepted: false, commandId: out.command_id }])
   }
+  /** Everything still waiting from this source, accepted as it is: a document's in one go, the rest one by one. */
+  const acceptAll = async () => {
+    const batches = [...new Set(waiting.map((x) => x.batch).filter((b): b is string => !!b))]
+    for (const b of batches) {
+      const out = await batch({ batch: b })
+      if (out) onResolved(waiting.filter((x) => x.batch === b).map((x) => ({ s: x, accepted: true, commandId: out.command_id })))
+    }
+    for (const x of waiting.filter((x) => !x.batch)) {
+      const out = await accept({ id: x.id, edits: {} })
+      if (out) onResolved([{ s: x, accepted: true, commandId: out.command_id }])
+    }
+  }
   useEffect(() => {
     if (resolved) return
     const press = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select")) return
+      if (typing(e) || e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key === "a") doAccept()
       if (e.key === "r") doReject()
       if (e.key === "e") setEditing((x) => !x)
@@ -323,7 +348,7 @@ function Detail({ s, all, resolved, onResolved, onReopen }: DetailProps) {
           {editing ? (
             <input className="input" value={String(fields.title ?? "")} onChange={(e) => setEdits({ ...edits, title: e.target.value })} aria-label="Title" style={{ fontSize: 22, fontWeight: 600 }} />
           ) : (
-            <H size={34}>{String(fields.title ?? s.origin)}</H>
+            <H size={30}>{String(fields.title ?? s.origin)}</H>
           )}
         </div>
         {dup && (
@@ -397,6 +422,14 @@ function Detail({ s, all, resolved, onResolved, onReopen }: DetailProps) {
               </button>
             </div>
             <span className="fr-kicker">{s.command === "drop" ? "Dropping takes it off your plan; Undo brings it back." : "Accepting adds it and Friday plans it. You can undo it from the plan."}</span>
+            {waiting.length > 1 && (
+              <span style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 12, color: "var(--color-neutral-400)" }}>
+                {waiting.length - 1} more from {s.source}.
+                <button className="fr-plain fr-link" style={{ fontSize: 12 }} onClick={acceptAll}>
+                  Accept all {waiting.length}
+                </button>
+              </span>
+            )}
           </>
         )}
       </div>

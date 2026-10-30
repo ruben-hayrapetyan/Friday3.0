@@ -49,6 +49,21 @@ def test_ones_you_say_arent_the_same_stop_being_asked_about(app: App) -> None:
     assert len(app.do("duplicates")["groups"]) == 1
 
 
+def test_a_suggestion_asked_about_anyway_doesnt_break_the_check_for_copies(app: App) -> None:
+    """29 Oct: copies failed to load ('int' object is not iterable): "Add anyway" kept a suggestion's id under the
+    same key as the pairs kept apart. Both are kept now, and an old single id there is read as asked about anyway."""
+    from friday.commands.duplicates import restored  # noqa: PLC0415
+
+    ids = [add(app, "Reading"), add(app, "Reading")]
+    app.conn.execute("INSERT INTO kv (user_id, key, value) VALUES (1, 'not_duplicates', '[2490]')")  # as it was saved
+    assert len(app.do("duplicates")["groups"]) == 1
+    app.do("not_duplicates", ids=ids)
+    assert app.do("duplicates")["groups"] == []
+    assert restored(app.conn, 1) == {2490}
+    app.conn.execute("INSERT INTO kv (user_id, key, value) VALUES (1, 'suggestions_restored', '[7]')")
+    assert restored(app.conn, 1) == {2490, 7}
+
+
 def test_going_over_what_friday_brought_in_again(app: App) -> None:
     home = calendar("home", "Home")
     due = [mac_event(f"d{n}", "home", f"PS {n} due", f"2026-10-2{n}T23:59", f"2026-10-2{n}T23:59") for n in (2, 3)]

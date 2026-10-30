@@ -23,7 +23,7 @@ from friday.api.commands import (
 )
 from friday.api.types import Empty
 from friday.api.views import DocumentOut, InboxOut, SetAsideOut, SourceOut, SuggestionOut
-from friday.commands.duplicates import set_aside_waiting
+from friday.commands.duplicates import RESTORED, set_aside_waiting
 from friday.commands.items import add, drop, edit, find_item, guessed_minutes
 from friday.commands.registry import Ctx, command, query
 from friday.commands.series import attach_to_series, imported_fields
@@ -198,8 +198,8 @@ def suggestion_restore(ctx: Ctx, inp: SuggestionInput) -> Changed:
     if found is None or found["status"] != "superseded":
         raise FieldError("id", f"no suggestion {inp.id} set aside")
     ctx.db.update("suggestions", {"id": inp.id}, {"status": "pending", "duplicate_of": None})
-    kept = [*(kv_get(ctx.conn, "not_duplicates", [], ctx.user_id) or []), inp.id]
-    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "not_duplicates"}, {"value": json.dumps(kept)})
+    kept = [*(kv_get(ctx.conn, RESTORED, [], ctx.user_id) or []), inp.id]
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": RESTORED}, {"value": json.dumps(kept)})
     return Changed(message="Back in your inbox")
 
 

@@ -30,7 +30,9 @@ from friday.planner.store import kv_get
 def duplicates(ctx: Ctx, inp: Empty) -> DuplicatesOut:
     """Open tasks that look like copies of each other, with the one Friday would keep."""
     rules = ctx.settings["text"].rules()
-    apart = {tuple(sorted(ids)) for ids in kv_get(ctx.conn, "not_duplicates", [], ctx.user_id)}
+    # Pairs kept apart. The key once held suggestions asked about anyway too, single ids, which aren't pairs.
+    found_apart = kv_get(ctx.conn, "not_duplicates", [], ctx.user_id) or []
+    apart = {tuple(sorted(ids)) for ids in found_apart if isinstance(ids, list)}
     found = rows(
         ctx.conn,
         "SELECT * FROM items WHERE user_id = ? AND status = 'todo' AND when_kind != 'fixed' AND series_id IS NULL "
