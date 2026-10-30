@@ -198,6 +198,12 @@ def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
     calendar = link.calendar if link else going_to(ctx, item.id)
     category = category_of(item.title, ctx.settings["categories"]) or guessed_category(ctx, item.title)
     reason = left_out(item.title, calendar, item.free, ctx.settings["categories"], ctx.settings["busy"])
+    # one you said you're not going to (30 Oct: "when i click an event (like salsa) it should give me the option to
+    # skip"): on your calendar still, its time Friday's to plan; an all-day one never blocked time
+    start, end = ctx.local(item.start_utc), ctx.local(item.end_utc)
+    all_day = bool(start and end and start.endswith("T00:00") and end.endswith("T00:00"))
+    if not reason and not item.blocks_time and not all_day:
+        reason = "skipped"
     if "chroma_colors" not in ctx.memo:
         ctx.memo["chroma_colors"] = kv_get(ctx.conn, "chroma_colors", {}, ctx.user_id) or {}
     return {

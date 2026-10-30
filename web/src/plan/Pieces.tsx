@@ -164,9 +164,10 @@ interface FixedProps {
   tried?: TriedLook
   onResize?: (e: React.PointerEvent, edge: "top" | "bottom") => void // none: it can't be stretched here
   onGrab?: (e: React.PointerEvent) => void // none: it can't be moved here
+  aside?: boolean // one you're skipping: a tab at the side of its time, over the work that takes it
 }
 
-export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, onGrab }: FixedProps) {
+export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, onGrab, aside }: FixedProps) {
   const it = p.item
   const { skinOf, light } = useLook()
   const base = skinOf(it.event_kind === "shove" ? "shove" : "fixed", it.area)
@@ -176,8 +177,9 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
   const paint = eventPaint(it, light)
   const painted = it.event_kind === "shove" ? base : { ...base, bg: wash(paint, light), stripe: paint, fg: "var(--color-text)", sub: "var(--color-neutral-400)" }
   // An optional event the plan gives to work (gym, climbing club) is one you're skipping: drawn as skipped, faint and
-  // struck through, under the work that takes its time, rather than as if you were going (27 Oct).
-  const skipped = !!it.gives_way_to
+  // struck through, under the work that takes its time, rather than as if you were going (27 Oct); so is one you said
+  // you're not going to (30 Oct).
+  const skipped = !!it.gives_way_to || it.left_out === "skipped"
   // An event whose time is for a task holds the task's block: drawn as a frame round it, dashed (planner/holds.py).
   const holds = !!it.holds
   const s =
@@ -217,13 +219,16 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
         overflow: typing ? "visible" : "hidden",
         userSelect: "none",
         cursor: "pointer",
-        ...(skipped ? { opacity: 0.6 } : {}),
+        ...(skipped && !aside ? { opacity: 0.6 } : {}),
+        ...(aside ? { left: "auto", right: 3, width: "min(max(34%, 76px), calc(100% - 6px))", background: "var(--color-surface)", zIndex: 3 } : {}),
         ...(typing ? { zIndex: 5 } : {}),
         ...(picked ? { boxShadow: "0 0 0 2px var(--color-accent)", zIndex: 2 } : {}),
       }}
       title={
-        skipped
+        it.gives_way_to
           ? `Skipping ${it.title}: ${it.gives_way_to} needs the time. Click to go anyway.`
+          : skipped
+            ? `Not going to ${it.title}: Friday can plan work over it. Click to go after all.`
           : holds
             ? `${it.title}: time for ${(it.holds as { title: string }).title}`
             : undefined
@@ -244,7 +249,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
       {tall && (
         <TimeLine color={s.sub} time={time}>
           {clock(it.start)}–{clock(it.end)}
-          {skipped ? " · skipping for work" : it.location ? ` · ${it.location}` : ""}
+          {it.gives_way_to ? " · skipping for work" : skipped ? " · not going" : it.location ? ` · ${it.location}` : ""}
         </TimeLine>
       )}
       {onResize && !typing && <Edges length={minutes(it)} onResize={onResize} />}
@@ -369,6 +374,7 @@ export const LEFT_OUT: Record<string, string> = {
   reminder: "a reminder that something is due",
   free: "marked free",
   filtered: "the filter's office hours",
+  skipped: "you're not going",
 }
 
 export function GhostBox({ p }: { p: Placed<Block> }) {

@@ -301,34 +301,42 @@ function acting(action: Action, t: number, on: number | undefined, mood: Mood): 
       break
     }
     case "tv": {
-      // back in the sofa, the laptop on the lap, ankles crossed, an arm along the sofa's back, a hand on the
-      // laptop; now and then a laugh, slowly
+      // back in the sofa, the laptop on the lap, ankles crossed, both hands resting on it (30 Oct: "his hands
+      // should be on the laptop... right now his hands are just suspended"): on its keys while it's open, on its
+      // shut lid when the evening's all theirs (a quarter inch higher, a little nearer); now and then a laugh,
+      // in the head and shoulders only, so the hands stay put. The angles put the hands on it (worked out against
+      // this body, the laptop where update() sets it)
       p.lean = -0.3
       p.legX = [-1.48, -1.48]
       p.legZ = [-0.07, 0.07]
       p.knee = [1.15, 1.15]
-      p.armX = [-0.3, -0.62]
-      p.armZ = [0.75, 0.0]
-      p.elbow = [-0.55, -0.95]
+      const lid = Math.max(0, Math.min(1, mood.lid ?? 1))
+      const scroll = lid * span(cycle(t, 7), 2, 4.5, 0.4) * Math.sin(t * 5) * 0.03 // a finger on the trackpad
+      p.armX = [-0.22 - lid * 0.06, -0.22 - lid * 0.06]
+      p.armZ = [0.04, -0.04]
+      p.elbow = [-0.78 + lid * 0.24, -0.78 + lid * 0.24 + scroll]
+      p.elbowIn = [-0.7 - lid * 0.06, 0.7 + lid * 0.06]
       const laugh = span(cycle(t, 9), 5.5, 7.0, 0.5)
-      p.lean -= laugh * 0.08
-      p.headX = -0.04 - laugh * 0.18
+      p.lean -= laugh * 0.03
+      p.headX = -0.04 - laugh * 0.2
       p.headY = 0.05 + Math.sin(t * 0.3) * 0.06
       p.eyes = laugh > 0.6 ? 0.3 : 1
       break
     }
     case "laptop": {
-      // the laptop on the lap: hands on its keys, the head down at its screen, now and then sitting back to read
+      // the laptop on the lap: hands on its keys, elbows at the sides and the forearms in to them, the head down at
+      // its screen, now and then lifting it to read (the shoulders stay, so the hands stay on the keys)
       const c = cycle(t, 8)
       const read = span(c, 5, 7.4, 0.6)
-      p.lean = -0.05 - read * 0.12
-      p.headX = 0.45 - read * 0.12
+      p.lean = -0.05
+      p.headX = 0.45 - read * 0.2
       p.legX = [-1.48, -1.48]
       p.knee = [1.3, 1.3]
       p.legZ = [0.04, -0.04]
-      p.armX = [-0.62, -0.62]
-      p.armZ = [-0.02, 0.02]
-      p.elbow = [-0.62 + Math.sin(t * 9) * 0.02 * (1 - read), -0.62 + Math.sin(t * 9 + 1.8) * 0.02 * (1 - read)]
+      p.armX = [-0.1, -0.1]
+      p.armZ = [0.04, -0.04]
+      p.elbow = [-1.15 + Math.sin(t * 9) * 0.03 * (1 - read), -1.15 + Math.sin(t * 9 + 1.8) * 0.03 * (1 - read)]
+      p.elbowIn = [-0.74, 0.74]
       break
     }
     case "picnic": {

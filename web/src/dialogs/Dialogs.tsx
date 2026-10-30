@@ -161,22 +161,27 @@ export function briefDue(today: string): boolean {
 }
 
 /** An event you could skip (personal's Going | Skip switch, large): skipping keeps it on your calendar and only stops
- * it blocking time; Going means Friday stops asking about it. */
-function SkipRow({ option, on, onToggle, onGoing }: { option: Schemas["TriageOption"]; on: boolean; onToggle: () => void; onGoing: () => void }) {
+ * it blocking time; Going means Friday stops asking about it. Either happens at once and says so on the row (30 Oct:
+ * "when it says skip salsa... and it says going/skip, neither of those buttons work": Going waited on the options
+ * being worked out again, and Skip only marked it for Apply). */
+type Said = "working" | "skipped" | "going"
+function SkipRow({ option, said, onSkip, onGoing }: { option: Schemas["TriageOption"]; said?: Said; onSkip: () => void; onGoing: () => void }) {
   return (
-    <div className="fr-hover" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 12, alignItems: "center", padding: 12, borderRadius: "var(--radius-md)", background: on ? "color-mix(in srgb, var(--color-accent) 10%, transparent)" : undefined }}>
+    <div className="fr-hover" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 12, alignItems: "center", padding: 12, borderRadius: "var(--radius-md)", background: said === "skipped" ? "color-mix(in srgb, var(--color-accent) 10%, transparent)" : undefined, opacity: said === "going" ? 0.6 : 1 }}>
       <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
         <span style={{ fontWeight: 500 }}>{option.action}</span>
-        <span style={{ fontSize: 12, color: "var(--color-neutral-400)", textWrap: "pretty" }}>{option.side_effects?.join("; ")}</span>
+        <span style={{ fontSize: 12, color: "var(--color-neutral-400)", textWrap: "pretty" }}>
+          {said === "going" ? "You’re going: Friday won’t suggest skipping it again" : said === "skipped" ? "Skipped: it stays on your calendar, and Friday plans work over it" : option.side_effects?.join("; ")}
+        </span>
       </span>
       <span className="tnum" style={{ fontSize: 13, fontWeight: 500, color: "var(--color-accent-300)", whiteSpace: "nowrap" }}>
         −{option.late_hours_saved} h
       </span>
       <span className="fr-seg big" role="group" aria-label={`Going to ${option.skip_title}?`}>
-        <button aria-pressed={false} onClick={onGoing} title="You go to it: Friday stops suggesting it">
+        <button aria-pressed={said === "going"} onClick={onGoing} disabled={!!said} title="You go to it: Friday stops suggesting it">
           Going
         </button>
-        <button aria-pressed={on} onClick={onToggle}>
+        <button aria-pressed={said === "skipped"} onClick={onSkip} disabled={!!said} title="Skip it this time: it stays on your calendar">
           Skip
         </button>
       </span>
@@ -190,10 +195,19 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
   const client = useQueryClient()
   const toast = useToast()
   const [chosen, setChosen] = useState<string[]>([])
+  const [said, setSaid] = useState<Record<string, Said>>({}) // the events answered, by option
+  const say = (action: string, to: Said | null) =>
+    setSaid((was) => {
+      const next = { ...was }
+      if (to) next[action] = to
+      else delete next[action]
+      return next
+    })
   const data = triage.data
   const late = data ? Object.values(data.late).reduce((s, h) => s + h, 0) : 0
   const options = data?.options ?? []
-  const saved = Math.min(late, options.filter((o) => chosen.includes(o.action)).reduce((s, o) => s + o.late_hours_saved, 0))
+  const counted = options.filter((o) => chosen.includes(o.action) || said[o.action] === "skipped")
+  const saved = Math.min(late, counted.reduce((s, o) => s + o.late_hours_saved, 0))
   const best = options.reduce<Schemas["TriageOption"] | null>((b, o) => (!b || o.late_hours_saved > b.late_hours_saved ? o : b), null)
   // An option may take several commands (a night override per day); they apply, and undo, together.
   const apply = async () => {
@@ -214,11 +228,36 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
     onClose()
   }
   const toggle = (a: string) => setChosen(chosen.includes(a) ? chosen.filter((x) => x !== a) : [...chosen, a])
-  // "I'm going": never offered again (COMBINED.md 56).
+  // "I'm going": never offered again (COMBINED.md 56). Said on the row at once; the options are worked out again
+  // behind it.
   const going = async (o: Schemas["TriageOption"]) => {
-    setChosen(chosen.filter((x) => x !== o.action))
-    await command("event_going", { title: o.skip_title as string })
+    say(o.action, "going")
+    try {
+      const out = await command("event_going", { title: o.skip_title as string })
+      toast({ message: out.result.message ?? `Won’t suggest skipping ${o.skip_title}` })
+    } catch (error) {
+      say(o.action, null)
+      toast({ message: error instanceof Error ? error.message : String(error), tone: "error" })
+    }
     client.invalidateQueries({ queryKey: ["triage"] })
+  }
+  // Skipping it this time: done at once, with an undo.
+  const skip = async (o: Schemas["TriageOption"]) => {
+    say(o.action, "working")
+    const ids: number[] = []
+    try {
+      for (const step of o.steps) {
+        const out = await command(step.command as CommandName, step.input as never)
+        if (out.command_id != null) ids.push(out.command_id)
+      }
+    } catch (error) {
+      say(o.action, null)
+      toast({ message: error instanceof Error ? error.message : String(error), tone: "error" })
+      return undoAll(client, toast, ids)
+    }
+    say(o.action, "skipped")
+    toast({ message: `${o.action}: it stays on your calendar`, action: { label: "Undo", run: () => (say(o.action, null), undoAll(client, toast, ids)) } })
+    client.invalidateQueries({ queryKey: ["plan"] })
   }
   return (
     <Modal onClose={onClose}>
@@ -237,7 +276,7 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div className="tnum" style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
             <span style={{ color: "var(--color-neutral-300)" }}>{late.toFixed(1)} h late now</span>
-            <span style={{ color: saved >= late ? "var(--color-accent-300)" : "var(--fr-warn)" }}>{chosen.length ? `${(late - saved).toFixed(1)} h late after these` : "Pick what gives"}</span>
+            <span style={{ color: saved >= late ? "var(--color-accent-300)" : "var(--fr-warn)" }}>{counted.length ? `${(late - saved).toFixed(1)} h late after these` : "Pick what gives"}</span>
           </div>
           <div style={{ position: "relative", height: 8, borderRadius: 4, background: "color-mix(in srgb, var(--color-text) 8%, transparent)", overflow: "hidden" }}>
             <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${(saved / late) * 100}%`, background: saved >= late ? "var(--color-accent)" : "var(--fr-warn)" }} />
@@ -252,7 +291,7 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
           </span>
           {options.map((o) =>
             o.skip_title ? (
-              <SkipRow key={o.action} option={o} on={chosen.includes(o.action)} onToggle={() => toggle(o.action)} onGoing={() => going(o)} />
+              <SkipRow key={o.action} option={o} said={said[o.action]} onSkip={() => skip(o)} onGoing={() => going(o)} />
             ) : (
             <button
               key={o.action}

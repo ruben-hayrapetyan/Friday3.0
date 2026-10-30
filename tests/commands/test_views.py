@@ -156,6 +156,21 @@ def test_an_event_says_its_category_and_whether_it_counts_as_busy(tmp_path: Path
     assert app.do("events", text="office")[0]["left_out"] is None
 
 
+def test_an_event_you_skip_says_so_and_going_after_all_gives_it_back(tmp_path: Path) -> None:
+    # 30 Oct: "when i click an event (like salsa) it should give me the option to skip": skipping it keeps it on your
+    # calendar and its time Friday's (blocks_time off), and the calendar draws it as skipped; an all-day one, which
+    # never blocked time, isn't skipped.
+    app = new_app(tmp_path)
+    salsa = app.do("add", title="Salsa", when="fixed", start="2026-10-21T19:00", end="2026-10-21T21:00")["item"]["id"]
+    app.do("add", title="Fall break", when="fixed", start="2026-10-21T00:00", end="2026-10-22T00:00", blocks_time=False)
+    assert app.do("events", text="salsa")[0]["left_out"] is None
+    app.do("edit", id=salsa, blocks_time=False)
+    assert app.do("events", text="salsa")[0]["left_out"] == "skipped"
+    assert app.do("events", text="fall break")[0]["left_out"] is None
+    app.do("edit", id=salsa, blocks_time=True)
+    assert app.do("events", text="salsa")[0]["left_out"] is None
+
+
 def test_events_left_out_block_no_time_when_planning(tmp_path: Path) -> None:
     from friday.core.items import Item
     from friday.core.settings import DEFAULTS

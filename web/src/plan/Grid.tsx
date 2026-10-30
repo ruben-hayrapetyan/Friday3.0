@@ -14,7 +14,7 @@ import { moveBlock, retimeEvent } from "@/hooks/useDrop"
 import { useGhosts, useItems, useNow, useStatus } from "@/hooks/queries"
 import { movedSince } from "@/lib/drag"
 import { clock, hms, weekday, when } from "@/lib/format"
-import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, type Span, toMin } from "@/lib/time"
+import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, type Placed, type Span, toMin } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
 import { useLook } from "@/theme/LookProvider"
 import { draftAt, draftOf } from "@/shell/EventPane"
@@ -68,8 +68,9 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const fixed = timed.filter((f) => !allDay.includes(f)) // what you toggled off is already gone (plan/shown.ts)
   // An optional event the plan gives to work is one you're skipping: it sits behind, full width, out of the way of
   // the events beside it, rather than take a column from them (27 Oct).
-  const going = fixed.filter((f) => !f.gives_way_to)
-  const skipped = fixed.filter((f) => f.gives_way_to)
+  const isSkipped = (f: Item) => !!f.gives_way_to || f.left_out === "skipped" // or one you're not going to
+  const going = fixed.filter((f) => !isSkipped(f))
+  const skipped = fixed.filter(isSkipped)
   // An event whose time is for a task, by the task: its blocks in that time are drawn inside it (planner/holds.py).
   const holders = new Map(fixed.filter((f) => f.holds).map((f) => [(f.holds as { id: number }).id, f]))
   const holderOf = (b: Block) => {
@@ -127,6 +128,39 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
         {dates.map((date) => {
           const dues = lanes ? calendar.dues.filter((d) => d.due.startsWith(date)) : []
           const lane = dues.length ? (dates.length === 1 ? "280px" : "44%") : "0px"
+          // An event you're going to, under the work; one you're skipping (or that work takes), over it, at the side,
+          // where it can still be clicked to go after all (30 Oct)
+          const fixedBox = (p: Placed<Item & { start: string; end: string }>, aside = false) => (
+            <FixedBox
+              aside={aside}
+              key={`f${p.item.id}`}
+              p={p}
+              tried={lookOf(p.item.id)}
+              picked={pickedKeys.has(`F${p.item.id}`)}
+              onOpen={(e) =>
+                justDragged()
+                  ? undefined
+                  : multi(e) && !tried && p.item.event_kind !== "shove"
+                  ? (picks.toggle(pickOfEvent(p.item), selectedPick()), select(null))
+                  : (picks.clear(),
+                    lookOf(p.item.id) === "gone"
+                      ? bringBack(p.item.id)
+                      : tried && whatIf.madeBy(p.item.id) !== null
+                        ? (select(null), setEvent(draftOf(p.item)))
+                        : select(asBlock(p.item)))
+              }
+              onEdit={p.item.event_kind === "shove" ? undefined : () => (select(null), setEvent(draftOf(p.item)))}
+              retime={{ begin: () => select(null), save: (span) => retime.event(p.item, span) }}
+              // It moves, and its edges stretch it, as a block's do (29 Oct); a picked one takes the others picked
+              // with it. One skipped for work, or deleted in What if, stays put.
+              onGrab={
+                stays(p.item)
+                  ? undefined
+                  : (e) => (letGo(p.item), begin(e, { ...grabbedEvent(p.item, "move", minuteAt(e)), group: pickedKeys.has(`F${p.item.id}`) && picked.length > 1 }))
+              }
+              onResize={stays(p.item) ? undefined : (e, edge) => (letGo(p.item), begin(e, grabbedEvent(p.item, edge === "top" ? "resize-top" : "resize", minuteAt(e))))}
+            />
+          )
           return (
             <div
               key={date}
@@ -153,38 +187,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
             >
               {dues.length > 0 && <DueLane dues={dues} stickyTop={headHeight} narrow={dates.length > 1} />}
               <Nights date={date} days={days} axis={axis} />
-              {[...layout(skipped, date, axis), ...layout(going, date, axis)].map((p) => (
-                // One click shows it in the popover, as a block shows; a double-click opens it in the drawer, or, on its
-                // time, lets you type a new one there.
-                <FixedBox
-                  key={`f${p.item.id}`}
-                  p={p}
-                  tried={lookOf(p.item.id)}
-                  picked={pickedKeys.has(`F${p.item.id}`)}
-                  onOpen={(e) =>
-                    justDragged()
-                      ? undefined
-                      : multi(e) && !tried && p.item.event_kind !== "shove"
-                      ? (picks.toggle(pickOfEvent(p.item), selectedPick()), select(null))
-                      : (picks.clear(),
-                        lookOf(p.item.id) === "gone"
-                          ? bringBack(p.item.id)
-                          : tried && whatIf.madeBy(p.item.id) !== null
-                            ? (select(null), setEvent(draftOf(p.item)))
-                            : select(asBlock(p.item)))
-                  }
-                  onEdit={p.item.event_kind === "shove" ? undefined : () => (select(null), setEvent(draftOf(p.item)))}
-                  retime={{ begin: () => select(null), save: (span) => retime.event(p.item, span) }}
-                  // It moves, and its edges stretch it, as a block's do (29 Oct); a picked one takes the others picked
-                  // with it. One skipped for work, or deleted in What if, stays put.
-                  onGrab={
-                    stays(p.item)
-                      ? undefined
-                      : (e) => (letGo(p.item), begin(e, { ...grabbedEvent(p.item, "move", minuteAt(e)), group: pickedKeys.has(`F${p.item.id}`) && picked.length > 1 }))
-                  }
-                  onResize={stays(p.item) ? undefined : (e, edge) => (letGo(p.item), begin(e, grabbedEvent(p.item, edge === "top" ? "resize-top" : "resize", minuteAt(e))))}
-                />
-              ))}
+              {layout(going, date, axis).map((p) => fixedBox(p))}
               {event && !event.allDay && layout([event], date, axis).map((p) => <DraftBox key="draft" p={p} title={event.title} />)}
               {layout([...shown, ...sessions], date, axis).map((p) => (
                 <BlockBox
@@ -212,6 +215,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                   retime={{ begin: () => select(null), save: (span) => retime.block(p.item, span) }}
                 />
               ))}
+              {layout(skipped, date, axis).map((p) => fixedBox(p, true))}
               {layout(news, date, axis).map((p) => (
                 <GhostBox key={`g${p.item.key}`} p={p} />
               ))}

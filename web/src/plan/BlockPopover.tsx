@@ -80,6 +80,10 @@ export function BlockPopover() {
   const deleteSeries = useCommand("series_delete", { label: (o) => o.result.message ?? "Deleted" })
   const repeat = useCommand("repeat", { label: (o) => `${b?.title} repeats ${o.result.description.replace(/^Every/, "every")}` })
   const keep = useCommand("event_keep", { label: (o) => o.result.message })
+  // Not going to an event this time (30 Oct: "when i click an event (like salsa) it should give me the option to
+  // skip"): it stays on your calendar, and its time is Friday's to plan; going after all gives it back
+  const notGoing = useCommand("edit", { label: (o) => `Not going to ${o.result.item.title}: Friday can plan work over it` })
+  const goingAfterAll = useCommand("edit", { label: (o) => `Going to ${o.result.item.title}` })
   const client = useQueryClient()
   const pattern = useSeriesPattern(detail?.item.series_id)
   const [asking, setAsking] = useState(false)
@@ -259,7 +263,19 @@ export function BlockPopover() {
               Unlock
             </button>
           )}
-          {item?.series_id != null && !asking && (
+          {event && event.event_kind !== "shove" && event.left_out === "skipped" && (
+            <button className="btn btn-secondary" onClick={run(() => goingAfterAll({ id: event.id, blocks_time: true }))} title="Its time is yours again: work keeps off it">
+              <Icon name="check" />
+              Going after all
+            </button>
+          )}
+          {event && event.event_kind !== "shove" && !event.left_out && !event.gives_way_to && (
+            <button className="btn btn-secondary" onClick={run(() => notGoing({ id: event.id, blocks_time: false }))} title="Not going this time: it stays on your calendar, and Friday can plan work over it">
+              <Icon name="skip-forward" />
+              Skip it
+            </button>
+          )}
+          {item?.series_id != null && !event && !asking && (
             <button className="btn btn-ghost" onClick={run(() => skip({ id: b.item_id }))}>
               <Icon name="skip-forward" />
               Skip this one
