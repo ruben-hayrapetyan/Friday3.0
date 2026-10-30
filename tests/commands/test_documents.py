@@ -60,17 +60,21 @@ def test_the_same_file_again_says_what_became_of_it(app: App) -> None:
     )
     raw = app.table("raw_inputs")[-1]["id"]
     app.conn.execute("UPDATE raw_inputs SET status = 'extracted' WHERE id = ?", [raw])
-    for status in ("pending", "superseded", "superseded"):
+    item = app.do("add", title="Psych WA8", preset="Assignment")["item"]["id"]
+    for status, same in (("pending", None), ("superseded", item), ("superseded", None)):
         app.conn.execute(
-            "INSERT INTO suggestions (user_id, raw_input_id, command, input, status, created_utc) "
-            "VALUES (1, ?, 'add', '{}', ?, '2026-10-19T13:00Z')",
-            [raw, status],
+            "INSERT INTO suggestions (user_id, raw_input_id, command, input, status, duplicate_of, created_utc) "
+            "VALUES (1, ?, 'add', '{}', ?, ?, '2026-10-19T13:00Z')",
+            [raw, status, same],
         )
+    # the last set aside for the same thing waiting from a calendar (30 Oct: all five of a syllabus's were)
+    twin = app.table("suggestions")[-1]["id"]
+    app.conn.execute("INSERT INTO kv (user_id, key, value) VALUES (1, 'set_aside_twins', ?)", [f'{{"{twin}": 1}}'])
     out = app.do("document_add", name="Psych (1).txt", content="WA8 due Friday.")
-    said = "You uploaded Psych (1).txt already: it found 3: 1 waiting in your Inbox, 2 you have already"
-    assert out["message"] == said
+    said = "it found 3: 1 waiting in your Inbox, 1 you have already, 1 in your Inbox from elsewhere"
+    assert out["message"] == f"You uploaded Psych (1).txt already: {said}"
     (doc,) = app.do("documents")
-    assert (doc["found"], doc["waiting"], doc["aside"]) == (3, 1, 2)
+    assert (doc["found"], doc["waiting"], doc["aside"], doc["elsewhere"]) == (3, 1, 1, 1)
     assert len(app.table("raw_inputs")) == 1
 
 

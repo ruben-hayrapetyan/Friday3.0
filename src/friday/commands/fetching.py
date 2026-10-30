@@ -45,9 +45,11 @@ def sync(
     if settings["time"].timezone is None:
         return 0
     feeds_from_config(conn, settings, user_id)
+    # What you uploaded first: you're waiting on it (30 Oct: a syllabus uploaded in setup waited five minutes behind
+    # a new user's first read of every calendar on the Mac).
+    made = extract_pending(conn, settings, now_utc, user_id, client, kinds=("upload",))
     forced = kv_get(conn, "sync_now", None, user_id) is not None
     conn.execute("DELETE FROM kv WHERE user_id = ? AND key = 'sync_now'", [user_id])
-    made = 0
     for source in rows(conn, "SELECT * FROM sources WHERE user_id = ? AND enabled = 1 AND kind = 'ics'", [user_id]):
         last = parse_utc(source["last_sync_utc"]) if source["last_sync_utc"] else None
         if forced or last is None or now_utc - last >= settings["ingest"].poll_min:
@@ -287,13 +289,20 @@ def read_feed(
     return take(conn, source, read, settings, now_utc, user_id, None, client)
 
 
-def extract_pending(conn: sqlite3.Connection, settings: dict, now_utc: int, user_id: int, client: Any | None) -> int:
-    """Documents and mail waiting to be read, while the day's budget lasts."""
+def extract_pending(
+    conn: sqlite3.Connection,
+    settings: dict,
+    now_utc: int,
+    user_id: int,
+    client: Any | None,
+    kinds: tuple[str, ...] = ("upload", "gmail"),
+) -> int:
+    """Documents and mail waiting to be read (of these kinds of source), while the day's budget lasts."""
     pending = rows(
         conn,
-        "SELECT r.*, s.kind, s.name AS source, s.trusted FROM raw_inputs r JOIN sources s ON "
-        "s.id = r.source_id WHERE r.user_id = ? AND r.status = 'new' AND s.kind IN ('upload', 'gmail') ORDER BY r.id",
-        [user_id],
+        "SELECT r.*, s.kind, s.name AS source, s.trusted FROM raw_inputs r JOIN sources s ON s.id = r.source_id "
+        f"WHERE r.user_id = ? AND r.status = 'new' AND s.kind IN ({', '.join('?' for _ in kinds)}) ORDER BY r.id",
+        [user_id, *kinds],
     )
     if not pending:
         return 0

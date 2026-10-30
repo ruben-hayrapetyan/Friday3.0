@@ -135,32 +135,38 @@ def became(ctx: Ctx, raw: dict) -> str:
     """What an uploaded document came to, in a few words: still being read, or what it found and where that went."""
     if raw["status"] == "new":
         return "it's still being read"
-    count = {
-        s["status"]: s["n"]
-        for s in rows(
-            ctx.conn,
-            "SELECT status, count(*) AS n FROM suggestions WHERE raw_input_id = ? GROUP BY status",
-            [raw["id"]],
-        )
-    }
-    found = sum(count.values())
+    twins = dict(kv_get(ctx.conn, "set_aside_twins", {}, ctx.user_id) or {})
+    found = rows(ctx.conn, "SELECT id, status, duplicate_of FROM suggestions WHERE raw_input_id = ?", [raw["id"]])
     if not found:
         return "it was read, and had nothing to plan in it"
-    parts = [f"{count[k]} {say}" for k, say in [("pending", "waiting in your Inbox"), ("accepted", "added"),
-             ("superseded", "you have already"), ("rejected", "turned down")] if count.get(k)]  # fmt: skip
-    return f"it found {found}: " + ", ".join(parts)
+
+    def count(test: Any) -> int:
+        return sum(1 for s in found if test(s))
+
+    parts = [
+        (count(lambda s: s["status"] == "pending"), "waiting in your Inbox"),
+        (count(lambda s: s["status"] == "accepted"), "added"),
+        (count(lambda s: s["status"] == "superseded" and s["duplicate_of"] is not None), "you have already"),
+        (count(lambda s: s["status"] == "superseded" and str(s["id"]) in twins), "in your Inbox from elsewhere"),
+        (count(lambda s: s["status"] == "rejected"), "turned down"),
+    ]
+    return f"it found {len(found)}: " + ", ".join(f"{n} {say}" for n, say in parts if n)
 
 
 @query("documents")
 def documents(ctx: Ctx, inp: Empty) -> list[DocumentOut]:
     """Every syllabus or handout you uploaded, newest first: read or not (and why), and what it found."""
+    twins = dict(kv_get(ctx.conn, "set_aside_twins", {}, ctx.user_id) or {})  # set aside for the same one waiting
     out = []
     for r in rows(
         ctx.conn,
         "SELECT r.*, (SELECT count(*) FROM suggestions s WHERE s.raw_input_id = r.id) AS found, "
         "(SELECT count(*) FROM suggestions s WHERE s.raw_input_id = r.id AND s.status = 'pending') AS waiting, "
         "(SELECT count(*) FROM suggestions s WHERE s.raw_input_id = r.id AND s.status = 'accepted') AS accepted, "
-        "(SELECT count(*) FROM suggestions s WHERE s.raw_input_id = r.id AND s.status = 'superseded') AS aside "
+        "(SELECT count(*) FROM suggestions s WHERE s.raw_input_id = r.id AND s.status = 'superseded' "
+        "AND s.duplicate_of IS NOT NULL) AS aside, "
+        "(SELECT group_concat(s.id) FROM suggestions s WHERE s.raw_input_id = r.id AND s.status = 'superseded' "
+        "AND s.duplicate_of IS NULL) AS twins "
         "FROM raw_inputs r JOIN sources src ON src.id = r.source_id WHERE r.user_id = ? AND src.kind = 'upload' "
         "ORDER BY r.received_utc DESC, r.id DESC",
         [ctx.user_id],
@@ -179,6 +185,7 @@ def documents(ctx: Ctx, inp: Empty) -> list[DocumentOut]:
                 waiting=r["waiting"],
                 accepted=r["accepted"],
                 aside=r["aside"],
+                elsewhere=sum(1 for i in (r["twins"] or "").split(",") if i and i in twins),
             )
         )
     return out

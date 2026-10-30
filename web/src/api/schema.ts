@@ -3911,6 +3911,11 @@ export interface components {
              * @default 0
              */
             aside?: number;
+            /**
+             * Elsewhere
+             * @default 0
+             */
+            elsewhere?: number;
         };
         /** DocumentRetryResult */
         DocumentRetryResult: {

@@ -13322,6 +13322,11 @@
       "type": "integer",
       "title": "Aside",
       "default": 0
+     },
+     "elsewhere": {
+      "type": "integer",
+      "title": "Elsewhere",
+      "default": 0
      }
     },
     "additionalProperties": false,

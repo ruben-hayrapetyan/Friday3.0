@@ -339,7 +339,7 @@ export function documentSays(d: Schemas["DocumentOut"]): string {
   if (d.status === "failed") return `couldn't be read: ${d.error ?? "unknown error"}`
   if (d.status === "skipped") return "skipped"
   if (!d.found) return "read; nothing to plan in it"
-  const parts = [d.waiting && `${d.waiting} waiting in your Inbox`, d.accepted && `${d.accepted} added`, d.aside && `${d.aside} you have already`].filter(Boolean)
+  const parts = [d.waiting && `${d.waiting} waiting in your Inbox`, d.accepted && `${d.accepted} added`, d.aside && `${d.aside} you have already`, d.elsewhere && `${d.elsewhere} in your Inbox from a calendar`].filter(Boolean)
   return `found ${d.found}${parts.length ? ` · ${parts.join(" · ")}` : ""}`
 }
 
