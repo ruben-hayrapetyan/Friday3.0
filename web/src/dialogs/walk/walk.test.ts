@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { hazeColor, hourOf, lightAt, moonAt, skyColor, sunAt, timeStep } from "./sky"
-import { along, paceFor, reactionTo } from "./World"
+import { along, paceFor, reactionTo, shortest } from "./World"
 import { clockTime, GAP, minutesOf, placeZ, ROUTE, sideOf, STOPS } from "./stops"
 
 const ANSWERS = {
@@ -108,9 +108,7 @@ describe("walking", () => {
   it("speeds up, keeps a steady pace, slows down, and arrives exactly", () => {
     const length = 20
     const cruise = paceFor(length)
-    expect(cruise).toBeGreaterThan(1.4)
-    expect(cruise).toBeLessThanOrEqual(5.2)
-    const total = length / cruise + (0.55 + 0.7) / 2
+    const total = length / cruise + (0.4 + 0.5) / 2
     let last = 0
     let fastest = 0
     for (let t = 0; t <= total + 0.2; t += 0.05) {
@@ -124,26 +122,35 @@ describe("walking", () => {
     expect(along(0.1, length, cruise)).toBeLessThan(cruise * 0.1 * 0.5) // a gentle start
   })
 
-  it("strolls across a room and hurries up the street, never much over five seconds", () => {
-    expect(paceFor(3)).toBeLessThan(paceFor(30))
-    expect(30 / paceFor(30)).toBeLessThan(6)
-    expect(100 / paceFor(100)).toBeLessThan(20)
+  it("takes a few seconds at most, however far (30 Oct: walk less, faster)", () => {
+    for (const length of [2, 8, 15, 25, 30]) expect(length / paceFor(length) + 0.45).toBeLessThan(5)
+    expect(paceFor(3)).toBeLessThan(paceFor(25)) // a stroll across a room, a jog over the street
+  })
+
+  it("goes round the clock the near way when an answer moves the time", () => {
+    expect(shortest(23 * 60 + 30 - 0)).toBe(-30) // midnight to 11:30pm: back half an hour, not on through a day
+    expect(shortest(30 - (23 * 60 + 30))).toBe(60)
+    expect(shortest(90)).toBe(90)
   })
 })
 
 describe("what they do when you change an answer", () => {
   const was = { wake: "07:30", bedtime: "23:30", weekend_wake: "09:00", weekend_bedtime: "00:30", normal_hours: 6, most_hours: 9, focus_hours: 1.5, evening_free: 2, evening_from: "19:00", weekend_free: 4, finish_early_days: 1, brief: true, calendars: [] }
-  it("yawns at an earlier alarm and a later night, cheers at more of their time, gulps at more work", () => {
-    expect(reactionTo(was, { ...was, wake: "06:30" })).toBe("yawn")
-    expect(reactionTo(was, { ...was, wake: "08:30" })).toBe("cheer")
-    expect(reactionTo(was, { ...was, bedtime: "00:30" })).toBe("yawn") // past midnight is later
-    expect(reactionTo(was, { ...was, bedtime: "22:30" })).toBe("nod")
-    expect(reactionTo(was, { ...was, normal_hours: 9 })).toBe("gulp")
-    expect(reactionTo(was, { ...was, normal_hours: 4 })).toBe("relief")
-    expect(reactionTo(was, { ...was, evening_free: 4 })).toBe("cheer")
-    expect(reactionTo(was, { ...was, weekend_free: 0 })).toBe("gulp")
-    expect(reactionTo(was, { ...was, finish_early_days: 3 })).toBe("cheer")
-    expect(reactionTo(was, { ...was, brief: false })).toBe("shrug")
+  it("acts the answer out where it's asked, or has a moment's feeling about it", () => {
+    expect(reactionTo(was, { ...was, wake: "06:30" })?.kind).toBe("yawn")
+    expect(reactionTo(was, { ...was, wake: "08:30" })?.kind).toBe("cheer")
+    expect(reactionTo(was, { ...was, normal_hours: 9 })?.kind).toBe("stackRight") // a book onto the day's pile
+    expect(reactionTo(was, { ...was, normal_hours: 4 })?.kind).toBe("stackRight") // or off it
+    expect(reactionTo(was, { ...was, most_hours: 12 })?.kind).toBe("stackLeft")
+    expect(reactionTo(was, { ...was, focus_hours: 2 })?.kind).toBe("timer")
+    expect(reactionTo(was, { ...was, evening_free: 4 })?.kind).toBe("relax")
+    expect(reactionTo(was, { ...was, evening_free: 0 })).toBeNull() // the laptop comes out instead
     expect(reactionTo(was, { ...was })).toBeNull()
+  })
+
+  it("moves the essay's note to the day you'd have it done, Friday on the right", () => {
+    const on = (days: number) => reactionTo(was, { ...was, finish_early_days: days })
+    expect(on(0)?.kind).toBe("pin")
+    expect(on(0)?.aim ?? 0).toBeGreaterThan(on(3)?.aim ?? 0)
   })
 })

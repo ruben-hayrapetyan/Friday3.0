@@ -41,6 +41,27 @@ if grep -rqs "$REPO" "$PREFIX"/lib/python*/site-packages/*.pth; then
 fi
 echo "    $PREFIX"
 
+# A fresh install has no compiled planner, and fridayd's first start compiles it: over a minute, longer than the Mac
+# app waits before it says Friday didn't start (30 Oct: "my main friday is also not opening again"). So compile it
+# here, by planning a sample student's week in a throwaway folder, before Friday is restarted.
+warm() {
+  local dir port pid
+  dir="$(mktemp -d)"
+  port="$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
+  "$PREFIX/bin/fridayd" --data-dir "$dir" demo --port "$port" --case maya >/dev/null 2>&1 &
+  pid=$!
+  for _ in $(seq 1 480); do
+    curl -s --max-time 2 "127.0.0.1:$port/api/q/status" | grep -q '"plan_id":[0-9]' && break
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 0.5
+  done
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+  rm -r "$dir"
+}
+echo "==> Compiling the planner"
+warm
+
 if $RESTART && pgrep -f "fridayd serve$" >/dev/null; then
   echo "==> Restarting Friday"
   osascript -e 'quit app "Friday"' >/dev/null 2>&1 || true

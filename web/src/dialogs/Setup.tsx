@@ -249,19 +249,22 @@ const STEPS: Record<string, Step> = {
     control: (a, set) => <HourBar label="Of each weekend day" value={a.weekend_free} min={0} segments={ALL_WEEKEND} names={{ 0: "None", [ALL_WEEKEND]: "All of it" }} hue="var(--ob-free)" say={hoursLabel} onPick={(weekend_free) => set({ weekend_free })} />,
   },
   brief: {
-    title: () => "Start each day with a brief?",
-    note: () => "When you first open Friday each morning: what's planned, and what matters most.",
+    title: () => "Want a morning brief?",
+    note: () => "The first time you open Friday each day, one short page before your plan, like this. Change it any time in Settings.",
     control: (a, set) => (
-      <Choices
-        one
-        label="Morning brief"
-        value={a.brief ? "on" : "off"}
-        onPick={(v) => set({ brief: v === "on" })}
-        choices={[
-          { value: "on", title: "Yes, every morning", note: "A minute's read, then your plan." },
-          { value: "off", title: "No thanks", note: "Straight to your plan. It's in Settings if you change your mind." },
-        ]}
-      />
+      <div className="st-group">
+        <BriefExample on={a.brief} />
+        <Choices
+          one
+          label="Morning brief"
+          value={a.brief ? "on" : "off"}
+          onPick={(v) => set({ brief: v === "on" })}
+          choices={[
+            { value: "on", title: "Yes, every morning", note: "What matters today and when you'll do it, then your plan." },
+            { value: "off", title: "No thanks", note: "Straight to your plan." },
+          ]}
+        />
+      </div>
     ),
   },
   ai: {
@@ -540,6 +543,36 @@ function Reveal({ a, go }: { a: Answers; go: (step: string) => void }) {
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+/** What a morning brief looks like (30 Oct: "its unclear what the daily brief is"): a made-up Tuesday, in the same
+ * three parts the real one has. Faded when you say no. */
+function BriefExample({ on }: { on: boolean }) {
+  return (
+    <div className="wk-brief" data-off={!on || undefined} aria-label="An example morning brief">
+      <span className="wk-brief-day">Tuesday</span>
+      <b className="wk-brief-hello">Good morning</b>
+      <span className="wk-brief-head">What matters today</span>
+      <span className="wk-brief-row">
+        <i style={{ background: "var(--wk-work)" }} />
+        Problem set 6 <em>10:30–12:00</em>
+      </span>
+      <span className="wk-brief-row">
+        <i style={{ background: "var(--wk-work)" }} />
+        Essay draft <em>1:00–2:30</em>
+      </span>
+      <span className="wk-brief-head">Fixed today</span>
+      <span className="wk-brief-row">
+        <i style={{ background: "var(--wk-class)" }} />
+        Chem lecture <em>9:00</em>
+      </span>
+      <span className="wk-brief-head">Heads up</span>
+      <span className="wk-brief-row">
+        <i style={{ background: "var(--wk-gold)" }} />
+        Lab report: start by Thursday
+      </span>
     </div>
   )
 }

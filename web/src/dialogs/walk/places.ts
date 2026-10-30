@@ -8,7 +8,7 @@
 import * as THREE from "three"
 import type { Schemas } from "@/api/client"
 import type { Action, Mood } from "./character"
-import { ball, bake, block, cylinder, gable, M, panel, span } from "./props"
+import { ball, bake, block, cylinder, gable, M, meterUV, panel, span } from "./props"
 import { clockTime, minutesOf, type Place } from "./stops"
 import { Board, hash, random } from "./textures"
 
@@ -17,7 +17,7 @@ type Mat = THREE.Material
 
 export const FLOOR = 0.3 // a ground floor's level, a step up from the path
 export const T = 0.3 // walls
-export const FRONT = 9.5 // a building's front from the middle of the street
+export const FRONT = 8 // a building's front from the middle of the street
 export const SIDEWALK: [number, number] = [5.1, 6.9] // from the middle of the street
 const STOREY = 3.1
 
@@ -45,9 +45,91 @@ export interface Scene {
   yaw: number // which way they face (0: toward the street)
   action: Action
   seat?: number // what they sit on, when it isn't the usual height
-  bedding?: number
+  bed?: Bed // in bed: how they get in and out of it
   mood?: Mood // how your answers have them feeling there
   cam: Spot
+}
+
+/** A bed to get into: where they stand beside it, sit on its edge, lie and sit up (feet on the floor under the
+ * hips), facing which way, how high the mattress is, and its duvet with where it folds to. */
+export interface Bed {
+  side: THREE.Vector3
+  edge: THREE.Vector3
+  lie: THREE.Vector3
+  up: THREE.Vector3
+  yawEdge: number // sitting on the edge, facing away from the bed
+  yawIn: number // in it, feet to the foot of the bed
+  top: number
+  duvet: Duvet
+  closed: number // the duvet's fold, pulled up to the chest
+  waist: number // folded back to the waist, sitting up
+  open: number // thrown back, to get in or out
+}
+
+/** A duvet that folds back and is pulled up, puffed when someone's under it. In its bed's space: the head end toward
+ * -z, the mattress's top at `top`. `set(fold, full)`: where its top edge is (folded back over itself beyond `head`),
+ * and how much someone is under it. */
+export class Duvet {
+  readonly group = new THREE.Group()
+  fold: number
+  full = 0
+  private base: THREE.Mesh
+  private sides: THREE.Mesh[]
+  private flap: THREE.Mesh
+  private roll: THREE.Mesh
+  private width: number
+  private head: number
+  private foot: number
+  private top: number
+
+  constructor(width: number, head: number, foot: number, top: number, color: number) {
+    this.width = width
+    this.head = head
+    this.foot = foot
+    this.top = top
+    this.group.userData.live = true
+    const cloth = M.fabric(color)
+    const box = () => {
+      const mesh = new THREE.Mesh(meterUV(new THREE.BoxGeometry(1, 1, 1)), cloth)
+      mesh.castShadow = true
+      mesh.receiveShadow = true
+      this.group.add(mesh)
+      return mesh
+    }
+    this.base = box()
+    this.sides = [box(), box()]
+    this.flap = box()
+    this.roll = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 12).rotateZ(Math.PI / 2), cloth)
+    this.roll.castShadow = true
+    this.group.add(this.roll)
+    this.fold = head
+    this.set(head + 0.15, 0)
+  }
+
+  set(fold: number, full: number): void {
+    this.fold = fold
+    this.full = full
+    const th = 0.07 + full * 0.2
+    const length = this.foot - fold
+    const mid = (fold + this.foot) / 2
+    this.base.scale.set(this.width, th, length)
+    this.base.position.set(0, this.top + th / 2, mid)
+    this.sides.forEach((side, i) => {
+      side.scale.set(0.03, th + 0.16, length)
+      side.position.set((i ? 1 : -1) * (this.width / 2 + 0.015), this.top + th / 2 - 0.08, mid)
+    })
+    const back = Math.min(this.foot - 0.02, fold + (fold - this.head)) - fold // the part turned back over itself
+    const folded = back > 0.03
+    this.flap.visible = folded
+    this.roll.visible = folded
+    if (folded) {
+      this.flap.scale.set(this.width * 0.98, 0.05, back)
+      this.flap.position.set(0, this.top + th + 0.025, fold + back / 2)
+      const r = (th + 0.05) / 2
+      this.roll.scale.set(this.width * 0.98, r * 2, r * 2)
+      this.roll.position.set(0, this.top + r, fold)
+    }
+  }
 }
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
@@ -64,6 +146,16 @@ export interface Built {
   room: [number, number, number, number] | null // indoors: x0, z0, x1, z1
   show: (a: Answers) => void
   tick?: (seconds: number, minutes: number, step: string) => void
+  cue?: (name: string, seconds: number) => void // something the scene does now (the alarm going off)
+}
+
+/** How long a sitting is in the walk, in seconds, for `hours` of focus: the library's timer rings at the end of each. */
+export function sittingFor(hours: number): number {
+  return 5 + Math.min(4, hours) * 2.5
+}
+
+function ringingAt(seconds: number, hours: number): boolean {
+  return seconds % sittingFor(hours) < 1.2
 }
 
 // ---- walls, windows and doors ---------------------------------------------------------------------------------------
@@ -465,11 +557,16 @@ function dorm(): Built {
   const bed = new THREE.Group()
   bed.add(block(1.06, 0.36, 2.06, M.wood(0x9a7a5a), 0, 0, 0, 0.02))
   bed.add(block(1.0, 0.2, 2.0, M.fabric(0xf2efe8), 0, 0.36, 0, 0.05))
-  bed.add(block(1.04, 0.1, 1.45, M.fabric(0x3d5a7a), 0, 0.53, 0.3, 0.05))
-  bed.add(block(0.62, 0.13, 0.36, M.fabric(0xf6f3ee), 0, 0.56, -0.74, 0.06))
+  bed.add(block(0.62, 0.09, 0.36, M.fabric(0xf6f3ee), 0, 0.56, -0.76, 0.04))
   bed.add(block(1.06, 0.95, 0.06, M.wood(0x9a7a5a), 0, 0, -1.03, 0.02))
   bed.position.set(w / 2 - 0.56, FLOOR, zb + 1.06)
   g.add(bed)
+  const duvet = new Duvet(1.04, -0.6, 1.03, 0.56, 0x5f84b8)
+  duvet.group.position.copy(bed.position)
+  g.add(duvet.group)
+  const bedX = w / 2 - 0.56
+  const bedZ = zb + 1.06
+  const inBed: Bed = { side: V(1.6, FLOOR, -4.15), edge: V(2.3, FLOOR, -4.15), lie: V(bedX, FLOOR, bedZ + 0.1), up: V(bedX, FLOOR, bedZ - 0.5), yawEdge: -Math.PI / 2, yawIn: 0, top: 0.56, duvet, closed: -0.27, waist: -0.4, open: 0.18 }
   // the nightstand, and the clock on it facing you
   g.add(block(0.46, 0.56, 0.42, M.wood(0x8a6a4c), 1.55, FLOOR, zb + 0.24, 0.015))
   const clock = alarmClock()
@@ -499,23 +596,27 @@ function dorm(): Built {
   g.add(block(0.32, 0.5, 0.22, M.fabric(0x4a5a3a), 2.4, FLOOR, -T - 0.4, 0.06)) // a backpack by the door
   sockets.push({ at: V(0, FLOOR + 2.6, zb + 2.6), color: 0xffd7a8, power: 7, range: 8, night: false })
   finish(g, cut, stub)
+  let alarmAt = -10
   return {
     group: g,
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    // up at 6:15 they drag themselves up; by 9 they're bright-eyed
-    scene: (_spot, a) => ({ walk: V(1.85, FLOOR, -3.5), at: V(w / 2 - 0.56, FLOOR, zb + 0.5), yaw: 0, action: "stretch", bedding: 0x7d9cc4, mood: { energy: clamp01((minutesOf(a.wake) - 375) / 165) }, cam: cam(V(0.9, 1.0, -4.0), [-1.6, 3.9, 8.2]) }),
+    // into bed, the alarm, sitting up: at 6:15 they drag themselves up; by 9 they're bright-eyed
+    scene: (_spot, a) => ({ walk: inBed.side, at: inBed.up, yaw: inBed.yawIn, action: "wake", seat: inBed.top, bed: inBed, mood: { energy: clamp01((minutesOf(a.wake) - 375) / 165) }, cam: cam(V(1.2, 0.9, -4.1), [-1.7, 3.6, 7.4]) }),
     door: { inside: V(-2, 0, -1.0), outside: V(-2, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-2.8, 0, -1.2, 2.8]],
     room: [-w / 2, -d - T, w / 2, -T],
     show: (a) => clock.set(minutesOf(a.wake)),
-    tick: (seconds, _m, step) => {
-      // the alarm going off: the clock shaking on the nightstand
-      const ringing = step === "wake" && seconds % 5 < 1.4
-      clock.group.rotation.z = ringing ? Math.sin(seconds * 70) * 0.06 : 0
-      clock.group.position.y = FLOOR + 0.56 + (ringing ? Math.abs(Math.sin(seconds * 70)) * 0.012 : 0)
+    cue: (name, seconds) => {
+      if (name === "alarm") alarmAt = seconds
+    },
+    tick: (seconds) => {
+      // the alarm going off: the clock buzzing on the nightstand for a moment
+      const ringing = seconds - alarmAt < 1.6
+      clock.group.rotation.z = ringing ? Math.sin(seconds * 60) * 0.05 : 0
+      clock.group.position.y = FLOOR + 0.56 + (ringing ? Math.abs(Math.sin(seconds * 60)) * 0.01 : 0)
     },
   }
 }
@@ -575,46 +676,52 @@ function library(): Built {
   lap.position.set(1.1, FLOOR + 0.76, -3.7)
   lap.rotation.y = Math.PI
   g.add(lap)
-  g.add(block(0.21, 0.012, 0.29, M.paint(0xf1ece0, 0.9, true), 0.45, FLOOR + 0.76, -3.75))
+  // a day's books at their right hand, what a heavy day adds at their left, the timer for a sitting in front
   const normal = new THREE.Group()
   normal.userData.live = true
-  normal.position.set(-0.1, FLOOR + 0.76, -3.55)
+  normal.position.set(0.48, FLOOR + 0.76, -3.72)
   const extra = new THREE.Group()
   extra.userData.live = true
-  extra.position.set(-0.6, FLOOR + 0.76, -3.3)
+  extra.position.set(1.74, FLOOR + 0.76, -3.72)
   g.add(normal, extra)
+  const timer = new THREE.Group()
+  timer.userData.live = true
+  timer.add(cylinder(0.075, 0.085, 0.09, M.paint(0xd2412f, 0.35, true), 0, 0, 0, 18))
+  timer.add(cylinder(0.06, 0.06, 0.012, M.paint(0xf6f3ec, 0.4, true), 0, 0.09, 0, 18))
+  const knob = new THREE.Group()
+  knob.add(block(0.012, 0.012, 0.055, M.paint(0x1d1d1d, 0.4, true), 0, 0, 0.028))
+  knob.position.set(0, 0.104, 0)
+  timer.add(knob)
+  timer.position.set(0.85, FLOOR + 0.76, -3.42)
+  g.add(timer)
   finish(g, cut, stub)
   let said = ""
+  let want = ""
+  let since = -1
   let focus = 1
+  let piles: [number, number] = [0, 0]
   const seat = { via: [V(2.3, FLOOR, -2.4), V(2.3, FLOOR, -4.75)], walk: V(1.6, FLOOR, -4.75), at: V(1.1, FLOOR, -4.28), yaw: 0 }
   return {
     group: g,
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    // a long day is harder going; a heavy one piles up; they type in bursts as long as they can focus
-    scene: (spot, a) => {
-      const burst = 2 + a.focus_hours * 2.6
-      return [
-        { ...seat, action: "type" as const, mood: { stress: clamp01((a.normal_hours - 3) / 9), burst }, cam: cam(V(0.6, 1.0, -3.9), [1.0, 3.4, 6.2]) },
-        { ...seat, action: "stress" as const, mood: { stress: clamp01((a.most_hours - 6) / 8), burst }, cam: cam(V(0.1, 0.95, -3.7), [0.5, 2.6, 4.6]) },
-        { ...seat, action: "focus" as const, mood: { stress: 0.3, burst }, cam: cam(V(0.6, 1.8, -5.2), [0.9, 2.3, 6.6]) },
-      ][Math.min(spot, 2)]
-    },
+    // studying at the table: the camera on the day's pile, then the heavy day's, then the timer for a sitting
+    scene: (spot) =>
+      [
+        { ...seat, action: "study" as const, cam: cam(V(0.75, 0.95, -3.85), [0.6, 2.7, 5.0]) },
+        { ...seat, action: "study" as const, cam: cam(V(1.35, 0.95, -3.85), [-0.4, 2.5, 4.6]) },
+        { ...seat, action: "study" as const, cam: cam(V(0.95, 0.95, -3.7), [0.3, 2.2, 3.9]) },
+      ][Math.min(spot, 2)],
     door: { inside: V(0, 0, -1.0), outside: V(0, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-0.9, 0, 0.9, 2.8]],
     room: [-w / 2, -d - T, w / 2, -T],
     show: (a) => {
       focus = a.focus_hours
-      const key = `${a.normal_hours}:${a.most_hours}`
-      if (key !== said) {
-        said = key
-        normal.clear()
-        normal.add(pile(Math.min(14, a.normal_hours * 1.4), 61))
-        extra.clear()
-        extra.add(pile(Math.min(16, Math.max(0, a.most_hours - a.normal_hours) * 1.4), 67))
-      }
+      // a book an hour; the piles change when the hand reaches them (walk/World.ts has them reach as you answer)
+      piles = [Math.min(12, Math.round(a.normal_hours)), Math.min(12, Math.round(Math.max(0, a.most_hours - a.normal_hours)))]
+      want = `${piles[0]}:${piles[1]}`
       screen.draw(`${a.normal_hours}:${a.most_hours}:${a.focus_hours}`, (ctx, w2, h2) => {
         ctx.fillStyle = "#f7f6f2"
         ctx.fillRect(0, 0, w2, h2)
@@ -632,7 +739,24 @@ function library(): Built {
         }
       })
     },
-    tick: (seconds, minutes, step) => clock.set(step === "focus" ? minutes + ((seconds * 60 * focus) % (focus * 60)) : minutes),
+    tick: (seconds, minutes, step) => {
+      if (want !== said) {
+        if (since < 0) since = seconds
+        if (!said || seconds - since > 0.55) {
+          said = want
+          since = -1
+          normal.clear()
+          normal.add(pile(piles[0], 61))
+          extra.clear()
+          extra.add(pile(piles[1], 67))
+        }
+      }
+      clock.set(minutes)
+      // the timer's dial at the length of a sitting; it rings at the end of each
+      knob.rotation.y = -(Math.min(4, focus) / 4) * Math.PI * 1.6
+      const ringing = step === "focus" && ringingAt(seconds, focus)
+      timer.rotation.z = ringing ? Math.sin(seconds * 55) * 0.06 : 0
+    },
   }
 }
 
@@ -718,27 +842,47 @@ function hall(): Built {
   const week = new Board(900, 560)
   const sheet = panel(1.12, 0.7, new THREE.MeshStandardMaterial({ map: week.texture, roughness: 0.85, envMapIntensity: 0.5 }), 0, 1.68, 0.045)
   board.add(sheet)
+  // the note for the day the essay's done, moved along the week by hand when you change it
+  const sticky = new Board(160, 140)
+  sticky.draw("done", (ctx, cw, ch) => {
+    ctx.fillStyle = "#f6d94a"
+    ctx.fillRect(0, 0, cw, ch)
+    ctx.fillStyle = "#1d2a6a"
+    ctx.font = HAND(34)
+    ctx.textAlign = "center"
+    ctx.fillText("essay", cw / 2, ch * 0.42)
+    ctx.fillText("done ✓", cw / 2, ch * 0.78)
+  })
+  const note = panel(0.19, 0.165, new THREE.MeshStandardMaterial({ map: sticky.texture, roughness: 0.9, envMapIntensity: 0.5 }), 0, 1.74, 0.056)
+  note.rotation.z = -0.05
+  note.userData.live = true
+  board.add(note)
+  const column = (day: number) => -0.448 + day * 0.224
   for (const [x, y] of [[-0.5, 2.0], [0.5, 2.0], [-0.5, 1.36], [0.5, 1.36]]) board.add(ball(0.012, M.paint(0xc8302a, 0.3), x, y, 0.05, 8))
   board.position.set(1.8, 0.13, 0.9)
   g.add(board)
   g.add(span(0.2, 3.4, 0, 0.14, 0.2, FRONT - SIDEWALK[1] + 0.05, M.concrete()))
   sockets.push({ at: V(0, 6.5, back + 3.2), color: 0xffd9a8, power: 30, range: 14, night: true })
   bake(g)
+  let want = 3 // the column (day) the note is going to, where it is, and since when it's moving
+  let at = 3
+  let from = 3
+  let moving = -1
   const DAYS = ["MON", "TUE", "WED", "THU", "FRI"]
   return {
     group: g,
     size: { w: w + 8, d: -back + d + 1 },
     cut: null,
     stub: null,
-    // done on the day, they're worried; three days early, at ease
-    scene: (_spot, a) => ({ walk: V(1.8, 0.16, 2.1), at: V(1.8, 0.16, 2.0), yaw: Math.PI, action: "look", mood: { stress: [1, 0.45, 0.2, 0.05][Math.max(0, Math.min(3, a.finish_early_days))] }, cam: cam(V(1.6, 1.5, 1.4), [3.8, 2.6, 5.6]) }),
+    scene: () => ({ walk: V(1.8, 0.16, 2.1), at: V(1.8, 0.16, 2.0), yaw: Math.PI, action: "read", cam: cam(V(1.75, 1.45, 1.3), [3.0, 1.9, 4.6]) }),
     door: null,
     sockets,
     clear: [[-w / 2 - 4.5, back - d - 0.5, w / 2 + 0.5, back + 2.8], [-1.3, back + 2.6, 1.3, 2.8], [0.1, 0, 3.5, 2.8]],
     room: null,
     show: (a) => {
       const done = 4 - Math.max(0, Math.min(4, a.finish_early_days))
-      week.draw(String(done), (ctx, cw, ch) => {
+      want = done
+      week.draw("week", (ctx, cw, ch) => {
         ctx.fillStyle = "#fbfaf6"
         ctx.fillRect(0, 0, cw, ch)
         ctx.fillStyle = "#1f2430"
@@ -757,7 +901,7 @@ function hall(): Built {
           ctx.font = FONT(700, 28)
           ctx.fillText(day, x + 16, 136)
         })
-        // the essay, due Friday at 5
+        // the essay, due Friday at 5 (the note for the day it's done is its own, moved by hand)
         ctx.fillStyle = "#d8402f"
         ctx.fillRect(40 + 4 * col + 10, 300, col - 20, 120)
         ctx.fillStyle = "#ffffff"
@@ -765,22 +909,26 @@ function hall(): Built {
         ctx.fillText("ESSAY", 40 + 4 * col + 22, 344)
         ctx.font = FONT(600, 22)
         ctx.fillText("due 5 PM", 40 + 4 * col + 22, 380)
-        // the day you'd have it done: a sticky note, in pen
-        const x = 40 + done * col
-        ctx.save()
-        ctx.translate(x + col / 2, 230)
-        ctx.rotate(-0.06)
-        ctx.fillStyle = "#f6d94a"
-        ctx.fillRect(-col / 2 + 10, -50, col - 20, 112)
-        ctx.fillStyle = "#1d2a6a"
-        ctx.font = HAND(30)
-        ctx.textAlign = "center"
-        ctx.fillText(done === 4 ? "finish" : "essay", 0, -6)
-        ctx.fillText(done === 4 ? "today!" : "done ✓", 0, 36)
-        ctx.restore()
       })
     },
-    tick: (_s, minutes) => tower.set(minutes),
+    tick: (seconds, minutes) => {
+      tower.set(minutes)
+      // the note follows the hand: off the board a little, along, and back on
+      if (want !== at) {
+        if (moving < 0) {
+          moving = seconds
+          from = at
+        }
+        const k = Math.min(1, Math.max(0, (seconds - moving - 0.45) / 0.6))
+        const e = k * k * (3 - 2 * k)
+        note.position.x = column(from) + (column(want) - column(from)) * e
+        note.position.z = 0.056 + Math.sin(e * Math.PI) * 0.05
+        if (k >= 1) {
+          at = want
+          moving = -1
+        }
+      } else note.position.x = column(at)
+    },
   }
 }
 
@@ -864,7 +1012,7 @@ function home(): Built {
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    scene: (_spot, a) => ({ walk: V(-2.25, FLOOR, -2.9), at: V(-2.82, FLOOR, -3.7), yaw: Math.PI / 2, action: a.evening_free > 0 ? "tv" : "laptop", mood: { happy: a.evening_free / 5, stress: a.evening_free > 0 ? 0.2 : 0.6 }, cam: cam(V(-2.3, 0.95, -3.7), [1.1, 3.4, 6.8]) }),
+    scene: (_spot, a) => ({ walk: V(-2.25, FLOOR, -2.9), at: V(-2.82, FLOOR, -3.7), yaw: Math.PI / 2, action: a.evening_free > 0 ? "tv" : "laptop", seat: 0.56, mood: { happy: a.evening_free / 5 }, cam: cam(V(-2.3, 0.95, -3.7), [1.1, 3.4, 6.8]) }),
     door: { inside: V(-2.3, 0, -1.0), outside: V(-2.3, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-3.1, 0, -1.5, 2.8]],
@@ -889,12 +1037,14 @@ function night(): Built {
   const bed = new THREE.Group()
   bed.add(block(1.62, 0.32, 2.1, M.wood(0x6a5040), 0, 0, 0, 0.02))
   bed.add(block(1.56, 0.22, 2.02, M.fabric(0xf4f2ee), 0, 0.32, 0, 0.06))
-  bed.add(block(1.6, 0.11, 1.3, M.fabric(0x8a9ab0), 0, 0.5, 0.36, 0.05))
-  bed.add(block(1.58, 0.06, 0.4, M.fabric(0xf4f2ee), 0, 0.56, -0.18, 0.03))
-  for (const x of [-0.42, 0.42]) bed.add(block(0.62, 0.14, 0.38, M.fabric(0xf7f5f1), x, 0.54, -0.78, 0.06))
+  for (const x of [-0.42, 0.42]) bed.add(block(0.62, 0.09, 0.38, M.fabric(0xf7f5f1), x, 0.54, -0.8, 0.04))
   bed.add(block(1.66, 1.05, 0.08, M.wood(0x6a5040), 0, 0, -1.08, 0.02))
   bed.position.set(1.2, FLOOR, zb + 1.12)
   g.add(bed)
+  const duvet = new Duvet(1.6, -0.55, 1.05, 0.54, 0x9aa8c2)
+  duvet.group.position.copy(bed.position)
+  g.add(duvet.group)
+  const inBed: Bed = { side: V(-0.1, FLOOR, -4.35), edge: V(0.56, FLOOR, -4.35), lie: V(0.82, FLOOR, zb + 1.12 + 0.12), up: V(0.82, FLOOR, zb + 1.12 - 0.45), yawEdge: -Math.PI / 2, yawIn: 0, top: 0.54, duvet, closed: -0.25, waist: -0.38, open: 0.18 }
   for (const x of [-0.05, 2.45]) g.add(block(0.46, 0.52, 0.4, M.wood(0x6a5040), x, FLOOR, zb + 0.24, 0.015))
   g.add(lampShade(-0.05, FLOOR + 0.52 + 0.24, zb + 0.22, M.fabric(0xf1e4cc), sockets, 0xffb86a, 7))
   g.add(cylinder(0.05, 0.07, 0.24, M.paint(0xc9b48a, 0.4, true), -0.05, FLOOR + 0.52, zb + 0.22, 14))
@@ -912,8 +1062,8 @@ function night(): Built {
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    // to bed late, they toss and turn
-    scene: (_spot, a) => ({ walk: V(0.3, FLOOR, -3.4), at: V(1.2, FLOOR, -4.75), yaw: 0, action: "sleep", bedding: 0xa3b2c8, mood: { restless: clamp01(((minutesOf(a.bedtime) + 1440 - 12 * 60) % 1440 - 11 * 60) / 150) }, cam: cam(V(1.0, 0.9, -4.6), [-2.6, 3.5, 5.8]) }),
+    // into bed and tucked in; to bed late, they turn over in their sleep
+    scene: (_spot, a) => ({ walk: inBed.side, at: inBed.lie, yaw: inBed.yawIn, action: "sleep", seat: inBed.top, bed: inBed, mood: { restless: clamp01(((minutesOf(a.bedtime) + 1440 - 12 * 60) % 1440 - 11 * 60) / 150) }, cam: cam(V(1.0, 0.9, -4.6), [-2.6, 3.5, 5.8]) }),
     door: { inside: V(-2.0, 0, -1.0), outside: V(-2.0, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-2.8, 0, -1.2, 2.8]],
@@ -1085,25 +1235,41 @@ function cafe(): Built {
   g.add(cylinder(0.08, 0.08, 0.01, M.paint(0xf6f3ec, 0.3, true), -0.65, FLOOR + 0.75, -2.5, 20))
   const brief = new Board(420, 594)
   brief.draw("brief", (ctx, cw, ch) => {
+    // the morning brief, printed: the same three parts as the real one (Setup.tsx's example)
     ctx.fillStyle = "#fcfbf8"
     ctx.fillRect(0, 0, cw, ch)
+    ctx.fillStyle = "#6a6f7a"
+    ctx.font = FONT(500, 20)
+    ctx.fillText("Tuesday", 34, 50)
     ctx.fillStyle = "#1f2430"
     ctx.font = FONT(800, 40)
-    ctx.fillText("Tuesday", 34, 70)
-    ctx.font = FONT(500, 22)
-    ctx.fillStyle = "#6a6f7a"
-    ctx.fillText("Your day, in a minute", 34, 104)
-    const items: [string, string][] = [["9:00", "Chem lecture"], ["10:30", "Problem set 6"], ["1:00", "Essay draft"], ["4:00", "Office hours"]]
-    items.forEach(([t, what], i) => {
-      ctx.fillStyle = ["#4a74c4", "#3f8f5a", "#3f8f5a", "#c9893a"][i]
-      ctx.fillRect(34, 150 + i * 92, 8, 62)
-      ctx.fillStyle = "#1f2430"
-      ctx.font = FONT(700, 26)
-      ctx.fillText(what, 58, 176 + i * 92)
+    ctx.fillText("Good morning", 34, 96)
+    const parts: [string, [string, string, string][]][] = [
+      ["WHAT MATTERS TODAY", [["#3f8f5a", "Problem set 6", "10:30"], ["#3f8f5a", "Essay draft", "1:00"]]],
+      ["FIXED TODAY", [["#4a74c4", "Chem lecture", "9:00"]]],
+      ["HEADS UP", [["#c9893a", "Lab report", "Thu"]]],
+    ]
+    let y = 146
+    for (const [head, rows] of parts) {
       ctx.fillStyle = "#6a6f7a"
-      ctx.font = FONT(500, 20)
-      ctx.fillText(t, 58, 204 + i * 92)
-    })
+      ctx.font = FONT(700, 16)
+      ctx.fillText(head, 34, y)
+      y += 34
+      for (const [color, what, when] of rows) {
+        ctx.fillStyle = color
+        ctx.fillRect(34, y - 22, 7, 30)
+        ctx.fillStyle = "#1f2430"
+        ctx.font = FONT(700, 24)
+        ctx.fillText(what, 54, y)
+        ctx.fillStyle = "#6a6f7a"
+        ctx.font = FONT(500, 20)
+        ctx.textAlign = "right"
+        ctx.fillText(when, cw - 34, y)
+        ctx.textAlign = "left"
+        y += 44
+      }
+      y += 12
+    }
   })
   const paper = panel(0.21, 0.297, new THREE.MeshStandardMaterial({ map: brief.texture, roughness: 0.9, envMapIntensity: 0.5 }), 0, 0, 0)
   paper.rotation.x = -Math.PI / 2

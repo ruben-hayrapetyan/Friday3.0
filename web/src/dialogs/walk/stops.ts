@@ -43,8 +43,8 @@ export const STOPS: Record<string, Stop> = {
   start: { place: "end", spot: 2, title: "Your week", day: "Sunday", at: () => 18 * 60 + 55 },
 }
 
-/** The places along the street, in order, and the side each is on (1 east, -1 west). Rooms you see the sun rise in
- * face east; the one you watch it set from faces west. */
+/** The places along the street, in order, and the side each is on (1 east, -1 west), turn and turn about. Rooms you
+ * see the sun rise in face east; the one you watch it set from faces west. */
 export const ROUTE: [Place, number][] = [
   ["start", 0],
   ["dorm", 1],
@@ -53,12 +53,14 @@ export const ROUTE: [Place, number][] = [
   ["home", -1],
   ["night", 1],
   ["park", -1],
-  ["cafe", -1],
-  ["post", 1],
+  ["cafe", 1],
+  ["post", -1],
   ["end", 0],
 ]
 
-export const GAP = 20 // metres of street between places
+// Metres of street between places: each across the street from the last and a little further up, so getting from
+// one to the next is a few steps out of a door and over the road (30 Oct: "make it walk less").
+export const GAP = 10
 
 /** How far up the street a place is (the street runs north, toward -z). */
 export function placeZ(place: Place): number {
