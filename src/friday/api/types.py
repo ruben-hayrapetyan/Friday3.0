@@ -82,8 +82,11 @@ class ItemOut(Model):
     calendar: str | None = None  # the calendar an event came from
     calendar_color: str | None = None  # its pigment, set in Settings → Calendars
     saves_to_calendar: bool = False  # changes made here are saved back to its calendar
-    category: str | None = None  # its category, by title
+    category: str | None = None  # its category (commands/categories.py)
     category_color: str | None = None
+    category_by: str | None = None  # who said: "you", "always" (your words), "similar" (its clues), "claude"
+    category_like: str | None = None  # the event it's like, when its clues decided
+    category_hint: str | None = None  # the clues' unsure guess, offered on the card and not painted
     chroma_color: str | None = None  # the pigment Chroma showed it in, before your own or its category's
     left_out: str | None = None  # why it doesn't count as busy: calendar, reminder, free, filtered or skipped
     filtered: bool = False  # the categories' filter hides it (office hours), when you hide what it hides

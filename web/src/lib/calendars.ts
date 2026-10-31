@@ -43,7 +43,7 @@ export function newEventTargets(google: Listed[], mac: Listed[]): Target[] {
 export function categoryPaint(title: string, categories: { color: string; pattern: string }[]): string | null {
   for (const c of categories) {
     try {
-      if (c.pattern && new RegExp(c.pattern, "i").test(title)) return c.color
+      if (c.pattern.trim() && new RegExp(c.pattern, "i").test(title)) return c.color
     } catch {
       // A pattern JavaScript reads differently from Python: the server's answer says.
     }

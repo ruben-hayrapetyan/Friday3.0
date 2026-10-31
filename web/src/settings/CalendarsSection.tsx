@@ -233,7 +233,8 @@ export function PigmentMenu({ value, onPick }: { value: string | null; onPick: (
   )
 }
 
-/** The categories in order (the first that matches a title wins) and the filter, saved together. */
+/** The categories and the filter, saved together. A category's words are optional (31 Oct): an event no one's words
+ * find is placed by what it shares with events you know, and Claude, and your choice on its card wins. */
 function Categories({ value, onSave }: { value: CategorySettings; onSave: (value: CategorySettings) => void }) {
   const [draft, setDraft] = useState(value)
   useEffect(() => setDraft(value), [value])
@@ -253,13 +254,16 @@ function Categories({ value, onSave }: { value: CategorySettings; onSave: (value
       return true
     }
   }
-  const valid = draft.categories.every((c) => c.name.trim() && c.pattern.trim() && !broken(c.pattern)) && (!draft.filter || !broken(draft.filter.pattern))
+  const valid = draft.categories.every((c) => c.name.trim() && !broken(c.pattern)) && (!draft.filter || !broken(draft.filter.pattern))
   return (
-    <Field name="Categories" note="An event takes the colour of the first category whose pattern finds its title, unless it wears a pigment of its own. Patterns are regular expressions, without regard to case: “office hours|drop.?in”.">
+    <Field
+      name="Categories"
+      note="Friday puts each event in one: the one you chose on its card; else the first whose words are in its title; else Claude's pick, given what the event shares with ones you know; else, when that's clear, the events most like it. Words are optional, for what's always that category, written as regular expressions without regard to case: “office hours|drop.?in”."
+    >
       {draft.categories.map((c, i) => (
         <div key={i} className="fr-row" style={{ display: "grid", gridTemplateColumns: "minmax(0,0.8fr) minmax(0,1.2fr) auto auto", gap: 8, alignItems: "center", padding: "8px 0" }}>
           <input className="input" value={c.name} onChange={(e) => set(i, { name: e.target.value })} aria-label="Category name" style={{ minHeight: 0, padding: "4px 8px", fontSize: 13 }} />
-          <input className="input fr-mono" value={c.pattern} onChange={(e) => set(i, { pattern: e.target.value })} aria-label={`${c.name} pattern`} style={{ minHeight: 0, padding: "4px 8px", fontSize: 12, boxShadow: broken(c.pattern) ? "0 0 0 1px var(--fr-due)" : undefined }} />
+          <input className="input fr-mono" value={c.pattern} onChange={(e) => set(i, { pattern: e.target.value })} placeholder="Always when its title has… (optional)" aria-label={`${c.name}: always when its title has`} style={{ minHeight: 0, padding: "4px 8px", fontSize: 12, boxShadow: broken(c.pattern) ? "0 0 0 1px var(--fr-due)" : undefined }} />
           <PigmentMenu value={c.color} onPick={(id) => id && set(i, { color: id })} />
           <span style={{ display: "flex" }}>
             <button className="btn btn-icon btn-ghost" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Earlier" style={{ width: 26, height: 26 }}>

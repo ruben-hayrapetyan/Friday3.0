@@ -7,7 +7,15 @@ import re
 import sqlite3
 from typing import Any
 
-from friday.api.commands import CategoryMergeInput, Changed, EventGoingInput, EventHoldInput, EventKeepInput
+from friday.api.commands import (
+    CategoryMergeInput,
+    Changed,
+    EventCategoryInput,
+    EventGoingInput,
+    EventHoldInput,
+    EventKeepInput,
+)
+from friday.commands.categories import CHOICES, clues_for, told
 from friday.commands.fields import require_item
 from friday.commands.registry import Ctx, command
 from friday.commands.settings import write_setting
@@ -28,8 +36,8 @@ def rate_upcoming(conn: sqlite3.Connection, now_utc: int, user_id: int = 1, clie
     many were asked."""
     found = rows(
         conn,
-        "SELECT DISTINCT title FROM items WHERE user_id = ? AND when_kind = 'fixed' AND status = 'todo' "
-        "AND start_utc >= ? AND start_utc < ?",
+        "SELECT id, title, location FROM items WHERE user_id = ? AND when_kind = 'fixed' AND status = 'todo' "
+        "AND start_utc >= ? AND start_utc < ? ORDER BY start_utc",
         [user_id, format_utc(now_utc), format_utc(now_utc + AHEAD_DAYS * 1440)],
     )
     kept = kv_get(conn, "event_ratings", {}, user_id)
@@ -51,8 +59,18 @@ def rate_upcoming(conn: sqlite3.Connection, now_utc: int, user_id: int = 1, clie
     )
     if not new:
         return 0
+    # what Friday knows of each, and what each category has meant for you, as clues for Claude: no extra call, the
+    # same one the skip ratings make (31 Oct)
+    first = {r["title"]: r for r in reversed(found)}
+    told_ = told(conn, user_id, settings["categories"], [first[t] for t in new if t in first]) if categories else {}
+    examples = clues_for(conn, user_id, settings["categories"]).examples() if categories else {}
     rated = rate(
-        new, client if client is not None else llm.client(settings["llm"]), settings["llm"].small_model, categories
+        new,
+        client if client is not None else llm.client(settings["llm"]),
+        settings["llm"].small_model,
+        categories,
+        told_,
+        examples,
     )
     kv_set(conn, "event_ratings", kept | rated, user_id)
     if retry:
@@ -87,6 +105,10 @@ def category_merge(ctx: Ctx, inp: CategoryMergeInput) -> Changed:
     write_setting(
         ctx, "categories", found.model_copy(update={"categories": categories, "filter": rule}).model_dump(by_alias=True)
     )
+    chosen = kv_get(ctx.conn, CHOICES, {}, ctx.user_id) or {}
+    if gone.name in chosen.values():  # what you chose goes along, a meal too: you said so
+        moved_choices = {k: into.name if c == gone.name else c for k, c in chosen.items()}
+        ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": CHOICES}, {"value": json.dumps(moved_choices)})
     ratings = kv_get(ctx.conn, "event_ratings", {}, ctx.user_id) or {}
     theirs = {k: r for k, r in ratings.items() if r.get("category") == gone.name}
     moved = {k: r | {"category": into.name} for k, r in theirs.items() if not MEAL.search(k)}
@@ -97,6 +119,31 @@ def category_merge(ctx: Ctx, inp: CategoryMergeInput) -> Changed:
         )
     n = len(moved)
     return Changed(message=f"{gone.name} joined {into.name}" + (f": {n} event{'s' * (n != 1)} moved" if n else ""))
+
+
+@command("event_category")
+def event_category(ctx: Ctx, inp: EventCategoryInput) -> Changed:
+    """The category you choose for an event, for every event with its title: it comes before your words, Claude's
+    and the clues', and the events most like it follow it (commands/categories.py). None lets Friday decide again;
+    "" says it has none."""
+    item = require_item(ctx, inp.id)
+    if item.when != "fixed":
+        raise FieldError("id", f"{item.title} isn't an event")
+    named = {c.name for c in ctx.settings["categories"].categories}
+    if inp.category and inp.category not in named:
+        raise FieldError("category", f"there's no category called {inp.category}")
+    chosen = dict(kv_get(ctx.conn, CHOICES, {}, ctx.user_id) or {})
+    key = rating_key(item.title)
+    if inp.category is None:
+        chosen.pop(key, None)
+    else:
+        chosen[key] = inp.category
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": CHOICES}, {"value": json.dumps(chosen)})
+    if inp.category is None:
+        return Changed(message=f"Friday chooses {item.title}'s category again")
+    if not inp.category:
+        return Changed(message=f"{item.title} has no category now")
+    return Changed(message=f"{item.title} is {inp.category} now, and events like it follow")
 
 
 @command("event_going")

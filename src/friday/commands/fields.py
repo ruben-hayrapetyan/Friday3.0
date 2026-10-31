@@ -4,9 +4,10 @@ import math
 from typing import Any
 
 from friday.api.types import ItemFields, ItemOut
+from friday.commands.categories import place
 from friday.commands.eventwrites import writes_to
 from friday.commands.registry import Ctx
-from friday.core.calendars import Category, category_of, event_key, is_filtered, left_out, nearest_pigment, rating_key
+from friday.core.calendars import event_key, is_filtered, left_out, nearest_pigment
 from friday.core.db import one, rows
 from friday.core.items import FieldError, Item, apply_preset, validate, with_defaults
 from friday.core.rows import item_to_row
@@ -166,15 +167,6 @@ def going_to(ctx: Ctx, item_id: int | None) -> str | None:
     return ctx.memo["going_to"].get(item_id)
 
 
-def guessed_category(ctx: Ctx, title: str) -> Category | None:
-    """The category Claude chose for an event no category's words find ("Dinner with Sam" is Social), kept with its
-    rating (`commands/rating.py`)."""
-    if "event_ratings" not in ctx.memo:
-        ctx.memo["event_ratings"] = kv_get(ctx.conn, "event_ratings", {}, ctx.user_id) or {}
-    named = (ctx.memo["event_ratings"].get(rating_key(title)) or {}).get("category")
-    return next((c for c in ctx.settings["categories"].categories if c.name == named), None) if named else None
-
-
 def held_task(ctx: Ctx, event_id: int | None) -> dict[str, Any] | None:
     """The task an event's time is for (`event_hold`), while it's still to do."""
     if "event_holds" not in ctx.memo:
@@ -196,7 +188,8 @@ def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
         return {}
     link = links(ctx).get(item.id or 0)
     calendar = link.calendar if link else going_to(ctx, item.id)
-    category = category_of(item.title, ctx.settings["categories"]) or guessed_category(ctx, item.title)
+    placed = place(ctx, item.id, item.title, calendar, item.location)
+    category = placed.category
     reason = left_out(item.title, calendar, item.free, ctx.settings["categories"], ctx.settings["busy"])
     # one you said you're not going to (30 Oct: "when i click an event (like salsa) it should give me the option to
     # skip"): on your calendar still, its time Friday's to plan; an all-day one never blocked time
@@ -215,6 +208,9 @@ def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
         "saves_to_calendar": bool(link) and saves(ctx, link.source_id),
         "category": category.name if category else None,
         "category_color": category.color if category else None,
+        "category_by": placed.by,
+        "category_like": placed.like,
+        "category_hint": placed.hint,
         "holds": held_task(ctx, item.id),
         "left_out": reason,
         "filtered": is_filtered(item.title, ctx.settings["categories"]),

@@ -22,6 +22,7 @@ KV_STATE = {
     "review_again",
     "reviewed",
     "import_chroma_colors",  # the colours, kept in kv
+    "event_category",  # the categories you chose, kept in kv
     "report",  # the last 50 reports, kept in kv
     "stuck",  # the latest friction, kept in kv
     "rule_win",
@@ -359,6 +360,12 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "review_again": lambda app: {},
     "reviewed": lambda app: (app.do("review_again"), {"ids": [essay(app)], "keep": False})[1],
     "event_going": lambda app: {"title": "Poker night"},
+    "event_category": lambda app: {
+        "id": app.do("add", title="Poker night", when="fixed", start="2026-10-20T19:00", end="2026-10-20T22:00")[
+            "item"
+        ]["id"],
+        "category": "",
+    },
     "category_merge": lambda app: (
         app.do(
             "settings_set",

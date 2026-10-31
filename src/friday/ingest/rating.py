@@ -65,10 +65,18 @@ BATCH = 40  # titles a call
 
 
 def rate(
-    titles: list[str], client: Any | None, model: str, categories: list[str] | None = None
+    titles: list[str],
+    client: Any | None,
+    model: str,
+    categories: list[str] | None = None,
+    told: dict[str, str] | None = None,
+    examples: dict[str, list[str]] | None = None,
 ) -> dict[str, dict[str, str]]:
     """{key(title): {level, reason, category?}} for each title: the AI's answer, or the fallback for what it leaves
-    out. With `categories`, each answer names the one it fits, or none ("")."""
+    out. With `categories`, each answer names the one it fits, or none (""): weighing what Friday knows of a title
+    (`told`: its calendar, place, sender, the event it's most like) and what each category has meant for you
+    (`examples`), as clues rather than rules (31 Oct)."""
+    told = told or {}
     out = {key(t): fallback(t) for t in titles}
     if not titles or client is None:
         return out
@@ -79,10 +87,24 @@ def rate(
             '\nAlso give each event the category from this list it fits best, exactly as written, or "" when none '
             "fits: " + "; ".join(named)
         )
+        if examples:
+            system += "\nWhat each category has meant for this student: " + "; ".join(
+                f"{c}: {', '.join(titles_)}" for c, titles_ in examples.items() if c in named
+            )
+        if told:
+            system += (
+                "\nUnder some titles, indented, is what the planner knows of the event: its calendar, its place, who "
+                "sent it, the event it is most like. Weigh it as a clue; the title comes first. Answer with the "
+                "title alone, as written on its first line."
+            )
         item = schema["properties"]["events"]["items"]
         item = item | {"properties": item["properties"] | {"category": {"type": "string"}},
                        "required": [*item["required"], "category"]}  # fmt: skip
         schema = {**schema, "properties": {"events": {**schema["properties"]["events"], "items": item}}}
+
+    def line(title: str) -> str:
+        return f"- {title}" + (f"\n    {told[title]}" if title in told else "")
+
     for start in range(0, len(titles), BATCH):
         part = titles[start : start + BATCH]
         try:
@@ -91,15 +113,16 @@ def rate(
                 max_tokens=4000,
                 system=system,
                 output_config={"format": {"type": "json_schema", "schema": schema}},
-                messages=[{"role": "user", "content": [{"type": "text", "text": "\n".join(f"- {t}" for t in part)}]}],
+                messages=[{"role": "user", "content": [{"type": "text", "text": "\n".join(map(line, part))}]}],
             )
             text = next((b.text for b in reply.content if getattr(b, "type", "") == "text"), "")
             for e in json.loads(text).get("events", []) if text else []:
-                if e.get("level") in LEVELS and key(e.get("title", "")) in out:
+                said = str(e.get("title", "")).split("\n")[0].strip()
+                if e.get("level") in LEVELS and key(said) in out:
                     found = {"level": e["level"], "reason": str(e.get("reason", ""))[:80]}
                     if named:
                         found["category"] = e.get("category") if e.get("category") in named else ""
-                    out[key(e["title"])] = found
+                    out[key(said)] = found
         except Exception:  # no AI, a timeout, a bad answer: the titles' own words will do
             continue
     return out

@@ -12,7 +12,7 @@ import { EstimateNudge } from "@/components/EstimateNudge"
 import { TimeInput } from "@/components/fr/TimeInput"
 import { Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
-import { useItem, useItems, useStatus, useWhy } from "@/hooks/queries"
+import { useItem, useItems, useSettings, useStatus, useWhy } from "@/hooks/queries"
 import { spanOn } from "@/lib/ampm"
 import { likelyTask, ranked } from "@/lib/holds"
 import { clock, dur, sittings, weekday, when } from "@/lib/format"
@@ -463,6 +463,7 @@ function EventFacts({ event, paint }: { event: Item; paint: string }) {
           </span>
         </>
       )}
+      <CategoryRow event={event} />
       <span style={{ color: "var(--color-neutral-500)" }}>Calendar</span>
       <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
         {event.calendar ?? "Friday"}
@@ -477,6 +478,42 @@ function EventFacts({ event, paint }: { event: Item; paint: string }) {
       <span style={{ color: "var(--color-neutral-500)" }}>Notes</span>
       <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 120, overflowY: "auto", color: event.notes ? undefined : "var(--color-neutral-500)" }}>{event.notes || "—"}</span>
     </div>
+  )
+}
+
+const AUTO = "__auto"
+const NONE = "__none"
+const SAID: Record<string, string> = { you: "your choice", always: "your words", claude: "Claude's guess" }
+
+/** The event's category, who said, and yours to change: kept for every event with its title, and the events like it
+ * follow (31 Oct: categories by word lists were "a very fragile way to do this"). An unsure guess is offered, not
+ * painted. */
+function CategoryRow({ event }: { event: Item }) {
+  const settings = useSettings().data as { categories?: { categories?: { name: string }[] } } | undefined
+  const choose = useCommand("event_category", { label: (o) => o.result.message ?? "Saved" })
+  const names = [...new Set((settings?.categories?.categories ?? []).map((c) => c.name))]
+  if (!names.length) return null
+  const by = event.category_by ?? ""
+  const why = by === "similar" ? (event.category_like ? `like ${event.category_like}` : "like events you know") : SAID[by]
+  const options = [
+    ...names.map((n) => ({ value: n, label: n })),
+    { value: NONE, label: "None" },
+    ...(by === "you" ? [{ value: AUTO, label: "Let Friday decide" }] : []),
+  ]
+  const pick = (value: string) => choose({ id: event.id, category: value === AUTO ? null : value === NONE ? "" : value })
+  return (
+    <>
+      <span style={{ color: "var(--color-neutral-500)", alignSelf: "center" }}>Category</span>
+      <span style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", minWidth: 0 }}>
+        <Menu options={options} value={event.category ?? NONE} onPick={pick} label={`Category of ${event.title}`} />
+        {why && <span style={{ color: "var(--color-neutral-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{why}</span>}
+        {!event.category && event.category_hint && (
+          <button className="fr-link" onClick={() => pick(event.category_hint as string)} title="Friday's guess from events like it: not sure enough to colour it" style={{ fontSize: 12 }}>
+            {event.category_hint}?
+          </button>
+        )}
+      </span>
+    </>
   )
 }
 

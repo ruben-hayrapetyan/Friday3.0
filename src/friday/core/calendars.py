@@ -23,7 +23,7 @@ class Category(Model):
     name: str
     slug: str = ""
     color: str  # one of PIGMENTS
-    pattern: str  # a regular expression, matched against the title without regard to case
+    pattern: str = ""  # always this category: a regular expression found in the title, without regard to case
     note: str | None = None
 
 
@@ -72,8 +72,11 @@ def compiled(pattern: str) -> re.Pattern[str] | None:
 
 
 def category_of(title: str, settings: CategorySettings) -> Category | None:
-    """The first category whose pattern finds the title, in the order they're listed."""
+    """The first category whose pattern finds the title, in the order they're listed. A pattern is optional since
+    clues and Claude place the rest (commands/categories.py): an empty one finds nothing, not everything."""
     for category in settings.categories:
+        if not category.pattern.strip():
+            continue
         found = compiled(category.pattern)
         if found is not None and found.search(title):
             return category

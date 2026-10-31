@@ -361,6 +361,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/event_category": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The category you choose for an event, for every event with its title: it comes before your words, Claude's */
+        post: operations["event_category"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/event_going": {
         parameters: {
             query?: never;
@@ -4246,6 +4263,34 @@ export interface components {
         };
         /** Empty */
         Empty: Record<string, never>;
+        /** EventCategoryInput */
+        EventCategoryInput: {
+            /** Id */
+            id: number;
+            /** Category */
+            category?: string | null;
+        };
+        /** EventCategoryResult */
+        EventCategoryResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
         /** EventGoingInput */
         EventGoingInput: {
             /** Title */
@@ -4848,6 +4893,12 @@ export interface components {
             category?: string | null;
             /** Category Color */
             category_color?: string | null;
+            /** Category By */
+            category_by?: string | null;
+            /** Category Like */
+            category_like?: string | null;
+            /** Category Hint */
+            category_hint?: string | null;
             /** Chroma Color */
             chroma_color?: string | null;
             /** Left Out */
@@ -10214,6 +10265,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EditResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    event_category: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventCategoryInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventCategoryResult"];
                 };
             };
             /** @description Validation Error */

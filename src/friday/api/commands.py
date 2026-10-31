@@ -538,6 +538,11 @@ class EventGoingInput(Model):
     title: str  # an event you go to: never offered to skip again
 
 
+class EventCategoryInput(Model):
+    id: int  # an event; its category is chosen for every event with its title
+    category: str | None = None  # a category's name; "" for none; None to let Friday decide again
+
+
 class CategoryMergeInput(Model):
     name: str  # the category that goes
     into: str  # the one its events join

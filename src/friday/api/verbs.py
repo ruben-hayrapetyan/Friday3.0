@@ -221,6 +221,14 @@ VERBS = {
         True,
         "Change an item's fields; `from_date` changes a repeating item's series from that date on.",
     ),
+    "event_category": Verb(
+        "POST",
+        "/api/c/event_category",
+        commands.EventCategoryInput,
+        True,
+        False,
+        "The category you choose for an event, for every event with its title: it comes before your words, Claude's",
+    ),
     "event_going": Verb(
         "POST",
         "/api/c/event_going",
