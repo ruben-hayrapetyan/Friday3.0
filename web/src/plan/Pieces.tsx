@@ -176,18 +176,24 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
   // Unmarked slate (COMBINED.md 17). One left out of planning sits back, dashed.
   const paint = eventPaint(it, light)
   const painted = it.event_kind === "shove" ? base : { ...base, bg: wash(paint, light), stripe: paint, fg: "var(--color-text)", sub: "var(--color-neutral-400)" }
-  // An optional event the plan gives to work (gym, climbing club) is one you're skipping: drawn as skipped, faint and
-  // struck through, under the work that takes its time, rather than as if you were going (27 Oct); so is one you said
-  // you're not going to (30 Oct).
-  const skipped = !!it.gives_way_to || it.left_out === "skipped"
+  // Two kinds of skipping, told apart (31 Oct: "i don't like how the ones that i have to toggle have the same shading
+  // as the ones i cancelled"). An optional event the plan gives to work (gym, climbing club) is Friday's suggestion,
+  // yours to decide: still in its colour, dotted, asking "Skip?" (27 Oct: drawn under the work that takes its time).
+  // One you said you're not going to is off: grey, dashed, struck through (30 Oct).
+  const proposed = !!it.gives_way_to
+  const cancelled = !proposed && it.left_out === "skipped"
+  const skipped = proposed || cancelled
   // An event whose time is for a task holds the task's block: drawn as a frame round it, dashed (planner/holds.py).
   const holds = !!it.holds
-  const s =
-    it.left_out || skipped
-      ? { ...painted, bg: "transparent", bd: `1px dashed ${paint}`, fg: "var(--color-neutral-400)" }
-      : holds
-        ? { ...painted, bd: `1.5px dashed color-mix(in srgb, ${paint} 70%, transparent)` }
-        : painted
+  const s = proposed
+    ? { ...painted, bd: `1.5px dotted ${paint}` }
+    : cancelled
+      ? { ...painted, bg: "transparent", bd: "1px dashed var(--color-neutral-600)", fg: "var(--color-neutral-500)", stripe: "transparent" }
+      : it.left_out
+        ? { ...painted, bg: "transparent", bd: `1px dashed ${paint}`, fg: "var(--color-neutral-400)" }
+        : holds
+          ? { ...painted, bd: `1.5px dashed color-mix(in srgb, ${paint} 70%, transparent)` }
+          : painted
   const tall = minutes(it) >= 45
   const [typing, setTyping] = useState(false)
   const time = retime && { typing, span: it, start: () => (setTyping(true), retime.begin()), save: retime.save, stop: () => setTyping(false) }
@@ -219,14 +225,14 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
         overflow: typing ? "visible" : "hidden",
         userSelect: "none",
         cursor: "pointer",
-        ...(skipped && !aside ? { opacity: 0.6 } : {}),
-        ...(aside ? { left: "auto", right: 3, width: "min(max(34%, 76px), calc(100% - 6px))", background: "var(--color-surface)", zIndex: 3 } : {}),
+        ...(cancelled ? { opacity: 0.55 } : proposed && !aside ? { opacity: 0.9 } : {}),
+        ...(aside ? { left: "auto", right: 3, width: "min(max(34%, 76px), calc(100% - 6px))", background: proposed ? s.bg : "var(--color-surface)", zIndex: 3 } : {}),
         ...(typing ? { zIndex: 5 } : {}),
         ...(picked ? { boxShadow: "0 0 0 2px var(--color-accent)", zIndex: 2 } : {}),
       }}
       title={
         it.gives_way_to
-          ? `Skipping ${it.title}: ${it.gives_way_to} needs the time. Click to go anyway.`
+          ? `Friday would skip ${it.title}: ${it.gives_way_to} needs the time. Click to go anyway, or to skip it.`
           : skipped
             ? `Not going to ${it.title}: Friday can plan work over it. Click to go after all.`
           : holds
@@ -234,12 +240,17 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
             : undefined
       }
     >
-      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: skipped ? "transparent" : s.stripe }} />
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: cancelled ? "transparent" : s.stripe }} />
+      {proposed && (
+        <span aria-hidden style={{ position: "absolute", bottom: 3, right: 3, padding: "0 5px", borderRadius: 4, fontSize: 10, fontWeight: 600, lineHeight: "15px", color: "var(--color-bg)", background: paint }}>
+          Skip?
+        </span>
+      )}
       <div style={{ display: "flex", alignItems: "center", gap: 4, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden" }}>
         {it.series_id != null && <Icon name="repeat" size={11} />}
-        {skipped && <Icon name="skip-forward" size={11} />}
+        {cancelled && <Icon name="skip-forward" size={11} />}
         <span
-          style={{ overflow: "hidden", textOverflow: "ellipsis", ...(skipped ? { textDecoration: "line-through" } : {}) }}
+          style={{ overflow: "hidden", textOverflow: "ellipsis", ...(cancelled ? { textDecoration: "line-through" } : {}) }}
           title={it.left_out ? `${it.title} — not counted as busy (${LEFT_OUT[it.left_out] ?? it.left_out})` : undefined}
         >
           {it.event_kind === "shove" ? "Your time" : it.title}
@@ -249,7 +260,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
       {tall && (
         <TimeLine color={s.sub} time={time}>
           {clock(it.start)}–{clock(it.end)}
-          {it.gives_way_to ? " · skipping for work" : skipped ? " · not going" : it.location ? ` · ${it.location}` : ""}
+          {it.gives_way_to ? ` · for ${it.gives_way_to}` : cancelled ? " · not going" : it.location ? ` · ${it.location}` : ""}
         </TimeLine>
       )}
       {onResize && !typing && <Edges length={minutes(it)} onResize={onResize} />}
