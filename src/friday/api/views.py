@@ -296,6 +296,26 @@ class AreaWeek(Model):
     actual_h: float  # what was recorded
 
 
+class TimeItem(Model):
+    item_id: int  # the first of them
+    title: str
+    planned_h: float
+    actual_h: float
+    count: int = 1  # to-dos with this title, together (the week's dinners)
+
+
+class TimeGroup(Model):
+    """Where the week's time went, one row: a tag, a course read from the titles, or a kind (meals, errands)."""
+
+    name: str
+    by: Literal["tag", "subject", "kind", "other"]
+    area: str | None = None  # the tag, for its colour
+    preset: str | None = None  # the kind most of it is, for its colour when it has no tag
+    planned_h: float
+    actual_h: float
+    items: list[TimeItem]  # the biggest first
+
+
 class DeadlineWeek(Model):
     item_id: int
     title: str
@@ -317,6 +337,7 @@ class WeekOut(Model):
     start: str
     end: str  # the last day
     areas: list[AreaWeek]
+    groups: list[TimeGroup] = []  # the same time by tag, else course, else kind (31 Oct: "No tag" said nothing)
     fixed_h: dict[str, float]  # fixed time by event kind
     deadlines: list[DeadlineWeek]
     moves: int  # pins, unpins and shoves you made

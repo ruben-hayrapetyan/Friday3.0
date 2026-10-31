@@ -92,6 +92,14 @@ VERBS = {
         True,
         "Read a Google calendar (or, with `mac`, one of the Mac's) or stop, as one kind or per event, trusted or",
     ),
+    "category_merge": Verb(
+        "POST",
+        "/api/c/category_merge",
+        commands.CategoryMergeInput,
+        True,
+        False,
+        'One category folded into another (31 Oct: "remove campus events as a category ... classify all of them under',
+    ),
     "changes": Verb(
         "GET",
         "/api/q/changes",

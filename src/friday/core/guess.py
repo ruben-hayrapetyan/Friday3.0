@@ -4,7 +4,8 @@ guessed, and only when the title says so plainly; the add box shows the guess as
 """
 
 import re
-from collections.abc import Container
+from collections import Counter
+from collections.abc import Container, Iterable
 
 COURSE = re.compile(r"\b([A-Z]{2,5})\s?(\d{4})\b")
 # Study guides, review sheets and practice exams are exam prep (personal's decision 45), ahead of everything else.
@@ -64,3 +65,62 @@ def course_word(title: str) -> str:
     no course code is found."""
     m = COURSE.search(title) or re.search(r"\b([A-Za-z]{2,5})\s?(\d{4})\b", title)
     return (m.group(1) if m else (title.split() or [""])[0]).lower()
+
+
+# Words a to-do can start with that say what you'll do, not what it's for ("Read Papers for CUAI", "Email Linwei").
+DOING = frozenset(
+    "read reading reread email e-mail make pay clean prep prepare write finish study review do call buy submit check "
+    "fix update send meet start plan practice work watch go get book ask print sign apply text reply look find set "
+    "the a an my and to for of new first last final".split()
+    # and short capitals that are parts of a task, not what it's for ("CATC Assignment 2 PR", "Psych HW")
+    + "hw ps pr wa ta oh tbd asap pdf ii iii iv vi am pm".split()
+)
+ACRONYM = re.compile(r"^[A-Z]{2,6}$")
+ANY_COURSE = re.compile(r"\b([A-Za-z]{2,5})\s?(\d{4})\b")
+WORD = re.compile(r"[A-Za-z][A-Za-z&-]*")
+
+
+def subjects(titles: Iterable[str]) -> dict[str, str]:
+    """The subjects your to-dos are for, read from their titles: the department of a course code ("Chem" of "Chem
+    2090 Problem Set 9"), a short name in capitals ("CATC Assignment 2", "Read Papers for CUAI"), or a first word two
+    or more titles share ("Psych website", "Psych WA7"). Keyed by the word in lower case, spelled as you mostly spell
+    it ("Math" for "Math read 16.5" and "Prep: Math 1920 Quiz 3")."""
+    spellings: dict[str, Counter[str]] = {}
+    firsts: Counter[str] = Counter()
+    seconds: dict[str, Counter[str]] = {}  # the word after a first word: "Jane" is always "Jane Street"
+    sure: set[str] = set()  # a course's department, or a name in capitals: one title is enough
+    for title in titles:
+        code = ANY_COURSE.search(title)
+        if code:
+            sure.add(code.group(1).lower())
+            spellings.setdefault(code.group(1).lower(), Counter())[code.group(1)] += 1
+        words = WORD.findall(title)
+        for i, w in enumerate(words):
+            first = i == 0 and len(w) <= 6
+            if w.lower() in DOING or not (first or ACRONYM.match(w)):
+                continue
+            spellings.setdefault(w.lower(), Counter())[w] += 1
+            firsts[w.lower()] += first
+            if first:
+                seconds.setdefault(w.lower(), Counter())[words[1] if len(words) > 1 else ""] += 1
+            if ACRONYM.match(w):
+                sure.add(w.lower())
+
+    def spelled(word: str) -> str:
+        name = spellings[word].most_common(1)[0][0]
+        after, n = (seconds.get(word) or Counter({"": 0})).most_common(1)[0]
+        whole = word not in sure and after[:1].isupper() and after.lower() not in DOING and n == firsts[word]
+        return f"{name} {after}" if whole else name
+
+    return {word: spelled(word) for word in spellings if word in sure or firsts[word] >= 2}
+
+
+def subject_of(title: str, known: dict[str, str]) -> str | None:
+    """The subject a to-do is for, from `subjects`: its course code's department, else the first known word in it."""
+    code = ANY_COURSE.search(title)
+    if code and code.group(1).lower() in known:
+        return known[code.group(1).lower()]
+    for w in WORD.findall(title):
+        if w.lower() in known and w.lower() not in DOING:
+            return known[w.lower()]
+    return None

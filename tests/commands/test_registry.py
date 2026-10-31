@@ -359,6 +359,19 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "review_again": lambda app: {},
     "reviewed": lambda app: (app.do("review_again"), {"ids": [essay(app)], "keep": False})[1],
     "event_going": lambda app: {"title": "Poker night"},
+    "category_merge": lambda app: (
+        app.do(
+            "settings_set",
+            key="categories",
+            value={
+                "categories": [
+                    {"name": "Campus", "color": "yellow", "pattern": "fest"},
+                    {"name": "Social", "color": "pink", "pattern": "party"},
+                ]
+            },
+        ),
+        {"name": "Campus", "into": "Social"},
+    )[1],
     "sleep_mark": lambda app: (app.do("settings_set", key="sleep_tracking", value={"on": True}), {"kind": "up"})[1],
     "sleep_mark_edit": lambda app: {"id": slept(app), "at": "2026-10-19T07:30"},
     "sleep_mark_remove": lambda app: {"id": slept(app)},

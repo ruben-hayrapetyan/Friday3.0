@@ -190,15 +190,22 @@ def foreign(origin: str | None, host: str | None) -> bool:
 
 class Website(StaticFiles):
     """The website, its own pages' addresses (/settings, /todo) answered with its index.html so a reload or a link
-    opens that page rather than Not Found. A missing file (a dot in its name) or API route is still Not Found."""
+    opens that page rather than Not Found. A missing file (a dot in its name) or API route is still Not Found.
+
+    The page, its service worker and manifest are asked about again every time (an unchanged one is a quick 304), and
+    the build's hashed files kept for good: without a word on caching a browser kept the page from a deploy before,
+    and its service worker went on serving it (31 Oct)."""
 
     async def get_response(self, path: str, scope: Scope) -> Response:
         try:
-            return await super().get_response(path, scope)
+            response = await super().get_response(path, scope)
         except HTTPException as error:
             if error.status_code != 404 or "." in path.rsplit("/", 1)[-1] or path.split("/", 1)[0] in ("api", "mcp"):
                 raise
-            return await super().get_response("index.html", scope)
+            response = await super().get_response("index.html", scope)
+        hashed = path.startswith("assets/")
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable" if hashed else "no-cache"
+        return response
 
 
 def field_error(request: Request, error: Exception) -> JSONResponse:

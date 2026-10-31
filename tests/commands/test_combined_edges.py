@@ -367,3 +367,53 @@ def test_one_go_makes_splitting_cost_more_except_what_you_split_first(app: App) 
     e, r = f"item:{essay['id']}", f"item:{reading['id']}"
     assert after[e].chunk_cost < before[e].chunk_cost and after[r].chunk_cost > before[r].chunk_cost
     assert 0 <= after[r].chunk_cost <= 1
+
+
+# Folding one category into another (31 Oct: "remove campus events as a category ... classify all of them under
+# social (unless they are meals)")
+
+CATEGORIES = {
+    "categories": [
+        {"name": "Campus events", "slug": "campus", "color": "yellow", "pattern": "convocation|swim test"},
+        {"name": "Social", "slug": "social", "color": "pink", "pattern": "poker|party"},
+    ],
+    "filter": {"label": "Hidden", "pattern": "office hours", "except": ["campus"]},
+}
+
+
+def category_of(app: App, item_id: int) -> str | None:
+    return app.do("item", id=item_id)["item"]["category"]
+
+
+def test_a_merged_category_takes_its_words_and_its_guessed_events_along_but_not_a_meal(app: App) -> None:
+    app.do("settings_set", key="categories", value=CATEGORIES)
+    convocation, hockey, dinner = (
+        app.do("add", title=title, when="fixed", start=f"2026-10-19T{at}", end=f"2026-10-19T{at[:2]}:45")["item"]["id"]
+        for title, at in (("Convocation", "09:00"), ("Hockey Game", "13:00"), ("Club dinner", "18:00"))
+    )
+    guesses = {"hockey game": {"level": "optional", "category": "Campus events"}}
+    guesses["club dinner"] = {"level": "optional", "category": "Campus events"}
+    app.conn.execute("INSERT INTO kv (user_id, key, value) VALUES (1, 'event_ratings', ?)", [json.dumps(guesses)])
+    replan(app.conn, app.now_utc)
+    assert category_of(app, hockey) == "Campus events"
+
+    merged = app.full("category_merge", payload={"name": "Campus events", "into": "Social"})
+    assert merged.result["message"] == "Campus events joined Social: 1 event moved"
+    settings = app.do("settings")["categories"]
+    assert [c["name"] for c in settings["categories"]] == ["Social"]
+    assert settings["filter"]["except_"] == ["social"]
+    assert category_of(app, convocation) == "Social"  # by its words
+    assert category_of(app, hockey) == "Social"  # by Claude's guess, moved
+    assert category_of(app, dinner) is None  # a meal: asked again, not made Social
+
+    app.do("undo", command_id=merged.command_id)
+    assert [c["name"] for c in app.do("settings")["categories"]["categories"]] == ["Campus events", "Social"]
+    assert category_of(app, hockey) == "Campus events"
+
+
+def test_merging_needs_two_categories_that_exist(app: App) -> None:
+    app.do("settings_set", key="categories", value=CATEGORIES)
+    with pytest.raises(FieldError):
+        app.do("category_merge", name="Sports", into="Social")
+    with pytest.raises(FieldError):
+        app.do("category_merge", name="Social", into="Social")

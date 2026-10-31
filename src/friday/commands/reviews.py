@@ -1,19 +1,30 @@
 """Looking at a day or a week (DESIGN §8, §18.9, §20.4): review, brief, week_review."""
 
 import json
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, timedelta
 from typing import Any
 
 from friday.api.commands import Changed, DateInput, RangeInput, WeekNoteInput
 from friday.api.types import Empty
-from friday.api.views import AreaWeek, BriefOut, DeadlineWeek, ReviewOut, Rock, WeekItem, WeekOut
+from friday.api.views import (
+    AreaWeek,
+    BriefOut,
+    DeadlineWeek,
+    ReviewOut,
+    Rock,
+    TimeGroup,
+    TimeItem,
+    WeekItem,
+    WeekOut,
+)
 from friday.commands.fields import item_out
 from friday.commands.progress import day_blocks, day_bounds, day_gaps, reviewed_minutes
 from friday.commands.queries import block_out, now, paces, plan
 from friday.commands.registry import Ctx, command, query
 from friday.commands.sleeping import missing, planned_min, recorded
 from friday.core.db import one, rows
+from friday.core.guess import subject_of, subjects
 from friday.core.rows import item_from_row
 from friday.core.time import UNIT_MIN, format_utc, parse_utc
 from friday.planner.progress import minutes_by_item, remaining_minutes
@@ -176,25 +187,31 @@ def week_review(ctx: Ctx, inp: DateInput) -> WeekOut:
     days = [first + timedelta(days=n) for n in range(7)]
     lo, hi = day_bounds(ctx, first)[0], day_bounds(ctx, days[-1])[1]
     areas = area_names(ctx.conn, ctx.user_id)
-    area_of = {
-        r["id"]: areas.get(r["area_id"], "No area")
-        for r in rows(ctx.conn, "SELECT id, area_id FROM items WHERE user_id = ?", [ctx.user_id])
-    }
-    planned: dict[str, float] = defaultdict(float)
+    every = rows(
+        ctx.conn, "SELECT id, area_id, title, preset, when_kind, status FROM items WHERE user_id = ?", [ctx.user_id]
+    )
+    area_of = {r["id"]: areas.get(r["area_id"], "No area") for r in every}
+    item_planned: dict[int, float] = defaultdict(float)
     intended: set[int] = set()
     for d in days:
         if d > ctx.today:
             break
         for b in morning_blocks(ctx, d):
-            planned[area_of.get(b["item_id"], "No area")] += (parse_utc(b["end_utc"]) - parse_utc(b["start_utc"])) / 60
+            item_planned[b["item_id"]] += (parse_utc(b["end_utc"]) - parse_utc(b["start_utc"])) / 60
             intended.add(b["item_id"])
-    actual: dict[str, float] = defaultdict(float)
+    item_actual: dict[int, float] = defaultdict(float)
     for r in rows(
         ctx.conn,
         "SELECT item_id, minutes FROM progress WHERE user_id = ? AND start_utc >= ? AND start_utc < ?",
         [ctx.user_id, format_utc(lo), format_utc(hi)],
     ):
-        actual[area_of.get(r["item_id"], "No area")] += r["minutes"] / 60
+        item_actual[r["item_id"]] += r["minutes"] / 60
+    planned: dict[str, float] = defaultdict(float)
+    actual: dict[str, float] = defaultdict(float)
+    for item_id, h in item_planned.items():
+        planned[area_of.get(item_id, "No area")] += h
+    for item_id, h in item_actual.items():
+        actual[area_of.get(item_id, "No area")] += h
     fixed: dict[str, float] = defaultdict(float)
     for r in rows(
         ctx.conn,
@@ -210,6 +227,7 @@ def week_review(ctx: Ctx, inp: DateInput) -> WeekOut:
             AreaWeek(area=a, planned_h=round(planned[a], 1), actual_h=round(actual[a], 1))
             for a in sorted(set(planned) | set(actual))
         ],
+        groups=time_groups(every, areas, item_planned, item_actual),
         fixed_h={k: round(v, 1) for k, v in fixed.items()},
         deadlines=deadlines(ctx, lo, hi),
         moves=count(ctx, "command_log", "actor = 'you' AND command IN ('pin', 'unpin', 'shove')", "at_utc", lo, hi),
@@ -226,6 +244,74 @@ def week_review(ctx: Ctx, inp: DateInput) -> WeekOut:
         ),
         note=(kv_get(ctx.conn, "week_notes", {}, ctx.user_id) or {}).get(first.isoformat(), {}),
     )
+
+
+# Kinds that are their own row, whatever their titles say: they aren't for a course.
+KIND_ROWS = {"Routine": "Meals & routines", "Errand": "Errands", "Habit": "Habits", "Side project": "Side projects"}
+
+
+def time_groups(
+    every: list[dict[str, Any]], areas: dict[int, str], planned: dict[int, float], actual: dict[int, float]
+) -> list[TimeGroup]:
+    """The week's planned and recorded hours, a row each: by tag when it has one, else the course its title names
+    ("Chem 2090 Problem Set 9", "CS read Sorting"), else its kind (meals, errands), else "Everything else". The
+    biggest to-dos in each, so a row says what the hours were (31 Oct: "it doesn't provide any info", of a lone "No
+    tag" row holding nearly the whole week)."""
+    to_dos = (r for r in every if r["when_kind"] != "fixed" and r["status"] != "dropped")
+    known = subjects(r["title"] for r in to_dos if r["preset"] not in KIND_ROWS)
+    by_id = {r["id"]: r for r in every}
+    rows_: dict[tuple[str, str], dict[str, Any]] = {}
+    for item_id in set(planned) | set(actual):
+        r = by_id.get(item_id)
+        if r is None:
+            continue
+        area = areas.get(r["area_id"]) if r["area_id"] is not None else None
+        subject = subject_of(r["title"], known)
+        key = (
+            ("tag", area)
+            if area
+            else ("kind", KIND_ROWS[r["preset"]])
+            if r["preset"] in KIND_ROWS
+            else ("subject", subject)
+            if subject
+            else ("other", "Everything else")
+        )
+        row = rows_.setdefault(key, {"planned": 0.0, "actual": 0.0, "items": {}, "presets": Counter(), "area": area})
+        row["planned"] += planned.get(item_id, 0.0)
+        row["actual"] += actual.get(item_id, 0.0)
+        row["presets"][r["preset"]] += 1
+        # the same title once, its hours together: "Dinner ×5", not five dinners
+        same = row["items"].setdefault(r["title"], {"item_id": item_id, "planned": 0.0, "actual": 0.0, "count": 0})
+        same["item_id"] = min(same["item_id"], item_id)
+        same["planned"] += planned.get(item_id, 0.0)
+        same["actual"] += actual.get(item_id, 0.0)
+        same["count"] += 1
+    out = [
+        TimeGroup(
+            name=name,
+            by=by,  # type: ignore[arg-type]
+            area=row["area"],
+            preset=row["presets"].most_common(1)[0][0],
+            planned_h=round(row["planned"], 1),
+            actual_h=round(row["actual"], 1),
+            items=sorted(
+                (
+                    TimeItem(
+                        item_id=i["item_id"],
+                        title=title,
+                        planned_h=round(i["planned"], 1),
+                        actual_h=round(i["actual"], 1),
+                        count=i["count"],
+                    )
+                    for title, i in row["items"].items()
+                ),
+                key=lambda i: (-max(i.planned_h, i.actual_h), i.title),
+            ),
+        )
+        for (by, name), row in rows_.items()
+    ]
+    # the most time first; everything else last, whatever its size
+    return sorted(out, key=lambda g: (g.by == "other", -max(g.planned_h, g.actual_h), g.name))
 
 
 def week_items(ctx: Ctx, condition: str, bounds: list[int], at: str) -> list[WeekItem]:

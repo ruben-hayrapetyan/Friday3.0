@@ -61,3 +61,20 @@ def test_the_weekly_review_lists_finished_carried_and_coming_and_keeps_a_note(ap
     assert [c["title"] for c in week["carried"]] == ["essay"]
     assert [c["title"] for c in week["coming"]] == ["next essay"]
     assert week["note"] == {"feel": "Busy", "notes": "Start essays earlier"}
+
+
+def test_where_the_time_went_names_courses_kinds_and_the_biggest_to_dos(app: App) -> None:
+    # 31 Oct: with no tags, one "No tag" row held the whole week and said nothing
+    chem = app.do("add", text="Chem 2090 Problem Set 9 due wed 17:00 ~2h")["item"]["id"]
+    app.do("add", text="Chem Chapter 13 due thu 17:00 ~1h")
+    errand = app.do("add", title="Laundry", preset="Errand", duration_min=60)["item"]["id"]
+    app.do("pin", id=chem, start="2026-10-19T09:00", kind="locked")
+    app.do("pin", id=errand, start="2026-10-19T13:00", kind="locked")
+    replan(app.conn, app.now_utc)
+    app.do("log", id=chem, start="2026-10-19T09:00", end="2026-10-19T10:30")
+    groups = app.at("2026-10-19T11:00").do("week_review")["groups"]
+    rows = {g["name"]: g for g in groups}
+    assert rows["Chem"]["by"] == "subject" and rows["Chem"]["actual_h"] == 1.5
+    assert rows["Chem"]["items"][0]["title"] == "Chem 2090 Problem Set 9"
+    assert rows["Errands"]["by"] == "kind" and rows["Errands"]["preset"] == "Errand"
+    assert "No area" not in rows and "No tag" not in rows

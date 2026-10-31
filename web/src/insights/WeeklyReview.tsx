@@ -9,7 +9,7 @@ import { query, type Schemas } from "@/api/client"
 import { H, Icon, Seg } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { usePaces } from "@/hooks/queries"
-import { when } from "@/lib/format"
+import { weekday, when } from "@/lib/format"
 import { addDays } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
@@ -42,9 +42,10 @@ function Week({ week }: { week: Full }) {
   const edit = useCommand("edit", { label: () => "Moved to next week" })
   const drop = useCommand("drop", { label: () => "Dropped" })
   const setPaceCmd = useCommand("pace", { label: (o) => o.result.message })
+  const groups = week.groups ?? []
   const planned = week.areas.reduce((s, a) => s + a.planned_h, 0)
   const actual = week.areas.reduce((s, a) => s + a.actual_h, 0)
-  const top = Math.max(1, ...week.areas.map((a) => Math.max(a.planned_h, a.actual_h)))
+  const top = Math.max(1, ...groups.map((g) => Math.max(g.planned_h, g.actual_h)))
   const suggested = feel === "Rough" || feel === "Heavy" ? "Easy" : feel === "Great" ? "Push" : (paces?.default ?? "Normal")
   const nextMonday = addDays(week.end, 1)
   const finish = async () => {
@@ -56,7 +57,9 @@ function Week({ week }: { week: Full }) {
     if (paces && chosen !== paces.now_label) await setPaceCmd({ name: chosen, for_days: 7 })
     setFinished(true)
   }
-  const range = `${Number(week.start.slice(8, 10))}–${Number(week.end.slice(8, 10))} ${MONTHS[Number(week.end.slice(5, 7)) - 1]}`
+  // "26 October – 1 November" across two months, "19–25 October" within one
+  const month = (d: string) => MONTHS[Number(d.slice(5, 7)) - 1]
+  const range = month(week.start) === month(week.end) ? `${Number(week.start.slice(8, 10))}–${Number(week.end.slice(8, 10))} ${month(week.end)}` : `${Number(week.start.slice(8, 10))} ${month(week.start)} – ${Number(week.end.slice(8, 10))} ${month(week.end)}`
   return (
     <div className="fr-panel" style={{ overflowY: "auto" }}>
       <div className="fr-gutter" style={{ maxWidth: 1040, padding: "32px 40px 150px", display: "flex", flexDirection: "column", gap: 34 }}>
@@ -67,27 +70,48 @@ function Week({ week }: { week: Full }) {
             {week.carried.length ? ` ${week.carried.length} carry over.` : " Nothing carries over."}
           </span>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <H size={18}>Where the time went</H>
-          {week.areas.map((a) => {
-            const c = color(a.area === "No area" ? null : a.area)
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <H size={18}>Where the time went</H>
+            {/* 31 Oct: "it doesn't provide any info" — what the bars are, and what each row holds */}
+            <span style={{ fontSize: 13, color: "var(--color-neutral-400)", textWrap: "pretty", maxWidth: 640 }}>
+              {weekday(week.start)} to {week.end < today ? weekday(week.end) : "today"}: the filled bar is time you timed or marked done, the outline what Friday planned. A row is a tag, or the course a to-do's title names, or its kind.
+            </span>
+          </div>
+          {groups.map((g) => {
+            const c = color(g.area, g.preset)
+            const listed = g.items.filter((i) => i.planned_h || i.actual_h) // under three minutes says nothing
+            const shown = listed.slice(0, 3)
             return (
-              <div key={a.area} style={{ display: "grid", gridTemplateColumns: "150px minmax(0,1fr) 110px", gap: 16, alignItems: "center" }}>
+              <div key={`${g.by}:${g.name}`} style={{ display: "grid", gridTemplateColumns: "150px minmax(0,1fr) 110px", gap: "4px 16px", alignItems: "center" }}>
                 <span style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 0 }}>
                   <span className="fr-swatch" style={{ background: c }} />
-                  <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.area === "No area" ? "No tag" : a.area}</span>
+                  <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</span>
                 </span>
                 <div style={{ position: "relative", height: 10, borderRadius: 5, background: "color-mix(in srgb, var(--color-text) 6%, transparent)" }}>
-                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${(a.planned_h / top) * 100}%`, borderRadius: 5, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${c} 45%, transparent)` }} />
-                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${(a.actual_h / top) * 100}%`, borderRadius: 5, background: c }} />
+                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${(g.planned_h / top) * 100}%`, borderRadius: 5, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${c} 45%, transparent)` }} />
+                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${(g.actual_h / top) * 100}%`, borderRadius: 5, background: c }} />
                 </div>
                 <span className="tnum" style={{ fontSize: 12, color: "var(--color-neutral-400)", textAlign: "right" }}>
-                  {a.actual_h} of {a.planned_h} h
+                  {g.planned_h ? `${hours(g.actual_h)} of ${hours(g.planned_h)}` : `${hours(g.actual_h)} done`}
+                </span>
+                <span style={{ gridColumn: "2 / 4", fontSize: 12, color: "var(--color-neutral-500)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {shown.map((i, n) => (
+                    <span key={i.item_id}>
+                      {n > 0 && " · "}
+                      <button className="fr-plain fr-hover-text" onClick={() => navigate(`/todo?item=${i.item_id}`)} style={{ font: "inherit", color: "var(--color-neutral-300)" }}>
+                        {i.title}
+                        {(i.count ?? 1) > 1 && ` ×${i.count}`}
+                      </button>{" "}
+                      <span className="tnum">{itemHours(i)}</span>
+                    </span>
+                  ))}
+                  {listed.length > shown.length && ` · ${listed.length - shown.length} more`}
                 </span>
               </div>
             )
           })}
-          {!week.areas.length && <span className="fr-kicker">Nothing planned or recorded yet this week.</span>}
+          {!groups.length && <span className="fr-kicker">Nothing planned or recorded yet this week.</span>}
         </div>
         <div className="fr-stack" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.3fr)", gap: 40, alignItems: "start" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
@@ -220,4 +244,14 @@ function Week({ week }: { week: Full }) {
       </div>
     </div>
   )
+}
+
+function hours(h: number): string {
+  return `${Number(h.toFixed(1))} h`
+}
+
+/** A to-do's share of the row: what was done of what was planned, or only the one there is. */
+function itemHours(i: Schemas["TimeItem"]): string {
+  if (i.actual_h && i.planned_h) return `${Number(i.actual_h.toFixed(1))} of ${hours(i.planned_h)}`
+  return i.actual_h ? `${hours(i.actual_h)} done` : `${hours(i.planned_h)} planned`
 }

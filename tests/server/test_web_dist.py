@@ -32,3 +32,23 @@ def test_else_the_repo_while_working_on_it(tmp_path: Path, source: Path, monkeyp
 def test_a_chosen_one_wins(tmp_path: Path, source: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FRIDAY_WEB_DIST", str(tmp_path / "mine"))
     assert web_dist(tmp_path / "prefix", source) == tmp_path / "mine"
+
+
+def test_the_page_is_asked_about_every_time_and_the_hashed_files_kept(tmp_path: Path) -> None:
+    # 31 Oct: a browser kept the page from an earlier deploy, and its service worker went on serving it
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from friday.server.app import Website
+
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<html>")
+    (tmp_path / "sw.js").write_text("//")
+    (tmp_path / "assets" / "index-abc123.js").write_text("//")
+    app = FastAPI()
+    app.mount("/", Website(directory=tmp_path, html=True), name="web")
+    client = TestClient(app)
+    for path in ("/", "/settings", "/sw.js"):
+        assert client.get(path).headers["cache-control"] == "no-cache", path
+    assert "immutable" in client.get("/assets/index-abc123.js").headers["cache-control"]
+    assert client.get("/assets/missing.js").status_code == 404

@@ -580,6 +580,77 @@
     }
    }
   },
+  "/api/c/category_merge": {
+   "post": {
+    "summary": "One category folded into another (31 Oct: \"remove campus events as a category ... classify all of them under",
+    "operationId": "category_merge",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CategoryMergeInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CategoryMergeResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/checkin": {
    "post": {
     "summary": "Today's state, one tap (used only while state inference is on).",
@@ -12385,6 +12456,95 @@
      "result"
     ],
     "title": "CalendarSetResult"
+   },
+   "CategoryMergeInput": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "into": {
+      "type": "string",
+      "title": "Into"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "name",
+     "into"
+    ],
+    "title": "CategoryMergeInput"
+   },
+   "CategoryMergeResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "CategoryMergeResult"
    },
    "ChangeOut": {
     "properties": {
@@ -28502,6 +28662,106 @@
     ],
     "title": "TemplateSaveResult"
    },
+   "TimeGroup": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "by": {
+      "type": "string",
+      "enum": [
+       "tag",
+       "subject",
+       "kind",
+       "other"
+      ],
+      "title": "By"
+     },
+     "area": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Area"
+     },
+     "preset": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preset"
+     },
+     "planned_h": {
+      "type": "number",
+      "title": "Planned H"
+     },
+     "actual_h": {
+      "type": "number",
+      "title": "Actual H"
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/TimeItem"
+      },
+      "type": "array",
+      "title": "Items"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "name",
+     "by",
+     "planned_h",
+     "actual_h",
+     "items"
+    ],
+    "title": "TimeGroup",
+    "description": "Where the week's time went, one row: a tag, a course read from the titles, or a kind (meals, errands)."
+   },
+   "TimeItem": {
+    "properties": {
+     "item_id": {
+      "type": "integer",
+      "title": "Item Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "planned_h": {
+      "type": "number",
+      "title": "Planned H"
+     },
+     "actual_h": {
+      "type": "number",
+      "title": "Actual H"
+     },
+     "count": {
+      "type": "integer",
+      "title": "Count",
+      "default": 1
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "item_id",
+     "title",
+     "planned_h",
+     "actual_h"
+    ],
+    "title": "TimeItem"
+   },
    "TimerOut": {
     "properties": {
      "item_id": {
@@ -29571,6 +29831,14 @@
       },
       "type": "array",
       "title": "Areas"
+     },
+     "groups": {
+      "items": {
+       "$ref": "#/components/schemas/TimeGroup"
+      },
+      "type": "array",
+      "title": "Groups",
+      "default": []
      },
      "fixed_h": {
       "additionalProperties": {

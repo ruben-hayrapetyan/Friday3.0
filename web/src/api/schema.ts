@@ -140,6 +140,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/category_merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** One category folded into another (31 Oct: "remove campus events as a category ... classify all of them under */
+        post: operations["category_merge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/checkin": {
         parameters: {
             query?: never;
@@ -3509,6 +3526,34 @@ export interface components {
         };
         /** CalendarSetResult */
         CalendarSetResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** CategoryMergeInput */
+        CategoryMergeInput: {
+            /** Name */
+            name: string;
+            /** Into */
+            into: string;
+        };
+        /** CategoryMergeResult */
+        CategoryMergeResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
@@ -8797,6 +8842,45 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /**
+         * TimeGroup
+         * @description Where the week's time went, one row: a tag, a course read from the titles, or a kind (meals, errands).
+         */
+        TimeGroup: {
+            /** Name */
+            name: string;
+            /**
+             * By
+             * @enum {string}
+             */
+            by: "tag" | "subject" | "kind" | "other";
+            /** Area */
+            area?: string | null;
+            /** Preset */
+            preset?: string | null;
+            /** Planned H */
+            planned_h: number;
+            /** Actual H */
+            actual_h: number;
+            /** Items */
+            items: components["schemas"]["TimeItem"][];
+        };
+        /** TimeItem */
+        TimeItem: {
+            /** Item Id */
+            item_id: number;
+            /** Title */
+            title: string;
+            /** Planned H */
+            planned_h: number;
+            /** Actual H */
+            actual_h: number;
+            /**
+             * Count
+             * @default 1
+             */
+            count?: number;
+        };
         /** TimerOut */
         TimerOut: {
             /** Item Id */
@@ -9152,6 +9236,11 @@ export interface components {
             end: string;
             /** Areas */
             areas: components["schemas"]["AreaWeek"][];
+            /**
+             * Groups
+             * @default []
+             */
+            groups?: components["schemas"]["TimeGroup"][];
             /** Fixed H */
             fixed_h: {
                 [key: string]: number;
@@ -9644,6 +9733,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalendarSetResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    category_merge: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryMergeInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryMergeResult"];
                 };
             };
             /** @description Validation Error */

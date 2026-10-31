@@ -3,12 +3,14 @@ title rated once by the AI and kept (kv `event_ratings`), and the ones you said 
 are never offered again. Triage reads both; the job loop rates new titles as they arrive."""
 
 import json
+import re
 import sqlite3
 from typing import Any
 
-from friday.api.commands import Changed, EventGoingInput, EventHoldInput, EventKeepInput
+from friday.api.commands import CategoryMergeInput, Changed, EventGoingInput, EventHoldInput, EventKeepInput
 from friday.commands.fields import require_item
 from friday.commands.registry import Ctx, command
+from friday.commands.settings import write_setting
 from friday.core.calendars import rating_key
 from friday.core.db import rows
 from friday.core.items import FieldError
@@ -35,8 +37,11 @@ def rate_upcoming(conn: sqlite3.Connection, now_utc: int, user_id: int = 1, clie
     retry = kv_get(conn, "event_ratings_retried", None, user_id) != today
     settings = load_settings(conn, user_id)
     categories = [c.name for c in settings["categories"].categories]
-    # Rated before it was asked for a category: once a day, again, so its events get their colour.
-    uncolored = lambda k: retry and bool(categories) and "category" not in kept[k]  # noqa: E731
+    # Rated before it was asked for a category, or put in one since deleted: once a day, again, so its events get
+    # their colour.
+    uncolored = lambda k: (  # noqa: E731
+        retry and bool(categories) and ("category" not in kept[k] or kept[k]["category"] not in [*categories, ""])
+    )
     new = sorted(
         {
             r["title"]
@@ -53,6 +58,45 @@ def rate_upcoming(conn: sqlite3.Connection, now_utc: int, user_id: int = 1, clie
     if retry:
         kv_set(conn, "event_ratings_retried", today, user_id)
     return len(new)
+
+
+# A meal stays a meal: folded into another category, it isn't taken along but asked about again.
+MEAL = re.compile(r"\b(breakfast|brunch|lunch|dinner|supper|meals?)\b", re.IGNORECASE)
+
+
+@command("category_merge")
+def category_merge(ctx: Ctx, inp: CategoryMergeInput) -> Changed:
+    """One category folded into another (31 Oct: "remove campus events as a category ... classify all of them under
+    social (unless they are meals)"): its words join the other's, the events Claude put in it move with them (a
+    meal's is asked again), and it's gone. Undo brings it back."""
+    found = ctx.settings["categories"]
+    gone = next((c for c in found.categories if c.name == inp.name), None)
+    into = next((c for c in found.categories if c.name == inp.into), None)
+    if gone is None:
+        raise FieldError("name", f"there's no category called {inp.name}")
+    if into is None or into is gone:
+        raise FieldError("into", f"there's no other category called {inp.into}")
+    words = "|".join(p for p in (into.pattern, gone.pattern) if p.strip())
+    categories = tuple(
+        c.model_copy(update={"pattern": words}) if c is into else c for c in found.categories if c is not gone
+    )
+    rule = found.filter
+    if rule is not None and gone.slug in rule.except_:
+        kept_out = tuple(dict.fromkeys(into.slug if s == gone.slug else s for s in rule.except_))
+        rule = rule.model_copy(update={"except_": kept_out})
+    write_setting(
+        ctx, "categories", found.model_copy(update={"categories": categories, "filter": rule}).model_dump(by_alias=True)
+    )
+    ratings = kv_get(ctx.conn, "event_ratings", {}, ctx.user_id) or {}
+    theirs = {k: r for k, r in ratings.items() if r.get("category") == gone.name}
+    moved = {k: r | {"category": into.name} for k, r in theirs.items() if not MEAL.search(k)}
+    asked = {k: {f: v for f, v in r.items() if f != "category"} for k, r in theirs.items() if MEAL.search(k)}
+    if theirs:
+        ctx.db.upsert(
+            "kv", {"user_id": ctx.user_id, "key": "event_ratings"}, {"value": json.dumps(ratings | moved | asked)}
+        )
+    n = len(moved)
+    return Changed(message=f"{gone.name} joined {into.name}" + (f": {n} event{'s' * (n != 1)} moved" if n else ""))
 
 
 @command("event_going")

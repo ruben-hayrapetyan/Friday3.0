@@ -3,7 +3,7 @@
 import pytest
 
 from friday.core.calendars import fallback_level, rating_key
-from friday.core.guess import course_of, course_word, guess_preset
+from friday.core.guess import course_of, course_word, guess_preset, subject_of, subjects
 
 PRESETS = {"Assignment", "Reading", "Exam prep", "Project", "Errand"}
 
@@ -80,3 +80,42 @@ def test_a_series_shares_one_rating_key() -> None:
         rating_key("Big Red Hacks  committee #3") == rating_key("big red hacks committee") == "big red hacks committee"
     )
     assert rating_key("  Poker Night 2 ") == "poker night"
+
+
+# What a week's hours went to, when nothing has a tag (31 Oct: one "No tag" row held the whole week).
+TITLES = [
+    "Chem 2090 Problem Set 9 Evens",
+    "Chem Chapter 13",
+    "CS read Sorting",
+    "Prep for CS Oral Exam",
+    "Math read 16.5",
+    "Prep: MATH 1920 Quiz 3",
+    "Math 1920 HW9",
+    "Psych website",
+    "Psych 1130 WA8 draft",
+    "CATC Assignment 2 PR",
+    "Read Papers for CUAI",
+    "Jane Street application",
+    "Jane Street coding round",
+    "make schedule",
+    "Jump Hour",
+]
+
+
+def test_subjects_come_from_course_codes_capitals_and_shared_first_words() -> None:
+    known = subjects(TITLES)
+    assert set(known.values()) >= {"Chem", "CS", "Math", "Psych", "CATC", "CUAI", "Jane Street"}
+    assert "make" not in known and "jump" not in known  # a verb, and a word one title starts with
+    assert "pr" not in known and "wa" not in known  # parts of a task, not what it's for
+
+
+def test_a_to_do_goes_with_its_course_spelled_as_you_mostly_spell_it() -> None:
+    known = subjects(TITLES)
+    assert [subject_of(t, known) for t in ("Prep: MATH 1920 Quiz 3", "Math read 16.5", "Prep for CS Oral Exam")] == [
+        "Math",
+        "Math",
+        "CS",
+    ]
+    assert subject_of("Read Papers for CUAI", known) == "CUAI"
+    assert subject_of("CATC Assignment 2 PR", known) == "CATC"
+    assert subject_of("make schedule", known) is None
