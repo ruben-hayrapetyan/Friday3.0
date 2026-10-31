@@ -5589,6 +5589,11 @@ export interface components {
             ok: boolean;
             /** Error */
             error?: string | null;
+            /**
+             * Gone
+             * @default false
+             */
+            gone?: boolean;
             event?: components["schemas"]["MacEvent"] | null;
         };
         /** MacWrittenResult */

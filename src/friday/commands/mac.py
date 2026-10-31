@@ -26,6 +26,7 @@ from friday.commands.eventwrites import (
     MAX_TRIES,
     event_body,
     event_digest,
+    let_go,
     mac_calendar_ids,
     relocated,
     remember,
@@ -165,6 +166,8 @@ def mac_written(ctx: Ctx, inp: MacWrittenInput) -> Changed:
         raise FieldError("id", f"no change {inp.id} is waiting")
     if job["done_utc"]:
         return Changed(message="Already saved")
+    if not inp.ok and inp.gone and job["op"] == "save" and remake(ctx, job):
+        return Changed(message="Not on your calendar any more: made again")
     if not inp.ok:
         ctx.db.update(
             "event_writes", {"id": inp.id}, {"tries": job["tries"] + 1, "error": (inp.error or "failed")[:300]}
@@ -181,6 +184,21 @@ def mac_written(ctx: Ctx, inp: MacWrittenInput) -> Changed:
     ctx.db.update("event_writes", {"id": inp.id}, {"done_utc": ctx.now_text, "error": None})
     said = {"save": "Saved to your calendar", "repeat": "Repeats in your calendar"}
     return Changed(message=said.get(job["op"], "Deleted from your calendar"))
+
+
+def remake(ctx: Ctx, job: dict[str, Any]) -> bool:
+    """A change to an event whose copy on the Mac's calendar is gone (31 Oct: one Saturday of a Salsa made here had
+    gone from Google, and moving it failed five times, then sat in the status line): the event lets go of the copy,
+    and the change becomes a new event on that calendar, made as Friday has it. Whether it did."""
+    link = event_links(ctx.conn, ctx.user_id).get(job["item_id"])
+    item = load_item(ctx.conn, job["item_id"], ctx.user_id)
+    if link is None or link.kind != "mac" or link.calendar_id not in mac_calendar_ids(ctx.conn, ctx.user_id):
+        return False
+    if item is None or item.status != "todo" or not item.start_utc:
+        return False
+    let_go(ctx.conn, job["item_id"], link)
+    ctx.db.update("event_writes", {"id": job["id"]}, {"calendar_id": link.calendar_id, "tries": 0, "error": None})
+    return True
 
 
 def adopt(ctx: Ctx, job: dict[str, Any], event: MacEvent) -> None:

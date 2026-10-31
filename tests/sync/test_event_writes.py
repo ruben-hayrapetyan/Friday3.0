@@ -3,6 +3,7 @@ and sent by the job, the next sync finds nothing new, and a new event lands in t
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -137,6 +138,53 @@ def test_a_failing_write_is_tried_again_then_reported(app: App) -> None:
     assert app.table("event_writes")[0]["tries"] == MAX_TRIES
     assert failed_writes(app.conn) == ["Couldn't save Renamed to Google (ConnectionError: Google is down)"]
     assert write_events(app.conn, app.now_utc, google=google) == 0  # given up: not tried again
+
+
+def test_a_new_event_tried_again_after_its_answer_was_lost_is_made_once(app: App) -> None:
+    # The audit (30 Oct): Google made the event, the answer never reached Friday, and the next minute made another.
+    google = lecture()
+    read(app, google)
+    app.do(
+        "settings_set",
+        key="gcal",
+        value={"read": ["Classes"], "trusted": ["Classes"], "new_events_to": "Classes@group"},
+    )
+    made = app.do("add", title="Chess club", when="fixed", start="2026-10-21T19:00", end="2026-10-21T21:00")["item"]
+
+    class AnswerLost:
+        def events(self) -> "AnswerLost":
+            return self
+
+        def insert(self, **call: Any) -> "AnswerLost":
+            google.events().insert(**call).execute()  # made there
+            return self
+
+        def execute(self) -> None:
+            raise ConnectionError("the answer was lost")
+
+    assert write_events(app.conn, app.now_utc, google=AnswerLost()) == 0
+    assert write_events(app.conn, app.now_utc + 1, google=google) == 1
+    assert [e["summary"] for e in google.calendars_by_id["Classes@group"]] == ["CS 1110 Lecture", "Chess club"]
+    read(app, google, minutes_later=60)
+    chess = [i for i in app.table("items") if i["title"] == "Chess club" and i["status"] == "todo"]
+    assert [i["id"] for i in chess] == [made["id"]]
+
+
+def test_an_event_gone_from_the_calendar_is_made_again_when_changed_here(app: App) -> None:
+    google = lecture()
+    read(app, google)
+    lecture_id = the_lecture(app)["id"]
+    google.calendars_by_id["Classes@group"].clear()  # deleted there, before Friday read the calendar again
+    app.do("edit", id=lecture_id, start="2026-10-20T10:10", end="2026-10-20T11:25")
+    assert write_events(app.conn, app.now_utc, google=google) == 1
+    (made,) = google.calendars_by_id["Classes@group"]
+    assert made["summary"] == "CS 1110 Lecture" and made["start"]["dateTime"].startswith("2026-10-20T10:10")
+    read(app, google, minutes_later=60)
+    assert the_lecture(app)["id"] == lecture_id and the_lecture(app)["status"] == "todo"  # not dropped with the old
+    assert app.do("inbox")["suggestions"] == []
+    app.do("edit", id=lecture_id, title="CS 1110 Lecture (Olin 155)")
+    write_events(app.conn, app.now_utc, google=google)
+    assert [e["summary"] for e in google.calendars_by_id["Classes@group"]] == ["CS 1110 Lecture (Olin 155)"]
 
 
 def test_skipping_one_time_of_a_repeating_event_deletes_that_time(app: App) -> None:

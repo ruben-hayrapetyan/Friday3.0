@@ -1,5 +1,8 @@
 // personal's pigments (UI/Sources/Calendar/EventColors.swift): what an event can wear, named after real paints.
 // The ids match the server's PIGMENTS; light is the paint on paper, dark the same paint lifted for the dark page.
+// Meals' Ochre sits between two of them; Amber and Sap Green, its neighbours, looked like it on a block (31 Oct: clubs
+// and professor office hours beside dinner), so they moved off it, to Burnt Sienna and Permanent Green (OKLab, x100:
+// 12 and 13 from Ochre on paper, 10 and 12 on the dark page, where they were 8 and 10; at least 10 from every other).
 
 export interface Pigment {
   id: string
@@ -10,10 +13,10 @@ export interface Pigment {
 
 export const PIGMENTS: Pigment[] = [
   { id: "red", name: "Vermilion", light: "#c2402d", dark: "#e0715f" },
-  { id: "orange", name: "Amber", light: "#ce7c22", dark: "#e39a4f" },
+  { id: "orange", name: "Burnt Sienna", light: "#d07758", dark: "#ec9c7c" },
   { id: "yellow", name: "Ochre", light: "#be9a1f", dark: "#d9b84f" },
   { id: "green", name: "Verdigris", light: "#34877a", dark: "#5fb3a5" },
-  { id: "sapgreen", name: "Sap Green", light: "#74a03a", dark: "#97c463" },
+  { id: "sapgreen", name: "Permanent Green", light: "#52a85b", dark: "#80d27f" },
   { id: "blue", name: "Cerulean", light: "#2a6c9c", dark: "#5f9ccb" },
   { id: "purple", name: "Ultramarine", light: "#4a48a0", dark: "#8381d6" },
   { id: "pink", name: "Magenta", light: "#a63f76", dark: "#d27aa8" },

@@ -95,7 +95,8 @@ enum MacWriter {
         }
         guard let event = find(occurrence, calendar: calendar, in: store) else {
             if op == "delete" { return ["id": id, "ok": true] }  // gone already
-            return ["id": id, "ok": false, "error": "The event isn't on that calendar any more"]
+            // Friday makes it again, for a change (31 Oct: one Saturday's Salsa had gone from Google)
+            return ["id": id, "ok": false, "gone": true, "error": "The event isn't on that calendar any more"]
         }
         do {
             if op == "delete" {
@@ -161,10 +162,16 @@ enum MacWriter {
         guard let (identifier, at) = parts(occurrence), let place = store.calendar(withIdentifier: calendar) else { return nil }
         let fortnight: TimeInterval = 14 * 86400  // a repeat's occurrence moved away from its day is still found
         let near = store.predicateForEvents(withStart: at - fortnight, end: at + fortnight, calendars: [place])
-        return store.events(matching: near).first { e in
+        let found = store.events(matching: near).first { e in
             (e.eventIdentifier ?? e.calendarItemIdentifier) == identifier
                 && Int((e.occurrenceDate ?? e.startDate).timeIntervalSince1970) == Int(at.timeIntervalSince1970)
         }
+        if let found { return found }
+        // a one-off moved in Calendar since Friday read it is the same event at its new time, not gone (which Friday
+        // would make again)
+        guard let one = store.event(withIdentifier: identifier), !one.hasRecurrenceRules,
+              one.calendar?.calendarIdentifier == calendar else { return nil }
+        return one
     }
 
     /// An RRULE as Friday writes them ("FREQ=WEEKLY;BYDAY=FR", "FREQ=WEEKLY;INTERVAL=2;BYDAY=TH",

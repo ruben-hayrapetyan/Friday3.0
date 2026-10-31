@@ -34,13 +34,17 @@ def materialize(series: Series, today: date, days: int, tz: str, existing: set[t
     today_opens = to_utc(lo + (start - local_midnight(start.date())), tz)  # today's occurrence time
     created = parse_utc(series.created_utc)
     made = []
+    earlier: dict[date, int] = {}  # times already met that day: a repeat "at 9 and 5" numbers its two apart
     for moment in occurrences(series.rrule, start, since, hi):
+        before = earlier.get(moment.date(), 0)
+        earlier[moment.date()] = before + 1
         timing = occurrence_timing(series, moment, tz)
         if moment < lo and parse_utc(timing.get("due_utc", timing["release_utc"])) <= today_opens:
             continue  # closed already
         if "due_utc" in timing and parse_utc(timing["due_utc"]) < created:
             continue  # no backfilling
-        for n in range(1, series.per_window + 1):
+        for slot in range(1, series.per_window + 1):
+            n = before * series.per_window + slot
             if (moment.date().isoformat(), n) not in existing:
                 made.append(make_occurrence(series, moment, n, timing))
     return made

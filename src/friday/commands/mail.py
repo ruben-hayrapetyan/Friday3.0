@@ -25,6 +25,7 @@ from friday.sync.google_auth import LEGACY
 SOURCE = "Gmail"
 OLDER = "A newer message in its thread was read instead (it quotes this one)"
 ELSEWHERE = "The same message came to another of your Google accounts and was seen there"
+WITH_PDFS = "To be read on the next reading of your mail, with its PDFs"
 
 
 def read_mail(
@@ -83,6 +84,7 @@ def read_messages(
     seen = {
         r["external_id"] for r in rows(conn, "SELECT external_id FROM raw_inputs WHERE source_id = ?", [source["id"]])
     }
+    fetch_again(conn, service, source, now_utc, user_id)
     listed = gmail.message_ids(service, wanted.query, wanted.max_per_sync)
     newest = {}  # thread → its newest message, which quotes the others
     for message_id, thread in listed:
@@ -120,6 +122,32 @@ def read_messages(
                     None,
                 )
     return passed
+
+
+def fetch_again(conn: sqlite3.Connection, service: Any, source: dict[str, Any], now_utc: int, user_id: int) -> None:
+    """Skipped messages you asked to be read after all (`mail_retry`), with the PDFs a skipped message never fetched
+    (the audit, 30 Oct: a skipped syllabus was read without its syllabus): theirs first, then the message waits to be
+    read with them."""
+    for r in rows(
+        conn,
+        "SELECT id, external_id FROM raw_inputs WHERE source_id = ? AND status = 'ignored' AND error = ?",
+        [source["id"], WITH_PDFS],
+    ):
+        mail = gmail.read(service, r["external_id"])
+        pdfs = [(pdf, gmail.attachment(service, mail.id, pdf.attachment_id)) for pdf in mail.pdfs]
+        for pdf, content in pdfs:
+            save(
+                conn,
+                user_id,
+                source["id"],
+                f"{mail.id}#{pdf.name}",
+                pdf.name,
+                "application/pdf",
+                content,
+                now_utc,
+                None,
+            )
+        conn.execute("UPDATE raw_inputs SET status = 'new', error = NULL WHERE id = ?", [r["id"]])
 
 
 def elsewhere(conn: sqlite3.Connection, user_id: int, source_id: int, text: str) -> str | None:
@@ -230,5 +258,10 @@ def mail_retry(ctx: Ctx, inp: ItemRef) -> Changed:
     )
     if found is None or (found["status"] not in ("ignored", "failed") and not nothing):
         raise FieldError("id", "only a skipped or failed message, or one with nothing found, can be read again")
+    if found["status"] == "ignored" and found["media_type"] == "text/plain":
+        # skipped, so its PDFs were never fetched: the next reading of your mail, due now, fetches them with it
+        ctx.db.update("raw_inputs", {"id": inp.id}, {"error": WITH_PDFS})
+        ctx.db.update("sources", {"id": source["id"]}, {"last_sync_utc": None})
+        return Changed(message="It's read on the next sync, with its PDFs")
     ctx.db.update("raw_inputs", {"id": inp.id}, {"status": "new", "error": None})
     return Changed(message="It's read on the next sync")

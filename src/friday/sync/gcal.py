@@ -41,12 +41,22 @@ def calendars(service: Any) -> list[dict[str, Any]]:
     ]
 
 
-def save_event(service: Any, calendar_id: str, event_id: str | None, body: dict[str, Any]) -> dict[str, Any]:
-    """Make an event, or change the fields in `body` of one (a patch: its guests, place and the rest stay)."""
+def save_event(service: Any, calendar_id: str, event_id: str, body: dict[str, Any]) -> dict[str, Any]:
+    """Change the fields in `body` of an event (a patch: its guests, place and the rest stay); new ones are made by
+    `insert_once`."""
+    return dict(service.events().patch(calendarId=calendar_id, eventId=event_id, body=body).execute())
+
+
+def insert_once(service: Any, calendar_id: str, event_id: str, body: dict[str, Any]) -> dict[str, Any]:
+    """Make an event under an id Friday chose, so trying again after Google made it but before Friday heard (the
+    answer lost, Friday stopped) finds that one rather than making a second: Google refuses an id it has."""
     api = service.events()
-    if event_id is None:
-        return dict(api.insert(calendarId=calendar_id, body=body).execute())
-    return dict(api.patch(calendarId=calendar_id, eventId=event_id, body=body).execute())
+    try:
+        return dict(api.insert(calendarId=calendar_id, body=body | {"id": event_id}).execute())
+    except HttpError as error:
+        if error.resp.status != 409:
+            raise
+        return dict(api.get(calendarId=calendar_id, eventId=event_id).execute())
 
 
 def delete_event(service: Any, calendar_id: str, event_id: str) -> None:

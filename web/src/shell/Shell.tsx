@@ -64,10 +64,16 @@ export function Shell() {
   const setupDone = setupData?.done
   const toured = setupData?.toured
   const [briefOn] = useBriefSwitch()
+  // The day the morning brief was decided for: the quests wait for it, so a reload doesn't show the two at once (the
+  // quests' check ran first, with nothing open yet); the brief comes first and the quests come back when it closes.
+  const [briefDecided, setBriefDecided] = useState<string | null>(null)
   useEffect(() => {
     if (setupDone === false && dialog !== "setup") setDialog("setup") // the first time Friday opens: a few questions before anything else, and back if anything took its place
-    else if (setupDone && toured && briefOn && briefDue(today)) setDialog("brief") // not on top of the first quests
-  }, [today, setDialog, setupDone, toured, briefOn, dialog])
+    else if (setupDone && toured !== undefined && briefOn !== undefined && briefDecided !== today) {
+      if (toured && briefOn && briefDue(today)) setDialog("brief") // not on top of the first quests
+      setBriefDecided(today)
+    }
+  }, [today, setDialog, setupDone, toured, briefOn, dialog, briefDecided])
   useEffect(() => setNavOpen(false), [location.pathname, setNavOpen]) // a page picked from the slid-out sidebar
   const narrow = layout.mode === "narrow"
   const w = useWhatIf()
@@ -142,7 +148,7 @@ export function Shell() {
       {dialog === "ask" && <AskClaudeDialog onClose={() => setDialog(null)} />}
       {dialog === "setup" && <SetupDialog onClose={() => setDialog(null)} />}
       {tour && <Tour />}
-      <FirstTour ready={setupDone === true && dialog === null} toured={toured} />
+      <FirstTour ready={setupDone === true && dialog === null && briefDecided === today} toured={toured} />
     </DragProvider>
   )
 }

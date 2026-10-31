@@ -94,7 +94,7 @@ def is_filtered(title: str, settings: CategorySettings) -> bool:
 
 
 # The paints, as the website shows them on paper (web/src/lib/pigments.ts), for matching a calendar's own colour.
-PIGMENT_HEX = {"red": "#c2402d", "orange": "#ce7c22", "yellow": "#be9a1f", "green": "#34877a", "sapgreen": "#74a03a",
+PIGMENT_HEX = {"red": "#c2402d", "orange": "#d07758", "yellow": "#be9a1f", "green": "#34877a", "sapgreen": "#52a85b",
                "blue": "#2a6c9c", "purple": "#4a48a0", "pink": "#a63f76", "graphite": "#6e7a8c",
                "violet": "#8a4cb5"}  # fmt: skip
 

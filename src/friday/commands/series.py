@@ -26,7 +26,7 @@ from friday.core.db import one, rows
 from friday.core.items import FieldError, with_defaults
 from friday.core.recurrence import describe, ending_before, read_repeat
 from friday.core.rows import item_to_row
-from friday.core.series import Series, materialize
+from friday.core.series import Series, materialize, occurrence_timing
 from friday.core.time import ampm, format_local, local_midnight, parse_local, parse_utc, to_local
 from friday.planner.store import area_names, event_links, kv_get
 
@@ -313,6 +313,42 @@ def edit_series_from(
 
 def without_times(values: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in values.items() if k not in TIME_KEYS}
+
+
+def retimed(ctx: Ctx, row: dict[str, Any], item: Any, times: dict[str, str]) -> dict[str, Any]:
+    """The series' row once one of its times has new times from then on (31 Oct: "Salsa at 1:25 from the 7th on"
+    moved nothing): a fixed one's time of day and length; a window's opening and due, from its day's start. Within
+    the day: a repeat moves to another day by changing how it repeats."""
+    template = json.loads(row["template"])
+    first = parse_local(row["dtstart_local"])
+    if re.search(r"FREQ=(HOURLY|MINUTELY|SECONDLY)|BY(HOUR|MINUTE|SECOND)=", row["rrule"].upper()):
+        raise FieldError("start", f"{item.title}'s times are part of how it repeats: change them one at a time")
+    if template.get("when") == "fixed":
+        was = to_local(parse_utc(item.start_utc), ctx.tz)
+        start = to_local(parse_utc(times.get("start_utc", item.start_utc)), ctx.tz)
+        end = to_local(parse_utc(times.get("end_utc", item.end_utc)), ctx.tz)
+        if start.date() != was.date():
+            raise FieldError("start", f"{item.title} moves to another day by changing how it repeats")
+        length = (end - start) // timedelta(minutes=1)
+        if length <= 0:
+            raise FieldError("end", "the end comes before the start")
+        return row | {
+            "dtstart_local": format_local(datetime.combine(first.date(), start.time())),
+            "template": json.dumps(template | {"length_min": length}),
+        }
+    opens = local_midnight(date.fromisoformat(item.occurrence_date)) + (first - local_midnight(first.date()))
+    out = dict(row)
+    for key, offset in (("release_utc", "release_offset_min"), ("due_utc", "due_offset_min")):
+        if key in times:
+            out[offset] = (to_local(parse_utc(times[key]), ctx.tz) - opens) // timedelta(minutes=1)
+    return out
+
+
+def timing_on(ctx: Ctx, row: dict[str, Any], day: str) -> dict[str, str]:
+    """The times the series gives its occurrence on a day."""
+    first = parse_local(row["dtstart_local"])
+    opens = local_midnight(date.fromisoformat(day)) + (first - local_midnight(first.date()))
+    return occurrence_timing(as_series(row), opens, ctx.tz)
 
 
 def series_out(ctx: Ctx, series_id: int) -> SeriesOut:

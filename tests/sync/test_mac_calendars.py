@@ -388,6 +388,50 @@ def test_a_change_the_mac_cant_make_is_tried_again_then_reported(app: App) -> No
     ]
 
 
+def test_an_event_gone_from_the_mac_is_made_again_when_changed_here(app: App) -> None:
+    # 31 Oct: one Saturday's Salsa, made here, had gone from Google; "Couldn't save Salsa to your calendar (The event
+    # isn't on that calendar any more)" after five tries, for good.
+    from friday.commands.eventwrites import failed_writes
+
+    post(app, [GMAIL], [])
+    app.do("settings_set", key="gcal", value={"new_events_to": "gmail-cal"})
+    salsa = app.do("add", title="Salsa", when="fixed", start="2026-10-24T13:35", end="2026-10-24T14:40")["item"]
+    (made,) = app.do("mac_writes")
+    written(app, made, eid="s1", cid="gmail-cal", title="Salsa", start="2026-10-24T13:35", end="2026-10-24T14:40")
+    app.do("edit", id=salsa["id"], start="2026-10-24T13:25", end="2026-10-24T14:30")
+    (save,) = app.do("mac_writes")
+    said = app.do("mac_written", id=save["id"], ok=False, gone=True, error="The event isn't on that calendar any more")
+    assert said["message"] == "Not on your calendar any more: made again"
+    (again,) = app.do("mac_writes")
+    assert (again["id"], again["op"], again["calendar"], again["start"]) == (
+        save["id"], "create", "gmail-cal", "2026-10-24T17:25:00Z"
+    )  # fmt: skip
+    written(app, again, eid="s2", cid="gmail-cal", title="Salsa", start="2026-10-24T13:25", end="2026-10-24T14:30")
+    assert app.do("mac_writes") == [] and failed_writes(app.conn) == []
+    log = len(app.table("command_log"))
+    post(app, [GMAIL], [mac_event("s2", "gmail-cal", "Salsa", "2026-10-24T13:25", "2026-10-24T14:30")], 1)
+    assert [i["id"] for i in events(app).values()] == [salsa["id"]]  # the same event: not dropped with s1, nor twice
+    assert len(app.table("command_log")) == log and app.do("inbox")["suggestions"] == []
+    app.do("edit", id=salsa["id"], location="Willard Straight Hall")
+    assert app.do("mac_writes")[0]["event"].startswith("s2")  # and changes go to the new one
+
+
+def test_a_change_given_up_on_stops_being_reported_once_a_later_one_is_saved(app: App) -> None:
+    from friday.commands.eventwrites import MAX_TRIES, failed_writes
+
+    post(app, [WRITABLE], [LECTURE])
+    dentist = events(app)["Dentist"]["id"]
+    app.do("edit", id=dentist, title="Dentist at noon")
+    for _ in range(MAX_TRIES):
+        (job,) = app.do("mac_writes")
+        app.do("mac_written", id=job["id"], ok=False, error="Calendar was busy")
+    assert failed_writes(app.conn) != []
+    app.do("edit", id=dentist, title="Dentist at one")
+    written(app, app.do("mac_writes")[0], eid="l1", cid="home", title="Dentist at one", start="2026-10-20T10:00",
+            end="2026-10-20T11:00")  # fmt: skip
+    assert failed_writes(app.conn) == []
+
+
 def test_a_mac_calendar_you_said_not_to_edit_gets_nothing(app: App) -> None:
     post(app, [WRITABLE], [LECTURE])
     app.do("calendar_set", id="home", mac=True, editable=False)

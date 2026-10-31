@@ -78,11 +78,13 @@ def sync(
 def due(conn: sqlite3.Connection, kind: str, settings: dict, now_utc: int, user_id: int) -> bool:
     found = one(  # a source switched off (or a removed account's) isn't read, so it doesn't make the rest due
         conn,
-        "SELECT MIN(last_sync_utc) AS at FROM sources WHERE user_id = ? AND kind = ? AND enabled = 1",
+        "SELECT MIN(last_sync_utc) AS at, COUNT(*) > COUNT(last_sync_utc) AS unread FROM sources "
+        "WHERE user_id = ? AND kind = ? AND enabled = 1",
         [user_id, kind],
     )
     at = found["at"] if found else None
-    return at is None or now_utc - parse_utc(at) >= settings["ingest"].poll_min
+    # one not read yet (new, or asked to read again) makes them due, though another was read a minute ago
+    return at is None or bool(found and found["unread"]) or now_utc - parse_utc(at) >= settings["ingest"].poll_min
 
 
 def guarded(conn: sqlite3.Connection, kind: str, now_utc: int, user_id: int, read: Callable[[], int]) -> int:

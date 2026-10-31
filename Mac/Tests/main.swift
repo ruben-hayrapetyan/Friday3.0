@@ -191,6 +191,11 @@ test("new events Friday made are made once") {
                                in: EKEventStore(), made: made)
     check(gone["ok"] as? Bool == false && (gone["error"] as? String ?? "").contains("isn't on this Mac"),
           "a calendar not on this Mac says so: \(gone)")
+    let missing = MacWriter.apply(["id": 8, "op": "save", "calendar": "no-such-calendar", "event": "ABC@1761000000",
+                                   "start": "2026-10-30T22:15:00Z", "end": "2026-10-30T23:15:00Z"],
+                                  in: EKEventStore(), made: made)
+    check(missing["ok"] as? Bool == false && missing["gone"] as? Bool == true,
+          "a change to an event not found says it's gone, for Friday to make it again: \(missing)")
 }
 
 test("the start's ring creeps while it waits, never closing on its own") {

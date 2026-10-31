@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from dateutil.rrule import rrulestr
+from googleapiclient.errors import HttpError
 
 EASTERN = timezone(timedelta(hours=-4))
 
@@ -96,11 +97,22 @@ class Events:
 
     def get(self, calendarId: str, eventId: str) -> Call:  # noqa: N803
         rule = self.google.rules.get(eventId)
-        return Call(lambda: {"id": eventId} | ({"recurrence": [f"RRULE:{rule}"]} if rule else {}))
+        held = next((e for e in self.google.calendars_by_id.get(calendarId, []) if e["id"] == eventId), {})
+        return Call(lambda: held | {"id": eventId} | ({"recurrence": [f"RRULE:{rule}"]} if rule else {}))
 
     def insert(self, calendarId: str, body: dict[str, Any]) -> Call:  # noqa: N803
-        event = local_times(body) | {"id": f"e{next(self.google.ids)}"}
-        return Call(lambda: self.google.calendars_by_id[calendarId].append(event) or self.write("insert", event))
+        event = local_times(body) | {"id": body.get("id") or f"e{next(self.google.ids)}"}
+
+        def make() -> dict[str, Any]:
+            events = self.google.calendars_by_id[calendarId]
+            if any(e["id"] == event["id"] for e in events):  # as Google refuses an id it has
+                raise HttpError(
+                    SimpleNamespace(status=409, reason="Conflict"), b"The requested identifier already exists"
+                )
+            events.append(event)
+            return self.write("insert", event)
+
+        return Call(make)
 
     def update(self, calendarId: str, eventId: str, body: dict[str, Any]) -> Call:  # noqa: N803
         def change() -> dict[str, Any]:
@@ -114,7 +126,9 @@ class Events:
         def change() -> dict[str, Any]:
             self.google.patches.append(body)
             events = self.google.calendars_by_id[calendarId]
-            found = next(e for e in events if e["id"] == eventId)
+            found = next((e for e in events if e["id"] == eventId), None)
+            if found is None:  # as Google answers for an event deleted there
+                raise HttpError(SimpleNamespace(status=404, reason="Not Found"), b"Not Found")
             patched = found | local_times(body)
             if body.get("recurrence"):  # made to repeat: listed from now on as its times, as singleEvents gives them
                 rule = body["recurrence"][0].removeprefix("RRULE:")

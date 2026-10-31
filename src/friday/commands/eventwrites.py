@@ -22,6 +22,8 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from googleapiclient.errors import HttpError
+
 from friday.api.commands import Changed
 from friday.api.types import Empty
 from friday.commands.calendars import editable
@@ -247,12 +249,28 @@ def on_mac(link: Any) -> bool:
     return link is not None and link.kind == "mac"
 
 
+def let_go(conn: sqlite3.Connection, item_id: int, link: Any) -> None:
+    """The event's copy on its calendar is gone (deleted there, or never made): the item lets go of it, so a save
+    makes it again as a new event, and a later reading of the calendar doesn't take the copy's absence for the event
+    being cancelled."""
+    raw = "SELECT id FROM raw_inputs WHERE source_id = ? AND external_id = ?"
+    conn.execute(
+        f"UPDATE suggestions SET status = 'superseded' WHERE item_id = ? AND status = 'accepted' "
+        f"AND raw_input_id IN ({raw})",
+        [item_id, link.source_id, link.event_id],
+    )
+    conn.execute(f"UPDATE raw_inputs SET status = 'ignored' WHERE id IN ({raw})", [link.source_id, link.event_id])
+
+
 def failed_writes(conn: sqlite3.Connection, user_id: int = 1) -> list[str]:
-    """Changes Friday gave up saving to Google, for the status line."""
+    """Changes Friday gave up saving to Google, for the status line; not one a later save or delete of the same event
+    made (that sent the event as it was then)."""
     found = rows(
         conn,
         "SELECT w.item_id, i.title, w.error FROM event_writes w JOIN items i ON i.id = w.item_id "
-        "WHERE w.user_id = ? AND w.done_utc IS NULL AND w.tries >= ? ORDER BY w.id DESC LIMIT 3",
+        "WHERE w.user_id = ? AND w.done_utc IS NULL AND w.tries >= ? AND NOT EXISTS (SELECT 1 FROM event_writes l "
+        "WHERE l.item_id = w.item_id AND l.id > w.id AND l.op != 'repeat' AND l.done_utc IS NOT NULL) "
+        "ORDER BY w.id DESC LIMIT 3",
         [user_id, MAX_TRIES],
     )
     links = event_links(conn, user_id)
@@ -285,20 +303,36 @@ def send(
         return  # a change saved before it was ticked done (or skipped): nothing to send, and nothing to delete
     if link is not None and link.calendar_id:
         body = change_body(conn, item, tz)
-        made = gcal.save_event(google_for(link.calendar_id), link.calendar_id, link.event_id, body)
-        remember(conn, link.source_id, made, tz, settings, now_utc, user_id, None)
-        return
+        try:
+            made = gcal.save_event(google_for(link.calendar_id), link.calendar_id, link.event_id, body)
+        except HttpError as error:
+            if error.resp.status not in (404, 410):
+                raise
+            # gone from the calendar while Friday still has it: made there again, as Friday has it, as a new event
+            # (the job says where, so trying it again makes the same one)
+            let_go(conn, item.id or 0, link)
+            conn.execute("UPDATE event_writes SET calendar_id = ? WHERE id = ?", [link.calendar_id, job["id"]])
+            job = job | {"calendar_id": link.calendar_id}
+        else:
+            remember(conn, link.source_id, made, tz, settings, now_utc, user_id, None)
+            return
     calendar = job["calendar_id"]
     source = one(
         conn,
         "SELECT id FROM sources WHERE user_id = ? AND kind = 'gcal' AND json_extract(config, '$.calendar') = ?",
         [user_id, calendar],
     )
-    made = gcal.save_event(google_for(calendar), calendar, None, event_body(item, tz))
+    made = gcal.insert_once(google_for(calendar), calendar, new_event_id(job, user_id), event_body(item, tz))
     # Tied to the event either way: a calendar Friday doesn't read gets a source of its own, switched off, so the
     # next change patches this event (instead of making another) and a delete finds it.
     source_id = source["id"] if source is not None else quiet_source(conn, calendar, user_id)
     remember(conn, source_id, made, tz, settings, now_utc, user_id, item)
+
+
+def new_event_id(job: dict[str, Any], user_id: int) -> str:
+    """The id a job's new event has in Google, the same each time the job is tried: Google's letters (0-9, a-v)."""
+    seed = f"{user_id}:{job['id']}:{job['item_id']}:{job['queued_utc']}"
+    return "fr" + hashlib.sha256(seed.encode()).hexdigest()[:30]
 
 
 def repeat_there(conn: sqlite3.Connection, service: Any, link: Any, item: Item, rule: str, tz: str) -> None:

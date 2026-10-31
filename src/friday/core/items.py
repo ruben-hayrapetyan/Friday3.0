@@ -15,8 +15,9 @@ Certainty = Literal["planned", "tentative"]
 Status = Literal["todo", "done", "dropped", "skipped"]
 DurationSource = Literal["you", "estimate", "preset"]
 
-# personal's pigments (UI/Sources/Calendar/EventColors.swift), by id: Vermilion, Amber, Ochre, Verdigris, Sap Green,
-# Cerulean, Ultramarine, Magenta, Payne's Grey, Cobalt Violet. The web app holds their colours.
+# personal's pigments (UI/Sources/Calendar/EventColors.swift), by id: Vermilion, Burnt Sienna (Amber until 31 Oct),
+# Ochre, Verdigris, Permanent Green (Sap Green), Cerulean, Ultramarine, Magenta, Payne's Grey, Cobalt Violet. The web
+# app holds their colours.
 PIGMENTS = ("red", "orange", "yellow", "green", "sapgreen", "blue", "purple", "pink", "graphite", "violet")
 
 DEFAULT_DAILY_CEILING_UNITS = 4  # an hour a day: at 3 h, a book or Leetcode took every free afternoon (M15)

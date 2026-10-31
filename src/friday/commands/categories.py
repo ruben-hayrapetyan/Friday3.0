@@ -6,6 +6,9 @@ optional); else Claude's, asked once a title with its clues as context (`command
 the skip ratings anyway); else the clues', when they're sure (`core/clues.py`). When the event most like it is one you
 chose a category for, the clues come before Claude: what you choose spreads to the events like it. Unsure, the clues'
 guess is offered on the card, never painted.
+
+An event on a calendar that doesn't count as busy, others' room bookings, isn't guessed at (31 Oct: Library Rooms'
+"Rohan: Olin 603" came out Social, by the friend's name): it wears its calendar's colour unless you choose for it.
 """
 
 import hashlib
@@ -14,10 +17,10 @@ import sqlite3
 from dataclasses import dataclass
 
 from friday.commands.registry import Ctx
-from friday.core.calendars import Category, CategorySettings, category_of, rating_key
+from friday.core.calendars import Category, CategorySettings, calendar_counts, category_of, rating_key
 from friday.core.clues import Clues, clues_of, known_from
 from friday.core.db import one, rows
-from friday.planner.store import event_links, kv_get, settings_version
+from friday.planner.store import event_links, kv_get, load_settings, settings_version
 
 CHOICES = "event_categories"  # kv: {title key: a category's name, or "" for none}
 SENDER = re.compile(r"^From:.*?@([\w.-]+)", re.MULTILINE)
@@ -43,16 +46,22 @@ def senders(conn: sqlite3.Connection, user_id: int) -> dict[int, str]:
 
 
 def label(
-    key: str, title: str, chosen: dict[str, str], categories: CategorySettings, rated: dict[str, dict[str, str]]
+    key: str,
+    title: str,
+    chosen: dict[str, str],
+    categories: CategorySettings,
+    rated: dict[str, dict[str, str]],
+    guessed: bool = True,
 ) -> tuple[str | None, str]:
-    """A title's category for the clues to learn from, and who said: you, your words, or Claude."""
+    """A title's category for the clues to learn from, and who said: you, your words, or Claude (not for an event
+    that isn't `guessed` at)."""
     named = {c.name for c in categories.categories}
     if key in chosen:
         return (chosen[key] if chosen[key] in named else None), "you"
     rule = category_of(title, categories)
     if rule is not None:
         return rule.name, "always"
-    guess = (rated.get(key) or {}).get("category")
+    guess = (rated.get(key) or {}).get("category") if guessed else None
     return (guess if guess in named else None), "claude"
 
 
@@ -61,6 +70,7 @@ def build(conn: sqlite3.Connection, user_id: int, categories: CategorySettings) 
     rated = kv_get(conn, "event_ratings", {}, user_id) or {}
     links = event_links(conn, user_id)
     sent = senders(conn, user_id)
+    busy = load_settings(conn, user_id)["busy"]
     found = []
     for r in rows(
         conn,
@@ -69,7 +79,7 @@ def build(conn: sqlite3.Connection, user_id: int, categories: CategorySettings) 
     ):
         key = rating_key(r["title"])
         calendar = links[r["id"]].calendar if r["id"] in links else None
-        category, by = label(key, r["title"], chosen, categories, rated)
+        category, by = label(key, r["title"], chosen, categories, rated, calendar_counts(calendar, busy))
         found.append((key, r["title"], clues_of(r["title"], calendar, r["location"], sent.get(r["id"])), category, by))
     return Clues(known_from(found))
 
@@ -160,6 +170,8 @@ def place(ctx: Ctx, item_id: int | None, title: str, calendar: str | None, locat
         found = Placed(named.get(chosen), "you")
     elif rule is not None:
         found = Placed(rule, "always")
+    elif not calendar_counts(calendar, ctx.settings["busy"]):
+        found = Placed(None)  # others' bookings: its calendar's colour
     else:
         verdict = model(ctx).judge(clues_of(title, calendar, location, sender), skip=key)
         clued = named.get(verdict.category or "") if verdict.sure else None

@@ -137,3 +137,22 @@ def test_claude_is_told_what_friday_knows_and_what_each_category_has_meant(app: 
     assert "Club meetings: CUAI meeting, CUAI zoom" in request["system"]
     ratings = json.loads(app.conn.execute("SELECT value FROM kv WHERE key = 'event_ratings'").fetchone()[0])
     assert ratings["cuai subteam meeting"]["category"] == "Club meetings"  # its title, without what was told
+
+
+def test_others_room_bookings_wear_their_calendars_colour_not_a_guess(app: App) -> None:
+    # 31 Oct: Library Rooms' "Rohan: Olin 603" came out Social, Claude going by the friend's name.
+    from friday.commands.fetching import sync
+
+    rooms = {"id": "rooms", "name": "Library Rooms", "account": "Google", "type": "caldav", "color": "#8a4cb5"}
+    booking = {"id": "b1", "calendar": "rooms", "title": "Rohan: Olin 603",
+               "start": "2026-10-20T17:00:00-04:00", "end": "2026-10-20T19:00:00-04:00"}  # fmt: skip
+    app.do("mac_sync", calendars=[rooms], events=[booking], since="2026-10-18T00:00:00-04:00",
+           until="2026-12-14T00:00:00-05:00")  # fmt: skip
+    sync(app.conn, app.now_utc)
+    (item_id,) = [i["id"] for i in app.table("items") if i["title"] == "Rohan: Olin 603"]
+    claude_said(app, {"Rohan: Olin 603": "Social"})
+    shown = app.do("item", id=item_id)["item"]
+    assert (shown["category"], shown["category_by"], shown["left_out"]) == (None, None, "calendar")
+    assert shown["calendar_color"] == "violet"
+    app.do("event_category", id=item_id, category="Club meetings")  # yours still goes
+    assert facts(app, item_id) == ("Club meetings", "you")

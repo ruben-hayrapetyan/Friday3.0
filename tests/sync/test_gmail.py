@@ -82,6 +82,19 @@ def test_a_skipped_message_can_be_read_anyway(app: App) -> None:
     assert len(client.calls) == 1 and statuses(app)["m2"] == "extracted"
 
 
+def test_a_skipped_message_read_anyway_comes_with_its_pdfs(app: App) -> None:
+    # The audit (30 Oct): a skipped message never fetched its PDFs, so reading it anyway read it without them.
+    gmail = FakeGmail([mail("s1", "Club <hi@club.org>", "Spring schedule", "<p>Attached.</p>", b"%PDF")])
+    sync(app.conn, app.now_utc, mail=gmail, client=FakeClient(NOTHING))
+    assert statuses(app) == {"s1": "ignored"}
+    skipped = app.do("mail_log")[0]
+    assert app.do("mail_retry", id=skipped["id"])["message"] == "It's read on the next sync, with its PDFs"
+    client = FakeClient(NOTHING)
+    sync(app.conn, app.now_utc + 1, mail=gmail, client=client)  # a minute on: the next reading of mail is now
+    assert statuses(app) == {"s1": "extracted", "s1#ps5.pdf": "extracted"}
+    assert [c["messages"][0]["content"][0]["type"] for c in client.calls] == ["text", "document"]
+
+
 def test_a_message_read_with_nothing_found_can_be_read_again(app: App) -> None:
     # 30 Oct: an invitation to a Morgan Stanley webinar was read as marketing; one that made suggestions isn't
     # read twice.

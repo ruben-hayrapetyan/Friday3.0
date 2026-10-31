@@ -18570,6 +18570,11 @@
       ],
       "title": "Error"
      },
+     "gone": {
+      "type": "boolean",
+      "title": "Gone",
+      "default": false
+     },
      "event": {
       "anyOf": [
        {

@@ -80,6 +80,55 @@ def test_time_to_get_there_set_on_one_lunch_is_every_lunch_from_then(app: App) -
     assert (shown["buffer_before_min"], shown["buffer_after_min"]) == (15, 15)
 
 
+def test_a_new_time_from_a_date_on_moves_that_time_and_every_later_one(app: App) -> None:
+    # 31 Oct: Salsa "1:25 to 2:30 from the 7th on" moved nothing; the times were dropped and the rest kept.
+    app.do("add", title="Salsa", when="fixed", start="2026-10-24T13:35", end="2026-10-24T14:40", every="sat")
+    first, second, *later = sorted(
+        (i for i in app.table("items") if i["title"] == "Salsa"), key=lambda i: i["occurrence_date"]
+    )
+    app.do("edit", id=second["id"], start="2026-10-31T13:25", end="2026-10-31T14:30", from_date="2026-10-31")
+
+    def when(item: dict) -> tuple[str, str]:
+        shown = app.do("item", id=item["id"])["item"]
+        return shown["start"], shown["end"]
+
+    assert when(first) == ("2026-10-24T13:35", "2026-10-24T14:40")  # before the date: as it was
+    assert when(second) == ("2026-10-31T13:25", "2026-10-31T14:30")
+    assert len(later) > 3 and {(when(i)[0][11:], when(i)[1][11:]) for i in later} == {("13:25", "14:30")}  # past 1 Nov
+    app.now_utc += 60 * 1440
+    app.do("materialize")
+    newest = max((i for i in app.table("items") if i["title"] == "Salsa"), key=lambda i: i["occurrence_date"])
+    assert when(newest)[0][11:] == "13:25" and newest["id"] not in {i["id"] for i in later}  # those made later too
+    with pytest.raises(Exception, match="another day by changing how it repeats"):
+        app.do("edit", id=later[0]["id"], start="2026-11-08T13:25", end="2026-11-08T14:30", from_date="2026-11-07")
+
+
+def test_a_repeat_more_than_once_a_day_keeps_each_time(app: App) -> None:
+    # The audit (30 Oct): "every day at 9 and 5" failed to save; both times of a day took the same place in it.
+    made = app.do("add", title="Meds", when="fixed", start="2026-10-20T09:00", end="2026-10-20T09:15",
+                  every="rrule:FREQ=DAILY;BYHOUR=9,17")  # fmt: skip
+    meds = [i for i in app.table("items") if i["title"] == "Meds"]
+    shown = {app.do("item", id=i["id"])["item"]["start"] for i in meds}
+    assert {"2026-10-20T09:00", "2026-10-20T17:00", "2026-10-21T09:00", "2026-10-21T17:00"} <= shown
+    assert len(meds) == len(shown) == made["occurrences"]
+    app.do("materialize")  # made again: nothing new
+    assert len([i for i in app.table("items") if i["title"] == "Meds"]) == len(meds)
+    with pytest.raises(Exception, match="part of how it repeats"):
+        app.do("edit", id=meds[0]["id"], start="2026-10-20T08:00", end="2026-10-20T08:15", from_date="2026-10-20")
+
+
+def test_a_new_due_from_a_date_on_is_every_later_ones(app: App) -> None:
+    task = app.do("add", title="Reading quiz", duration_min=30, due="2026-10-23T17:00")["item"]
+    app.do("repeat", id=task["id"], every="fri")
+    first, second, *later = sorted(
+        (i for i in app.table("items") if i["title"] == "Reading quiz"), key=lambda i: i["occurrence_date"]
+    )
+    app.do("edit", id=second["id"], due="2026-10-30T15:00", from_date=second["occurrence_date"])
+    due = {i["id"]: app.do("item", id=i["id"])["item"]["due"] for i in [first, second, *later]}
+    assert due[first["id"]] == "2026-10-23T17:00" and due[second["id"]] == "2026-10-30T15:00"
+    assert len(later) > 2 and {due[i["id"]][11:] for i in later} == {"15:00"}
+
+
 def test_a_task_made_to_repeat_repeats_from_its_own_due_day(app: App) -> None:
     # The audit (31 Oct): a Friday-due task made "every fri" came due on Tuesdays (counted from today, a Monday), and
     # wasn't the first of its own repeat.

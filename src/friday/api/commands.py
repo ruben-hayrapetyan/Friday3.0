@@ -901,6 +901,7 @@ class MacWrittenInput(Model):
     id: int  # the change's id
     ok: bool
     error: str | None = None  # why not, when it couldn't
+    gone: bool = False  # the event wasn't on its calendar any more
     event: MacEvent | None = None  # the event as it is after the change (its id moves with a one-off event's start)
 
 

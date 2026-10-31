@@ -497,5 +497,16 @@ kbd.fr-kbd {
 @media (min-width: 760px) {
   body:has(.fr-block-card) .fr-toasts {
     right: 376px !important;
+    max-width: calc(100vw - 376px - 16px);
+  }
+}
+/* Narrower, the card is the window's width: they go to its foot instead. */
+@media (max-width: 759.98px) {
+  body:has(.fr-block-card) .fr-toasts {
+    top: auto !important;
+    bottom: 16px;
+    left: 16px;
+    right: 16px !important;
+    align-items: center !important;
   }
 }

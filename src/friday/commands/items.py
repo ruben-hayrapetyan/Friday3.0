@@ -32,7 +32,15 @@ from friday.commands.fields import (
     to_item_values,
 )
 from friday.commands.registry import Ctx, command
-from friday.commands.series import calendar_of, create_series, load_series, without_times
+from friday.commands.series import (
+    TIME_KEYS,
+    calendar_of,
+    create_series,
+    load_series,
+    retimed,
+    timing_on,
+    without_times,
+)
 from friday.commands.timer import stop_timer
 from friday.core.db import one, rows
 from friday.core.guess import course_of, guess_preset
@@ -311,20 +319,28 @@ def edit(ctx: Ctx, inp: EditInput) -> ItemResult:
 
 def edit_from(ctx: Ctx, item: Item, from_date: str, given: dict[str, Any]) -> ItemResult:
     """This occurrence and the later ones changed where they are, and the series' template for those not made yet.
-    Each keeps its id and the work recorded on it: remaking them lost both, and failed on the one being edited."""
+    Each keeps its id and the work recorded on it: remaking them lost both, and failed on the one being edited. New
+    times are this one's, and the series' from then on, so each later one moves to them on its own day."""
     assert item.series_id is not None
-    values = without_times(to_item_values(ctx, given))
+    values = to_item_values(ctx, given)
+    times = {k: v for k, v in values.items() if k in TIME_KEYS}
+    values = without_times(values)
     series = load_series(ctx, item.series_id)
+    if times and item.occurrence_date:
+        series = retimed(ctx, series, item, times)
     template = json.loads(series["template"]) | values
-    ctx.db.update("series", {"id": item.series_id}, {"template": json.dumps(template), "updated_utc": ctx.now_text})
+    series["template"] = json.dumps(template)
+    kept = ("template", "dtstart_local", "release_offset_min", "due_offset_min")
+    ctx.db.update("series", {"id": item.series_id}, {k: series[k] for k in kept} | {"updated_utc": ctx.now_text})
     for row in rows(
         ctx.conn,
-        "SELECT id FROM items WHERE series_id = ? AND status = 'todo' AND (detached = 0 OR id = ?) "
+        "SELECT id, occurrence_date FROM items WHERE series_id = ? AND status = 'todo' AND (detached = 0 OR id = ?) "
         "AND occurrence_date >= ?",
         [item.series_id, item.id, from_date],
     ):
         before = require_item(ctx, row["id"])
-        after = dataclasses.replace(before, **values)
+        moved = timing_on(ctx, series, row["occurrence_date"]) if row["id"] != item.id else times
+        after = dataclasses.replace(before, **values, **{k: v for k, v in moved.items() if k in times})
         if "min_chunk_min" not in given and amount_units(after) != amount_units(before):
             after.min_chunk_units = fitted_chunk(ctx, before, after)
         validate(after)
