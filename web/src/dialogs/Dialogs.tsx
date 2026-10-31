@@ -1,11 +1,11 @@
 // The v22 dialogs: the morning brief, what gives when it can't all fit (triage), and locks that make work late.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { type ReactNode, useState } from "react"
-import { type CommandName, command, query, type Schemas } from "@/api/client"
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react"
+import { command, query, type Schemas } from "@/api/client"
 import { Box, H, Icon, Seg } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
-import { undoAll, useCommand } from "@/hooks/useCommand"
+import { runTogether, undoAll, useCommand } from "@/hooks/useCommand"
 import { useHorizon, usePaces, useSettings } from "@/hooks/queries"
 import { clock, dur, when } from "@/lib/format"
 import { nextBlocks } from "@/lib/todo"
@@ -13,11 +13,28 @@ import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { dayName } from "@/inbox/messages"
 
+/** A dialog takes the keys while it's open: Esc closes it, and Tab starts inside it (the audit, 31 Oct). */
+export function useDialogKeys(onClose: () => void): RefObject<HTMLDivElement | null> {
+  const box = useRef<HTMLDivElement>(null)
+  const close = useRef(onClose)
+  close.current = onClose
+  useEffect(() => {
+    if (!box.current?.contains(document.activeElement)) box.current?.focus({ preventScroll: true })
+    const press = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) close.current()
+    }
+    window.addEventListener("keydown", press)
+    return () => window.removeEventListener("keydown", press)
+  }, [])
+  return box
+}
+
 export function Modal({ onClose, children, top, width = 560 }: { onClose: () => void; children: ReactNode; top?: boolean; width?: number }) {
+  const box = useDialogKeys(onClose)
   return (
     <div className="fr-scrim" style={top ? { alignItems: "flex-start", padding: "56px 24px 24px", background: "color-mix(in srgb, #05070b 60%, transparent)" } : undefined}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0 }} />
-      <div role="dialog" aria-modal="true" className="fr-float fr-dialog" style={{ width: `min(${width}px, 100%)` }}>
+      <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" className="fr-float fr-dialog" style={{ width: `min(${width}px, 100%)`, outline: "none" }}>
         {children}
       </div>
     </div>
@@ -210,19 +227,13 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
   const saved = Math.min(late, counted.reduce((s, o) => s + o.late_hours_saved, 0))
   const best = options.reduce<Schemas["TriageOption"] | null>((b, o) => (!b || o.late_hours_saved > b.late_hours_saved ? o : b), null)
   // An option may take several commands (a night override per day); they apply, and undo, together.
+  const [applying, setApplying] = useState(false)
   const apply = async () => {
-    const ids: number[] = []
-    try {
-      for (const o of options.filter((x) => chosen.includes(x.action))) {
-        for (const step of o.steps) {
-          const out = await command(step.command as CommandName, step.input as never)
-          if (out.command_id != null) ids.push(out.command_id)
-        }
-      }
-    } catch (error) {
-      toast({ message: error instanceof Error ? error.message : String(error), tone: "error" })
-      return undoAll(client, toast, ids)
-    }
+    if (applying) return // a second click doesn't apply them twice
+    setApplying(true)
+    const ids = await runTogether(client, toast, options.filter((x) => chosen.includes(x.action)).flatMap((o) => o.steps))
+    setApplying(false)
+    if (!ids) return
     toast({ message: chosen.join(", "), action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
     client.invalidateQueries()
     onClose()
@@ -244,17 +255,8 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
   // Skipping it this time: done at once, with an undo.
   const skip = async (o: Schemas["TriageOption"]) => {
     say(o.action, "working")
-    const ids: number[] = []
-    try {
-      for (const step of o.steps) {
-        const out = await command(step.command as CommandName, step.input as never)
-        if (out.command_id != null) ids.push(out.command_id)
-      }
-    } catch (error) {
-      say(o.action, null)
-      toast({ message: error instanceof Error ? error.message : String(error), tone: "error" })
-      return undoAll(client, toast, ids)
-    }
+    const ids = await runTogether(client, toast, o.steps)
+    if (!ids) return say(o.action, null)
     say(o.action, "skipped")
     toast({ message: `${o.action}: it stays on your calendar`, action: { label: "Undo", run: () => (say(o.action, null), undoAll(client, toast, ids)) } })
     client.invalidateQueries({ queryKey: ["plan"] })
@@ -323,7 +325,7 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
         <button className="btn btn-ghost" onClick={onClose}>
           Cancel
         </button>
-        <button className="btn btn-primary" onClick={apply} disabled={!chosen.length}>
+        <button className="btn btn-primary" onClick={apply} disabled={!chosen.length || applying}>
           Apply {chosen.length > 1 ? `${chosen.length} changes` : ""}
         </button>
       </div>

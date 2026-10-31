@@ -101,7 +101,7 @@ function useNudge(): (by: number) => void {
     inOrder(async () => {
       const out = await runCommand(client, toast, "pin", { id: selected.item_id, start, end, kind, from_start: selected.start, from_end: selected.end }, { label: () => `Moved ${by < 0 ? "earlier" : "later"}` })
       if (out) pending.settle(drawn, (out as { generation?: number | null }).generation ?? 0)
-      else pending.drop(drawn)
+      else (pending.drop(drawn), select(null)) // it snapped back: the card would show a time it isn't at
     })
     select({ ...selected, key: `T${selected.item_id}@${start}`, start, end })
   }
@@ -314,10 +314,14 @@ function Attention({ first, days }: { first: string; days: number }) {
   const box = useRef<HTMLSpanElement>(null)
   useEffect(() => {
     if (!open) return
-    const away = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false)
-    document.addEventListener("mousedown", away)
-    return () => document.removeEventListener("mousedown", away)
+    // pointerdown: a block's press prevents the mousedown that would follow (the audit, 31 Oct)
+    const away = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false)
+    document.addEventListener("pointerdown", away)
+    return () => document.removeEventListener("pointerdown", away)
   }, [open])
+  // on a narrow window the list is moved left until it fits, rather than running off the right edge
+  const pillAt = open ? box.current?.getBoundingClientRect() : undefined
+  const shift = pillAt ? Math.min(0, window.innerWidth - 12 - (pillAt.left + Math.min(380, window.innerWidth - 24))) : 0
   const urgent = notes.filter((n) => n.tone !== "plain")
   const lead = urgent[0] ?? notes[0]
   if (!lead) return solving ? <Replanning /> : null
@@ -332,7 +336,7 @@ function Attention({ first, days }: { first: string; days: number }) {
       </button>
       {solving && <Replanning />}
       {open && (
-        <div className="fr-float" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, width: "min(380px, calc(100vw - 24px))", maxHeight: "60vh", overflowY: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 2 }}>
+        <div className="fr-float" style={{ position: "absolute", top: "calc(100% + 6px)", left: shift, zIndex: 20, width: "min(380px, calc(100vw - 24px))", maxHeight: "60vh", overflowY: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 2 }}>
           {notes.map((n, i) => (
             <div key={i} style={{ display: "grid", gridTemplateColumns: "18px minmax(0,1fr) auto", gap: 10, alignItems: "start", padding: "8px 8px" }}>
               <Icon name={n.icon} size={15} style={{ color: n.tone === "now" ? "var(--fr-due)" : n.tone === "mark" ? "var(--fr-warn)" : "var(--color-neutral-400)", marginTop: 2 }} />

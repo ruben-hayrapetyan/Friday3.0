@@ -129,24 +129,30 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   const autoName = auto?.color ? `${PIGMENTS.find((p) => p.id === auto?.color)?.name ?? auto.color}, ${auto.from}` : `Unmarked, ${auto?.from ?? "no category matches"}`
   const valid = draft.title.trim() !== "" && (draft.allDay ? lastDay >= day : toMin(draft.end) > toMin(draft.start))
   const close = () => setEvent(null)
+  const sending = useRef(false) // ⌘↩ and a click, or two clicks, make one event
   const save = async () => {
-    if (!valid) return
-    const fields = { title: draft.title.trim(), start: draft.start, end: draft.end, color: draft.color, notes: draft.notes, location: draft.location.trim() || null, blocks_time: !draft.allDay }
-    if (staged !== null) {
-      const was = w.changes[staged].input as Record<string, unknown>
-      whatIf.replace(staged, { ...(was.calendar !== undefined ? { calendar: was.calendar } : {}), ...fields, when: "fixed" })
-      return close()
+    if (!valid || sending.current) return
+    sending.current = true
+    try {
+      const fields = { title: draft.title.trim(), start: draft.start, end: draft.end, color: draft.color, notes: draft.notes, location: draft.location.trim() || null, blocks_time: !draft.allDay }
+      if (staged !== null) {
+        const was = w.changes[staged].input as Record<string, unknown>
+        whatIf.replace(staged, { ...(was.calendar !== undefined ? { calendar: was.calendar } : {}), ...fields, when: "fixed" })
+        return close()
+      }
+      // An event you made once can be made to repeat here too, from its own date and time (`repeat`).
+      if (!isNew && draft.every && draft.seriesId === null) {
+        const saved = await edit({ id: draft.id as number, ...fields })
+        if (saved && (await repeat({ id: draft.id as number, every: draft.every }))) close()
+        return
+      }
+      const done = isNew
+        ? await add({ ...fields, when: "fixed", ...(draft.saveTo !== undefined ? { calendar: savingTo ? saveTo : "" } : {}), ...(draft.every ? { every: draft.every } : {}) })
+        : await edit({ id: draft.id as number, ...fields })
+      if (done) close()
+    } finally {
+      sending.current = false
     }
-    // An event you made once can be made to repeat here too, from its own date and time (`repeat`).
-    if (!isNew && draft.every && draft.seriesId === null) {
-      const saved = await edit({ id: draft.id as number, ...fields })
-      if (saved && (await repeat({ id: draft.id as number, every: draft.every }))) close()
-      return
-    }
-    const done = isNew
-      ? await add({ ...fields, when: "fixed", ...(draft.saveTo !== undefined ? { calendar: savingTo ? saveTo : "" } : {}), ...(draft.every ? { every: draft.every } : {}) })
-      : await edit({ id: draft.id as number, ...fields })
-    if (done) close()
   }
   const remove = async (how: "one" | "all") => {
     if (draft.id === null) return
@@ -180,7 +186,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   return (
     <div
       onKeyDown={(e) => {
-        if (e.key === "Escape") (e.stopPropagation(), close())
+        if (e.key === "Escape") (e.stopPropagation(), asking ? setAsking(false) : close()) // the "which ones?" first
         if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) save()
       }}
       style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: 0, overflowY: "auto", overflowX: "hidden", paddingBottom: 24 }}

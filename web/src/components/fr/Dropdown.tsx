@@ -12,11 +12,12 @@ export function Dropdown(props: { tour?: string; icon: string; label: string; ba
   const box = useRef<HTMLSpanElement>(null)
   useEffect(() => {
     if (!open) return
-    const away = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false)
+    // pointerdown, not mousedown: a calendar block's press prevents the mousedown (the audit, 31 Oct)
+    const away = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false)
     const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false)
-    document.addEventListener("mousedown", away)
+    document.addEventListener("pointerdown", away)
     window.addEventListener("keydown", esc)
-    return () => (document.removeEventListener("mousedown", away), window.removeEventListener("keydown", esc))
+    return () => (document.removeEventListener("pointerdown", away), window.removeEventListener("keydown", esc))
   }, [open])
   const words = props.wide ?? layout.labels
   return (

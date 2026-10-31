@@ -188,3 +188,27 @@ def test_a_notifications_setting_saved_before_they_were_removed_still_loads_with
     kept = validate_value("notify", old)
     assert (kept.morning_brief, kept.app_url) == (False, "https://me.ts.net")
     assert validate_value("notify", {}).morning_brief is True
+
+
+def test_the_tour_is_offered_once_and_remembered_by_friday_not_the_window(app: App) -> None:
+    # 31 Oct: "make sure that when the initialization screen gets merged into the main, that it doesn't run every time"
+    assert app.do("setup")["toured"] is False
+    app.do("tour_offered")
+    assert app.do("setup")["toured"] is True
+
+
+def test_going_through_again_changes_only_what_you_change(app: App) -> None:
+    # The audit (31 Oct): an answer left as it was still wrote Monday's sleep and cap over every day and switched a
+    # rule you'd turned off back on.
+    sleep = app.do("settings")["sleep"]
+    sleep["tue"] = {**sleep["tue"], "wake": "06:30"}
+    app.do("settings_set", key="sleep", value=sleep)
+    app.do("settings_set", key="daily_cap", value=app.do("settings")["daily_cap"] | {"sat": 4})
+    app.do("rule_set", name="deep_run", enabled=False)
+    app.do("setup_save", **answers(app))  # through again, nothing changed
+    assert settings(app)["sleep"]["tue"].wake == "06:30"
+    assert settings(app)["daily_cap"]["sat"] == 4
+    assert not rule(app, "deep_run").enabled
+    app.do("setup_save", **answers(app, wake="08:00"))  # the wake time changed: only that
+    assert settings(app)["sleep"]["tue"].wake == "08:00" and settings(app)["sleep"]["sat"].wake != "08:00"
+    assert settings(app)["daily_cap"]["sat"] == 4 and not rule(app, "deep_run").enabled

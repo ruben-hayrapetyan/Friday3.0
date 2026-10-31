@@ -93,8 +93,10 @@ export function BlockPopover() {
     if (!b) return
     const press = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select")) return
-      // Not before we know if it repeats; a sitting isn't deleted; and only on the plan, where Backspace means nothing else.
-      if ((e.key !== "Delete" && e.key !== "Backspace") || !detail || b.key.startsWith("S") || pathname !== "/") return
+      // Not before we know if it repeats; a sitting, or a past block missed or counted done, isn't deleted (no Delete
+      // button shows for them either); and only on the plan, where Backspace means nothing else.
+      const past = b.key.startsWith("S") || (!/^[FD]/.test(b.key) && (b.state === "missed" || b.state === "done"))
+      if ((e.key !== "Delete" && e.key !== "Backspace") || !detail || past || pathname !== "/") return
       e.preventDefault()
       if (repeats) setAsking(true)
       else (drop({ id: b.item_id }), select(null))
@@ -132,7 +134,7 @@ export function BlockPopover() {
   const startNote = timing?.item_id ? "Pauses what's running" : worked ? `${dur(worked)} done${item?.remaining_min ? ` · ${dur(item.remaining_min)} left` : ""}` : "Times this sitting"
   return (
     <>
-      <aside ref={card} className="fr-float" style={{ position: "absolute", right: 24, top: 72, width: 340, zIndex: 10, padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+      <aside ref={card} className="fr-float fr-block-card" style={{ position: "absolute", right: 24, top: 72, width: 340, maxWidth: "calc(100% - 48px)", maxHeight: "calc(100% - 96px)", overflowY: "auto", zIndex: 10, padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>

@@ -57,7 +57,10 @@ export async function command<N extends CommandName>(
     headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() },
     body: JSON.stringify(input),
   })
-  return read(response)
+  const out = await read<Output<N>>(response)
+  // done: said to the page, for what listens for something you did (shell/Tour.tsx's quests)
+  if (!options.preview && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("friday:command", { detail: { name } }))
+  return out
 }
 
 export async function queryBody<N extends BodyQueryName>(name: N, body: Json<Body<N>>): Promise<Output<N>> {

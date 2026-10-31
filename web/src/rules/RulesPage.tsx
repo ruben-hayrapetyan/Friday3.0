@@ -6,7 +6,7 @@
 
 import { useAi } from "@/settings/AiConnect"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router"
 import { ApiError, command, query, type Schemas } from "@/api/client"
 import { Box, H, Icon, Seg, Switch } from "@/components/fr/controls"
@@ -139,19 +139,25 @@ function NewRule() {
     if (answer && (await applyActions(claude.kept.map((i) => answer.actions[i]), client, toast))) clear()
   }
   /** ↩ or the button: add what Friday read, or hand what it couldn't read to Claude. Read again if typing ran ahead. */
+  const sending = useRef(false) // ↩ twice, or ↩ and a click, adds it once
   const submit = async (replacing?: string) => {
-    if (!text.trim()) return
-    const now = settled === typed && preview ? preview : await query("rule_read", { text, overrides: JSON.stringify(overrides) }).catch(() => null)
-    if (!now) return
-    if (!now.reading) {
-      if (!ai || claude?.busy) return
-      if (!claude?.answer?.actions.length) return askInline() // asked again only when Claude had nothing, or not yet
-      if (claude.kept.length) await applyClaude()
-      return
-    }
-    if (await add({ text, overrides: overrides as Record<string, never>, strength: strength ?? ((now.strength as Strength) || "Prefer") })) {
-      if (replacing) await switchOff({ name: replacing, enabled: false })
-      clear()
+    if (!text.trim() || sending.current) return
+    sending.current = true
+    try {
+      const now = settled === typed && preview ? preview : await query("rule_read", { text, overrides: JSON.stringify(overrides) }).catch(() => null)
+      if (!now) return
+      if (!now.reading) {
+        if (!ai || claude?.busy) return
+        if (!claude?.answer?.actions.length) return await askInline() // asked again only when Claude had nothing, or not yet
+        if (claude.kept.length) await applyClaude()
+        return
+      }
+      if (await add({ text, overrides: overrides as Record<string, never>, strength: strength ?? ((now.strength as Strength) || "Prefer") })) {
+        if (replacing) await switchOff({ name: replacing, enabled: false })
+        clear()
+      }
+    } finally {
+      sending.current = false
     }
   }
   const set = (k: string, v: unknown) => setOverrides({ ...overrides, [k]: v })

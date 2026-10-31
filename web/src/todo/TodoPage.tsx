@@ -324,7 +324,7 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging }: R
       onMouseDown={(e) => e.shiftKey && e.preventDefault()}
       draggable={editing === null}
       onDragStart={dragFrom(dragging, item.id)}
-      onKeyDown={(e) => e.key === "Enter" && editing === null && onSelect(e)}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && editing === null && (e.preventDefault(), onSelect(e))}
       className="fr-hover-soft fr-todo-line"
       title={`${item.title}: click for everything about it, double-click the title to rename`}
       style={{
@@ -483,7 +483,10 @@ function Row({ item, fresh, selected, picked, onSelect, dragging }: RowProps) {
   const soon = item.due && item.firmness === "hard" && toMin(item.due) - toMin(`${today}T00:00`) < 2 * 1440
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && (e.preventDefault(), onSelect(e))}
       onMouseDown={(e) => e.shiftKey && e.preventDefault()}
       draggable
       onDragStart={dragFrom(dragging, item.id)}

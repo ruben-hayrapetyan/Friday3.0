@@ -17,7 +17,7 @@ import "./setup.css"
 import "@fontsource/pixelify-sans/500.css"
 import "@fontsource/pixelify-sans/600.css"
 import "@fontsource/pixelify-sans/700.css"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { type CSSProperties, type ReactNode, type RefObject, useEffect, useRef, useState } from "react"
 import { query, type Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
@@ -30,9 +30,9 @@ import { CHOICES, choiceOf, fromChoice, saying } from "@/settings/calendarChoice
 import { ConnectedAccounts } from "@/settings/GoogleAccounts"
 import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess } from "@/settings/GoogleConnect"
 import { AddFeed, Documents, Upload } from "@/settings/Integrations"
-import { Count, freeSpan, WeekGrid } from "./onboard/Visuals"
+import { Count, freeSpan } from "./onboard/Visuals"
 import { Choices, HourBar, Other, Source, TimeCard } from "./SetupParts"
-import { ALL_EVENING, ALL_WEEKEND, shift, sleepHours, weekOf } from "./setupWeek"
+import { ALL_EVENING, ALL_WEEKEND, bedOf, shift, sleepHours, VIEW, wakeOf, weekOf } from "./setupWeek"
 import { clockTime, STOPS } from "./walk/stops"
 import type { World } from "./walk/World"
 
@@ -83,7 +83,7 @@ export function withCalendars(draft: Answers, listed: Calendar[] | null | undefi
 // In the order the walk goes: hello; a Monday from getting up, through work, focus and a deadline, to the evening and
 // bed; Saturday; a morning's brief; the AI and where your things are (the calendars after bringing them in, and only
 // when there are some); then Friday builds the week, shows it, and you start.
-const STORY = ["hello", "wake", "work", "heavy", "focus", "deadline", "evening", "bed", "weekend", "brief", "ai", "bring", "calendars", "build", "reveal", "start"]
+const STORY = ["hello", "wake", "work", "heavy", "focus", "deadline", "evening", "bed", "weekend", "brief", "ai", "bring", "calendars", "reveal", "start"]
 
 /** The screens for these answers. */
 export function storyFor(answers: Answers): string[] {
@@ -306,12 +306,9 @@ const STEPS: Record<string, Step> = {
     ),
     wide: true,
   },
-  build: { title: () => "Building your week…" },
   reveal: { title: () => "Here's your week.", go: "Continue" },
   start: { title: () => "Ready when you are.", note: () => "Your week is planned. Change anything here later in Settings.", go: "Start planning" },
 }
-
-const BUILDING = ["Reading your nights", "Keeping your evenings", "Fitting work around your classes", "Leaving room before deadlines"]
 
 /** Where and when a step is, as the box's top line says it: "Monday · 7:30 AM · Your room". */
 export function whereOf(id: string, a: Answers): string | null {
@@ -365,22 +362,25 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
   const [draft, setDraft] = useState<Answers | null>(null)
   // While building it (`pnpm dev` only), ?step=focus opens at that screen.
   const jump = import.meta.env.DEV ? new URLSearchParams(location.search).get("step") : null
-  const [n, setN] = useState(0)
+  // where you are, by step: a step that comes or goes before it (calendars, once one's connected) doesn't move you
+  const [pos, setPos] = useState({ id: "hello", n: 0 })
   const [back, setBack] = useState(false)
   const [saving, setSaving] = useState(false)
   const canvas = useRef<HTMLCanvasElement>(null)
   const stage = useRef<HTMLDivElement>(null)
+  const go = useRef<HTMLButtonElement>(null)
   const { world, ready } = useWorld(canvas, stage)
   useEffect(() => {
     if (!setup) return
     setDraft((d) => (d ? withCalendars(d, setup.answers.calendars as Calendar[]) : (setup.answers as unknown as Answers)))
   }, [setup])
   useEffect(() => {
-    if (jump && draft) setN(Math.max(0, storyFor(draft).indexOf(jump)))
+    if (jump && draft) setPos({ id: jump, n: Math.max(0, storyFor(draft).indexOf(jump)) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!draft])
   const ids = draft ? storyFor(draft) : STORY
-  const id = ids[Math.min(n, ids.length - 1)]
+  const n = ids.includes(pos.id) ? ids.indexOf(pos.id) : Math.min(pos.n, ids.length - 1)
+  const id = ids[n]
   at.current = id
   const step = STEPS[id]
   const done = !!setup?.done
@@ -392,6 +392,11 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     if (world && draft) world.update(draft)
   }, [world, draft])
+  // the last step's buttons went with its card: the keys carry on from the next one's
+  useEffect(() => {
+    const now = document.activeElement
+    if (!now || now === document.body || !now.isConnected) go.current?.focus({ preventScroll: true })
+  }, [id, !!draft])
   // the AI you chose shows on the post office's screen; something being read, they take a letter from a box
   const ai = useAi()
   const llmKnown = !!useInbox().data?.llm
@@ -409,34 +414,30 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
     const progress = ai.provider === "local" && download && download.status === "downloading" ? (download.total ? download.completed / download.total : 0) : null
     world?.setExtra({ ai: llmKnown ? { provider: ai.provider, name: ai.name, ready: ai.ready, model: ai.model, progress } : null, reading, brought })
   }, [world, llmKnown, ai.provider, ai.name, ai.ready, ai.model, local, reading, brought])
+  const client = useQueryClient()
   const finish = async (answers: Answers) => {
     setSaving(true)
     const out = await save(answers)
     setSaving(false)
-    if (out) onClose()
+    if (!out) return
+    // done, before it closes: the shell opens setup again while it reads "not done" (setup comes back if anything
+    // takes its place), and the setup it holds is read again only after
+    client.setQueryData<Schemas["SetupOut"]>(["setup"], (was) => was && { ...was, done: true })
+    onClose()
   }
   const to = (next: number) => {
-    // back from your week skips "Building your week…", which would only build it and come forward again (30 Oct:
-    // "if i want to go back before 'building your week' after i have clicked next - it is impossible")
-    const going = next < n && ids[next] === "build" ? next - 1 : next
-    setBack(going < n)
-    setN(Math.max(0, Math.min(ids.length - 1, going)))
+    const i = Math.max(0, Math.min(ids.length - 1, next))
+    setBack(i < n)
+    setPos({ id: ids[i], n: i })
   }
   const next = () => (id === "start" && draft ? finish(draft) : to(n + 1))
-  // Building the week takes a moment, then shows it.
-  useEffect(() => {
-    if (id !== "build") return
-    const timer = setTimeout(() => to(n + 1), 3400)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
-      if (e.key === "Escape" && done) return onClose()
+      // Escape in a box clears or leaves the box, not the whole setup
+      if (e.key === "Escape" && done && !target?.closest("input, textarea, select, [contenteditable]")) return onClose()
       if (e.key !== "Enter" || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || saving) return
       if (target?.closest("input, textarea, select, button, a, [contenteditable]")) return // they answer Return themselves
-      if (id === "build") return
       e.preventDefault()
       next()
     }
@@ -457,7 +458,7 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
             <li key={s} data-done={i < n || undefined} data-here={i === n || undefined} />
           ))}
         </ol>
-        <button type="button" className="wk-skip" onClick={() => (done ? onClose() : setup && finish(setup.answers as unknown as Answers))} disabled={saving || !setup}>
+        <button type="button" className="wk-skip" onClick={() => (done ? onClose() : setup && finish(draft ?? (setup.answers as unknown as Answers)))} disabled={saving || !setup}>
           {done ? "Close" : "Skip"}
         </button>
       </header>
@@ -469,7 +470,6 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
           </h1>
           {note && <p className="wk-note">{note}</p>}
           {step.control && <div className="wk-control">{step.control(draft, set, ctx)}</div>}
-          {id === "build" && <Building />}
           {id === "reveal" && <Reveal a={draft} go={ctx.go} />}
           {(
             <footer className="wk-foot">
@@ -483,12 +483,10 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
                   Skip: keep Friday's guesses
                 </button>
               )}
-              {id !== "build" && (
-                <button type="button" className="wk-go" onClick={next} disabled={saving}>
-                  {step.go ?? "Next stop"}
-                  <i aria-hidden />
-                </button>
-              )}
+              <button ref={go} type="button" className="wk-go" onClick={next} disabled={saving}>
+                {step.go ?? "Next stop"}
+                <i aria-hidden />
+              </button>
             </footer>
           )}
         </aside>
@@ -522,38 +520,7 @@ function Typed({ text }: { text: string }) {
   )
 }
 
-/** "Building your week…": a meter filling block by block, and what Friday does, ticked off one by one. */
-function Building() {
-  const [done, setDone] = useState(0)
-  const [blocks, setBlocks] = useState(0)
-  useEffect(() => {
-    const timers = BUILDING.map((_, i) => setTimeout(() => setDone(i + 1), 500 + i * 700))
-    const fill = setInterval(() => setBlocks((b) => Math.min(20, b + 1)), 150)
-    return () => {
-      timers.forEach(clearTimeout)
-      clearInterval(fill)
-    }
-  }, [])
-  return (
-    <div className="wk-building">
-      <div className="wk-meter" aria-hidden>
-        {Array.from({ length: 20 }, (_, i) => (
-          <i key={i} data-on={i < blocks || undefined} />
-        ))}
-      </div>
-      <ul>
-        {BUILDING.map((line, i) => (
-          <li key={line} data-done={i < done || undefined}>
-            <Icon name={i < done ? "check-circle" : "circle-dashed"} fill={i < done} size={18} />
-            {line}
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-/** Your week in numbers, counted up, and the week itself building; your answers below, each a way back. */
+/** Your week in numbers, counted up, and what your answers make of a day; your answers below, each a way back. */
 function Reveal({ a, go }: { a: Answers; go: (step: string) => void }) {
   const k = numbersOf(a)
   const tiles: [ReactNode, string, string][] = [
@@ -572,12 +539,67 @@ function Reveal({ a, go }: { a: Answers; go: (step: string) => void }) {
           </div>
         ))}
       </div>
-      <WeekGrid a={a} />
+      <YourDays a={a} />
       <div className="ob-answers">
         {badgesOf(a).map((b) => (
           <button key={b.label} type="button" onClick={() => go(b.step)} title="Change it">
             {b.label} <b>{b.value}</b>
           </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** What your answers make of a day, a weekday's and a weekend's (31 Oct: "the boxes don't mean anything", of the
+ * week drawn here before, made-up classes and work in unlabelled colours): from 6 AM to 2 AM, each stretch named. */
+function YourDays({ a }: { a: Answers }) {
+  const pct = (t: number) => ((Math.min(Math.max(t, VIEW.from), VIEW.to) - VIEW.from) / (VIEW.to - VIEW.from)) * 100
+  const at = (t: number) => ampm(`${String(Math.floor(t / 60) % 24).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`)
+  return (
+    <div className="ob-days">
+      {(["Weekdays", "Weekends"] as const).map((label, row) => {
+        const day = row === 0 ? 0 : 5
+        const wake = wakeOf(a, day)
+        const bed = bedOf(a, day)
+        const free = freeSpan(a, row === 1)
+        const workFrom = Math.min(wake + 60, bed)
+        const workTo = Math.max(workFrom, free ? Math.min(free[0], bed - 60) : bed - 60)
+        const parts: { from: number; to: number; kind: string; name: string }[] = [
+          { from: VIEW.from, to: wake, kind: "sleep", name: "Asleep" },
+          { from: wake, to: workFrom, kind: "up", name: a.brief ? "Brief" : "Up" },
+          { from: workFrom, to: workTo, kind: "work", name: row === 0 ? `Work, up to ${hoursLabel(a.normal_hours)}` : "Work if needed" },
+          { from: workTo, to: free ? free[0] : bed, kind: "wind", name: "Evening" },
+          ...(free ? [{ from: free[0], to: free[1], kind: "free", name: "Yours" }] : []),
+          ...(free && free[1] < bed ? [{ from: free[1], to: bed, kind: "wind", name: "Evening" }] : []),
+          { from: bed, to: VIEW.to, kind: "sleep", name: "Asleep" },
+        ].filter((p) => pct(p.to) - pct(p.from) > 0.5)
+        return (
+          <div key={label} className="ob-day">
+            <span className="ob-day-name">{label}</span>
+            <div className="ob-day-bar">
+              {parts.map((p, i) => {
+                const width = pct(p.to) - pct(p.from)
+                return (
+                  <i key={i} data-kind={p.kind} title={`${p.name}, ${at(p.from)} to ${at(p.to)}`} style={{ left: `${pct(p.from)}%`, width: `${width}%` }}>
+                    {width >= 13 ? p.name : ""}
+                  </i>
+                )
+              })}
+            </div>
+            <span className="ob-day-times">
+              <span style={{ left: `${pct(wake)}%` }}>Up {at(wake)}</span>
+              <span style={{ left: `${pct(bed)}%` }}>Bed {at(bed)}</span>
+            </span>
+          </div>
+        )
+      })}
+      <div className="ob-day-key" aria-hidden>
+        {[["sleep", "Asleep"], ["up", a.brief ? "Brief" : "Up"], ["work", "Work"], ["free", "Yours"], ["wind", "Evening"]].map(([kind, name]) => (
+          <span key={kind}>
+            <i data-kind={kind} />
+            {name}
+          </span>
         ))}
       </div>
     </div>

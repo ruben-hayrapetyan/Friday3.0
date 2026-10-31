@@ -90,16 +90,27 @@ export function DragProvider({ onDrop, children }: { onDrop: DropHandler; childr
           y: ev.clientY,
         })
       }
-      const up = () => {
+      const end = () => {
         window.removeEventListener("pointermove", move)
         window.removeEventListener("pointerup", up)
+        window.removeEventListener("pointercancel", cancel)
+        window.removeEventListener("contextmenu", cancel)
         const done = current.current
         show(null)
+        return done
+      }
+      const up = () => {
+        const done = end()
         if (done?.moved) draggedAt = Date.now()
         if (done) onDrop(done)
       }
+      // the pointer taken away (a ctrl-click's menu, the system): nothing dropped, and no drag left waiting for the
+      // next click
+      const cancel = () => void end()
       window.addEventListener("pointermove", move)
       window.addEventListener("pointerup", up)
+      window.addEventListener("pointercancel", cancel)
+      window.addEventListener("contextmenu", cancel)
     },
     [onDrop],
   )

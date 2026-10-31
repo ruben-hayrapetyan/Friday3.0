@@ -10,7 +10,7 @@ from friday.api.commands import Changed, SetupInput
 from friday.api.types import Empty
 from friday.api.views import SetupOut
 from friday.commands.registry import Ctx, command, query
-from friday.commands.settings import write_setting
+from friday.commands.settings import write_setting as save_setting
 from friday.core.calendars import calendar_counts
 from friday.core.dates import parse_duration
 from friday.core.db import rows
@@ -30,37 +30,76 @@ def setup(ctx: Ctx, inp: Empty) -> SetupOut:
     """Setup's questions, answered with what Friday does now."""
     events = upcoming(ctx)
     return SetupOut(
-        done=bool(kv_get(ctx.conn, "setup_done", False, ctx.user_id)), answers=answers(ctx, events), events=events
+        done=bool(kv_get(ctx.conn, "setup_done", False, ctx.user_id)),
+        toured=bool(kv_get(ctx.conn, "tour_offered", False, ctx.user_id)),
+        answers=answers(ctx, events),
+        events=events,
     )
+
+
+@command("tour_offered", logged=False)  # a flag of the app's, nothing of yours to undo
+def tour_offered(ctx: Ctx, inp: Empty) -> Changed:
+    """The tour was offered: it opens by itself once, after setup, and never again on its own (31 Oct: "make sure
+    that when the initialization screen gets merged into the main, that it doesn't run every time"); the ? opens it
+    whenever you want it."""
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "tour_offered"}, {"value": "true"})
+    return Changed(message="Offered")
 
 
 @command("setup_save", affects_plan=True)
 def setup_save(ctx: Ctx, inp: SetupInput) -> Changed:
-    """Your answers to Setup's questions: sleep, load, focus, free time, finishing early, calendars and the brief."""
+    """Your answers to Setup's questions: sleep, load, focus, free time, finishing early, calendars and the brief.
+    Only what you changed is written (the audit, 31 Oct: going through again, or Skip, wrote Monday's sleep and cap
+    over every day and switched rules you'd turned off back on): an answer the same as the question showed leaves
+    what it's about as it is, a day that differs from the rest included."""
+    owned = set(kv_get(ctx.conn, "config_keys", [], ctx.user_id) or [])
+
+    def write_setting(ctx: Ctx, key: str, value: Any) -> None:  # one friday.toml sets is changed there only
+        if key not in owned:
+            save_setting(ctx, key, value)
+
+    before = answers(ctx, {})
+    changed = {k for k, v in inp.model_dump().items() if k != "calendars" and differs(before.get(k), v)}
     sleep = ctx.settings["sleep"] or {}
-    margin = {d: (sleep[d].margin_min if d in sleep else 60) for d in DAYS}
-    write_setting(
-        ctx,
-        "sleep",
-        {
-            d: {
-                "wake": inp.weekend_wake if d in WEEKEND_MORNINGS else inp.wake,
-                "bedtime": inp.weekend_bedtime if d in WEEKEND_NIGHTS else inp.bedtime,
-                "margin_min": margin[d],
-            }
-            for d in DAYS
-        },
-    )
-    write_setting(ctx, "daily_cap", dict.fromkeys(DAYS, max(inp.most_hours, inp.normal_hours)))
+    if not sleep or changed & {"wake", "bedtime", "weekend_wake", "weekend_bedtime"}:
+        night = lambda d: sleep.get(d) or SleepDay(wake="07:30", bedtime="23:30", margin_min=60)  # noqa: E731
+        weekend_morning, weekend_night = (lambda d: d in WEEKEND_MORNINGS), (lambda d: d in WEEKEND_NIGHTS)
+        write_setting(
+            ctx,
+            "sleep",
+            {
+                d: {
+                    "wake": (inp.weekend_wake if weekend_morning(d) else inp.wake)
+                    if not sleep or ("weekend_wake" if weekend_morning(d) else "wake") in changed
+                    else night(d).wake,
+                    "bedtime": (inp.weekend_bedtime if weekend_night(d) else inp.bedtime)
+                    if not sleep or ("weekend_bedtime" if weekend_night(d) else "bedtime") in changed
+                    else night(d).bedtime,
+                    "margin_min": night(d).margin_min,
+                }
+                for d in DAYS
+            },
+        )
+    if changed & {"most_hours", "normal_hours"}:
+        write_setting(ctx, "daily_cap", dict.fromkeys(DAYS, max(inp.most_hours, inp.normal_hours)))
     rules = list(ctx.settings["rules"])
-    rules = tuned(rules, "daily_load", {"threshold": hours(inp.normal_hours)})
-    rules = tuned(rules, "deep_run", {"threshold": hours(inp.focus_hours)})
-    rules = tuned(
-        rules, "weekday_evenings", {"start": inp.evening_from, "free": hours(inp.evening_free)}, inp.evening_free > 0
-    )
-    rules = tuned(rules, "weekends", {"free": hours(inp.weekend_free)}, inp.weekend_free > 0)
-    rules = tuned(rules, "finish_early", {"days": inp.finish_early_days}, inp.finish_early_days > 0)
-    write_setting(ctx, "rules", to_json("rules", tuple(rules)))
+    if "normal_hours" in changed:
+        rules = tuned(rules, "daily_load", {"threshold": hours(inp.normal_hours)})
+    if "focus_hours" in changed:
+        rules = tuned(rules, "deep_run", {"threshold": hours(inp.focus_hours)})
+    if changed & {"evening_free", "evening_from"}:
+        rules = tuned(
+            rules,
+            "weekday_evenings",
+            {"start": inp.evening_from, "free": hours(inp.evening_free)},
+            inp.evening_free > 0,
+        )
+    if "weekend_free" in changed:
+        rules = tuned(rules, "weekends", {"free": hours(inp.weekend_free)}, inp.weekend_free > 0)
+    if "finish_early_days" in changed:
+        rules = tuned(rules, "finish_early", {"days": inp.finish_early_days}, inp.finish_early_days > 0)
+    if rules != list(ctx.settings["rules"]):
+        write_setting(ctx, "rules", to_json("rules", tuple(rules)))
     if inp.calendars:
         look, busy = ctx.settings["calendar_look"], ctx.settings["busy"]
         named = {c.name for c in inp.calendars}
@@ -68,7 +107,8 @@ def setup_save(ctx: Ctx, inp: SetupInput) -> Changed:
         write_setting(ctx, "calendar_look", {**to_json("calendar_look", look), "toolbar": hidden})
         counted = {**busy.calendars, **{c.name: c.busy for c in inp.calendars}}
         write_setting(ctx, "busy", {**to_json("busy", busy), "calendars": counted})
-    write_setting(ctx, "notify", {**to_json("notify", ctx.settings["notify"]), "morning_brief": inp.brief})
+    if "brief" in changed:
+        write_setting(ctx, "notify", {**to_json("notify", ctx.settings["notify"]), "morning_brief": inp.brief})
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "setup_done"}, {"value": "true"})
     return Changed(message="Friday is set up the way you said")
 
@@ -118,6 +158,13 @@ def tuned(rules: list[RuleSpec], name: str, params: dict[str, Any], enabled: boo
         else r
         for r in rules
     ]
+
+
+def differs(was: Any, now: Any) -> bool:
+    """Whether an answer isn't the one the question showed (hours compared as numbers)."""
+    if isinstance(was, (int, float)) and isinstance(now, (int, float)) and not isinstance(was, bool):
+        return abs(was - now) > 1e-6
+    return was != now
 
 
 def hours(value: float) -> str:

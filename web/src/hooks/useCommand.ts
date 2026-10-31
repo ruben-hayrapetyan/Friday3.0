@@ -75,6 +75,7 @@ export async function runCommand<N extends CommandName>(
   } catch (error) {
     pending.drop(drawn)
     for (const [key, data] of saved) client.setQueryData(key, data)
+    client.invalidateQueries({ queryKey: ["plan"] }) // drawn back as it was; read again in case some of it went through
     toast({ message: error instanceof ApiError ? error.message : String(error), tone: "error" })
     return undefined
   } finally {
@@ -83,13 +84,36 @@ export async function runCommand<N extends CommandName>(
   }
 }
 
+/** Several commands as one change (Claude's proposals, a triage option's steps), in order: in What if, those it
+ * stages are staged like any other; one that fails takes back those before it; ⌘Z undoes them together. Their ids,
+ * or null when one failed. */
+export async function runTogether(client: QueryClient, toast: (toast: Toast) => void, steps: { command: string; input: unknown }[]): Promise<number[] | null> {
+  const ids: number[] = []
+  try {
+    for (const step of steps) {
+      if (whatIf.stages(step.command)) {
+        whatIf.stage(step.command, step.input as Record<string, unknown>)
+        continue
+      }
+      const out = await command(step.command as CommandName, step.input as never)
+      if (out.command_id != null) ids.push(out.command_id)
+    }
+  } catch (error) {
+    toast({ message: error instanceof ApiError ? error.message : String(error), tone: "error" })
+    await undoAll(client, toast, ids)
+    return null
+  }
+  rememberTogether(ids)
+  return ids
+}
+
 export function useCommand<N extends CommandName>(name: N, options: Options<N> = {}) {
   const client = useQueryClient()
   const toast = useToast()
-  const { optimistic, label } = options
+  const { optimistic, label, quiet } = options
   return useCallback(
-    (input: CommandInput<N>) => runCommand(client, toast, name, input, { optimistic, label }),
-    [client, toast, name, optimistic, label],
+    (input: CommandInput<N>) => runCommand(client, toast, name, input, { optimistic, label, quiet }),
+    [client, toast, name, optimistic, label, quiet],
   )
 }
 
@@ -124,6 +148,7 @@ async function undo(client: QueryClient, toast: (toast: Toast) => void, id: numb
 
 /** Undo several commands, newest first, as one action. */
 export async function undoAll(client: QueryClient, toast: (toast: Toast) => void, ids: number[]): Promise<void> {
+  lastCommands = lastCommands.filter((id) => !ids.includes(id)) // undone from a toast: ⌘Z doesn't try it again
   try {
     for (const id of [...ids].reverse()) {
       await command("undo", { command_id: id })

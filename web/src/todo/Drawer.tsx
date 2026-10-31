@@ -3,7 +3,7 @@
 // drags to make it wider or narrower, kept for next time (personal's drawer, COMBINED.md 11).
 
 import { useWhatIf } from "@/whatif/store"
-import { type ReactNode, useEffect, useState } from "react"
+import { type ReactNode, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
 import type { Item } from "@/api/client"
 import { useDragging } from "@/components/calendar/useDrag"
@@ -69,7 +69,7 @@ export function Drawer() {
   const [anchor, setAnchor] = useState<number | null>(null)
   const order = groups.flatMap((g) => g.items.map((i) => i.id))
   const pickedItems = items.filter((i) => picked.includes(i.id))
-  const choose = (id: number, e: React.MouseEvent) => {
+  const choose = (id: number, e: React.MouseEvent | React.KeyboardEvent) => {
     const toggle = e.metaKey || e.ctrlKey
     if (!toggle && !e.shiftKey) return (setPicked([]), navigate(`/todo?item=${id}`))
     setPicked(pickWith(order, picked, anchor, id, toggle, e.shiftKey))
@@ -140,6 +140,7 @@ export function QuickLine({ placeholder = "Add a to-do" }: { placeholder?: strin
   const [text, setText] = useState("")
   const parsed = readFields(useParsed(text)?.fields ?? {})
   const add = useAdd()
+  const sending = useRef(false) // ↩ held or pressed twice adds it once
   const chips = [
     ["Kind", parsed.preset],
     ["Tag", parsed.area],
@@ -149,13 +150,17 @@ export function QuickLine({ placeholder = "Add a to-do" }: { placeholder?: strin
   ].filter(([, v]) => v != null) as [string, string][]
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 10px", height: 34, borderRadius: "var(--radius-md)", background: "var(--color-surface)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
+      <div data-tour="drawer-add" style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 10px", height: 34, borderRadius: "var(--radius-md)", background: "var(--color-surface)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
         <Icon name="plus" style={{ color: "var(--color-neutral-500)" }} />
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={async (e) => {
-            if (e.key === "Enter" && text.trim() && (await add({ text }))) setText("")
+            if (e.key === "Enter" && text.trim() && !sending.current) {
+              sending.current = true
+              if (await add({ text })) setText("")
+              sending.current = false
+            }
             if (e.key === "Escape") setText("")
           }}
           placeholder={placeholder}
@@ -179,7 +184,7 @@ export function QuickLine({ placeholder = "Add a to-do" }: { placeholder?: strin
 
 const lengthOf = (item: Item) => item.remaining_min ?? item.duration_min ?? 60
 
-function Row({ item, picked, together, onClick }: { item: Item; picked: boolean; together: Item[] | null; onClick: (e: React.MouseEvent) => void }) {
+function Row({ item, picked, together, onClick }: { item: Item; picked: boolean; together: Item[] | null; onClick: (e: React.MouseEvent | React.KeyboardEvent) => void }) {
   const { today } = useShell()
   const { color } = useLook()
   const { begin } = useDragging()
@@ -192,7 +197,10 @@ function Row({ item, picked, together, onClick }: { item: Item; picked: boolean;
   const rows = together?.map((i) => ({ id: i.id, title: i.title, length: lengthOf(i) }))
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && (e.preventDefault(), onClick(e))}
       onPointerDown={(e) => begin(e, { kind: "row", start: 0, end: rows ? rows.reduce((sum, r) => sum + r.length, 0) : length, grab: 0, itemId: item.id, blockKey: null, title: rows ? `${rows.length} to-dos` : item.title, rows })}
       className="fr-hover"
       style={{

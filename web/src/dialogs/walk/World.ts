@@ -571,8 +571,20 @@ export class World {
     this.env?.dispose()
     this.pmrem.dispose()
     this.composer.dispose()
-    this.scene.traverse((o) => (o as THREE.Mesh).geometry?.dispose?.())
+    // the town's materials and their pictures too, and the GL context given back: a setup opened again (Settings →
+    // Fit Friday to your week again) starts a fresh one, and browsers keep only a handful at a time
+    const textures = new Set<THREE.Texture>()
+    this.scene.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      mesh.geometry?.dispose?.()
+      for (const m of ([] as THREE.Material[]).concat(mesh.material ?? [])) {
+        for (const v of Object.values(m)) if (v instanceof THREE.Texture) textures.add(v)
+        m.dispose()
+      }
+    })
+    for (const t of textures) t.dispose()
     this.renderer.dispose()
+    this.renderer.forceContextLoss()
   }
 
   // ---- where things are --------------------------------------------------------------------------------------------

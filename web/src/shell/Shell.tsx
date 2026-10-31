@@ -38,7 +38,7 @@ import { TodoPage } from "@/todo/TodoPage"
 import { nextHour, placeAfter, useHost } from "./host"
 import { SIDEBAR } from "./layout"
 import { useShell } from "./ShellContext"
-import { FirstTour, Tour, tourDue } from "./Tour"
+import { FirstTour, Tour } from "./Tour"
 import { Icon } from "@/components/fr/controls"
 import { nowMin } from "@/hooks/useClock"
 import { Sidebar } from "./Sidebar"
@@ -60,12 +60,14 @@ export function Shell() {
   useHostActions()
   useTriageLink()
   useDecisionsTitle()
-  const setupDone = useSetup().data?.done
+  const setupData = useSetup().data
+  const setupDone = setupData?.done
+  const toured = setupData?.toured
   const [briefOn] = useBriefSwitch()
   useEffect(() => {
-    if (setupDone === false) setDialog("setup") // the first time Friday opens: a few questions before anything else
-    else if (setupDone && briefOn && briefDue(today) && !tourDue()) setDialog("brief")
-  }, [today, setDialog, setupDone, briefOn])
+    if (setupDone === false && dialog !== "setup") setDialog("setup") // the first time Friday opens: a few questions before anything else, and back if anything took its place
+    else if (setupDone && toured && briefOn && briefDue(today)) setDialog("brief") // not on top of the first quests
+  }, [today, setDialog, setupDone, toured, briefOn, dialog])
   useEffect(() => setNavOpen(false), [location.pathname, setNavOpen]) // a page picked from the slid-out sidebar
   const narrow = layout.mode === "narrow"
   const w = useWhatIf()
@@ -140,7 +142,7 @@ export function Shell() {
       {dialog === "ask" && <AskClaudeDialog onClose={() => setDialog(null)} />}
       {dialog === "setup" && <SetupDialog onClose={() => setDialog(null)} />}
       {tour && <Tour />}
-      <FirstTour ready={setupDone === true && dialog === null} />
+      <FirstTour ready={setupDone === true && dialog === null} toured={toured} />
     </DragProvider>
   )
 }
@@ -190,6 +192,7 @@ function useHostActions() {
   const location = useLocation()
   const toPlan = () => location.pathname !== "/" && navigate("/")
   useHost((request) => {
+    if (dialog === "setup" && request.action !== "setup") return // setup first: nothing takes its place (the audit, 31 Oct)
     const moved = placeAfter(request, place, today)
     if (moved) return (toPlan(), setPlace(moved))
     switch (request.action) {

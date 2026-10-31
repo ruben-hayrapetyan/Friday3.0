@@ -35,7 +35,10 @@ TIME_KEYS = ("start_utc", "end_utc", "release_utc", "due_utc")
 
 def rule_from(ctx: Ctx, every: str) -> str:
     words = every.lower().split()
-    found = read_repeat(words[words[:1] == ["every"] :], 0, ctx.today)
+    words = words[words[:1] == ["every"] :]
+    if not words:
+        raise FieldError("every", "say how it repeats, like `fri` or `2w thu`")
+    found = read_repeat(words, 0, ctx.today)
     if found is None:
         raise FieldError("every", f"{every!r} isn't a repeat like `mon,wed` or `2w thu`")
     return found[0]
@@ -127,9 +130,25 @@ def repeat(ctx: Ctx, inp: RepeatInput) -> SeriesOut:
             raise FieldError("id", f"{item.title} comes from {link.calendar or 'your calendar'}: make it repeat there")
         # the repeat's id in the calendar: Google's event, or EventKit's identifier (an occurrence's start dropped)
         found = re.match(r"^(.*)@\d+$", link.event_id) if link.kind == "mac" else None
-        return repeat_in_calendar(ctx, item, found[1] if found else link.event_id, rule_from(ctx, inp.every))
+        rule = rule_from(ctx, inp.every)
+        if item.start_utc:
+            # this time is the repeat's first, so its own day must be one of the rule's ("every sat", for a Friday's,
+            # would leave it out, and the calendar's times and Friday's wouldn't match)
+            local = to_local(parse_utc(item.start_utc), ctx.tz)
+            day = DAYS[local.weekday()]
+            days = next((p.removeprefix("BYDAY=") for p in rule.split(";") if p.startswith("BYDAY=")), "")
+            if days and day not in [d[-2:] for d in days.split(",")]:
+                raise FieldError("every", f"{item.title} is on a {local:%A}: repeat it from there, or move it first")
+        return repeat_in_calendar(ctx, item, found[1] if found else link.event_id, rule)
     values = {k: v for k, v in vars(item).items() if v is not None and k not in NOT_REPEATED}
-    series_id = new_series(ctx, values, {"every": inp.every})
+    repeat_of: dict[str, Any] = {"every": inp.every}
+    if not item.start_utc and item.due_utc:
+        # a task repeats from its own due day (it began from today's, so a Friday's came due on the wrong days)
+        due = to_local(parse_utc(item.due_utc), ctx.tz)
+        repeat_of["dtstart_local"] = format_local(local_midnight(due.date()) + timedelta(minutes=ctx.day_start))
+    series_id = new_series(ctx, values, repeat_of)
+    if item.id in (kv_get(ctx.conn, "friday_only_events", [], ctx.user_id) or []):
+        keep_calendar(ctx, series_id, "")  # one you kept only in Friday: its repeats stay here too
     series = as_series(load_series(ctx, series_id))
     times = materialize(series, ctx.today, ctx.settings["time"].materialize_days, ctx.tz, set())
     mine = next((t for t in times if (t.start_utc or t.due_utc) == (item.start_utc or item.due_utc)), None)

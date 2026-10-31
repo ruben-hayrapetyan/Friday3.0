@@ -1,6 +1,8 @@
 """Repeating items as the Repeating settings list them."""
 
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -76,3 +78,31 @@ def test_time_to_get_there_set_on_one_lunch_is_every_lunch_from_then(app: App) -
     assert all(i["max_units"] == 1 for i in now.values()) and len(later) > 7
     shown = next(i for i in app.do("items") if i["title"] == "Lunch")
     assert (shown["buffer_before_min"], shown["buffer_after_min"]) == (15, 15)
+
+
+def test_a_task_made_to_repeat_repeats_from_its_own_due_day(app: App) -> None:
+    # The audit (31 Oct): a Friday-due task made "every fri" came due on Tuesdays (counted from today, a Monday), and
+    # wasn't the first of its own repeat.
+    task = app.do("add", title="Reading quiz", duration_min=30, due="2026-10-23T17:00")["item"]
+    app.do("repeat", id=task["id"], every="fri")
+    mine = [i for i in app.table("items") if i["title"] == "Reading quiz" and i["status"] == "todo"]
+    assert {i["due_utc"][:10] for i in mine} >= {"2026-10-23", "2026-10-30"}
+    york = ZoneInfo("America/New_York")
+    local = [datetime.fromisoformat(i["due_utc"].replace("Z", "+00:00")).astimezone(york) for i in mine]
+    assert all(d.weekday() == 4 and d.hour == 17 for d in local)  # 5 PM each Friday, either side of the clocks changing
+    assert next(i for i in mine if i["id"] == task["id"])["series_id"] is not None
+    assert len([i for i in mine if i["due_utc"].startswith("2026-10-23")]) == 1
+
+
+def test_an_event_kept_only_in_friday_repeats_only_in_friday(app: App) -> None:
+    # The audit (31 Oct): its repeats were all sent to the calendar new events go to.
+    app.do("settings_set", key="gcal", value={"new_events_to": "Classes@group"})
+    made = app.do("add", title="Chess", when="fixed", start="2026-10-21T19:00", end="2026-10-21T20:00", calendar="")
+    app.do("repeat", id=made["item"]["id"], every="week")
+    assert app.table("event_writes") == []
+
+
+def test_a_repeat_must_say_how(app: App) -> None:
+    task = app.do("add", title="Reading quiz", duration_min=30, due="2026-10-23T17:00")["item"]
+    with pytest.raises(Exception, match="say how it repeats"):
+        app.do("repeat", id=task["id"], every="every")

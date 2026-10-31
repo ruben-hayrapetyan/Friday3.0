@@ -1169,6 +1169,14 @@ VERBS = {
     ),
     "token_remove": Verb("POST", "/api/c/token_remove", commands.TokenRef, True, False, "Revoke a token."),
     "tokens": Verb("GET", "/api/q/tokens", commands.Empty, False, False, "Tokens, with when each was last used."),
+    "tour_offered": Verb(
+        "POST",
+        "/api/c/tour_offered",
+        commands.Empty,
+        True,
+        False,
+        'The tour was offered: it opens by itself once, after setup, and never again on its own (31 Oct: "make sure',
+    ),
     "triage": Verb(
         "GET",
         "/api/q/triage",

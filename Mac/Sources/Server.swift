@@ -88,15 +88,27 @@ final class Server: ObservableObject {
         state = .failed("fridayd didn't answer within a minute:\n" + log.suffix(600))
     }
 
-    /// A server that isn't set up yet gets your time zone and personal's sleep times.
+    /// A server that isn't set up yet gets your time zone and personal's sleep times. Waited for off the main thread
+    /// (the window kept drawing), and a setup that didn't take says so with Try again, rather than opening onto a
+    /// Friday with no user.
     private func setUp() async {
         if let status = await Self.status(), status["ready"] as? Bool == false, let executable {
             let init_ = Process()
             init_.executableURL = executable
             init_.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser
             Self.prepare(init_, ["init", "--timezone", TimeZone.current.identifier, "--bedtime", "23:30", "--wake", "07:30"])
-            try? init_.run()
-            init_.waitUntilExit()
+            let code: Int32 = await withCheckedContinuation { done in
+                init_.terminationHandler = { done.resume(returning: $0.terminationStatus) }
+                do { try init_.run() } catch {
+                    init_.terminationHandler = nil
+                    done.resume(returning: -1)
+                }
+            }
+            if code != 0, await Self.status()?["ready"] as? Bool == false {
+                slow = false
+                state = .failed("Friday couldn't set itself up (fridayd init ended with \(code)).")
+                return
+            }
         }
         slow = false
         state = .ready

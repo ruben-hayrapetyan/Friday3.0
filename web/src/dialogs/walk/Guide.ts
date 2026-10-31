@@ -200,6 +200,13 @@ export class Guide {
     return { x: this.at(), width: 0.7 / this.metres, height: (TALL + 0.1) / this.metres }
   }
 
+  /** Something done (a quest): a jump for joy and a star. */
+  celebrate(): void {
+    if (this.reduced) return
+    this.hop(true)
+    this.emit("star")
+  }
+
   /** A hop where they stand, now. */
   hop(cheer = false): void {
     if (this.reduced) return

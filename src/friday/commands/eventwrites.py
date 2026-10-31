@@ -303,18 +303,41 @@ def send(
 
 def repeat_there(conn: sqlite3.Connection, service: Any, link: Any, item: Item, rule: str, tz: str) -> None:
     """The event made to repeat in its calendar; this time is now the repeat's first, which Google lists under an id
-    of its own, so the event's raw input takes that id and what Google says of it: the next sync finds this time
-    unchanged, instead of dropping it as gone and asking about it again (the later times join the series)."""
-    gcal.save_event(service, link.calendar_id, link.event_id, {"recurrence": [f"RRULE:{google_rule(rule, tz)}"]})
-    first = gcal.first_instance(service, link.calendar_id, link.event_id, gcal.rfc3339(parse_utc(item.start_utc)))
-    if first is None:
-        return
-    text, digest = event_digest(first)
-    conn.execute(
-        "UPDATE raw_inputs SET external_id = ?, content = ?, content_hash = ?, title = ? "
-        "WHERE source_id = ? AND external_id = ?",
-        [first["id"], text, digest, (first.get("summary") or "").strip(), link.source_id, link.event_id],
+    of its own (the event's and its start), so the event's raw input takes that id at once: the next sync finds this
+    time rather than dropping it as gone (the later times join the series). Then, if Google says, what it says of it,
+    so that sync finds it unchanged; if it doesn't, the sync reads this time as an edit, which follows the calendar.
+    A repeating event's times name their zone, as Google asks (an event Friday made gave only an offset)."""
+    body = event_body(item, tz)
+    for side in ("start", "end"):
+        if "dateTime" in body[side]:
+            body[side] = body[side] | {"timeZone": tz}
+    gcal.save_event(
+        service,
+        link.calendar_id,
+        link.event_id,
+        {"recurrence": [f"RRULE:{google_rule(rule, tz)}"], "start": body["start"], "end": body["end"]},
     )
+    start = datetime.fromtimestamp(parse_utc(item.start_utc) * 60, UTC)
+    first_id = (
+        f"{link.event_id}_{start:%Y%m%d}" if "date" in body["start"] else f"{link.event_id}_{start:%Y%m%dT%H%M%SZ}"
+    )
+    if not one(
+        conn, "SELECT 1 AS yes FROM raw_inputs WHERE source_id = ? AND external_id = ?", [link.source_id, first_id]
+    ):
+        conn.execute(
+            "UPDATE raw_inputs SET external_id = ?, content_hash = '' WHERE source_id = ? AND external_id = ?",
+            [first_id, link.source_id, link.event_id],
+        )
+    try:
+        first = gcal.first_instance(service, link.calendar_id, link.event_id, gcal.rfc3339(parse_utc(item.start_utc)))
+    except Exception:  # Google down a moment: the sync reads it instead
+        return
+    if first is not None and first["id"] == first_id:
+        text, digest = event_digest(first)
+        conn.execute(
+            "UPDATE raw_inputs SET content = ?, content_hash = ?, title = ? WHERE source_id = ? AND external_id = ?",
+            [text, digest, (first.get("summary") or "").strip(), link.source_id, first_id],
+        )
 
 
 def google_rule(rule: str, tz: str) -> str:

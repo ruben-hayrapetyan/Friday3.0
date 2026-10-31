@@ -492,3 +492,10 @@ kbd.fr-kbd {
   min-width: 0;
   overflow: hidden;
 }
+
+/* A block's card is open at the top right: the toasts stand beside it rather than over its ✕ (the audit, 31 Oct). */
+@media (min-width: 760px) {
+  body:has(.fr-block-card) .fr-toasts {
+    right: 376px !important;
+  }
+}

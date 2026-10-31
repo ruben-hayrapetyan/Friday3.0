@@ -104,6 +104,16 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
           aria-valuemax={100}
           aria-valuenow={p.pct}
           title={isDone ? undefined : "Click to say how much is done"}
+          tabIndex={isDone || item.remaining_min == null ? undefined : 0}
+          // ← and → a twentieth at a time, Home and End none and all (the audit, 31 Oct: no keyboard way)
+          onKeyDown={(e) => {
+            if (isDone || item.remaining_min == null) return
+            const now = p.pct / 100
+            const share = e.key === "ArrowRight" || e.key === "ArrowUp" ? now + 0.05 : e.key === "ArrowLeft" || e.key === "ArrowDown" ? now - 0.05 : e.key === "Home" ? 0 : e.key === "End" ? 1 : null
+            if (share === null) return
+            e.preventDefault()
+            setProgress({ id: item.id, share: Math.min(1, Math.max(0, Math.round(share * 20) / 20)) })
+          }}
           onClick={(e) => {
             if (isDone || item.remaining_min == null) return
             const box = e.currentTarget.getBoundingClientRect()

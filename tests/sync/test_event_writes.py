@@ -240,3 +240,35 @@ def test_an_event_from_a_calendar_friday_may_not_change_still_says_to_repeat_it_
     salsa = next(i for i in app.table("items") if i["title"] == "Salsa")
     with pytest.raises(Exception, match="repeat there"):
         app.do("repeat", id=salsa["id"], every="fri")
+
+
+def test_a_repeat_sent_to_google_names_its_zone_and_keeps_this_time_if_google_stumbles(app: App) -> None:
+    # The audit (31 Oct): the lookup of the repeat's first time failing left the event under its old id, and the next
+    # sync dropped it. Google also wants a repeating event's times to name their zone.
+    google = FakeGoogle({"Clubs@group": [event("s1", "Salsa", "2026-10-23T18:15", "2026-10-23T19:30")]})
+    app.do("settings_set", key="gcal", value={"read": ["Clubs"], "trusted": ["Clubs"]})
+    sync(app.conn, app.now_utc, google=google)
+    salsa = next(i for i in app.table("items") if i["title"] == "Salsa")
+    app.do("repeat", id=salsa["id"], every="fri")
+    google.instances_fail = 1
+    assert write_events(app.conn, app.now_utc, google=google) == 1
+    sent = google.patches[-1]
+    assert sent["start"]["timeZone"] == "America/New_York" and sent["recurrence"] == ["RRULE:FREQ=WEEKLY;BYDAY=FR"]
+    sync(app.conn, app.now_utc + 60, google=google)
+    kept = next(i for i in app.table("items") if i["id"] == salsa["id"])
+    assert kept["status"] == "todo"  # not dropped as gone
+    on_the_23rd = [
+        i
+        for i in app.table("items")
+        if i["title"] == "Salsa" and i["status"] == "todo" and i["start_utc"].startswith("2026-10-23")
+    ]
+    assert [i["id"] for i in on_the_23rd] == [salsa["id"]]  # and not twice
+
+
+def test_a_repeat_that_would_leave_out_the_events_own_day_is_refused(app: App) -> None:
+    google = FakeGoogle({"Clubs@group": [event("s1", "Salsa", "2026-10-23T18:15", "2026-10-23T19:30")]})
+    app.do("settings_set", key="gcal", value={"read": ["Clubs"], "trusted": ["Clubs"]})
+    sync(app.conn, app.now_utc, google=google)
+    salsa = next(i for i in app.table("items") if i["title"] == "Salsa")
+    with pytest.raises(Exception, match="on a Friday"):
+        app.do("repeat", id=salsa["id"], every="sat")

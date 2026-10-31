@@ -1942,6 +1942,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/tour_offered": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The tour was offered: it opens by itself once, after setup, and never again on its own (31 Oct: "make sure */
+        post: operations["tour_offered"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/undepend": {
         parameters: {
             query?: never;
@@ -7851,6 +7868,11 @@ export interface components {
         SetupOut: {
             /** Done */
             done: boolean;
+            /**
+             * Toured
+             * @default false
+             */
+            toured?: boolean;
             /** Answers */
             answers: {
                 [key: string]: unknown;
@@ -8867,6 +8889,27 @@ export interface components {
         };
         /** TokenRemoveResult */
         TokenRemoveResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** TourOfferedResult */
+        TourOfferedResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
@@ -13523,6 +13566,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenRemoveResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tour_offered: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Empty"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TourOfferedResult"];
                 };
             };
             /** @description Validation Error */

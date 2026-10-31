@@ -594,6 +594,7 @@ class SetupOut(Model):
     """Setup's questions, answered with what Friday does now; `done` once you've been through them."""
 
     done: bool
+    toured: bool = False  # the tour was offered (once, when setup first finished; never again on its own)
     answers: dict[str, Any]  # SetupInput's fields, from the settings in effect
     events: dict[str, int] = {}  # each calendar's events in the next two weeks
 

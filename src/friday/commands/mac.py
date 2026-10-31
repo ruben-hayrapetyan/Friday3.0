@@ -170,13 +170,15 @@ def mac_written(ctx: Ctx, inp: MacWrittenInput) -> Changed:
             "event_writes", {"id": inp.id}, {"tries": job["tries"] + 1, "error": (inp.error or "failed")[:300]}
         )
         return Changed(message="Kept, to try again")
-    ctx.db.update("event_writes", {"id": inp.id}, {"done_utc": ctx.now_text, "error": None})
+    # what it made of it first, then done: a failure between leaves the change to be asked for again, not done with
+    # the event's raw input still under its old id (which the next reading would take for gone)
     if inp.event is not None and job["op"] in ("save", "repeat"):
         # repeating now, this time's id carries its start, as every occurrence's does: the raw input takes it
         if job["item_id"] in event_links(ctx.conn, ctx.user_id):
             settle(ctx, job["item_id"], inp.event)
         else:
             adopt(ctx, job, inp.event)
+    ctx.db.update("event_writes", {"id": inp.id}, {"done_utc": ctx.now_text, "error": None})
     said = {"save": "Saved to your calendar", "repeat": "Repeats in your calendar"}
     return Changed(message=said.get(job["op"], "Deleted from your calendar"))
 

@@ -448,6 +448,10 @@ function useRetime() {
 function useMoved(plan: Schemas["PlanOut"]): Map<number, string> {
   const seen = useRef<{ planId: number | null; firsts: Map<number, string> } | null>(null)
   const [moved, setMoved] = useState(new Map<number, string>())
+  // the ten seconds run on whatever plan objects come in meanwhile (a patch drawn or dropped, What if): only a new
+  // plan restarts them (the audit, 31 Oct: captions stuck when a same-plan update cleared the timer)
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(timer.current), [])
   useEffect(() => {
     const firsts = new Map<number, string>()
     for (const b of plan.blocks) if (!firsts.has(b.item_id)) firsts.set(b.item_id, b.start)
@@ -455,8 +459,8 @@ function useMoved(plan: Schemas["PlanOut"]): Map<number, string> {
     seen.current = { planId: plan.plan_id, firsts }
     if (!before || before.planId === plan.plan_id) return
     setMoved(movedSince(before.firsts, firsts))
-    const timer = setTimeout(() => setMoved(new Map()), 10_000)
-    return () => clearTimeout(timer)
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => setMoved(new Map()), 10_000)
   }, [plan])
   return moved
 }

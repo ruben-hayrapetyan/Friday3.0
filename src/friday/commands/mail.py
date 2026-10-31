@@ -220,6 +220,9 @@ def mail_retry(ctx: Ctx, inp: ItemRef) -> Changed:
     """Read a message with the AI after all (on the next sync): a skipped or failed one, or one read with nothing
     found in it (30 Oct: an invitation read as marketing)."""
     found = ctx.db.fetch("raw_inputs", {"id": inp.id})
+    source = ctx.db.fetch("sources", {"id": found["source_id"]}) if found else None
+    if source is None or source["kind"] != "gmail":
+        raise FieldError("id", "only a message from your mail can be read again")
     nothing = (
         found is not None
         and found["status"] == "extracted"

@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { query, type Schemas } from "@/api/client"
 import { setGhosts } from "@/api/events"
 import { Icon } from "@/components/fr/controls"
+import { useDialogKeys } from "@/dialogs/Dialogs"
 import { useCommand } from "@/hooks/useCommand"
 import { addDays, toMin } from "@/lib/time"
 import { clock, weekday } from "@/lib/format"
@@ -21,10 +22,11 @@ export function OtherWaysDialog({ onClose }: { onClose: () => void }) {
   const client = useQueryClient()
   const pick = usePick(onClose)
   const ways = found.data?.ways ?? []
+  const box = useDialogKeys(onClose)
   return (
     <div className="fr-scrim" style={{ alignItems: "flex-start", padding: "56px 24px 24px" }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0 }} />
-      <div role="dialog" aria-modal="true" aria-label="Other ways" className="fr-float fr-dialog" style={{ width: "min(900px, 100%)" }}>
+      <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Other ways" className="fr-float fr-dialog" style={{ width: "min(900px, 100%)", outline: "none" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
             <span className="fr-h" style={{ fontSize: 26, lineHeight: 1.05 }}>

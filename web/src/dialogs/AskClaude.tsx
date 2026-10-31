@@ -9,12 +9,12 @@
 import { useAi } from "@/settings/AiConnect"
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
-import { ApiError, type CommandName, command, type Schemas } from "@/api/client"
+import { ApiError, command, type Schemas } from "@/api/client"
 import { FIT_COMMANDS, type FitCommand, FitLine } from "@/components/Fit"
 import { Box, Icon, Switch } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { useSettings } from "@/hooks/queries"
-import { undoAll, useCommand } from "@/hooks/useCommand"
+import { runTogether, undoAll, useCommand } from "@/hooks/useCommand"
 import { useShell } from "@/shell/ShellContext"
 
 /** Claude's proposals you kept, run in order as one change: Undo takes them all back, and one that fails takes back
@@ -28,18 +28,8 @@ export async function applyActions(actions: Schemas["ProposedAction"][], client:
 
 /** The actions run in order, as `applyActions` runs them: the changes' ids, or null when one failed. */
 async function runActions(actions: Schemas["ProposedAction"][], client: QueryClient, toast: ReturnType<typeof useToast>): Promise<number[] | null> {
-  const ids: number[] = []
-  try {
-    for (const a of actions) {
-      const out = await command(a.command as CommandName, a.input as never)
-      if (out.command_id != null) ids.push(out.command_id)
-    }
-  } catch (e) {
-    toast({ message: e instanceof Error ? e.message : String(e), tone: "error" })
-    await undoAll(client, toast, ids)
-    return null
-  }
-  client.invalidateQueries()
+  const ids = await runTogether(client, toast, actions)
+  if (ids) client.invalidateQueries()
   return ids
 }
 
@@ -77,7 +67,11 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
       setKept(out.result.actions.map((a, i) => (a.error || now.includes(i) ? -1 : i)).filter((i) => i >= 0))
       if (now.length) {
         const ids = await runActions(now.map((i) => out.result.actions[i]), client, toast)
-        if (ids) setDone({ at: now, ids })
+        if (ids) {
+          setDone({ at: now, ids })
+          // the dialog's own Undo goes when it closes; this one stays
+          toast({ message: `Changed ${now.length === 1 ? "an event" : `${now.length} events`} without asking`, action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
+        }
         else setKept((was) => [...was, ...now].sort((a, b) => a - b)) // they failed and were taken back: yours to apply
       }
     } catch (e) {
@@ -93,8 +87,13 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  const [applying, setApplying] = useState(false)
   const apply = async () => {
-    if (answer && (await applyActions(kept.map((i) => answer.actions[i]), client, toast))) onClose()
+    if (!answer || applying) return // a second click or ⌘↩ doesn't apply it twice
+    setApplying(true)
+    const ok = await applyActions(kept.map((i) => answer.actions[i]), client, toast)
+    setApplying(false)
+    if (ok) onClose()
   }
   return (
     <div className="fr-scrim" style={{ alignItems: "flex-start", padding: "70px 24px 24px" }}>
@@ -186,7 +185,7 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
                   Undo {done.at.length === 1 ? "the change" : `the ${done.at.length} changes`} made
                 </button>
               )}
-              <button className="btn btn-primary" onClick={apply} disabled={!kept.length}>
+              <button className="btn btn-primary" onClick={apply} disabled={!kept.length || applying}>
                 <Icon name="check" />
                 Apply {kept.length || ""}
               </button>

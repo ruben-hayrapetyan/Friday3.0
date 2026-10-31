@@ -19,7 +19,7 @@ const ANSWERS: Answers = {
 
 describe("setup", () => {
   it("asks along the walk: a Monday from getting up to bed, Saturday, a morning, the AI and your things, then the week", () => {
-    expect(storyFor(ANSWERS)).toEqual(["hello", "wake", "work", "heavy", "focus", "deadline", "evening", "bed", "weekend", "brief", "ai", "bring", "build", "reveal", "start"])
+    expect(storyFor(ANSWERS)).toEqual(["hello", "wake", "work", "heavy", "focus", "deadline", "evening", "bed", "weekend", "brief", "ai", "bring", "reveal", "start"])
   })
 
   it("says where and when each question is asked on the walk", () => {
@@ -33,7 +33,7 @@ describe("setup", () => {
 
   it("asks about calendars only when there are some, after bringing them in", () => {
     const story = storyFor({ ...ANSWERS, calendars: [{ name: "Home", shown: true, busy: true }] })
-    expect(story.slice(-6)).toEqual(["ai", "bring", "calendars", "build", "reveal", "start"]) // the AI before what it reads; calendars once connected
+    expect(story.slice(-5)).toEqual(["ai", "bring", "calendars", "reveal", "start"]) // the AI before what it reads; calendars once connected
     expect(storyFor(ANSWERS)).not.toContain("calendars")
   })
 

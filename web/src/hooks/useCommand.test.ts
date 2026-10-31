@@ -2,7 +2,7 @@ import { QueryClient } from "@tanstack/react-query"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { Item } from "@/api/client"
 import type { Toast } from "@/components/Toasts"
-import { runCommand, undoAll } from "./useCommand"
+import { runCommand, runTogether, undoAll, undoLast } from "./useCommand"
 
 const items = [{ id: 1, title: "PS5" }, { id: 2, title: "laundry" }] as Item[]
 const withoutItem = (client: QueryClient, input: { id: number }) =>
@@ -49,6 +49,46 @@ describe("a command", () => {
     const undone = fetch.mock.calls.map(([, init]) => JSON.parse(String(init.body)).command_id)
     expect(undone).toEqual([5, 4, 3])
     expect(toasts.map((t) => t.message)).toEqual(["Undone"])
+  })
+})
+
+describe("several commands as one change (Ask Claude's, a triage option's)", () => {
+  // the audit, 31 Oct: Claude's changes applied, then ⌘Z undid the pin made before them
+  const server = (fail?: string) => {
+    let id = 20
+    const fetch = vi.fn(async (url: string, init: RequestInit) => {
+      const name = String(url).split("/api/c/")[1]
+      if (name === fail) return new Response(JSON.stringify({ field: "id", message: "no item T9" }), { status: 422 })
+      return new Response(JSON.stringify({ command_id: name === "undo" ? null : ++id, result: { undone: JSON.parse(String(init.body)).command_id } }))
+    })
+    vi.stubGlobal("fetch", fetch)
+    return fetch
+  }
+  const sent = (fetch: ReturnType<typeof server>) => fetch.mock.calls.map(([url, init]) => [String(url).split("/api/c/")[1], JSON.parse(String(init.body)).command_id ?? null])
+
+  it("run in order, and ⌘Z takes them all back, newest first", async () => {
+    const { client, toast } = setup()
+    const fetch = server()
+    expect(await runTogether(client, toast, [{ command: "edit", input: { id: 1 } }, { command: "pin", input: { id: 2 } }])).toEqual([21, 22])
+    undoLast(client, toast)
+    await vi.waitFor(() => expect(sent(fetch).slice(2)).toEqual([["undo", 22], ["undo", 21]]))
+  })
+
+  it("one that fails takes back those before it, and says why", async () => {
+    const { client, toasts, toast } = setup()
+    const fetch = server("pin")
+    expect(await runTogether(client, toast, [{ command: "edit", input: { id: 1 } }, { command: "pin", input: { id: 9 } }])).toBeNull()
+    expect(sent(fetch)).toEqual([["edit", null], ["pin", null], ["undo", 21]])
+    expect(toasts[0]).toEqual({ message: "id: no item T9", tone: "error" })
+  })
+
+  it("undone from the toast, ⌘Z doesn't try them again", async () => {
+    const { client, toasts, toast } = setup()
+    server()
+    const ids = (await runTogether(client, toast, [{ command: "edit", input: { id: 1 } }])) as number[]
+    await undoAll(client, toast, ids)
+    undoLast(client, toast)
+    expect(toasts.at(-1)?.message).toBe("Nothing to undo")
   })
 })
 

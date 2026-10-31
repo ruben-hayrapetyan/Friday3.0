@@ -44,6 +44,8 @@ class FakeGoogle:
         self.roles = roles or {}  # a calendar's accessRole ("reader" for one shared read-only); else you own it
         self.ids = itertools.count(1)
         self.writes: list[str] = []
+        self.patches: list[dict[str, Any]] = []  # what each patch sent
+        self.instances_fail = 0  # how many lookups of a repeat's times fail first (Google down a moment)
 
     def calendarList(self) -> "FakeGoogle":  # noqa: N802 (Google's name)
         return self
@@ -110,6 +112,7 @@ class Events:
 
     def patch(self, calendarId: str, eventId: str, body: dict[str, Any]) -> Call:  # noqa: N803
         def change() -> dict[str, Any]:
+            self.google.patches.append(body)
             events = self.google.calendars_by_id[calendarId]
             found = next(e for e in events if e["id"] == eventId)
             patched = found | local_times(body)
@@ -127,6 +130,9 @@ class Events:
         self, calendarId: str, eventId: str, timeMin: str | None = None, maxResults: int | None = None
     ) -> Call:  # noqa: N803
         def found() -> dict[str, Any]:
+            if self.google.instances_fail > 0:
+                self.google.instances_fail -= 1
+                raise ConnectionError("Google is unavailable")
             times = [e for e in self.google.calendars_by_id[calendarId] if e.get("recurringEventId") == eventId]
             times = [e for e in times if timeMin is None or instant(e["end"]) > datetime.fromisoformat(timeMin)]
             return {"items": sorted(times, key=lambda e: instant(e["start"]))[: maxResults or None]}

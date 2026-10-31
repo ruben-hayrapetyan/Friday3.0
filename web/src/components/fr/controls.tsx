@@ -53,7 +53,8 @@ export function Menu<T extends string>(props: { options: readonly Option<T>[]; v
     }
   }, [open])
   return (
-    <div ref={box} className="fr-menu">
+    // Escape here closes the list and goes no further: not the pane or dialog it's in (the audit, 31 Oct)
+    <div ref={box} className="fr-menu" onKeyDown={(e) => open && e.key === "Escape" && (e.stopPropagation(), setOpen(false))}>
       <button className="fr-menu-button" aria-haspopup="listbox" aria-expanded={open} aria-label={label} disabled={disabled} onClick={() => setOpen(!open)}>
         <span>{options.find((o) => o.value === value)?.label ?? value}</span>
         <Icon name="caret-down" size={12} />

@@ -95,7 +95,7 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, tod
       tabIndex={0}
       data-block-key={b.key}
       onClick={onOpen}
-      onKeyDown={(e) => e.key === "Enter" && onOpen()}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onOpen())}
       onPointerDown={look || running ? undefined : onGrab}
       title={
         look === "sitting"
@@ -206,7 +206,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
       className={fresh ? "fr-just-shoved" : undefined}
       onClick={onOpen}
       onDoubleClick={onEdit}
-      onKeyDown={(e) => e.key === "Enter" && onOpen()}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onOpen())}
       onPointerDown={typing ? undefined : onGrab}
       style={{
         ...box(p),
