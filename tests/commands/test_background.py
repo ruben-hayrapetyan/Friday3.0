@@ -53,3 +53,20 @@ def test_once_started_it_is_not_planned_again(app: App) -> None:
     app.do("log", id=laundry, start="2026-10-19T08:30", end="2026-10-19T08:45")
     replan(app.conn, app.now_utc)
     assert blocks(app, "Laundry") == []
+
+
+def test_a_start_gone_by_is_one_laundry_planned_again_not_two_hours_of_it(app: App) -> None:
+    # 1 Nov: "why are there three events named laundry": each start gone by unstarted was drawn as the whole two
+    # hours, cut in two at now, beside the start planned again.
+    from friday.core.time import parse_utc
+
+    planner = app.do("settings")["planner"]
+    app.do("settings_set", key="planner", value=planner | {"assume_unreviewed": "not_done"})  # yours: missed
+    app.do("add", title="Laundry", duration_min=120, due="2026-10-20T23:00", background=True)
+    replan(app.conn, app.now_utc)
+    (first,) = blocks(app, "Laundry")
+    app.now_utc = parse_utc(first["start"] + "Z") + 4 * 60 + 45  # gone by, unstarted (New York is UTC-4)
+    replan(app.conn, app.now_utc)
+    shown = blocks(app, "Laundry")
+    assert len(shown) == 1 and shown[0]["state"] is None and shown[0]["background"]
+    assert shown[0]["start"] > first["start"]

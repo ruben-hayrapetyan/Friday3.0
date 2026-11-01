@@ -218,7 +218,9 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
                     start,
                     end,
                     json.loads(r["cost"]),
-                    running=True,
+                    # a start of something that runs by itself that went by unstarted is that quarter hour, missed,
+                    # not its whole run (1 Nov: each missed Laundry start drew two hours, cut in two at now)
+                    running=end > ctx.now_utc,
                     tentative=bool(r["tentative"]),
                     pinned=pin_kind(pins, r),
                 )
@@ -226,6 +228,7 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
     if coming is not None:
         blocks = sorted(blocks + placed_ahead(ctx, coming, max(lo, ctx.now_utc), hi, going), key=lambda b: b.start)
     blocks = coalesced(past_states(ctx, blocks))  # pieces join only with pieces that went the same way
+    blocks = later_start_only(ctx, blocks)
     fixed = [
         item_out(ctx, item_from_row(r))
         for r in rows(
@@ -360,6 +363,20 @@ def past_states(ctx: Ctx, blocks: list[BlockOut]) -> list[BlockOut]:
         else:
             states[b.key] = "done" if counts else "missed"
     return [b.model_copy(update={"state": states[b.key]}) if b.key in states else b for b in blocks]
+
+
+def later_start_only(ctx: Ctx, blocks: list[BlockOut]) -> list[BlockOut]:
+    """Missed starts of something that runs by itself left out while a later start is planned: one Laundry on the
+    calendar, not one for every quarter hour it could have been put on (1 Nov: "why are there three events named
+    laundry"). With none planned, the missed one stays, to say so and to be marked done if you did start it."""
+    ahead = {b.item_id for b in blocks if b.state is None}
+    if not ahead:
+        return blocks
+    marks = ",".join("?" * len(ahead))
+    runs = {
+        r["id"] for r in rows(ctx.conn, f"SELECT id FROM items WHERE background = 1 AND id IN ({marks})", sorted(ahead))
+    }
+    return [b for b in blocks if not (b.state == "missed" and b.item_id in runs)]
 
 
 def split_at_now(ctx: Ctx, blocks: list[BlockOut]) -> list[BlockOut]:
