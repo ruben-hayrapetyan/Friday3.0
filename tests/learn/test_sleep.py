@@ -78,3 +78,19 @@ def test_a_short_night_owes_what_it_fell_short_by() -> None:
     night = Night(date(2026, 10, 19), mark("bed", "2026-10-20T02:00"), mark("up", "2026-10-20T07:00"))
     assert shortfall_hours(night, 8 * 60) == 3.0
     assert shortfall_hours(Night(date(2026, 10, 19)), 8 * 60) == 0.0
+
+
+def test_a_night_across_the_clocks_going_back_is_timed_in_real_minutes() -> None:
+    # 1 Nov: done with work at 1:59 before the change and to bed at 3:53 after it read as 1 h 54 min of winding down.
+    from friday.core.time import to_utc, to_zoned
+    from friday.learn.sleep import Mark, nights_from
+
+    york = "America/New_York"
+    done = to_zoned(to_utc(datetime(2026, 11, 1, 1, 59), york), york)  # 1:59 EDT, the first time round
+    bed = to_zoned(to_utc(datetime(2026, 11, 1, 3, 53), york), york)
+    bed_early = to_zoned(to_utc(datetime(2026, 11, 1, 1, 30), york), york)  # 1:30 EDT
+    up = to_zoned(to_utc(datetime(2026, 11, 1, 9, 30), york), york)
+    night = nights_from([Mark(1, "done", done), Mark(2, "bed", bed), Mark(3, "up", up)], [], 4 * 60)[date(2026, 10, 31)]
+    assert night.wind_down_min == 174 and night.slept_min == 337
+    early = nights_from([Mark(2, "bed", bed_early), Mark(3, "up", up)], [], 4 * 60)[date(2026, 10, 31)]
+    assert early.slept_min == 9 * 60  # 1:30 EDT to 9:30 EST: nine hours, not eight

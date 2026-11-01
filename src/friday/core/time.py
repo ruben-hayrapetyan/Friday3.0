@@ -50,6 +50,25 @@ def to_local(minutes: int, tz: str) -> datetime:
     return utc.astimezone(zone(tz)).replace(tzinfo=None)
 
 
+def to_zoned(minutes: int, tz: str) -> datetime:
+    """A moment as the clock in `tz` shows it, keeping its offset: the hour that comes twice when the clocks go back
+    is told apart, and two such times take `minutes_between` (1 Nov: done with work at 1:59 before the change and
+    to bed at 3:53 after it was read as 1 h 54 min of winding down)."""
+    return (EPOCH + timedelta(minutes=minutes)).replace(tzinfo=UTC).astimezone(zone(tz))
+
+
+def minutes_between(earlier: datetime, later: datetime) -> int:
+    """The minutes that went by: real time for zoned clock times, clock time for plain ones."""
+    if earlier.tzinfo is not None and later.tzinfo is not None:
+        earlier, later = earlier.astimezone(UTC), later.astimezone(UTC)
+    return int((later - earlier).total_seconds() // 60)
+
+
+def utc_minutes(moment: datetime) -> int:
+    """A zoned moment as Friday's UTC minutes."""
+    return _naive(moment.astimezone(UTC).replace(tzinfo=None))
+
+
 def parse_local(text: str) -> datetime:
     return datetime.strptime(text, "%Y-%m-%dT%H:%M")
 

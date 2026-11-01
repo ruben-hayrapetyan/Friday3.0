@@ -3,13 +3,14 @@
 
 import json
 import logging
+from datetime import timedelta
 from typing import Any
 
 from friday.api.commands import Changed, DiagnoseInput, ReportInput
 from friday.api.views import Happening
 from friday.commands.registry import Ctx, command, query
 from friday.core.db import rows
-from friday.core.time import format_utc, parse_utc
+from friday.core.time import format_utc
 from friday.planner.store import kv_get
 
 log = logging.getLogger("friday.client")
@@ -65,7 +66,7 @@ def reports(ctx: Ctx, since: str) -> list[Happening]:
 def plans_since(ctx: Ctx, since: str) -> list[Happening]:
     out = []
     day_lo = ctx.utc(f"{ctx.today}T00:00")
-    day_hi = format_utc(parse_utc(day_lo) + 1440)
+    day_hi = ctx.utc(f"{ctx.today + timedelta(days=1)}T00:00")  # the next midnight: 25 hours when the clocks go back
     for r in rows(
         ctx.conn, "SELECT * FROM plans WHERE user_id = ? AND created_utc >= ? ORDER BY id", [ctx.user_id, since]
     ):

@@ -17,7 +17,7 @@ from friday.commands.registry import Ctx, command, query
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.rule_text import days_spoken
-from friday.core.time import ampm, format_local, format_utc, parse_utc, to_local
+from friday.core.time import ampm, format_local, format_utc, parse_utc, to_local, to_zoned
 from friday.learn.sleep import WEEKDAYS, Mark, Night, changes, evening_of, learn, nights_from
 from friday.planner.build import night_times
 from friday.planner.snapshot import day_overrides
@@ -131,7 +131,7 @@ def recorded(ctx: Ctx, days: int) -> dict:
     """The nights of the last `days`, by their evening."""
     since = format_utc(ctx.now_utc - days * 1440)
     marks = [
-        Mark(r["id"], r["kind"], to_local(parse_utc(r["at_utc"]), ctx.tz))
+        Mark(r["id"], r["kind"], to_zoned(parse_utc(r["at_utc"]), ctx.tz))
         for r in rows(
             ctx.conn,
             "SELECT * FROM sleep_marks WHERE user_id = ? AND at_utc >= ? ORDER BY at_utc",
@@ -143,8 +143,8 @@ def recorded(ctx: Ctx, days: int) -> dict:
         "SELECT start_utc, end_utc FROM progress WHERE user_id = ? AND source = 'timer' AND start_utc >= ?",
         [ctx.user_id, since],
     )
-    starts = [to_local(parse_utc(r["start_utc"]), ctx.tz) for r in timed]
-    ends = [to_local(parse_utc(r["end_utc"]), ctx.tz) for r in timed if r["end_utc"]]
+    starts = [to_zoned(parse_utc(r["start_utc"]), ctx.tz) for r in timed]
+    ends = [to_zoned(parse_utc(r["end_utc"]), ctx.tz) for r in timed if r["end_utc"]]
     return nights_from(marks, starts, ctx.day_start, ends)
 
 
@@ -222,7 +222,11 @@ def offer(ctx: Ctx, now: datetime, nights: dict, overrides: dict, morning_hours:
     up = morning.up if morning else None
     if up is None and ctx.day_start <= now.hour * 60 + now.minute < 15 * 60:
         return "up"
-    if up is not None and morning.ready_at is None and now < up.at + timedelta(hours=morning_hours):  # type: ignore[union-attr]
+    if (
+        up is not None
+        and morning.ready_at is None
+        and now < up.at.replace(tzinfo=None) + timedelta(hours=morning_hours)
+    ):  # type: ignore[union-attr]
         return "ready"
     evening = evening_of(now, ctx.day_start)
     tonight = nights.get(evening)

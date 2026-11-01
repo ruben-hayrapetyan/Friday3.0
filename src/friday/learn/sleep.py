@@ -20,6 +20,8 @@ from datetime import date, datetime, timedelta
 from statistics import median
 from typing import Any
 
+from friday.core.time import minutes_between
+
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 SCHOOL_NIGHTS = ("sun", "mon", "tue", "wed", "thu")  # evenings before a weekday morning
 WEEKDAY_MORNINGS = ("mon", "tue", "wed", "thu", "fri")
@@ -36,7 +38,7 @@ NAPS_TO_LEARN = 3
 class Mark:
     id: int
     kind: str  # done, bed, up or ready
-    at: datetime  # local
+    at: datetime  # local, zoned (`core.time.to_zoned`), so a night across the clocks changing is timed right
 
 
 @dataclass(frozen=True)
@@ -53,7 +55,7 @@ class Night:
     def slept_min(self) -> int | None:
         if self.bed is None or self.up is None:
             return None
-        minutes = int((self.up.at - self.bed.at).total_seconds() // 60)
+        minutes = minutes_between(self.bed.at, self.up.at)
         return minutes if 0 < minutes < 16 * 60 else None
 
     @property
@@ -64,7 +66,7 @@ class Night:
     def routine_min(self) -> int | None:
         if self.up is None or self.ready_at is None:
             return None
-        minutes = int((self.ready_at - self.up.at).total_seconds() // 60)
+        minutes = minutes_between(self.up.at, self.ready_at)
         return minutes if 0 <= minutes < 6 * 60 else None
 
     @property
@@ -76,7 +78,7 @@ class Night:
         """Done with work to bed: the evening routine."""
         if self.bed is None or self.done_at is None:
             return None
-        minutes = int((self.bed.at - self.done_at).total_seconds() // 60)
+        minutes = minutes_between(self.done_at, self.bed.at)
         return minutes if 0 <= minutes < 6 * 60 else None
 
 
@@ -122,7 +124,7 @@ def nights_from(
 
 def since_noon(at: datetime, evening: date) -> int:
     """A bedtime as minutes after the evening's noon, so 11pm and 1am average to midnight."""
-    return int((at - datetime(evening.year, evening.month, evening.day, 12)).total_seconds() // 60)
+    return int((at.replace(tzinfo=None) - datetime(evening.year, evening.month, evening.day, 12)).total_seconds() // 60)
 
 
 def clock(minutes: int) -> str:

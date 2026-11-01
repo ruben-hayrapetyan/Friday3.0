@@ -18,7 +18,7 @@ from friday.core.items import Item
 from friday.core.pace import Dials, PacePeriod
 from friday.core.rows import item_from_row
 from friday.core.settings import minutes_of
-from friday.core.time import format_utc, parse_utc, planning_date, to_local, to_utc
+from friday.core.time import format_utc, parse_utc, planning_date, to_local, to_zoned, utc_minutes
 from friday.learn import guard
 from friday.learn.sleep import NAP_USUAL_MIN, Mark, evening_of, learn, nights_from, usual_nap
 from friday.learn.state import loadings
@@ -179,7 +179,7 @@ def sleep_facts(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any]
         return None
     since = format_utc(now_utc - LEARN_DAYS * 1440)
     marks = [
-        Mark(r["id"], r["kind"], to_local(parse_utc(r["at_utc"]), tz))
+        Mark(r["id"], r["kind"], to_zoned(parse_utc(r["at_utc"]), tz))
         for r in rows(conn, "SELECT * FROM sleep_marks WHERE user_id = ? AND at_utc >= ?", [user_id, since])
     ]
     timed = rows(
@@ -187,8 +187,8 @@ def sleep_facts(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any]
         "SELECT start_utc, end_utc FROM progress WHERE user_id = ? AND source = 'timer' AND start_utc >= ?",
         [user_id, since],
     )
-    starts = [to_local(parse_utc(r["start_utc"]), tz) for r in timed]
-    ends = [to_local(parse_utc(r["end_utc"]), tz) for r in timed if r["end_utc"]]
+    starts = [to_zoned(parse_utc(r["start_utc"]), tz) for r in timed]
+    ends = [to_zoned(parse_utc(r["end_utc"]), tz) for r in timed if r["end_utc"]]
     day_start = minutes_of(settings["time"].day_start)
     nights = nights_from(marks, starts, day_start, ends)
     morning = nights.get(to_local(now_utc, tz).date() - timedelta(days=1))
@@ -202,9 +202,9 @@ def sleep_facts(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any]
     return SleepFacts(
         routine_min=learned.routine_min,
         wind_down_min=learned.wind_down_min,
-        done_utc=to_utc(tonight.done.at, tz) if tonight and tonight.done and not tonight.bed else None,
+        done_utc=utc_minutes(tonight.done.at) if tonight and tonight.done and not tonight.bed else None,
         slept_min={d: n.slept_min for d, n in nights.items() if n.slept_min is not None},
-        woke_utc=to_utc(morning.up.at, tz) if morning and morning.up else None,
+        woke_utc=utc_minutes(morning.up.at) if morning and morning.up else None,
         ready=bool(morning and morning.ready_at),
         napped_min=napped,
     )
