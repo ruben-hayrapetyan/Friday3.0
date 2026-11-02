@@ -10,7 +10,7 @@ import colorsys
 import re
 from functools import lru_cache
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from friday.core.items import PIGMENTS
 
@@ -50,7 +50,10 @@ class BusySettings(Model):
 class CalendarLook(Model):
     colors: dict[str, str] = Field(default_factory=dict)  # a calendar's name -> its pigment
     toolbar: tuple[str, ...] = ()  # calendars with a show/hide button in the title row (personal's, ⌥⌘1–9)
-    show_missed: bool = True  # past work not done, drawn faint where it was planned (2 Nov: off on yours)
+    # Friday's own plan for the past, drawn where it planned the work: done, missed or timed over. Off, the past shows
+    # only when you worked (2 Nov: "i want it to show when i worked i just don't want it to show its own schedule").
+    # Saved as show_missed for a day before that, still read.
+    show_past_plan: bool = Field(True, validation_alias=AliasChoices("show_past_plan", "show_missed"))
 
 
 REMINDER = re.compile(r"\b(due|deadline)\b", re.IGNORECASE)

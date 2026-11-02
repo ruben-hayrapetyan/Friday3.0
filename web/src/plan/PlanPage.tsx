@@ -222,13 +222,13 @@ function ShowMenu() {
   const colors = (settings?.calendar_look as { colors?: Record<string, string> } | undefined)?.colors ?? {}
   const filter = (settings?.categories as { filter?: { label: string } | null } | undefined)?.filter
   const calendarLook = settings?.calendar_look as Record<string, unknown> | undefined
-  const showMissed = (calendarLook?.show_missed as boolean | undefined) ?? true
+  const showPastPlan = (calendarLook?.show_past_plan as boolean | undefined) ?? true
   const client = useQueryClient()
   const toast = useToast()
-  const flipMissed = () => {
-    const value = { ...calendarLook, show_missed: !showMissed }
+  const flipPastPlan = () => {
+    const value = { ...calendarLook, show_past_plan: !showPastPlan }
     runCommand(client, toast, "settings_set", { key: "calendar_look", value }, {
-      label: () => (showMissed ? "Missed work hidden" : "Missed work shown"),
+      label: () => (showPastPlan ? "Past days show when you worked" : "Friday's past plan shown"),
       // at once: the calendar redraws before the server answers
       optimistic: (c) => c.setQueryData(["settings"], (was: Record<string, unknown> | undefined) => (was ? { ...was, calendar_look: value } : was)),
     })
@@ -246,7 +246,7 @@ function ShowMenu() {
     window.addEventListener("keydown", press)
     return () => window.removeEventListener("keydown", press)
   })
-  const on = toolbar.filter((t) => look.showing.includes(t)).length + (filter && look.showFiltered ? 1 : 0) + (showMissed ? 1 : 0)
+  const on = toolbar.filter((t) => look.showing.includes(t)).length + (filter && look.showFiltered ? 1 : 0) + (showPastPlan ? 1 : 0)
   return (
     <Dropdown tour="show" icon={on ? "eye" : "eye-slash"} label="Show">
       {() => (
@@ -255,9 +255,9 @@ function ShowMenu() {
             What the calendar draws. It never changes the plan.
           </span>
           <label className="fr-hover" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: "var(--radius-md)" }}>
-            <Switch on={showMissed} onToggle={flipMissed} label="Show missed work" />
-            <span style={{ flex: 1 }}>Missed work</span>
-            <span className="fr-kicker">where it was planned</span>
+            <Switch on={showPastPlan} onToggle={flipPastPlan} label="Show Friday's past plan" />
+            <span style={{ flex: 1 }}>Friday's past plan</span>
+            <span className="fr-kicker">off: when you worked</span>
           </label>
           {filter && (
             <label className="fr-hover" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: "var(--radius-md)" }}>

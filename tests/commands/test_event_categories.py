@@ -156,3 +156,15 @@ def test_others_room_bookings_wear_their_calendars_colour_not_a_guess(app: App) 
     assert shown["calendar_color"] == "violet"
     app.do("event_category", id=item_id, category="Club meetings")  # yours still goes
     assert facts(app, item_id) == ("Club meetings", "you")
+
+
+def test_friday_s_past_plan_can_be_left_off_the_calendar_and_the_first_name_still_reads(app: App) -> None:
+    # 2 Nov: "i want it to show when i worked i just don't want it to show its own schedule"; for a day the switch was
+    # saved as show_missed.
+    look = app.do("settings")["calendar_look"]
+    assert look["show_past_plan"] is True
+    app.do("settings_set", key="calendar_look", value={**look, "show_past_plan": False})
+    assert app.do("settings")["calendar_look"]["show_past_plan"] is False
+    old = {k: v for k, v in look.items() if k != "show_past_plan"} | {"show_missed": False}
+    app.conn.execute("UPDATE settings SET value = ? WHERE key = 'calendar_look'", [json.dumps(old)])
+    assert app.do("settings")["calendar_look"]["show_past_plan"] is False
