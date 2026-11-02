@@ -17,6 +17,7 @@ export interface Showing {
   toolbar: string[] // calendars with a title-row button
   showing: string[] // of those, the ones switched on
   showFiltered: boolean // the filter's events switched on
+  showMissed: boolean // past work not done, where it was planned ("Missed · planned again"); Friday planned it again
 }
 
 type Event = { calendar?: string | null; filtered?: boolean }
@@ -35,19 +36,22 @@ export function withShown(plan: Schemas["PlanOut"], s: Showing): Schemas["PlanOu
     seen.add(key)
     return true
   })
-  return fixed.length === plan.fixed.length ? plan : { ...plan, fixed }
+  // 2 Nov: "doesn't show the previously scheduled events": what wasn't done where it was planned, hidden when off
+  const blocks = s.showMissed ? plan.blocks : plan.blocks.filter((b) => b.state !== "missed")
+  return fixed.length === plan.fixed.length && blocks.length === plan.blocks.length ? plan : { ...plan, fixed, blocks }
 }
 
 export function useShowing(): Showing {
-  const settings = useSettings().data as { calendar_look?: { toolbar?: string[] } } | undefined
+  const settings = useSettings().data as { calendar_look?: { toolbar?: string[]; show_missed?: boolean } } | undefined
   const { look } = useLook()
-  return { toolbar: settings?.calendar_look?.toolbar ?? [], showing: look.showing, showFiltered: look.showFiltered }
+  const showMissed = settings?.calendar_look?.show_missed ?? true
+  return { toolbar: settings?.calendar_look?.toolbar ?? [], showing: look.showing, showFiltered: look.showFiltered, showMissed }
 }
 
 /** The plan as the calendar draws it. */
 export function useShownPlan(start: string, end: string) {
   const s = useShowing()
-  const key = `${s.toolbar.join("|")}/${s.showing.join("|")}/${s.showFiltered}`
+  const key = `${s.toolbar.join("|")}/${s.showing.join("|")}/${s.showFiltered}/${s.showMissed}`
   const select = useCallback((plan: Schemas["PlanOut"]) => withShown(plan, s), [key])
   const fetched = useQuery({ queryKey: ["plan", start, end], queryFn: () => query("plan", { start, end }), select })
   const real = usePending(fetched)

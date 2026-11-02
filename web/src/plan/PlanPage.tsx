@@ -221,6 +221,18 @@ function ShowMenu() {
   const toolbar = ((settings?.calendar_look as { toolbar?: string[] } | undefined)?.toolbar ?? []).slice(0, 9)
   const colors = (settings?.calendar_look as { colors?: Record<string, string> } | undefined)?.colors ?? {}
   const filter = (settings?.categories as { filter?: { label: string } | null } | undefined)?.filter
+  const calendarLook = settings?.calendar_look as Record<string, unknown> | undefined
+  const showMissed = (calendarLook?.show_missed as boolean | undefined) ?? true
+  const client = useQueryClient()
+  const toast = useToast()
+  const flipMissed = () => {
+    const value = { ...calendarLook, show_missed: !showMissed }
+    runCommand(client, toast, "settings_set", { key: "calendar_look", value }, {
+      label: () => (showMissed ? "Missed work hidden" : "Missed work shown"),
+      // at once: the calendar redraws before the server answers
+      optimistic: (c) => c.setQueryData(["settings"], (was: Record<string, unknown> | undefined) => (was ? { ...was, calendar_look: value } : was)),
+    })
+  }
   const flip = (name: string) => setLook({ showing: look.showing.includes(name) ? look.showing.filter((h) => h !== name) : [...look.showing, name] })
   useEffect(() => {
     // ⌥⌘1–9 show or hide the calendars with buttons, in order, as in personal.
@@ -234,15 +246,19 @@ function ShowMenu() {
     window.addEventListener("keydown", press)
     return () => window.removeEventListener("keydown", press)
   })
-  if (!toolbar.length && !filter) return null
-  const on = toolbar.filter((t) => look.showing.includes(t)).length + (filter && look.showFiltered ? 1 : 0)
+  const on = toolbar.filter((t) => look.showing.includes(t)).length + (filter && look.showFiltered ? 1 : 0) + (showMissed ? 1 : 0)
   return (
     <Dropdown tour="show" icon={on ? "eye" : "eye-slash"} label="Show">
       {() => (
         <>
           <span className="fr-kicker" style={{ padding: "6px 10px 4px" }}>
-            Off your calendar until you switch them on. They never change the plan.
+            What the calendar draws. It never changes the plan.
           </span>
+          <label className="fr-hover" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: "var(--radius-md)" }}>
+            <Switch on={showMissed} onToggle={flipMissed} label="Show missed work" />
+            <span style={{ flex: 1 }}>Missed work</span>
+            <span className="fr-kicker">where it was planned</span>
+          </label>
           {filter && (
             <label className="fr-hover" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: "var(--radius-md)" }}>
               <Switch on={look.showFiltered} onToggle={() => setLook({ showFiltered: !look.showFiltered })} label={`Show ${filter.label}`} />

@@ -50,6 +50,7 @@ class BusySettings(Model):
 class CalendarLook(Model):
     colors: dict[str, str] = Field(default_factory=dict)  # a calendar's name -> its pigment
     toolbar: tuple[str, ...] = ()  # calendars with a show/hide button in the title row (personal's, ⌥⌘1–9)
+    show_missed: bool = True  # past work not done, drawn faint where it was planned (2 Nov: off on yours)
 
 
 REMINDER = re.compile(r"\b(due|deadline)\b", re.IGNORECASE)

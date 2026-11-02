@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import type { Schemas } from "@/api/client"
 import { shown, withShown } from "./shown"
 
-const off = { toolbar: ["Library Rooms"], showing: [], showFiltered: false }
+const off = { toolbar: ["Library Rooms"], showing: [], showFiltered: false, showMissed: true }
 
 describe("an event on two of your calendars", () => {
   it("is drawn once; one at another time, or with another title, is its own", () => {
@@ -16,7 +16,7 @@ describe("an event on two of your calendars", () => {
       ],
       blocks: [],
     } as unknown as Schemas["PlanOut"]
-    expect(withShown(plan, { toolbar: [], showing: [], showFiltered: true }).fixed.map((f) => f.id)).toEqual([1, 3, 4])
+    expect(withShown(plan, { toolbar: [], showing: [], showFiltered: true, showMissed: true }).fixed.map((f) => f.id)).toEqual([1, 3, 4])
   })
 })
 
@@ -50,7 +50,22 @@ describe("events you toggle in the title row", () => {
       blocks: [],
     } as unknown as Schemas["PlanOut"]
     expect(withShown(plan, off).fixed.map((f) => f.id)).toEqual([1])
-    const all = { toolbar: [], showing: [], showFiltered: true }
+    const all = { toolbar: [], showing: [], showFiltered: true, showMissed: true }
     expect(withShown(plan, all)).toBe(plan)
+  })
+})
+
+describe("missed work", () => {
+  it("is hidden where it was planned when switched off, and only that", () => {
+    const plan = {
+      fixed: [],
+      blocks: [
+        { key: "T1@2026-11-01T09:00", title: "Essay", state: "missed" },
+        { key: "T1@2026-11-01T14:00", title: "Essay", state: null },
+        { key: "T2@2026-11-01T10:00", title: "Reading", state: "done" },
+      ],
+    } as unknown as Schemas["PlanOut"]
+    expect(withShown(plan, { ...off, showMissed: false }).blocks.map((b) => b.key)).toEqual(["T1@2026-11-01T14:00", "T2@2026-11-01T10:00"])
+    expect(withShown(plan, off)).toBe(plan)
   })
 })
