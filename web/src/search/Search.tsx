@@ -4,6 +4,7 @@
 
 import { useAi } from "@/settings/AiConnect"
 import { useQuery } from "@tanstack/react-query"
+import { openMatches } from "./tasks"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router"
 import { query } from "@/api/client"
@@ -53,7 +54,7 @@ export function Search() {
   const [q, setQ] = useState("")
   const [at, setAt] = useState(0)
   const ref = useRef<HTMLInputElement>(null)
-  const items = useAllItems(true).data ?? []
+  const items = useAllItems(false).data ?? [] // open tasks only (3 Nov)
   const projects = useProjects().data ?? []
   const next = nextBlocks(useHorizon().data?.blocks ?? [])
   const text = q.trim()
@@ -66,14 +67,11 @@ export function Search() {
   const go = (f: () => void) => () => (f(), close())
   const groups = useMemo(() => {
     const has = (text: string) => text.toLowerCase().includes(q.trim().toLowerCase())
-    const todos: Hit[] = items
-      .filter((i) => has(i.title))
-      .slice(0, 8)
-      .map((i) => ({
+    const todos: Hit[] = openMatches(items, q).map((i) => ({
         key: `i${i.id}`,
         label: i.title,
         swatch: color(i.area, i.preset),
-        meta: i.status === "done" ? "done" : next.get(i.id) ? when(next.get(i.id)!.start, today) : i.due ? `due ${when(i.due, today)}` : "",
+        meta: next.get(i.id) ? when(next.get(i.id)!.start, today) : i.due ? `due ${when(i.due, today)}` : "",
         run: go(() => navigate(`/todo?item=${i.id}`)),
       }))
     const eventHits: Hit[] = text.length > 1
