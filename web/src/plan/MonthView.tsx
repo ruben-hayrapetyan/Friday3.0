@@ -9,7 +9,9 @@ import { eventPaint, wash } from "@/lib/pigments"
 import { addDays, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
+import { DueCount, dueBlock } from "./DueCount"
 import { asBlock } from "./Pieces"
+import { isOnDay, isWholeDay } from "./wholeDay"
 
 const DOWS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const SHOWN = 3
@@ -49,9 +51,10 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
             const hrs = plan?.day_hours[date] ?? 0
             const cap = caps.get(date) ?? 8
             const items = [
-              ...(plan?.blocks ?? []).filter((b) => b.start.startsWith(date)).map((b) => ({ key: b.key, start: b.start, title: b.title, s: skinOf(b.pinned === "locked" ? "locked" : "planned", b.area, undefined, b.preset), event: null })),
-              ...(plan?.fixed ?? []).filter((f) => f.start?.startsWith(date)).map((f) => ({ key: `F${f.id}`, start: f.start as string, title: f.title, s: { ...skinOf("fixed", f.area), bg: wash(eventPaint(f, light), light), stripe: eventPaint(f, light), fg: "var(--color-text)" }, event: asBlock({ ...f, start: f.start as string, end: f.end ?? (f.start as string) }) })),
-            ].sort((a, b) => a.start.localeCompare(b.start))
+              ...(plan?.blocks ?? []).filter((b) => b.start.startsWith(date)).map((b) => ({ key: b.key, start: b.start, whole: false, title: b.title, s: skinOf(b.pinned === "locked" ? "locked" : "planned", b.area, undefined, b.preset), event: null })),
+              // a whole-day event on every day it covers, first and without a time (3 Nov stress test: "12am Study abroad")
+              ...(plan?.fixed ?? []).filter((f) => isOnDay(f, date)).map((f) => ({ key: `F${f.id}`, start: isWholeDay(f) ? `${date}T00:00` : (f.start as string), whole: isWholeDay(f), title: f.title, s: { ...skinOf("fixed", f.area), bg: wash(eventPaint(f, light), light), stripe: eventPaint(f, light), fg: "var(--color-text)" }, event: asBlock({ ...f, start: f.start as string, end: f.end ?? (f.start as string) }) })),
+            ].sort((a, b) => Number(b.whole) - Number(a.whole) || a.start.localeCompare(b.start))
             const dues = (calendar?.dues ?? []).filter((d) => d.due.startsWith(date))
             const inMonth = date.slice(0, 7) === month
             const isToday = date === today
@@ -69,6 +72,8 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
                   flexDirection: "column",
                   gap: 4,
                   minWidth: 0,
+                  minHeight: 0,
+                  overflow: "hidden", // a day with sixty things due keeps to its own square
                   boxShadow: "inset 1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)",
                   opacity: inMonth ? 1 : 0.45,
                   cursor: "pointer",
@@ -86,21 +91,14 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
                   >
                     {Number(date.slice(8, 10))}
                   </span>
-                  {hrs > 0 && (
-                    <span className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>
-                      {hrs.toFixed(1)} h
-                    </span>
-                  )}
+                  {/* the day's deadlines as the week's header has them: one red count that opens the list */}
+                  <span onClick={(e) => e.stopPropagation()} style={{ minWidth: 0 }}>
+                    <DueCount dues={dues} onPick={(d) => select(dueBlock(d))} />
+                  </span>
                 </div>
                 <div style={{ height: 2, borderRadius: 1, background: "color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
                   <div style={{ height: "100%", width: `${Math.min(100, (hrs / cap) * 100)}%`, borderRadius: 1, background: hrs > cap ? "var(--fr-warn)" : "var(--color-neutral-400)" }} />
                 </div>
-                {dues.map((d) => (
-                  <span key={d.item_id} className="fr-tag due" style={{ alignSelf: "flex-start" }}>
-                    <i className="ph ph-flag" style={{ fontSize: 11 }} />
-                    {d.title}
-                  </span>
-                ))}
                 {items.slice(0, SHOWN).map((it) => (
                   <div
                     key={it.key}
@@ -109,9 +107,11 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
                     style={{ position: "relative", display: "flex", alignItems: "center", gap: 6, padding: "2px 6px 2px 8px", borderRadius: 4, background: it.s.bg, border: it.s.bd, color: it.s.fg, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden" }}
                   >
                     <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: it.s.stripe }} />
-                    <span className="tnum" style={{ color: it.s.sub, fontSize: 11 }}>
-                      {clock(it.start)}
-                    </span>
+                    {!it.whole && (
+                      <span className="tnum" style={{ color: it.s.sub, fontSize: 11 }}>
+                        {clock(it.start)}
+                      </span>
+                    )}
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{it.title}</span>
                   </div>
                 ))}
