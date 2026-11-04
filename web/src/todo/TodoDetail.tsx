@@ -6,13 +6,14 @@ import { useNavigate } from "react-router"
 import type { Block } from "@/api/client"
 import { Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
-import { useAreas, useItem, useNow, useStatus, useWhy } from "@/hooks/queries"
+import { useAreas, useItem, useNow, useSettings, useStatus, useWhy } from "@/hooks/queries"
 import { clock, dur, weekday, when } from "@/lib/format"
 import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { usePresets } from "./AddBox"
 import { progress } from "./groups"
+import { fadingSaid } from "./fading"
 import { LogWork } from "./LogWork"
 import { DuePicker, LengthPicker, LengthStepper, ListPicker } from "./Pickers"
 
@@ -54,6 +55,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
   const deleteSeries = useCommand("series_delete", { label: (o) => o.result.message ?? "Deleted" })
   const [asking, setAsking] = useState(false)
   const [logging, setLogging] = useState(false)
+  const halfLife = (useSettings().data as { fading_late?: { half_life_days?: number } } | undefined)?.fading_late?.half_life_days ?? 3
   if (!detail) return <aside />
   const item = detail.item
   const p = progress(item)
@@ -182,7 +184,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
           />
           <span className="fr-kicker">
             {item.expires == null ? (item.pointless_late ? "As for all exam prep. " : "") : "Your choice for this one. "}
-            {item.pointless_late ? "Never planned after it's due." : "Planned late if it can't be on time."}
+            {item.pointless_late ? "Never planned after it's due." : item.fading_late ? fadingSaid(item.preset, halfLife) : "Planned late if it can't be on time."}
           </span>
         </span>
         <span className="fr-kicker" title="Laundry, a long simulation, a download: you start it, then it runs while you do other work">

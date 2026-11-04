@@ -40,7 +40,8 @@ ANYTHING = (
 # another salsa event on saturday…" was refused as no rule).
 RULES = ANYTHING
 SETTINGS = (
-    "kind_order", "short_term_first", "exam_focus", "pointless_late", "sittings", "busy", "daily_cap", "event_kinds",
+    "kind_order", "short_term_first", "exam_focus", "pointless_late", "fading_late", "sittings", "busy", "daily_cap",
+    "event_kinds",
     "pace", "sleep",
 )  # fmt: skip
 
@@ -80,17 +81,19 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
   for "at least 7 hours of sleep"; days: the nights it holds, by the evening's weekday). subject: "work", "deep
   work", a tag, a kind or a title. A bedtime or wake time ("bed by 11") is the sleep setting, not a rule.
 - settings_set: {key, value} for these keys only: kind_order (kinds most important first, e.g. ["Assignment",
-  "Reading"] for "prioritize assignments over readings"), short_term_first (true for "prioritize short-term work
-  over long-term", meaning the to-do's Short term list over its Long term list), exam_focus ({on: true, days_before}
-  for focusing on an exam's course in the days before it), pointless_late ({kinds, titles} for work pointless once
-  late), busy, daily_cap ({mon..sun: hours}), event_kinds (time kept free of work around events, to get there or
-  away: {kind: {before_min, after_min}} for the kinds "class", "meeting", "exam" and "other"; "15 minutes before and
-  after events" sets all four to 15 and 15; only the kinds given change), sittings ({one_go: true, split_first:
-  [kinds]} for "I like to do things in one go, but split problem sets first": problem sets are the kind
-  "Assignment"), pace ({weekly: {mon..sun: "Easy" | "Normal" | "Push"}} for a pace on those weekdays every week:
-  "go easier on Saturdays and harder on Sundays" is {weekly: {"sat": "Easy", "sun": "Push"}}), sleep ({mon..sun:
-  {bedtime, wake, margin_min}} for "bed by 11 on weeknights" or "up at 8 on weekends": only the nights and times
-  named, as "HH:MM"; a night is named by its evening, a wake time by its morning).
+  "Reading"] for "prioritize assignments over readings"), short_term_first (true for "prioritize short-term work over
+  long-term", meaning the to-do's Short term list over its Long term list), exam_focus ({on: true, days_before} for
+  focusing on an exam's course in the days before it), pointless_late ({kinds, titles} for work pointless once late:
+  never planned after its due), fading_late ({kinds, titles, half_life_days} for work that matters less the longer
+  it's overdue but is still worth doing: "a reading matters less the later it gets" is {kinds: ["Reading"], titles:
+  [], half_life_days: 3}), busy, daily_cap ({mon..sun: hours}), event_kinds (time kept free of work around events, to
+  get there or away: {kind: {before_min, after_min}} for the kinds "class", "meeting", "exam" and "other"; "15 minutes
+  before and after events" sets all four to 15 and 15; only the kinds given change), sittings ({one_go: true,
+  split_first: [kinds]} for "I like to do things in one go, but split problem sets first": problem sets are the kind
+  "Assignment"), pace ({weekly: {mon..sun: "Easy" | "Normal" | "Push"}} for a pace on those weekdays every week: "go
+  easier on Saturdays and harder on Sundays" is {weekly: {"sat": "Easy", "sun": "Push"}}), sleep ({mon..sun: {bedtime,
+  wake, margin_min}} for "bed by 11 on weeknights" or "up at 8 on weekends": only the nights and times named, as
+  "HH:MM"; a night is named by its evening, a wake time by its morning).
 When they ask whether they have time for something ("can I go to poker Thursday 8 to 11?", "do I have time for a
 3 h project due Friday?"), propose the command that would add it (an event, or a task with its due and length) and
 say in the reply that Friday shows under it whether it fits before they apply it; don't guess the answer yourself.

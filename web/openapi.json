@@ -16614,6 +16614,11 @@
       "title": "Pointless Late",
       "default": false
      },
+     "fading_late": {
+      "type": "boolean",
+      "title": "Fading Late",
+      "default": false
+     },
      "cushion": {
       "type": "number",
       "title": "Cushion",

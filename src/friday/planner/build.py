@@ -371,7 +371,8 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
         key=key_of(item.id), title=item.title, norm_title=identity_text(norm(item.title, inp.settings["text"].rules())),
         area=inp.areas.get(item.area_id) if item.area_id is not None else None, tags=tuple(item.tags),
         preset=item.preset, energy=item.energy,
-        importance=importance(item, inp.settings["kind_order"], inp.settings["short_term_first"]),
+        importance=importance(item, inp.settings["kind_order"], inp.settings["short_term_first"])
+        * fading(item, inp.settings, grid.now),
         firmness=item.firmness,
         amount=item.amount, release_utc=release, due_utc=due, shape=item.shape,
         min_chunk=1 if item.shape == "one_sitting" else max(1, item.min_chunk_units),
@@ -426,6 +427,16 @@ def expires(item: Item, settings: Mapping[str, Any]) -> bool:
     return (
         item.expires if item.expires is not None else bool(settings["pointless_late"].covers(item.preset, item.title))
     )
+
+
+def fading(item: Item, settings: Mapping[str, Any], now: int) -> float:
+    """What's left of an overdue item's importance when its kind fades once late (`fading_late`, 3 Nov): halved every
+    half-life it has been late, measured from its own due. 1 for anything on time, without a due, or pointless once
+    late (never planned after its due at all)."""
+    if item.due_utc is None or now <= parse_utc(item.due_utc) or expires(item, settings):
+        return 1.0
+    fade = settings["fading_late"]
+    return fade.factor(now - parse_utc(item.due_utc)) if fade.covers(item.preset, item.title) else 1.0
 
 
 def sitting_cost(item: Item, settings: Mapping[str, Any]) -> float:

@@ -95,6 +95,14 @@ def insert_item(ctx: Ctx, item: Item) -> int:
     return ctx.db.insert("items", row)
 
 
+def fading_late(item: Item, settings: dict[str, Any]) -> bool:
+    """Whether work matters less the longer it's overdue (3 Nov): its kind or title in `fading_late`, and not
+    pointless once late, which never plans it after its due at all."""
+    if item.when == "fixed" or item.due_utc is None or pointless_late(item, settings):
+        return False
+    return bool(settings["fading_late"].covers(item.preset, item.title))
+
+
 def pointless_late(item: Item, settings: dict[str, Any]) -> bool:
     """Whether work is never planned after its due: your say on the item, else the kinds and titles in settings."""
     if item.when == "fixed" or item.due_utc is None:
@@ -243,6 +251,7 @@ def item_out(ctx: Ctx, item: Item, done_minutes: int = 0) -> ItemOut:
         background=item.background,
         expires=item.expires,
         pointless_late=pointless_late(item, ctx.settings),
+        fading_late=fading_late(item, ctx.settings),
         cushion=item_cushion(ctx, item, area),
         certainty=item.certainty,
         event_kind=item.event_kind,

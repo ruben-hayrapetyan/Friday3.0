@@ -4939,6 +4939,11 @@ export interface components {
              */
             pointless_late?: boolean;
             /**
+             * Fading Late
+             * @default false
+             */
+            fading_late?: boolean;
+            /**
              * Cushion
              * @default 1
              */

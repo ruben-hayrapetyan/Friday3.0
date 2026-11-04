@@ -78,6 +78,7 @@ class ItemOut(Model):
     background: bool = False  # runs by itself once started: other work is planned on top of it
     expires: bool | None = None  # your own say on pointless-if-late; None follows the kinds in settings
     pointless_late: bool = False  # what's in effect: never planned after its due
+    fading_late: bool = False  # matters less the longer it's overdue (settings `fading_late`)
     cushion: float = 1.0  # how far over you consistently run on work like this; the plan reserves that much more
     calendar: str | None = None  # the calendar an event came from
     calendar_color: str | None = None  # its pigment, set in Settings → Calendars

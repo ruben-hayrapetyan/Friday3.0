@@ -288,6 +288,26 @@ class LearnSettings(Model):
     query_stop_disagreement: float = 0.2
 
 
+class FadingLate(Model):
+    """Work that matters less the longer it's overdue (3 Nov: "have the importance of doing a reading on time
+    deteriorate as time goes on"; "Half every 3 days", and once faded it stays, planned only in spare time). Its
+    importance halves every `half_life_days` it is late, so a reading a week late gives way to work still on time,
+    where by default the later work is, the more urgent it gets. Pointless once late (`pointless_late`) wins over it."""
+
+    kinds: tuple[str, ...] = ()
+    titles: tuple[str, ...] = ()  # patterns (regular expressions, any case)
+    half_life_days: float = Field(3.0, gt=0, le=60)
+
+    def covers(self, preset: str | None, title: str) -> bool:
+        if preset in self.kinds:
+            return True
+        return any(_matches(pattern, title) for pattern in self.titles)
+
+    def factor(self, overdue_min: float) -> float:
+        """What's left of its importance after `overdue_min` minutes late: 1 on time, ½ one half-life late."""
+        return 0.5 ** (max(0.0, overdue_min) / (self.half_life_days * 1440))
+
+
 class PointlessLate(Model):
     """Work that's pointless once its deadline has passed (COMBINED.md 50): never planned after it."""
 
@@ -441,6 +461,7 @@ SETTINGS_TYPES: dict[str, Any] = {
     "categories": CategorySettings,  # events coloured by their titles, and the filter (COMBINED.md 17, 59)
     "busy": BusySettings,  # which events count as busy when planning (COMBINED.md 28)
     "pointless_late": PointlessLate,  # work never planned after its due (COMBINED.md 50)
+    "fading_late": FadingLate,  # work that matters less the longer it's overdue (3 Nov)
     "exam_focus": ExamFocus,  # other courses wait while you prepare for an exam (COMBINED.md 38)
     "sittings": Sittings,  # one go, and which kinds to split first (COMBINED.md 38)
     "calendar_look": CalendarLook,  # each calendar's pigment and toolbar button (COMBINED.md 17, 19)
@@ -483,6 +504,7 @@ DEFAULTS: dict[str, Any] = {
     "categories": CategorySettings(),
     "busy": BusySettings(),
     "pointless_late": PointlessLate(),
+    "fading_late": FadingLate(),
     "exam_focus": ExamFocus(),
     "sittings": Sittings(),
     "calendar_look": CalendarLook(),
