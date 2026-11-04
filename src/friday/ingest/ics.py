@@ -181,9 +181,22 @@ def classify(
         return [Proposed("add", fixed, quotes, fixed=True), *(prep if exam else [])]
     kind = read.kind or ("Exam" if exam else "Class" if read.lesson.search(summary) else "Event")
     fields: dict[str, Any] = {"title": named, "preset": kind, "start": start, "end": end}
+    if days := whole_days(start, end):
+        # A birthday the Mac gives as 12:00 AM to 11:59 PM (3 Nov: "don't make full day events actually look like they
+        # take the full day"): a whole-day event, at the top of its day and not busy, kept as it came in before.
+        fields |= {"start": f"{days[0]}T00:00", "end": f"{days[1]}T00:00", "blocks_time": False}
     if every:
         fields["every"] = every
     return [Proposed("add", fields, quotes, fixed=True), *(prep if exam else [])]
+
+
+def whole_days(start: str, end: str | None) -> tuple[str, str] | None:
+    """The days (the last exclusive) a timed event fills from midnight to 11:59 PM or the next midnight; None when it
+    doesn't."""
+    if end is None or start[11:] != "00:00" or end[11:] not in ("23:59", "00:00"):
+        return None
+    last = date.fromisoformat(end[:10]) + timedelta(days=1 if end[11:] == "23:59" else 0)
+    return (start[:10], last.isoformat()) if last.isoformat() > start[:10] else None
 
 
 def todo(component: Any, tz: str) -> list[Proposed]:

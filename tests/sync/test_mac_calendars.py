@@ -149,6 +149,16 @@ def test_whole_day_events_when_you_count_them(app: App) -> None:
     assert item["start"] == "2026-10-22T00:00" and item["end"] == "2026-10-24T00:00"
 
 
+def test_an_event_timed_over_its_whole_day_is_a_whole_day_event_and_not_busy(app: App) -> None:
+    # 3 Nov: a birthday the Mac gave as 12:00 AM to 11:59 PM filled its day on the calendar and counted as busy.
+    post(app, [HOME], [mac_event("b", "home", "Jasper's Birthday", "2026-10-21T00:00", "2026-10-21T23:59")])
+    item = shown(app, "Jasper's Birthday")  # in, though whole-day events from a calendar wait for `include_all_day`
+    assert item["start"] == "2026-10-21T00:00" and item["end"] == "2026-10-22T00:00"
+    assert events(app)["Jasper's Birthday"]["blocks_time"] == 0
+    post(app, [HOME], [mac_event("b", "home", "Jasper's Birthday", "2026-10-21T00:00", "2026-10-21T23:59")])
+    assert len([i for i in app.table("items") if i["title"] == "Jasper's Birthday"]) == 1  # read again: the same one
+
+
 def test_a_repeating_events_occurrences_each_come_in(app: App) -> None:
     weekly = [
         mac_event(f"gym@{day}", "home", "Gym", f"2026-10-{day}T07:30", f"2026-10-{day}T08:30", series="gym")

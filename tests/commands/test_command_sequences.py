@@ -253,8 +253,9 @@ def before_each_row(undo_data: str | None) -> dict[str, tuple[str, dict[str, Any
 
 # What a replan writes, and the log itself: not what a command or its undo is about.
 NOT_UNDONE = {"command_log", "plans", "blocks", "comparisons", "sqlite_sequence"}
-# Notes for the next replan, which takes them, and the plan generation, which only ever counts up (undo too).
-PASSING = ("next_stability", "next_cold", "generation")
+# Notes for the next replan, which takes them, the plan generation, which only ever counts up (undo too), and what
+# plans have shown late (C24): a record of plans, which an undo doesn't unmake.
+PASSING = ("next_stability", "next_cold", "generation", "planned_late")
 
 
 def kept(conn: sqlite3.Connection) -> dict[str, list[tuple]]:
@@ -468,6 +469,7 @@ def fresh(tmp_path_factory: pytest.TempPathFactory) -> Callable[[], App]:
     ]
 )
 @example(actions=[("task", "Essay", 15, None, None, None), ("pin", 0, 0, 32, 7, "locked")])
+@example(actions=[("task", "Essay", 15, None, None, None), ("replan",), ("undo", 1)])
 @example(actions=[("line", "essay draft due wed 5pm ~3h"), ("pin", 0, 1, 0, None, "locked")])
 def test_random_command_sequences_keep_their_promises(fresh: Callable[[], App], actions: list[Action]) -> None:
     play(fresh(), actions)
