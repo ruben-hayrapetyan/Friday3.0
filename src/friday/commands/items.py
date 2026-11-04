@@ -432,6 +432,14 @@ def add_dependency(ctx: Ctx, item_id: int, depends_on_id: int, fraction: float, 
         edges.setdefault(row["item_id"], []).append(row["depends_on_id"])
     if item_id == depends_on_id or would_create_cycle(edges, item_id, depends_on_id):
         raise FieldError("depends_on_id", f"T{item.id} waiting for T{other.id} would make a loop")
+    found = one(
+        ctx.conn,
+        "SELECT id FROM dependencies WHERE user_id = ? AND item_id = ? AND depends_on_id = ?",
+        [ctx.user_id, item_id, depends_on_id],
+    )
+    if found is not None:  # it already waits: the new fraction and lag replace the old
+        ctx.db.update("dependencies", {"id": found["id"]}, {"fraction": fraction, "lag_min": lag_min})
+        return
     ctx.db.insert(
         "dependencies", {"item_id": item_id, "depends_on_id": depends_on_id, "fraction": fraction, "lag_min": lag_min}
     )

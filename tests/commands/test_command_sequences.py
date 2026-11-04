@@ -10,7 +10,7 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
-from hypothesis import HealthCheck, given, settings
+from hypothesis import HealthCheck, example, given, settings
 from hypothesis import strategies as st
 
 from friday.commands import whatif
@@ -363,12 +363,27 @@ def left_minutes(conn: sqlite3.Connection, now_utc: int) -> dict[int, int]:
     return out
 
 
+def locks(conn: sqlite3.Connection) -> dict[int, list[tuple[int, int]]]:
+    """Each item's locked pins. A lock is your say (DESIGN §15.2): it gives way only to an event, so its time may sit
+    over a night and run past what's left of the item, whose remaining work is raised to it."""
+    out: dict[int, list[tuple[int, int]]] = {}
+    for p in conn.execute("SELECT item_id, start_utc, end_utc FROM pins WHERE kind = 'locked'"):
+        out.setdefault(p[0], []).append((parse_utc(p[1]), parse_utc(p[2])))
+    return out
+
+
+def inside(lo: int, hi: int, spans: list[tuple[int, int]]) -> int:
+    return sum(max(0, min(hi, b) - max(lo, a)) for a, b in spans)
+
+
 def check_plan(app: App) -> None:
-    """The saved plan's blocks from now on: only items still to do, never on a walled-off event, never more than
-    what's left of an item (a quarter hour more where a half-hour slot holds the last quarter)."""
+    """The saved plan's blocks from now on: only items still to do, never on a walled-off event, never over a night or
+    more than what's left of an item (a quarter hour more where a half-hour slot holds the last quarter) except
+    where you locked it."""
     saved = current_plan(app.conn, 1)
     if saved is None:
         return
+    locked = locks(app.conn)
     statuses = {r[0]: (r[1], r[2]) for r in app.conn.execute("SELECT id, status, when_kind FROM items")}
     walled = walls(app.conn, app.now_utc)
     left = left_minutes(app.conn, app.now_utc)
@@ -380,6 +395,10 @@ def check_plan(app: App) -> None:
         status, when = statuses[b["item_id"]]
         assert status == "todo" and when != "fixed", f"T{b['item_id']} ({status}, {when}) planned {b['start_utc']}"
         for lo, hi, title in walled:
+            over = (max(lo, start), min(hi, end))
+            night = title.startswith("the night of ") and over[0] < over[1]
+            if night and inside(*over, locked.get(b["item_id"], [])) == over[1] - over[0]:
+                continue  # all of it where you locked it
             assert not (lo < end and start < hi), (
                 f"T{b['item_id']} planned {format_utc(start)}–{format_utc(end)} over {title} "
                 f"{format_utc(lo)}–{format_utc(hi)}"
@@ -387,7 +406,8 @@ def check_plan(app: App) -> None:
         planned[b["item_id"]] = planned.get(b["item_id"], 0) + end - start
     for item_id, minutes in planned.items():
         if item_id in left:
-            assert minutes <= max(0, left[item_id]) + UNIT_MIN, (
+            yours = inside(app.now_utc, 10**12, locked.get(item_id, []))  # locked minutes from now on
+            assert minutes <= max(0, left[item_id], yours) + UNIT_MIN, (
                 f"T{item_id}: {minutes} min planned, {left[item_id]} left"
             )
 
@@ -438,5 +458,16 @@ def fresh(tmp_path_factory: pytest.TempPathFactory) -> Callable[[], App]:
     suppress_health_check=[HealthCheck.too_slow, HealthCheck.data_too_large, HealthCheck.function_scoped_fixture],
 )
 @given(actions=st.lists(ACTIONS, min_size=2, max_size=12))
+# found 3 Nov: a dependency said twice; a lock longer than the task; a lock over the night
+@example(
+    actions=[
+        ("task", "Essay", 15, None, None, None),
+        ("task", "Read", 30, None, None, None),
+        ("depend", 1, 0, 1.0),
+        ("depend", 1, 0, 0.5),
+    ]
+)
+@example(actions=[("task", "Essay", 15, None, None, None), ("pin", 0, 0, 32, 7, "locked")])
+@example(actions=[("line", "essay draft due wed 5pm ~3h"), ("pin", 0, 1, 0, None, "locked")])
 def test_random_command_sequences_keep_their_promises(fresh: Callable[[], App], actions: list[Action]) -> None:
     play(fresh(), actions)

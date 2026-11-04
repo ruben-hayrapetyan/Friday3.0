@@ -87,6 +87,28 @@ def test_a_dependency_that_closes_a_loop_is_refused(app: App) -> None:
     app.do("depend", item_id=a, depends_on_id=b)
 
 
+def test_saying_a_dependency_again_changes_it_rather_than_failing(app: App) -> None:
+    # black box: found by the random command sequences, which said "depend" twice
+    a = app.do("add", text="draft ~1h")["item"]["id"]
+    b = app.do("add", text="edit ~1h")["item"]["id"]
+    app.do("depend", item_id=b, depends_on_id=a, fraction=1.0)
+    again = app.do("depend", item_id=b, depends_on_id=a, fraction=0.5, lag_min=30)
+    assert again["message"] == f"T{b} waits for T{a}"
+    app.do("undepend", item_id=b, depends_on_id=a)
+    with pytest.raises(FieldError, match="doesn't wait"):
+        app.do("undepend", item_id=b, depends_on_id=a)
+
+
+def test_a_repeated_dependency_is_one_row_and_undo_brings_back_the_old_fraction(app: App) -> None:
+    # glass box: the second "depend" updates the row through the writer, so undo restores it
+    a = app.do("add", text="draft ~1h")["item"]["id"]
+    b = app.do("add", text=f"edit ~1h after:T{a}")["item"]["id"]
+    second = app.full("depend", payload={"item_id": b, "depends_on_id": a, "fraction": 0.5, "lag_min": 30})
+    assert [(d["fraction"], d["lag_min"]) for d in app.table("dependencies")] == [(0.5, 30)]
+    app.do("undo", command_id=second.command_id)
+    assert [(d["fraction"], d["lag_min"]) for d in app.table("dependencies")] == [(1.0, 0)]
+
+
 def test_nothing_can_wait_for_an_open_item(app: App) -> None:
     book = app.do("add", title="book", preset="side project")["item"]["id"]
     later = app.do("add", text="blog ~1h")["item"]["id"]
