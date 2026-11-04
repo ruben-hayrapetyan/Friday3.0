@@ -1,5 +1,5 @@
 // The week and day grid (v22 Plan): day headers with the date, pace, a red count of the day's dues and overload, and
-// whole-day events as bars under them (3 Nov); hour lines; blocks, fixed items, ghosts and the wind-down; what you
+// whole-day events as bars under them (3 Nov); hour lines; when you slept, got ready and ate, as a faint rail (4 Nov); blocks, fixed items, ghosts and the wind-down; what you
 // timed, when you did it, over the right of the column; drag to move, resize or select time. Settings → Appearance
 // chooses the hours shown and whether a day's dues are the count or a lane down its column (COMBINED.md 14, 15).
 
@@ -26,6 +26,7 @@ import { asBlock, BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, 
 import { inARow, type Pick, pickOfBlock, pickOfEvent, picks, shifted, usePicks } from "./picks"
 import { layers } from "./layers"
 import { WholeDays } from "./WholeDays"
+import { LivedRail, useLived } from "./LivedRail"
 import { isWholeDay } from "./wholeDay"
 
 interface Props {
@@ -62,7 +63,8 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const pickedKeys = new Set(picked.map((p) => p.key))
   const multi = (e?: React.MouseEvent) => !!e && (e.metaKey || e.ctrlKey || e.shiftKey)
   const now = useClock()
-  const { look } = useLook()
+  const lived = useLived(now) // what you tapped in Sleep & meals, a faint rail down each column
+  const { look, light } = useLook()
   const allDay24 = look.hours === "All day"
   // The lanes step aside while the to-do drawer is out, as personal's did: the full list is showing.
   const lanes = look.deadlines === "Lanes" && !drawer
@@ -191,6 +193,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
             >
               {dues.length > 0 && <DueLane dues={dues} stickyTop={headHeight} narrow={dates.length > 1} />}
               <Nights date={date} days={days} axis={axis} />
+              <LivedRail lived={lived} date={date} axis={axis} light={light} />
               {layout(notGoing, date, axis).map((p) => fixedBox(p))}
               {layout(going, date, axis).map((p) => fixedBox(p))}
               {event && !event.allDay && layout([event], date, axis).map((p) => <DraftBox key="draft" p={p} title={event.title} />)}

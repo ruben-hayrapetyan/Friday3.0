@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { addDays, ampm, fitAxis, fromMin, hourMarks, layout, nearestAt, pageStart, toMin } from "./time"
+import { addDays, ampm, dayRange, fitAxis, fromMin, hourMarks, layout, nearestAt, pageStart, toMin } from "./time"
 
 const axis = { startMin: 7 * 60 + 30, endMin: 24 * 60 + 30 }
 const block = (start: string, end: string, name = "") => ({ start, end, name })
@@ -81,23 +81,20 @@ describe("a corrected time", () => {
   })
 })
 
-describe("calendar pages stay put as the days go by (27 Oct)", () => {
-  it("a week runs Monday to Sunday, whichever day it holds", () => {
-    for (const day of ["2026-10-26", "2026-10-27", "2026-10-29", "2026-11-01"]) expect(pageStart(day, 7)).toBe("2026-10-26")
-    expect(pageStart("2026-11-02", 7)).toBe("2026-11-02")
-    expect(pageStart("2027-01-01", 7)).toBe("2026-12-28") // across a year
+describe("calendar pages are centred on the day (4 Nov)", () => {
+  it("a week shows three days either side, whatever weekday it is", () => {
+    expect(dayRange(pageStart("2026-11-04", 7), 7)).toEqual(["2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07"])
+    expect(pageStart("2026-11-02", 7)).toBe("2026-10-30") // a Monday sits in the middle too, not first
+    expect(pageStart("2027-01-01", 7)).toBe("2026-12-29") // across a year
   })
 
-  it("three days run in fixed threes from a Monday: Mon–Wed, Thu–Sat, Sun–Tue, Wed–Fri…", () => {
-    const starts = ["2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-31", "2026-11-01", "2026-11-03", "2026-11-04"]
-    expect(starts.map((d) => pageStart(d, 3))).toEqual(["2026-10-26", "2026-10-26", "2026-10-26", "2026-10-29", "2026-10-29", "2026-11-01", "2026-11-01", "2026-11-04"])
-    expect(pageStart("2026-10-25", 3)).toBe("2026-10-23") // before the Monday they start on, the same threes
-    expect(pageStart("2026-10-23", 3)).toBe("2026-10-23")
+  it("three days are the day before, the day, and the day after", () => {
+    expect(dayRange(pageStart("2026-11-04", 3), 3)).toEqual(["2026-11-03", "2026-11-04", "2026-11-05"])
+    expect(pageStart("2026-03-01", 3)).toBe("2026-02-28")
   })
 
-  it("a day is that day; the next page starts where the last one ended", () => {
+  it("a day is that day; the middle of every page is the day it was asked for", () => {
     expect(pageStart("2026-10-28", 1)).toBe("2026-10-28")
-    expect(addDays(pageStart("2026-10-30", 3), 3)).toBe(pageStart("2026-11-02", 3))
-    expect(addDays(pageStart("2026-10-30", 7), 7)).toBe("2026-11-02")
+    for (const days of [1, 3, 7]) for (const day of ["2026-10-26", "2026-11-01", "2026-12-31"]) expect(dayRange(pageStart(day, days), days)[Math.floor(days / 2)]).toBe(day)
   })
 })

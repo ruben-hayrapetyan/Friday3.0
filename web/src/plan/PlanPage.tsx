@@ -45,11 +45,12 @@ export function PlanPage() {
   const { today, drawer, event, drawerWidth, place, setPlace, layout, drawerOver } = useShell()
   const view: View = place.view === 7 && !layout.weekFits ? 1 : place.view // a week too narrow to read shows its day
   const first = place.first
-  // A week is Monday to Sunday and three days a fixed three, whichever day is today or was picked (lib/time.ts).
-  const shown = view === "month" ? (first ?? monthStart(today)) : pageStart(first ?? today, view)
-  const setView = (v: View) => setPlace({ view: v, first: v === "month" ? monthStart(shown) : first })
+  // A week or three days are centred on the day picked, or today (lib/time.ts); `first` holds that centre.
+  const centre = first ?? today
+  const shown = view === "month" ? (first ?? monthStart(today)) : pageStart(centre, view)
+  const setView = (v: View) => setPlace({ view: v, first: v === "month" ? monthStart(centre) : first })
   const setFirst = (f: string | null) => setPlace({ view: place.view, first: f }) // keeps the week you chose, even while it shows a day
-  const step = (by: number) => setFirst(view === "month" ? shiftMonth(shown, by) : addDays(shown, by * view))
+  const step = (by: number) => setFirst(view === "month" ? shiftMonth(shown, by) : addDays(centre, by * view))
   const nudge = useNudge()
   // Only with a block selected, or several picked, do the arrows move them, not the page. Both hooks every render:
   // `selected || usePicks()` skipped the second when a block was selected, and React, finding a hook fewer than the
@@ -412,7 +413,7 @@ function rangeTitle(first: string, view: View, short = false): string {
 
 function subTitle(first: string, days: number, today: string, view: View): string {
   if (view === "month") return today.slice(0, 7) === first.slice(0, 7) ? "This month" : "Today"
-  if (first <= today && today < addDays(first, days)) return view === 1 ? "Today" : view === 3 ? "Next 3 days" : "This week"
+  if (first <= today && today < addDays(first, days)) return view === 1 ? "Today" : view === 3 ? "Around today" : "This week"
   return "Today"
 }
 
