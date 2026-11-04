@@ -25,7 +25,7 @@ final class Server: ObservableObject {
         var out: [URL] = []
         if let chosen, !chosen.isEmpty { out.append(URL(fileURLWithPath: chosen)) }
         out.append(home.appendingPathComponent(".local/bin/fridayd"))
-        out.append(home.appendingPathComponent("Downloads/Code/FridayVersionedRepos/Friday2.0/.venv/bin/fridayd"))
+        out.append(home.appendingPathComponent("venvs/friday2.0/bin/fridayd"))
         out.append(URL(fileURLWithPath: "/opt/homebrew/bin/fridayd"))
         out.append(URL(fileURLWithPath: "/usr/local/bin/fridayd"))
         return out
