@@ -185,7 +185,8 @@ function IconButton({ icon, label, onClick, tour }: { icon: string; label: strin
   )
 }
 
-/** Everything that changes the plan, in one menu: Ask Claude, other ways, shove, pace, the brief. */
+/** Everything that changes the plan, in one menu: What if, Ask your AI, other ways, shove, pace, the brief and what
+ * changed. Seven at most (3 Nov, the CS 2112 UI lecture's rule of seven; plan/menus.test.ts holds it). */
 function PlanMenu({ views }: { views?: { options: typeof VIEWS; value: View; onPick: (v: View) => void; onToday: () => void } }) {
   const { pop, setPop, setDialog, askClaude } = useShell()
   const ai = useAi()
@@ -202,11 +203,13 @@ function PlanMenu({ views }: { views?: { options: typeof VIEWS; value: View; onP
               </button>
             </div>
           )}
+          <MenuRow icon="flask" label="What if" note="Try changes and see what they cost, kept only if you say" onClick={() => (close(), whatIf.start())} />
           <MenuRow icon="sparkle" label={`Ask ${ai.name}`} note="Say what you want changed" onClick={() => (close(), askClaude())} />
           <MenuRow icon="shuffle" label="Other ways" note="Two more ways to plan the same work" onClick={() => (close(), setDialog("ways"))} />
           <MenuRow icon="hand-palm" label="Shove" note="Take back a stretch of time" onClick={() => (close(), setPop(pop === "shove" ? null : "shove"))} />
           <MenuRow icon="gauge" label="Pace" note={paces ? paceLabel(paces) : "Push harder or ease off"} onClick={() => (close(), setPop(pop === "pace" ? null : "pace"))} />
           <MenuRow icon="sun-horizon" label="Morning brief" note="Today at a glance" onClick={() => (close(), setDialog("brief"))} />
+          <MenuRow icon="clock-counter-clockwise" label="What changed" note="What the last replan moved, and why" onClick={() => (close(), setDialog("changes"))} />
         </>
       )}
     </Dropdown>
@@ -340,7 +343,7 @@ function Attention({ first, days }: { first: string; days: number }) {
   const shift = pillAt ? Math.min(0, window.innerWidth - 12 - (pillAt.left + Math.min(380, window.innerWidth - 24))) : 0
   const urgent = notes.filter((n) => n.tone !== "plain")
   const lead = urgent[0] ?? notes[0]
-  if (!lead) return solving ? <Replanning /> : null
+  if (!lead) return solving ? <Replanning tight={layout.tight} /> : null
   const color = lead.tone === "now" ? "var(--fr-due)" : lead.tone === "mark" ? "var(--fr-warn)" : "var(--color-neutral-300)"
   const bg = lead.tone === "now" ? "color-mix(in srgb, var(--fr-now) 14%, transparent)" : lead.tone === "mark" ? "color-mix(in srgb, var(--fr-mark) 16%, transparent)" : "color-mix(in srgb, var(--color-text) 6%, transparent)"
   return (
@@ -350,7 +353,7 @@ function Attention({ first, days }: { first: string; days: number }) {
         {!layout.tight && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.text}</span>}
         {notes.length > 1 && <span className="tnum" style={{ color: "var(--color-neutral-400)", flex: "none" }}>{layout.tight ? notes.length : `+${notes.length - 1}`}</span>}
       </button>
-      {solving && <Replanning />}
+      {solving && <Replanning tight={layout.tight} />}
       {open && (
         <div className="fr-float" style={{ position: "absolute", top: "calc(100% + 6px)", left: shift, zIndex: 20, width: "min(380px, calc(100vw - 24px))", maxHeight: "60vh", overflowY: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 2 }}>
           {notes.map((n, i) => (
@@ -381,8 +384,15 @@ function Attention({ first, days }: { first: string; days: number }) {
   )
 }
 
-function Replanning() {
-  return <span title="Replanning…" style={{ width: 7, height: 7, flex: "none", borderRadius: "50%", background: "var(--color-accent)", animation: "fr-pulse 1.2s ease-in-out infinite" }} />
+/** Friday working out a new plan: the dot, and the word when there's room (3 Nov: "add the full replanning to the
+ * blue dot if there is space for it"); a narrow window keeps just the dot. */
+function Replanning({ tight }: { tight: boolean }) {
+  return (
+    <span role="status" title="Replanning…" style={{ flex: "none", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--color-accent-200)", whiteSpace: "nowrap" }}>
+      <span aria-hidden style={{ width: 7, height: 7, flex: "none", borderRadius: "50%", background: "var(--color-accent)", animation: "fr-pulse 1.2s ease-in-out infinite" }} />
+      {tight ? <span className="sr-only">Replanning…</span> : "Replanning…"}
+    </span>
+  )
 }
 
 const FULL_DAY: Record<string, string> = { Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday", Sun: "Sunday" }

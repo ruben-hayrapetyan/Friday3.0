@@ -206,7 +206,7 @@ export function TodoPage() {
               })
             )}
             {!groups.length && list !== "Due" && <div style={{ padding: "40px 8px", color: "var(--color-neutral-400)" }}>Nothing left. Add something above, or turn on Show done to see what you finished.</div>}
-            <span className="fr-mono" style={{ fontSize: 10.5, color: "var(--color-neutral-500)" }}>
+            <span className="fr-mono" style={{ fontSize: 11.5, color: "var(--color-neutral-500)" }}>
               Type it the way you’d say it: <span style={{ color: "var(--color-neutral-300)" }}>ch 4 #psych due fri 5pm ~1h</span>. Click a task for everything about it; ⌘-click or Shift-click to pick several; drag one (or one of those picked, and they all go) onto another section to change its kind.
             </span>
           </div>
@@ -274,11 +274,11 @@ function SectionRule({ name, items }: { name: string; items: Item[] }) {
   const left = items.reduce((s, i) => s + (i.status === "todo" ? (i.remaining_min ?? 0) : 0), 0)
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 9, paddingBottom: 6 }}>
-      <span className="fr-mono" style={{ fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--color-neutral-400)" }}>
+      <span className="fr-mono" style={{ fontSize: 11.5, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--color-neutral-400)" }}>
         {name}
       </span>
       <span style={{ flex: 1, height: 1, background: "var(--fr-rule)" }} />
-      <span className="fr-mono tnum" style={{ fontSize: 10.5, color: "var(--color-neutral-500)" }}>
+      <span className="fr-mono tnum" style={{ fontSize: 11.5, color: "var(--color-neutral-500)" }}>
         {items.length ? `${items.length}${left ? ` · ${dur(left)}` : ""}` : "nothing yet"}
       </span>
     </div>
@@ -368,14 +368,14 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging }: R
           </span>
         )}
         {item.pointless_late && <ExpiresMark />}
-        {fresh && <span style={{ fontSize: 10.5, color: "var(--color-accent-300)", flex: "none" }}>new</span>}
+        {fresh && <span style={{ fontSize: 11.5, color: "var(--color-accent-300)", flex: "none" }}>new</span>}
         {item.area && by !== "Tag" && (
-          <span className="fr-tag-mini" style={{ display: "inline-flex", gap: 4, alignItems: "center", flex: "none", fontSize: 10.5, color: "var(--color-neutral-400)" }}>
+          <span className="fr-tag-mini" style={{ display: "inline-flex", gap: 4, alignItems: "center", flex: "none", fontSize: 11.5, color: "var(--color-neutral-400)" }}>
             <span style={{ width: 6, height: 6, borderRadius: 2, background: color(item.area, item.preset) }} />
             {item.area}
           </span>
         )}
-        {by !== "Kind" && <span style={{ fontSize: 10.5, color: "var(--color-neutral-500)", flex: "none" }}>{item.preset ?? ""}</span>}
+        {by !== "Kind" && <span style={{ fontSize: 11.5, color: "var(--color-neutral-500)", flex: "none" }}>{item.preset ?? ""}</span>}
       </span>
       <span className="tnum fr-mono fr-todo-meta" style={{ display: "flex", alignItems: "center", gap: 12, paddingLeft: 12, paddingRight: 6 }}>
         {late && !isDone && <LateTag hours={late.hours} />}

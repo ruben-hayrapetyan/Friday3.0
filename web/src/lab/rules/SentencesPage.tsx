@@ -145,7 +145,7 @@ function RuleLine(props: { rule: RuleSpec; said?: string; factor: number; onFact
         <span style={{ lineHeight: 2 }}>
           <Sentence rule={rule} said={said} onEdit={onEdit} />
         </span>
-        <span style={{ fontSize: 11, color: "var(--color-neutral-600)" }}>
+        <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>
           {rule.name} · {wall ? "wall" : stage === "wellbeing" ? "protects you: outranks every preference" : "preference"} · weight {rule.weight}
         </span>
       </span>

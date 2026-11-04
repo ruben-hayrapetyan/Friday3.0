@@ -24,7 +24,7 @@ const waiting = (n: number) => (n === 1 ? "1 thing waiting in your Inbox" : `${n
 /** The count on a warm dot: what waits for you. */
 export function DecisionCount({ n, style }: { n: number; style?: React.CSSProperties }) {
   return (
-    <span className="tnum" aria-hidden style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: "var(--fr-warn)", color: "var(--fr-ink)", fontSize: 10, fontWeight: 600, lineHeight: "16px", textAlign: "center", ...style }}>
+    <span className="tnum" aria-hidden style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: "var(--fr-warn)", color: "var(--fr-ink)", fontSize: 11, fontWeight: 600, lineHeight: "16px", textAlign: "center", ...style }}>
       {n}
     </span>
   )

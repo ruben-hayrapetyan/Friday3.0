@@ -380,7 +380,11 @@ def series_add(ctx: Ctx, inp: SeriesAddInput) -> SeriesOut:
 def series_edit(ctx: Ctx, inp: SeriesEditInput) -> SeriesOut:
     """Change a series from a date on (today when left out); an imported calendar repeat's tag and kind only."""
     given = given_fields(inp)
-    if is_external(ctx, inp.id) and set(given) <= OWN_KEYS and inp.every is None and inp.per_window is None:
+    only_tag = set(given) <= OWN_KEYS and inp.every is None and inp.per_window is None
+    # A tag, kind, notes or importance isn't about when, so it changes the repeat as it is and its open times, as an
+    # imported one's does (3 Nov: from its row in Settings → Repeating, a new tag split "Run" into two rows, one ended
+    # and one from today). With a `from_date`, it changes from then on, as before.
+    if only_tag and (is_external(ctx, inp.id) or inp.from_date is None):
         return retag_imported(ctx, inp.id, given)
     refuse_external(ctx, inp.id)
     from_date = inp.from_date or ctx.today.isoformat()

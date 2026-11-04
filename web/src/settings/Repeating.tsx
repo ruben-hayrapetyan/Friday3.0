@@ -3,8 +3,9 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { query, type Schemas } from "@/api/client"
-import { H, Icon, Switch } from "@/components/fr/controls"
+import { H, Icon, Menu, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
+import { useAreas } from "@/hooks/queries"
 import { when } from "@/lib/format"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
@@ -48,13 +49,19 @@ function SeriesLine({ row }: { row: Row }) {
   const stop = useCommand("series_stop", { label: () => `${row.title} stopped; future ones removed` })
   const resume = useCommand("series_resume", { label: () => `${row.title} repeats again` })
   const remove = useCommand("series_delete", { label: (o) => o.result.message ?? "Deleted" })
+  // Its tag, from today on (one from a calendar keeps its times there; 3 Nov: `series_edit` had no button)
+  const retag = useCommand("series_edit", { label: () => `${row.title}: tag changed from today on` })
+  const tags = (useAreas().data ?? []).filter((a) => !a.archived).map((a) => a.name)
   return (
     <div className="fr-row" style={{ display: "grid", gridTemplateColumns: "36px 10px minmax(0,1fr) auto 28px", gap: 12, alignItems: "center", padding: "10px 0", opacity: row.active ? 1 : 0.5 }}>
       <Switch on={row.active} onToggle={() => (row.active ? stop({ id: row.id }) : resume({ id: row.id }))} label={`${row.active ? "Stop" : "Start"} ${row.title}`} />
       <span style={{ width: 10, height: 10, borderRadius: 3, background: color(row.area) }} />
       <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
         <span style={{ fontWeight: 500 }}>{row.title}</span>
-        <span className="tnum fr-kicker">{row.pattern}</span>
+        <span className="tnum fr-kicker" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          {row.pattern} ·
+          <Menu label={`Tag for ${row.title}`} value={row.area ?? ""} onPick={(tag) => tag !== (row.area ?? "") && retag({ id: row.id, area: tag || null })} options={[{ value: "", label: "No tag" }, ...[...new Set([...tags, ...(row.area ? [row.area] : [])])].map((t) => ({ value: t, label: t }))]} />
+        </span>
       </span>
       <span className="tnum" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 12 }}>
         <span style={{ color: "var(--color-neutral-300)" }}>{row.next ? `Next ${when(row.next, today)}` : row.active ? "None coming up" : "Stopped"}</span>

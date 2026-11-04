@@ -7,7 +7,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } fr
 import { DragProvider } from "@/components/calendar/useDrag"
 import { SelectionMenu } from "@/components/calendar/SelectionMenu"
 import { AskClaudeDialog } from "@/dialogs/AskClaude"
-import { BriefDialog, briefDue, TriageDialog, useBriefSwitch } from "@/dialogs/Dialogs"
+import { BriefDialog, briefDue, ChangesDialog, TriageDialog, useBriefSwitch } from "@/dialogs/Dialogs"
 import { useDecisionsTitle } from "@/inbox/Decisions"
 import { SetupDialog, useSetup } from "@/dialogs/Setup"
 import { useToast } from "@/components/Toasts"
@@ -143,6 +143,7 @@ export function Shell() {
       {selection && <SelectionMenu selection={selection} today={today} onShove={(range) => (setSelection(null), shove(range))} onClose={() => setSelection(null)} />}
       {dialog === "triage" && <TriageDialog onClose={() => setDialog(null)} />}
       {dialog === "brief" && <BriefDialog onClose={() => setDialog(null)} />}
+      {dialog === "changes" && <ChangesDialog onClose={() => setDialog(null)} />}
       {dialog === "search" && <Search />}
       {dialog === "ways" && <OtherWaysDialog onClose={() => setDialog(null)} />}
       {dialog === "ask" && <AskClaudeDialog onClose={() => setDialog(null)} />}

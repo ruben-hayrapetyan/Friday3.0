@@ -61,7 +61,7 @@ export function MiniMonth() {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 1 }}>
         {[...DOWS.slice(offset), ...DOWS.slice(0, offset)].map((d) => (
-          <span key={d} className="fr-eyebrow" style={{ textAlign: "center", fontSize: 9, letterSpacing: "0.08em", padding: "2px 0" }}>
+          <span key={d} className="fr-eyebrow" style={{ textAlign: "center", fontSize: 11, letterSpacing: "0.08em", padding: "2px 0" }}>
             {d.slice(0, 1)}
           </span>
         ))}
@@ -84,7 +84,7 @@ export function MiniMonth() {
                 borderRadius: "var(--radius-sm)",
                 textAlign: "center",
                 fontSize: 11.5,
-                color: isShown ? "var(--fr-ink)" : inMonth ? "var(--color-text)" : "var(--color-neutral-600)",
+                color: isShown ? "var(--fr-ink)" : inMonth ? "var(--color-text)" : "var(--color-neutral-500)",
                 background: isShown
                   ? "var(--color-accent)"
                   : full > 0.02

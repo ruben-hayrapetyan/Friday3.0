@@ -119,7 +119,7 @@ export function Drawer() {
           <div key={g.name} style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 4px 4px" }}>
               <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>{g.name}</span>
-              <span className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-600)" }}>
+              <span className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>
                 {g.items.length}
               </span>
             </div>
@@ -166,7 +166,7 @@ export function QuickLine({ placeholder = "Add a to-do" }: { placeholder?: strin
           placeholder={placeholder}
           style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit" }}
         />
-        <span style={{ fontSize: 11, color: "var(--color-neutral-600)" }}>N</span>
+        <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>N</span>
       </div>
       {text && chips.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: -6 }}>

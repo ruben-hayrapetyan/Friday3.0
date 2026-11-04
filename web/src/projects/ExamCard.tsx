@@ -101,13 +101,13 @@ function DateTile({ date, tint }: { date: string; tint: string }) {
   const day = new Date(toMin(date) * 60000)
   return (
     <div aria-hidden style={{ flex: "none", width: 54, borderRadius: 8, overflow: "hidden", textAlign: "center", background: "var(--color-bg)", boxShadow: `0 0 0 1px ${RULE}` }}>
-      <div className="fr-mono" style={{ padding: "3px 0", fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", color: "#fff", background: tint }}>
+      <div className="fr-mono" style={{ padding: "3px 0", fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", color: "#fff", background: tint }}>
         {MONTH[day.getUTCMonth()].toUpperCase()}
       </div>
       <div className="fr-h tnum" style={{ fontSize: 24, lineHeight: 1, padding: "6px 0 2px" }}>
         {day.getUTCDate()}
       </div>
-      <div className="fr-mono" style={{ fontSize: 10, paddingBottom: 5, color: "var(--color-neutral-400)" }}>
+      <div className="fr-mono" style={{ fontSize: 11, paddingBottom: 5, color: "var(--color-neutral-400)" }}>
         {WEEKDAY[day.getUTCDay()]}
       </div>
     </div>

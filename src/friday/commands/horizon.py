@@ -210,6 +210,11 @@ def template_save(ctx: Ctx, inp: TemplateSaveInput) -> Changed:
     kids = [item_from_row(r) for r in rows(
         ctx.conn, "SELECT * FROM items WHERE user_id = ? AND parent_id = ? ORDER BY id", [ctx.user_id, inp.project_id]
     )]  # fmt: skip
+    # In the order the project shows them, as you put them (`reorder`); steps added since go after (3 Nov: a saved
+    # template ignored the order you had dragged the steps into)
+    order = (kv_get(ctx.conn, "project_order", {}, ctx.user_id) or {}).get(str(inp.project_id), [])
+    rank = {item_id: n for n, item_id in enumerate(order)}
+    kids.sort(key=lambda k: (rank.get(k.id, len(rank)), k.id))
     if not kids:
         raise FieldError("project_id", f"T{inp.project_id} has no items inside it")
     units = [k.duration_units or 1 for k in kids]

@@ -44,7 +44,7 @@ function base(kind: Kind, col: string, mix: (p: number) => string): Skin {
     case "fixed":
       return { ...s, bg: "color-mix(in srgb, var(--color-text) 7%, var(--color-bg))", bd: "0", fg: "var(--color-neutral-200)", sub: "var(--color-neutral-500)", stripe: "var(--color-neutral-600)" }
     case "routine":
-      return { ...s, bg: "color-mix(in srgb, var(--color-text) 3%, transparent)", bd: "0", fg: "var(--color-neutral-400)", sub: "var(--color-neutral-600)", stripe: "transparent" }
+      return { ...s, bg: "color-mix(in srgb, var(--color-text) 3%, transparent)", bd: "0", fg: "var(--color-neutral-400)", sub: "var(--color-neutral-500)", stripe: "transparent" }
     case "shove":
       return {
         ...s,
@@ -60,7 +60,7 @@ function base(kind: Kind, col: string, mix: (p: number) => string): Skin {
     case "tentative":
       return { ...s, bg: "transparent", bd: `1px dashed ${mix(60)}`, fg: "var(--color-neutral-300)", sub: "var(--color-neutral-500)", stripe: "transparent" }
     case "done":
-      return { ...s, bg: mix(10), bd: "0", fg: "var(--color-neutral-500)", sub: "var(--color-neutral-600)", stripe: mix(40) }
+      return { ...s, bg: mix(10), bd: "0", fg: "var(--color-neutral-400)", sub: "var(--color-neutral-500)", stripe: mix(40) }
     default:
       return { ...s, bg: mix(24), bd: "0", fg: "var(--color-text)", sub: mix(80), stripe: col }
   }

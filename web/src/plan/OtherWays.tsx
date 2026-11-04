@@ -111,7 +111,7 @@ function WeekStrip({ blocks }: { blocks: Schemas["BlockOut"][] }) {
     <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 3 }} aria-label="The next seven days">
       {days.map((d) => (
         <div key={d} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span className="fr-eyebrow" style={{ fontSize: 8.5, letterSpacing: "0.06em", textAlign: "center" }}>
+          <span className="fr-eyebrow" style={{ fontSize: 11.5, letterSpacing: "0.06em", textAlign: "center" }}>
             {weekday(d).slice(0, 2)}
           </span>
           <div style={{ position: "relative", height: 70, borderRadius: 3, background: "color-mix(in srgb, var(--color-text) 5%, transparent)" }}>

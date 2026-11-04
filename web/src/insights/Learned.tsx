@@ -164,7 +164,7 @@ function Weights({ changes, said }: { changes: Change[]; said: (rule: string) =>
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{said(w.rule)}</span>
             <span className="tnum" style={{ fontSize: 11.5, whiteSpace: "nowrap", color: w.big ? "var(--fr-warn)" : "var(--color-neutral-400)" }}>
               {w.big && <Icon name="warning" size={11} style={{ marginRight: 4 }} />}
-              {w.word} <span style={{ color: "var(--color-neutral-600)" }}>{times(w.factor)}</span>
+              {w.word} <span style={{ color: "var(--color-neutral-500)" }}>{times(w.factor)}</span>
             </span>
           </div>
         ))}

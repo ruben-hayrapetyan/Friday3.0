@@ -40,7 +40,12 @@ export const DEFAULT_LOOK: Look = {
 const KEY = "friday-look-v8"
 
 // Paper and ink, light and dark (Theme.swift): desk, leaf, ink.
-const PAPER = { light: ["#eceee9", "#fbfbf8", "#1a1d1c"], dark: ["#0f1113", "#1a1d20", "#e8ebe7"] } as const
+/** The greys, as a share of the text colour over the page (3 Nov, the lecture's "low contrast text is hard to read"):
+ * 500 and lighter are text, at least 4.5:1 on the page and on cards in light and dark; 600 is at least 3:1, for icons,
+ * borders and stripes, never words; 700 and darker are lines and washes. theme/readable.test.ts holds this. */
+export const NEUTRAL = { 100: 92, 200: 84, 300: 74, 400: 66, 500: 60, 600: 46, 700: 22, 800: 15, 900: 10 } as const
+
+export const PAPER = { light: ["#eceee9", "#fbfbf8", "#1a1d1c"], dark: ["#0f1113", "#1a1d20", "#e8ebe7"] } as const
 // The reserved red (now and overdue) and the gold mark (attention), per appearance.
 const NOW = { light: "#c7332a", dark: "#ee6a5e" }
 const MARK = { light: "#b08423", dark: "#d8a94a" }
@@ -112,8 +117,7 @@ export function applyLook(look: Look): void {
   set("--color-surface", surface)
   set("--color-text", text)
   set("--color-accent", accent)
-  const neutral = { 100: 92, 200: 80, 300: 66, 400: 52, 500: 40, 600: 30, 700: 22, 800: 15, 900: 10 }
-  for (const [n, p] of Object.entries(neutral)) set(`--color-neutral-${n}`, `color-mix(in oklch, ${text} ${p}%, ${bg})`)
+  for (const [n, p] of Object.entries(NEUTRAL)) set(`--color-neutral-${n}`, `color-mix(in oklch, ${text} ${p}%, ${bg})`)
   const ramp: Record<number, [string, number]> = {
     100: [text, 70], 200: [text, 50], 300: [text, 30], 400: [text, 14], 500: [accent, 0],
     600: [bg, 20], 700: [bg, 40], 800: [bg, 62], 900: [bg, 78],

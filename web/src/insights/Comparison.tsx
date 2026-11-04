@@ -69,7 +69,7 @@ export function Comparison() {
           ))}
           <div style={{ position: "relative", height }}>
             {marks.map((m) => (
-              <span key={m.at} className="tnum" style={{ position: "absolute", right: 0, top: (m.at - lo) * PER_MIN, transform: "translateY(-50%)", fontSize: 10, color: "var(--color-neutral-500)", whiteSpace: "nowrap" }}>
+              <span key={m.at} className="tnum" style={{ position: "absolute", right: 0, top: (m.at - lo) * PER_MIN, transform: "translateY(-50%)", fontSize: 11, color: "var(--color-neutral-500)", whiteSpace: "nowrap" }}>
                 {m.label}
               </span>
             ))}

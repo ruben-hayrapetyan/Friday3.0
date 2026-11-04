@@ -100,7 +100,7 @@ function Timeline({ days }: { days: Schemas["MealDayOut"][] }) {
   const said = (m: Schemas["MealOut"]) => (m.skipped ? `${m.kind} skipped` : `${m.kind} ${clock(m.start ?? "")}${m.end ? `–${clock(m.end)}` : ""}`)
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "64px minmax(0,1fr)", gap: 10, fontSize: 10.5, color: "var(--color-neutral-500)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "64px minmax(0,1fr)", gap: 10, fontSize: 11.5, color: "var(--color-neutral-500)" }}>
         <span />
         <span style={{ position: "relative", height: 14 }}>
           {TICKS.map((h) => (

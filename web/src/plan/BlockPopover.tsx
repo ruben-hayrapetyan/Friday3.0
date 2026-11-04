@@ -83,6 +83,7 @@ export function BlockPopover() {
   const unpin = useCommand("unpin", { label: () => `${b?.title}: Friday decides again` })
   const skip = useCommand("skip", { label: () => "Skipped this one" })
   const drop = useCommand("drop", { label: () => `Deleted ${b?.title}` })
+  const giveBack = useCommand("unshove", { label: () => "That time is for work again" })
   const deleteSeries = useCommand("series_delete", { label: (o) => o.result.message ?? "Deleted" })
   const repeat = useCommand("repeat", { label: (o) => `${b?.title} repeats ${o.result.description.replace(/^Every/, "every")}` })
   const keep = useCommand("event_keep", { label: (o) => o.result.message })
@@ -305,7 +306,13 @@ export function BlockPopover() {
                 Every one
               </button>
             </span>
-          ) : sitting ? null : (
+          ) : sitting ? null : event?.event_kind === "shove" ? (
+            // Time you shoved, given back to the plan (3 Nov: `unshove` had no button; ⌘Z only took back the last)
+            <button className="btn btn-secondary" onClick={run(() => giveBack({ id: event.id }))} title="Friday may plan work here again" style={{ marginLeft: "auto" }}>
+              <Icon name="arrow-counter-clockwise" />
+              Give it back
+            </button>
+          ) : (
             <button className="btn btn-ghost" onClick={repeats ? () => setAsking(true) : run(() => drop({ id: b.item_id }))} title="Delete (⌫)" style={{ marginLeft: "auto", color: "var(--fr-due)" }}>
               <Icon name="trash" />
               Delete

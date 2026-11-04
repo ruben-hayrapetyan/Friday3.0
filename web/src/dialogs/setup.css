@@ -44,11 +44,11 @@
   --color-text: #f2ead8;
   --color-accent: #82a8f6;
   --color-neutral-100: color-mix(in oklch, #f2ead8 92%, #1b1a2b);
-  --color-neutral-200: color-mix(in oklch, #f2ead8 80%, #1b1a2b);
-  --color-neutral-300: color-mix(in oklch, #f2ead8 66%, #1b1a2b);
-  --color-neutral-400: color-mix(in oklch, #f2ead8 52%, #1b1a2b);
-  --color-neutral-500: color-mix(in oklch, #f2ead8 40%, #1b1a2b);
-  --color-neutral-600: color-mix(in oklch, #f2ead8 30%, #1b1a2b);
+  --color-neutral-200: color-mix(in oklch, #f2ead8 84%, #1b1a2b);
+  --color-neutral-300: color-mix(in oklch, #f2ead8 74%, #1b1a2b);
+  --color-neutral-400: color-mix(in oklch, #f2ead8 66%, #1b1a2b);
+  --color-neutral-500: color-mix(in oklch, #f2ead8 60%, #1b1a2b);
+  --color-neutral-600: color-mix(in oklch, #f2ead8 46%, #1b1a2b);
   --color-neutral-700: color-mix(in oklch, #f2ead8 22%, #1b1a2b);
   --color-neutral-800: color-mix(in oklch, #f2ead8 15%, #1b1a2b);
   --color-neutral-900: color-mix(in oklch, #f2ead8 10%, #1b1a2b);
@@ -595,7 +595,7 @@
   border-radius: 3px;
   background: var(--wk-ink-3);
   color: var(--wk-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;

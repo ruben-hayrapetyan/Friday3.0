@@ -45,13 +45,9 @@ export function WhatIfBar({ tight }: { tight: boolean }) {
   const trial = useTrial(today)
   const client = useQueryClient()
   const keep = useKeep()
-  if (!w.on)
-    return (
-      <button className="btn btn-secondary" data-tour="whatif" onClick={whatIf.start} title="What if: try changes on the calendar and see what they cost, without making them" style={{ flex: "none", fontSize: 12, gap: 6 }}>
-        <Icon name="flask" size={15} />
-        {!tight && "What if"}
-      </button>
-    )
+  // Off, What if is in the Plan menu (3 Nov, the lecture's rule of seven: the header had ten controls); on, it is a
+  // mode, and the header says so, with its way out.
+  if (!w.on) return null
   const n = w.changes.length
   const out = trial.out && trial.answered === n ? trial.out : null
   const refused = (out?.changes ?? []).some((c) => c.error)

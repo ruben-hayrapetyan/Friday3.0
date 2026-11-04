@@ -50,12 +50,14 @@ export async function command<N extends CommandName>(
   name: N,
   input: CommandInput<N>,
   // "full" adds a warm solve's change list to the preview (DESIGN §9.2).
-  options: { preview?: boolean | "full" } = {},
+  // signal: to stop waiting (Ask's Stop, 3 Nov); the server finishes on its own and what it answers is dropped
+  options: { preview?: boolean | "full"; signal?: AbortSignal } = {},
 ): Promise<Output<N>> {
   const response = await fetch(`/api/c/${name}${options.preview ? `?preview=${options.preview}` : ""}`, {
     method: "POST",
     headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() },
     body: JSON.stringify(input),
+    signal: options.signal,
   })
   const out = await read<Output<N>>(response)
   // done: said to the page, for what listens for something you did (shell/Tour.tsx's quests)

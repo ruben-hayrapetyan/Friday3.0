@@ -294,7 +294,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
             aria-checked={draft.color === null}
             style={{ ...swatch, background: pigment(auto?.color, light) ?? UNMARKED, boxShadow: ring(draft.color === null), display: "grid", placeItems: "center" }}
           >
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", lineHeight: 1 }}>A</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", lineHeight: 1 }}>A</span>
           </button>
           {PIGMENTS.map((p) => (
             <button key={p.id} className="fr-plain" role="radio" onClick={() => set({ color: p.id })} title={p.name} aria-label={p.name} aria-checked={draft.color === p.id} style={{ ...swatch, background: pigment(p.id, light) ?? undefined, boxShadow: ring(draft.color === p.id) }} />

@@ -8,6 +8,7 @@ import { Chip, Icon, Menu, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings } from "@/hooks/queries"
 import { whose } from "@/lib/aiName"
+import { mergeTargets } from "@/lib/categories"
 import { newEventTargets } from "@/lib/calendars"
 import { PIGMENTS, pigment } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
@@ -92,6 +93,7 @@ export const counts = (name: string, busy: Busy) => busy.calendars[name] ?? !ROO
 export function CalendarsSection() {
   const settings = useSettings().data as Record<string, unknown> | undefined
   const save = useCommand("settings_set", { label: () => "Saved" })
+  const toCalendar = useCommand("events_to_calendar", { label: (o) => o.result.message ?? "Done" })
   // Every calendar a new event can go to: Google's and the Mac's, each once, the way Friday reads it (lib/calendars.ts).
   const targets = newEventTargets(useCalendars().data ?? [], useMacCalendars().data ?? [])
   const google = (useCalendars().data ?? []).filter((c) => c.on)
@@ -180,6 +182,13 @@ export function CalendarsSection() {
             </option>
           ))}
         </select>
+        {(settings.gcal as { new_events_to?: string | null }).new_events_to && (
+          // Events made before a calendar was chosen here, put on it (3 Nov: `events_to_calendar` had no button)
+          <button className="btn btn-secondary" onClick={() => toCalendar({})} title="Events you made in Friday that are still to come and on no calendar yet; ones kept only in Friday and ones from a feed stay as they are" style={{ alignSelf: "flex-start" }}>
+            <Icon name="calendar-plus" />
+            Put Friday’s events on it
+          </button>
+        )}
       </Field>
       <Categories value={settings.categories as CategorySettings} onSave={(value) => save({ key: "categories", value })} />
     </>
@@ -239,6 +248,8 @@ export function PigmentMenu({ value, onPick }: { value: string | null; onPick: (
  * find is placed by what it shares with events you know, and Claude, and your choice on its card wins. */
 function Categories({ value, onSave }: { value: CategorySettings; onSave: (value: CategorySettings) => void }) {
   const [draft, setDraft] = useState(value)
+  // One category folded into another, its events and words going with it (3 Nov: `category_merge` had no button)
+  const merge = useCommand("category_merge", { label: (o) => o.result.message ?? "Merged" })
   const ai = useAi().name
   useEffect(() => setDraft(value), [value])
   const changed = JSON.stringify(draft) !== JSON.stringify(value)
@@ -268,7 +279,10 @@ function Categories({ value, onSave }: { value: CategorySettings; onSave: (value
           <input className="input" value={c.name} onChange={(e) => set(i, { name: e.target.value })} aria-label="Category name" style={{ minHeight: 0, padding: "4px 8px", fontSize: 13 }} />
           <input className="input fr-mono" value={c.pattern} onChange={(e) => set(i, { pattern: e.target.value })} placeholder="Always when its title has… (optional)" aria-label={`${c.name}: always when its title has`} style={{ minHeight: 0, padding: "4px 8px", fontSize: 12, boxShadow: broken(c.pattern) ? "0 0 0 1px var(--fr-due)" : undefined }} />
           <PigmentMenu value={c.color} onPick={(id) => id && set(i, { color: id })} />
-          <span style={{ display: "flex" }}>
+          <span style={{ display: "flex", alignItems: "center" }}>
+            {!changed && mergeTargets(value, c.name).length > 0 && (
+              <Menu label={`Merge ${c.name} into`} value="" onPick={(into) => into && merge({ name: c.name, into })} options={[{ value: "", label: "Merge into…" }, ...mergeTargets(value, c.name).map((n) => ({ value: n, label: n }))]} />
+            )}
             <button className="btn btn-icon btn-ghost" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Earlier" style={{ width: 26, height: 26 }}>
               <Icon name="arrow-up" size={13} />
             </button>

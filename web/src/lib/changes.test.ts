@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { Schemas } from "@/api/client"
-import { lines, summary } from "./changes"
+import { because, lines, summary } from "./changes"
 
 const block = (item_id: number, title: string, start: string) => ({ key: `T${item_id}@${start}`, item_id, title, start, end: start })
 
@@ -22,5 +22,23 @@ describe("change list", () => {
       { title: "essay", text: "new at 2pm" },
       { title: "book", text: "off the plan" },
     ])
+  })
+})
+
+describe("because (What changed, 3 Nov)", () => {
+  it("says what you did, each kind once, in order", () => {
+    expect(because([{ actor: "you", command: "drop" }, { actor: "you", command: "settings_set" }, { actor: "you", command: "drop" }])).toBe("After you deleted something and changed a setting.")
+  })
+  it("three or more read as a list", () => {
+    expect(because([{ actor: "you", command: "add" }, { actor: "you", command: "pin" }, { actor: "you", command: "pace" }])).toBe("After you added something, pinned a block and changed the pace.")
+  })
+  it("a command it has no words for is said by its name", () => {
+    expect(because([{ actor: "you", command: "frobnicate_all" }])).toBe("After you used frobnicate all.")
+  })
+  it("nothing in particular", () => {
+    expect(because([])).toBe("Friday planned again on its own.")
+  })
+  it("Friday's own runs aren't said as yours", () => {
+    expect(because([{ actor: "worker", command: "sync" }])).toBe("After Friday read your calendars.")
   })
 })

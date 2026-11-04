@@ -13,6 +13,7 @@ import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { usePresets } from "./AddBox"
 import { progress } from "./groups"
+import { LogWork } from "./LogWork"
 import { DuePicker, LengthPicker, LengthStepper, ListPicker } from "./Pickers"
 
 const TRAVEL = [0, 10, 15, 30] // minutes each way
@@ -22,6 +23,9 @@ const FIRMNESS = [
   { value: "soft", label: "Soft" },
   { value: "none", label: "None" },
 ]
+
+/** This Mac's clock, "HH:MM". */
+const clockNow = () => new Date().toTimeString().slice(0, 5)
 
 export function TodoDetail({ id, onClose }: { id: number; onClose: () => void }) {
   const { today, select, place, setPlace } = useShell()
@@ -49,6 +53,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
   const drop = useCommand("drop", { label: () => "Deleted" })
   const deleteSeries = useCommand("series_delete", { label: (o) => o.result.message ?? "Deleted" })
   const [asking, setAsking] = useState(false)
+  const [logging, setLogging] = useState(false)
   if (!detail) return <aside />
   const item = detail.item
   const p = progress(item)
@@ -93,6 +98,11 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
           <span style={{ color: "var(--color-neutral-300)" }}>{p.text}</span>
           <span style={{ display: "flex", gap: 8, color: "var(--color-neutral-500)" }}>
             {item.remaining_min != null ? `${dur(item.remaining_min)} left${item.done_min ? ` · ${dur(item.done_min)} done` : ""}` : ""}
+            {!isDone && (
+              <button className="fr-link" onClick={() => setLogging(!logging)} title="Time you worked on it without the timer" style={{ fontSize: 12 }}>
+                Log time
+              </button>
+            )}
             {!!item.done_min && !isDone && (
               <button className="fr-link" onClick={() => setProgress({ id: item.id, share: 0 })} title="Count nothing as done yet: Friday plans all of it again" style={{ fontSize: 12 }}>
                 Start over
@@ -129,6 +139,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
             <div style={{ height: "100%", width: `${p.pct}%`, background: color(item.area, item.preset) }} />
           </div>
         </div>
+        {logging && <LogWork itemId={item.id} title={item.title} today={today} now={clockNow()} onDone={() => setLogging(false)} />}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "96px minmax(0,1fr)", gap: "12px 14px", alignItems: "center" }}>
         <span className="fr-kicker">Tag</span>

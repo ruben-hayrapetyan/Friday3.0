@@ -7,6 +7,8 @@ import { Box, H, Icon, Seg } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { runTogether, undoAll, useCommand } from "@/hooks/useCommand"
 import { useHorizon, usePaces, useSettings } from "@/hooks/queries"
+import { ChangeList } from "@/components/ChangeList"
+import { because } from "@/lib/changes"
 import { clock, dur, when } from "@/lib/format"
 import { nextBlocks } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
@@ -54,6 +56,30 @@ export function useBriefSwitch(): [boolean | undefined, (on: boolean) => void] {
   const notify = (useSettings().data as Record<string, unknown> | undefined)?.notify as { morning_brief: boolean } | undefined
   const save = useCommand("settings_set", { label: () => "Saved" })
   return [notify?.morning_brief, (on) => save({ key: "notify", value: { ...notify, morning_brief: on } })]
+}
+
+/** What the latest plan changed and what led to it (3 Nov: `changes` had no screen; the lecture: "ratify actions"). */
+export function ChangesDialog({ onClose }: { onClose: () => void }) {
+  const { today } = useShell()
+  const changes = useQuery({ queryKey: ["changes"], queryFn: () => query("changes"), retry: false })
+  return (
+    <Modal onClose={onClose} top>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+          <H size={28}>What changed</H>
+          <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>{changes.data ? because(changes.data.inputs ?? []) : ""}</span>
+        </div>
+        <button className="btn btn-icon btn-ghost" onClick={onClose} aria-label="Close" style={{ width: 28, height: 28 }}>
+          <Icon name="x" />
+        </button>
+      </div>
+      {changes.isError ? (
+        <span style={{ color: "var(--color-neutral-400)" }}>Friday hasn’t made a plan yet. Once it has, what each replan moves shows here.</span>
+      ) : (
+        <ChangeList changes={changes.data} today={today} busy={changes.isFetching} notices={false} />
+      )}
+    </Modal>
+  )
 }
 
 export function BriefDialog({ onClose }: { onClose: () => void }) {

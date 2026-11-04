@@ -243,7 +243,7 @@ function NightRows({ nights }: { nights: Schemas["SleepNightOut"][] }) {
                     const at = night[kind]
                     const timed = (kind === "done" && night.done_timed) || (kind === "ready" && night.ready_timed)
                     return (
-                      <span key={kind} className="tnum" style={{ color: at ? "var(--color-neutral-200)" : "var(--color-neutral-600)" }}>
+                      <span key={kind} className="tnum" style={{ color: at ? "var(--color-neutral-200)" : "var(--color-neutral-500)" }}>
                         {short} {at ? clock(at) : "—"}
                         {timed && <span style={{ color: "var(--color-neutral-500)" }}> (timer)</span>}
                       </span>
@@ -254,7 +254,7 @@ function NightRows({ nights }: { nights: Schemas["SleepNightOut"][] }) {
                   </span>
                 </>
               ) : (
-                <span style={{ gridColumn: "2 / span 5", color: "var(--color-neutral-600)" }}>Not recorded: click to log it</span>
+                <span style={{ gridColumn: "2 / span 5", color: "var(--color-neutral-500)" }}>Not recorded: click to log it</span>
               )}
               <Icon name={on ? "caret-up" : "pencil-simple"} size={11} style={{ color: "var(--color-neutral-600)" }} />
             </button>

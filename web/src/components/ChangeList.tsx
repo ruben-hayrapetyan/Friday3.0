@@ -3,13 +3,14 @@
 import type { Schemas } from "@/api/client"
 import { lines, summary } from "@/lib/changes"
 
-export function ChangeList({ changes, today, busy }: { changes?: Schemas["ChangeOut"] | null; today: string; busy?: boolean }) {
+// notices: the plan's standing warnings (events that overlap); What changed leaves them out, as they aren't changes
+export function ChangeList({ changes, today, busy, notices = true }: { changes?: Schemas["ChangeOut"] | null; today: string; busy?: boolean; notices?: boolean }) {
   if (!changes) return <p className="text-sm text-muted-foreground">{busy ? "Working out what would move…" : ""}</p>
   const shown = lines(changes, today)
   return (
     <div className={`space-y-1 text-sm ${busy ? "opacity-60" : ""}`}>
       <p className="font-medium">{summary(changes)}</p>
-      {(changes.notices ?? []).map((n) => (
+      {(notices ? changes.notices ?? [] : []).map((n) => (
         <p key={n} className="text-amber-700 dark:text-amber-300">
           {n}
         </p>

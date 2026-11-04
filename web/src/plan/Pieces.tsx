@@ -34,7 +34,7 @@ function box(p: Placed<unknown>): CSSProperties {
     left: `calc((100% - var(--lane, 0px)) * ${p.column * share} + 3px)`,
     width: `calc((100% - var(--lane, 0px)) * ${share} - 6px)`,
     // Under half an hour there's room for one line: the title, centred, its time beside it.
-    ...(p.height < 30 ? { padding: "0 6px 0 9px", fontSize: 10.5, lineHeight: `${height - 2}px` } : { padding: "4px 7px 4px 9px", fontSize: 12, lineHeight: 1.3 }),
+    ...(p.height < 30 ? { padding: "0 6px 0 9px", fontSize: 11.5, lineHeight: `${height - 2}px` } : { padding: "4px 7px 4px 9px", fontSize: 12, lineHeight: 1.3 }),
   }
 }
 
@@ -134,19 +134,19 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, tod
         {done && <Icon name="check" size={11} />}
         {look === "sitting" && <Icon name="timer" size={11} />}
         <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{b.title}</span>
-        {!tall && <Inline at={b.start} color={missed ? "var(--color-neutral-600)" : s.sub} time={look ? undefined : time} />}
+        {!tall && <Inline at={b.start} color={missed ? "var(--color-neutral-500)" : s.sub} time={look ? undefined : time} />}
       </div>
       {tall && (
-        <TimeLine color={missed ? "var(--color-neutral-600)" : s.sub} time={look ? undefined : time}>
+        <TimeLine color={missed ? "var(--color-neutral-500)" : s.sub} time={look ? undefined : time}>
           {missed ? "Missed · planned again" : running ? `${clock(b.start)} start · runs by itself` : `${clock(b.start)}–${clock(b.end)}`}
           {look === "sitting" ? ` · ${dur(minutes(b))}` : b.estimated && !look ? ` · ~${dur(minutes(b))}` : ""}
         </TimeLine>
       )}
       {movedFrom && (
-        <div style={{ fontSize: 10, color: "var(--color-accent-200)", whiteSpace: "nowrap" }}>moved from {when(movedFrom, today)}</div>
+        <div style={{ fontSize: 11, color: "var(--color-accent-200)", whiteSpace: "nowrap" }}>moved from {when(movedFrom, today)}</div>
       )}
       {inside && tall && !movedFrom && (
-        <div style={{ fontSize: 10, color: s.sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <div style={{ fontSize: 11, color: s.sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           <Icon name="tray-arrow-down" size={10} /> in {inside}
         </div>
       )}
@@ -242,7 +242,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
     >
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: cancelled ? "transparent" : s.stripe }} />
       {proposed && (
-        <span aria-hidden style={{ position: "absolute", bottom: 3, right: 3, padding: "0 5px", borderRadius: 4, fontSize: 10, fontWeight: 600, lineHeight: "15px", color: "var(--color-bg)", background: paint }}>
+        <span aria-hidden style={{ position: "absolute", bottom: 3, right: 3, padding: "0 5px", borderRadius: 4, fontSize: 11, fontWeight: 600, lineHeight: "15px", color: "var(--color-bg)", background: paint }}>
           Skip?
         </span>
       )}
@@ -474,7 +474,7 @@ export function SleepBand({ p, core }: { p: Placed<unknown>; core: boolean }) {
         display: "flex",
         alignItems: "flex-end",
         padding: "3px 8px",
-        fontSize: 10,
+        fontSize: 11,
         color: "var(--color-accent-500)",
       }}
     >

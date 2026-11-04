@@ -18,6 +18,8 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
   const blocks = useHorizon().data?.blocks ?? []
   const add = useCommand("add", { label: () => "Step added" })
   const reorder = useCommand("reorder", { label: () => "Reordered" })
+  // A project you'll do again, as a template New project offers (3 Nov: `template_save` had no button)
+  const saveTemplate = useCommand("template_save", { label: (o) => `${o.result.message ?? "Saved"}: New project offers it` })
   const [text, setText] = useState("")
   const steps = p.children.filter((c) => c.parent_id === p.item.id)
   const total = p.done_min + p.remaining_min
@@ -38,6 +40,12 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
           Projects & exams
         </button>
         <span style={{ flex: 1 }} />
+        {steps.length > 0 && (
+          <button className="btn btn-ghost" onClick={() => saveTemplate({ name: p.item.title, project_id: p.item.id })} title="Its steps, in this order and with their share of the hours, for the next project like it" style={{ fontSize: 12.5 }}>
+            <Icon name="copy-simple" size={13} />
+            Save as template
+          </button>
+        )}
         {all.length > 1 && <Menu label="Project" value={String(p.item.id)} onPick={(v) => onPick(Number(v))} options={all.map((o) => ({ value: String(o.item.id), label: o.item.title }))} />}
       </div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 20, flexWrap: "wrap" }}>

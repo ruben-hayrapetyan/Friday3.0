@@ -197,7 +197,7 @@ function Week({ week }: { week: Full }) {
                   label: (
                     <>
                       {p}
-                      {p === suggested && <span style={{ fontSize: 10, color: "var(--color-accent-300)" }}>suggested</span>}
+                      {p === suggested && <span style={{ fontSize: 11, color: "var(--color-accent-300)" }}>suggested</span>}
                     </>
                   ),
                 }))}

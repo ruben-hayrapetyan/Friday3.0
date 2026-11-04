@@ -120,7 +120,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
       <div style={{ display: "grid", gridTemplateColumns: cols, padding: "10px 0 150px" }}>
         <div style={{ position: "relative", height }}>
           {hourMarks(axis).map((m) => (
-            <div key={m.top} className="tnum" style={{ position: "absolute", right: 10, top: m.top * PX, transform: "translateY(-50%)", fontSize: 11, color: "var(--color-neutral-600)" }}>
+            <div key={m.top} className="tnum" style={{ position: "absolute", right: 10, top: m.top * PX, transform: "translateY(-50%)", fontSize: 11, color: "var(--color-neutral-500)" }}>
               {m.label}
             </div>
           ))}
@@ -294,7 +294,8 @@ function DayHead(props: {
   const mine = dues.filter((d) => d.due.startsWith(date))
   const shown = open || mine.length <= 2 ? mine : mine.slice(0, 1)
   const line = { flex: "none", maxWidth: "100%", minWidth: 0, alignSelf: "flex-start" } as const
-  const chip = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 } as const
+  // Up to two lines, broken between words, before it's cut (3 Nov: "Prep: Math 192…" lost the course number)
+  const chip = { overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", whiteSpace: "normal", overflowWrap: "anywhere", minWidth: 0 } as const
   const big = { fontSize: 28, lineHeight: 0.95 }
   return (
     // The header is the day's all-day row: a task dropped here is due that day.
@@ -310,7 +311,7 @@ function DayHead(props: {
         {day?.pace && <span style={{ fontSize: 11, color: "var(--color-accent-300)" }}>{day.pace}</span>}
         {day && hours > 0 && (
           // Planned against the day's limit (COMBINED.md 67).
-          <span className="tnum" title={`${hours.toFixed(1)} h planned of ${day.cap_hours} h`} style={{ marginLeft: "auto", fontSize: 10.5, color: over > 0.05 ? "var(--fr-warn)" : "var(--color-neutral-500)" }}>
+          <span className="tnum" title={`${hours.toFixed(1)} h planned of ${day.cap_hours} h`} style={{ marginLeft: "auto", fontSize: 11.5, color: over > 0.05 ? "var(--fr-warn)" : "var(--color-neutral-500)" }}>
             {hours.toFixed(hours < 10 ? 1 : 0)}/{day.cap_hours}h
           </span>
         )}

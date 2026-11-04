@@ -108,7 +108,7 @@ function Due({ at, text }: { at: number; text: string }) {
           ...(left ? { right: `calc(${100 - at}% + 4px)` } : { left: `calc(${at}% + 4px)` }),
           padding: "1px 6px",
           borderRadius: 4,
-          fontSize: 10.5,
+          fontSize: 11.5,
           fontWeight: 500,
           whiteSpace: "nowrap",
           color: "var(--fr-due)",

@@ -23,6 +23,7 @@ class FakeOllama:
         self.chats: list[dict[str, Any]] = []
         self.fail_pull: str | None = None  # an error said mid-download
         self.gate: threading.Event | None = None  # when set: the download waits on it after its first layer
+        self.thinking: threading.Event | None = None  # when set: a chat waits on it, as a slow model does
         self.layers = 3
         self.answer = answer if answer is not None else {"reply": "", "actions": []}
         self.lock = threading.Lock()
@@ -50,6 +51,8 @@ class FakeOllama:
                 here = body.get("model") in self.models
             if not here:
                 return 404, {"error": {"message": f'model "{body.get("model")}" not found, try pulling it first'}}
+            if self.thinking is not None:
+                self.thinking.wait(60)
             answer = self.answer(body) if callable(self.answer) else self.answer
             return 200, {"choices": [{"message": {"role": "assistant", "content": json.dumps(answer)},
                                       "finish_reason": "stop"}],
@@ -148,6 +151,11 @@ def control(fake: FakeOllama) -> Callable[[str], None]:
             fake.fail_pull = None
         elif word == "answer":  # what the model says to every chat from now
             fake.answer = json.loads(rest)
+        elif word == "think":  # chats wait until "answered"
+            fake.thinking = threading.Event()
+        elif word == "answered" and fake.thinking is not None:
+            fake.thinking.set()
+            fake.thinking = None
         elif word == "state":
             print(json.dumps({"models": sorted(fake.models), "pulled": fake.pulled, "deleted": fake.deleted,
                               "chats": len(fake.chats)}), flush=True)  # fmt: skip

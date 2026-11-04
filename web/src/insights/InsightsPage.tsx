@@ -12,6 +12,7 @@ import { useCommand } from "@/hooks/useCommand"
 import { useLoad } from "@/hooks/queries"
 import { ampm, weekday } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
+import { BeatPlan } from "./BeatPlan"
 import { Comparison } from "./Comparison"
 import { Learned } from "./Learned"
 import { Section } from "./Section"
@@ -47,7 +48,7 @@ export function InsightsPage() {
             label: (
               <>
                 {t}
-                {t === suggested && <span style={{ fontSize: 10, color: "var(--color-accent-300)" }}>suggested</span>}
+                {t === suggested && <span style={{ fontSize: 11, color: "var(--color-accent-300)" }}>suggested</span>}
               </>
             ),
           }))}
@@ -81,6 +82,7 @@ export function InsightsPage() {
             <Section title="What Friday learned" note="Suggestions from how you actually work. Nothing changes until you approve.">
               <Learned />
             </Section>
+            <BeatPlan />
             <Comparison />
             <Section title="Load ahead" note="Planned hours per week against what you can do" right={<LoadLegend />}>
               <Load />
@@ -172,7 +174,7 @@ function Heat({ heat }: { heat: number[][] }) {
     <div style={{ display: "grid", gridTemplateColumns: "40px repeat(16, minmax(0,1fr))", gap: 3, alignItems: "center" }}>
       <span />
       {HOURS.map((h) => (
-        <span key={h} className="tnum" style={{ fontSize: 10, color: "var(--color-neutral-500)" }}>
+        <span key={h} className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>
           {ampm(`${h}:00`).replace(/[ap]m$/, (s) => s[0])}
         </span>
       ))}

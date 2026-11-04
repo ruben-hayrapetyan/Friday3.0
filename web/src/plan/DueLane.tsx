@@ -47,7 +47,7 @@ export function DueLane({ dues, stickyTop, narrow }: { dues: Schemas["DueMarker"
                 {d.title}
               </span>
               {!narrow && !d.due.endsWith("T23:59") && (
-                <span className="tnum" style={{ fontSize: 10.5, color: "var(--color-neutral-500)" }}>
+                <span className="tnum" style={{ fontSize: 11.5, color: "var(--color-neutral-500)" }}>
                   {clock(d.due)}
                 </span>
               )}

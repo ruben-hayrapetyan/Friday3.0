@@ -64,7 +64,7 @@ function GapAnswer({ gap, onPick }: { gap: Gap; onPick: (s: Status, minutes?: nu
           <button key={s} className={`btn ${i === 0 ? "btn-primary" : "btn-secondary"} fr-press`} onClick={() => (s === "partial" ? setSome(half) : onPick(s))}>
             {SAID[s]}
             {s === "done" ? ` (${dur(gap.planned_min)})` : ""}
-            <kbd style={{ marginLeft: 4, font: "inherit", fontSize: 10, opacity: 0.6 }}>{Object.keys(KEYS).find((k) => KEYS[k] === s)}</kbd>
+            <kbd style={{ marginLeft: 4, font: "inherit", fontSize: 11, opacity: 0.6 }}>{Object.keys(KEYS).find((k) => KEYS[k] === s)}</kbd>
           </button>
         ))}
       </Actions>

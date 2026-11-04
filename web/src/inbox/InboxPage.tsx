@@ -442,17 +442,17 @@ function Detail({ s, all, waiting, resolved, onResolved, onReopen }: DetailProps
               <button className="btn btn-primary" onClick={doAccept}>
                 <Icon name="check" />
                 {actionLabel}
-                <kbd style={{ marginLeft: 4, font: "inherit", fontSize: 10, opacity: 0.7 }}>A</kbd>
+                <kbd style={{ marginLeft: 4, font: "inherit", fontSize: 11, opacity: 0.7 }}>A</kbd>
               </button>
               <button className="btn btn-secondary" onClick={() => setEditing(!editing)}>
                 <Icon name="pencil-simple" />
                 {editing ? "Done editing" : "Edit"}
-                <kbd style={{ marginLeft: 4, font: "inherit", fontSize: 10, opacity: 0.6 }}>E</kbd>
+                <kbd style={{ marginLeft: 4, font: "inherit", fontSize: 11, opacity: 0.6 }}>E</kbd>
               </button>
               <button className="btn btn-secondary" onClick={doReject}>
                 <Icon name="x" />
                 Reject
-                <kbd style={{ marginLeft: 4, font: "inherit", fontSize: 10, opacity: 0.6 }}>R</kbd>
+                <kbd style={{ marginLeft: 4, font: "inherit", fontSize: 11, opacity: 0.6 }}>R</kbd>
               </button>
             </div>
             <span className="fr-kicker">{s.command === "drop" ? "Dropping takes it off your plan; Undo brings it back." : "Accepting adds it and Friday plans it. You can undo it from the plan."}</span>

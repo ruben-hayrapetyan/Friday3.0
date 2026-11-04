@@ -100,7 +100,7 @@ function Timeline({ nights }: { nights: Schemas["SleepNightOut"][] }) {
   const shown = nights.find((n) => n.date === hover)
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "64px minmax(0,1fr) 56px", gap: 10, fontSize: 10.5, color: "var(--color-neutral-500)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "64px minmax(0,1fr) 56px", gap: 10, fontSize: 11.5, color: "var(--color-neutral-500)" }}>
         <span />
         <span style={{ position: "relative", height: 14 }}>
           {TICKS.map((h) => (

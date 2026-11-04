@@ -6,6 +6,7 @@
 // events without asking" on (27 Oct), what only adds, moves, repeats or deletes an event applies as the answer comes,
 // with one Undo; the rest still waits for Apply.
 
+import { spoken } from "@/lib/aiName"
 import { useAi } from "@/settings/AiConnect"
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
@@ -16,6 +17,7 @@ import { useToast } from "@/components/Toasts"
 import { useSettings } from "@/hooks/queries"
 import { runTogether, undoAll, useCommand } from "@/hooks/useCommand"
 import { useShell } from "@/shell/ShellContext"
+import { asking, useAsking, waiting } from "./asking"
 
 /** Claude's proposals you kept, run in order as one change: Undo takes them all back, and one that fails takes back
  * those before it. Whether they all ran. */
@@ -38,15 +40,34 @@ export function withoutAsking(actions: Schemas["ProposedAction"][], on: boolean)
   return on ? actions.flatMap((a, i) => (a.event && !a.error ? [i] : [])) : []
 }
 
+/** What to tick at first: everything that would run, but what already ran or can't. */
+const ticked = (actions: Schemas["ProposedAction"][], now: number[] = []) => actions.map((a, i) => (a.error || now.includes(i) ? -1 : i)).filter((i) => i >= 0)
+
 export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
-  const { ask } = useShell()
+  const { ask, askClaude } = useShell()
   const client = useQueryClient()
   const toast = useToast()
-  const [text, setText] = useState(ask?.text ?? "")
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [answer, setAnswer] = useState<Schemas["AskClaudeOut"] | null>(null)
-  const [kept, setKept] = useState<number[]>([])
+  // A question asked earlier and answered while the window was closed, or still being thought about, comes back here
+  const earlier = asking.get()
+  const resumed = earlier && (!ask?.text || ask.text === earlier.text) ? earlier : null
+  const [text, setText] = useState(ask?.text || resumed?.text || "")
+  const [error, setError] = useState<string | null>(resumed?.state === "failed" ? resumed.error ?? null : null)
+  const [answer, setAnswer] = useState<Schemas["AskClaudeOut"] | null>(resumed?.state === "answered" ? resumed.answer ?? null : null)
+  const [kept, setKept] = useState<number[]>(resumed?.answer ? ticked(resumed.answer.actions) : [])
+  const flight = useAsking()
+  const busy = flight?.state === "asking"
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (!busy) return
+    const every = setInterval(() => tick((n) => n + 1), 1000)
+    return () => clearInterval(every)
+  }, [busy])
+  useEffect(() => {
+    asking.open(true)
+    if (resumed && resumed.state !== "asking") asking.clear() // shown now: not kept to show again
+    return () => void asking.open(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [done, setDone] = useState<{ at: number[]; ids: number[] } | null>(null) // applied without asking
   const field = useRef<HTMLTextAreaElement>(null)
   const purpose = ask?.purpose ?? "anything"
@@ -57,14 +78,20 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => field.current?.focus(), [])
   const run = async () => {
     if (!text.trim() || busy) return
-    setBusy(true)
     setError(null)
+    const { id, signal } = asking.begin(text, purpose)
     try {
-      const out = await command("ask_claude", { text, purpose })
+      const out = await command("ask_claude", { text, purpose }, { signal })
+      if (asking.get()?.id !== id || asking.get()?.state !== "asking") return // stopped, or asked again since
+      asking.settle(id, out.result)
       const now = withoutAsking(out.result.actions, auto)
+      if (!asking.isOpen()) {
+        // you closed the window to keep working: say it's here, and open it again on a click
+        toast({ message: `${ai} answered “${text.length > 40 ? `${text.slice(0, 40)}…` : text}”`, action: { label: "See it", run: () => askClaude(text, purpose) } })
+      } else asking.clear()
       setAnswer(out.result)
       setDone(null)
-      setKept(out.result.actions.map((a, i) => (a.error || now.includes(i) ? -1 : i)).filter((i) => i >= 0))
+      setKept(ticked(out.result.actions, now))
       if (now.length) {
         const ids = await runActions(now.map((i) => out.result.actions[i]), client, toast)
         if (ids) {
@@ -75,10 +102,16 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
         else setKept((was) => [...was, ...now].sort((a, b) => a - b)) // they failed and were taken back: yours to apply
       }
     } catch (e) {
-      setError(e instanceof ApiError || e instanceof Error ? e.message : String(e))
+      if (signal.aborted) return // you stopped waiting
+      const said = e instanceof ApiError || e instanceof Error ? e.message : String(e)
+      asking.fail(id, said)
+      if (!asking.isOpen()) toast({ message: `${ai} couldn't answer: ${said}`, tone: "error" })
+      else asking.clear()
+      setError(said)
     }
-    setBusy(false)
   }
+  const seconds = flight && busy ? (Date.now() - flight.began) / 1000 : 0
+  const wait = waiting(seconds, spoken(ai))
   const asked = useRef(false)
   useEffect(() => {
     if (ask?.now && !asked.current) {
@@ -129,12 +162,28 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
         />
         {!answer && (
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button className="btn btn-primary" onClick={run} disabled={busy || !text.trim()}>
-              {busy ? "Asking…" : "Ask"}
-            </button>
-            <span className="fr-kicker">⌘↩ asks. {auto ? "Changes to calendar events apply at once; the rest wait for you." : `${ai} only proposes; nothing changes until you apply it.`}</span>
+            {busy ? (
+              <>
+                <span className="tnum" role="status" style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+                  <span className="fr-spinner" aria-hidden />
+                  {wait.line}
+                </span>
+                <button className="btn btn-secondary" onClick={() => flight && asking.stop(flight.id)} title="Stop waiting; nothing it would have proposed is kept">
+                  <Icon name="stop" />
+                  Stop
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="btn btn-primary" onClick={run} disabled={!text.trim()}>
+                  Ask
+                </button>
+                <span className="fr-kicker">⌘↩ asks. {auto ? "Changes to calendar events apply at once; the rest wait for you." : `${ai} only proposes; nothing changes until you apply it.`}</span>
+              </>
+            )}
           </div>
         )}
+        {busy && wait.note && <span className="fr-kicker">{wait.note}</span>}
         {error && <span style={{ color: "var(--fr-due)" }}>{error}</span>}
         {answer && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

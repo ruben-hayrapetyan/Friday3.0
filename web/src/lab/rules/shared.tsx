@@ -212,7 +212,7 @@ export function MiniWeek({ plan, compareTo, fixed = [], days = 7, pickedItem, on
           {hourMarks(axis)
             .filter((_, i) => i % 3 === 0)
             .map((m) => (
-              <span key={m.top} className="tnum" style={{ position: "absolute", right: 4, top: m.top * PX - 6, fontSize: 10, color: "var(--color-neutral-600)" }}>
+              <span key={m.top} className="tnum" style={{ position: "absolute", right: 4, top: m.top * PX - 6, fontSize: 11, color: "var(--color-neutral-500)" }}>
                 {m.label}
               </span>
             ))}
@@ -277,7 +277,7 @@ function Bar({ p, title, tone, onClick }: { p: { top: number; height: number; co
         left: `calc(${p.column * width}% + 1px)`,
         width: `calc(${width}% - 2px)`,
         borderRadius: 3,
-        fontSize: 9,
+        fontSize: 11,
         lineHeight: "11px",
         padding: "1px 3px",
         overflow: "hidden",

@@ -203,7 +203,7 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span style={{ fontSize: 13 }}>No due date. Add it anyway?</span>
             <button className="btn btn-primary fr-press" onMouseDown={(e) => e.preventDefault()} onClick={() => submit({}, true)} style={{ fontSize: 12, padding: "3px 10px", minHeight: 0 }}>
-              Yes, add <span className="fr-mono" style={{ opacity: 0.7, fontSize: 10 }}>↵</span>
+              Yes, add <span className="fr-mono" style={{ opacity: 0.7, fontSize: 11 }}>↵</span>
             </button>
             <button className="fr-link" onMouseDown={(e) => e.preventDefault()} onClick={() => (setAsking(false), line.current?.focus())} style={{ fontSize: 12 }}>
               Cancel
@@ -253,7 +253,7 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
           </span>
           {field}
           {text && (
-            <span className="fr-mono" style={{ fontSize: 10, color: "var(--color-neutral-500)", paddingLeft: 8 }}>
+            <span className="fr-mono" style={{ fontSize: 11, color: "var(--color-neutral-500)", paddingLeft: 8 }}>
               ↵ add · ⇧↵ from any field
             </span>
           )}

@@ -113,7 +113,7 @@ function Days({ days }: { days: Schemas["MealDayOut"][] }) {
                 ))}
                 {!meals.length && shown !== date && (
                   <>
-                    <span style={{ color: "var(--color-neutral-600)" }}>Nothing recorded</span>
+                    <span style={{ color: "var(--color-neutral-500)" }}>Nothing recorded</span>
                     <button className="fr-link" onClick={() => setShown(date)} style={{ fontSize: 12 }}>
                       Log a meal
                     </button>

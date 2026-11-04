@@ -18,7 +18,7 @@ body {
 /* Small capitals in mono: section codes, day names, column labels. */
 .fr-eyebrow {
   font-family: var(--fr-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
