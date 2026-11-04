@@ -19484,6 +19484,17 @@
       "type": "boolean",
       "title": "Skipped",
       "default": false
+     },
+     "item_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Item Id"
      }
     },
     "additionalProperties": false,

@@ -294,7 +294,7 @@ def recorded(ctx: Ctx, days: int) -> list[Meal]:
     local = lambda t: to_local(parse_utc(t), ctx.tz) if t else None  # noqa: E731
     return [
         Meal(r["id"], r["kind"], date.fromisoformat(r["date"]), local(r["start_utc"]), local(r["end_utc"]),
-             bool(r["skipped"]))
+             bool(r["skipped"]), r["item_id"])
         for r in found
     ]  # fmt: skip
 
@@ -456,7 +456,7 @@ def meal_out(m: Meal) -> MealOut:
     local = lambda t: format_local(t) if t else None  # noqa: E731
     return MealOut(
         id=m.id, kind=m.kind, date=m.date.isoformat(), start=local(m.start), end=local(m.end), minutes=m.minutes,
-        skipped=m.skipped,
+        skipped=m.skipped, item_id=m.item_id,
     )  # fmt: skip
 
 

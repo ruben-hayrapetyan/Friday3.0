@@ -257,3 +257,23 @@ def test_done_eating_tapped_hours_late_counts_the_usual_length(app: App) -> None
     app.do("meal_start", kind="dinner")
     at(app, "18:40")
     assert app.do("meal_end")["message"] == "Dinner: 40 min"  # an ordinary dinner is as you tapped
+
+
+def test_each_meal_names_the_routine_it_ticked_off_for_the_calendar_to_draw_it_there(app: App) -> None:
+    # 4 Nov: the calendar draws a meal you ate as that day's Lunch, in place of the routine's planned pieces
+    on(app)
+    lunch_routine(app)
+    at(app, "13:00")
+    app.do("meal_log", kind="lunch", start="2026-10-19T12:10", end="2026-10-19T12:40")
+    app.do("meal_log", kind="breakfast", start="2026-10-19T08:00", end="2026-10-19T08:20")
+    by_kind = {m["kind"]: m for m in app.do("meals")["days"][0]["meals"]}
+    assert by_kind["lunch"]["item_id"] == todays_lunch(app)["id"]
+    assert by_kind["breakfast"]["item_id"] is None  # no breakfast routine: drawn on its own
+
+
+def test_the_meal_you_are_eating_names_its_routine_too(app: App) -> None:
+    on(app)
+    lunch_routine(app)
+    at(app, "12:00")
+    app.do("meal_start", kind="lunch")
+    assert app.do("meals")["eating"]["item_id"] == todays_lunch(app)["id"]

@@ -5908,6 +5908,8 @@ export interface components {
              * @default false
              */
             skipped?: boolean;
+            /** Item Id */
+            item_id?: number | null;
         };
         /** MealPlanInput */
         MealPlanInput: {

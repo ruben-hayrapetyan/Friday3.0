@@ -744,6 +744,7 @@ class MealOut(Model):
     end: str | None = None  # local; None while eating
     minutes: int | None = None
     skipped: bool = False
+    item_id: int | None = None  # the routine it ticked off (that day's Lunch): the calendar draws the meal in its place
 
 
 class MealDayOut(Model):

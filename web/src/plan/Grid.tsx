@@ -1,9 +1,10 @@
 // The week and day grid (v22 Plan): day headers with the date, pace, a red count of the day's dues and overload, and
-// whole-day events as bars under them (3 Nov); hour lines; when you slept, got ready and ate, as a faint rail (4 Nov); blocks, fixed items, ghosts and the wind-down; what you
+// whole-day events as bars under them (3 Nov); hour lines; the meals you ate, as done blocks (4 Nov); blocks, fixed items, ghosts and the wind-down; what you
 // timed, when you did it, over the right of the column; drag to move, resize or select time. Settings → Appearance
 // chooses the hours shown and whether a day's dues are the count or a lane down its column (COMBINED.md 14, 15).
 
 import { useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "react-router"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import type { Block, Item, Schemas } from "@/api/client"
 import { type Drag, justDragged, minuteAt, selectionFrom, useDragging } from "@/components/calendar/useDrag"
@@ -11,7 +12,7 @@ import { useToast } from "@/components/Toasts"
 import { useClock, useElapsed } from "@/hooks/useClock"
 import { runCommand } from "@/hooks/useCommand"
 import { moveBlock, retimeEvent } from "@/hooks/useDrop"
-import { useGhosts, useItems, useNow, useStatus } from "@/hooks/queries"
+import { useGhosts, useItems, useMeals, useNow, useStatus } from "@/hooks/queries"
 import { movedSince } from "@/lib/drag"
 import { clock, hms, weekday, when } from "@/lib/format"
 import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, type Placed, type Span, toMin } from "@/lib/time"
@@ -26,7 +27,7 @@ import { asBlock, BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, 
 import { inARow, type Pick, pickOfBlock, pickOfEvent, picks, shifted, usePicks } from "./picks"
 import { layers } from "./layers"
 import { WholeDays } from "./WholeDays"
-import { LivedRail, useLived } from "./LivedRail"
+import { eatenRoutines, pastMeals } from "./pastMeals"
 import { isWholeDay } from "./wholeDay"
 
 interface Props {
@@ -63,8 +64,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const pickedKeys = new Set(picked.map((p) => p.key))
   const multi = (e?: React.MouseEvent) => !!e && (e.metaKey || e.ctrlKey || e.shiftKey)
   const now = useClock()
-  const lived = useLived(now) // what you tapped in Sleep & meals, a faint rail down each column
-  const { look, light } = useLook()
+  const { look } = useLook()
   const allDay24 = look.hours === "All day"
   // The lanes step aside while the to-do drawer is out, as personal's did: the full list is showing.
   const lanes = look.deadlines === "Lanes" && !drawer
@@ -90,9 +90,15 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   // From the wake time to core sleep, stretched for anything earlier or later on these days.
   // The past as it went: a block a timer sitting covers gives way to the sitting, and a deleted item's goes; blocks
   // and sittings are laid out together, side by side where they overlap, rather than one drawn over the other.
-  const sessions = plan.sessions ?? []
-  const shown = plan.blocks.filter((b) => b.state !== "timed" && b.state !== "gone")
-  const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : fitAxis({ startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }, [...fixed, ...plan.blocks, ...sessions], dates)
+  // The meals you ate (Sleep & meals) as done blocks where you ate them; the routine's planned pieces give way.
+  const meals = pastMeals(useMeals().data, plan, now)
+  const eaten = eatenRoutines(meals)
+  const eatingKeys = new Set(meals.filter((m) => m.eating).map((m) => m.block.key))
+  const mealBlocks = meals.map((m) => m.block)
+  const openMeals = useNavigate()
+  const sessions = (plan.sessions ?? []).filter((s) => !eaten.has(s.item_id))
+  const shown = plan.blocks.filter((b) => b.state !== "timed" && b.state !== "gone" && !eaten.has(b.item_id))
+  const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : fitAxis({ startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }, [...fixed, ...plan.blocks, ...sessions, ...mealBlocks], dates)
   const panel = useRef<HTMLDivElement>(null)
   const head = useRef<HTMLDivElement>(null)
   const headHeight = useHeight(head)
@@ -193,11 +199,25 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
             >
               {dues.length > 0 && <DueLane dues={dues} stickyTop={headHeight} narrow={dates.length > 1} />}
               <Nights date={date} days={days} axis={axis} />
-              <LivedRail lived={lived} date={date} axis={axis} light={light} />
               {layout(notGoing, date, axis).map((p) => fixedBox(p))}
               {layout(going, date, axis).map((p) => fixedBox(p))}
               {event && !event.allDay && layout([event], date, axis).map((p) => <DraftBox key="draft" p={p} title={event.title} />)}
-              {layout([...shown, ...sessions], date, axis).map((p) => (
+              {layout([...shown, ...sessions, ...mealBlocks], date, axis).map((p) =>
+                p.item.key.startsWith("M") ? (
+                  // A meal you ate: a done Lunch where you had it, opening Sleep & meals to change it.
+                  <BlockBox
+                    key={p.item.key}
+                    p={p}
+                    isCur={eatingKeys.has(p.item.key)}
+                    selected={false}
+                    done={!eatingKeys.has(p.item.key)}
+                    look={eatingKeys.has(p.item.key) ? "sitting" : undefined}
+                    today={today}
+                    onOpen={() => !justDragged() && openMeals("/body?tab=meals")}
+                    onGrab={() => {}}
+                    onResize={() => {}}
+                  />
+                ) : (
                 <BlockBox
                   key={p.item.key}
                   p={p}
@@ -222,7 +242,8 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                   onResize={(e, edge) => (p.item.key === selected?.key && select(null), begin(e, grabbed(p.item, edge === "top" ? "resize-top" : "resize", minuteAt(e))))}
                   retime={{ begin: () => select(null), save: (span) => retime.block(p.item, span) }}
                 />
-              ))}
+                ),
+              )}
               {layout(skipped, date, axis).map((p) => fixedBox(p, true))}
               {layout(news, date, axis).map((p) => (
                 <GhostBox key={`g${p.item.key}`} p={p} />

@@ -29,6 +29,7 @@ class Meal:
     start: datetime | None  # local; None when skipped
     end: datetime | None  # local; None while eating or skipped
     skipped: bool = False
+    item_id: int | None = None  # the routine it ticked off (Lunch that day), if one
 
     @property
     def minutes(self) -> int | None:
