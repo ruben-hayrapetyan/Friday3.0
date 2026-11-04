@@ -174,8 +174,13 @@ def events_named(ctx: Ctx, words: tuple[str, ...]) -> list[str]:
 @command("rule_add", affects_plan=True)
 def rule_add(ctx: Ctx, inp: RuleAddInput) -> Changed:
     """Add a rule in your words; Friday plans with it from now."""
+    return added(ctx, inp.text, inp.strength, inp.overrides)
+
+
+def added(ctx: Ctx, text: str, strength: str, overrides: dict[str, Any] | None = None) -> Changed:
+    """A rule in your words added, as the Rules page adds it (also what a learned habit you keep becomes)."""
     owned_by_file(ctx)
-    reading, _ = described(ctx, inp.text, inp.overrides)
+    reading, _ = described(ctx, text, overrides or {})
     if reading is None:
         raise FieldError("text", "Friday can’t read that as a rule; try one of the examples")
     if reading.kind == "pace":
@@ -185,11 +190,11 @@ def rule_add(ctx: Ctx, inp: RuleAddInput) -> Changed:
     rules = [r.model_dump() for r in ctx.settings["rules"]]
     name = unique(f"you:{slug(sentence(reading))}", {r["name"] for r in rules})
     areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
-    new = spec(reading, inp.strength, name, areas, presets)
+    new = spec(reading, strength, name, areas, presets)  # type: ignore[arg-type]
     mine = readings(ctx)
     rules, moved = taken_from(rules, new, mine) if new["type"] == "skippable" else (rules, [])
     write_setting(ctx, "rules", [*rules, new])
-    keep(ctx, {**mine, name: {"reading": reading.to_dict(), "strength": inp.strength, "text": inp.text}})
+    keep(ctx, {**mine, name: {"reading": reading.to_dict(), "strength": strength, "text": text}})
     return Changed(message=f"Added: {sentence(reading)}" + "".join(f". Taken out of “{m}”" for m in moved))
 
 

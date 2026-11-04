@@ -63,8 +63,9 @@ def clashes(ctx: Ctx) -> list[Clash]:
     """Every disagreement between what Friday learned and what you said, not yet answered as it stands."""
     answered = kv_get(ctx.conn, ANSWERED, {}, ctx.user_id) or {}
     from friday.commands.beat_plan import offers  # noqa: PLC0415 (it builds on this module's Clash)
+    from friday.commands.undated import offers as undated  # noqa: PLC0415 (the same)
 
-    found = [*weights(ctx), *sleep_short(ctx), *wind_down(ctx), *meals(ctx), *offers(ctx)]
+    found = [*weights(ctx), *sleep_short(ctx), *wind_down(ctx), *meals(ctx), *offers(ctx), *undated(ctx)]
     return [c for c in found if answered.get(c.key) != c.about]
 
 

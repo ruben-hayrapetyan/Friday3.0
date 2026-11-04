@@ -623,7 +623,20 @@ JUNK_SUBJECT = (
     r"|last|task|save|mornings|evenings|afternoons|nights|weekdays?|weekends?|(?:mon|tues?|wed(?:nes)?|thu(?:rs)?|fri"
     r"|sat(?:ur)?|sun)(?:day)?s?)\b|:"
 )
-KNOWN_SUBJECTS = {"work", "deep work", "light work", "exam prep", "events", "meals", "pace"}
+KNOWN_SUBJECTS = {"work", "deep work", "light work", "undated work", "exam prep", "events", "meals", "pace"}
+# Work with no due date, however it's said, read as "undated work" (3 Nov: undated work is placed by rules).
+UNDATED = re.compile(
+    r"\b(?:(?:work|tasks?|things|stuff|to-?dos?)\s+(?:with\s+no|without(?:\s+an?|\s+any)?)\s+(?:due\s+dates?|deadlines?|dues?)"
+    r"|(?:undated|no-?deadline|deadline-?free)(?:\s+(?:work|tasks?|things|stuff|to-?dos?))?)\b",
+    re.IGNORECASE,
+)
+
+
+def undated_said(text: str) -> str:
+    """The sentence with its ways of saying work with no due date as "undated work"."""
+    return UNDATED.sub("undated work", text)
+
+
 # A clause about your sleep setting is a rule of its own, for telling two rules apart ("…, and wake me at 8").
 SETTING_CLAUSE = r"^ ?(?:and )?(?:wake (?:me )?(?:up )?|get up|up|bedtime|bed|in bed|lights out)\b.*\d"
 
@@ -631,6 +644,7 @@ SETTING_CLAUSE = r"^ ?(?:and )?(?:wake (?:me )?(?:up )?|get up|up|bedtime|bed|in
 def read(text: str) -> tuple[Reading | None, Strength]:
     """What a sentence asks for, and how strongly; None when the grammar can't read it, or when it says two rules
     (each half a rule of its own, and not the same one: "keep sunday free and go easy on saturday")."""
+    text = undated_said(text)
     found, strength = read_one(text)
     if found is None:
         return None, strength
@@ -721,6 +735,8 @@ EXAM_PREP = (
 
 
 def subject_of(words: str) -> str:
+    # "prefer homework in the afternoon": the strength is read elsewhere, and isn't what the rule is about (3 Nov)
+    words = re.sub(r"^ *(?:i )?(?:prefer(?:ably)?|ideally|rather) ", "", words)
     words = re.sub(r"^ *(?:work|anything|stuff|things) (?:for|on) ", "", words)  # "anything for MATH 2940"
     # What's done to it says nothing of what it is: "finish all hw", "submit", "write discussion responses".
     words = re.sub(
@@ -1581,6 +1597,8 @@ def scope_of(subject: str, areas: list[str], presets: list[str]) -> dict[str, An
         return {"energy": "deep"}
     if subject == "light work":
         return {"energy": "light"}
+    if subject == "undated work":
+        return {"dated": False}
     for a in areas:
         if a.lower() == subject:
             return {"area": a}

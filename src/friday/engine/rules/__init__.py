@@ -88,10 +88,15 @@ class Scope:
     title: Any = None
     title_regex: Any = None
     except_preset: Any = None  # none of these kinds
+    # True: work with a due; False: work with none, "undated work" (3 Nov: "the undated time slots thing should be
+    # completely learned/dictated by rules").
+    dated: bool | None = None
 
     def matches(self, item: "EngineItem", problem: "Problem") -> bool:
         skipped = as_list(self.except_preset)
         if skipped is not None and item.preset in skipped:
+            return False
+        if self.dated is not None and (item.due_utc is not None) != self.dated:
             return False
         for wanted, value in (
             (self.area, item.area),
