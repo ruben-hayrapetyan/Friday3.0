@@ -2,8 +2,9 @@
 // shade darker than the page, its list pinned below the day headers as you scroll, ticked off like the to-do list.
 // Week view's narrow lanes keep to the checkbox and title; the pointer shows the whole title.
 
+import { dueBlock } from "./DueCount"
 import { useQueryClient } from "@tanstack/react-query"
-import type { Block, Schemas } from "@/api/client"
+import type { Schemas } from "@/api/client"
 import { useToast } from "@/components/Toasts"
 import { runCommand } from "@/hooks/useCommand"
 import { clock } from "@/lib/format"
@@ -59,6 +60,3 @@ export function DueLane({ dues, stickyTop, narrow }: { dues: Schemas["DueMarker"
   )
 }
 
-function dueBlock(d: Schemas["DueMarker"]): Block {
-  return { key: `D${d.item_id}`, item_id: d.item_id, title: d.title, start: d.due, end: d.due }
-}

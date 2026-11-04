@@ -510,3 +510,60 @@ kbd.fr-kbd {
     align-items: center !important;
   }
 }
+
+/* A day's deadlines in its header (plan/DueCount.tsx): red, and plainly a button (3 Nov). */
+.fr-due-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px 0 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--fr-now) 55%, transparent);
+  background: color-mix(in srgb, var(--fr-now) 14%, transparent);
+  color: var(--fr-now);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms, border-color 120ms;
+}
+.fr-due-count:hover,
+.fr-due-count[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--fr-now) 24%, transparent);
+  border-color: var(--fr-now);
+}
+.fr-due-count:focus-visible {
+  outline: 2px solid var(--fr-now);
+  outline-offset: 2px;
+}
+
+/* A whole-day event under the day headers (plan/WholeDays.tsx). */
+.fr-whole-day {
+  display: block;
+  min-width: 0;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 22px;
+  color: var(--color-text);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.fr-whole-day:hover {
+  filter: brightness(1.15);
+}
+.fr-whole-more {
+  justify-self: start;
+  margin: 0 6px;
+  height: 20px;
+  font-size: 11.5px;
+  color: var(--color-neutral-400);
+  cursor: pointer;
+}
+.fr-whole-more:hover {
+  color: var(--color-text);
+}

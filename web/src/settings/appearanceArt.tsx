@@ -138,11 +138,8 @@ export function DeadlinesArt({ deadlines }: { deadlines: Look["deadlines"] }) {
       <Fill bg="var(--color-surface)">
         <HourLines y0={30} step={12} n={4} />
         {head}
-        <Bx x={42} y={4} w={34} h={11} r={3} style={{ background: mix(due, 18), boxShadow: `inset ${u(2)} 0 0 ${due}` }}>
-          <Line x={5} y={4} w={22} col={due} p={80} />
-        </Bx>
-        <Bx x={79} y={4} w={34} h={11} r={3} style={{ background: mix(due, 18), boxShadow: `inset ${u(2)} 0 0 ${due}` }}>
-          <Line x={5} y={4} w={18} col={due} p={80} />
+        <Bx x={40} y={5} w={26} h={10} r={5} style={{ background: mix("var(--fr-now)", 18), boxShadow: `inset 0 0 0 ${u(0.8)} var(--fr-now)` }}>
+          <Line x={5} y={4} w={16} col="var(--fr-now)" p={85} />
         </Bx>
         <Block x={6} y={26} w={108} h={18} />
         <Block x={6} y={52} w={70} h={10} />

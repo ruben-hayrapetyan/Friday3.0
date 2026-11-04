@@ -1,7 +1,7 @@
-// The week and day grid (v22 Plan): day headers with the date, pace, dues and overload; hour lines; blocks, fixed
-// items, ghosts and the wind-down; what you timed, when you did it, over the right of the column; drag to move,
-// resize or select time. Settings → Appearance chooses the hours shown and whether a day's dues are header chips or
-// a lane down its column (COMBINED.md 14, 15).
+// The week and day grid (v22 Plan): day headers with the date, pace, a red count of the day's dues and overload, and
+// whole-day events as bars under them (3 Nov); hour lines; blocks, fixed items, ghosts and the wind-down; what you
+// timed, when you did it, over the right of the column; drag to move, resize or select time. Settings → Appearance
+// chooses the hours shown and whether a day's dues are the count or a lane down its column (COMBINED.md 14, 15).
 
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
@@ -18,12 +18,15 @@ import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, type Placed, t
 import { useShell } from "@/shell/ShellContext"
 import { useLook } from "@/theme/LookProvider"
 import { draftAt, draftOf } from "@/shell/EventPane"
+import { DueCount, dueBlock } from "./DueCount"
 import { DueLane } from "./DueLane"
 import { useGlide } from "./glide"
 import { type TrialPlan, useWhatIf, whatIf } from "@/whatif/store"
 import { asBlock, BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, PX, SleepBand, type TriedLook } from "./Pieces"
 import { inARow, type Pick, pickOfBlock, pickOfEvent, picks, shifted, usePicks } from "./picks"
 import { layers } from "./layers"
+import { WholeDays } from "./WholeDays"
+import { isWholeDay } from "./wholeDay"
 
 interface Props {
   dates: string[]
@@ -64,8 +67,8 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   // The lanes step aside while the to-do drawer is out, as personal's did: the full list is showing.
   const lanes = look.deadlines === "Lanes" && !drawer
   const timed = plan.fixed.filter((f): f is Item & { start: string; end: string } => !!f.start && !!f.end)
-  // A birthday or holiday spans whole days: it goes with the day's dues at the top, not as a column-high block.
-  const allDay = timed.filter((f) => f.start.endsWith("T00:00") && f.end.endsWith("T00:00") && f.end > f.start)
+  // A birthday or holiday spans whole days: a bar under the day headers, not a column-high block.
+  const allDay = timed.filter(isWholeDay)
   const fixed = timed.filter((f) => !allDay.includes(f)) // what you toggled off is already gone (plan/shown.ts)
   // An optional event the plan gives to work is one you're skipping: it sits behind, full width, out of the way of
   // the events beside it, rather than take a column from them (27 Oct).
@@ -114,8 +117,9 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
       <div ref={head} style={{ position: "sticky", top: 0, zIndex: 4, display: "grid", gridTemplateColumns: cols, background: "var(--color-surface)" }}>
         <div />
         {dates.map((date) => (
-          <DayHead key={date} date={date} day={days.get(date)} hours={plan.day_hours[date] ?? 0} isToday={date === calendar.today} dues={lanes ? [] : calendar.dues} allDay={allDay} />
+          <DayHead key={date} date={date} day={days.get(date)} hours={plan.day_hours[date] ?? 0} isToday={date === calendar.today} dues={lanes ? [] : calendar.dues} />
         ))}
+        <WholeDays events={allDay} dates={dates} />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: cols, padding: "10px 0 150px" }}>
         <div style={{ position: "relative", height }}>
@@ -282,26 +286,21 @@ function DayHead(props: {
   hours: number
   isToday: boolean
   dues: Schemas["DueMarker"][]
-  allDay: (Item & { start: string; end: string })[]
 }) {
-  const { date, day, hours, isToday, dues, allDay } = props
+  const { date, day, hours, isToday, dues } = props
   const { select } = useShell()
   const { drag } = useDragging()
   const target = !!drag?.moved && drag.over === "day" && drag.day === date
-  const [open, setOpen] = useState(false)
   const over = day ? hours - day.cap_hours : 0
-  // A deadline a line, each cut to the column's width; two lines at most, the rest on a tap ("+2 more"): side by
-  // side, the second was cut off mid-word and its "+1" hidden past the column's edge.
   const mine = dues.filter((d) => d.due.startsWith(date))
-  const shown = open || mine.length <= 2 ? mine : mine.slice(0, 1)
   const line = { flex: "none", maxWidth: "100%", minWidth: 0, alignSelf: "flex-start" } as const
-  // Up to two lines, broken between words, before it's cut (3 Nov: "Prep: Math 192…" lost the course number)
-  const chip = { overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", whiteSpace: "normal", overflowWrap: "anywhere", minWidth: 0 } as const
   const big = { fontSize: 28, lineHeight: 0.95 }
   return (
     // The header is the day's all-day row: a task dropped here is due that day.
     <div data-drop-day={date} style={{ padding: "12px 10px 10px", display: "flex", flexDirection: "column", gap: 6, position: "relative", minWidth: 0, background: target ? "color-mix(in srgb, var(--color-accent) 12%, transparent)" : undefined }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, whiteSpace: "nowrap" }}>
+      {/* the date's line wraps rather than run into the next day (3 Nov: "formatting issues with the hour going into
+          the next day"); no hours count here any more, its overload is said below */}
+      <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "4px 8px", minWidth: 0, whiteSpace: "nowrap" }}>
         <span
           className="fr-h tnum"
           style={isToday ? { ...big, color: "var(--color-accent-200)", textShadow: "0 0 calc(18px * var(--g-today)) var(--color-accent)" } : big}
@@ -310,39 +309,14 @@ function DayHead(props: {
         </span>
         <span style={{ color: isToday ? "var(--color-accent-300)" : "var(--color-neutral-400)" }}>{weekday(date)}</span>
         {day?.pace && <span style={{ fontSize: 11, color: "var(--color-accent-300)" }}>{day.pace}</span>}
-        {day && hours > 0 && (
-          // Planned against the day's limit (COMBINED.md 67).
-          <span className="tnum" title={`${hours.toFixed(1)} h planned of ${day.cap_hours} h`} style={{ marginLeft: "auto", fontSize: 11.5, color: over > 0.05 ? "var(--fr-warn)" : "var(--color-neutral-500)" }}>
-            {hours.toFixed(hours < 10 ? 1 : 0)}/{day.cap_hours}h
-          </span>
-        )}
+        <DueCount dues={mine} onPick={(d) => select(dueBlock(d))} />
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 3, minHeight: 18, minWidth: 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
         {over > 0.05 && (
-          <span className="fr-tag warn" style={line}>
+          <span className="fr-tag warn" style={line} title={`${hours.toFixed(1)} h planned of ${day?.cap_hours} h`}>
             <i className="ph ph-warning" style={{ fontSize: 11 }} />
             {over.toFixed(1)} h over
           </span>
-        )}
-        {allDay
-          .filter((f) => f.start.slice(0, 10) <= date && date < f.end.slice(0, 10))
-          .map((f) => (
-            <button key={`a${f.id}`} className="fr-tag fr-plain" title={f.title} onClick={() => select(asBlock(f))} style={line}>
-              <i className="ph ph-calendar-blank" style={{ fontSize: 11 }} />
-              <span style={chip}>{f.title}</span>
-            </button>
-          ))}
-        {shown.map((d) => (
-          <button key={d.item_id} className="fr-tag due fr-plain" title={`${d.title}, ${clock(d.due)}`} onClick={() => select(dueBlock(d))} style={line}>
-            <i className="ph ph-flag" style={{ fontSize: 11, flex: "none" }} />
-            <span style={chip}>{d.title}</span>
-            {!d.due.endsWith("T23:59") && <span className="tnum" style={{ flex: "none" }}>{clock(d.due)}</span>}
-          </button>
-        ))}
-        {mine.length > 2 && (
-          <button className="fr-tag fr-plain" onClick={() => setOpen(!open)} style={{ ...line, color: "var(--color-neutral-400)" }}>
-            {open ? "Show less" : `+${mine.length - 1} more due`}
-          </button>
         )}
       </div>
       {isToday && (
@@ -363,10 +337,6 @@ function DayHead(props: {
   )
 }
 
-/** A due marker, as the selected "block" the popover reads. */
-function dueBlock(d: Schemas["DueMarker"]): Block {
-  return { key: `D${d.item_id}`, item_id: d.item_id, title: d.title, start: d.due, end: d.due }
-}
 
 function Nights({ date, days, axis }: { date: string; days: Map<string, Schemas["CalendarDay"]>; axis: Axis }) {
   const nights = [days.get(addDays(date, -1)), days.get(date)].filter((n) => n !== undefined)
