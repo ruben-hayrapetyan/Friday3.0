@@ -1,18 +1,13 @@
 // The sidebar (v22): the Friday mark, Settings and the tour, the pages, personal's mini month and day agenda
-// (COMBINED.md 10), and what's next on the to-do list, folded until you open it. Rows drag onto the calendar; a block
-// dropped here goes back to Friday ("let Friday decide"). In a narrower window it is a rail of the pages' icons; in a
-// narrow one it slides over the page from the menu button.
-
+// (COMBINED.md 10). No to-do list (3 Nov: "just remove it in its entirety"): the To-do drawer shows what's due. A
+// block dropped here goes back to Friday ("let Friday decide"). In a narrower window it is a rail of the pages' icons;
+// in a narrow one it slides over the page from the menu button.
 import { useQuery } from "@tanstack/react-query"
-import { useState } from "react"
 import { NavLink, useNavigate } from "react-router"
-import { type Block, type Item, query } from "@/api/client"
+import { query } from "@/api/client"
 import { useDragging } from "@/components/calendar/useDrag"
 import { Icon } from "@/components/fr/controls"
-import { useHorizon, useItems, useNow, useStatus } from "@/hooks/queries"
-import { dur, when } from "@/lib/format"
-import { nextBlocks, sections } from "@/lib/todo"
-import { useLook } from "@/theme/LookProvider"
+import { useStatus } from "@/hooks/queries"
 import { DayAgenda } from "./DayAgenda"
 import { MiniMonth } from "./MiniMonth"
 import { useShell } from "./ShellContext"
@@ -31,7 +26,7 @@ const PAGES = [
   { to: "/rules", icon: "sliders-horizontal", label: "Rules" },
 ] as const
 
-export function Sidebar({ showTodos, rail = false, onClose }: { showTodos: boolean; rail?: boolean; onClose?: () => void }) {
+export function Sidebar({ rail = false, onClose }: { rail?: boolean; onClose?: () => void }) {
   const navigate = useNavigate()
   const { drag } = useDragging()
   const { setTour } = useShell()
@@ -70,11 +65,6 @@ export function Sidebar({ showTodos, rail = false, onClose }: { showTodos: boole
       <Pages />
       <MiniMonth />
       <DayAgenda />
-      {showTodos && (
-        <Folded name="Up next" storage="friday-upnext-open">
-          <Upcoming />
-        </Folded>
-      )}
       {dropping && (
         <div
           style={{
@@ -131,34 +121,6 @@ function Ring() {
 }
 
 /** A section of the sidebar that opens and closes, remembered on this device. */
-function Folded({ name, storage, children }: { name: string; storage: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(() => {
-    try {
-      return localStorage.getItem(storage) === "1"
-    } catch {
-      return false
-    }
-  })
-  const toggle = () => {
-    setOpen(!open)
-    try {
-      localStorage.setItem(storage, open ? "0" : "1")
-    } catch {
-      // private mode: it stays this way for the visit
-    }
-  }
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <button className="fr-plain fr-hover-text" onClick={toggle} aria-expanded={open} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 8px", fontSize: 12, color: "var(--color-neutral-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-        <Icon name={open ? "caret-down" : "caret-right"} size={11} />
-        {name}
-      </button>
-      {open && children}
-    </div>
-  )
-}
-
-/** The sidebar as a rail: the pages' icons, with their names on hover, and Settings and the tour below. */
 function Rail() {
   const navigate = useNavigate()
   const { setTour } = useShell()
@@ -244,91 +206,5 @@ function Pages() {
         </NavLink>
       ))}
     </nav>
-  )
-}
-
-const SHOWN = ["Today", "This week", "Ongoing"] as const
-
-/** The next things on the to-do list, in the order they'll happen. */
-function Upcoming() {
-  const { today, select } = useShell()
-  const navigate = useNavigate()
-  const items = useItems().data
-  const blocks = useHorizon().data?.blocks ?? []
-  const now = useNow().data
-  if (!items) return <Skeleton />
-  const open = items.filter((i) => i.status === "todo")
-  if (!open.length) {
-    return <div style={{ padding: "6px 8px", fontSize: 12, color: "var(--color-neutral-500)" }}>Your to-dos show up here once you add them.</div>
-  }
-  const bySection = sections(open, blocks, today)
-  const next = nextBlocks(blocks)
-  const startBy = new Map((now?.alerts ?? []).map((a) => [a.item_id, a.latest_start]))
-  return (
-    <>
-      {SHOWN.filter((s) => bySection[s].length).map((s) => (
-        <div key={s} style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <div style={{ fontSize: 12, color: "var(--color-neutral-500)", padding: "0 8px 4px" }}>{s}</div>
-          {bySection[s].map(({ item }) => (
-            <Row
-              key={item.id}
-              item={item}
-              next={next.get(item.id)}
-              isNow={now?.current?.item_id === item.id}
-              startBy={startBy.get(item.id)}
-              onOpen={() => {
-                const block = next.get(item.id)
-                if (block) select(block)
-                else navigate(`/todo?item=${item.id}`)
-              }}
-            />
-          ))}
-        </div>
-      ))}
-    </>
-  )
-}
-
-function Row(props: { item: Item; next?: Block; isNow: boolean; startBy?: string; onOpen: () => void }) {
-  const { item, next, isNow, startBy, onOpen } = props
-  const { today } = useShell()
-  const { color } = useLook()
-  const { begin } = useDragging()
-  const length = item.remaining_min ?? item.duration_min ?? 60
-  const sub = isNow ? "Now" : next ? when(next.start, today) : "not planned"
-  return (
-    <button
-      className="fr-plain fr-hover"
-      onClick={onOpen}
-      onPointerDown={(e) => begin(e, { kind: "row", start: 0, end: length, grab: 0, itemId: item.id, blockKey: null, title: item.title })}
-      title={`${item.title}${item.remaining_min ? `, ${dur(item.remaining_min)} left` : ""}`}
-      style={{ display: "grid", gridTemplateColumns: "3px minmax(0,1fr)", gap: 10, padding: "6px 8px", borderRadius: "var(--radius-md)", touchAction: "none" }}
-    >
-      <span style={{ borderRadius: 2, background: color(item.area, item.preset) }} />
-      <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span>
-        <span className="tnum" style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>
-          {sub}
-          {startBy && (
-            <>
-              , <span style={{ color: "var(--fr-warn)" }}>start by {when(startBy, today)}</span>
-            </>
-          )}
-        </span>
-      </span>
-    </button>
-  )
-}
-
-function Skeleton() {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "0 8px" }}>
-      {["70%", "55%", "80%", "45%"].map((w) => (
-        <div key={w} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-          <span style={{ height: 10, width: w, borderRadius: 4, background: "color-mix(in srgb, var(--color-text) 8%, transparent)" }} />
-          <span style={{ height: 8, width: "40%", borderRadius: 4, background: "color-mix(in srgb, var(--color-text) 5%, transparent)" }} />
-        </div>
-      ))}
-    </div>
   )
 }

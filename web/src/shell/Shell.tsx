@@ -83,7 +83,7 @@ export function Shell() {
   return (
     <DragProvider onDrop={onDrop}>
       <div data-layout={layout.mode} data-tight={layout.tight || undefined} style={{ ...vars, height: "100vh", display: "grid", gridTemplateColumns: narrow ? "minmax(0,1fr)" : `${layout.side}px minmax(0,1fr)`, background: "var(--fr-backdrop)", color: "var(--color-text)", overflow: "hidden", position: "relative" }}>
-        {!narrow && <Sidebar showTodos={!location.pathname.startsWith("/todo")} rail={layout.mode === "rail"} />}
+        {!narrow && <Sidebar rail={layout.mode === "rail"} />}
         {narrow && (
           <button className="btn btn-icon btn-ghost" data-tour="menu" onClick={() => setNavOpen(true)} aria-label="Menu" style={{ position: "absolute", left: 10, top: 14, zIndex: 9, width: 34, height: 34 }}>
             <Icon name="list" size={20} />
@@ -93,7 +93,7 @@ export function Shell() {
           <>
             <div onClick={() => setNavOpen(false)} style={{ position: "absolute", inset: 0, zIndex: 30, background: "color-mix(in srgb, #000 40%, transparent)" }} />
             <div className="fr-float" style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `min(${SIDEBAR + 32}px, 86vw)`, zIndex: 31, display: "flex", borderRadius: 0 }}>
-              <Sidebar showTodos={false} onClose={() => setNavOpen(false)} />
+              <Sidebar onClose={() => setNavOpen(false)} />
             </div>
           </>
         )}

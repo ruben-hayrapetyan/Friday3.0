@@ -137,6 +137,8 @@ struct FridayMenus: Commands {
             Button("Next") { Page.shared.send(.next) }
             Divider()
             Button("To-do Drawer") { Page.shared.send(.drawer) }.keyboardShortcut("t", modifiers: [.command, .control])
+            Divider()
+            Button("Reload") { Page.shared.reload() }.keyboardShortcut("r")
         }
         CommandMenu("Go") {
             Button("Plan") { Page.shared.send(.go("/")) }.keyboardShortcut("1", modifiers: [.command, .option])

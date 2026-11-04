@@ -11,7 +11,9 @@ import { DueLabel } from "@/components/DueLabel"
 import { Check, Icon, Seg } from "@/components/fr/controls"
 import { readFields, useAdd, useParsed } from "@/components/todo/QuickAdd"
 import { useCommand } from "@/hooks/useCommand"
-import { useHorizon, useItems } from "@/hooks/queries"
+import { useHorizon, useItems, useStatus } from "@/hooks/queries"
+import { useClock } from "@/hooks/useClock"
+import { type DueGroup, type Late, dueGroups, lateWarning, overdueBy } from "@/lib/dueSoon"
 import { dur, when } from "@/lib/format"
 import { nextBlocks } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
@@ -54,14 +56,22 @@ export function DrawerFrame({ children, todo }: { children: ReactNode; todo?: bo
   )
 }
 
+const VIEWS = ["Due", "When", "Tag"] as const
+type View = (typeof VIEWS)[number]
+const VIEW_KEY = "friday-drawer-view"
+
 export function Drawer() {
   const { today, setDrawer } = useShell()
   const navigate = useNavigate()
-  const [by, setBy] = useState<"When" | "Tag">("When")
+  const [by, setByState] = useState<View>(() => (VIEWS as readonly string[]).includes(localStorage.getItem(VIEW_KEY) ?? "") ? (localStorage.getItem(VIEW_KEY) as View) : "Due")
+  const setBy = (v: View) => (setByState(v), localStorage.setItem(VIEW_KEY, v))
   const [sort, setSort] = useState<SortBy>("Next up")
   const items = useItems().data ?? []
   const blocks = useHorizon().data?.blocks ?? []
-  const groups = grouped(items, blocks, today, by, sort)
+  const status = useStatus().data
+  const now = useClock()
+  const late = [...(status?.late_items ?? []), ...(status?.slipping ?? [])]
+  const groups: DueGroup[] = by === "Due" ? dueGroups(items, now, late) : grouped(items, blocks, today, by, sort)
   const trying = useWhatIf().on
   // Several at once, as on the To-do page: ⌘ adds one, Shift a run. Dragged together onto the calendar, they're
   // planned one after another; onto a day, all due that day.
@@ -104,8 +114,9 @@ export function Drawer() {
         </span>
       )}
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <Seg options={["When", "Tag"] as const} value={by} onPick={setBy} size="small" />
+        <Seg options={VIEWS} value={by} onPick={setBy} size="small" />
         <div style={{ flex: 1 }} />
+        {by !== "Due" && (
         <Dropdown icon="sort-ascending" label={sort}>
           {(close) => (
             <div style={{ padding: 6, width: 210 }}>
@@ -113,18 +124,20 @@ export function Drawer() {
             </div>
           )}
         </Dropdown>
+        )}
       </div>
       <div style={{ overflowY: "auto", minHeight: 0, flex: 1, display: "flex", flexDirection: "column", gap: 14, paddingBottom: 24 }}>
+        {by === "Due" && !groups.length && <span style={{ fontSize: 12, color: "var(--color-neutral-500)", padding: "0 4px" }}>Nothing due in the next week, and nothing overdue that still matters.</span>}
         {groups.map((g) => (
-          <div key={g.name} style={{ display: "flex", flexDirection: "column" }}>
+          <div key={g.name} style={{ display: "flex", flexDirection: "column", ...(g.red ? { borderLeft: "2px solid var(--fr-now)", paddingLeft: 4 } : {}) }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 4px 4px" }}>
-              <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>{g.name}</span>
+              <span style={{ fontSize: 12, color: g.red ? "var(--fr-now)" : "var(--color-neutral-400)", fontWeight: g.red ? 600 : undefined }}>{g.name}</span>
               <span className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>
                 {g.items.length}
               </span>
             </div>
             {g.items.map((i) => (
-              <Row key={i.id} item={i} picked={picked.includes(i.id)} together={picked.includes(i.id) && pickedItems.length > 1 ? pickedItems : null} onClick={(e) => choose(i.id, e)} />
+              <Row key={i.id} item={i} late={g.late?.get(i.id)} overdueBy={g.overdue && i.due ? overdueBy(i.due, now) : undefined} picked={picked.includes(i.id)} together={picked.includes(i.id) && pickedItems.length > 1 ? pickedItems : null} onClick={(e) => choose(i.id, e)} />
             ))}
           </div>
         ))}
@@ -184,7 +197,8 @@ export function QuickLine({ placeholder = "Add a to-do" }: { placeholder?: strin
 
 const lengthOf = (item: Item) => item.remaining_min ?? item.duration_min ?? 60
 
-function Row({ item, picked, together, onClick }: { item: Item; picked: boolean; together: Item[] | null; onClick: (e: React.MouseEvent | React.KeyboardEvent) => void }) {
+function Row(props: { item: Item; late?: Late; overdueBy?: string; picked: boolean; together: Item[] | null; onClick: (e: React.MouseEvent | React.KeyboardEvent) => void }) {
+  const { item, late, overdueBy: overdueText, picked, together, onClick } = props
   const { today } = useShell()
   const { color } = useLook()
   const { begin } = useDragging()
@@ -218,17 +232,19 @@ function Row({ item, picked, together, onClick }: { item: Item; picked: boolean;
       <Check small done={false} onToggle={() => done({ id: item.id })} />
       <span style={{ alignSelf: "stretch", borderRadius: 2, background: color(item.area, item.preset) }} />
       <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: item.long_term ? "var(--fr-aged)" : undefined }}>
+        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: item.long_term ? "var(--fr-aged)" : undefined, fontWeight: overdueText ? 600 : undefined }}>
           {item.pointless_late && <ExpiresMark />} {item.title}
         </span>
         <span className="tnum" style={{ fontSize: 11, color: overdue ? "var(--fr-due)" : "var(--color-neutral-500)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {overdueText ? `${overdueText} · ` : ""}
           {next ? when(next.start, today) : "not planned"}
-          {item.due && (
+          {item.due && !overdueText && (
             <>
               {" · "}
               <DueLabel due={item.due} prefix="due " routine={item.preset === "Routine"} />
             </>
           )}
+          {lateWarning(late) && <span style={{ color: "var(--fr-warn)" }}> · {lateWarning(late)}</span>}
         </span>
       </span>
       <span className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>

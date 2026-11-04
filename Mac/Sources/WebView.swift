@@ -34,6 +34,11 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
         view.evaluateJavaScript(action.script)
     }
 
+    /// The page again from the server, past any cache (3 Nov: "cmd R did nothing"): a deploy's new web app at once.
+    func reload() {
+        view.reloadFromOrigin()
+    }
+
     /// Anything not on Friday's own server opens in your browser.
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                  decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
