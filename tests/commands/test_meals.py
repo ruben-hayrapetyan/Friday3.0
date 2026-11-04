@@ -277,3 +277,17 @@ def test_the_meal_you_are_eating_names_its_routine_too(app: App) -> None:
     at(app, "12:00")
     app.do("meal_start", kind="lunch")
     assert app.do("meals")["eating"]["item_id"] == todays_lunch(app)["id"]
+
+
+def test_a_meal_eaten_after_a_timer_ticked_its_routine_off_still_names_that_routine(app: App) -> None:
+    # 4 Nov: lunch timed (the routine done), then logged: without the routine the calendar drew lunch twice
+    on(app)
+    lunch_routine(app)
+    at(app, "13:00")
+    app.do("done", id=todays_lunch(app)["id"])
+    app.do("meal_log", kind="lunch", start="2026-10-19T12:10", end="2026-10-19T12:40")
+    (lunch,) = app.do("meals")["days"][0]["meals"]
+    assert lunch["item_id"] == todays_lunch(app)["id"]
+    # what's stored is unchanged: the meal ticked nothing off, so taking it back opens nothing
+    (row,) = app.table("meals")
+    assert row["item_id"] is None

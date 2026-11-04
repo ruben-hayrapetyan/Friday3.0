@@ -14,6 +14,7 @@ no longer planned when you mostly skip it. A rule can say yes ahead for some mea
 
 import sqlite3
 from collections.abc import Mapping
+from dataclasses import replace
 from datetime import date, timedelta
 from typing import Any
 
@@ -452,6 +453,15 @@ def decide(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> list[str
     return said
 
 
+def linked(ctx: Ctx, m: Meal) -> Meal:
+    """A meal eaten with its day's routine, for the calendar to draw it in the routine's place: the one it ticked off,
+    else that day's routine of its name, which a timer may have ticked off first (4 Nov: today's lunch drawn twice)."""
+    if m.item_id is not None or m.skipped or m.start is None:
+        return m
+    routine = routine_of(ctx, m.kind, m.date)
+    return replace(m, item_id=int(routine["id"])) if routine else m
+
+
 def meal_out(m: Meal) -> MealOut:
     local = lambda t: format_local(t) if t else None  # noqa: E731
     return MealOut(
@@ -481,6 +491,7 @@ def meals(ctx: Ctx, inp: Empty) -> MealsOut:
     every = recorded(ctx, LEARN_DAYS)
     shown = [m for m in every if m.date > ctx.today - timedelta(days=SHOWN_DAYS)]
     days: dict[str, list[MealOut]] = {}
+    shown = [linked(ctx, m) for m in shown]
     for m in shown:
         days.setdefault(m.date.isoformat(), []).append(meal_out(m))
     now = next((m for m in reversed(shown) if not m.skipped and m.start and m.end is None), None)
