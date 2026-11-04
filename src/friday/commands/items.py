@@ -367,7 +367,9 @@ def set_status(ctx: Ctx, item_id: int, status: str, completed: str | None = None
 
 @command("drop", affects_plan=True)
 def drop(ctx: Ctx, inp: ItemRef) -> ItemResult:
-    """Drop an item."""
+    """Drop an item; a timer on it stops (its time kept), and any other goes on."""
+    if ctx.conn.execute("SELECT 1 FROM timer WHERE user_id = ? AND item_id = ?", [ctx.user_id, inp.id]).fetchone():
+        stop_timer(ctx, item_id=inp.id)
     dropped = set_status(ctx, inp.id, "dropped")
     queue_event_write(ctx, dropped, "delete")
     return ItemResult(item=item_out(ctx, dropped))
@@ -389,7 +391,7 @@ def done(ctx: Ctx, inp: DoneInput) -> ItemResult:
     if item.status == "done":
         raise FieldError("id", f"T{inp.id} is already done")
     if ctx.conn.execute("SELECT 1 FROM timer WHERE user_id = ? AND item_id = ?", [ctx.user_id, inp.id]).fetchone():
-        stop_timer(ctx)
+        stop_timer(ctx, item_id=inp.id)  # its own: another may be running alongside
     progress = progress_rows(ctx.conn, ctx.user_id).get(inp.id, [])
     planned = (amount_units(item) or 0) * UNIT_MIN
     actual, source = (inp.actual_min, "retro") if inp.actual_min is not None else actual_minutes(progress, planned)

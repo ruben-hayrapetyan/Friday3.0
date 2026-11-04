@@ -13,16 +13,34 @@ type Now = Schemas["NowOut"]
 type Meals = Schemas["MealsOut"]
 type Sleep = Schemas["SleepOut"]
 
-export function timerStarted(client: QueryClient, input: { id?: number } | null): void {
+type Timer = Schemas["TimerOut"]
+
+/** Started: the timer at once; `alongside`, what was being timed goes on beside it (2 Nov). */
+export function timerStarted(client: QueryClient, input: { id?: number; alongside?: boolean } | null): void {
   const id = input?.id
   if (typeof id !== "number") return
-  client.setQueryData<Status>(["status"], (s) => s && { ...s, timer: { item_id: id, started: fromMin(nowMin()), minutes: 0, elapsed_s: 0 } })
+  client.setQueryData<Status>(["status"], (s) => s && started(s, id, !!input?.alongside))
   client.setQueryData<Now>(["now"], (n) => n && { ...n, current_source: "timer" })
 }
 
-export function timerStopped(client: QueryClient, input: { done?: boolean } | null): void {
-  client.setQueryData<Status>(["status"], (s) => s && { ...s, timer: null })
-  if (input?.done) client.setQueryData<Now>(["now"], (n) => n && { ...n, current: null })
+export function started(s: Status, id: number, alongside: boolean): Status {
+  const timer: Timer = { item_id: id, title: null, started: fromMin(nowMin()), minutes: 0, elapsed_s: 0 }
+  const others = [...(s.alongside ?? []), ...(s.timer ? [s.timer] : [])].filter((t) => t.item_id !== id)
+  return { ...s, timer, alongside: alongside ? others : [] }
+}
+
+/** Stopped: that one goes (`id`, else the timer), and the one started last of the rest is the timer. */
+export function timerStopped(client: QueryClient, input: { id?: number | null; done?: boolean } | null): void {
+  const s = client.getQueryData<Status>(["status"])
+  const wasTimer = !s?.timer || input?.id == null || input.id === s.timer.item_id
+  client.setQueryData<Status>(["status"], (x) => x && stopped(x, input?.id ?? null))
+  if (input?.done && wasTimer) client.setQueryData<Now>(["now"], (n) => n && { ...n, current: null })
+}
+
+export function stopped(s: Status, id: number | null): Status {
+  const rest = s.alongside ?? []
+  if (id != null && s.timer?.item_id !== id) return { ...s, alongside: rest.filter((t) => t.item_id !== id) }
+  return { ...s, timer: rest.length ? rest[rest.length - 1] : null, alongside: rest.slice(0, -1) }
 }
 
 export function markedDone(client: QueryClient, input: { id?: number } | null): void {

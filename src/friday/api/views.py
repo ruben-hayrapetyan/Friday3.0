@@ -129,6 +129,7 @@ class StatusOut(Model):
     plan_id: int | None
     plan_generation: int | None
     timer: TimerOut | None
+    alongside: list[TimerOut] = []  # the other things being timed at once, in the order started
     settings_version: int
     ready: bool  # timezone and sleep are set
     notices: list[str]

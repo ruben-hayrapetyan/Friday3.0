@@ -110,6 +110,7 @@ class ProgressInput(Model):
 
 class StartInput(Model):
     id: int
+    alongside: bool = False  # keep what's being timed going too: two things at once (2 Nov)
 
 
 class StuckInput(Model):
@@ -118,6 +119,7 @@ class StuckInput(Model):
 
 
 class StopInput(Model):
+    id: int | None = None  # which of the things being timed; the one started last when not said
     done: bool = False
     at: str | None = None  # when you stopped, if it was earlier than now (you forgot the timer): local time
 
@@ -149,6 +151,7 @@ class DiagnoseInput(Model):
 
 class TimerOut(Model):
     item_id: int | None
+    title: str | None = None
     started: str | None
     minutes: int = 0
     elapsed_s: int = 0  # the running session so far; the bar ticks on from it

@@ -319,7 +319,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Drop an item. */
+        /** Drop an item; a timer on it stops (its time kept), and any other goes on. */
         post: operations["drop"];
         delete?: never;
         options?: never;
@@ -1815,7 +1815,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Stop the timer; with `done`, also complete the item; with `at`, as of when you really stopped. */
+        /** Stop the timer (`id`'s, or the one started last; the others go on); with `done`, also complete its item; with */
         post: operations["stop"];
         delete?: never;
         options?: never;
@@ -8594,6 +8594,11 @@ export interface components {
         StartInput: {
             /** Id */
             id: number;
+            /**
+             * Alongside
+             * @default false
+             */
+            alongside?: boolean;
         };
         /** StartResult */
         StartResult: {
@@ -8641,6 +8646,11 @@ export interface components {
             /** Plan Generation */
             plan_generation: number | null;
             timer: components["schemas"]["TimerOut"] | null;
+            /**
+             * Alongside
+             * @default []
+             */
+            alongside?: components["schemas"]["TimerOut"][];
             /** Settings Version */
             settings_version: number;
             /** Ready */
@@ -8687,6 +8697,8 @@ export interface components {
         };
         /** StopInput */
         StopInput: {
+            /** Id */
+            id?: number | null;
             /**
              * Done
              * @default false
@@ -9004,6 +9016,8 @@ export interface components {
         TimerOut: {
             /** Item Id */
             item_id: number | null;
+            /** Title */
+            title?: string | null;
             /** Started */
             started: string | null;
             /**

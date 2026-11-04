@@ -1299,7 +1299,7 @@
   },
   "/api/c/drop": {
    "post": {
-    "summary": "Drop an item.",
+    "summary": "Drop an item; a timer on it stops (its time kept), and any other goes on.",
     "operationId": "drop",
     "parameters": [
      {
@@ -7666,7 +7666,7 @@
   },
   "/api/c/stop": {
    "post": {
-    "summary": "Stop the timer; with `done`, also complete the item; with `at`, as of when you really stopped.",
+    "summary": "Stop the timer (`id`'s, or the one started last; the others go on); with `done`, also complete its item; with",
     "operationId": "stop",
     "parameters": [
      {
@@ -27902,6 +27902,11 @@
      "id": {
       "type": "integer",
       "title": "Id"
+     },
+     "alongside": {
+      "type": "boolean",
+      "title": "Alongside",
+      "default": false
      }
     },
     "additionalProperties": false,
@@ -28060,6 +28065,14 @@
        }
       ]
      },
+     "alongside": {
+      "items": {
+       "$ref": "#/components/schemas/TimerOut"
+      },
+      "type": "array",
+      "title": "Alongside",
+      "default": []
+     },
      "settings_version": {
       "type": "integer",
       "title": "Settings Version"
@@ -28144,6 +28157,17 @@
    },
    "StopInput": {
     "properties": {
+     "id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
      "done": {
       "type": "boolean",
       "title": "Done",
@@ -29110,6 +29134,17 @@
        }
       ],
       "title": "Item Id"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
      },
      "started": {
       "anyOf": [

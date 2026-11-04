@@ -30,7 +30,7 @@ from friday.api.views import (
 from friday.commands.decisions import decisions
 from friday.commands.fields import item_out, require_item
 from friday.commands.registry import Ctx, query
-from friday.commands.timer import elapsed_seconds, running
+from friday.commands.timer import all_running, elapsed_seconds, running
 from friday.commands.timer import timer_out as timing
 from friday.core.db import one, rows
 from friday.core.guess import course_of, guess_preset
@@ -383,11 +383,11 @@ def split_at_now(ctx: Ctx, blocks: list[BlockOut]) -> list[BlockOut]:
     """A block running across now, apart at the last quarter hour: what's gone of it is past (and says what became
     of it), the rest is still the plan. A replan keeps the two in one record, so 10–10:30 missed and 10:30–12:30
     planned read as one block from 10. Not the block you're timing: the timer shows that one."""
-    timer = one(ctx.conn, "SELECT item_id FROM timer WHERE user_id = ?", [ctx.user_id])
+    timed = {r["item_id"] for r in rows(ctx.conn, "SELECT item_id FROM timer WHERE user_id = ?", [ctx.user_id])}
     cut = ctx.local(format_utc(ctx.now_utc // UNIT_MIN * UNIT_MIN)) or ""
     out = []
     for b in blocks:
-        if b.start < cut < b.end and not (timer and timer["item_id"] == b.item_id):
+        if b.start < cut < b.end and b.item_id not in timed:
             share = (parse_utc(ctx.utc(cut)) - parse_utc(ctx.utc(b.start))) / max(1, minutes_of_block(ctx, b))
             gone = {k: round(v * share) for k, v in b.cost.items()}
             out.append(b.model_copy(update={"end": cut, "cost": gone}))
@@ -629,6 +629,7 @@ def status(ctx: Ctx, inp: Empty) -> StatusOut:
         plan_id=saved["id"] if saved else None,
         plan_generation=saved["generation"] if saved else None,
         timer=timer_out,
+        alongside=[timing(ctx, t) for t in all_running(ctx) if timer is None or t["item_id"] != timer["item_id"]],
         settings_version=settings_version(ctx.conn, ctx.user_id),
         ready=ready,
         notices=notices,

@@ -233,14 +233,14 @@ def remove_future_occurrences(ctx: Ctx, series_id: int, from_day: date) -> list[
     """Delete undone, undetached occurrences from `from_day` on; returns the ones kept: detached, or being timed
     (you're on it now, so it isn't taken from under the timer)."""
     kept = []
-    timer = one(ctx.conn, "SELECT item_id FROM timer WHERE user_id = ?", [ctx.user_id])
+    timed = {r["item_id"] for r in rows(ctx.conn, "SELECT item_id FROM timer WHERE user_id = ?", [ctx.user_id])}
     links = event_links(ctx.conn, ctx.user_id)
     for row in rows(
         ctx.conn,
         "SELECT id, detached FROM items WHERE series_id = ? AND status = 'todo' AND occurrence_date >= ?",
         [series_id, from_day.isoformat()],
     ):
-        if row["detached"] or (timer is not None and timer["item_id"] == row["id"]):
+        if row["detached"] or row["id"] in timed:
             kept.append(row["id"])
         elif row["id"] in links:
             # On a calendar: taken off it too, and kept here as dropped so the calendar's copy stays tied to it until
@@ -263,7 +263,7 @@ def delete_item(ctx: Ctx, item_id: int) -> None:
         for row in rows(ctx.conn, f"SELECT id FROM suggestions WHERE {column} = ?", [item_id]):
             ctx.db.update("suggestions", {"id": row["id"]}, {column: None})
     if one(ctx.conn, "SELECT 1 FROM timer WHERE user_id = ? AND item_id = ?", [ctx.user_id, item_id]):
-        ctx.db.delete("timer", {"user_id": ctx.user_id})
+        ctx.db.delete("timer", {"user_id": ctx.user_id, "item_id": item_id})
     for table, column in (
         ("pins", "item_id"),
         ("dependencies", "item_id"),

@@ -6,11 +6,13 @@
 // (Settings → Schedule), a slim row on top offers the tap that fits the hour: I'm up, Ready to work, Done with work
 // (with Going to bed beside it, for a night you go straight to bed), then Going to bed; with
 // meal tracking on, another offers Eating now around a mealtime (or Skip), and Done eating while you eat. Napping, a
-// row says since when, with I'm up; More and free time offer a nap and a snack (`breaks.ts`).
+// row says since when, with I'm up; More and free time offer a nap and a snack (`breaks.ts`). Timing more than one
+// thing at once (2 Nov: "working on two things at once even if friday didn't originally plan to"), a slim row for
+// each of the others, ticking, with Done and Stop; "Do something else" offers starting one alongside.
 
 import { useState } from "react"
 import { useNavigate } from "react-router"
-import type { Block } from "@/api/client"
+import type { Block, Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useClock, useElapsed } from "@/hooks/useClock"
@@ -29,7 +31,9 @@ type Fit = { item_id: number; title: string; minutes: number }
 
 export function Dock() {
   const now = useNow().data
-  const timer = useStatus().data?.timer ?? null
+  const status = useStatus().data
+  const timer = status?.timer ?? null
+  const alongside = status?.alongside ?? []
   const today = fromMin(useClock()).slice(0, 10)
   const { look, color } = useLook()
   const [menu, setMenu] = useState<Menu>(null)
@@ -58,6 +62,9 @@ export function Dock() {
       {work && menu === "more" && <MoreMenu itemId={cur.item_id} onSwitch={() => setMenu("swap")} onClose={() => setMenu(null)} />}
       <SleepTap />
       <MealTap />
+      {alongside.map((t) => (
+        <Alongside key={t.item_id} timer={t} />
+      ))}
       {cur && timer && timer.item_id === cur.item_id ? (
         <Timing cur={cur} elapsed={timer.elapsed_s ?? 0} started={timer.started ?? null} next={next} dot={color(cur.area, cur.preset)} compact={compact} menu={menu} onMenu={toggle} />
       ) : cur?.fixed ? (
@@ -67,7 +74,7 @@ export function Dock() {
       ) : (
         <Free until={now.next?.start ?? null} gap={now.gap_minutes} next={now.next?.title ?? null} fits={now.fits} today={today} />
       )}
-      {work && menu === "swap" && <Swaps options={now.swaps} onClose={() => setMenu(null)} />}
+      {work && menu === "swap" && <Swaps options={now.swaps} timing={!!timer} onClose={() => setMenu(null)} />}
     </div>
   )
 }
@@ -402,16 +409,16 @@ function Pulse({ color }: { color: string }) {
   return <span style={{ flex: "none", width: 8, height: 8, borderRadius: "50%", background: color, boxShadow: `0 0 0 3px color-mix(in srgb, ${color} 30%, transparent)` }} />
 }
 
-function IconButton({ icon, label, on, onClick }: { icon: string; label: string; on?: boolean; onClick: () => void }) {
+function IconButton({ icon, label, on, small, onClick }: { icon: string; label: string; on?: boolean; small?: boolean; onClick: () => void }) {
   return (
     <button
       className="btn btn-icon btn-secondary"
       onClick={onClick}
       aria-label={label}
       title={label}
-      style={{ boxShadow: "none", background: on ? "color-mix(in srgb, var(--color-accent) 18%, transparent)" : "var(--fr-chip-bg)" }}
+      style={{ boxShadow: "none", background: on ? "color-mix(in srgb, var(--color-accent) 18%, transparent)" : "var(--fr-chip-bg)", ...(small ? { width: 26, height: 26 } : {}) }}
     >
-      <Icon name={icon} size={15} />
+      <Icon name={icon} size={small ? 13 : 15} />
     </button>
   )
 }
@@ -446,8 +453,30 @@ function MoreMenu({ itemId, onSwitch, onClose }: { itemId: number; onSwitch: () 
   )
 }
 
-/** Other things to do now, safe for every deadline, best first; starting one moves the timer, not the plan. */
-function Swaps({ options, onClose }: { options: Fit[]; onClose: () => void }) {
+/** Something else timed at the same time as what you're on: its own seconds, Done and Stop; the plan stays. */
+function Alongside({ timer }: { timer: Schemas["TimerOut"] }) {
+  const seconds = useElapsed(timer.elapsed_s ?? 0)
+  const stop = useCommand("stop", { label: (o) => o.result.message ?? "Stopped" })
+  const id = timer.item_id ?? undefined
+  return (
+    <div data-testid="alongside" style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 14px 6px 18px", fontSize: 12.5, borderBottom: "1px solid color-mix(in srgb, var(--color-text) 6%, transparent)" }}>
+      <Pulse color="var(--color-neutral-400)" />
+      <span style={{ color: "var(--color-neutral-400)", whiteSpace: "nowrap" }}>Also timing</span>
+      <span title={timer.title ?? ""} style={{ ...dim, color: "var(--color-text)", flex: 1, minWidth: 0, whiteSpace: "nowrap" }}>
+        {timer.title}
+      </span>
+      <span className="tnum" style={{ color: "var(--color-accent-200)" }}>
+        {hms(seconds)}
+      </span>
+      <IconButton icon="check" label={`Done: stop it and mark ${timer.title} done`} small onClick={() => stop({ id, done: true })} />
+      <IconButton icon="stop" label={`Stop timing ${timer.title}; what you're on goes on`} small onClick={() => stop({ id })} />
+    </div>
+  )
+}
+
+/** Other things to do now, safe for every deadline, best first; starting one moves the timer, not the plan, and
+ * while you time something, + starts one alongside it instead. */
+function Swaps({ options, timing, onClose }: { options: Fit[]; timing: boolean; onClose: () => void }) {
   const start = useCommand("start", { label: (o) => o.result.message ?? "Switched" })
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "0 14px 12px 18px", flexWrap: "wrap" }}>
@@ -455,17 +484,31 @@ function Swaps({ options, onClose }: { options: Fit[]; onClose: () => void }) {
         {options.length ? "Instead, with nothing going late:" : "Nothing else fits right now without something going late."}
       </span>
       {options.slice(0, 3).map((s) => (
-        <button
-          key={s.item_id}
-          className="fr-plain fr-hover-accent"
-          onClick={() => (start({ id: s.item_id }), onClose())}
-          style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--color-text) 6%, transparent)" }}
-        >
-          {s.title}
-          <span className="tnum" style={{ color: "var(--color-neutral-500)" }}>
-            {dur(s.minutes)}
-          </span>
-        </button>
+        // One chip, two buttons: the title switches to it, + starts it alongside what you're on (2 Nov)
+        <span key={s.item_id} style={{ display: "inline-flex", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--color-text) 6%, transparent)", overflow: "hidden" }}>
+          <button
+            className="fr-plain fr-hover-accent"
+            onClick={() => (start({ id: s.item_id }), onClose())}
+            title={timing ? "Switch to it: what you're on stops" : undefined}
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 10px" }}
+          >
+            {s.title}
+            <span className="tnum" style={{ color: "var(--color-neutral-500)" }}>
+              {dur(s.minutes)}
+            </span>
+          </button>
+          {timing && (
+            <button
+              className="fr-plain fr-hover-accent"
+              onClick={() => (start({ id: s.item_id, alongside: true }), onClose())}
+              aria-label={`Start ${s.title} alongside`}
+              title="Alongside: keep timing what you're on too"
+              style={{ display: "flex", alignItems: "center", padding: "5px 8px", borderLeft: "1px solid color-mix(in srgb, var(--color-text) 12%, transparent)", color: "var(--color-accent-300)" }}
+            >
+              <Icon name="plus" size={13} />
+            </button>
+          )}
+        </span>
       ))}
     </div>
   )

@@ -95,6 +95,7 @@ class Snapshot:
     eating: tuple[int, int] | None = None  # the routine of the meal you're eating (Sleep & meals), and its start
     going: frozenset[int] = frozenset()  # optional events you said you'd go to this time (`event_keep`): walled off
     away: tuple[str, int, int] | None = None  # a nap or a snack now (`away`): what, since when, until when
+    alongside: tuple[tuple[int, int], ...] = ()  # timed at once with `timer` (item id, start): their time counts
 
 
 def take_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> Snapshot:
@@ -132,6 +133,7 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         now_utc,
         frozenset(kv_get(conn, "event_holds_loose", [], user_id) or []),
     )
+    timed = timers(conn, user_id)
     return Snapshot(
         user_id=user_id,
         now_utc=now_utc,
@@ -145,7 +147,8 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         ),
         pins=pins,
         progress={k: tuple(v) for k, v in progress.items()},
-        timer=timer(conn, user_id),
+        timer=timed[-1] if timed else None,
+        alongside=tuple(timed[:-1]),
         day_overrides=day_overrides(conn, user_id),
         pace_periods=pace_periods(conn, user_id),
         areas=area_names(conn, user_id),
@@ -249,9 +252,10 @@ def busy_as_you_count(item: Item, settings: dict[str, Any], calendars: dict[int,
     return replace(item, blocks_time=False) if reason else item
 
 
-def timer(conn: sqlite3.Connection, user_id: int) -> tuple[int, int] | None:
-    found = conn.execute("SELECT item_id, start_utc FROM timer WHERE user_id = ?", [user_id]).fetchone()
-    return (found["item_id"], parse_utc(found["start_utc"])) if found else None
+def timers(conn: sqlite3.Connection, user_id: int) -> list[tuple[int, int]]:
+    """Each timer (item id, start), the one started last last: "the timer"."""
+    found = conn.execute("SELECT item_id, start_utc FROM timer WHERE user_id = ? ORDER BY start_utc, rowid", [user_id])
+    return [(r["item_id"], parse_utc(r["start_utc"])) for r in found]
 
 
 def eating(conn: sqlite3.Connection, user_id: int) -> tuple[int, int] | None:

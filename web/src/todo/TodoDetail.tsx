@@ -6,7 +6,7 @@ import { useNavigate } from "react-router"
 import type { Block } from "@/api/client"
 import { Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
-import { useAreas, useItem, useNow, useWhy } from "@/hooks/queries"
+import { useAreas, useItem, useNow, useStatus, useWhy } from "@/hooks/queries"
 import { clock, dur, weekday, when } from "@/lib/format"
 import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
@@ -31,6 +31,9 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
   const { color } = useLook()
   const detail = useItem(id).data
   const now = useNow().data
+  const status = useStatus().data
+  const timer = status?.timer ?? null
+  const alongside = status?.alongside ?? []
   const presets = usePresets()
   const areas = (useAreas().data ?? []).filter((a) => !a.archived).map((a) => a.name)
   const [pick, setPick] = useState<"area" | "preset" | "due" | "length" | null>(null)
@@ -265,6 +268,12 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
           <button className="btn btn-primary" onClick={() => start({ id })}>
             <Icon name="play" />
             {item.done_min ? "Resume" : "Start now"}
+          </button>
+        )}
+        {!isDone && item.when !== "fixed" && timer && timer.item_id !== id && !alongside.some((t) => t.item_id === id) && (
+          <button className="btn btn-secondary" onClick={() => start({ id, alongside: true })} title={`Times this too, keeping ${timer.title ?? "what you're on"} going`}>
+            <Icon name="plus" />
+            Start alongside
           </button>
         )}
         <button className="btn btn-secondary" onClick={() => (isDone ? reopen({ id }) : done({ id }))}>

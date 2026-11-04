@@ -13,7 +13,7 @@ from friday.core.db import one
 # Tables without an `id` column, keyed by these columns instead.
 TABLE_KEYS = {
     "blocks": ("plan_id", "item_id", "start_utc"),
-    "timer": ("user_id",),
+    "timer": ("user_id", "item_id"),
     "reviews": ("user_id", "date"),
     "day_overrides": ("user_id", "date"),
     "settings": ("user_id", "key"),

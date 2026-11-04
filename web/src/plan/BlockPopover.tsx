@@ -39,18 +39,21 @@ const KIND: Record<string, string> = {
 }
 const FIRM: Record<string, string> = { hard: "Hard deadline", soft: "Soft deadline", none: "No deadline" }
 
-function BigButton({ icon, label, note, onClick, primary }: { icon: string; label: string; note: string; onClick: () => void; primary?: boolean }) {
+function BigButton({ icon, label, note, onClick, primary, tight, hint }: { icon: string; label: string; note: string; onClick: () => void; primary?: boolean; tight?: boolean; hint?: string }) {
   return (
     <button
       className={`btn ${primary ? "btn-primary" : "btn-secondary"}`}
       onClick={onClick}
-      style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "10px 12px", minHeight: 58 }}
+      title={hint}
+      style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: tight ? "9px 8px" : "10px 12px", minHeight: 58, minWidth: 0 }}
     >
-      <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 15 }}>
-        <Icon name={icon} size={18} fill={icon === "play"} />
+      <span style={{ display: "flex", gap: tight ? 5 : 8, alignItems: "center", fontSize: tight ? 13 : 15, whiteSpace: "nowrap" }}>
+        <Icon name={icon} size={tight ? 15 : 18} fill={icon === "play"} />
         {label}
       </span>
-      <span style={{ fontSize: 10.5, opacity: 0.75, fontFamily: "var(--fr-body)" }}>{note}</span>
+      <span title={note} style={{ fontSize: 11.5, opacity: 0.75, fontFamily: "var(--fr-body)", maxWidth: "100%", textAlign: "left", lineHeight: 1.25, ...(tight ? {} : { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }) }}>
+        {note}
+      </span>
     </button>
   )
 }
@@ -72,7 +75,8 @@ export function BlockPopover() {
   const settle = useCommand("settle", { label: (o) => o.result.message })
   const stop = useCommand("stop", { label: (o) => o.result.message ?? "Paused" })
   const tentative = useCommand("edit", { label: (o) => (o.result.item.certainty === "tentative" ? "Might not happen: planned loosely" : "Planned as usual") })
-  const timing = useStatus().data?.timer
+  const status = useStatus().data
+  const timing = status?.timer
   const pin = useCommand("pin", { label: () => `Pinned ${b?.title} here` })
   const unpin = useCommand("unpin", { label: () => `${b?.title}: Friday decides again` })
   const skip = useCommand("skip", { label: () => "Skipped this one" })
@@ -118,6 +122,9 @@ export function BlockPopover() {
     return () => window.removeEventListener("pointerdown", press, true)
   }, [key, select])
   if (!b) return null
+  const timedNow = timing?.item_id === b.item_id || !!status?.alongside?.some((t) => t.item_id === b.item_id)
+  // Something else is being timed: Start would switch, so it says so, and Alongside keeps it going (2 Nov)
+  const other = timing && !timedNow ? (timing.title ?? "what you're timing") : null
   const item = detail?.item
   const close = () => select(null)
   // A past block: what became of it (the server says), as a sitting you timed, a block missed, or one counted done.
@@ -178,13 +185,17 @@ export function BlockPopover() {
         )}
         {flexible && item?.status !== "done" && kind !== "missed" && kind !== "counted" && (
           // Large and first: what you came to the block for (personal's popover).
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {timing?.item_id === b.item_id ? (
-              <BigButton icon="pause" label="Pause" note="Keeps the time for next time" onClick={run(() => stop({}))} />
+          <div style={{ display: "grid", gridTemplateColumns: other ? "1fr 1.3fr 1fr" : "1fr 1fr", gap: 8 }}>
+            {timedNow ? (
+              <BigButton icon="pause" label="Pause" note="Keeps the time for next time" onClick={run(() => stop({ id: b.item_id }))} />
             ) : (
-              <BigButton icon="play" label={worked ? "Resume" : "Start"} note={startNote} onClick={run(() => start({ id: b.item_id }))} primary />
+              <BigButton icon="play" label={other ? "Switch" : worked ? "Resume" : "Start"} note={other ? "Stops what's on" : startNote} hint={other ? `Times this instead: ${other} stops` : undefined} tight={!!other} onClick={run(() => start({ id: b.item_id }))} primary />
             )}
-            <BigButton icon="check" label="Done" note="Ticks it off" onClick={run(() => (timing?.item_id === b.item_id ? stop({ done: true }) : done({ id: b.item_id })))} />
+            {other && (
+              // Two things at once (2 Nov): this one too, and what you're timing goes on.
+              <BigButton icon="plus" label="Alongside" note="Both at once" hint={`Times this too: ${other} keeps going`} tight onClick={run(() => start({ id: b.item_id, alongside: true }))} />
+            )}
+            <BigButton icon="check" label="Done" note="Ticks it off" tight={!!other} onClick={run(() => (timedNow ? stop({ id: b.item_id, done: true }) : done({ id: b.item_id })))} />
           </div>
         )}
         <div style={{ fontSize: 12, color: "var(--color-accent-300)" }}>{KIND[kind]}</div>

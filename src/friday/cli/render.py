@@ -248,6 +248,8 @@ def status(result: dict[str, Any]) -> list[str]:
     lines = [plan_text + (" (replanning…)" if behind else "")]
     if result["timer"]:
         lines.append(f"Timer on T{result['timer']['item_id']} for {length(result['timer']['minutes'])}")
+    for also in result.get("alongside") or []:
+        lines.append(f"Also timing T{also['item_id']} for {length(also['minutes'])}")
     if not result["ready"]:
         lines.append("! Not set up yet: run `fridayd init`")
     return lines + [f"! {p}" for p in result["problems"] + result["notices"]]

@@ -60,7 +60,7 @@ def overlaps(row: dict, block: BlockRow) -> bool:
 
 
 def progress_minutes(snapshot: Snapshot) -> tuple[dict[int, int], dict[int, int]]:
-    """Minutes done per item, in all and today: recorded rows, assumed blocks and the running timer."""
+    """Minutes done per item, in all and today: recorded rows, assumed blocks and the running timers."""
     total = {item_id: recorded_minutes(list(found)) for item_id, found in snapshot.progress.items()}
     this_day = today(snapshot)
     on_today: dict[int, int] = {}
@@ -72,8 +72,8 @@ def progress_minutes(snapshot: Snapshot) -> tuple[dict[int, int], dict[int, int]
         (b.item_id, b.end_utc - b.start_utc, day_of(snapshot, b.start_utc) == this_day)
         for b in assumed_blocks(snapshot)
     ]
-    if snapshot.timer is not None:
-        extra.append((snapshot.timer[0], max(0, snapshot.now_utc - snapshot.timer[1]), True))
+    for item_id, since in (*snapshot.alongside, *([snapshot.timer] if snapshot.timer else [])):
+        extra.append((item_id, max(0, snapshot.now_utc - since), True))  # alongside too: its time is being done
     for item_id, minutes, todays in extra:
         total[item_id] = total.get(item_id, 0) + minutes
         if todays:

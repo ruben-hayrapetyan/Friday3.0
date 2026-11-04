@@ -27,7 +27,7 @@ from friday.commands.fields import insert_item, item_out, new_item, require_item
 from friday.commands.items import done
 from friday.commands.refit import refit
 from friday.commands.registry import Ctx, command
-from friday.commands.timer import running, started_text, stop_timer, timer_out, write_progress
+from friday.commands.timer import MAX_AT_ONCE, all_running, running, started_text, stop_timer, timer_out, write_progress
 from friday.core.db import one, rows
 from friday.core.items import FieldError, Item
 from friday.core.time import UNIT_MIN, format_utc, local_midnight, parse_local, parse_utc, planning_date, to_utc
@@ -59,17 +59,30 @@ def progress(ctx: Ctx, inp: ProgressInput) -> ItemResult:
 
 @command("start")  # no replan: the timer is an overlay on the plan, and a replan on every Start split it into pieces
 def start(ctx: Ctx, inp: StartInput) -> TimerOut:
-    """Start the timer on an item. The plan is left as it is; the session is recorded when you stop (§8 rule 2)."""
+    """Start the timer on an item. The plan is left as it is; the session is recorded when you stop (§8 rule 2).
+    What was being timed stops, unless you start this `alongside` it: two things at once, each timed in full."""
     item = require_item(ctx, inp.id)
     if item.status != "todo" or item.when == "fixed":
         raise FieldError("id", f"T{inp.id} isn't something to work on now")
-    if running(ctx) is not None:
-        stop_timer(ctx)
+    others = [t for t in all_running(ctx) if t["item_id"] != inp.id]
+    if inp.alongside and len(others) >= MAX_AT_ONCE:
+        raise FieldError("alongside", f"{MAX_AT_ONCE} things are being timed already; stop one first")
+    if running(ctx, inp.id) is not None:  # started again: its session so far is kept, and it's the timer now
+        stop_timer(ctx, item_id=inp.id)
+    if not inp.alongside:
+        for other in others:
+            stop_timer(ctx, item_id=other["item_id"])
     if item.certainty == "tentative":
         ctx.db.update("items", {"id": inp.id}, {"certainty": "planned", "updated_utc": ctx.now_text})
     ctx.db.insert("timer", {"item_id": inp.id, "start_utc": started_text(ctx)})
-    chose_over(ctx, item)
-    return timer_out(ctx, running(ctx) or {}, f"Timing {item.title}")
+    if not inp.alongside:  # beside what you're on, it isn't a choice of one over another
+        chose_over(ctx, item)
+    also = (
+        f", alongside {', '.join(require_item(ctx, o['item_id']).title for o in others)}"
+        if inp.alongside and others
+        else ""
+    )
+    return timer_out(ctx, running(ctx, inp.id) or {}, f"Timing {item.title}{also}")
 
 
 def chose_over(ctx: Ctx, item: Item) -> None:
@@ -107,9 +120,10 @@ def stuck(ctx: Ctx, inp: StuckInput) -> Changed:
 
 @command("stop", affects_plan=True)
 def stop(ctx: Ctx, inp: StopInput) -> TimerOut:
-    """Stop the timer; with `done`, also complete the item; with `at`, as of when you really stopped."""
-    timer = running(ctx)
-    out = stop_timer(ctx, parse_utc(ctx.utc(inp.at, "at")) if inp.at else None)
+    """Stop the timer (`id`'s, or the one started last; the others go on); with `done`, also complete its item; with
+    `at`, as of when you really stopped."""
+    timer = running(ctx, inp.id)
+    out = stop_timer(ctx, parse_utc(ctx.utc(inp.at, "at")) if inp.at else None, inp.id)
     if inp.done and timer is not None:
         done(ctx, DoneInput(id=timer["item_id"]))
         out.message += " and marked it done"

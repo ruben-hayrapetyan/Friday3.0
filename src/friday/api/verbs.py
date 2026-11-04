@@ -204,7 +204,14 @@ VERBS = {
         True,
         "Complete an item, optionally with the time it really took.",
     ),
-    "drop": Verb("POST", "/api/c/drop", commands.ItemRef, True, True, "Drop an item."),
+    "drop": Verb(
+        "POST",
+        "/api/c/drop",
+        commands.ItemRef,
+        True,
+        True,
+        "Drop an item; a timer on it stops (its time kept), and any other goes on.",
+    ),
     "duplicates": Verb(
         "GET",
         "/api/q/duplicates",
@@ -1119,7 +1126,7 @@ VERBS = {
         commands.StopInput,
         True,
         True,
-        "Stop the timer; with `done`, also complete the item; with `at`, as of when you really stopped.",
+        "Stop the timer (`id`'s, or the one started last; the others go on); with `done`, also complete its item; with",
     ),
     "stuck": Verb(
         "POST",

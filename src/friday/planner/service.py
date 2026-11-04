@@ -196,7 +196,7 @@ def joined(past: list[PlannedBlock], future: list[PlannedBlock], snapshot: Snaps
 
 
 def timed(snapshot: Snapshot, block: PlannedBlock) -> bool:
-    if snapshot.timer is not None and snapshot.timer[0] == block.item_id:
+    if any(t[0] == block.item_id for t in (*snapshot.alongside, *([snapshot.timer] if snapshot.timer else []))):
         return True
     return any(
         r["source"] == "timer"
