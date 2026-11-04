@@ -23,6 +23,7 @@ import { useGlide } from "./glide"
 import { type TrialPlan, useWhatIf, whatIf } from "@/whatif/store"
 import { asBlock, BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, PX, SleepBand, type TriedLook } from "./Pieces"
 import { inARow, type Pick, pickOfBlock, pickOfEvent, picks, shifted, usePicks } from "./picks"
+import { layers } from "./layers"
 
 interface Props {
   dates: string[]
@@ -68,9 +69,8 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const fixed = timed.filter((f) => !allDay.includes(f)) // what you toggled off is already gone (plan/shown.ts)
   // An optional event the plan gives to work is one you're skipping: it sits behind, full width, out of the way of
   // the events beside it, rather than take a column from them (27 Oct).
-  const isSkipped = (f: Item) => !!f.gives_way_to || f.left_out === "skipped" // or one you're not going to
-  const going = fixed.filter((f) => !isSkipped(f))
-  const skipped = fixed.filter(isSkipped)
+  // One you said you're not going to goes behind everything, faint, across the column (plan/layers.ts).
+  const { notGoing, going, proposed: skipped } = layers(fixed)
   // An event whose time is for a task, by the task: its blocks in that time are drawn inside it (planner/holds.py).
   const holders = new Map(fixed.filter((f) => f.holds).map((f) => [(f.holds as { id: number }).id, f]))
   const holderOf = (b: Block) => {
@@ -187,6 +187,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
             >
               {dues.length > 0 && <DueLane dues={dues} stickyTop={headHeight} narrow={dates.length > 1} />}
               <Nights date={date} days={days} axis={axis} />
+              {layout(notGoing, date, axis).map((p) => fixedBox(p))}
               {layout(going, date, axis).map((p) => fixedBox(p))}
               {event && !event.allDay && layout([event], date, axis).map((p) => <DraftBox key="draft" p={p} title={event.title} />)}
               {layout([...shown, ...sessions], date, axis).map((p) => (

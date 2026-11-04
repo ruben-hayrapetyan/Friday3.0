@@ -225,7 +225,8 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
         overflow: typing ? "visible" : "hidden",
         userSelect: "none",
         cursor: "pointer",
-        ...(cancelled ? { opacity: 0.55 } : proposed && !aside ? { opacity: 0.9 } : {}),
+        // Not going: behind the work planned over it, faint, so what's there reads through it (2 Nov)
+        ...(cancelled ? { opacity: 0.32, zIndex: 0 } : proposed && !aside ? { opacity: 0.9 } : {}),
         ...(aside ? { left: "auto", right: 3, width: "min(max(34%, 76px), calc(100% - 6px))", background: proposed ? s.bg : "var(--color-surface)", zIndex: 3 } : {}),
         ...(typing ? { zIndex: 5 } : {}),
         ...(picked ? { boxShadow: "0 0 0 2px var(--color-accent)", zIndex: 2 } : {}),
