@@ -1,6 +1,9 @@
 """The learned cushion (COMBINED.md 41): your length is planned exactly, until the work you've timed of the same tag
 (or kind, without one) shows you consistently run over. Then the plan reserves that much more for your estimate, up
-to `estimate.cushion_cap` times it. Running under never shortens it. Settings → Advanced switches it off."""
+to `estimate.cushion_cap` times it. Running under never shortens it. Settings → Advanced switches it off.
+
+A kind you finish faster is shortened only on your yes (2 Nov): Friday asks once work it planned late keeps getting
+done on time in less time (learn/beat_plan.py), and the share you accept is kept in kv `length_shares`."""
 
 import math
 import sqlite3
@@ -13,6 +16,7 @@ from friday.core.items import Item
 from friday.core.time import format_utc
 
 LEARNED_SOURCES = ("timer", "review", "retro")
+SHARES = "length_shares"  # kv: kind → the share of its length it's planned at
 
 
 def cushion(conn: sqlite3.Connection, area: str | None, preset: str | None, now_utc: int, settings: dict[str, Any],
@@ -41,3 +45,14 @@ def cushioned(item: Item, factor: float) -> Item:
     if factor <= 1 or item.amount != "fixed" or item.duration_source != "you" or not item.your_estimate_units:
         return item
     return replace(item, duration_units=max(item.duration_units or 0, math.ceil(item.your_estimate_units * factor)))
+
+
+def shortened(item: Item, share: float | None) -> Item:
+    """The item as planned at `share` of its length, when the length is yours or the kind's (Friday's own estimates
+    learn from your times already) and nothing says you run over."""
+    if not share or share >= 1 or item.amount != "fixed" or item.duration_source not in ("you", "preset"):
+        return item
+    if not item.duration_units or item.when == "fixed":
+        return item
+    units = max(1, math.ceil(item.duration_units * share))
+    return replace(item, duration_units=units, min_chunk_units=min(item.min_chunk_units, units))

@@ -60,6 +60,14 @@ VERBS = {
         True,
         "Accept every pending suggestion of a batch (a syllabus, or a repeating event's instances): events first, so",
     ),
+    "beat_plan": Verb(
+        "GET",
+        "/api/q/beat_plan",
+        commands.Empty,
+        False,
+        False,
+        "Work your plans showed late that you finished on time: how, and what Friday would change.",
+    ),
     "brief": Verb(
         "GET",
         "/api/q/brief",

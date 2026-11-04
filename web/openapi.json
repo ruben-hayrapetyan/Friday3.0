@@ -9007,6 +9007,24 @@
     }
    }
   },
+  "/api/q/beat_plan": {
+   "get": {
+    "summary": "Work your plans showed late that you finished on time: how, and what Friday would change.",
+    "operationId": "beat_plan",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BeatPlanOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/brief": {
    "get": {
     "summary": "Today's big rocks, fixed items, alerts and pace, with a one-line summary, as data and plain text.",
@@ -12120,6 +12138,120 @@
      "batch"
     ],
     "title": "BatchInput"
+   },
+   "BeatFinish": {
+    "properties": {
+     "item_id": {
+      "type": "integer",
+      "title": "Item Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "due": {
+      "type": "string",
+      "title": "Due"
+     },
+     "finished": {
+      "type": "string",
+      "title": "Finished"
+     },
+     "late_hours": {
+      "type": "number",
+      "title": "Late Hours"
+     },
+     "ways": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Ways"
+     },
+     "speed": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Speed"
+     },
+     "events": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Events",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "item_id",
+     "title",
+     "due",
+     "finished",
+     "late_hours",
+     "ways"
+    ],
+    "title": "BeatFinish",
+    "description": "Work a plan showed late that you finished on time, and how (learn/beat_plan.py)."
+   },
+   "BeatPlanOut": {
+    "properties": {
+     "on_time": {
+      "type": "integer",
+      "title": "On Time"
+     },
+     "late": {
+      "type": "integer",
+      "title": "Late"
+     },
+     "finishes": {
+      "items": {
+       "$ref": "#/components/schemas/BeatFinish"
+      },
+      "type": "array",
+      "title": "Finishes"
+     },
+     "counts": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Counts"
+     },
+     "said": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Said"
+     },
+     "asking": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Asking"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "on_time",
+     "late",
+     "finishes",
+     "counts",
+     "said",
+     "asking"
+    ],
+    "title": "BeatPlanOut",
+    "description": "Work your plans showed late that you finished on time anyway (2 Nov), what Friday learned from it, and the\nquestions it asks in the Inbox."
    },
    "BlockOut": {
     "properties": {

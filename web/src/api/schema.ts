@@ -2146,6 +2146,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/beat_plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Work your plans showed late that you finished on time: how, and what Friday would change. */
+        get: operations["beat_plan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/brief": {
         parameters: {
             query?: never;
@@ -3424,6 +3441,52 @@ export interface components {
             edits?: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * BeatFinish
+         * @description Work a plan showed late that you finished on time, and how (learn/beat_plan.py).
+         */
+        BeatFinish: {
+            /** Item Id */
+            item_id: number;
+            /** Title */
+            title: string;
+            /** Due */
+            due: string;
+            /** Finished */
+            finished: string;
+            /** Late Hours */
+            late_hours: number;
+            /** Ways */
+            ways: string[];
+            /** Speed */
+            speed?: number | null;
+            /**
+             * Events
+             * @default []
+             */
+            events?: string[];
+        };
+        /**
+         * BeatPlanOut
+         * @description Work your plans showed late that you finished on time anyway (2 Nov), what Friday learned from it, and the
+         *     questions it asks in the Inbox.
+         */
+        BeatPlanOut: {
+            /** On Time */
+            on_time: number;
+            /** Late */
+            late: number;
+            /** Finishes */
+            finishes: components["schemas"]["BeatFinish"][];
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Said */
+            said: string[];
+            /** Asking */
+            asking: string[];
         };
         /** BlockOut */
         BlockOut: {
@@ -14125,6 +14188,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AreaOut"][];
+                };
+            };
+        };
+    };
+    beat_plan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BeatPlanOut"];
                 };
             };
         };

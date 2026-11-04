@@ -17,6 +17,7 @@ from friday.engine.scheduler import deadline_fallback
 from friday.planner.assemble import AssembledPlan, PlannedBlock, assemble, late_hours, planned_blocks
 from friday.planner.build import BuildInput, build_problem, key_of, scheduler_config
 from friday.planner.learning import learnable
+from friday.planner.planned_late import remember as remember_late
 from friday.planner.prepare import build_input
 from friday.planner.snapshot import Snapshot, read_snapshot, take_snapshot
 from friday.planner.solve import solve
@@ -117,6 +118,8 @@ def write_plan(
             for b in joined(past, plan.blocks, snapshot)
         ],
     )
+    if plan.status == "current":
+        remember_late(conn, snapshot.user_id, report.get("late_hours", {}), snapshot.now_utc)
     if plan.status == "current" and saved is not None:
         record_drag(conn, snapshot, json.loads(saved["report"]), report)
     return plan_id

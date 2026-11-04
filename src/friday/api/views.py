@@ -835,3 +835,28 @@ class SleepOut(Model):
     napping: NapOut | None = None  # the nap you're taking now
     naps: list[NapOut] = []  # the last two weeks, newest first
     usual_nap_min: int | None = None  # how long you usually nap, once Friday has three naps to go on
+
+
+class BeatFinish(Model):
+    """Work a plan showed late that you finished on time, and how (learn/beat_plan.py)."""
+
+    item_id: int
+    title: str
+    due: str
+    finished: str
+    late_hours: float  # the most a plan showed it late
+    ways: list[str]  # faster, nights, mornings, events, daytime, untold
+    speed: float | None = None  # what you took ÷ what was planned
+    events: list[str] = []  # events you worked through
+
+
+class BeatPlanOut(Model):
+    """Work your plans showed late that you finished on time anyway (2 Nov), what Friday learned from it, and the
+    questions it asks in the Inbox."""
+
+    on_time: int
+    late: int  # shown late and finished after the due
+    finishes: list[BeatFinish]
+    counts: dict[str, int]  # way → finishes that used it
+    said: list[str]
+    asking: list[str]  # the Inbox questions open now

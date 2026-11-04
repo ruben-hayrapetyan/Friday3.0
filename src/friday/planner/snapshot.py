@@ -22,7 +22,7 @@ from friday.core.time import format_utc, parse_utc, planning_date, to_local, to_
 from friday.learn import guard
 from friday.learn.sleep import NAP_USUAL_MIN, Mark, evening_of, learn, nights_from, usual_nap
 from friday.learn.state import loadings
-from friday.planner.cushion import cushion, cushioned
+from friday.planner.cushion import SHARES, cushion, cushioned, shortened
 from friday.planner.progress import progress_rows, recorded_minutes
 from friday.planner.store import (
     area_names,
@@ -214,7 +214,7 @@ def snapshot_items(conn: sqlite3.Connection, now_utc: int, settings: dict[str, A
     """Todo items, plus fixed items from a day ago to past the allocator's horizon (with a week to spare)."""
     days = settings["time"].allocator_weeks * 7 + 7
     calendars = {item_id: link.calendar for item_id, link in event_links(conn, user_id).items()}
-    areas, memo = area_names(conn, user_id), {}
+    areas, memo, shares = area_names(conn, user_id), {}, kv_get(conn, SHARES, {}, user_id) or {}
     found = rows(
         conn,
         "SELECT * FROM items WHERE user_id = ? AND status = 'todo' AND (when_kind != 'fixed' "
@@ -226,7 +226,7 @@ def snapshot_items(conn: sqlite3.Connection, now_utc: int, settings: dict[str, A
         item = busy_as_you_count(item_from_row(r), settings, calendars)
         area = areas.get(item.area_id) if item.area_id is not None else None
         factor = cushion(conn, area, item.preset, now_utc, settings, user_id, memo) if item.when != "fixed" else 1.0
-        items[r["id"]] = cushioned(item, factor)
+        items[r["id"]] = shortened(cushioned(item, factor), shares.get(item.preset or "") if factor <= 1 else None)
     missing = {i.parent_id for i in items.values() if i.parent_id is not None} - set(items)
     while missing:
         parents = rows(conn, f"SELECT * FROM items WHERE id IN ({', '.join('?' * len(missing))})", list(missing))

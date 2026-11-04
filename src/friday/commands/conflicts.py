@@ -13,6 +13,9 @@ Four kinds, each a decision with its answers, asked again only when what it's ab
 - A meal your rule says is never skipped that you skip on most days. Friday would keep the rule (it's what you asked
   for) and lets you turn it off.
 
+And what work your plans showed late but you finished on time says about your time (commands/beat_plan.py): later
+nights, kinds planned shorter. There the setting is what Friday would change.
+
 What the planner does on its own needs no question: your morning routine is never planned in, a night counts back
 from an early event you go to (planner/build.py), and learning stays within half and double of what you said."""
 
@@ -59,7 +62,9 @@ class Clash:
 def clashes(ctx: Ctx) -> list[Clash]:
     """Every disagreement between what Friday learned and what you said, not yet answered as it stands."""
     answered = kv_get(ctx.conn, ANSWERED, {}, ctx.user_id) or {}
-    found = [*weights(ctx), *sleep_short(ctx), *wind_down(ctx), *meals(ctx)]
+    from friday.commands.beat_plan import offers  # noqa: PLC0415 (it builds on this module's Clash)
+
+    found = [*weights(ctx), *sleep_short(ctx), *wind_down(ctx), *meals(ctx), *offers(ctx)]
     return [c for c in found if answered.get(c.key) != c.about]
 
 
