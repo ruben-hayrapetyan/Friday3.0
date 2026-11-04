@@ -14,6 +14,7 @@ import { nextBlocks } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { dayName } from "@/inbox/messages"
+import { fixedToday } from "./fixedToday"
 
 /** A dialog takes the keys while it's open: Esc closes it, and Tab starts inside it (the audit, 31 Oct). */
 export function useDialogKeys(onClose: () => void): RefObject<HTMLDivElement | null> {
@@ -130,10 +131,10 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 24 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span className="fr-kicker">Fixed today</span>
-          {brief?.fixed.map((f) => (
-            <div key={f.id} className="fr-row" style={{ display: "grid", gridTemplateColumns: "52px minmax(0,1fr)", gap: 10, padding: "6px 0" }}>
-              <span className="tnum" style={{ color: "var(--color-neutral-300)" }}>
-                {f.start ? clock(f.start) : ""}
+          {brief && fixedToday(brief.fixed).map(({ item: f, time }) => (
+            <div key={f.id} className="fr-row" style={{ display: "grid", gridTemplateColumns: "64px minmax(0,1fr)", gap: 10, padding: "6px 0" }}>
+              <span className="tnum" style={{ color: "var(--color-neutral-300)", whiteSpace: "nowrap" }}>
+                {time}
               </span>
               <span>{f.title}</span>
             </div>

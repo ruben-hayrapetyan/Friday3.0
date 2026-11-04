@@ -79,3 +79,18 @@ def test_a_day_with_sixty_deadlines_and_a_pile_of_whole_day_events_comes_back_wh
         f"Whole day {n}" for n in range(8)
     ]
 
+
+def test_the_brief_gives_todays_whole_day_events_as_whole_days_for_all_day(friday: Friday) -> None:
+    # C36's leftover: the brief listed them at "12am"; web/src/dialogs/fixedToday.ts reads midnight-to-midnight as
+    # "All day", so the brief has to hand them over as whole days, beside today's timed events
+    today = datetime.now(ZoneInfo(TZ)).date()
+    after = today + timedelta(days=1)
+    friday.c("add", title="Reading Day", when="fixed", start=f"{today}T00:00", end=f"{after}T00:00",
+             blocks_time=False)  # fmt: skip
+    friday.c("add", title="Since yesterday", when="fixed", start=f"{today - timedelta(days=1)}T00:00",
+             end=f"{after}T00:00", blocks_time=False)  # fmt: skip
+    friday.c("add", title="Lecture", when="fixed", start=f"{today}T23:00", end=f"{today}T23:50")
+    fixed = {f["title"]: (f["start"], f["end"]) for f in friday.q("brief")["fixed"]}
+    assert fixed["Reading Day"] == (f"{today}T00:00", f"{after}T00:00")
+    assert fixed["Since yesterday"] == (f"{today - timedelta(days=1)}T00:00", f"{after}T00:00")
+    assert fixed["Lecture"] == (f"{today}T23:00", f"{today}T23:50")
