@@ -6,6 +6,7 @@ declined. The server's job loop runs this every minute; the simulator may too.
 """
 
 import json
+import re
 import sqlite3
 import uuid
 from collections.abc import Callable
@@ -386,9 +387,21 @@ def provider_down(error: Exception) -> bool:
     return unreachable or about_model or status in (401, 403, 429) or (status or 0) >= 500
 
 
+# Google's word for a sign-in it no longer takes (expired, or taken back in your Google account); the same test as
+# the web app's `wantsSignIn`, which keeps the raw error to offer "Connect again".
+SIGN_IN_GONE = re.compile(r"RefreshError|invalid_grant|insufficient authentication", re.IGNORECASE)
+
+
 def failing_sources(conn: sqlite3.Connection, user_id: int) -> list[str]:
-    """Sources that failed often enough in a row for a banner."""
+    """Sources that failed often enough in a row for a banner, in words that say what to do (2 Nov: the banner read
+    "RefreshError: ('invalid_grant: Token has been expired or revoked.', …)")."""
     found = rows(
         conn, "SELECT name, last_error FROM sources WHERE user_id = ? AND failures >= ?", [user_id, FAILURES_FOR_BANNER]
     )
-    return [f"{r['name']} can't be read: {r['last_error']}" for r in found]
+    return [f"{r['name']} can't be read: {why(r['last_error'])}" for r in found]
+
+
+def why(error: str | None) -> str:
+    if error and SIGN_IN_GONE.search(error):
+        return "Google's sign-in for it expired or was taken back. Connect it again in Settings → Integrations."
+    return error or "it failed, with no reason given"
