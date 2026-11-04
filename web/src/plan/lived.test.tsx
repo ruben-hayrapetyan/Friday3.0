@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import type { Schemas } from "@/api/client"
 import { toMin } from "@/lib/time"
 import { mealSpans, sleepSpans } from "./lived"
-import { LivedRail, railTone } from "./LivedRail"
+import { LivedRail, railTone, washTone } from "./LivedRail"
 import { PX } from "./Pieces"
 
 const night = (over: Partial<Schemas["SleepNightOut"]>): Schemas["SleepNightOut"] => ({ date: "2026-11-03", planned_min: 450, ready_timed: false, done_timed: false, ...over })
@@ -66,11 +66,22 @@ describe("the rail down a day's column", () => {
     expect(html).toContain('data-lived="sleep"')
   })
 
-  it("is a thin, faint line that keeps clear of the blocks' 3px gap", () => {
+  it("is a 3px line in the blocks' gap over a wash of its paint that lets clicks through (4 Nov: 2px was too faint)", () => {
     const html = renderToStaticMarkup(<LivedRail lived={lived} date="2026-11-04" axis={axis} light={false} />)
-    expect(html).toContain("width:2px")
+    expect(html).toContain("width:3px")
+    expect(html.match(/data-lived-wash="/g)).toHaveLength(3)
+    expect(html).toMatch(/data-lived-wash="sleep" style="[^"]*right:0;pointer-events:none/)
     expect(html).not.toMatch(/z-index/)
-    for (const kind of ["sleep", "routine", "meal"] as const) expect(railTone(kind, true)).toMatch(/color-mix\(.* (30|40|60)%, transparent\)/)
+  })
+
+  it("the line is strong and the wash soft, a little stronger on the dark page", () => {
+    for (const kind of ["sleep", "routine", "meal"] as const) {
+      const share = (tone: string) => Number(tone.match(/ (\d+)%, transparent/)?.[1])
+      expect(share(railTone(kind, true))).toBeGreaterThanOrEqual(70)
+      expect(share(washTone(kind, true))).toBeLessThanOrEqual(13)
+      expect(share(washTone(kind, false))).toBeGreaterThan(share(washTone(kind, true)))
+    }
+    expect(railTone("meal", true)).toContain("#be9a1f") // meals' Ochre
   })
 
   it("draws nothing on a day nothing was recorded", () => {
