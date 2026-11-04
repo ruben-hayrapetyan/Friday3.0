@@ -13,10 +13,12 @@ import { TimeInput } from "@/components/fr/TimeInput"
 import { Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useItem, useItems, useSettings, useStatus, useWhy } from "@/hooks/queries"
+import { whose } from "@/lib/aiName"
 import { spanOn } from "@/lib/ampm"
 import { likelyTask, ranked } from "@/lib/holds"
 import { clock, dur, sittings, weekday, when } from "@/lib/format"
 import { eventPaint, PIGMENTS } from "@/lib/pigments"
+import { useAi } from "@/settings/AiConnect"
 import { useLook } from "@/theme/LookProvider"
 import { draftOf, useSeriesPattern } from "@/shell/EventPane"
 import { repeatChoices } from "@/shell/repeats"
@@ -494,7 +496,8 @@ function EventFacts({ event, paint }: { event: Item; paint: string }) {
 
 const AUTO = "__auto"
 const NONE = "__none"
-const SAID: Record<string, string> = { you: "your choice", always: "your words", claude: "Claude's guess" }
+// "claude" is how the server records an AI's pick, whichever AI it was: said by the AI you have (3 Nov)
+const SAID: Record<string, string> = { you: "your choice", always: "your words" }
 
 /** The event's category, who said, and yours to change: kept for every event with its title, and the events like it
  * follow (31 Oct: categories by word lists were "a very fragile way to do this"). An unsure guess is offered, not
@@ -502,10 +505,11 @@ const SAID: Record<string, string> = { you: "your choice", always: "your words",
 function CategoryRow({ event }: { event: Item }) {
   const settings = useSettings().data as { categories?: { categories?: { name: string }[] } } | undefined
   const choose = useCommand("event_category", { label: (o) => o.result.message ?? "Saved" })
+  const ai = useAi().name
   const names = [...new Set((settings?.categories?.categories ?? []).map((c) => c.name))]
   if (!names.length) return null
   const by = event.category_by ?? ""
-  const why = by === "similar" ? (event.category_like ? `like ${event.category_like}` : "like events you know") : SAID[by]
+  const why = by === "similar" ? (event.category_like ? `like ${event.category_like}` : "like events you know") : by === "claude" ? `${whose(ai)} guess` : SAID[by]
   const options = [
     ...names.map((n) => ({ value: n, label: n })),
     { value: NONE, label: "None" },

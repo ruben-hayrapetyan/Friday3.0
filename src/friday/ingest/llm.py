@@ -51,6 +51,13 @@ SECRETS = {p: (info.section, info.variable) for p, info in PROVIDERS.items()}
 NAMES = {p: info.name for p, info in PROVIDERS.items()}
 
 
+def spoken(settings: Any = None) -> str:
+    """The AI you chose as said in a sentence: "Gemini", or "the AI" for one Friday has no name for (3 Nov: "for
+    non-claude systems, does it still say ask claude?"). The web app's lib/aiName.ts says it the same way."""
+    name = NAMES.get(getattr(settings, "provider", "claude"), "AI")
+    return "the AI" if name == "AI" else name
+
+
 def api_key(provider: str = "claude") -> str | None:
     return key_source(provider)[0]
 

@@ -10,6 +10,7 @@ import { query, type Schemas } from "@/api/client"
 import { H, Icon, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings, useStatus } from "@/hooks/queries"
+import { spoken } from "@/lib/aiName"
 import { when } from "@/lib/format"
 import { addDays } from "@/lib/time"
 import { useInbox } from "@/inbox/InboxPage"
@@ -97,13 +98,13 @@ function AskClaude() {
   const on = !!claude?.events_without_asking
   const ai = useAi().name
   return (
-    <Card icon="chat-circle-text" title={`Ask ${ai}`} note={`Say what you want in your own words (⌘J); ${ai === "AI" ? "the AI" : ai} proposes the changes as Friday's own, each to keep or not.`}>
+    <Card icon="chat-circle-text" title={`Ask ${ai}`} note={`Say what you want in your own words (⌘J); ${spoken(ai)} proposes the changes as Friday's own, each to keep or not.`}>
       <label style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Switch on={on} onToggle={() => save({ key: "claude", value: { ...claude, events_without_asking: !on } })} label="Change calendar events without asking" />
         <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <span>Change calendar events without asking</span>
           <span className="fr-kicker" style={{ textWrap: "pretty" }}>
-            {on ? `Adding, moving, repeating or deleting events applies as soon as ${ai === "AI" ? "the AI" : ai} answers, with Undo.` : `Off: ${ai === "AI" ? "the AI" : ai} asks before every change.`} Tasks, rules and settings always ask.
+            {on ? `Adding, moving, repeating or deleting events applies as soon as ${spoken(ai)} answers, with Undo.` : `Off: ${spoken(ai)} asks before every change.`} Tasks, rules and settings always ask.
             {(status?.config_keys ?? []).includes("claude") ? " Set in friday.toml." : ""}
           </span>
         </span>

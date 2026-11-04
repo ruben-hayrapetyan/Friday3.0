@@ -151,7 +151,9 @@ def ask_claude(ctx: Ctx, inp: AskClaudeInput) -> AskClaudeOut:
     used = reply.usage.input_tokens + reply.usage.output_tokens
     record_spend(ctx.conn, ctx.user_id, ctx.today.isoformat(), used)
     text = next((b.text for b in reply.content if getattr(b, "type", "") == "text"), "")
-    return proposals(json.loads(text) if text else {}, allowed, lambda name, given: touches_event(ctx, name, given))
+    answer = json.loads(text) if text else {}
+    is_event = lambda name, given: touches_event(ctx, name, given)  # noqa: E731
+    return proposals(answer, allowed, is_event, llm.spoken(ctx.settings["llm"]))
 
 
 EVENT_COMMANDS = ("edit", "drop", "repeat")
@@ -170,17 +172,18 @@ def touches_event(ctx: Ctx, name: str, given: dict[str, Any]) -> bool:
 
 
 def proposals(
-    answer: dict[str, Any], allowed: tuple[str, ...], is_event: Any = lambda name, given: False
+    answer: dict[str, Any], allowed: tuple[str, ...], is_event: Any = lambda name, given: False, ai: str = "Claude"
 ) -> AskClaudeOut:
-    """Claude's answer as actions, each checked against its command's input; what isn't allowed is refused."""
+    """The AI's answer as actions, each checked against its command's input; what isn't allowed is refused, naming
+    the AI you have (`ai`, as `llm.spoken` says it)."""
     actions = []
     for a in answer.get("actions") or []:
         name, given = str(a.get("command", "")), a.get("input") or {}
         error = None
         if name not in allowed or name not in REGISTRY:
-            error = f"Friday doesn't let Claude run {name!r} here"
+            error = f"Friday doesn't let {ai} run {name!r} here"
         elif name == "settings_set" and given.get("key") not in SETTINGS:
-            error = f"Claude may not change the {given.get('key')!r} setting"
+            error = f"{ai[:1].upper() + ai[1:]} may not change the {given.get('key')!r} setting"
         else:
             try:
                 REGISTRY[name].input_type.model_validate(given)

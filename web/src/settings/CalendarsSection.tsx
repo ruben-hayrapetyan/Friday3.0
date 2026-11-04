@@ -7,10 +7,12 @@ import { Fragment, useEffect, useState } from "react"
 import { Chip, Icon, Menu, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings } from "@/hooks/queries"
+import { whose } from "@/lib/aiName"
 import { newEventTargets } from "@/lib/calendars"
 import { PIGMENTS, pigment } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
 import { CalendarChoice, saying } from "./calendarChoice"
+import { useAi } from "./AiConnect"
 import { Calendars, useCalendars, useMacCalendars } from "./Calendars"
 import { accountName, useGoogleAccess } from "./GoogleConnect"
 import { Field, SectionHead } from "./SettingsPage"
@@ -237,6 +239,7 @@ export function PigmentMenu({ value, onPick }: { value: string | null; onPick: (
  * find is placed by what it shares with events you know, and Claude, and your choice on its card wins. */
 function Categories({ value, onSave }: { value: CategorySettings; onSave: (value: CategorySettings) => void }) {
   const [draft, setDraft] = useState(value)
+  const ai = useAi().name
   useEffect(() => setDraft(value), [value])
   const changed = JSON.stringify(draft) !== JSON.stringify(value)
   const set = (i: number, change: Partial<Category>) => setDraft({ ...draft, categories: draft.categories.map((c, j) => (j === i ? { ...c, ...change } : c)) })
@@ -258,7 +261,7 @@ function Categories({ value, onSave }: { value: CategorySettings; onSave: (value
   return (
     <Field
       name="Categories"
-      note="Friday puts each event in one: the one you chose on its card; else the first whose words are in its title; else Claude's pick, given what the event shares with ones you know; else, when that's clear, the events most like it. Words are optional, for what's always that category, written as regular expressions without regard to case: “office hours|drop.?in”."
+      note={`Friday puts each event in one: the one you chose on its card; else the first whose words are in its title; else ${whose(ai)} pick, given what the event shares with ones you know; else, when that's clear, the events most like it. Words are optional, for what's always that category, written as regular expressions without regard to case: “office hours|drop.?in”.`}
     >
       {draft.categories.map((c, i) => (
         <div key={i} className="fr-row" style={{ display: "grid", gridTemplateColumns: "minmax(0,0.8fr) minmax(0,1.2fr) auto auto", gap: 8, alignItems: "center", padding: "8px 0" }}>

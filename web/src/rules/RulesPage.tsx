@@ -15,6 +15,7 @@ import { applyActions } from "@/dialogs/AskClaude"
 import { useCommand } from "@/hooks/useCommand"
 import { useStatus } from "@/hooks/queries"
 import { useInbox } from "@/inbox/InboxPage"
+import { spoken } from "@/lib/aiName"
 import { dayLabel } from "@/lib/format"
 import { WeekPaces } from "./WeekPaces"
 import { TimeInput } from "@/components/fr/TimeInput"
@@ -180,7 +181,7 @@ function NewRule() {
             <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12, color: ai ? "var(--color-neutral-300)" : "var(--fr-warn)", textWrap: "pretty" }}>
               <Icon name={ai ? "sparkle" : "question"} size={13} style={{ color: ai ? "var(--color-accent-300)" : undefined, flexShrink: 0, alignSelf: "center" }} />
               {ai ? (
-                <span>Friday can’t read this one itself. Press ↩ and {aiName === "AI" ? "the AI" : aiName} will turn it into rules, shown here for you to check before anything changes.</span>
+                <span>Friday can’t read this one itself. Press ↩ and {spoken(aiName)} will turn it into rules, shown here for you to check before anything changes.</span>
               ) : (
                 <span>
                   Friday can’t read that as a rule yet, and no AI is set up to read it instead.{" "}
