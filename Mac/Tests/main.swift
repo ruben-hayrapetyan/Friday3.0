@@ -125,6 +125,16 @@ test("the browser's hand-back becomes the address the window trades its code at,
           "your own Friday takes none")
 }
 
+test("a load the window cancelled itself is no failure to retry; the browser's sign-in opens once in 30 s") {
+    check(Server.ownCancel(NSError(domain: "WebKitErrorDomain", code: 102)), "turned away by the window")
+    check(Server.ownCancel(NSError(domain: NSURLErrorDomain, code: NSURLErrorCancelled)), "replaced by a newer load")
+    check(!Server.ownCancel(NSError(domain: NSURLErrorDomain, code: NSURLErrorCannotConnectToHost)), "the server down: retry")
+    let t = Date(timeIntervalSince1970: 1_000_000)
+    check(Server.handsOff(now: t, last: nil), "the first time")
+    check(!Server.handsOff(now: t.addingTimeInterval(3), last: t), "not again a few seconds later")
+    check(Server.handsOff(now: t.addingTimeInterval(30), last: t), "again after half a minute")
+}
+
 test("the menu-bar label") {
     check(MenuBarTimer.label(title: "Essay", seconds: 0) == "● Essay 0:00", "zero")
     check(MenuBarTimer.label(title: "Essay", seconds: 59.9) == "● Essay 0:59", "rounds down")

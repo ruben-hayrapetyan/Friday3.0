@@ -9,6 +9,7 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
     static let shared = Page()
     let view: WKWebView
     private var loaded = false
+    private var lastHandOff: Date?
     /// The app has drawn itself: the start's ring can close (`LaunchView`).
     @Published private(set) var shown = false
 
@@ -48,7 +49,11 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
             return
         }
         if let url = action.request.url, let browser = Server.signInInBrowser(url) {
-            NSWorkspace.shared.open(browser)  // signing in happens in your browser, which hands back (H43)
+            // Signing in happens in your browser, which hands back (H43); once, not again within half a minute.
+            if Server.handsOff(now: Date(), last: lastHandOff) {
+                lastHandOff = Date()
+                NSWorkspace.shared.open(browser)
+            }
             decisionHandler(.cancel)
             view.loadHTMLString(Self.waiting(browser), baseURL: nil)
             return
@@ -158,6 +163,7 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        if Server.ownCancel(error) { return }  // the window turned it away itself (the sign-in hand-off): no retry
         retry()
     }
 

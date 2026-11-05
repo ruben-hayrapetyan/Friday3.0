@@ -55,6 +55,19 @@ final class Server: ObservableObject {
         return parts.url
     }
 
+    /// Whether a failed load is the window's own doing: a navigation it cancelled, or one a newer load replaced.
+    /// Retrying those opened the browser's sign-in page again every few seconds (4 Nov: eleven tabs).
+    nonisolated static func ownCancel(_ error: Error) -> Bool {
+        let e = error as NSError
+        return (e.domain == "WebKitErrorDomain" && e.code == 102) || (e.domain == NSURLErrorDomain && e.code == NSURLErrorCancelled)
+    }
+
+    /// The browser's sign-in page opens at most once in thirty seconds, whatever asks again.
+    nonisolated static func handsOff(now: Date, last: Date?) -> Bool {
+        guard let last else { return true }
+        return now.timeIntervalSince(last) >= 30
+    }
+
     nonisolated static func effectivePort(_ url: URL) -> Int { url.port ?? (url.scheme == "https" ? 443 : 80) }
 
     /// Whether a link stays in the window: Friday's own server, the same host and port; anything else opens in your
