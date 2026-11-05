@@ -233,7 +233,7 @@ def form(app: str, email: str = "", error: str = "") -> str:
         f"<h2>Sign in</h2>{note}{said}"
         '<form method="post" action="/signin">'
         '<label for="email">Your email</label>'
-        f'<input id="email" name="email" type="email" autocomplete="username webauthn" required autofocus '
+        f'<input id="email" name="email" type="email" autocomplete="username webauthn" required '
         f'value="{html.escape(email)}">{asked}'
         '<button class="button" type="submit">Email me a link</button></form>'
         '<p class="error" id="passkey-said" role="alert" hidden></p>'

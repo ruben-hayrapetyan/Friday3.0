@@ -116,3 +116,13 @@ def test_another_sites_page_can_do_none_of_it(hosted: TestClient, tmp_path: Path
 def test_an_unknown_ceremony_is_refused_in_words(hosted: TestClient, flow: str) -> None:
     answer = hosted.post("/auth/passkey/signin", json={"flow": flow, "credential": {}}, headers=OWN)
     assert answer.status_code == 400 and "try again" in answer.json()["message"]
+
+
+def test_the_email_box_is_focused_only_once_the_passkey_request_waits(hosted: TestClient) -> None:
+    # 5 Nov: autofocused before the request began, Chrome never listed the passkey
+    page = hosted.get("/signin").text
+    (box,) = re.findall(r"<input id=\"email\"[^>]*>", page)
+    assert "autofocus" not in box
+    script = page[page.index("<script>") :]
+    assert script.index('mediation: "conditional"') < script.index("focus();\n  let cred")
+    assert "setTimeout(() => offer(tries + 1)" in script  # an ended request is made again

@@ -15,23 +15,32 @@ const said = (text) => { const p = document.getElementById("passkey-said"); if (
 """
 
 SIGNIN = """
-(async () => {
-  if (!window.PublicKeyCredential?.isConditionalMediationAvailable || !(await PublicKeyCredential.isConditionalMediationAvailable())) return;
+// Chrome lists passkeys when the email box gains focus while a request waits: so the box is focused only after the
+// request starts (it lost its autofocus), and a request that ends (its ten minutes, or set aside) is made again
+// (5 Nov: the passkey was saved but never offered).
+const email = document.getElementById("email");
+const focus = () => { if (document.activeElement !== email) email.focus(); };
+async function offer(tries) {
+  if (!window.PublicKeyCredential?.isConditionalMediationAvailable || !(await PublicKeyCredential.isConditionalMediationAvailable())) { focus(); return; }
   const { ok, j } = await post("/auth/passkey/signin/options", { app: APP });
-  if (!ok) return;
+  if (!ok) { focus(); return; }
   const o = j.options;
   o.challenge = dec(o.challenge);
   o.allowCredentials = (o.allowCredentials || []).map((c) => ({ ...c, id: dec(c.id) }));
+  const asked = navigator.credentials.get({ publicKey: o, mediation: "conditional" });
+  focus();
   let cred;
-  try { cred = await navigator.credentials.get({ publicKey: o, mediation: "conditional" }); } catch { return; }
+  try { cred = await asked; } catch { if (tries < 20) setTimeout(() => offer(tries + 1), 1000); return; }
   const r = cred.response;
   const answer = await post("/auth/passkey/signin", { flow: j.flow, credential: {
     id: cred.id, rawId: enc(cred.rawId), type: cred.type, authenticatorAttachment: cred.authenticatorAttachment,
     clientExtensionResults: cred.getClientExtensionResults(),
     response: { clientDataJSON: enc(r.clientDataJSON), authenticatorData: enc(r.authenticatorData),
                 signature: enc(r.signature), userHandle: r.userHandle ? enc(r.userHandle) : null } } });
-  if (answer.ok) location.href = answer.j.next; else said(answer.j.message || "That passkey didn't work; use the email link.");
-})();
+  if (answer.ok) location.href = answer.j.next;
+  else { said(answer.j.message || "That passkey didn't work; use the email link."); offer(tries + 1); }
+}
+offer(0);
 """
 
 OFFER = """

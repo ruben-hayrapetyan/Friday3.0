@@ -127,3 +127,9 @@ def test_registration_is_for_the_account_it_was_started_for(made: tuple[Passkeys
         keys.register(
             other, asked["flow"], SoftKey(PARTY.origin, PARTY.rp_id).create(asked["options"]), "x", PARTY, NOW
         )
+
+
+def test_a_sign_in_waits_for_autofill_as_long_as_its_challenge_lasts(made: tuple[Passkeys, Account]) -> None:
+    # 5 Nov: a minute's limit, and the passkey was never offered to a page left open
+    keys, _ = made
+    assert keys.signin_options(PARTY, NOW, None)["options"]["timeout"] == CHALLENGE_MINUTES * 60_000

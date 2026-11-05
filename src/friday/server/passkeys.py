@@ -167,7 +167,8 @@ class Passkeys:
 
     def signin_options(self, party: Party, now: int, app: str | None) -> dict[str, Any]:
         """A challenge for whichever passkey the browser offers (no account named: autofill picks it)."""
-        made = generate_authentication_options(rp_id=party.rp_id)
+        # as long as the challenge: the page waits for autofill while you look at it, not for one minute
+        made = generate_authentication_options(rp_id=party.rp_id, timeout=CHALLENGE_MINUTES * 60_000)
         flow = self.ceremony("signin", made.challenge, now, None, app)
         return {"flow": flow, "options": json.loads(options_to_json(made))}
 
