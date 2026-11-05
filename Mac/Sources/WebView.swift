@@ -10,6 +10,7 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
     let view: WKWebView
     private var loaded = false
     private var lastHandOff: Date?
+    private lazy var sheet = SignInSheet(window: { [weak self] in self?.view.window })
     /// The app has drawn itself: the start's ring can close (`LaunchView`).
     @Published private(set) var shown = false
 
@@ -48,14 +49,10 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
             decisionHandler(.cancel)
             return
         }
-        if let url = action.request.url, let browser = Server.signInInBrowser(url) {
-            // Signing in happens in your browser, which hands back (H43); once, not again within half a minute.
-            if Server.handsOff(now: Date(), last: lastHandOff) {
-                lastHandOff = Date()
-                NSWorkspace.shared.open(browser)
-            }
+        if let url = action.request.url, let page = Server.signInInBrowser(url) {
             decisionHandler(.cancel)
-            view.loadHTMLString(Self.waiting(browser), baseURL: nil)
+            view.loadHTMLString(Self.waiting(again: url), baseURL: nil)
+            signIn(on: page)
             return
         }
         decisionHandler(action.shouldPerformDownload ? .download : .allow)  // <a download>: the backup
@@ -114,9 +111,23 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
         shareSession()
     }
 
+    /// Apple's sign-in sheet over the window (H95), which hands back by itself; when it can't open, your browser
+    /// (H43), once, not again within half a minute. Closing the sheet leaves the waiting page, which opens it again.
+    private func signIn(on page: URL) {
+        let opened = sheet.open(page, scheme: Server.scheme) { [weak self] back in
+            guard let self, let address = Server.afterSheet(back) else { return }
+            self.view.load(URLRequest(url: address))
+        }
+        if !opened, Server.handsOff(now: Date(), last: lastHandOff) {
+            lastHandOff = Date()
+            NSWorkspace.shared.open(page)
+        }
+    }
+
     /// The browser's hand-back (`friday-test://signed-in?code=…`): the window trades the code for its own session.
     func signedIn(_ url: URL) -> Bool {
         guard let address = Server.handBack(url) else { return false }
+        sheet.close()  // the emailed link, opened in your browser, got there first
         view.load(URLRequest(url: address))
         return true
     }
@@ -132,16 +143,16 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
         }
     }
 
-    /// What the window shows while you sign in in the browser.
-    static func waiting(_ browser: URL) -> String {
-        let link = browser.absoluteString.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "\"", with: "&quot;")
+    /// What the window shows behind the sign-in sheet; its link (the window's own sign-in page) opens the sheet again.
+    static func waiting(again: URL) -> String {
+        let link = again.absoluteString.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "\"", with: "&quot;")
         return """
         <!doctype html><meta charset="utf-8"><meta name="color-scheme" content="light dark"><style>
         body{font:15px/1.5 -apple-system,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;
         background:#efe9dc;color:#22252b}main{max-width:360px;padding:28px}h1{font:600 20px "New York",Georgia,serif}
         a{color:#1d2a4a}@media(prefers-color-scheme:dark){body{background:#16181d;color:#e9e6df}a{color:#a9bdf0}}
-        </style><main><h1>Sign in in your browser</h1><p>Friday opened its sign-in page in your browser. Follow the
-        link Friday emails you, and it brings you back here.</p><p><a href="\(link)">Open the browser again</a></p></main>
+        </style><main><h1>Signing in</h1><p>Type the code Friday emails you in the sign-in sheet, or use Touch ID. The
+        emailed link works too: it brings you back here.</p><p><a href="\(link)">Sign in</a></p></main>
         """
     }
 

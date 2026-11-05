@@ -56,7 +56,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 echo "==> Compiling"
 xcrun swiftc -O -swift-version 5 -target "$TARGET" -sdk "$SDK" \
-  -framework WebKit -framework Carbon -framework EventKit -framework UserNotifications -framework ServiceManagement \
+  -framework WebKit -framework AuthenticationServices -framework Carbon -framework EventKit -framework UserNotifications -framework ServiceManagement \
   "${SOURCES[@]}" -o "$APP/Contents/MacOS/$EXECUTABLE"
 
 echo "==> Rendering app icon"

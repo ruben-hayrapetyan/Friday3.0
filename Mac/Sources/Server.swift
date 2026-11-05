@@ -33,8 +33,8 @@ final class Server: ObservableObject {
     /// The link scheme the browser hands a sign-in back by (H43): `friday-test://signed-in?code=…`.
     nonisolated static let scheme = TestUser.isTest ? "friday-test" : "friday"
 
-    /// Signing in on the server's Friday happens in your browser (H43): its sign-in page in the window becomes that
-    /// page in the browser, saying which app asked; nil for any other page, or one that already says so.
+    /// Signing in on the server's Friday happens outside the window (H43; in Apple's sign-in sheet, H95): its sign-in
+    /// page becomes that page saying which app asked; nil for any other page, or one that already says so.
     nonisolated static func signInInBrowser(_ url: URL, base: URL? = Server.remote, scheme: String = Server.scheme) -> URL? {
         guard let base, isOwn(url, base: base), url.path == "/signin",
               !(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []).contains(where: { $0.name == "app" })
@@ -42,6 +42,12 @@ final class Server: ObservableObject {
         var parts = URLComponents(url: base.appendingPathComponent("signin"), resolvingAgainstBaseURL: false)!
         parts.queryItems = [URLQueryItem(name: "app", value: scheme)]
         return parts.url
+    }
+
+    /// What the sign-in sheet's end leads to (H95): its hand-back traded for a session, or nothing when you closed it
+    /// (the waiting page stays, offering it again).
+    nonisolated static func afterSheet(_ back: URL?, base: URL? = Server.remote, scheme: String = Server.scheme) -> URL? {
+        back.flatMap { handBack($0, base: base, scheme: scheme) }
     }
 
     /// The browser's hand-back (`friday-test://signed-in?code=…`) as the address the window trades the code at, or

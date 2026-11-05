@@ -125,6 +125,15 @@ test("the browser's hand-back becomes the address the window trades its code at,
           "your own Friday takes none")
 }
 
+test("the sign-in sheet's hand-back is traded, and a sheet you closed leads nowhere (H95)") {
+    let staging = URL(string: "https://laptop.tailnet.ts.net:8443/")!
+    check(Server.afterSheet(URL(string: "friday-test://signed-in?code=xyz")!, base: staging, scheme: "friday-test")?
+        .absoluteString == "https://laptop.tailnet.ts.net:8443/auth/app?code=xyz", "signed in: the code, traded")
+    check(Server.afterSheet(nil, base: staging, scheme: "friday-test") == nil, "closed: the waiting page stays")
+    check(Server.afterSheet(URL(string: "friday-test://elsewhere")!, base: staging, scheme: "friday-test") == nil,
+          "anything else: nothing")
+}
+
 test("a load the window cancelled itself is no failure to retry; the browser's sign-in opens once in 30 s") {
     check(Server.ownCancel(NSError(domain: "WebKitErrorDomain", code: 102)), "turned away by the window")
     check(Server.ownCancel(NSError(domain: NSURLErrorDomain, code: NSURLErrorCancelled)), "replaced by a newer load")
