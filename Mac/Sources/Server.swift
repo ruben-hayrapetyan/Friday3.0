@@ -30,6 +30,31 @@ final class Server: ObservableObject {
         return url
     }
 
+    /// The link scheme the browser hands a sign-in back by (H43): `friday-test://signed-in?code=…`.
+    nonisolated static let scheme = TestUser.isTest ? "friday-test" : "friday"
+
+    /// Signing in on the server's Friday happens in your browser (H43): its sign-in page in the window becomes that
+    /// page in the browser, saying which app asked; nil for any other page, or one that already says so.
+    nonisolated static func signInInBrowser(_ url: URL, base: URL? = Server.remote, scheme: String = Server.scheme) -> URL? {
+        guard let base, isOwn(url, base: base), url.path == "/signin",
+              !(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []).contains(where: { $0.name == "app" })
+        else { return nil }
+        var parts = URLComponents(url: base.appendingPathComponent("signin"), resolvingAgainstBaseURL: false)!
+        parts.queryItems = [URLQueryItem(name: "app", value: scheme)]
+        return parts.url
+    }
+
+    /// The browser's hand-back (`friday-test://signed-in?code=…`) as the address the window trades the code at, or
+    /// nil for anything else.
+    nonisolated static func handBack(_ url: URL, base: URL? = Server.remote, scheme: String = Server.scheme) -> URL? {
+        guard let base, url.scheme == scheme, url.host == "signed-in",
+              let code = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "code" })?.value,
+              !code.isEmpty else { return nil }
+        var parts = URLComponents(url: base.appendingPathComponent("auth/app"), resolvingAgainstBaseURL: false)!
+        parts.queryItems = [URLQueryItem(name: "code", value: code)]
+        return parts.url
+    }
+
     nonisolated static func effectivePort(_ url: URL) -> Int { url.port ?? (url.scheme == "https" ? 443 : 80) }
 
     /// Whether a link stays in the window: Friday's own server, the same host and port; anything else opens in your
@@ -118,7 +143,7 @@ final class Server: ObservableObject {
         state = .looking
         for tick in 0 ..< 20 {
             slow = tick >= 6
-            if await Self.status() != nil {
+            if await Self.answers() {
                 slow = false
                 state = .ready
                 return
@@ -182,6 +207,15 @@ final class Server: ObservableObject {
         let deadline = Date().addingTimeInterval(1.5)
         while running.isRunning, Date() < deadline { usleep(50_000) }
         if running.isRunning { kill(running.processIdentifier, SIGKILL) }
+    }
+
+    /// Whether the server answers at all: signed out, it says so (401), which is up all the same (S4).
+    nonisolated static func answers() async -> Bool {
+        guard let url = URL(string: "api/q/status", relativeTo: base) else { return false }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 2
+        guard let (_, response) = try? await URLSession.shared.data(for: request) else { return false }
+        return [200, 401].contains((response as? HTTPURLResponse)?.statusCode ?? 0)
     }
 
     /// `/api/q/status`, or nil when nothing answers.

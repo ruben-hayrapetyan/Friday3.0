@@ -42,6 +42,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !TestUser.isTest { LoginItem.enableOnFirstLaunch() }
     }
 
+    /// The browser handing a sign-in back (`friday-test://signed-in?code=…`, H43).
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls where Page.shared.signedIn(url) { show(then: nil) }
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         Server.shared.stop()
     }

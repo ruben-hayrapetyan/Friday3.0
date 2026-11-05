@@ -34,8 +34,12 @@ if $TEST; then
   BUNDLE_ID="com.rubenhayrapetyan.friday.test"
   # It opens the server's staging Friday (HOSTED.md S2, H77); FRIDAY_TEST_SERVER=local gives it its own local user.
   TEST_SERVER="${FRIDAY_TEST_SERVER:-https://laptop.tailnet.ts.net:8443/}"
+  # friday-test://signed-in?code=…: the browser handing a sign-in back to it (HOSTED.md S4, H43).
   TEST_PLIST="<key>FridayTest</key>              <true/>
-  <key>FridayServer</key>            <string>$TEST_SERVER</string>"
+  <key>FridayServer</key>            <string>$TEST_SERVER</string>
+  <key>CFBundleURLTypes</key>
+  <array><dict><key>CFBundleURLName</key><string>Friday Test sign-in</string>
+    <key>CFBundleURLSchemes</key><array><string>friday-test</string></array></dict></array>"
   RIBBON=(--ribbon TEST)
 fi
 

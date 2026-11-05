@@ -47,6 +47,12 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
             decisionHandler(.cancel)
             return
         }
+        if let url = action.request.url, let browser = Server.signInInBrowser(url) {
+            NSWorkspace.shared.open(browser)  // signing in happens in your browser, which hands back (H43)
+            decisionHandler(.cancel)
+            view.loadHTMLString(Self.waiting(browser), baseURL: nil)
+            return
+        }
         decisionHandler(action.shouldPerformDownload ? .download : .allow)  // <a download>: the backup
     }
 
@@ -100,6 +106,38 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
     /// Loaded, then drawn: the page's script fills `#root` once React has run, a moment after the load itself.
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         waitForApp()
+        shareSession()
+    }
+
+    /// The browser's hand-back (`friday-test://signed-in?code=…`): the window trades the code for its own session.
+    func signedIn(_ url: URL) -> Bool {
+        guard let address = Server.handBack(url) else { return false }
+        view.load(URLRequest(url: address))
+        return true
+    }
+
+    /// The window's session, also for the app's own requests (the menu-bar timer, the Dock's count): they don't
+    /// share the page's cookies otherwise.
+    private func shareSession() {
+        guard let host = Server.remote?.host else { return }
+        view.configuration.websiteDataStore.httpCookieStore.getAllCookies { cookies in
+            for cookie in cookies where cookie.domain == host || host.hasSuffix(cookie.domain) {
+                HTTPCookieStorage.shared.setCookie(cookie)
+            }
+        }
+    }
+
+    /// What the window shows while you sign in in the browser.
+    static func waiting(_ browser: URL) -> String {
+        let link = browser.absoluteString.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "\"", with: "&quot;")
+        return """
+        <!doctype html><meta charset="utf-8"><meta name="color-scheme" content="light dark"><style>
+        body{font:15px/1.5 -apple-system,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;
+        background:#efe9dc;color:#22252b}main{max-width:360px;padding:28px}h1{font:600 20px "New York",Georgia,serif}
+        a{color:#1d2a4a}@media(prefers-color-scheme:dark){body{background:#16181d;color:#e9e6df}a{color:#a9bdf0}}
+        </style><main><h1>Sign in in your browser</h1><p>Friday opened its sign-in page in your browser. Follow the
+        link Friday emails you, and it brings you back here.</p><p><a href="\(link)">Open the browser again</a></p></main>
+        """
     }
 
     private func waitForApp(tries: Int = 0) {

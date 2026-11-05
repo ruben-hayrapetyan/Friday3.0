@@ -100,6 +100,31 @@ test("Friday Test makes a local user only when it isn't opening the server's Fri
     check(!TestUser.makesLocalUser(isTest: false, remote: nil), "your Friday never")
 }
 
+test("signing in on the server's Friday opens its page in the browser, saying which app asked (H43)") {
+    let staging = URL(string: "https://laptop.tailnet.ts.net:8443/")!
+    let page = URL(string: "https://laptop.tailnet.ts.net:8443/signin")!
+    check(Server.signInInBrowser(page, base: staging, scheme: "friday-test")?.absoluteString
+          == "https://laptop.tailnet.ts.net:8443/signin?app=friday-test", "the browser's page")
+    check(Server.signInInBrowser(URL(string: "https://laptop.tailnet.ts.net:8443/signin?app=friday-test")!,
+                                 base: staging, scheme: "friday-test") == nil, "one that says so already stays")
+    check(Server.signInInBrowser(URL(string: "https://laptop.tailnet.ts.net:8443/todo")!, base: staging) == nil,
+          "any other page stays")
+    check(Server.signInInBrowser(page, base: nil) == nil, "your own Friday has no sign-in")
+}
+
+test("the browser's hand-back becomes the address the window trades its code at, and nothing else does") {
+    let staging = URL(string: "https://laptop.tailnet.ts.net:8443/")!
+    check(Server.handBack(URL(string: "friday-test://signed-in?code=abc_-1")!, base: staging, scheme: "friday-test")?
+        .absoluteString == "https://laptop.tailnet.ts.net:8443/auth/app?code=abc_-1", "the code, traded")
+    check(Server.handBack(URL(string: "friday://signed-in?code=abc")!, base: staging, scheme: "friday-test") == nil,
+          "another app's scheme")
+    check(Server.handBack(URL(string: "friday-test://elsewhere?code=abc")!, base: staging, scheme: "friday-test") == nil,
+          "not a sign-in")
+    check(Server.handBack(URL(string: "friday-test://signed-in")!, base: staging, scheme: "friday-test") == nil, "no code")
+    check(Server.handBack(URL(string: "friday-test://signed-in?code=abc")!, base: nil, scheme: "friday-test") == nil,
+          "your own Friday takes none")
+}
+
 test("the menu-bar label") {
     check(MenuBarTimer.label(title: "Essay", seconds: 0) == "● Essay 0:00", "zero")
     check(MenuBarTimer.label(title: "Essay", seconds: 59.9) == "● Essay 0:59", "rounds down")
