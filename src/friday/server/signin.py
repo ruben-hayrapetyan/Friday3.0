@@ -17,6 +17,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 
 from friday.server import outgoing
 from friday.server.accounts import Account, Accounts
+from friday.server.google_signin import Client, GoogleError, GoogleSignIn
 from friday.server.passkey_page import offer_body, signin_script
 from friday.server.passkeys import Party, PasskeyError, Passkeys, device_name
 
@@ -27,6 +28,8 @@ OPEN = (
     "/auth/link",
     "/auth/app",
     "/auth/passkey/signin/options",
+    "/auth/google/start",
+    "/auth/google",
     "/auth/passkey/signin",
     "/manifest.webmanifest",
     "/icon-192.png",
@@ -49,6 +52,8 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
         return foreign(request.headers.get("origin"), request.headers.get("host"))
 
     keys = Passkeys(accounts)
+    client = Client.from_environment()
+    google = GoogleSignIn(accounts, client) if client else None
 
     def party(request: Request) -> Party:
         return Party.of(public(request))
@@ -71,7 +76,7 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
     def signin_page(request: Request, app: str = "") -> Response:
         if not app and accounts.session(request.cookies.get(COOKIE), clock()):
             return RedirectResponse("/", status_code=303)
-        return page(form(app if app in APPS else ""))
+        return page(form(app if app in APPS else "", google=google is not None))
 
     @app.post("/signin", include_in_schema=False)
     def send_link(request: Request, email: str = Form(""), app: str = Form("")) -> Response:
@@ -84,7 +89,7 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
             try:
                 outgoing.send(outgoing.signin_message(found.email, f"{public(request)}/auth/link?t={token}"))
             except outgoing.MailError as error:
-                return page(form(app, email, str(error)), status=503)
+                return page(form(app, email, str(error), google is not None), status=503)
         # The same answer whether or not the address has an account, so the page tells nobody who does.
         return page(
             f"<h2>Check your email</h2><p>If <b>{html.escape(email.strip())}</b> has a Friday account, a link to sign "
@@ -103,19 +108,40 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
             )
         found, asked_by = redeemed
         if asked_by in APPS:
-            code = accounts.app_code(found.id, asked_by, clock())
-            back = f"{asked_by}://signed-in?{urlencode({'code': code})}"
-            name = APPS[asked_by]
-            return page(
-                f"<h2>Signed in</h2><p>Back to {name}…</p>"
-                f'<p><a class="button" href="{html.escape(back)}">Open {name}</a></p>'
-                '<p class="quiet">You can close this tab.</p>'
-                f"<script>location.href = {quote_js(back)}</script>"
-            )
+            return hand_back(asked_by, accounts.app_code(found.id, asked_by, clock()))
         response = signed_in(request, found.id, request.headers.get("user-agent", "a browser"))
         if not request.cookies.get(OFFERED):
             response.headers["location"] = "/auth/passkey/offer"  # "Use Touch ID next time?" (H88)
         return response
+
+    @app.get("/auth/google/start", include_in_schema=False)
+    def google_start(request: Request, app: str = "") -> Response:
+        if google is None:
+            return page("<h2>Sign in with Google isn't set up here yet</h2>", status=404)
+        where = google.start(f"{public(request)}/auth/google", clock(), app if app in APPS else None)
+        return RedirectResponse(where, status_code=303)
+
+    @app.get("/auth/google", include_in_schema=False)
+    def google_back(request: Request, code: str = "", state: str = "", error: str = "") -> Response:
+        if google is None:
+            return page("<h2>Sign in with Google isn't set up here yet</h2>", status=404)
+        again = '<p><a class="button" href="/signin">Back to sign in</a></p>'
+        if error or not code:  # Cancel on Google's page
+            return page(f"<h2>Not signed in</h2>{again}", status=400)
+        try:
+            email, asked_by = google.finish(code, state, f"{public(request)}/auth/google", clock())
+        except GoogleError as failed:
+            return page(f"<h2>Not signed in</h2><p>{html.escape(str(failed))}</p>{again}", status=400)
+        found = accounts.by_email(email)
+        if found is None:  # invites only (H24)
+            return page(
+                f"<h2>No Friday account for {html.escape(email)}</h2><p>Friday is by invitation for now. Use the "
+                f"Google account with your Friday email.</p>{again}",
+                status=403,
+            )
+        if asked_by in APPS:
+            return hand_back(asked_by, accounts.app_code(found.id, asked_by, clock()))
+        return signed_in(request, found.id, request.headers.get("user-agent", "a browser"))
 
     @app.get("/auth/app", include_in_schema=False)
     def from_app(request: Request, code: str = "") -> Response:
@@ -221,11 +247,23 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
         return JSONResponse({"removed": keys.remove(who(request).id, passkey_id)})
 
 
+def hand_back(asked_by: str, code: str) -> HTMLResponse:
+    """The browser page that hands a sign-in back to the Mac app that asked (H43)."""
+    back = f"{asked_by}://signed-in?{urlencode({'code': code})}"
+    name = APPS[asked_by]
+    return page(
+        f"<h2>Signed in</h2><p>Back to {name}…</p>"
+        f'<p><a class="button" href="{html.escape(back)}">Open {name}</a></p>'
+        '<p class="quiet">You can close this tab.</p>'
+        f"<script>location.href = {quote_js(back)}</script>"
+    )
+
+
 def quote_js(text: str) -> str:
     return '"' + quote(text, safe=":/?=&%-_.~") + '"'
 
 
-def form(app: str, email: str = "", error: str = "") -> str:
+def form(app: str, email: str = "", error: str = "", google: bool = False) -> str:
     asked = f'<input type="hidden" name="app" value="{html.escape(app)}">' if app else ""
     said = f'<p class="error" role="alert">{html.escape(error)}</p>' if error else ""
     note = f"<p>Signing in {APPS[app]}: the link you're sent brings you back to it.</p>" if app else ""
@@ -236,7 +274,12 @@ def form(app: str, email: str = "", error: str = "") -> str:
         f'<input id="email" name="email" type="email" autocomplete="username webauthn" required '
         f'value="{html.escape(email)}">{asked}'
         '<button class="button" type="submit">Email me a link</button></form>'
-        '<p class="error" id="passkey-said" role="alert" hidden></p>'
+        + (
+            f'<a class="button other" href="/auth/google/start{"?app=" + app if app else ""}">Continue with Google</a>'
+            if google
+            else ""
+        )
+        + '<p class="error" id="passkey-said" role="alert" hidden></p>'
         '<p class="quiet">No password: Friday emails you a link that signs you in, or your passkey fills in here.</p>'
         + signin_script(app)
     )
@@ -266,7 +309,8 @@ input:focus-visible, .button:focus-visible, a:focus-visible {{ outline: 2px soli
 .button {{ display: inline-block; margin-top: 14px; font: 600 14px/1 ui-monospace, "SF Mono", Menlo, monospace;
   padding: 11px 14px; border-radius: 6px; border: 0; background: var(--ink); color: var(--leaf); cursor: pointer;
   text-decoration: none; }}
-form .button {{ width: 100%; }}
+form .button, .button.other {{ width: 100%; text-align: center; }}
+.button.other {{ background: transparent; color: var(--ink); border: 1px solid var(--rule); }}
 a {{ color: var(--ink); }}
 .quiet {{ color: var(--quiet); font-size: 13px; }}
 .error {{ color: var(--red); }}
