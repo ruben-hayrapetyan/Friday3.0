@@ -42,7 +42,7 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
     /// Anything not on Friday's own server opens in your browser.
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                  decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
-        if let url = action.request.url, url.host != Server.base.host || url.port != Server.port {
+        if let url = action.request.url, !Server.isOwn(url) {
             NSWorkspace.shared.open(url)
             decisionHandler(.cancel)
             return
@@ -168,7 +168,7 @@ struct RootView: View {
     private func failed(_ why: String) -> some View {
         VStack(spacing: 12) {
             FridayMark(size: 72, fill: 0.35, gold: 0).opacity(0.55).padding(.bottom, 6)
-            Text("Friday's server isn't running").font(.title2)
+            Text(Server.remote == nil ? "Friday's server isn't running" : "Can't reach Friday on the server").font(.title2)
             Text(why).font(.callout.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
             HStack {
                 Button("Try again") { Task { await Server.shared.ensureRunning() } }

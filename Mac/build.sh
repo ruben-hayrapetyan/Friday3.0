@@ -32,7 +32,10 @@ if $TEST; then
   APP_NAME="Friday Test"
   EXECUTABLE="Friday Test"
   BUNDLE_ID="com.rubenhayrapetyan.friday.test"
-  TEST_PLIST="<key>FridayTest</key>              <true/>"
+  # It opens the server's staging Friday (HOSTED.md S2, H77); FRIDAY_TEST_SERVER=local gives it its own local user.
+  TEST_SERVER="${FRIDAY_TEST_SERVER:-https://laptop.tailnet.ts.net:8443/}"
+  TEST_PLIST="<key>FridayTest</key>              <true/>
+  <key>FridayServer</key>            <string>$TEST_SERVER</string>"
   RIBBON=(--ribbon TEST)
 fi
 

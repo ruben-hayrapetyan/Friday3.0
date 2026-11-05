@@ -12,8 +12,31 @@ final class Server: ObservableObject {
     }
 
     static let shared = Server()
-    nonisolated static let port = TestUser.current?.port ?? 8765  // Friday Test: its own (TestUser)
-    nonisolated static var base: URL { URL(string: "http://127.0.0.1:\(port)/")! }
+    /// The server's Friday this app opens instead of starting its own (HOSTED.md S2, H77: Friday Test opens the
+    /// server's staging copy), or nil: your Friday, which runs fridayd on this Mac. `build.sh --test` writes the
+    /// address into Info.plist (FridayServer); `defaults write com.rubenhayrapetyan.friday.test hostedAddress URL`
+    /// points it elsewhere, and `… hostedAddress local` gives Friday Test its own local user again.
+    nonisolated static let remote: URL? = hostedAddress(
+        plist: Bundle.main.object(forInfoDictionaryKey: "FridayServer") as? String,
+        chosen: UserDefaults.standard.string(forKey: "hostedAddress"))
+    nonisolated static let port = remote.map(effectivePort) ?? TestUser.current?.port ?? 8765  // Friday Test: its own
+    nonisolated static var base: URL { remote ?? URL(string: "http://127.0.0.1:\(port)/")! }
+
+    /// The address chosen in defaults, else the one built in; "local" (or nothing usable) means none.
+    nonisolated static func hostedAddress(plist: String?, chosen: String?) -> URL? {
+        let text = [chosen, plist].compactMap { $0?.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty }
+        guard let text, text != "local", let url = URL(string: text.hasSuffix("/") ? text : text + "/"),
+              url.scheme == "https" || url.scheme == "http", url.host != nil else { return nil }
+        return url
+    }
+
+    nonisolated static func effectivePort(_ url: URL) -> Int { url.port ?? (url.scheme == "https" ? 443 : 80) }
+
+    /// Whether a link stays in the window: Friday's own server, the same host and port; anything else opens in your
+    /// browser.
+    nonisolated static func isOwn(_ url: URL, base: URL = Server.base) -> Bool {
+        url.host == base.host && effectivePort(url) == effectivePort(base)
+    }
 
     @Published private(set) var state: State = .looking
     @Published private(set) var slow = false  // starting for a while: macOS may be asking for access
@@ -37,8 +60,10 @@ final class Server: ObservableObject {
             .first { FileManager.default.isExecutableFile(atPath: $0.path) }
     }
 
-    /// Running already (another copy, or `fridayd` started by hand), or start it.
+    /// Running already (another copy, or `fridayd` started by hand), or start it; the server's Friday is only
+    /// looked for.
     func ensureRunning(attempt: Int = 0) async {
+        if let remote = Self.remote { return await reach(remote) }
         if await Self.status() != nil {
             await setUp()
             return
@@ -86,6 +111,23 @@ final class Server: ObservableObject {
             try? await Task.sleep(for: .milliseconds(500))
         }
         state = .failed("fridayd didn't answer within a minute:\n" + log.suffix(600))
+    }
+
+    /// The server's Friday, over Tailscale: up to ten seconds for it to answer, else why it may not have.
+    private func reach(_ remote: URL) async {
+        state = .looking
+        for tick in 0 ..< 20 {
+            slow = tick >= 6
+            if await Self.status() != nil {
+                slow = false
+                state = .ready
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(500))
+        }
+        slow = false
+        state = .failed("Couldn't reach Friday on the server at \(remote.absoluteString).\n"
+                        + "Is Tailscale on and connected on this Mac?")
     }
 
     /// A server that isn't set up yet gets your time zone and personal's sleep times. Waited for off the main thread

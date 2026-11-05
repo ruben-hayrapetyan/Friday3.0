@@ -67,6 +67,39 @@ test("the server is on this Mac only") {
           "a query survives")
 }
 
+test("Friday Test's server: the address chosen in defaults, else the one built in, with its slash") {
+    let built = "https://laptop.tailnet.ts.net:8443"
+    check(Server.hostedAddress(plist: built, chosen: nil)?.absoluteString == built + "/", "the built-in address")
+    check(Server.hostedAddress(plist: built, chosen: "https://other.ts.net/")?.absoluteString == "https://other.ts.net/",
+          "the one chosen wins")
+    check(Server.hostedAddress(plist: built, chosen: "  ")?.absoluteString == built + "/", "a blank choice is no choice")
+}
+
+test("Friday Test's server: none for your Friday, for \"local\", or for an address that isn't one") {
+    check(Server.hostedAddress(plist: nil, chosen: nil) == nil, "your Friday has none")
+    check(Server.hostedAddress(plist: "https://x.ts.net:8443/", chosen: "local") == nil, "local: its own user again")
+    check(Server.hostedAddress(plist: "not an address", chosen: nil) == nil, "no scheme or host")
+    check(Server.hostedAddress(plist: "ftp://x.ts.net/", chosen: nil) == nil, "only the web")
+}
+
+test("a link stays in the window only on Friday's own server: same host and port, 443 when unsaid") {
+    let staging = URL(string: "https://laptop.tailnet.ts.net:8443/")!
+    let real = URL(string: "https://laptop.tailnet.ts.net/")!
+    check(Server.isOwn(URL(string: "https://laptop.tailnet.ts.net:8443/todo")!, base: staging), "its own page")
+    check(!Server.isOwn(URL(string: "https://laptop.tailnet.ts.net/")!, base: staging), "the other copy")
+    check(Server.isOwn(URL(string: "https://laptop.tailnet.ts.net:443/x")!, base: real), "443 said or not")
+    check(!Server.isOwn(URL(string: "https://calendar.google.com/")!, base: staging), "anywhere else: the browser")
+    check(Server.isOwn(URL(string: "http://127.0.0.1:8765/x")!, base: URL(string: "http://127.0.0.1:8765/")!),
+          "your local Friday as before")
+}
+
+test("Friday Test makes a local user only when it isn't opening the server's Friday") {
+    let remote = URL(string: "https://laptop.tailnet.ts.net:8443/")!
+    check(TestUser.makesLocalUser(isTest: true, remote: nil), "Friday Test, local")
+    check(!TestUser.makesLocalUser(isTest: true, remote: remote), "Friday Test on the server: no folder made")
+    check(!TestUser.makesLocalUser(isTest: false, remote: nil), "your Friday never")
+}
+
 test("the menu-bar label") {
     check(MenuBarTimer.label(title: "Essay", seconds: 0) == "● Essay 0:00", "zero")
     check(MenuBarTimer.label(title: "Essay", seconds: 59.9) == "● Essay 0:59", "rounds down")

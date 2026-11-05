@@ -37,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await Server.shared.ensureRunning()
             timer.start()
             badge.start()
-            calendars.start()
+            if Server.remote == nil { calendars.start() }  // never this Mac's calendars into the server's test data (S2)
         }
         if !TestUser.isTest { LoginItem.enableOnFirstLaunch() }
     }
@@ -186,12 +186,26 @@ struct MacSettings: View {
                 Text("Takes effect the next time Friday opens.").font(.caption).foregroundStyle(.secondary)
             }
             Toggle("The running timer in the menu bar", isOn: $menuBarTimer)
-            Toggle("Send this Mac's calendars to Friday", isOn: $macCalendars)
-            Text("Choose which ones Friday reads in Settings → Calendars. Takes effect the next time Friday opens.")
-                .font(.caption).foregroundStyle(.secondary)
+            if let remote = Server.remote {
+                Text("Friday Test opens the server's staging Friday (\(remote.absoluteString)) and its test "
+                     + "profiles. This Mac's calendars aren't sent to it, and no fridayd runs here.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Toggle("Send this Mac's calendars to Friday", isOn: $macCalendars)
+                Text("Choose which ones Friday reads in Settings → Calendars. Takes effect the next time Friday opens.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             if !TestUser.isTest {
                 Toggle("Open at login", isOn: Binding(get: { opensAtLogin }, set: { LoginItem.set($0); opensAtLogin = LoginItem.isEnabled }))
             }
+            if Server.remote == nil { fridayd }
+        }
+        .padding(20)
+        .frame(width: 560)
+    }
+
+    private var fridayd: some View {
+        Group {
             HStack {
                 TextField("fridayd", text: $fridaydPath, prompt: Text(Server.shared.executable?.path ?? "~/.local/bin/fridayd"))
                 Button("Choose…") {
@@ -203,7 +217,5 @@ struct MacSettings: View {
             Text("Friday's server. Found in ~/.local/bin or the Friday2.0 checkout when left empty.")
                 .font(.caption).foregroundStyle(.secondary)
         }
-        .padding(20)
-        .frame(width: 560)
     }
 }
