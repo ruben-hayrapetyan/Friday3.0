@@ -5,6 +5,7 @@ import { useState } from "react"
 import { Chip, Icon } from "@/components/fr/controls"
 import { useSettings } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
+import { Account } from "./Account"
 import { SectionHead } from "./SettingsPage"
 
 const EXAMPLES = [
@@ -38,6 +39,7 @@ export function AboutYou() {
   }
   return (
     <>
+      <Account />
       <SectionHead title="About you" note="Tell Friday something once, in your own words. It reads these with every email, calendar entry and document, so it skips what needs no time, uses your lengths and your section's deadlines." />
       <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingBottom: 18 }}>
         {notes.map((n, i) => (

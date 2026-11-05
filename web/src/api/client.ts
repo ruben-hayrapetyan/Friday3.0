@@ -1,6 +1,7 @@
 // A typed `command(name, input)` and `query(name, params)` over the generated OpenAPI types (DESIGN §18.1).
 
 import { noteResponse } from "./offline"
+import { signInPage } from "./session"
 import type { components, operations } from "./schema"
 
 export type Schemas = components["schemas"]
@@ -37,6 +38,9 @@ async function read<T>(response: Response): Promise<T> {
   let message = `${response.status} ${response.statusText}`
   try {
     const body = await response.json()
+    // A hosted Friday whose session ended (signed out elsewhere): to the sign-in page (HOSTED.md S4).
+    const signin = signInPage(response.status, body)
+    if (signin && typeof window !== "undefined") window.location.assign(signin)
     // The server's message names its field already ("end: that's later than now"): said once, not "end: end: …".
     if (body.message) message = body.field && !String(body.message).startsWith(`${body.field}:`) ? `${body.field}: ${body.message}` : body.message
     else if (Array.isArray(body.detail)) message = body.detail.map((d: { msg: string }) => d.msg).join("; ")

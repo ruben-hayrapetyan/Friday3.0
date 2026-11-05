@@ -46,7 +46,8 @@ from friday.core.db import connect
 from friday.core.items import FieldError
 from friday.notify import webhooks
 from friday.planner.store import generation, load_settings
-from friday.server import mcp
+from friday.server import mcp, signin
+from friday.server.accounts import Accounts
 from friday.server.auth import actor_of, user_of
 from friday.server.events import Hub
 from friday.server.jobs import JobLoop, backup
@@ -109,8 +110,10 @@ def create_app(
     background: bool = True,
     plugin_dir: Path = PLUGIN_DIR,
     web_dist: Path | None = None,
+    accounts: Accounts | None = None,
 ) -> FastAPI:
-    """`background=False` leaves out the worker and job loop: `replan` then solves in the request (tests)."""
+    """`background=False` leaves out the worker and job loop: `replan` then solves in the request (tests). `accounts`:
+    a hosted Friday, where everything needs you signed in (server/signin.py); none on your Mac."""
     services = Services(db_path, clock, plugin_dir)
 
     async def call_tool(name: str, arguments: dict[str, Any], request: Request) -> Any:
@@ -169,6 +172,8 @@ def create_app(
         async for message in services.hub.stream():
             yield message
 
+    if accounts is not None:  # before the website, whose mount at / would answer the sign-in pages' addresses
+        signin.install(app, accounts, clock, foreign)
     if web_dist is not None and web_dist.is_dir():
         app.mount("/", Website(directory=web_dist, html=True), name="web")
     return app
