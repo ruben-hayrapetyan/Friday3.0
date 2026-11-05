@@ -16,11 +16,23 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from friday.server import outgoing
-from friday.server.accounts import Accounts
+from friday.server.accounts import Account, Accounts
+from friday.server.passkey_page import offer_body, signin_script
+from friday.server.passkeys import Party, PasskeyError, Passkeys, device_name
 
 COOKIE = "friday_session"
 FOREVER = 10 * 365 * 24 * 3600  # "until you sign out" (H25)
-OPEN = ("/signin", "/auth/link", "/auth/app", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png")
+OPEN = (
+    "/signin",
+    "/auth/link",
+    "/auth/app",
+    "/auth/passkey/signin/options",
+    "/auth/passkey/signin",
+    "/manifest.webmanifest",
+    "/icon-192.png",
+    "/icon-512.png",
+)
+OFFERED = "friday_passkey"  # this browser made a passkey, or said Not now: the offer isn't made again (H88)
 APPS = {"friday-test": "Friday Test", "friday": "Friday"}  # the Mac apps that may ask, by their link scheme
 
 
@@ -35,6 +47,16 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
 
     def from_elsewhere(request: Request) -> bool:
         return foreign(request.headers.get("origin"), request.headers.get("host"))
+
+    keys = Passkeys(accounts)
+
+    def party(request: Request) -> Party:
+        return Party.of(public(request))
+
+    def who(request: Request) -> Account:
+        found = accounts.session(request.cookies.get(COOKIE), clock())
+        assert found is not None  # the guard let it through
+        return found
 
     @app.middleware("http")
     async def signed_in_only(request: Request, call_next: Any) -> Any:
@@ -90,7 +112,10 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
                 '<p class="quiet">You can close this tab.</p>'
                 f"<script>location.href = {quote_js(back)}</script>"
             )
-        return signed_in(request, found.id, request.headers.get("user-agent", "a browser"))
+        response = signed_in(request, found.id, request.headers.get("user-agent", "a browser"))
+        if not request.cookies.get(OFFERED):
+            response.headers["location"] = "/auth/passkey/offer"  # "Use Touch ID next time?" (H88)
+        return response
 
     @app.get("/auth/app", include_in_schema=False)
     def from_app(request: Request, code: str = "") -> Response:
@@ -118,12 +143,82 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
         assert found is not None  # the guard let it through
         return JSONResponse({"email": found.email, "username": found.username, "name": found.name})
 
-    def signed_in(request: Request, account_id: int, device: str) -> Response:
+    def signed_in(request: Request, account_id: int, device: str, response: Response | None = None) -> Response:
         token = accounts.start_session(account_id, device, clock())
-        response = RedirectResponse("/", status_code=303)
+        response = response or RedirectResponse("/", status_code=303)
         response.set_cookie(COOKIE, token, max_age=FOREVER, path="/", secure=secure(request), httponly=True,
                             samesite="lax")  # fmt: skip
         return response
+
+    def remember(request: Request, response: Response, value: str) -> Response:
+        response.set_cookie(OFFERED, value, max_age=FOREVER, path="/", secure=secure(request), httponly=True,
+                            samesite="lax")  # fmt: skip
+        return response
+
+    def refused(error: str, status: int = 400) -> JSONResponse:
+        return JSONResponse({"field": "passkey", "message": error}, status_code=status)
+
+    @app.get("/auth/passkey/offer", include_in_schema=False)
+    def offer() -> Response:
+        return page(offer_body())
+
+    @app.get("/auth/passkey/later", include_in_schema=False)
+    def later(request: Request) -> Response:
+        return remember(request, RedirectResponse("/", status_code=303), "later")
+
+    @app.post("/auth/passkey/register/options", include_in_schema=False)
+    def register_options(request: Request) -> Response:
+        if from_elsewhere(request):
+            return refused("Friday takes changes only from its own pages", 403)
+        return JSONResponse(keys.registration_options(who(request), party(request), clock()))
+
+    @app.post("/auth/passkey/register", include_in_schema=False)
+    async def register(request: Request) -> Response:
+        if from_elsewhere(request):
+            return refused("Friday takes changes only from its own pages", 403)
+        body = await request.json()
+        try:
+            name = device_name(request.headers.get("user-agent", ""))
+            flow, credential = str(body.get("flow", "")), body.get("credential") or {}
+            made = keys.register(who(request), flow, credential, name, party(request), clock())
+        except PasskeyError as error:
+            return refused(str(error))
+        return remember(request, JSONResponse({"id": made.id, "name": made.name}), "made")
+
+    @app.post("/auth/passkey/signin/options", include_in_schema=False)
+    async def signin_options(request: Request) -> Response:
+        if from_elsewhere(request):
+            return refused("Friday takes sign-ins only from its own page", 403)
+        app_name = str((await request.json() or {}).get("app") or "")
+        return JSONResponse(keys.signin_options(party(request), clock(), app_name if app_name in APPS else None))
+
+    @app.post("/auth/passkey/signin", include_in_schema=False)
+    async def passkey_signin(request: Request) -> Response:
+        if from_elsewhere(request):
+            return refused("Friday takes sign-ins only from its own page", 403)
+        body = await request.json()
+        try:
+            found, asked_by = keys.signin(str(body.get("flow", "")), body.get("credential") or {}, party(request),
+                                          clock())  # fmt: skip
+        except PasskeyError as error:
+            return refused(str(error))
+        if asked_by in APPS:  # the browser page Friday Test opened (H91): hand back as the link does
+            code = accounts.app_code(found.id, asked_by, clock())
+            return JSONResponse({"next": f"{asked_by}://signed-in?{urlencode({'code': code})}"})
+        device = request.headers.get("user-agent", "a browser")
+        return signed_in(request, found.id, device, JSONResponse({"next": "/"}))
+
+    @app.get("/auth/passkeys", include_in_schema=False)
+    def passkey_list(request: Request) -> JSONResponse:
+        mine = keys.of(who(request).id)
+        return JSONResponse([{"id": p.id, "name": p.name, "created": p.created, "used": p.used} for p in mine])
+
+    @app.post("/auth/passkeys/remove", include_in_schema=False)
+    async def passkey_remove(request: Request) -> Response:
+        if from_elsewhere(request):
+            return refused("Friday takes changes only from its own pages", 403)
+        passkey_id = str((await request.json() or {}).get("id", ""))
+        return JSONResponse({"removed": keys.remove(who(request).id, passkey_id)})
 
 
 def quote_js(text: str) -> str:
@@ -138,10 +233,12 @@ def form(app: str, email: str = "", error: str = "") -> str:
         f"<h2>Sign in</h2>{note}{said}"
         '<form method="post" action="/signin">'
         '<label for="email">Your email</label>'
-        f'<input id="email" name="email" type="email" autocomplete="email" required autofocus '
+        f'<input id="email" name="email" type="email" autocomplete="username webauthn" required autofocus '
         f'value="{html.escape(email)}">{asked}'
         '<button class="button" type="submit">Email me a link</button></form>'
-        '<p class="quiet">No password: Friday emails you a link that signs you in.</p>'
+        '<p class="error" id="passkey-said" role="alert" hidden></p>'
+        '<p class="quiet">No password: Friday emails you a link that signs you in, or your passkey fills in here.</p>'
+        + signin_script(app)
     )
 
 

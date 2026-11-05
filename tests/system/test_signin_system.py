@@ -97,3 +97,30 @@ def test_account_add_without_an_accounts_file_says_what_it_needs() -> None:
     done = subprocess.run([sys.executable, "-m", "friday.server.main", "account-add", "--email", EMAIL, "--username",
                            "x1", "--name", "X"], cwd=REPO, capture_output=True, text=True, timeout=60)  # fmt: skip
     assert done.returncode != 0 and "needs --accounts" in done.stderr
+
+
+def test_a_passkey_made_after_the_link_signs_you_in_again_over_http(hosted: Hosted) -> None:
+    from tests.server.softkey import SoftKey
+
+    own = {"origin": f"http://127.0.0.1:{hosted.port}"}
+    hosted.http.post("/signin", data={"email": EMAIL})
+    for _ in range(20):
+        if len(hosted.links()) >= 2:
+            break
+        time.sleep(0.25)
+    opened = hosted.http.get(hosted.links()[-1], follow_redirects=False)
+    assert opened.headers["location"] == "/auth/passkey/offer"  # "Use Touch ID next time?"
+    soft = SoftKey(own["origin"], "127.0.0.1")
+    asked = hosted.http.post("/auth/passkey/register/options", json={}, headers=own).json()
+    made = hosted.http.post("/auth/passkey/register", headers=own,
+                            json={"flow": asked["flow"], "credential": soft.create(asked["options"])})  # fmt: skip
+    assert made.status_code == 200, made.text
+    hosted.http.post("/auth/signout", headers=own, follow_redirects=False)
+    assert hosted.http.get("/api/q/status").status_code == 401
+    asked = hosted.http.post("/auth/passkey/signin/options", json={}, headers=own).json()
+    done = hosted.http.post("/auth/passkey/signin", headers=own,
+                            json={"flow": asked["flow"], "credential": soft.get(asked["options"])})  # fmt: skip
+    assert done.status_code == 200 and done.json()["next"] == "/"
+    assert hosted.http.get("/api/q/status").status_code == 200
+    (listed,) = hosted.http.get("/auth/passkeys").json()
+    assert listed["used"] is not None
