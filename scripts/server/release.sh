@@ -8,6 +8,13 @@ repo="$(cd "$(dirname "$0")/../.." && pwd)"
 app="$HOME/friday-hosted/real/app"
 commit="HEAD"; restart=1
 for a in "$@"; do case "$a" in --no-restart) restart=0 ;; *) commit="$a" ;; esac; done
+# What isn't committed isn't released (4 Nov: new server scripts left out took the real copy down for minutes).
+if [ "$commit" = HEAD ] && ! git -C "$repo" diff --quiet HEAD -- src scripts web/src pyproject.toml uv.lock; then
+    echo "uncommitted changes in $repo wouldn't be released: commit them first"; exit 1
+fi
+if [ "$commit" = HEAD ] && [ -n "$(git -C "$repo" ls-files --others --exclude-standard -- src scripts web/src)" ]; then
+    echo "new files in $repo aren't committed, so they wouldn't be released: commit them first"; exit 1
+fi
 commit="$(git -C "$repo" rev-parse "$commit")"
 if [ -d "$app" ]; then git -C "$app" checkout -q --detach "$commit"
 else mkdir -p "$(dirname "$app")" && git -C "$repo" worktree add -q --detach "$app" "$commit"; fi
