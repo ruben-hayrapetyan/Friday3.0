@@ -11,7 +11,9 @@ After=network-online.target
 EnvironmentFile=%h/friday-hosted/%i/friday.env
 Environment=FRIDAY_CONFIG=%h/friday-hosted/%i/config/friday.toml FRIDAY_CLAUDE=none
 WorkingDirectory=%h/friday-hosted/%i
-ExecStart=/bin/sh -c 'FRIDAY_WEB_DIST="$APP/web/dist" PYTHONPATH="$APP/src:$APP" exec "$APP/.venv/bin/python" -m friday.server.main --data-dir "%h/friday-hosted/%i/profiles/$PROFILE" demo --case "$PROFILE" --port "$PORT"'
+# Signing in (S4, H83): the copy's accounts file, links addressed to its tailnet URL (PUBLIC_URL in friday.env), and
+# its secrets from Bitwarden through with-secrets.sh.
+ExecStart=/bin/sh -c 'FRIDAY_WEB_DIST="$APP/web/dist" PYTHONPATH="$APP/src:$APP" FRIDAY_PUBLIC_URL="$PUBLIC_URL" exec "$APP/scripts/server/with-secrets.sh" %i "$APP/.venv/bin/python" -m friday.server.main --accounts "%h/friday-hosted/%i/accounts.db" --data-dir "%h/friday-hosted/%i/profiles/$PROFILE" demo --case "$PROFILE" --port "$PORT"'
 Restart=on-failure
 RestartSec=3
 

@@ -9,10 +9,11 @@ export PATH="$HOME/.local/node/bin:$HOME/.local/bin:$PATH"
 repo="$(cd "$(dirname "$0")/../.." && pwd)"
 hosted="$HOME/friday-hosted"
 
-copy_setup() {  # copy app port
+copy_setup() {  # copy app port public-url
     local dir="$hosted/$1"
     mkdir -p "$dir/config"
     [ -f "$dir/friday.env" ] || printf 'APP=%s\nPROFILE=maya\nPORT=%s\n' "$2" "$3" > "$dir/friday.env"
+    grep -q '^PUBLIC_URL=' "$dir/friday.env" || echo "PUBLIC_URL=$4" >> "$dir/friday.env"
     if [ ! -d "$dir/profiles" ]; then
         echo "==> Building the test profiles for $1 (about five minutes)"
         (cd "$repo" && FRIDAY_CONFIG=/nonexistent/friday.toml PYTHONPATH=src:. uv run python -m friday.sim.profiles \
@@ -20,9 +21,9 @@ copy_setup() {  # copy app port
     fi
 }
 
-copy_setup staging "$repo" 8766
+copy_setup staging "$repo" 8766 "https://laptop.tailnet.ts.net:8443"
 [ -d "$hosted/real/app" ] || "$repo/scripts/server/release.sh" --no-restart
-copy_setup real "$hosted/real/app" 8765
+copy_setup real "$hosted/real/app" 8765 "https://laptop.tailnet.ts.net"
 
 mkdir -p "$HOME/.config/systemd/user"
 cp "$repo/scripts/server/friday@.service" "$HOME/.config/systemd/user/friday@.service"
