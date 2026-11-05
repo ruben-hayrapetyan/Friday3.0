@@ -151,6 +151,8 @@ class Student:
     sleep: tuple[str, str] = ("00:00", "08:00")  # weekday bedtime and wake; weekends an hour later
     netid: str = "abc123"
     notes: tuple[str, ...] = field(default_factory=tuple)  # what a plan for this student should look like
+    email: str = ""  # their Google address; a Cornell student's is their netid's
+    calendars: dict[str, str] = field(default_factory=dict)  # names in place of CALENDARS' (sim/people.py)
 
 
 # Helpers for writing students (sim/students.py).
@@ -211,9 +213,15 @@ def dated(text: str, monday: date, form: Callable[[date], str] = spoken) -> str:
     return out
 
 
+def address(student: Student) -> str:
+    """The Google account the stand-ins answer for."""
+    return student.email or f"{student.netid}@cornell.edu"
+
+
 def calendar_ids(student: Student) -> dict[str, str]:
     """Each calendar's id (its key, `@g`) and name; the primary one is the student's address."""
-    return {f"{key}@g": name.format(netid=student.netid) for key, name in CALENDARS.items()}
+    names = CALENDARS | student.calendars | {"primary": address(student)}
+    return {f"{key}@g": name for key, name in names.items()}
 
 
 def term(student: Student, today: date, early: bool = False) -> Sample:

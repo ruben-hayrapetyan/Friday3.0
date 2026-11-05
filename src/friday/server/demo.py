@@ -14,8 +14,8 @@ from friday.server import jobs
 from friday.server.app import wall_clock
 from friday.sim import cornell
 from friday.sim.history import open_lived_in
+from friday.sim.profiles import PROFILES
 from friday.sim.sample import ZONE, term
-from friday.sim.students import STUDENTS
 
 
 def run_demo(
@@ -27,13 +27,13 @@ def run_demo(
     ready: bool = False,
 ) -> None:
     """`serve` and `initialize` are main's, passed in so this module needn't import it. `case` is one of the
-    Cornell students (sim/students.py) instead of the sample term; `ready` has them three weeks into using
+    test profiles (sim/profiles.py) instead of the sample term; `ready` has them three weeks into using
     Friday (sim/history.py): set up as they would themselves, with work done, reviews, a project, rules and
     yesterday's review and some of the inbox still to answer."""
     folder.mkdir(parents=True, exist_ok=True)
     os.environ["FRIDAY_CONFIG"] = str(folder / "friday.toml")  # none there: no config, no secrets
     db_path = folder / "friday.db"
-    student = STUDENTS[case] if case else None
+    student = PROFILES[case] if case else None
     if student and ready and not db_path.exists():
         print(f"Living {student.name}'s last three weeks (about a minute)…", flush=True)
         open_lived_in(db_path, student, wall_clock()).close()
@@ -49,7 +49,7 @@ def run_demo(
     kv_set(conn, "demo", True)  # said on every page, so the sample isn't taken for your own data
     conn.close()
     sample = cornell.term(student, date.today()) if student else term(date.today())
-    address = f"{student.netid}@cornell.edu" if student else "student@cornell.edu"  # the stand-in account
+    address = cornell.address(student) if student else "student@cornell.edu"  # the stand-in account
     jobs.SAMPLE_APIS.update(google={address: sample.google}, mail={address: sample.gmail}, client=sample.ai)
     llm.client = lambda *_: sample.ai  # "Ask AI" too, whichever AI is chosen
     who = f"{student.name}: {student.about}" if student else "a sample term"

@@ -21,7 +21,7 @@ from friday.server.app import create_app, query_by_get, wall_clock
 from friday.server.config import apply_config
 from friday.server.demo import run_demo
 from friday.server.mcp import serve_stdio
-from friday.sim.students import STUDENTS
+from friday.sim.profiles import PROFILES
 from friday.sync import gcal, google_auth
 
 DATA_DIR = Path(os.environ.get("FRIDAY_DATA_DIR", "~/.local/share/friday")).expanduser()
@@ -72,7 +72,12 @@ def main(argv: list[str] | None = None) -> None:
     commands.add_parser("google-calendars", help="list each Google account's calendars' names and ids, for gcal.read")
     demo = commands.add_parser("demo", help="a sample student's term with stand-in Google, Gmail and AI")
     demo.add_argument("--port", type=int, default=8799)
-    demo.add_argument("--case", choices=list(STUDENTS), help="a Cornell student, from very light to overloaded")
+    demo.add_argument(
+        "--case",
+        choices=list(PROFILES),
+        metavar="KEY",
+        help="a test profile (`python -m friday.sim.profiles list`), very light to overloaded",
+    )
     demo.add_argument("--ready", action="store_true", help="three weeks into using Friday (sim/history.py)")
     args = parser.parse_args(argv)
     if args.command == "demo":  # never in your own data folder
