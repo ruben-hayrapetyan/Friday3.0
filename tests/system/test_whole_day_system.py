@@ -83,7 +83,8 @@ def test_a_day_with_sixty_deadlines_and_a_pile_of_whole_day_events_comes_back_wh
 def test_the_brief_gives_todays_whole_day_events_as_whole_days_for_all_day(friday: Friday) -> None:
     # C36's leftover: the brief listed them at "12am"; web/src/dialogs/fixedToday.ts reads midnight-to-midnight as
     # "All day", so the brief has to hand them over as whole days, beside today's timed events
-    today = datetime.now(ZoneInfo(TZ)).date()
+    # Friday's day, 4am to 4am: run between midnight and 4am, "today" is still yesterday's date (5 Nov, 12:30am)
+    today = (datetime.now(ZoneInfo(TZ)) - timedelta(hours=4)).date()
     after = today + timedelta(days=1)
     friday.c("add", title="Reading Day", when="fixed", start=f"{today}T00:00", end=f"{after}T00:00",
              blocks_time=False)  # fmt: skip
