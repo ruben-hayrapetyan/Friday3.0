@@ -176,3 +176,36 @@ def ending_before(rule: str, day: date) -> str:
     """The rule cut off so its last occurrence is before `day` (editing a series from a date on)."""
     kept = [part for part in rule.split(";") if not part.upper().startswith(("UNTIL=", "COUNT="))]
     return ";".join([*kept, f"UNTIL={day - timedelta(days=1):%Y%m%d}T235959"])
+
+
+SET_DATE_PARTS = ("BYYEARDAY", "BYWEEKNO", "BYSETPOS", "BYEASTER")
+
+
+def moved_rule(rule: str, old_day: date, new_day: date) -> str | None:
+    """The rule once its time on `old_day` moves to `new_day` (5 Nov: "change jasons bday to nov 6 yearly"): a
+    weekday it names, or the day of the month or the month, becomes the new day's; the others stay. None when the
+    move can't be said in the rule: two days of a month, the second Tuesday, a weekday it repeats on already."""
+    out = []
+    shift = new_day - old_day
+    days = rule_parts(rule).get("BYDAY", "").split(",")
+    for part in rule.split(";"):
+        key, _, value = part.partition("=")
+        name = key.upper()
+        if name == "BYDAY":
+            old, new = RRULE_DAYS[old_day.weekday()], RRULE_DAYS[new_day.weekday()]
+            if old not in days or (new != old and new in days):
+                return None
+            value = ",".join(new if d == old else d for d in days)
+        elif name in ("BYMONTHDAY", "BYMONTH"):
+            was, now = (old_day.day, new_day.day) if name == "BYMONTHDAY" else (old_day.month, new_day.month)
+            if value != str(was):
+                return None
+            value = str(now)
+        elif name in SET_DATE_PARTS:
+            return None
+        elif name == "UNTIL" and shift.days > 0 and len(days) == 1:
+            # Every time moves later, so the last one does too rather than falling past the end.
+            end = datetime.strptime(value[:8], "%Y%m%d") + shift
+            value = f"{end:%Y%m%d}{value[8:]}"
+        out.append(f"{key}={value}" if _ else part)
+    return ";".join(out)

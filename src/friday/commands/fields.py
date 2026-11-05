@@ -289,3 +289,10 @@ def require_item(ctx: Ctx, item_id: int) -> Item:
     if item is None:
         raise FieldError("id", f"no item T{item_id}")
     return item
+
+
+def update_item(ctx: Ctx, before: Item, after: Item) -> None:
+    old, new = item_to_row(before), item_to_row(after)
+    changes = {k: v for k, v in new.items() if old.get(k) != v}
+    if changes:
+        ctx.db.update("items", {"id": before.id}, changes | {"updated_utc": ctx.now_text})

@@ -242,15 +242,20 @@ def remove_future_occurrences(ctx: Ctx, series_id: int, from_day: date) -> list[
     ):
         if row["detached"] or row["id"] in timed:
             kept.append(row["id"])
-        elif row["id"] in links:
-            # On a calendar: taken off it too, and kept here as dropped so the calendar's copy stays tied to it until
-            # it's gone (deleted outright, the calendar would bring it back as an event of its own).
-            dropped = replace(require_item(ctx, row["id"]), status="dropped")
-            ctx.db.update("items", {"id": row["id"]}, {"status": "dropped", "updated_utc": ctx.now_text})
-            queue_event_write(ctx, dropped, "delete")
         else:
-            delete_item(ctx, row["id"])
+            remove_occurrence(ctx, row["id"], row["id"] in links)
     return kept
+
+
+def remove_occurrence(ctx: Ctx, item_id: int, on_calendar: bool) -> None:
+    if on_calendar:
+        # On a calendar: taken off it too, and kept here as dropped so the calendar's copy stays tied to it until
+        # it's gone (deleted outright, the calendar would bring it back as an event of its own).
+        dropped = replace(require_item(ctx, item_id), status="dropped")
+        ctx.db.update("items", {"id": item_id}, {"status": "dropped", "updated_utc": ctx.now_text})
+        queue_event_write(ctx, dropped, "delete")
+    else:
+        delete_item(ctx, item_id)
 
 
 def delete_item(ctx: Ctx, item_id: int) -> None:

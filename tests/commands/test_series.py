@@ -99,8 +99,6 @@ def test_a_new_time_from_a_date_on_moves_that_time_and_every_later_one(app: App)
     app.do("materialize")
     newest = max((i for i in app.table("items") if i["title"] == "Salsa"), key=lambda i: i["occurrence_date"])
     assert when(newest)[0][11:] == "13:25" and newest["id"] not in {i["id"] for i in later}  # those made later too
-    with pytest.raises(Exception, match="another day by changing how it repeats"):
-        app.do("edit", id=later[0]["id"], start="2026-11-08T13:25", end="2026-11-08T14:30", from_date="2026-11-07")
 
 
 def test_a_repeat_more_than_once_a_day_keeps_each_time(app: App) -> None:

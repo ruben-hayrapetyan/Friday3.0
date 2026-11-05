@@ -30,6 +30,7 @@ from friday.commands.fields import (
     preset_name,
     require_item,
     to_item_values,
+    update_item,
 )
 from friday.commands.registry import Ctx, command
 from friday.commands.series import (
@@ -41,12 +42,12 @@ from friday.commands.series import (
     timing_on,
     without_times,
 )
+from friday.commands.series_days import move_from, moves_day
 from friday.commands.timer import stop_timer
 from friday.core.db import one, rows
 from friday.core.guess import course_of, guess_preset
 from friday.core.items import FieldError, Item, amount_units, validate, would_create_cycle
 from friday.core.quickadd import parse
-from friday.core.rows import item_to_row
 from friday.core.textnorm import identity_text, norm, plain_words
 from friday.core.time import UNIT_MIN, to_local
 from friday.estimate.durations import Estimate, bias_ratio, estimate_length, history
@@ -326,6 +327,12 @@ def edit_from(ctx: Ctx, item: Item, from_date: str, given: dict[str, Any]) -> It
     times = {k: v for k, v in values.items() if k in TIME_KEYS}
     values = without_times(values)
     series = load_series(ctx, item.series_id)
+    if times and item.occurrence_date and moves_day(ctx, item, times):
+        return ItemResult(
+            item=item_out(
+                ctx, move_from(ctx, item, times, values), minutes_by_item(ctx.conn, ctx.user_id).get(item.id, 0)
+            )
+        )
     if times and item.occurrence_date:
         series = retimed(ctx, series, item, times)
     template = json.loads(series["template"]) | values
@@ -350,13 +357,6 @@ def edit_from(ctx: Ctx, item: Item, from_date: str, given: dict[str, Any]) -> It
     return ItemResult(
         item=item_out(ctx, require_item(ctx, item.id), minutes_by_item(ctx.conn, ctx.user_id).get(item.id, 0))
     )
-
-
-def update_item(ctx: Ctx, before: Item, after: Item) -> None:
-    old, new = item_to_row(before), item_to_row(after)
-    changes = {k: v for k, v in new.items() if old.get(k) != v}
-    if changes:
-        ctx.db.update("items", {"id": before.id}, changes | {"updated_utc": ctx.now_text})
 
 
 def set_status(ctx: Ctx, item_id: int, status: str, completed: str | None = None) -> Item:
