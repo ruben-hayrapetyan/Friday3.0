@@ -14,6 +14,8 @@ from pathlib import Path
 
 LINK_MINUTES = 15  # how long an emailed link works, once
 CODE_MINUTES = 2  # how long the browser's hand-back to the Mac app works, once
+TYPED_TRIES = 5  # wrong tries an emailed code takes before it stops working (H92)
+ADDRESS_TRIES = 20  # wrong tries one address takes in an hour, over all its codes, before codes stop for it
 USERNAME = re.compile(r"^[a-z0-9][a-z0-9_.-]{1,30}$")
 EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -32,6 +34,18 @@ CREATE TABLE IF NOT EXISTS links (
   kind TEXT NOT NULL CHECK (kind IN ('email', 'app')),
   app TEXT,
   expires INTEGER NOT NULL,
+  used INTEGER
+) STRICT;
+CREATE TABLE IF NOT EXISTS codes (
+  flow TEXT PRIMARY KEY,
+  email TEXT NOT NULL COLLATE NOCASE,
+  account_id INTEGER REFERENCES accounts (id),
+  hash TEXT NOT NULL,
+  link TEXT,
+  app TEXT,
+  made INTEGER NOT NULL,
+  expires INTEGER NOT NULL,
+  tries INTEGER NOT NULL DEFAULT 0,
   used INTEGER
 ) STRICT;
 CREATE TABLE IF NOT EXISTS sessions (
@@ -115,6 +129,51 @@ class Accounts:
             return None
         return found, self.token(found.id, "email", now + LINK_MINUTES, app)
 
+    def emailed_code(self, email: str, now: int, app: str | None = None) -> tuple[str, str]:
+        """The 6-digit code for the email beside its link (H92), and the flow the sign-in page types it into. An
+        address without an account gets a flow too, and its tries count the same, so the page tells nobody who has
+        one. The code is stored hashed with its flow: six digits alone are too few to keep."""
+        found = self.by_email(email)
+        flow, code = secrets.token_urlsafe(24), f"{secrets.randbelow(10**6):06d}"
+        with self.connect() as conn:
+            conn.execute(
+                "INSERT INTO codes (flow, email, account_id, hash, app, made, expires) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [flow, email.strip().lower(), found.id if found else None, digest(f"{flow}:{code}"), app, now,
+                 now + LINK_MINUTES],
+            )  # fmt: skip
+        return flow, code
+
+    def pair(self, flow: str, link: str) -> None:
+        """The emailed code and link are one sign-in: using either uses up both."""
+        with self.connect() as conn:
+            conn.execute("UPDATE codes SET link = ? WHERE flow = ?", [digest(link), flow])
+
+    def redeem_code(self, flow: str, code: str, now: int) -> tuple[Account, str | None] | str:
+        """The account a typed code signs in and the app that asked, used up with its link; or why not, in words."""
+        typed = "".join(ch for ch in code if ch.isdigit())
+        with self.connect() as conn:
+            row = conn.execute("SELECT * FROM codes WHERE flow = ?", [flow]).fetchone()
+            if row is None or row["used"] is not None or row["expires"] < now or row["tries"] >= TYPED_TRIES:
+                return "That code has run out: send a new one."
+            if self.address_tries(conn, row["email"], now) >= ADDRESS_TRIES:
+                return "Too many wrong codes for this address. Use the link in the email, or wait an hour."
+            if len(typed) != 6 or digest(f"{flow}:{typed}") != row["hash"] or row["account_id"] is None:
+                conn.execute("UPDATE codes SET tries = tries + 1 WHERE flow = ?", [flow])
+                left = TYPED_TRIES - row["tries"] - 1
+                return "That code isn't right." + (f" {left} more {'try' if left == 1 else 'tries'}." if left else "")
+            if conn.execute("UPDATE codes SET used = ? WHERE flow = ? AND used IS NULL", [now, flow]).rowcount != 1:
+                return "That code has run out: send a new one."
+            if row["link"]:
+                conn.execute("UPDATE links SET used = ? WHERE hash = ? AND used IS NULL", [now, row["link"]])
+            found = conn.execute("SELECT * FROM accounts WHERE id = ?", [row["account_id"]]).fetchone()
+        found_account = account(found)
+        return (found_account, row["app"]) if found_account else "That code has run out: send a new one."
+
+    @staticmethod
+    def address_tries(conn: sqlite3.Connection, email: str, now: int) -> int:
+        one = conn.execute("SELECT COALESCE(SUM(tries), 0) FROM codes WHERE email = ? AND made >= ?", [email, now - 60])
+        return int(one.fetchone()[0])
+
     def app_code(self, account_id: int, app: str, now: int) -> str:
         """A one-time code the browser hands to the Mac app, which trades it for a session of its own."""
         return self.token(account_id, "app", now + CODE_MINUTES, app)
@@ -140,6 +199,8 @@ class Accounts:
             done = conn.execute("UPDATE links SET used = ? WHERE hash = ? AND used IS NULL", [now, row["hash"]])
             if done.rowcount != 1:  # two tabs at once: only one wins
                 return None
+            if kind == "email":  # its emailed code goes with it (H92)
+                conn.execute("UPDATE codes SET used = ? WHERE link = ? AND used IS NULL", [now, row["hash"]])
             found = conn.execute("SELECT * FROM accounts WHERE id = ?", [row["account_id"]]).fetchone()
         found_account = account(found)
         return (found_account, row["app"]) if found_account else None

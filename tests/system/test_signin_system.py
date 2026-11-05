@@ -52,6 +52,12 @@ class Hosted:
             out += re.findall(r"http://\S+/auth/link\?t=\S+", body)
         return out
 
+    def codes(self) -> list[str]:
+        out = []
+        for path in sorted((self.folder / "outbox").glob("*.eml")):
+            out += re.findall(r"^(\d{6}) is your", message_from_bytes(path.read_bytes())["Subject"])
+        return out
+
     def stop(self) -> None:
         self.process.terminate()
         self.process.wait(15)
@@ -109,7 +115,7 @@ def test_a_passkey_made_after_the_link_signs_you_in_again_over_http(hosted: Host
             break
         time.sleep(0.25)
     opened = hosted.http.get(hosted.links()[-1], follow_redirects=False)
-    assert opened.headers["location"] == "/auth/passkey/offer"  # "Use Touch ID next time?"
+    assert opened.headers["location"] == "/" and hosted.http.get("/auth/me").json()["offer_passkey"] is True
     soft = SoftKey(own["origin"], "127.0.0.1")
     asked = hosted.http.post("/auth/passkey/register/options", json={}, headers=own).json()
     made = hosted.http.post("/auth/passkey/register", headers=own,
@@ -124,3 +130,20 @@ def test_a_passkey_made_after_the_link_signs_you_in_again_over_http(hosted: Host
     assert hosted.http.get("/api/q/status").status_code == 200
     (listed,) = hosted.http.get("/auth/passkeys").json()
     assert listed["used"] is not None
+
+
+def test_the_emailed_code_typed_where_you_asked_signs_you_in(hosted: Hosted) -> None:
+    hosted.cli("account-add", "--email", EMAIL, "--username", "ruben", "--name", "Ruben")  # made once, either order
+    own = {"origin": f"http://127.0.0.1:{hosted.port}"}
+    hosted.http.post("/auth/signout", headers=own, follow_redirects=False)
+    before = len(hosted.codes())
+    page = hosted.http.post("/signin", data={"email": EMAIL}, headers=own)
+    (flow,) = re.findall(r'name="flow" value="([^"]+)"', page.text)
+    for _ in range(20):
+        if len(hosted.codes()) > before:
+            break
+        time.sleep(0.25)
+    code = hosted.codes()[-1]
+    typed = hosted.http.post("/signin/code", data={"flow": flow, "code": code}, headers=own, follow_redirects=False)
+    assert typed.status_code == 303 and typed.headers["location"] == "/"
+    assert hosted.http.get("/auth/me").json()["username"] == "ruben"

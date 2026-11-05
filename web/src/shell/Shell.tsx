@@ -18,6 +18,7 @@ import { useKeys } from "@/hooks/useKeys"
 import { Dock } from "@/now/Dock"
 import { BlockPopover } from "@/plan/BlockPopover"
 import { OtherWaysDialog, WayBanner } from "@/plan/OtherWays"
+import { PasskeyOffer } from "@/settings/PasskeyOffer"
 import { PlanPage } from "@/plan/PlanPage"
 import { PacePop } from "@/pops/PacePop"
 import { markShoved } from "@/pops/shoved"
@@ -46,7 +47,7 @@ import { closes, type Opener, wasInFront } from "./toggles"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 
 export function Shell() {
-  const { today, pop, setPop, dialog, setDialog, drawer, event, layout, drawerOver, drawerWidth, navOpen, setNavOpen, tour } = useShell()
+  const { today, pop, setPop, dialog, setDialog, drawer, event, layout, drawerOver, drawerWidth, navOpen, setNavOpen, tour, way } = useShell()
   const client = useQueryClient()
   const toast = useToast()
   const shove = async (range: string) => {
@@ -136,6 +137,7 @@ export function Shell() {
         {!location.pathname.startsWith("/settings") && !(drawerOver && (drawer || event || trying) && location.pathname === "/") && <Dock />}
         <BlockPopover />
         {location.pathname === "/" && <WayBanner />}
+        <PasskeyOffer hidden={Boolean(way) && location.pathname === "/"} />
         {pop && <div onClick={() => setPop(null)} style={{ position: "absolute", inset: 0, zIndex: 9 }} />}
         {pop === "shove" && <ShovePop />}
         {pop === "pace" && <PacePop />}

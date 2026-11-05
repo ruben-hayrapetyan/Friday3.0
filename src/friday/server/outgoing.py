@@ -19,15 +19,18 @@ class MailError(Exception):
     """Mail couldn't be sent; the message says why in words for the page."""
 
 
-def signin_message(to: str, link: str) -> EmailMessage:
+def signin_message(to: str, link: str, code: str) -> EmailMessage:
+    """The code leads the subject, so a notification or the inbox's list shows it without opening the email (H92)."""
     message = EmailMessage()
     message["From"] = f"Friday <{os.environ.get('FRIDAY_MAIL_FROM', SENDER)}>"
     message["To"] = to
-    message["Subject"] = "Your link to sign in to Friday"
+    message["Subject"] = f"{code} is your Friday sign-in code"
     message.set_content(
-        "Open this link to sign in to Friday. It works once, for the next 15 minutes:\n\n"
+        f"Your code to sign in to Friday: {code}\n\n"
+        "Type it on the page where you asked, or open this link instead:\n\n"
         f"{link}\n\n"
-        "If you didn't ask to sign in, ignore this email: nobody gets in without the link."
+        "Either one works once, for the next 15 minutes.\n\n"
+        "If you didn't ask to sign in, ignore this email: nobody gets in without the code or the link."
     )
     return message
 

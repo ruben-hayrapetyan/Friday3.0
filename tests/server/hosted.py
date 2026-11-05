@@ -64,13 +64,24 @@ def mailed(tmp_path: Path) -> list[str]:
     return out
 
 
-def ask_link(client: TestClient, email: str = EMAIL, app: str = "") -> None:
+def codes(tmp_path: Path) -> list[str]:
+    """The codes in the mail sent so far, oldest first, read from the subject line as a notification shows them."""
+    out = []
+    for path in sorted((tmp_path / "outbox").glob("*.eml")):
+        out += re.findall(r"^(\d{6}) is your Friday sign-in code$", message_from_bytes(path.read_bytes())["Subject"])
+    return out
+
+
+def ask_link(client: TestClient, email: str = EMAIL, app: str = "") -> str:
+    """Asks for an email; the flow the page's code box carries."""
     answer = client.post("/signin", data={"email": email, "app": app})
     assert answer.status_code == 200 and "Check your email" in answer.text
+    (flow,) = re.findall(r'name="flow" value="([^"]+)"', answer.text)
+    return flow
 
 
 def signed_in(client: TestClient, tmp_path: Path) -> None:
     ask_link(client)
     link = mailed(tmp_path)[-1]
     answer = client.get(link.split(".net:8443", 1)[1])
-    assert answer.status_code == 303 and answer.headers["location"] in ("/", "/auth/passkey/offer")
+    assert answer.status_code == 303 and answer.headers["location"] == "/"

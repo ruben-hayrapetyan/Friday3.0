@@ -1,7 +1,8 @@
 // Who is signed in to a hosted Friday, and signing out (HOSTED.md S4). Your Friday on the Mac has no accounts: there
 // /auth/me is the website's own page (HTML), so nobody is signed in and nothing about signing out is shown.
 
-export type Me = { email: string; username: string; name: string }
+/** `offer_passkey`: this browser has no passkey and hasn't said Not now, so Friday offers one (H94). */
+export type Me = { email: string; username: string; name: string; offer_passkey?: boolean }
 
 /** The account signed in, or null: your own Friday, or not answered. */
 export async function whoAmI(fetcher: typeof fetch = fetch): Promise<Me | null> {
@@ -12,6 +13,11 @@ export async function whoAmI(fetcher: typeof fetch = fetch): Promise<Me | null> 
   } catch {
     return null
   }
+}
+
+/** Not now, on the bar inside Friday: this browser isn't offered a passkey again (H94). */
+export async function passkeyLater(fetcher: typeof fetch = fetch): Promise<void> {
+  await fetcher("/auth/passkey/later", { method: "POST" }).catch(() => undefined)
 }
 
 /** Ends this browser's session, drops what the service worker kept of your plan, and opens the sign-in page. */

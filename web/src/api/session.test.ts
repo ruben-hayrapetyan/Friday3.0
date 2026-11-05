@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { signInPage, signOut, whoAmI } from "./session"
+import { passkeyLater, signInPage, signOut, whoAmI } from "./session"
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })
 
@@ -14,6 +14,24 @@ describe("who is signed in", () => {
   it("is nobody when the server doesn't answer or refuses", async () => {
     expect(await whoAmI(async () => Promise.reject(new Error("offline")))).toBeNull()
     expect(await whoAmI(async () => json({ signin: "/signin" }, 401))).toBeNull()
+  })
+})
+
+describe("Not now, on the passkey offer (H94)", () => {
+  it("tells the server, so this browser isn't asked again", async () => {
+    const asked: string[] = []
+    await passkeyLater((async (url: string | URL | Request, init?: RequestInit) => {
+      asked.push(`${init?.method} ${String(url)}`)
+      return new Response("{}", { status: 200 })
+    }) as typeof fetch)
+    expect(asked).toEqual(["POST /auth/passkey/later"])
+  })
+  it("doesn't throw when the server can't be reached: the bar is already gone", async () => {
+    await expect(passkeyLater((async () => Promise.reject(new Error("offline"))) as typeof fetch)).resolves.toBeUndefined()
+  })
+  it("comes from who is signed in", async () => {
+    const me = { email: "you@gmail.com", username: "ruben", name: "Ruben", offer_passkey: true }
+    expect((await whoAmI(async () => json(me)))?.offer_passkey).toBe(true)
   })
 })
 

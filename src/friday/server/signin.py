@@ -1,6 +1,7 @@
-"""Signing in and out of a hosted Friday (HOSTED.md S4, H81–H87): every page and API call needs a session (H83),
-except these pages. The email link (H22) signs this browser in until you sign out (H25); asked from the Mac app
-(H43), the browser instead hands the app a one-time code, which the app's window trades for a session of its own.
+"""Signing in and out of a hosted Friday (HOSTED.md S4, H81–H95): every page and API call needs a session (H83),
+except these pages. The emailed code, typed where you asked, or the email's link (H22, H92) signs this browser in
+until you sign out (H25); asked from the Mac app (H43, H95), the browser instead hands the app a one-time code, which
+the app's window trades for a session of its own.
 
 Cookies are secure, HTTP-only and same-site (H64); a sign-in or sign-out from another site's page is refused, as
 `own_pages_only` refuses its changes. Signing out ends the session and clears what the browser kept of Friday.
@@ -18,13 +19,14 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from friday.server import outgoing
 from friday.server.accounts import Account, Accounts
 from friday.server.google_signin import Client, GoogleError, GoogleSignIn
-from friday.server.passkey_page import offer_body, signin_script
+from friday.server.passkey_page import code_script, signin_script
 from friday.server.passkeys import Party, PasskeyError, Passkeys, device_name
 
 COOKIE = "friday_session"
 FOREVER = 10 * 365 * 24 * 3600  # "until you sign out" (H25)
 OPEN = (
     "/signin",
+    "/signin/code",
     "/auth/link",
     "/auth/app",
     "/auth/passkey/signin/options",
@@ -35,7 +37,7 @@ OPEN = (
     "/icon-192.png",
     "/icon-512.png",
 )
-OFFERED = "friday_passkey"  # this browser made a passkey, or said Not now: the offer isn't made again (H88)
+OFFERED = "friday_passkey"  # "made": this browser has a passkey (Touch ID asks by itself, H93); "later": Not now
 APPS = {"friday-test": "Friday Test", "friday": "Friday"}  # the Mac apps that may ask, by their link scheme
 
 
@@ -76,26 +78,39 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
     def signin_page(request: Request, app: str = "") -> Response:
         if not app and accounts.session(request.cookies.get(COOKIE), clock()):
             return RedirectResponse("/", status_code=303)
-        return page(form(app if app in APPS else "", google=google is not None))
+        known = request.cookies.get(OFFERED) == "made"
+        return page(form(app if app in APPS else "", google=google is not None, known=known))
 
     @app.post("/signin", include_in_schema=False)
     def send_link(request: Request, email: str = Form(""), app: str = Form("")) -> Response:
         if from_elsewhere(request):
             return page("<p>Friday takes sign-ins only from its own page.</p>", status=403)
         app = app if app in APPS else ""
+        flow, code = accounts.emailed_code(email, clock(), app or None)
         made = accounts.email_link(email, clock(), app or None)
         if made is not None:
             found, token = made
+            accounts.pair(flow, token)
             try:
-                outgoing.send(outgoing.signin_message(found.email, f"{public(request)}/auth/link?t={token}"))
+                outgoing.send(outgoing.signin_message(found.email, f"{public(request)}/auth/link?t={token}", code))
             except outgoing.MailError as error:
                 return page(form(app, email, str(error), google is not None), status=503)
         # The same answer whether or not the address has an account, so the page tells nobody who does.
-        return page(
-            f"<h2>Check your email</h2><p>If <b>{html.escape(email.strip())}</b> has a Friday account, a link to sign "
-            "in is on its way. It works once, for 15 minutes.</p>"
-            f'<p class="quiet"><a href="/signin{"?app=" + app if app else ""}">Use another address</a></p>'
-        )
+        return page(code_form(email, flow, app))
+
+    @app.post("/signin/code", include_in_schema=False)
+    def type_code(request: Request, flow: str = Form(""), code: str = Form(""), email: str = Form(""),
+                  app: str = Form("")) -> Response:  # fmt: skip
+        """The emailed code typed on the page that asked (H92): signed in where you are, without opening the email."""
+        if from_elsewhere(request):
+            return page("<p>Friday takes sign-ins only from its own page.</p>", status=403)
+        redeemed = accounts.redeem_code(flow, code, clock())
+        if isinstance(redeemed, str):
+            return page(code_form(email, flow, app if app in APPS else "", redeemed), status=400)
+        found, asked_by = redeemed
+        if asked_by in APPS:
+            return hand_back(asked_by, accounts.app_code(found.id, asked_by, clock()))
+        return signed_in(request, found.id, request.headers.get("user-agent", "a browser"))
 
     @app.get("/auth/link", include_in_schema=False)
     def open_link(request: Request, t: str = "") -> Response:
@@ -109,10 +124,7 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
         found, asked_by = redeemed
         if asked_by in APPS:
             return hand_back(asked_by, accounts.app_code(found.id, asked_by, clock()))
-        response = signed_in(request, found.id, request.headers.get("user-agent", "a browser"))
-        if not request.cookies.get(OFFERED):
-            response.headers["location"] = "/auth/passkey/offer"  # "Use Touch ID next time?" (H88)
-        return response
+        return signed_in(request, found.id, request.headers.get("user-agent", "a browser"))
 
     @app.get("/auth/google/start", include_in_schema=False)
     def google_start(request: Request, app: str = "") -> Response:
@@ -167,7 +179,10 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
     def me(request: Request) -> JSONResponse:
         found = accounts.session(request.cookies.get(COOKIE), clock())
         assert found is not None  # the guard let it through
-        return JSONResponse({"email": found.email, "username": found.username, "name": found.name})
+        # "Use Touch ID next time?" shows inside Friday until this browser has a passkey or says Not now (H94).
+        offer = not request.cookies.get(OFFERED)
+        mine = {"email": found.email, "username": found.username, "name": found.name}
+        return JSONResponse(mine | {"offer_passkey": offer})
 
     def signed_in(request: Request, account_id: int, device: str, response: Response | None = None) -> Response:
         token = accounts.start_session(account_id, device, clock())
@@ -184,13 +199,12 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
     def refused(error: str, status: int = 400) -> JSONResponse:
         return JSONResponse({"field": "passkey", "message": error}, status_code=status)
 
-    @app.get("/auth/passkey/offer", include_in_schema=False)
-    def offer() -> Response:
-        return page(offer_body())
-
-    @app.get("/auth/passkey/later", include_in_schema=False)
+    @app.post("/auth/passkey/later", include_in_schema=False)
     def later(request: Request) -> Response:
-        return remember(request, RedirectResponse("/", status_code=303), "later")
+        """Not now, on the bar inside Friday (H94): this browser isn't asked again."""
+        if from_elsewhere(request):
+            return refused("Friday takes changes only from its own pages", 403)
+        return remember(request, JSONResponse({"offer_passkey": False}), "later")
 
     @app.post("/auth/passkey/register/options", include_in_schema=False)
     def register_options(request: Request) -> Response:
@@ -228,11 +242,13 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
                                           clock())  # fmt: skip
         except PasskeyError as error:
             return refused(str(error))
+        # This browser has a passkey from now on, however it came to have one: Touch ID asks by itself (H93).
         if asked_by in APPS:  # the browser page Friday Test opened (H91): hand back as the link does
             code = accounts.app_code(found.id, asked_by, clock())
-            return JSONResponse({"next": f"{asked_by}://signed-in?{urlencode({'code': code})}"})
+            back = JSONResponse({"next": f"{asked_by}://signed-in?{urlencode({'code': code})}"})
+            return remember(request, back, "made")
         device = request.headers.get("user-agent", "a browser")
-        return signed_in(request, found.id, device, JSONResponse({"next": "/"}))
+        return remember(request, signed_in(request, found.id, device, JSONResponse({"next": "/"})), "made")
 
     @app.get("/auth/passkeys", include_in_schema=False)
     def passkey_list(request: Request) -> JSONResponse:
@@ -244,7 +260,11 @@ def install(app: FastAPI, accounts: Accounts, clock: Callable[[], int], foreign:
         if from_elsewhere(request):
             return refused("Friday takes changes only from its own pages", 403)
         passkey_id = str((await request.json() or {}).get("id", ""))
-        return JSONResponse({"removed": keys.remove(who(request).id, passkey_id)})
+        account_id = who(request).id
+        response = JSONResponse({"removed": keys.remove(account_id, passkey_id)})
+        if not keys.of(account_id):  # none left: Touch ID can't ask by itself, and the offer comes back (H93, H94)
+            response.delete_cookie(OFFERED, path="/", secure=secure(request), httponly=True, samesite="lax")
+        return response
 
 
 def hand_back(asked_by: str, code: str) -> HTMLResponse:
@@ -263,7 +283,7 @@ def quote_js(text: str) -> str:
     return '"' + quote(text, safe=":/?=&%-_.~") + '"'
 
 
-def form(app: str, email: str = "", error: str = "", google: bool = False) -> str:
+def form(app: str, email: str = "", error: str = "", google: bool = False, known: bool = False) -> str:
     asked = f'<input type="hidden" name="app" value="{html.escape(app)}">' if app else ""
     said = f'<p class="error" role="alert">{html.escape(error)}</p>' if error else ""
     note = f"<p>Signing in {APPS[app]}: the link you're sent brings you back to it.</p>" if app else ""
@@ -273,15 +293,35 @@ def form(app: str, email: str = "", error: str = "", google: bool = False) -> st
         '<label for="email">Your email</label>'
         f'<input id="email" name="email" type="email" autocomplete="username webauthn" required '
         f'value="{html.escape(email)}">{asked}'
-        '<button class="button" type="submit">Email me a link</button></form>'
+        '<button class="button" type="submit">Email me a code</button></form>'
         + (
             f'<a class="button other" href="/auth/google/start{"?app=" + app if app else ""}">Continue with Google</a>'
             if google
             else ""
         )
-        + '<p class="error" id="passkey-said" role="alert" hidden></p>'
-        '<p class="quiet">No password: Friday emails you a link that signs you in, or your passkey fills in here.</p>'
-        + signin_script(app)
+        + '<button class="button other" id="passkey-button" type="button" hidden>Sign in with Touch ID</button>'
+        '<p class="error" id="passkey-said" role="alert" hidden></p>'
+        '<p class="quiet">No password: Friday emails you a code, or Touch ID signs you in.</p>'
+        + signin_script(app, known)
+    )
+
+
+def code_form(email: str, flow: str, app: str, error: str = "") -> str:
+    """Where the emailed code is typed (H92); six digits sign in by themselves, without a click."""
+    said = f'<p class="error" role="alert">{html.escape(error)}</p>' if error else ""
+    keep = (f'<input type="hidden" name="email" value="{html.escape(email.strip())}">'
+            + (f'<input type="hidden" name="app" value="{html.escape(app)}">' if app else ""))  # fmt: skip
+    return (
+        f"<h2>Check your email</h2><p>If <b>{html.escape(email.strip())}</b> has a Friday account, a code is on its "
+        "way. Type it here, or open the link in the email.</p>"
+        f'{said}<form method="post" action="/signin/code"><label for="code">6-digit code</label>'
+        '<input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" '
+        f'pattern="[0-9 ]{{6,7}}" required autofocus>{keep}'
+        f'<input type="hidden" name="flow" value="{html.escape(flow)}">'
+        '<button class="button" type="submit">Sign in</button></form>'
+        f'<form method="post" action="/signin">{keep}<p class="quiet">The code and link work once, for 15 minutes. '
+        '<button class="linkish" type="submit">Send a new code</button> · '
+        f'<a href="/signin{"?app=" + app if app else ""}">Use another address</a></p></form>' + code_script()
     )
 
 
@@ -311,6 +351,10 @@ input:focus-visible, .button:focus-visible, a:focus-visible {{ outline: 2px soli
   text-decoration: none; }}
 form .button, .button.other {{ width: 100%; text-align: center; }}
 .button.other {{ background: transparent; color: var(--ink); border: 1px solid var(--rule); }}
+.button[hidden] {{ display: none; }}
+#code {{ font: 600 22px/1.2 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.3em; text-align: center; }}
+.linkish {{ font: inherit; color: var(--ink); background: none; border: 0; padding: 0; text-decoration: underline;
+  cursor: pointer; }}
 a {{ color: var(--ink); }}
 .quiet {{ color: var(--quiet); font-size: 13px; }}
 .error {{ color: var(--red); }}

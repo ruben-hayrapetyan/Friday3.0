@@ -21,7 +21,7 @@ def test_everything_waits_behind_the_sign_in_page(hosted: TestClient) -> None:
         assert answer.status_code == 401 and answer.json()["signin"] == "/signin", path
     assert hosted.post("/api/c/sync_now", json={}).status_code == 401
     page = hosted.get("/signin")
-    assert page.status_code == 200 and "Email me a link" in page.text
+    assert page.status_code == 200 and "Email me a code" in page.text
 
 
 def test_the_emailed_link_signs_this_browser_in_with_a_lasting_secure_cookie(
@@ -36,7 +36,8 @@ def test_the_emailed_link_signs_this_browser_in_with_a_lasting_secure_cookie(
         assert part in cookie, part
     assert hosted.get("/").text == "<html>Friday app</html>"
     assert hosted.get("/api/q/status").status_code == 200
-    assert hosted.get("/auth/me").json() == {"email": EMAIL, "username": "ruben", "name": "Ruben"}
+    me = {"email": EMAIL, "username": "ruben", "name": "Ruben", "offer_passkey": True}
+    assert hosted.get("/auth/me").json() == me
     assert hosted.get("/signin").headers["location"] == "/"  # already in
 
 
@@ -110,4 +111,4 @@ def test_your_own_friday_with_no_accounts_file_needs_no_sign_in(tmp_path: Path, 
     assert local.get("/").text == "<html>Friday app</html>"
     assert local.get("/api/q/status").status_code == 200
     assert local.get("/signin").status_code in (200, 404)  # the app's own page, if anything: no sign-in there
-    assert "Email me a link" not in local.get("/signin").text
+    assert "Email me a code" not in local.get("/signin").text

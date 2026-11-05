@@ -1,7 +1,8 @@
-"""Black box: passkeys on a hosted Friday over HTTP (HOSTED.md S4 step 2; H88–H91), Touch ID played by a software
-authenticator. After an emailed link Friday offers a passkey once; one made in Settings signs you in from the email
-box's autofill, in the browser or for Friday Test (handed back as the link is); your passkeys are listed and can be
-removed; and another site's page can do none of it."""
+"""Black box: passkeys on a hosted Friday over HTTP (HOSTED.md S4 steps 2 and 4; H88–H91, H93, H94), Touch ID played
+by a software authenticator. After an emailed link you land in Friday, which offers a passkey until you say Not now;
+one made signs you in from the email box's autofill or straight away, by itself on a browser that has one, in the
+browser or for Friday Test (handed back as the link is); your passkeys are listed and can be removed; and another
+site's page can do none of it."""
 
 import re
 from pathlib import Path
@@ -43,21 +44,55 @@ def passkey_signin(client: TestClient, soft: SoftKey, app: str | None = None) ->
     return {"status": answer.status_code, **answer.json(), "cookie": answer.headers.get("set-cookie", "")}
 
 
-def test_after_an_emailed_link_friday_offers_a_passkey_until_you_say_not_now(
+def test_an_emailed_link_lands_in_friday_which_offers_a_passkey_until_you_say_not_now(
     hosted: TestClient, tmp_path: Path
 ) -> None:
-    assert sign_in_by_link(hosted, tmp_path) == "/auth/passkey/offer"
-    offer = hosted.get("/auth/passkey/offer")
-    assert "Use Touch ID next time?" in offer.text and "Not now" in offer.text
-    later = hosted.get("/auth/passkey/later")
-    assert later.headers["location"] == "/" and "friday_passkey=later" in later.headers["set-cookie"]
-    assert sign_in_by_link(hosted, tmp_path) == "/"  # not offered again in this browser
+    assert sign_in_by_link(hosted, tmp_path) == "/"  # no page in between (H94)
+    assert hosted.get("/auth/me").json()["offer_passkey"] is True
+    assert "Use Touch ID next time?" not in hosted.get("/auth/passkey/offer").text  # the old page is gone
+    later = hosted.post("/auth/passkey/later", headers=OWN)
+    assert later.json() == {"offer_passkey": False} and "friday_passkey=later" in later.headers["set-cookie"]
+    sign_in_by_link(hosted, tmp_path)
+    assert hosted.get("/auth/me").json()["offer_passkey"] is False  # not offered again in this browser
 
 
 def test_the_offer_isnt_made_again_once_this_browser_has_a_passkey(hosted: TestClient, tmp_path: Path) -> None:
     sign_in_by_link(hosted, tmp_path)
     add_passkey(hosted)
-    assert sign_in_by_link(hosted, tmp_path) == "/"
+    sign_in_by_link(hosted, tmp_path)
+    assert hosted.get("/auth/me").json()["offer_passkey"] is False
+
+
+def test_touch_id_asks_by_itself_only_on_a_browser_that_has_a_passkey(hosted: TestClient, tmp_path: Path) -> None:
+    assert "const KNOWN = false" in hosted.get("/signin").text
+    assert 'id="passkey-button"' in hosted.get("/signin").text  # elsewhere, a button (H93)
+    sign_in_by_link(hosted, tmp_path)
+    add_passkey(hosted)
+    hosted.post("/auth/signout", headers=OWN)
+    assert "const KNOWN = true" in hosted.get("/signin").text
+
+
+def test_signing_in_with_a_passkey_marks_this_browser_as_having_one(hosted: TestClient, tmp_path: Path) -> None:
+    sign_in_by_link(hosted, tmp_path)
+    soft = add_passkey(hosted)
+    hosted.post("/auth/signout", headers=OWN)
+    hosted.cookies.clear()  # another browser, where the passkey arrived by sync
+    assert "const KNOWN = false" in hosted.get("/signin").text
+    done = passkey_signin(hosted, soft)
+    assert "friday_passkey=made" in done["cookie"]
+    assert hosted.get("/auth/me").json()["offer_passkey"] is False
+
+
+def test_removing_your_last_passkey_brings_the_offer_back_and_stops_touch_id_asking(
+    hosted: TestClient, tmp_path: Path
+) -> None:
+    sign_in_by_link(hosted, tmp_path)
+    add_passkey(hosted)
+    (listed,) = hosted.get("/auth/passkeys").json()
+    hosted.post("/auth/passkeys/remove", json={"id": listed["id"]}, headers=OWN)
+    assert hosted.get("/auth/me").json()["offer_passkey"] is True
+    hosted.post("/auth/signout", headers=OWN)
+    assert "const KNOWN = false" in hosted.get("/signin").text
 
 
 def test_a_passkey_made_signs_this_browser_in_from_the_email_boxs_autofill(hosted: TestClient, tmp_path: Path) -> None:
@@ -78,7 +113,7 @@ def test_for_friday_test_the_passkey_hands_back_to_the_app_as_the_link_does(host
     hosted.post("/auth/signout", headers=OWN)
     assert 'const APP = "friday-test"' in hosted.get("/signin?app=friday-test").text
     done = passkey_signin(hosted, soft, app="friday-test")
-    assert done["status"] == 200 and done["cookie"] == ""  # the browser isn't signed in by it
+    assert done["status"] == 200 and "friday_session=" not in done["cookie"]  # the browser isn't signed in by it
     (code,) = re.findall(r"^friday-test://signed-in\?code=(.+)$", done["next"])
     assert hosted.get(f"/auth/app?code={code}").status_code == 303
     assert hosted.get("/api/q/status").status_code == 200
@@ -101,14 +136,14 @@ def test_signed_out_you_can_ask_to_sign_in_but_not_make_list_or_remove(hosted: T
     for path in ("/auth/passkey/register/options", "/auth/passkeys/remove"):
         assert hosted.post(path, json={}, headers=OWN).status_code == 401, path
     assert hosted.get("/auth/passkeys").status_code == 401
-    assert hosted.get("/auth/passkey/offer").status_code == 401
+    assert hosted.post("/auth/passkey/later", headers=OWN).status_code == 401
 
 
 def test_another_sites_page_can_do_none_of_it(hosted: TestClient, tmp_path: Path) -> None:
     sign_in_by_link(hosted, tmp_path)
     evil = {"origin": "https://evil.example"}
     for path in ("/auth/passkey/register/options", "/auth/passkey/register", "/auth/passkey/signin/options",
-                 "/auth/passkey/signin", "/auth/passkeys/remove"):  # fmt: skip
+                 "/auth/passkey/signin", "/auth/passkeys/remove", "/auth/passkey/later"):  # fmt: skip
         assert hosted.post(path, json={}, headers=evil).status_code == 403, path
 
 
@@ -125,4 +160,6 @@ def test_the_email_box_is_focused_only_once_the_passkey_request_waits(hosted: Te
     assert "autofocus" not in box
     script = page[page.index("<script>") :]
     assert script.index('mediation: "conditional"') < script.index("focus();\n  let cred")
-    assert "setTimeout(() => offer(tries + 1)" in script  # an ended request is made again
+    assert "setTimeout(() => listen(tries + 1)" in script  # an ended request is made again
+    ask = script[script.index("async function ask()") :]
+    assert ask.index("stop.abort()") < ask.index("navigator.credentials.get")  # the box's request set aside first
