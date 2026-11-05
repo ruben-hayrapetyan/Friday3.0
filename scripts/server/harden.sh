@@ -12,8 +12,12 @@ set -euo pipefail
 user="${SUDO_USER:?run it with sudo from your own account}"
 lan="10.48.0.0/16"
 
-sshd -T | grep -Eq '^passwordauthentication no' && echo "==> SSH: keys only (already)" \
-    || { echo "SSH still takes passwords: not changing it here; tell Claude"; exit 1; }
+# Read whole before matching: `grep -q` stops at the match, sshd then dies writing to the closed pipe, and with
+# pipefail a correct setting read as wrong (4 Nov).
+effective="$(/usr/sbin/sshd -T)"
+if grep -qx "passwordauthentication no" <<< "$effective" && grep -qx "kbdinteractiveauthentication no" <<< "$effective"
+then echo "==> SSH: keys only (already)"
+else echo "SSH still takes passwords: not changing it here; tell Claude"; exit 1; fi
 
 apt-get update -qq
 DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ufw fail2ban python3-systemd unattended-upgrades sqlite3 >/dev/null
