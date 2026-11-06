@@ -9,6 +9,7 @@ from friday.core.time import UNIT_MIN, format_utc, parse_utc, planning_date
 from friday.planner.build import BuildInput, Dependency, Pin, night_times
 from friday.planner.progress import recorded_minutes, remaining_minutes
 from friday.planner.snapshot import BlockRow, Snapshot
+from friday.planner.timed import timed_over, with_running
 
 
 def block_key(item_id: int, start_utc: int) -> str:
@@ -31,6 +32,18 @@ def assumed_blocks(snapshot: Snapshot) -> list[BlockRow]:
     them here). The nightly job runs before the day starts, so it closes a day only the night after next."""
     if snapshot.settings["planner"].assume_unreviewed != "done":
         return []
+    upto = -(-snapshot.now_utc // UNIT_MIN) * UNIT_MIN  # where the new plan begins, holding the timed item from there
+    sittings = with_running(
+        (
+            (item_id, parse_utc(r["start_utc"]), parse_utc(r["end_utc"]))
+            for item_id, found in snapshot.progress.items()
+            for r in found
+            if r["source"] == "timer" and r["start_utc"] and r["end_utc"]
+        ),
+        (*snapshot.alongside, *([snapshot.timer] if snapshot.timer else [])),
+        upto,
+    )
+    background = {i.id for i in snapshot.items if i.background and i.id is not None}
     out = []
     for block in snapshot.plan_blocks:
         day = day_of(snapshot, block.start_utc)
@@ -42,21 +55,16 @@ def assumed_blocks(snapshot: Snapshot) -> list[BlockRow]:
         ):
             continue
         # A running block counts up to where the new plan begins, the next quarter hour, so no minutes fall between.
-        block = dataclasses.replace(block, end_utc=min(block.end_utc, -(-snapshot.now_utc // UNIT_MIN) * UNIT_MIN))
+        block = dataclasses.replace(block, end_utc=min(block.end_utc, upto))
         recorded = snapshot.progress.get(block.item_id, ())
         settled = any(r["block_key"] == block_key(block.item_id, block.start_utc) for r in recorded)
-        timed = any(r["source"] == "timer" and overlaps(r, block) for r in recorded)  # a session replaces the block
+        # A sitting of it replaces the block (§8 rule 1); one mostly under other things you timed wasn't done.
+        timed = timed_over(block.item_id, block.start_utc, block.end_utc, sittings, background) is not None
         # The slider sets the total as of when you moved it: a block begun before then is in that total already.
         slid = any(r["source"] == "slider" and parse_utc(r["created_utc"]) > block.start_utc for r in recorded)
         if not settled and not timed and not slid:
             out.append(block)
     return out
-
-
-def overlaps(row: dict, block: BlockRow) -> bool:
-    if not row["start_utc"] or not row["end_utc"]:
-        return False
-    return parse_utc(row["start_utc"]) < block.end_utc and parse_utc(row["end_utc"]) > block.start_utc
 
 
 def progress_minutes(snapshot: Snapshot) -> tuple[dict[int, int], dict[int, int]]:

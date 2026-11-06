@@ -49,6 +49,7 @@ from friday.planner.progress import minutes_by_item, remaining_minutes
 from friday.planner.service import ahead
 from friday.planner.snapshot import pace_periods, take_snapshot
 from friday.planner.store import area_names, current_plan, generation, kv_get, settings_version
+from friday.planner.timed import OWN, background_ids, sittings_between, timed_over
 from friday.planner.views import Current, fits_view, now_view
 
 
@@ -328,7 +329,8 @@ def sittings(ctx: Ctx, lo: int, hi: int) -> list[BlockOut]:
 def past_states(ctx: Ctx, blocks: list[BlockOut]) -> list[BlockOut]:
     """What became of each block that has ended: the item finished, or this block marked done (or, while unmarked
     blocks count as done, left unmarked) is done; a timer sitting of the item over it, timed; marked not done, or
-    left unmarked while unmarked blocks are planned again, missed; the item deleted or skipped, gone."""
+    left unmarked while unmarked blocks are planned again, or mostly under other things you timed, missed; the item
+    deleted or skipped, gone."""
     blocks = split_at_now(ctx, blocks)
     past = [b for b in blocks if b.end <= (ctx.local(ctx.now_text) or "")]
     if not past:
@@ -344,6 +346,8 @@ def past_states(ctx: Ctx, blocks: list[BlockOut]) -> list[BlockOut]:
         [*ids, format_utc(lo)],
     )
     counts = ctx.settings["planner"].assume_unreviewed == "done"
+    sittings = sittings_between(ctx.conn, ctx.user_id, lo, ctx.now_utc, ctx.now_utc)
+    background = background_ids(ctx.conn, ctx.user_id)
     states = {}
     for b in past:
         start, end = parse_utc(ctx.utc(b.start)), parse_utc(ctx.utc(b.end))
@@ -352,16 +356,17 @@ def past_states(ctx: Ctx, blocks: list[BlockOut]) -> list[BlockOut]:
             for r in recorded
             if r["item_id"] == b.item_id and parse_utc(r["start_utc"]) < end and parse_utc(r["end_utc"]) > start
         ]
+        timed = timed_over(b.item_id, start, end, sittings, background)
         if status.get(b.item_id) in ("dropped", "skipped"):
             states[b.key] = "gone"
-        elif any(r["source"] == "timer" for r in over):
+        elif timed == OWN:
             states[b.key] = "timed"  # finished or not, the sitting is what happened there
         elif status.get(b.item_id) == "done":
             states[b.key] = "done"
         elif reviewed := [r for r in over if r["source"] == "review"]:
             states[b.key] = "done" if reviewed[-1]["minutes"] > 0 else "missed"
-        else:
-            states[b.key] = "done" if counts else "missed"
+        else:  # mostly under other things you timed, it didn't happen
+            states[b.key] = "done" if counts and timed is None else "missed"
     return [b.model_copy(update={"state": states[b.key]}) if b.key in states else b for b in blocks]
 
 

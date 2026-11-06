@@ -35,6 +35,7 @@ from friday.learn.order import KEPT
 from friday.planner.prepare import block_key
 from friday.planner.progress import minutes_by_item
 from friday.planner.store import current_plan, kv_get
+from friday.planner.timed import background_ids, sittings_between, timed_over
 
 SHORT_START = re.compile(r"^([A-Za-z]{3})(\d{1,2}:\d{2})$")
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
@@ -220,8 +221,10 @@ def day_bounds(ctx: Ctx, day: date) -> tuple[int, int]:
 
 
 def day_blocks(ctx: Ctx, day: date) -> list[dict[str, Any]]:
-    """The current plan's blocks of that planning day that have started, except those a timer session of the same
-    item overlaps: the session replaces the block (§8 rule 1), so the review shows it as recorded instead."""
+    """The current plan's blocks of that planning day that have started, except those the timer accounts for: one a
+    sitting of the same item overlaps, finished or still running, which the sitting replaces (§8 rule 1), and one
+    mostly under other things you timed, which didn't happen (5 Nov: "CS A4 Complete" was asked about while its
+    timer ran)."""
     plan = current_plan(ctx.conn, ctx.user_id)
     if plan is None:
         return []
@@ -232,16 +235,10 @@ def day_blocks(ctx: Ctx, day: date) -> list[dict[str, Any]]:
         "AND start_utc < ? ORDER BY start_utc",
         [plan["id"], format_utc(lo), format_utc(hi), ctx.now_text],
     )
-    sessions = [
-        (r["item_id"], parse_utc(r["start_utc"]), parse_utc(r["end_utc"]))
-        for r in rows(
-            ctx.conn,
-            "SELECT * FROM progress WHERE user_id = ? AND source = 'timer' AND start_utc < ? AND end_utc > ?",
-            [ctx.user_id, format_utc(hi), format_utc(lo)],
-        )
-    ]
+    sittings = sittings_between(ctx.conn, ctx.user_id, lo, hi, ctx.now_utc)
+    background = background_ids(ctx.conn, ctx.user_id)
     blocks = [r | {"start": parse_utc(r["start_utc"]), "end": min(parse_utc(r["end_utc"]), ctx.now_utc)} for r in found]
-    return [b for b in blocks if not any(i == b["item_id"] and s < b["end"] and e > b["start"] for i, s, e in sessions)]
+    return [b for b in blocks if timed_over(b["item_id"], b["start"], b["end"], sittings, background) is None]
 
 
 @command("review_submit", affects_plan=True)
@@ -327,7 +324,7 @@ def day_gaps(ctx: Ctx, day: date) -> list[ReviewGap]:
                 item_id=item_id,
                 title=item["title"],
                 planned_min=planned,
-                spans=[[ctx.local(format_utc(b["start"])) or "", ctx.local(format_utc(b["end"])) or ""] for b in shown],
+                spans=[[ctx.local(format_utc(s)) or "", ctx.local(format_utc(e)) or ""] for s, e in joined(shown)],
                 blocks=[block_key(item_id, b["start"]) for b in shown],
                 due=ctx.local(item["due_utc"]),
                 last=item_id not in ahead,
@@ -336,6 +333,18 @@ def day_gaps(ctx: Ctx, day: date) -> list[ReviewGap]:
                 finished=item["status"] == "done",
             )
         )
+    return out
+
+
+def joined(blocks: list[dict[str, Any]]) -> list[tuple[int, int]]:
+    """The blocks' times with touching ones as one: each replan cuts the block under way, so one sitting's worth of
+    planned time was "9:30–9:45, 9:45–10pm"."""
+    out: list[tuple[int, int]] = []
+    for b in sorted(blocks, key=lambda b: b["start"]):
+        if out and b["start"] <= out[-1][1]:
+            out[-1] = (out[-1][0], max(out[-1][1], b["end"]))
+        else:
+            out.append((b["start"], b["end"]))
     return out
 
 
