@@ -25,7 +25,7 @@ APP_NAME="Friday"
 EXECUTABLE="Friday"
 # Its own id, so it runs beside the Swift app until the switch without sharing its settings or login item.
 BUNDLE_ID="com.rubenhayrapetyan.friday.web"
-VERSION="0.0.1"
+VERSION="0.1.0"
 TEST_PLIST="" RIBBON=()
 if $TEST; then
   # Another name and id: its own settings, website data and permissions, so macOS asks it as it would a new user.
