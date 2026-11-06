@@ -17,8 +17,14 @@ PYTHON_VERSION="3.12"
 
 echo "==> Bundling Python $PYTHON_VERSION"
 uv python install --managed-python "$PYTHON_VERSION" >/dev/null 2>&1
-FOUND="$(uv python find --managed-python "$PYTHON_VERSION")"
+# looked for outside any project: inside one, uv finds the project's .venv first (6 Nov: a venv was bundled, linked
+# back to this Mac's Python and the repo)
+FOUND="$(cd / && uv python find --managed-python --no-project "$PYTHON_VERSION")"
 HOME_DIR="$(cd "$(dirname "$FOUND")/.." && pwd -P)"
+if [ -f "$HOME_DIR/pyvenv.cfg" ] || [ ! -f "$HOME_DIR/lib/python$PYTHON_VERSION/os.py" ]; then
+  echo "Not a standalone Python: $HOME_DIR" >&2
+  exit 1
+fi
 [ -d "$RUNTIME" ] && rm -r "$RUNTIME"
 mkdir -p "$RUNTIME"
 ditto "$HOME_DIR" "$RUNTIME/python"

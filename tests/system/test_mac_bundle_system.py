@@ -86,7 +86,9 @@ def test_it_serves_the_website_from_inside_itself(downloaded: Downloaded) -> Non
 
 
 def test_its_python_and_friday_are_its_own_not_the_repos(downloaded: Downloaded) -> None:
-    where = downloaded.run("import sys, friday; print(sys.prefix); print(friday.__file__)").splitlines()
+    # base_prefix too: a virtual environment copied in would still lean on this Mac's Python (6 Nov)
+    where = downloaded.run("import sys, friday; print(sys.prefix); print(sys.base_prefix); print(friday.__file__)")
+    where = where.splitlines()
     assert all(line.startswith(str(downloaded.app)) for line in where), where
     assert str(REPO) not in downloaded.run("import sys; print(sys.path)")
 
