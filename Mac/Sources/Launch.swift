@@ -138,7 +138,7 @@ struct LaunchView: View {
                             .foregroundStyle(.secondary)
                             .contentTransition(.opacity)
                         if slow {
-                            Text("The first start takes up to a minute. If macOS asks whether Friday may open files in a folder, allow it: that's where its server lives.")
+                            Text("Getting Friday ready. The first start on a Mac can take a minute.")
                                 .font(.callout)
                                 .foregroundStyle(.tertiary)
                                 .multilineTextAlignment(.center)

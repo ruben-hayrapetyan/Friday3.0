@@ -61,6 +61,55 @@ test("fridayd: what you chose first, then the usual places") {
     check(Server.candidates(chosen: nil, home: home).count == 4, "four usual places")
 }
 
+test("the server inside the app: chosen in Settings first, then the app's own, then the usual places (H109)") {
+    let home = URL(fileURLWithPath: "/Users/someone")
+    let resources = URL(fileURLWithPath: "/Applications/Friday.app/Contents/Resources")
+    let python = "/Applications/Friday.app/Contents/Resources/friday/python/bin/python3.12"
+    let bundled = Server.bundledPython(resources: resources, isExecutable: { $0 == python })
+    check(bundled?.path == python, "the app's own Python")
+    check(Server.bundledPython(resources: resources, isExecutable: { _ in false }) == nil, "an app built without one")
+    let everything: (String) -> Bool = { _ in true }
+    let own = Server.launcher(chosen: nil, bundled: bundled, home: home, isExecutable: everything, exists: { _ in false })
+    check(own?.executable.path == python && own?.prefix == ["-m", "friday.server.main"] && own?.bundled == true,
+          "nothing chosen: the app's own, run as a module")
+    let chosen = Server.launcher(chosen: "/opt/fridayd", bundled: bundled, home: home, isExecutable: everything,
+                                 exists: { _ in false })
+    check(chosen == Server.Launcher(executable: URL(fileURLWithPath: "/opt/fridayd")), "what you chose wins")
+    let gone = Server.launcher(chosen: "/opt/gone", bundled: nil, home: home, isExecutable: { $0 != "/opt/gone" },
+                               exists: { _ in false })
+    check(gone?.executable.path == "/Users/someone/.local/bin/fridayd", "a choice that's gone, no app's own: installed")
+    check(Server.launcher(chosen: nil, bundled: nil, home: home, isExecutable: { _ in false }, exists: { _ in false })
+          == nil, "none anywhere: nil, and the window says so")
+}
+
+test("the app's own server: the shipped planner as it is, nothing written into the app, nothing of a shell's Python") {
+    let home = URL(fileURLWithPath: "/Users/someone")
+    let python = URL(fileURLWithPath: "/Applications/Friday.app/Contents/Resources/friday/python/bin/python3.12")
+    let own = Server.bundledLauncher(python, home: home, exists: { _ in false })
+    let env = own.environment(["PATH": "/usr/bin", "PYTHONPATH": "/Users/someone/src", "PYTHONHOME": "/x"])
+    check(env["NUMBA_CPU_NAME"] == "generic", "the planner compiled for any Apple silicon (H111)")
+    check(env["PYTHONDONTWRITEBYTECODE"] == "1" && env["PYTHONNOUSERSITE"] == "1", "writes nothing, reads no user site")
+    check(env["PYTHONPATH"] == nil && env["PYTHONHOME"] == nil && env["PATH"] == "/usr/bin", "a shell's Python left out")
+    let process = Process()
+    Server.prepare(process, own, ["serve"], user: nil, base: ["PATH": "/usr/bin"])
+    check(process.arguments == ["-m", "friday.server.main", "serve"], "\(process.arguments ?? [])")
+    let test = Process()
+    Server.prepare(test, own, ["serve"], user: TestUser(folder: "/tmp/f", port: 8770, claude: true), base: [:])
+    check(test.arguments == ["-m", "friday.server.main", "--data-dir", "/tmp/f/data", "serve", "--port", "8770"],
+          "Friday Test on the app's own Python, in its folder: \(test.arguments ?? [])")
+    check(test.environment?["FRIDAY_DATA_DIR"] == "/tmp/f/data", "its folder wins over the new user's place")
+}
+
+test("where Friday keeps its data: yours where it is, anyone new in Application Support (H114, H115)") {
+    let home = URL(fileURLWithPath: "/Users/someone")
+    check(Server.dataPlace(home: home, exists: { $0 == "/Users/someone/.local/share/friday/friday.db" }) == [:],
+          "a Friday already set up in ~/.local/share/friday stays there")
+    let fresh = Server.dataPlace(home: home, exists: { _ in false })
+    check(fresh["FRIDAY_DATA_DIR"] == "/Users/someone/Library/Application Support/Friday", "new: Application Support")
+    check(fresh["FRIDAY_CONFIG"] == "/Users/someone/Library/Application Support/Friday/friday.toml",
+          "its friday.toml beside the data")
+}
+
 test("the server is on this Mac only") {
     check(Server.base.absoluteString == "http://127.0.0.1:8765/", "base \(Server.base)")
     check(URL(string: "api/q/item?id=3", relativeTo: Server.base)?.absoluteString == "http://127.0.0.1:8765/api/q/item?id=3",
@@ -267,11 +316,12 @@ test("a test user's server: its folder, its port, calendars read only, no keys")
 }
 
 test("Server.prepare: yours as before, a test user's in its folder") {
+    let installed = Server.Launcher(executable: URL(fileURLWithPath: "/Users/someone/.local/bin/fridayd"))
     let yours = Process()
-    Server.prepare(yours, ["serve"], user: nil)
+    Server.prepare(yours, installed, ["serve"], user: nil)
     check(yours.arguments == ["serve"] && yours.environment == nil, "yours inherits the app's environment")
     let theirs = Process()
-    Server.prepare(theirs, ["serve"], user: TestUser(folder: "/tmp/f", port: 8770, claude: true))
+    Server.prepare(theirs, installed, ["serve"], user: TestUser(folder: "/tmp/f", port: 8770, claude: true))
     check(theirs.arguments == ["--data-dir", "/tmp/f/data", "serve", "--port", "8770"], "\(theirs.arguments ?? [])")
     check(theirs.environment?["FRIDAY_CALENDARS_READ_ONLY"] == "1", "its environment")
 }

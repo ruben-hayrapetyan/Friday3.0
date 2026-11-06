@@ -1,6 +1,8 @@
 #!/bin/bash
 # Builds the Mac app around Friday's website (COMBINED.md 1, 5) with the Swift compiler from the Command Line Tools.
-# It reuses the Swift app's hotkeys and live Dock icon from UI/Sources/App rather than copying them.
+# It reuses the Swift app's hotkeys and live Dock icon from UI/Sources/App rather than copying them. Friday's server,
+# with its own Python, the website and the compiled planner, goes inside it (Mac/bundle.sh), so it runs on any
+# Apple-silicon Mac as it is downloaded (HOSTED.md H108–H111).
 #
 #   ./build.sh                build into build/ for this Mac
 #   ./build.sh --install      build, then replace /Applications/Friday.app and launch it (the switch, C11)
@@ -87,6 +89,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
+echo "==> Building the website"
+(cd ../web && npx --yes pnpm@10.12.1 build >/dev/null)
+./bundle.sh "$APP"
+
 echo "==> Signing (ad-hoc)"
 codesign --force --sign - --timestamp=none "$APP"
 touch "$APP"
@@ -103,7 +109,7 @@ if $INSTALL; then
     sleep 0.1
   done
   [ -d "/Applications/$APP_NAME.app" ] && rm -r "/Applications/$APP_NAME.app"
-  cp -R "$APP" /Applications/
+  ditto "$APP" "/Applications/$APP_NAME.app"  # keeps file times: the compiled planner is checked against them
   for _ in 1 2 3; do
     open "/Applications/$APP_NAME.app" && break
     sleep 2

@@ -31,11 +31,62 @@ final class Server: ObservableObject {
         return out
     }
 
-    var executable: URL? {
-        let chosen = UserDefaults.standard.string(forKey: "fridaydPath")
-        return Self.candidates(chosen: chosen, home: FileManager.default.homeDirectoryForCurrentUser)
-            .first { FileManager.default.isExecutableFile(atPath: $0.path) }
+    /// How `fridayd` is run: its executable, what goes before its own arguments, and what it adds to the environment.
+    struct Launcher: Equatable {
+        let executable: URL
+        var prefix: [String] = []
+        var settings: [String: String] = [:]
+        var bundled = false
+
+        /// The app's own Python reads nothing of yours: no PYTHONPATH or PYTHONHOME from a shell.
+        func environment(_ base: [String: String]) -> [String: String] {
+            var env = base
+            if bundled { env["PYTHONPATH"] = nil; env["PYTHONHOME"] = nil }
+            return env.merging(settings) { _, new in new }
+        }
     }
+
+    /// The Python inside the app (Mac/bundle.sh, HOSTED.md H109): Friday's server as anyone who downloads Friday has it.
+    nonisolated static func bundledPython(resources: URL?, isExecutable: (String) -> Bool) -> URL? {
+        guard let python = resources?.appendingPathComponent("friday/python/bin/python3.12"),
+              isExecutable(python.path) else { return nil }
+        return python
+    }
+
+    /// The app's own server as it's run: the planner compiled in the build is used as it is (a generic Apple-silicon
+    /// target, H111), nothing is written into the app, and the data folder is chosen by `dataPlace`.
+    nonisolated static func bundledLauncher(_ python: URL, home: URL, exists: (String) -> Bool) -> Launcher {
+        let settings = ["NUMBA_CPU_NAME": "generic", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1"]
+        return Launcher(executable: python, prefix: ["-m", "friday.server.main"],
+                        settings: settings.merging(dataPlace(home: home, exists: exists)) { a, _ in a }, bundled: true)
+    }
+
+    /// Where Friday keeps its data (H114, H115): a Friday already set up in ~/.local/share/friday stays there (yours);
+    /// anyone new gets ~/Library/Application Support/Friday, with its friday.toml beside the data.
+    nonisolated static func dataPlace(home: URL, exists: (String) -> Bool) -> [String: String] {
+        if exists(home.appendingPathComponent(".local/share/friday/friday.db").path) { return [:] }
+        let support = home.appendingPathComponent("Library/Application Support/Friday")
+        return ["FRIDAY_DATA_DIR": support.path, "FRIDAY_CONFIG": support.appendingPathComponent("friday.toml").path]
+    }
+
+    /// The server to run: the one you chose in Settings, else the app's own, else one installed in the usual places.
+    nonisolated static func launcher(chosen: String?, bundled: URL?, home: URL, isExecutable: (String) -> Bool,
+                                     exists: (String) -> Bool) -> Launcher? {
+        if let chosen, !chosen.isEmpty, isExecutable(chosen) { return Launcher(executable: URL(fileURLWithPath: chosen)) }
+        if let bundled { return bundledLauncher(bundled, home: home, exists: exists) }
+        return candidates(chosen: nil, home: home).first { isExecutable($0.path) }.map { Launcher(executable: $0) }
+    }
+
+    var launcher: Launcher? {
+        let files = FileManager.default
+        let isExecutable: (String) -> Bool = { files.isExecutableFile(atPath: $0) }
+        return Self.launcher(chosen: UserDefaults.standard.string(forKey: "fridaydPath"),
+                             bundled: Self.bundledPython(resources: Bundle.main.resourceURL, isExecutable: isExecutable),
+                             home: files.homeDirectoryForCurrentUser, isExecutable: isExecutable,
+                             exists: { files.fileExists(atPath: $0) })
+    }
+
+    var executable: URL? { launcher?.executable }
 
     /// Running already (another copy, or `fridayd` started by hand), or start it.
     func ensureRunning(attempt: Int = 0) async {
@@ -43,14 +94,13 @@ final class Server: ObservableObject {
             await setUp()
             return
         }
-        guard let executable else {
+        guard let launcher else {
             state = .failed("Friday's server, fridayd, wasn't found. Choose it in Settings → Mac app.")
             return
         }
         state = .starting
         let started = Process()
-        started.executableURL = executable
-        Self.prepare(started, ["serve"])
+        Self.prepare(started, launcher, ["serve"])
         started.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser  // not wherever the app was opened from
         let pipe = Pipe()
         started.standardOutput = pipe
@@ -92,11 +142,10 @@ final class Server: ObservableObject {
     /// (the window kept drawing), and a setup that didn't take says so with Try again, rather than opening onto a
     /// Friday with no user.
     private func setUp() async {
-        if let status = await Self.status(), status["ready"] as? Bool == false, let executable {
+        if let status = await Self.status(), status["ready"] as? Bool == false, let launcher {
             let init_ = Process()
-            init_.executableURL = executable
             init_.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser
-            Self.prepare(init_, ["init", "--timezone", TimeZone.current.identifier, "--bedtime", "23:30", "--wake", "07:30"])
+            Self.prepare(init_, launcher, ["init", "--timezone", TimeZone.current.identifier, "--bedtime", "23:30", "--wake", "07:30"])
             let code: Int32 = await withCheckedContinuation { done in
                 init_.terminationHandler = { done.resume(returning: $0.terminationStatus) }
                 do { try init_.run() } catch {
@@ -114,15 +163,16 @@ final class Server: ObservableObject {
         state = .ready
     }
 
-    /// `fridayd` with `subcommand`: as it is for you; for Friday Test, in its user's folder on its port.
-    nonisolated static func prepare(_ process: Process, _ subcommand: [String], user: TestUser? = TestUser.current) {
-        guard let user else {
-            process.arguments = subcommand
-            return
-        }
-        let launch = user.launch(subcommand, environment: ProcessInfo.processInfo.environment)
-        process.arguments = launch.arguments
-        process.environment = launch.environment
+    /// `fridayd` with `subcommand`, run as `launcher` says: as it is for you; for Friday Test, in its user's folder
+    /// on its port (its folder wins over the data folder `launcher` chose).
+    nonisolated static func prepare(_ process: Process, _ launcher: Launcher, _ subcommand: [String],
+                                    user: TestUser? = TestUser.current,
+                                    base: [String: String] = ProcessInfo.processInfo.environment) {
+        process.executableURL = launcher.executable
+        var arguments = subcommand, environment = launcher.environment(base)
+        if let user { (arguments, environment) = user.launch(subcommand, environment: environment) }
+        process.arguments = launcher.prefix + arguments
+        if user != nil || environment != base { process.environment = environment }
     }
 
     private func keep(_ text: String) {
