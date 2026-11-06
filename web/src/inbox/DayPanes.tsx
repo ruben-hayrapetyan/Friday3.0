@@ -75,7 +75,7 @@ function GapAnswer({ gap, onPick }: { gap: Gap; onPick: (s: Status, minutes?: nu
       <button className="btn btn-icon btn-secondary" aria-label="Less" style={{ width: 28, height: 28 }} disabled={some <= step} onClick={() => setSome(Math.max(step, some - step))}>
         <Icon name="minus" />
       </button>
-      <span className="tnum" style={{ minWidth: 64, textAlign: "center" }}>
+      <span className="tnum" style={{ width: 64, flex: "none", whiteSpace: "nowrap", textAlign: "center" }}>
         {dur(some)}
       </span>
       <button className="btn btn-icon btn-secondary" aria-label="More" style={{ width: 28, height: 28 }} disabled={some >= gap.planned_min - step} onClick={() => setSome(Math.min(gap.planned_min - step, some + step))}>

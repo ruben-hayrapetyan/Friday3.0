@@ -27,9 +27,6 @@ export function EstimateNudge({ itemId, runningMin = 0 }: { itemId: number; runn
   const left = total - item.done_min - Math.floor(runningMin)
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
-      <span className="tnum" title="How long it's expected to take, all told" style={{ color: pending !== null ? "var(--color-accent-300)" : undefined, whiteSpace: "nowrap" }}>
-        {dur(total)} expected · {left > 0 ? `${dur(left)} left` : `${dur(-left || 1)} over`}
-      </span>
       {STEPS.map((by) => (
         <button
           key={by}
@@ -43,6 +40,9 @@ export function EstimateNudge({ itemId, runningMin = 0 }: { itemId: number; runn
           {said(by)}
         </button>
       ))}
+      <span className="tnum" data-testid="estimate-text" title="How long it's expected to take, all told" style={{ color: pending !== null ? "var(--color-accent-300)" : undefined, whiteSpace: "nowrap" }}>
+        {dur(total)} expected · {left > 0 ? `${dur(left)} left` : `${dur(-left || 1)} over`}
+      </span>
     </span>
   )
 }

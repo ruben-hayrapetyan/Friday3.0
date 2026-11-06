@@ -61,6 +61,9 @@ hard-reload) or the old build is served. The app is desktop only, with a 1100 px
 - [ ] Classes sit at their real times all week, the moved CHEM lecture next Wednesday at 14:00, no MATH lecture
       next Friday; exam prep is planned before each exam.
 - [ ] An unknown address (`#/plan`) lands on the plan.
+- [ ] Buttons you press again and again stay put (5 Nov): ‹ and › ten times in Day, 3 days, Week and Month, then
+      −/+ on a to-do's length and +30m on a block's estimate several times; none moves as the text beside it
+      changes (measure `getBoundingClientRect().left` before and after).
 - [ ] Accept the whole Inbox, then read the week as a student would: each assignment of 3 hours or less in one
       sitting (none cut into half-hours), all before its due, none in class, after bedtime or in the hour after
       waking; exam prep before its exam.

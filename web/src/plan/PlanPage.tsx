@@ -134,6 +134,15 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
   const views = layout.weekFits ? VIEWS : VIEWS.filter((v) => v.value !== 7)
   return (
     <div style={{ display: "flex", alignItems: "center", gap: layout.tight ? 4 : 8, padding: "0 12px 0 var(--fr-head-inset)", minWidth: 0 }}>
+      {/* Before the date, not after it: a date's length moved them, so clicking ahead many times missed (5 Nov). */}
+      <div data-testid="day-arrows" style={{ display: "flex", gap: 0, flex: "none" }}>
+        <button className="btn btn-icon btn-ghost" onClick={() => onStep(-1)} aria-label="Previous" style={{ width: 26, height: 28, color: "var(--color-neutral-300)" }}>
+          <Icon name="caret-left" />
+        </button>
+        <button className="btn btn-icon btn-ghost" onClick={() => onStep(1)} aria-label="Next" style={{ width: 26, height: 28, color: "var(--color-neutral-300)" }}>
+          <Icon name="caret-right" />
+        </button>
+      </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 48, flex: "0 1 auto", overflow: "hidden" }}>
         <span className="fr-h" style={{ fontSize: layout.tight ? 18 : 24, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {rangeTitle(first, view, layout.main < 900)}
@@ -144,16 +153,8 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
           </button>
         )}
       </div>
-      <div style={{ display: "flex", gap: 0, flex: "none" }}>
-        <button className="btn btn-icon btn-ghost" onClick={() => onStep(-1)} aria-label="Previous" style={{ width: 26, height: 28, color: "var(--color-neutral-300)" }}>
-          <Icon name="caret-left" />
-        </button>
-        <button className="btn btn-icon btn-ghost" onClick={() => onStep(1)} aria-label="Next" style={{ width: 26, height: 28, color: "var(--color-neutral-300)" }}>
-          <Icon name="caret-right" />
-        </button>
-      </div>
-      <Attention first={first} days={view === "month" ? 7 : view} />
       <div style={{ flex: 1, minWidth: 0 }} />
+      <Attention first={first} days={view === "month" ? 7 : view} />
       {!layout.tight && (
         <span data-tour="views" style={{ flex: "none", display: "flex" }}>
           <Seg options={views} value={view} onPick={onView} label="View" />

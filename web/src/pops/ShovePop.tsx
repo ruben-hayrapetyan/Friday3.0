@@ -102,7 +102,7 @@ export function ShovePop() {
                   <button className="btn btn-icon btn-secondary" onClick={() => setHours(Math.max(0.5, hours - 0.5))} aria-label="Less" style={{ width: 26, height: 26 }}>
                     <Icon name="minus" />
                   </button>
-                  <span className="tnum" style={{ minWidth: 44, textAlign: "center" }}>
+                  <span className="tnum" style={{ width: 48, flex: "none", whiteSpace: "nowrap", textAlign: "center" }}>
                     {hours} h
                   </span>
                   <button className="btn btn-icon btn-secondary" onClick={() => setHours(Math.min(12, hours + 0.5))} aria-label="More" style={{ width: 26, height: 26 }}>

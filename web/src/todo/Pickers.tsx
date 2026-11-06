@@ -221,7 +221,7 @@ export function LengthStepper({ value, onSave }: { value: number | null; onSave:
       <button className="btn btn-icon btn-secondary" disabled={!shown || shown <= 15} onClick={() => press(false)} aria-label={shown ? `Less: ${dur(stepLength(shown, false))}` : "Less time"} title={shown ? dur(stepLength(shown, false)) : undefined} style={{ width: 26, height: 26 }}>
         <Icon name="minus" />
       </button>
-      <span className="tnum" style={{ minWidth: 56, textAlign: "center", color: pending !== null ? "var(--color-accent-300)" : undefined }}>
+      <span className="tnum" style={{ width: 64, flex: "none", whiteSpace: "nowrap", textAlign: "center", color: pending !== null ? "var(--color-accent-300)" : undefined }}>
         {shown ? dur(shown) : "—"}
       </span>
       <button className="btn btn-icon btn-secondary" disabled={!shown} onClick={() => press(true)} aria-label={shown ? `More: ${dur(stepLength(shown, true))}` : "More time"} title={shown ? dur(stepLength(shown, true)) : undefined} style={{ width: 26, height: 26 }}>
@@ -328,7 +328,7 @@ export function RepeatPicker({ value, onPick }: { value: Repeat; onPick: (v: Rep
           <button className="btn btn-icon btn-secondary" onClick={() => onPick({ every: "week", perWindow: Math.max(1, times - 1) })} aria-label="Fewer" style={{ width: 26, height: 26 }}>
             <Icon name="minus" />
           </button>
-          <span style={{ minWidth: 90, textAlign: "center" }}>{times} times a week</span>
+          <span style={{ width: 104, flex: "none", whiteSpace: "nowrap", textAlign: "center" }}>{times} times a week</span>
           <button className="btn btn-icon btn-secondary" onClick={() => onPick({ every: "week", perWindow: Math.min(7, times + 1) })} aria-label="More" style={{ width: 26, height: 26 }}>
             <Icon name="plus" />
           </button>

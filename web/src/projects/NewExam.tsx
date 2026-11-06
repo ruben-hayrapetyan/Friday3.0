@@ -101,7 +101,7 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
           <button className="btn btn-icon btn-secondary" onClick={() => setPrep(Math.max(0, prep - 1))} aria-label="Less prep" style={{ width: 26, height: 26 }}>
             <Icon name="minus" />
           </button>
-          <span className="tnum" style={{ minWidth: 50, textAlign: "center" }}>
+          <span className="tnum" style={{ width: 56, flex: "none", whiteSpace: "nowrap", textAlign: "center" }}>
             {prep ? dur(prep * 60) : "None"}
           </span>
           <button className="btn btn-icon btn-secondary" onClick={() => setPrep(prep + 1)} aria-label="More prep" style={{ width: 26, height: 26 }}>

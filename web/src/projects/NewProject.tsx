@@ -84,7 +84,7 @@ export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
           <button className="btn btn-icon btn-secondary" onClick={() => setHours(Math.max(1, hours - 1))} aria-label="Less" style={{ width: 26, height: 26 }}>
             <Icon name="minus" />
           </button>
-          <span className="tnum" style={{ minWidth: 50, textAlign: "center" }}>
+          <span className="tnum" style={{ width: 56, flex: "none", whiteSpace: "nowrap", textAlign: "center" }}>
             {dur(hours * 60)}
           </span>
           <button className="btn btn-icon btn-secondary" onClick={() => setHours(hours + 1)} aria-label="More" style={{ width: 26, height: 26 }}>
