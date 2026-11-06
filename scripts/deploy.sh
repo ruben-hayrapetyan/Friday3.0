@@ -8,7 +8,8 @@
 #   scripts/deploy.sh               build the app and install it, restarting Friday
 #   scripts/deploy.sh --no-restart  build the app into Mac/build only; Friday keeps running what it has
 #
-# The `friday` command (the CLI assistants use) is installed too, as a copy in ~/.local/bin.
+# The `friday` command (the CLI assistants use) and fridayd are installed too, as a copy in ~/.local/bin, with the
+# website beside fridayd.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -20,15 +21,26 @@ for arg in "$@"; do
   esac
 done
 
-echo "==> Installing the friday command as a copy"
-uv tool install --force --reinstall "$REPO" >/dev/null 2>&1
+# The friday command, and fridayd with the website beside it (<prefix>/share/friday/web, where the server looks):
+# Friday Test builds older than the packaged app still run ~/.local/bin/fridayd (6 Nov: without the website there,
+# Friday Test showed nothing).
+install_command() {
+  echo "==> Installing the friday command and fridayd as a copy"
+  uv tool install --force --reinstall "$REPO" >/dev/null 2>&1
+  local prefix
+  prefix="$(uv tool dir)/friday"
+  mkdir -p "$prefix/share/friday"
+  ditto "$REPO/web/dist" "$prefix/share/friday/web"
+}
 
 if ! $RESTART; then
   "$REPO/Mac/build.sh"
+  install_command
   echo "Built Mac/build/Friday.app; Friday keeps running what it has."
   exit 0
 fi
-"$REPO/Mac/build.sh" --install
+"$REPO/Mac/build.sh" --install  # builds the website first
+install_command
 up=false
 for _ in $(seq 1 240); do
   [ "$(curl -s -o /dev/null -w '%{http_code}' 127.0.0.1:8765/api/q/status)" = "200" ] && up=true && break
