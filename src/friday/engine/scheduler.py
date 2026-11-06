@@ -16,6 +16,7 @@ from friday.engine.compile import Compiled
 from friday.engine.construct import construct, fewest_late_order, prepare_start
 from friday.engine.cpsat_deadlines import DeadlineModel, FallbackResult
 from friday.engine.evaluate import Evaluation, evaluate
+from friday.engine.gaps import closed_gaps
 from friday.engine.kernel import init_state, new_state, protected_items, total_violations
 from friday.engine.problem import STAGES, Problem
 from friday.engine.repair import deadline_value, repair
@@ -142,6 +143,7 @@ def schedule(
     if keep and (kept := better_kept(c, owner)) is not None:  # warm or the nightly cold one: yours stands
         owner, protected = kept, []
     owner = dated_first(c, owner, cancel)
+    owner = closed_gaps(c, owner, cancel)
     result = verified(c, owner, protected, fallback, start.demoted, seconds, config, steps)
     result.cancelled = bool(cancel[0])
     result.deadlines_after = trace | {"final": result.stage_values["deadlines"]}
