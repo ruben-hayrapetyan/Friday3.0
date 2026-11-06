@@ -1,7 +1,8 @@
 """Answers computed from the current state and plan: now, fits, why-not, triage, weight previews (DESIGN §14, §16)."""
 
 import dataclasses
-from collections.abc import Callable, Mapping
+import hashlib
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
@@ -94,27 +95,43 @@ def preview_weights(
     return assemble(changed, solve(changed, warm=True))
 
 
-def other_ways(snapshot: Snapshot, n: int = 2, tries: int = 6) -> list[tuple[dict[str, float], int, AssembledPlan]]:
+WAY_TRIES = 6  # seeds tried for two ways unlike your plan and each other
+
+
+Way = tuple[dict[str, float], int, AssembledPlan]  # the rules' factors, the seed, the plan
+
+
+def other_ways(snapshot: Snapshot, n: int = 2, tries: int = WAY_TRIES) -> list[Way]:
     """Other ways to plan the same work (personal's options, COMBINED.md 25): each a plan made from scratch with the
     learnable rules weighed differently (×e^N(0, 1)) and another search seed, kept when its blocks differ from the plan
     you have and from the ways already found. Picking one plans with those weights afresh, so it comes out the same."""
-    rules = learnable(snapshot.settings)
-    seen = [{(b.item_id, b.start_utc, b.end_utc) for b in snapshot.plan_blocks}]
+    seen = {signature(snapshot.plan_blocks)}
     out = []
     for seed in range(1, tries + 1):
-        rng = np.random.default_rng(seed)
-        factors = {r: round(float(np.exp(rng.normal(0, 1.0))), 3) for r in rules}
-        # Made afresh on purpose (`cold_once`): the plan you have doesn't stand against it, or every way were yours.
-        changed = dataclasses.replace(snapshot, settings=picked(snapshot.settings, factors, seed), cold_once=True)
-        plan = assemble(changed, solve(changed, warm=False))
-        blocks = {(b.item_id, b.start_utc, b.end_utc) for b in plan.blocks}
-        if any(blocks == other for other in seen):
+        factors, plan = other_way(snapshot, seed)
+        if signature(plan.blocks) in seen:
             continue
-        seen.append(blocks)
+        seen.add(signature(plan.blocks))
         out.append((factors, seed, plan))
         if len(out) == n:
             break
     return out
+
+
+def other_way(snapshot: Snapshot, seed: int) -> tuple[dict[str, float], AssembledPlan]:
+    """The way made with one seed: about half a minute on a full term, so the app asks for one at a time and shows
+    each as it comes (6 Nov: "it just says the same static thing for over 20 seconds")."""
+    rng = np.random.default_rng(seed)
+    factors = {r: round(float(np.exp(rng.normal(0, 1.0))), 3) for r in learnable(snapshot.settings)}
+    # Made afresh on purpose (`cold_once`): the plan you have doesn't stand against it, or every way were yours.
+    changed = dataclasses.replace(snapshot, settings=picked(snapshot.settings, factors, seed), cold_once=True)
+    return factors, assemble(changed, solve(changed, warm=False))
+
+
+def signature(blocks: Iterable[Any]) -> str:
+    """Which blocks a plan has, as a short text: two ways with the same one are the same way."""
+    found = sorted((b.item_id, b.start_utc, b.end_utc) for b in blocks)
+    return hashlib.sha1(repr(found).encode()).hexdigest()[:16]
 
 
 CLASH_FACTOR = 20  # how much more the rule is weighed when asking what keeping it would cost

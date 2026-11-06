@@ -682,6 +682,14 @@ VERBS = {
         False,
         "What's on now, what's next, what else is safe to do, and deadlines needing attention.",
     ),
+    "other_way": Verb(
+        "GET",
+        "/api/q/other_way",
+        commands.OtherWayInput,
+        False,
+        False,
+        "One other way to plan what you have, made afresh with seed `seed` (none when it came out as your plan); the",
+    ),
     "other_way_pick": Verb(
         "POST",
         "/api/c/other_way_pick",

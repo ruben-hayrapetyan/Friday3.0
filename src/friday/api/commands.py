@@ -502,6 +502,19 @@ class OtherWay(Model):
     sessions: int
     late: dict[str, float]  # title → hours late
     rule_totals: dict[str, int]
+    signature: str = ""  # which blocks it has: two ways with the same one are the same way
+
+
+class OtherWayInput(Model):
+    seed: int  # 1, 2, …: each seed weighs the rules differently
+
+
+class OneWayOut(Model):
+    """One way, asked for one at a time so each shows as it comes; None when it came out as your plan."""
+
+    way: OtherWay | None
+    tries: int  # seeds worth trying, from 1, for two ways unlike your plan and each other
+    wanted: int  # ways to show
 
 
 class OtherWaysOut(Model):

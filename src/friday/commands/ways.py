@@ -5,42 +5,62 @@ learns what you like (DESIGN §21)."""
 
 import json
 
-from friday.api.commands import Changed, OtherWay, OtherWayPickInput, OtherWaysOut
+from friday.api.commands import Changed, OneWayOut, OtherWay, OtherWayInput, OtherWayPickInput, OtherWaysOut
 from friday.api.types import Empty
 from friday.commands.fields import require_item
 from friday.commands.queries import block_out
 from friday.commands.registry import Ctx, command, query
 from friday.core.time import format_utc, parse_utc
+from friday.planner.assemble import AssembledPlan
 from friday.planner.learning import learnable
 from friday.planner.snapshot import take_snapshot
 from friday.planner.store import current_plan, kv_get
+from friday.planner.views import WAY_TRIES, signature
+from friday.planner.views import other_way as find_way
 from friday.planner.views import other_ways as find_ways
 
 PICK_DAYS = 7
+WAYS = 2  # ways shown
 
 
 @query("other_ways")
 def other_ways(ctx: Ctx, inp: Empty) -> OtherWaysOut:
     """Two other ways to plan what you have, each made afresh; nothing is saved."""
+    current = current_totals(ctx)
+    found = find_ways(take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id))
+    return OtherWaysOut(current=current, ways=[way_out(ctx, current, w, seed, plan) for w, seed, plan in found])
+
+
+@query("other_way")
+def other_way(ctx: Ctx, inp: OtherWayInput) -> OneWayOut:
+    """One other way to plan what you have, made afresh with seed `seed` (none when it came out as your plan); the
+    app asks for them one at a time and keeps the first two unlike each other."""
+    snapshot = take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id)
+    weights, plan = find_way(snapshot, inp.seed)
+    yours = signature(plan.blocks) == signature(snapshot.plan_blocks)
+    way = None if yours else way_out(ctx, current_totals(ctx), weights, inp.seed, plan)
+    return OneWayOut(way=way, tries=WAY_TRIES, wanted=WAYS)
+
+
+def current_totals(ctx: Ctx) -> dict[str, int]:
     saved = current_plan(ctx.conn, ctx.user_id)
-    current = json.loads(saved["report"]).get("rule_totals", {}) if saved else {}
-    ways = []
-    for weights, seed, plan in find_ways(take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id)):
-        totals = plan.report.get("rule_totals", {})
-        late = plan.report.get("late_hours", {})
-        ways.append(
-            OtherWay(
-                weights=weights,
-                seed=seed,
-                summary=difference(current, totals, learnable(ctx.settings)),
-                blocks=[block_out(ctx, b.item_id, b.start_utc, b.end_utc) for b in plan.blocks],
-                hours=round(sum(b.end_utc - b.start_utc for b in plan.blocks) / 60, 1),
-                sessions=len(plan.blocks),
-                late={require_item(ctx, int(k)).title: v for k, v in late.items()},
-                rule_totals=totals,
-            )
-        )
-    return OtherWaysOut(current=current, ways=ways)
+    return json.loads(saved["report"]).get("rule_totals", {}) if saved else {}
+
+
+def way_out(ctx: Ctx, current: dict[str, int], weights: dict[str, float], seed: int, plan: AssembledPlan) -> OtherWay:
+    totals = plan.report.get("rule_totals", {})
+    late = plan.report.get("late_hours", {})
+    return OtherWay(
+        weights=weights,
+        seed=seed,
+        summary=difference(current, totals, learnable(ctx.settings)),
+        blocks=[block_out(ctx, b.item_id, b.start_utc, b.end_utc) for b in plan.blocks],
+        hours=round(sum(b.end_utc - b.start_utc for b in plan.blocks) / 60, 1),
+        sessions=len(plan.blocks),
+        late={require_item(ctx, int(k)).title: v for k, v in late.items()},
+        rule_totals=totals,
+        signature=signature(plan.blocks),
+    )
 
 
 # What a way gains or gives up by each rule (personal's PHRASES): costing less, then costing more.

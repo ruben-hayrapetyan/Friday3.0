@@ -69,12 +69,12 @@ export async function queryBody<N extends BodyQueryName>(name: N, body: Json<Bod
   return read(await fetch(`/api/q/${name}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }))
 }
 
-export async function query<N extends QueryName>(name: N, params?: QueryParams<N>): Promise<Output<N>> {
+export async function query<N extends QueryName>(name: N, params?: QueryParams<N>, signal?: AbortSignal): Promise<Output<N>> {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params ?? {})) {
     if (value === null || value === undefined) continue
     for (const v of Array.isArray(value) ? value : [value]) search.append(key, String(v))
   }
   const text = search.toString()
-  return read(await fetch(`/api/q/${name}${text ? `?${text}` : ""}`))
+  return read(await fetch(`/api/q/${name}${text ? `?${text}` : ""}`, signal ? { signal } : undefined))
 }

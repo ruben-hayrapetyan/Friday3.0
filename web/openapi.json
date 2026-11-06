@@ -9881,6 +9881,45 @@
     }
    }
   },
+  "/api/q/other_way": {
+   "get": {
+    "summary": "One other way to plan what you have, made afresh with seed `seed` (none when it came out as your plan); the",
+    "operationId": "other_way",
+    "parameters": [
+     {
+      "name": "seed",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Seed"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OneWayOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/other_ways": {
    "get": {
     "summary": "Two other ways to plan what you have, each made afresh; nothing is saved.",
@@ -21019,6 +21058,37 @@
     "title": "OccurrenceChange",
     "description": "One time of a repeat that isn't like the others (27 Oct: \"salsa every Saturday except 11/14, and this Saturday\nit's in Willard Straight Hall\"): not that day, or another place, time or title that day."
    },
+   "OneWayOut": {
+    "properties": {
+     "way": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/OtherWay"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "tries": {
+      "type": "integer",
+      "title": "Tries"
+     },
+     "wanted": {
+      "type": "integer",
+      "title": "Wanted"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "way",
+     "tries",
+     "wanted"
+    ],
+    "title": "OneWayOut",
+    "description": "One way, asked for one at a time so each shows as it comes; None when it came out as your plan."
+   },
    "OrderOut": {
     "properties": {
      "first": {
@@ -21093,6 +21163,11 @@
       },
       "type": "object",
       "title": "Rule Totals"
+     },
+     "signature": {
+      "type": "string",
+      "title": "Signature",
+      "default": ""
      }
     },
     "additionalProperties": false,

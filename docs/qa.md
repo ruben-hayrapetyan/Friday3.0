@@ -102,6 +102,9 @@ hard-reload) or the old build is served. The app is desktop only, with a 1100 px
 - [ ] Length in the to-do detail and the Inbox's Edit takes "5m", "45", "1h30", "1.5h"; under 15 minutes says it
       takes a 15-minute slot.
 - [ ] Insights' comparison shows the day's classes in grey in both versions.
+- [ ] Other ways (on a busy profile, `--case grace --ready`): each slot counts its seconds with a bar and the
+      first card shows before the second; past 8 s it says you can close it; closed, a toast "Two other ways … are
+      ready" with See them; opened again within ten minutes the ways show at once; Stop leaves "Stopped."
 
 **Rules**
 - [ ] Every rule but "Deadlines come first" and "Keep pace with long work" can be deleted, and leaves the list at

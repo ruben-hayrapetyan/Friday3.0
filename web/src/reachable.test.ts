@@ -29,6 +29,7 @@ export const BEHIND_THE_SCENES: Record<string, string> = {
   review_submit: "the Review answers task by task (review_task)",
   stats: "Insights shows the same from `insights`",
   checkin: "used only while state inference is on; no screen asks it yet",
+  other_ways: "Other ways asks for one at a time (other_way) to show each as it comes; this is both, for the command line",
 }
 
 describe("every command has a way in", () => {

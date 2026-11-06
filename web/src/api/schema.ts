@@ -2605,6 +2605,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/other_way": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One other way to plan what you have, made afresh with seed `seed` (none when it came out as your plan); the */
+        get: operations["other_way"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/other_ways": {
         parameters: {
             query?: never;
@@ -6400,6 +6417,17 @@ export interface components {
             /** Title */
             title?: string | null;
         };
+        /**
+         * OneWayOut
+         * @description One way, asked for one at a time so each shows as it comes; None when it came out as your plan.
+         */
+        OneWayOut: {
+            way: components["schemas"]["OtherWay"] | null;
+            /** Tries */
+            tries: number;
+            /** Wanted */
+            wanted: number;
+        };
         /** OrderOut */
         OrderOut: {
             /** First */
@@ -6438,6 +6466,11 @@ export interface components {
             rule_totals: {
                 [key: string]: number;
             };
+            /**
+             * Signature
+             * @default
+             */
+            signature?: string;
         };
         /** OtherWayPickInput */
         OtherWayPickInput: {
@@ -14884,6 +14917,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NowOut"];
+                };
+            };
+        };
+    };
+    other_way: {
+        parameters: {
+            query: {
+                seed: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OneWayOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
