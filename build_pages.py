@@ -26,7 +26,7 @@ def page(name: str, title: str, description: str, body: str) -> str:
 </head>
 <body>
 <header class="site"><div class="wrap">
-  <a class="mark" href="/">Friday</a>
+  <a class="mark" href="/"><i aria-hidden="true"></i>Friday</a>
   <nav class="pages" aria-label="Pages">
     {links}
   </nav>

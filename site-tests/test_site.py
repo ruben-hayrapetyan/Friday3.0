@@ -1,4 +1,4 @@
-"""The download site (HOSTED.md H106, H116, H117; step 1). Glass box: build_pages.py wraps each page in the header
+"""The download site (HOSTED.md H106, H116, H117, H128; step 1). Glass box: build_pages.py wraps each page in the header
 and footer, marking the page it is. Black box over HTTP, as served: every page answers, every link and picture on
 them resolves on the site, every picture says what it shows, nothing is loaded from elsewhere (no trackers, H106
 privacy), and the download button points at a disk image that is there."""
@@ -86,9 +86,11 @@ def test_every_link_and_picture_on_a_page_is_on_the_site(site: str, page: str) -
 
 
 @pytest.mark.parametrize("page", PAGES)
-def test_every_picture_says_what_it_shows(site: str, page: str) -> None:
+def test_every_picture_says_what_it_shows_or_is_marked_decoration(site: str, page: str) -> None:
     for image in parsed(site, page).images:
-        assert len(image.get("alt") or "") > 20, image
+        alt = image.get("alt")
+        assert alt is not None, image  # alt="" is decoration (the live Friday's poster, labelled by its button)
+        assert alt == "" or len(alt) > 20, image
 
 
 def test_the_download_button_points_at_a_disk_image_that_is_there(site: str) -> None:
@@ -121,3 +123,27 @@ def test_the_pages_in_git_are_what_the_wrapper_writes() -> None:
     before = {p: (SITE / p).read_text() for p in PAGES if p != "index.html"}
     load_builder()
     assert {p: (SITE / p).read_text() for p in before} == before
+
+
+def test_the_home_page_carries_the_replanning_week_and_the_live_friday(site: str) -> None:
+    page = fetch(site, "/")[1].decode()
+    for part in ('id="board"', 'class="quickadd"', 'role="status"', 'class="pause"', 'class="steps"', "/week.js"):
+        assert part in page, part
+    script = fetch(site, "/week.js")[1].decode()
+    assert "prefers-reduced-motion" in script and "Replanned" in script  # still for reduced motion; says it replanned
+    assert 'data-src="https://laptop.tailnet.ts.net:10000/"' in page  # loaded only when asked
+
+
+def test_the_fonts_are_served_from_the_site_with_their_licences(site: str) -> None:
+    css = fetch(site, "/style.css")[1].decode()
+    fonts = [part.split(")")[0].strip("\"'") for part in css.split("url(")[1:]]
+    assert len(fonts) == 7
+    for font in fonts:
+        assert fetch(site, font)[0] == 200, font
+    for name in ("pixelify-sans", "inter", "jetbrains-mono"):
+        assert fetch(site, f"/fonts/LICENSE-{name}.txt")[1].startswith(b"Copyright"), name
+
+
+def test_no_colour_gradients_in_the_look() -> None:
+    css = (SITE / "style.css").read_text()
+    assert "gradient(" not in css  # flat, as the app (preferences: no gradients)
