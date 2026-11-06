@@ -22,15 +22,16 @@ def page(name: str, title: str, description: str, body: str) -> str:
 <meta name="color-scheme" content="light dark">
 <title>{html.escape(title)}</title>
 <meta name="description" content="{html.escape(description)}">
+<link rel="icon" href="/images/icon.png">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <header class="site"><div class="wrap">
-  <a class="mark" href="/"><i aria-hidden="true"></i>Friday</a>
+  <a class="mark" href="/"><img src="/images/icon.png" alt="" width="28" height="28">Friday</a>
   <nav class="pages" aria-label="Pages">
     {links}
   </nav>
-  <a class="button small" href="/#download">Download</a>
+  <a class="button small" href="/#get">Download</a>
 </div></header>
 
 <main class="page"><div class="wrap">
@@ -38,7 +39,7 @@ def page(name: str, title: str, description: str, body: str) -> str:
 </div></main>
 
 <footer class="site"><div class="wrap">
-  <span class="spacer">Friday · free, and open source soon</span>
+  <span class="spacer"><img src="/images/icon.png" alt="" width="18" height="18">Friday · free, and open source soon</span>
   {foot}
 </div></footer>
 </body>

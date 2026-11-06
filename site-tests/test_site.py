@@ -1,4 +1,4 @@
-"""The download site (HOSTED.md H106, H116, H117, H128; step 1). Glass box: build_pages.py wraps each page in the header
+"""The download site (HOSTED.md H106, H116, H117, H129, H130; step 1). Glass box: build_pages.py wraps each page in the header
 and footer, marking the page it is. Black box over HTTP, as served: every page answers, every link and picture on
 them resolves on the site, every picture says what it shows, nothing is loaded from elsewhere (no trackers, H106
 privacy), and the download button points at a disk image that is there."""
@@ -125,22 +125,28 @@ def test_the_pages_in_git_are_what_the_wrapper_writes() -> None:
     assert {p: (SITE / p).read_text() for p in before} == before
 
 
-def test_the_home_page_carries_the_replanning_week_and_the_live_friday(site: str) -> None:
+def test_the_home_page_carries_the_replanning_week_and_no_live_app(site: str) -> None:
     page = fetch(site, "/")[1].decode()
-    for part in ('id="board"', 'class="quickadd"', 'role="status"', 'class="pause"', 'class="steps"', "/week.js"):
+    for part in ('id="board"', 'class="quickadd"', 'role="status"', 'class="pause"', 'class="chapters"', "/week.js"):
         assert part in page, part
     script = fetch(site, "/week.js")[1].decode()
     assert "prefers-reduced-motion" in script and "Replanned" in script  # still for reduced motion; says it replanned
-    assert 'data-src="https://laptop.tailnet.ts.net:10000/"' in page  # loaded only when asked
+    assert "<iframe" not in page and ":10000" not in page  # the live app was taken out (H130)
+
+
+def test_sections_hide_for_their_entrance_only_when_scripts_run(site: str) -> None:
+    css = fetch(site, "/style.css")[1].decode()
+    assert ".js .reveal {" in css and "\n.reveal {" not in css  # without scripts, nothing stays hidden
+    assert 'classList.add("js")' in fetch(site, "/")[1].decode()
 
 
 def test_the_fonts_are_served_from_the_site_with_their_licences(site: str) -> None:
     css = fetch(site, "/style.css")[1].decode()
     fonts = [part.split(")")[0].strip("\"'") for part in css.split("url(")[1:]]
-    assert len(fonts) == 7
+    assert len(fonts) == 8
     for font in fonts:
         assert fetch(site, font)[0] == 200, font
-    for name in ("pixelify-sans", "inter", "jetbrains-mono"):
+    for name in ("archivo", "inter", "jetbrains-mono"):
         assert fetch(site, f"/fonts/LICENSE-{name}.txt")[1].startswith(b"Copyright"), name
 
 

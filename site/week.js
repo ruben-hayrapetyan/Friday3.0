@@ -1,4 +1,4 @@
-// The home page's week, which plans and replans while you watch (HOSTED.md H128): drawn as Friday draws a week
+// The home page's week, which plans and replans while you watch (HOSTED.md H129): drawn as Friday draws a week
 // (hour lines, blocks in Chroma's pigments with their times on a 12-hour clock, a red now line), and played as four
 // steps on a loop: an essay typed in, planned into three gaps before Friday; a shift moved onto one of them; the two
 // blocks it hit moved, and nothing else. Reduced motion shows the finished plan, still. Pause stops it anywhere.
@@ -11,14 +11,14 @@
 
   // The week before the essay: classes and the shift (events, Payne's grey), meals (ochre), work already planned.
   var BASE = [
-    { id: "econ-m", d: 0, s: 10, h: 1.25, t: "ECON 1110 Lecture", p: "payne", ev: 1 },
-    { id: "econ-w", d: 2, s: 10, h: 1.25, t: "ECON 1110 Lecture", p: "payne", ev: 1 },
-    { id: "econ-f", d: 4, s: 10, h: 1.25, t: "ECON 1110 Lecture", p: "payne", ev: 1 },
-    { id: "cs-t", d: 1, s: 11.25, h: 0.8333, t: "CS 2100 Lecture", p: "payne", ev: 1 },
-    { id: "cs-r", d: 3, s: 11.25, h: 0.8333, t: "CS 2100 Lecture", p: "payne", ev: 1 },
+    { id: "econ-m", d: 0, s: 10, h: 1.25, t: "ECON Lecture", p: "payne", ev: 1 },
+    { id: "econ-w", d: 2, s: 10, h: 1.25, t: "ECON Lecture", p: "payne", ev: 1 },
+    { id: "econ-f", d: 4, s: 10, h: 1.25, t: "ECON Lecture", p: "payne", ev: 1 },
+    { id: "cs-t", d: 1, s: 11.25, h: 0.8333, t: "CS Lecture", p: "payne", ev: 1 },
+    { id: "cs-r", d: 3, s: 11.25, h: 0.8333, t: "CS Lecture", p: "payne", ev: 1 },
     { id: "span-m", d: 0, s: 14.75, h: 1.25, t: "SPAN 2090", p: "payne", ev: 1 },
     { id: "span-w", d: 2, s: 14.75, h: 1.25, t: "SPAN 2090", p: "payne", ev: 1 },
-    { id: "shift", d: 1, s: 16, h: 4, t: "Shift · Fern Café", p: "payne", ev: 1 },
+    { id: "shift", d: 1, s: 16, h: 4, t: "Shift", p: "payne", ev: 1 },
     { id: "lunch0", d: 0, s: 12.5, h: 0.75, t: "Lunch", p: "ochre" },
     { id: "lunch1", d: 1, s: 12.5, h: 0.75, t: "Lunch", p: "ochre" },
     { id: "lunch2", d: 2, s: 12.5, h: 0.75, t: "Lunch", p: "ochre" },
@@ -33,28 +33,28 @@
     { id: "dinner4", d: 4, s: 19, h: 0.75, t: "Dinner", p: "ochre" },
     { id: "dinner5", d: 5, s: 19, h: 0.75, t: "Dinner", p: "ochre" },
     { id: "dinner6", d: 6, s: 18.5, h: 0.75, t: "Dinner", p: "ochre" },
-    { id: "read7", d: 0, s: 16.25, h: 1.5, t: "ECON Reading 7", p: "verdigris" },
-    { id: "ps4a", d: 0, s: 20, h: 1.5, t: "CS Problem Set 4", p: "cerulean" },
-    { id: "lab", d: 2, s: 8.5, h: 1.5, t: "SPAN Lab Report", p: "ultramarine" },
-    { id: "ps4b", d: 3, s: 14, h: 1.5, t: "CS Problem Set 4", p: "cerulean" },
-    { id: "read8", d: 3, s: 20, h: 1.5, t: "ECON Reading 8", p: "verdigris" },
+    { id: "read7", d: 0, s: 16.25, h: 1.5, t: "Reading 7", p: "verdigris" },
+    { id: "ps4a", d: 0, s: 20, h: 1.5, t: "Problem Set 4", p: "cerulean" },
+    { id: "lab", d: 2, s: 8.5, h: 1.5, t: "Lab Report", p: "ultramarine" },
+    { id: "ps4b", d: 3, s: 14, h: 1.5, t: "Problem Set 4", p: "cerulean" },
+    { id: "read8", d: 3, s: 20, h: 1.5, t: "Reading 8", p: "verdigris" },
     { id: "laundry", d: 5, s: 10.5, h: 1, t: "Laundry", p: "sienna" },
-    { id: "prep", d: 6, s: 15, h: 2, t: "Prep: CS 2100 Prelim", p: "cerulean" },
+    { id: "prep", d: 6, s: 15, h: 2, t: "Prelim prep", p: "cerulean" },
   ];
   // The essay's three pieces, where Friday first puts them, and where the replan moves what the shift hit.
   var ESSAY = [
-    { id: "essay1", d: 1, s: 14, h: 1, t: "WRIT Essay · 1 of 3", p: "magenta" },
-    { id: "essay2", d: 2, s: 16.5, h: 1, t: "WRIT Essay · 2 of 3", p: "magenta" },
-    { id: "essay3", d: 3, s: 9, h: 1, t: "WRIT Essay · 3 of 3", p: "magenta" },
+    { id: "essay1", d: 1, s: 14, h: 1, t: "Essay 1/3", p: "magenta" },
+    { id: "essay2", d: 2, s: 16.5, h: 1, t: "Essay 2/3", p: "magenta" },
+    { id: "essay3", d: 3, s: 9, h: 1, t: "Essay 3/3", p: "magenta" },
   ];
   var SHIFT_MOVED = { d: 2, s: 16, h: 4 };
   var REPLAN = { essay2: { d: 1, s: 17, h: 1 }, dinner2: { d: 2, s: 20.25, h: 0.75 } };
   var HIT = ["essay2", "dinner2"];
 
   var typed = board.querySelector(".typed"), quick = board.querySelector(".quickadd");
-  var status = board.querySelector(".status"), steps = board.querySelectorAll(".steps li");
+  var status = board.querySelector(".status"), steps = document.querySelectorAll(".chapters li");
   var head = board.querySelector(".days-head"), hours = board.querySelector(".hours"), grid = board.querySelector(".grid");
-  var pause = board.querySelector(".pause");
+  var pause = document.querySelector(".pause");
   var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var paused = false, blocks = {}, now = document.createElement("div"), dueTag;
   now.className = "now";
@@ -108,7 +108,7 @@
     el.style.width = "calc(" + 100 / n + "% - 6px)";
     el.style.top = ((b.s - FIRST) / (LAST - FIRST)) * 100 + "%";
     el.style.height = "calc(" + (b.h / (LAST - FIRST)) * 100 + "% - 2px)";
-    el.innerHTML = b.t + (b.h >= 1 ? "<small>" + span(b) + "</small>" : "");
+    el.innerHTML = b.t + (b.h >= 1.25 ? "<small>" + span(b) + "</small>" : "");
   }
   function placeNow(at) {
     var days = visible(), i = days.indexOf(TODAY), n = days.length;
@@ -146,7 +146,22 @@
     });
   }
   function say(text, on) { status.textContent = text; status.classList.toggle("on", !!on); }
-  function step(n) { steps.forEach(function (li, i) { li.classList.toggle("on", i === n); }); }
+  // Each step's bar fills over the time it plays (ms), on the story's own clock: paused, it stops too.
+  var LENGTHS = [2600, 4300, 2200, 6400], current = -1, played = 0, last = performance.now();
+  function step(n) {
+    current = n;
+    played = 0;
+    steps.forEach(function (li, i) { li.style.setProperty("--fill", i < n ? "100%" : "0%"); });
+  }
+  (function fill() {
+    var t = performance.now();
+    if (!paused && current >= 0) played += t - last;
+    last = t;
+    if (current >= 0 && steps[current]) {
+      steps[current].style.setProperty("--fill", Math.min(100, (played / LENGTHS[current]) * 100) + "%");
+    }
+    requestAnimationFrame(fill);
+  })();
 
   function reset() {
     Object.keys(blocks).forEach(function (id) { blocks[id].remove(); });
@@ -215,7 +230,8 @@
     Object.keys(REPLAN).forEach(function (id) { move(id, REPLAN[id]); });
     if (dueTag) dueTag.classList.add("on");
     say("Replanned: 2 moved, nothing else", true);
-    steps.forEach(function (li) { li.classList.add("on"); });
+    current = -1;
+    steps.forEach(function (li) { li.style.setProperty("--fill", "100%"); });
     pause.hidden = true;
   }
 
@@ -233,16 +249,4 @@
   drawFrame();
   if (still) finished(); else play();
 
-  // The live Friday loads only when asked: it's the whole app, running with a made-up student's term.
-  var live = document.querySelector(".live");
-  if (live) {
-    live.querySelector(".poster button").addEventListener("click", function () {
-      var frame = document.createElement("iframe");
-      frame.src = live.dataset.src;
-      frame.title = "Friday, running live with a made-up student's term";
-      frame.setAttribute("allow", "clipboard-write");
-      live.replaceChildren(frame);
-      frame.focus();
-    });
-  }
 })();
