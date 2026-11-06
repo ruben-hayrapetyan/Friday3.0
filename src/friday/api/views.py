@@ -745,6 +745,7 @@ class MealOut(Model):
     minutes: int | None = None
     skipped: bool = False
     item_id: int | None = None  # the routine it ticked off (that day's Lunch): the calendar draws the meal in its place
+    nth: int = 1  # its place among that day's meals of its kind: 2 is a second dinner (5 Nov)
 
 
 class MealDayOut(Model):
@@ -794,6 +795,7 @@ class MealsOut(Model):
     on: bool
     eating: MealOut | None = None  # the meal you're eating now
     next: str | None = None  # the meal the Now bar offers now, when you aren't eating
+    again: str | None = None  # the meal you last had today, offered again when you aren't eating ("Another dinner")
     days: list[MealDayOut] = []  # the last two weeks, newest first
     learned: list[MealLearnedOut] = []
     changes: list[MealChangeOut] = []  # routine lengths 10 minutes or more off what you take

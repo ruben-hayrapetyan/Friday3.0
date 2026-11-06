@@ -13,6 +13,7 @@ import { Section } from "@/insights/Section"
 import { EditCard, minutesBetween, TimeField } from "./Times"
 import { MEAL_HOURS } from "@/lib/ampm"
 import { useShell } from "@/shell/ShellContext"
+import { addable, mealLabel } from "./mealNames"
 
 export const KINDS = ["breakfast", "lunch", "dinner", "snack"] as const
 export type MealKind = (typeof KINDS)[number]
@@ -61,7 +62,7 @@ function Now({ meals }: { meals: Schemas["MealsOut"] }) {
     return (
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <span>
-          Eating {meals.eating.kind} since {clock(meals.eating.start ?? "")}
+          Eating {mealLabel(meals.eating.kind, meals.eating.nth ?? 1).toLowerCase()} since {clock(meals.eating.start ?? "")}
         </span>
         <button className="btn btn-primary fr-press" disabled={!!busy} onClick={() => run("end", () => end({}))}>
           {spin("end", "check")}
@@ -91,18 +92,22 @@ function Now({ meals }: { meals: Schemas["MealsOut"] }) {
  * clicked opens its card under the row (`MealCard`). */
 function Days({ days }: { days: Schemas["MealDayOut"][] }) {
   const { today } = useShell()
-  const [open, setOpen] = useState<string | null>(null) // "<date>/<meal id>", or "<date>/+<kind>" for a new one
+  // "<date>/<meal id>", "<date>/+<kind>" for a meal not recorded, or "<date>/*<kind>" for another of one eaten
+  const [open, setOpen] = useState<string | null>(null)
   const [shown, setShown] = useState<string | null>(null) // a day with nothing recorded, its "+" choices out
+  const [more, setMore] = useState<string | null>(null) // a day whose "Another…" choices are out
   const byDate = new Map(days.map((d) => [d.date, d.meals ?? []]))
   const dates = Array.from({ length: 14 }, (_, n) => addDays(today, -n))
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       {dates.map((date) => {
         const meals = [...(byDate.get(date) ?? [])].sort((a, b) => (a.start ?? "").localeCompare(b.start ?? ""))
-        const missing = KINDS.filter((k) => k !== "snack" && !meals.some((m) => m.kind === k))
+        const { missing, another } = addable(meals)
         const here = open?.startsWith(`${date}/`) ? open.slice(date.length + 1) : null
-        const meal = here && !here.startsWith("+") ? meals.find((m) => String(m.id) === here) : undefined
-        const kind = here?.startsWith("+") ? (here.slice(1) as MealKind) : meal ? (meal.kind as MealKind) : null
+        const adding = !!here && (here.startsWith("+") || here.startsWith("*"))
+        const meal = here && !adding ? meals.find((m) => String(m.id) === here) : undefined
+        const kind = adding ? (here!.slice(1) as MealKind) : meal ? (meal.kind as MealKind) : null
+        const nth = here?.startsWith("*") ? (another.find((a) => a.kind === kind)?.nth ?? 2) : (meal?.nth ?? 1)
         return (
           <div key={date} className="fr-row" style={{ padding: "6px 0", fontSize: 12 }}>
             <div style={{ display: "grid", gridTemplateColumns: "92px minmax(0,1fr)", gap: 8, alignItems: "center" }}>
@@ -119,21 +124,22 @@ function Days({ days }: { days: Schemas["MealDayOut"][] }) {
                     </button>
                   </>
                 )}
-                {(meals.length > 0 || shown === date) && [...missing, "snack" as const].map((k) => (
-                  <button
-                    key={k}
-                    className="fr-plain fr-hover-text"
-                    onClick={() => setOpen(here === `+${k}` ? null : `${date}/+${k}`)}
-                    title={k === "snack" ? "Log a snack" : `Log ${k}, or that you skipped it`}
-                    style={{ display: "inline-flex", gap: 4, alignItems: "center", padding: "3px 8px", borderRadius: 999, color: "var(--color-neutral-500)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 10%, transparent)", ...(here === `+${k}` ? { color: "var(--color-text)" } : {}) }}
-                  >
-                    <Icon name="plus" size={11} />
-                    {named(k)}
+                {(meals.length > 0 || shown === date) &&
+                  [...missing, "snack" as const].map((k) => (
+                    <AddChip key={k} label={named(k)} on={here === `+${k}`} title={k === "snack" ? "Log a snack" : `Log ${k}, or that you skipped it`} onClick={() => setOpen(here === `+${k}` ? null : `${date}/+${k}`)} />
+                  ))}
+                {meals.length > 0 && another.length > 0 && more !== date && (
+                  <button className="fr-link" onClick={() => setMore(date)} title="Log another of a meal you had: a second dinner" style={{ fontSize: 12 }}>
+                    Another…
                   </button>
-                ))}
+                )}
+                {more === date &&
+                  another.map((a) => (
+                    <AddChip key={`*${a.kind}`} label={mealLabel(a.kind, a.nth)} on={here === `*${a.kind}`} title={`Log a ${mealLabel(a.kind, a.nth).toLowerCase()}`} onClick={() => setOpen(here === `*${a.kind}` ? null : `${date}/*${a.kind}`)} />
+                  ))}
               </span>
             </div>
-            {kind && <MealCard key={open} date={date} kind={kind} meal={meal} onClose={() => setOpen(null)} />}
+            {kind && <MealCard key={open} date={date} kind={kind} nth={nth} meal={meal} onClose={() => (setOpen(null), setMore(null))} />}
           </div>
         )
       })}
@@ -141,8 +147,22 @@ function Days({ days }: { days: Schemas["MealDayOut"][] }) {
   )
 }
 
+function AddChip({ label, on, title, onClick }: { label: string; on: boolean; title: string; onClick: () => void }) {
+  return (
+    <button
+      className="fr-plain fr-hover-text"
+      onClick={onClick}
+      title={title}
+      style={{ display: "inline-flex", gap: 4, alignItems: "center", padding: "3px 8px", borderRadius: 999, color: on ? "var(--color-text)" : "var(--color-neutral-500)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 10%, transparent)" }}
+    >
+      <Icon name="plus" size={11} />
+      {label}
+    </button>
+  )
+}
+
 function MealChip({ meal, on, onClick }: { meal: Schemas["MealOut"]; on: boolean; onClick: () => void }) {
-  const label = named(meal.kind)
+  const label = mealLabel(meal.kind, meal.nth ?? 1)
   return (
     <button
       className="fr-plain tnum"
@@ -170,7 +190,7 @@ const USUAL: Record<MealKind, [string, string]> = { breakfast: ["08:30", "08:50"
 
 /** One meal's card: when you started and finished, with how long that is; Save, Delete and Cancel. A meal you skipped
  * can be eaten after all; one not recorded can be logged, or said skipped. */
-function MealCard({ date, kind, meal, onClose }: { date: string; kind: MealKind; meal?: Schemas["MealOut"]; onClose: () => void }) {
+function MealCard({ date, kind, nth = 1, meal, onClose }: { date: string; kind: MealKind; nth?: number; meal?: Schemas["MealOut"]; onClose: () => void }) {
   const settings = useSettings().data as Record<string, { day_start?: string }> | undefined
   const dayStart = settings?.time?.day_start ?? "04:00"
   const log = useCommand("meal_log", { label: (o) => o.result.message ?? "Saved" })
@@ -181,7 +201,7 @@ function MealCard({ date, kind, meal, onClose }: { date: string; kind: MealKind;
   const [from, setFrom] = useState(eaten?.start?.slice(11, 16) ?? USUAL[kind][0])
   const [to, setTo] = useState(eaten?.end?.slice(11, 16) ?? USUAL[kind][1])
   const [busy, setBusy] = useState(false)
-  const label = named(kind)
+  const label = mealLabel(kind, nth)
   const minutes = minutesBetween(from, to)
   // A meal in the small hours (before your day starts) is the night of its day: the next date.
   const at = (time: string) => `${time < dayStart ? addDays(date, 1) : date}T${time}`
@@ -219,14 +239,14 @@ function MealCard({ date, kind, meal, onClose }: { date: string; kind: MealKind;
             <Icon name="trash" size={12} />
             {meal.skipped ? "Not skipped after all" : "Delete this meal"}
           </button>
-        ) : kind !== "snack" ? (
+        ) : kind !== "snack" && nth === 1 ? ( // another dinner isn't one to skip: you had the first
           <button className="btn btn-ghost" disabled={busy} onClick={() => run(() => skip({ kind, date }))} style={{ fontSize: 12 }}>
             I skipped it
           </button>
         ) : null
       }
     >
-      <TimeField label="Started" value={from} onChange={setFrom} expect={kind === "snack" ? undefined : { hours: MEAL_HOURS[kind] }} />
+      <TimeField label="Started" value={from} onChange={setFrom} expect={kind === "snack" || nth > 1 ? undefined : { hours: MEAL_HOURS[kind] }} />
       {(!eaten || eaten.end) && <TimeField label="Finished" value={to} onChange={setTo} expect={{ after: from }} />}
       {eaten && !eaten.end && <span style={{ fontSize: 12, color: "var(--color-neutral-400)", paddingBottom: 6 }}>Still eating: “Done eating” ends it</span>}
     </EditCard>

@@ -5,6 +5,8 @@ you skip it. Pure: no database.
 - Each meal's usual start and length are the medians of its eaten days, on weekdays and at weekends apart, once a
   group has `min_days` recorded days (eaten or skipped); the start to the quarter hour. How much the start moves is
   the spread of the middle half of those days.
+- A second dinner (5 Nov: "sometimes i have 4 meals (2 dinners)") doesn't move what's usual: each day's first eaten
+  one of a meal counts. It is named for its place that day (`nths`, `meal_name`): "second dinner".
 - How often you skip it: skipped days over recorded ones. A day with nothing tapped isn't counted: you may just not
   have tapped.
 - A meal whose routine is planned 10 minutes or more off the length you take is offered the length you take.
@@ -110,3 +112,27 @@ def length_changes(learned: list[Learned], planned: dict[str, int]) -> dict[str,
         if usual is not None and abs(usual - minutes) >= OFF_BY:
             out[kind] = usual
     return out
+
+
+ORDINALS = ("", "second", "third", "fourth", "fifth")
+
+
+def nths(meals: Iterable[Meal]) -> dict[int, int]:
+    """Each meal's place among the meals of its kind eaten that day, by when it started: 2 is a second dinner. A
+    skipped one is 1, as is a snack: having several of those needs no counting."""
+    out: dict[int, int] = {}
+    counted: dict[tuple[date, str], int] = {}
+    eaten = sorted((m for m in meals if not m.skipped and m.start is not None), key=lambda m: (m.start, m.id))
+    for m in eaten:
+        if m.kind == "snack":
+            continue
+        counted[(m.date, m.kind)] = counted.get((m.date, m.kind), 0) + 1
+        out[m.id] = counted[(m.date, m.kind)]
+    return out
+
+
+def meal_name(kind: str, nth: int = 1) -> str:
+    """ "dinner", "second dinner", "third dinner"; past the fifth, "dinner 6"."""
+    if nth <= 1 or kind == "snack":
+        return kind
+    return f"{ORDINALS[nth - 1]} {kind}" if nth <= len(ORDINALS) else f"{kind} {nth}"

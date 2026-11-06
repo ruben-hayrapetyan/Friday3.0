@@ -104,6 +104,7 @@ export function Search() {
       { key: "setup", label: "Set up Friday: your day, load, free time, calendars", icon: "sliders-horizontal", run: () => setDialog("setup") },
       ...(breaks.nap ? [{ key: "nap", label: "Taking a nap", icon: "bed", run: go(breaks.nap) }] : []),
       ...(breaks.snack ? [{ key: "snack", label: "Having a snack", icon: "cookie", run: go(breaks.snack) }] : []),
+      ...(breaks.again ? [{ key: "meal-again", label: `Having another ${breaks.again.kind}`, icon: "fork-knife", run: go(breaks.again.run) }] : []),
       // The tasks Friday brought in, a message each in the Inbox, to keep or take off your list (29 Oct)
       { key: "again", label: "Go over everything Friday brought in again", icon: "arrow-counter-clockwise", run: go(() => (goOver({}), navigate("/inbox"))) },
       { key: "ask", label: `Ask ${ai.name}${text ? `: ${text}` : ""}`, icon: "sparkle", run: () => askClaude(text) },

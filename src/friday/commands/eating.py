@@ -39,7 +39,7 @@ from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.settings import minutes_of
 from friday.core.time import UNIT_MIN, ampm, format_local, format_utc, parse_local, parse_utc, planning_date, to_local
-from friday.learn.meals import Learned, Meal, learn, length_changes
+from friday.learn.meals import Learned, Meal, learn, length_changes, meal_name, nths
 from friday.planner.store import kv_get, kv_set, load_item, load_settings
 
 SHIFT_OFF_BY = 45  # minutes a usual meal's middle must be off its window's middle (or outside it) to offer moving it
@@ -148,12 +148,13 @@ def meal_start(ctx: Ctx, inp: MealStartInput) -> Changed:
     kind = inp.kind or kind_at(ctx, moment)
     day = day_of(ctx, moment)
     routine = open_routine(ctx, kind, day)
+    nth = eaten_before(ctx, kind, day, moment) + 1
     ctx.db.insert(
         "meals",
         {"kind": kind, "date": day.isoformat(), "start_utc": format_utc(moment), "item_id": routine,
          "created_utc": ctx.now_text},
     )  # fmt: skip
-    return Changed(message=f"Eating {kind} since {said(ctx, moment)}")
+    return Changed(message=f"Eating {'your ' if nth > 1 else ''}{meal_name(kind, nth)} since {said(ctx, moment)}")
 
 
 @command("meal_end", affects_plan=True)
@@ -194,13 +195,25 @@ def meal_log(ctx: Ctx, inp: MealLogInput) -> Changed:
     if not start < end <= start + LONGEST_MIN:
         raise FieldError("end", "a meal ends after it starts, within four hours")
     day = day_of(ctx, start)
+    nth = eaten_before(ctx, inp.kind, day, start) + 1
     ticked = tick_off(ctx, open_routine(ctx, inp.kind, day), "done", end)
     ctx.db.insert(
         "meals",
         {"kind": inp.kind, "date": day.isoformat(), "start_utc": format_utc(start), "end_utc": format_utc(end),
          "item_id": ticked, "created_utc": ctx.now_text},
     )  # fmt: skip
-    return Changed(message=f"Logged {inp.kind}, {said(ctx, start)} to {said(ctx, end)}")
+    return Changed(message=f"Logged {meal_name(inp.kind, nth)}, {said(ctx, start)} to {said(ctx, end)}")
+
+
+def eaten_before(ctx: Ctx, kind: str, day: date, moment: int) -> int:
+    """How many of this meal you'd eaten that day before `moment`: one before makes this a second dinner."""
+    found = one(
+        ctx.conn,
+        "SELECT count(*) AS n FROM meals WHERE user_id = ? AND kind = ? AND date = ? AND skipped = 0 "
+        "AND start_utc IS NOT NULL AND start_utc < ?",
+        [ctx.user_id, kind, day.isoformat(), format_utc(moment)],
+    )
+    return int(found["n"]) if found else 0
 
 
 @command("meal_skip", affects_plan=True)
@@ -462,12 +475,19 @@ def linked(ctx: Ctx, m: Meal) -> Meal:
     return replace(m, item_id=int(routine["id"])) if routine else m
 
 
-def meal_out(m: Meal) -> MealOut:
+def meal_out(m: Meal, nth: int = 1) -> MealOut:
     local = lambda t: format_local(t) if t else None  # noqa: E731
     return MealOut(
         id=m.id, kind=m.kind, date=m.date.isoformat(), start=local(m.start), end=local(m.end), minutes=m.minutes,
-        skipped=m.skipped, item_id=m.item_id,
+        skipped=m.skipped, item_id=m.item_id, nth=nth,
     )  # fmt: skip
+
+
+def again(ctx: Ctx, shown: list[Meal]) -> str | None:
+    """The meal you last had today (not a snack): the Now bar offers having another of it (5 Nov: "sometimes i
+    have 4 meals (2 dinners)"), so a second dinner isn't tapped as a snack."""
+    done = [m for m in shown if m.date == ctx.today and not m.skipped and m.end and m.kind != "snack"]
+    return done[-1].kind if done else None  # `shown` is in the order you started them
 
 
 def offer(ctx: Ctx, today: set[str]) -> str | None:
@@ -492,16 +512,18 @@ def meals(ctx: Ctx, inp: Empty) -> MealsOut:
     shown = [m for m in every if m.date > ctx.today - timedelta(days=SHOWN_DAYS)]
     days: dict[str, list[MealOut]] = {}
     shown = [linked(ctx, m) for m in shown]
+    place = nths(shown)
     for m in shown:
-        days.setdefault(m.date.isoformat(), []).append(meal_out(m))
+        days.setdefault(m.date.isoformat(), []).append(meal_out(m, place.get(m.id, 1)))
     now = next((m for m in reversed(shown) if not m.skipped and m.start and m.end is None), None)
     found = learn(every, settings.min_days)
     planned = planned_routines(ctx)
     changes = length_changes(found, {kind: minutes for kind, (_, minutes) in planned.items()})
     return MealsOut(
         on=True,
-        eating=meal_out(now) if now else None,
+        eating=meal_out(now, place.get(now.id, 1)) if now else None,
         next=None if now else offer(ctx, {m.kind for m in shown if m.date == ctx.today}),
+        again=None if now else again(ctx, shown),
         days=[MealDayOut(date=d, meals=ms) for d, ms in sorted(days.items(), reverse=True)],
         learned=[MealLearnedOut(**vars(x)) for x in found],
         changes=[MealChangeOut(kind=k, planned_min=planned[k][1], usual_min=v) for k, v in changes.items()],

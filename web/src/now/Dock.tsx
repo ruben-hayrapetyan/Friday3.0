@@ -25,6 +25,7 @@ import { fromMin, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { useBreaks } from "./breaks"
+import { mealLabel } from "@/body/mealNames"
 
 type Menu = "time" | "more" | "swap" | null
 type Fit = { item_id: number; title: string; minutes: number }
@@ -147,7 +148,7 @@ function MealTap() {
       {since ? (
         <>
           <span className="tnum" style={{ flex: 1 }}>
-            Eating {kind} since {clock(since)} · {dur(Math.max(1, nowMin - toMin(since)))}
+            Eating {mealLabel(kind, meals.eating?.nth ?? 1).toLowerCase()} since {clock(since)} · {dur(Math.max(1, nowMin - toMin(since)))}
           </span>
           <button className="btn btn-secondary fr-press" disabled={busy} onClick={() => run(() => end({}))} style={{ fontSize: 12, padding: "2px 10px" }}>
             Done eating
@@ -379,6 +380,13 @@ function Free({ until, gap, next, fits, today }: FreeProps) {
           <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>Nothing needs this time. It's yours.</span>
         )}
         <span style={{ flex: 1 }} />
+        {breaks.again && (
+          // First of the three, so Nap and Snack keep their places when it comes and goes
+          <button className="fr-link" onClick={breaks.again.run} title={`Having another ${breaks.again.kind}: the plan keeps the time clear`} style={{ ...quiet, marginRight: 8 }}>
+            <Icon name={MEAL_ICON[breaks.again.kind] ?? "fork-knife"} size={12} />
+            Another {breaks.again.kind}
+          </button>
+        )}
         {breaks.nap && (
           <button className="fr-link" onClick={breaks.nap} title="Taking a nap: the plan keeps the time clear" style={quiet}>
             <Icon name="bed" size={12} />

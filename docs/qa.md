@@ -57,6 +57,10 @@ hard-reload) or the old build is served. The app is desktop only, with a 1100 px
 - [ ] "Sam's Birthday" (3. Personal; switch on all-day events in Integrations first) reads "Yearly, all day", not
       weekly; switching all-day events on brings it in within a minute.
 
+**Meals**
+- [ ] With meal tracking on, a day with its dinner logged has "Another…" → "+ Second dinner"; logging it shows
+      "Second dinner" in the row and on the calendar, and the Now bar offers "Another dinner" after a meal today.
+
 **Plan**
 - [ ] Classes sit at their real times all week, the moved CHEM lecture next Wednesday at 14:00, no MATH lecture
       next Friday; exam prep is planned before each exam.

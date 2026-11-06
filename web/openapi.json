@@ -19495,6 +19495,11 @@
        }
       ],
       "title": "Item Id"
+     },
+     "nth": {
+      "type": "integer",
+      "title": "Nth",
+      "default": 1
      }
     },
     "additionalProperties": false,
@@ -20138,6 +20143,17 @@
        }
       ],
       "title": "Next"
+     },
+     "again": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Again"
      },
      "days": {
       "items": {

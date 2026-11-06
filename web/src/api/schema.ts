@@ -5910,6 +5910,11 @@ export interface components {
             skipped?: boolean;
             /** Item Id */
             item_id?: number | null;
+            /**
+             * Nth
+             * @default 1
+             */
+            nth?: number;
         };
         /** MealPlanInput */
         MealPlanInput: {
@@ -6108,6 +6113,8 @@ export interface components {
             eating?: components["schemas"]["MealOut"] | null;
             /** Next */
             next?: string | null;
+            /** Again */
+            again?: string | null;
             /**
              * Days
              * @default []

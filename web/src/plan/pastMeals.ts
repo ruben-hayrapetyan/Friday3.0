@@ -5,6 +5,7 @@
 
 import type { Block, Schemas } from "@/api/client"
 import { fromMin, toMin } from "@/lib/time"
+import { mealLabel } from "@/body/mealNames"
 
 export interface PastMeal {
   block: Block
@@ -32,7 +33,8 @@ export function pastMeals(meals: Schemas["MealsOut"] | undefined, plan: { blocks
       block: {
         key: `M${m.id}`,
         item_id: m.item_id ?? -m.id,
-        title: routine?.title ?? named(m.kind),
+        // A second dinner by its own name: the routine's is the first's (5 Nov: "sometimes i have 4 meals (2 dinners)")
+        title: (m.nth ?? 1) > 1 ? mealLabel(m.kind, m.nth) : (routine?.title ?? named(m.kind)),
         area: routine?.area ?? null,
         preset: routine?.preset ?? "Routine",
         start: m.start,
