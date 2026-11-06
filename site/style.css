@@ -1,0 +1,114 @@
+/* Friday's site in the app's paper and ink (HOSTED.md H56): flat, no gradients, readable greys (4.5:1 or better on
+   the desk and on cards, light and dark), nothing under 11px. Plain CSS, no build (H52). */
+
+:root {
+  --desk: #efe9dc;
+  --leaf: #fbf8f1;
+  --ink: #1d2a4a;
+  --text: #22252b;
+  --quiet: #545964;
+  --rule: #d9d1c0;
+  --green: #2f6b4f;
+  --yellow: #8a6a12;
+  --red: #b3261e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --desk: #16181d;
+    --leaf: #1f2228;
+    --ink: #a9bdf0;
+    --text: #e9e6df;
+    --quiet: #a3a7b0;
+    --rule: #343841;
+    --green: #8fd0ad;
+    --yellow: #e2c46d;
+    --red: #f2a49d;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--desk);
+  color: var(--text);
+  font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+a { color: var(--ink); }
+a:focus-visible, .button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+h1, h2, h3 { font-family: "New York", "Source Serif 4", Georgia, serif; color: var(--ink); line-height: 1.2; }
+h1 { font-size: clamp(34px, 5vw, 52px); margin: 0 0 16px; text-wrap: balance; }
+h2 { font-size: 28px; margin: 0 0 12px; text-wrap: balance; }
+h3 { font-size: 20px; margin: 0 0 6px; }
+p { margin: 0 0 14px; text-wrap: pretty; }
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+/* The header: the name, four pages and the download */
+header.site { border-bottom: 1px solid var(--rule); background: var(--leaf); }
+header.site .wrap { display: flex; align-items: center; gap: 22px; min-height: 64px; flex-wrap: wrap; }
+.mark { display: flex; align-items: center; gap: 8px; font: 600 22px/1 "New York", Georgia, serif; color: var(--ink);
+  text-decoration: none; margin-right: auto; }
+.mark::before { content: ""; width: 14px; height: 14px; border: 2.5px solid var(--ink); border-radius: 50%; }
+nav.pages { display: flex; gap: 18px; flex-wrap: wrap; font-size: 15px; }
+nav.pages a { color: var(--text); text-decoration: none; }
+nav.pages a:hover, nav.pages a[aria-current="page"] { color: var(--ink); text-decoration: underline; }
+
+.button {
+  display: inline-block;
+  font: 600 15px/1 ui-monospace, "SF Mono", Menlo, monospace;
+  padding: 14px 20px;
+  border-radius: 6px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--leaf);
+  text-decoration: none;
+  cursor: pointer;
+}
+.button.small { padding: 9px 13px; font-size: 13px; }
+.button.quiet { background: transparent; color: var(--ink); border-color: var(--rule); }
+.button[aria-disabled="true"] { background: transparent; color: var(--quiet); border-color: var(--rule); cursor: default; }
+
+/* The first screen: what Friday is, and the download */
+.hero { padding: 64px 0 40px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: center; }
+.hero .lead { font-size: 20px; color: var(--text); max-width: 34em; }
+.download { margin-top: 26px; }
+.download .note { margin-top: 10px; font-size: 14px; color: var(--quiet); }
+.download .other { font-size: 14px; color: var(--quiet); margin-top: 6px; }
+
+.shot { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 10px; background: var(--leaf); }
+
+section.band { padding: 48px 0; border-top: 1px solid var(--rule); }
+.cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.card { background: var(--leaf); border: 1px solid var(--rule); border-radius: 10px; padding: 22px; }
+.card p:last-child { margin-bottom: 0; }
+.kicker { font: 600 12px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--quiet); margin-bottom: 10px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+
+/* Text pages: features, help, privacy, what's new */
+main.page { padding: 48px 0 64px; }
+main.page .wrap { max-width: 760px; }
+main.page h2 { margin-top: 40px; }
+main.page ol, main.page ul { padding-left: 22px; margin: 0 0 14px; }
+main.page li { margin-bottom: 6px; }
+.version { border-top: 1px solid var(--rule); padding-top: 22px; margin-top: 28px; }
+.version .when { font: 13px/1.4 ui-monospace, "SF Mono", Menlo, monospace; color: var(--quiet); }
+kbd, code { font: 14px ui-monospace, "SF Mono", Menlo, monospace; background: var(--leaf); border: 1px solid var(--rule);
+  border-radius: 4px; padding: 1px 5px; }
+
+footer.site { border-top: 1px solid var(--rule); padding: 28px 0 40px; font-size: 14px; color: var(--quiet); }
+footer.site .wrap { display: flex; gap: 18px; flex-wrap: wrap; }
+footer.site a { color: var(--quiet); }
+footer.site .spacer { margin-right: auto; }
+
+@media (max-width: 820px) {
+  .hero, .pair { grid-template-columns: 1fr; gap: 28px; }
+  .cols { grid-template-columns: 1fr; }
+  .hero { padding-top: 40px; }
+}

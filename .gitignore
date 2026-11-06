@@ -17,3 +17,4 @@ secrets.json
 # Agent worktrees
 .claude/
 Mac/build/
+site/downloads/
