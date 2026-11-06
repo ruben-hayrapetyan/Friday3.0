@@ -22,7 +22,6 @@ dependencies = [
   "google-auth-oauthlib>=1.5.0",
   "google-api-python-client>=2.201.0",
   "mcp>=2.3.0",
-  "webauthn>=3.0.1",
 ]
 
 [project.scripts]

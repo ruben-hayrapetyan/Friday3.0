@@ -17,7 +17,6 @@ from friday.core.paths import config_path
 from friday.engine.sampler import default_chains
 from friday.planner.store import load_settings
 from friday.server import logs
-from friday.server.accounts import Accounts
 from friday.server.app import create_app, query_by_get, wall_clock
 from friday.server.config import apply_config
 from friday.server.demo import run_demo
@@ -52,7 +51,6 @@ WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="fridayd", description="The Friday daemon")
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
-    parser.add_argument("--accounts", type=Path, help="a hosted Friday's accounts file: everything needs signing in")
     commands = parser.add_subparsers(dest="command")
     serve = commands.add_parser("serve", help="run the API, the solver worker and the jobs")
     serve.add_argument("--host", default="127.0.0.1", help="0.0.0.0 to reach it from your phone over Tailscale")
@@ -71,11 +69,6 @@ def main(argv: list[str] | None = None) -> None:
     login.add_argument(
         "--client-file", type=Path, help="default: google.client_file, else google_client.json beside friday.toml"
     )
-    add = commands.add_parser("account-add", help="make an account on a hosted Friday (needs --accounts)")
-    add.add_argument("--email", required=True)
-    add.add_argument("--username", required=True)
-    add.add_argument("--name", required=True)
-    add.add_argument("--timezone", default=local_timezone())
     commands.add_parser("google-calendars", help="list each Google account's calendars' names and ids, for gcal.read")
     demo = commands.add_parser("demo", help="a sample student's term with stand-in Google, Gmail and AI")
     demo.add_argument("--port", type=int, default=8799)
@@ -90,9 +83,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.command == "demo":  # never in your own data folder
         name = "-".join(["friday-demo", *([args.case] if args.case else []), *(["lived"] if args.ready else [])])
         folder = args.data_dir if args.data_dir != DATA_DIR else DATA_DIR.with_name(name)
-        return run_demo(folder, args.port, serve_forever, initialize, args.case, args.ready, args.accounts)
-    if args.command == "account-add":
-        return add_account(args)
+        return run_demo(folder, args.port, serve_forever, initialize, args.case, args.ready)
     args.data_dir.mkdir(parents=True, exist_ok=True)
     db_path = args.data_dir / "friday.db"
     if args.command == "init":
@@ -107,20 +98,10 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "google-login":
         google_login(db_path, args.client_file)
     else:
-        serve_forever(db_path, getattr(args, "host", "127.0.0.1"), getattr(args, "port", None), args.accounts)
+        serve_forever(db_path, getattr(args, "host", "127.0.0.1"), getattr(args, "port", None))
 
 
-def add_account(args: argparse.Namespace) -> None:
-    if args.accounts is None:
-        raise SystemExit("account-add needs --accounts FILE (a hosted Friday's accounts file)")
-    try:
-        made = Accounts(args.accounts).add(args.email, args.username, args.name, args.timezone, wall_clock())
-    except ValueError as error:
-        raise SystemExit(str(error)) from None
-    print(f"Account {made.username} <{made.email}> made in {args.accounts}")
-
-
-def serve_forever(db_path: Path, host: str, port: int | None, accounts: Path | None = None) -> None:
+def serve_forever(db_path: Path, host: str, port: int | None) -> None:
     conn = connect(db_path)
     server = load_settings(conn)["server"]
     conn.close()
@@ -128,7 +109,7 @@ def serve_forever(db_path: Path, host: str, port: int | None, accounts: Path | N
     logging.getLogger("friday").info(
         "fridayd starting on %s:%s, data in %s, log %s", host, port or server.port, db_path.parent, where
     )
-    app = create_app(db_path, web_dist=WEB_DIST, accounts=Accounts(accounts) if accounts else None)
+    app = create_app(db_path, web_dist=WEB_DIST)
     # Open SSE streams never end on their own; the limit stays for a request that's slow to finish.
     config = uvicorn.Config(
         app, host=host, port=port or server.port, log_level=server.log_level, timeout_graceful_shutdown=2

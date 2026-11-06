@@ -12,75 +12,8 @@ final class Server: ObservableObject {
     }
 
     static let shared = Server()
-    /// The server's Friday this app opens instead of starting its own (HOSTED.md S2, H77: Friday Test opens the
-    /// server's staging copy), or nil: your Friday, which runs fridayd on this Mac. `build.sh --test` writes the
-    /// address into Info.plist (FridayServer); `defaults write com.rubenhayrapetyan.friday.test hostedAddress URL`
-    /// points it elsewhere, and `… hostedAddress local` gives Friday Test its own local user again.
-    nonisolated static let remote: URL? = hostedAddress(
-        plist: Bundle.main.object(forInfoDictionaryKey: "FridayServer") as? String,
-        chosen: UserDefaults.standard.string(forKey: "hostedAddress"))
-    nonisolated static let port = remote.map(effectivePort) ?? TestUser.current?.port ?? 8765  // Friday Test: its own
-    nonisolated static var base: URL { remote ?? URL(string: "http://127.0.0.1:\(port)/")! }
-
-    /// The address chosen in defaults, else the one built in; "local" (or nothing usable) means none.
-    nonisolated static func hostedAddress(plist: String?, chosen: String?) -> URL? {
-        let text = [chosen, plist].compactMap { $0?.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty }
-        guard let text, text != "local", let url = URL(string: text.hasSuffix("/") ? text : text + "/"),
-              url.scheme == "https" || url.scheme == "http", url.host != nil else { return nil }
-        return url
-    }
-
-    /// The link scheme the browser hands a sign-in back by (H43): `friday-test://signed-in?code=…`.
-    nonisolated static let scheme = TestUser.isTest ? "friday-test" : "friday"
-
-    /// Signing in on the server's Friday happens outside the window (H43; in Apple's sign-in sheet, H95): its sign-in
-    /// page becomes that page saying which app asked; nil for any other page, or one that already says so.
-    nonisolated static func signInInBrowser(_ url: URL, base: URL? = Server.remote, scheme: String = Server.scheme) -> URL? {
-        guard let base, isOwn(url, base: base), url.path == "/signin",
-              !(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []).contains(where: { $0.name == "app" })
-        else { return nil }
-        var parts = URLComponents(url: base.appendingPathComponent("signin"), resolvingAgainstBaseURL: false)!
-        parts.queryItems = [URLQueryItem(name: "app", value: scheme)]
-        return parts.url
-    }
-
-    /// What the sign-in sheet's end leads to (H95): its hand-back traded for a session, or nothing when you closed it
-    /// (the waiting page stays, offering it again).
-    nonisolated static func afterSheet(_ back: URL?, base: URL? = Server.remote, scheme: String = Server.scheme) -> URL? {
-        back.flatMap { handBack($0, base: base, scheme: scheme) }
-    }
-
-    /// The browser's hand-back (`friday-test://signed-in?code=…`) as the address the window trades the code at, or
-    /// nil for anything else.
-    nonisolated static func handBack(_ url: URL, base: URL? = Server.remote, scheme: String = Server.scheme) -> URL? {
-        guard let base, url.scheme == scheme, url.host == "signed-in",
-              let code = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "code" })?.value,
-              !code.isEmpty else { return nil }
-        var parts = URLComponents(url: base.appendingPathComponent("auth/app"), resolvingAgainstBaseURL: false)!
-        parts.queryItems = [URLQueryItem(name: "code", value: code)]
-        return parts.url
-    }
-
-    /// Whether a failed load is the window's own doing: a navigation it cancelled, or one a newer load replaced.
-    /// Retrying those opened the browser's sign-in page again every few seconds (4 Nov: eleven tabs).
-    nonisolated static func ownCancel(_ error: Error) -> Bool {
-        let e = error as NSError
-        return (e.domain == "WebKitErrorDomain" && e.code == 102) || (e.domain == NSURLErrorDomain && e.code == NSURLErrorCancelled)
-    }
-
-    /// The browser's sign-in page opens at most once in thirty seconds, whatever asks again.
-    nonisolated static func handsOff(now: Date, last: Date?) -> Bool {
-        guard let last else { return true }
-        return now.timeIntervalSince(last) >= 30
-    }
-
-    nonisolated static func effectivePort(_ url: URL) -> Int { url.port ?? (url.scheme == "https" ? 443 : 80) }
-
-    /// Whether a link stays in the window: Friday's own server, the same host and port; anything else opens in your
-    /// browser.
-    nonisolated static func isOwn(_ url: URL, base: URL = Server.base) -> Bool {
-        url.host == base.host && effectivePort(url) == effectivePort(base)
-    }
+    nonisolated static let port = TestUser.current?.port ?? 8765  // Friday Test: its own (TestUser)
+    nonisolated static var base: URL { URL(string: "http://127.0.0.1:\(port)/")! }
 
     @Published private(set) var state: State = .looking
     @Published private(set) var slow = false  // starting for a while: macOS may be asking for access
@@ -104,10 +37,8 @@ final class Server: ObservableObject {
             .first { FileManager.default.isExecutableFile(atPath: $0.path) }
     }
 
-    /// Running already (another copy, or `fridayd` started by hand), or start it; the server's Friday is only
-    /// looked for.
+    /// Running already (another copy, or `fridayd` started by hand), or start it.
     func ensureRunning(attempt: Int = 0) async {
-        if let remote = Self.remote { return await reach(remote) }
         if await Self.status() != nil {
             await setUp()
             return
@@ -155,23 +86,6 @@ final class Server: ObservableObject {
             try? await Task.sleep(for: .milliseconds(500))
         }
         state = .failed("fridayd didn't answer within a minute:\n" + log.suffix(600))
-    }
-
-    /// The server's Friday, over Tailscale: up to ten seconds for it to answer, else why it may not have.
-    private func reach(_ remote: URL) async {
-        state = .looking
-        for tick in 0 ..< 20 {
-            slow = tick >= 6
-            if await Self.answers() {
-                slow = false
-                state = .ready
-                return
-            }
-            try? await Task.sleep(for: .milliseconds(500))
-        }
-        slow = false
-        state = .failed("Couldn't reach Friday on the server at \(remote.absoluteString).\n"
-                        + "Is Tailscale on and connected on this Mac?")
     }
 
     /// A server that isn't set up yet gets your time zone and personal's sleep times. Waited for off the main thread
@@ -226,15 +140,6 @@ final class Server: ObservableObject {
         let deadline = Date().addingTimeInterval(1.5)
         while running.isRunning, Date() < deadline { usleep(50_000) }
         if running.isRunning { kill(running.processIdentifier, SIGKILL) }
-    }
-
-    /// Whether the server answers at all: signed out, it says so (401), which is up all the same (S4).
-    nonisolated static func answers() async -> Bool {
-        guard let url = URL(string: "api/q/status", relativeTo: base) else { return false }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 2
-        guard let (_, response) = try? await URLSession.shared.data(for: request) else { return false }
-        return [200, 401].contains((response as? HTTPURLResponse)?.statusCode ?? 0)
     }
 
     /// `/api/q/status`, or nil when nothing answers.

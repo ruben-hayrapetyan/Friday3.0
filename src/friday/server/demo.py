@@ -25,7 +25,6 @@ def run_demo(
     initialize: Callable[..., None],
     case: str | None = None,
     ready: bool = False,
-    accounts: Path | None = None,
 ) -> None:
     """`serve` and `initialize` are main's, passed in so this module needn't import it. `case` is one of the
     test profiles (sim/profiles.py) instead of the sample term; `ready` has them three weeks into using
@@ -55,4 +54,4 @@ def run_demo(
     llm.client = lambda *_: sample.ai  # "Ask AI" too, whichever AI is chosen
     who = f"{student.name}: {student.about}" if student else "a sample term"
     print(f"Made-up sample data ({who}; not your calendars or mail) in {folder}, at http://localhost:{port}.")
-    serve(db_path, "127.0.0.1", port, accounts)
+    serve(db_path, "127.0.0.1", port)

@@ -9,8 +9,6 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
     static let shared = Page()
     let view: WKWebView
     private var loaded = false
-    private var lastHandOff: Date?
-    private lazy var sheet = SignInSheet(window: { [weak self] in self?.view.window })
     /// The app has drawn itself: the start's ring can close (`LaunchView`).
     @Published private(set) var shown = false
 
@@ -44,15 +42,9 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
     /// Anything not on Friday's own server opens in your browser.
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                  decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
-        if let url = action.request.url, !Server.isOwn(url) {
+        if let url = action.request.url, url.host != Server.base.host || url.port != Server.port {
             NSWorkspace.shared.open(url)
             decisionHandler(.cancel)
-            return
-        }
-        if let url = action.request.url, let page = Server.signInInBrowser(url) {
-            decisionHandler(.cancel)
-            view.loadHTMLString(Self.waiting(again: url), baseURL: nil)
-            signIn(on: page)
             return
         }
         decisionHandler(action.shouldPerformDownload ? .download : .allow)  // <a download>: the backup
@@ -108,52 +100,6 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
     /// Loaded, then drawn: the page's script fills `#root` once React has run, a moment after the load itself.
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         waitForApp()
-        shareSession()
-    }
-
-    /// Apple's sign-in sheet over the window (H95), which hands back by itself; when it can't open, your browser
-    /// (H43), once, not again within half a minute. Closing the sheet leaves the waiting page, which opens it again.
-    private func signIn(on page: URL) {
-        let opened = sheet.open(page, scheme: Server.scheme) { [weak self] back in
-            guard let self, let address = Server.afterSheet(back) else { return }
-            self.view.load(URLRequest(url: address))
-        }
-        if !opened, Server.handsOff(now: Date(), last: lastHandOff) {
-            lastHandOff = Date()
-            NSWorkspace.shared.open(page)
-        }
-    }
-
-    /// The browser's hand-back (`friday-test://signed-in?code=…`): the window trades the code for its own session.
-    func signedIn(_ url: URL) -> Bool {
-        guard let address = Server.handBack(url) else { return false }
-        sheet.close()  // the emailed link, opened in your browser, got there first
-        view.load(URLRequest(url: address))
-        return true
-    }
-
-    /// The window's session, also for the app's own requests (the menu-bar timer, the Dock's count): they don't
-    /// share the page's cookies otherwise.
-    private func shareSession() {
-        guard let host = Server.remote?.host else { return }
-        view.configuration.websiteDataStore.httpCookieStore.getAllCookies { cookies in
-            for cookie in cookies where cookie.domain == host || host.hasSuffix(cookie.domain) {
-                HTTPCookieStorage.shared.setCookie(cookie)
-            }
-        }
-    }
-
-    /// What the window shows behind the sign-in sheet; its link (the window's own sign-in page) opens the sheet again.
-    static func waiting(again: URL) -> String {
-        let link = again.absoluteString.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "\"", with: "&quot;")
-        return """
-        <!doctype html><meta charset="utf-8"><meta name="color-scheme" content="light dark"><style>
-        body{font:15px/1.5 -apple-system,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;
-        background:#efe9dc;color:#22252b}main{max-width:360px;padding:28px}h1{font:600 20px "New York",Georgia,serif}
-        a{color:#1d2a4a}@media(prefers-color-scheme:dark){body{background:#16181d;color:#e9e6df}a{color:#a9bdf0}}
-        </style><main><h1>Signing in</h1><p>Type the code Friday emails you in the sign-in sheet, or use Touch ID. The
-        emailed link works too: it brings you back here.</p><p><a href="\(link)">Sign in</a></p></main>
-        """
     }
 
     private func waitForApp(tries: Int = 0) {
@@ -174,7 +120,6 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        if Server.ownCancel(error) { return }  // the window turned it away itself (the sign-in hand-off): no retry
         retry()
     }
 
@@ -223,7 +168,7 @@ struct RootView: View {
     private func failed(_ why: String) -> some View {
         VStack(spacing: 12) {
             FridayMark(size: 72, fill: 0.35, gold: 0).opacity(0.55).padding(.bottom, 6)
-            Text(Server.remote == nil ? "Friday's server isn't running" : "Can't reach Friday on the server").font(.title2)
+            Text("Friday's server isn't running").font(.title2)
             Text(why).font(.callout.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
             HStack {
                 Button("Try again") { Task { await Server.shared.ensureRunning() } }

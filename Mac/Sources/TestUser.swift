@@ -17,11 +17,7 @@ struct TestUser: Codable, Equatable {
     /// The user this app is: a new one each time it opens (29 Oct: "my version of friday test is not loading the
     /// initialization anymore": a user who had been through setup opened straight to the app), unless Keep This User
     /// Next Time is on and Start Over wasn't asked for. nil in your Friday.
-    static let current: TestUser? = makesLocalUser(isTest: isTest, remote: Server.remote) ? opening() : nil
-
-    /// Friday Test makes a local user only when it isn't opening the server's Friday (HOSTED.md S2): then no folder
-    /// is made, and the test users already here are left as they are.
-    static func makesLocalUser(isTest: Bool, remote: URL?) -> Bool { isTest && remote == nil }
+    static let current: TestUser? = isTest ? opening() : nil
 
     /// Whether this run's user was made as the app opened: the window forgets the last one's looks and tour first.
     private(set) static var fresh = false

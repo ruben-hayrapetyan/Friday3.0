@@ -8,11 +8,6 @@ struct TestMenu: Commands {
 
     var body: some Commands {
         CommandMenu("Test User") {
-            if let remote = Server.remote {
-                Text("The server's staging Friday: " + (remote.host ?? remote.absoluteString))
-                Divider()
-                Button("Open in Browser") { NSWorkspace.shared.open(remote) }
-            }
             if let user = TestUser.current {
                 Text(user.name + (user.claude ? "" : ", without Claude"))
                 Divider()

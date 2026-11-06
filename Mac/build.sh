@@ -32,14 +32,7 @@ if $TEST; then
   APP_NAME="Friday Test"
   EXECUTABLE="Friday Test"
   BUNDLE_ID="com.rubenhayrapetyan.friday.test"
-  # It opens the server's staging Friday (HOSTED.md S2, H77); FRIDAY_TEST_SERVER=local gives it its own local user.
-  TEST_SERVER="${FRIDAY_TEST_SERVER:-https://laptop.tailnet.ts.net:8443/}"
-  # friday-test://signed-in?code=…: the browser handing a sign-in back to it (HOSTED.md S4, H43).
-  TEST_PLIST="<key>FridayTest</key>              <true/>
-  <key>FridayServer</key>            <string>$TEST_SERVER</string>
-  <key>CFBundleURLTypes</key>
-  <array><dict><key>CFBundleURLName</key><string>Friday Test sign-in</string>
-    <key>CFBundleURLSchemes</key><array><string>friday-test</string></array></dict></array>"
+  TEST_PLIST="<key>FridayTest</key>              <true/>"
   RIBBON=(--ribbon TEST)
 fi
 
@@ -56,7 +49,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 echo "==> Compiling"
 xcrun swiftc -O -swift-version 5 -target "$TARGET" -sdk "$SDK" \
-  -framework WebKit -framework AuthenticationServices -framework Carbon -framework EventKit -framework UserNotifications -framework ServiceManagement \
+  -framework WebKit -framework Carbon -framework EventKit -framework UserNotifications -framework ServiceManagement \
   "${SOURCES[@]}" -o "$APP/Contents/MacOS/$EXECUTABLE"
 
 echo "==> Rendering app icon"
