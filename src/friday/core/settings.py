@@ -139,6 +139,8 @@ class PlannerSettings(Model):
     cancel_after_s: float = 1
     assume_unreviewed: Literal["done", "not_done"] = "done"
     timer_hold_min: int = 30
+    # A timer stopped sooner than this records nothing (7 Nov: "can you ignore work sessions less then 5 minutes").
+    shortest_sitting_min: int = Field(5, ge=1, le=60)
     lock_conflict_tolerance: float = 1
     tentative_match_min: int = 30
     utilization: float = Field(0.8, gt=0, le=0.95)

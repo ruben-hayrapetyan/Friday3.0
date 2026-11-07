@@ -196,6 +196,7 @@ class TestGlassBox:
             upgraded.execute("INSERT INTO timer (item_id, start_utc) VALUES (8, '2026-10-19T13:02:00Z')")
 
 
+SHORTEST = 5
 ACTIONS = st.lists(
     st.tuples(st.sampled_from(["start", "alongside", "stop", "stop_one", "done"]), st.integers(0, 4),
               st.integers(1, 20)),
@@ -207,7 +208,7 @@ ACTIONS = st.lists(
 @given(ACTIONS)
 def test_any_taps_keep_their_promises(tmp_path_factory: pytest.TempPathFactory, actions: list) -> None:
     """Black box, any order of taps: never more than three at once, nothing twice, the timer the last started, and
-    every minute each thing ran recorded for it, whichever ran beside it."""
+    every minute each thing ran recorded for it (five or more at a time), whichever ran beside it."""
     app = new_app(tmp_path_factory.mktemp("taps"))
     ids = [task(app, f"t{n}") for n in range(5)]
     since: dict[int, int] = {}
@@ -218,7 +219,8 @@ def test_any_taps_keep_their_promises(tmp_path_factory: pytest.TempPathFactory, 
         open_ = app.do("item", id=item)["item"]["status"] == "todo"
 
         def stop(which: int) -> None:
-            owed[which] += app.now_utc - since.pop(which)
+            ran = app.now_utc - since.pop(which)
+            owed[which] += ran if ran >= SHORTEST else 0  # under five minutes isn't a sitting
 
         if action in ("start", "alongside") and open_:
             if action == "alongside" and item not in since and len(since) >= MAX_AT_ONCE:

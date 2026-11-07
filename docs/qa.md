@@ -85,7 +85,8 @@ hard-reload) or the old build is served. The app is desktop only, with a 1100 px
       long and what's next, a class included, with up to three Start buttons showing each task's own length.
 - [ ] Start: the counter ticks every second from 0:00; the calendar draws the session under the now line; no
       dashed ghosts appear and no block moves or splits (the plan generation in Status is unchanged). Pause after
-      20 seconds says "too short to count"; after 2 minutes it says "2 min" and the To-do row's done time grows.
+      2 minutes says "too short to count (under 5 min)" and records nothing; after 5 minutes it says "5 min" and
+      the To-do row's done time grows.
 - [ ] Start something 20 minutes before a class: the bar shows it with "left" until the class; the plan is whole.
 - [ ] Day headers: at most two deadline chips a day on one line, titles cut with an ellipsis, "+N" shows the rest.
 

@@ -86,10 +86,16 @@ def timer_out(ctx: Ctx, timer: dict[str, Any], message: str = "") -> TimerOut:
     )
 
 
+def ran(seconds: int) -> str:
+    """4 min 40 s, not "5 min": a sitting too short to count, said as long as it really was."""
+    m, s = divmod(seconds, 60)
+    return f"{m} min {s} s" if m and s else f"{m} min" if m else f"{s} s"
+
+
 def stop_timer(ctx: Ctx, at: int | None = None, item_id: int | None = None) -> TimerOut:
-    """Write a running session as `timer` progress (to the nearest minute; under half a minute, nothing) and clear
-    its timer: `item_id`'s, else the one started last; the others go on. `at`: when you really stopped, earlier than
-    now (28 Oct: a timer left running counted, and taught Friday, hours you didn't work)."""
+    """Write a running session as `timer` progress (to the nearest minute; under `shortest_sitting_min`, nothing)
+    and clear its timer: `item_id`'s, else the one started last; the others go on. `at`: when you really stopped,
+    earlier than now (28 Oct: a timer left running counted, and taught Friday, hours you didn't work)."""
     timer = running(ctx, item_id)
     if timer is None:
         said = "No timer running" if item_id is None else f"T{item_id} isn't being timed"
@@ -103,16 +109,18 @@ def stop_timer(ctx: Ctx, at: int | None = None, item_id: int | None = None) -> T
             raise FieldError("at", "must not be later than now")
         seconds = min(seconds, (at - start) * 60)
     minutes = round(seconds / 60)
-    if minutes:
+    shortest = ctx.settings["planner"].shortest_sitting_min
+    counts = seconds >= shortest * 60  # 4 min 40 s is under five, though it rounds to it
+    if counts:
         write_progress(ctx, timer["item_id"], minutes, "timer", start, start + minutes)
     ctx.db.delete("timer", {"user_id": ctx.user_id, "item_id": timer["item_id"]})
     title = require_item(ctx, timer["item_id"]).title
-    said = f"{minutes} min" if minutes else f"{seconds} s, too short to count"
+    said = f"{minutes} min" if counts else f"{ran(seconds)}, too short to count (under {shortest} min)"
     return TimerOut(
         item_id=timer["item_id"],
         title=title,
         started=ctx.local(timer["start_utc"]),
-        minutes=minutes,
+        minutes=minutes if counts else 0,  # what was recorded
         elapsed_s=seconds,
         message=f"Stopped {title} after {said}",
     )
