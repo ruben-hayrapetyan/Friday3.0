@@ -35,6 +35,10 @@ VERSION="$(tr -d '[:space:]' < ../VERSION)"  # set by scripts/prepare-release.sh
 TEST_PLIST="" RIBBON=() FEED_PLIST=""
 # Only a copy for download carries the feed, so only it looks for updates (H144); the address changes with the domain.
 if $RELEASE; then FEED_PLIST="<key>FridayUpdateFeed</key>       <string>https://laptop.tailnet.ts.net/updates.json</string>"; fi
+# A practice update (scripts/practice-update.sh): Friday Test looks at a feed on this Mac offering Friday Test builds.
+if $TEST && [ -n "${FRIDAY_PRACTICE_FEED:-}" ]; then
+  FEED_PLIST="<key>FridayUpdateFeed</key>       <string>$FRIDAY_PRACTICE_FEED</string>"
+fi
 if $TEST; then
   # Another name and id: its own settings, website data and permissions, so macOS asks it as it would a new user.
   APP_NAME="Friday Test"

@@ -480,5 +480,18 @@ test("the swap waits for Friday to quit, puts the new app in place, and the old 
     try? files.removeItem(at: root)
 }
 
+test("an update keeps Friday Test's user through the restart, once; then it starts new again as set") {
+    let defaults = UserDefaults(suiteName: "friday-test-updated-\(UUID().uuidString)")!
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent("friday-fresh-\(UUID().uuidString)")
+    let first = TestUser.opening(defaults: defaults, root: root, isFree: { _ in true })
+    defaults.set(true, forKey: TestUser.updatedKey)
+    let after = TestUser.opening(defaults: defaults, root: root, isFree: { _ in true })
+    check(after.folder == first.folder, "the same user after updating")
+    check(defaults.object(forKey: TestUser.updatedKey) == nil, "only for that one opening")
+    let next = TestUser.opening(defaults: defaults, root: root, isFree: { _ in true })
+    check(next.folder != first.folder, "then a new user again, Keep This User being off")
+    try? FileManager.default.removeItem(at: root)
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

@@ -26,6 +26,7 @@ struct TestUser: Codable, Equatable {
     static let keepKey = "keepTestUser"  // Keep This User Next Time
     static let claudeKey = "testUserClaude"  // a new user has the `claude` command
     static let askedKey = "testUserAsked"  // Start Over, for the next opening
+    static let updatedKey = "testUserUpdated"  // an update swapped in: the next opening keeps this user (HOSTED.md H146)
     static let keeping = 8  // test users' folders kept, the newest
     static let firstPort = 8770  // yours is 8765; scripts/fresh_user.sh's start at 8790
     static var root: URL {
@@ -44,8 +45,11 @@ struct TestUser: Codable, Equatable {
     /// with the `claude` command or without as last chosen, and the oldest test users' folders beyond `keeping` gone.
     static func opening(defaults: UserDefaults = .standard, root: URL = TestUser.root, isFree: (Int) -> Bool = TestUser.isFree) -> TestUser {
         let asked = defaults.bool(forKey: askedKey)
+        let updated = defaults.bool(forKey: updatedKey)  // updating keeps the user, as it keeps your data
         defaults.removeObject(forKey: askedKey)
-        if let kept = kept(defaults: defaults), !startsNew(keep: defaults.bool(forKey: keepKey), asked: asked) { return kept }
+        defaults.removeObject(forKey: updatedKey)
+        let keep = defaults.bool(forKey: keepKey) || updated
+        if let kept = kept(defaults: defaults), !startsNew(keep: keep, asked: asked) { return kept }
         fresh = true
         let user = make(claude: defaults.object(forKey: claudeKey) as? Bool ?? true, root: root, defaults: defaults, isFree: isFree)
         for old in stale(in: root, keeping: keeping) { try? FileManager.default.removeItem(at: old) }

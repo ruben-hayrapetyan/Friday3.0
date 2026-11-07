@@ -28,6 +28,7 @@ final class Updater: NSObject, WKScriptMessageHandler {
 
     private func install(_ staged: URL, reopen: Bool) {
         atQuit = nil
+        if TestUser.isTest { UserDefaults.standard.set(true, forKey: TestUser.updatedKey) }  // the same test user after
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
         process.arguments = Updater.swapArguments(pid: getpid(), app: Bundle.main.bundleURL, staged: staged, reopen: reopen)
