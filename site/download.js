@@ -13,6 +13,7 @@
     button.removeAttribute("download");
     button.removeAttribute("href");
   });
+  document.querySelectorAll("[data-mac-only]").forEach(function (part) { part.hidden = true; });
   document.querySelectorAll("[data-download-other]").forEach(function (note) {
     note.hidden = false;
     note.innerHTML = (phone ? "Open this page on your Mac to download it. " : "Windows and Linux versions are coming. ") +

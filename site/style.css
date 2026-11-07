@@ -290,3 +290,17 @@ footer.site img { width: 18px; height: 18px; }
   .toolbar h3 { display: none; }
   section.band { padding-top: 84px; }
 }
+
+/* The Terminal install (HOSTED.md H131): one line to copy. Copy comes first and keeps its width, so it never moves
+   with the command beside it; the command wraps on a phone rather than running off the page. */
+.terminal { margin: 22px auto 0; max-width: 720px; font-size: 14px; color: var(--quiet); }
+.terminal .command { width: fit-content; max-width: 100%; margin-inline: auto; box-sizing: border-box; }
+.terminal p { margin: 0 0 8px; }
+.command { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--rule);
+  border-radius: 8px; background: var(--leaf); text-align: left; margin: 0 0 14px; }
+.command code { background: none; border: 0; padding: 0; color: var(--ink); overflow-wrap: anywhere; }
+.copy { flex: none; width: 7.5ch; font: 600 13px/1 var(--mono); padding: 7px 0; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--rule); background: var(--paper); color: var(--ink); }
+.copy:hover { border-color: var(--quiet); }
+@media (min-width: 760px) { .command code { white-space: nowrap; } }
+[id] { scroll-margin-top: 80px; }  /* a jump to a heading lands below the sticky header */

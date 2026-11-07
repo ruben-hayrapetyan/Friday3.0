@@ -42,6 +42,7 @@ def page(name: str, title: str, description: str, body: str) -> str:
   <span class="spacer"><img src="/images/icon.png" alt="" width="18" height="18">Friday · free, and open source soon</span>
   {foot}
 </div></footer>
+<script src="/site.js"></script>
 </body>
 </html>
 """

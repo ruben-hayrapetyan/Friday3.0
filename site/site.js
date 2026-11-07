@@ -13,3 +13,23 @@
   }, { rootMargin: "0px 0px -10% 0px" });
   parts.forEach(function (el) { seen.observe(el); });
 })();
+
+// Copy puts the Terminal line on the clipboard (HOSTED.md H131) and says so for a moment.
+(function () {
+  document.querySelectorAll("[data-copy]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var line = button.parentNode.querySelector("code").textContent;
+      var done = function () {
+        button.textContent = "Copied";
+        setTimeout(function () { button.textContent = "Copy"; }, 1600);
+      };
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(line).then(done);
+      else {
+        var range = document.createRange();
+        range.selectNodeContents(button.parentNode.querySelector("code"));
+        getSelection().removeAllRanges();
+        getSelection().addRange(range);
+      }
+    });
+  });
+})();

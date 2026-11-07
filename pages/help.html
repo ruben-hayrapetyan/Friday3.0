@@ -24,6 +24,14 @@ description: Getting Friday onto your Mac, opening it the first time, and gettin
 </ol>
 <p>You only do this once. After that Friday opens like any other app.</p>
 
+<h2 id="terminal">Installing from Terminal instead</h2>
+<p>To skip that message, open Terminal (in Applications → Utilities), paste this line and press Return:</p>
+<div class="command"><button type="button" class="copy" data-copy>Copy</button><code>curl -fsSL https://laptop.tailnet.ts.net/install.sh | sh</code></div>
+<p>It downloads the same Friday, checks that it&#8217;s exactly the file this site published, puts it in your
+  Applications folder and opens it. macOS only asks about apps a web browser downloaded, so there&#8217;s nothing to
+  allow. If you&#8217;re updating, quit Friday first; your data stays where it is. You can
+  <a href="/install.sh">read the script</a> before you run it.</p>
+
 <h2 id="first-run">The first time it opens</h2>
 <p>Friday walks you through a town from waking up to going to bed, with a few questions on the way: when you get up
   and go to bed, when you eat, when you're in class or at work. Your answers become your first week's plan. It takes
