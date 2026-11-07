@@ -25,4 +25,6 @@ def no_personal_config(tmp_path_factory: pytest.TempPathFactory, monkeypatch: py
     for found in ("cli_path", "codex_path", "gemini_path"):
         monkeypatch.setattr(f"friday.ingest.llm.{found}", lambda: None)
     monkeypatch.setattr("google_auth_oauthlib.flow.InstalledAppFlow.run_local_server", no_google_page)
+    # the Mac app's own Google client, where a test puts one (an installed fridayd's would otherwise count)
+    monkeypatch.setattr("friday.sync.google_auth.SHIPPED_CLIENT", folder / "shipped" / "google_client.json")
     return folder

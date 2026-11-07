@@ -115,3 +115,16 @@ def test_the_google_descriptions_it_keeps_are_the_ones_friday_reads(downloaded: 
         "for n, v in (('calendar', 'v3'), ('gmail', 'v1'))))"
     )
     assert built == "True"
+
+
+@pytest.mark.skipif(not (REPO / "Mac" / "google_client.json").exists(), reason="no Google client to ship (H112)")
+def test_it_carries_fridays_google_client_so_connect_needs_nothing_set_up(downloaded: Downloaded) -> None:
+    # Where a new user's server looks with no client of its own: the one inside the app, a Desktop client. Only its
+    # kind is printed, never what it holds.
+    found = downloaded.run(
+        "import json, os; os.environ['FRIDAY_CONFIG'] = '/nonexistent/friday.toml'; "
+        "from friday.sync import google_auth as g; c = g.client_to_use(None); "
+        "print(c); print('installed' in json.loads(c.read_text()))"
+    )
+    where, desktop = found.splitlines()
+    assert where.startswith(str(downloaded.app)) and desktop == "True"

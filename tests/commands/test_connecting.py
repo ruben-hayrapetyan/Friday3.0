@@ -361,3 +361,69 @@ def test_cancel_ends_googles_real_sign_in_waiting_on_this_mac(tmp_path: Path, mo
     thread.join(5)
     assert not thread.is_alive() and [type(e) for e in errors] == [AccessDeniedError]
     assert not google_auth.tokens(tmp_path)  # nothing kept
+
+
+# Friday's own client, shipped in the Mac app (HOSTED.md H112): a downloaded Friday connects with nothing to set up.
+
+
+def shipped() -> Path:
+    google_auth.SHIPPED_CLIENT.parent.mkdir(parents=True, exist_ok=True)
+    google_auth.SHIPPED_CLIENT.write_text(json.dumps(CLIENT))
+    return google_auth.SHIPPED_CLIENT
+
+
+def test_your_own_client_comes_before_the_shipped_one(no_personal_config: Path) -> None:
+    mine = no_personal_config / "google_client.json"
+    assert google_auth.client_to_use(None) == mine and not mine.exists()  # neither: yours, which Settings asks for
+    shipped()
+    assert google_auth.client_to_use(None) == google_auth.SHIPPED_CLIENT
+    with_client(no_personal_config)
+    assert google_auth.client_to_use(None) == mine
+
+
+def test_a_client_named_in_settings_comes_before_the_shipped_one(tmp_path: Path) -> None:
+    shipped()
+    named = tmp_path / "keys" / "mine.json"
+    assert google_auth.client_to_use(str(named)) == google_auth.SHIPPED_CLIENT
+    named.parent.mkdir()
+    named.write_text(json.dumps(CLIENT))
+    assert google_auth.client_to_use(str(named)) == named
+
+
+def test_with_only_the_shipped_client_connect_works_with_nothing_to_set_up(
+    app: App, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = shipped()
+    used: list[Path] = []
+
+    class Recorded(FakeSignIn):
+        def __call__(self, found: Path, *args: Any, **kwargs: Any) -> str:
+            used.append(found)
+            return super().__call__(found, *args, **kwargs)
+
+    monkeypatch.setattr(google_auth, "calendar", Accounts({"me@gmail.com": FakeGoogle({"me@gmail.com": []})}))
+    assert app.do("google_connect_status")["client_file"]
+    status = signed_in(app, monkeypatch, Recorded())
+    assert used == [client] and status["account"] == "me@gmail.com"
+
+
+def test_a_key_file_you_choose_is_kept_as_yours_and_the_shipped_one_is_left_alone(
+    app: App, no_personal_config: Path
+) -> None:
+    client = shipped()
+    before = client.read_text()
+    mine = dict(CLIENT, installed=CLIENT["installed"] | {"client_id": "456.apps.googleusercontent.com"})
+    app.do("google_client_save", content=json.dumps(mine))
+    assert json.loads((no_personal_config / "google_client.json").read_text()) == mine
+    assert client.read_text() == before
+    assert google_auth.client_to_use(None) == no_personal_config / "google_client.json"
+
+
+def test_google_login_uses_the_shipped_client_without_copying_it_into_your_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, no_personal_config: Path
+) -> None:
+    asked = []
+    monkeypatch.setattr(google_auth, "login", lambda client, folder, scopes: asked.append(client) or "me@gmail.com")
+    client = shipped()
+    main(["--data-dir", str(tmp_path / "data"), "google-login"])
+    assert asked == [client] and not (no_personal_config / "google_client.json").exists()

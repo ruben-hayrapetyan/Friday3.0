@@ -53,6 +53,14 @@ find "$RUNTIME/python/lib" -maxdepth 2 -type d \( -name idlelib -o -name turtled
 
 mkdir -p "$RUNTIME/python/share/friday"
 ditto "$REPO/web/dist" "$RUNTIME/python/share/friday/web"  # where the server looks beside its Python (web_dist)
+# Friday's own Google client (H112), so Connect works as downloaded: kept beside this script, git-ignored, never read
+# here, only copied (google_auth.SHIPPED_CLIENT). Without it the app asks each person for a key file of their own.
+CLIENT="$REPO/Mac/google_client.json"
+if [ -f "$CLIENT" ]; then
+  install -m 0644 "$CLIENT" "$RUNTIME/python/share/friday/google_client.json"
+else
+  echo "    No Mac/google_client.json: this build asks for a Google key file" >&2
+fi
 
 echo "==> Compiling bytecode"
 "$PY" -m compileall -q -j 0 "$RUNTIME/python/lib" >/dev/null || true  # a few test files of packages don't compile

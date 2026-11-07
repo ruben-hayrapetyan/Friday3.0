@@ -8,7 +8,8 @@ Each account you connect is kept under its address: Connect again adds another (
 signing in with one already there renews it. Remove forgets an account's token; its calendars stop being read (and
 come back on if you connect it again), and what they and its mail brought in stays.
 
-Without the OAuth client JSON Friday signs in with, the page takes the file you downloaded from Google Cloud and keeps
+Friday signs in with your own OAuth client JSON if you keep one, else the one shipped in the Mac app. Without either,
+the page takes the file you downloaded from Google Cloud and keeps
 it where `google.client_file` points, as `fridayd google-login` expects.
 """
 
@@ -96,7 +97,7 @@ def google_connect_status(ctx: Ctx, inp: Empty) -> GoogleConnectOut:
         message=sign_in.message if sign_in else None,
         url=sign_in.url if sign_in and sign_in.state == "waiting" else None,
         account=sign_in.account if sign_in else None,
-        client_file=google_auth.client_file(ctx.settings["google"].client_file).exists(),
+        client_file=google_auth.client_to_use(ctx.settings["google"].client_file).exists(),
         calendar=bool(accounts),
         gmail=any(a.gmail for a in accounts),
         events=any(a.events for a in accounts),
@@ -113,7 +114,7 @@ def google_connect(ctx: Ctx, inp: GoogleConnectInput) -> GoogleConnectOut:
     if demo(ctx):
         raise FieldError("google", "the demo uses a stand-in Google, so there's nothing to connect")
     db = data_file(ctx.conn)
-    client = google_auth.client_file(ctx.settings["google"].client_file)
+    client = google_auth.client_to_use(ctx.settings["google"].client_file)
     if not client.exists():
         raise FieldError("google", "Friday needs the key file from Google Cloud first")
     with LOCK:

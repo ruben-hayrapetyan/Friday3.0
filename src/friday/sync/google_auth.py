@@ -8,6 +8,7 @@ account (`LEGACY`) until the sync lists its calendars, whose primary one names i
 
 import json
 import os
+import sys
 import threading
 import urllib.request
 from collections.abc import Callable
@@ -34,6 +35,9 @@ GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 DONE_PAGE = "Friday is connected to Google. You can close this tab and go back to Friday."
 LEGACY = ""  # the account of the one token kept before Friday kept several, until its address is known
 LOCK = threading.Lock()  # the sync, a sign-in and Remove may all rewrite the file
+# Friday's own Desktop client, put beside the server's Python by Mac/bundle.sh, so a downloaded Friday connects Google
+# with nothing to set up (HOSTED.md H112, on rhayrapetyan/download-site). Never in git: the repo will be open source.
+SHIPPED_CLIENT = Path(sys.prefix) / "share" / "friday" / "google_client.json"
 
 
 def secrets_file(folder: Path) -> Path:
@@ -41,8 +45,15 @@ def secrets_file(folder: Path) -> Path:
 
 
 def client_file(named: str | None) -> Path:
-    """The OAuth client JSON: where `google.client_file` says, else `google_client.json` beside friday.toml."""
+    """Your own OAuth client JSON: where `google.client_file` says, else `google_client.json` beside friday.toml."""
     return Path(named).expanduser() if named else config_path().with_name("google_client.json")
+
+
+def client_to_use(named: str | None) -> Path:
+    """The client Friday signs in with: yours if you keep one, else the one shipped in the app, else yours (missing,
+    so Settings asks for it)."""
+    yours = client_file(named)
+    return SHIPPED_CLIENT if not yours.exists() and SHIPPED_CLIENT.exists() else yours
 
 
 def write_private(path: Path, text: str) -> None:

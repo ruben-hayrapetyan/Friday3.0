@@ -154,12 +154,13 @@ def google_login(db_path: Path, client_file: Path | None) -> None:
     apply_config(conn, wall_clock(), config_path())  # so client_file is read from friday.toml even before serving
     settings = load_settings(conn)
     conn.close()
-    path = client_file.expanduser() if client_file else google_auth.client_file(settings["google"].client_file)
+    path = client_file.expanduser() if client_file else google_auth.client_to_use(settings["google"].client_file)
     if not path.exists():
         raise SystemExit(f"no OAuth client JSON at {path}: choose it in Settings → Integrations, or pass --client-file")
     account = google_auth.login(path, db_path.parent, google_auth.scopes(settings["gmail"].enabled))
     kept = google_auth.client_file(settings["google"].client_file)
-    if not kept.exists():  # a key file named here is kept where Friday looks, so Connect in the app works from now on
+    # a key file named here is kept where Friday looks, so Connect in the app works from now on (never the app's own)
+    if client_file and not kept.exists():
         google_auth.keep_client(kept, path.read_text())
     print(
         f"Google is connected for {account}; its token is in {google_auth.secrets_file(db_path.parent)}. "
