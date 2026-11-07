@@ -15,7 +15,7 @@ sys.path.insert(0, str(HERE / "hub"))
 from friday_hub import notes as notes_  # noqa: E402  (the hub's own notes, shown the same everywhere)
 
 NAV = [("features.html", "Features"), ("help.html", "Help"), ("whats-new.html", "What's new"),
-       ("privacy.html", "Privacy")]
+       ("privacy.html", "Privacy"), ("contact.html", "Contact")]
 
 
 def page(name: str, title: str, description: str, body: str) -> str:

@@ -304,3 +304,16 @@ footer.site img { width: 18px; height: 18px; }
 .copy:hover { border-color: var(--quiet); }
 @media (min-width: 760px) { .command code { white-space: nowrap; } }
 [id] { scroll-margin-top: 80px; }  /* a jump to a heading lands below the sticky header */
+
+/* The contact form (HOSTED.md H154) */
+.contact { display: grid; gap: 16px; max-width: 34em; margin-top: 24px; }
+.contact label { display: grid; gap: 6px; font-weight: 600; }
+.contact label small { font-weight: 400; color: var(--quiet); }
+.contact input[type=email], .contact input[type=text], .contact textarea { font: 16px/1.5 var(--body); color: var(--ink);
+  background: var(--leaf); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; }
+.contact fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.contact legend { font-weight: 600; margin-bottom: 6px; }
+.contact .choice { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; font-weight: 400; }
+.contact .trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.contact .button { justify-self: start; }
+.contact .hint { font-size: 14px; color: var(--quiet); margin: 0; }

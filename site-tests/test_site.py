@@ -17,7 +17,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "site"
-PAGES = ["index.html", "features.html", "help.html", "privacy.html", "whats-new.html"]
+PAGES = ["index.html", "features.html", "help.html", "privacy.html", "whats-new.html", "contact.html",
+         "contact-sent.html", "contact-wait.html"]
 
 
 class Parts(HTMLParser):

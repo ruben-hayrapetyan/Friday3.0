@@ -36,7 +36,7 @@ install_friday() {
   trap 'hdiutil detach -quiet "$mount" 2>/dev/null || true; rm -r "$work"' EXIT
 
   printf 'Downloading Friday %s (about 240 MB)...\n' "$VERSION"
-  curl -fL --progress-bar -o "$work/Friday.dmg" "$URL" || fail "the download didn't finish. Try again."
+  curl -fL --progress-bar -o "$work/Friday.dmg" "$URL?via=terminal" || fail "the download didn't finish. Try again."
   found="$(shasum -a 256 "$work/Friday.dmg" | cut -d' ' -f1)"
   [ "$found" = "$SHA256" ] || fail "the download isn't the file the site published (its checksum differs)."
 

@@ -33,3 +33,8 @@
     });
   });
 })();
+
+// The contact form notes when the page opened, so a message sent within seconds of it is taken for a bot's (H151).
+(function () {
+  document.querySelectorAll("[data-started]").forEach(function (field) { field.value = String(Date.now()); });
+})();
