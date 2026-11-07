@@ -9,7 +9,7 @@
 set -eu
 
 VERSION="0.1.0"
-SHA256="bd8d9e4dd798ee4f438190a4161afb0fee41df50f81e369b63c194d3790f97cf"
+SHA256="e80f024c0e109eba5305a3c62fc47e63b958113b1380b1707feb7f923c607644"
 URL="https://laptop.tailnet.ts.net/downloads/Friday-$VERSION.dmg"
 
 fail() {
