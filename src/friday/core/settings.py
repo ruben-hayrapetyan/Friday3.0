@@ -433,6 +433,12 @@ class ServerSettings(Model):
     allow_plugins: bool = True
 
 
+class UpdateSettings(Model):
+    """When a downloaded update is swapped in (HOSTED.md H146): right away, or when you quit Friday."""
+
+    restart: Literal["now", "quit"] = "now"
+
+
 SETTINGS_TYPES: dict[str, Any] = {
     "time": TimeSettings,
     "engine": EngineSettings,
@@ -457,6 +463,7 @@ SETTINGS_TYPES: dict[str, Any] = {
     "notify": NotifySettings,
     "jobs": JobsSettings,
     "server": ServerSettings,
+    "updates": UpdateSettings,  # Friday's own updater (HOSTED.md H146)
     "notes": tuple[str, ...],  # what you've told Friday about yourself, read by the AI with everything it reads
     "categories": CategorySettings,  # events coloured by their titles, and the filter (COMBINED.md 17, 59)
     "busy": BusySettings,  # which events count as busy when planning (COMBINED.md 28)
@@ -500,6 +507,7 @@ DEFAULTS: dict[str, Any] = {
     "notify": NotifySettings(),
     "jobs": JobsSettings(),
     "server": ServerSettings(),
+    "updates": UpdateSettings(),
     "notes": (),
     "categories": CategorySettings(),
     "busy": BusySettings(),

@@ -56,10 +56,18 @@ final class Server: ObservableObject {
     /// The app's own server as it's run: the planner compiled in the build is used (a generic Apple-silicon target,
     /// H111), nothing is written into the app (what more the planner compiles goes to ~/Library/Caches/Friday:
     /// server/planner_cache.py), and the data folder is chosen by `dataPlace`.
-    nonisolated static func bundledLauncher(_ python: URL, home: URL, exists: (String) -> Bool) -> Launcher {
+    /// A downloaded copy (built with --release) also passes its version, its place and the update feed's address,
+    /// so the server can look for a newer Friday (H144, commands/updates.py); other builds never look.
+    nonisolated static func bundledLauncher(_ python: URL, home: URL, exists: (String) -> Bool,
+                                            app: ThisApp? = nil) -> Launcher {
         let cache = home.appendingPathComponent("Library/Caches/Friday/planner").path
-        let settings = ["NUMBA_CPU_NAME": "generic", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1",
+        var settings = ["NUMBA_CPU_NAME": "generic", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1",
                         "NUMBA_CACHE_DIR": cache]
+        if let app {
+            settings["FRIDAY_APP_VERSION"] = app.version
+            settings["FRIDAY_APP_PATH"] = app.path
+            if let feed = app.feed { settings["FRIDAY_UPDATE_FEED"] = feed }
+        }
         return Launcher(executable: python, prefix: ["-m", "friday.server.main"],
                         settings: settings.merging(dataPlace(home: home, exists: exists)) { a, _ in a }, bundled: true)
     }
@@ -72,11 +80,25 @@ final class Server: ObservableObject {
         return ["FRIDAY_DATA_DIR": support.path, "FRIDAY_CONFIG": support.appendingPathComponent("friday.toml").path]
     }
 
+    /// This app as the updater needs it: its version, where it is, and the update feed if it's a downloaded copy.
+    struct ThisApp: Equatable {
+        let version: String
+        let path: String
+        let feed: String?
+
+        static var running: ThisApp? {
+            guard let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+            else { return nil }
+            return ThisApp(version: version, path: Bundle.main.bundlePath,
+                       feed: Bundle.main.object(forInfoDictionaryKey: "FridayUpdateFeed") as? String)
+        }
+    }
+
     /// The server to run: the one you chose in Settings, else the app's own, else one installed in the usual places.
     nonisolated static func launcher(chosen: String?, bundled: URL?, home: URL, isExecutable: (String) -> Bool,
-                                     exists: (String) -> Bool) -> Launcher? {
+                                     exists: (String) -> Bool, app: ThisApp? = nil) -> Launcher? {
         if let chosen, !chosen.isEmpty, isExecutable(chosen) { return Launcher(executable: URL(fileURLWithPath: chosen)) }
-        if let bundled { return bundledLauncher(bundled, home: home, exists: exists) }
+        if let bundled { return bundledLauncher(bundled, home: home, exists: exists, app: app) }
         return candidates(chosen: nil, home: home).first { isExecutable($0.path) }.map { Launcher(executable: $0) }
     }
 
@@ -86,7 +108,7 @@ final class Server: ObservableObject {
         return Self.launcher(chosen: UserDefaults.standard.string(forKey: "fridaydPath"),
                              bundled: Self.bundledPython(resources: Bundle.main.resourceURL, isExecutable: isExecutable),
                              home: files.homeDirectoryForCurrentUser, isExecutable: isExecutable,
-                             exists: { files.fileExists(atPath: $0) })
+                             exists: { files.fileExists(atPath: $0) }, app: ThisApp.running)
     }
 
     var executable: URL? { launcher?.executable }

@@ -425,5 +425,60 @@ test("a repeat Friday asks of a Mac event, as EventKit's rule") {
     check(MacWriter.recurrence("FREQ=HOURLY") == nil && MacWriter.recurrence("nonsense") == nil, "what it can't read")
 }
 
+test("only a downloaded copy tells its server the update feed; every bundled one its version and place (H144)") {
+    let home = URL(fileURLWithPath: "/Users/someone")
+    let python = URL(fileURLWithPath: "/Applications/Friday.app/Contents/Resources/friday/python/bin/python3.12")
+    let downloaded = Server.ThisApp(version: "0.2.0", path: "/Applications/Friday.app",
+                                    feed: "https://site.example/updates.json")
+    let env = Server.bundledLauncher(python, home: home, exists: { _ in false }, app: downloaded).environment([:])
+    check(env["FRIDAY_APP_VERSION"] == "0.2.0" && env["FRIDAY_APP_PATH"] == "/Applications/Friday.app", "its version, its place")
+    check(env["FRIDAY_UPDATE_FEED"] == "https://site.example/updates.json", "the feed it looks at")
+    let yours = Server.ThisApp(version: "0.2.0", path: "/Applications/Friday.app", feed: nil)
+    let built = Server.bundledLauncher(python, home: home, exists: { _ in false }, app: yours).environment([:])
+    check(built["FRIDAY_UPDATE_FEED"] == nil && built["FRIDAY_APP_VERSION"] == "0.2.0", "a build from here never looks")
+}
+
+test("the updater swaps in only a Friday.app the server unpacked into its updates folder") {
+    let cache = URL(fileURLWithPath: "/Users/someone/Library/Caches/Friday/updates")
+    check(Updater.accepted("/Users/someone/Library/Caches/Friday/updates/0.2.0/Friday.app", cache: cache) != nil, "its own")
+    check(Updater.accepted("/Users/someone/Downloads/Friday.app", cache: cache) == nil, "anywhere else")
+    check(Updater.accepted("/Users/someone/Library/Caches/Friday/updates/../../../Evil/Friday.app", cache: cache) == nil,
+          "not by climbing out")
+    check(Updater.accepted("/Users/someone/Library/Caches/Friday/updates/0.2.0/Other.app", cache: cache) == nil,
+          "only Friday.app")
+}
+
+test("the swap waits for Friday to quit, puts the new app in place, and the old back if it can't") {
+    let files = FileManager.default
+    let root = files.temporaryDirectory.appendingPathComponent("friday-swap-\(UUID().uuidString)")
+    let app = root.appendingPathComponent("Applications/Friday.app")
+    let staged = root.appendingPathComponent("updates/0.2.0/Friday.app")
+    try? files.createDirectory(at: app, withIntermediateDirectories: true)
+    try? files.createDirectory(at: staged, withIntermediateDirectories: true)
+    try? "0.1.0".write(to: app.appendingPathComponent("version"), atomically: true, encoding: .utf8)
+    try? "0.2.0".write(to: staged.appendingPathComponent("version"), atomically: true, encoding: .utf8)
+    func swap(waitingFor pid: Int32) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = Updater.swapArguments(pid: pid, app: app, staged: staged, reopen: false)
+        try? process.run()
+        process.waitUntilExit()
+    }
+    let gone = Process()
+    gone.executableURL = URL(fileURLWithPath: "/usr/bin/true")
+    try? gone.run()
+    gone.waitUntilExit()  // a Friday that has quit
+    swap(waitingFor: gone.processIdentifier)
+    let now = try? String(contentsOf: app.appendingPathComponent("version"), encoding: .utf8)
+    check(now == "0.2.0", "the new version in place: \(now ?? "nothing")")
+    check(!files.fileExists(atPath: staged.path), "moved, not copied")
+    let left = (try? files.contentsOfDirectory(atPath: app.deletingLastPathComponent().path)) ?? []
+    check(left == ["Friday.app"], "the old one gone: \(left)")
+    swap(waitingFor: gone.processIdentifier)  // nothing staged any more: the swap can't happen
+    let kept = try? String(contentsOf: app.appendingPathComponent("version"), encoding: .utf8)
+    check(kept == "0.2.0", "the app put back when the new one can't be moved in: \(kept ?? "nothing")")
+    try? files.removeItem(at: root)
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

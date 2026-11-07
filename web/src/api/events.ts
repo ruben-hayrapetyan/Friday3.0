@@ -17,6 +17,8 @@ const REFRESH: Record<string, string[]> = {
   "status.changed": ["status", "questions"],
   // A change's quick placement, made after it answered (server/placer.py): the calendar draws it.
   "plan.provisional": ["plan"],
+  // A downloaded Friday looked for a newer version (commands/updates.py): the popup and Settings → Updates.
+  "updates.changed": ["updates"],
 }
 
 /** The query keys (by their first part) an event makes stale; "*" is all of them. */

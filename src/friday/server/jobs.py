@@ -10,6 +10,8 @@ after downtime. `job_runs` remembers when each job last ran.
 - `publish` (every minute): put a changed plan on the "Friday" Google calendar, debounced (`commands/google.py`).
 - `meals` (every minute, acting once a day): what's learned of the meals your rules leave to Friday, applied
   (`commands/eating.decide`).
+- `updates` (every minute, acting at launch and once a month): a downloaded Friday looks for a newer version
+  (`commands/updates.py`).
 """
 
 import logging
@@ -20,6 +22,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
+from friday.commands import updates
 from friday.commands.eating import decide
 from friday.commands.eventwrites import failed_writes, write_events
 from friday.commands.fetching import failing_sources, sync
@@ -83,6 +86,7 @@ def run_due(
         ("event_writes", every_minute, send_event_writes),
         ("ratings", every_minute, rate_events),
         ("meals", every_minute, decide_meals),
+        ("updates", every_minute, look_for_updates),
     )
     for name, is_due, job in jobs:
         if not is_due(last_run(conn, name, user_id), now_utc, settings):
@@ -332,3 +336,19 @@ def backup(conn: sqlite3.Connection, folder: Path, keep: int, today: date) -> Pa
     for old in sorted(folder.glob("friday-*.db"))[:-keep]:
         old.unlink()
     return target
+
+
+def look_for_updates(
+    conn: sqlite3.Connection,
+    now_utc: int,
+    settings: dict[str, Any],
+    hub: Hub,
+    supervisor: Supervisor | None,
+    backups: Path,
+    user_id: int,
+) -> None:
+    """A downloaded Friday looks for a newer version at launch and once a month (HOSTED.md H121, commands/updates.py);
+    checked every minute, it reaches the site only then."""
+    if updates.due(conn, now_utc, user_id):
+        updates.check_due(conn, now_utc, user_id)
+        hub.publish("updates.changed")

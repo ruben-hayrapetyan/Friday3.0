@@ -55,6 +55,7 @@ def test_nightly_closes_yesterday_backs_up_and_asks_for_a_cold_replan(app: App, 
         "event_writes",
         "ratings",
         "meals",
+        "updates",
     ]
     assert [r["last_error"] for r in app.table("job_runs") if r["last_error"]] == []
     assumed = [(p["item_id"], p["minutes"]) for p in app.table("progress") if p["source"] == "assumed"]
@@ -87,7 +88,7 @@ def test_tick_replans_when_a_block_boundary_passed_and_not_for_a_timer(app: App,
     worker = Worker()
     assert (
         run_jobs(app, worker, tmp_path)
-        == ["tick", "questions", "config", "sync", "publish", "event_writes", "ratings", "meals"]
+        == ["tick", "questions", "config", "sync", "publish", "event_writes", "ratings", "meals", "updates"]
         and worker.requests == []
     )
     app.at("2026-10-19T09:15").do("start", id=1)  # the timer is an overlay on the plan, not a reason to replan

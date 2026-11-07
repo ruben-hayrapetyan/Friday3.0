@@ -2061,6 +2061,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/update_check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Look for a newer Friday now (Settings → Updates). Returns at once; `update_status` says how it went. */
+        post: operations["update_check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/update_later": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put the update popup off until Friday next opens (H145). */
+        post: operations["update_later"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/update_start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Download the newest version, check it and unpack it; the Mac app then swaps it in, right away or when you */
+        post: operations["update_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/update_stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop a download that's going on; nothing is changed. */
+        post: operations["update_stop"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/week_note": {
         parameters: {
             query?: never;
@@ -2089,6 +2157,23 @@ export interface paths {
         put?: never;
         /** Keep what you tried in What if: every change made, in order, as one; one Undo takes them all back. */
         post: operations["whatif_keep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/whats_new_seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** You've read what changed in this version: it isn't shown again. */
+        post: operations["whats_new_seen"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2988,6 +3073,23 @@ export interface paths {
         };
         /** Options when hard work is late or overflowing, each with the late hours it saves. */
         get: operations["triage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/update_status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Friday's version, whether a newer one is out with what each newer version changes, and how an update is */
+        get: operations["update_status"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9328,6 +9430,164 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /** UpdateCheckResult */
+        UpdateCheckResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["UpdateStatusOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** UpdateLaterResult */
+        UpdateLaterResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["UpdateStatusOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** UpdateStartResult */
+        UpdateStartResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["UpdateStatusOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
+         * UpdateStatusOut
+         * @description Friday's own updater (HOSTED.md H118–H124, H144–H147).
+         */
+        UpdateStatusOut: {
+            /** Checks */
+            checks: boolean;
+            /** Have */
+            have: string | null;
+            /** Last Checked */
+            last_checked?: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "idle" | "checking" | "downloading" | "ready" | "failed";
+            /**
+             * Progress
+             * @default 0
+             */
+            progress?: number;
+            /** Message */
+            message?: string | null;
+            /**
+             * Versions
+             * @default []
+             */
+            versions?: components["schemas"]["UpdateVersionOut"][];
+            /**
+             * Popup
+             * @default false
+             */
+            popup?: boolean;
+            /**
+             * Whats New
+             * @default []
+             */
+            whats_new?: components["schemas"]["UpdateVersionOut"][];
+            /**
+             * Restart
+             * @default now
+             * @enum {string}
+             */
+            restart?: "now" | "quit";
+            /** Staged */
+            staged?: string | null;
+        };
+        /** UpdateStopResult */
+        UpdateStopResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["UpdateStatusOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
+         * UpdateVersionOut
+         * @description A version of Friday and its notes (HOSTED.md H143): a sentence, then New, Changed and Fixed.
+         */
+        UpdateVersionOut: {
+            /** Version */
+            version: string;
+            /** Released */
+            released: string;
+            /** Summary */
+            summary: string;
+            /**
+             * New
+             * @default []
+             */
+            new?: string[];
+            /**
+             * Changed
+             * @default []
+             */
+            changed?: string[];
+            /**
+             * Fixed
+             * @default []
+             */
+            fixed?: string[];
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -9577,6 +9837,27 @@ export interface components {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** WhatsNewSeenResult */
+        WhatsNewSeenResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["UpdateStatusOut"];
             /** Provisional */
             provisional?: components["schemas"]["BlockOut"][] | null;
             changes?: components["schemas"]["ChangeOut"] | null;
@@ -14107,6 +14388,154 @@ export interface operations {
             };
         };
     };
+    update_check: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Empty"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateCheckResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_later: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Empty"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateLaterResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_start: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Empty"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateStartResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_stop: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Empty"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateStopResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     week_note: {
         parameters: {
             query?: {
@@ -14168,6 +14597,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WhatifKeepResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    whats_new_seen: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Empty"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsNewSeenResult"];
                 };
             };
             /** @description Validation Error */
@@ -15486,6 +15952,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TriageOut"];
+                };
+            };
+        };
+    };
+    update_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateStatusOut"];
                 };
             };
         };

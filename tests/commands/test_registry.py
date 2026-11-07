@@ -588,4 +588,10 @@ def test_unlogged_commands_are_only_those_with_no_undo_or_a_secret_result() -> N
         "local_model_use",  # a download or a removal on this Mac: nothing Friday can take back
         "local_model_cancel",
         "tour_offered",  # the app's own flag, nothing of yours
+        # Friday's own updater: a look, a download beside the app or the popup put off; nothing of yours to undo
+        "update_check",
+        "update_later",
+        "update_start",
+        "update_stop",
+        "whats_new_seen",
     } == UNLOGGED

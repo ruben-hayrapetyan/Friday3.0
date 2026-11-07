@@ -6,20 +6,24 @@
 #
 #   ./build.sh                build into build/ for this Mac
 #   ./build.sh --install      build, then replace /Applications/Friday.app and launch it (the switch, C11)
+#   ./build.sh --release      a copy for people to download: it looks for updates on the site (HOSTED.md H144);
+#                             scripts/prepare-release.sh builds with it. Yours and Friday Test never look.
 #   ./build.sh --test [--open]  Friday Test, a brand-new user's Friday beside yours (Sources/TestUser.swift), into
 #                               build/ only: never /Applications. --open opens it.
 set -euo pipefail
 
-INSTALL=false TEST=false OPEN=false
+INSTALL=false TEST=false OPEN=false RELEASE=false
 for arg in "$@"; do
   case "$arg" in
     --install) INSTALL=true ;;
     --test) TEST=true ;;
     --open) OPEN=true ;;
-    *) echo "usage: $0 [--install | --test [--open]]" >&2; exit 2 ;;
+    --release) RELEASE=true ;;
+    *) echo "usage: $0 [--install | --release | --test [--open]]" >&2; exit 2 ;;
   esac
 done
 if $TEST && $INSTALL; then echo "Friday Test stays in build/: no --install" >&2; exit 2; fi
+if $RELEASE && ($TEST || $INSTALL); then echo "--release is for the download only" >&2; exit 2; fi
 
 cd "$(dirname "$0")"
 
@@ -28,7 +32,9 @@ EXECUTABLE="Friday"
 # Its own id, so it runs beside the Swift app until the switch without sharing its settings or login item.
 BUNDLE_ID="com.rubenhayrapetyan.friday.web"
 VERSION="$(tr -d '[:space:]' < ../VERSION)"  # set by scripts/prepare-release.sh (HOSTED.md H136)
-TEST_PLIST="" RIBBON=()
+TEST_PLIST="" RIBBON=() FEED_PLIST=""
+# Only a copy for download carries the feed, so only it looks for updates (H144); the address changes with the domain.
+if $RELEASE; then FEED_PLIST="<key>FridayUpdateFeed</key>       <string>https://laptop.tailnet.ts.net/updates.json</string>"; fi
 if $TEST; then
   # Another name and id: its own settings, website data and permissions, so macOS asks it as it would a new user.
   APP_NAME="Friday Test"
@@ -80,6 +86,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>LSApplicationCategoryType</key> <string>public.app-category.productivity</string>
     <key>NSHighResolutionCapable</key>   <true/>
     $TEST_PLIST
+    $FEED_PLIST
     <key>NSAppTransportSecurity</key>
     <dict><key>NSAllowsLocalNetworking</key><true/></dict>
     <key>NSCalendarsFullAccessUsageDescription</key>

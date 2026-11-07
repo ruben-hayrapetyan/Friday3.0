@@ -17,6 +17,7 @@ import { Repeating } from "./Repeating"
 import { Schedule } from "./Schedule"
 import { Shortcuts } from "./Shortcuts"
 import { TagsKinds } from "./TagsKinds"
+import { UpdatesSection } from "./UpdatesSection"
 
 const SECTIONS = [
   { id: "appearance", label: "Appearance", icon: "paint-brush", page: Appearance },
@@ -28,6 +29,7 @@ const SECTIONS = [
   { id: "tokens", label: "Tokens", icon: "key", page: Tokens },
   { id: "about", label: "About you", icon: "user", page: AboutYou },
   { id: "shortcuts", label: "Shortcuts", icon: "keyboard", page: Shortcuts },
+  { id: "updates", label: "Updates", icon: "arrow-circle-up", page: UpdatesSection },
   { id: "advanced", label: "Advanced", icon: "brackets-curly", page: AdvancedSection },
 ]
 

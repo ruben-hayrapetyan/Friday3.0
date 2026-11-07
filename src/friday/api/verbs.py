@@ -1244,6 +1244,46 @@ VERBS = {
     "unshove": Verb(
         "POST", "/api/c/unshove", commands.UnshoveInput, True, True, "Remove the most recent shove, or a given one."
     ),
+    "update_check": Verb(
+        "POST",
+        "/api/c/update_check",
+        commands.Empty,
+        True,
+        False,
+        "Look for a newer Friday now (Settings → Updates). Returns at once; `update_status` says how it went.",
+    ),
+    "update_later": Verb(
+        "POST",
+        "/api/c/update_later",
+        commands.Empty,
+        True,
+        False,
+        "Put the update popup off until Friday next opens (H145).",
+    ),
+    "update_start": Verb(
+        "POST",
+        "/api/c/update_start",
+        commands.Empty,
+        True,
+        False,
+        "Download the newest version, check it and unpack it; the Mac app then swaps it in, right away or when you",
+    ),
+    "update_status": Verb(
+        "GET",
+        "/api/q/update_status",
+        commands.Empty,
+        False,
+        False,
+        "Friday's version, whether a newer one is out with what each newer version changes, and how an update is",
+    ),
+    "update_stop": Verb(
+        "POST",
+        "/api/c/update_stop",
+        commands.Empty,
+        True,
+        False,
+        "Stop a download that's going on; nothing is changed.",
+    ),
     "week_note": Verb(
         "POST",
         "/api/c/week_note",
@@ -1275,6 +1315,14 @@ VERBS = {
         True,
         True,
         "Keep what you tried in What if: every change made, in order, as one; one Undo takes them all back.",
+    ),
+    "whats_new_seen": Verb(
+        "POST",
+        "/api/c/whats_new_seen",
+        commands.Empty,
+        True,
+        False,
+        "You've read what changed in this version: it isn't shown again.",
     ),
     "why": Verb(
         "GET",

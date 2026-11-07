@@ -43,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        Updater.shared.quitting()  // an update set to go in when you quit (H146)
         Server.shared.stop()
     }
 

@@ -39,6 +39,7 @@ import { nextHour, placeAfter, useHost } from "./host"
 import { SIDEBAR } from "./layout"
 import { useShell } from "./ShellContext"
 import { FirstTour, Tour } from "./Tour"
+import { UpdateDialogs } from "@/updates/UpdateDialogs"
 import { Icon } from "@/components/fr/controls"
 import { nowMin } from "@/hooks/useClock"
 import { Sidebar } from "./Sidebar"
@@ -148,6 +149,7 @@ export function Shell() {
       {dialog === "ways" && <OtherWaysDialog onClose={() => setDialog(null)} />}
       {dialog === "ask" && <AskClaudeDialog onClose={() => setDialog(null)} />}
       {dialog === "setup" && <SetupDialog onClose={() => setDialog(null)} />}
+      <UpdateDialogs />
       {tour && <Tour />}
       <FirstTour ready={setupDone === true && dialog === null && briefDecided === today} toured={toured} />
     </DragProvider>

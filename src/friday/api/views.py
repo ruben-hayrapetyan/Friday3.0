@@ -510,6 +510,33 @@ class GoogleConnectOut(Model):
     accounts: list[GoogleAccountOut] = []  # in the order you added them
 
 
+class UpdateVersionOut(Model):
+    """A version of Friday and its notes (HOSTED.md H143): a sentence, then New, Changed and Fixed."""
+
+    version: str
+    released: str  # 2026-11-07
+    summary: str
+    new: list[str] = []
+    changed: list[str] = []
+    fixed: list[str] = []
+
+
+class UpdateStatusOut(Model):
+    """Friday's own updater (HOSTED.md H118–H124, H144–H147)."""
+
+    checks: bool  # a downloaded copy, which looks for updates; builds from the code here never do (H144)
+    have: str | None  # the version running
+    last_checked: str | None = None  # local time
+    state: Literal["idle", "checking", "downloading", "ready", "failed"]
+    progress: float = 0.0  # while downloading, 0 to 1
+    message: str | None = None  # why it failed, or that it stopped, in a sentence
+    versions: list[UpdateVersionOut] = []  # newer than yours, newest first: each one's notes
+    popup: bool = False  # ask about it now: newer, not put off with Later this launch (H124, H145)
+    whats_new: list[UpdateVersionOut] = []  # what changed in the version you now have, until you've read it (H118)
+    restart: Literal["now", "quit"] = "now"  # when the Mac app swaps a downloaded update in (H146)
+    staged: str | None = None  # ready: the new Friday.app, for the Mac app to swap in
+
+
 class SourceOut(Model):
     id: int
     kind: str

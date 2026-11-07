@@ -38,7 +38,7 @@ WORK="$(mktemp -d)"
 trap 'rm -r "$WORK"' EXIT
 APP="${FRIDAY_PREPARE_APP:-}"
 if [ -z "$APP" ]; then
-  Mac/build.sh
+  Mac/build.sh --release  # a downloaded copy: it looks for updates (H144)
   APP="$REPO/Mac/build/Friday.app"
 fi
 

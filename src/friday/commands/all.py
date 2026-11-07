@@ -42,6 +42,7 @@ from friday.commands import (  # noqa: F401
     sleeping,
     tokens,
     undo,
+    updates,
     ways,
     whatif,
 )

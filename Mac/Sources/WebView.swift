@@ -16,6 +16,7 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()  // keeps the look and other per-device settings between launches
         config.applicationNameForUserAgent = "FridayMac"  // the page knows it's in the Mac app: the Mac's calendars come in here
+        config.userContentController.add(Updater.shared, name: "friday")  // the page asks the app to swap in an update
         view = WKWebView(frame: .zero, configuration: config)
         view.isInspectable = true
         view.allowsBackForwardNavigationGestures = false
