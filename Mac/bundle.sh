@@ -65,22 +65,31 @@ fi
 echo "==> Compiling bytecode"
 "$PY" -m compileall -q -j 0 "$RUNTIME/python/lib" >/dev/null || true  # a few test files of packages don't compile
 
-echo "==> Compiling the planner (a sample week planned once)"
+echo "==> Compiling the planner (sample weeks planned once each)"
+# One light week compiled 14 of the planner's functions; a real one used 35 (6 Nov): late work, repairs and more
+# kinds of argument. So weeks from light to overloaded, fresh and three weeks in. What a Mac still compiles goes to
+# its ~/Library/Caches/Friday, never into the app (server/planner_cache.py).
+WARM_WEEKS=("maya" "riley" "chloe --ready" "omar --ready" "uma --ready" "gus --ready" "hana" "kai --ready")
 warm() {
   local port pid
   port="$("$PY" -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
-  NUMBA_CPU_NAME=generic FRIDAY_CONFIG="$WORK/friday.toml" "$PY" -m friday.server.main --data-dir "$WORK/demo" \
-    demo --port "$port" --case maya >"$WORK/warm.txt" 2>&1 &
+  # shellcheck disable=SC2086  # the week's name and its flag
+  NUMBA_CPU_NAME=generic FRIDAY_CONFIG="$WORK/friday.toml" "$PY" -m friday.server.main --data-dir "$WORK/demo-$port" \
+    demo --port "$port" --case $1 >"$WORK/warm.txt" 2>&1 &
   pid=$!
   for _ in $(seq 1 480); do
     curl -s --max-time 2 "127.0.0.1:$port/api/q/status" | grep -q '"plan_id":[0-9]' && break
     kill -0 "$pid" 2>/dev/null || { tail -20 "$WORK/warm.txt" >&2; exit 1; }
     sleep 0.5
   done
+  sleep 3  # the plans that follow the first (other ways, the provisional plan) compile too
   kill "$pid" 2>/dev/null || true
   wait "$pid" 2>/dev/null || true
 }
-warm
+for week in "${WARM_WEEKS[@]}"; do
+  echo "    $week"
+  warm "$week"
+done
 ls "$RUNTIME"/python/lib/python*/site-packages/friday/engine/__pycache__/*.nbi >/dev/null 2>&1 \
   || { echo "The planner wasn't compiled into the app" >&2; exit 1; }
 echo "    $(du -sh "$RUNTIME" | cut -f1) in $RUNTIME"

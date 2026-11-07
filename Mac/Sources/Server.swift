@@ -53,10 +53,13 @@ final class Server: ObservableObject {
         return python
     }
 
-    /// The app's own server as it's run: the planner compiled in the build is used as it is (a generic Apple-silicon
-    /// target, H111), nothing is written into the app, and the data folder is chosen by `dataPlace`.
+    /// The app's own server as it's run: the planner compiled in the build is used (a generic Apple-silicon target,
+    /// H111), nothing is written into the app (what more the planner compiles goes to ~/Library/Caches/Friday:
+    /// server/planner_cache.py), and the data folder is chosen by `dataPlace`.
     nonisolated static func bundledLauncher(_ python: URL, home: URL, exists: (String) -> Bool) -> Launcher {
-        let settings = ["NUMBA_CPU_NAME": "generic", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1"]
+        let cache = home.appendingPathComponent("Library/Caches/Friday/planner").path
+        let settings = ["NUMBA_CPU_NAME": "generic", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1",
+                        "NUMBA_CACHE_DIR": cache]
         return Launcher(executable: python, prefix: ["-m", "friday.server.main"],
                         settings: settings.merging(dataPlace(home: home, exists: exists)) { a, _ in a }, bundled: true)
     }

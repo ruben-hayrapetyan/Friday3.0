@@ -27,24 +27,30 @@ class Downloaded:
     """A copy of the built app in a new place, and its server started the way the app starts it."""
 
     def __init__(self, folder: Path) -> None:
+        self.folder = folder
         self.app = folder / "Downloads" / "Friday.app"
         self.app.parent.mkdir()
         subprocess.run(["ditto", str(BUILT), str(self.app)], check=True)
         self.python = self.app / "Contents/Resources/friday/python/bin/python3.12"
         self.before = snapshot(self.app)
-        self.port = free_port()
+        self.cache = folder / "Library" / "Caches" / "Friday" / "planner"
         support = folder / "Library" / "Application Support" / "Friday"
-        env = {"PATH": "/usr/bin:/bin", "HOME": str(folder), "NUMBA_CPU_NAME": "generic",
-               "PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1",
-               "FRIDAY_DATA_DIR": str(support), "FRIDAY_CONFIG": str(support / "friday.toml")}  # fmt: skip
+        self.env = {"PATH": "/usr/bin:/bin", "HOME": str(folder), "NUMBA_CPU_NAME": "generic",
+                    "PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1", "NUMBA_CACHE_DIR": str(self.cache),
+                    "FRIDAY_DATA_DIR": str(support), "FRIDAY_CONFIG": str(support / "friday.toml")}  # fmt: skip
         self.started = time.monotonic()
+        self.start("maya")
+        self.first_plan = self.wait_for_plan()
+
+    def start(self, *week: str) -> None:
+        """Its server as Server.swift starts it, on a sample week."""
+        self.port = free_port()
         self.process = subprocess.Popen(
-            [str(self.python), "-m", "friday.server.main", "--data-dir", str(folder / "demo"), "demo", "--port",
-             str(self.port), "--case", "maya"],
-            cwd=folder, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT,
+            [str(self.python), "-m", "friday.server.main", "--data-dir", str(self.folder / f"demo-{self.port}"),
+             "demo", "--port", str(self.port), "--case", *week],
+            cwd=self.folder, env=self.env, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT,
         )  # fmt: skip
         self.http = httpx.Client(base_url=f"http://127.0.0.1:{self.port}", timeout=30)
-        self.first_plan = self.wait_for_plan()
 
     def wait_for_plan(self) -> float:
         for _ in range(480):
@@ -128,3 +134,14 @@ def test_it_carries_fridays_google_client_so_connect_needs_nothing_set_up(downlo
     )
     where, desktop = found.splitlines()
     assert where.startswith(str(downloaded.app)) and desktop == "True"
+
+
+def test_a_heavy_week_three_weeks_in_plans_without_writing_into_the_app(downloaded: Downloaded) -> None:
+    # 6 Nov: on a real week the app compiled 73 more pieces of the planner into itself, breaking its signature. They
+    # go to ~/Library/Caches/Friday now, seeded with what the build compiled.
+    downloaded.stop()
+    downloaded.start("owen", "--ready")  # overloaded, lived in, and not one of the weeks the build warms up on
+    downloaded.wait_for_plan()
+    time.sleep(5)  # the plans after the first
+    assert snapshot(downloaded.app) == downloaded.before
+    assert any(downloaded.cache.rglob("*.nbi")), "the shipped planner wasn't copied to Caches"

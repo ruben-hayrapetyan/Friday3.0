@@ -88,6 +88,8 @@ test("the app's own server: the shipped planner as it is, nothing written into t
     let own = Server.bundledLauncher(python, home: home, exists: { _ in false })
     let env = own.environment(["PATH": "/usr/bin", "PYTHONPATH": "/Users/someone/src", "PYTHONHOME": "/x"])
     check(env["NUMBA_CPU_NAME"] == "generic", "the planner compiled for any Apple silicon (H111)")
+    check(env["NUMBA_CACHE_DIR"] == "/Users/someone/Library/Caches/Friday/planner",
+          "what the planner compiles more goes to Caches, never into the app: \(env["NUMBA_CACHE_DIR"] ?? "")")
     check(env["PYTHONDONTWRITEBYTECODE"] == "1" && env["PYTHONNOUSERSITE"] == "1", "writes nothing, reads no user site")
     check(env["PYTHONPATH"] == nil && env["PYTHONHOME"] == nil && env["PATH"] == "/usr/bin", "a shell's Python left out")
     let process = Process()

@@ -16,7 +16,7 @@ from friday.core.db import connect
 from friday.core.paths import config_path
 from friday.engine.sampler import default_chains
 from friday.planner.store import load_settings
-from friday.server import logs
+from friday.server import logs, planner_cache
 from friday.server.app import create_app, query_by_get, wall_clock
 from friday.server.config import apply_config
 from friday.server.demo import run_demo
@@ -109,6 +109,7 @@ def serve_forever(db_path: Path, host: str, port: int | None) -> None:
     logging.getLogger("friday").info(
         "fridayd starting on %s:%s, data in %s, log %s", host, port or server.port, db_path.parent, where
     )
+    planner_cache.seed()  # before the worker plans: the Mac app's compiled planner, kept outside the app
     app = create_app(db_path, web_dist=WEB_DIST)
     # Open SSE streams never end on their own; the limit stays for a request that's slow to finish.
     config = uvicorn.Config(
