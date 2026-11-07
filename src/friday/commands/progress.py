@@ -282,10 +282,14 @@ def ended_blocks(ctx: Ctx, day: date, item_id: int | None = None) -> list[dict[s
 def day_gaps(ctx: Ctx, day: date) -> list[ReviewGap]:
     """The day's time Friday can't account for, by task, in the order it was planned (27 Oct: "only the gaps, by
     task"): ended blocks with no timer, no answer and the task still open, and what you said of those answered.
-    Routines (lunch, dinner) are the meal taps' to record, not the Review's."""
+    Routines (lunch, dinner) are the meal taps' to record, not the Review's. With untimed blocks planned again
+    (`assume_unreviewed = not_done`) Friday already knows what happened, so it asks nothing (7 Nov: "these
+    notifications can get a little annoying especially of when there was no timer, i didnt do anything"); a missed
+    block's "I did it" on the calendar says otherwise."""
     found = ended_blocks(ctx, day)
     if not found:
         return []
+    untimed_is_missed = ctx.settings["planner"].assume_unreviewed == "not_done"
     ids = sorted({b["item_id"] for b in found})
     items = {r["id"]: r for r in rows(ctx.conn, f"SELECT * FROM items WHERE id IN ({', '.join('?' * len(ids))})", ids)}
     plan = current_plan(ctx.conn, ctx.user_id)
@@ -313,6 +317,8 @@ def day_gaps(ctx: Ctx, day: date) -> list[ReviewGap]:
         open_ = [b for b, m in zip(blocks, said, strict=True) if m is None]
         if open_ and item["status"] != "todo":
             continue  # checked off: done is what happened
+        if open_ and untimed_is_missed:
+            continue  # no timer ran, so it wasn't done: planned again, nothing to ask ("i didnt do anything")
         shown = open_ or blocks
         planned = sum(b["end"] - b["start"] for b in shown)
         answer = None

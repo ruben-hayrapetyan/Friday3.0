@@ -93,7 +93,7 @@ export function Schedule() {
           size="big"
         />
       </Field>
-      <Field name="When a block passes and you didn’t time it or mark it" note={missed === "not_done" ? "Friday plans that work again, so a missed block moves instead of staying on your plan. Click a missed block to say you did it after all." : "Friday counts it as done until your review says otherwise, so the plan doesn’t move unless you tell it."}>
+      <Field name="When a block passes and you didn’t time it or mark it" note={missed === "not_done" ? "Friday plans that work again, so a missed block moves instead of staying on your plan, and the Inbox doesn’t ask about it. Click a missed block to say you did it after all." : "Friday counts it as done until you say otherwise: the Inbox asks how much you did, so the plan doesn’t move unless you tell it."}>
         <Seg
           options={[
             { value: "not_done", label: "Plan it again" },
