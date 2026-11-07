@@ -8,8 +8,8 @@
 # ~/Applications without it).
 set -eu
 
-VERSION="0.1.0"
-SHA256="5c0115020c0649993dbca9ae843c0ac3d40c5e728b9c8519c0bc3cac2d6de14d"
+VERSION="0.2.0"
+SHA256="ff518a38125607b54c6e453aa530c81eb2b185f98023f0d8858e83b373cc077e"
 URL="https://laptop.tailnet.ts.net/downloads/Friday-$VERSION.dmg"
 
 fail() {

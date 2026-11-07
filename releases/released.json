@@ -1,6 +1,24 @@
 {
-  "current": "0.1.0",
+  "current": "0.2.0",
   "versions": [
+    {
+      "version": "0.2.0",
+      "released": "2026-11-07",
+      "sha256": "ff518a38125607b54c6e453aa530c81eb2b185f98023f0d8858e83b373cc077e",
+      "bytes": 231743801,
+      "commit": "16e7abc55fe43031414627e260b2b7b0642f0bff",
+      "notes": {
+        "summary": "Friday now updates itself, asking you first and saying what changed.",
+        "new": [
+          "When a new version is out, Friday asks the next time it opens, with what's new in it.",
+          "Update downloads it while you keep working, checks it's the version Friday's site published, and restarts into it.",
+          "The first time a new version opens, Friday shows what changed.",
+          "Settings → Updates: the version you have, Check now, and whether an update goes in right away or when you quit."
+        ],
+        "changed": [],
+        "fixed": []
+      }
+    },
     {
       "version": "0.1.0",
       "released": "2026-11-06",
