@@ -4,6 +4,7 @@ them resolves on the site, every picture says what it shows, nothing is loaded f
 privacy), and the download button points at a disk image that is there."""
 
 import functools
+import json
 import importlib.util
 import threading
 from html.parser import HTMLParser
@@ -107,7 +108,7 @@ def load_builder():  # noqa: ANN201
     spec = importlib.util.spec_from_file_location("build_pages", ROOT / "build_pages.py")
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)  # writes the pages again: the same as what is in git
+    spec.loader.exec_module(module)
     return module
 
 
@@ -119,10 +120,19 @@ def test_the_wrapper_marks_the_page_it_is_and_keeps_the_body() -> None:
     assert "<h1>Help</h1>" in page and "<title>Help · Friday</title>" in page and "/style.css" in parts.links
 
 
-def test_the_pages_in_git_are_what_the_wrapper_writes() -> None:
-    before = {p: (SITE / p).read_text() for p in PAGES if p != "index.html"}
-    load_builder()
-    assert {p: (SITE / p).read_text() for p in before} == before
+def test_the_pages_in_git_are_what_the_builder_writes_from_the_record() -> None:
+    before = {p: (SITE / p).read_text() for p in PAGES}
+    load_builder().build(ROOT)
+    assert {p: (SITE / p).read_text() for p in PAGES} == before
+    assert not any("{{" in text for text in before.values())  # every placeholder filled
+
+
+def test_the_pages_name_the_current_version_from_the_record() -> None:
+    record = json.loads((ROOT / "releases" / "released.json").read_text())
+    version = record["current"]
+    home = (SITE / "index.html").read_text()
+    assert f"/downloads/Friday-{version}.dmg" in home and f"Version {version}" in home
+    assert f"Friday {version}" in (SITE / "whats-new.html").read_text()
 
 
 def test_the_home_page_carries_the_replanning_week_and_no_live_app(site: str) -> None:

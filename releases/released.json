@@ -1,0 +1,26 @@
+{
+  "current": "0.1.0",
+  "versions": [
+    {
+      "version": "0.1.0",
+      "released": "2026-11-06",
+      "sha256": "5c0115020c0649993dbca9ae843c0ac3d40c5e728b9c8519c0bc3cac2d6de14d",
+      "bytes": 230753715,
+      "commit": "",
+      "notes": {
+        "summary": "The first version of Friday you can download.",
+        "new": [
+          "Plans your week: tasks planned into your free time before they’re due, around your classes, work, meals and sleep, and planned again when things change.",
+          "Walk through your week: a first run through a pixel-art town that sets Friday up from your answers.",
+          "One list: everything you have to do by kind, with its time, when it’s planned and when it’s due.",
+          "Your Mac’s calendars and calendar feeds come in; events you make can go back to your calendar.",
+          "The Inbox, the review and rules in your own words: Friday asks only what it can’t know.",
+          "Ask the AI you choose, or none.",
+          "Everything runs on your Mac: no account, nothing to install besides the app."
+        ],
+        "changed": [],
+        "fixed": []
+      }
+    }
+  ]
+}

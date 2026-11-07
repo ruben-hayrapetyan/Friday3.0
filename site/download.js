@@ -6,7 +6,8 @@
   var phone = /iphone|ipad|android/.test(agent) || (platform === "macintel" && navigator.maxTouchPoints > 1);
   var mac = !phone && platform.indexOf("mac") === 0;
   if (mac) return;
-  var file = "/downloads/Friday-0.1.0.dmg";
+  var button = document.querySelector("[data-download]");
+  var file = button ? button.getAttribute("href") : "/#get";  // the current disk image, as the page names it
   document.querySelectorAll("[data-download]").forEach(function (button) {
     button.textContent = phone ? "Friday is a Mac app" : "Friday is for Mac for now";
     button.setAttribute("aria-disabled", "true");
