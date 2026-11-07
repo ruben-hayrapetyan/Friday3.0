@@ -52,8 +52,9 @@ def setup(tmp_path: Path) -> dict[str, Path]:
 def prepare(setup: dict[str, Path], version: str, notes: Path | None = None) -> subprocess.CompletedProcess:
     env = {"PATH": f"{setup['bin']}:/usr/bin:/bin:/usr/sbin:/sbin", "HOME": str(setup["laptop"]),
            "FRIDAY_PREPARE_APP": str(setup["app"]), "FRIDAY_RELEASE_HOST": "laptop"}  # fmt: skip
-    return subprocess.run([str(setup["repo"] / "scripts" / "prepare-release.sh"), version, str(notes or setup["notes"])],
-                          env=env, capture_output=True, text=True, timeout=300)  # fmt: skip
+    script = str(setup["repo"] / "scripts" / "prepare-release.sh")
+    return subprocess.run([script, version, str(notes or setup["notes"])], env=env, capture_output=True, text=True,
+                          timeout=300)  # fmt: skip
 
 
 def test_a_prepared_version_waits_on_the_laptop_with_its_notes_and_checksum(setup: dict[str, Path]) -> None:
