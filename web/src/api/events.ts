@@ -36,6 +36,18 @@ function refresh(client: QueryClient, event: string): void {
   client.invalidateQueries({ predicate: (q) => q.queryKey[0] !== GHOSTS[0] && (stale.includes(EVERYTHING) || stale.includes(String(q.queryKey[0]))) })
 }
 
+/** Events sent while the stream wasn't open are lost: once it's back, refresh everything; the first time it opens,
+ * whatever was asked before it opened (8 Nov: Friday's update, found a second after launch, never popped up). */
+export function refreshMissed(client: QueryClient, dropped: boolean, opened: number): void {
+  if (dropped) {
+    void client.invalidateQueries()
+    return
+  }
+  void client.invalidateQueries({
+    predicate: (q) => q.queryKey[0] !== GHOSTS[0] && (q.state.fetchStatus === "fetching" || q.state.dataUpdatedAt < opened),
+  })
+}
+
 export function useServerEvents(): void {
   const client = useQueryClient()
   useEffect(() => {
@@ -45,8 +57,7 @@ export function useServerEvents(): void {
       dropped = true
     }
     source.onopen = () => {
-      // Events sent while the stream was down are lost, so refresh everything once it is back.
-      if (dropped) client.invalidateQueries()
+      refreshMissed(client, dropped, Date.now())
       dropped = false
     }
     for (const event of Object.keys(REFRESH)) {

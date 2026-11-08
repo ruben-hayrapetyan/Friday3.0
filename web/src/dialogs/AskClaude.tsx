@@ -17,7 +17,7 @@ import { useToast } from "@/components/Toasts"
 import { useSettings } from "@/hooks/queries"
 import { runTogether, undoAll, useCommand } from "@/hooks/useCommand"
 import { useShell } from "@/shell/ShellContext"
-import { asking, useAsking, waiting } from "./asking"
+import { type Applied, asking, useAsking, waiting } from "./asking"
 
 /** Claude's proposals you kept, run in order as one change: Undo takes them all back, and one that fails takes back
  * those before it. Whether they all ran. */
@@ -41,7 +41,7 @@ export function withoutAsking(actions: Schemas["ProposedAction"][], on: boolean)
 }
 
 /** What to tick at first: everything that would run, but what already ran or can't. */
-const ticked = (actions: Schemas["ProposedAction"][], now: number[] = []) => actions.map((a, i) => (a.error || now.includes(i) ? -1 : i)).filter((i) => i >= 0)
+export const ticked = (actions: Schemas["ProposedAction"][], now: number[] = []) => actions.map((a, i) => (a.error || now.includes(i) ? -1 : i)).filter((i) => i >= 0)
 
 export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
   const { ask, askClaude } = useShell()
@@ -53,7 +53,7 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState(ask?.text || resumed?.text || "")
   const [error, setError] = useState<string | null>(resumed?.state === "failed" ? resumed.error ?? null : null)
   const [answer, setAnswer] = useState<Schemas["AskClaudeOut"] | null>(resumed?.state === "answered" ? resumed.answer ?? null : null)
-  const [kept, setKept] = useState<number[]>(resumed?.answer ? ticked(resumed.answer.actions) : [])
+  const [kept, setKept] = useState<number[]>(resumed?.answer ? ticked(resumed.answer.actions, resumed.applied?.at) : [])
   const flight = useAsking()
   const busy = flight?.state === "asking"
   const [, tick] = useState(0)
@@ -68,7 +68,7 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
     return () => void asking.open(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  const [done, setDone] = useState<{ at: number[]; ids: number[] } | null>(null) // applied without asking
+  const [done, setDone] = useState<Applied | null>(resumed?.applied ?? null) // applied without asking
   const field = useRef<HTMLTextAreaElement>(null)
   const purpose = ask?.purpose ?? "anything"
   const claude = (useSettings().data as { claude?: { events_without_asking?: boolean } } | undefined)?.claude
@@ -85,10 +85,6 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
       if (asking.get()?.id !== id || asking.get()?.state !== "asking") return // stopped, or asked again since
       asking.settle(id, out.result)
       const now = withoutAsking(out.result.actions, auto)
-      if (!asking.isOpen()) {
-        // you closed the window to keep working: say it's here, and open it again on a click
-        toast({ message: `${ai} answered “${text.length > 40 ? `${text.slice(0, 40)}…` : text}”`, action: { label: "See it", run: () => askClaude(text, purpose) } })
-      } else asking.clear()
       setAnswer(out.result)
       setDone(null)
       setKept(ticked(out.result.actions, now))
@@ -96,11 +92,16 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
         const ids = await runActions(now.map((i) => out.result.actions[i]), client, toast)
         if (ids) {
           setDone({ at: now, ids })
+          asking.applied(id, { at: now, ids }) // a window opened on this answer later shows them done
           // the dialog's own Undo goes when it closes; this one stays
           toast({ message: `Changed ${now.length === 1 ? "an event" : `${now.length} events`} without asking`, action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
         }
         else setKept((was) => [...was, ...now].sort((a, b) => a - b)) // they failed and were taken back: yours to apply
       }
+      if (!asking.isOpen()) {
+        // you closed the window to keep working: say it's here, and open it again on a click
+        toast({ message: `${ai} answered “${text.length > 40 ? `${text.slice(0, 40)}…` : text}”`, action: { label: "See it", run: () => askClaude(text, purpose) } })
+      } else asking.clear()
     } catch (e) {
       if (signal.aborted) return // you stopped waiting
       const said = e instanceof ApiError || e instanceof Error ? e.message : String(e)

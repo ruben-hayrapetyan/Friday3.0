@@ -1,7 +1,7 @@
 // A question to your AI that outlives its window (3 Nov).
 import { describe, expect, it } from "vitest"
 import type { Schemas } from "@/api/client"
-import { begin, fail, settle, stop, waiting } from "./asking"
+import { applied, begin, fail, settle, stop, waiting } from "./asking"
 
 const answer = (reply: string) => ({ reply, actions: [] }) as Schemas["AskClaudeOut"]
 const q = begin("no mornings", "rule", 1000, 1)
@@ -12,6 +12,12 @@ describe("glass box", () => {
   })
   it("the answer to the question waited on is kept", () => {
     expect(settle(q, 1, answer("ok"))).toMatchObject({ state: "answered", answer: { reply: "ok" } })
+  })
+  it("what of an answer ran by itself is kept with it, for that answer only", () => {
+    const answered = settle(q, 1, answer("ok"))
+    expect(applied(answered, 1, { at: [0, 2], ids: [41, 42] })).toMatchObject({ applied: { at: [0, 2], ids: [41, 42] } })
+    expect(applied(answered, 2, { at: [0], ids: [41] })).toBe(answered) // another question's
+    expect(applied(q, 1, { at: [0], ids: [41] })).toBe(q) // not answered yet
   })
   it("a failure says why", () => {
     expect(fail(q, 1, "no AI")).toMatchObject({ state: "failed", error: "no AI" })

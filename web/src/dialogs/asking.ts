@@ -16,6 +16,12 @@ export interface Asking {
   state: "asking" | "answered" | "failed" | "stopped"
   answer?: Answer
   error?: string
+  applied?: Applied // what of the answer ran by itself ("Change calendar events without asking"), with its undo ids
+}
+
+export interface Applied {
+  at: number[] // the answer's actions that ran
+  ids: number[] // the log entries that undo them
 }
 
 export const begin = (text: string, purpose: Asking["purpose"], now: number, id: number): Asking => ({ id, text, purpose, began: now, state: "asking" })
@@ -23,6 +29,12 @@ export const begin = (text: string, purpose: Asking["purpose"], now: number, id:
 /** An answer, for the question still waited on; one for a question stopped or replaced is dropped. */
 export function settle(was: Asking | null, id: number, answer: Answer): Asking | null {
   return was && was.id === id && was.state === "asking" ? { ...was, state: "answered", answer } : was
+}
+
+/** What of the answer already ran, so a window opened on it later shows it done, not waiting for Apply (8 Nov: the
+ * birthdays applied by themselves were shown ticked again, and Apply added them twice). */
+export function applied(was: Asking | null, id: number, done: Applied): Asking | null {
+  return was && was.id === id && was.state === "answered" ? { ...was, applied: done } : was
 }
 
 export function fail(was: Asking | null, id: number, error: string): Asking | null {
@@ -60,6 +72,7 @@ export const asking = {
     return { id, signal: controller.signal }
   },
   settle: (id: number, answer: Answer) => set(settle(current, id, answer)),
+  applied: (id: number, done: Applied) => set(applied(current, id, done)),
   fail: (id: number, error: string) => set(fail(current, id, error)),
   stop(id: number) {
     if (current?.id === id) controller?.abort()
