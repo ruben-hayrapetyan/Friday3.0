@@ -1,6 +1,8 @@
 """Rule sentences a student might type, each labelled with what the writer means (tests/core/data): 510 from 27 Oct,
 1,057 more for wider coverage (28 Oct: "the barebones rules parsing [should be] much more comprehensive instead of
-having to ask claude for everything"), 413 written as a held-out set, and 327 more as a final one. Each reads as it
+having to ask claude for everything"), 413 written as a held-out set, 327 more as a final one, and 750 written blind
+by three writers on 8 Nov (rule_nov8: read untouched, 362 of its 570 rules were right and 48 misread, among them free
+time read as the only hours for work and "start working by 8:30" as stopping at 8:30pm; all 48 fixed). Each reads as it
 means or goes to Claude: none is read as another rule, half of two rules, or a rule made of something to add or of
 something Friday can't do. How many are read without Claude is held per set.
 
@@ -17,7 +19,7 @@ import pytest
 
 from friday.core.rule_text import DAYS, Reading, read
 
-SETS = ("rule_sentences", "rule_wordings", "rule_heldout", "rule_final")
+SETS = ("rule_sentences", "rule_wordings", "rule_heldout", "rule_final", "rule_nov8")
 CORPORA = {}
 for name in SETS:
     with contextlib.suppress(ModuleNotFoundError):  # the held-out set may not be written yet
@@ -32,11 +34,12 @@ FIXED_SUBJECT = {"optional", "ahead", "around", "night_before", "meals_kept", "m
 ALLOWED = {"lights out by 12:30", "in bed by 11:30 on school nights", "call mom on sundays"}
 BEDTIME = r"^(?:i'?m (?:usually )?)?(?:in bed|lights out|bed|asleep)\b"
 # The share of each set's rules read without Claude, at least: what the grammar reads now, so it doesn't slip back.
-READ = {"rule_sentences": 0.99, "rule_wordings": 0.99, "rule_heldout": 0.93, "rule_final": 0.32}
+READ = {"rule_sentences": 0.99, "rule_wordings": 0.99, "rule_heldout": 0.93, "rule_final": 0.34, "rule_nov8": 0.71}
 
 
 def words(s: Any) -> set[str]:
-    return {w.rstrip("s") for w in str(s).lower().replace("-", " ").split() if w not in ("the", "my", "a")}
+    said = str(s).lower().replace("-", " ").split()
+    return {re.sub(r"ies$", "y", w).rstrip("s") for w in said if w not in ("the", "my", "a")}
 
 
 def same_days(want: list[str] | None, got: tuple[str, ...] | None, rel_want: str | None, rel_got: str | None) -> bool:
