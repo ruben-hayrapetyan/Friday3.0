@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Friday: tell it what's due, it finds the time</title>
+<meta name="description" content="Friday is a free Mac app that plans your work into the gaps in your week, around class, work, meals and sleep, and plans again when something changes. Everything stays on your Mac.">
+<link rel="icon" href="/images/icon.png">
+<link rel="preload" href="/fonts/archivo-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css">
+<script>document.documentElement.classList.add("js")</script>
+</head>
+<body>
+<header class="site"><div class="wrap">
+  <a class="mark" href="/"><img src="/images/icon.png" alt="" width="28" height="28">Friday</a>
+  <nav class="pages" aria-label="Pages">
+    <a href="/features.html">Features</a>
+    <a href="/help.html">Help</a>
+    <a href="/whats-new.html">What's new</a>
+    <a href="/privacy.html">Privacy</a>
+    <a href="/contact.html">Contact</a>
+  </nav>
+  <a class="button small" href="#get" data-download-nav>Download</a>
+</div></header>
+
+<main>
+  <div class="wrap hero">
+    <img class="icon" src="/images/icon.png" alt="" width="96" height="96">
+    <h1>Tell it what's due. Friday finds the time.</h1>
+    <p class="lead">A calendar that plans your work into the gaps in your week, around class, work, meals and sleep,
+      and plans again when something changes.</p>
+    <div class="actions">
+      <a class="button" href="/get/Friday-0.2.0.dmg" download data-download>Download for Mac</a>
+      <a class="button ghost" href="#how">See how it plans</a>
+    </div>
+    <p class="specs">Free · Version 0.2.0 · Apple silicon, macOS 14 or later</p>
+    <p class="other" data-download-other hidden></p>
+    <div class="terminal" data-mac-only>
+      <p>Or install it from Terminal, and macOS won&#8217;t ask you to allow it:</p>
+      <div class="command"><button type="button" class="copy" data-copy>Copy</button><code>curl -fsSL https://friday-scheduler.com/install.sh | sh</code></div>
+    </div>
+
+    <div class="stage" id="how">
+      <div class="app" id="board" aria-label="An example week in Friday: an essay is planned into three gaps, then two blocks move when a shift moves">
+        <div class="app-bar" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="app-body">
+          <aside class="side" aria-hidden="true">
+            <div class="brand"><img src="/images/icon.png" alt="" width="18" height="18">Friday</div>
+            <ul>
+              <li class="on">Plan</li>
+              <li>To-do</li>
+              <li>Projects &amp; exams</li>
+              <li>Inbox <span class="count">2</span></li>
+              <li>Insights</li>
+              <li>Sleep &amp; meals</li>
+              <li>Rules</li>
+            </ul>
+            <div class="today"><b>Today</b>
+              <div><span>11:15am</span>CS Lecture</div>
+              <div><span>12:30pm</span>Lunch</div>
+              <div><span>2pm</span>Essay 1/3</div>
+              <div><span>4pm</span>Shift</div>
+            </div>
+          </aside>
+          <div class="main">
+            <div class="toolbar">
+              <h3>10 – 16 November</h3>
+              <div class="quickadd" aria-hidden="true"><span class="plus">+</span><span class="typed"></span><span class="caret"></span></div>
+              <div class="status" role="status" aria-live="polite">Your week, planned</div>
+            </div>
+            <div class="week">
+              <div></div>
+              <div class="days-head"></div>
+              <div class="hours" aria-hidden="true"></div>
+              <div class="grid"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ol class="chapters">
+        <li><b>You type it</b>"Essay 3h due Fri", the way you'd say it.</li>
+        <li><b>Friday plans it</b>Three hours, in the gaps before Friday.</li>
+        <li><b>Life happens</b>Your shift moves to Wednesday.</li>
+        <li><b>Friday replans</b>Two blocks move. Nothing else does.</li>
+      </ol>
+      <button class="pause" type="button" aria-pressed="false">Pause</button>
+    </div>
+  </div>
+
+  <section class="band"><div class="wrap">
+    <p class="statement reveal">A to-do list holds your tasks. <span>Friday gives each one a time, around everything
+      else in your week, and keeps those times honest when your week changes.</span></p>
+  </div></section>
+
+  <section class="band"><div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">A list, or a plan</p>
+      <h2>Stop guessing when you'll get to it.</h2>
+      <p>The same five things. On a list, they're a pile with due dates. In Friday, each one already has its time.</p>
+    </div>
+    <div class="versus reveal">
+      <div class="panel">
+        <h3>Your to-do list</h3>
+        <p class="sub">Five things. When will you do them?</p>
+        <ul class="list">
+          <li><i></i>CS Problem Set 4<em>due Wed</em></li>
+          <li><i></i>SPAN Lab Report<em>due Thu</em></li>
+          <li><i></i>WRIT Essay<em>due Fri</em></li>
+          <li><i></i>ECON Reading 8<em>due Fri</em></li>
+          <li><i></i>Laundry<em>this week</em></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>Friday</h3>
+        <p class="sub">Each one has a time, before it's due.</p>
+        <div class="days">
+          <div class="day"><h4>Tue</h4>
+            <div class="slot event">CS 2100 Lecture<span>11:15am</span></div>
+            <div class="slot" style="--p: var(--cerulean)">CS Problem Set 4<span>2–3:30pm</span></div>
+            <div class="slot" style="--p: var(--magenta)">WRIT Essay · 1 of 3<span>7–8pm</span></div>
+          </div>
+          <div class="day"><h4>Wed</h4>
+            <div class="slot" style="--p: var(--ultramarine)">SPAN Lab Report<span>8:30–10am</span></div>
+            <div class="slot event">Shift · Fern Café<span>4–8pm</span></div>
+            <div class="slot" style="--p: var(--magenta)">WRIT Essay · 2 of 3<span>8:30–9:30pm</span></div>
+          </div>
+          <div class="day"><h4>Thu</h4>
+            <div class="slot" style="--p: var(--magenta)">WRIT Essay · 3 of 3<span>9–10am</span></div>
+            <div class="slot" style="--p: var(--verdigris)">ECON Reading 8<span>2–3:30pm</span></div>
+            <div class="slot" style="--p: var(--sienna)">Laundry<span>6–7pm</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></section>
+
+  <section class="band" id="features"><div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Everything around the plan</p>
+      <h2>It plans, so you can just do.</h2>
+      <p>Friday handles the when. It asks you only what it can't work out, and never with a notification.</p>
+    </div>
+    <div class="tiles">
+      <div class="tile reveal">
+        <h3>Add it the way you'd say it</h3>
+        <p>Type a task in plain words. Friday reads the length and the due date and plans it at once.</p>
+        <div class="ui">
+          <div class="field">read ch 4 1h due tomorrow</div>
+          <div class="chips"><span class="chip" style="--p: var(--verdigris)">read ch 4</span><span class="chip">1h</span><span class="chip" style="--p: var(--vermilion)">due Thu 11:59pm</span></div>
+        </div>
+      </div>
+      <div class="tile reveal">
+        <h3>Asks only what it can't know</h3>
+        <p>No notifications. What only you can decide waits in the Inbox, with a count.</p>
+        <div class="ui">
+          <div class="ask"><span>Did you finish <b>SPAN Lab Report</b>?</span><span class="btns"><span>Done</span><span>Not yet</span></span></div>
+          <div class="ask"><span>Keep <b>"readings in the morning"</b> as a rule?</span><span class="btns"><span>Keep</span><span>No</span></span></div>
+        </div>
+      </div>
+      <div class="tile reveal">
+        <h3>Rules in your own words</h3>
+        <p>Tell Friday how you like to work. Every plan follows it from then on.</p>
+        <div class="ui">
+          <div class="rule-line"><span class="chip">No work after 10pm</span></div>
+          <div class="mini"><div class="cut"></div><div class="slot" style="--p: var(--cerulean)">Problem set<span>8:30–10pm</span></div></div>
+        </div>
+      </div>
+      <div class="tile reveal">
+        <h3>Learns how long things take you</h3>
+        <p>Time your work with one click. After a few of a kind, Friday plans them at your real pace.</p>
+        <div class="ui">
+          <div class="meter"><span>Your guess</span><div><b style="--w: 60%; --p: var(--payne)"></b></div><span>2h</span></div>
+          <div class="meter"><span>Your pace</span><div><b style="--w: 80%; --p: var(--verdigris)"></b></div><span>2h 40m</span></div>
+        </div>
+      </div>
+      <div class="tile reveal">
+        <h3>Ask the AI you already use</h3>
+        <p>Connect Claude, OpenAI, Gemini or a model on your Mac, and change things by saying them. Or use none.</p>
+        <div class="ui">
+          <div class="bubble me">Move my readings to the weekend</div>
+          <div class="bubble">3 readings to Sat and Sun. <b>Apply?</b></div>
+        </div>
+      </div>
+      <div class="tile reveal">
+        <h3>Plans around your calendars</h3>
+        <p>Your Mac's calendars and calendar links come in, and events you make can go back out.</p>
+        <div class="ui cals">
+          <label><i style="--p: var(--payne)"></i>Classes</label>
+          <label><i style="--p: var(--sienna)"></i>Work shifts</label>
+          <label><i style="--p: var(--ultramarine)"></i>Family</label>
+        </div>
+      </div>
+    </div>
+  </div></section>
+
+  <section class="band"><div class="wrap town-row">
+    <img class="town reveal" src="/images/town.jpg" width="1456" height="837" loading="lazy"
+         alt="A pixel-art town on an autumn morning: a character waves from the sidewalk beside a card that says 'Let's walk through your week.'">
+    <div class="reveal">
+      <p class="eyebrow">Your first two minutes</p>
+      <div class="section-head"><h2>Set up by taking a walk.</h2></div>
+      <p>The first time you open Friday, you walk through a little town from waking up to going to bed. On the way it
+        asks what only you know: when you get up, when you eat, when you're in class or at work.</p>
+      <p>By bedtime, your first week is planned. In a hurry? Skip the walk and change anything later.</p>
+    </div>
+  </div></section>
+
+  <section class="dark"><div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Private by design</p>
+      <h2>Your week stays on your Mac.</h2>
+      <p>Friday isn't a website you log in to. It's an app that runs on your computer, and your plans live there.</p>
+    </div>
+    <div class="facts reveal">
+      <div><b>No account</b><p>Nothing to sign up for. Download it and open it.</p></div>
+      <div><b>No Friday server</b><p>Your tasks, plans and calendars are kept in a folder on your Mac, not with us.</p></div>
+      <div><b>Free</b><p>Free to download and use, and open source soon, so anyone can see what it does.</p></div>
+    </div>
+  </div></section>
+
+  <section class="band"><div class="wrap">
+    <div class="section-head reveal"><h2>Questions</h2></div>
+    <div class="faq reveal">
+      <details><summary>Is Friday really free?</summary><p>Yes. There's no trial and no subscription. Friday will also be open source.</p></details>
+      <details><summary>Why does my Mac warn me the first time I open it?</summary><p>Friday isn't signed by Apple yet, so macOS asks you to allow it once: click Done, then Open Anyway in System Settings → Privacy &amp; Security (<a href="/help.html#opening">step by step</a>). Or install it with one line in Terminal, and there&#8217;s nothing to allow: <a href="/help.html#terminal">how</a>.</p></details>
+      <details><summary>Does it need an AI?</summary><p>No. Planning, replanning and everything else work without one. An AI only adds asking for changes in your own words.</p></details>
+      <details><summary>Does it work with Google Calendar?</summary><p>Your Mac's calendars and calendar links work now. Google Calendar and Gmail are coming to the download soon.</p></details>
+      <details><summary>Is there a Windows, Linux or iPhone version?</summary><p>Not yet. Windows and Linux versions are planned; Friday is a Mac app for now, for Macs with Apple silicon.</p></details>
+      <details><summary>Where is my data?</summary><p>In <code>~/Library/Application Support/Friday</code> on your Mac, with a backup every day. <a href="/privacy.html">Privacy</a>.</p></details>
+      <details><summary>Something else?</summary><p><a href="/contact.html">Contact us</a>: a problem, a question or an idea goes straight to the person who makes Friday.</p></details>
+    </div>
+  </div></section>
+
+  <section class="get-it" id="get"><div class="wrap">
+    <img src="/images/icon.png" alt="" width="88" height="88">
+    <h2>Give your week a plan.</h2>
+    <a class="button" href="/get/Friday-0.2.0.dmg" download data-download>Download for Mac</a>
+    <p class="specs">Free · 0.2.0 · 232 MB · Apple silicon, macOS 14 or later</p>
+    <p class="other" data-download-other hidden></p>
+    <div class="terminal" data-mac-only>
+      <p>Or install it from Terminal, and macOS won&#8217;t ask you to allow it:</p>
+      <div class="command"><button type="button" class="copy" data-copy>Copy</button><code>curl -fsSL https://friday-scheduler.com/install.sh | sh</code></div>
+    </div>
+  </div></section>
+</main>
+
+<footer class="site"><div class="wrap">
+  <span class="spacer"><img src="/images/icon.png" alt="" width="18" height="18">Friday · free, and open source soon</span>
+  <a href="/features.html">Features</a>
+  <a href="/help.html">Help</a>
+  <a href="/whats-new.html">What's new</a>
+  <a href="/privacy.html">Privacy</a>
+  <a href="/contact.html">Contact</a>
+</div></footer>
+<script src="/week.js"></script>
+<script src="/download.js"></script>
+<script src="/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+title: Contact · Friday
+description: Write to the person who makes Friday: a problem, a question or an idea.
+---
+<h1>Contact</h1>
+<p>A problem, a question or an idea: write here and it goes straight to the person who makes Friday. You'll get a
+  reply at the address you give.</p>
+
+<form class="contact" method="post" action="/contact">
+  <label>Your email <input type="email" name="email" required maxlength="254" autocomplete="email"></label>
+  <label><span>Your name <small>if you like</small></span> <input type="text" name="name" maxlength="100" autocomplete="name"></label>
+  <fieldset>
+    <legend>What it's about</legend>
+    <label class="choice"><input type="radio" name="kind" value="problem" checked> A problem</label>
+    <label class="choice"><input type="radio" name="kind" value="question"> A question</label>
+    <label class="choice"><input type="radio" name="kind" value="idea"> An idea</label>
+    <label class="choice"><input type="radio" name="kind" value="other"> Something else</label>
+  </fieldset>
+  <label>Your message <textarea name="message" rows="7" required maxlength="5000"></textarea></label>
+  <!-- for bots only: people never see it (H151) -->
+  <label class="trap" aria-hidden="true">Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+  <input type="hidden" name="started" data-started>
+  <button class="button" type="submit">Send</button>
+  <p class="hint">What you send is kept on Friday's server and emailed to its maker, and used only to answer you
+    (<a href="/privacy.html">privacy</a>).</p>
+</form>

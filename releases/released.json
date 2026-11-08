@@ -1,0 +1,44 @@
+{
+  "current": "0.2.0",
+  "versions": [
+    {
+      "version": "0.2.0",
+      "released": "2026-11-07",
+      "sha256": "ff518a38125607b54c6e453aa530c81eb2b185f98023f0d8858e83b373cc077e",
+      "bytes": 231743801,
+      "commit": "16e7abc55fe43031414627e260b2b7b0642f0bff",
+      "notes": {
+        "summary": "Friday now updates itself, asking you first and saying what changed.",
+        "new": [
+          "When a new version is out, Friday asks the next time it opens, with what's new in it.",
+          "Update downloads it while you keep working, checks it's the version Friday's site published, and restarts into it.",
+          "The first time a new version opens, Friday shows what changed.",
+          "Settings → Updates: the version you have, Check now, and whether an update goes in right away or when you quit."
+        ],
+        "changed": [],
+        "fixed": []
+      }
+    },
+    {
+      "version": "0.1.0",
+      "released": "2026-11-06",
+      "sha256": "5c0115020c0649993dbca9ae843c0ac3d40c5e728b9c8519c0bc3cac2d6de14d",
+      "bytes": 230753715,
+      "commit": "",
+      "notes": {
+        "summary": "The first version of Friday you can download.",
+        "new": [
+          "Plans your week: tasks planned into your free time before they’re due, around your classes, work, meals and sleep, and planned again when things change.",
+          "Walk through your week: a first run through a pixel-art town that sets Friday up from your answers.",
+          "One list: everything you have to do by kind, with its time, when it’s planned and when it’s due.",
+          "Your Mac’s calendars and calendar feeds come in; events you make can go back to your calendar.",
+          "The Inbox, the review and rules in your own words: Friday asks only what it can’t know.",
+          "Ask the AI you choose, or none.",
+          "Everything runs on your Mac: no account, nothing to install besides the app."
+        ],
+        "changed": [],
+        "fixed": []
+      }
+    }
+  ]
+}
