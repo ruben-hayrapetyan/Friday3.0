@@ -757,7 +757,7 @@ def read_one(text: str) -> tuple[Reading | None, Strength]:
 
 WORK_WORDS = {"school", "school stuff", "studying", "study", "grinding", "day", "days", "my day", "school work"}
 EXAM_PREP = (
-    r"^(?:studying|study|prep|preparing|prepping|reviewing|review|revising|revision) for (?:the |my )?"
+    r"^(?:studying|study|prep|preparing|prepping|reviewing|review|revising|revision|cramming|cram) for (?:the |my )?"
     r"(?:exams?|tests?|prelims?|midterms?|finals?)$"
     r"|^(?:exams?|tests?|prelims?|midterms?|finals?) (?:prep|studying|review|reviewing|cramming|revision|revising)$"
 )

@@ -100,3 +100,55 @@ def test_a_rule_said_a_new_way_reads_without_the_ai(text: str, kind: str) -> Non
 )
 def test_what_isnt_one_rule_friday_has_still_goes_to_the_ai(text: str) -> None:
     assert read(text)[0] is None
+
+
+def test_window_direction_comes_from_the_cue_and_the_negation() -> None:
+    assert rule_more.direction(" nite cutoff is 10 ", False) == "before"
+    assert rule_more.direction(" earliest i'm willing to crack a book is 8 ", False) == "after"
+    assert rule_more.direction(" dont gimme anything til 10:30 ", True) == "after"  # nothing until then
+    assert rule_more.direction(" work until 10 ", False) == "before"
+    assert rule_more.direction(" nothing past 9:40pm ", True) == "before"
+
+
+def test_a_bare_hour_that_ends_the_day_is_the_evening() -> None:
+    assert rule_more.clock_of("10", "before") == "22:00" and rule_more.clock_of("10", "after") == "10:00"
+    assert rule_more.clock_of("5", None) == "17:00" and rule_more.clock_of("9:30am", "before") == "09:30"
+
+
+def test_a_subject_is_what_is_left_or_nothing_when_the_words_tell_of_the_person() -> None:
+    assert rule_more.subject_left(" mentally heavy stuff ") == "deep work"
+    assert rule_more.subject_left(" cramming for exams ") == "exam prep"
+    assert rule_more.subject_left(" problem sets ") == "problem sets"
+    assert rule_more.subject_left(" ") == "work"
+    assert rule_more.subject_left(" i bartend ") is None
+
+
+@pytest.mark.parametrize(
+    ("text", "rel", "at", "until", "days"),
+    [
+        ("nothing on the calendar after 9:40pm thx", "before", "21:40", None, None),
+        ("M–F: studying ends at 9:45pm", "before", "21:45", None, ("mon", "tue", "wed", "thu", "fri")),
+        ("pls nothing past a quarter to ten, i'm a grandpa", "before", "21:45", None, None),
+        ("dont gimme anything til 1030", "after", "10:30", None, None),
+        ("studying happens 0830-1630 and not outside it", "between", "08:30", "16:30", None),
+    ],
+)
+def test_a_window_said_a_new_way_reads_with_its_times_and_days(text: str, rel: str, at: str, until, days) -> None:  # noqa: ANN001
+    reading, _ = read(text)
+    assert reading and reading.kind == "window"
+    assert (reading.rel, reading.at, reading.until, reading.days) == (rel, at, until, days)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "no work during movie night on thursdays",  # an event's name, not the night
+        "always eat lunch, no matter how behind I am",  # "am" isn't the morning (a meal kept, read whole)
+        "duolingo 15 min every morning",  # a routine to add
+        "I have class MWF 9-10:15",  # an event
+        "friday night is the only night I'll work past 10:30",  # an exception Friday can't say as a window
+    ],
+)
+def test_what_only_looks_like_a_window_isnt_read_as_one(text: str) -> None:
+    reading, _ = read(text)
+    assert reading is None or reading.kind != "window"

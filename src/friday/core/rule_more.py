@@ -22,7 +22,7 @@ def read_more(t: str, unsure: bool = False) -> Reading | None:
     """One of the kinds below, or None. `t` is the sentence as the grammar's readers take it (rule_text.spoken);
     `unsure` when it has an if, unless or when, which only some kinds read as part of them."""
     readers = (read_meals_learned, read_meals_kept, read_running, read_fit_gaps, read_ahead, read_deadlines)
-    for reader in readers if unsure else (*readers, read_pace, read_after):
+    for reader in readers if unsure else (*readers, read_pace, read_after, read_window):
         if found := reader(t):
             return found
     return None
@@ -225,3 +225,228 @@ def read_after(t: str) -> Reading | None:
     ):
         return None
     return Reading("after", subject, event=event)
+
+
+WORD_HOURS = {w: n for n, w in enumerate("one two three four five six seven eight nine ten eleven twelve".split(), 1)}
+NUMBER = "|".join(WORD_HOURS)
+
+
+def hour_of(word: str) -> int:
+    return WORD_HOURS.get(word, int(word) if word.isdigit() else 0)
+
+
+# Clock times however they're written, put as the readers below take them.
+CLOCK_SAID = (
+    (r"[–—]", "-"),
+    (r"\b(\d{1,2}(?::\d\d)?)\s*a\.\s?m\.?", r"\1am"),
+    (r"\b(\d{1,2}(?::\d\d)?)\s*p\.\s?m\.?", r"\1pm"),
+    (r"\b(\d{1,2}(?::\d\d)?)\s+(am|pm)\b", r"\1\2"),
+    (r"\bo'?clock\b", ""),
+    (rf"\b(?:a )?quarter to ({NUMBER}|\d{{1,2}})\b", lambda m: f"{hour_of(m[1]) - 1 or 12}:45"),
+    (rf"\b(?:a )?quarter (?:past|after) ({NUMBER}|\d{{1,2}})\b", lambda m: f"{hour_of(m[1])}:15"),
+    (rf"\bhalf (?:past|after) ({NUMBER}|\d{{1,2}})\b", lambda m: f"{hour_of(m[1])}:30"),
+    (rf"\b({NUMBER}|\d{{1,2}}) in the morning\b", lambda m: f"{hour_of(m[1])}am"),
+    (rf"\b({NUMBER}|\d{{1,2}}) (?:at night|in the evening)\b", lambda m: f"{hour_of(m[1])}pm"),
+    (rf"\b({NUMBER}) ?(am|pm)\b", lambda m: f"{hour_of(m[1])}{m[2]}"),
+    (r"\b(\d{1,2})(\d\d)\s*-\s*(\d{1,2})(\d\d)\b", lambda m: f"{int(m[1])}:{m[2]}-{int(m[3])}:{m[4]}"),
+    (r"\b(by|before|after|until|till|til|past|at|from|to|than) ([01]?\d|2[0-3])([0-5]\d)\b", r"\1 \2:\3"),
+    (r"\b([01]?\d|2[0-3])([0-5]\d)\s*(am|pm)\b", r"\1:\2\3"),
+    (r"\bm\s*-\s*f\b", "weekdays"),
+    (r"(?<!school )(?<!week )\b(?:nite|night|nightly|evening|daily|my) (?=cutoff|cut off|curfew)", ""),
+    (r"\b(?:scheduel|shedule|schedual)\b", "schedule"),
+    (r"\b(?:school|week) ?nights?\b", "sun/mon/tue/wed/thu nights"),
+    (rf"\b({NUMBER})(?= (?:pm|am|is (?:my|the) [a-z -]*(?:cutoff|limit)))", lambda m: str(hour_of(m[1]))),
+)
+TIME = r"(?:noon|midnight|\d{1,2}:\d\d(?:am|pm)?|\d{1,2}(?:am|pm))"
+BARE = r"(?:\d{1,2})(?![\d:.])(?! ?(?:h|hrs?|hours?|m|mins?|minutes?|days?|weeks?|x|%)\b)"
+TIME_CUE = r"(?:by|before|after|until|till|til|past|at|from|starts?|ends?|cutoff|cut off|is|than|stop|finish|end)"
+END = (
+    r"\b(?:by|before|until|till|til|cutoff|cut off|cuts? off|ends?|ending|stops?|stopping|finish(?:ed|es)?|done"
+    r"|wrap(?:s|ped)? up|latest|clocks? out|no later than|at the latest|and earlier|prior to)\b"
+)
+START = (
+    r"\b(?:after|past|later than|beyond|starts?|starting|begins?|from|earliest|no earlier than|onwards?|and later"
+    r"|or later|not human|boot(?:s|ed)? up)\b"
+)
+PART = r"\b(?:the )?(morning|afternoon|evening|night|nighttime)s?\b|\bthe (am)\b"
+# What may come before a part of the day when it's a time ("in the evening", "weekday mornings"); any other word makes
+# it an event's name ("movie night", "date night").
+BEFORE_PART = (
+    r"(?:^|in|the|during|all|every|each|my|no|of|on|these|those|late|early|then|only|any|and|or|weekday|weekend"
+    rf"|{DAY}|sat|sun|mon|tue|wed|thu|fri)"
+)
+PARTS = {"morning": ("08:00", "12:00"), "am": ("08:00", "12:00"), "afternoon": ("12:00", "17:00"),
+         "evening": ("17:00", "22:00"), "night": ("22:00", "02:00"), "nighttime": ("22:00", "02:00")}  # fmt: skip
+NO = r"\b(?:no|never|not|don't|dont|nothing|zero|avoid|can't|cant|won't|isn't|shouldn't|stays? out|is a no|crash)\b"
+# Words of a rule's frame: how it's asked, what it's about in general, the rule's own cue words. Anything left beyond
+# these and the subject means the sentence says more than one rule's worth: the AI reads it.
+FRAME = set(
+    """i i'm i'd i'll me my myself the a an any anything nothing something stuff things thing work tasks task schedule
+    scheduled book put give gimme plate calendar on in at of for to it that this there these them so and or is are be
+    am was should will would can could must need want gotta have has do does done get let keep make sure every each all
+    only just also really like about around happen happens happening goes go time day days daily no never not don't
+    dont zero avoid can't cant won't isn't shouldn't allowed ok fine here by before after until till til past from
+    start starts starting end ends ending cutoff cut off stop stops stopping finish finished wrap up latest earliest
+    later earlier than prior beyond onward onwards stays stay out pls please thx thanks tbh honestly lol seriously
+    when then those hours hour gets happens get going be done stuff's everything productive willing working work's
+    plan planned planning anymore period anytime whatsoever""".split()
+) - {"work", "stuff", "things", "tasks", "task", "for", "of"}
+# Words that tell of the person or the day, not a kind of work: a subject with one is no subject.
+NOT_SUBJECT = set(
+    """doesn't does soonest human crack book bartend available person waits wait written write get gets reserved owl
+    need needs wind down i'm i am is are be can i'll night morning evening day zo done productive willing brain mind
+    body clocks clock cutoff nite home head heads sleep lazy grandpa happens happen anything nothing calendar plate
+    everything something mentally earliest latest soonest best worst person allowed late early outside inside
+    happens""".split()
+)
+NARRATION = (
+    r"\b(?:i'?m|i (?:head|go|get|sleep|work|bartend|have|study|do|am|can|can't|need|like|get)|my (?:brain|body|mind)"
+    r"|class (?:goes|runs|ends)|because|cause|bc|since|lazy|grandpa|human|tired|fried|dead|sleep in)\b"
+)
+EXCEPT = (
+    rf"\b(?:except|but not|other than|besides|aside from|apart from|excluding|outside of|minus) (?:on |for )?"
+    rf"({DAYS_SAID})|({DAYS_SAID}) (?:excluded|aside|is the exception|'s the exception|are the exception)"
+    rf"|unless it'?s (?:a )?({DAY})"
+)
+
+
+def days_said(t: str) -> tuple[tuple[str, ...] | None, str]:
+    """The days a sentence names, those it excepts taken out, and the sentence without them."""
+    excepted: set[str] = set()
+    for m in re.finditer(EXCEPT, t):
+        excepted |= set(days_of(next(g for g in m.groups() if g)) or ())
+    t = re.sub(EXCEPT, " ", t)
+    named = [m[0] for m in re.finditer(DAYS_SAID, t)]
+    days = set(days_of(" ".join(named)) or ()) if named else set(DAYS) if excepted else set()
+    t = re.sub(rf"\b(?:on |every |each )?(?:the )?{DAYS_SAID}\b", " ", t)
+    found = tuple(d for d in DAYS if d in days - excepted)
+    return (found or None), t
+
+
+def clock_of(said: str, rel: str | None) -> str | None:
+    """A clock time as said: a bare hour that ends a day (7 to 11) is the evening's, any under 7 the afternoon's."""
+    m = re.fullmatch(r"(\d{1,2})(?::(\d\d))?(am|pm)?|noon|midnight", said.strip())
+    if not m:
+        return None
+    if said.strip() in ("noon", "midnight"):
+        return "12:00" if said.strip() == "noon" else "00:00"
+    h, mm = int(m[1]), int(m[2] or 0)
+    if h > 23 or mm > 59:
+        return None
+    if m[3] == "pm" and h < 12:
+        h += 12
+    elif m[3] == "am" and h == 12:
+        h = 0
+    elif not m[3] and not m[1].startswith("0") and (h < 7 or (rel == "before" and 7 <= h <= 11)):
+        h += 12  # "no work past 10" is 10pm; "between 5 and 7" the evening
+    return f"{h:02d}:{mm:02d}"
+
+
+def subject_left(words: str) -> str | None:
+    """What the rule is about: the words left once its frame, times, days and parts are gone; "work" when none."""
+    from friday.core.rule_text import JUNK_SUBJECT, subject_of
+
+    words = re.sub(
+        r"\b(?:i )?(?:only )?(?:can't |cannot )?(?:start|study|do|work on|write|read) (?:for )?(?=[a-z])", " ", words
+    )
+    left = [w for w in re.findall(r"[a-z0-9']+", words) if w not in FRAME]
+    while left and left[0] in ("for", "of", "work"):
+        left = left[1:] if len(left) > 1 or left[0] != "work" else left
+        if left == ["work"]:
+            break
+    while left and left[-1] in ("for", "of"):
+        left = left[:-1]
+    if not left or left in (["stuff"], ["things"], ["tasks"], ["task"], ["work"]):
+        return "work"
+    subject = subject_of(" ".join(left))
+    if subject in ("work", "deep work", "light work", "exam prep"):
+        return subject
+    if len(left) > 3 or any(w in NOT_SUBJECT or w.isdigit() for w in left):
+        return None
+    return None if re.search(JUNK_SUBJECT, subject) else subject
+
+
+def read_window(t: str) -> Reading | None:
+    """When a kind of work goes, by the clock or part of the day, said any way: "nite cutoff is 10, dont scheduel
+    past it", "M–F: studying ends at 9:45pm", "earliest I'm willing to crack a book is 8", "problem sets: afternoons
+    only"."""
+    if re.search(
+        r"\b(?:free|open|clear|empty|max|at most|most|a day|per day|daily|early|due|buffer|deadline|if|unless|when"
+        r"|sleep|bed|wake|asleep|lunch|dinner|breakfast|meals?|night before|optional|skip|ahead|break|next day|eve"
+        r"|tomorrow|ease|easier|lighter|less packed|stacked|packed|block|blocked|reserved|night owl|morning person"
+        r"|early bird|the only|each way|before and|after and|i have|i've got|i got)\b"
+        r"|\b\d+(?:\.\d+)? ?(?:h|hrs?|hours?|m|mins?|minutes?)\b|\bhalf an hour\b|\bmy [a-z ]+ days\b"
+        r"|\bonly (?:do )?(?:easy|light|hard|deep|mindless|brainless|focus(?:ed)?)\b"
+        rf"|\b(?:are|is) (?:on )?{DAYS_SAID}\b|\bfor (?:the|my) [a-z]+ ?$"
+        r"|\b(?:before|after) (?:the |my |a |each |every |class|practice|work\b|lab|gym|lecture|school)",
+        t,
+    ):
+        return None
+    for pattern, put in CLOCK_SAID:
+        t = re.sub(pattern, put, t)
+    days, t = days_said(t)
+    pieces = [p for p in re.split(r"\s*(?:[,.;!]|\s-\s|=|\bso\b|\bthen\b)\s*", t) if p.strip()]
+    timed = [p for p in pieces if re.search(rf"{TIME}|\b{TIME_CUE} {BARE}|{PART}|{BARE}\s*-\s*{BARE}", p)]
+    if not timed:
+        return None
+    rule = " ".join(timed)
+    topics = [re.split(r"(?<!\d):(?!\d)", p)[0] for p in pieces if re.search(r"(?<!\d):(?!\d)", p)]
+    topic = " ".join(x for x in topics if not re.search(rf"{TIME}|\d", x))
+    rule = re.sub(r"(?<!\d):(?!\d)", " ", rule)
+    plain = " ".join(p for p in pieces if not re.search(NARRATION, p))
+    negated = bool(re.search(NO, f"{rule} {plain}")) and not re.search(r"\bnot outside\b", rule)
+    span = re.search(
+        rf"(?:between |from )?({TIME}|{BARE})\s*(?:-|to|until|till|thru|through|and)\s*({TIME}|{BARE})"
+        rf"|start(?:s|ing)? (?:at )?({TIME}|{BARE})\b.*\bend(?:s|ing)? (?:at )?({TIME}|{BARE})"
+        rf"|({TIME}|{BARE}) start\b.*\b({TIME}|{BARE}) (?:finish|end)",
+        rule,
+    )
+    times = re.findall(TIME, rule) + [m[1] for m in re.finditer(rf"\b{TIME_CUE} ({BARE})\b(?!\s*(?:am|pm))", rule)]
+    if span:
+        a, b = [g for g in span.groups() if g][:2]
+        until = clock_of(b, "before")
+        at = clock_of(a, None)
+        if at and until and not re.search(r"am|pm|noon|midnight", a) and re.search(r"pm", b) and at < "12:00":
+            at = f"{int(at[:2]) + 12:02d}{at[2:]}" if int(at[:2]) + 12 < int(until[:2]) else at
+        rel = "not_between" if negated else "between"
+        cleaned = rule.replace(span[0], " ")
+        reading = Reading("window", "work", rel=rel, at=at, until=until, days=days) if at and until else None
+    elif len(set(times)) == 1:
+        rel = direction(rule, negated)
+        at = clock_of(times[0], rel)
+        cleaned = re.sub(rf"\b({TIME_CUE}) {BARE}\b", r"\1 ", re.sub(TIME, " ", rule))
+        reading = Reading("window", "work", rel=rel, at=at, days=days) if rel and at else None
+    elif (
+        not times
+        and (part := re.search(PART, rule))
+        and re.search(r"\b(?:in|during|only|then|no|except|out of)\b", rule)
+        and re.search(rf"(?:{BEFORE_PART})\s+{re.escape(part[0].strip())}|^\s*{re.escape(part[0].strip())}", rule)
+    ):
+        start, end = PARTS[part[1]]
+        rel = "not_between" if negated or re.search(r"\bexcept\b", rule) else "between"
+        cleaned = rule.replace(part[0], " ")
+        reading = Reading("window", "work", rel=rel, at=start, until=end, days=days)
+    else:
+        return None
+    if reading is None:
+        return None
+    cleaned = re.sub(r"\b(?:and )?not outside (?:of )?(?:it|that|those|them|this)\b|\bhappens?\b", " ", cleaned)
+    cleaned = re.sub(rf"{END}|{START}|{NO}|{PART}|\bexcept\b|\bin\b|\bonly\b", " ", cleaned)
+    subject = subject_left(f"{topic} {cleaned}")
+    if subject is None or re.search(r"\b(?:meetings?|calls?|classes|lectures?|appointments?)\b", subject):
+        return None
+    return Reading("window", subject, rel=reading.rel, at=reading.at, until=reading.until, days=reading.days)
+
+
+def direction(rule: str, negated: bool) -> str | None:
+    """Whether work goes before the time or after it."""
+    if re.search(r"\b(?:until|till|til)\b", rule):
+        held = negated or re.search(r"\b(?:wait|waits|start|can't|not human|boot)", rule)
+        return "after" if held else "before"
+    if re.search(r"\b(?:before|prior to|earlier than|and earlier)\b", rule):
+        return "after" if negated else "before"
+    if re.search(END, rule):
+        return "before"
+    if re.search(START, rule):
+        return "before" if negated and not re.search(r"\bearliest|no earlier\b", rule) else "after"
+    return None
