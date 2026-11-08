@@ -6317,7 +6317,7 @@
   },
   "/api/c/series_delete": {
    "post": {
-    "summary": "Delete a repeat: every undone occurrence goes and what you did stays as history; on a calendar, it goes from",
+    "summary": "Delete a repeat: every undone occurrence goes and what you did stays as history. An imported calendar",
     "operationId": "series_delete",
     "parameters": [
      {
@@ -19037,7 +19037,6 @@
       "enum": [
        "save",
        "delete",
-       "delete_from",
        "create",
        "repeat"
       ],
@@ -19132,7 +19131,7 @@
      "calendar"
     ],
     "title": "MacWriteOut",
-    "description": "A change to one of the Mac's events, for the Mac app to make through EventKit: its times (timed with an offset,\nor whole days with the end the day after the last) and, if you renamed or moved it here, its title and place; a\ndelete, of that time or (`delete_from`) of it and every later time of its repeat; or a new event, made on that\ncalendar (`create`)."
+    "description": "A change to one of the Mac's events, for the Mac app to make through EventKit: its times (timed with an offset,\nor whole days with the end the day after the last) and, if you renamed or moved it here, its title and place; a\ndelete; or a new event, made on that calendar (`create`)."
    },
    "MacWrittenInput": {
     "properties": {

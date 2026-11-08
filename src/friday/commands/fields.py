@@ -1,7 +1,6 @@
 """API item fields ↔ stored items: local times to UTC, minutes to units, area names to ids, presets applied."""
 
 import math
-from datetime import date, timedelta
 from typing import Any
 
 from friday.api.types import ItemFields, ItemOut
@@ -40,14 +39,8 @@ def given_fields(fields: ItemFields) -> dict[str, Any]:
 def all_day_is_free(given: dict[str, Any]) -> dict[str, Any]:
     """A new event from midnight to midnight is a day's label, like a birthday, not a day you're busy (7 Nov: Remy's
     Birthday, added without saying, blocked all of Tuesday and nothing was planned on it). Calendars' all-day
-    events already come in this way and the event editor says so itself; an edit keeps what the event was.
-
-    Midnight to 11:59pm is that whole day too, and ends at the next midnight as one (8 Nov: the AI, asked for
-    birthdays, gave some that way, and they took their days)."""
+    events already come in this way and the event editor says so itself; an edit keeps what the event was."""
     start, end = given.get("start"), given.get("end")
-    if start and end and start.endswith("T00:00") and end == start[:10] + "T23:59":
-        given = given | {"end": (date.fromisoformat(start[:10]) + timedelta(days=1)).isoformat() + "T00:00"}
-        end = given["end"]
     whole = bool(start and end and start.endswith("T00:00") and end.endswith("T00:00") and end > start)
     return given | {"blocks_time": False} if whole and given.get("blocks_time") is None else given
 

@@ -125,8 +125,8 @@ def mac_writes(ctx: Ctx, inp: Empty) -> list[MacWriteOut]:
             "calendar": link.calendar_id,
             "event": occurrence_of(ctx, link.source_id, link.event_id),
         }
-        if job["op"] in ("delete", "delete_from"):
-            out.append(MacWriteOut(op=job["op"], **where))
+        if job["op"] == "delete":
+            out.append(MacWriteOut(op="delete", **where))
         elif job["op"] == "repeat":
             out.append(MacWriteOut(op="repeat", rule=job["rule"], **where))
         elif item is not None and item.status == "todo" and item.start_utc and item.end_utc:

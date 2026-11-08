@@ -963,7 +963,7 @@ VERBS = {
         commands.SeriesRef,
         True,
         True,
-        "Delete a repeat: every undone occurrence goes and what you did stays as history; on a calendar, it goes from",
+        "Delete a repeat: every undone occurrence goes and what you did stays as history. An imported calendar",
     ),
     "series_edit": Verb(
         "POST",

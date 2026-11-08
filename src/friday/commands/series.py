@@ -237,10 +237,9 @@ def materialize_series(ctx: Ctx, series_id: int) -> int:
     return len(made)
 
 
-def remove_future_occurrences(ctx: Ctx, series_id: int, from_day: date, and_later: bool = False) -> list[int]:
+def remove_future_occurrences(ctx: Ctx, series_id: int, from_day: date) -> list[int]:
     """Delete undone, undetached occurrences from `from_day` on; returns the ones kept: detached, or being timed
-    (you're on it now, so it isn't taken from under the timer). `and_later`: on a calendar, every later time goes
-    from there too, those Friday hasn't made yet included (the repeat itself is going)."""
+    (you're on it now, so it isn't taken from under the timer)."""
     kept = []
     timed = {r["item_id"] for r in rows(ctx.conn, "SELECT item_id FROM timer WHERE user_id = ?", [ctx.user_id])}
     links = event_links(ctx.conn, ctx.user_id)
@@ -252,17 +251,17 @@ def remove_future_occurrences(ctx: Ctx, series_id: int, from_day: date, and_late
         if row["detached"] or row["id"] in timed:
             kept.append(row["id"])
         else:
-            remove_occurrence(ctx, row["id"], row["id"] in links, and_later)
+            remove_occurrence(ctx, row["id"], row["id"] in links)
     return kept
 
 
-def remove_occurrence(ctx: Ctx, item_id: int, on_calendar: bool, and_later: bool = False) -> None:
+def remove_occurrence(ctx: Ctx, item_id: int, on_calendar: bool) -> None:
     if on_calendar:
         # On a calendar: taken off it too, and kept here as dropped so the calendar's copy stays tied to it until
         # it's gone (deleted outright, the calendar would bring it back as an event of its own).
         dropped = replace(require_item(ctx, item_id), status="dropped")
         ctx.db.update("items", {"id": item_id}, {"status": "dropped", "updated_utc": ctx.now_text})
-        queue_event_write(ctx, dropped, "delete_from" if and_later else "delete")
+        queue_event_write(ctx, dropped, "delete")
     else:
         delete_item(ctx, item_id)
 
@@ -426,15 +425,14 @@ def series_stop(ctx: Ctx, inp: SeriesRef) -> SeriesOut:
 
 @command("series_delete", affects_plan=True)
 def series_delete(ctx: Ctx, inp: SeriesRef) -> Changed:
-    """Delete a repeat: every undone occurrence goes and what you did stays as history; on a calendar, it goes from
-    its first undone time on, every later year or week included. An imported calendar repeat is switched off
-    instead, so your calendar doesn't offer it again."""
+    """Delete a repeat: every undone occurrence goes and what you did stays as history. An imported calendar
+    repeat is switched off instead, so your calendar doesn't offer it again."""
     found = load_series(ctx, inp.id)
     title = json.loads(found["template"]).get("title", "It")
     if found["external_id"]:
         series_stop(ctx, inp)
         return Changed(message=f"{title} switched off; your calendar won't bring it back")
-    remove_future_occurrences(ctx, inp.id, date.min, and_later=True)
+    remove_future_occurrences(ctx, inp.id, date.min)
     for r in rows(ctx.conn, "SELECT id FROM items WHERE series_id = ?", [inp.id]):
         ctx.db.update("items", {"id": r["id"]}, {"series_id": None, "updated_utc": ctx.now_text})
     ctx.db.delete("series", {"id": inp.id})

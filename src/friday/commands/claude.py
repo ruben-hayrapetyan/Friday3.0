@@ -8,7 +8,7 @@ wouldn't take carries the reason. Claude never plans: the engine does (DESIGN §
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from pydantic import ValidationError
@@ -18,9 +18,7 @@ from friday.commands.inbox import record_spend, spend_check
 from friday.commands.registry import REGISTRY, Ctx, command
 from friday.core.db import one, rows
 from friday.core.items import FieldError
-from friday.core.recurrence import next_occurrence, occurrences
-from friday.core.textnorm import plain_words
-from friday.core.time import format_local, format_utc, parse_local
+from friday.core.time import format_utc
 from friday.ingest import llm
 from friday.planner.store import area_names
 
@@ -54,12 +52,6 @@ does, for the student to confirm.
 Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
 - add: a task or event. Task: {title, due?, duration_min?, preset?, area?}. Event: {title, when: "fixed", start, end,
   location?}: location is where it is ("Willard Straight Hall, room 215").
-  An all-day event (a birthday, an anniversary, a holiday, a day off) starts at "YYYY-MM-DDT00:00" and ends at the
-  next day's "T00:00": Friday shows it on that day and plans work around nothing. A birthday is titled "<Name>'s
-  Birthday", repeats with every: "rrule:FREQ=YEARLY" and starts on its next date, today or later. A list of them
-  ("Club Bdays: Mira: Feb 1st, Rosa: jan 27, …") is one add for every name in it, each on the date written after
-  that name; a heading before the list isn't part of the titles. Leave out what the context already has (its events,
-  and "repeating" for everything that repeats).
   Either repeats with every: "week", "fri", "mon,wed", "other week", "day", "month" (from its first date and time), or
   "rrule:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20261211T235900" to end it. A repeat whose times aren't all alike takes
   exceptions: [{date: "YYYY-MM-DD", skip: true}] for a time it doesn't happen ("except the one on 11/14"), or
@@ -166,7 +158,7 @@ def ask_claude(ctx: Ctx, inp: AskClaudeInput) -> AskClaudeOut:
     text = next((b.text for b in reply.content if getattr(b, "type", "") == "text"), "")
     answer = json.loads(text) if text else {}
     is_event = lambda name, given: touches_event(ctx, name, given)  # noqa: E731
-    return proposals(answer, allowed, is_event, llm.spoken(ctx.settings["llm"]), Held(ctx))
+    return proposals(answer, allowed, is_event, llm.spoken(ctx.settings["llm"]))
 
 
 EVENT_COMMANDS = ("edit", "drop", "repeat")
@@ -184,80 +176,16 @@ def touches_event(ctx: Ctx, name: str, given: dict[str, Any]) -> bool:
     return bool(row) and row["when_kind"] == "fixed" and given.get("when") in (None, "fixed")
 
 
-class Held:
-    """The events you already have, to know a new one proposed again (8 Nov: a list of birthdays asked three times,
-    each answer adding them all again, gave five of Mira's): an event of the same name starting at the same time,
-    on its own or as a time of something that repeats. Names match whatever their case, accents and punctuation
-    ("Rosas birthday" is "Rosa's Birthday")."""
-
-    def __init__(self, ctx: Ctx):
-        self.once = {
-            (same_name(r["title"]), ctx.local(r["start_utc"]))
-            for r in rows(
-                ctx.conn,
-                "SELECT title, start_utc FROM items WHERE user_id = ? AND status = 'todo' AND when_kind = 'fixed' "
-                "AND series_id IS NULL AND start_utc IS NOT NULL",
-                [ctx.user_id],
-            )  # fmt: skip
-        }
-        self.repeats = [
-            (same_name(json.loads(r["template"]).get("title") or ""), r["rrule"], parse_local(r["dtstart_local"]))
-            for r in rows(
-                ctx.conn,
-                "SELECT template, rrule, dtstart_local FROM series WHERE user_id = ? AND active = 1",
-                [ctx.user_id],
-            )
-        ]
-
-    def __call__(self, given: dict[str, Any]) -> str | None:
-        """What a proposed new event is already, said for you; None when it's new."""
-        key, at = event_key_of(given)
-        if key is None or at is None:
-            return None
-        if (key, format_local(at)) in self.once:
-            return f"You already have {given['title']} then"
-        for name, rule, first in self.repeats:
-            if name == key and occurrences(rule, first, at, at + timedelta(minutes=1)):
-                return f"You already have {given['title']} then, repeating"
-        return None
-
-
-def same_name(title: str) -> str:
-    return "".join(plain_words(title))
-
-
-def event_key_of(given: dict[str, Any]) -> tuple[str | None, datetime | None]:
-    """A proposed new event's name, as names match, and its start; (None, None) for anything else."""
-    title, start = given.get("title"), given.get("start")
-    if given.get("when") != "fixed" or not isinstance(title, str) or not isinstance(start, str):
-        return None, None
-    try:
-        return same_name(title), parse_local(start[:16])
-    except ValueError:
-        return None, None
-
-
 def proposals(
-    answer: dict[str, Any],
-    allowed: tuple[str, ...],
-    is_event: Any = lambda name, given: False,
-    ai: str = "Claude",
-    held: Any = lambda given: None,
+    answer: dict[str, Any], allowed: tuple[str, ...], is_event: Any = lambda name, given: False, ai: str = "Claude"
 ) -> AskClaudeOut:
     """The AI's answer as actions, each checked against its command's input; what isn't allowed is refused, naming
-    the AI you have (`ai`, as `llm.spoken` says it). A new event you already have (`held` says what it is), or one
-    proposed twice in the same answer, is refused too, whichever AI proposed it: Friday checks, not the prompt."""
+    the AI you have (`ai`, as `llm.spoken` says it)."""
     actions = []
-    proposed: set[tuple[str | None, datetime | None]] = set()
     for a in answer.get("actions") or []:
         name, given = str(a.get("command", "")), a.get("input") or {}
         error = None
-        new_event = event_key_of(given) if name == "add" else (None, None)
-        if new_event[0] is not None and new_event in proposed:
-            error = f"{given['title']} is proposed twice"
-        elif new_event[0] is not None and (said := held(given)):
-            error = said
-        elif name not in allowed or name not in REGISTRY:
+        if name not in allowed or name not in REGISTRY:
             error = f"Friday doesn't let {ai} run {name!r} here"
         elif name == "settings_set" and given.get("key") not in SETTINGS:
             error = f"{ai[:1].upper() + ai[1:]} may not change the {given.get('key')!r} setting"
@@ -267,7 +195,6 @@ def proposals(
             except ValidationError as problem:
                 first = problem.errors()[0]
                 error = f"{'.'.join(str(p) for p in first['loc'])}: {first['msg']}"
-        proposed.add(new_event)
         actions.append(
             ProposedAction(
                 sentence=str(a.get("sentence", name)),
@@ -281,9 +208,7 @@ def proposals(
 
 
 def context(ctx: Ctx) -> str:
-    """What the AI needs to name things right, whichever AI it is: now and its weekday, your tags and kinds, open
-    tasks, the next two weeks' events, and everything that repeats with its next time (8 Nov: birthdays months away
-    weren't in the two weeks, so asked again they were added again)."""
+    """What Claude needs to name things right: now, your tags and kinds, open tasks, and the next two weeks' events."""
     now = ctx.local(format_utc(ctx.now_utc))
     tasks = [
         {"id": r["id"], "title": r["title"], "due": ctx.local(r["due_utc"]), "kind": r["preset"]}
@@ -306,26 +231,14 @@ def context(ctx: Ctx) -> str:
             [ctx.user_id, format_utc(ctx.now_utc - 1440), until],
         )  # fmt: skip
     ]
-    after = parse_local(now)
-    repeating = []
-    for r in rows(
-        ctx.conn, "SELECT template, rrule, dtstart_local FROM series WHERE user_id = ? AND active = 1", [ctx.user_id]
-    ):
-        upcoming = next_occurrence(r["rrule"], parse_local(r["dtstart_local"]), after - timedelta(days=1))
-        title = json.loads(r["template"]).get("title")
-        if upcoming is not None and title:
-            repeating.append({"title": title, "every": r["rrule"], "next": format_local(upcoming)})
-    repeating = sorted(repeating, key=lambda r: r["next"])[:150]
     return "Context:\n" + json.dumps(
         {
             "now": now,
-            "weekday": after.strftime("%A"),
             "today": ctx.today.isoformat(),
             "tags": sorted(area_names(ctx.conn, ctx.user_id).values()),
             "kinds": list(ctx.settings["presets"]),
             "tasks": tasks,
             "events": events,
-            "repeating": repeating,
             "notes": list(ctx.settings["notes"]),
         }
     )
