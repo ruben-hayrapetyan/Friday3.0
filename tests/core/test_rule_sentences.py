@@ -34,7 +34,7 @@ FIXED_SUBJECT = {"optional", "ahead", "around", "night_before", "meals_kept", "m
 ALLOWED = {"lights out by 12:30", "in bed by 11:30 on school nights", "call mom on sundays"}
 BEDTIME = r"^(?:i'?m (?:usually )?)?(?:in bed|lights out|bed|asleep)\b"
 # The share of each set's rules read without Claude, at least: what the grammar reads now, so it doesn't slip back.
-READ = {"rule_sentences": 0.99, "rule_wordings": 0.99, "rule_heldout": 0.93, "rule_final": 0.47, "rule_nov8": 0.85}
+READ = {"rule_sentences": 0.99, "rule_wordings": 0.99, "rule_heldout": 0.93, "rule_final": 0.61, "rule_nov8": 0.87}
 
 
 def words(s: Any) -> set[str]:

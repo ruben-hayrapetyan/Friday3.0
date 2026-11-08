@@ -152,3 +152,38 @@ def test_a_window_said_a_new_way_reads_with_its_times_and_days(text: str, rel: s
 def test_what_only_looks_like_a_window_isnt_read_as_one(text: str) -> None:
     reading, _ = read(text)
     assert reading is None or reading.kind != "window"
+
+
+def test_days_pieces_must_agree_and_a_reason_without_days_is_dropped() -> None:
+    r = rule_more.read_days(" sat: off. sun: off. ")
+    assert r and r.rel == "on" and set(r.days or ()) == {"mon", "tue", "wed", "thu", "fri"}
+    r = rule_more.read_days(" orgo is a no-go on sundays ")
+    assert r and r.subject == "orgo" and "sun" not in (r.days or ())
+    r = rule_more.read_days(" don't make me study on the weekends, i work retail ")
+    assert r and r.rel == "on" and set(r.days or ()) == {"mon", "tue", "wed", "thu", "fri"}
+    assert rule_more.read_days(" thurs only ") is None  # names nothing
+    assert rule_more.read_days(" tuesdays are for cs only ") is None  # one kind kept to a day: no such rule
+
+
+def test_cap_needs_an_amount_a_day_and_a_limit_word() -> None:
+    r = rule_more.read_cap(" i tap out after 5.5 hours a day ")
+    assert r and (r.subject, r.amount) == ("work", 5.5)
+    assert rule_more.read_cap(" 40 min of violin a day or my wrist hurts ") is None  # a minimum, maybe
+    assert rule_more.read_cap(" my weekly limit is 30 hrs total ") is None  # a week's cap: no such rule
+    assert rule_more.read_cap(" max 2 hours of orgo a day, and only on weekdays ") is None  # two rules
+
+
+def test_early_turns_hours_and_weeks_into_days_and_finds_what_them_is() -> None:
+    assert (r := rule_more.read_early(" lab reports: aim to have them ready 48 hours ahead ")) and r.amount == 2.0
+    r = rule_more.read_early(" never leave essays to the last day, finish them 1 day early ")
+    assert r and (r.subject, r.amount) == ("essays", 1.0)
+    assert rule_more.read_early(" start lab reports a week before due ") is None  # starting early: no such rule
+
+
+def test_free_joins_touching_parts_and_keeps_lighter_to_parts_of_days() -> None:
+    r = rule_more.read_free(" keep saturday afternoons and evenings free ")
+    assert r and (r.at, r.until, r.days) == ("12:00", "22:00", ("sat",))
+    r = rule_more.read_free(" make tuesday mornings less packed ")
+    assert r and r.amount == 0.5 and r.days == ("tue",)
+    assert rule_more.read_free(" keep friday nights and saturday mornings free ") is None  # two stretches
+    assert rule_more.read_free(" block out 4-6 on friday for the dentist ") is None  # once: an event
