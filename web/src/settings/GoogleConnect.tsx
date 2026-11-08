@@ -7,7 +7,7 @@
 
 import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ReactNode, useEffect, useRef, useState } from "react"
-import { ApiError, command, query, type Schemas } from "@/api/client"
+import { command, errorWords, query, type Schemas } from "@/api/client"
 import { Icon, Switch } from "@/components/fr/controls"
 import { useSettings, useStatus } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
@@ -60,6 +60,18 @@ export function wantsSignIn(error: string | null | undefined): boolean {
   return /RefreshError|invalid_grant|insufficient authentication/i.test(error ?? "")
 }
 
+/** A reading error from having no internet (a name that can't be looked up, no network), not from the source: the
+ * server's `OFFLINE` in commands/fetching.py, kept the same by a test there. */
+export function offline(error: string | null | undefined): boolean {
+  return /NameResolutionError|nodename nor servname|name resolution|Name or service not known|getaddrinfo failed|Network is unreachable|No route to host|Errno (?:8|51|65|101)\b/i.test(error ?? "") && !wantsSignIn(error)
+}
+
+/** A source's reading error as it should read beside it: no internet in words (8 Nov: "TransportError:
+ * HTTPSConnectionPool(host='oauth2.googleapis.com' …"), anything else as the source said it. */
+export function readable(error: string): string {
+  return offline(error) ? "Couldn't reach the internet; reads again once you're online" : error
+}
+
 /** A refusal as a sentence: "file: file: that isn't Google's key file" (the field named by the server and again by
  * the client) reads "That isn't Google's key file." */
 export function sentence(message: string): string {
@@ -68,7 +80,7 @@ export function sentence(message: string): string {
   return /[.!?]$/.test(said) ? said : `${said}.`
 }
 
-export const said = (error: unknown) => sentence(error instanceof ApiError ? error.message : String(error))
+export const said = (error: unknown) => sentence(errorWords(error))
 
 const WAITING = "Google's page is open in your browser: choose the account and click Allow (if it says the app isn't verified, click Advanced, then Go to Friday). This updates by itself."
 
@@ -313,7 +325,7 @@ export function MailAccounts({ accounts, done }: { accounts: GoogleAccount[]; do
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {accounts.map((a) => {
         const expired = a.gmail && wantsSignIn(a.mail_error)
-        const [text, tone] = !a.gmail ? ["Its mail isn't allowed yet", "var(--fr-warn)"] : expired ? ["Google stopped letting Friday read its mail", "var(--fr-warn)"] : a.mail_error ? [a.mail_error, "var(--fr-due)"] : ["Its mail is read", "var(--color-accent-300)"]
+        const [text, tone] = !a.gmail ? ["Its mail isn't allowed yet", "var(--fr-warn)"] : expired ? ["Google stopped letting Friday read its mail", "var(--fr-warn)"] : a.mail_error ? [readable(a.mail_error), offline(a.mail_error) ? "var(--fr-warn)" : "var(--fr-due)"] : ["Its mail is read", "var(--color-accent-300)"]
         return (
           <div key={a.email} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 12px" }}>
             <span style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0, flex: "1 1 200px" }}>

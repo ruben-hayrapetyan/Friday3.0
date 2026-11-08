@@ -17,7 +17,9 @@ import { type Action, BED, Character, type Mood, type Pose, poseFrom, poseNumber
 import { fallen, forest, type Planting, woods } from "./nature"
 import { PixelOut, Pixels } from "./pixels"
 import { type Built, buildPlace, type Duvet, type Extra, FLOOR, FRONT, type Scene, SIDEWALK, type Socket, sittingFor } from "./places"
-import { hazeColor, type Light, lightAt, timeStep } from "./sky"
+import { SEASON, snows } from "./season"
+import { hazeColor, type Light, lightAt, timeStep, useDaylight } from "./sky"
+import { Snowfall } from "./snow"
 import { type Place, placeZ, ROUTE, STOPS } from "./stops"
 import { moonFace } from "./textures"
 import { type Lot, type Post, street } from "./town"
@@ -212,6 +214,7 @@ export class World {
   private pool: THREE.PointLight[] = []
   private sockets: Socket[] = []
   private stars: THREE.Points
+  private snow: Snowfall | null = snows(SEASON) ? new Snowfall() : null // the season outside (walk/season.ts)
   private moon: THREE.Mesh
   private fog = new THREE.FogExp2(0xc9d6e3, 0.007)
   private glowing: THREE.MeshStandardMaterial[] = []
@@ -259,6 +262,7 @@ export class World {
 
   constructor(canvas: HTMLCanvasElement, options: { still: boolean; onReady?: () => void }) {
     this.options = options
+    useDaylight(SEASON) // winter's short, low days; summer's long ones
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" })
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1))
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -378,6 +382,7 @@ export class World {
       }
     }
     this.scene.add(forest(trees), fallen(leaves), woods([40, end - 60]))
+    if (this.snow) this.scene.add(this.snow.points)
     this.posts = [...town.posts, ...trees.map((t) => ({ x: t.x, z: t.z, r: 0.12 + 0.2 * t.size, h: 3 }))]
     this.scene.add(this.hero.root, this.signs.group)
     this.hero.root.position.copy(this.pos)
@@ -1094,6 +1099,7 @@ export class World {
     this.camera.position.copy(this.cam.pos)
     this.camera.lookAt(this.view)
     this.camera.updateMatrixWorld()
+    this.snow?.update(dt, seconds, this.camera.position)
     const middle = this.hero.headAt().add(V(0, -0.5, 0)).project(this.camera)
     this.out.iris.value = this.iris
     this.out.irisAt.value.set(Math.max(0.08, Math.min(0.92, (middle.x + 1) / 2)), Math.max(0.08, Math.min(0.92, (middle.y + 1) / 2)))

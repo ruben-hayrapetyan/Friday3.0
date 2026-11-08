@@ -10,7 +10,7 @@ import { spoken } from "@/lib/aiName"
 import { useAi } from "@/settings/AiConnect"
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
-import { ApiError, command, type Schemas } from "@/api/client"
+import { command, errorWords, type Schemas } from "@/api/client"
 import { FIT_COMMANDS, type FitCommand, FitLine } from "@/components/Fit"
 import { Box, Icon, Switch } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
@@ -104,7 +104,7 @@ export function AskClaudeDialog({ onClose }: { onClose: () => void }) {
       } else asking.clear()
     } catch (e) {
       if (signal.aborted) return // you stopped waiting
-      const said = e instanceof ApiError || e instanceof Error ? e.message : String(e)
+      const said = errorWords(e)
       asking.fail(id, said)
       if (!asking.isOpen()) toast({ message: `${ai} couldn't answer: ${said}`, tone: "error" })
       else asking.clear()

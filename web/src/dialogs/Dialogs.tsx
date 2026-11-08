@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react"
-import { command, query, type Schemas } from "@/api/client"
+import { command, errorWords, query, type Schemas } from "@/api/client"
 import { Box, H, Icon, Seg } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { runTogether, undoAll, useCommand } from "@/hooks/useCommand"
@@ -275,7 +275,7 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
       toast({ message: out.result.message ?? `Won’t suggest skipping ${o.skip_title}` })
     } catch (error) {
       say(o.action, null)
-      toast({ message: error instanceof Error ? error.message : String(error), tone: "error" })
+      toast({ message: errorWords(error), tone: "error" })
     }
     client.invalidateQueries({ queryKey: ["triage"] })
   }

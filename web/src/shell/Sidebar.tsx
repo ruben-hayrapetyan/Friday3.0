@@ -22,7 +22,6 @@ const PAGES = [
   { to: "/projects", icon: "tree-structure", label: "Projects & exams" },
   { to: "/inbox", icon: "tray", label: "Inbox" },
   { to: "/insights", icon: "chart-line", label: "Insights" },
-  { to: "/body", icon: "moon-stars", label: "Sleep & meals" },
   { to: "/rules", icon: "sliders-horizontal", label: "Rules" },
 ] as const
 

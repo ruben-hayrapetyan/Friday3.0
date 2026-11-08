@@ -5,9 +5,16 @@
 
 export type Vec3 = [number, number, number]
 
-const RISE = 6.25 // 6:15am
-const SET = 19.25 // 7:15pm: a long autumn day, so 7pm is the last of the sun
-const NOON = 0.82 // the sun's height at midday (radians, about 47°)
+import { DAYLIGHT, type Season } from "./season"
+
+// Sunrise, sunset and the noon sun's height: fall's (6:15am to 7:15pm, about 47°) until the walk says its season
+// (walk/season.ts), so what's tested here is one day, whatever day the tests run.
+let day = DAYLIGHT.fall
+
+/** The walk's season's day: winter's short and low, summer's long and high. */
+export function useDaylight(season: Season): void {
+  day = DAYLIGHT[season]
+}
 
 /** Where it is in the day, 0 to 24, from minutes after midnight (any day). */
 export function hourOf(minutes: number): number {
@@ -24,12 +31,12 @@ const deg = (d: number) => (d * Math.PI) / 180
 /** The sun's direction, rising in the east and setting in the west over the south; below the horizon at night. */
 export function sunAt(minutes: number): { dir: Vec3; elevation: number } {
   const h = hourOf(minutes)
-  if (h >= RISE && h <= SET) {
-    const s = (h - RISE) / (SET - RISE)
-    const elevation = NOON * Math.sin(Math.PI * s)
+  if (h >= day.rise && h <= day.set) {
+    const s = (h - day.rise) / (day.set - day.rise)
+    const elevation = day.noon * Math.sin(Math.PI * s)
     return { dir: toward(deg(100 + 160 * s), elevation), elevation }
   }
-  const night = ((h - SET + 24) % 24) / (24 - (SET - RISE))
+  const night = ((h - day.set + 24) % 24) / (24 - (day.set - day.rise))
   const elevation = -0.6 * Math.sin(Math.PI * night)
   return { dir: toward(deg(260 + 200 * night), elevation), elevation }
 }
@@ -37,7 +44,7 @@ export function sunAt(minutes: number): { dir: Vec3; elevation: number } {
 /** The moon: up through the night, across the south. */
 export function moonAt(minutes: number): { dir: Vec3; elevation: number } {
   const h = hourOf(minutes)
-  const night = ((h - (SET - 0.75) + 24) % 24) / (24 - (SET - RISE) + 1.5)
+  const night = ((h - (day.set - 0.75) + 24) % 24) / (24 - (day.set - day.rise) + 1.5)
   const elevation = night <= 1 ? 0.95 * Math.sin(Math.PI * night) - 0.05 : -0.4
   return { dir: toward(deg(95 + 170 * Math.min(1, night)), elevation), elevation }
 }

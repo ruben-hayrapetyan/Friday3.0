@@ -53,10 +53,6 @@ function SeriesLine({ row }: { row: Row }) {
   // Its tag, from today on (one from a calendar keeps its times there; 3 Nov: `series_edit` had no button)
   const retag = useCommand("series_edit", { label: () => `${row.title}: tag changed from today on` })
   const tags = (useAreas().data ?? []).filter((a) => !a.archived).map((a) => a.name)
-  // Its times kept apart, counted from when you did the last one (C50: "laundry at least 7 days apart")
-  const picked = useRef<string>("")
-  const space = useCommand("series_spacing", { label: () => `${row.title}: ${picked.current ? `at least ${picked.current} days apart` : "times not kept apart"}` })
-  const gap = row.min_gap_days ? String(row.min_gap_days) : ""
   return (
     <div className="fr-row" style={{ display: "grid", gridTemplateColumns: "36px 10px minmax(0,1fr) auto 28px", gap: 12, alignItems: "center", padding: "10px 0", opacity: row.active ? 1 : 0.5 }}>
       <Switch on={row.active} onToggle={() => (row.active ? stop({ id: row.id }) : resume({ id: row.id }))} label={`${row.active ? "Stop" : "Start"} ${row.title}`} />
@@ -69,12 +65,7 @@ function SeriesLine({ row }: { row: Row }) {
           {!row.fixed && !row.external && (
             <>
               ·
-              <Menu
-                label={`Days between ${row.title}`}
-                value={gap}
-                onPick={(days) => days !== gap && ((picked.current = days), space({ id: row.id, days: days ? Number(days) : null }))}
-                options={[{ value: "", label: "Times apart: any" }, ...["2", "3", "5", "7", "10", "14"].map((d) => ({ value: d, label: `At least ${d} days apart` })), ...(gap && !["2", "3", "5", "7", "10", "14"].includes(gap) ? [{ value: gap, label: `At least ${gap} days apart` }] : [])]}
-              />
+              <TimesApart row={row} />
             </>
           )}
         </span>
@@ -92,4 +83,28 @@ function SeriesLine({ row }: { row: Row }) {
       )}
     </div>
   )
+}
+
+const GAPS = ["2", "3", "5", "7", "10", "14"]
+
+/** A repeat's times kept apart, counted from when you did the last one (C50: "laundry at least 7 days apart"): here
+ * and in a repeating task's detail (8 Nov: one place for everything about a repeat). */
+export function TimesApart({ row }: { row: Pick<Row, "id" | "title" | "min_gap_days"> }) {
+  const picked = useRef<string>("")
+  const space = useCommand("series_spacing", { label: () => `${row.title}: ${picked.current ? `at least ${picked.current} days apart` : "times not kept apart"}` })
+  const gap = row.min_gap_days ? String(row.min_gap_days) : ""
+  return (
+    <Menu
+      label={`Days between ${row.title}`}
+      value={gap}
+      onPick={(days) => days !== gap && ((picked.current = days), space({ id: row.id, days: days ? Number(days) : null }))}
+      options={[{ value: "", label: "Times apart: any" }, ...GAPS.map((d) => ({ value: d, label: `At least ${d} days apart` })), ...(gap && !GAPS.includes(gap) ? [{ value: gap, label: `At least ${gap} days apart` }] : [])]}
+    />
+  )
+}
+
+/** The repeat a task or event belongs to, as Settings → Repeating lists it. */
+export function useSeriesRow(seriesId: number | null | undefined): Row | undefined {
+  const rows = useQuery({ queryKey: ["series_list"], queryFn: () => query("series_list"), enabled: seriesId != null }).data
+  return rows?.find((r) => r.id === seriesId)
 }

@@ -234,7 +234,7 @@ function SoFar({ learning }: { learning?: Schemas["LearningOut"] }) {
         : nights < needNights
           ? `${nights} of ${needNights} nights recorded`
           : `Learned from ${many(nights, "night")}${sleep.changes?.length ? ": suggests a new time" : ", in step with your settings"}${sleep.usual_nap_min ? `; you nap about ${dur(sleep.usual_nap_min)}` : ""}`,
-      to: "/body",
+      to: "/insights?tab=sleep",
     },
     {
       icon: "fork-knife",
@@ -248,7 +248,7 @@ function SoFar({ learning }: { learning?: Schemas["LearningOut"] }) {
               .map((m) => `${m.kind[0].toUpperCase()}${m.kind.slice(1)} about ${ampm(m.usual_start as string)}${m.usual_min ? `, ${dur(m.usual_min)}` : ""}${m.group === "weekends" ? " at weekends" : ""}`)
               .join(" · ")
           : `${mealDays} of ${meals.min_days ?? 4} days recorded`,
-      to: "/body?tab=meals",
+      to: "/insights?tab=meals",
     },
     {
       icon: "sliders-horizontal",

@@ -17,7 +17,7 @@ import { useInbox } from "@/inbox/InboxPage"
 import { useShell } from "@/shell/ShellContext"
 import { Calendars, useCalendars } from "./Calendars"
 import { AccountList, signInAgain } from "./GoogleAccounts"
-import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess, wantsSignIn } from "./GoogleConnect"
+import { ConnectGoogle, GmailConnect, GmailSwitch, offline, readable, useGoogleAccess, wantsSignIn } from "./GoogleConnect"
 import { MailLog } from "./MailLog"
 import { AiConnect, useAi } from "./AiConnect"
 import { SectionHead } from "./SettingsPage"
@@ -127,7 +127,7 @@ function Google() {
   const connected = !!access?.calendar
   const asking = !access?.justNow && accounts.some((a) => signInAgain(a, calendars)) // until the next sync, after a new sign-in
   const wanted = !!gcal && (calendars.length > 0 || gcal.read.length > 0 || gcal.publish)
-  const state: [string, string] = !connected ? (wanted ? ["Not connected", "var(--fr-warn)"] : ["Off", "var(--color-neutral-500)"]) : asking ? ["Connect again", "var(--fr-warn)"] : reading.some((c) => c.error) ? ["Trouble reading", "var(--fr-due)"] : ["Connected", "var(--color-accent-300)"]
+  const state: [string, string] = !connected ? (wanted ? ["Not connected", "var(--fr-warn)"] : ["Off", "var(--color-neutral-500)"]) : asking ? ["Connect again", "var(--fr-warn)"] : reading.some((c) => c.error && !offline(c.error)) ? ["Trouble reading", "var(--fr-due)"] : reading.some((c) => offline(c.error)) ? ["Offline", "var(--fr-warn)"] : ["Connected", "var(--color-accent-300)"]
   const last = reading.map((c) => c.last_sync).filter(Boolean).sort().at(-1)
   const another = (
     <>
@@ -176,10 +176,11 @@ function Gmail() {
   const read = (useInbox().data?.sources ?? []).filter((s) => s.kind === "gmail" && s.enabled) // one for each account
   const allowed = (access?.accounts ?? []).filter((a) => a.gmail)
   const expired = !access?.justNow && allowed.some((a) => wantsSignIn(a.mail_error))
-  const trouble = allowed.some((a) => a.mail_error)
+  const trouble = allowed.some((a) => a.mail_error && !offline(a.mail_error))
+  const away = allowed.some((a) => offline(a.mail_error))
   const last = read.map((s) => s.last_sync).filter(Boolean).sort().at(-1)
   const sync = useCommand("sync_now", { label: (o) => o.result.message ?? "Syncing" })
-  const state: [string, string] = !gmail?.enabled ? ["Off", "var(--color-neutral-500)"] : !granted ? ["Needs Google's OK", "var(--fr-warn)"] : expired ? ["Connect again", "var(--fr-warn)"] : trouble ? ["Trouble reading", "var(--fr-due)"] : ["Reading", "var(--color-accent-300)"]
+  const state: [string, string] = !gmail?.enabled ? ["Off", "var(--color-neutral-500)"] : !granted ? ["Needs Google's OK", "var(--fr-warn)"] : expired ? ["Connect again", "var(--fr-warn)"] : trouble ? ["Trouble reading", "var(--fr-due)"] : away ? ["Offline", "var(--fr-warn)"] : ["Reading", "var(--color-accent-300)"]
   return (
     <Card icon="envelope-simple" title="Gmail" status={state} note="Friday reads new mail and suggests assignments, due dates and events. It never sends or deletes.">
       <GmailSwitch />
@@ -257,10 +258,10 @@ function Feeds() {
           <span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--color-neutral-400)" }} />
           <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
             <span style={{ fontWeight: 500 }}>{f.name}</span>
-            <span style={{ fontSize: 12, color: f.last_error ? "var(--fr-due)" : "var(--color-neutral-500)" }}>{f.last_error ?? (f.last_sync ? `Read ${when(f.last_sync, today)}` : "Not read yet")}</span>
+            <span style={{ fontSize: 12, color: f.last_error ? (offline(f.last_error) ? "var(--fr-warn)" : "var(--fr-due)") : "var(--color-neutral-500)" }}>{f.last_error ? readable(f.last_error) : (f.last_sync ? `Read ${when(f.last_sync, today)}` : "Not read yet")}</span>
           </span>
           <span style={{ display: "flex", gap: 6 }}>
-            {f.last_error && (
+            {f.last_error && !offline(f.last_error) && (
               <button className="btn btn-secondary" onClick={() => { const next = window.prompt("New calendar link"); if (next) edit({ id: f.id, url: next }) }} style={{ fontSize: 12 }}>
                 Paste new link
               </button>

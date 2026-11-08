@@ -12,7 +12,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
-import { query, type Schemas } from "@/api/client"
+import { errorWords, query, type Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { Card } from "@/dialogs/SetupParts"
 import { useCommand } from "@/hooks/useCommand"
@@ -511,7 +511,7 @@ export function AiCheck() {
   const [busy, setBusy] = useState(false)
   const run = async () => {
     setBusy(true)
-    setChecks(await query("ai_check").catch((e) => [{ model: "", job: "", ok: false, said: String(e) }]))
+    setChecks(await query("ai_check").catch((e) => [{ model: "", job: "", ok: false, said: errorWords(e) }]))
     setBusy(false)
   }
   return (

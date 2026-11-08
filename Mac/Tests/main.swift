@@ -498,5 +498,17 @@ test("an update keeps Friday Test's user through the restart, once; then it star
     try? FileManager.default.removeItem(at: root)
 }
 
+test("the server stopping while it starts is said with what to do, the detail after (8 Nov)") {
+    let busy = Server.startupWords(started: true, log: "ERROR: [Errno 48] error while attempting to bind: address already in use")
+    check(busy.hasPrefix("Another app is using Friday's port"), "a taken port: quit the other copy")
+    check(busy.contains("What it said:\n") && busy.contains("[Errno 48]"), "the detail stays, below")
+    check(Server.startupWords(started: true, log: "sqlite3.OperationalError: database is locked").hasPrefix("Friday's data is in use"), "a locked database")
+    check(Server.startupWords(started: true, log: "OSError: [Errno 28] No space left on device").hasPrefix("Your Mac's disk is full"), "a full disk")
+    check(Server.startupWords(started: false, log: "The file doesn't exist.").hasPrefix("Friday's server couldn't be opened"), "not opened at all")
+    let other = Server.startupWords(started: true, log: "Traceback (most recent call last): …")
+    check(other.contains("friday_support@friday-scheduler.com") && !other.hasPrefix("Traceback"), "anything else: plain words first")
+    check(Server.startupWords(started: true, log: "  ").hasSuffix("with what happened."), "no detail: no heading, nothing pointed at")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

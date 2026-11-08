@@ -3,7 +3,7 @@
 // as a replan would, a few seconds. An event that makes work late offers other times, which `onTime` takes.
 
 import { useEffect, useState } from "react"
-import { queryBody, type Schemas } from "@/api/client"
+import { errorWords, queryBody, type Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { when } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
@@ -28,7 +28,7 @@ export function useFit(command: FitCommand, input: Record<string, unknown> | nul
     if (!key || !input) return
     setError(null)
     const timer = setTimeout(
-      () => queryBody("fit", { command, input, exact: false }).then((out) => setFit({ for: key, out }), (e) => setError(e instanceof Error ? e.message : String(e))),
+      () => queryBody("fit", { command, input, exact: false }).then((out) => setFit({ for: key, out }), (e) => setError(errorWords(e))),
       400,
     )
     return () => clearTimeout(timer)
@@ -39,7 +39,7 @@ export function useFit(command: FitCommand, input: Record<string, unknown> | nul
     try {
       setFit({ for: key, out: await queryBody("fit", { command, input, exact: true }) })
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(errorWords(e))
     }
     setBusy(false)
   }

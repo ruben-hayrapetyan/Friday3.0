@@ -11,6 +11,7 @@ import { clock, dur, weekday, when } from "@/lib/format"
 import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
+import { TimesApart, useSeriesRow } from "@/settings/Repeating"
 import { usePresets } from "./AddBox"
 import { progress } from "./groups"
 import { fadingSaid } from "./fading"
@@ -56,6 +57,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
   const [asking, setAsking] = useState(false)
   const [logging, setLogging] = useState(false)
   const halfLife = (useSettings().data as { fading_late?: { half_life_days?: number } } | undefined)?.fading_late?.half_life_days ?? 3
+  const series = useSeriesRow(detail?.item.series_id) // a repeating task: its times apart are set here too (8 Nov)
   if (!detail) return <aside />
   const item = detail.item
   const p = progress(item)
@@ -230,6 +232,17 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
             {item.series_id != null && travel !== null ? `, every ${item.title} from today.` : "."}
           </span>
         </span>
+        {series && !series.fixed && !series.external && (
+          <>
+            <span className="fr-kicker" title="Counted from when you did the last one; closer only when it would be late otherwise">
+              Times apart
+            </span>
+            <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <TimesApart row={series} />
+              <span className="fr-kicker">{series.min_gap_days ? `Each ${item.title} at least ${series.min_gap_days} days after the last one you did.` : `${item.title} can come any time in its window.`}</span>
+            </span>
+          </>
+        )}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>

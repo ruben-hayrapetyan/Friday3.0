@@ -21,6 +21,7 @@ import { useLook } from "@/theme/LookProvider"
 import { draftAt, draftOf } from "@/shell/EventPane"
 import { DueCount, dueBlock } from "./DueCount"
 import { DueLane } from "./DueLane"
+import { foundHref } from "@/todo/found"
 import { useGlide } from "./glide"
 import { type TrialPlan, useWhatIf, whatIf } from "@/whatif/store"
 import { asBlock, BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, PX, SleepBand, type TriedLook } from "./Pieces"
@@ -90,12 +91,12 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   // From the wake time to core sleep, stretched for anything earlier or later on these days.
   // The past as it went: a block a timer sitting covers gives way to the sitting, and a deleted item's goes; blocks
   // and sittings are laid out together, side by side where they overlap, rather than one drawn over the other.
-  // The meals you ate (Sleep & meals) as done blocks where you ate them; the routine's planned pieces give way.
+  // The meals you ate (Insights → Meals) as done blocks where you ate them; the routine's planned pieces give way.
   const meals = pastMeals(useMeals().data, plan, now)
   const eaten = eatenRoutines(meals)
   const eatingKeys = new Set(meals.filter((m) => m.eating).map((m) => m.block.key))
   const mealBlocks = meals.map((m) => m.block)
-  const openMeals = useNavigate()
+  const navigate = useNavigate()
   const sessions = (plan.sessions ?? []).filter((s) => !eaten.has(s.item_id))
   const shown = plan.blocks.filter((b) => b.state !== "timed" && b.state !== "gone" && !eaten.has(b.item_id))
   const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : fitAxis({ startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }, [...fixed, ...plan.blocks, ...sessions, ...mealBlocks], dates)
@@ -204,7 +205,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
               {event && !event.allDay && layout([event], date, axis).map((p) => <DraftBox key="draft" p={p} title={event.title} />)}
               {layout([...shown, ...sessions, ...mealBlocks], date, axis).map((p) =>
                 p.item.key.startsWith("M") ? (
-                  // A meal you ate: a done Lunch where you had it, opening Sleep & meals to change it.
+                  // A meal you ate: a done Lunch where you had it, opening Insights → Meals to change it.
                   <BlockBox
                     key={p.item.key}
                     p={p}
@@ -213,7 +214,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                     done={!eatingKeys.has(p.item.key)}
                     look={eatingKeys.has(p.item.key) ? "sitting" : undefined}
                     today={today}
-                    onOpen={() => !justDragged() && openMeals("/body?tab=meals")}
+                    onOpen={() => !justDragged() && navigate("/insights?tab=meals")}
                     onGrab={() => {}}
                     onResize={() => {}}
                   />
@@ -241,6 +242,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                   onGrab={(e) => (p.item.key === selected?.key && select(null), begin(e, { ...grabbed(p.item, "move", minuteAt(e)), group: pickedKeys.has(p.item.key) && picked.length > 1 }))}
                   onResize={(e, edge) => (p.item.key === selected?.key && select(null), begin(e, grabbed(p.item, edge === "top" ? "resize-top" : "resize", minuteAt(e))))}
                   retime={{ begin: () => select(null), save: (span) => retime.block(p.item, span) }}
+                  onEdit={p.item.item_id ? () => (select(null), picks.clear(), navigate(foundHref(p.item.item_id))) : undefined}
                 />
                 ),
               )}

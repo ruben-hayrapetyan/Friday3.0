@@ -70,12 +70,13 @@ interface BlockProps {
   today: string
   onOpen: (e?: React.MouseEvent) => void // with the click, whose ⌘ or Shift picks it with others
   onGrab: (e: React.PointerEvent) => void
+  onEdit?: () => void // a double-click on it, away from its time: the task in the to-do (todo/found.ts)
   inside?: string // the event whose time it's planned in (planner/holds.py): drawn in it, a little in from its left
   onResize: (e: React.PointerEvent, edge: "top" | "bottom") => void
   retime?: Retime
 }
 
-export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, today, onOpen, onGrab, onResize, retime, inside }: BlockProps) {
+export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, today, onOpen, onGrab, onEdit, onResize, retime, inside }: BlockProps) {
   const b = p.item
 
   const { skinOf } = useLook()
@@ -95,6 +96,7 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, tod
       tabIndex={0}
       data-block-key={b.key}
       onClick={onOpen}
+      onDoubleClick={onEdit}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onOpen())}
       onPointerDown={look || running ? undefined : onGrab}
       title={

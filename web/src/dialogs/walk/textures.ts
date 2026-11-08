@@ -3,6 +3,7 @@
 // a height field) and how rough it is, generated from noise once when the walk opens.
 
 import * as THREE from "three"
+import { LEAVES, SEASON, type Season } from "./season"
 
 export interface Surface {
   map: THREE.Texture
@@ -165,15 +166,17 @@ export const concrete = () =>
     })
   })
 
-/** A lawn in late October: green going tired, with brown and the first fallen leaves. 4m. */
-export const lawn = () =>
-  once("lawn", () => {
+/** A lawn in the walk's season (walk/season.ts): in late October green going tired, with brown and the first fallen
+ * leaves; in winter under snow, a little grass through it; in spring fresh, with flowers; in summer deep green. 4m. */
+export const lawn = (season: Season = SEASON) =>
+  once(`lawn-${season}`, () => {
     const n = 256
     const low = fbm(n, 5, 4, 31)
     const fine = fbm(n, 128, 2, 32)
     const leaves = fbm(n, 24, 2, 33)
     return surface(n, [4, 4], 3, (i, j) => {
       const k = j * n + i
+      if (season !== "fall") return seasonalLawn(season, low[k], fine[k], leaves[k], i, j)
       const dry = low[k]
       let r = 62 + dry * 50 + (fine[k] - 0.5) * 40
       let g = 88 + dry * 30 + (fine[k] - 0.5) * 46
@@ -188,6 +191,22 @@ export const lawn = () =>
       return [clamp(r), clamp(g), clamp(b), fine[k] + (leaf ? 0.3 : 0), 0.95]
     })
   })
+
+/** One texel of a lawn out of fall: [r, g, b, height, roughness]. */
+function seasonalLawn(season: Season, low: number, fine: number, spot: number, i: number, j: number): [number, number, number, number, number] {
+  if (season === "winter") {
+    // snow, bluish in its hollows, with a tuft of grass through it here and there
+    const tuft = spot > 0.8 && hash(i >> 1, j >> 1, 36) > 0.6
+    if (tuft) return [clamp(96 + fine * 30), clamp(104 + fine * 26), clamp(70), fine + 0.2, 0.95]
+    const v = 226 + (low - 0.5) * 30 + (fine - 0.5) * 14
+    return [clamp(v - 6), clamp(v - 2), clamp(v + 8), 0.3 + low * 0.5, 0.7]
+  }
+  const green = season === "spring" ? [88, 150, 52] : [58, 112, 40]
+  let [r, g, b] = [green[0] + (low - 0.5) * 30 + (fine - 0.5) * 30, green[1] + (low - 0.5) * 34 + (fine - 0.5) * 40, green[2] + (fine - 0.5) * 16]
+  const flower = season === "spring" && spot > 0.78 && hash(i >> 1, j >> 1, 37) > 0.55
+  if (flower) [r, g, b] = hash(i >> 2, j >> 2, 38) > 0.5 ? [242, 236, 214] : [236, 204, 74] // daisies, dandelions
+  return [clamp(r), clamp(g), clamp(b), fine + (flower ? 0.25 : 0), 0.95]
+}
 
 /** Red brick in running bond, 1.2m square: 6 bricks across, 16 courses. */
 export const brick = (tone: "red" | "pale" = "red") =>
@@ -372,21 +391,17 @@ export const carpet = () =>
 
 export type Palette = "maple" | "birch" | "oak"
 
-const LEAF_COLORS: Record<Palette, string[]> = {
-  maple: ["#b8321e", "#cf4a1f", "#e0681f", "#a2261c", "#d9532a", "#8e2a1c", "#e88a2a"],
-  birch: ["#e2b42c", "#d39b1c", "#f0c94a", "#c98c18", "#e7bf3a", "#b5862a", "#d6a832"],
-  oak: ["#a8742a", "#8a5a22", "#c48a2c", "#6f7a2a", "#9c6a1e", "#b77d34", "#7e8c32"],
-}
-
-/** A spray of leaves on a transparent card, for the trees and for the ones on the ground. */
-export function leaves(palette: Palette): THREE.CanvasTexture {
+/** A spray of leaves on a transparent card, for the trees and for the ones on the ground, in the walk's season (an
+ * oak's few dry ones in winter: a thin spray). */
+export function leaves(palette: Palette, season: Season = SEASON): THREE.CanvasTexture {
   const canvas = document.createElement("canvas")
   canvas.width = canvas.height = 512
   const ctx = canvas.getContext("2d")
   if (ctx) {
     const rnd = random(palette.length * 977 + 3)
-    const colors = LEAF_COLORS[palette]
-    for (let n = 0; n < 70; n++) {
+    const colors = LEAVES[season][palette]
+    const count = colors.length === 0 ? 0 : season === "winter" ? 16 : 70
+    for (let n = 0; n < count; n++) {
       const x = 50 + rnd() * 412
       const y = 50 + rnd() * 412
       const s = 26 + rnd() * 34

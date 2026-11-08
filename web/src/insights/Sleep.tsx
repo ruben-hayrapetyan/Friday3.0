@@ -1,4 +1,4 @@
-// Sleep (Sleep & meals → Sleep, above the nights to log or put right): what your tracked nights say, while tracking
+// Sleep (Insights → Sleep, above the nights to log or put right): what your tracked nights say, while tracking
 // is on (the switch is below it). Your last two weeks of nights on one timeline from 8pm to the next noon (a bar from bed to up,
 // the schedule you set as an outline behind it, ticks where you were done with work and ready to work), your usual
 // times, your wind-down and morning routine, your naps, and what Friday learned, to take with one click.
@@ -38,13 +38,13 @@ export function usual(times: string[], night: boolean): string | null {
   return `${String(Math.floor(mid / 60)).padStart(2, "0")}:${String(mid % 60).padStart(2, "0")}`
 }
 
-/** `here`: on Sleep & meals itself, with no link to it, and nothing while tracking is off (its switch is below). */
+/** `here`: on Insights → Sleep itself, with no link to it, and nothing while tracking is off (its switch is below). */
 export function SleepSection({ here = false }: { here?: boolean }) {
   const sleep = useSleep().data
   const navigate = useNavigate()
   const log = here ? undefined : (
-    <button className="fr-link" onClick={() => navigate("/body?tab=sleep")} style={{ fontSize: 12 }}>
-      {sleep?.on ? "Log or fix a night" : "Turn it on in Sleep & meals"}
+    <button className="fr-link" onClick={() => navigate("/insights?tab=sleep")} style={{ fontSize: 12 }}>
+      {sleep?.on ? "Log or fix a night" : "Turn it on in Insights → Sleep"}
     </button>
   )
   if (!sleep?.on && here) return null
@@ -58,7 +58,7 @@ export function SleepSection({ here = false }: { here?: boolean }) {
   return (
     <Section title="Sleep" note="Your last two weeks of nights, and what Friday learned from them" right={log}>
       <Usual sleep={sleep} />
-      {nights.length ? <Timeline nights={nights} /> : <span style={{ color: "var(--color-neutral-400)" }}>No nights yet. Tap “Going to bed” and “I’m up” in the Now bar, or log last night {here ? "below" : <>in Sleep &amp; meals</>}.</span>}
+      {nights.length ? <Timeline nights={nights} /> : <span style={{ color: "var(--color-neutral-400)" }}>No nights yet. Tap “Going to bed” and “I’m up” in the Now bar, or log last night {here ? "below" : <>in Insights → Sleep</>}.</span>}
       <LearnedSleep sleep={sleep} />
     </Section>
   )

@@ -1,5 +1,5 @@
-// Track my sleep and Track my meals (Settings → Schedule, and Sleep & meals): each off until you turn it on. Logging
-// a night or a meal, and putting one right, is in Sleep & meals, with what Friday learned from them; the Now
+// Track my sleep and Track my meals (Settings → Schedule, and Insights → Sleep and Meals): each off until you turn it on. Logging
+// a night or a meal, and putting one right, is in Insights → Sleep and Meals, with what Friday learned from them; the Now
 // bar offers the tap that fits the hour.
 
 import { useNavigate } from "react-router"
@@ -22,7 +22,7 @@ export function daysSaid(days: string[], field: "bedtime" | "wake"): string {
   return `${days.map((d) => SHORT[d]).join(", ")} ${field === "bedtime" ? "nights" : "mornings"}`
 }
 
-/** One of the two switches, as Settings → Schedule shows it, with the way to Sleep & meals when it's on. */
+/** One of the two switches, as Settings → Schedule shows it, with the way to Insights → Sleep or Meals when it's on. */
 export function Tracking({ what }: { what: "sleep" | "meals" }) {
   const settings = useSettings().data as Record<string, { on?: boolean }> | undefined
   const save = useCommand("settings_set", { label: () => "Saved" })
@@ -32,8 +32,8 @@ export function Tracking({ what }: { what: "sleep" | "meals" }) {
   const name = what === "sleep" ? "Track my sleep" : "Track my meals"
   const note =
     what === "sleep"
-      ? "Optional. Tap “Done with work”, “Going to bed” and “I’m up” in the Now bar (or log a night in Sleep & meals); Friday learns your real bedtime, wake time, morning routine and wind-down before bed. Off, nothing is recorded or learned."
-      : "Optional. Tap “Eating now” and “Done eating” in the Now bar (or log a meal in Sleep & meals); Friday learns when you eat, for how long and what you skip, and keeps your meal free while you eat. Off, nothing is recorded or learned."
+      ? "Optional. Tap “Done with work”, “Going to bed” and “I’m up” in the Now bar (or log a night in Insights → Sleep); Friday learns your real bedtime, wake time, morning routine and wind-down before bed. Off, nothing is recorded or learned."
+      : "Optional. Tap “Eating now” and “Done eating” in the Now bar (or log a meal in Insights → Meals); Friday learns when you eat, for how long and what you skip, and keeps your meal free while you eat. Off, nothing is recorded or learned."
   return (
     <Field name={name} note={note}>
       <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -41,8 +41,8 @@ export function Tracking({ what }: { what: "sleep" | "meals" }) {
         <span style={{ color: on ? "var(--color-text)" : "var(--color-neutral-400)" }}>{on ? "On" : "Off"}</span>
       </span>
       {on && (
-        <button className="fr-link" onClick={() => navigate(`/body?tab=${what}`)} style={{ alignSelf: "flex-start", fontSize: 12 }}>
-          {what === "sleep" ? "Log or fix a night in Sleep & meals" : "Log or fix a meal in Sleep & meals"}
+        <button className="fr-link" onClick={() => navigate(`/insights?tab=${what}`)} style={{ alignSelf: "flex-start", fontSize: 12 }}>
+          {what === "sleep" ? "Log or fix a night in Insights → Sleep" : "Log or fix a meal in Insights → Meals"}
         </button>
       )}
     </Field>

@@ -1,4 +1,4 @@
-// Sleep & meals → Meals: the switch, "Eating now" and "Done eating" (the Now bar's taps, for when you missed one), and
+// Insights → Meals: the switch, "Eating now" and "Done eating" (the Now bar's taps, for when you missed one), and
 // the last two weeks a day a row: each meal to change or delete, and a meal not recorded to log or say skipped, in a
 // card under the row. Eating or skipping a meal ticks off that day's Lunch or Dinner routine. What they say is above.
 

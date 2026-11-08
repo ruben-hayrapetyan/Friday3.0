@@ -1,5 +1,5 @@
 // The meals you ate, on the calendar as your Lunch and Dinner are, only in the past (4 Nov: "treat them as if they
-// were regular lunch and dinner but just in the past"): each meal Sleep & meals recorded is a done block at the time
+// were regular lunch and dinner but just in the past"): each meal Insights → Meals recorded is a done block at the time
 // you ate it, and the pieces the plan had for that day's routine give way to it. A meal you're eating runs to now.
 // Skipped meals draw nothing; the routine they skipped is gone from the plan already.
 

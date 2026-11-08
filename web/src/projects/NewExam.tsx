@@ -4,7 +4,7 @@
 
 import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
-import { ApiError, command } from "@/api/client"
+import { command, errorWords } from "@/api/client"
 import { useToast } from "@/components/Toasts"
 import { Chip, H, Icon, Seg } from "@/components/fr/controls"
 import { undoAll } from "@/hooks/useCommand"
@@ -55,7 +55,7 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
       toast({ message: prep ? "Exam and its prep added" : "Exam added", action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
       onClose(true)
     } catch (error) {
-      toast({ message: error instanceof ApiError ? error.message : String(error), tone: "error" })
+      toast({ message: errorWords(error), tone: "error" })
       if (ids.length) onClose(true) // the exam was made; only its prep wasn't
     } finally {
       client.invalidateQueries()

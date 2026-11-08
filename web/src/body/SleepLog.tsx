@@ -1,4 +1,4 @@
-// Sleep & meals → Sleep: the switch, the Now bar's four taps for when you missed one and Taking a nap, your naps
+// Insights → Sleep: the switch, the Now bar's four taps for when you missed one and Taking a nap, your naps
 // (29 Oct) to log, change or delete, and the last two weeks a night a row, each to change, or to log when it wasn't
 // recorded, in a card under the row. What they say is above it.
 

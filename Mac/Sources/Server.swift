@@ -137,7 +137,7 @@ final class Server: ObservableObject {
         do {
             try started.run()
         } catch {
-            state = .failed("Couldn't start fridayd: \(error.localizedDescription)")
+            state = .failed(Self.startupWords(started: false, log: error.localizedDescription))
             return
         }
         process = started
@@ -155,12 +155,39 @@ final class Server: ObservableObject {
                     log = ""
                     return await ensureRunning(attempt: attempt + 1)
                 }
-                state = .failed("fridayd stopped while starting:\n" + log.suffix(600))
+                state = .failed(Self.startupWords(started: true, log: log))
                 return
             }
             try? await Task.sleep(for: .milliseconds(500))
         }
-        state = .failed("fridayd didn't answer within a minute:\n" + log.suffix(600))
+        state = .failed("Friday's server didn't answer within a minute. Your Mac may be very busy: wait a moment and "
+            + "press Try again. If it keeps happening, quit Friday and open it again.\n\nWhat it said last:\n"
+            + log.suffix(600))
+    }
+
+    /// Why the server stopped while starting, in words with what to do (8 Nov: "make all errors and warnings very
+    /// user friendly so that they can debug it on the spot"), then what it said, for anyone who wants the detail.
+    nonisolated static func startupWords(started: Bool, log: String) -> String {
+        let said = log.lowercased()
+        let detail = log.trimmingCharacters(in: .whitespacesAndNewlines)
+        let what: String
+        if said.contains("already in use") {
+            what = "Another app is using Friday's port. Quit any other copy of Friday (or Friday Test), then press Try "
+                + "again; if that doesn't free it, restart your Mac."
+        } else if said.contains("database is locked") {
+            what = "Friday's data is in use by another copy of Friday. Quit it, then press Try again."
+        } else if said.contains("no space left") {
+            what = "Your Mac's disk is full, so Friday can't save anything. Free some space, then press Try again."
+        } else if said.contains("permission denied") || said.contains("operation not permitted") {
+            what = "Friday isn't allowed to open its own files. In System Settings → Privacy & Security → Files and "
+                + "Folders, let Friday in, then press Try again."
+        } else if !started {
+            what = "Friday's server couldn't be opened. Reinstall Friday from friday-scheduler.com, then open it again."
+        } else {
+            what = "Friday's server stopped while starting. Press Try again; if it happens again, write to "
+                + "friday_support@friday-scheduler.com with \(detail.isEmpty ? "what happened" : "what's below")."
+        }
+        return detail.isEmpty ? what : what + "\n\nWhat it said:\n" + detail.suffix(600)
     }
 
     /// A server that isn't set up yet gets your time zone and personal's sleep times. Waited for off the main thread
@@ -180,7 +207,8 @@ final class Server: ObservableObject {
             }
             if code != 0, await Self.status()?["ready"] as? Bool == false {
                 slow = false
-                state = .failed("Friday couldn't set itself up (fridayd init ended with \(code)).")
+                state = .failed("Friday couldn't set itself up for its first start. Press Try again; if it keeps "
+                    + "happening, write to friday_support@friday-scheduler.com (it ended with code \(code)).")
                 return
             }
         }

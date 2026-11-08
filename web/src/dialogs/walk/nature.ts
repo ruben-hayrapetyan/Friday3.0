@@ -1,10 +1,11 @@
-// Trees and fallen leaves for the walk (walk/World.ts): late October in a college town. Trees are grown from a seed
+// Trees and fallen leaves for the walk (walk/World.ts): a college town in the season outside (walk/season.ts). Trees are grown from a seed
 // (a trunk, limbs, branches, and cards of leaves at their ends, lit as one round crown), then repeated with
 // instancing; the leaves on the ground are scattered cards.
 
 import * as THREE from "three"
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"
 import { M } from "./props"
+import { FAR, hasFallenLeaves, LEAVES, SEASON } from "./season"
 import { leaves, type Palette, random } from "./textures"
 
 /** The wind, shared by every swaying thing: seconds. */
@@ -129,6 +130,7 @@ export function forest(plantings: Planting[]): THREE.Group {
   PALETTES.forEach((palette, k) => {
     const mine = plantings.filter((p, i) => (p.kind ?? i % 3) === k)
     if (!mine.length) return
+    const bare = LEAVES[SEASON][palette].length === 0 // a maple or a birch in winter: branches only
     const tex = leaves(palette)
     const leafMat = new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.75, envMapIntensity: 0.8 })
     swaying(leafMat, 0.012)
@@ -146,7 +148,7 @@ export function forest(plantings: Planting[]): THREE.Group {
       const v = 0.86 + (((p.x * 31 + p.z * 17) % 7) + 7) / 7 / 4
       crowns.setColorAt(i, tint.setRGB(v, v, v))
     })
-    for (const mesh of [trunks, crowns]) {
+    for (const mesh of bare ? [trunks] : [trunks, crowns]) {
       mesh.castShadow = true
       mesh.receiveShadow = true
       mesh.computeBoundingSphere()
@@ -157,7 +159,7 @@ export function forest(plantings: Planting[]): THREE.Group {
   return group
 }
 
-/** Far woods and hills, in the haze: low, round, autumn-coloured. */
+/** Far woods and hills, in the haze: low, round, coloured as the season has them. */
 export function woods(along: [number, number]): THREE.Group {
   const group = new THREE.Group()
   const rnd = random(4242)
@@ -172,7 +174,7 @@ export function woods(along: [number, number]): THREE.Group {
   const mat = new THREE.MeshStandardMaterial({ roughness: 1, envMapIntensity: 0.6 })
   const count = 520
   const crowns = new THREE.InstancedMesh(geo, mat, count)
-  const colors = [0x9c3b1e, 0xb8641e, 0xc99a2a, 0x6d6a24, 0x8a4a1c, 0x5f6b2c, 0xa8501c]
+  const colors = FAR[SEASON].crowns
   const m = new THREE.Matrix4()
   const c = new THREE.Color()
   for (let i = 0; i < count; i++) {
@@ -187,7 +189,7 @@ export function woods(along: [number, number]): THREE.Group {
   crowns.userData.noAO = true
   group.add(crowns)
   // the hills round the valley
-  const hillMat = new THREE.MeshStandardMaterial({ color: 0x5d5a2e, roughness: 1, envMapIntensity: 0.5 })
+  const hillMat = new THREE.MeshStandardMaterial({ color: FAR[SEASON].hills, roughness: 1, envMapIntensity: 0.5 })
   for (let i = 0; i < 14; i++) {
     const side = i % 2 ? 1 : -1
     const hill = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), hillMat)
@@ -204,6 +206,7 @@ export type Clear = [number, number, number, number]
 /** Leaves fallen on the lawns and the edges of the road, a few hundred cards lying flat. */
 export function fallen(spots: [number, number][]): THREE.Group {
   const group = new THREE.Group()
+  if (!hasFallenLeaves(SEASON)) return group
   const rnd = random(99)
   PALETTES.forEach((palette, k) => {
     const mine = spots.filter((_, i) => i % 3 === k)

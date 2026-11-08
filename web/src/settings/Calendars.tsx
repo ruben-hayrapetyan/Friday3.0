@@ -11,7 +11,7 @@ import { useCommand } from "@/hooks/useCommand"
 import { when } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
 import { usePresets } from "@/todo/AddBox"
-import { accountName, useGoogleAccess } from "./GoogleConnect"
+import { accountName, offline, readable, useGoogleAccess } from "./GoogleConnect"
 
 export const useCalendars = () => useQuery({ queryKey: ["google_calendars"], queryFn: () => query("google_calendars") })
 export const useMacCalendars = () => useQuery({ queryKey: ["mac_calendars"], queryFn: () => query("mac_calendars") })
@@ -83,8 +83,8 @@ function List({ calendars, mac }: { calendars: Listed; mac: boolean }) {
                   {c.primary && <span className="fr-kicker"> · primary</span>}
                   {mac && c.account && c.account !== c.name && <span className="fr-kicker"> · {c.account}</span>}
                 </span>
-                <span title={c.error ?? undefined} style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: c.on && c.error ? "var(--fr-due)" : "var(--color-neutral-500)" }}>
-                  {!c.on ? (c.also_google ? "Not read: Friday reads it from Google" : "Not read") : (c.error ?? (c.last_sync ? `Read ${when(c.last_sync, today)}` : "Reading now"))}
+                <span title={c.error ?? undefined} style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: c.on && c.error ? (offline(c.error) ? "var(--fr-warn)" : "var(--fr-due)") : "var(--color-neutral-500)" }}>
+                  {!c.on ? (c.also_google ? "Not read: Friday reads it from Google" : "Not read") : (c.error ? readable(c.error) : (c.last_sync ? `Read ${when(c.last_sync, today)}` : "Reading now"))}
                 </span>
               </span>
               <Menu options={kinds} value={c.kind} onPick={(kind) => set({ id: c.id, kind })} label={`How ${c.name} is read`} disabled={!c.on} />

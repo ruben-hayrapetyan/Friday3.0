@@ -12,7 +12,7 @@ export function DueLabel({ due, prefix = "Due ", routine = false }: { due: strin
   const { text, tone } = dueLabel(due, now, today)
   if (routine && tone !== "plain")
     return (
-      <span className="tnum" style={{ color: "var(--color-neutral-500)" }} title="Tick it off, or log it in Sleep & meals when it's a meal">
+      <span className="tnum" style={{ color: "var(--color-neutral-500)" }} title="Tick it off, or log it in Insights → Meals when it's a meal">
         {tone === "over" ? "not recorded" : `until ${ampm(due.slice(11, 16))}`}
       </span>
     )

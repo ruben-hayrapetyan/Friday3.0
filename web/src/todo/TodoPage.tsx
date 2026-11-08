@@ -21,10 +21,12 @@ import { dur, lateBy, when } from "@/lib/format"
 import { nextBlocks } from "@/lib/todo"
 import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
+import { pigment } from "@/lib/pigments"
 import { useShell } from "@/shell/ShellContext"
 import { AddBox } from "./AddBox"
 import { BulkBar, menuOpen, pickWith, tasks } from "./Bulk"
 import { addHint, fillFor, GROUPS, type GroupBy, grouped, KINDS_FIRST, OTHER, plural, progress, SORTS, type SortBy, summary } from "./groups"
+import { flashRow, listHolding } from "./found"
 import { DuePicker, LengthInput } from "./Pickers"
 import { useDuplicates } from "@/inbox/queries"
 import { SortPicker } from "./SortPicker"
@@ -62,7 +64,7 @@ type List = (typeof LISTS)[number]
 
 export function TodoPage() {
   const { today } = useShell()
-  const { look, setLook } = useLook()
+  const { look, setLook, light } = useLook()
   const copies = useDuplicates().data?.groups.length ?? 0
   const move = useCommand("edit", { label: (o) => `Moved ${o.result.item?.title ?? ""}` })
   const client = useQueryClient()
@@ -85,6 +87,7 @@ export function TodoPage() {
   const [fresh, setFresh] = useState<number[]>([])
   const [params, setParams] = useSearchParams()
   const selected = params.get("item") ? Number(params.get("item")) : null
+  const found = params.get("found") === "1"
   const list: List = (LISTS as readonly string[]).includes(params.get("list") ?? "") ? (params.get("list") as List) : "Short term"
   const all = (useAllItems(showDone).data ?? []).filter((i) => showDone || i.status === "todo")
   const items = list === "Due" ? all.filter(isDueWork) : all.filter((i) => i.long_term === (list === "Long term"))
@@ -110,6 +113,19 @@ export function TodoPage() {
     setAnchor(id)
     if (selected) select(null)
   }
+  // Found from the calendar: in the list that holds it, its row scrolled to and flashed blue, its detail open.
+  const target = found && selected !== null ? all.find((i) => i.id === selected) : undefined
+  useEffect(() => {
+    if (!target) return
+    const there = items.some((i) => i.id === target.id)
+    const want = listHolding(target, list, there)
+    if (want !== list) return setParams({ item: String(target.id), found: "1", ...(want !== "Short term" ? { list: want } : {}) }, { replace: true })
+    const frame = requestAnimationFrame(() => {
+      flashRow(target.id, pigment("blue", light) ?? "#2a6c9c")
+      setParams({ item: String(target.id), ...(list !== "Short term" ? { list } : {}) }, { replace: true })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [target, items, list, light, setParams])
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select, [contenteditable]")) return
@@ -318,6 +334,7 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging }: R
   return (
     <>
     <div
+      data-todo-row={item.id}
       role="button"
       tabIndex={0}
       onClick={(e) => editing === null && onSelect(e)}
@@ -483,6 +500,7 @@ function Row({ item, fresh, selected, picked, onSelect, dragging }: RowProps) {
   const soon = item.due && item.firmness === "hard" && toMin(item.due) - toMin(`${today}T00:00`) < 2 * 1440
   return (
     <div
+      data-todo-row={item.id}
       role="button"
       tabIndex={0}
       onClick={onSelect}

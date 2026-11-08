@@ -25,6 +25,7 @@ export interface EventDraft {
   saveTo?: string // a new event's calendar (its id, Google's or the Mac's), "" for only Friday; Settings' "New events go to" when unset
   savesToCalendar: boolean // changes here are saved back to it
   auto?: { color: string | null; from: string } // the colour it wears with no pigment of its own, and why
+  was?: { start: string; allDay: boolean } // a saved event as it was opened: its day (for "this and later"), all day or not
 }
 
 /** What the calendar shows: the view, and its first day (null follows today). The sidebar's mini month moves it. */

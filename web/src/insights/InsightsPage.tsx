@@ -1,11 +1,14 @@
 // Insights (v22): the last few weeks in three numbers, how long things really take by kind (and whether Friday
-// adjusts estimates for you), when you get things done (what your sleep and meals say is with them, in Sleep &
-// meals), what Friday learned for you to approve, one comparison question, and the load ahead
-// against what you can do. This week, the week's look back, moved here from Review (27 Oct); it's suggested on the
-// week's last day.
+// adjusts estimates for you), when you get things done, what Friday learned for you to approve (sleep and meals
+// too), one comparison question, and the load ahead against what you can do. Sleep and Meals are tabs here, with
+// their timelines, their switches and the nights and meals to log or put right (8 Nov: one cohesive page, where they
+// had a page of their own). This week, the week's look back, moved here from Review (27 Oct); it's suggested on the
+// week's last day. The tab is in the address (`?tab=sleep`), so a link can open one.
 
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
+import { useSearchParams } from "react-router"
+import { BodyTab } from "@/body/BodyPage"
 import { query } from "@/api/client"
 import { H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
@@ -28,41 +31,54 @@ const RANGES = [
   { value: 12, label: "12 weeks" },
 ]
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+const TABS = [
+  { value: "trends", label: "Trends" },
+  { value: "sleep", label: "Sleep" },
+  { value: "meals", label: "Meals" },
+  { value: "week", label: "This week" },
+] as const
+type Tab = (typeof TABS)[number]["value"]
 const HOURS = Array.from({ length: 16 }, (_, i) => String(i + 8).padStart(2, "0"))
 
 export function InsightsPage() {
   const { today } = useShell()
   const settings = useSettings().data as Record<string, { week_start?: string }> | undefined
   const lastDay = weekday(addDays(today, 1)).toLowerCase() === (settings?.time?.week_start ?? "mon")
-  const [tab, setTab] = useState<"Trends" | "This week">(lastDay ? "This week" : "Trends")
+  const [params, setParams] = useSearchParams()
+  const asked = params.get("tab")
+  const tab: Tab = TABS.some((t) => t.value === asked) ? (asked as Tab) : lastDay ? "week" : "trends"
+  const setTab = (next: Tab) => setParams({ tab: next }, { replace: true })
   const [weeks, setWeeks] = useState(4)
   const data = useQuery({ queryKey: ["insights", weeks], queryFn: () => query("insights", { weeks }) }).data
-  const suggested = lastDay ? "This week" : null
+  const suggested: Tab | null = lastDay ? "week" : null
   return (
     <>
       <div className="fr-page-head">
         <span className="fr-h fr-title">Insights</span>
         <Seg
-          options={(["Trends", "This week"] as const).map((t) => ({
-            value: t,
+          options={TABS.map((t) => ({
+            value: t.value,
             label: (
               <>
-                {t}
-                {t === suggested && <span style={{ fontSize: 11, color: "var(--color-accent-300)" }}>suggested</span>}
+                {t.label}
+                {t.value === suggested && <span style={{ fontSize: 11, color: "var(--color-accent-300)" }}>suggested</span>}
               </>
             ),
           }))}
           value={tab}
           onPick={setTab}
+          label="Insights"
         />
-        {tab === "Trends" && <Seg options={RANGES} value={weeks} onPick={setWeeks} />}
+        {tab === "trends" && <Seg options={RANGES} value={weeks} onPick={setWeeks} />}
         <div style={{ flex: 1 }} />
         <span className="fr-kicker fr-head-note" style={{ whiteSpace: "nowrap" }}>
-          {tab === "This week" ? "Choices apply when you finish" : data ? `Based on ${data.done} finished ${data.done === 1 ? "thing" : "things"}` : ""}
+          {tab === "week" ? "Choices apply when you finish" : tab === "trends" && data ? `Based on ${data.done} finished ${data.done === 1 ? "thing" : "things"}` : ""}
         </span>
       </div>
-      {tab === "This week" ? (
+      {tab === "week" ? (
         <WeeklyReview />
+      ) : tab === "sleep" || tab === "meals" ? (
+        <BodyTab tab={tab} />
       ) : (
       <div className="fr-panel" style={{ overflowY: "auto" }}>
         {data && (

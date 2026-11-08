@@ -38,7 +38,7 @@ describe("a command", () => {
     answer(422, { field: "id", message: "no item T2" })
     await runCommand(client, toast, "done", { id: 2 }, { optimistic: withoutItem })
     expect(client.getQueryData(["items"])).toEqual(items)
-    expect(toasts).toEqual([{ message: "id: no item T2", tone: "error" }])
+    expect(toasts).toEqual([{ message: "No item T2", tone: "error" }])
   })
 
   it("undoes several commands newest first, as one action", async () => {
@@ -79,7 +79,7 @@ describe("several commands as one change (Ask Claude's, a triage option's)", () 
     const fetch = server("pin")
     expect(await runTogether(client, toast, [{ command: "edit", input: { id: 1 } }, { command: "pin", input: { id: 9 } }])).toBeNull()
     expect(sent(fetch)).toEqual([["edit", null], ["pin", null], ["undo", 21]])
-    expect(toasts[0]).toEqual({ message: "id: no item T9", tone: "error" })
+    expect(toasts[0]).toEqual({ message: "No item T9", tone: "error" })
   })
 
   it("undone from the toast, ⌘Z doesn't try them again", async () => {

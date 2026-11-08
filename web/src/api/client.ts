@@ -24,26 +24,72 @@ export type Item = Schemas["ItemOut"]
 
 export class ApiError extends Error {
   status: number
+  field: string | null // the input it's about, for a form to point at; never put in front of the words (8 Nov)
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, field: string | null = null) {
     super(message)
     this.status = status
+    this.field = field
   }
+}
+
+/** A field's key as words: "duration_min" → "Duration", "start" → "Start". */
+export function fieldWords(key: string): string {
+  const words = key.replace(/_(min|utc|id)$/, "").replace(/_/g, " ").trim()
+  return words ? words[0].toUpperCase() + words.slice(1) : key
+}
+
+/** What went wrong, as a sentence to read on the spot (8 Nov: "make all errors and warnings very user friendly so
+ * that they can debug it on the spot"): the server's own words without its field keys in front ("end: end: …",
+ * "value: planner.debounce_s: …"), a check that failed named by its field in words, and when there's no server's
+ * word at all, what it means and what to do. */
+export function messageFrom(status: number, body: unknown): string {
+  const b = (body ?? {}) as { message?: unknown; field?: unknown; detail?: unknown }
+  if (typeof b.message === "string" && b.message) return withoutKeys(b.message, typeof b.field === "string" ? b.field : null)
+  if (Array.isArray(b.detail)) {
+    return b.detail
+      .map((d: { msg?: string; loc?: unknown[] }) => {
+        const key = [...(d.loc ?? [])].reverse().find((part) => typeof part === "string" && part !== "body") as string | undefined
+        return `${key ? `${fieldWords(key)}: ` : ""}${(d.msg ?? "").replace(/^Value error, /, "")}`
+      })
+      .join("; ")
+  }
+  if (status >= 500) return "Something went wrong inside Friday, and nothing was changed. Try again; if it keeps happening, Settings → Advanced → Diagnose shows what happened."
+  if (status === 404) return "Friday doesn't know that one any more: it may have been deleted. Reload the page."
+  return `Friday said no (${status}). Try again; if it keeps happening, Settings → Advanced → Diagnose shows why.`
+}
+
+/** "end: that's later than now" → "That's later than now"; "value: planner.debounce_s: Input should be …" → "Input should be …". */
+function withoutKeys(message: string, field: string | null): string {
+  let said = message
+  if (field) while (said.startsWith(`${field}: `)) said = said.slice(field.length + 2)
+  // keys, never words: "value", a snake_case field ("parent_id"), a settings path ("planner.debounce_s")
+  said = said.replace(/^((value|input|command|changes|[a-z]+(_[a-z]+)+|[a-z]+(\.[a-z_]+)+)(\.[a-z_]+)*: )+/, "")
+  return said ? said[0].toUpperCase() + said.slice(1) : message
+}
+
+/** Any error as words for a toast: the server's, or what it means when there was no answer at all. */
+export function errorWords(error: unknown): string {
+  if (error instanceof ApiError) return error.message
+  if (error instanceof DOMException && error.name === "AbortError") return "Stopped."
+  if (error instanceof TypeError) {
+    // fetch itself failed ("Load failed", "Failed to fetch"): nothing answered
+    return "Friday's server didn't answer: it may be starting up or restarting. Try again in a moment; if it keeps happening, quit Friday and open it again."
+  }
+  return error instanceof Error ? error.message : String(error)
 }
 
 async function read<T>(response: Response): Promise<T> {
   noteResponse(response)
   if (response.ok) return response.json()
-  let message = `${response.status} ${response.statusText}`
+  let body: unknown = null
   try {
-    const body = await response.json()
-    // The server's message names its field already ("end: that's later than now"): said once, not "end: end: …".
-    if (body.message) message = body.field && !String(body.message).startsWith(`${body.field}:`) ? `${body.field}: ${body.message}` : body.message
-    else if (Array.isArray(body.detail)) message = body.detail.map((d: { msg: string }) => d.msg).join("; ")
+    body = await response.json()
   } catch {
-    // not JSON: keep the status line
+    // not JSON: said from the status
   }
-  throw new ApiError(message, response.status)
+  const field = body && typeof (body as { field?: unknown }).field === "string" ? (body as { field: string }).field : null
+  throw new ApiError(messageFrom(response.status, body), response.status, field)
 }
 
 export async function command<N extends CommandName>(

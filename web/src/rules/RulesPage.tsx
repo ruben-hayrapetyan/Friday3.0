@@ -8,7 +8,7 @@ import { useAi } from "@/settings/AiConnect"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router"
-import { ApiError, command, query, type Schemas } from "@/api/client"
+import { command, errorWords, query, type Schemas } from "@/api/client"
 import { Box, H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { applyActions } from "@/dialogs/AskClaude"
@@ -132,7 +132,7 @@ function NewRule() {
       const kept = out.result.actions.map((a, i) => (a.error ? -1 : i)).filter((i) => i >= 0)
       setClaude({ busy: false, answer: out.result, kept })
     } catch (e) {
-      setClaude({ busy: false, kept: [], error: e instanceof ApiError || e instanceof Error ? e.message : String(e) })
+      setClaude({ busy: false, kept: [], error: errorWords(e) })
     }
   }
   const applyClaude = async () => {

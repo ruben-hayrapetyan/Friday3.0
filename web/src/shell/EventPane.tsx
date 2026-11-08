@@ -41,6 +41,7 @@ export function draftOf(
     start,
     end,
     allDay,
+    was: { start, allDay },
     color: item.color ?? null,
     notes: item.notes ?? "",
     location: item.location ?? "",
@@ -102,6 +103,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   const repeat = useCommand("repeat", { label: (o) => `Repeats ${o.result.description.replace(/^Every/, "every")}` })
   const pattern = useSeriesPattern(draft.seriesId)
   const [asking, setAsking] = useState(false)
+  const [which, setWhich] = useState(false) // saving a change to a repeat: this time, or this and later (8 Nov)
   const title = useRef<HTMLInputElement>(null)
   const set = (change: Partial<EventDraft>) => setEvent({ ...draft, ...change })
   const isNew = draft.id === null
@@ -111,7 +113,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   useEffect(() => {
     if (isNew) title.current?.focus()
   }, [isNew])
-  useEffect(() => setAsking(false), [draft.id])
+  useEffect(() => (setAsking(false), setWhich(false)), [draft.id])
   const day = draft.start.slice(0, 10)
   const lastDay = draft.allDay ? addDays(draft.end.slice(0, 10), -1) : day
   // Where a new event is saved (26 Oct: they stayed only in Friday, and wore no colour): your choice here, else
@@ -130,11 +132,17 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   const valid = draft.title.trim() !== "" && (draft.allDay ? lastDay >= day : toMin(draft.end) > toMin(draft.start))
   const close = () => setEvent(null)
   const sending = useRef(false) // ⌘↩ and a click, or two clicks, make one event
-  const save = async () => {
+  const repeating = !isNew && draft.seriesId !== null && staged === null
+  // `scope`: for a repeat, this time only or this one and every later one (8 Nov: "ask on save"); asked first.
+  const save = async (scope?: "one" | "later") => {
     if (!valid || sending.current) return
+    if (repeating && !scope) return setWhich(true)
     sending.current = true
     try {
-      const fields = { title: draft.title.trim(), start: draft.start, end: draft.end, color: draft.color, notes: draft.notes, location: draft.location.trim() || null, blocks_time: !draft.allDay }
+      // Whether it keeps its time from work only changes with all day: saving anything else used to send it, and
+      // undid "Skip it" (8 Nov).
+      const allDayChanged = isNew || draft.allDay !== (draft.was?.allDay ?? draft.allDay)
+      const fields = { title: draft.title.trim(), start: draft.start, end: draft.end, color: draft.color, notes: draft.notes, location: draft.location.trim() || null, ...(allDayChanged ? { blocks_time: !draft.allDay } : {}) }
       if (staged !== null) {
         const was = w.changes[staged].input as Record<string, unknown>
         whatIf.replace(staged, { ...(was.calendar !== undefined ? { calendar: was.calendar } : {}), ...fields, when: "fixed" })
@@ -146,9 +154,10 @@ export function EventPane({ draft }: { draft: EventDraft }) {
         if (saved && (await repeat({ id: draft.id as number, every: draft.every }))) close()
         return
       }
+      const later = scope === "later" ? { from_date: (draft.was?.start ?? draft.start).slice(0, 10) } : {}
       const done = isNew
         ? await add({ ...fields, when: "fixed", ...(draft.saveTo !== undefined ? { calendar: savingTo ? saveTo : "" } : {}), ...(draft.every ? { every: draft.every } : {}) })
-        : await edit({ id: draft.id as number, ...fields })
+        : await edit({ id: draft.id as number, ...fields, ...later })
       if (done) close()
     } finally {
       sending.current = false
@@ -186,7 +195,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   return (
     <div
       onKeyDown={(e) => {
-        if (e.key === "Escape") (e.stopPropagation(), asking ? setAsking(false) : close()) // the "which ones?" first
+        if (e.key === "Escape") (e.stopPropagation(), asking ? setAsking(false) : which ? setWhich(false) : close()) // the "which ones?" first
         if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) save()
       }}
       style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: 0, overflowY: "auto", overflowX: "hidden", paddingBottom: 24 }}
@@ -253,7 +262,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
       ) : draft.seriesId !== null ? (
         <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
           <Icon name="repeat" size={13} />
-          {pattern ? `Repeats ${pattern.replace(/^Every/, "every")}.` : "Repeats."} Changes here are to this time only.
+          {pattern ? `Repeats ${pattern.replace(/^Every/, "every")}.` : "Repeats."} Saving asks: this time, or this and later.
         </span>
       ) : draft.calendar ? (
         <span style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>To repeat it, make it repeat in {draft.calendar}.</span>
@@ -306,8 +315,24 @@ export function EventPane({ draft }: { draft: EventDraft }) {
         <span className="fr-eyebrow">Notes</span>
         <textarea className="input" value={draft.notes} onChange={(e) => set({ notes: e.target.value })} aria-label="Notes" style={{ minHeight: 70, fontSize: 13 }} />
       </div>
-      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-        <button className="btn btn-primary" onClick={save} disabled={!valid}>
+      {which ? (
+        <div role="group" aria-label="Change which times" style={{ display: "flex", flexDirection: "column", gap: 8, padding: 10, borderRadius: 8, border: "1px solid var(--color-border)" }}>
+          <span style={{ fontSize: 13, fontWeight: 500 }}>Change which times of {draft.title.trim() || "it"}?</span>
+          <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button className="btn btn-primary" onClick={() => save("one")} autoFocus>
+              This time only
+            </button>
+            <button className="btn btn-secondary" onClick={() => save("later")}>
+              This and later times
+            </button>
+            <button className="btn btn-ghost" onClick={() => setWhich(false)}>
+              Back
+            </button>
+          </span>
+        </div>
+      ) : null}
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", ...(which ? { display: "none" } : {}) }}>
+        <button className="btn btn-primary" onClick={() => save()} disabled={!valid}>
           <Icon name="check" />
           {isNew ? "Add" : staged !== null ? "Update" : "Save"}
         </button>

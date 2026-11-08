@@ -4,7 +4,7 @@
 
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useCallback } from "react"
-import { ApiError, type CommandInput, type CommandName, command, type Output } from "@/api/client"
+import { command, type CommandInput, type CommandName, errorWords, type Output } from "@/api/client"
 import { type Toast, useToast } from "@/components/Toasts"
 import { markedDone, mealEnded, mealSkipped, mealStarted, napEnded, napStarted, sleepMarked, timerStarted, timerStopped } from "@/now/instant"
 import { pending } from "@/plan/pending"
@@ -76,7 +76,7 @@ export async function runCommand<N extends CommandName>(
     pending.drop(drawn)
     for (const [key, data] of saved) client.setQueryData(key, data)
     client.invalidateQueries({ queryKey: ["plan"] }) // drawn back as it was; read again in case some of it went through
-    toast({ message: error instanceof ApiError ? error.message : String(error), tone: "error" })
+    toast({ message: errorWords(error), tone: "error" })
     return undefined
   } finally {
     // The server's events refresh these too; this covers a dropped stream.
@@ -99,7 +99,7 @@ export async function runTogether(client: QueryClient, toast: (toast: Toast) => 
       if (out.command_id != null) ids.push(out.command_id)
     }
   } catch (error) {
-    toast({ message: error instanceof ApiError ? error.message : String(error), tone: "error" })
+    toast({ message: errorWords(error), tone: "error" })
     await undoAll(client, toast, ids)
     return null
   }
@@ -155,7 +155,7 @@ export async function undoAll(client: QueryClient, toast: (toast: Toast) => void
     }
     toast({ message: "Undone" })
   } catch (error) {
-    toast({ message: error instanceof ApiError ? error.message : String(error), tone: "error" })
+    toast({ message: errorWords(error), tone: "error" })
   }
   client.invalidateQueries()
 }

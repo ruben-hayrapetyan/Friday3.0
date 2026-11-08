@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { type Schemas } from "@/api/client"
 import { signInAgain } from "./GoogleAccounts"
-import { accountName, connectLabel, type GoogleAccess, type GoogleAccount, sentence, wantsSignIn } from "./GoogleConnect"
+import { accountName, connectLabel, type GoogleAccess, type GoogleAccount, offline, readable, sentence, wantsSignIn } from "./GoogleConnect"
 
 const NONE: GoogleAccess = { state: "idle", client_file: true, calendar: false, gmail: false, events: false }
 const ME: GoogleAccount = { email: "me@gmail.com", gmail: true, events: true }
@@ -53,5 +53,22 @@ describe("connecting Google", () => {
     expect(sentence("file: file: that isn't Google's key file. It's the .json file Google Cloud downloads")).toBe("That isn't Google's key file. It's the .json file Google Cloud downloads.")
     expect(sentence("google: Friday needs the key file from Google Cloud first")).toBe("Friday needs the key file from Google Cloud first.")
     expect(sentence("Network trouble!")).toBe("Network trouble!")
+  })
+})
+
+describe("offline (8 Nov: with the Wi-Fi off each source showed Python's connection error)", () => {
+  const google = "TransportError: HTTPSConnectionPool(host='oauth2.googleapis.com', port=443): Max retries exceeded with url: /token (Caused by NameResolutionError(\"…Failed to resolve 'oauth2.googleapis.com' ([Errno 8] nodename nor servname provided, or not known"
+  it("knows no internet from the source's own trouble", () => {
+    expect(offline(google)).toBe(true)
+    expect(offline("ConnectError: [Errno 8] nodename nor servname provided, or not known")).toBe(true)
+    expect(offline("OSError: [Errno 51] Network is unreachable")).toBe(true)
+    expect(offline("HttpError 503: backend error")).toBe(false)
+    expect(offline("TimeoutError: timed out")).toBe(false)
+    expect(offline(null)).toBe(false)
+    expect(offline("RefreshError: invalid_grant Errno 8")).toBe(false) // a sign-in to renew comes first
+  })
+  it("says it in words, and leaves other errors as the source said them", () => {
+    expect(readable(google)).toBe("Couldn't reach the internet; reads again once you're online")
+    expect(readable("HttpError 503: backend error")).toBe("HttpError 503: backend error")
   })
 })

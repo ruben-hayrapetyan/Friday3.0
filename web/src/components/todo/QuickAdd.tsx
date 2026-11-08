@@ -2,7 +2,7 @@
 // (§22.7). The add box (todo/AddBox.tsx) and the drawer draw them.
 
 import { useEffect, useState } from "react"
-import { command, query, type Schemas } from "@/api/client"
+import { command, errorWords, query, type Schemas } from "@/api/client"
 import { useCommand } from "@/hooks/useCommand"
 
 type Parsed = Schemas["ParseOutput"]
@@ -37,7 +37,7 @@ export function useAsk(text: string) {
       const out = await command("ask_ai", { text })
       setResult({ for: text, fields: out.result as Record<string, unknown> })
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(errorWords(e))
     }
     setBusy(false)
   }
