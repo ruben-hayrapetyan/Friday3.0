@@ -5,6 +5,7 @@ its start, and if that one was done late its due moves by as much. Each later on
 it, as the plan places it (a dependency with a lag). A strong preference, not a wall: the wait is never longer than
 leaves the time's own length before its due, so keeping times apart never makes one late; it's closer then."""
 
+import math
 from dataclasses import dataclass, replace
 
 from friday.core.items import Item
@@ -45,13 +46,30 @@ def spaced(
 
 
 def loosened(
-    items: list[Item], waits: list[Dependency], originals: dict[int, Item], late: set[int]
+    items: list[Item], waits: list[Dependency], originals: dict[int, Item], late: dict[int, float]
 ) -> tuple[list[Item], list[Dependency]]:
-    """The late spaced times back as they were, without their waits: closer than asked rather than late."""
-    back = late & set(originals)
-    if not back:
+    """Spaced times that would be late, brought closer by as much as they'd be late (and an hour more): a wait shorter
+    by that, or a next time allowed that much earlier. A wait that would go to nothing goes, the time as it was."""
+    over = {
+        i: math.ceil(hours * 60 / UNIT_MIN) * UNIT_MIN + 60 for i, hours in late.items() if i in originals and hours
+    }
+    if not over:
         return items, waits
-    return [originals[i.id] if i.id in back else i for i in items], [w for w in waits if w.item_id not in back]
+    kept = []
+    for w in waits:
+        lag = w.lag_min - over.get(w.item_id, 0)
+        if lag > 0:
+            kept.append(replace(w, lag_min=lag))
+    moved = []
+    for item in items:
+        if item.id in over and item.release_utc and item.release_utc != originals[item.id].release_utc:
+            earlier = parse_utc(item.release_utc) - over[item.id]
+            first = originals[item.id].release_utc
+            item = originals[item.id] if first and earlier <= parse_utc(first) else replace(
+                item, release_utc=format_utc(earlier)
+            )  # fmt: skip
+        moved.append(item)
+    return moved, kept
 
 
 def length(item: Item) -> int:

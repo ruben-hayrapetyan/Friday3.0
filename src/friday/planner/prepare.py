@@ -220,12 +220,16 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
     if not originals:
         return inp
     # Keeping times apart is a strong preference, not a wall (C50): a spaced time that would be late with its wait is
-    # planned as it was, closer to the one before.
+    # brought closer to the one before, by as much as it would be late (8 Nov: dropping the wait outright put the next
+    # laundry 2.5 days after the last, where 6.6 fit).
     from friday.planner.service import quick_late  # the planner's own quick check; it builds from this input
 
-    _, late = quick_late(inp, with_fallback=False)
-    loose, kept = loosened(items, waits, originals, set(late))
-    if len(kept) == len(waits) and loose == items:
-        return inp
     others = [d for d in inp.dependencies if d not in waits]
-    return dataclasses.replace(inp, items=loose, dependencies=[*others, *kept])
+    for _ in range(3):  # brought closer by as much as they'd be late, checked again
+        _, late = quick_late(inp, with_fallback=False)
+        loose, kept = loosened(list(inp.items), waits, originals, late)
+        if kept == waits and loose == list(inp.items):
+            return inp
+        waits = kept
+        inp = dataclasses.replace(inp, items=loose, dependencies=[*others, *waits])
+    return inp

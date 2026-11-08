@@ -63,10 +63,15 @@ def test_a_spaced_time_that_would_be_late_gets_its_own_window_back() -> None:
     done = LastDone(parse_utc("2026-11-08T22:00Z"), parse_utc("2026-11-09T01:00Z"), parse_utc("2026-11-09T01:00Z"))
     items, waits, originals = spaced([a, b], {7: 7.0}, {7: done})
     assert items[0].release_utc  # the first open one moved after the last done
-    back, kept = loosened(items, waits, originals, late={1})
-    assert back[0] == a and kept == waits  # its wait was on the next, which isn't late
-    back, kept = loosened(items, waits, originals, late={2})
-    assert back[1] == b and kept == []  # b's wait goes: closer rather than late
+    back, kept = loosened(items, waits, originals, late={1: 2.0})
+    assert (
+        parse_utc(back[0].release_utc or "") == parse_utc(items[0].release_utc or "") - 3 * 60
+    )  # 2 h late, 3 h sooner
+    assert kept == waits  # the wait is on the next, which isn't late
+    back, kept = loosened(items, waits, originals, late={2: 5.25})
+    assert kept[0].lag_min == waits[0].lag_min - (5 * 60 + 15) - 60  # as late as it was, and an hour
+    back, kept = loosened(items, waits, originals, late={2: 200.0})
+    assert kept == []  # a wait that would go to nothing goes
 
 
 @pytest.fixture
