@@ -94,13 +94,14 @@ enum MacWriter {
             return ["id": id, "ok": false, "error": "Friday's change didn't say which event"]
         }
         guard let event = find(occurrence, calendar: calendar, in: store) else {
-            if op == "delete" { return ["id": id, "ok": true] }  // gone already
+            if op == "delete" || op == "delete_from" { return ["id": id, "ok": true] }  // gone already
             // Friday makes it again, for a change (31 Oct: one Saturday's Salsa had gone from Google)
             return ["id": id, "ok": false, "gone": true, "error": "The event isn't on that calendar any more"]
         }
         do {
-            if op == "delete" {
-                try store.remove(event, span: .thisEvent, commit: true)
+            if op == "delete" || op == "delete_from" {
+                // delete_from: a repeat deleted in Friday goes from this time on, every later one too
+                try store.remove(event, span: op == "delete_from" ? .futureEvents : .thisEvent, commit: true)
                 return ["id": id, "ok": true]
             }
             if op == "repeat" {

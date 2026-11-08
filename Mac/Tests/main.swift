@@ -247,6 +247,11 @@ test("new events Friday made are made once") {
                                   in: EKEventStore(), made: made)
     check(missing["ok"] as? Bool == false && missing["gone"] as? Bool == true,
           "a change to an event not found says it's gone, for Friday to make it again: \(missing)")
+    for op in ["delete", "delete_from"] {
+        let deleted = MacWriter.apply(["id": 9, "op": op, "calendar": "no-such-calendar", "event": "ABC@1761000000"],
+                                      in: EKEventStore(), made: made)
+        check(deleted["ok"] as? Bool == true, "\(op) of an event already gone is done: \(deleted)")
+    }
 }
 
 test("the start's ring creeps while it waits, never closing on its own") {

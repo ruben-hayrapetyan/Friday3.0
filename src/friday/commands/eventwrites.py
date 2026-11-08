@@ -295,6 +295,10 @@ def send(
         if item is not None and item.start_utc and link is not None and link.calendar_id:
             repeat_there(conn, google_for(link.calendar_id), link, item, job["rule"], tz)
         return
+    if job["op"] == "delete_from":
+        if link is not None and link.calendar_id:
+            gcal.delete_from(google_for(link.calendar_id), link.calendar_id, link.event_id)
+        return
     if job["op"] == "delete" or item is None:
         if link is not None and link.calendar_id:
             gcal.delete_event(google_for(link.calendar_id), link.calendar_id, link.event_id)

@@ -651,9 +651,9 @@ def test_deleting_a_repeat_on_a_calendar_takes_each_time_off_it(app: App) -> Non
     written(app, job, eid="gym1", cid="gmail-cal", title="Gym", start="2026-10-20T07:30", end="2026-10-20T09:00")
     linked = next(i for i in every_time(app, "Gym") if i["start_utc"] == "2026-10-20T11:30Z")
     app.do("series_delete", id=series)
-    # The one on the calendar is taken off it (and kept here, dropped, so its copy there stays tied to it); the times
-    # still waiting to be made are never made.
-    (gone,) = [j for j in app.do("mac_writes") if j["op"] == "delete"]
+    # The one on the calendar is taken off it with every later time (and kept here, dropped, so its copy there stays
+    # tied to it); the times still waiting to be made are never made.
+    (gone,) = [j for j in app.do("mac_writes") if j["op"] == "delete_from"]
     assert gone["event"].startswith("gym1")
     assert creates(app) == []
     assert app.do("item", id=linked["id"])["item"]["status"] == "dropped"

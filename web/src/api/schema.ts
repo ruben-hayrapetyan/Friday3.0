@@ -1492,7 +1492,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Delete a repeat: every undone occurrence goes and what you did stays as history. An imported calendar */
+        /** Delete a repeat: every undone occurrence goes and what you did stays as history; on a calendar, it goes from */
         post: operations["series_delete"];
         delete?: never;
         options?: never;
@@ -5730,7 +5730,8 @@ export interface components {
          * MacWriteOut
          * @description A change to one of the Mac's events, for the Mac app to make through EventKit: its times (timed with an offset,
          *     or whole days with the end the day after the last) and, if you renamed or moved it here, its title and place; a
-         *     delete; or a new event, made on that calendar (`create`).
+         *     delete, of that time or (`delete_from`) of it and every later time of its repeat; or a new event, made on that
+         *     calendar (`create`).
          */
         MacWriteOut: {
             /** Id */
@@ -5739,7 +5740,7 @@ export interface components {
              * Op
              * @enum {string}
              */
-            op: "save" | "delete" | "create" | "repeat";
+            op: "save" | "delete" | "delete_from" | "create" | "repeat";
             /** Calendar */
             calendar: string;
             /**

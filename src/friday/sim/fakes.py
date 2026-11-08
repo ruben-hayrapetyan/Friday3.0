@@ -127,6 +127,13 @@ class Events:
             self.google.patches.append(body)
             events = self.google.calendars_by_id[calendarId]
             found = next((e for e in events if e["id"] == eventId), None)
+            if found is None and eventId in self.google.rules and body.get("recurrence"):
+                # a repeat listed only as its times, ended: the times after its end are gone
+                rule = body["recurrence"][0].removeprefix("RRULE:")
+                self.google.rules[eventId] = rule
+                until = until_of(rule)
+                events[:] = [e for e in events if e.get("recurringEventId") != eventId or instant(e["start"]) <= until]
+                return self.write("patch", body)
             if found is None:  # as Google answers for an event deleted there
                 raise HttpError(SimpleNamespace(status=404, reason="Not Found"), b"Not Found")
             patched = found | local_times(body)
@@ -156,7 +163,7 @@ class Events:
     def delete(self, calendarId: str, eventId: str) -> Call:  # noqa: N803
         def remove() -> None:
             events = self.google.calendars_by_id[calendarId]
-            events[:] = [e for e in events if e["id"] != eventId]
+            events[:] = [e for e in events if eventId not in (e["id"], e.get("recurringEventId"))]  # a repeat: all
             self.write("delete", {})
 
         return Call(remove)
@@ -164,6 +171,14 @@ class Events:
     def write(self, kind: str, event: dict[str, Any]) -> dict[str, Any]:
         self.google.writes.append(kind)
         return event
+
+
+def until_of(rule: str) -> datetime:
+    """An RRULE's UNTIL as a moment (a date's is the end of that day in UTC)."""
+    found = next(p.split("=")[1] for p in rule.split(";") if p.startswith("UNTIL="))
+    if "T" in found:
+        return datetime.strptime(found, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
+    return datetime.strptime(found, "%Y%m%d").replace(tzinfo=UTC) + timedelta(days=1)
 
 
 def repeated(master: dict[str, Any], rule: str, times: int = 12) -> list[dict[str, Any]]:

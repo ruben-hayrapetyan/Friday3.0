@@ -135,7 +135,7 @@ class FakeOllama:
 
 def control(fake: FakeOllama) -> Callable[[str], None]:
     """For the system tests: commands on stdin ("have NAME", "gate", "release", "fail TEXT", "answer JSON", "think",
-    "answered", "state")."""
+    "answered", "state", which says what the last chat was told)."""
 
     def run(line: str) -> None:
         word, _, rest = line.strip().partition(" ")
@@ -157,8 +157,9 @@ def control(fake: FakeOllama) -> Callable[[str], None]:
             fake.thinking.set()
             fake.thinking = None
         elif word == "state":
+            told = [m.get("content") for m in fake.chats[-1]["messages"]] if fake.chats else []
             print(json.dumps({"models": sorted(fake.models), "pulled": fake.pulled, "deleted": fake.deleted,
-                              "chats": len(fake.chats)}), flush=True)  # fmt: skip
+                              "chats": len(fake.chats), "told": json.dumps(told)}), flush=True)  # fmt: skip
 
     return run
 
