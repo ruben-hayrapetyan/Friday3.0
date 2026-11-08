@@ -211,7 +211,8 @@ class AllocatorLP:
 
     def add_item(self, item: EngineItem, ready_day: int) -> None:
         released = max(0, self.day_of(item.release_utc)) if item.release_utc is not None else 0
-        for d in range(max(released, ready_day), self.A):
+        last = self.A if item.cutoff_utc is None else min(self.A, self.day_of(item.cutoff_utc - 1) + 1)
+        for d in range(max(released, ready_day), last):
             if self.caps[d] > 0 and self.day_prices[item.key][d] != math.inf:
                 self.y[item.key, d] = self.lp.NumVar(0, min(self.caps[d], item.need), "")
         self.over[item.key] = self.lp.NumVar(0, item.need, "")

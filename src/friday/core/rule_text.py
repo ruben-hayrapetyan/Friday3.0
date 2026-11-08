@@ -45,6 +45,7 @@ Strength = Literal["Prefer", "Strongly", "Always"]
 Kind = Literal[
     "window", "days", "free", "cap", "early", "after", "pace", "deadlines", "optional", "ahead", "night_before",
     "around", "close", "meals_kept", "meals_learned", "fit_gaps", "runs_while_working", "sleep_min", "spacing",
+    "late_cutoff",
 ]  # fmt: skip
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 NAMES = {
@@ -56,6 +57,7 @@ NAMES = {
     "saturday": "sat",
     "sunday": "sun",
 }
+NAMES_OF = {short: long.title() for long, short in NAMES.items()}
 PARTS = {
     "morning": ("08:00", "12:00"),
     "afternoon": ("12:00", "17:00"),
@@ -686,6 +688,10 @@ SETTING_CLAUSE = r"^ ?(?:and )?(?:wake (?:me )?(?:up )?|get up|up|bedtime|bed|in
 def read(text: str) -> tuple[Reading | None, Strength]:
     """What a sentence asks for, and how strongly; None when the grammar can't read it, or when it says two rules
     (each half a rule of its own, and not the same one: "keep sunday free and go easy on saturday")."""
+    from friday.core.rule_late import read_late_cutoff  # from your words as typed, before they're spelled as times
+
+    if (late := read_late_cutoff(text)) is not None:
+        return late, "Always"  # never planned after that day: a wall, however it was said
     text = undated_said(text)
     found, strength = read_one(text)
     if found is None:
@@ -1680,6 +1686,10 @@ def said(r: Reading) -> str:
         return "Short tasks in short gaps, long ones in long stretches"
     if r.kind == "runs_while_working":
         return "Things that run by themselves run while you work, not during events or your sleep"
+    if r.kind == "late_cutoff":
+        day = NAMES_OF[(r.days or ("sun",))[0]]
+        when = f"before {day}" if r.rel == "before" else f"by the end of {day}"
+        return f"Overdue {r.subject} is done {when}, never later"
     if r.kind == "spacing":
         return f"{titled(r.subject)} at least {r.amount:g} {'day' if r.amount == 1 else 'days'} apart"
     if r.kind == "sleep_min":
@@ -1787,7 +1797,20 @@ def scope_of(subject: str, areas: list[str], presets: list[str]) -> dict[str, An
     kind = KIND_WORDS.get(subject) or KIND_WORDS.get(subject.rstrip("s"))
     if kind is not None and kind in presets:
         return {"preset": kind}
-    return {"title": subject}
+    return course_and_kind(subject, areas, presets) or {"title": subject}
+
+
+def course_and_kind(subject: str, areas: list[str], presets: list[str]) -> dict[str, Any] | None:
+    """'math homework' is homework for math, not a task with those words in its title (8 Nov: a rule about "math
+    homework" reached none of "Math 1920 HW10", "HW11", …): the kind, and the rest as words in the title or a tag."""
+    kinds = {**KIND_WORDS, **{p.lower(): p for p in presets}}
+    for words in sorted(kinds, key=len, reverse=True):
+        found = re.fullmatch(rf"(.+?) {re.escape(words)}s?", subject)
+        if found and kinds[words] in presets:
+            rest = found[1].strip()
+            area = next((a for a in areas if a.lower() == rest), None)
+            return {"preset": kinds[words]} | ({"area": area} if area else {"title": rest})
+    return None
 
 
 PRICE = {"Prefer": 2.0, "Strongly": 6.0}
@@ -1858,6 +1881,10 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
         return {"name": name, "type": "pace", "weight": 0.0, "scope": None, "reason": sentence(r),
                 "params": {"weekly": dict(r.paces or ())}}  # fmt: skip
     scope = scope_of(r.subject, areas, presets)
+    if r.kind == "late_cutoff":  # not a priced rule: the build gives that work its last day (planner.late_cutoff)
+        params = {"day": (r.days or ("sun",))[0], "before": r.rel == "before"}
+        return {"name": name, "type": "late_cutoff", "weight": 0.0, "scope": scope, "reason": sentence(r),
+                "params": params}  # fmt: skip
     price: Any = "forbid" if strength == "Always" else PRICE[strength]
     base = {"name": name, "scope": scope, "reason": sentence(r)}
     if r.kind == "window":

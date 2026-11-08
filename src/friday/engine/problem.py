@@ -64,6 +64,7 @@ class EngineItem:
     release_utc: int | None = None  # None = now
     due_utc: int | None = None
     window_is_hard: bool = False
+    cutoff_utc: int | None = None  # never planned at or after: late work's last chance ("done before sunday")
     shape: Literal["one_sitting", "split"] = "split"
     min_chunk: int = 1
     max_chunk: int | None = None

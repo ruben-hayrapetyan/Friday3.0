@@ -50,6 +50,8 @@ def prune(problem: Problem) -> None:
                 continue
             if item.window_is_hard and item.due_utc is not None and int(grid.start[s]) >= item.due_utc:
                 continue
+            if item.cutoff_utc is not None and int(grid.start[s]) >= item.cutoff_utc:
+                continue
             if problem.blocked[s] or problem.core[s]:
                 continue
             if item.amount == "open" and problem.scales[grid.slots[s].day].open_value_slopes == 0:

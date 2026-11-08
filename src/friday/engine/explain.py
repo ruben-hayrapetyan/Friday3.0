@@ -181,6 +181,8 @@ def slot_reason(c: Compiled, i: int, s: int) -> str:
         return "Before its release"
     if item.window_is_hard and item.due_utc is not None and start >= item.due_utc:
         return "Past its due"
+    if item.cutoff_utc is not None and start >= item.cutoff_utc:
+        return "Past the last day it can be done late"
     if problem.core[s]:
         return "Sleep"
     if problem.blocked[s]:

@@ -33,10 +33,11 @@ from friday.engine.rules import RULE_TYPES, build_rules
 from friday.engine.rules.prices import has_words
 from friday.engine.sampler import SamplerConfig, default_chains
 from friday.engine.scheduler import SchedulerConfig, StepBudget
+from friday.planner.late_cutoff import set_cutoffs
 
 # Rules the build or the job loop applies itself, not the engine's priced or walled rules: time kept around events,
 # and meals Friday decides from tracking (`commands/eating.decide`).
-PLANNER_RULES = frozenset({"travel", "meal_learned"})
+PLANNER_RULES = frozenset({"travel", "meal_learned", "late_cutoff"})
 # Whether a meal may leave its window is the calendar's to say, not the work's: when events leave no room in it
 # (dinner's 5:30-8:30 under a 6pm Zoom and a 7:30 lab), it may go up to MEAL_REACH_MIN outside, priced in the
 # wellbeing stage so it stays close; with room nowhere near, it isn't asked for that day. Whether work may take a
@@ -166,6 +167,7 @@ def build_problem(inp: BuildInput) -> Problem:
     problem.rules = build_rules(steady(rules) + [MEAL_WINDOW, PIN_HOLD] + travel_kept(rules))
     for rule in problem.rules:
         rule.prepare(problem)
+    set_cutoffs(problem, settings["rules"], settings["time"].timezone)
     prune(problem)
     if demote_unusable_locks(problem):
         prune(problem)

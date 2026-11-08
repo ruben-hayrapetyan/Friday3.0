@@ -392,16 +392,46 @@ def provider_down(error: Exception) -> bool:
 SIGN_IN_GONE = re.compile(r"RefreshError|invalid_grant|insufficient authentication", re.IGNORECASE)
 
 
+# No way to the internet (8 Nov: Wi-Fi off, the banner read "TransportError: HTTPSConnectionPool(host=
+# 'oauth2.googleapis.com', …) Failed to resolve …" for each of four sources): a name that can't be looked up, or no
+# network at all. The same test as the web app's `offline`. A slow or refusing server isn't this: it keeps its words.
+OFFLINE = re.compile(
+    r"NameResolutionError|nodename nor servname|name resolution|Name or service not known|getaddrinfo failed|"
+    r"Network is unreachable|No route to host|Errno (?:8|51|65|101)\b",
+    re.IGNORECASE,
+)
+
+
 def failing_sources(conn: sqlite3.Connection, user_id: int) -> list[str]:
     """Sources that failed often enough in a row for a banner, in words that say what to do (2 Nov: the banner read
-    "RefreshError: ('invalid_grant: Token has been expired or revoked.', …)")."""
+    "RefreshError: ('invalid_grant: Token has been expired or revoked.', …)"); with no internet, one line for all."""
     found = rows(
-        conn, "SELECT name, last_error FROM sources WHERE user_id = ? AND failures >= ?", [user_id, FAILURES_FOR_BANNER]
+        conn,
+        "SELECT name, last_error FROM sources WHERE user_id = ? AND failures >= ? ORDER BY id",
+        [user_id, FAILURES_FOR_BANNER],
     )
-    return [f"{r['name']} can't be read: {why(r['last_error'])}" for r in found]
+    away = [r["name"] for r in found if is_offline(r["last_error"])]
+    said = [f"{r['name']} can't be read: {why(r['last_error'])}" for r in found if not is_offline(r["last_error"])]
+    return ([offline_words(away)] if away else []) + said
+
+
+def is_offline(error: str | None) -> bool:
+    return bool(error and OFFLINE.search(error) and not SIGN_IN_GONE.search(error))
+
+
+def offline_words(names: list[str]) -> str:
+    """'Friday can't reach the internet, so Gmail and canvas weren't read. …'"""
+    listed = names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
+    was = "wasn't" if len(names) == 1 else "weren't"
+    return (
+        f"Friday can't reach the internet, so {listed} {was} read. It keeps "
+        "planning with what it has and reads again once you're back online."
+    )
 
 
 def why(error: str | None) -> str:
     if error and SIGN_IN_GONE.search(error):
         return "Google's sign-in for it expired or was taken back. Connect it again in Settings → Integrations."
+    if is_offline(error):
+        return "Friday can't reach the internet. It reads again once you're back online."
     return error or "it failed, with no reason given"

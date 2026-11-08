@@ -62,6 +62,8 @@ BACKGROUND = {"quota", "energy", "soft_late", "unscheduled", "spread", "cluster"
               "elastic_shortfall", "open_value", "minimize_changes"}  # fmt: skip
 EFFECT = {
     "spacing": "Friday plans each time at least that long after the last one you did",
+    "late_cutoff": "Once it's overdue, Friday plans it as soon as it can and never on a later day; when that day "
+    "comes and it isn't done, it's left off the plan",
     "time_preference": "Friday avoids those hours",
     "reserve": "Friday keeps that time free",
     "daily_load": "Friday plans less on full days",
@@ -143,6 +145,7 @@ def rule_read(ctx: Ctx, inp: RuleTextInput) -> RuleReadOut:
 
 NOT_COMPARED = {
     "spacing",
+    "late_cutoff",
     "pace",
     "deadlines",
     "meals_kept",

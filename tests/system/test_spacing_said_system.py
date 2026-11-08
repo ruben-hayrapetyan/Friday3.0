@@ -17,13 +17,15 @@ SAID = "after the one before, closer than the 3 days you asked, so it isn't late
 @pytest.fixture(scope="module")
 def friday(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Friday]:
     server = Friday(tmp_path_factory.mktemp("spacing_said"))
-    server.c("settings_set", key="sleep", value=SLEEP)
-    tomorrow = (datetime.now(ZoneInfo(TZ)) + timedelta(days=1)).date()
-    series = server.c("series_add", title="Stretch", every="day", duration_min=60, start_date=str(tomorrow))
-    server.c("series_spacing", id=series["id"], days=3)
-    server.until(lambda: [n for n in server.q("status")["notices"] if SAID in n])
-    yield server
-    server.stop()
+    try:  # stopped even when setting it up fails, so no server is left running
+        server.c("settings_set", key="sleep", value=SLEEP)
+        tomorrow = (datetime.now(ZoneInfo(TZ)) + timedelta(days=1)).date()
+        series = server.c("series_add", title="Stretch", every="day", duration_min=60, start_date=str(tomorrow))
+        server.c("series_spacing", id=series["id"], days=3)
+        server.until(lambda: [n for n in server.q("status")["notices"] if SAID in n])
+        yield server
+    finally:
+        server.stop()
 
 
 def test_one_line_for_the_repeat_with_how_many_more(friday: Friday) -> None:
