@@ -742,8 +742,17 @@ def read_one(text: str) -> tuple[Reading | None, Strength]:
         found = parse(t, negated)
         if found:
             junk = found.subject not in KNOWN_SUBJECTS and re.search(JUNK_SUBJECT, found.subject)
-            return (None if junk else found), strength
-    return None, strength
+            if not junk:
+                return found, strength
+            break  # a reading about words around the rule ("go to the gym"): the kinds' words may still read it
+    from friday.core.rule_more import read_more  # the grammar's own words; it reads what's left by their kinds' words
+
+    plain = " " + text.lower().replace("’", "'") + " "
+    for pattern, put in PLAIN:  # spelled as the grammar spells it, but not put in its readers' order
+        plain = re.sub(pattern, put, plain)
+    found = read_more(" " + " ".join(plain.split()) + " ", unsure)
+    junk = found and found.subject not in KNOWN_SUBJECTS and re.search(JUNK_SUBJECT, found.subject)
+    return (None if junk else found), strength
 
 
 WORK_WORDS = {"school", "school stuff", "studying", "study", "grinding", "day", "days", "my day", "school work"}
