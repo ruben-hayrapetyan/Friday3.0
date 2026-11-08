@@ -1,6 +1,30 @@
 {
-  "current": "0.2.0",
+  "current": "0.3.0",
   "versions": [
+    {
+      "version": "0.3.0",
+      "released": "2026-11-08",
+      "url": "https://friday-scheduler.com/get/Friday-0.3.0.dmg?via=update",
+      "sha256": "5ec27cd5dc23bac49bc7a2b6bf9367e7817152684b1e46eb35a3a4a7133213da",
+      "bytes": 232555618,
+      "minimum_macos": "14.0",
+      "notes": {
+        "summary": "Friday now lives at friday-scheduler.com, asks you less about your day, and gets birthdays and all-day events right.",
+        "new": [
+          "Friday's site is friday-scheduler.com: the download, the Terminal install and updates all come from there, and downloads come from servers near you, so they're quicker."
+        ],
+        "changed": [
+          "With \"Plan it again\" on (Settings → Schedule), Friday no longer asks how much you did of work you didn't time: it already knows.",
+          "A timer stopped in under five minutes doesn't count as work: Friday says it was too short to count and keeps the task to do.",
+          "A new all-day event, like a birthday, leaves the day free for planning unless you say otherwise."
+        ],
+        "fixed": [
+          "Asking the AI to add a list of birthdays puts each one on the right day, whichever AI you use, and doesn't add one you already have.",
+          "Changing a repeating event from today on keeps its next date: yearly birthdays no longer all moved to today.",
+          "Deleting a repeating event from one time on removes those times from your calendar too."
+        ]
+      }
+    },
     {
       "version": "0.2.0",
       "released": "2026-11-07",
