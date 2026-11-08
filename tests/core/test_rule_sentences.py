@@ -2,7 +2,8 @@
 1,057 more for wider coverage (28 Oct: "the barebones rules parsing [should be] much more comprehensive instead of
 having to ask claude for everything"), 413 written as a held-out set, 327 more as a final one, and 750 written blind
 by three writers on 8 Nov (rule_nov8: read untouched, 362 of its 570 rules were right and 48 misread, among them free
-time read as the only hours for work and "start working by 8:30" as stopping at 8:30pm; all 48 fixed). Each reads as it
+time read as the only hours for work and "start working by 8:30" as stopping at 8:30pm; all 48 fixed), then 400
+more held out (rule_nov8_heldout: measured once, 79% right where the reader of that morning read 67%). Each reads as it
 means or goes to Claude: none is read as another rule, half of two rules, or a rule made of something to add or of
 something Friday can't do. How many are read without Claude is held per set.
 
@@ -19,7 +20,7 @@ import pytest
 
 from friday.core.rule_text import DAYS, Reading, read
 
-SETS = ("rule_sentences", "rule_wordings", "rule_heldout", "rule_final", "rule_nov8")
+SETS = ("rule_sentences", "rule_wordings", "rule_heldout", "rule_final", "rule_nov8", "rule_nov8_heldout")
 CORPORA = {}
 for name in SETS:
     with contextlib.suppress(ModuleNotFoundError):  # the held-out set may not be written yet
@@ -34,7 +35,14 @@ FIXED_SUBJECT = {"optional", "ahead", "around", "night_before", "meals_kept", "m
 ALLOWED = {"lights out by 12:30", "in bed by 11:30 on school nights", "call mom on sundays"}
 BEDTIME = r"^(?:i'?m (?:usually )?)?(?:in bed|lights out|bed|asleep)\b"
 # The share of each set's rules read without Claude, at least: what the grammar reads now, so it doesn't slip back.
-READ = {"rule_sentences": 0.99, "rule_wordings": 0.99, "rule_heldout": 0.93, "rule_final": 0.61, "rule_nov8": 0.87}
+READ = {
+    "rule_sentences": 0.99,
+    "rule_wordings": 0.99,
+    "rule_heldout": 0.93,
+    "rule_final": 0.62,
+    "rule_nov8": 0.87,
+    "rule_nov8_heldout": 0.83,
+}
 
 
 def words(s: Any) -> set[str]:

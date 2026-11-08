@@ -469,6 +469,8 @@ def read_days(t: str) -> Reading | None:
     thru saturday only, sundays are mine", "every day except tuesday is fine for work"."""
     if re.search(rf"{OTHER_RULE}|{PART}|\b(?:if|unless|when|week|pace|easy|push|grind|chill|hard|light(?:er)?)\b", t):
         return None
+    if re.search(r"\b(?:month|monthly|other|alternate|delete|add|move|cancel|remove)\b", t):
+        return None  # "two rest days a month", "every other friday", "delete the gym event on monday"
     if re.search(r"\b(?:after|before|during|around)\b|^ ?only (?!on\b)[a-z]", t):
         return None  # "no work after dinner on fridays" (an event's time); "only reading on sundays" (nothing else)
     if re.search(r"\b(?:are|is) (?:just |only )?for (?!me\b|family|rest)|\bmeetings?\b|\bcalls?\b", t):
@@ -498,9 +500,9 @@ def read_days(t: str) -> Reading | None:
         return None
     said = " ".join(subject_words)
     if not re.search(r"[a-z]", re.sub(r"\bonly\b", " ", said)) and not re.search(
-        r"\b(?:off|no|never|not|don't|study|studying|work|school|free|rest|mine)\b", t
+        r"\b(?:off|study|studying|work|school|free|rest|mine)\b", t
     ):
-        return None  # "thurs only" alone names nothing (half of "psets on tues and thurs only")
+        return None  # "thurs only", "never weekends" alone name nothing (halves of rules said whole)
     subject = subject_left(said)
     if subject is None:
         return None
@@ -583,7 +585,7 @@ def read_free(t: str) -> Reading | None:
     evenings free", "make tuesday mornings less packed", "on weeknights I need 8-9pm open to call home"."""
     lighter = re.search(LIGHTER_SAID, t)
     if not (re.search(FREE_SAID, t) or lighter) or re.search(
-        r"\b(?:at least|minimum|if|unless|when|week|front ?load|after|meetings?|calls?)\b"
+        r"\b(?:at least|minimum|if|unless|when|week|front ?load|after|meetings?|calls?|grind|push|go hard|lock in)\b"
         r"|\b(?:school|work|study|homework|screen|phone) free\b",
         t,
     ):
