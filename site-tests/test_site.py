@@ -4,9 +4,9 @@ picture on them resolves on the site, every picture says what it shows, nothing 
 trackers, H106 privacy), and the download button points at a disk image that is there."""
 
 import functools
-import re
 import importlib.util
 import json
+import re
 import threading
 from html.parser import HTMLParser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
