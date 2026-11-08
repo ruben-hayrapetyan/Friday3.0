@@ -17,8 +17,13 @@ from friday.sync.updates import UpdateError
 IMAGE = b"a disk image" * 1000
 
 
-def answer(body: bytes):  # noqa: ANN201
-    return lambda url, timeout: io.BytesIO(body)
+def answer(body: bytes, asked: list | None = None):  # noqa: ANN201
+    def opener(request, timeout):  # noqa: ANN001, ANN202
+        if asked is not None:
+            asked.append(request)
+        return io.BytesIO(body)
+
+    return opener
 
 
 def entry(version: str = "0.2.0", body: bytes = IMAGE) -> dict:
@@ -28,15 +33,25 @@ def entry(version: str = "0.2.0", body: bytes = IMAGE) -> dict:
 
 def test_the_feed_is_read_and_its_shape_checked() -> None:
     feed = {"current": "0.2.0", "versions": [entry()]}
-    assert updates.fetch_feed("u", answer(json.dumps(feed).encode())) == feed
+    assert updates.fetch_feed("https://site/updates.json", answer(json.dumps(feed).encode())) == feed
     with pytest.raises(UpdateError, match="expected shape"):
-        updates.fetch_feed("u", answer(b'{"versions": "no"}'))
+        updates.fetch_feed("https://site/updates.json", answer(b'{"versions": "no"}'))
 
-    def unreachable(url: str, timeout: int) -> io.BytesIO:
+    def unreachable(request: object, timeout: int) -> io.BytesIO:
         raise OSError("no route to host")
 
     with pytest.raises(UpdateError, match="couldn't reach Friday's site"):
-        updates.fetch_feed("u", unreachable)
+        updates.fetch_feed("https://site/updates.json", unreachable)
+
+
+def test_every_request_says_it_is_friday_and_which_version(tmp_path: Path) -> None:
+    asked: list = []
+    feed = {"current": "0.2.0", "versions": [entry()]}
+    updates.fetch_feed("https://site/updates.json", answer(json.dumps(feed).encode(), asked), version="0.3.0")
+    updates.download(entry(), tmp_path, opener=answer(IMAGE, asked), version="0.3.0")
+    assert [r.full_url for r in asked] == ["https://site/updates.json", "https://site/downloads/Friday-0.2.0.dmg"]
+    assert {r.get_header("User-agent") for r in asked} == {"Friday/0.3.0 (Mac)"}  # never Python's own name
+    assert updates.asking("https://site/updates.json", None).get_header("User-agent") == "Friday/dev (Mac)"
 
 
 def test_only_newer_versions_count_newest_first_by_number_not_by_text() -> None:

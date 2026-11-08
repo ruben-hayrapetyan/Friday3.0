@@ -1,12 +1,12 @@
-"""Friday's own updater (HOSTED.md H118–H124, H144–H147, on rhayrapetyan/download-site).
+"""Friday's own updater (HOSTED.md H118–H124, H145–H147, H169).
 
-A downloaded Friday (one built with `Mac/build.sh --release`) is started with its version and the update feed's
-address (FRIDAY_APP_VERSION, FRIDAY_UPDATE_FEED). It looks at launch and once a month (the `updates` job), and when
-you press Check now in Settings → Updates. A newer version shows as a popup at the next launch with every newer
-version's notes (H124, H139); Later hides it until the next launch (H145). Update downloads it in the background,
-checks it and unpacks it beside the app, then the Mac app swaps it in, right away or when you quit (H146). The first
-time the new version opens, what changed is shown once (H118). Builds without a feed (yours, Friday Test) never look
-(H144), and Settings says so."""
+The Mac app starts its server with its version and the update feed's address (FRIDAY_APP_VERSION, FRIDAY_UPDATE_FEED):
+every build but Friday Test (Mac/build.sh). It looks at launch and once a month (the `updates` job), and when you press
+Check now in Settings → Updates. A newer version shows as a popup at the next launch with every newer version's notes
+(H124, H139); Later hides it until the next launch (H145). Update downloads it in the background, checks it and unpacks
+it beside the app, then the Mac app swaps it in, right away or when you quit (H146). The first time the new version
+opens, what changed is shown once (H118). Yours looks as a downloaded copy does (H169); a server without a feed (Friday
+Test, fridayd run from the code) never looks, and Settings says so."""
 
 import logging
 import os
@@ -84,7 +84,7 @@ def check(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> None:
     url, mine = feed_url(), have()
     if not url or not mine:
         return
-    feed = net.fetch_feed(url)
+    feed = net.fetch_feed(url, version=mine)
     notes = kv_get(conn, "update_notes", {}, user_id)
     for entry in feed["versions"]:
         notes[entry["version"]] = entry
@@ -205,7 +205,7 @@ def fetch(conn: sqlite3.Connection, run: Run, user_id: int) -> None:
         raise net.UpdateError("there's no newer version to download")
     folder = staging_folder() / newest[0]
     image = net.download(notes[newest[0]], folder, progress=lambda p: setattr(run, "progress", p),
-                         cancelled=lambda: run.stop)  # fmt: skip
+                         cancelled=lambda: run.stop, version=have())  # fmt: skip
     run.staged = str(net.unpack(image, folder))
     image.unlink(missing_ok=True)
     run.state, run.message = "ready", None

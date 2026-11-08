@@ -1,7 +1,8 @@
-"""Friday's own updater, the network half (HOSTED.md H118–H121, H139, H144, on rhayrapetyan/download-site): the
-update feed the admin hub writes (`updates.json`: the current version and every offered version's notes), the newer
-versions in it, and a new version fetched, checked against its checksum and unpacked from its disk image beside the
-app, ready for the Mac app to swap in. Only a downloaded copy has a feed to read (Mac/build.sh --release)."""
+"""Friday's own updater, the network half (HOSTED.md H118–H121, H139, H169): the update feed the admin hub writes
+(`updates.json`: the current version and every offered version's notes), the newer versions in it, and a new version
+fetched, checked against its checksum and unpacked from its disk image beside the app, ready for the Mac app to swap
+in. Every Mac build but Friday Test reads the site's feed (Mac/build.sh). Friday names itself in each request
+(`Friday/0.3.0 (Mac)`): Cloudflare, in front of the site, refuses Python's own name (error 1010)."""
 
 import hashlib
 import json
@@ -30,10 +31,15 @@ def version_key(version: str) -> tuple[int, ...]:
         raise UpdateError(f"{version!r} isn't a version number") from wrong
 
 
-def fetch_feed(url: str, opener: Callable[..., Any] | None = None) -> dict:
+def asking(url: str, version: str | None) -> urllib.request.Request:
+    """A request that says it's Friday, and which version."""
+    return urllib.request.Request(url, headers={"User-Agent": f"Friday/{version or 'dev'} (Mac)"})
+
+
+def fetch_feed(url: str, opener: Callable[..., Any] | None = None, *, version: str | None = None) -> dict:
     opener = opener or urllib.request.urlopen
     try:
-        with opener(url, timeout=TIMEOUT_S) as answer:
+        with opener(asking(url, version), timeout=TIMEOUT_S) as answer:
             feed = json.loads(answer.read())
     except (OSError, ValueError) as wrong:
         log.info("update feed %s: %s", url, wrong)
@@ -56,6 +62,8 @@ def download(
     progress: Callable[[float], None] = lambda done: None,
     cancelled: Callable[[], bool] = lambda: False,
     opener: Callable[..., Any] | None = None,
+    *,
+    version: str | None = None,
 ) -> Path:
     """The version's disk image, saved in `folder` and checked against the feed's checksum before it's kept."""
     opener = opener or urllib.request.urlopen
@@ -66,7 +74,7 @@ def download(
     total = max(int(entry.get("bytes") or 0), 1)
     got = 0
     try:
-        with opener(entry["url"], timeout=TIMEOUT_S) as answer, partial.open("wb") as out:
+        with opener(asking(entry["url"], version), timeout=TIMEOUT_S) as answer, partial.open("wb") as out:
             while chunk := answer.read(CHUNK):
                 if cancelled():
                     raise UpdateError("the update was stopped")

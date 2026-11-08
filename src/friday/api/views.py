@@ -524,7 +524,7 @@ class UpdateVersionOut(Model):
 class UpdateStatusOut(Model):
     """Friday's own updater (HOSTED.md H118–H124, H144–H147)."""
 
-    checks: bool  # a downloaded copy, which looks for updates; builds from the code here never do (H144)
+    checks: bool  # looks for updates: every Mac build but Friday Test (H169)
     have: str | None  # the version running
     last_checked: str | None = None  # local time
     state: Literal["idle", "checking", "downloading", "ready", "failed"]

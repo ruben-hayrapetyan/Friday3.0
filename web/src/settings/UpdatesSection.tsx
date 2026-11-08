@@ -1,5 +1,5 @@
 // Settings → Updates (HOSTED.md H147): the version you have, when Friday last looked, Check now, and when a
-// downloaded update goes in (H146). A build from the code here never looks (H144), and says so.
+// downloaded update goes in (H146). Friday Test and a server run from the code never look, and say so (H169).
 
 import { useShell } from "@/shell/ShellContext"
 import { Seg } from "@/components/fr/controls"
@@ -23,7 +23,7 @@ export function UpdatesSection() {
   return (
     <>
       <SectionHead title="Updates" note="Friday looks for a new version when it opens and once a month, and asks before updating." />
-      <Field name="Version" note={status?.checks ? undefined : "Copies downloaded from Friday's site look for updates; this one is built from its code here."}>
+      <Field name="Version" note={status?.checks ? undefined : "This copy doesn't look for updates: Friday Test, and Friday run from its code, never do."}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           {status?.checks && (
             <button className="btn btn-secondary" onClick={() => act("update_check")} disabled={busy}>

@@ -116,3 +116,14 @@ def test_a_downloaded_friday_finds_downloads_unpacks_and_swaps_in_the_new_versio
                    check=True, timeout=60)  # fmt: skip
     assert version_of(app) == "0.2.1" and not staged.exists()
     assert sorted(p.name for p in app.parent.iterdir()) == ["Friday.app"]
+
+
+@pytest.mark.skipif(not os.environ.get("FRIDAY_SITE"), reason="FRIDAY_SITE=URL: the live site, through Cloudflare")
+def test_the_live_site_lets_friday_read_its_feed() -> None:
+    """Cloudflare refuses Python's own name (error 1010); Friday's name gets the feed, whose links are the counted ones
+    (not followed here: each would count as a download)."""
+    from friday.sync import updates as net
+
+    site = os.environ["FRIDAY_SITE"].rstrip("/")
+    feed = net.fetch_feed(f"{site}/updates.json", version="0.2.0")
+    assert feed["versions"] and all(v["url"].startswith(f"{site}/get/") for v in feed["versions"])

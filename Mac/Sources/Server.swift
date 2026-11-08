@@ -56,8 +56,8 @@ final class Server: ObservableObject {
     /// The app's own server as it's run: the planner compiled in the build is used (a generic Apple-silicon target,
     /// H111), nothing is written into the app (what more the planner compiles goes to ~/Library/Caches/Friday:
     /// server/planner_cache.py), and the data folder is chosen by `dataPlace`.
-    /// A downloaded copy (built with --release) also passes its version, its place and the update feed's address,
-    /// so the server can look for a newer Friday (H144, commands/updates.py); other builds never look.
+    /// It also passes its version, its place and the update feed's address when the build carries one (every build
+    /// but Friday Test, H169), so the server can look for a newer Friday (commands/updates.py).
     nonisolated static func bundledLauncher(_ python: URL, home: URL, exists: (String) -> Bool,
                                             app: ThisApp? = nil) -> Launcher {
         let cache = home.appendingPathComponent("Library/Caches/Friday/planner").path

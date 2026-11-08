@@ -430,7 +430,7 @@ test("a repeat Friday asks of a Mac event, as EventKit's rule") {
     check(MacWriter.recurrence("FREQ=HOURLY") == nil && MacWriter.recurrence("nonsense") == nil, "what it can't read")
 }
 
-test("only a downloaded copy tells its server the update feed; every bundled one its version and place (H144)") {
+test("a build with a feed tells its server the feed; every bundled one its version and place (H169)") {
     let home = URL(fileURLWithPath: "/Users/someone")
     let python = URL(fileURLWithPath: "/Applications/Friday.app/Contents/Resources/friday/python/bin/python3.12")
     let downloaded = Server.ThisApp(version: "0.2.0", path: "/Applications/Friday.app",
@@ -440,7 +440,7 @@ test("only a downloaded copy tells its server the update feed; every bundled one
     check(env["FRIDAY_UPDATE_FEED"] == "https://site.example/updates.json", "the feed it looks at")
     let yours = Server.ThisApp(version: "0.2.0", path: "/Applications/Friday.app", feed: nil)
     let built = Server.bundledLauncher(python, home: home, exists: { _ in false }, app: yours).environment([:])
-    check(built["FRIDAY_UPDATE_FEED"] == nil && built["FRIDAY_APP_VERSION"] == "0.2.0", "a build from here never looks")
+    check(built["FRIDAY_UPDATE_FEED"] == nil && built["FRIDAY_APP_VERSION"] == "0.2.0", "a build without a feed (Friday Test) never looks")
 }
 
 test("the updater swaps in only a Friday.app the server unpacked into its updates folder") {

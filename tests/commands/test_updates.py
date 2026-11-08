@@ -5,7 +5,9 @@ tested on a real disk image in tests/sync/test_updates.py). Each test is one Fri
 import hashlib
 import io
 import json
+import os
 import threading
+import urllib.request
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -36,7 +38,10 @@ class Site:
         self.image = IMAGE
         self.down = False
 
-    def __call__(self, url: str, timeout: int) -> io.BytesIO:
+    def __call__(self, request: urllib.request.Request, timeout: int) -> io.BytesIO:
+        mine = os.environ["FRIDAY_APP_VERSION"]
+        assert request.get_header("User-agent") == f"Friday/{mine} (Mac)"  # the version it is, never Python's name
+        url = request.full_url
         if self.down:
             raise OSError("no route to host")
         if url == FEED:
@@ -155,9 +160,9 @@ def test_stop_ends_a_download_and_changes_nothing(app: App, site: Site, monkeypa
     gate = threading.Event()
     real = net.download
 
-    def slow(entry: dict, folder: Path, progress, cancelled):  # noqa: ANN001, ANN202
+    def slow(entry: dict, folder: Path, progress, cancelled, version):  # noqa: ANN001, ANN202
         gate.wait(5)
-        return real(entry, folder, progress=progress, cancelled=cancelled)
+        return real(entry, folder, progress=progress, cancelled=cancelled, version=version)
 
     monkeypatch.setattr(net, "download", slow)
     app.do("update_start")

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Prepares a version of Friday for release (HOSTED.md H123, H134, H136, on rhayrapetyan/download-site): sets VERSION
+# Prepares a version of Friday for release (HOSTED.md H123, H134, H136): sets VERSION
 # and commits it, builds the Mac app with Friday's Google client, makes the disk image, and uploads it with its draft
 # notes to the laptop. There it waits in the admin hub (https://laptop.tailnet.ts.net:8444/) for you to edit
 # and approve the notes and press Release. Nothing is released here.
@@ -38,7 +38,7 @@ WORK="$(mktemp -d)"
 trap 'rm -r "$WORK"' EXIT
 APP="${FRIDAY_PREPARE_APP:-}"
 if [ -z "$APP" ]; then
-  Mac/build.sh --release  # a downloaded copy: it looks for updates (H144)
+  Mac/build.sh  # it looks for updates on the site, as every build but Friday Test does (H169)
   APP="$REPO/Mac/build/Friday.app"
 fi
 

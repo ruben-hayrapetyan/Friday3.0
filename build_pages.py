@@ -14,13 +14,18 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE / "hub"))
 from friday_hub import notes as notes_  # noqa: E402  (the hub's own notes, shown the same everywhere)
 
-NAV = [("features.html", "Features"), ("help.html", "Help"), ("whats-new.html", "What's new"),
-       ("privacy.html", "Privacy"), ("contact.html", "Contact")]
+NAV = [
+    ("features.html", "Features"),
+    ("help.html", "Help"),
+    ("whats-new.html", "What's new"),
+    ("privacy.html", "Privacy"),
+    ("contact.html", "Contact"),
+]
 
 
 def page(name: str, title: str, description: str, body: str) -> str:
     links = "\n    ".join(
-        f'<a href="/{href}"{" aria-current=\"page\"" if href == name else ""}>{label}</a>' for href, label in NAV
+        f'<a href="/{href}"{' aria-current="page"' if href == name else ""}>{label}</a>' for href, label in NAV
     )
     foot = "\n  ".join(f'<a href="/{href}">{label}</a>' for href, label in NAV)
     return f"""<!doctype html>

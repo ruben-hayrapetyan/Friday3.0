@@ -6,24 +6,21 @@
 #
 #   ./build.sh                build into build/ for this Mac
 #   ./build.sh --install      build, then replace /Applications/Friday.app and launch it (the switch, C11)
-#   ./build.sh --release      a copy for people to download: it looks for updates on the site (HOSTED.md H144);
-#                             scripts/prepare-release.sh builds with it. Yours and Friday Test never look.
+#   Every build but Friday Test looks for updates on the site (HOSTED.md H169): yours as a downloaded copy does.
 #   ./build.sh --test [--open]  Friday Test, a brand-new user's Friday beside yours (Sources/TestUser.swift), into
 #                               build/ only: never /Applications. --open opens it.
 set -euo pipefail
 
-INSTALL=false TEST=false OPEN=false RELEASE=false
+INSTALL=false TEST=false OPEN=false
 for arg in "$@"; do
   case "$arg" in
     --install) INSTALL=true ;;
     --test) TEST=true ;;
     --open) OPEN=true ;;
-    --release) RELEASE=true ;;
-    *) echo "usage: $0 [--install | --release | --test [--open]]" >&2; exit 2 ;;
+    *) echo "usage: $0 [--install | --test [--open]]" >&2; exit 2 ;;
   esac
 done
 if $TEST && $INSTALL; then echo "Friday Test stays in build/: no --install" >&2; exit 2; fi
-if $RELEASE && ($TEST || $INSTALL); then echo "--release is for the download only" >&2; exit 2; fi
 
 cd "$(dirname "$0")"
 
@@ -33,8 +30,9 @@ EXECUTABLE="Friday"
 BUNDLE_ID="com.rubenhayrapetyan.friday.web"
 VERSION="$(tr -d '[:space:]' < ../VERSION)"  # set by scripts/prepare-release.sh (HOSTED.md H136)
 TEST_PLIST="" RIBBON=() FEED_PLIST=""
-# Only a copy for download carries the feed, so only it looks for updates (H144); the address changes with the domain.
-if $RELEASE; then FEED_PLIST="<key>FridayUpdateFeed</key>       <string>https://laptop.tailnet.ts.net/updates.json</string>"; fi
+# Every build but Friday Test looks at the site's feed (H169). Friday Test never does: the site's update is the regular
+# Friday, which would open on your data.
+if ! $TEST; then FEED_PLIST="<key>FridayUpdateFeed</key>       <string>https://friday-scheduler.com/updates.json</string>"; fi
 # A practice update (scripts/practice-update.sh): Friday Test looks at a feed on this Mac offering Friday Test builds.
 if $TEST && [ -n "${FRIDAY_PRACTICE_FEED:-}" ]; then
   FEED_PLIST="<key>FridayUpdateFeed</key>       <string>$FRIDAY_PRACTICE_FEED</string>"

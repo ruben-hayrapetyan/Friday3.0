@@ -13,7 +13,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from test_site import ROOT, SITE, fetch, parsed, site  # noqa: F401  (site is the served-site fixture)
 
 TEMPLATE = ROOT / "release" / "install-template.sh"
