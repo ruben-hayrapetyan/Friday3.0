@@ -18,3 +18,5 @@ secrets.json
 .claude/
 Mac/build/
 site/downloads/
+# macOS metadata copied over from the Mac
+._*
