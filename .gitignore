@@ -20,3 +20,13 @@ Mac/build/
 site/downloads/
 # macOS metadata copied over from the Mac
 ._*
+# Secrets and data that must never be committed (8 Nov, before going public): keys, environment files, databases
+.env
+*.env
+*.pem
+*.key
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
