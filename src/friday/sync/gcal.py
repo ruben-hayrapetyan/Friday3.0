@@ -3,7 +3,7 @@ one way into a "Friday" calendar that only Friday writes. Turning events into it
 deciding what to publish is `commands/google.py`'s."""
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from googleapiclient.errors import HttpError
@@ -72,6 +72,42 @@ def events(service: Any, calendar_id: str, time_min: str, time_max: str | None =
     """Single instances (recurring events expanded by Google) ending after `time_min`."""
     window = {"timeMin": time_min} | ({"timeMax": time_max} if time_max else {})
     return paged(service.events(), calendarId=calendar_id, singleEvents=True, maxResults=2500, **window)
+
+
+def delete_from(service: Any, calendar_id: str, event_id: str) -> None:
+    """Delete an event and, when it's one time of a repeat, every later time too: the whole repeat from its first
+    time, else the repeat ended just before this one. One already gone is fine."""
+    try:
+        event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+    except HttpError as error:
+        if error.resp.status not in (404, 410):
+            raise
+        return
+    if event.get("status") == "cancelled":
+        return
+    repeat = event.get("recurringEventId")
+    if not repeat:
+        delete_event(service, calendar_id, event_id)
+        return
+    first = first_instance(service, calendar_id, repeat, "1970-01-01T00:00:00Z")
+    if first is None or first["id"] == event_id:
+        delete_event(service, calendar_id, repeat)
+        return
+    master = service.events().get(calendarId=calendar_id, eventId=repeat).execute()
+    start = event.get("originalStartTime") or event["start"]
+    ended = [ended_before(r, start) if r.startswith("RRULE:") else r for r in master.get("recurrence", [])]
+    service.events().patch(calendarId=calendar_id, eventId=repeat, body={"recurrence": ended}).execute()
+
+
+def ended_before(rule: str, start: dict[str, str]) -> str:
+    """An RRULE line ended just before `start` (Google's start: a date, or a time with its offset)."""
+    if "date" in start:
+        until = (date.fromisoformat(start["date"]) - timedelta(days=1)).strftime("%Y%m%d")
+    else:
+        moment = datetime.fromisoformat(start["dateTime"].replace("Z", "+00:00")) - timedelta(seconds=1)
+        until = moment.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
+    parts = [p for p in rule.removeprefix("RRULE:").split(";") if p.split("=")[0] not in ("UNTIL", "COUNT")]
+    return "RRULE:" + ";".join([*parts, f"UNTIL={until}"])
 
 
 def first_instance(service: Any, calendar_id: str, event_id: str, time_min: str) -> dict[str, Any] | None:
