@@ -12,6 +12,7 @@ BOOL_FIELDS = ("blocks_time", "free", "long_term", "detached", "background")
 
 def item_to_row(item: Item) -> dict[str, Any]:
     row = asdict(item)
+    row.pop("full_units")  # a plan's own: the length before a share shortened it, never stored
     row["when_kind"] = row.pop("when")
     for name in JSON_FIELDS:
         row[name] = json.dumps(row[name]) if row[name] is not None else None

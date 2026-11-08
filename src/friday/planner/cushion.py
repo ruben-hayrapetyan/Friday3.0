@@ -55,4 +55,15 @@ def shortened(item: Item, share: float | None) -> Item:
     if not item.duration_units or item.when == "fixed":
         return item
     units = max(1, math.ceil(item.duration_units * share))
-    return replace(item, duration_units=units, min_chunk_units=min(item.min_chunk_units, units))
+    return replace(
+        item, duration_units=units, min_chunk_units=min(item.min_chunk_units, units), full_units=item.duration_units
+    )
+
+
+def past_shortened(item: Item, done_units: int) -> Item:
+    """The item at its full length again once the work done on it reaches its shortened length and it's still open:
+    the share was a guess, and this one is taking longer (8 Nov: an assignment planned at 75% of its 7 hours, with
+    5½ hours done, had nothing planned for its last 1½ hours, due that afternoon)."""
+    if not item.full_units or not item.duration_units or done_units < item.duration_units:
+        return item
+    return replace(item, duration_units=item.full_units, full_units=None)

@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from friday.core.items import FieldError
+from friday.core.time import parse_local
 from tests.commands.helpers import App, new_app
 
 
@@ -204,3 +205,21 @@ def test_an_assignment_added_in_its_section_with_no_due_date_is_added(app: App) 
     # With a due in the line or the fields, still a hard deadline.
     assert app.do("add", text="Psych essay due fri 5pm", preset="Assignment")["item"]["firmness"] == "hard"
     assert app.do("add", title="PS 6", preset="Assignment", due="2026-10-30T17:00")["item"]["firmness"] == "hard"
+
+
+def test_an_assignment_planned_at_a_share_of_its_length_gets_the_rest_once_its_work_passes_that(tmp_path: Path) -> None:
+    """8 Nov: an assignment planned at 75% of its 7 hours, 5½ hours done and still open, had nothing planned for its
+    last 1½ hours, due that afternoon."""
+    from friday.planner.service import replan
+    from friday.planner.store import kv_set
+
+    app = new_app(tmp_path, now="2026-10-19T08:00", horizon_days=3)
+    item = app.do("add", text="CATC assignment due mon 4pm ~7h")["item"]["id"]
+    app.do("edit", id=item, preset="Assignment")
+    kv_set(app.conn, "length_shares", {"Assignment": 0.75}, 1)
+    app.conn.commit()
+    app.do("log", id=item, start="2026-10-18T09:00", end="2026-10-18T14:30")  # 5½ hours, the day before
+    replan(app.conn, app.now_utc)
+    blocks = app.do("item", id=item)["blocks"]
+    planned = sum((parse_local(b["end"]) - parse_local(b["start"])).total_seconds() / 60 for b in blocks)
+    assert planned == 90 and all(b["end"] <= "2026-10-19T16:00" for b in blocks)

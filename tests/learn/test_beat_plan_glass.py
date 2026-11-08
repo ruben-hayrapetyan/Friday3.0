@@ -225,3 +225,14 @@ class TestShortened:
 
     def test_never_under_a_quarter_hour(self) -> None:
         assert shortened(replace(ITEM, duration_units=1, min_chunk_units=1), 0.5).duration_units == 1
+
+
+def test_a_shortened_item_is_its_full_length_again_once_its_work_reaches_the_shortened_one() -> None:
+    from friday.planner.cushion import past_shortened
+
+    short = shortened(replace(ITEM, duration_units=28), 0.75)
+    assert (short.duration_units, short.full_units) == (21, 28)
+    assert past_shortened(short, 20).duration_units == 21  # still within the shortened length
+    back = past_shortened(short, 22)  # past it, still open: the rest of the full length is planned
+    assert (back.duration_units, back.full_units) == (28, None)
+    assert past_shortened(replace(ITEM, duration_units=8), 9) == replace(ITEM, duration_units=8)  # never shortened

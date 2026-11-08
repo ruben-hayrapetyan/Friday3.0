@@ -79,6 +79,7 @@ class Item:
     duration_source: DurationSource | None = None
     your_estimate_units: int | None = None
     friday_estimate_units: int | None = None
+    full_units: int | None = None  # the length before a learned share shortened it (planner/cushion.py `shortened`)
     estimate_detail: dict[str, Any] | None = None
     created_utc: str | None = None
     updated_utc: str | None = None
