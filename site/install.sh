@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs Friday on this Mac from the site, with no warning from macOS (HOSTED.md H131): run as
-#   curl -fsSL https://laptop.tailnet.ts.net/install.sh | sh
+#   curl -fsSL https://friday-scheduler.com/install.sh | sh
 # macOS checks only what a browser downloads, so Friday fetched here opens like any app. The disk image is checked
 # against its checksum before anything is installed. Written by release/make-install.sh for each version.
 #
@@ -10,7 +10,7 @@ set -eu
 
 VERSION="0.2.0"
 SHA256="ff518a38125607b54c6e453aa530c81eb2b185f98023f0d8858e83b373cc077e"
-URL="https://laptop.tailnet.ts.net/downloads/Friday-$VERSION.dmg"
+URL="https://friday-scheduler.com/get/Friday-$VERSION.dmg"
 
 fail() {
   printf '\nFriday wasn'"'"'t installed: %s\n' "$1" >&2

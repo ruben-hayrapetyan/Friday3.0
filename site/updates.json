@@ -4,7 +4,7 @@
     {
       "version": "0.2.0",
       "released": "2026-11-07",
-      "url": "https://laptop.tailnet.ts.net/downloads/Friday-0.2.0.dmg?via=update",
+      "url": "https://friday-scheduler.com/get/Friday-0.2.0.dmg?via=update",
       "sha256": "ff518a38125607b54c6e453aa530c81eb2b185f98023f0d8858e83b373cc077e",
       "bytes": 231743801,
       "minimum_macos": "14.0",
@@ -23,7 +23,7 @@
     {
       "version": "0.1.0",
       "released": "2026-11-06",
-      "url": "https://laptop.tailnet.ts.net/downloads/Friday-0.1.0.dmg?via=update",
+      "url": "https://friday-scheduler.com/get/Friday-0.1.0.dmg?via=update",
       "sha256": "5c0115020c0649993dbca9ae843c0ac3d40c5e728b9c8519c0bc3cac2d6de14d",
       "bytes": 230753715,
       "minimum_macos": "14.0",
