@@ -4,7 +4,7 @@ import contextlib
 import json
 import re
 from dataclasses import replace
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from friday.api.commands import (
@@ -20,11 +20,19 @@ from friday.api.commands import (
 )
 from friday.api.views import SeriesRow
 from friday.commands.eventwrites import queue_event_write, writes_to
-from friday.commands.fields import given_fields, insert_item, item_out, new_item, require_item, to_item_values
+from friday.commands.fields import (
+    all_day_is_free,
+    given_fields,
+    insert_item,
+    item_out,
+    new_item,
+    require_item,
+    to_item_values,
+)
 from friday.commands.registry import Ctx, command, query
 from friday.core.db import one, rows
 from friday.core.items import FieldError, with_defaults
-from friday.core.recurrence import describe, ending_before, read_repeat
+from friday.core.recurrence import describe, ending_before, next_occurrence, read_repeat
 from friday.core.rows import item_to_row
 from friday.core.series import Series, materialize, occurrence_timing
 from friday.core.time import ampm, format_local, local_midnight, parse_local, parse_utc, to_local
@@ -293,16 +301,17 @@ def edit_series_from(
     a new window (`release_offset_min`, `due_offset_min` from the day's start), as a meal's learned time gives."""
     old = load_series(ctx, series_id)
     day = date.fromisoformat(from_date)
+    at = parse_local(old["dtstart_local"]).time()
+    first = continued_from(old, day) if every is None else datetime.combine(day, at)  # a new rule starts that day
     ctx.db.update("series", {"id": series_id}, {"rrule": ending_before(old["rrule"], day), "updated_utc": ctx.now_text})
     remove_future_occurrences(ctx, series_id, day)
     template = json.loads(old["template"]) | without_times(to_item_values(ctx, given))
-    start_time = parse_local(old["dtstart_local"]).time()
     new_id = ctx.db.insert(
         "series",
         {
             "template": json.dumps(template),
             "rrule": rule_from(ctx, every) if every else old["rrule"],
-            "dtstart_local": format_local(datetime.combine(day, start_time)),
+            "dtstart_local": format_local(first),
             "per_window": per_window or old["per_window"],
             "release_offset_min": old["release_offset_min"],
             "due_offset_min": old["due_offset_min"],
@@ -314,6 +323,14 @@ def edit_series_from(
     keep_calendar(ctx, new_id, calendar_of(ctx, series_id))  # the changed copy goes where the series went
     materialize_series(ctx, new_id)
     return new_id
+
+
+def continued_from(old: dict[str, Any], day: date) -> datetime:
+    """Where the same repeat picks up from `day`: its next time on or after it, not the day itself (7 Nov: a yearly
+    birthday edited from today started again today, every one of them, as its rule takes its date from the start)."""
+    start = parse_local(old["dtstart_local"])
+    found = next_occurrence(old["rrule"], start, datetime.combine(day, time.min) - timedelta(microseconds=1))
+    return found or datetime.combine(day, start.time())
 
 
 def without_times(values: dict[str, Any]) -> dict[str, Any]:
@@ -377,7 +394,7 @@ def series_add(ctx: Ctx, inp: SeriesAddInput) -> SeriesOut:
         repeat["dtstart_local"] = format_local(
             local_midnight(date.fromisoformat(inp.start_date)) + timedelta(minutes=ctx.day_start)
         )
-    series_id, _ = create_series(ctx, given_fields(inp), repeat)
+    series_id, _ = create_series(ctx, all_day_is_free(given_fields(inp)), repeat)
     return series_out(ctx, series_id)
 
 

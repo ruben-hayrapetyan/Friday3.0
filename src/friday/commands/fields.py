@@ -36,6 +36,15 @@ def given_fields(fields: ItemFields) -> dict[str, Any]:
     return {k: v for k, v in fields.model_dump(exclude_unset=True).items() if k in ItemFields.model_fields}
 
 
+def all_day_is_free(given: dict[str, Any]) -> dict[str, Any]:
+    """A new event from midnight to midnight is a day's label, like a birthday, not a day you're busy (7 Nov: Remy's
+    Birthday, added without saying, blocked all of Tuesday and nothing was planned on it). Calendars' all-day
+    events already come in this way and the event editor says so itself; an edit keeps what the event was."""
+    start, end = given.get("start"), given.get("end")
+    whole = bool(start and end and start.endswith("T00:00") and end.endswith("T00:00") and end > start)
+    return given | {"blocks_time": False} if whole and given.get("blocks_time") is None else given
+
+
 def to_item_values(ctx: Ctx, given: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for name, value in given.items():

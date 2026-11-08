@@ -22,6 +22,7 @@ from friday.api.commands import (
 from friday.commands.estimates import learned_minutes
 from friday.commands.eventwrites import queue_event_write
 from friday.commands.fields import (
+    all_day_is_free,
     check_parent,
     given_fields,
     insert_item,
@@ -67,7 +68,7 @@ PARSED_UNITS = {
 def add(ctx: Ctx, inp: AddInput) -> AddOutput:
     """Create an item from fields or from a quick-add line."""
     given, warnings, repeat = from_text(ctx, inp.text) if inp.text else ({}, [], {})
-    given |= given_fields(inp)
+    given = all_day_is_free(given | given_fields(inp))
     given = exact_length(ctx, with_guesses(ctx, given))
     after, before = repeat.pop("after", []) + inp.after, repeat.pop("before", []) + inp.before
     if inp.every:
