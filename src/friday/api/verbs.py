@@ -989,6 +989,14 @@ VERBS = {
         True,
         "Start a stopped series again; its occurrences come back from today (an imported calendar repeat's with the",
     ),
+    "series_spacing": Verb(
+        "POST",
+        "/api/c/series_spacing",
+        commands.SeriesSpacingInput,
+        True,
+        True,
+        "Keep a repeat's times at least so many days apart, from when you did the last one (C50); none to stop.",
+    ),
     "series_stop": Verb(
         "POST",
         "/api/c/series_stop",

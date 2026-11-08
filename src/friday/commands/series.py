@@ -17,6 +17,7 @@ from friday.api.commands import (
     SeriesEditInput,
     SeriesOut,
     SeriesRef,
+    SeriesSpacingInput,
 )
 from friday.api.views import SeriesRow
 from friday.commands.eventwrites import queue_event_write, writes_to
@@ -415,6 +416,17 @@ def series_edit(ctx: Ctx, inp: SeriesEditInput) -> SeriesOut:
     return series_out(ctx, new_id)
 
 
+@command("series_spacing", affects_plan=True)
+def series_spacing(ctx: Ctx, inp: SeriesSpacingInput) -> SeriesOut:
+    """Keep a repeat's times at least so many days apart, from when you did the last one (C50); none to stop."""
+    load_series(ctx, inp.id)
+    refuse_external(ctx, inp.id)
+    if inp.days is not None and not 0 < inp.days <= 366:
+        raise FieldError("days", "days apart is more than 0 and at most a year")
+    ctx.db.update("series", {"id": inp.id}, {"min_gap_days": inp.days, "updated_utc": ctx.now_text})
+    return series_out(ctx, inp.id)
+
+
 @command("series_stop", affects_plan=True)
 def series_stop(ctx: Ctx, inp: SeriesRef) -> SeriesOut:
     """Stop a series; its undone future occurrences go (an imported calendar repeat stops coming in too)."""
@@ -510,6 +522,7 @@ def series_list(ctx: Ctx, inp: Empty) -> list[SeriesRow]:
                 source=source["name"] if source else "you",
                 active=bool(row["active"]),
                 external=bool(row["external_id"]),
+                min_gap_days=row["min_gap_days"],
             )
         )
     return out

@@ -7,8 +7,10 @@ from friday.core.pace import dials_on, scales
 from friday.core.settings import minutes_of
 from friday.core.time import UNIT_MIN, format_utc, parse_utc, planning_date
 from friday.planner.build import BuildInput, Dependency, Pin, night_times
+from friday.planner.cushion import past_shortened
 from friday.planner.progress import recorded_minutes, remaining_minutes
 from friday.planner.snapshot import BlockRow, Snapshot
+from friday.planner.spacing import LastDone, loosened, spaced
 from friday.planner.timed import timed_over, with_running
 
 
@@ -187,11 +189,14 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
     for block in snapshot.plan_blocks:
         current.setdefault(block.item_id, []).append((block.start_utc, block.end_utc))
     stability = 1.0 if snapshot.next_stability is None else snapshot.next_stability
-    return BuildInput(
-        items=list(snapshot.items),
+    last = {k: LastDone(*v) for k, v in snapshot.series_last.items()}
+    items, waits, originals = spaced([past_shortened(i, done.get(i.id, 0) // UNIT_MIN) for i in snapshot.items],
+                                     snapshot.series_gaps, last)  # fmt: skip
+    inp = BuildInput(
+        items=items,
         now_utc=snapshot.now_utc,
         settings=snapshot.settings,
-        dependencies=[Dependency(a, b, fraction, lag) for a, b, fraction, lag in snapshot.dependencies],
+        dependencies=[*(Dependency(a, b, fraction, lag) for a, b, fraction, lag in snapshot.dependencies), *waits],
         pins=pins,
         areas=snapshot.areas,
         progress_units={k: v // UNIT_MIN for k, v in done.items()},
@@ -212,3 +217,15 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
         done_utc=snapshot.sleep.done_utc if snapshot.sleep else None,
         going=snapshot.going,
     )
+    if not originals:
+        return inp
+    # Keeping times apart is a strong preference, not a wall (C50): a spaced time that would be late with its wait is
+    # planned as it was, closer to the one before.
+    from friday.planner.service import quick_late  # the planner's own quick check; it builds from this input
+
+    _, late = quick_late(inp, with_fallback=False)
+    loose, kept = loosened(items, waits, originals, set(late))
+    if len(kept) == len(waits) and loose == items:
+        return inp
+    others = [d for d in inp.dependencies if d not in waits]
+    return dataclasses.replace(inp, items=loose, dependencies=[*others, *kept])

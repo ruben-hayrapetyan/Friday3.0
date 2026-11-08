@@ -1534,6 +1534,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/series_spacing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Keep a repeat's times at least so many days apart, from when you did the last one (C50); none to stop. */
+        post: operations["series_spacing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/series_stop": {
         parameters: {
             query?: never;
@@ -8018,6 +8035,36 @@ export interface components {
              * @default false
              */
             external?: boolean;
+            /** Min Gap Days */
+            min_gap_days?: number | null;
+        };
+        /** SeriesSpacingInput */
+        SeriesSpacingInput: {
+            /** Id */
+            id: number;
+            /** Days */
+            days?: number | null;
+        };
+        /** SeriesSpacingResult */
+        SeriesSpacingResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["SeriesOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** SeriesStopResult */
         SeriesStopResult: {
@@ -13229,6 +13276,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SeriesResumeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    series_spacing: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeriesSpacingInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeriesSpacingResult"];
                 };
             };
             /** @description Validation Error */

@@ -44,7 +44,7 @@ from friday.core.time import ampm_in
 Strength = Literal["Prefer", "Strongly", "Always"]
 Kind = Literal[
     "window", "days", "free", "cap", "early", "after", "pace", "deadlines", "optional", "ahead", "night_before",
-    "around", "close", "meals_kept", "meals_learned", "fit_gaps", "runs_while_working", "sleep_min",
+    "around", "close", "meals_kept", "meals_learned", "fit_gaps", "runs_while_working", "sleep_min", "spacing",
 ]  # fmt: skip
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 NAMES = {
@@ -383,7 +383,11 @@ PLAIN = (
     # 8 Nov corpus: a title in quotes is the title ("\"Yoga\" is skippable"); "id like", "ill skip" are I'd, I'll;
     # "knitting circle: only if ahead" names what's only if ahead.
     (r"[\"“”]", " "),
-    (r"\bid (?=like|love|rather|prefer|want|never)", "i'd "),
+    (
+        r"\bid (?=(?:(?:really|so|truly|definitely|honestly|also|just|much) )*"
+        r"(?:like|love|rather|prefer|want|never)\b)",
+        "i'd ",
+    ),
     (r"\bill (?=skip|go|do|take|drop|miss|ditch|work|study|finish)", "i'll "),
     (r"(?<=[a-z]): (?=only (?:if|when)\b)", " "),
     (r"\b(?:wkdays?|wk days?)\b", "weekdays"),
@@ -451,7 +455,13 @@ PLAIN = (
             + {"thirty": ":30", "fifteen": ":15", "forty-five": ":45", "forty five": ":45"}.get(m[3] or "", "")
         ),
     ),
-    (r"^ ?(?:i(?:'d| would)? (?:really )?(?:like|want|prefer|love)(?: to)?|i wanna|i need to)\s+(?=[a-z])", " "),
+    # 8 Nov: "I really would love to have lunch after noon" is "I want to have lunch after noon", said more strongly
+    # (the strength is read first): any order of I, I'd, would, really, so, truly with like, want, prefer or love.
+    (
+        r"^ ?(?:i(?:'d)?(?: (?:would|really|so|truly|definitely|also|just|honestly|much))*"
+        r" (?:like|want|prefer|love|wish)(?: it if| to)?|i wanna|i need to)\s+(?=[a-z])",
+        " ",
+    ),
     (r"\bright up (?:until|till)\b", "right up to"),
     (r"\bpre-?(?=\d)", "before "),
     (r"\bmake sure (?:that )?(?=i'?m\b|im\b|to\b|it\b|there\b|nothing\b)", ""),
@@ -742,9 +752,9 @@ def read_one(text: str) -> tuple[Reading | None, Strength]:
     nt = r"\b(?:should|must|can|could|would|wo|ca|does|did|is|are)n't\b"  # "shouldn't run during lectures"
     negated = bool(re.search(rf"\b(no|never|don't|not|avoid)\b|{nt}", t))
     t = re.sub(rf"\b(no|never|don't do|don't|do not|not|avoid)\b|{nt}", " ", t)
-    readers = (read_sleep, read_pace, read_meals, read_running, read_fit_gaps, read_around, read_ahead, read_optional,
-               read_night_before, read_close, read_cap, read_early, read_free, read_window, read_days, read_after,
-               read_deadlines)  # fmt: skip
+    readers = (read_spacing, read_sleep, read_pace, read_meals, read_running, read_fit_gaps, read_around, read_ahead,
+               read_optional, read_night_before, read_close, read_cap, read_early, read_free, read_window, read_days,
+               read_after, read_deadlines)  # fmt: skip
     # Only these read a condition ("only if I'm ahead", "skip it if there's too much work"); after them, a sentence
     # with one goes to Claude rather than lose it ("only work on sundays if I'm behind" isn't "work on Sundays").
     conditional = {
@@ -1199,6 +1209,39 @@ SLEEP_AMOUNT = (
 MOST_SLEEP = r"\b(?:at most|more than|max(?:imum)?|up to|tops|or less|cap(?:ped)?|limit)\b"
 
 
+SPACED_AMOUNT = (
+    r"(?:at least |a minimum of |min(?:imum)? |no less than )?(\d+(?:\.\d+)?|a|an|one|two|three|four|five|six|seven"
+    r"|eight|nine|ten) ?(days?|d|weeks?|wks?|hours?|hrs?|h)"
+)
+
+
+def read_spacing(t: str, negated: bool) -> Reading | None:
+    """A repeating task's times kept apart (C50): `laundry at least 7 days apart`, `workouts need to be at least 48
+    hours apart`, `a week between laundry`. The subject is the repeat's title; the amount is days, start to start."""
+    if negated:
+        return None
+    if m := re.search(
+        rf"^ ?(?:keep |space |spread )?(?:my |the |each |every )?([a-z][a-z0-9 ]*?) (?:sessions? |times? |runs? )?"
+        rf"(?:(?:should|need to|needs to|must|have to|has to) (?:be|have) )?(?:spaced )?{SPACED_AMOUNT} apart ?$",
+        t,
+    ):
+        subject, amount, unit = m[1], m[2], m[3]
+    elif m := re.search(
+        rf"^ ?{SPACED_AMOUNT} (?:between|in between) (?:each |every |my |the )*([a-z][a-z0-9 ]*?)"
+        r"(?: sessions?| times?)? ?$",
+        t,
+    ):
+        amount, unit, subject = m[1], m[2], m[3]
+    else:
+        return None
+    n = WORD_HOURS.get(amount) or (1 if amount in ("a", "an") else float(amount))
+    days = n / 24 if unit.startswith("h") else n * 7 if unit.startswith("w") else n
+    subject = re.sub(r"^(?:keep|space|spread|my|the|each|every|doing|do) ", "", subject.strip())
+    if not subject or re.search(JUNK_SUBJECT, subject) or not 0 < days <= 366:
+        return None
+    return Reading("spacing", subject, amount=round(float(days), 3))
+
+
 def read_sleep(t: str, negated: bool) -> Reading | None:
     """At least so many hours of sleep a night, on some nights or all: a floor, never a cap ("no more than 9 hours of
     sleep" isn't something Friday plans); "below" and "under" say the floor too ("don't let work cut my sleep below
@@ -1637,6 +1680,8 @@ def said(r: Reading) -> str:
         return "Short tasks in short gaps, long ones in long stretches"
     if r.kind == "runs_while_working":
         return "Things that run by themselves run while you work, not during events or your sleep"
+    if r.kind == "spacing":
+        return f"{titled(r.subject)} at least {r.amount:g} {'day' if r.amount == 1 else 'days'} apart"
     if r.kind == "sleep_min":
         on = f" {days_words(r.days)}" if r.days else ""
         return f"At least {r.amount:g} h of sleep a night{on}"
@@ -1781,6 +1826,9 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
         price = "forbid" if strength == "Always" else PRICE[strength]
         return {"name": name, "type": "runs_while_working", "weight": 1.0, "scope": None, "reason": sentence(r),
                 "params": {"price": price}}  # fmt: skip
+    if r.kind == "spacing":  # not a planner rule: the repeat's min_gap_days (commands/rules.py, planner/spacing.py)
+        return {"name": name, "type": "spacing", "weight": 0.0, "scope": None, "reason": sentence(r),
+                "params": {"title": r.subject, "days": r.amount}}  # fmt: skip
     if r.kind == "sleep_min":  # the hours before waking: priced above a late night, or never used (Always)
         price = "forbid" if strength == "Always" else SLEEP_PRICE[strength]
         params = {"hours": r.amount or 7.0, "price": price} | ({"days": list(r.days)} if r.days else {})

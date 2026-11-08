@@ -1848,7 +1848,11 @@ C = [
     ("new", "i want to start working by 8:30 every weekday", "new:start work no later than 8:30 on weekdays"),
     ("new", "my commute is 45 min on the train, put my reading there", "new:do reading during the train commute"),
     ("new", "no task longer than 2 hours in one sitting, split it up", "new:work blocks at most 2 hours long"),
-    ("new", "workouts need to be at least 48 hours apart", "new:at least 48 hours between workouts"),
+    (
+        "spacing",
+        "workouts need to be at least 48 hours apart",
+        {"kind": "spacing", "subject": "workouts", "amount": 2.0},
+    ),
     ("new", "after 2 hrs of studying i need a 20 min break", "new:20 minute break after every 2 hours of study"),
     ("new", "do chem homework before i do any reading", "new:chem homework ordered before reading"),
     ("new", "do all my calls on one day if i can", "new:batch calls on one day"),

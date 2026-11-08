@@ -439,6 +439,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     },
     "series_edit": lambda app: {"id": gym(app)["series_id"], "from_date": "2026-10-26", "duration_min": 90},
     "series_stop": lambda app: {"id": gym(app)["series_id"]},
+    "series_spacing": lambda app: {"id": gym(app)["series_id"], "days": 3},
     "series_delete": lambda app: {"id": gym(app)["series_id"]},
     "report": lambda app: {"where": "plan", "message": "the calendar went blank"},
     "series_resume": lambda app: {"id": app.do("series_stop", id=gym(app)["series_id"])["id"]},

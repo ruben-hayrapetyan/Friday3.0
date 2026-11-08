@@ -669,6 +669,7 @@ class SeriesRow(Model):
     source: str  # "you", or the feed or calendar it came from
     active: bool
     external: bool = False  # it repeats in a calendar, which makes its times: changed there, not here
+    min_gap_days: float | None = None  # its times kept at least this many days apart (C50)
 
 
 class DuplicateGroup(Model):

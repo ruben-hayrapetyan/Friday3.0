@@ -381,6 +381,11 @@ class SeriesRef(Model):
     id: int
 
 
+class SeriesSpacingInput(Model):
+    id: int
+    days: float | None = None  # at least this many days from one time's start to the next's; None for none (C50)
+
+
 class SettingsSetInput(Model):
     key: str
     value: Any

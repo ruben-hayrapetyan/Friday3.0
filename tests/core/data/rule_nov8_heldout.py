@@ -968,7 +968,7 @@ C = [
     ("new", "dont let a task sit untouched for more than 3 days", "new:touch each task every 3 days"),
     ("new", "keep my weekends balanced, same amount sat and sun", "new:equal load sat and sun"),
     ("new", "plan in 30 minute chunks only", "new:30 min chunks"),
-    ("new", "i want each workout at least 48h apart", "new:workouts 48h apart"),
+    ("spacing", "i want each workout at least 48h apart", {"kind": "spacing", "subject": "workout", "amount": 2.0}),
     ("new", "after a night shift i want the whole next day off", "new:day off after night shift"),
     ("new", "schedule chores so the kitchen gets cleaned every other day", "new:kitchen cleaning every other day"),
     ("new", "dont stack more than 2 deep work blocks back to back", "new:max 2 hard blocks in a row"),

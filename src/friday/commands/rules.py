@@ -7,7 +7,15 @@ import re
 from dataclasses import replace
 from typing import Any
 
-from friday.api.commands import Changed, RuleAddInput, RuleRef, RuleSetInput, RuleTextInput, RuleWinInput
+from friday.api.commands import (
+    Changed,
+    RuleAddInput,
+    RuleRef,
+    RuleSetInput,
+    RuleTextInput,
+    RuleWinInput,
+    SeriesSpacingInput,
+)
 from friday.api.types import Empty
 from friday.api.views import RuleClashOut, RuleConflict, RuleOut, RuleReadOut
 from friday.commands.registry import Ctx, command, query
@@ -53,6 +61,7 @@ SAID = {
 BACKGROUND = {"quota", "energy", "soft_late", "unscheduled", "spread", "cluster", "target_shortfall",
               "elastic_shortfall", "open_value", "minimize_changes"}  # fmt: skip
 EFFECT = {
+    "spacing": "Friday plans each time at least that long after the last one you did",
     "time_preference": "Friday avoids those hours",
     "reserve": "Friday keeps that time free",
     "daily_load": "Friday plans less on full days",
@@ -117,6 +126,9 @@ def rule_read(ctx: Ctx, inp: RuleTextInput) -> RuleReadOut:
         effect += f". Matches {', '.join(found)}" if found else ". No event has those words in its title yet"
     if reading.kind == "pace":
         effect += replaced_paces(ctx, dict(reading.paces or ()))
+    if reading.kind == "spacing":
+        found = repeats_named(ctx, reading.subject)
+        effect += f". Sets it on {', '.join(t for _, t in found)}" if found else ". No repeating task has that name yet"
     mine = readings(ctx)
     if new["type"] == "skippable":
         _, moved = taken_from([r.model_dump() for r in ctx.settings["rules"]], new, dict(mine))
@@ -130,6 +142,7 @@ def rule_read(ctx: Ctx, inp: RuleTextInput) -> RuleReadOut:
 
 
 NOT_COMPARED = {
+    "spacing",
     "pace",
     "deadlines",
     "meals_kept",
@@ -187,6 +200,8 @@ def added(ctx: Ctx, text: str, strength: str, overrides: dict[str, Any] | None =
         return weekly_pace(ctx, dict(reading.paces or ()), sentence(reading))
     if reading.kind == "deadlines":
         return deadlines_first(ctx)
+    if reading.kind == "spacing":
+        return spaced_repeats(ctx, reading)
     rules = [r.model_dump() for r in ctx.settings["rules"]]
     name = unique(f"you:{slug(sentence(reading))}", {r["name"] for r in rules})
     areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
@@ -242,6 +257,32 @@ def deadlines_first(ctx: Ctx) -> Changed:
         write_setting(ctx, "rules", [r | {"enabled": True} if r in off else r for r in rules])
         return Changed(message="Deadlines come first is back on: Friday works more when it must, so nothing is late")
     return Changed(message="Already on: Friday works more when it must, so nothing is late")
+
+
+def repeats_named(ctx: Ctx, words: str) -> list[tuple[int, str]]:
+    """Your active repeating tasks whose title has these words in it, as (id, title)."""
+    wanted = identity_text(norm(words, ctx.settings["text"].rules())).rstrip("s")
+    found = []
+    for r in rows(ctx.conn, "SELECT id, template FROM series WHERE user_id = ? AND active = 1", [ctx.user_id]):
+        template = json.loads(r["template"])
+        title = template.get("title", "")
+        if template.get("when_kind", template.get("when")) != "fixed" and has_words(
+            identity_text(norm(title, ctx.settings["text"].rules())), wanted
+        ):
+            found.append((r["id"], title))
+    return found
+
+
+def spaced_repeats(ctx: Ctx, reading: Reading) -> Changed:
+    """A rule keeping a repeat's times apart is that repeat's `min_gap_days` (C50), set as its field sets it."""
+    found = repeats_named(ctx, reading.subject)
+    if not found:
+        raise FieldError("text", f"no repeating task is called “{reading.subject}”: make it repeat first")
+    from friday.commands.series import series_spacing
+
+    for series_id, _ in found:
+        series_spacing(ctx, SeriesSpacingInput(id=series_id, days=reading.amount))
+    return Changed(message=f"Added: {sentence(reading)} ({', '.join(t for _, t in found)})")
 
 
 def weekly_pace(ctx: Ctx, days: dict[str, str], said: str) -> Changed:

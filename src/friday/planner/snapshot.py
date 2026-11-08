@@ -96,6 +96,38 @@ class Snapshot:
     going: frozenset[int] = frozenset()  # optional events you said you'd go to this time (`event_keep`): walled off
     away: tuple[str, int, int] | None = None  # a nap or a snack now (`away`): what, since when, until when
     alongside: tuple[tuple[int, int], ...] = ()  # timed at once with `timer` (item id, start): their time counts
+    # Repeats whose times are kept apart (planner/spacing.py): days between, and the last done time's start, end, due.
+    series_gaps: dict[int, float] = field(default_factory=dict)
+    series_last: dict[int, tuple[int, int, int | None]] = field(default_factory=dict)
+
+
+def series_spacing(conn: sqlite3.Connection, user_id: int) -> dict[str, Any]:
+    """Each spaced repeat's days between times, and its last done time: when its work began, ended and was due."""
+    gaps = {
+        r["id"]: float(r["min_gap_days"])
+        for r in rows(
+            conn, "SELECT id, min_gap_days FROM series WHERE user_id = ? AND min_gap_days IS NOT NULL", [user_id]
+        )  # fmt: skip
+    }
+    last: dict[int, tuple[int, int, int | None]] = {}
+    if gaps:
+        done = rows(
+            conn,
+            f"SELECT i.id, i.series_id, i.due_utc, c.completed_utc, c.actual_minutes, "
+            f"(SELECT min(p.start_utc) FROM progress p WHERE p.item_id = i.id) AS began, "
+            f"(SELECT max(p.end_utc) FROM progress p WHERE p.item_id = i.id) AS ended FROM completions c "
+            f"JOIN items i ON i.id = c.item_id WHERE c.user_id = ? AND i.series_id IN ({', '.join('?' * len(gaps))}) "
+            f"ORDER BY c.completed_utc DESC",
+            [user_id, *gaps],
+        )
+        for r in done:
+            if r["series_id"] not in last:
+                # When the work was done, as its timed or logged sessions say; else the done time less its length.
+                end = parse_utc(r["ended"] or r["completed_utc"])
+                began = parse_utc(r["began"]) if r["began"] else end - int(r["actual_minutes"] or 0)
+                due = parse_utc(r["due_utc"]) if r["due_utc"] else None
+                last[r["series_id"]] = (began, end, due)
+    return {"series_gaps": gaps, "series_last": last}
 
 
 def take_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> Snapshot:
@@ -163,6 +195,7 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         eating=eating(conn, user_id) if settings["meal_tracking"].on else None,
         away=away(conn, now_utc, settings, user_id),
         going=frozenset(kv_get(conn, "events_kept", [], user_id)),
+        **series_spacing(conn, user_id),
         **learned(conn, now_utc, settings, user_id),
         log_since_plan=log_since(conn, json.loads(plan["report"]).get("last_command_id", 0) if plan else 0, user_id),
         last_command_id=int(

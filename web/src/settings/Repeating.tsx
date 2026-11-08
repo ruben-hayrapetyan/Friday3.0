@@ -2,6 +2,7 @@
 // calendars and feeds), each with a switch, how often, when next and where it came from.
 
 import { useQuery } from "@tanstack/react-query"
+import { useRef } from "react"
 import { query, type Schemas } from "@/api/client"
 import { H, Icon, Menu, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
@@ -52,6 +53,10 @@ function SeriesLine({ row }: { row: Row }) {
   // Its tag, from today on (one from a calendar keeps its times there; 3 Nov: `series_edit` had no button)
   const retag = useCommand("series_edit", { label: () => `${row.title}: tag changed from today on` })
   const tags = (useAreas().data ?? []).filter((a) => !a.archived).map((a) => a.name)
+  // Its times kept apart, counted from when you did the last one (C50: "laundry at least 7 days apart")
+  const picked = useRef<string>("")
+  const space = useCommand("series_spacing", { label: () => `${row.title}: ${picked.current ? `at least ${picked.current} days apart` : "times not kept apart"}` })
+  const gap = row.min_gap_days ? String(row.min_gap_days) : ""
   return (
     <div className="fr-row" style={{ display: "grid", gridTemplateColumns: "36px 10px minmax(0,1fr) auto 28px", gap: 12, alignItems: "center", padding: "10px 0", opacity: row.active ? 1 : 0.5 }}>
       <Switch on={row.active} onToggle={() => (row.active ? stop({ id: row.id }) : resume({ id: row.id }))} label={`${row.active ? "Stop" : "Start"} ${row.title}`} />
@@ -61,6 +66,17 @@ function SeriesLine({ row }: { row: Row }) {
         <span className="tnum fr-kicker" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           {row.pattern} ·
           <Menu label={`Tag for ${row.title}`} value={row.area ?? ""} onPick={(tag) => tag !== (row.area ?? "") && retag({ id: row.id, area: tag || null })} options={[{ value: "", label: "No tag" }, ...[...new Set([...tags, ...(row.area ? [row.area] : [])])].map((t) => ({ value: t, label: t }))]} />
+          {!row.fixed && !row.external && (
+            <>
+              ·
+              <Menu
+                label={`Days between ${row.title}`}
+                value={gap}
+                onPick={(days) => days !== gap && ((picked.current = days), space({ id: row.id, days: days ? Number(days) : null }))}
+                options={[{ value: "", label: "Times apart: any" }, ...["2", "3", "5", "7", "10", "14"].map((d) => ({ value: d, label: `At least ${d} days apart` })), ...(gap && !["2", "3", "5", "7", "10", "14"].includes(gap) ? [{ value: gap, label: `At least ${gap} days apart` }] : [])]}
+              />
+            </>
+          )}
         </span>
       </span>
       <span className="tnum" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 12 }}>

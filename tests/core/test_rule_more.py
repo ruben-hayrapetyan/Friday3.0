@@ -187,3 +187,31 @@ def test_free_joins_touching_parts_and_keeps_lighter_to_parts_of_days() -> None:
     assert r and r.amount == 0.5 and r.days == ("tue",)
     assert rule_more.read_free(" keep friday nights and saturday mornings free ") is None  # two stretches
     assert rule_more.read_free(" block out 4-6 on friday for the dentist ") is None  # once: an event
+
+
+@pytest.mark.parametrize(
+    ("text", "strength"),
+    [
+        ("I want to have lunch after noon", "Prefer"),
+        ("I really would love to have lunch after noon", "Strongly"),
+        ("i would really like lunch after noon", "Strongly"),
+        ("id really love to have lunch after noon", "Strongly"),
+        ("I'd like lunch after noon", "Prefer"),
+    ],
+)
+def test_how_much_you_want_it_changes_only_the_strength(text: str, strength: str) -> None:
+    """8 Nov: "I want to have lunch after noon" read, "I really would love to have lunch after noon" didn't."""
+    reading, said = read(text)
+    assert reading and (reading.kind, reading.subject, reading.rel, reading.at) == ("window", "lunch", "after", "12:00")
+    assert said == strength
+
+
+def test_spacing_reads_the_repeat_and_its_days_start_to_start() -> None:
+    for text, subject, days in (
+        ("laundry at least 7 days apart", "laundry", 7.0),
+        ("a week between laundry", "laundry", 7.0),
+        ("workouts need to be at least 48 hours apart", "workouts", 2.0),
+    ):
+        reading, _ = read(text)
+        assert reading and (reading.kind, reading.subject, reading.amount) == ("spacing", subject, days), text
+    assert read("no laundry 2 days apart")[0] is None  # "no" with spacing says nothing Friday can keep
