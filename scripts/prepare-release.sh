@@ -1,8 +1,9 @@
 #!/bin/bash
-# Prepares a version of Friday for release (HOSTED.md H123, H134, H136): sets VERSION
-# and commits it, builds the Mac app with Friday's Google client, makes the disk image, and uploads it with its draft
-# notes to the laptop. There it waits in the admin hub (https://laptop.tailnet.ts.net:8444/) for you to edit
-# and approve the notes and press Release. Nothing is released here.
+# Prepares a version of Friday for release (HOSTED.md H123, H134, H136, H174): sets the version (VERSION and the
+# same number in both pyproject.toml, web/package.json and both uv.lock) and commits it, builds the Mac app with
+# Friday's Google client, makes the disk image, and uploads it with its draft notes to the laptop. There it waits in
+# the admin hub (https://laptop.tailnet.ts.net:8444/) for you to edit and approve the notes and press
+# Release. Nothing is released here.
 #
 #   scripts/prepare-release.sh VERSION NOTES.json
 #
@@ -30,8 +31,12 @@ cd "$REPO"
 git diff --quiet HEAD -- || die "commit or set aside your changes first: a version is built from a commit"
 
 echo "==> Friday $VERSION"
-echo "$VERSION" > VERSION
-if ! git diff --quiet HEAD -- VERSION; then git commit -q -m "Friday $VERSION, prepared for release" -- VERSION; fi
+# the number everywhere it's written (H174): VERSION, both pyproject.toml, web/package.json and both uv.lock
+NUMBERED_SAID="$(python3 scripts/set_version.py "$VERSION")" || die "the version number couldn't be written into its files"
+read -r -a NUMBERED <<< "$NUMBERED_SAID"
+if ! git diff --quiet HEAD -- "${NUMBERED[@]}"; then
+  git commit -q -m "Friday $VERSION, prepared for release" -- "${NUMBERED[@]}"
+fi
 COMMIT="$(git rev-parse HEAD)"
 
 WORK="$(mktemp -d)"
