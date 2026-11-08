@@ -182,7 +182,7 @@ SET_DATE_PARTS = ("BYYEARDAY", "BYWEEKNO", "BYSETPOS", "BYEASTER")
 
 
 def moved_rule(rule: str, old_day: date, new_day: date) -> str | None:
-    """The rule once its time on `old_day` moves to `new_day` (5 Nov: "change jasons bday to nov 6 yearly"): a
+    """The rule once its time on `old_day` moves to `new_day` (5 Nov: "change jaspers bday to nov 6 yearly"): a
     weekday it names, or the day of the month or the month, becomes the new day's; the others stay. None when the
     move can't be said in the rule: two days of a month, the second Tuesday, a weekday it repeats on already."""
     out = []

@@ -109,7 +109,7 @@ def test_without_a_key_or_answer_the_rules_sort_and_a_failure_shows_on_the_calen
 
     read(app, {"6. Events": [event("expo", "Startup Expo", "2026-10-21T15:00", "2026-10-21T19:00")]}, Down({}), 60)
     assert inbox(app)["Startup Expo"]["preset"] == "Event"
-    assert "fixed rules" in next(s for s in app.table("sources") if s["name"] == "6. Events")["last_error"]
+    assert "own rules" in next(s for s in app.table("sources") if s["name"] == "6. Events")["last_error"]
 
 
 def test_a_calendar_that_names_its_kind_isnt_asked_about(app: App) -> None:

@@ -127,7 +127,7 @@ def test_a_failing_solve_keeps_the_plan_raises_a_banner_and_saves_the_snapshot(
         app.do("settings_set", key="rules", value=[{"type": "boom", "name": "boom"}])
         assert restarted.solve_now("replan", generation(app.conn)) is None
         assert len(plans(app)) == 1
-        assert "Planning failed" in app.do("status")["problems"][0]
+        assert "couldn't make a new plan, so the last one stays" in app.do("status")["problems"][0]
         assert list((tmp_path / "snapshots").glob("*.pickle"))
     finally:
         restarted.stop()

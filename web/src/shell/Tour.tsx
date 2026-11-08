@@ -146,6 +146,9 @@ export function Tour() {
   const quest = QUESTS.find((q) => q.id === current && !kept.done.includes(q.id)) ?? left[0] ?? null
   const finished = left.length === 0
   const roomy = width >= NARROW
+  // On a phone the card would cover half the screen (8 Nov, Friday on your phone): it starts as its pill there
+  const [openNarrow, setOpenNarrow] = useState(false)
+  const pill = kept.small || (!roomy && !openNarrow)
   const card = Math.min(CARD, width - 2 * MARGIN)
   const save = (k: Kept) => (keep(k), setKept(k))
   // kept from the start, not only once one's done: Friday opened again before any, the quests come back with it
@@ -316,8 +319,8 @@ export function Tour() {
         <button className="gd-poke" tabIndex={-1} aria-label="Poke the guide" onClick={() => guide.current?.poke()} style={{ left: where.x - where.width / 2, width: where.width, height: where.height }} />
       )}
       {!leaving &&
-        (kept.small ? (
-          <button className="gd-pill" onClick={() => tuck(false)} aria-label={`Quests, ${kept.done.length} of ${QUESTS.length} done: open`}>
+        (pill ? (
+          <button className="gd-pill" onClick={() => (kept.small ? tuck(false) : null, setOpenNarrow(true))} aria-label={`Quests, ${kept.done.length} of ${QUESTS.length} done: open`}>
             <span>Quests</span>
             <b>
               {kept.done.length}/{QUESTS.length}
@@ -332,7 +335,7 @@ export function Tour() {
               <span className="gd-count">
                 {kept.done.length}/{QUESTS.length}
               </span>
-              <button className="gd-icon" onClick={() => tuck(true)} aria-label="Tuck the quests away" title="Tuck away">
+              <button className="gd-icon" onClick={() => (tuck(true), setOpenNarrow(false))} aria-label="Tuck the quests away" title="Tuck away">
                 –
               </button>
               <button className="gd-icon" onClick={() => close(false)} aria-label="Close the quests" title="Close">

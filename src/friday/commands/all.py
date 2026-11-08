@@ -27,6 +27,8 @@ from friday.commands import (  # noqa: F401
     mac,
     mail,
     napping,
+    optional_events,
+    phones,
     pins,
     planning,
     progress,

@@ -44,7 +44,8 @@ def test_a_bad_file_changes_nothing_and_says_why(app: App, tmp_path: Path) -> No
     path = tmp_path / "friday.toml"
     path.write_text('[llm]\ndaily_calls = "many"\n')
     assert apply_config(app.conn, app.now_utc, path) == []
-    assert any("friday.toml isn't applied" in p for p in app.do("status")["problems"])
+    problems = app.do("status")["problems"]
+    assert any("settings file isn't used until it's fixed" in p and "friday.toml" in p for p in problems)
     assert app.do("settings")["llm"]["daily_calls"] == 50
 
 

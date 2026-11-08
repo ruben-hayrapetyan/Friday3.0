@@ -14,6 +14,7 @@ writers.
 """
 
 import inspect
+import logging
 import shutil
 import tempfile
 import threading
@@ -28,7 +29,7 @@ from urllib.parse import urlsplit
 
 import anyio
 from fastapi import Body, FastAPI, Header, Query, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError, create_model
@@ -39,6 +40,7 @@ from starlette.routing import Route
 from starlette.types import Scope
 
 from friday.api.types import CommandResult
+from friday.commands import phones
 from friday.commands.all import REGISTRY
 from friday.commands.registry import Spec, run
 from friday.commands.tokens import agent
@@ -47,9 +49,10 @@ from friday.core.items import FieldError
 from friday.notify import webhooks
 from friday.planner.store import generation, load_settings
 from friday.server import mcp
-from friday.server.auth import actor_of, user_of
+from friday.server.auth import actor_of, bearer, user_of
 from friday.server.events import Hub
 from friday.server.jobs import JobLoop, backup
+from friday.server.phone import PAIR_PAGE, Tailnet, refusal
 from friday.server.placer import Placer
 from friday.server.plugins import PLUGIN_DIR, load_plugins
 from friday.server.worker import Supervisor, set_problem
@@ -109,9 +112,12 @@ def create_app(
     background: bool = True,
     plugin_dir: Path = PLUGIN_DIR,
     web_dist: Path | None = None,
+    tailnet: Tailnet | None = None,
 ) -> FastAPI:
-    """`background=False` leaves out the worker and job loop: `replan` then solves in the request (tests)."""
+    """`background=False` leaves out the worker and job loop: `replan` then solves in the request (tests). `tailnet`:
+    where Friday answers on your tailnet (server/phone.py), kept up to date by the listener there."""
     services = Services(db_path, clock, plugin_dir)
+    tailnet = tailnet or Tailnet()
 
     async def call_tool(name: str, arguments: dict[str, Any], request: Request) -> Any:
         return await anyio.to_thread.run_sync(lambda: run_tool(services, name, arguments, request))
@@ -133,6 +139,7 @@ def create_app(
     app.state.services = services
     app.add_exception_handler(FieldError, field_error)
     app.add_exception_handler(ValidationError, validation_error)
+    app.add_exception_handler(Exception, unexpected_error)
     for spec in REGISTRY.values():
         if spec.mutates:
             add_command_route(app, spec, services)
@@ -148,6 +155,46 @@ def create_app(
             today = date.today()
             path = backup(conn, folder, 1, today)
         return FileResponse(path, filename=path.name, background=BackgroundTask(shutil.rmtree, folder))
+
+    @app.middleware("http")
+    async def own_address_and_paired(request: Request, call_next: Any) -> Any:
+        """Only Friday's own addresses, and from another device only a paired phone (server/phone.py)."""
+        client = request.client.host if request.client else None
+
+        def paired() -> bool:
+            session, token = request.cookies.get(phones.COOKIE), bearer(request)
+            with services.connection() as conn:
+                if session and phones.known(conn, 1, session, services.clock()):
+                    return True
+                return bool(token and agent(conn, 1, token, services.clock()))
+
+        refused = await anyio.to_thread.run_sync(
+            lambda: refusal(request.url.path, request.headers.get("host"), client, tailnet.names(), paired)
+        )
+        if refused is None:
+            return await call_next(request)
+        status, words = refused
+        if request.url.path.startswith(("/api/", "/mcp", "/events")):
+            return JSONResponse({"field": None, "message": words}, status_code=status)
+        return HTMLResponse(f"<!doctype html><meta name=viewport content='width=device-width'><p>{words}</p>", status)
+
+    @app.get("/pair", response_class=HTMLResponse)
+    def pair_page() -> HTMLResponse:
+        return HTMLResponse(PAIR_PAGE)
+
+    @app.post("/api/pair")
+    def pair(body: Annotated[dict[str, Any], Body()], request: Request) -> JSONResponse:
+        """A phone's camera opened the pairing code: it gets a sign-in of its own, kept until you remove it."""
+        device = str(body.get("device") or "Phone")[:40]
+        with services.connection() as conn:
+            session = phones.pair(conn, 1, str(body.get("code") or ""), device, services.clock())
+        if session is None:
+            words = "That pairing code has expired or was used. On your Mac, open Settings → Phone and pair again."
+            return JSONResponse({"field": "code", "message": words}, status_code=403)
+        answer = JSONResponse({"paired": True})
+        answer.set_cookie(phones.COOKIE, session, max_age=10 * 365 * 86400, httponly=True, samesite="lax",
+                          secure=request.url.scheme == "https", path="/")  # fmt: skip
+        return answer
 
     @app.middleware("http")
     async def own_pages_only(request: Request, call_next: Any) -> Any:
@@ -211,6 +258,20 @@ class Website(StaticFiles):
 def field_error(request: Request, error: Exception) -> JSONResponse:
     assert isinstance(error, FieldError)
     return JSONResponse({"field": error.field, "message": str(error)}, status_code=422)
+
+
+UNEXPECTED = (
+    "Something went wrong inside Friday ({kind}). Try again; if it keeps happening, the details are in Settings → "
+    "Advanced → Diagnose."
+)
+
+
+def unexpected_error(request: Request, error: Exception) -> JSONResponse:
+    """Anything else a command or a page's question raised (8 Nov: the toast said "500 Internal Server Error"): said
+    as what happened and what to do, the traceback in the log. A logged command's changes are rolled back with it,
+    but not every failure is one (review, 8 Nov), so it doesn't promise that nothing changed."""
+    logging.getLogger("friday.server").error("%s %s failed", request.method, request.url.path, exc_info=error)
+    return JSONResponse({"field": None, "message": UNEXPECTED.format(kind=type(error).__name__)}, status_code=500)
 
 
 def validation_error(request: Request, error: Exception) -> JSONResponse:

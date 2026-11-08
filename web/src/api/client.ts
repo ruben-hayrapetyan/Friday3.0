@@ -54,7 +54,7 @@ export function messageFrom(status: number, body: unknown): string {
       })
       .join("; ")
   }
-  if (status >= 500) return "Something went wrong inside Friday, and nothing was changed. Try again; if it keeps happening, Settings → Advanced → Diagnose shows what happened."
+  if (status >= 500) return "Something went wrong inside Friday. Try again; if it keeps happening, Settings → Advanced → Diagnose shows what happened."
   if (status === 404) return "Friday doesn't know that one any more: it may have been deleted. Reload the page."
   return `Friday said no (${status}). Try again; if it keeps happening, Settings → Advanced → Diagnose shows why.`
 }
@@ -63,8 +63,8 @@ export function messageFrom(status: number, body: unknown): string {
 function withoutKeys(message: string, field: string | null): string {
   let said = message
   if (field) while (said.startsWith(`${field}: `)) said = said.slice(field.length + 2)
-  // keys, never words: "value", a snake_case field ("parent_id"), a settings path ("planner.debounce_s")
-  said = said.replace(/^((value|input|command|changes|[a-z]+(_[a-z]+)+|[a-z]+(\.[a-z_]+)+)(\.[a-z_]+)*: )+/, "")
+  // a setting's path after "value: " ("planner.debounce_s: …"); only for a setting, so "lab_report: …" keeps its words
+  if (field === "value") said = said.replace(/^[a-z_]+(\.[a-z_]+)*: /, "")
   return said ? said[0].toUpperCase() + said.slice(1) : message
 }
 
@@ -72,8 +72,8 @@ function withoutKeys(message: string, field: string | null): string {
 export function errorWords(error: unknown): string {
   if (error instanceof ApiError) return error.message
   if (error instanceof DOMException && error.name === "AbortError") return "Stopped."
-  if (error instanceof TypeError) {
-    // fetch itself failed ("Load failed", "Failed to fetch"): nothing answered
+  if (error instanceof TypeError && /load failed|failed to fetch|networkerror|network connection was lost/i.test(error.message)) {
+    // fetch itself failed: nothing answered (any other TypeError is a mistake in the page, said as it is)
     return "Friday's server didn't answer: it may be starting up or restarting. Try again in a moment; if it keeps happening, quit Friday and open it again."
   }
   return error instanceof Error ? error.message : String(error)

@@ -246,7 +246,7 @@ def test_a_refused_key_leaves_documents_waiting_and_names_the_key(app: App, monk
     sync(app.conn, app.now_utc)
     assert [r["status"] for r in app.table("raw_inputs")] == ["new", "new"]  # read again later
     said = app.table("sources")[0]["last_error"]
-    assert "refused the key from secrets.toml" in said and "Incorrect API key" in said
+    assert "refused the key from secrets.toml" in said and "Settings → AI" in said
 
 
 def test_an_unreachable_service_leaves_documents_waiting(app: App, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -259,7 +259,7 @@ def test_an_unreachable_service_leaves_documents_waiting(app: App, monkeypatch: 
     app.do("document_add", name="handout", content="Reading due Friday")
     sync(app.conn, app.now_utc)
     assert [r["status"] for r in app.table("raw_inputs")] == ["new"]
-    assert "unavailable" in app.table("sources")[0]["last_error"]
+    assert "Couldn't reach" in app.table("sources")[0]["last_error"]
 
 
 def test_without_a_key_or_an_address_nothing_is_asked_and_it_says_what_to_add(app: App) -> None:
@@ -355,10 +355,20 @@ def test_friday_s_own_pages_a_dev_server_and_scripts_can(http: TestClient, origi
     assert http.post("/api/c/settings_set", json=SET, headers=headers).status_code == 200
 
 
-def test_the_server_reached_by_another_name_takes_its_own_pages(http: TestClient) -> None:
-    # On a phone over Tailscale the page and the server share the machine's name.
-    headers = {"origin": "http://friday-mac.tail1234.ts.net:8765", "host": "friday-mac.tail1234.ts.net:8765"}
-    assert http.post("/api/c/settings_set", json=SET, headers=headers).status_code == 200
+def test_the_server_reached_by_its_tailnet_name_takes_its_own_pages(app: App, tmp_path: Path) -> None:
+    """On a phone over Tailscale the page and the server share the Mac's name (C61): taken at Friday's own tailnet
+    name; any other name is refused before the Origin is looked at, which closed DNS rebinding."""
+    from friday.server.app import create_app  # noqa: PLC0415
+    from friday.server.phone import Tailnet  # noqa: PLC0415
+
+    name = "friday-mac.tail1234.ts.net"
+    served = create_app(tmp_path / "friday.db", clock=lambda: app.now_utc, background=False, plugin_dir=tmp_path,
+                        tailnet=Tailnet(address="100.64.1.2", name=name))  # fmt: skip
+    with TestClient(served, base_url="http://127.0.0.1:8765") as http:
+        own = {"origin": f"http://{name}:8765", "host": f"{name}:8765"}
+        assert http.post("/api/c/settings_set", json=SET, headers=own).status_code == 200
+        other = {"origin": "http://other.tail1234.ts.net:8765", "host": "other.tail1234.ts.net:8765"}
+        assert http.post("/api/c/settings_set", json=SET, headers=other).status_code == 421
 
 
 def test_reading_from_another_site_is_left_to_the_browser(http: TestClient) -> None:

@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from friday.commands.fetching import sync
+from friday.core.items import FieldError
 from friday.sim.fakes import FakeGoogle, event
 from tests.commands.helpers import App, new_app
 
@@ -166,3 +167,15 @@ def test_an_imported_repeat_keeps_its_calendar_and_times_when_switched_off(app: 
     [series] = app.do("series_list")
     assert series["source"] == "School" and series["external"] and not series["active"]
     assert series["pattern"] == "Every Tue and Thu, 12:20pm–1:10pm"
+
+
+def test_an_imported_repeats_later_times_arent_changed_from_friday(app: App) -> None:
+    """Review (8 Nov): the editor offered "This and later times" on a calendar's own repeat, and `edit` with a
+    from_date rewrote its template and every later time; its times are the calendar's, so that's refused."""
+    google = FakeGoogle({"School@group": [lecture(1, "2026-10-19"), lecture(2, "2026-10-21")]})
+    read(app, google)
+    app.do("repeats_import", repeats=[{"batch": "repeat:chem", "kind": "Event"}])
+    first = min((i for i in app.table("items") if i["title"] == "CHEM 2090, Lecture"), key=lambda i: i["start_utc"])
+    with pytest.raises(FieldError, match="repeats in your calendar"):
+        app.do("edit", id=first["id"], title="Chem lecture", from_date="2026-10-19")
+    app.do("edit", id=first["id"], notes="bring the lab notebook")  # this time only stays yours

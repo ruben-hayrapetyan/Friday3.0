@@ -843,6 +843,25 @@ class RuleTextInput(Model):
     overrides: str = "{}"  # JSON: Reading fields you set yourself (a query string can't carry a mapping)
 
 
+class PhoneSetInput(Model):
+    on: bool
+
+
+class PhoneRef(Model):
+    id: str
+
+
+class EventModeInput(Model):
+    title: str
+
+
+class EventOptionalInput(Model):
+    """Whether work may take an event's time (its editor's "Can work take its time?")."""
+
+    title: str
+    mode: Literal["kept", "optional", "ahead"]
+
+
 class RuleAddInput(Model):
     text: str = ""
     overrides: dict[str, Any] = {}  # Reading fields you set yourself: subject, rel, at, until, days, amount, event

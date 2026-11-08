@@ -149,7 +149,8 @@ def test_a_bad_api_key_leaves_documents_waiting_and_shows_on_the_source(app: App
         app.do("document_add", name=f"handout {n}", content=f"Reading {n} due Friday")
     sync(app.conn, app.now_utc, client=Refusing({}))
     assert [r["status"] for r in app.table("raw_inputs")] == ["new", "new"]
-    assert "invalid x-api-key" in app.table("sources")[0]["last_error"]
+    said = app.table("sources")[0]["last_error"]
+    assert "refused the key from" in said and "Settings → AI" in said and "x-api-key" not in said
     assert "refused the key" in app.table("sources")[0]["last_error"]
 
 

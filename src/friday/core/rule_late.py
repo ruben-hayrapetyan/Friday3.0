@@ -34,8 +34,14 @@ def read_late_cutoff(text: str) -> Reading | None:
     t = " ".join(text.lower().replace("’", "'").split()).rstrip(".!")
     for pattern in SAID:
         if m := re.search(pattern, t):
-            subject = subject_of(re.sub(r"^(?:my|the|any|all|an?) ", "", m["subject"]))
-            if not subject or subject in ("i", "it", "you", "anything i"):
+            said = re.sub(r"^(?:my|the|any|all|an?) ", "", m["subject"].strip())
+            # "if it is late": what "it" is, the grammar can't say; "late night study": a time, not lateness
+            if said in ("i", "it", "you", "this", "that", "they", "anything", "something") or re.match(
+                r"(?:night|nights|evening|evenings|morning|mornings|afternoon)\b", said
+            ):
+                return None
+            subject = subject_of(said)
+            if not subject:
                 return None
             rel = "before" if m["rel"] in ("before", "no later than") else "on"
             return Reading("late_cutoff", subject, rel=rel, days=(m[m.lastindex or 0][:3],))

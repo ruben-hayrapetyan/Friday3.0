@@ -1794,6 +1794,77 @@
     }
    }
   },
+  "/api/c/event_optional": {
+   "post": {
+    "summary": "Whether work may take this event's time: kept, optional, or only when you're ahead.",
+    "operationId": "event_optional",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EventOptionalInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EventOptionalResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/events_to_calendar": {
    "post": {
     "summary": "Put the events made in Friday that are still to come and on no calendar yet on the one new events go to, so",
@@ -3705,7 +3776,7 @@
   },
   "/api/c/meal_plan": {
    "post": {
-    "summary": "Plan a meal every day at the time and length you have it, or stop planning it (what Sleep & meals offers).",
+    "summary": "Plan a meal every day at the time and length you have it, or stop planning it (what Insights \u2192 Meals offers).",
     "operationId": "meal_plan",
     "parameters": [
      {
@@ -3996,7 +4067,7 @@
   },
   "/api/c/meal_use_length": {
    "post": {
-    "summary": "Plan a meal's routine at the length you take, from today on (what Sleep & meals offers).",
+    "summary": "Plan a meal's routine at the length you take, from today on (what Insights \u2192 Meals offers).",
     "operationId": "meal_use_length",
     "parameters": [
      {
@@ -4067,7 +4138,7 @@
   },
   "/api/c/meal_use_time": {
    "post": {
-    "summary": "Plan a meal's routine around when you usually eat it, from today on (what Sleep & meals offers).",
+    "summary": "Plan a meal's routine around when you usually eat it, from today on (what Insights \u2192 Meals offers).",
     "operationId": "meal_use_time",
     "parameters": [
      {
@@ -4850,6 +4921,226 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/PaceSaveResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/phone_forget": {
+   "post": {
+    "summary": "Remove a paired phone: it can't open Friday again until it's paired again.",
+    "operationId": "phone_forget",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PhoneRef"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PhoneForgetResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/phone_pair": {
+   "post": {
+    "summary": "A one-time code for the QR code a phone scans to pair, good for ten minutes.",
+    "operationId": "phone_pair",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/Empty"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Inp"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PhonePairResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/phone_set": {
+   "post": {
+    "summary": "Use Friday on your phone over Tailscale, or stop: off, Friday answers on this Mac alone.",
+    "operationId": "phone_set",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PhoneSetInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PhoneSetResult"
         }
        }
       }
@@ -9360,6 +9651,45 @@
     }
    }
   },
+  "/api/pair": {
+   "post": {
+    "summary": "Pair",
+    "description": "A phone's camera opened the pairing code: it gets a sign-in of its own, kept until you remove it.",
+    "operationId": "pair_api_pair_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "additionalProperties": true,
+        "type": "object",
+        "title": "Body"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/ai_check": {
    "get": {
     "summary": "Ask each model Friday uses for a one-word answer, the way Friday asks; say what came back.",
@@ -9681,6 +10011,45 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/DuplicatesOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/event_mode": {
+   "get": {
+    "summary": "How an event is treated now: its own setting, the rule that says it, and broader rules that reach it too.",
+    "operationId": "event_mode",
+    "parameters": [
+     {
+      "name": "title",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Title"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EventModeOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
         }
        }
       }
@@ -10449,6 +10818,24 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/phone_status": {
+   "get": {
+    "summary": "Whether Friday answers on your tailnet, at what address, and the phones paired with it.",
+    "operationId": "phone_status",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PhoneStatus"
         }
        }
       }
@@ -11275,6 +11662,24 @@
            "minimum": 0
           }
          }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/pair": {
+   "get": {
+    "summary": "Pair Page",
+    "operationId": "pair_page_pair_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "text/html": {
+        "schema": {
+         "type": "string"
         }
        }
       }
@@ -15705,6 +16110,141 @@
      "result"
     ],
     "title": "EventKeepResult"
+   },
+   "EventModeOut": {
+    "properties": {
+     "mode": {
+      "type": "string",
+      "enum": [
+       "kept",
+       "optional",
+       "ahead"
+      ],
+      "title": "Mode"
+     },
+     "rule": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rule"
+     },
+     "covered_by": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Covered By"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "mode",
+     "rule",
+     "covered_by"
+    ],
+    "title": "EventModeOut",
+    "description": "Whether work may take an event's time, as its editor shows it."
+   },
+   "EventOptionalInput": {
+    "properties": {
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "mode": {
+      "type": "string",
+      "enum": [
+       "kept",
+       "optional",
+       "ahead"
+      ],
+      "title": "Mode"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "title",
+     "mode"
+    ],
+    "title": "EventOptionalInput",
+    "description": "Whether work may take an event's time (its editor's \"Can work take its time?\")."
+   },
+   "EventOptionalResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "EventOptionalResult"
    },
    "EventsToCalendarResult": {
     "properties": {
@@ -22250,6 +22790,67 @@
     ],
     "title": "PacesOut"
    },
+   "PairCode": {
+    "properties": {
+     "url": {
+      "type": "string",
+      "title": "Url"
+     },
+     "svg": {
+      "type": "string",
+      "title": "Svg"
+     },
+     "minutes": {
+      "type": "integer",
+      "title": "Minutes"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "url",
+     "svg",
+     "minutes"
+    ],
+    "title": "PairCode",
+    "description": "What a phone scans to pair: the address with its one-time code after the #, as a QR code (SVG)."
+   },
+   "PairedPhone": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "paired": {
+      "type": "string",
+      "title": "Paired"
+     },
+     "last_used": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Used"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "paired",
+     "last_used"
+    ],
+    "title": "PairedPhone"
+   },
    "ParseOutput": {
     "properties": {
      "fields": {
@@ -22281,6 +22882,290 @@
      "warnings"
     ],
     "title": "ParseOutput"
+   },
+   "PhoneForgetResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "PhoneForgetResult"
+   },
+   "PhonePairResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/PairCode"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "PhonePairResult"
+   },
+   "PhoneRef": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id"
+    ],
+    "title": "PhoneRef"
+   },
+   "PhoneSetInput": {
+    "properties": {
+     "on": {
+      "type": "boolean",
+      "title": "On"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "on"
+    ],
+    "title": "PhoneSetInput"
+   },
+   "PhoneSetResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "PhoneSetResult"
+   },
+   "PhoneStatus": {
+    "properties": {
+     "on": {
+      "type": "boolean",
+      "title": "On"
+     },
+     "address": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Address"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "phones": {
+      "items": {
+       "$ref": "#/components/schemas/PairedPhone"
+      },
+      "type": "array",
+      "title": "Phones"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "on",
+     "address",
+     "name",
+     "phones"
+    ],
+    "title": "PhoneStatus"
    },
    "PinInput": {
     "properties": {
@@ -26399,6 +27284,22 @@
        }
       ],
       "title": "Min Gap Days"
+     },
+     "next_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Next Id"
+     },
+     "rule": {
+      "type": "string",
+      "title": "Rule",
+      "default": ""
      }
     },
     "additionalProperties": false,

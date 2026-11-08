@@ -21,8 +21,11 @@ from friday.server.app import create_app, query_by_get, wall_clock
 from friday.server.config import apply_config
 from friday.server.demo import run_demo
 from friday.server.mcp import serve_stdio
+from friday.server.phone import Tailnet, TailnetListener
 from friday.sim.profiles import PROFILES
 from friday.sync import gcal, google_auth
+from friday.sync.tailnet import address as tailnet_address
+from friday.sync.tailnet import name as tailnet_name
 
 DATA_DIR = Path(os.environ.get("FRIDAY_DATA_DIR", "~/.local/share/friday")).expanduser()
 
@@ -53,7 +56,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     commands = parser.add_subparsers(dest="command")
     serve = commands.add_parser("serve", help="run the API, the solver worker and the jobs")
-    serve.add_argument("--host", default="127.0.0.1", help="0.0.0.0 to reach it from your phone over Tailscale")
+    phone = "127.0.0.1 (this Mac); for your phone, switch on Settings → Phone instead"
+    serve.add_argument("--host", default="127.0.0.1", help=phone)
     serve.add_argument("--port", type=int, help="default: settings server.port (8765)")
     init = commands.add_parser("init", help="set the timezone and sleep times (run once)")
     init.add_argument("--timezone", default=local_timezone(), help="IANA name; detected: %(default)s")
@@ -110,12 +114,32 @@ def serve_forever(db_path: Path, host: str, port: int | None) -> None:
         "fridayd starting on %s:%s, data in %s, log %s", host, port or server.port, db_path.parent, where
     )
     planner_cache.seed()  # before the worker plans: the Mac app's compiled planner, kept outside the app
-    app = create_app(db_path, web_dist=WEB_DIST)
+    tailnet = Tailnet()
+    app = create_app(db_path, web_dist=WEB_DIST, tailnet=tailnet)
+    # Settings → Phone on: Friday answers on this Mac's Tailscale address too (C61). Served on every address already
+    # (--host 0.0.0.0), it only keeps that address known, for the pairing rule.
+    TailnetListener(
+        app, port or server.port, lambda: phone_on(db_path), tailnet, lambda: (tailnet_address(), tailnet_name()),
+        bind=host in ("127.0.0.1", "localhost", "::1"),
+    ).start()  # fmt: skip
     # Open SSE streams never end on their own; the limit stays for a request that's slow to finish.
     config = uvicorn.Config(
-        app, host=host, port=port or server.port, log_level=server.log_level, timeout_graceful_shutdown=2
+        app,
+        host=host,
+        port=port or server.port,
+        log_level=server.log_level,
+        timeout_graceful_shutdown=2,
+        proxy_headers=False,  # the client is the socket's: an X-Forwarded-For from this Mac can't pose as another
     )
     Quick(config, app.state.services.hub).run()
+
+
+def phone_on(db_path: Path) -> bool:
+    conn = connect(db_path)
+    try:
+        return bool(load_settings(conn)["phone"].on)
+    finally:
+        conn.close()
 
 
 class Quick(uvicorn.Server):

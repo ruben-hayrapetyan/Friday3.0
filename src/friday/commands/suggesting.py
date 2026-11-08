@@ -13,6 +13,7 @@ from friday.commands.inbox import record_spend, spend, with_end
 from friday.commands.registry import run
 from friday.core.db import one, rows
 from friday.core.items import FieldError
+from friday.core.plain import kept, plain
 from friday.core.settings import minutes_of
 from friday.core.time import format_utc, parse_local, parse_utc, planning_date, to_utc
 from friday.ingest import llm, sort
@@ -36,7 +37,11 @@ def take(
     except Exception as error:  # a bad feed mustn't stop the others; it shows in Settings and, repeated, a banner
         conn.execute(
             "UPDATE sources SET last_error = ?, failures = failures + 1, last_sync_utc = ? WHERE id = ?",
-            [f"{type(error).__name__}: {error}"[:300], format_utc(now_utc), source["id"]],
+            [
+                kept(error, "The calendar link" if source["kind"] == "ics" else str(source["name"])),
+                format_utc(now_utc),
+                source["id"],
+            ],  # fmt: skip
         )
         return 0
     conn.execute(
@@ -115,7 +120,7 @@ def sort_fresh(
                 client, budget.small_model, items[at : at + SORT_BATCH], source["name"], kinds, today, settings["notes"]
             )
         except Exception as error:  # the rules stand; the source says why
-            why = f"Sorting with {budget.small_model} failed, so the fixed rules sorted these: {error}"[:300]
+            why = f"Friday's own rules sorted these, as the AI couldn't: {plain(error, 'The AI')}"[:300]
             conn.execute("UPDATE sources SET last_error = ? WHERE id = ?", [why, source["id"]])
             break
         record_spend(conn, user_id, today.isoformat(), tokens)

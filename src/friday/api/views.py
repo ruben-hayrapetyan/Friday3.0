@@ -659,6 +659,36 @@ class RuleClashOut(Model):
     other_sentence: str = ""
 
 
+class PairCode(Model):
+    """What a phone scans to pair: the address with its one-time code after the #, as a QR code (SVG)."""
+
+    url: str
+    svg: str
+    minutes: int
+
+
+class PairedPhone(Model):
+    id: str
+    name: str
+    paired: str
+    last_used: str | None
+
+
+class PhoneStatus(Model):
+    on: bool
+    address: str | None  # this Mac's Tailscale address, when Tailscale is up
+    name: str | None  # and its name there
+    phones: list[PairedPhone]
+
+
+class EventModeOut(Model):
+    """Whether work may take an event's time, as its editor shows it."""
+
+    mode: Literal["kept", "optional", "ahead"]
+    rule: str | None  # the rule that says it, in words, when one names this event
+    covered_by: list[str]  # broader rules that reach it by a word of its title ("gym is optional")
+
+
 class SeriesRow(Model):
     id: int
     title: str
@@ -670,6 +700,8 @@ class SeriesRow(Model):
     active: bool
     external: bool = False  # it repeats in a calendar, which makes its times: changed there, not here
     min_gap_days: float | None = None  # its times kept at least this many days apart (C50)
+    next_id: int | None = None  # the next open time, which Settings → Repeating opens in its editor (8 Nov)
+    rule: str = ""  # how it repeats (an RRULE), for the editor's Repeats
 
 
 class DuplicateGroup(Model):

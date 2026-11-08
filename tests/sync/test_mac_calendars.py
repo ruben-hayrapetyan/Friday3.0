@@ -256,7 +256,7 @@ def test_a_calendar_gone_from_the_mac_keeps_its_events_and_says_why(app: App) ->
     post(app, [], [], minutes_later=5)
     assert "Dentist" in events(app)  # not dropped: the calendar may be back
     source = next(s for s in app.table("sources") if s["kind"] == "mac")
-    assert source["last_error"] == "LookupError: no longer on your Mac"
+    assert source["last_error"] == "No longer on your Mac"
 
 
 def test_a_renamed_calendar_keeps_its_source_and_one_made_again_takes_the_old_ones(app: App) -> None:

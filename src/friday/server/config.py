@@ -28,7 +28,12 @@ def apply_config(conn: sqlite3.Connection, now_utc: int, path: Path, user_id: in
         document = tomllib.loads(path.read_text())
         values = {key: validate_value(key, value) for key, value in document.items()}
     except (tomllib.TOMLDecodeError, ValueError) as error:
-        set_problem(conn, user_id, "config", f"{path.name} isn't applied: {error}")
+        set_problem(
+            conn,
+            user_id,
+            "config",
+            f"Your settings file isn't used until it's fixed ({path}): {error}. Friday keeps the settings it had.",
+        )
         return []
     set_problem(conn, user_id, "config", None)
     remember(conn, user_id, "config_keys", sorted(values))

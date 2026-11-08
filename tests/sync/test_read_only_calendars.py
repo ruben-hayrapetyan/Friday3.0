@@ -49,7 +49,7 @@ def test_a_change_made_in_friday_never_reaches_google_and_the_status_line_says_s
         assert write_events(app.conn, app.now_utc, google=Reading(google)) == 0
     assert google.writes == []
     assert [e["summary"] for e in google.calendars_by_id["Classes@group"]] == ["CS 1110 Lecture"]
-    assert failed_writes(app.conn) == [f"Couldn't save Renamed to Google ({REFUSED})"]
+    assert failed_writes(app.conn) == ["Couldn't save Renamed to Google (A test Friday never changes a real calendar)"]
     app.do("drop", id=lecture_id)
     for _ in range(MAX_TRIES):
         write_events(app.conn, app.now_utc, google=Reading(google))

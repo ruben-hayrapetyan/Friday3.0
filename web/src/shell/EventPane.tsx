@@ -5,6 +5,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
+import { useNavigate } from "react-router"
 import { type Item, query } from "@/api/client"
 import { FitLine } from "@/components/Fit"
 import { Icon, Menu, Seg, Switch } from "@/components/fr/controls"
@@ -41,7 +42,7 @@ export function draftOf(
     start,
     end,
     allDay,
-    was: { start, allDay },
+    was: { start, allDay, title: item.title },
     color: item.color ?? null,
     notes: item.notes ?? "",
     location: item.location ?? "",
@@ -102,6 +103,10 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   const deleteSeries = useCommand("series_delete", { label: (o) => o.result.message ?? "Deleted" })
   const repeat = useCommand("repeat", { label: (o) => `Repeats ${o.result.description.replace(/^Every/, "every")}` })
   const pattern = useSeriesPattern(draft.seriesId)
+  const { rule: seriesRule, external } = useSeriesRule(draft.seriesId)
+  const reshape = useCommand("series_edit", { label: (o) => `Repeats ${o.result.description.replace(/^Every/, "every")} from then on` })
+  // A repeat's pattern changed here (8 Nov: everything about a repeat in its editor): from this time on, never this one
+  const newPattern = draft.seriesId !== null && draft.every !== null && draft.every !== (seriesRule ? `rrule:${seriesRule}` : null)
   const [asking, setAsking] = useState(false)
   const [which, setWhich] = useState(false) // saving a change to a repeat: this time, or this and later (8 Nov)
   const title = useRef<HTMLInputElement>(null)
@@ -132,7 +137,8 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   const valid = draft.title.trim() !== "" && (draft.allDay ? lastDay >= day : toMin(draft.end) > toMin(draft.start))
   const close = () => setEvent(null)
   const sending = useRef(false) // ⌘↩ and a click, or two clicks, make one event
-  const repeating = !isNew && draft.seriesId !== null && staged === null
+  // A calendar's own repeat changes there: this time only, never asked (review, 8 Nov)
+  const repeating = !isNew && draft.seriesId !== null && staged === null && !external
   // `scope`: for a repeat, this time only or this one and every later one (8 Nov: "ask on save"); asked first.
   const save = async (scope?: "one" | "later") => {
     if (!valid || sending.current) return
@@ -155,6 +161,11 @@ export function EventPane({ draft }: { draft: EventDraft }) {
         return
       }
       const later = scope === "later" ? { from_date: (draft.was?.start ?? draft.start).slice(0, 10) } : {}
+      if (scope === "later" && newPattern && draft.seriesId !== null && draft.every) {
+        const saved = await edit({ id: draft.id as number, ...fields, ...later })
+        if (saved && (await reshape({ id: draft.seriesId, every: draft.every, ...later }))) close()
+        return
+      }
       const done = isNew
         ? await add({ ...fields, when: "fixed", ...(draft.saveTo !== undefined ? { calendar: savingTo ? saveTo : "" } : {}), ...(draft.every ? { every: draft.every } : {}) })
         : await edit({ id: draft.id as number, ...fields, ...later })
@@ -260,14 +271,22 @@ export function EventPane({ draft }: { draft: EventDraft }) {
           <RepeatChoice every={draft.every} start={draft.start} onChange={(every) => set({ every })} />
         </Row>
       ) : draft.seriesId !== null ? (
-        <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
-          <Icon name="repeat" size={13} />
-          {pattern ? `Repeats ${pattern.replace(/^Every/, "every")}.` : "Repeats."} Saving asks: this time, or this and later.
-        </span>
+        <>
+          {!draft.calendar && seriesRule && (
+            <Row label="Repeats">
+              <RepeatChoice every={draft.every ?? `rrule:${seriesRule}`} start={draft.start} onChange={(every) => set({ every })} />
+            </Row>
+          )}
+          <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
+            <Icon name="repeat" size={13} />
+            {external ? `${pattern ? `Repeats ${pattern.replace(/^Every/, "every")} in` : "Repeats in"} ${draft.calendar ?? "your calendar"}: changes here are to this time only.` : "Saving asks: this time, or this and later."}
+          </span>
+        </>
       ) : draft.calendar ? (
         <span style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>To repeat it, make it repeat in {draft.calendar}.</span>
       ) : null}
       <EventFit draft={draft} onTime={(start, end) => set({ start, end })} />
+      {!isNew && staged === null && <WorkMayTake title={(draft.was?.title ?? draft.title).trim()} />}
       <Row label="Where">
         {/* Where it is (27 Oct): the calendar's, read with it, and saved back with it when it saves there. */}
         <input className="input" value={draft.location} onChange={(e) => set({ location: e.target.value })} placeholder="Add a place" aria-label="Where" style={{ ...field, maxWidth: 260 }} />
@@ -319,7 +338,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
         <div role="group" aria-label="Change which times" style={{ display: "flex", flexDirection: "column", gap: 8, padding: 10, borderRadius: 8, border: "1px solid var(--color-border)" }}>
           <span style={{ fontSize: 13, fontWeight: 500 }}>Change which times of {draft.title.trim() || "it"}?</span>
           <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <button className="btn btn-primary" onClick={() => save("one")} autoFocus>
+            <button className="btn btn-primary" onClick={() => save("one")} autoFocus={!newPattern} disabled={newPattern} title={newPattern ? "A new way of repeating changes this time and the later ones" : undefined}>
               This time only
             </button>
             <button className="btn btn-secondary" onClick={() => save("later")}>
@@ -388,6 +407,14 @@ function summary(d: EventDraft): string {
 }
 
 /** How a repeating event repeats, in words ("every Friday"), from Settings → Repeating's list. */
+/** How a repeat repeats, as its rule (`FREQ=WEEKLY;BYDAY=MO`), for its editor's Repeats; null for one a calendar
+ * repeats, whose times are the calendar's to change. */
+export function useSeriesRule(seriesId: number | null | undefined): { rule: string | null; external: boolean } {
+  const series = useQuery({ queryKey: ["series_list"], queryFn: () => query("series_list"), enabled: seriesId != null }).data
+  const row = series?.find((r) => r.id === seriesId)
+  return { rule: row && !row.external ? row.rule || null : null, external: !!row?.external }
+}
+
 export function useSeriesPattern(seriesId: number | null | undefined): string | null {
   const series = useQuery({ queryKey: ["series_list"], queryFn: () => query("series_list"), enabled: seriesId != null }).data
   return series?.find((r) => r.id === seriesId)?.pattern ?? null
@@ -457,5 +484,41 @@ function RepeatChoice({ every, start, onChange }: { every: string | null; start:
         </span>
       )}
     </span>
+  )
+}
+
+const MODES = [
+  { value: "kept", label: "No" },
+  { value: "optional", label: "If work needs it" },
+  { value: "ahead", label: "If I'm ahead" },
+] as const
+
+/** Whether work may take this event's time (8 Nov: everything about an event in its editor, a rule naming it shown
+ * and changed here): never, only when work would be late otherwise, or only when you're ahead. A broader rule that
+ * still reaches it ("gym is optional" for "Gym with Sam") is said, with the way to it. */
+function WorkMayTake({ title }: { title: string }) {
+  const navigate = useNavigate()
+  const { setEvent } = useShell()
+  const mode = useQuery({ queryKey: ["event_mode", title], queryFn: () => query("event_mode", { title }), enabled: !!title }).data
+  const choose = useCommand("event_optional", { label: (o) => o.result.message ?? "Saved" })
+  if (!title || !mode) return null
+  return (
+    <Row label="Optional">
+      <span style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+        <Seg options={MODES} value={mode.mode} onPick={(m) => m !== mode.mode && choose({ title, mode: m })} label={`Can work take ${title}'s time?`} size="small" />
+        <span className="fr-kicker">
+          {mode.mode === "kept" ? "Work keeps off it." : mode.mode === "optional" ? "Friday uses its time only when work would be late otherwise, and says so." : "Friday leaves it free when you're ahead, and plans work there when you're behind."}
+          {mode.rule ? ` From your rule “${mode.rule}”.` : ""}
+        </span>
+        {mode.covered_by.length > 0 && (
+          <span className="fr-kicker" style={{ color: "var(--fr-warn)" }}>
+            Your rule “{mode.covered_by[0]}” also reaches it.{" "}
+            <button className="fr-link" onClick={() => (setEvent(null), navigate("/rules"))} style={{ fontSize: 12 }}>
+              Change it in Rules
+            </button>
+          </span>
+        )}
+      </span>
+    </Row>
   )
 }

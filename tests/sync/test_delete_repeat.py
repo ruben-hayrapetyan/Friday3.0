@@ -41,8 +41,8 @@ class TestBlackBox:
 
     def test_one_time_skipped_or_dropped_is_still_only_that_time(self, app: App) -> None:
         birthday_on_the_mac(app)
-        (ray,) = every_time(app, "Remy's Birthday")
-        app.do("skip", id=ray["id"])
+        (remy,) = every_time(app, "Remy's Birthday")
+        app.do("skip", id=remy["id"])
         assert [j["op"] for j in app.do("mac_writes")] == ["delete"]
 
     def test_an_event_that_doesnt_repeat_is_deleted_as_before(self, app: App) -> None:

@@ -85,7 +85,7 @@ def ask(app: App, monkeypatch: pytest.MonkeyPatch, provider: str) -> tuple[dict[
     return app.do("ask_claude", text=LIST), "\n".join(seen)
 
 
-def mulan(app: App) -> None:
+def mira(app: App) -> None:
     app.do("add", **birthday("Mira", "2027-02-01")["input"], after=[], before=[], exceptions=[])
 
 
@@ -94,7 +94,7 @@ class TestEveryProvider:
     def test_it_is_told_how_a_birthday_is_made_and_what_you_already_have(
         self, app: App, monkeypatch: pytest.MonkeyPatch, provider: str
     ) -> None:
-        mulan(app)
+        mira(app)
         _, told = ask(app, monkeypatch, provider)
         told = told.replace("\\n", "\n").replace('\\"', '"')
         assert 'next day\'s "T00:00"' in told and "rrule:FREQ=YEARLY" in told and "Club Bdays" in told
@@ -104,7 +104,7 @@ class TestEveryProvider:
     def test_one_you_have_and_one_proposed_twice_are_refused_the_others_offered(
         self, app: App, monkeypatch: pytest.MonkeyPatch, provider: str
     ) -> None:
-        mulan(app)
+        mira(app)
         out, _ = ask(app, monkeypatch, provider)
         errors = [a["error"] for a in out["actions"]]
         assert errors[0] == "You already have Mira's Birthday then, repeating"
@@ -126,17 +126,17 @@ class TestApplied:
         monkeypatch.setattr(llm, "client", lambda *_: PROVIDERS["claude"](seen))
         out = app.do("ask_claude", text=LIST)
         assert [a["error"] for a in out["actions"]][:2] == [None, None]  # Rosa's next one is January's
-        rachel = birthday("Rosa", "2026-10-21")
-        answer = {"reply": "", "actions": [rachel]}
+        rosa = birthday("Rosa", "2026-10-21")
+        answer = {"reply": "", "actions": [rosa]}
         monkeypatch.setattr(llm, "client", lambda *_: SimpleNamespace(messages=SimpleNamespace(
             create=lambda **_: SimpleNamespace(content=[SimpleNamespace(type="text", text=json.dumps(answer))],
                                                usage=SimpleNamespace(input_tokens=1, output_tokens=1)))))  # fmt: skip
-        assert app.do("ask_claude", text="rachel oct 21")["actions"][0]["error"] == (
+        assert app.do("ask_claude", text="rosa oct 21")["actions"][0]["error"] == (
             "You already have Rosa's Birthday then"
         )
 
     def test_a_birthday_moved_away_is_not_in_the_way(self, app: App, monkeypatch: pytest.MonkeyPatch) -> None:
-        mulan(app)
+        mira(app)
         series = next(s for s in app.table("series") if "Mira" in s["template"])
         app.do("series_delete", id=series["id"])
         out, _ = ask(app, monkeypatch, "claude")
@@ -145,12 +145,12 @@ class TestApplied:
 
 class TestInside:
     def test_names_match_whatever_their_case_accents_and_punctuation(self) -> None:
-        assert same_name("Rosas birthday") == same_name("Rosa's Birthday") == same_name("RACHEL’S  Birthday")
+        assert same_name("Rosas birthday") == same_name("Rosa's Birthday") == same_name("ROSA’S  Birthday")
         assert same_name("Rosa's Birthday") != same_name("Remy's Birthday")
         assert same_name("Zoë's party") == same_name("Zoe's Party")
 
     def test_only_a_new_event_with_a_name_and_start_is_compared(self) -> None:
-        assert event_key_of({"title": "Remy", "when": "fixed", "start": "2026-11-10T00:00"})[0] == "ray"
+        assert event_key_of({"title": "Remy", "when": "fixed", "start": "2026-11-10T00:00"})[0] == "remy"
         assert event_key_of({"title": "Essay", "due": "2026-11-10T00:00"}) == (None, None)
         assert event_key_of({"title": "Remy", "when": "fixed", "start": "soon"}) == (None, None)
         assert event_key_of({"when": "fixed", "start": "2026-11-10T00:00"}) == (None, None)
@@ -161,7 +161,7 @@ class TestInside:
         assert [a.error for a in out.actions] == [None, None]
 
     def test_held_knows_one_offs_and_each_time_of_a_repeat(self, app: App) -> None:
-        mulan(app)
+        mira(app)
         app.do("add", title="Dentist", when="fixed", start="2026-10-23T10:00", end="2026-10-23T11:00")
         held = Held(Ctx(app.conn, Writer(app.conn, 1), app.now_utc, "you", 1, load_settings(app.conn, 1)))
         fixed = {"when": "fixed"}

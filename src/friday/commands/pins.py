@@ -14,7 +14,7 @@ def pin(ctx: Ctx, inp: PinInput) -> Changed:
     """Place an item at a time; `locked` holds it there, `preferred` asks for it. Replaces the pins it overlaps."""
     item = require_item(ctx, inp.id)
     if item.when == "fixed" or item.status != "todo":
-        raise FieldError("id", f"T{inp.id} can't be pinned: it is fixed or no longer to do")
+        raise FieldError("id", "That can't be pinned: it's an event at a set time, or it's done")
     start = parse_utc(ctx.utc(inp.start, "start"))
     if inp.end is not None:
         end = parse_utc(ctx.utc(inp.end, "end"))
@@ -52,7 +52,7 @@ def unpin(ctx: Ctx, inp: UnpinInput) -> Changed:
     found = rows(ctx.conn, "SELECT id FROM pins WHERE user_id = ? AND item_id = ?", [ctx.user_id, inp.id])
     chosen = [r for r in found if inp.pin_id is None or r["id"] == inp.pin_id]
     if not chosen:
-        raise FieldError("pin_id", f"T{inp.id} has no such pin")
+        raise FieldError("pin_id", "That pin isn't there any more: reload the page")
     for row in chosen:
         ctx.db.delete("pins", {"id": row["id"]})
     return Changed(message=f"Unpinned T{inp.id}")

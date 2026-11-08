@@ -168,6 +168,9 @@ body {
 [data-tight] .fr-page-head {
   gap: 8px;
   padding-right: 12px;
+  /* on a phone a head's tabs can be wider than the screen (Insights' four): they scroll sideways, none cut off */
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 [data-tight] .fr-title {
   font-size: 20px;

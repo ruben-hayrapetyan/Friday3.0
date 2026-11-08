@@ -153,7 +153,7 @@ def test_a_scripted_day(daemon: Daemon) -> None:
 
 
 def test_exit_codes(daemon: Daemon) -> None:
-    assert "no item T999" in daemon.friday("done", "T999", code=1)
+    assert "That item (T999) isn't there any more" in daemon.friday("done", "T999", code=1)
     daemon.url = f"http://127.0.0.1:{free_port()}"
     assert "can't reach Friday" in daemon.friday("status", code=2)
 

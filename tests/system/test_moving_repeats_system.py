@@ -1,4 +1,4 @@
-"""A yearly birthday moved a day later, the whole system (5 Nov: "change jasons bday to nov 6 yearly" failed): a real
+"""A yearly birthday moved a day later, the whole system (5 Nov: "change jaspers bday to nov 6 yearly" failed): a real
 `fridayd serve`, the edit the AI proposes posted over HTTP as the app applies it, the worker replanning, and the plan
 and the Repeating list read back as the app reads them."""
 
@@ -23,7 +23,7 @@ def test_a_yearly_birthday_moved_a_day_later_is_on_the_new_day_in_the_plan_and_s
     day = (datetime.now(ZoneInfo(TZ)) + timedelta(days=2)).date()
     after = day + timedelta(days=1)
     friday.c("add", title="Jasper's Birthday", when="fixed", start=f"{day}T00:00", end=f"{after}T00:00", every="year")
-    (birthday,) = friday.q("events", text="jason")
+    (birthday,) = friday.q("events", text="jasper")
     moved = friday.http.post("/api/c/edit", json={"id": birthday["id"], "start": f"{after}T00:00",
                                                    "end": f"{after + timedelta(days=1)}T00:00",
                                                    "from_date": str(day)})  # fmt: skip

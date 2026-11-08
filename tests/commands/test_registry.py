@@ -18,6 +18,7 @@ from tests.commands.helpers import App, new_app
 DERIVED = {"command_log", "kv", "plans", "blocks", "users", "sqlite_sequence"}
 KV_STATE = {
     "sleep_skip",
+    "phone_forget",  # paired phones are kept in kv
     "not_duplicates",  # kept in kv
     "review_again",
     "reviewed",
@@ -467,6 +468,9 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "week_note": lambda app: {"week": "2026-10-19", "feel": "Busy"},
     "reorder": lambda app: {"parent_id": essay(app), "ids": []},
     "rule_add": lambda app: {"text": "lunch before 1pm"},
+    "event_optional": lambda app: {"title": "Gym", "mode": "optional"},
+    "phone_set": lambda app: {"on": True},
+    "phone_forget": lambda app: {"id": a_paired_phone(app)},
     "rule_set": lambda app: {"name": "daily_load", "enabled": False},
     "rule_remove": lambda app: {"name": "cluster"},
     "mail_retry": lambda app: {"id": a_skipped_mail(app)},
@@ -508,6 +512,15 @@ def a_failed_document(app: App) -> int:
     raw = app.table("raw_inputs")[-1]["id"]
     app.conn.execute("UPDATE raw_inputs SET status = 'failed', error = 'no key' WHERE id = ?", [raw])
     return raw
+
+
+def a_paired_phone(app: App) -> str:
+    """A phone paired as its code does it, without asking this Mac's Tailscale for the code's address."""
+    from friday.commands import phones
+
+    phones.store(app.conn, 1, "phone_codes", {phones.digest("code"): {"until": app.now_utc + 5}})
+    phones.pair(app.conn, 1, "code", "iPhone", app.now_utc)
+    return next(iter(phones.stored(app.conn, 1, "phones")))
 
 
 def test_every_mutating_command_has_a_sample() -> None:
@@ -565,7 +578,7 @@ def test_undo_is_refused_when_a_later_command_changed_the_rows(app: App) -> None
 def test_an_undo_can_be_undone_and_a_command_is_undone_only_once(app: App) -> None:
     added = app.full("add", payload={"text": "x ~30m"}, provisional=False)
     undone = app.full("undo", payload={"command_id": added.command_id}, provisional=False)
-    with pytest.raises(FieldError, match="already undone"):
+    with pytest.raises(FieldError, match="undone already"):
         app.do("undo", command_id=added.command_id)
     app.do("undo", command_id=undone.command_id)
     assert [i["title"] for i in app.do("items")] == ["x"]
@@ -581,6 +594,7 @@ def test_unlogged_commands_are_only_those_with_no_undo_or_a_secret_result() -> N
         "mac_sync",
         "mac_written",
         "token_add",
+        "phone_pair",  # its result holds a pairing code
         "google_connect",
         "google_connect_cancel",
         "google_client_save",

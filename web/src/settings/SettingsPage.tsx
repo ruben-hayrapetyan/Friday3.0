@@ -13,6 +13,7 @@ import { Appearance } from "./Appearance"
 import { CalendarsSection } from "./CalendarsSection"
 import { Tokens } from "./Assistants"
 import { Integrations } from "./Integrations"
+import { Phone } from "./Phone"
 import { Repeating } from "./Repeating"
 import { Schedule } from "./Schedule"
 import { Shortcuts } from "./Shortcuts"
@@ -26,6 +27,7 @@ const SECTIONS = [
   { id: "schedule", label: "Schedule", icon: "clock", page: Schedule },
   { id: "repeating", label: "Repeating", icon: "repeat", page: Repeating },
   { id: "integrations", label: "Integrations", icon: "plugs", page: Integrations },
+  { id: "phone", label: "Phone", icon: "device-mobile", page: Phone },
   { id: "tokens", label: "Tokens", icon: "key", page: Tokens },
   { id: "about", label: "About you", icon: "user", page: AboutYou },
   { id: "shortcuts", label: "Shortcuts", icon: "keyboard", page: Shortcuts },

@@ -136,7 +136,11 @@ def test_a_failing_write_is_tried_again_then_reported(app: App) -> None:
     for _ in range(MAX_TRIES):
         assert write_events(app.conn, app.now_utc, google=Down()) == 0
     assert app.table("event_writes")[0]["tries"] == MAX_TRIES
-    assert failed_writes(app.conn) == ["Couldn't save Renamed to Google (ConnectionError: Google is down)"]
+    # in words, with what Friday does about it (8 Nov), the exception in the log
+    assert failed_writes(app.conn) == [
+        "Couldn't save Renamed to Google (The calendar couldn't be reached. Friday tries again by itself; if it lasts, "
+        "check the address in Settings.)"
+    ]
     assert write_events(app.conn, app.now_utc, google=google) == 0  # given up: not tried again
 
 

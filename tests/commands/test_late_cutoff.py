@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from friday.core.rule_late import read_late_cutoff
-from friday.core.rule_text import read, scope_of, sentence, spec
+from friday.core.rule_text import course_and_kind, read, scope_of, sentence, spec
 from friday.core.time import format_utc, parse_local, parse_utc, to_utc
 from friday.planner.late_cutoff import cutoff_after
 from friday.planner.service import replan
@@ -46,7 +46,15 @@ class TestReading:
         assert read(text) == (found, "Always")
 
     @pytest.mark.parametrize(
-        "text", ["finish homework before sunday", "no work after sunday", "math homework is due friday", "if late, ok"]
+        "text",
+        [
+            "finish homework before sunday",
+            "no work after sunday",
+            "math homework is due friday",
+            "if late, ok",
+            "late night study sessions done by friday",  # a time of night, not lateness (review, 8 Nov)
+            "If it is late, done by monday",  # what "it" is isn't said
+        ],
     )
     def test_plain_deadlines_and_others_are_not_it(self, text: str) -> None:
         assert read_late_cutoff(text) is None
@@ -71,10 +79,15 @@ class TestScope:
         ],
     )
     def test_a_course_and_a_kind(self, subject: str, scope: dict) -> None:
-        assert scope_of(subject, [], PRESETS) == scope
+        assert (course_and_kind(subject, [], PRESETS) or scope_of(subject, [], PRESETS)) == scope
 
     def test_a_tag_and_a_kind(self) -> None:
-        assert scope_of("school homework", ["School"], PRESETS) == {"preset": "Assignment", "area": "School"}
+        assert course_and_kind("school homework", ["School"], PRESETS) == {"preset": "Assignment", "area": "School"}
+
+    def test_other_rules_read_their_subject_as_before(self) -> None:
+        """Review (8 Nov): read this way for every rule, it narrowed what existing wordings reached."""
+        assert scope_of("math homework", [], PRESETS) == {"title": "math homework"}
+        assert course_and_kind("practice exam", [], [*PRESETS, "Exam"]) is None  # a kind of its own
 
 
 class TestCutoffDay:

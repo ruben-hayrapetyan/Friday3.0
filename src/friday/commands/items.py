@@ -39,6 +39,7 @@ from friday.commands.series import (
     calendar_of,
     create_series,
     load_series,
+    refuse_external,
     retimed,
     timing_on,
     without_times,
@@ -324,6 +325,7 @@ def edit_from(ctx: Ctx, item: Item, from_date: str, given: dict[str, Any]) -> It
     Each keeps its id and the work recorded on it: remaking them lost both, and failed on the one being edited. New
     times are this one's, and the series' from then on, so each later one moves to them on its own day."""
     assert item.series_id is not None
+    refuse_external(ctx, item.series_id)  # a calendar's own repeat changes there (review, 8 Nov)
     values = to_item_values(ctx, given)
     times = {k: v for k, v in values.items() if k in TIME_KEYS}
     values = without_times(values)
@@ -390,7 +392,7 @@ def done(ctx: Ctx, inp: DoneInput) -> ItemResult:
     """Complete an item, optionally with the time it really took."""
     item = require_item(ctx, inp.id)
     if item.status == "done":
-        raise FieldError("id", f"T{inp.id} is already done")
+        raise FieldError("id", "That's done already")
     if ctx.conn.execute("SELECT 1 FROM timer WHERE user_id = ? AND item_id = ?", [ctx.user_id, inp.id]).fetchone():
         stop_timer(ctx, item_id=inp.id)  # its own: another may be running alongside
     progress = progress_rows(ctx.conn, ctx.user_id).get(inp.id, [])
@@ -425,14 +427,17 @@ def depend(ctx: Ctx, inp: DependInput) -> Changed:
 def add_dependency(ctx: Ctx, item_id: int, depends_on_id: int, fraction: float, lag_min: int) -> None:
     item, other = require_item(ctx, item_id), require_item(ctx, depends_on_id)
     if other.amount == "open" and other.when != "fixed":
-        raise FieldError("depends_on_id", f"nothing can wait for T{other.id}: an open item never finishes")
+        endless = "it's open-ended, so it never finishes"
+        raise FieldError("depends_on_id", f"Nothing can wait for “{other.title}”: {endless}")
     if not 0 < fraction <= 1:
         raise FieldError("fraction", "must be above 0 and at most 1")
     edges: dict[int, list[int]] = {}
     for row in rows(ctx.conn, "SELECT item_id, depends_on_id FROM dependencies WHERE user_id = ?", [ctx.user_id]):
         edges.setdefault(row["item_id"], []).append(row["depends_on_id"])
     if item_id == depends_on_id or would_create_cycle(edges, item_id, depends_on_id):
-        raise FieldError("depends_on_id", f"T{item.id} waiting for T{other.id} would make a loop")
+        raise FieldError(
+            "depends_on_id", f"“{item.title}” can't wait for “{other.title}”: that one already waits for it, a loop"
+        )
     found = one(
         ctx.conn,
         "SELECT id FROM dependencies WHERE user_id = ? AND item_id = ? AND depends_on_id = ?",

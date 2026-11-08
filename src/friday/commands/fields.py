@@ -290,12 +290,12 @@ def check_parent(ctx: Ctx, item_id: int | None, parent_id: int | None) -> None:
     at = parent_id
     while at is not None and at not in seen:
         if at == item_id:
-            raise FieldError("parent_id", f"T{item_id} can't be inside itself")
+            raise FieldError("parent_id", f"{called(ctx, item_id)} can't be inside itself or what's inside it")
         parent = load_item(ctx.conn, at, ctx.user_id)
         if parent is None:
-            raise FieldError("parent_id", f"no item T{at}")
+            raise FieldError("parent_id", f"Item T{at} isn't there any more: it may have been deleted")
         if at == parent_id and parent.when == "fixed":
-            raise FieldError("parent_id", f"T{at} is at a set time, so it can't hold other items")
+            raise FieldError("parent_id", f"{called(ctx, at)} is an event at a set time, so it can't hold other items")
         seen.add(at)
         at = parent.parent_id
 
@@ -303,8 +303,16 @@ def check_parent(ctx: Ctx, item_id: int | None, parent_id: int | None) -> None:
 def require_item(ctx: Ctx, item_id: int) -> Item:
     item = load_item(ctx.conn, item_id, ctx.user_id)
     if item is None:
-        raise FieldError("id", f"no item T{item_id}")
+        gone = "isn't there any more: it may have been deleted. Reload the page"
+        raise FieldError("id", f"That item (T{item_id}) {gone}")
     return item
+
+
+def called(ctx: Ctx, item_id: int) -> str:
+    """An item as an error names it (8 Nov: "T5 waiting for T7 would make a loop"): its title, with its id for the
+    command line and agents."""
+    item = load_item(ctx.conn, item_id, ctx.user_id)
+    return f"“{item.title}” (T{item_id})" if item is not None else f"item T{item_id}"
 
 
 def update_item(ctx: Ctx, before: Item, after: Item) -> None:

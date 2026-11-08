@@ -41,7 +41,7 @@ def at(app: App, local: str) -> None:
 
 def test_it_is_off_until_you_turn_it_on(app: App) -> None:
     assert app.do("meals") == app.do("meals") | {"on": False, "days": [], "eating": None, "next": None}
-    with pytest.raises(FieldError, match="meal tracking is off"):
+    with pytest.raises(FieldError, match="Meal tracking is off"):
         app.do("meal_start")
 
 

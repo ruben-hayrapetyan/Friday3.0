@@ -1,4 +1,4 @@
-"""A repeating event moved to another day from one of its times on (5 Nov: "change jasons bday to nov 6 yearly" was
+"""A repeating event moved to another day from one of its times on (5 Nov: "change jaspers bday to nov 6 yearly" was
 refused four times, and nothing else could move a repeat's day): the repeat moves with it."""
 
 import dataclasses

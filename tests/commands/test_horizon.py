@@ -62,7 +62,7 @@ def test_a_parent_must_exist_not_be_fixed_and_not_make_a_loop(app: App) -> None:
     inner = app.do("add", title="Inner", due="2026-11-20T17:00", parent_id=outer["id"], duration_min=60)["item"]
     with pytest.raises(FieldError, match="inside itself"):
         app.do("edit", id=outer["id"], parent_id=inner["id"])
-    with pytest.raises(FieldError, match="no item"):
+    with pytest.raises(FieldError, match="isn't there any more"):
         app.do("add", title="Lost", parent_id=999)
     lecture = app.do("add", text="lecture at tue 10:00 for 1h")["item"]
     with pytest.raises(FieldError, match="set time"):

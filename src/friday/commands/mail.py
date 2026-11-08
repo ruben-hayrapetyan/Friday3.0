@@ -18,6 +18,7 @@ from friday.commands.registry import Ctx, command, query
 from friday.core.db import one, rows
 from friday.core.integrations import GmailSettings
 from friday.core.items import FieldError
+from friday.core.plain import kept
 from friday.core.time import format_local, format_utc, parse_utc, to_local
 from friday.sync import gmail
 from friday.sync.google_auth import LEGACY
@@ -41,7 +42,7 @@ def read_mail(
     except Exception as error:
         conn.execute(
             "UPDATE sources SET last_error = ?, failures = failures + 1, last_sync_utc = ? WHERE id = ?",
-            [f"{type(error).__name__}: {error}"[:300], format_utc(now_utc), source["id"]],
+            [kept(error, "Gmail"), format_utc(now_utc), source["id"]],
         )
         return 0
     conn.execute(

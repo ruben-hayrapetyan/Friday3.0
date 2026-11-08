@@ -339,6 +339,13 @@ class ExamFocus(Model):
     words: tuple[str, ...] = ("exam", "prelim", "midterm", "final")
 
 
+class PhoneAccess(Model):
+    """Friday on your phone over Tailscale (C61): off, Friday answers on this Mac alone; on, also at its Tailscale
+    address, to phones you've paired (Settings → Phone)."""
+
+    on: bool = False
+
+
 class MealTracking(Model):
     """Recording your meals (Sleep & meals): off until you turn it on. When on, the Now bar offers "Eating now" around
     mealtimes and "Done eating" while you eat, and Friday learns when you eat, for how long and what you skip
@@ -454,6 +461,7 @@ SETTINGS_TYPES: dict[str, Any] = {
     "short_term_first": bool,  # the Short term list's work comes before anything on the Long term list
     "sleep_tracking": SleepTracking,
     "meal_tracking": MealTracking,
+    "phone": PhoneAccess,  # Friday on your phone over Tailscale (C61)
     "rules": tuple[RuleSpec, ...],
     "templates": dict[str, tuple[TemplateStep, ...]],
     "paces": dict[str, Dials],
@@ -498,6 +506,7 @@ DEFAULTS: dict[str, Any] = {
     "short_term_first": False,
     "sleep_tracking": SleepTracking(),
     "meal_tracking": MealTracking(),
+    "phone": PhoneAccess(),
     "rules": REFERENCE_RULES,
     "templates": DEFAULT_TEMPLATES,
     "paces": DEFAULT_PACES,

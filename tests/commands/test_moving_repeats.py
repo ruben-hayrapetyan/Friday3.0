@@ -1,4 +1,4 @@
-"""Moving a repeating event to another day, from what you see (5 Nov: "change jasons bday to nov 6 yearly" failed:
+"""Moving a repeating event to another day, from what you see (5 Nov: "change jaspers bday to nov 6 yearly" failed:
 the AI's edit was refused and nothing else could move a repeat's day)."""
 
 from pathlib import Path
@@ -30,7 +30,7 @@ def test_a_yearly_birthday_asked_to_move_to_the_next_day_moves_this_year_and_eve
         {"sentence": "Move Jasper's Birthday to Nov 6, every year", "command": "edit",
          "input": {"id": today["id"], "start": "2026-11-06T00:00", "end": "2026-11-07T00:00",
                    "from_date": "2026-11-05"}}]})  # fmt: skip
-    action = app.do("ask_claude", text="change jasons bday to nov 6 yearly")["actions"][0]
+    action = app.do("ask_claude", text="change jaspers bday to nov 6 yearly")["actions"][0]
     assert action["error"] is None  # checked before you see it, and taken
     app.do(action["command"], **action["input"])
     assert days_of(app, "Jasper's Birthday") == ["2026-11-06T00:00"]

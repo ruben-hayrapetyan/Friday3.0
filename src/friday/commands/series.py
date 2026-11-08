@@ -498,8 +498,8 @@ def series_list(ctx: Ctx, inp: Empty) -> list[SeriesRow]:
         template = json.loads(row["template"])
         nxt = one(
             ctx.conn,
-            "SELECT COALESCE(start_utc, due_utc, release_utc) AS at FROM items WHERE series_id = ? AND status = 'todo' "
-            "ORDER BY at LIMIT 1",
+            "SELECT id, COALESCE(start_utc, due_utc, release_utc) AS at FROM items WHERE series_id = ? "
+            "AND status = 'todo' ORDER BY at LIMIT 1",
             [row["id"]],
         )
         source = one(  # an imported repeat by its event, which stays when its occurrences go
@@ -514,11 +514,13 @@ def series_list(ctx: Ctx, inp: Empty) -> list[SeriesRow]:
                 id=row["id"],
                 title=template.get("title", ""),
                 area=areas.get(template.get("area_id")),
-                fixed=template.get("when_kind") == "fixed",
+                fixed=template.get("when_kind", template.get("when")) == "fixed",  # `add` keeps it as "when"
                 pattern=describe(row["rrule"])
                 + (f", {row['per_window']} times" if row["per_window"] > 1 else "")
                 + (imported_times(row) if row["external_id"] else ""),
                 next=ctx.local(nxt["at"]) if nxt and nxt["at"] else None,
+                next_id=nxt["id"] if nxt else None,
+                rule=row["rrule"],
                 source=source["name"] if source else "you",
                 active=bool(row["active"]),
                 external=bool(row["external_id"]),

@@ -1797,16 +1797,21 @@ def scope_of(subject: str, areas: list[str], presets: list[str]) -> dict[str, An
     kind = KIND_WORDS.get(subject) or KIND_WORDS.get(subject.rstrip("s"))
     if kind is not None and kind in presets:
         return {"preset": kind}
-    return course_and_kind(subject, areas, presets) or {"title": subject}
+    return {"title": subject}
+
+
+NOT_A_COURSE = {"practice", "mock", "sample", "extra", "group", "weekly", "daily", "late", "overdue", "any", "all"}
 
 
 def course_and_kind(subject: str, areas: list[str], presets: list[str]) -> dict[str, Any] | None:
-    """'math homework' is homework for math, not a task with those words in its title (8 Nov: a rule about "math
-    homework" reached none of "Math 1920 HW10", "HW11", …): the kind, and the rest as words in the title or a tag."""
+    """'math homework' is homework for math, not a task with those words in its title (8 Nov: "If math homework
+    becomes overdue…" reached none of "Math 1920 HW10", "HW11", …): the kind, and the rest as words in the title or a
+    tag. For the late-work rule only (review, 8 Nov: for every rule it narrowed what existing wordings reached, and
+    "practice exam" is a kind of its own)."""
     kinds = {**KIND_WORDS, **{p.lower(): p for p in presets}}
     for words in sorted(kinds, key=len, reverse=True):
         found = re.fullmatch(rf"(.+?) {re.escape(words)}s?", subject)
-        if found and kinds[words] in presets:
+        if found and kinds[words] in presets and found[1].strip() not in NOT_A_COURSE:
             rest = found[1].strip()
             area = next((a for a in areas if a.lower() == rest), None)
             return {"preset": kinds[words]} | ({"area": area} if area else {"title": rest})
@@ -1883,6 +1888,7 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
     scope = scope_of(r.subject, areas, presets)
     if r.kind == "late_cutoff":  # not a priced rule: the build gives that work its last day (planner.late_cutoff)
         params = {"day": (r.days or ("sun",))[0], "before": r.rel == "before"}
+        scope = course_and_kind(r.subject, areas, presets) or scope
         return {"name": name, "type": "late_cutoff", "weight": 0.0, "scope": scope, "reason": sentence(r),
                 "params": params}  # fmt: skip
     price: Any = "forbid" if strength == "Always" else PRICE[strength]

@@ -15,7 +15,8 @@ describe("errors said so you can act on them (8 Nov)", () => {
   })
 
   it("says what a bare failure means and what to do", () => {
-    expect(messageFrom(500, null)).toMatch(/inside Friday, and nothing was changed.*Diagnose/)
+    expect(messageFrom(500, null)).toMatch(/inside Friday. Try again.*Diagnose/)
+    expect(messageFrom(400, { field: "title", message: "lab_report: can't move there" })).toBe("Lab_report: can't move there")
     expect(messageFrom(404, null)).toMatch(/deleted/)
     expect(messageFrom(500, { message: "Planning failed" })).toBe("Planning failed") // the server's words come first
   })
@@ -24,5 +25,6 @@ describe("errors said so you can act on them (8 Nov)", () => {
     expect(errorWords(new TypeError("Load failed"))).toMatch(/didn't answer.*restarting.*quit Friday/)
     expect(errorWords(new ApiError("Lab can't move there", 400))).toBe("Lab can't move there")
     expect(errorWords(new DOMException("aborted", "AbortError"))).toBe("Stopped.")
+    expect(errorWords(new TypeError("x is undefined"))).toBe("x is undefined") // a mistake in the page, not the server
   })
 })

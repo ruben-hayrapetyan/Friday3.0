@@ -56,7 +56,7 @@ WINDOWS = {"breakfast": (6 * 60, 10 * 60 + 30), "lunch": (11 * 60, 14 * 60 + 30)
 
 def tracking(ctx: Ctx) -> None:
     if not ctx.settings["meal_tracking"].on:
-        raise FieldError("kind", "meal tracking is off; turn it on in Sleep & meals")
+        raise FieldError("kind", "Meal tracking is off: turn it on in Insights → Meals")
 
 
 def moment_of(ctx: Ctx, local: str | None, field: str = "at") -> int:
@@ -172,7 +172,7 @@ def meal_end(ctx: Ctx, inp: MealEndInput) -> Changed:
         finish(ctx, meal, start + usual)
         return Changed(
             message=f"{meal['kind'].capitalize()}: counted as your usual {usual} min (Done eating came "
-            f"{(end - start) // 60} h {(end - start) % 60} min after you started); change it in Sleep & meals"
+            f"{(end - start) // 60} h {(end - start) % 60} min after you started); change it in Insights → Meals"
         )
     minutes = finish(ctx, meal, end)
     return Changed(message=f"{meal['kind'].capitalize()}: {minutes} min")
@@ -319,7 +319,7 @@ def learned(ctx: Ctx) -> list[Learned]:
 
 @command("meal_use_length", affects_plan=True)
 def meal_use_length(ctx: Ctx, inp: MealLengthInput) -> Changed:
-    """Plan a meal's routine at the length you take, from today on (what Sleep & meals offers)."""
+    """Plan a meal's routine at the length you take, from today on (what Insights → Meals offers)."""
     found = planned_routines(ctx).get(inp.kind)
     if found is None:
         raise FieldError("kind", f"there's no {inp.kind} routine to change")
@@ -387,7 +387,7 @@ def plan_offers(found: list[Learned], planned: dict[str, tuple]) -> list[MealPla
 
 @command("meal_use_time", affects_plan=True)
 def meal_use_time(ctx: Ctx, inp: MealLengthInput) -> Changed:
-    """Plan a meal's routine around when you usually eat it, from today on (what Sleep & meals offers)."""
+    """Plan a meal's routine around when you usually eat it, from today on (what Insights → Meals offers)."""
     planned = planned_routines(ctx)
     found = planned.get(inp.kind)
     offer = next((t for t in time_changes(ctx, learned(ctx), planned) if t.kind == inp.kind), None)
@@ -408,7 +408,7 @@ def meal_use_time(ctx: Ctx, inp: MealLengthInput) -> Changed:
 
 @command("meal_plan", affects_plan=True)
 def meal_plan(ctx: Ctx, inp: MealPlanInput) -> Changed:
-    """Plan a meal every day at the time and length you have it, or stop planning it (what Sleep & meals offers)."""
+    """Plan a meal every day at the time and length you have it, or stop planning it (what Insights → Meals offers)."""
     kind, planned = inp.kind, planned_routines(ctx)
     if not inp.plan:
         if kind not in planned or planned[kind][0].series_id is None:

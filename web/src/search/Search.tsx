@@ -44,6 +44,7 @@ const PAGES: [string, string, string][] = [
   ["Schedule", "/settings/schedule", "clock"],
   ["Repeating", "/settings/repeating", "repeat"],
   ["Integrations", "/settings/integrations", "plugs"],
+  ["Phone: Friday on your phone", "/settings/phone", "device-mobile"],
   ["Shortcuts", "/settings/shortcuts", "keyboard"],
 ]
 

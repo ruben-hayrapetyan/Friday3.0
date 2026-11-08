@@ -253,7 +253,7 @@ friday/
 | pywebpush | notify | Web Push (M8) |
 | pytest, hypothesis, ruff | dev | tests, property tests, lint |
 
-Later milestones add `icalendar`, `anthropic` and the Google client libraries (M10), and `mcp` (M10). Anything else needs approval.
+Later milestones add `icalendar`, `anthropic` and the Google client libraries (M10), and `mcp` (M10). Anything else needs approval. Approved since: `segno` (8 Nov, C61), the QR code a phone scans to pair (Settings → Phone).
 
 **Web, managed with `pnpm`:** React 18+, TypeScript, Vite, TanStack Query, React Router, Tailwind CSS, shadcn/ui (Radix primitives) and `cmdk` for the palette, `openapi-typescript` for the generated client types, `vite-plugin-pwa` (M8), Vitest and Playwright. There is no calendar library: the grid is our own component (section 18.4). There is no global state library unless one is clearly needed; React state and TanStack Query come first.
 

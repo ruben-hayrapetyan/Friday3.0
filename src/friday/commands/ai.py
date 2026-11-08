@@ -13,6 +13,7 @@ from friday.core.db import connect
 from friday.core.integrations import PROVIDERS, LlmSettings
 from friday.core.items import FieldError
 from friday.core.paths import secrets_path
+from friday.core.plain import plain
 from friday.ingest import extract, llm, local_models
 from friday.sync.google_auth import write_private
 
@@ -39,7 +40,7 @@ def ai_check(ctx: Ctx, inp: Empty) -> list[ModelCheck]:
             said = "Answered" if ok else "Answered, but not as asked: it may not follow Friday's instructions well"
             out.append(ModelCheck(model=model, job=job, ok=ok, said=said))
         except Exception as error:  # the point is to show it
-            out.append(ModelCheck(model=model, job=job, ok=False, said=f"{type(error).__name__}: {error}"[:300]))
+            out.append(ModelCheck(model=model, job=job, ok=False, said=plain(error, "The AI")))
     return out
 
 

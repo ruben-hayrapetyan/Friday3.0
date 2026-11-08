@@ -35,10 +35,10 @@ describe("a command", () => {
 
   it("rolls back and shows the server's message when it fails", async () => {
     const { client, toasts, toast } = setup()
-    answer(422, { field: "id", message: "no item T2" })
+    answer(422, { field: "id", message: "That item (T2) isn't there any more" })
     await runCommand(client, toast, "done", { id: 2 }, { optimistic: withoutItem })
     expect(client.getQueryData(["items"])).toEqual(items)
-    expect(toasts).toEqual([{ message: "No item T2", tone: "error" }])
+    expect(toasts).toEqual([{ message: "That item (T2) isn't there any more", tone: "error" }])
   })
 
   it("undoes several commands newest first, as one action", async () => {
@@ -58,7 +58,7 @@ describe("several commands as one change (Ask Claude's, a triage option's)", () 
     let id = 20
     const fetch = vi.fn(async (url: string, init: RequestInit) => {
       const name = String(url).split("/api/c/")[1]
-      if (name === fail) return new Response(JSON.stringify({ field: "id", message: "no item T9" }), { status: 422 })
+      if (name === fail) return new Response(JSON.stringify({ field: "id", message: "That item (T9) isn't there any more" }), { status: 422 })
       return new Response(JSON.stringify({ command_id: name === "undo" ? null : ++id, result: { undone: JSON.parse(String(init.body)).command_id } }))
     })
     vi.stubGlobal("fetch", fetch)
@@ -79,7 +79,7 @@ describe("several commands as one change (Ask Claude's, a triage option's)", () 
     const fetch = server("pin")
     expect(await runTogether(client, toast, [{ command: "edit", input: { id: 1 } }, { command: "pin", input: { id: 9 } }])).toBeNull()
     expect(sent(fetch)).toEqual([["edit", null], ["pin", null], ["undo", 21]])
-    expect(toasts[0]).toEqual({ message: "No item T9", tone: "error" })
+    expect(toasts[0]).toEqual({ message: "That item (T9) isn't there any more", tone: "error" })
   })
 
   it("undone from the toast, ⌘Z doesn't try them again", async () => {

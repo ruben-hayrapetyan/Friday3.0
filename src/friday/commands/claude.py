@@ -70,7 +70,7 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
 - edit: {id, ...fields to change} — use the ids in the context; moving an event changes its start and end; location
   sets where it is. An event that repeats ("repeats": true in the context) changes that time only, or, with
   from_date: "YYYY-MM-DD", that time and every later one ("from now on chem lecture is in Baker 200"). To move a
-  repeating event to another day ("jason's birthday is nov 6, yearly"), edit that time with its new start and end
+  repeating event to another day ("jasper's birthday is nov 6, yearly"), edit that time with its new start and end
   and from_date its own date: the repeat moves with it.
 - repeat: {id, every} makes something they already have repeat ("make salsa repeat every week"), from its own date
   and time; never for an event from their calendar.

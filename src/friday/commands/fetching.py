@@ -6,7 +6,6 @@ declined. The server's job loop runs this every minute; the simulator may too.
 """
 
 import json
-import re
 import sqlite3
 import uuid
 from collections.abc import Callable
@@ -19,6 +18,7 @@ from friday.commands.mail import read_mail
 from friday.commands.suggesting import suggest, take, write_raw
 from friday.core.db import one, rows
 from friday.core.integrations import GcalSettings
+from friday.core.plain import OFFLINE, SIGN_IN_GONE, kept, status_of
 from friday.core.settings import minutes_of
 from friday.core.time import format_utc, parse_utc, planning_date
 from friday.ingest import extract, ics, llm
@@ -88,6 +88,9 @@ def due(conn: sqlite3.Connection, kind: str, settings: dict, now_utc: int, user_
     return at is None or bool(found and found["unread"]) or now_utc - parse_utc(at) >= settings["ingest"].poll_min
 
 
+WHO = {"gmail": "Gmail", "gcal": "Google Calendar", "mac": "Your Mac's calendars", "canvas": "Canvas"}
+
+
 def guarded(conn: sqlite3.Connection, kind: str, now_utc: int, user_id: int, read: Callable[[], int]) -> int:
     """Google being down (or the token revoked) shows on its sources and leaves the others to go on."""
     try:
@@ -96,7 +99,7 @@ def guarded(conn: sqlite3.Connection, kind: str, now_utc: int, user_id: int, rea
         conn.execute(
             "UPDATE sources SET last_error = ?, failures = failures + 1, last_sync_utc = ? "
             "WHERE user_id = ? AND kind = ?",
-            [f"{type(error).__name__}: {error}"[:300], format_utc(now_utc), user_id, kind],
+            [kept(error, WHO.get(kind, "It")), format_utc(now_utc), user_id, kind],
         )
         return 0
 
@@ -338,18 +341,15 @@ def extract_pending(
             )
         except Exception as error:
             if provider_down(error):  # every input would fail the same way; they wait, the source shows why
-                status = getattr(error, "status_code", None)
-                said = (
-                    f"The AI refused the key from {llm.key_source(settings['llm'].provider)[1]}"
-                    if status in (401, 403)
-                    else f"{settings['llm'].model} won't take Friday's request"
-                    if status in (400, 404)
-                    else "The AI is unavailable"
-                )
-                why = f"{said}: {error}"[:300]
+                why = kept(error, "The AI")
+                if status_of(error) in (401, 403):  # where the key came from is what to check
+                    where = llm.key_source(settings["llm"].provider)[1]
+                    fix = "Check or replace it in Settings → AI."
+                    why = f"The AI refused the key from {where} ({status_of(error)}). {fix}"
                 conn.execute("UPDATE sources SET last_error = ? WHERE id = ?", [why, r["source_id"]])
                 break
-            conn.execute("UPDATE raw_inputs SET status = 'failed', error = ? WHERE id = ?", [str(error)[:300], r["id"]])
+            failed = kept(error, "The AI")
+            conn.execute("UPDATE raw_inputs SET status = 'failed', error = ? WHERE id = ?", [failed, r["id"]])
             continue
         record_spend(conn, user_id, today.isoformat(), tokens)
         batch = f"{r['title'] or 'document'} {uuid.uuid4().hex[:6]}" if syllabus else None
@@ -385,21 +385,6 @@ def provider_down(error: Exception) -> bool:
     unreachable = type(error).__name__ in ("APIConnectionError", "APITimeoutError")
     about_model = status in (400, 404) and "model" in str(error)  # a retired model, or a request it won't take
     return unreachable or about_model or status in (401, 403, 429) or (status or 0) >= 500
-
-
-# Google's word for a sign-in it no longer takes (expired, or taken back in your Google account); the same test as
-# the web app's `wantsSignIn`, which keeps the raw error to offer "Connect again".
-SIGN_IN_GONE = re.compile(r"RefreshError|invalid_grant|insufficient authentication", re.IGNORECASE)
-
-
-# No way to the internet (8 Nov: Wi-Fi off, the banner read "TransportError: HTTPSConnectionPool(host=
-# 'oauth2.googleapis.com', …) Failed to resolve …" for each of four sources): a name that can't be looked up, or no
-# network at all. The same test as the web app's `offline`. A slow or refusing server isn't this: it keeps its words.
-OFFLINE = re.compile(
-    r"NameResolutionError|nodename nor servname|name resolution|Name or service not known|getaddrinfo failed|"
-    r"Network is unreachable|No route to host|Errno (?:8|51|65|101)\b",
-    re.IGNORECASE,
-)
 
 
 def failing_sources(conn: sqlite3.Connection, user_id: int) -> list[str]:

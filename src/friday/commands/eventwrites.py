@@ -30,6 +30,7 @@ from friday.commands.calendars import editable
 from friday.commands.registry import Ctx, command
 from friday.core.db import one, rows
 from friday.core.items import Item
+from friday.core.plain import kept
 from friday.core.time import format_utc, parse_utc, to_local
 from friday.planner.store import event_links, kv_get, load_item, load_settings
 from friday.sync import gcal, google_auth
@@ -240,7 +241,7 @@ def write_events(
         except Exception as error:  # Google down, a revoked token, an event deleted there: kept, tried again
             conn.execute(
                 "UPDATE event_writes SET tries = tries + 1, error = ? WHERE id = ?",
-                [f"{type(error).__name__}: {error}"[:300], job["id"]],
+                [kept(error, "The calendar"), job["id"]],
             )
     return written
 

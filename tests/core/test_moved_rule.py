@@ -1,4 +1,4 @@
-"""moved_rule, from inside (5 Nov: "change jasons bday to nov 6 yearly"): which parts of a rule follow a moved day."""
+"""moved_rule, from inside (5 Nov: "change jaspers bday to nov 6 yearly"): which parts of a rule follow a moved day."""
 
 from datetime import date
 

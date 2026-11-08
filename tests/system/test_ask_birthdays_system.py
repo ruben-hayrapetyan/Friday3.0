@@ -55,8 +55,8 @@ def test_the_model_is_told_how_and_what_is_there_and_its_repeat_is_refused(
 
 def test_the_one_offered_is_the_whole_day_and_the_days_work_is_planned(system: tuple[Friday, Ollama, str]) -> None:
     friday, _, day = system
-    ray = friday.c("ask_claude", text="Remy")["actions"][1]
-    friday.c(ray["command"], **ray["input"])
+    remy = friday.c("ask_claude", text="Remy")["actions"][1]
+    friday.c(remy["command"], **remy["input"])
     friday.c("add", title="essay", duration_min=120, release=f"{day}T00:00", due=f"{day}T23:00")
     friday.c("replan")
     plan = friday.q("plan", start=f"{day}T00:00", end=next_midnight(day))

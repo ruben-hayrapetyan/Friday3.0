@@ -25,8 +25,9 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from friday.commands.registry import REGISTRY, Spec
 
 Call = Callable[[str, dict[str, Any], Any], Awaitable[Any]]  # (tool, arguments, the HTTP request or None)
-# An assistant doesn't hand out or revoke access, or sign Friday in to Google.
-HIDDEN = {"token_add", "token_remove", "google_connect", "google_client_save"}
+# An assistant doesn't hand out or revoke access (a phone's included), or sign Friday in to Google.
+HIDDEN = {"token_add", "token_remove", "google_connect", "google_client_save", "phone_set", "phone_pair",
+          "phone_forget"}  # fmt: skip
 INSTRUCTIONS = (
     "Friday plans the person's time. Read with queries (status, items, calendar, explain); change things with "
     "commands. Pass preview: true first to see what a change would do. Times are local, like 2026-10-20T14:00."

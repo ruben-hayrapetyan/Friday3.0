@@ -81,8 +81,8 @@ EFFECT = {
     "cut into it",
     "meals_kept": "Work never takes that time: when it would, the work is late instead. When events fill a meal's "
     "usual time, Friday plans it just outside",
-    "meal_learned": "From what you track in Sleep & meals, each night Friday plans it or stops, and moves it to when "
-    "you eat and how long you take",
+    "meal_learned": "From what you track in Insights → Meals, each night Friday plans it or stops, and moves it to "
+    "when you eat and how long you take",
     "close_to_due": "Friday plans it in the last free time before it's due (prep: before its exam), each day earlier "
     "costing a little more; a buffer you name is kept clear",
     "ahead": "Friday plans work into that time first and leaves it free only when everything fits without it; each "
@@ -122,7 +122,7 @@ def rule_read(ctx: Ctx, inp: RuleTextInput) -> RuleReadOut:
     new = spec(reading, strength, "preview", areas, presets)
     effect = EFFECT.get(reading.kind if reading.kind in ("ahead", "meals_kept") else new["type"], "")
     if reading.kind == "meals_learned" and not ctx.settings["meal_tracking"].on:
-        effect += ". Meal tracking is off: turn it on in Sleep & meals so Friday has something to learn from"
+        effect += ". Meal tracking is off: turn it on in Insights → Meals so Friday has something to learn from"
     if reading.events:
         found = events_named(ctx, reading.events)
         effect += f". Matches {', '.join(found)}" if found else ". No event has those words in its title yet"

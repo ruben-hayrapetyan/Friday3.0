@@ -214,7 +214,12 @@ class Supervisor:
         saved = folder / f"generation-{job.snapshot.generation}.pickle"
         saved.write_bytes(pickle.dumps(job.snapshot))
         log.error("planning failed; snapshot saved to %s\n%s", saved, error)
-        self.problem(conn, f"Planning failed; the last plan stays. Snapshot saved to {saved}")
+        # In words, with what to do (8 Nov); where the snapshot is stays in the log, for a bug report.
+        self.problem(
+            conn,
+            "Friday couldn't make a new plan, so the last one stays. It tries again with your next change; if this "
+            "stays, the details are in Settings → Advanced → Diagnose.",
+        )
         self.release(None, job.snapshot.generation)
 
     def release(self, plan_id: int | None, generation: int) -> None:

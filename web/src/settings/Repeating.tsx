@@ -10,6 +10,9 @@ import { useAreas } from "@/hooks/queries"
 import { when } from "@/lib/format"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
+import { useNavigate } from "react-router"
+import { draftOf } from "@/shell/EventPane"
+import { foundHref } from "@/todo/found"
 import { RepeatImport } from "./RepeatImport"
 import { SectionHead } from "./SettingsPage"
 
@@ -45,7 +48,7 @@ export function Repeating() {
 }
 
 function SeriesLine({ row }: { row: Row }) {
-  const { today } = useShell()
+  const { today, setEvent } = useShell()
   const { color } = useLook()
   const stop = useCommand("series_stop", { label: () => `${row.title} stopped; future ones removed` })
   const resume = useCommand("series_resume", { label: () => `${row.title} repeats again` })
@@ -53,12 +56,27 @@ function SeriesLine({ row }: { row: Row }) {
   // Its tag, from today on (one from a calendar keeps its times there; 3 Nov: `series_edit` had no button)
   const retag = useCommand("series_edit", { label: () => `${row.title}: tag changed from today on` })
   const tags = (useAreas().data ?? []).filter((a) => !a.archived).map((a) => a.name)
+  // Everything about a repeat is in its editor (8 Nov): an event's opens over the calendar, a task's in the to-do.
+  const navigate = useNavigate()
+  const open = async (r: Row) => {
+    if (r.next_id == null) return
+    if (!r.fixed) return navigate(foundHref(r.next_id))
+    const found = await query("item", { id: r.next_id })
+    navigate("/")
+    setEvent(draftOf(found.item))
+  }
   return (
     <div className="fr-row" style={{ display: "grid", gridTemplateColumns: "36px 10px minmax(0,1fr) auto 28px", gap: 12, alignItems: "center", padding: "10px 0", opacity: row.active ? 1 : 0.5 }}>
       <Switch on={row.active} onToggle={() => (row.active ? stop({ id: row.id }) : resume({ id: row.id }))} label={`${row.active ? "Stop" : "Start"} ${row.title}`} />
       <span style={{ width: 10, height: 10, borderRadius: 3, background: color(row.area) }} />
       <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-        <span style={{ fontWeight: 500 }}>{row.title}</span>
+        {row.next_id != null ? (
+          <button className="fr-link" onClick={() => open(row)} title={row.fixed ? "Open in its editor" : "Open it in the to-do"} style={{ fontWeight: 500, fontSize: "inherit", textAlign: "left", color: "var(--color-text)" }}>
+            {row.title}
+          </button>
+        ) : (
+          <span style={{ fontWeight: 500 }}>{row.title}</span>
+        )}
         <span className="tnum fr-kicker" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           {row.pattern} ·
           <Menu label={`Tag for ${row.title}`} value={row.area ?? ""} onPick={(tag) => tag !== (row.area ?? "") && retag({ id: row.id, area: tag || null })} options={[{ value: "", label: "No tag" }, ...[...new Set([...tags, ...(row.area ? [row.area] : [])])].map((t) => ({ value: t, label: t }))]} />

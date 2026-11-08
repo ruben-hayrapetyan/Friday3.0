@@ -429,6 +429,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/event_optional": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Whether work may take this event's time: kept, optional, or only when you're ahead. */
+        post: operations["event_optional"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/events_to_calendar": {
         parameters: {
             query?: never;
@@ -880,7 +897,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Plan a meal every day at the time and length you have it, or stop planning it (what Sleep & meals offers). */
+        /** Plan a meal every day at the time and length you have it, or stop planning it (what Insights → Meals offers). */
         post: operations["meal_plan"];
         delete?: never;
         options?: never;
@@ -948,7 +965,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Plan a meal's routine at the length you take, from today on (what Sleep & meals offers). */
+        /** Plan a meal's routine at the length you take, from today on (what Insights → Meals offers). */
         post: operations["meal_use_length"];
         delete?: never;
         options?: never;
@@ -965,7 +982,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Plan a meal's routine around when you usually eat it, from today on (what Sleep & meals offers). */
+        /** Plan a meal's routine around when you usually eat it, from today on (what Insights → Meals offers). */
         post: operations["meal_use_time"];
         delete?: never;
         options?: never;
@@ -1137,6 +1154,57 @@ export interface paths {
         put?: never;
         /** Create or change a saved pace; dials left out keep the pace's values, or the dials in effect now. */
         post: operations["pace_save"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/phone_forget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove a paired phone: it can't open Friday again until it's paired again. */
+        post: operations["phone_forget"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/phone_pair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A one-time code for the QR code a phone scans to pair, good for ten minutes. */
+        post: operations["phone_pair"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/phone_set": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Use Friday on your phone over Tailscale, or stop: off, Friday answers on this Mac alone. */
+        post: operations["phone_set"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2197,6 +2265,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/pair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pair
+         * @description A phone's camera opened the pairing code: it gets a sign-in of its own, kept until you remove it.
+         */
+        post: operations["pair_api_pair_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/ai_check": {
         parameters: {
             query?: never;
@@ -2376,6 +2464,23 @@ export interface paths {
         };
         /** Open tasks that look like copies of each other, with the one Friday would keep. */
         get: operations["duplicates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/event_mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How an event is treated now: its own setting, the rule that says it, and broader rules that reach it too. */
+        get: operations["event_mode"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2767,6 +2872,23 @@ export interface paths {
         };
         /** How a quick-add line reads, with a span per recognized token. */
         get: operations["parse"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/phone_status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether Friday answers on your tailnet, at what address, and the phones paired with it. */
+        get: operations["phone_status"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3192,6 +3314,23 @@ export interface paths {
         };
         /** Events */
         get: operations["events_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pair Page */
+        get: operations["pair_page_pair_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4556,6 +4695,55 @@ export interface components {
         };
         /** EventKeepResult */
         EventKeepResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
+         * EventModeOut
+         * @description Whether work may take an event's time, as its editor shows it.
+         */
+        EventModeOut: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "kept" | "optional" | "ahead";
+            /** Rule */
+            rule: string | null;
+            /** Covered By */
+            covered_by: string[];
+        };
+        /**
+         * EventOptionalInput
+         * @description Whether work may take an event's time (its editor's "Can work take its time?").
+         */
+        EventOptionalInput: {
+            /** Title */
+            title: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "kept" | "optional" | "ahead";
+        };
+        /** EventOptionalResult */
+        EventOptionalResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
@@ -6770,6 +6958,29 @@ export interface components {
             /** Period End */
             period_end: string | null;
         };
+        /**
+         * PairCode
+         * @description What a phone scans to pair: the address with its one-time code after the #, as a QR code (SVG).
+         */
+        PairCode: {
+            /** Url */
+            url: string;
+            /** Svg */
+            svg: string;
+            /** Minutes */
+            minutes: number;
+        };
+        /** PairedPhone */
+        PairedPhone: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Paired */
+            paired: string;
+            /** Last Used */
+            last_used: string | null;
+        };
         /** ParseOutput */
         ParseOutput: {
             /** Fields */
@@ -6782,6 +6993,90 @@ export interface components {
             }[];
             /** Warnings */
             warnings: string[];
+        };
+        /** PhoneForgetResult */
+        PhoneForgetResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** PhonePairResult */
+        PhonePairResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["PairCode"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** PhoneRef */
+        PhoneRef: {
+            /** Id */
+            id: string;
+        };
+        /** PhoneSetInput */
+        PhoneSetInput: {
+            /** On */
+            on: boolean;
+        };
+        /** PhoneSetResult */
+        PhoneSetResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** PhoneStatus */
+        PhoneStatus: {
+            /** On */
+            on: boolean;
+            /** Address */
+            address: string | null;
+            /** Name */
+            name: string | null;
+            /** Phones */
+            phones: components["schemas"]["PairedPhone"][];
         };
         /**
          * PinInput
@@ -8037,6 +8332,13 @@ export interface components {
             external?: boolean;
             /** Min Gap Days */
             min_gap_days?: number | null;
+            /** Next Id */
+            next_id?: number | null;
+            /**
+             * Rule
+             * @default
+             */
+            rule?: string;
         };
         /** SeriesSpacingInput */
         SeriesSpacingInput: {
@@ -10884,6 +11186,43 @@ export interface operations {
             };
         };
     };
+    event_optional: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventOptionalInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOptionalResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     events_to_calendar: {
         parameters: {
             query?: {
@@ -12425,6 +12764,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaceSaveResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    phone_forget: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneRef"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneForgetResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    phone_pair: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Empty"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhonePairResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    phone_set: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneSetInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneSetResult"];
                 };
             };
             /** @description Validation Error */
@@ -14732,6 +15182,41 @@ export interface operations {
             };
         };
     };
+    pair_api_pair_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     ai_check: {
         parameters: {
             query?: never;
@@ -14983,6 +15468,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DuplicatesOut"];
+                };
+            };
+        };
+    };
+    event_mode: {
+        parameters: {
+            query: {
+                title: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventModeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -15570,6 +16086,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    phone_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneStatus"];
                 };
             };
         };
@@ -16204,6 +16740,26 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": unknown;
+                };
+            };
+        };
+    };
+    pair_page_pair_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
                 };
             };
         };
