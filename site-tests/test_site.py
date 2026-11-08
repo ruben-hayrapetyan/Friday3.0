@@ -4,6 +4,7 @@ picture on them resolves on the site, every picture says what it shows, nothing 
 trackers, H106 privacy), and the download button points at a disk image that is there."""
 
 import functools
+import re
 import importlib.util
 import json
 import threading
@@ -17,6 +18,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "site"
+SUPPORT = "friday_support@friday-scheduler.com"  # the only address the site shows (HOSTED.md H164, H166)
 PAGES = [
     "index.html",
     "features.html",
@@ -86,6 +88,8 @@ def test_every_page_answers_with_a_title_and_description(site: str, page: str) -
 def test_every_link_and_picture_on_a_page_is_on_the_site(site: str, page: str) -> None:
     parts = parsed(site, page)
     for ref in parts.links + parts.scripts + [str(i.get("src")) for i in parts.images]:
+        if ref == f"mailto:{SUPPORT}":
+            continue  # Friday's own address (H166): a link to write, nothing loaded
         where = urlsplit(ref)
         assert not where.scheme and not where.netloc, f"{page} loads {ref} from elsewhere"
         if where.path.startswith(("/downloads/", "/get/")):
@@ -173,3 +177,10 @@ def test_the_fonts_are_served_from_the_site_with_their_licences(site: str) -> No
 def test_no_colour_gradients_in_the_look() -> None:
     css = (SITE / "style.css").read_text()
     assert "gradient(" not in css  # flat, as the app (preferences: no gradients)
+
+
+@pytest.mark.parametrize("page", PAGES)
+def test_every_page_shows_fridays_own_address_and_no_other(site: str, page: str) -> None:
+    text = fetch(site, "/" + page)[1].decode()
+    assert f'href="mailto:{SUPPORT}"' in text
+    assert set(re.findall(r"[\w.+-]+@[\w-]+\.[\w.]+", text)) <= {SUPPORT}  # no personal address anywhere

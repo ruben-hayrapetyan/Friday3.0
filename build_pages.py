@@ -55,6 +55,7 @@ def page(name: str, title: str, description: str, body: str) -> str:
 <footer class="site"><div class="wrap">
   <span class="spacer"><img src="/images/icon.png" alt="" width="18" height="18">Friday · free, and open source soon</span>
   {foot}
+  <a href="mailto:friday_support@friday-scheduler.com">friday_support@friday-scheduler.com</a>
 </div></footer>
 <script src="/site.js"></script>
 </body>
