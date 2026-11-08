@@ -72,6 +72,16 @@ def loosened(
     return moved, kept
 
 
+def let_go(
+    items: list[Item], waits: list[Dependency], originals: dict[int, Item], late: dict[int, float]
+) -> tuple[list[Item], list[Dependency]]:
+    """Spaced times still late once brought closer: no wait on the one before, and their own window back."""
+    still = {i for i, hours in late.items() if i in originals and hours}
+    if not still:
+        return items, waits
+    return [originals[i.id] if i.id in still else i for i in items], [w for w in waits if w.item_id not in still]
+
+
 def length(item: Item) -> int:
     return (item.duration_units or 0) * UNIT_MIN
 
@@ -93,3 +103,54 @@ def wait(before: Item, after: Item, gap: int) -> int:
     next fit before its due if the one before ends at its own."""
     roomy = parse_utc(after.due_utc or "") - parse_utc(before.due_utc or "") - length(after)
     return max(0, min(gap - length(before), roomy))
+
+
+@dataclass(frozen=True)
+class Closer:
+    """A spaced time the plan put closer than asked (C50): how far after the one before it starts, in the asked unit."""
+
+    item_id: int
+    series_id: int
+    apart: float
+    asked: float
+    unit: str  # "days", or "hours" for a gap under two days ("workouts at least 48 hours apart")
+    since_last: bool  # after the last one you did, rather than the one before it in the plan
+
+
+def closer(
+    items: list[Item], gaps: dict[int, float], last: dict[int, LastDone], starts: dict[int, int]
+) -> list[Closer]:
+    """The spaced times whose planned start is closer to the one before than its repeat asks, as you'd read it: 6.97
+    days isn't closer than 7, 6.9 is. Only planned times count; one not in the plan ends its repeat's count."""
+    out = []
+    for series_id, gap in gaps.items():
+        times = sorted(
+            (i for i in items if i.series_id == series_id and i.status == "todo" and i.due_utc and i.when != "fixed"),
+            key=lambda i: parse_utc(i.due_utc or ""),
+        )
+        done = last.get(series_id)
+        before, since_last = (done.started_utc, True) if done else (None, False)
+        unit = "hours" if gap < 2 else "days"
+        size = 60 if unit == "hours" else MINUTES_PER_DAY
+        asked = round(gap * MINUTES_PER_DAY / size, 1)
+        for item in times:
+            start = starts.get(item.id)
+            if start is None:
+                break
+            if before is not None and (apart := round((start - before) / size, 1)) < asked:
+                out.append(Closer(item.id, series_id, max(apart, 0.0), asked, unit, since_last))
+            before, since_last = start, False
+    return out
+
+
+def amount(n: float, unit: str) -> str:
+    """5.0 days as "5 days", 1 as "1 day"."""
+    shown = f"{n:g}" if n != int(n) else str(int(n))
+    return f"{shown} {unit.removesuffix('s') if shown == '1' else unit}"
+
+
+def closer_words(c: Closer) -> str:
+    """'5.6 days after the last one you did, closer than the 7 days you asked, so it isn't late'."""
+    after = "the last one you did" if c.since_last else "the one before"
+    asked = amount(c.asked, c.unit)
+    return f"{amount(c.apart, c.unit)} after {after}, closer than the {asked} you asked, so it isn't late"

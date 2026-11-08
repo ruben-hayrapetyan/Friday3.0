@@ -24,6 +24,7 @@ from friday.core.settings import validate_value
 from friday.core.time import ampm, format_utc, parse_utc, to_local
 from friday.engine.rules import RULE_TYPES, build_rules
 from friday.planner.snapshot import take_snapshot
+from friday.planner.spacing import Closer, closer_words
 from friday.planner.store import current_plan, kv_get
 from friday.planner.views import change_list, why_not_view
 from friday.planner.views import preview_weights as run_preview
@@ -74,6 +75,8 @@ def sentence(ctx: Ctx, block: dict[str, Any], costs: dict[str, int]) -> str:
     )
     if pinned:
         parts.append("You pinned it here")
+    if spaced := report.get("spacing_closer", {}).get(str(item.id)):
+        parts.append(closer_words(Closer(**spaced)))
     reasons = {r.name: r.reason or r.name for r in ctx.settings["rules"]}
     top = sorted(((name, cost) for name, cost in costs.items() if cost), key=lambda nc: -nc[1])[:2]
     parts += [f"costs {cost / 100:.1f} for {reasons.get(name, name).replace('_', ' ')}" for name, cost in top]

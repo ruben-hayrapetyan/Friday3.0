@@ -145,7 +145,7 @@ def test_with_little_room_the_next_laundry_is_closer_rather_than_late(app: App) 
 
     series = weekly_laundry(app)
     app.do("series_spacing", id=series, days=7)
-    app.do("add", text="Trip", when="fixed", start="2026-11-04T08:00", end="2026-11-09T21:00")
+    app.do("add", text="Trip", when="fixed", start="2026-11-04T08:00", end="2026-11-09T23:59")  # past its due
     replan(app.conn, app.now_utc)
     late = app.do("status")["late"]
     assert not any("Laundry" in title for title in late)

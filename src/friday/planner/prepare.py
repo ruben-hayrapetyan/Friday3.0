@@ -10,7 +10,7 @@ from friday.planner.build import BuildInput, Dependency, Pin, night_times
 from friday.planner.cushion import past_shortened
 from friday.planner.progress import recorded_minutes, remaining_minutes
 from friday.planner.snapshot import BlockRow, Snapshot
-from friday.planner.spacing import LastDone, loosened, spaced
+from friday.planner.spacing import LastDone, let_go, loosened, spaced
 from friday.planner.timed import timed_over, with_running
 
 
@@ -232,4 +232,8 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
             return inp
         waits = kept
         inp = dataclasses.replace(inp, items=loose, dependencies=[*others, *waits])
-    return inp
+    # Still late after three rounds: something long covers its due (a trip), so a few hours closer isn't enough.
+    # Those times wait for nothing and get their own windows back (8 Nov: laundry went 10 h late past a trip).
+    _, late = quick_late(inp, with_fallback=False)
+    loose, kept = let_go(list(inp.items), waits, originals, late)
+    return dataclasses.replace(inp, items=loose, dependencies=[*others, *kept])

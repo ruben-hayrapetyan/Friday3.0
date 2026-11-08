@@ -1,7 +1,7 @@
 """A solved plan → blocks, costs, the change list and the report (DESIGN §15.3 step 3). Pure data out, so the
 worker can hand it back across processes and the API process only has to save it."""
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import date, timedelta
 from typing import Any
 
@@ -25,6 +25,7 @@ from friday.engine.rules.prices import BeforeEvent, Skippable, titled
 from friday.planner.build import PLANNER_RULES, id_of, key_of
 from friday.planner.snapshot import BlockRow, Snapshot
 from friday.planner.solve import Solved
+from friday.planner.spacing import Closer, LastDone, closer, closer_words
 
 
 @dataclass(frozen=True)
@@ -104,6 +105,7 @@ def assemble(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
     problem, result = solved.problem, solved.result
     blocks, other = planned_blocks(problem, result.plan)
     evaluation = result.evaluation
+    kept_closer = spaced_closer(snapshot, blocks)
     report = {
         "stage_values": evaluation.stage_values,
         "rule_totals": evaluation.rule_totals,
@@ -113,7 +115,9 @@ def assemble(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
         "notices": notices(problem, result.demoted_locks)
         + clashes(problem, snapshot.settings["time"].timezone)
         + given_way(problem, blocks, snapshot.settings["time"].timezone, snapshot.now_utc)
-        + missing_rule_types(snapshot),
+        + missing_rule_types(snapshot)
+        + closer_notices(snapshot, blocks, kept_closer),
+        "spacing_closer": {c.item_id: asdict(c) for c in kept_closer},
         "changes": changes(snapshot, problem, blocks),
         "solve": {
             "fallback": result.fallback,
@@ -284,6 +288,39 @@ def per_item(blocks: Any) -> dict[int, list[tuple[int, int]]]:
 
 def spans(found: list[tuple[int, int]]) -> list[list[str]]:
     return [[format_utc(a), format_utc(b)] for a, b in found]
+
+
+def first_starts(blocks: list[PlannedBlock]) -> dict[int, int]:
+    starts: dict[int, int] = {}
+    for b in blocks:
+        starts[b.item_id] = min(b.start_utc, starts.get(b.item_id, b.start_utc))
+    return starts
+
+
+def spaced_closer(snapshot: Snapshot, blocks: list[PlannedBlock]) -> list[Closer]:
+    """Repeats kept apart whose planned times are closer than asked (C50), so the plan can say so."""
+    if not snapshot.series_gaps:
+        return []
+    last = {k: LastDone(*v) for k, v in snapshot.series_last.items()}
+    return closer(list(snapshot.items), snapshot.series_gaps, last, first_starts(blocks))
+
+
+def closer_notices(snapshot: Snapshot, blocks: list[PlannedBlock], found: list[Closer]) -> list[str]:
+    """One line per repeat: 'Laundry on Sun Nov 15 at 9:30pm: 5.6 days after the one before, closer than the 7 days
+    you asked, so it isn't late', and how many more are closer ('and 11 more like it') rather than a line each."""
+    tz = snapshot.settings["time"].timezone
+    titles = {i.id: i.title for i in snapshot.items}
+    starts = first_starts(blocks)
+    by_series: dict[int, list[Closer]] = {}
+    for c in found:
+        by_series.setdefault(c.series_id, []).append(c)
+    out = []
+    for times in by_series.values():
+        first = min(times, key=lambda c: starts[c.item_id])
+        when = to_local(starts[first.item_id], tz)
+        more = f"; {len(times) - 1} more of them are closer too" if len(times) > 1 else ""
+        out.append(f"{titles[first.item_id]} on {when:%a %b} {when.day} at {ampm(when)}: {closer_words(first)}{more}")
+    return out
 
 
 def pace_days(snapshot: Snapshot, problem: Problem) -> dict[str, str]:
