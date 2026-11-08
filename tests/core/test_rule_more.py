@@ -19,8 +19,13 @@ def test_pace_takes_days_and_paces_from_any_clause_and_fills_the_rest_of_the_wee
 
 
 def test_pace_leaves_parts_of_days_kinds_of_work_and_one_offs() -> None:
-    for said in (" thursday afternoons could be lighter ", " only schedule light stuff on fridays ",
-                 " push my dentist appt to next tuesday ", " a pace with a time: easy on fridays after 5pm "):  # fmt: skip
+    others = (
+        " thursday afternoons could be lighter ",  # part of a day: lighter free time
+        " only schedule light stuff on fridays ",  # a kind of work on a day
+        " push my dentist appt to next tuesday ",  # a one-off move
+        " a pace with a time: easy on fridays after 5pm ",
+    )
+    for said in others:
         assert rule_more.read_pace(said) is None, said
 
 

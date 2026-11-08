@@ -149,8 +149,9 @@ def read_pace(t: str) -> Reading | None:
     the days i have choir, which is tues and thurs", "on saturdays i can grind, on sundays go easy, rest of the week
     just normal". Each clause gives days, a pace, or both; a pace said without days goes with the days next to it."""
     if re.search(OTHER_RULE, t) or re.search(
-        r"\b(?:free|off|no work|nothing|only|(?<!of the )week|appts?|appointments?|meetings?|to next|mornings?|afternoons?"
-        r"|evenings?|nights?|stuff|tasks?|things|essays?|homework|hw|reading|studying|assignments?|papers?|if|unless)\b",
+        r"\b(?:free|off|no work|nothing|only|(?<!of the )week|appts?|appointments?|meetings?|to next|mornings?"
+        r"|afternoons?|evenings?|nights?|stuff|tasks?|things|essays?|homework|hw|reading|studying|assignments?|papers?"
+        r"|if|unless)\b",
         t,
     ):
         return None
