@@ -17,7 +17,7 @@ import pytest
 from test_site import ROOT, SITE, fetch, parsed, site  # noqa: F401  (site is the served-site fixture)
 
 TEMPLATE = ROOT / "release" / "install-template.sh"
-ADDRESS = "https://laptop.tailnet.ts.net"
+ADDRESS = "https://friday-scheduler.com"
 LINE = f"curl -fsSL {ADDRESS}/install.sh | sh"
 
 
@@ -36,12 +36,12 @@ def test_make_install_fills_in_the_version_checksum_and_address(tmp_path: Path) 
     script = made(tmp_path)
     assert "@" not in re.sub(r"\S+@\S+", "", script.replace('"$@"', ""))  # every placeholder filled
     assert 'VERSION="9.9.9"' in script and f'SHA256="{hashlib.sha256(b"a disk image").hexdigest()}"' in script
-    assert f'URL="{ADDRESS}/downloads/Friday-$VERSION.dmg"' in script
+    assert f'URL="{ADDRESS}/get/Friday-$VERSION.dmg"' in script
     assert subprocess.run(["sh", "-n"], input=script, text=True).returncode == 0
 
 
 def test_make_install_takes_the_sites_address_once_there_is_a_domain(tmp_path: Path) -> None:
-    assert 'URL="https://friday.example/downloads/' in made(tmp_path, "https://friday.example/")
+    assert 'URL="https://friday.example/get/' in made(tmp_path, "https://friday.example/")
 
 
 def test_the_script_runs_nothing_until_it_has_all_arrived() -> None:
@@ -63,7 +63,7 @@ def test_the_site_serves_the_script_for_the_disk_image_it_offers(site: str) -> N
     script = body.decode()
     version = re.search(r'VERSION="([^"]+)"', script)
     assert status == 200 and version
-    assert f"/downloads/Friday-{version[1]}.dmg" in parsed(site, "index.html").links  # the same as the button
+    assert f"/get/Friday-{version[1]}.dmg" in parsed(site, "index.html").links  # the same as the button
     dmg = SITE / "downloads" / f"Friday-{version[1]}.dmg"
     if not dmg.exists():
         pytest.skip("the disk image is kept on the laptop, not in git")

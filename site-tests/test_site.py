@@ -80,8 +80,8 @@ def test_every_link_and_picture_on_a_page_is_on_the_site(site: str, page: str) -
     for ref in parts.links + parts.scripts + [str(i.get("src")) for i in parts.images]:
         where = urlsplit(ref)
         assert not where.scheme and not where.netloc, f"{page} loads {ref} from elsewhere"
-        if where.path.startswith("/downloads/"):
-            continue  # the disk image: its own test
+        if where.path.startswith(("/downloads/", "/get/")):
+            continue  # the disk image and its counting link: their own tests
         assert fetch(site, where.path or "/" + page)[0] == 200, f"{page}: {ref}"
         if where.fragment and (where.path in ("", "/" + page) or where.path == "/" and page == "index.html"):
             assert where.fragment in parts.ids, f"{page}: #{where.fragment}"
@@ -97,11 +97,12 @@ def test_every_picture_says_what_it_shows_or_is_marked_decoration(site: str, pag
 
 def test_the_download_button_points_at_a_disk_image_that_is_there(site: str) -> None:
     parts = parsed(site, "index.html")
-    images = [link for link in parts.links if link.startswith("/downloads/") and link.endswith(".dmg")]
-    assert images, "no download link"
-    if not (SITE / images[0].lstrip("/")).exists():
+    links = [link for link in parts.links if link.startswith("/get/") and link.endswith(".dmg")]
+    assert links, "no download link"
+    image = "/downloads/" + links[0].removeprefix("/get/")  # where the counting link sends you (hub/friday_hub/site.py)
+    if not (SITE / image.lstrip("/")).exists():
         pytest.skip("the disk image is kept on the laptop, not in git")
-    status, body = fetch(site, images[0])
+    status, body = fetch(site, image)
     assert status == 200 and len(body) > 100_000_000
 
 
@@ -132,7 +133,7 @@ def test_the_pages_name_the_current_version_from_the_record() -> None:
     record = json.loads((ROOT / "releases" / "released.json").read_text())
     version = record["current"]
     home = (SITE / "index.html").read_text()
-    assert f"/downloads/Friday-{version}.dmg" in home and f"Version {version}" in home
+    assert f"/get/Friday-{version}.dmg" in home and f"Version {version}" in home
     assert f"Friday {version}" in (SITE / "whats-new.html").read_text()
 
 

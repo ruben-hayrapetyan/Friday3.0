@@ -2,10 +2,10 @@
 # The site's install script for a version (HOSTED.md H131): release/install-template.sh with the version, the disk
 # image's checksum and the site's address filled in, written to site/install.sh.
 #
-#   release/make-install.sh VERSION [SITE]     SITE defaults to the tailnet address (H103) until there's a domain
+#   release/make-install.sh VERSION [SITE]     SITE defaults to the domain (H156)
 set -euo pipefail
 VERSION="$1"
-SITE="${2:-https://laptop.tailnet.ts.net}"
+SITE="${2:-https://friday-scheduler.com}"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 DMG="$HERE/site/downloads/Friday-$VERSION.dmg"
 [ -f "$DMG" ] || { echo "No $DMG: make the disk image first (release/make-dmg.sh)" >&2; exit 1; }

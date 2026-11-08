@@ -68,7 +68,7 @@ def versions(record: dict) -> str:
     parts = []
     for v in offered(record):
         name = html.escape(v["version"])
-        download = (f' · <a href="/downloads/Friday-{name}.dmg" download>Download</a>'
+        download = (f' · <a href="/get/Friday-{name}.dmg" download>Download</a>'
                     if v["version"] == record["current"] else "")  # fmt: skip
         parts.append(f"""<div class="version" id="{name}">
   <h2>Friday {name}</h2>
@@ -82,7 +82,7 @@ def fill(body: str, record: dict) -> str:
     live = next(v for v in record["versions"] if v["version"] == record["current"])
     return (body.replace("{{versions}}", versions(record))
             .replace("{{version}}", live["version"])
-            .replace("{{dmg}}", f"/downloads/Friday-{live['version']}.dmg")
+            .replace("{{dmg}}", f"/get/Friday-{live['version']}.dmg")
             .replace("{{size}}", notes_.megabytes(live["bytes"])))  # fmt: skip
 
 

@@ -10,7 +10,7 @@ set -eu
 
 VERSION="@VERSION@"
 SHA256="@SHA256@"
-URL="@SITE@/downloads/Friday-$VERSION.dmg"
+URL="@SITE@/get/Friday-$VERSION.dmg"
 
 fail() {
   printf '\nFriday wasn'"'"'t installed: %s\n' "$1" >&2
