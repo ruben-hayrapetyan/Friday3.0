@@ -2,18 +2,32 @@
 
 __all__ = ["Empty"]
 
-from typing import Any, Literal
+from datetime import date as calendar_date
+from typing import Annotated, Any, Literal
 
-from pydantic import Field
+from pydantic import AfterValidator, Field
 
 from friday.api.types import BlockOut, Empty, ItemFields, ItemOut, Model
+
+
+def real_day(text: str | None) -> str | None:
+    """A day that exists, "YYYY-MM-DD" (the audit, 8 Nov: 2026-02-30 was a crash inside Friday, not a word)."""
+    if text is not None:
+        try:
+            calendar_date.fromisoformat(text)
+        except ValueError as error:
+            raise ValueError(f"{text!r} isn't a day: write it as YYYY-MM-DD, a date that exists") from error
+    return text
+
+
+Day = Annotated[str, AfterValidator(real_day)]
 
 
 class OccurrenceChange(Model):
     """One time of a repeat that isn't like the others (27 Oct: "salsa every Saturday except 11/14, and this Saturday
     it's in Willard Straight Hall"): not that day, or another place, time or title that day."""
 
-    date: str  # "YYYY-MM-DD": the occurrence that day
+    date: Day  # "YYYY-MM-DD": the occurrence that day
     skip: bool = False
     start: str | None = None  # that day's own times, local "YYYY-MM-DDTHH:MM"
     end: str | None = None
@@ -177,14 +191,14 @@ class ReviewEntry(Model):
 
 
 class ReviewTaskInput(Model):
-    date: str | None = None  # a planning date; today when left out
+    date: Day | None = None  # a planning date; today when left out
     item_id: int
     status: Literal["done", "partial", "not_done", "finished"]  # finished: done, and the whole task with it
     minutes: int | None = None  # partial: how much of the planned time you did
 
 
 class ReviewSubmitInput(Model):
-    date: str | None = None  # a planning date; today when left out
+    date: Day | None = None  # a planning date; today when left out
     entries: list[ReviewEntry] = []
 
 
@@ -222,7 +236,7 @@ class ShoveOutput(Model):
     created: list[int] = []  # shove item ids
     must_do: list[MustDo] = []
     message: str = ""
-    day: str | None = None  # the first day cleared (YYYY-MM-DD, a planning day), for the calendar to show it
+    day: Day | None = None  # the first day cleared (YYYY-MM-DD, a planning day), for the calendar to show it
 
 
 MealKind = Literal["breakfast", "lunch", "dinner", "snack"]
@@ -280,7 +294,7 @@ class MealLogInput(Model):
 
 class MealSkipInput(Model):
     kind: MealKind
-    date: str | None = None  # the planning day; today when left out
+    date: Day | None = None  # the planning day; today when left out
 
 
 class MealEditInput(Model):
@@ -342,7 +356,7 @@ class NapRef(Model):
 
 
 class SleepSkipInput(Model):
-    date: str  # the reviewed day
+    date: Day  # the reviewed day
     kind: Literal["done", "bed", "up", "ready"]
 
 
@@ -422,7 +436,7 @@ class PaceDeleteInput(Model):
 
 
 class DayOverrideInput(Model):
-    date: str
+    date: Day
     bedtime: str | None = None
     wake: str | None = None
     margin_min: int | None = None
@@ -585,7 +599,7 @@ class EventsInput(Model):
 
 
 class DateInput(Model):
-    date: str | None = None  # a planning date; today when left out
+    date: Day | None = None  # a planning date; today when left out
 
 
 class ReorderInput(Model):
@@ -638,7 +652,7 @@ class PreviewWeightsInput(Model):
 
 
 class RuleTotalsInput(Model):
-    day: str | None = None
+    day: Day | None = None
 
 
 class TriageStep(Model):

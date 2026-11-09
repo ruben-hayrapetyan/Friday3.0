@@ -36,7 +36,7 @@ def import_personal(ctx: Ctx, inp: ImportPersonalInput) -> Changed:
     seen = set(kv_get(ctx.conn, "imported_todos", [], ctx.user_id))
     added, skipped = 0, []
     if todos_file.exists():
-        for task in json.loads(todos_file.read_text()):
+        for task in listed(todos_file, "todos_path", list):
             if task.get("isDone") or task.get("id") in seen or not (task.get("title") or "").strip():
                 continue
             try:
@@ -50,7 +50,7 @@ def import_personal(ctx: Ctx, inp: ImportPersonalInput) -> Changed:
     rules = 0
     # The starter set (a new install's) gives way to Chroma's as none did; a set you've changed is yours and stays.
     if categories_file.exists() and ctx.settings["categories"].categories in ((), STARTER_CATEGORIES):
-        rules = import_categories(ctx, json.loads(categories_file.read_text()))
+        rules = import_categories(ctx, listed(categories_file, "categories_path", object))
     parts = [f"{added} task{'' if added == 1 else 's'} from Todo List"] + (
         [f"{rules} categories from Chroma"] if rules else []
     )
@@ -85,6 +85,17 @@ def import_categories(ctx: Ctx, data: dict[str, Any]) -> int:
     rule = {"label": found["label"], "pattern": found["pattern"], "except": found.get("except", [])} if found else None
     settings_set(ctx, SettingsSetInput(key="categories", value={"categories": categories, "filter": rule}))
     return len(categories)
+
+
+def listed(path: Path, field: str, shape: type) -> Any:
+    """A file's JSON, as the app that wrote it wrote it; one that isn't is said, not a crash (audit, 8 Nov)."""
+    try:
+        found = json.loads(path.read_text())
+    except (UnicodeDecodeError, json.JSONDecodeError, OSError) as error:
+        raise FieldError(field, f"{path} isn't the file that app keeps (it isn't JSON)") from error
+    if not isinstance(found, shape) or (shape is list and not all(isinstance(t, dict) for t in found)):
+        raise FieldError(field, f"{path} isn't the file that app keeps (not the list of tasks it writes)")
+    return found
 
 
 @command("import_chroma_colors")

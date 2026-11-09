@@ -93,6 +93,11 @@ def ai_models(ctx: Ctx, inp: AiModelsInput) -> AiModelsOut:
     often to guess), or what Ollama has on this Mac."""
     try:
         chosen = LlmSettings(provider=inp.provider, base_url=inp.base_url, model="x")
+        saved = ctx.settings["llm"]
+        # Your key goes only where you said it may: the service's own address, or the one saved in Settings (audit,
+        # 8 Nov: any address asked for here got it). A new address lists its models once it's saved.
+        if inp.base_url and not (inp.provider == saved.provider and inp.base_url == saved.base_url):
+            return AiModelsOut(models=[], error="Save this address first: Friday sends your key only to one you saved")
         return AiModelsOut(models=llm.models_of(chosen))
     except Exception as error:  # a bad key, no answer: said, not raised
         return AiModelsOut(models=[], error=f"{error}"[:300] or type(error).__name__)

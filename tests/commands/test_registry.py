@@ -600,6 +600,7 @@ def test_unlogged_commands_are_only_those_with_no_undo_or_a_secret_result() -> N
         "google_client_save",
         "google_remove",
         "ai_key_set",  # a secret: never logged
+        "gmail_app_set",  # an app password: never logged
         "local_model_use",  # a download or a removal on this Mac: nothing Friday can take back
         "local_model_cancel",
         "tour_offered",  # the app's own flag, nothing of yours

@@ -201,10 +201,11 @@ def create_app(
         """A change comes only from Friday's own pages (the app, the Mac app's window, a dev server on this Mac), an
         assistant or a script: a page from anywhere else in the same browser is refused, so it can't change where
         your mail is read or what your plan holds (28 Oct)."""
-        if (
-            request.method != "GET"
-            and request.url.path.startswith("/api/")
-            and foreign(request.headers.get("origin"), request.headers.get("host"))
+        # A read too, when the browser says another site asked for it (the audit, 8 Nov: an <img> on any page could
+        # make `ai_models` send your key where the page said); the CLI, assistants and scripts send no such header.
+        cross = request.headers.get("sec-fetch-site") == "cross-site"
+        if request.url.path.startswith("/api/") and (
+            cross or (request.method != "GET" and foreign(request.headers.get("origin"), request.headers.get("host")))
         ):
             return JSONResponse(
                 {"field": "origin", "message": "Friday takes changes only from its own pages"}, status_code=403
@@ -352,7 +353,8 @@ def run_tool(services: Services, name: str, arguments: dict[str, Any], request: 
         with services.connection() as conn:
             actor = actor_of(request, conn, services.clock())
             return run(conn, name, arguments, now_utc=services.clock(), actor=actor, user_id=user_of(request)).result
-    preview = bool(arguments.pop("preview", False)) and mcp.previewable(spec)
+    asked = bool(arguments.pop("preview", False))  # one that can't be previewed is refused, not done (audit)
+    preview = asked
     return execute(services, spec, request, arguments, preview).model_dump(mode="json")
 
 

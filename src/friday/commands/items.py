@@ -70,6 +70,8 @@ def add(ctx: Ctx, inp: AddInput) -> AddOutput:
     """Create an item from fields or from a quick-add line."""
     given, warnings, repeat = from_text(ctx, inp.text) if inp.text else ({}, [], {})
     given = all_day_is_free(given | given_fields(inp))
+    if not str(given.get("title") or "").strip():  # nothing said at all was a crash, not a word (audit, 8 Nov)
+        raise FieldError("title", "give it a title: what is it?")
     given = exact_length(ctx, with_guesses(ctx, given))
     after, before = repeat.pop("after", []) + inp.after, repeat.pop("before", []) + inp.before
     if inp.every:  # the picker's repeat over one typed in the text ("Run every tue" with Every day chosen)

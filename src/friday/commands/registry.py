@@ -155,6 +155,40 @@ def run(
     return out
 
 
+# Yours alone (the audit, 8 Nov): who may open Friday, its keys and mailboxes, where the AI and webhooks send what
+# they send, and what's installed. An assistant's token (actor "mcp:…") never runs these, over MCP or the HTTP API
+# (`fridayd mcp` uses the latter), nor undoes them; MCP also leaves them out of its tools (server/mcp.py HIDDEN).
+YOURS_ONLY = frozenset({
+    "token_add", "token_remove", "phone_set", "phone_pair", "phone_forget", "ai_key_set", "ai_check", "ai_models",
+    "gmail_app_set", "google_connect", "google_connect_cancel", "google_remove", "google_client_save",
+    "local_model_use", "local_model_cancel", "update_start", "update_stop", "import_personal",
+})  # fmt: skip
+YOURS_ONLY_SETTINGS = frozenset({"phone", "llm", "webhooks", "google", "gcal", "gmail", "server", "updates", "notify"})
+
+
+def assistant_may(conn: sqlite3.Connection, name: str, payload: Any, actor: str, user_id: int) -> None:
+    """Refuse an assistant what's yours alone, in words that say where you do it."""
+    if not actor.startswith("mcp:"):
+        return
+    given = payload.model_dump() if isinstance(payload, BaseModel) else dict(payload or {})
+    why = ""
+    if name in YOURS_ONLY:
+        why = name
+    elif name == "settings_set" and given.get("key") in YOURS_ONLY_SETTINGS:
+        why = f"the {given.get('key')} setting"
+    elif name == "undo" and given.get("command_id") is not None:
+        undone = conn.execute(
+            "SELECT command, input FROM command_log WHERE user_id = ? AND id = ?", [user_id, given["command_id"]]
+        ).fetchone()
+        key = json.loads(undone["input"]).get("key") if undone and undone["command"] == "settings_set" else None
+        if undone and (undone["command"] in YOURS_ONLY or key in YOURS_ONLY_SETTINGS):
+            why = f"undoing {undone['command']}"
+    if why:
+        raise FieldError(
+            "command", f"Only you can do that ({why}), not an assistant: do it in Friday's Settings on your Mac"
+        )
+
+
 def dispatch(
     conn: sqlite3.Connection,
     name: str,
@@ -171,6 +205,9 @@ def dispatch(
     if spec is None:
         raise FieldError("command", f"no command named {name!r}")
     inp = payload if isinstance(payload, BaseModel) else spec.input_type.model_validate(payload or {})
+    assistant_may(conn, name, inp, actor, user_id)
+    if preview and spec.mutates and not spec.logged:  # it can't be rolled back, so a preview would do it (audit)
+        raise FieldError("preview", f"{name} can't be previewed: it isn't a change to your plan, so it can't be undone")
     settings = load_settings(conn, user_id)
     if not spec.mutates or not spec.logged:
         ctx = Ctx(conn, Writer(conn, user_id), now_utc, actor, user_id, settings, solver=solver)

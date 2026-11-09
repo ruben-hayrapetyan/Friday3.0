@@ -10,7 +10,8 @@ import { markedDone, mealEnded, mealSkipped, mealStarted, napEnded, napStarted, 
 import { pending } from "@/plan/pending"
 import { whatIf } from "@/whatif/store"
 
-const OPTIMISTIC = ["items", "item", "plan", "now", "status", "meals", "sleep"]
+// settings too: a look flipped on the calendar goes back when the server refuses it (audit, 8 Nov)
+const OPTIMISTIC = ["items", "item", "plan", "now", "status", "meals", "sleep", "settings"]
 
 // What these change in the Now bar and the timer, shown before the server answers wherever they're made from: the
 // bar, a block's card, a to-do, Space (now/instant.ts).
@@ -80,7 +81,7 @@ export async function runCommand<N extends CommandName>(
     return undefined
   } finally {
     // The server's events refresh these too; this covers a dropped stream.
-    client.invalidateQueries({ predicate: (q) => ["items", "item", "now", "status", "meals", "sleep", "duplicates", "to_review"].includes(String(q.queryKey[0])) })
+    client.invalidateQueries({ predicate: (q) => ["items", "item", "now", "status", "meals", "sleep", "duplicates", "to_review", "tokens", "gmail_app_accounts"].includes(String(q.queryKey[0])) })
   }
 }
 

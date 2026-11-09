@@ -46,7 +46,7 @@ function GapAnswer({ gap, onPick }: { gap: Gap; onPick: (s: Status, minutes?: nu
   useEffect(() => {
     if (some !== null) return
     const press = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select")) return
+      if ((e.target instanceof HTMLElement && e.target.closest("input, textarea, select")) || document.querySelector('[aria-modal="true"]')) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       const chosen = KEYS[e.key]
       if (!chosen) return

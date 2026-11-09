@@ -51,7 +51,10 @@ const FIELDS: [string, string][] = [
   ["every", "Repeats"],
 ]
 
-const typing = (e: KeyboardEvent) => e.target instanceof HTMLElement && !!e.target.closest("input, textarea, select, [contenteditable]")
+// Not while you type, nor while a dialog is open over the Inbox (audit, 8 Nov: "r" behind the update dialog rejected
+// the suggestion under it).
+const typing = (e: KeyboardEvent) =>
+  (e.target instanceof HTMLElement && !!e.target.closest("input, textarea, select, [contenteditable]")) || !!document.querySelector('[aria-modal="true"]')
 
 export function InboxPage() {
   const [resolved, setResolved] = useState<Resolved[]>([])
