@@ -25,7 +25,9 @@ NAV = [
 
 
 FOOT = [*NAV, ("terms.html", "Terms")]  # the terms in the footer only: the header stays lean (H176)
-TERMS = HERE / "src" / "friday" / "core" / "terms.md"  # the app's own terms, so the two never differ (C71)
+TERMS = (
+    "TERMS.md"  # the app's own terms (tests/commands/test_terms.py keeps it the same), so the two never differ (C71)
+)
 
 
 def page(name: str, title: str, description: str, body: str) -> str:
@@ -132,10 +134,10 @@ def terms_html(markdown: str) -> str:
     return "\n".join(out)
 
 
-def fill(body: str, record: dict) -> str:
+def fill(body: str, record: dict, root: Path = HERE) -> str:
     live = next(v for v in record["versions"] if v["version"] == record["current"])
     if "{{terms}}" in body:
-        body = body.replace("{{terms}}", terms_html(TERMS.read_text()))
+        body = body.replace("{{terms}}", terms_html((root / TERMS).read_text()))
     return (body.replace("{{versions}}", versions(record))
             .replace("{{version}}", live["version"])
             .replace("{{dmg}}", f"/get/Friday-{live['version']}.dmg")
@@ -148,7 +150,7 @@ def build(root: Path = HERE) -> list[str]:
     for source in sorted((root / "pages").glob("*.html")):
         head, body = source.read_text().split("---\n", 1)
         meta = dict(line.split(": ", 1) for line in head.strip().splitlines())
-        body = fill(body, record)
+        body = fill(body, record, root)
         text = body if meta.get("wrap") == "no" else page(source.name, meta["title"], meta["description"], body)
         (root / "site" / source.name).write_text(text)
         written.append(source.name)

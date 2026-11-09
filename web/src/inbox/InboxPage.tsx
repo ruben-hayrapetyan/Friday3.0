@@ -28,6 +28,7 @@ import { type Message, nextAfter, rowOf, waitingCount } from "./messages"
 import { Actions, After, Pane } from "./Pane"
 import { useDuplicates, useInbox, useInboxMessages, useToReview } from "./queries"
 import { AgainPane, CopiesPane } from "./TaskPanes"
+import { updateSays } from "./updateSays"
 
 export { useInbox } from "./queries"
 
@@ -393,7 +394,7 @@ function Detail({ s, all, waiting, resolved, onResolved, onReopen }: DetailProps
             <Icon name="copy" size={18} style={{ color: "var(--fr-warn)", marginTop: 1 }} />
             <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={{ fontWeight: 500 }}>Looks like {dup.title}, already in Friday</span>
-              <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>Accepting updates it rather than adding a second one.</span>
+              <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>{updateSays(fields, dup, today)} No second copy is added.</span>
             </span>
           </div>
         )}

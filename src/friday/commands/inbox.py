@@ -284,6 +284,9 @@ def apply(ctx: Ctx, suggestion: dict[str, Any], fields: dict[str, Any]) -> int |
             keep["blocks_time"] = fields.get("blocks_time", True)
             keep["free"] = bool(fields.get("free", False))
         item = require_item(ctx, target)
+        typed = keep.get("title") != json.loads(suggestion["input"]).get("title")  # a name you typed is yours
+        if "title" in keep and not typed and not source_named_it(ctx, suggestion, item.title):
+            del keep["title"]  # your name for it stays (9 Nov: "Chem 2090 Problem Set 11" became the mail's "PS11")
         if whole and item.series_id is not None and item.occurrence_date and suggestion["command"] == "edit":
             keep["from_date"] = item.occurrence_date
         return edit(ctx, EditInput(id=target, **keep)).item.id
@@ -312,6 +315,20 @@ def apply(ctx: Ctx, suggestion: dict[str, Any], fields: dict[str, Any]) -> int |
 
 
 CALENDARS = ("ics", "gcal", "mac")
+
+
+def source_named_it(ctx: Ctx, suggestion: dict[str, Any], title: str) -> bool:
+    """The item still has the name its source gave it, so a new reading may rename it: an event a calendar renamed is
+    renamed here. One you named, or renamed since, keeps your name: a match to something you already have (an email's
+    "PS11" for your "Chem 2090 Problem Set 11") never renames it."""
+    if suggestion["duplicate_of"] and suggestion["command"] != "edit":
+        return False
+    earlier = one(
+        ctx.conn,
+        "SELECT input FROM suggestions WHERE raw_input_id = ? AND id != ? AND status = 'accepted' ORDER BY id DESC",
+        [suggestion["raw_input_id"], suggestion["id"]],
+    )
+    return earlier is not None and json.loads(earlier["input"]).get("title") == title
 
 
 def source_kind(ctx: Ctx, suggestion: dict[str, Any]) -> str | None:
