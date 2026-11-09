@@ -67,7 +67,7 @@ CASES = [
             "title": "CS 1110",
             "preset": "Class",
             "rrule": "FREQ=WEEKLY;BYDAY=MO,WE,FR",
-            "dtstart_local": "2026-10-18T10:10",
+            "dtstart_local": "2026-10-19T10:10",  # its first Monday, not the Sunday it was said on (8 Nov)
         },
     ),
     (

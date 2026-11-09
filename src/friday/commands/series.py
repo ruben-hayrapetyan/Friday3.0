@@ -33,9 +33,9 @@ from friday.commands.fields import (
 from friday.commands.registry import Ctx, command, query
 from friday.core.db import one, rows
 from friday.core.items import FieldError, with_defaults
-from friday.core.recurrence import describe, ending_before, next_occurrence, read_repeat
+from friday.core.recurrence import counted_on, describe, ending_before, next_occurrence, read_repeat
 from friday.core.rows import item_to_row
-from friday.core.series import Series, materialize, occurrence_timing
+from friday.core.series import Series, make_occurrence, materialize, occurrence_timing
 from friday.core.time import ampm, format_local, local_midnight, parse_local, parse_utc, to_local
 from friday.planner.store import area_names, event_links, kv_get
 
@@ -61,7 +61,28 @@ def create_series(
     series_id = new_series(ctx, to_item_values(ctx, given), repeat)
     if calendar is not None:
         keep_calendar(ctx, series_id, calendar)
-    return series_id, materialize_series(ctx, series_id)
+    made = materialize_series(ctx, series_id)
+    return series_id, made + placed_first(ctx, series_id)
+
+
+def placed_first(ctx: Ctx, series_id: int) -> int:
+    """The event you placed, on a day its repeat leaves out ("every weekday" for a Saturday's): kept beside the
+    repeat, as a calendar keeps a repeat's first time (8 Nov: it vanished). Only when a repeat is made from an event:
+    a repeat split or moved later starts where its rule does."""
+    row = load_series(ctx, series_id)
+    series = as_series(row)
+    start = parse_local(series.dtstart_local)
+    if series.template.get("when") != "fixed" or start.date() < ctx.today:
+        return 0
+    timing = occurrence_timing(series, start, ctx.tz)
+    there = "SELECT 1 AS yes FROM items WHERE series_id = ? AND start_utc = ?"
+    if one(ctx.conn, there, [series_id, timing["start_utc"]]):
+        return 0
+    placed = replace(make_occurrence(series, start, 0, timing), detached=True)
+    item_id = insert_item(ctx, with_defaults(placed))
+    if not row["external_id"]:
+        queue_event_write(ctx, require_item(ctx, item_id), "save", target=calendar_of(ctx, series_id))
+    return 1
 
 
 def calendar_of(ctx: Ctx, series_id: int) -> str | None:
@@ -91,9 +112,10 @@ def new_series(ctx: Ctx, values: dict[str, Any], repeat: dict[str, Any]) -> int:
         length = (parse_utc(values["end_utc"]) - parse_utc(start)) if values.get("end_utc") else 60
         values |= {"when": "fixed", "length_min": length}
     else:
-        dtstart = repeat.get("dtstart_local") or format_local(
-            local_midnight(ctx.today) + timedelta(minutes=ctx.day_start)
-        )
+        # a task with a due repeats from its due's day (8 Nov: "pay rent" due the 1st came due the 1st, the 31st, …
+        # as its offset was counted from today)
+        due = to_local(parse_utc(values["due_utc"]), ctx.tz).date() if values.get("due_utc") else ctx.today
+        dtstart = repeat.get("dtstart_local") or format_local(local_midnight(due) + timedelta(minutes=ctx.day_start))
     offsets = {k: repeat.get(k) for k in ("release_offset_min", "due_offset_min")}
     for key, field in (("release_offset_min", "release_utc"), ("due_offset_min", "due_utc")):
         if not start and offsets[key] is None and values.get(field):
@@ -130,7 +152,8 @@ def repeat(ctx: Ctx, inp: RepeatInput) -> SeriesOut:
     if item.series_id is not None:
         raise FieldError("id", f"{item.title} repeats already; change how in its drawer")
     link = event_links(ctx.conn, ctx.user_id).get(item.id or 0)
-    if link is not None:
+    made_here = link is not None and written_before_linked(ctx, item.id or 0)
+    if link is not None and not made_here:
         if (
             link.kind not in ("gcal", "mac")
             or not link.event_id
@@ -158,14 +181,33 @@ def repeat(ctx: Ctx, inp: RepeatInput) -> SeriesOut:
     series_id = new_series(ctx, values, repeat_of)
     if item.id in (kv_get(ctx.conn, "friday_only_events", [], ctx.user_id) or []):
         keep_calendar(ctx, series_id, "")  # one you kept only in Friday: its repeats stay here too
+    elif made_here and link is not None and link.calendar_id:
+        keep_calendar(ctx, series_id, link.calendar_id)  # each later time goes where this one went
     series = as_series(load_series(ctx, series_id))
     times = materialize(series, ctx.today, ctx.settings["time"].materialize_days, ctx.tz, set())
     mine = next((t for t in times if (t.start_utc or t.due_utc) == (item.start_utc or item.due_utc)), None)
     if mine is not None:  # this one is the first time; the series makes the rest
         ctx.db.update("items", {"id": item.id}, {"series_id": series_id, "occurrence_date": mine.occurrence_date,
                                                  "occurrence_n": mine.occurrence_n})  # fmt: skip
+    else:  # its own day isn't one of the rule's ("every weekday" for a Saturday's): it stays, beside the repeat
+        when = to_local(parse_utc(item.start_utc or item.due_utc or ctx.now_text), ctx.tz)
+        ctx.db.update("items", {"id": item.id}, {"series_id": series_id, "occurrence_date": f"{when:%Y-%m-%d}",
+                                                 "occurrence_n": 0, "detached": 1})  # fmt: skip
     materialize_series(ctx, series_id)
     return series_out(ctx, series_id)
+
+
+def written_before_linked(ctx: Ctx, item_id: int) -> bool:
+    """An event Friday made and saved to a calendar, rather than one read from it (8 Nov, a user: one made here and
+    then made to repeat was handed to Google to repeat, and Friday showed one time until the next read, or for good
+    when it doesn't read that calendar): its first save was queued before anything tied it to the calendar's event."""
+    found = one(
+        ctx.conn,
+        "SELECT 1 AS yes FROM event_writes w WHERE w.item_id = ? AND w.op = 'save' AND w.queued_utc <= ("
+        "SELECT min(s.created_utc) FROM suggestions s WHERE s.item_id = ? AND s.status = 'accepted') LIMIT 1",
+        [item_id, item_id],
+    )
+    return found is not None
 
 
 def repeat_in_calendar(ctx: Ctx, item: Any, event_id: str, rule: str) -> SeriesOut:
@@ -304,15 +346,30 @@ def edit_series_from(
     old = load_series(ctx, series_id)
     day = date.fromisoformat(from_date)
     at = parse_local(old["dtstart_local"]).time()
-    first = continued_from(old, day) if every is None else datetime.combine(day, at)  # a new rule starts that day
+    values = to_item_values(ctx, given)
+    template_times = {}
+    if every is not None and values.get("start_utc"):
+        # a new pattern with its time (8 Nov: the editor sent the time as an edit first, which split the repeat once,
+        # and the pattern split it again: every Wednesday twice): one split, at the new time and length
+        moved = to_local(parse_utc(values["start_utc"]), ctx.tz)
+        at = moved.time()
+        if values.get("end_utc"):
+            template_times["length_min"] = parse_utc(values["end_utc"]) - parse_utc(values["start_utc"])
+    if every is None:
+        first = continued_from(old, day)
+    else:  # a new rule starts on its first day from then (a start on a day it leaves out would be kept as placed)
+        begins = datetime.combine(day, at)
+        first = next_occurrence(rule_from(ctx, every), begins, begins - timedelta(seconds=1)) or begins
     ctx.db.update("series", {"id": series_id}, {"rrule": ending_before(old["rrule"], day), "updated_utc": ctx.now_text})
     remove_future_occurrences(ctx, series_id, day)
-    template = json.loads(old["template"]) | without_times(to_item_values(ctx, given))
+    template = json.loads(old["template"]) | without_times(values) | template_times
     new_id = ctx.db.insert(
         "series",
         {
             "template": json.dumps(template),
-            "rrule": rule_from(ctx, every) if every else old["rrule"],
+            "rrule": counted_on(
+                rule_from(ctx, every) if every else old["rrule"], old["rrule"], parse_local(old["dtstart_local"]), day
+            ),  # fmt: skip
             "dtstart_local": format_local(first),
             "per_window": per_window or old["per_window"],
             "release_offset_min": old["release_offset_min"],
@@ -485,8 +542,31 @@ def series_resume(ctx: Ctx, inp: SeriesRef) -> SeriesOut:
     if found["external_id"]:
         reread_repeat(ctx, found["external_id"])
     else:
+        bring_back_stopped(ctx, inp.id)
         materialize_series(ctx, inp.id)
     return series_out(ctx, inp.id)
+
+
+def bring_back_stopped(ctx: Ctx, series_id: int) -> None:
+    """The times Stop took off a calendar, kept as dropped so its copies stay tied until they're gone, come back on
+    Start (8 Nov: they counted as made, and some 17 weeks stayed empty): one whose delete hasn't gone out is simply
+    back; one gone from the calendar already is made afresh, and saved there again."""
+    for row in rows(
+        ctx.conn,
+        "SELECT id FROM items WHERE series_id = ? AND status = 'dropped' AND detached = 0 AND occurrence_date >= ?",
+        [series_id, ctx.today.isoformat()],
+    ):
+        pending = rows(
+            ctx.conn,
+            "SELECT id FROM event_writes WHERE item_id = ? AND op IN ('delete', 'delete_from') AND done_utc IS NULL",
+            [row["id"]],
+        )
+        if pending:
+            for write in pending:
+                ctx.db.delete("event_writes", {"id": write["id"]})
+            ctx.db.update("items", {"id": row["id"]}, {"status": "todo", "updated_utc": ctx.now_text})
+        else:
+            delete_item(ctx, row["id"])
 
 
 @query("series_list")

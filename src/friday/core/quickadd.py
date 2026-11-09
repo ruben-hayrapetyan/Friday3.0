@@ -1,5 +1,6 @@
 """Quick-add: one line → the fields of an `add` (DESIGN §9.4). Times come out local, as the API speaks."""
 
+import calendar
 import math
 import re
 from collections.abc import Callable, Iterable
@@ -18,7 +19,7 @@ from friday.core.dates import (
     read_moment,
 )
 from friday.core.guess import guess_preset
-from friday.core.recurrence import read_repeat
+from friday.core.recurrence import RRULE_DAYS, read_repeat
 from friday.core.textnorm import plain_words
 from friday.core.time import UNIT_MIN, format_local, local_midnight
 
@@ -137,6 +138,8 @@ class Parser:
             return self.mark(i, 1, "rrule", REPEAT_WORDS[word])
         if word == "between":
             return self.read_between(i)
+        if word == "on" and i + 1 < len(self.words) and (used := self.read_repeating_days(i + 1, before=1)):
+            return used  # "club weekly on tuesdays": the days it repeats on
         if word == "on" and i + 1 < len(self.words) and read_date(self.words, i + 1, self.today):
             return self.span(i, 1, "on", None)  # "salsa on friday": the day is read next; "on" isn't the title
         if BARE_ELASTIC.match(word):
@@ -162,6 +165,8 @@ class Parser:
             return self.read_dependency(i)
         if WEEKDAY_RANGE.match(word):
             return self.read_weekday_range(i)
+        if used := self.read_repeating_days(i):
+            return used
         counted = PER_WINDOW.match(word) or word in TIMES_A_WEEK or word.isdecimal()
         if counted and "rrule" not in self.fields and (used := self.read_times_a_week(i)):
             return used
@@ -284,6 +289,19 @@ class Parser:
             return 0
         self.fields["start_local"], self.fields["end_local"] = start, end
         return self.span(i, used, "at", self.fields["start_local"])
+
+    def read_repeating_days(self, i: int, before: int = 0) -> int:
+        """Days that say a repeat without "every" (8 Nov, a user: events made by hand didn't repeat): a plural,
+        "mondays", "tuesdays and thursdays", or two days or more, "gym mon wed fri 7am". One day alone, "salsa friday",
+        is that one day. After "weekly" they're the days it repeats on. `before`: words already read ("on")."""
+        days, used, plural = days_said(self.words, i)
+        if not days or (len(days) < 2 and not plural):
+            return 0
+        rule = self.fields.get("rrule", "")
+        if rule and (not rule.startswith("FREQ=WEEKLY") or "BYDAY=" in rule):
+            return 0  # a repeat already says its days
+        self.fields["rrule"] = (rule or "FREQ=WEEKLY") + ";BYDAY=" + ",".join(days)
+        return self.span(i - before, used + before, "repeat", self.fields["rrule"])
 
     def read_every(self, i: int) -> int:
         if i + 1 >= len(self.words):
@@ -408,6 +426,7 @@ class Parser:
         if self.fields["preset"] == "Routine" and "rrule" in self.fields and "due_local" not in self.fields:
             self.result.warnings.append("no time window, so it can land any time of day; add one like 11:30am-2pm")
         self.set_amount()
+        self.start_on_its_day()
         if "rrule" in self.fields:
             self.fields["dtstart_local"] = self.fields.get("start_local") or format_local(
                 self.series_start_date() + timedelta(minutes=self.day_start)
@@ -451,9 +470,54 @@ class Parser:
             low, high = units(elastic[0]), units(elastic[1])
             self.fields |= {"amount": "elastic", "min_units": low, "ideal_units": high, "max_units": high}
 
+    def start_on_its_day(self) -> None:
+        """A repeat on certain weekdays begins on the first of them: "piano mondays 4pm" said on a Sunday starts
+        Monday, not that Sunday, and "every other thursday" counts its weeks from this Thursday, not the next."""
+        days = re.search(r"BYDAY=([A-Z,]+)", self.fields.get("rrule", ""))
+        if not days or "start_local" not in self.fields:
+            return
+        wanted = {RRULE_DAYS.index(d) for d in days[1].split(",") if d in RRULE_DAYS}
+        start = datetime.fromisoformat(self.fields["start_local"]).date()
+        ahead = next((n for n in range(7) if (start + timedelta(days=n)).weekday() in wanted), 0)
+        if ahead:
+            self.move_to(start + timedelta(days=ahead))
+
     def series_start_date(self) -> datetime:
         release = self.fields.get("release_local")
         return local_midnight(datetime.fromisoformat(release).date() if release else self.today)
+
+
+FULL_DAYS = {name.lower(): i for i, name in enumerate(calendar.day_name)}
+
+
+def days_said(words: list[str], i: int) -> tuple[list[str], int, bool]:
+    """Weekdays from words[i] on ("mon wed fri", "tuesdays and thursdays", "mon,wed"): as RRULE days, how many words,
+    and whether any was plural ("mondays")."""
+    days: list[str] = []
+    used, plural = 0, False
+    while i + used < len(words):
+        word = words[i + used]
+        if word == "and" and days and i + used + 1 < len(words):
+            used += 1
+            continue
+        names = [n for n in word.rstrip(",").split(",") if n]
+        found = []
+        for name in names:
+            if name in WEEKDAY_NAMES:
+                found.append(WEEKDAY_NAMES[name])
+            elif name.endswith("s") and name[:-1] in FULL_DAYS:
+                found.append(FULL_DAYS[name[:-1]])
+                plural = True
+            else:
+                found = []
+                break
+        if not found:
+            if used and words[i + used - 1] == "and":  # "mon and" then something else: the "and" isn't a day's
+                used -= 1
+            break
+        days += [RRULE_DAYS[d] for d in found if RRULE_DAYS[d] not in days]
+        used += 1
+    return days, used, plural
 
 
 def units(minutes: int) -> int:

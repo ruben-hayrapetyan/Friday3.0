@@ -21,7 +21,7 @@ from friday.commands.series import (
 )
 from friday.core.db import rows
 from friday.core.items import FieldError, Item, validate
-from friday.core.recurrence import ending_before, moved_rule, occurrences, rule_parts
+from friday.core.recurrence import counted_on, ending_before, moved_rule, occurrences, rule_parts
 from friday.core.time import format_local, format_utc, local_midnight, parse_local, parse_utc, to_local, to_utc
 from friday.planner.store import event_links
 
@@ -95,6 +95,9 @@ def moved_series(ctx: Ctx, row: dict[str, Any], from_day: date, changed: dict[st
     ctx.db.update(
         "series", {"id": row["id"]}, {"rrule": ending_before(row["rrule"], from_day), "updated_utc": ctx.now_text}
     )
+    if "rrule" in changed:  # an "ends after N times" repeat keeps counting from where it was
+        changed = changed | {"rrule": counted_on(changed["rrule"], row["rrule"], parse_local(row["dtstart_local"]),
+                                                 from_day)}  # fmt: skip
     new_id = ctx.db.insert("series", {k: row[k] for k in COPIED} | changed | {"created_utc": ctx.now_text})
     keep_calendar(ctx, new_id, calendar_of(ctx, row["id"]))
     return new_id

@@ -29,6 +29,9 @@ def materialize(series: Series, today: date, days: int, tz: str, existing: set[t
         return []
     start = parse_local(series.dtstart_local)
     lo, hi = local_midnight(today), local_midnight(today + timedelta(days=days))
+    # A repeat that begins beyond the window still has its first time (8 Nov: Mom's birthday next June, yearly, made
+    # nothing at all, and an event that far ahead made to repeat stayed apart from its repeat)
+    hi = max(hi, local_midnight(start.date() + timedelta(days=1)))
     # A window that opened before today is still open until it closes: this week's problem set, started on Tuesday.
     since = lo if series.template.get("when") == "fixed" else max(start, lo - timedelta(days=366))
     today_opens = to_utc(lo + (start - local_midnight(start.date())), tz)  # today's occurrence time
@@ -52,11 +55,13 @@ def materialize(series: Series, today: date, days: int, tz: str, existing: set[t
 
 def occurrence_timing(series: Series, moment: datetime, tz: str) -> dict[str, str]:
     if series.template.get("when") == "fixed":
-        length = timedelta(minutes=series.template["length_min"])
-        return {
-            "start_utc": format_utc(to_utc(moment, tz)),
-            "end_utc": format_utc(to_utc(moment + length, tz)),
-        }
+        minutes = series.template["length_min"]
+        start = to_utc(moment, tz)
+        # its length in real minutes, so the clocks changing doesn't stretch or squash it (8 Nov: a daily 2:30-3:30
+        # was 0 minutes long the day clocks went forward); a whole-day event stays midnight to midnight
+        whole_days = minutes % 1440 == 0 and moment.hour == 0 and moment.minute == 0
+        end = to_utc(moment + timedelta(minutes=minutes), tz) if whole_days else start + minutes
+        return {"start_utc": format_utc(start), "end_utc": format_utc(end)}
     if series.release_offset_min is not None or series.due_offset_min is not None:
         release = moment + timedelta(minutes=series.release_offset_min or 0)
         due = moment + timedelta(minutes=series.due_offset_min) if series.due_offset_min is not None else None

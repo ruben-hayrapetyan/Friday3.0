@@ -38,7 +38,7 @@ def read_base_rule(words: list[str], i: int) -> tuple[str, int] | None:
         return "FREQ=DAILY", 1
     if word == "week":
         return "FREQ=WEEKLY", 1
-    if word == "weekdays":
+    if word in ("weekdays", "weekday"):  # "every weekday" (8 Nov: it was read as one day, today)
         return "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", 1
     if word == "month" and following.isdecimal() and 1 <= int(following) <= 31:
         return f"FREQ=MONTHLY;BYMONTHDAY={int(following)}", 2
@@ -170,6 +170,17 @@ def next_occurrence(rule: str, dtstart: datetime, after: datetime) -> datetime |
     while found is not None and found in skips:
         found = rrulestr(repeat, dtstart=dtstart).after(found)
     return found
+
+
+def counted_on(new_rule: str, old_rule: str, dtstart: datetime, day: date) -> str:
+    """A repeat split on `day` that ends after so many times keeps counting: its new part ends after what's left
+    (8 Nov: "10 times", changed from the 5th, made 14)."""
+    found = re.search(r"COUNT=(\d+)", new_rule, re.IGNORECASE)
+    if not found:
+        return new_rule
+    total = int(found[1])
+    before = len(occurrences(old_rule, dtstart, dtstart, datetime.combine(day, datetime.min.time())))
+    return re.sub(r"COUNT=\d+", f"COUNT={max(1, total - before)}", new_rule, flags=re.IGNORECASE)
 
 
 def ending_before(rule: str, day: date) -> str:

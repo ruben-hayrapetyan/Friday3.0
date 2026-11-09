@@ -72,8 +72,9 @@ def add(ctx: Ctx, inp: AddInput) -> AddOutput:
     given = all_day_is_free(given | given_fields(inp))
     given = exact_length(ctx, with_guesses(ctx, given))
     after, before = repeat.pop("after", []) + inp.after, repeat.pop("before", []) + inp.before
-    if inp.every:
+    if inp.every:  # the picker's repeat over one typed in the text ("Run every tue" with Every day chosen)
         repeat["every"] = inp.every
+        repeat.pop("rrule", None)
     given, repeat = weekly_target(ctx, given, repeat)
     if inp.per_window:
         repeat["per_window"] = inp.per_window
@@ -316,7 +317,8 @@ def edit(ctx: Ctx, inp: EditInput) -> ItemResult:
     if changed.parent_id != item.parent_id:
         check_parent(ctx, item.id, changed.parent_id)
     update_item(ctx, item, changed)
-    queue_event_write(ctx, changed, "save")
+    # one time of a repeat goes where its repeat goes ("Only Friday" stays in Friday; 8 Nov it went to Google)
+    queue_event_write(ctx, changed, "save", target=calendar_of(ctx, changed.series_id) if changed.series_id else None)
     return ItemResult(item=item_out(ctx, changed, minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0)))
 
 

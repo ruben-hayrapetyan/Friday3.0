@@ -162,8 +162,8 @@ export function EventPane({ draft }: { draft: EventDraft }) {
       }
       const later = scope === "later" ? { from_date: (draft.was?.start ?? draft.start).slice(0, 10) } : {}
       if (scope === "later" && newPattern && draft.seriesId !== null && draft.every) {
-        const saved = await edit({ id: draft.id as number, ...fields, ...later })
-        if (saved && (await reshape({ id: draft.seriesId, every: draft.every, ...later }))) close()
+        // one command: the new pattern with its time, from this one on (an edit first split it twice, 8 Nov)
+        if (await reshape({ id: draft.seriesId, every: draft.every, ...fields, ...later })) close()
         return
       }
       const done = isNew
