@@ -168,3 +168,18 @@ def test_friday_s_past_plan_can_be_left_off_the_calendar_and_the_first_name_stil
     old = {k: v for k, v in look.items() if k != "show_past_plan"} | {"show_missed": False}
     app.conn.execute("UPDATE settings SET value = ? WHERE key = 'calendar_look'", [json.dumps(old)])
     assert app.do("settings")["calendar_look"]["show_past_plan"] is False
+
+
+@pytest.mark.parametrize(
+    ("title", "category", "color"),
+    [("Gym", "Exercise", "orange"), ("MATH 1920 Prelim 2", "Exam", "red"), ("CS 2110 Lecture", "Class", "sapgreen"),
+     ("Dentist appointment", "Meeting", "blue"), ("Flight to NYC", "Travel", "violet"),
+     ("Mom's birthday", "Social", "pink"), ("Shift at the library", "Work", "purple")],
+)  # fmt: skip
+def test_a_new_install_paints_events_with_the_starter_set(
+    tmp_path: Path, title: str, category: str, color: str
+) -> None:
+    """8 Nov, from users: "no default categories so all of their events just get added as grey"."""
+    app = new_app(tmp_path)
+    item = app.do("item", id=event(app, title))["item"]
+    assert (item["category"], item["category_color"], item["category_by"]) == (category, color, "always")

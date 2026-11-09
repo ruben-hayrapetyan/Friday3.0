@@ -612,6 +612,7 @@ class RuleReadOut(Model):
     sentence: str
     effect: str
     conflicts: list["RuleConflict"] = []  # the switched-on rules it would contradict or overlap
+    also: list["RuleReadOut"] = []  # the sentence's other rules, when it says several stretches of the day (8 Nov)
 
 
 class RuleConflict(Model):

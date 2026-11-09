@@ -201,9 +201,11 @@ def plainly(error: Exception) -> str:
     if isinstance(error, WSGITimeoutError):
         return "Google's page waited five minutes without an answer. Try again when you're ready."
     if "access_denied" in text:
-        return (
-            "Google says Friday wasn't allowed, so nothing changed. If its page said access is blocked, add that "
-            "account as a test user in Google Cloud (Audience, on the consent screen) and try again."
+        return (  # 8 Nov: everyone but the project's test users is blocked, and the old advice was the owner's
+            "Google says Friday wasn't allowed, so nothing changed. If its page said access is blocked, Google isn't "
+            "letting this account in yet: bring its calendars in through your Mac instead (Settings → Integrations → "
+            "Calendars on this Mac) and its mail with an app password (Gmail, just below). If the Google Cloud "
+            "project is your own, add the account as a test user there (Audience) and try again."
         )
     if "Scope has changed" in text:
         return "Some boxes on Google's page were left unticked. Try again and tick them all."

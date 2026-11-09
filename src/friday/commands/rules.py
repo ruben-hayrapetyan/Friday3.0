@@ -22,7 +22,7 @@ from friday.commands.registry import Ctx, command, query
 from friday.commands.settings import write_setting
 from friday.core.db import rows
 from friday.core.items import FieldError
-from friday.core.rule_text import Reading, days_spoken, read, sentence, spec, with_overrides
+from friday.core.rule_text import Reading, days_spoken, read, read_all, sentence, spec, with_overrides
 from friday.core.settings import REFERENCE_RULES
 from friday.core.textnorm import identity_text, norm
 from friday.core.time import ampm_in
@@ -47,6 +47,7 @@ SAID = {
     "soft_late": "Soft deadlines when there’s room",
     "unscheduled": "Get to things with no deadline",
     "chunk_cost": "Fewer, longer sessions",
+    "same_course": "Stay on one course for a stretch",
     "buffer": "Breathing room between blocks",
     "spread": "Spread out what you marked spread",
     "cluster": "Keep clustered work on few days",
@@ -115,9 +116,18 @@ def rule_read(ctx: Ctx, inp: RuleTextInput) -> RuleReadOut:
         overrides = json.loads(inp.overrides or "{}")
     except json.JSONDecodeError as error:
         raise FieldError("overrides", "not JSON") from error
+    chain, said = read_all(inp.text) if inp.text.strip() and not overrides else ([], "Prefer")
+    if len(chain) > 1:  # "no work 7:10–7:20 and 7:30–7:40": a rule for each, the first with the rest beside it
+        first, *rest = (read_out(ctx, r, said) for r in chain)
+        return first.model_copy(update={"also": rest})
     reading, strength = described(ctx, inp.text, {k: v for k, v in overrides.items() if v is not None or k == "days"})
     if reading is None:
         return RuleReadOut(reading=None, strength=strength, sentence="", effect="Friday can’t read that as a rule yet.")
+    return read_out(ctx, reading, strength)
+
+
+def read_out(ctx: Ctx, reading: Reading, strength: str) -> RuleReadOut:
+    """What one rule would be and do, and the rules it would contradict."""
     areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
     new = spec(reading, strength, "preview", areas, presets)
     effect = EFFECT.get(reading.kind if reading.kind in ("ahead", "meals_kept") else new["type"], "")
@@ -189,8 +199,20 @@ def events_named(ctx: Ctx, words: tuple[str, ...]) -> list[str]:
 
 @command("rule_add", affects_plan=True)
 def rule_add(ctx: Ctx, inp: RuleAddInput) -> Changed:
-    """Add a rule in your words; Friday plans with it from now."""
+    """Add a rule in your words; Friday plans with it from now. A sentence that says several stretches of the day
+    adds a rule for each (8 Nov), in one command, so one Undo takes them all back."""
+    chain = chained(inp.text) if not inp.overrides else []
+    if len(chain) > 1:
+        owned_by_file(ctx)
+        for reading in chain:
+            add_reading(ctx, reading, inp.text, inp.strength)
+        return Changed(message=f"Added {len(chain)} rules: " + "; ".join(sentence(r) for r in chain))
     return added(ctx, inp.text, inp.strength, inp.overrides)
+
+
+def chained(text: str) -> list[Reading]:
+    """The rules a sentence says when it says more than one stretch of the day; one or none otherwise."""
+    return read_all(text)[0] if text.strip() else []
 
 
 def added(ctx: Ctx, text: str, strength: str, overrides: dict[str, Any] | None = None) -> Changed:
@@ -199,6 +221,10 @@ def added(ctx: Ctx, text: str, strength: str, overrides: dict[str, Any] | None =
     reading, _ = described(ctx, text, overrides or {})
     if reading is None:
         raise FieldError("text", "Friday can’t read that as a rule; try one of the examples")
+    return add_reading(ctx, reading, text, strength)
+
+
+def add_reading(ctx: Ctx, reading: Reading, text: str, strength: str) -> Changed:
     if reading.kind == "pace":
         return weekly_pace(ctx, dict(reading.paces or ()), sentence(reading))
     if reading.kind == "deadlines":

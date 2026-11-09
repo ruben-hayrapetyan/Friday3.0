@@ -71,7 +71,8 @@ def test_a_rating_only_guessed_from_the_title_is_asked_again_once_a_day(tmp_path
     ai = Answering(json.dumps({"events": [{"title": "Book club", "level": "optional", "reason": "a hobby"}]}))
     assert rate_upcoming(app.conn, app.now_utc + 1440, client=ai) == 1  # the next day
     ratings = json.loads(app.conn.execute("SELECT value FROM kv WHERE key = 'event_ratings'").fetchone()[0])
-    assert ratings["book club"] == {"level": "optional", "reason": "a hobby"}
+    # a new install has the starter categories (C66), so an answer naming none is kept as none
+    assert ratings["book club"] == {"level": "optional", "reason": "a hobby", "category": ""}
     assert rate_upcoming(app.conn, app.now_utc + 2 * 1440, client=ai) == 0  # answered: never asked again
 
 

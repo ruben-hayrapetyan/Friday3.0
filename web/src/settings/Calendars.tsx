@@ -11,6 +11,7 @@ import { useCommand } from "@/hooks/useCommand"
 import { when } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
 import { usePresets } from "@/todo/AddBox"
+import { ACCOUNTS, PRIVACY } from "./MacAccounts"
 import { accountName, offline, readable, useGoogleAccess } from "./GoogleConnect"
 
 export const useCalendars = () => useQuery({ queryKey: ["google_calendars"], queryFn: () => query("google_calendars") })
@@ -24,7 +25,25 @@ export function Calendars({ mac = false }: { mac?: boolean }) {
   const calendars = (mac ? onMac : google) ?? []
   const [open, setOpen] = useState(false)
   if (!calendars.length)
-    return <span className="fr-kicker">{mac ? "The Mac app sends this Mac’s calendars once it runs and you allow it to read them." : "Your calendars list here after the first sync with Google connected."}</span>
+    return (
+      <span className="fr-kicker" style={{ textWrap: "pretty" }}>
+        {mac ? (
+          <>
+            Friday's Mac app sends this Mac's calendars once it runs and you allow it to read them:{" "}
+            <a className="fr-link" href={PRIVACY}>
+              Privacy & Security → Calendars
+            </a>
+            . To bring in Google's, add your Google account to the Mac:{" "}
+            <a className="fr-link" href={ACCOUNTS}>
+              Internet Accounts
+            </a>
+            .
+          </>
+        ) : (
+          "Google's calendars list here after the first sync with Google connected (Settings → Integrations → More). In the Mac app, Google's calendars can come in through the Mac instead, above."
+        )}
+      </span>
+    )
   const reading = calendars.filter((c) => c.on)
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>

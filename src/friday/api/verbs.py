@@ -324,6 +324,15 @@ VERBS = {
         False,
         "Items that fit a gap (until the next block when no length is given), safe, best first.",
     ),
+    "gmail_app_accounts": Verb(
+        "GET",
+        "/api/q/gmail_app_accounts",
+        commands.Empty,
+        False,
+        False,
+        "The addresses read with an app password; never their passwords.",
+    ),
+    "gmail_app_set": Verb("POST", "/api/c/gmail_app_set", commands.GmailAppInput, True, False, "gmail_app_set"),
     "google_calendars": Verb(
         "GET",
         "/api/q/google_calendars",
@@ -946,7 +955,7 @@ VERBS = {
         commands.RuleAddInput,
         True,
         True,
-        "Add a rule in your words; Friday plans with it from now.",
+        "Add a rule in your words; Friday plans with it from now. A sentence that says several stretches of the day",
     ),
     "rule_clash": Verb(
         "GET",

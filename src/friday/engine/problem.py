@@ -85,6 +85,7 @@ class EngineItem:
     travel_after: int = 0  # and after it: getting back to somewhere you can work
     runs_units: int = 0  # it runs by itself this long after its first quarter hour (laundry), units
     meal_window: tuple[int, int] | None = None  # a meal's own window (UTC minutes); its allowed window reaches past it
+    course: str | None = None  # its subject ("math"), read from the titles by the planner; None for none (same_course)
 
     def __post_init__(self) -> None:
         self.allowed_set: frozenset[int] = frozenset(self.allowed)

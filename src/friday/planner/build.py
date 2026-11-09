@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any, Literal
 
-from friday.core.guess import EXAM, same_course
+from friday.core.guess import EXAM, same_course, subject_of, subjects
 from friday.core.items import Item
 from friday.core.pace import DayScales
 from friday.core.quickadd import MEAL
@@ -242,6 +242,9 @@ def flexible_items(inp: BuildInput, grid: Grid, fixed: Mapping[int, Item]) -> di
         engine_item = to_engine_item(item, inp, grid, by_id, fixed, exams)
         if engine_item is not None:
             out[engine_item.key] = engine_item
+    known = subjects(i.title for i in out.values())  # one course for a stretch (same_course), as Insights reads them
+    for engine_item in out.values():
+        engine_item.course = subject_of(engine_item.title, known)
     dependencies = [*inp.dependencies, *parts_in_order(inp, out), *long_after_short(inp, out)]
     for engine_item in out.values():
         engine_item.depends_on = dependency_specs(id_of(engine_item.key), dependencies, out)

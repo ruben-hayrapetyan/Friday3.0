@@ -30,6 +30,9 @@ import { CHOICES, choiceOf, fromChoice, saying } from "@/settings/calendarChoice
 import { ConnectedAccounts } from "@/settings/GoogleAccounts"
 import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess } from "@/settings/GoogleConnect"
 import { AddFeed, Documents, Upload } from "@/settings/Integrations"
+import { Accounts, ACCOUNTS, PRIVACY, inMacApp } from "@/settings/MacAccounts"
+
+export { byAccount, inMacApp } from "@/settings/MacAccounts"
 import { Count, freeSpan } from "./onboard/Visuals"
 import { Choices, HourBar, Other, Source, TimeCard } from "./SetupParts"
 import { ALL_EVENING, ALL_WEEKEND, bedOf, shift, sleepHours, VIEW, wakeOf, weekOf } from "./setupWeek"
@@ -354,8 +357,10 @@ function useWorld(canvas: RefObject<HTMLCanvasElement | null>, stage: RefObject<
   return { world, ready }
 }
 
-export function SetupDialog({ onClose }: { onClose: () => void }) {
-  const at = useRef("hello")
+/** `only`: one question, to change that answer alone (8 Nov: "users' only way to change calendar settings is to redo
+ * the setup"), saved with Save; the others keep theirs. */
+export function SetupDialog({ onClose, only = null }: { onClose: () => void; only?: string | null }) {
+  const at = useRef(only ?? "hello")
   // Read again every few seconds while things are brought in: a calendar connected then is asked about next.
   const setup = useQuery({ queryKey: ["setup"], queryFn: () => query("setup"), refetchInterval: () => (at.current === "bring" ? 3000 : false) }).data
   const save = useCommand("setup_save", { label: (o) => o.result.message ?? "Saved" })
@@ -363,7 +368,7 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
   // While building it (`pnpm dev` only), ?step=focus opens at that screen.
   const jump = import.meta.env.DEV ? new URLSearchParams(location.search).get("step") : null
   // where you are, by step: a step that comes or goes before it (calendars, once one's connected) doesn't move you
-  const [pos, setPos] = useState({ id: "hello", n: 0 })
+  const [pos, setPos] = useState({ id: only ?? "hello", n: 0 })
   const [back, setBack] = useState(false)
   const [saving, setSaving] = useState(false)
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -430,7 +435,7 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
     setBack(i < n)
     setPos({ id: ids[i], n: i })
   }
-  const next = () => (id === "start" && draft ? finish(draft) : to(n + 1))
+  const next = () => (only && draft ? finish(draft) : id === "start" && draft ? finish(draft) : to(n + 1))
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
@@ -453,11 +458,13 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
       <canvas ref={canvas} className="wk-world" aria-hidden />
       <header className="wk-top">
         <span className="wk-brand">Friday</span>
-        <ol className="wk-stops" aria-label={`Step ${n + 1} of ${ids.length}`}>
-          {ids.map((s, i) => (
-            <li key={s} data-done={i < n || undefined} data-here={i === n || undefined} />
-          ))}
-        </ol>
+        {!only && (
+          <ol className="wk-stops" aria-label={`Step ${n + 1} of ${ids.length}`}>
+            {ids.map((s, i) => (
+              <li key={s} data-done={i < n || undefined} data-here={i === n || undefined} />
+            ))}
+          </ol>
+        )}
         <button type="button" className="wk-skip" onClick={() => (done ? onClose() : setup && finish(draft ?? (setup.answers as unknown as Answers)))} disabled={saving || !setup}>
           {done ? "Close" : "Skip"}
         </button>
@@ -471,7 +478,17 @@ export function SetupDialog({ onClose }: { onClose: () => void }) {
           {note && <p className="wk-note">{note}</p>}
           {step.control && <div className="wk-control">{step.control(draft, set, ctx)}</div>}
           {id === "reveal" && <Reveal a={draft} go={ctx.go} />}
-          {(
+          {only ? (
+            <footer className="wk-foot">
+              <button type="button" className="wk-back" onClick={onClose} disabled={saving}>
+                Cancel
+              </button>
+              <button ref={go} type="button" className="wk-go" onClick={() => finish(draft)} disabled={saving}>
+                Save
+                <i aria-hidden />
+              </button>
+            </footer>
+          ) : (
             <footer className="wk-foot">
               {n > 0 && (
                 <button type="button" className="wk-back" onClick={() => to(n - 1)} disabled={saving}>
@@ -636,22 +653,6 @@ function BriefExample({ on }: { on: boolean }) {
   )
 }
 
-/** Whether this is the Mac app's window (it names itself in its user agent), where the Mac's calendars come in. */
-export const inMacApp = () => typeof navigator !== "undefined" && navigator.userAgent.includes("FridayMac")
-
-// System Settings, from the Mac app's window: Internet Accounts, where Google is added; Calendars' privacy pane.
-const ACCOUNTS = "x-apple.systempreferences:com.apple.Internet-Accounts-Settings.extension"
-const PRIVACY = "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars"
-
-type MacCalendar = Schemas["GoogleCalendarOut"]
-
-/** The Mac's calendars by account ("iCloud", an address), each account's names in order. */
-export function byAccount(calendars: MacCalendar[]): [string, MacCalendar[]][] {
-  const out = new Map<string, MacCalendar[]>()
-  for (const c of calendars) out.set(c.account || "On this Mac", [...(out.get(c.account || "On this Mac") ?? []), c])
-  return [...out].sort(([, x], [, y]) => Number(!x.some((c) => c.on)) - Number(!y.some((c) => c.on))) // all left off: last
-}
-
 /** Bringing things in, simplest first (29 Oct: "i also don't love the more technical aspects of the setup - eg the
  * google calendar implementation. also is there a way not to use the api"). In the Mac app every calendar on the Mac
  * comes in, so Google is added to the Mac, as your own Friday reads your Gmail calendar; elsewhere a calendar's
@@ -702,39 +703,13 @@ function BringIn() {
         {more ? "Fewer options" : "More: Gmail, and connecting to Google directly"}
       </button>
       {more && (
-        <Source icon="envelope-simple" hue="var(--px-gold)" title="Gmail, and Google's own connection" note="Friday can suggest due dates and events from your mail (it never sends or deletes). That needs Google's own connection, a one-time setup of about five minutes, step by step. It also reads Google Calendar without the Mac." i={0}>
+        <Source icon="envelope-simple" hue="var(--px-gold)" title="Gmail, and Google's own connection" note="Friday can suggest due dates and events from your mail (it never sends or deletes). Any Gmail can be read with an app password, in Settings → Integrations → Gmail. Google's own connection, below, lets in only the accounts its Google Cloud project lists; it also reads Google Calendar without the Mac." i={0}>
           <ConnectedAccounts accounts={accounts} />
           <ConnectGoogle why={accounts.length ? "Google's page asks which account." : undefined} done="Choose the calendars it reads in Settings → Integrations." />
           <GmailSwitch />
           <GmailConnect />
         </Source>
       )}
-    </div>
-  )
-}
-
-/** The Mac's calendars Friday reads, by account; the ones it leaves off (birthdays, subscriptions) said as a count. */
-function Accounts({ calendars }: { calendars: MacCalendar[] }) {
-  return (
-    <div className="st-accounts">
-      {byAccount(calendars).map(([account, list]) => {
-        const on = list.filter((c) => c.on)
-        const off = list.filter((c) => !c.on)
-        return (
-          <div key={account} className="st-account">
-            <Icon name={/@gmail\.com$|google/i.test(account) ? "google-logo" : /icloud/i.test(account) ? "cloud" : "calendar-blank"} size={15} />
-            <span>
-              <b>{account}</b> {on.map((c) => c.name).join(", ")}
-              {off.length > 0 && (
-                <span className="st-source-note">
-                  {on.length ? " · " : ""}
-                  {off.map((c) => c.name).join(", ")} left off
-                </span>
-              )}
-            </span>
-          </div>
-        )
-      })}
     </div>
   )
 }

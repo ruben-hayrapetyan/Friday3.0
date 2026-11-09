@@ -47,7 +47,7 @@ import { closes, type Opener, wasInFront } from "./toggles"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 
 export function Shell() {
-  const { today, pop, setPop, dialog, setDialog, drawer, event, layout, drawerOver, drawerWidth, navOpen, setNavOpen, tour } = useShell()
+  const { today, pop, setPop, dialog, setDialog, drawer, event, layout, drawerOver, drawerWidth, navOpen, setNavOpen, tour, setupStep } = useShell()
   const client = useQueryClient()
   const toast = useToast()
   const shove = async (range: string) => {
@@ -148,9 +148,9 @@ export function Shell() {
       {dialog === "search" && <Search />}
       {dialog === "ways" && <OtherWaysDialog onClose={() => setDialog(null)} />}
       {dialog === "ask" && <AskClaudeDialog onClose={() => setDialog(null)} />}
-      {dialog === "setup" && <SetupDialog onClose={() => setDialog(null)} />}
+      {dialog === "setup" && <SetupDialog only={setupDone ? setupStep : null} onClose={() => setDialog(null)} />}
       <UpdateDialogs />
-      {tour && <Tour />}
+      {tour && dialog !== "setup" && <Tour />}
       <FirstTour ready={setupDone === true && dialog === null && briefDecided === today} toured={toured} />
     </DragProvider>
   )

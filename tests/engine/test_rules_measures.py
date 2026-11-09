@@ -461,3 +461,45 @@ def test_minimize_changes_weighs_the_timers_hold_like_a_pin_without_one() -> Non
     assert cost(held, plan(item_1=(0, 1, 2, 3)), "minimize_changes") == 0
     assert cost(held, plan(item_1=(2, 3, 4, 5)), "minimize_changes") == 2 * 25 * 10
     assert held.items["item:1"].preferred == frozenset()  # no pin, so no block edge
+
+
+# same_course: weight 2, a count each time work goes straight on from one course to another (8 Nov)
+
+
+COURSES = [dict(type="same_course", name="course", weight=2)]
+
+
+def courses(units: int = 2):  # noqa: ANN201
+    return [item("assignment", 1, title="MATH 1920 HW10", duration_units=units, min_chunk_units=1),
+            item("assignment", 2, title="CHEM 2090 PS9", duration_units=units, min_chunk_units=1)]  # fmt: skip
+
+
+def test_same_course_is_zero_with_a_break_between_courses() -> None:
+    p = problem(courses(), extra=COURSES)
+    assert cost(p, plan(item_1=(0, 1), item_2=(3, 4)), "course") == 0
+    assert cost(p, plan(item_1=(0, 1), item_2=(2, 3)), "course") == 200  # straight on: one switch
+
+
+def test_same_course_counts_each_switch() -> None:
+    p = problem(courses(), extra=COURSES)
+    assert cost(p, plan(item_1=(0, 2), item_2=(1, 3)), "course") == 3 * 200  # math, chem, math, chem
+
+
+def test_same_course_is_avoided() -> None:
+    p = problem(courses(1), ["unscheduled"], COURSES, slots=3)
+    assert_avoided(p, "course", "item:1")
+    assert_avoided(p, "course", "item:2")
+
+
+def test_same_course_across_the_zone_boundary() -> None:
+    p = zone_problem(courses(1), extra=COURSES)
+    assert cost(p, plan(item_1=(B - 1,), item_2=(B,)), "course") == 200
+
+
+def test_same_course_reads_the_course_from_titles() -> None:
+    from friday.engine.rules.measures import course_groups
+
+    titles = ["MATH 1920 HW10", "Math read 17.3", "CS A5 Design Doc", "PHYS 2213 PS3", "Read ch 3", "Laundry"]
+    p = problem([item("assignment", n, title=t, duration_units=1) for n, t in enumerate(titles, 1)])
+    groups = {c: sorted(m.key for m in ms) for c, ms in course_groups(list(p.items.values())).items()}
+    assert groups == {"MATH": ["item:1", "item:2"], "CS": ["item:3"], "PHYS": ["item:4"]}

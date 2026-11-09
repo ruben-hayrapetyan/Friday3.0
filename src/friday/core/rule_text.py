@@ -702,6 +702,44 @@ def read(text: str) -> tuple[Reading | None, Strength]:
     return found, strength
 
 
+# A stretch of the day said as a range: "between 7:10 am and 7:20 am", "from 9 to 11", "7:30-7:40am".
+RANGE = re.compile(
+    rf"\bbetween {TIME} and {TIME}|\bfrom {TIME} (?:to|until|till|-|–) ?{TIME}|(?<![\d:]){TIME} ?(?:-|–|to) ?{TIME}"
+)
+LINK = re.compile(r"\s*(?:,|;|\band\b|\bor\b|\bbut\b|&|\bplus\b)\s*")
+FILLER = r"^(?:i |also |then |too |as well |similarly )*"
+
+
+def read_all(text: str) -> tuple[list[Reading], Strength]:
+    """Every rule a sentence says: one, or one per stretch of the day when it names several (8 Nov: "i don't want to
+    do work between 7:10 am and 7:20 am and i also don't want to work between 7:30 am and 7:40 am" read the first
+    alone). Each later stretch keeps the first's words around it unless it has its own ("and between 7:30 and 7:40"
+    is no work too); words after the last are everyone's when no other stretch has its own ("7:10-7:20 and 7:30-7:40
+    on weekdays"). When a stretch's half can't be read, the sentence reads as it always did."""
+    found, strength = read(text)
+    t = re.sub(r"\s+", " ", text.lower().replace("’", "'").strip().rstrip(".!"))
+    ranges = list(RANGE.finditer(t))
+    if len(ranges) < 2:
+        return ([found] if found else []), strength
+    heads, tails = [t[: ranges[0].start()]], []
+    for before, after in zip(ranges, ranges[1:], strict=False):
+        gap = t[before.end() : after.start()]
+        link = LINK.search(gap)
+        tail, head = (gap[: link.start()], gap[link.end() :]) if link else (gap, "")
+        tails.append(tail)
+        head = re.sub(r"\b(?:also|too|as well|similarly|again)\b ?", "", head)  # "i also don't want to work"
+        heads.append(head if re.sub(FILLER, "", head.strip() + " ").strip() else "")
+    last = t[ranges[-1].end() :]
+    shared = last if not any(x.strip() for x in tails) else ""
+    tails = [x or shared for x in tails] + [last]
+    clauses = [f"{h or heads[0]}{r.group(0)}{tail}" for h, r, tail in zip(heads, ranges, tails, strict=True)]
+    each = [read(c) for c in clauses]
+    if any(r is None for r, _ in each) or len({sentence(r) for r, _ in each if r}) < len(each):
+        return ([found] if found else []), strength
+    order = ("Prefer", "Strongly", "Always")
+    return [r for r, _ in each if r], max([strength, *(s for _, s in each)], key=order.index)  # type: ignore[return-value]
+
+
 def two_rules(text: str, found: Reading) -> bool:
     t = " " + re.sub(r"\s+", " ", text.lower().replace("’", "'").strip().rstrip(".!")) + " "
     parts = [p for p in re.split(r"\s*(?:,|;|\band\b|\bbut\b|&|\bplus\b|\+)\s*", t) if p.strip()]

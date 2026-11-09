@@ -11,18 +11,20 @@ RULES = [
     SimpleNamespace(name="you:lunch-and-dinner", type="elastic_shortfall", enabled=True),
     SimpleNamespace(name="late_night", type="late_night", enabled=True),  # your bedtime and winding down
     SimpleNamespace(name="finish_early", type="finish_early", enabled=True),  # your setup answer
-    SimpleNamespace(name="chunk_cost", type="chunk_cost", enabled=True),  # Friday's own
+    SimpleNamespace(name="chunk_cost", type="chunk_cost", enabled=True),  # your sittings' shape: guarded since 8 Nov
+    SimpleNamespace(name="energy", type="energy", enabled=True),  # Friday's own
     SimpleNamespace(name="you:off", type="reserve", enabled=False),
 ]
 THETA = {"you:keep-fri-sat-lighter": 0.033, "you:lunch-and-dinner": 5.0, "late_night": 0.033, "finish_early": 1.2,
-         "chunk_cost": 0.033, "you:off": 0.033}  # fmt: skip
+         "chunk_cost": 0.033, "energy": 0.033, "you:off": 0.033}  # fmt: skip
 
 
 def test_what_you_said_stays_within_half_and_double() -> None:
     out = guarded(THETA, RULES)
     assert out["you:keep-fri-sat-lighter"] == BAND[0] and out["you:lunch-and-dinner"] == BAND[1]
     assert out["late_night"] == BAND[0] and out["finish_early"] == 1.2
-    assert out["chunk_cost"] == 0.033  # Friday's own rule learns freely
+    assert out["chunk_cost"] == BAND[0]  # 8 Nov: 44 drags took it to 4%, and the plan took turns every quarter hour
+    assert out["energy"] == 0.033  # Friday's own rule learns freely
 
 
 def test_kept_as_written_is_weighed_as_set_and_let_go_as_learned() -> None:
@@ -32,7 +34,8 @@ def test_kept_as_written_is_weighed_as_set_and_let_go_as_learned() -> None:
 
 def test_what_learning_would_move_too_far_is_listed_to_ask_about() -> None:
     names = [r.name for r, _ in outside(THETA, RULES)]
-    assert names == ["you:keep-fri-sat-lighter", "you:lunch-and-dinner", "late_night"]  # not Friday's own, not off
+    assert names == ["you:keep-fri-sat-lighter", "you:lunch-and-dinner", "late_night", "chunk_cost"]  # not off
     assert [r.name for r, _ in outside(THETA, RULES, held=["late_night"], freed=["you:lunch-and-dinner"])] == [
-        "you:keep-fri-sat-lighter"
+        "you:keep-fri-sat-lighter",
+        "chunk_cost",
     ]

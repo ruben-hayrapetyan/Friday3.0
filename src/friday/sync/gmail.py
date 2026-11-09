@@ -30,11 +30,15 @@ class Mail:
 
 def message_ids(service: Any, query: str, limit: int) -> list[tuple[str, str]]:
     """(message, thread) ids, newest first."""
+    if getattr(service, "by_imap", False):  # an app password's (sync/imap_mail.py)
+        return service.message_ids(query, limit)  # type: ignore[no-any-return]
     found = service.users().messages().list(userId="me", q=query, maxResults=limit).execute()
     return [(m["id"], m.get("threadId") or m["id"]) for m in found.get("messages", [])]
 
 
 def read(service: Any, message_id: str) -> Mail:
+    if getattr(service, "by_imap", False):
+        return service.read(message_id)  # type: ignore[no-any-return]
     message = service.users().messages().get(userId="me", id=message_id, format="full").execute()
     payload = message.get("payload", {})
     headers = {h["name"].lower(): h["value"] for h in payload.get("headers", [])}
@@ -63,6 +67,8 @@ def read(service: Any, message_id: str) -> Mail:
 
 def attachment(service: Any, message_id: str, attachment_id: str) -> str:
     """The file as standard base64, as documents are stored."""
+    if getattr(service, "by_imap", False):
+        return service.attachment(message_id, attachment_id)  # type: ignore[no-any-return]
     found = service.users().messages().attachments().get(userId="me", messageId=message_id, id=attachment_id).execute()
     return base64.b64encode(base64.urlsafe_b64decode(found["data"])).decode()
 

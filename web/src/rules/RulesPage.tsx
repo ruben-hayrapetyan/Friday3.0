@@ -123,6 +123,11 @@ function NewRule() {
   const reading = preview?.reading as Reading | null | undefined
   const chosen = strength ?? ((preview?.strength as Strength) || "Prefer")
   const unread = !!text.trim() && !!preview && !reading
+  // A sentence with several stretches of the day reads as a rule for each (8 Nov), added together.
+  const all = preview && reading ? [preview, ...(preview.also ?? [])] : []
+  // Asking the AI: what Friday couldn't read, or what it read and you'd rather the AI read (8 Nov: "the deterministic
+  // interpretation might be wrong").
+  const asking = unread || !!claude
   const clear = () => (setText(""), setOverrides({}), setStrength(null), setClaude(null))
   /** What Friday couldn't read, to Claude, answered here (no dialog): its rules, ticked, for ↩ or Add to apply. */
   const askInline = async () => {
@@ -147,7 +152,7 @@ function NewRule() {
     try {
       const now = settled === typed && preview ? preview : await query("rule_read", { text, overrides: JSON.stringify(overrides) }).catch(() => null)
       if (!now) return
-      if (!now.reading) {
+      if (!now.reading || claude) {
         if (!ai || claude?.busy) return
         if (!claude?.answer?.actions.length) return await askInline() // asked again only when Claude had nothing, or not yet
         if (claude.kept.length) await applyClaude()
@@ -168,14 +173,21 @@ function NewRule() {
         <Icon name="plus" size={18} style={{ color: "var(--color-accent-300)" }} />
         <input value={text} onChange={(e) => (setText(e.target.value), setOverrides({}), setStrength(null), setClaude(null))} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="I prefer eating lunch before 1pm" aria-label="New rule" style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontSize: 16 }} />
         <button className="btn btn-primary" onClick={() => submit()} disabled={!text.trim() || (unread && !ai) || !!claude?.busy || (!!claude?.answer && !claude.kept.length && !!claude.answer.actions.length)}>
-          {unread && ai && !claude?.answer && <Icon name="sparkle" />}
-          {!unread || !ai ? "Add rule" : claude?.busy ? `Asking ${aiName}…` : claude?.answer?.actions.length ? `Add ${claude.kept.length > 1 ? `${claude.kept.length} rules` : "rule"}` : claude?.answer ? "Ask again" : `Ask ${aiName}`}
+          {asking && ai && !claude?.answer && <Icon name="sparkle" />}
+          {!asking || !ai ? (all.length > 1 ? `Add ${all.length} rules` : "Add rule") : claude?.busy ? `Asking ${aiName}…` : claude?.answer?.actions.length ? `Add ${claude.kept.length > 1 ? `${claude.kept.length} rules` : "rule"}` : claude?.answer ? "Ask again" : `Ask ${aiName}`}
         </button>
       </div>
       {text.trim() && preview ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 14px", marginLeft: 28, borderRadius: "var(--radius-md)", background: "var(--color-surface)" }}>
-          {!reading && claude ? (
-            <ClaudeRules claude={claude} onTick={(kept) => setClaude({ ...claude, kept })} />
+          {claude ? (
+            <>
+              <ClaudeRules claude={claude} onTick={(kept) => setClaude({ ...claude, kept })} />
+              {reading && !claude.busy && (
+                <button className="fr-link" onClick={() => setClaude(null)} style={{ alignSelf: "flex-start", fontSize: 12 }}>
+                  Back to Friday’s reading
+                </button>
+              )}
+            </>
           ) : !reading ? (
             // What the grammar can't read goes to Claude (COMBINED.md 37), as rules to confirm: ↩ sends it.
             <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12, color: ai ? "var(--color-neutral-300)" : "var(--fr-warn)", textWrap: "pretty" }}>
@@ -196,10 +208,22 @@ function NewRule() {
             <>
               <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-accent-300)" }}>
                 <Icon name="check-circle" size={13} />
-                Friday read this as
+                {all.length > 1 ? `Friday read this as ${all.length} rules` : "Friday read this as"}
               </span>
-              <H size={16}>{preview.sentence}</H>
-              {reading.kind === "pace" ? (
+              {all.map((r) => (
+                <H key={r.sentence} size={16}>
+                  {r.sentence}
+                </H>
+              ))}
+              {all.length > 1 ? (
+                <>
+                  <span className="fr-kicker">{preview.effect}{chosen === "Always" ? ", and never bends." : ", unless it has to."}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span className="fr-kicker">Strength</span>
+                    <Seg options={STRENGTHS} value={chosen} onPick={setStrength} onBg />
+                  </div>
+                </>
+              ) : reading.kind === "pace" ? (
                 // A pace for weekdays is a setting: it shows under Your week, with no strength to choose.
                 <span className="fr-kicker">{preview.effect}. It shows under Your week.</span>
               ) : ["deadlines", "optional", "ahead", "around", "meals_kept", "meals_learned"].includes(reading.kind) ? (
@@ -222,9 +246,23 @@ function NewRule() {
                   </div>
                 </>
               )}
-              {(preview.conflicts ?? []).map((c) => (
-                <Conflict key={c.other} conflict={c} mine={chosen} theirs={strengths.get(c.other)} onReplace={() => submit(c.other)} />
-              ))}
+              {all.length === 1 &&
+                (preview.conflicts ?? []).map((c) => (
+                  <Conflict key={c.other} conflict={c} mine={chosen} theirs={strengths.get(c.other)} onReplace={() => submit(c.other)} />
+                ))}
+              {all.length > 1 &&
+                all.flatMap((r) => r.conflicts ?? []).map((c) => (
+                  <span key={c.other} className="fr-kicker" style={{ color: c.overlap ? undefined : "var(--fr-warn)", textWrap: "pretty" }}>
+                    {c.overlap ? "Overlaps" : "Contradicts"} “{c.other_sentence}”: {c.why}.
+                  </span>
+                ))}
+              {ai && (
+                // The grammar's reading can be wrong: the AI reads it instead, shown here to check before anything changes.
+                <button className="fr-link" onClick={askInline} style={{ alignSelf: "flex-start", fontSize: 12, display: "inline-flex", gap: 6, alignItems: "center" }}>
+                  <Icon name="sparkle" size={12} />
+                  Not what you meant? Ask {aiName}
+                </button>
+              )}
             </>
           )}
         </div>

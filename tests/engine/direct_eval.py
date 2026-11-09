@@ -13,7 +13,7 @@ from friday.engine.checker import runs
 from friday.engine.problem import STAGES, EngineItem, Plan, Problem
 from friday.engine.pwl import hinge_coefficient
 from friday.engine.rules import FORBID, Rule, in_hour_window, matching_weekdays
-from friday.engine.rules.measures import window_share_and_growth
+from friday.engine.rules.measures import course_groups, window_share_and_growth
 
 Hinge = tuple[str, float, float, str, float, int]  # direction, theta, slope, unit, mult, value
 
@@ -224,6 +224,19 @@ def measure_rule_cost(p: Problem, rule: Rule, items: list[EngineItem], X: dict[s
                     1 for d in range(grid.n_days) if any(X[m.key][s] for m in members for s in grid.day_slots[d])
                 )
                 hinges.append(("above", 1, 1.0, "count", 1.0, used))
+    elif kind == "same_course":
+        groups = course_groups([it for it in items if it.allowed])
+        if len(groups) >= 2:
+            course_at = {m.key: c for c, members in groups.items() for m in members}
+            for s in range(grid.S - 1):
+                if grid.end[s] != grid.start[s + 1]:
+                    continue
+                for course, members in groups.items():
+                    others = [k for k, c in course_at.items() if c != course and s in p.items[k].allowed_set]
+                    into = [m for m in members if s + 1 in m.allowed_set]
+                    if others and into:
+                        value = sum(int(X[k][s]) for k in others) + sum(int(X[m.key][s + 1]) for m in into)
+                        hinges.append(("above", 1, 1.0, "count", 1.0, value))
     elif kind == "target_shortfall":
         for it in items:
             share, amount, weight = window_share_and_growth(p, it)

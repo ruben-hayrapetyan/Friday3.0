@@ -803,6 +803,14 @@ class AskInput(Model):
     text: str
 
 
+class GmailAppInput(Model):
+    """A Gmail address and its app password (16 letters, spaces allowed), kept in secrets.toml, never sent back;
+    an empty password forgets the address."""
+
+    address: str = Field(max_length=320)
+    password: str = Field("", max_length=100)
+
+
 class AiKeyInput(Model):
     """An AI service's key, kept in secrets.toml (never in settings, never sent back); "" forgets it."""
 

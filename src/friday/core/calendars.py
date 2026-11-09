@@ -40,6 +40,32 @@ class CategorySettings(Model):
     filter: EventFilter | None = None
 
 
+# What a new install starts with, and anyone whose list was empty (8 Nov: "no default categories so all of their
+# events just get added as grey"; your choice, a starter set). The first that finds a title wins, so exams come before
+# classes ("MATH 1920 Prelim 2") and exercise before work ("work out"). Each its own soft paint, none of the ones
+# work wears (schoolwork's Verdigris, meals' Ochre) nor Payne's Grey, too near an unmarked event's slate; red only for
+# what's due. Birthdays are Social and appointments Meetings: seven paints are left, not nine.
+STARTER_CATEGORIES = (
+    Category(name="Exam", slug="exam", color="red",
+             pattern=r"\b(exam|prelim|midterm|quiz|final|deadline|due)\b"),
+    Category(name="Class", slug="class", color="sapgreen",
+             pattern=r"\b(lecture|lec|class|seminar|discussion|disc|recitation|lab|section|tutorial)\b|"
+                     r"\b[a-z]{2,5} ?\d{4}\b"),
+    Category(name="Exercise", slug="exercise", color="orange",
+             pattern=r"\b(gym|workout|work out|run|running|yoga|swim|swimming|lift|lifting|practice|training|hike|"
+                     r"climbing|tennis|soccer|basketball|pilates|spin)\b"),
+    Category(name="Work", slug="work", color="purple", pattern=r"\b(shift|work|job|internship)\b"),
+    Category(name="Meeting", slug="meeting", color="blue",
+             pattern=r"\b(meeting|meet with|one-on-one|1:1|sync|standup|stand-up|interview|call with|office hours|"
+                     r"advising|appointment|appt|doctor|dentist|therapy|check-?up|haircut)\b"),
+    Category(name="Travel", slug="travel", color="violet",
+             pattern=r"\b(flight|fly|train|bus|drive to|travel|trip|airport|depart|departure)\b"),
+    Category(name="Social", slug="social", color="pink",
+             pattern=r"\b(birthday|bday|party|dinner with|lunch with|coffee with|hangout|hang out|drinks|game night|"
+                     r"movie|concert|wedding|date night)\b"),
+)  # fmt: skip
+
+
 class BusySettings(Model):
     count_filtered: bool = False  # filtered events (office hours) block time after all
     count_free: bool = False  # events marked free block time after all

@@ -463,6 +463,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/gmail_app_set": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** gmail_app_set */
+        post: operations["gmail_app_set"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/google_client_save": {
         parameters: {
             query?: never;
@@ -1475,7 +1492,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add a rule in your words; Friday plans with it from now. */
+        /** Add a rule in your words; Friday plans with it from now. A sentence that says several stretches of the day */
         post: operations["rule_add"];
         delete?: never;
         options?: never;
@@ -2549,6 +2566,23 @@ export interface paths {
         };
         /** Items that fit a gap (until the next block when no length is given), safe, best first. */
         get: operations["fits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/gmail_app_accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The addresses read with an app password; never their passwords. */
+        get: operations["gmail_app_accounts"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4890,6 +4924,41 @@ export interface components {
             start: string;
             /** End */
             end: string;
+        };
+        /**
+         * GmailAppInput
+         * @description A Gmail address and its app password (16 letters, spaces allowed), kept in secrets.toml, never sent back;
+         *     an empty password forgets the address.
+         */
+        GmailAppInput: {
+            /** Address */
+            address: string;
+            /**
+             * Password
+             * @default
+             */
+            password?: string;
+        };
+        /** GmailAppSetResult */
+        GmailAppSetResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** GoogleAccountInput */
         GoogleAccountInput: {
@@ -7936,6 +8005,11 @@ export interface components {
              * @default []
              */
             conflicts?: components["schemas"]["RuleConflict"][];
+            /**
+             * Also
+             * @default []
+             */
+            also?: components["schemas"]["RuleReadOut"][];
         };
         /** RuleRef */
         RuleRef: {
@@ -11247,6 +11321,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventsToCalendarResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    gmail_app_set: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GmailAppInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GmailAppSetResult"];
                 };
             };
             /** @description Validation Error */
@@ -15615,6 +15726,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    gmail_app_accounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
                 };
             };
         };

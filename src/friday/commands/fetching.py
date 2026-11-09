@@ -24,7 +24,7 @@ from friday.core.time import format_utc, parse_utc, planning_date
 from friday.ingest import extract, ics, llm
 from friday.ingest.ics import Found
 from friday.planner.store import area_names, kv_get, kv_set, load_settings
-from friday.sync import gcal, google_auth
+from friday.sync import gcal, google_auth, imap_mail
 
 Fetch = Callable[[str], str]
 FAILURES_FOR_BANNER = 3
@@ -70,6 +70,14 @@ def sync(
         mail_apis = google_auth.per_account(mail, folder, google_auth.gmail, (google_auth.GMAIL_SCOPE,))
         for account, api in mail_apis.items():
             read_mail(conn, settings, now_utc, user_id, api, account)
+        # Each Gmail read with an app password (8 Nov): no Google Cloud project, so anyone's.
+        for address, password in (imap_mail.accounts() if mail is None else {}).items():
+            if address not in mail_apis:
+                service = imap_mail.ImapService(address, password)
+                try:
+                    read_mail(conn, settings, now_utc, user_id, lambda s=service: s, address)
+                finally:
+                    service.close()
     made += extract_pending(conn, settings, now_utc, user_id, client)
     # What waits is checked again each pass, read or not: something you added since may be what it proposes.
     set_aside_waiting(conn, settings, user_id, now_utc, write_raw(conn))

@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import tomli_w
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator, model_validator
 
-from friday.core.calendars import BusySettings, CalendarLook, CategorySettings, check_colors
+from friday.core.calendars import STARTER_CATEGORIES, BusySettings, CalendarLook, CategorySettings, check_colors
 from friday.core.integrations import INTEGRATION_DEFAULTS, INTEGRATION_TYPES
 from friday.core.pace import DEFAULT_PACES, Dials
 from friday.core.presets import DEFAULT_PRESETS, Preset
@@ -225,6 +225,8 @@ REFERENCE_RULES = (
     rule("buffer", "buffer", 3, minutes="0m", by_area={}, by_preset={}),
     rule("spread", "spread", 3),
     rule("cluster", "cluster", 3, per_day=2),
+    # One course for a stretch (8 Nov: "math for the entire time not 3 different things"), a count per switch.
+    rule("same_course", "same_course", 2),
     rule("target_shortfall", "target_shortfall", curve=[[0.4, 8], [1.0, 3]]),
     rule("elastic_shortfall", "elastic_shortfall", steep=20, gentle=2),
     # A meal below its minimum is a skipped meal: wellbeing, which a preference lost to every evening kept free. Its
@@ -520,7 +522,7 @@ DEFAULTS: dict[str, Any] = {
     "server": ServerSettings(),
     "updates": UpdateSettings(),
     "notes": (),
-    "categories": CategorySettings(),
+    "categories": CategorySettings(categories=STARTER_CATEGORIES),
     "busy": BusySettings(),
     "pointless_late": PointlessLate(),
     "fading_late": FadingLate(),

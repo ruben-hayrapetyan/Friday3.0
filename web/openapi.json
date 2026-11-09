@@ -1943,6 +1943,77 @@
     }
    }
   },
+  "/api/c/gmail_app_set": {
+   "post": {
+    "summary": "gmail_app_set",
+    "operationId": "gmail_app_set",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GmailAppInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/GmailAppSetResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/google_client_save": {
    "post": {
     "summary": "Keep the OAuth client JSON you downloaded from Google Cloud (a Desktop app's) where `google.client_file`",
@@ -6246,7 +6317,7 @@
   },
   "/api/c/rule_add": {
    "post": {
-    "summary": "Add a rule in your words; Friday plans with it from now.",
+    "summary": "Add a rule in your words; Friday plans with it from now. A sentence that says several stretches of the day",
     "operationId": "rule_add",
     "parameters": [
      {
@@ -10214,6 +10285,28 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/gmail_app_accounts": {
+   "get": {
+    "summary": "The addresses read with an app password; never their passwords.",
+    "operationId": "gmail_app_accounts",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "type": "string"
+         },
+         "type": "array",
+         "title": "Response Gmail App Accounts"
         }
        }
       }
@@ -16573,6 +16666,98 @@
      "end"
     ],
     "title": "FitTime"
+   },
+   "GmailAppInput": {
+    "properties": {
+     "address": {
+      "type": "string",
+      "maxLength": 320,
+      "title": "Address"
+     },
+     "password": {
+      "type": "string",
+      "maxLength": 100,
+      "title": "Password",
+      "default": ""
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "address"
+    ],
+    "title": "GmailAppInput",
+    "description": "A Gmail address and its app password (16 letters, spaces allowed), kept in secrets.toml, never sent back;\nan empty password forgets the address."
+   },
+   "GmailAppSetResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "GmailAppSetResult"
    },
    "GoogleAccountInput": {
     "properties": {
@@ -25567,6 +25752,14 @@
       },
       "type": "array",
       "title": "Conflicts",
+      "default": []
+     },
+     "also": {
+      "items": {
+       "$ref": "#/components/schemas/RuleReadOut"
+      },
+      "type": "array",
+      "title": "Also",
       "default": []
      }
     },

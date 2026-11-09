@@ -3,7 +3,7 @@
 // sets are read-only here and say so.
 
 import { useShell } from "@/shell/ShellContext"
-import { type ReactNode, useEffect } from "react"
+import { type ReactNode, useEffect, useState } from "react"
 import { Navigate, NavLink, useNavigate, useParams } from "react-router"
 import { H, Icon } from "@/components/fr/controls"
 import { useStatus } from "@/hooks/queries"
@@ -69,10 +69,7 @@ export function SettingsPage() {
         <span className="fr-h fr-title">Settings</span>
         <span className="fr-head-note" style={{ color: "var(--color-neutral-500)" }}>Changes apply right away</span>
         <div style={{ flex: 1 }} />
-        <button className="btn btn-ghost" onClick={() => setDialog("setup")} title="Your day, load, free time and calendars, a question at a time">
-          <Icon name="sliders-horizontal" size={15} />
-          <span className="fr-head-note">Answer Setup’s questions again</span>
-        </button>
+        <SetupAnswers onAll={() => setDialog("setup")} />
         <button className="btn btn-secondary" onClick={() => navigate("/")}>
           <Icon name="arrow-left" size={15} />
           <span className="fr-head-note">Back to plan</span>
@@ -152,5 +149,52 @@ export function Field({ name, note, children }: { name: string; note?: string; c
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>{children}</div>
     </div>
+  )
+}
+
+// Setup's questions, each one to change on its own (8 Nov: redoing the whole setup to change one answer "is a lot of
+// effort").
+const ANSWERS: [string, string][] = [
+  ["wake", "When you get up"],
+  ["bed", "When you go to bed"],
+  ["work", "Work in a normal day"],
+  ["heavy", "Work on a heavy day"],
+  ["focus", "Longest stretch of work"],
+  ["deadline", "How early work is done"],
+  ["evening", "Free evenings"],
+  ["weekend", "Free weekends"],
+  ["brief", "The morning brief"],
+  ["ai", "The AI Friday reads with"],
+  ["bring", "Calendars, links and syllabi"],
+]
+
+/** Setup's questions again: all of them, or one, changed alone and saved. */
+function SetupAnswers({ onAll }: { onAll: () => void }) {
+  const { openSetup } = useShell()
+  const [open, setOpen] = useState(false)
+  return (
+    <span style={{ position: "relative" }}>
+      <button className="btn btn-ghost" onClick={() => setOpen(!open)} aria-expanded={open} title="Your day, load, free time and calendars">
+        <Icon name="sliders-horizontal" size={15} />
+        <span className="fr-head-note">Change a Setup answer</span>
+        <Icon name="caret-down" size={12} />
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 20 }} />
+          <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 21, display: "flex", flexDirection: "column", minWidth: 240, padding: 6, borderRadius: "var(--radius-md)", background: "var(--color-surface)", boxShadow: "var(--shadow-lg, 0 8px 24px rgb(0 0 0 / 18%))" }}>
+            {ANSWERS.map(([step, label]) => (
+              <button key={step} role="menuitem" className="fr-plain fr-hover" onClick={() => (setOpen(false), openSetup(step))} style={{ textAlign: "left", padding: "7px 10px", borderRadius: "var(--radius-sm)" }}>
+                {label}
+              </button>
+            ))}
+            <div style={{ height: 1, margin: "4px 6px", background: "color-mix(in srgb, var(--color-text) 8%, transparent)" }} />
+            <button role="menuitem" className="fr-plain fr-hover" onClick={() => (setOpen(false), onAll())} style={{ textAlign: "left", padding: "7px 10px", borderRadius: "var(--radius-sm)", color: "var(--color-neutral-300)" }}>
+              All of Setup’s questions, in order
+            </button>
+          </div>
+        </>
+      )}
+    </span>
   )
 }

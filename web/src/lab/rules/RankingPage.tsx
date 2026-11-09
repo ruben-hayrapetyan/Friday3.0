@@ -17,6 +17,7 @@ const CONCERNS: Concern[] = [
   { id: "even", title: "Work spread evenly before it’s due", rules: ["even_load"] },
   { id: "early", title: "Finishing a day early", rules: ["finish_early"] },
   { id: "long", title: "Fewer, longer sessions", rules: ["chunk_cost"] },
+  { id: "course", title: "One course at a time", rules: ["same_course"] },
   { id: "steady", title: "A plan that doesn’t keep changing", rules: ["minimize_changes"] },
 ]
 

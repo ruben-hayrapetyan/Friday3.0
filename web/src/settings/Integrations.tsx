@@ -15,7 +15,8 @@ import { when } from "@/lib/format"
 import { addDays } from "@/lib/time"
 import { useInbox } from "@/inbox/InboxPage"
 import { useShell } from "@/shell/ShellContext"
-import { Calendars, useCalendars } from "./Calendars"
+import { Accounts, ACCOUNTS, inMacApp, PRIVACY } from "./MacAccounts"
+import { Calendars, useCalendars, useMacCalendars } from "./Calendars"
 import { AccountList, signInAgain } from "./GoogleAccounts"
 import { ConnectGoogle, GmailConnect, GmailSwitch, offline, readable, useGoogleAccess, wantsSignIn } from "./GoogleConnect"
 import { MailLog } from "./MailLog"
@@ -27,14 +28,15 @@ export function Integrations() {
     <>
       <SectionHead title="Integrations" note="Bring in fixed events and deadlines. Anything Friday reads from mail or files goes to your Inbox first." />
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <MacCalendars />
+        <GmailApp />
         <Ai />
-        <Google />
-        <Gmail />
         <AskClaude />
         <Feeds />
         <Card icon="file-pdf" title="Syllabus upload" note="One syllabus (a PDF, or a page saved from Canvas or a course site) becomes class times, readings, assignments and exam prep, reviewed together in your Inbox." right={<Upload />}>
           <Documents />
         </Card>
+        <GoogleDirect />
       </div>
       <div className="fr-well" style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 12, padding: "14px 18px", borderRadius: "var(--radius-lg)", boxShadow: "none" }}>
         <Icon name="download-simple" size={18} />
@@ -50,6 +52,75 @@ export function Integrations() {
       <p className="fr-kicker" style={{ paddingTop: 18 }}>
         Tokens for assistants and scripts are under <a href="#/settings/tokens">Tokens</a>.
       </p>
+    </>
+  )
+}
+
+/** The calendars on this Mac (8 Nov: users "can't connect google", and Setup was the only place this was): every
+ * calendar the Mac's Calendar app has, Google's too once its account is added to the Mac, with no sign-in in Friday. */
+function MacCalendars() {
+  const navigate = useNavigate()
+  const mac = useMacCalendars().data ?? []
+  const onMac = inMacApp() || mac.length > 0
+  const reading = mac.filter((c) => c.on)
+  if (!onMac)
+    return (
+      <Card icon="calendar-dots" title="Your calendars" note="In Friday's Mac app, Friday reads every calendar on your Mac: iCloud, Google, Outlook, your school's, with nothing to connect. In a browser, paste a calendar's private link under Course feeds below.">
+        <a className="fr-link" href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>
+          Find your Google calendar's private link (“Secret address in iCal format”)
+        </a>
+      </Card>
+    )
+  return (
+    <Card icon="calendar-dots" title="Calendars on this Mac" status={reading.length ? [`Reading ${reading.length}`, "var(--color-accent-300)"] : ["None yet", "var(--fr-warn)"]} note="Friday reads every calendar the Mac's Calendar app has. To bring in Google, iCloud or Outlook, add that account to the Mac: no sign-in in Friday.">
+      {mac.length > 0 && <Accounts calendars={mac} />}
+      <span style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 12 }}>
+        <a className="fr-link" href={ACCOUNTS}>
+          Add an account to this Mac…
+        </a>
+        <button className="fr-link" onClick={() => navigate("/settings/calendars")} style={{ fontSize: 12 }}>
+          Choose which calendars count
+        </button>
+      </span>
+      <span className="fr-kicker" style={{ textWrap: "pretty" }}>
+        In System Settings choose Google (or another), sign in, and keep Calendars on: its calendars appear here within a few seconds.
+        {mac.length === 0 && (
+          <>
+            {" "}
+            Nothing here? Friday needs your permission to see them:{" "}
+            <a className="fr-link" href={PRIVACY}>
+              Privacy & Security → Calendars
+            </a>
+            .
+          </>
+        )}
+      </span>
+    </Card>
+  )
+}
+
+/** Google's own connection and Gmail, under More when the Mac's calendars are the way in: open while either is in use. */
+function GoogleDirect() {
+  const access = useGoogleAccess()
+  const gmail = usePart<{ enabled: boolean }>("gmail")
+  const mac = useMacCalendars().data ?? []
+  const used = !!access?.calendar || !!gmail?.enabled || (!inMacApp() && mac.length === 0)
+  const [open, setOpen] = useState(used)
+  useEffect(() => {
+    if (used) setOpen(true)
+  }, [used])
+  return (
+    <>
+      <button className="fr-plain fr-hover" onClick={() => setOpen(!open)} aria-expanded={open} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-md)", alignSelf: "flex-start", color: "var(--color-neutral-300)" }}>
+        <Icon name={open ? "caret-down" : "caret-right"} size={13} />
+        More: Gmail, and connecting to Google directly
+      </button>
+      {open && (
+        <>
+          <Google />
+          <Gmail />
+        </>
+      )}
     </>
   )
 }
@@ -166,26 +237,35 @@ function Google() {
 }
 
 function Gmail() {
-  const status = useStatus().data
-  const gmail = usePart<{ enabled: boolean; query: string; sender_domains: string[]; keywords: string[] }>("gmail")
-  const owned = status?.config_keys ?? []
-  const save = useCommand("settings_set", { label: () => "Saved" })
+  const gmail = usePart<{ enabled: boolean }>("gmail")
   const access = useGoogleAccess()
   const granted = !!access?.gmail
-  const { today } = useShell()
-  const read = (useInbox().data?.sources ?? []).filter((s) => s.kind === "gmail" && s.enabled) // one for each account
   const allowed = (access?.accounts ?? []).filter((a) => a.gmail)
   const expired = !access?.justNow && allowed.some((a) => wantsSignIn(a.mail_error))
   const trouble = allowed.some((a) => a.mail_error && !offline(a.mail_error))
   const away = allowed.some((a) => offline(a.mail_error))
-  const last = read.map((s) => s.last_sync).filter(Boolean).sort().at(-1)
-  const sync = useCommand("sync_now", { label: (o) => o.result.message ?? "Syncing" })
   const state: [string, string] = !gmail?.enabled ? ["Off", "var(--color-neutral-500)"] : !granted ? ["Needs Google's OK", "var(--fr-warn)"] : expired ? ["Connect again", "var(--fr-warn)"] : trouble ? ["Trouble reading", "var(--fr-due)"] : away ? ["Offline", "var(--fr-warn)"] : ["Reading", "var(--color-accent-300)"]
   return (
-    <Card icon="envelope-simple" title="Gmail" status={state} note="Friday reads new mail and suggests assignments, due dates and events. It never sends or deletes.">
+    <Card icon="envelope-simple" title="Gmail through Google's connection" status={state} note="Friday reads new mail and suggests assignments, due dates and events. It never sends or deletes. Only for accounts Google lets in: an app password (above) works for any Gmail.">
       <GmailSwitch />
       {gmail?.enabled && <GmailConnect done="Friday reads its new mail within the minute." />}
-      {gmail?.enabled && granted && (
+      {gmail?.enabled && granted && <MailFilters />}
+    </Card>
+  )
+}
+
+/** Which mail the AI reads, and what it read lately, however the mail comes in. */
+function MailFilters() {
+  const status = useStatus().data
+  const gmail = usePart<{ enabled: boolean; query: string; sender_domains: string[]; keywords: string[] }>("gmail")
+  const owned = status?.config_keys ?? []
+  const save = useCommand("settings_set", { label: () => "Saved" })
+  const { today } = useShell()
+  const read = (useInbox().data?.sources ?? []).filter((s) => s.kind === "gmail" && s.enabled) // one for each account
+  const last = read.map((s) => s.last_sync).filter(Boolean).sort().at(-1)
+  const sync = useCommand("sync_now", { label: (o) => o.result.message ?? "Syncing" })
+  if (!gmail) return null
+  return (
         <>
           <span className="fr-kicker">Mail it looks at</span>
           <span style={{ fontSize: 12 }}>
@@ -205,7 +285,60 @@ function Gmail() {
             </button>
           </div>
         </>
-      )}
+  )
+}
+
+/** Gmail with an app password (8 Nov: users "can add their own gmails - right now it just errors out for them"): any
+ * Gmail with 2-Step Verification on, no Google Cloud project. The password goes to secrets.toml and never comes back. */
+function GmailApp() {
+  const accounts = useQuery({ queryKey: ["gmail_app_accounts"], queryFn: () => query("gmail_app_accounts") })
+  const gmail = usePart<{ enabled: boolean }>("gmail")
+  const sources = (useInbox().data?.sources ?? []).filter((s) => s.kind === "gmail")
+  const connect = useCommand("gmail_app_set", { label: (o) => o.result.message ?? "Connected" })
+  const [address, setAddress] = useState("")
+  const [password, setPassword] = useState("")
+  const [busy, setBusy] = useState(false)
+  const list = accounts.data ?? []
+  // its source is named with its address once there are several, else it's the one "Gmail"
+  const errorOf = (a: string) => (sources.find((s) => s.name.includes(a)) ?? (sources.length === 1 ? sources[0] : undefined))?.last_error
+  const trouble = list.some((a) => errorOf(a))
+  const state: [string, string] = !list.length ? ["Off", "var(--color-neutral-500)"] : !gmail?.enabled ? ["Paused", "var(--fr-warn)"] : trouble ? ["Trouble reading", "var(--fr-due)"] : ["Reading", "var(--color-accent-300)"]
+  const add = async () => {
+    if (busy || !address.trim() || !password.trim()) return
+    setBusy(true)
+    const done = await connect({ address, password })
+    setBusy(false)
+    if (done) (setPassword(""), setAddress(""), accounts.refetch())
+  }
+  return (
+    <Card icon="envelope-simple" title="Gmail" status={state} note="Friday reads new mail and suggests assignments, due dates and events to your Inbox. It never sends, moves or deletes, and nothing is marked read.">
+      {list.map((a) => (
+        <div key={a} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Icon name="google-logo" size={14} />
+          <span style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <span>{a}</span>
+            {errorOf(a) && <span className="fr-kicker" style={{ color: "var(--fr-due)", textWrap: "pretty" }}>{errorOf(a)}</span>}
+          </span>
+          <button className="btn btn-ghost" onClick={async () => (await connect({ address: a, password: "" })) && accounts.refetch()} style={{ fontSize: 12, color: "var(--fr-due)" }}>
+            Remove
+          </button>
+        </div>
+      ))}
+      <span className="fr-kicker" style={{ textWrap: "pretty" }}>
+        {list.length ? "Another Gmail: " : ""}Make an app password at{" "}
+        <a className="fr-link" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">
+          myaccount.google.com/apppasswords
+        </a>{" "}
+        (name it Friday; it needs 2-Step Verification on), then paste its 16 letters here. Your usual password won't work, and the app password can be revoked there any time.
+      </span>
+      <form onSubmit={(e) => (e.preventDefault(), add())} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <input className="input" type="email" autoComplete="off" placeholder="you@gmail.com" value={address} onChange={(e) => setAddress(e.target.value)} aria-label="Gmail address" style={{ width: 220 }} />
+        <input className="input" type="password" autoComplete="new-password" placeholder="App password" value={password} onChange={(e) => setPassword(e.target.value)} aria-label="App password" style={{ width: 200 }} />
+        <button className="btn btn-primary" type="submit" disabled={busy || !address.trim() || !password.trim()}>
+          {busy ? "Checking with Gmail…" : "Connect"}
+        </button>
+      </form>
+      {list.length > 0 && gmail?.enabled && <MailFilters />}
     </Card>
   )
 }

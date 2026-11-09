@@ -121,7 +121,7 @@ export function CalendarsSection() {
       <AroundEvents kinds={settings.event_kinds as Record<string, Gap>} onSave={(value) => save({ key: "event_kinds", value })} />
       <Field name="Your calendars" note="For each: plan around its events, just show them (dashed, and work may go over them), or hide it until you switch it on under Show (⌥⌘1–9). And a pigment. Calendars of room bookings start out just shown.">
         {reading.length === 0 ? (
-          <span className="fr-kicker">Calendars list here once Google is connected (Integrations), and the Mac app's once it runs.</span>
+          <span className="fr-kicker">Calendars list here once the Mac app sends the Mac's (Google's too, once your Google account is added to the Mac: Settings → Integrations), or once Google is connected directly.</span>
         ) : (
           groups.map(([label, list]) => (
             <Fragment key={label ?? "all"}>

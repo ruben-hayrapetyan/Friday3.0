@@ -16,6 +16,7 @@ from friday.commands import (  # noqa: F401
     exams,
     explain,
     fitting,
+    gmail_app,
     horizon,
     importing,
     inbox,

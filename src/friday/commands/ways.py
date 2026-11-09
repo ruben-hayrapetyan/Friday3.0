@@ -73,6 +73,7 @@ PHRASES = {
     "even_load": ("work spread more evenly", "work bunched up"),
     "energy": ("more work in your best hours", "less work in your best hours"),
     "chunk_cost": ("fewer, longer sittings", "more, shorter sittings"),
+    "same_course": ("fewer switches between courses", "more switches between courses"),
     "buffer": ("more room between blocks", "less room between blocks"),
     "spread": ("spread-out work spread out more", "spread-out work bunched"),
     "cluster": ("clustered work on fewer days", "clustered work on more days"),

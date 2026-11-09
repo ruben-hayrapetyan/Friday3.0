@@ -244,6 +244,45 @@ class BatchByDay(Rule):
                 yield Measure(f"{self.name}:{group}", days_used, "count", (Hinge("above", 1, 1.0),))
 
 
+def course_groups(items: list[Any]) -> dict[str, list[Any]]:
+    """Work grouped by its subject (`EngineItem.course`, read from titles by the planner: core/guess.py `subjects`).
+    Work without one (laundry, a meal) isn't in any group."""
+    out: dict[str, list[Any]] = {}
+    for item in items:
+        if item.course:
+            out.setdefault(item.course, []).append(item)
+    return out
+
+
+@rule_type("same_course")
+class SameCourse(Rule):
+    """One course for a stretch of work (8 Nov, the 5:15pm screenshot: "i would wanna do math for the entire time not
+    3 different things"): each time the work goes straight on from one course to another costs one count. A slot of
+    course c right after a slot of another course: (other course's work at s) + (c's work at s + 1) above 1. A free
+    slot or an event between them isn't going straight on. A preference, so it never makes work late."""
+
+    def measures(self, ctx):
+        grid = ctx.grid
+        groups = course_groups([i for i in self.scoped_items() if i.allowed])
+        if len(groups) < 2:
+            return
+        course_at: dict[str, str] = {m.key: c for c, members in groups.items() for m in members}
+        for s in range(grid.S - 1):
+            if grid.end[s] != grid.start[s + 1]:
+                continue
+            here = [k for k, c in course_at.items() if s in ctx.problem.items[k].allowed_set]
+            if not here:
+                continue
+            for course, members in sorted(groups.items()):
+                into = Lin({("x", m.key, s + 1): 1 for m in members if s + 1 in m.allowed_set})
+                if into.is_const():
+                    continue
+                before = [k for k in here if course_at[k] != course]
+                if before:
+                    expr = Lin({**{("x", k, s): 1 for k in before}, **into.terms})
+                    yield Measure(f"{self.name}:{course}@{s}", expr, "count", (Hinge("above", 1, 1.0),))
+
+
 def window_share_and_growth(problem: Any, item: Any) -> tuple[float, float, float]:
     """(share of the target's window inside the horizon, mean amount factor, mean weight factor) over its days."""
     grid = problem.grid

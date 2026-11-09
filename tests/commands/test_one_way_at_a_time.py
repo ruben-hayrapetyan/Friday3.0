@@ -34,7 +34,10 @@ def test_a_seeds_way_is_the_one_both_at_once_give(app: App) -> None:
 
 
 def test_two_seeds_give_two_ways_told_apart_by_their_signature(app: App) -> None:
-    first, second = app.do("other_way", seed=1)["way"], app.do("other_way", seed=2)["way"]
+    # seeds that give a way, not your plan again (which seeds do moves with the rules there are)
+    found = [w for seed in range(1, 9) if (w := app.do("other_way", seed=seed)["way"])]
+    assert len(found) >= 2
+    first, second = found[:2]
     assert (first["signature"] == second["signature"]) == (keys(first) == keys(second))
 
 

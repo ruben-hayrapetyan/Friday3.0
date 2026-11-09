@@ -4,7 +4,7 @@ and the colour Chroma showed each event in.
 The server runs on your Mac (COMBINED.md 2), so it reads their files where they are. Tasks keep their title, due
 date and list (short or long term); a reading is a Reading, an assignment an Assignment and an email a quick Errand,
 the rest are read by their titles like anything you add. Each task is brought in once, however often you run it;
-categories only when you have none yet. It is one command, so one Undo takes it all back.
+categories only when you have none yet, or only the starter set. It is one command, so one Undo takes it all back.
 """
 
 import json
@@ -16,7 +16,7 @@ from friday.api.commands import AddInput, Changed, ChromaColorsInput, ImportPers
 from friday.commands.items import add
 from friday.commands.registry import Ctx, command
 from friday.commands.settings import settings_set
-from friday.core.calendars import event_key
+from friday.core.calendars import STARTER_CATEGORIES, event_key
 from friday.core.items import PIGMENTS, FieldError
 from friday.core.time import format_local, to_local
 from friday.planner.store import kv_get
@@ -48,7 +48,8 @@ def import_personal(ctx: Ctx, inp: ImportPersonalInput) -> Changed:
             added += 1
         ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "imported_todos"}, {"value": json.dumps(sorted(seen))})
     rules = 0
-    if categories_file.exists() and not ctx.settings["categories"].categories:
+    # The starter set (a new install's) gives way to Chroma's as none did; a set you've changed is yours and stays.
+    if categories_file.exists() and ctx.settings["categories"].categories in ((), STARTER_CATEGORIES):
         rules = import_categories(ctx, json.loads(categories_file.read_text()))
     parts = [f"{added} task{'' if added == 1 else 's'} from Todo List"] + (
         [f"{rules} categories from Chroma"] if rules else []

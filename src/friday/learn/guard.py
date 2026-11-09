@@ -11,7 +11,11 @@ as written, it's weighed as set; let go, it's weighed as learned."""
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-STATED_TYPES = frozenset({"late_night", "finish_early", "sleep_min"})  # set by your answers and settings
+# Set by your answers and settings, and (8 Nov, your choice) the built-in rules that shape your sittings and meals:
+# learning cut "fewer, longer sessions" and "don't skip meals" to 4% from 44 drags, and the plan took turns between
+# two tasks every quarter hour.
+STATED_TYPES = frozenset({"late_night", "finish_early", "sleep_min", "chunk_cost", "same_course", "elastic_minimum",
+                          "elastic_shortfall", "spread"})  # fmt: skip
 BAND = (0.5, 2.0)  # how far learning may move what you said, until you decide
 HELD = "rules_held"  # kv: rules you said to keep as written
 FREED = "rules_learned_free"  # kv: rules you let Friday weigh as learned

@@ -62,6 +62,8 @@ interface Shell {
   setNavOpen: (open: boolean) => void
   tour: boolean // the tour of Friday is showing
   setTour: (on: boolean) => void
+  setupStep: string | null // Setup opened at one question, to change that answer alone (8 Nov); null for all of it
+  openSetup: (step?: string) => void
 }
 
 const Ctx = createContext<Shell | null>(null)
@@ -84,7 +86,7 @@ export function ShellProvider({ today, children }: { today: string; children: Re
   const [pop, setPop] = useState<Pop>(null)
   const [selected, select] = useState<Block | null>(null)
   const [drawer, setDrawer] = useState(false)
-  const [dialog, setDialog] = useState<Dialog>(null)
+  const [dialog, showDialog] = useState<Dialog>(null)
   const [place, setPlace] = useState<CalendarPlace>({ view: 7, first: null })
   const [agendaDay, setAgendaDay] = useState<string | null>(null)
   const [event, setEvent] = useState<EventDraft | null>(null)
@@ -92,7 +94,7 @@ export function ShellProvider({ today, children }: { today: string; children: Re
   const [ask, setAsk] = useState<{ text: string; purpose: "anything" | "rule"; now?: boolean } | null>(null)
   const askClaude = useCallback((text = "", purpose: "anything" | "rule" = "anything", now = false) => {
     setAsk({ text, purpose, now })
-    setDialog("ask")
+    showDialog("ask")
   }, [])
   const [drawerWidth, setWidth] = useState(loadWidth)
   const setDrawerWidth = useCallback((width: number) => {
@@ -108,10 +110,20 @@ export function ShellProvider({ today, children }: { today: string; children: Re
   const layout = useMemo(() => layoutFor(width), [width])
   const [navOpen, setNavOpen] = useState(false)
   const [tour, setTour] = useState(false)
+  const [setupStep, setSetupStep] = useState<string | null>(null)
+  const openSetup = useCallback((step?: string) => {
+    setSetupStep(step ?? null)
+    showDialog("setup")
+  }, [])
+  // Setup opened any other way is all of it
+  const setDialog = useCallback((next: Dialog) => {
+    if (next === "setup") setSetupStep(null)
+    showDialog(next)
+  }, [])
   const over = drawerOver(layout, drawerWidth)
   const value = useMemo(
-    () => ({ today, pop, setPop, selected, select, drawer, setDrawer, dialog, setDialog, place, setPlace, agendaDay, setAgendaDay, event, setEvent, drawerWidth, setDrawerWidth, way, setWay, ask, askClaude, layout, drawerOver: over, navOpen, setNavOpen, tour, setTour }),
-    [today, pop, selected, drawer, dialog, place, agendaDay, event, drawerWidth, setDrawerWidth, way, ask, askClaude, layout, over, navOpen, tour],
+    () => ({ today, pop, setPop, selected, select, drawer, setDrawer, dialog, setDialog, place, setPlace, agendaDay, setAgendaDay, event, setEvent, drawerWidth, setDrawerWidth, way, setWay, ask, askClaude, layout, drawerOver: over, navOpen, setNavOpen, tour, setTour, setupStep, openSetup }),
+    [today, pop, selected, drawer, dialog, place, agendaDay, event, drawerWidth, setDrawerWidth, way, ask, askClaude, layout, over, navOpen, tour, setupStep, openSetup],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
