@@ -33,6 +33,12 @@ class StaleUndo(ValueError):
         self.table, self.key, self.by = table, key, by
 
 
+class WorkSince(StaleUndo):
+    def __init__(self, table: str, key: Key, by: str | None):
+        super().__init__(table, key, by)
+        self.args = ("you've worked on it since (that time would go too): drop it instead, or mark it done",)
+
+
 def key_columns(table: str) -> tuple[str, ...]:
     return TABLE_KEYS.get(table, ("id",))
 
@@ -99,6 +105,16 @@ class Writer:
         for change in final.values():
             if not passing(change):
                 self.check_unchanged(change, later_writer)
+        # Taking back an item's adding would take the work timed on it since with it, which the database removes
+        # along with the item and no undo gives back (audit, 8 Nov).
+        made = {c["key"].get("id") for c in changes if c["op"] == "insert" and c["table"] == "items"}
+        mine = {json.dumps(c["key"], sort_keys=True) for c in changes if c["table"] in ("progress", "timer")}
+        for table in ("progress", "timer"):
+            for item_id in made:
+                for row in self.conn.execute(f"SELECT * FROM {table} WHERE item_id = ?", [item_id]).fetchall():
+                    key = {k: row[k] for k in key_columns(table)}
+                    if json.dumps(key, sort_keys=True) not in mine:
+                        raise WorkSince(table, key, None)
         for change in reversed(changes):
             table, key = change["table"], change["key"]
             if change["op"] == "insert":

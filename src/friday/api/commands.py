@@ -440,7 +440,7 @@ class DayOverrideInput(Model):
     bedtime: str | None = None
     wake: str | None = None
     margin_min: int | None = None
-    cap_hours: float | None = None
+    cap_hours: float | None = Field(None, ge=0, le=24)  # a day's most work, 0 to 24 h (audit: -3 was taken)
 
 
 class ReplanOutput(Model):

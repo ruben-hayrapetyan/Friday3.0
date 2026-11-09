@@ -571,7 +571,12 @@ def cap_hours_on(settings: Mapping[str, Any], overrides: Mapping[date, Mapping[s
 
 
 def day_caps(inp: BuildInput, grid: Grid) -> list[int]:
-    return [round(cap_hours_on(inp.settings, inp.day_overrides, d) * 60 / UNIT_MIN) for d in grid.day_date]
+    """Each day's most work; today's less what you've already done today (audit, 8 Nov: 3 h timed on a 3 h day and
+    another 3 h planned after)."""
+    caps = [round(cap_hours_on(inp.settings, inp.day_overrides, d) * 60 / UNIT_MIN) for d in grid.day_date]
+    if caps:
+        caps[0] = max(0, caps[0] - sum(inp.progress_today_units.values()))
+    return caps
 
 
 def pin_slots(inp: BuildInput, grid: Grid, items: Mapping[str, EngineItem]) -> dict[str, dict[str, set[int]]]:

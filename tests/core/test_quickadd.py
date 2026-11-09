@@ -230,7 +230,7 @@ STUDENT_LINES = [
     ("lab every tue and thu", {"title": "lab", "rrule": "FREQ=WEEKLY;BYDAY=TU,TH"}),
     ("gym 3x a week", {"title": "gym", "rrule": "FREQ=WEEKLY", "per_window": 3}),
     ("run twice a week ~30m", {"title": "run", "rrule": "FREQ=WEEKLY", "per_window": 2, "duration_units": 2}),
-    ("read 3 chapters", {"title": "read 3 chapters", "preset": "Errand"}),
+    ("read 3 chapters", {"title": "read 3 chapters", "preset": "Reading"}),  # the title says what it is (audit, 8 Nov)
     ("club meeting every tue 7pm 1h", {"title": "club meeting", "preset": "Event"}),
     ("chem lab every mon 1:25pm 3h", {"title": "chem lab", "preset": "Class"}),
 ]  # fmt: skip

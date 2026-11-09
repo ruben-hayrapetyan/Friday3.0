@@ -156,6 +156,8 @@ def spoken(ctx: Ctx, start: int, end: int) -> str:
     """A cleared stretch as you'd say it: "today 4–5pm", "Mon Oct 26 4–5pm"."""
     a, b = to_local(start, ctx.tz), to_local(end, ctx.tz)
     day = "today" if a.date() == ctx.today else a.strftime("%a %b ") + str(a.day)
+    if end - start >= 20 * 60:  # a whole planning day, 4am to 4am: not "4–4am" (audit, 8 Nov)
+        return f"all of {day}"
     first = ampm(a)
     if (a.hour < 12) == (b.hour < 12):
         first = first.removesuffix("am").removesuffix("pm")  # "4–5pm", not "4pm–5pm"

@@ -17,6 +17,7 @@ from friday.core.dates import (
     parse_time_range,
     read_date,
     read_moment,
+    time_start,
 )
 from friday.core.guess import guess_preset
 from friday.core.recurrence import RRULE_DAYS, read_repeat
@@ -57,6 +58,45 @@ IMPORTANCE = {"!high": 5, "!low": 1} | {f"!{n}": n for n in range(1, 6)}
 ENERGY = {"@deep", "@light", "@physical", "@social"}
 END_OF_DAY = 23 * 60 + 59
 DEFAULT_FIXED_LENGTH_MIN = 60
+
+DASHED = re.compile(r"^\d{1,3}-\d{1,3}$")  # "10-20": a day, or pages and problems after a counting word
+COUNTED = {
+    "page",
+    "pages",
+    "p",
+    "pp",
+    "pg",
+    "pgs",
+    "problem",
+    "problems",
+    "prob",
+    "probs",
+    "q",
+    "qs",
+    "question",
+    "questions",
+    "exercise",
+    "exercises",
+    "ex",
+    "ch",
+    "chapter",
+    "chapters",
+    "chap",
+    "section",
+    "sections",
+    "sec",
+    "slides",
+    "slide",
+    "lecture",
+    "lectures",
+    "#",
+    "nos",
+    "no",
+    "number",
+    "numbers",
+    "items",
+    "parts",
+}
 
 
 @dataclass(frozen=True)
@@ -106,6 +146,7 @@ class Parser:
         self.tokens = tokens
         self.words = [t.word for t in tokens]
         self.today = (now - timedelta(minutes=day_start)).date()
+        self.now = now
         self.day_start = day_start
         self.areas = areas
         self.presets = presets
@@ -200,9 +241,31 @@ class Parser:
         if not found:
             return None
         day, minute, used = found
+        day, used = self.clock_said(i + 1, day, minute, used)
         self.warn_if_ambiguous(self.words[i + 1], day)
         moment = local_midnight(day) + timedelta(minutes=minute if minute is not None else 0)
         return moment, minute is not None, used
+
+    def clock_said(self, i: int, day: date, minute: int | None, used: int) -> tuple[date, int]:
+        """A time said with no day before it: its day said after it ("due 5pm fri", audit, 8 Nov: it was today, and
+        "fri" stayed in the title), else the one it comes next on: 2am is after midnight, and after midnight a time
+        is on the new day (at 1am, "at 9am" was yesterday morning)."""
+        if minute is None or time_start(self.words[i]) is None or used != 1:
+            return day, used
+        if parse_time_range(self.words[i]):  # "6:15-7:30 friday": the range and its day are read as before
+            return self.clock_day(minute), used
+        after = read_date(self.words, i + 1, self.today) if i + 1 < len(self.words) else None
+        if after:
+            return after[0], used + after[1]
+        return self.clock_day(minute), used
+
+    def clock_day(self, minute: int) -> date:
+        """The day a bare clock time is on: today's planning day, its small hours being the next calendar day."""
+        if minute < self.day_start:
+            return self.today + timedelta(days=1)
+        if self.now.date() != self.today and local_midnight(self.today) + timedelta(minutes=minute) < self.now:
+            return self.now.date()
+        return self.today
 
     def read_due(self, i: int) -> int:
         found = self.moment_after(i)
@@ -210,6 +273,8 @@ class Parser:
             return 0
         moment, has_time, used = found
         due = moment if has_time else moment + timedelta(minutes=END_OF_DAY)
+        if due < self.now and self.now.date() != self.today and due.date() == self.today:
+            due += timedelta(days=1)  # "due today" at 1am: the day that's begun, not the one just gone (audit, 8 Nov)
         return self.mark(i, used + 1, "due_local", format_local(due))
 
     def read_from(self, i: int) -> int:
@@ -217,7 +282,7 @@ class Parser:
         if used := self.read_between(i, ("to", "until", "till", "-")):
             return used
         if i + 1 < len(self.words) and (span := parse_time_range(self.words[i + 1])):  # from 6:15-7:30pm
-            start = local_midnight(self.today) + timedelta(minutes=span[0])
+            start = local_midnight(self.clock_day(span[0])) + timedelta(minutes=span[0])
             self.fields["start_local"] = format_local(start)
             self.fields["end_local"] = format_local(start + timedelta(minutes=span[1] - span[0]))
             return self.span(i, 2, "at", self.fields["start_local"])
@@ -238,10 +303,14 @@ class Parser:
     def read_bare_moment(self, i: int) -> int:
         """A day with a time and no keyword, as in `call mom sat 3pm 30m`, is an `at`; a day alone, as in
         `groceries sat`, is when it's due."""
-        found = read_moment(self.words, i, self.today)
+        counted = i > 0 and self.words[i - 1].rstrip(".") in COUNTED  # "pages 10-20", "problems 1-5": numbers
+        found = None if DASHED.match(self.words[i]) and counted else read_moment(self.words, i, self.today)
         if not found:
             return 0
         day, minute, used = found
+        if DASHED.match(self.words[i]) and minute is None and (day - self.today).days > 90:
+            return 0  # "lab 2-5" in October isn't next February (audit, 8 Nov)
+        day, used = self.clock_said(i, day, minute, used)
         if minute is None:
             if "start_local" in self.fields and not self.bare_day:  # "salsa 6:15-7:30 friday": the times' day
                 self.move_to(day)
@@ -340,7 +409,7 @@ class Parser:
         span = parse_time_range(f"{self.words[i + 1]}-{self.words[i + 3]}")
         if span is None:
             return 0
-        start = local_midnight(self.today) + timedelta(minutes=span[0])
+        start = local_midnight(self.clock_day(span[0])) + timedelta(minutes=span[0])
         self.fields["start_local"] = format_local(start)
         self.fields["end_local"] = format_local(start + timedelta(minutes=span[1] - span[0]))
         return self.span(i, 4, "at", self.fields["start_local"])
@@ -454,6 +523,10 @@ class Parser:
             return "Class" if "rrule" in self.fields and CLASSLIKE.search(self.fields["title"]) else "Event"
         if self.fields.get("certainty") == "tentative":
             return "Maybe"
+        # What the title says it is, when you have that kind (audit, 8 Nov: "quiz prep 2h due tue" was an Assignment,
+        # so planned after the quiz; the same title added as fields was Exam prep).
+        if self.presets and (said := guess_preset(self.fields["title"], self.presets)):
+            return said
         due = "due_local" in self.fields and not self.bare_day
         if due and "rrule" in self.fields and guess_preset(self.fields["title"], SCHOOLWORK) is None:
             return "Errand"  # "groceries every week due sunday"; "problem set every week due fri" is schoolwork

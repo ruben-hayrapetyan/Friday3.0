@@ -91,6 +91,9 @@ class Scope:
     # True: work with a due; False: work with none, "undated work" (3 Nov: "the undated time slots thing should be
     # completely learned/dictated by rules").
     dated: bool | None = None
+    # An area's name or words in the title, either (audit, 8 Nov: "no math after 9pm" reached only the Math area once
+    # there was one, not "math homework" filed elsewhere).
+    subject: Any = None
 
     def matches(self, item: "EngineItem", problem: "Problem") -> bool:
         skipped = as_list(self.except_preset)
@@ -114,6 +117,12 @@ class Scope:
         titles = as_list(self.title)
         if titles is not None and not any(within(item.norm_title, t) for t in normalized_titles(titles, problem)):
             return False
+        subjects = as_list(self.subject)
+        if subjects is not None:
+            named = {str(x).lower() for x in subjects}
+            in_area = item.area is not None and item.area.lower() in named
+            if not in_area and not any(within(item.norm_title, t) for t in normalized_titles(subjects, problem)):
+                return False
         patterns = as_list(self.title_regex)
         return patterns is None or any(re.search(p, item.title) for p in patterns)
 

@@ -22,7 +22,7 @@ from friday.commands.registry import Ctx, command, query
 from friday.commands.settings import write_setting
 from friday.core.db import rows
 from friday.core.items import FieldError
-from friday.core.rule_text import Reading, days_spoken, read, read_all, sentence, spec, with_overrides
+from friday.core.rule_text import Reading, days_spoken, read, read_all, sentence, spec, with_overrides, with_singulars
 from friday.core.settings import REFERENCE_RULES
 from friday.core.textnorm import identity_text, norm
 from friday.core.time import ampm_in
@@ -184,7 +184,7 @@ def conflict_out(c: Conflict, said: dict[str, str]) -> RuleConflict:
 def events_named(ctx: Ctx, words: tuple[str, ...]) -> list[str]:
     """The upcoming events a rule's words find, as the planner matches them: by the words in their titles."""
     rules = ctx.settings["text"].rules()
-    wanted = [identity_text(norm(w, rules)) for w in words]
+    wanted = [identity_text(norm(w, rules)) for w in with_singulars(words)]  # "exams" finds "Biology Exam"
     titles = [
         r["title"]
         for r in rows(

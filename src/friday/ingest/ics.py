@@ -40,6 +40,9 @@ class Event:
     every: str | None = None
     series: str | None = None
     location: str | None = None  # where it is: a fixed event made of it is there (27 Oct)
+    free: bool = (
+        False  # marked free in its calendar: kept however it's read again (audit, 8 Nov: the AI's sort lost it)
+    )
 
 
 def placed(proposals: list[Proposed], e: Event) -> list[Proposed]:
@@ -69,7 +72,12 @@ class Found:
         proposals = classify(
             e.summary, e.start, e.end, e.day, e.day_end, replace(self.read, kind=kind), e.every, title=title
         )
-        return placed(proposals, e)
+        out = placed(proposals, e)
+        if e.free:
+            for p in out:
+                if p.fixed:
+                    p.input["free"] = True
+        return out
 
 
 def fetch(url: str) -> str:
@@ -220,6 +228,8 @@ def google_event(event: dict[str, Any], tz: str, read: Reading, rule: str | None
     # Where it is: in the text only when it has one, so events without a place read before aren't "changed" (27 Oct).
     location = (event.get("location") or "").strip()
     where = {"location": location} if location else {}
+    if event.get("transparency") == "transparent":  # free or busy is a change too (audit, 8 Nov)
+        where |= {"free": True}
     if "dateTime" in start:
         timed = local(datetime.fromisoformat(start["dateTime"]), tz), local(datetime.fromisoformat(end["dateTime"]), tz)
         facts = Event(summary, *timed, None, None, series=series, location=location or None)
@@ -232,6 +242,7 @@ def google_event(event: dict[str, Any], tz: str, read: Reading, rule: str | None
     found = Found(event["id"], digest, summary, text, from_facts(facts, read))
     if event.get("transparency") == "transparent":
         # Marked free: kept, but not busy unless you count free events (COMBINED.md 28).
+        facts = replace(facts, free=True)
         for p in found.proposals:
             if p.fixed:
                 p.input["free"] = True

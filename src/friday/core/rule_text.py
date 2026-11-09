@@ -171,6 +171,21 @@ def before_hour(said: str) -> str:
     return f"{said}am" if re.fullmatch(r"(?:5|6|7|8|9|10|11)(?::\d\d)?", said) else said
 
 
+def bare_hour(word: str, said: str) -> str:
+    """An hour said bare after a word, as students mean it (audit, 8 Nov: "no work before 6" read as 6pm, and "no
+    work after 12" as noon): before 6 is the morning, and after, by or until 12 is midnight. Other hours read as they
+    did ("chem lab reports only before 5" is 5pm; "breakfast after 9" 9am)."""
+    said = said.strip()
+    m = re.fullmatch(r"(\d{1,2})(:\d\d)?", said)
+    if not m:
+        return said
+    if word == "before" and int(m[1]) == 6:
+        return f"{said}am"
+    if word != "before" and int(m[1]) == 12:
+        return f"{said}am"
+    return said
+
+
 def pm(said: str) -> str:
     """An hour of the afternoon or evening said bare: "3" in "between 3 and 4 in the afternoon"."""
     said = said.strip()
@@ -656,6 +671,7 @@ def spoken(t: str) -> str | None:
 # has one goes to Claude rather than make a rule about nothing.
 JUNK_SUBJECT = (
     r"\b(?:be|done|make|sure|keep|give|me|myself|it|is|are|am|was|plan|planning|schedule|scheduled|start|starting"
+    r"|busy|next|this|last|coming"  # "I'm busy on sundays", "no work next weekend" (audit, 8 Nov)
     r"|try|window|inside|out|off|clock|every|each|zero|fine|any|wrap|wrapped|that|needs?|want|let|get|gets|put|do"
     r"|does|doing|go|going|so|than|can|nothing|finished|ready|submitted|completed|right|immediately|cram"
     r"|sacrifice|workload|hours?|hrs?|working|limit|cap|max|okay|ok|allowed|whatever|things that|stuff that"
@@ -699,7 +715,60 @@ def read(text: str) -> tuple[Reading | None, Strength]:
     # A pace says several days at once; a buffer before a due ("but finish a day early") is part of its rule.
     if found.kind != "pace" and not (found.kind == "close" and found.before_min) and two_rules(text, found):
         return None, strength
+    if drops_something(text, found):
+        return None, strength
+    if found.kind == "around" and set(found.events or ()) & {"bed", "bedtime", "sleep", "sleeping"}:
+        return None, strength  # "no work 2 hours before bed" is about your night, not an event called bed (audit)
     return found, strength
+
+
+SAID_TIME = re.compile(
+    r"(?<!quarter )(?<!half )\b(?:at|after|before|by|until|till|past|from|to|and|between|or|-)\s*"
+    r"(\d{1,2})(?::(\d\d))?\s*(am|pm)?\b(?![.:]\d)"
+    r"(?!\s*(?:h\b|hrs?\b|hours?\b|m\b|mins?\b|minutes?\b|days?\b|weeks?\b|x\b|times\b|%|th\b|st\b|nd\b|rd\b))"
+)
+EXCEPT_DAYS = r"\b(?:except|other than|besides|apart from|excluding|but|not on|aside from|unless)\b"
+CLAUSE = re.compile(r"[,;:!?]|\.(?!\d)|\b(?:because|since|cause|bc|so)\b")  # "2.5 hours" is one clause
+
+
+def drops_something(text: str, found: Reading) -> bool:
+    """Whether the reading leaves out a time or a day the rule's own words name (audit, 8 Nov: "keep fridays free
+    after 3" read as all of Friday, "saturday morning or sunday morning" as Saturday alone, "always eat dinner at 7"
+    without the 7). Better the AI reads it, or you, than a confident rule that says less, or more, than you did. The
+    rule's words are its first clause: what comes after a comma or "because" is why ("…, I go home for the weekend")."""
+    if found.kind in ("pace", "late_cutoff", "spacing", "sleep_min", "deadlines", "meals_learned", "close", "early"):
+        return False
+    t = " " + text.lower().replace("’", "'") + " "
+    first = CLAUSE.split(t.strip(), maxsplit=1)[0] if CLAUSE.split(t.strip(), maxsplit=1)[0].strip() else t
+    first = f" {first} "
+    days_said = first
+    for words in found.events or ():  # "the friday lab meeting" names an event, not a day
+        days_said = days_said.replace(words.lower(), " ")
+    named = set(days_of(" ".join(re.findall(rf"\b{DAY}\b|\bweekends?\b|\bweekdays?\b", days_said))) or ())
+    if named and named != set(DAYS) and not re.search(EXCEPT_DAYS, t):
+        kept_days = set(found.days) if found.days else None
+        if kept_days is None or (named & kept_days and named - kept_days):  # all of them or none (the others) only
+            return True
+    kept = {int(x[:2]) % 12 for x in (found.at, found.until) if x}
+    for m in SAID_TIME.finditer(first):
+        hour = int(m[1])
+        if hour > 12 and not (m[2] or m[3]):
+            continue  # "15 before and 15 after": minutes
+        if 0 < hour <= 24 and hour % 12 not in kept and found.amount != hour:
+            return True
+    return False
+    t = " " + text.lower().replace("’", "'") + " "
+    named = set(days_of(" ".join(re.findall(rf"\b{DAY}\b|\bweekends?\b|\bweekdays?\b", t))) or ())
+    if named and not re.search(EXCEPT_DAYS, t) and not named <= set(found.days or DAYS):
+        return True
+    if named and found.days is None and not re.search(EXCEPT_DAYS, t) and named != set(DAYS):
+        return True
+    kept = {int(x[:2]) % 12 for x in (found.at, found.until) if x}
+    for m in SAID_TIME.finditer(t):
+        hour = int(m[1])
+        if 0 < hour <= 24 and hour % 12 not in kept and found.amount != hour:
+            return True
+    return False
 
 
 # A stretch of the day said as a range: "between 7:10 am and 7:20 am", "from 9 to 11", "7:30-7:40am".
@@ -1625,7 +1694,7 @@ def read_window(t: str, negated: bool) -> Reading | None:
     if m := re.search(rf"^ ?([a-z0-9 ]*?) ?(before|after|by|until|past) {TIME} ", t):
         if re.match(r"^ ?only\b", t) and subject_of(m[1]) in ("light work", "deep work"):
             return None  # "only easy stuff after 10pm": nothing else then, which no rule says (Claude)
-        at = clock(m[3])
+        at = clock(bare_hour(m[2], m[3]))
         rel = "before" if m[2] in ("before", "by", "until") else "after"
         if negated:
             rel = "after" if rel == "before" else "before"
@@ -1710,7 +1779,8 @@ def days_spoken(days: tuple[str, ...]) -> str:
 
 def sentence(r: Reading) -> str:
     """The rule in plain words, as the Rules list shows it, on a 12-hour clock."""
-    return ampm_in(said(r))
+    # "No work after midnight", not "after 12am"; a range's own words stay ("between 12am and 8am")
+    return re.sub(r"\b(after|by|until|before) 12am\b", r"\1 midnight", ampm_in(said(r)))
 
 
 def said(r: Reading) -> str:
@@ -1817,8 +1887,42 @@ KIND_WORDS = {"homework": "Assignment", "hw": "Assignment", "problem set": "Assi
               "errand": "Errand"}  # fmt: skip
 
 
+def singular(word: str) -> str:
+    """ "exams" is "exam", "classes" "class", "studies" "study": a rule's words find either (audit, 8 Nov: "no essays
+    after 9pm" reached no "history essay", "the night before exams" no "Biology Exam")."""
+    last = word.split(" ")[-1]
+    if len(last) <= 3 or not last.endswith("s") or last.endswith("ss"):
+        return word
+    if last.endswith("ies"):
+        one = last[:-3] + "y"
+    elif last.endswith(("sses", "xes", "ches", "shes")):
+        one = last[:-2]
+    else:
+        one = last[:-1]
+    return word[: len(word) - len(last)] + one
+
+
+def with_singulars(words: Any) -> list[str]:
+    out: list[str] = []
+    for w in words or ():
+        for form in (w, singular(w)):
+            if form not in out:
+                out.append(form)
+    return out
+
+
 def scope_of(subject: str, areas: list[str], presets: list[str]) -> dict[str, Any] | None:
     if subject == "work":
+        return None
+    if " during " in subject:  # "work during lunch": the work, at that time (audit: the scope was the whole phrase)
+        return scope_of(subject.split(" during ")[0].strip() or "work", areas, presets)
+    parts = [p.strip() for p in re.split(r" or | and |, ", subject) if p.strip()]
+    if len(parts) > 1 and "work" not in parts:  # "math or history": either (audit: it was a title saying both)
+        scopes = [scope_of(p, areas, presets) for p in parts]
+        if all(sc and set(sc) == {"preset"} for sc in scopes):
+            return {"preset": [sc["preset"] for sc in scopes if sc]}
+        if all(sc and set(sc) <= {"subject", "title"} for sc in scopes):
+            return {"subject": [w for sc in scopes if sc for w in as_words(sc)]}
         return None
     if subject == "deep work":
         return {"energy": "deep"}
@@ -1827,15 +1931,26 @@ def scope_of(subject: str, areas: list[str], presets: list[str]) -> dict[str, An
     if subject == "undated work":
         return {"dated": False}
     for a in areas:
-        if a.lower() == subject:
-            return {"area": a}
+        if a.lower() == subject:  # its area, or its name in a title (audit: "math homework" outside the area)
+            return {"subject": [a]}
     for p in presets:
         if p.lower() in (subject, subject.rstrip("s")):
             return {"preset": p}
+    if PROBLEM_SETS.fullmatch(subject):  # problem sets, not every assignment (audit: essays went with them)
+        return {"title_regex": PROBLEM_SETS_IN_TITLE}
     kind = KIND_WORDS.get(subject) or KIND_WORDS.get(subject.rstrip("s"))
     if kind is not None and kind in presets:
         return {"preset": kind}
-    return {"title": subject}
+    return {"title": with_singulars([subject]) if singular(subject) != subject else subject}
+
+
+PROBLEM_SETS = re.compile(r"(?:problem sets?|p-?sets?|psets?)")
+PROBLEM_SETS_IN_TITLE = r"(?i)\b(?:problem\s*sets?|p-?sets?|ps\s*\d+)\b"
+
+
+def as_words(scope: dict[str, Any]) -> list[str]:
+    found = scope.get("subject") or scope.get("title") or []
+    return list(found) if isinstance(found, list | tuple) else [found]
 
 
 NOT_A_COURSE = {"practice", "mock", "sample", "extra", "group", "weekly", "daily", "late", "overdue", "any", "all"}
@@ -1873,18 +1988,18 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
     """The planner rule for a reading: {type, name, weight, scope, reason, params}."""
     if r.kind == "optional":  # their time is priced, not walled off (build), so it goes only when work must
         return {"name": name, "type": "skippable", "weight": 1.0, "scope": None, "reason": sentence(r),
-                "params": {"titles": list(r.events or ()), "price": 8.0}}  # fmt: skip
+                "params": {"titles": with_singulars(r.events), "price": 8.0}}  # fmt: skip
     if r.kind == "around":  # not a priced rule: the plan's build keeps that time around those events (planner.build)
-        params = {"titles": list(r.events or ()), "before_min": r.before_min or 0, "after_min": r.after_min or 0}
+        params = {"titles": with_singulars(r.events), "before_min": r.before_min or 0, "after_min": r.after_min or 0}
         return {"name": name, "type": "travel", "weight": 0.0, "scope": None, "reason": sentence(r), "params": params}
     if r.kind == "ahead":  # priced among preferences, not wellbeing: work takes the time before any late night does
-        params = {"titles": list(r.events or ()), "price": AHEAD_PRICE, "ahead": True}
+        params = {"titles": with_singulars(r.events), "price": AHEAD_PRICE, "ahead": True}
         return {"name": name, "type": "skippable", "weight": 1.0, "stage": "preferences", "scope": None,
                 "reason": sentence(r), "params": params}  # fmt: skip
     if r.kind == "night_before":
         price: Any = "forbid" if strength == "Always" else PRICE[strength]
         return {"name": name, "type": "before_event", "weight": 1.0, "scope": None, "reason": sentence(r),
-                "params": {"titles": list(r.events or ()), "after": r.at, "price": price}}  # fmt: skip
+                "params": {"titles": with_singulars(r.events), "after": r.at, "price": price}}  # fmt: skip
     if r.kind == "deadlines":  # built in: `rule_add` makes sure it's on rather than adding a second one
         return {"name": "late_work", "type": "late_work", "weight": 10.0, "scope": None, "reason": sentence(r),
                 "params": {}}  # fmt: skip

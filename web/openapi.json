@@ -14274,7 +14274,9 @@
      "cap_hours": {
       "anyOf": [
        {
-        "type": "number"
+        "type": "number",
+        "maximum": 24.0,
+        "minimum": 0.0
        },
        {
         "type": "null"

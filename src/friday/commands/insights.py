@@ -8,6 +8,7 @@ from friday.api.views import InsightsOut, KindAccuracy
 from friday.commands.registry import Ctx, query
 from friday.core.db import rows
 from friday.core.time import ampm, format_utc, parse_utc, to_local
+from friday.estimate.durations import LEARNED_SOURCES
 
 FIRST_HOUR, LAST_HOUR = 8, 23  # the heatmap's columns
 DAYS = ("Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays")
@@ -28,7 +29,8 @@ def insights(ctx: Ctx, inp: InsightsInput) -> InsightsOut:
         [ctx.user_id, since],
     )
     ratios: dict[str, list[float]] = defaultdict(list)
-    for r in done:
+    timed = [r for r in done if r["actual_source"] in LEARNED_SOURCES]  # not the plan's lengths assumed (audit, 8 Nov)
+    for r in timed:
         estimate = r["your_estimate_units"] or r["friday_estimate_units"]
         if estimate:
             ratios[r["preset"] or "To-do"].append(r["actual_minutes"] / (estimate * 15))
@@ -37,7 +39,7 @@ def insights(ctx: Ctx, inp: InsightsInput) -> InsightsOut:
     return InsightsOut(
         weeks=inp.weeks,
         done=len(done),
-        hours=round(sum(r["actual_minutes"] for r in done) / 60, 1),
+        hours=round(sum(r["actual_minutes"] for r in timed) / 60, 1),
         estimate_ratio=round(statistics.median(all_ratios), 2) if all_ratios else None,
         by_kind=[accuracy(kind, xs) for kind, xs in sorted(ratios.items(), key=lambda kv: -len(kv[1]))],
         heat=heat,

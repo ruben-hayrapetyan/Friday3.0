@@ -18,6 +18,7 @@ from friday.api.types import ChangeOut, Empty
 from friday.commands.fields import require_item
 from friday.commands.progress import parse_block_key
 from friday.commands.registry import Ctx, query
+from friday.commands.rules import readings, words
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.settings import validate_value
@@ -77,7 +78,9 @@ def sentence(ctx: Ctx, block: dict[str, Any], costs: dict[str, int]) -> str:
         parts.append("You pinned it here")
     if spaced := report.get("spacing_closer", {}).get(str(item.id)):
         parts.append(closer_words(Closer(**spaced)))
-    reasons = {r.name: r.reason or r.name for r in ctx.settings["rules"]}
+    # the Rules page's words for the built-in ones ("Wind down before bed", not "late night"; audit, 8 Nov)
+    mine = readings(ctx)
+    reasons = {r.name: words(r, mine) for r in ctx.settings["rules"]}
     top = sorted(((name, cost) for name, cost in costs.items() if cost), key=lambda nc: -nc[1])[:2]
     parts += [f"costs {cost / 100:.1f} for {reasons.get(name, name).replace('_', ' ')}" for name, cost in top]
     shaped = shaping(ctx, parse_utc(start))

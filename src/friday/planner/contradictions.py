@@ -88,10 +88,15 @@ def amounts(a: dict[str, Any], b: dict[str, Any], subject: str) -> Conflict | No
             return Conflict(b["name"], "the same night's sleep", overlap=True)
         return Conflict(b["name"], f"both keep sleep ({lo:g} and {hi:g} h a night); the longer one is what counts",
                         overlap=True)  # fmt: skip
-    lo, hi = sorted((int(x), int(y)))
+    lo, hi = sorted((float(x), float(y)))
     if lo == hi:
         return Conflict(b["name"], f"the same head start for {subject}", overlap=True)
-    why = f"both say how early to finish {subject} ({lo} and {hi} days before it’s due); the earlier one is what counts"
+    said = (  # not "0 and 2 days" for 12 hours (audit, 8 Nov)
+        f"{lo:g} and {hi:g} days"
+        if lo >= 1
+        else " and ".join(f"{d * 24:g} hours" if d < 1 else f"{d:g} days" for d in (lo, hi))
+    )
+    why = f"both say how early to finish {subject} ({said} before it’s due); the earlier one is what counts"
     return Conflict(b["name"], why, overlap=True)
 
 
@@ -162,7 +167,7 @@ def words(scope: dict[str, Any]) -> str:
     """deep work; reading; gym."""
     if as_list(scope.get("energy")) == ["deep"]:
         return "deep work"
-    for key in ("title", "area", "preset", "tags", "energy"):
+    for key in ("title", "subject", "area", "preset", "tags", "energy"):
         found = as_list(scope.get(key))
         if found:
             return " or ".join(str(v).lower() for v in found)

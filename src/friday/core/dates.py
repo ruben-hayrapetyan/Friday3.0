@@ -111,7 +111,7 @@ def read_date(words: list[str], i: int, today: date) -> tuple[date, int] | None:
 
 
 def parse_date_word(word: str, today: date) -> date | None:
-    if word == "today":
+    if word in ("today", "tonight"):
         return today
     if word in TOMORROW:
         return today + timedelta(days=1)

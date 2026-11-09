@@ -121,7 +121,6 @@ def test_rules_that_mention_due_dates_still_read_as_themselves() -> None:
     "text",
     [
         "gym and climbing club are optional",
-        "make the gym sessions on tuesday and thursday as well as climbing club be not mandatory",
         "skip gym and climbing club if there is too much work",
         "gym and climbing club can be skipped",
     ],
@@ -132,6 +131,23 @@ def test_events_that_give_way_to_work(text: str) -> None:
     assert sentence(reading) == "Gym and Climbing Club are optional: work takes the time when it must"
     rule = spec(reading, "Prefer", "you:x", [], [])
     assert (rule["type"], rule["params"]["titles"]) == ("skippable", ["gym", "climbing club"])
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "make the gym sessions on tuesday and thursday as well as climbing club be not mandatory",
+        "gym is optional on weekends",
+        "keep fridays free after 3",
+        "no work on saturday morning or sunday morning",
+        "always eat dinner at 7",
+        "no work between 12 and 1 or 6 and 7",
+    ],
+)
+def test_a_reading_that_would_leave_out_a_day_or_a_time_goes_to_the_ai(text: str) -> None:
+    """The audit, 8 Nov: these read as rules saying less or more than was said (every gym, all of Friday, Saturday
+    alone, dinner at no time, 12–1 alone)."""
+    assert read(text)[0] is None
 
 
 @pytest.mark.parametrize(

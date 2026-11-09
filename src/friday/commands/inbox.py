@@ -16,6 +16,7 @@ from friday.api.commands import (
     DocumentInput,
     EditInput,
     ItemRef,
+    SeriesRef,
     SourceEditInput,
     SourceInput,
     SourceRemoveInput,
@@ -24,9 +25,10 @@ from friday.api.commands import (
 from friday.api.types import Empty
 from friday.api.views import DocumentOut, InboxOut, SetAsideOut, SourceOut, SuggestionOut
 from friday.commands.duplicates import RESTORED, set_aside_waiting
+from friday.commands.fields import require_item
 from friday.commands.items import add, drop, edit, find_item, guessed_minutes
 from friday.commands.registry import Ctx, command, query
-from friday.commands.series import attach_to_series, imported_fields
+from friday.commands.series import attach_to_series, imported_fields, load_series, series_stop
 from friday.core.db import one, rows
 from friday.core.html_text import html_text, looks_like_html
 from friday.core.items import FieldError
@@ -259,7 +261,15 @@ def with_end(fields: dict[str, Any], presets: dict[str, Any]) -> dict[str, Any]:
 def apply(ctx: Ctx, suggestion: dict[str, Any], fields: dict[str, Any]) -> int | None:
     """Run the suggested command; returns the item it made or changed."""
     before = fields.pop("before_title", None)
+    # A feed's repeat changed or gone is the whole repeat, not its first time (audit, 8 Nov); Google's and the Mac's
+    # say each time on its own, so a moved time there is that time.
+    calendar = source_kind(ctx, suggestion)
+    whole = calendar == "ics"
     if suggestion["command"] == "drop":
+        item = require_item(ctx, fields["id"])
+        if whole and item.series_id is not None and not load_series(ctx, item.series_id)["external_id"]:
+            series_stop(ctx, SeriesRef(id=item.series_id))
+            return item.id if one(ctx.conn, "SELECT 1 FROM items WHERE id = ?", [item.id]) else None
         return drop(ctx, ItemRef(id=fields["id"])).item.id
     if suggestion["command"] == "edit" or suggestion["duplicate_of"]:
         target = fields.pop("id", None) or suggestion["duplicate_of"]
@@ -268,6 +278,14 @@ def apply(ctx: Ctx, suggestion: dict[str, Any], fields: dict[str, Any]) -> int |
             ("location",) if suggestion["command"] == "edit" else ()
         )
         keep = {k: v for k, v in fields.items() if k in kept}
+        if calendar in CALENDARS and suggestion["command"] == "edit" and "start" in fields:
+            # timed or all day, free or busy, as the calendar says now (audit, 8 Nov: made all day there, it stayed
+            # 9–5 here; made busy there, it stayed free)
+            keep["blocks_time"] = fields.get("blocks_time", True)
+            keep["free"] = bool(fields.get("free", False))
+        item = require_item(ctx, target)
+        if whole and item.series_id is not None and item.occurrence_date and suggestion["command"] == "edit":
+            keep["from_date"] = item.occurrence_date
         return edit(ctx, EditInput(id=target, **keep)).item.id
     if before:
         exam = find_item(ctx, before)
@@ -280,10 +298,29 @@ def apply(ctx: Ctx, suggestion: dict[str, Any], fields: dict[str, Any]) -> int |
     if repeating:
         fields |= imported_fields(ctx, suggestion["batch"], fields)
     fields = with_end(fields, ctx.settings["presets"])  # one suggested before events read without an end got one
+    if calendar in CALENDARS:  # a feed's or a calendar's own: it stays theirs, never copied to another
+        fields["calendar"] = ""  # (audit, 8 Nov: a Canvas repeat's times were copied into Google every night)
     made = add(ctx, AddInput(**{k: v for k, v in fields.items() if k in AddInput.model_fields}))
     if made.item and repeating:
         attach_to_series(ctx, made.item.id, suggestion["batch"])
+    if made.item is None and made.series_id is not None:  # a repeat: tied to its first time, so a later reading finds
+        first = one(  # what it made (audit: a moved or removed repeat in the feed was made again beside it)
+            ctx.conn, "SELECT id FROM items WHERE series_id = ? ORDER BY start_utc, id LIMIT 1", [made.series_id]
+        )
+        return first["id"] if first else None
     return made.item.id if made.item else None
+
+
+CALENDARS = ("ics", "gcal", "mac")
+
+
+def source_kind(ctx: Ctx, suggestion: dict[str, Any]) -> str | None:
+    found = one(
+        ctx.conn,
+        "SELECT src.kind FROM raw_inputs r JOIN sources src ON src.id = r.source_id WHERE r.id = ?",
+        [suggestion["raw_input_id"]],
+    )
+    return found["kind"] if found else None
 
 
 @command("suggestion_reject")

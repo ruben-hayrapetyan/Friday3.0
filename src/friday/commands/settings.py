@@ -208,6 +208,10 @@ def pace_delete(ctx: Ctx, inp: PaceDeleteInput) -> Changed:
     periods = list(pace_periods(ctx.conn, ctx.user_id))
     if pace_label(dials_now(ctx, periods), paces) == name:
         raise FieldError("name", f"{name} is in use now")
+    weekly = ctx.settings["pace"].weekly
+    if name in weekly.values():  # its days go back to the default (audit, 8 Nov: they still said it under Your week)
+        kept = {day: pace for day, pace in weekly.items() if pace != name}
+        write_setting(ctx, "pace", ctx.settings["pace"].model_dump() | {"weekly": kept})
     del paces[name]
     write_setting(ctx, "paces", {k: v.model_dump() for k, v in paces.items()})
     return Changed(message=f"Deleted pace {name}")

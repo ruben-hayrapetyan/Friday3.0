@@ -308,8 +308,18 @@ def edit(ctx: Ctx, inp: EditInput) -> ItemResult:
             raise FieldError("from_date", f"T{item.id} doesn't repeat")
         return edit_from(ctx, item, inp.from_date, given)
     values = to_item_values(ctx, given)
+    if "duration_min" in given and values.get("duration_units"):  # your new length is your estimate now (audit, 8 Nov:
+        # an essay cut from 4 h to 1 h still had 8 h planned, the old estimate times the cushion)
+        values |= {"duration_source": "you", "your_estimate_units": values["duration_units"]}
     changed = dataclasses.replace(item, **values)
-    if "due_utc" in values:
+    if "preset" in values and changed.when == "fixed" and "event_kind" not in values:
+        # an event made a Class or an Exam keeps a class's or an exam's time around it (audit, 8 Nov)
+        kind = ctx.settings["presets"].get(changed.preset or "")
+        changed = dataclasses.replace(changed, event_kind=(kind.event_kind if kind else None) or "other")
+    if "due_utc" in values and values["due_utc"] is None:
+        if changed.firmness == "hard" and "firmness" not in values:  # "No due date": no deadline either (audit)
+            changed = dataclasses.replace(changed, firmness="none")
+    elif "due_utc" in values:
         changed = due_is_a_deadline(changed, values)
     if changed.series_id is not None:
         changed.detached = True  # regeneration leaves an edited occurrence alone
@@ -397,6 +407,8 @@ def done(ctx: Ctx, inp: DoneInput) -> ItemResult:
     item = require_item(ctx, inp.id)
     if item.status == "done":
         raise FieldError("id", "That's done already")
+    if item.status == "dropped":  # audit, 8 Nov: a dropped one was marked done, and counted as finished work
+        raise FieldError("id", "That one was dropped: open it again first if you did it after all")
     if ctx.conn.execute("SELECT 1 FROM timer WHERE user_id = ? AND item_id = ?", [ctx.user_id, inp.id]).fetchone():
         stop_timer(ctx, item_id=inp.id)  # its own: another may be running alongside
     progress = progress_rows(ctx.conn, ctx.user_id).get(inp.id, [])
@@ -440,7 +452,12 @@ def add_dependency(ctx: Ctx, item_id: int, depends_on_id: int, fraction: float, 
         edges.setdefault(row["item_id"], []).append(row["depends_on_id"])
     if item_id == depends_on_id or would_create_cycle(edges, item_id, depends_on_id):
         raise FieldError(
-            "depends_on_id", f"“{item.title}” can't wait for “{other.title}”: that one already waits for it, a loop"
+            "depends_on_id",
+            (
+                f"“{item.title}” can't wait for itself"
+                if item.id == other.id
+                else f"“{item.title}” can't wait for “{other.title}”: that one already waits for it, a loop"
+            ),
         )
     found = one(
         ctx.conn,

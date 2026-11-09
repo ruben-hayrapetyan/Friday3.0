@@ -201,6 +201,10 @@ def list_calendars(
                 google_auth.adopt(folder, account)
         services[account] = service
         found += [c | {"account": account} for c in listed]
+    # Friday's own published "Friday" calendar is its plan, not one of yours: listed, it was read back as events and
+    # offered for new ones, which the next publish deleted (audit, 8 Nov).
+    published = (kv_get(conn, "gcal_publish", {}, user_id) or {}).get("calendar")
+    found = [c for c in found if not published or c.get("id") != published]
     return named(merged(found)), services, broken
 
 

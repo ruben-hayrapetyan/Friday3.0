@@ -46,7 +46,11 @@ export function ShovePop() {
     const d = addDays(today, n)
     return { value: String(n), label: n === 0 ? "Today" : n === 1 ? "Tomorrow" : `${weekday(d)} ${Number(d.slice(8, 10))}` }
   })
-  const wrong = !from || !until ? "Give both times" : until <= from ? "The end comes after the start" : on === 0 && until <= nowClock ? "That time has passed" : null
+  // The days are planning days (they start at 4am); the server reads "+Nd" from the calendar's date, which after
+  // midnight is a day on (audit, 8 Nov: at 1am "Tomorrow" cleared the day after).
+  const calendarToday = fromMin(now).slice(0, 10)
+  const ahead = Math.round((Date.parse(addDays(today, on)) - Date.parse(calendarToday)) / 86_400_000)
+  const wrong = !from || !until ? "Give both times" : until <= from ? "The end comes after the start" : ahead < 0 ? "That day has ended" : ahead === 0 && until <= nowClock ? "That time has passed" : null
   const shove = async (key: string, range: string, decision: Decision = "ask") => {
     if (busy) return
     setBusy(key)
@@ -123,7 +127,7 @@ export function ShovePop() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Menu options={days} value={String(on)} onPick={(v) => setOn(Number(v))} label="Which day" />
                     <div style={{ flex: 1 }} />
-                    <button className="btn btn-secondary fr-press" disabled={!!wrong || !!busy} title={wrong ?? undefined} onClick={() => shove("range", `${from}-${until} +${on}d`)} style={{ padding: "4px 10px", ...pressed(busy === "range") }}>
+                    <button className="btn btn-secondary fr-press" disabled={!!wrong || !!busy} title={wrong ?? undefined} onClick={() => shove("range", `${from}-${until} +${ahead}d`)} style={{ padding: "4px 10px", ...pressed(busy === "range") }}>
                       {working("range", "Shove")}
                     </button>
                   </div>

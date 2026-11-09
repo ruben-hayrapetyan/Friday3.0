@@ -96,7 +96,17 @@ def rule_and_skips(rule: str) -> tuple[str, set[datetime]]:
         for moment in part.split("=", 1)[1].split(",")
         if moment
     }
-    return ";".join(p for p in parts if not p.upper().startswith("EXDATE=")), skips
+    kept = [local_until(p) for p in parts if not p.upper().startswith("EXDATE=")]
+    return ";".join(kept), skips
+
+
+def local_until(part: str) -> str:
+    """An end written in UTC (`UNTIL=20261210T150000Z`, as Google, Canvas and Outlook write it) as the end of that day,
+    in the local times the rule's start is in: dateutil refuses UTC against a local start, and the repeat never came
+    in (audit, 8 Nov). Repeats here are at most daily, so the end of that day keeps its last time and adds none."""
+    if part.upper().startswith("UNTIL=") and part.upper().endswith("Z"):
+        return f"UNTIL={part.split('=', 1)[1][:8]}T235959"
+    return part
 
 
 def rule_parts(rule: str) -> dict[str, str]:

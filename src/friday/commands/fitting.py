@@ -21,6 +21,7 @@ from friday.commands.registry import Ctx, query, tried
 from friday.core.items import Item
 from friday.core.time import format_local, parse_utc, to_local
 from friday.engine.executor import ExecutorInput, Interval, edf, slack, subtract
+from friday.engine.problem import Problem
 from friday.planner.build import build_problem, id_of, key_of
 from friday.planner.inputs import executor_input
 from friday.planner.prepare import build_input
@@ -51,8 +52,33 @@ def fit(ctx: Ctx, inp: FitInput) -> FitOut:
 
 
 def deadlines(snapshot: Snapshot) -> ExecutorInput:
+    return deadlines_and_problem(snapshot)[0]
+
+
+def deadlines_and_problem(snapshot: Snapshot) -> tuple[ExecutorInput, Problem]:
     inp = build_input(snapshot)
-    return executor_input(inp, build_problem(inp))
+    problem = build_problem(inp)
+    return executor_input(inp, problem), problem
+
+
+def over_caps(problem: Problem, new: set[str]) -> bool:
+    """Whether the work due by a new item's due is more than your daily limits allow before it (audit, 8 Nov: the
+    quick answer, by free time alone, said "Fits" to 8 h due tomorrow on a 3 h day)."""
+    grid = problem.grid
+    for key in new:
+        item = problem.items.get(key)
+        if item is None or item.due_utc is None:
+            continue
+        days = [d for d in range(grid.n_days) if grid.day_slots[d] and grid.start[grid.day_slots[d][0]] < item.due_utc]
+        room = sum(problem.day_caps[d] for d in days)
+        due = [
+            i
+            for i in problem.items.values()
+            if i.amount == "fixed" and i.due_utc is not None and i.due_utc <= item.due_utc
+        ]
+        if sum(i.need for i in due) > room:
+            return True
+    return False
 
 
 def late_minutes(ex: ExecutorInput, free: list[Interval] | None = None) -> dict[str, int]:
@@ -88,7 +114,7 @@ def listed(later: list[FitLate]) -> str:
 
 
 def quickly(before: Snapshot, after: Snapshot, titles: dict[int, str]) -> FitOut:
-    base, ex = deadlines(before), deadlines(after)
+    base, (ex, problem) = deadlines(before), deadlines_and_problem(after)
     was, now = late_minutes(base), late_minutes(ex)
     was_short, short = short_minutes(base), short_minutes(ex)
     later = worst_first(
@@ -103,6 +129,9 @@ def quickly(before: Snapshot, after: Snapshot, titles: dict[int, str]) -> FitOut
     spare_h = round(min(spare) / 60, 1) if spare else None
     if later:
         return FitOut(verdict="late", said=listed(later), exact=False, later=later, spare_h=spare_h)
+    if over_caps(problem, {key_of(i.id) for i in after.items if i.id not in known}):
+        return FitOut(verdict="tight", said="Fits in your free time, but not within your daily limits: check exactly",
+                      exact=False, spare_h=spare_h)  # fmt: skip
     if spare_h is not None and spare_h * 60 < TIGHT_MIN:
         return FitOut(verdict="tight", said=f"Fits, only just: {hours(spare_h * 60)} to spare before it's due",
                       exact=False, spare_h=spare_h)  # fmt: skip

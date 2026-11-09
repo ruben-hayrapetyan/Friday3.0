@@ -1,6 +1,7 @@
 """Exams ahead and their prep (the Projects & exams page): each upcoming exam with the work that prepares for it, how
 much is done and left, when the last of it is planned, and whether that is before the exam."""
 
+import json
 import re
 
 from friday.api.types import Empty
@@ -14,6 +15,7 @@ from friday.core.items import Item
 from friday.core.rows import item_from_row
 from friday.core.time import UNIT_MIN, format_utc, parse_utc
 from friday.planner.progress import minutes_by_item, remaining_minutes
+from friday.planner.store import current_plan
 
 AHEAD_DAYS = 120  # a term's worth: finals included, not next year's
 NEAR_MIN = 3 * 1440  # exam prep due within three days of an exam is for it (planner/build.exam_due reads it so too)
@@ -50,7 +52,9 @@ def exams(ctx: Ctx, inp: Empty) -> list[ExamOut]:
     done = minutes_by_item(ctx.conn, ctx.user_id)
     left = {i: remaining_minutes(it, done.get(i, 0)) or 0 for i, it in work.items() if it.status == "todo"}
     finish = finishes(ctx, left)
-    return [exam_out(ctx, e, [work[i] for i in prep.get(e.id or 0, [])], done, left, finish) for e in found]
+    saved = current_plan(ctx.conn, ctx.user_id)
+    late = {int(k) for k in (json.loads(saved["report"]).get("late_hours", {}) if saved else {})}
+    return [exam_out(ctx, e, [work[i] for i in prep.get(e.id or 0, [])], done, left, finish, late) for e in found]
 
 
 def is_exam(event: Item) -> bool:
@@ -87,7 +91,13 @@ def same_course(event: Item, item: Item) -> bool:
 
 
 def exam_out(
-    ctx: Ctx, exam: Item, prep: list[Item], done: dict[int, int], left: dict[int, int], finish: dict[int, str]
+    ctx: Ctx,
+    exam: Item,
+    prep: list[Item],
+    done: dict[int, int],
+    left: dict[int, int],
+    finish: dict[int, str],
+    late: set[int] = frozenset(),  # type: ignore[assignment]
 ) -> ExamOut:
     prep = sorted(prep, key=lambda p: (p.due_utc or "9999", p.id or 0))
     open_prep = [p for p in prep if p.status == "todo" and left.get(p.id or 0, 0) > 0]
@@ -101,7 +111,9 @@ def exam_out(
     elif last is None:
         status = "unplanned"
     else:
-        status = "late" if last > start else "on_track"
+        # late as the plan says (audit, 8 Nov: a finish known only by its day sorted before the exam's time that day,
+        # so prep that didn't fit read as on track while the status said it would be late)
+        status = "late" if last > start or any((p.id or 0) in late for p in open_prep) else "on_track"
     return ExamOut(
         item=item_out(ctx, exam),
         prep=[

@@ -171,10 +171,14 @@ def made_item(conn: sqlite3.Connection, raw_id: int) -> dict[str, Any] | None:
 
 
 def made_items(conn: sqlite3.Connection, raw_id: int) -> list[dict[str, Any]]:
+    """What the input made, or found already there: one set aside as the same as an item you had is that item, so
+    the calendar moving its copy moves it (audit, 8 Nov: a second Dentist was added, the first kept)."""
     return rows(
         conn,
-        "SELECT i.id, i.title, i.preset, i.start_utc, i.due_utc FROM suggestions s JOIN items i ON i.id = s.item_id "
-        "WHERE s.raw_input_id = ? AND s.status = 'accepted' AND i.status = 'todo' ORDER BY s.id DESC",
+        "SELECT i.id, i.title, i.preset, i.start_utc, i.due_utc FROM suggestions s "
+        "JOIN items i ON i.id = CASE WHEN s.status = 'accepted' THEN s.item_id ELSE s.duplicate_of END "
+        "WHERE s.raw_input_id = ? AND i.status = 'todo' "
+        "AND (s.status = 'accepted' OR (s.status = 'superseded' AND s.duplicate_of IS NOT NULL)) ORDER BY s.id DESC",
         [raw_id],
     )
 

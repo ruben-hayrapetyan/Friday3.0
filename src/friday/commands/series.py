@@ -280,7 +280,9 @@ def materialize_series(ctx: Ctx, series_id: int) -> int:
     return len(made)
 
 
-def remove_future_occurrences(ctx: Ctx, series_id: int, from_day: date, and_later: bool = False) -> list[int]:
+def remove_future_occurrences(
+    ctx: Ctx, series_id: int, from_day: date, and_later: bool = False, from_calendar: bool = True
+) -> list[int]:
     """Delete undone, undetached occurrences from `from_day` on; returns the ones kept: detached, or being timed
     (you're on it now, so it isn't taken from under the timer). `and_later`: on a calendar, every later time goes
     from there too, those Friday hasn't made yet included (the repeat itself is going)."""
@@ -295,17 +297,21 @@ def remove_future_occurrences(ctx: Ctx, series_id: int, from_day: date, and_late
         if row["detached"] or row["id"] in timed:
             kept.append(row["id"])
         else:
-            remove_occurrence(ctx, row["id"], row["id"] in links, and_later)
+            remove_occurrence(ctx, row["id"], row["id"] in links, and_later, from_calendar)
     return kept
 
 
-def remove_occurrence(ctx: Ctx, item_id: int, on_calendar: bool, and_later: bool = False) -> None:
+def remove_occurrence(
+    ctx: Ctx, item_id: int, on_calendar: bool, and_later: bool = False, from_calendar: bool = True
+) -> None:
     if on_calendar:
         # On a calendar: taken off it too, and kept here as dropped so the calendar's copy stays tied to it until
-        # it's gone (deleted outright, the calendar would bring it back as an event of its own).
+        # it's gone (deleted outright, the calendar would bring it back as an event of its own). A calendar's own
+        # repeat switched off leaves the calendar alone (audit, 8 Nov: it deleted the next 12 weeks from Google).
         dropped = replace(require_item(ctx, item_id), status="dropped")
         ctx.db.update("items", {"id": item_id}, {"status": "dropped", "updated_utc": ctx.now_text})
-        queue_event_write(ctx, dropped, "delete_from" if and_later else "delete")
+        if from_calendar:
+            queue_event_write(ctx, dropped, "delete_from" if and_later else "delete")
     else:
         delete_item(ctx, item_id)
 
@@ -487,9 +493,10 @@ def series_spacing(ctx: Ctx, inp: SeriesSpacingInput) -> SeriesOut:
 @command("series_stop", affects_plan=True)
 def series_stop(ctx: Ctx, inp: SeriesRef) -> SeriesOut:
     """Stop a series; its undone future occurrences go (an imported calendar repeat stops coming in too)."""
-    load_series(ctx, inp.id)
+    found = load_series(ctx, inp.id)
     ctx.db.update("series", {"id": inp.id}, {"active": 0, "updated_utc": ctx.now_text})
-    remove_future_occurrences(ctx, inp.id, ctx.today)
+    # in Friday only for a calendar's own repeat: it stays on the calendar, as switching it off says
+    remove_future_occurrences(ctx, inp.id, ctx.today, from_calendar=not found["external_id"])
     return series_out(ctx, inp.id)
 
 
