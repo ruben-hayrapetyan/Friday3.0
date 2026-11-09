@@ -1,6 +1,44 @@
 {
-  "current": "0.3.0",
+  "current": "0.3.1",
   "versions": [
+    {
+      "version": "0.3.1",
+      "released": "2026-11-09",
+      "url": "https://friday-scheduler.com/get/Friday-0.3.1.dmg?via=update",
+      "sha256": "04e281ae70e0fc0952e18cc601e1e9573950f1041eb500d8ab4fcf7f707d5e82",
+      "bytes": 240150716,
+      "minimum_macos": "14.0",
+      "notes": {
+        "summary": "Repeats you make work as they should, any Gmail with an app password, colours for events from the start, Friday on your phone, and many fixes from a full check of the app.",
+        "new": [
+          "Friday on your phone over Tailscale: pair it with a QR code in Settings → Phone.",
+          "Read any Gmail with an app password, in Settings → Integrations → Gmail.",
+          "Events get colours from the start: Exam, Class, Meeting, Work, Exercise, Social and Travel, all yours to change.",
+          "The calendars on your Mac lead Settings → Integrations, and you can change one Setup answer without going through Setup again.",
+          "Keep a repeating task's times apart: \"laundry at least 7 days apart\".",
+          "A built-in preference to stay on one course for a stretch, and a switch for doing things in one go (Settings → Schedule).",
+          "A sentence with several times, like \"no work 7:10–7:20 and 7:30–7:40\", adds a rule for each; under any rule Friday read itself, \"Not what you meant?\" asks your AI.",
+          "\"If math homework becomes overdue, it must be done before Sunday\" is read as a rule."
+        ],
+        "changed": [
+          "Sleep and Meals are tabs of Insights.",
+          "Errors say what happened and what to do, in plain words.",
+          "The intro's town matches the season outside.",
+          "Double-clicking a planned task opens it in your to-dos.",
+          "Many more rules are read without the AI, and one Friday only half understands goes to the AI instead of being guessed."
+        ],
+        "fixed": [
+          "Events you make in Friday repeat as they should.",
+          "Switching off a repeat that came from Google no longer deletes it from Google.",
+          "Canvas and other calendar-link repeats with an end date come in, once, and aren't copied into Google.",
+          "Free/busy and all-day changes made in Google reach Friday.",
+          "Quick add reads \"due 5pm fri\", page ranges and times after midnight as meant, and exam prep by its title.",
+          "Work you've already timed today counts toward your daily limit; changing a task's length changes what's planned.",
+          "Security: other websites and connected assistants can no longer reach your AI key or your private settings.",
+          "Security updates for Google sign-in."
+        ]
+      }
+    },
     {
       "version": "0.3.0",
       "released": "2026-11-08",
