@@ -2044,6 +2044,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/terms_accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Friday's terms, the version you read. */
+        post: operations["terms_accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/token_add": {
         parameters: {
             query?: never;
@@ -3195,6 +3212,23 @@ export interface paths {
         };
         /** For a waiting suggestion of an event (at `start`–`end` when you've edited its time): what accepting it would */
         get: operations["suggestion_effect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Friday's terms, and whether you have yet to accept them. */
+        get: operations["terms"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9546,6 +9580,48 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /** TermsAcceptInput */
+        TermsAcceptInput: {
+            /** Version */
+            version: string;
+        };
+        /** TermsAcceptResult */
+        TermsAcceptResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
+         * TermsOut
+         * @description Friday's terms as they are now, and whether you have yet to accept them (PROGRESS.md C71).
+         */
+        TermsOut: {
+            /** Version */
+            version: string;
+            /** Text */
+            text: string;
+            /** Changes */
+            changes: string[];
+            /** Accepted */
+            accepted: string | null;
+            /** Needed */
+            needed: boolean;
+        };
         /**
          * TimeGroup
          * @description Where the week's time went, one row: a tag, a course read from the titles, or a kind (meals, errands).
@@ -14775,6 +14851,43 @@ export interface operations {
             };
         };
     };
+    terms_accept: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TermsAcceptInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TermsAcceptResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     token_add: {
         parameters: {
             query?: {
@@ -16644,6 +16757,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    terms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TermsOut"];
                 };
             };
         };

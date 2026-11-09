@@ -111,6 +111,20 @@ class AreaOut(Model):
     archived: bool
 
 
+class TermsOut(Model):
+    """Friday's terms as they are now, and whether you have yet to accept them (PROGRESS.md C71)."""
+
+    version: str
+    text: str  # markdown
+    changes: list[str]  # what changed since the last version, shown to someone who accepted an earlier one
+    accepted: str | None  # the version you last accepted; None for never
+    needed: bool  # Friday stays locked until you accept these
+
+
+class TermsAcceptInput(Model):
+    version: str  # the version you read: a change while it was open is refused, to be read again
+
+
 class Changed(Model):
     """A command that changed something without a richer answer."""
 

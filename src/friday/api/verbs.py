@@ -1260,6 +1260,17 @@ VERBS = {
         False,
         "Save a project's children, in order, as a template; each step's share is its part of the hours.",
     ),
+    "terms": Verb(
+        "GET", "/api/q/terms", commands.Empty, False, False, "Friday's terms, and whether you have yet to accept them."
+    ),
+    "terms_accept": Verb(
+        "POST",
+        "/api/c/terms_accept",
+        commands.TermsAcceptInput,
+        True,
+        False,
+        "Accept Friday's terms, the version you read.",
+    ),
     "to_review": Verb(
         "GET", "/api/q/to_review", commands.Empty, False, False, "What's left to go over, soonest due first."
     ),

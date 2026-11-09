@@ -12,6 +12,11 @@ final class Updater: NSObject, WKScriptMessageHandler {
     private var atQuit: URL?
 
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        // Quit on Friday's terms page (PROGRESS.md C71): not accepting closes Friday, your data untouched.
+        if let body = message.body as? [String: Any], body["quit"] as? Bool == true {
+            NSApp.terminate(nil)
+            return
+        }
         guard let body = message.body as? [String: Any], let action = body["update"] as? String,
               let path = body["app"] as? String, let staged = Updater.accepted(path, cache: Updater.cache) else { return }
         switch action {

@@ -138,3 +138,10 @@ the API keys.
 | `friday-m16` | The engine, the server, learning (how long things take you, what you prefer), the Inbox, the pages in the sidebar, the website |
 | `personal` (the Swift app, [`UI/`](UI)) | The calendar and the to-do drawer, deadline lanes, lengths in plain language, exam focus and the other rules from using it on a real term, the paper-and-ink look, the hotkeys and the Dock icon |
 | [Chroma](https://github.com/ruben-hayrapetyan/chroma) and [Todo List](https://github.com/ruben-hayrapetyan/ToDo) | Through `personal`: event colours and categories, and the notebook of short- and long-term tasks |
+
+## Licence and terms
+
+Friday's code is under the [PolyForm Noncommercial License 1.0.0](LICENSE): you may read it, change it and share it
+for any noncommercial purpose, but you may not sell Friday, or anything built from its code, or otherwise make money
+from it, without a licence from Ruben Hayrapetyan. Versions up to 0.3.1 were released under the GNU AGPL v3.0 and stay
+under it. Using the app is covered by its [terms](TERMS.md), which everyone accepts when Friday first opens.

@@ -28,6 +28,7 @@ PAGES = [
     "contact.html",
     "contact-sent.html",
     "contact-wait.html",
+    "terms.html",
 ]
 
 

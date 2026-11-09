@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from friday.commands.all import REGISTRY
+from friday.core import terms
 from friday.core.items import FieldError
 from friday.planner.service import replan
 from tests.commands.helpers import App, new_app
@@ -37,6 +38,7 @@ KV_STATE = {
     "event_keep",  # the optional events you're going to, kept in kv
     "event_hold",  # the events whose time is for a task, kept in kv
     "lock_keep",  # the locks you kept, kept in kv
+    "terms_accept",  # your acceptances of the terms, kept in kv
     "late_accept",  # the lateness you accepted, kept in kv
 }  # commands whose whole effect is in kv, which other commands only use for counters
 
@@ -359,6 +361,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     },
     "not_duplicates": lambda app: {"ids": [essay(app), essay(app)]},
     "review_again": lambda app: {},
+    "terms_accept": lambda app: {"version": terms.current().version},
     "reviewed": lambda app: (app.do("review_again"), {"ids": [essay(app)], "keep": False})[1],
     "event_going": lambda app: {"title": "Poker night"},
     "event_category": lambda app: {

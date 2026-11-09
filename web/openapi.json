@@ -8679,6 +8679,77 @@
     }
    }
   },
+  "/api/c/terms_accept": {
+   "post": {
+    "summary": "Accept Friday's terms, the version you read.",
+    "operationId": "terms_accept",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TermsAcceptInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TermsAcceptResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/token_add": {
    "post": {
     "summary": "Make a token for an assistant (MCP) or a script; it is shown once.",
@@ -11468,6 +11539,24 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/terms": {
+   "get": {
+    "summary": "Friday's terms, and whether you have yet to accept them.",
+    "operationId": "terms",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TermsOut"
         }
        }
       }
@@ -30810,6 +30899,135 @@
      "result"
     ],
     "title": "TemplateSaveResult"
+   },
+   "TermsAcceptInput": {
+    "properties": {
+     "version": {
+      "type": "string",
+      "title": "Version"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "version"
+    ],
+    "title": "TermsAcceptInput"
+   },
+   "TermsAcceptResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "TermsAcceptResult"
+   },
+   "TermsOut": {
+    "properties": {
+     "version": {
+      "type": "string",
+      "title": "Version"
+     },
+     "text": {
+      "type": "string",
+      "title": "Text"
+     },
+     "changes": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Changes"
+     },
+     "accepted": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Accepted"
+     },
+     "needed": {
+      "type": "boolean",
+      "title": "Needed"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "version",
+     "text",
+     "changes",
+     "accepted",
+     "needed"
+    ],
+    "title": "TermsOut",
+    "description": "Friday's terms as they are now, and whether you have yet to accept them (PROGRESS.md C71)."
    },
    "TimeGroup": {
     "properties": {
