@@ -18,6 +18,14 @@ const clock = (m: number) => {
 }
 let measure: CanvasRenderingContext2D | null = null
 
+/** Where the arrows start in an empty box: near what it expects, else just after what it comes after (an end after its
+ * start), else the time it is now (9 Nov: they started from 9am, so a stop after a 5:34pm start went to 8:50am). */
+export function nudgeFrom(expect: Expect | undefined, now: Date = new Date()): string {
+  if (expect?.near && TIME.test(expect.near)) return expect.near
+  if (expect?.after && TIME.test(expect.after)) return expect.after
+  return `${pad(now.getHours())}:${pad(Math.floor(now.getMinutes() / 5) * 5)}`
+}
+
 export function TimeInput(props: {
   value: string
   onChange: (time: string) => void
@@ -56,7 +64,7 @@ export function TimeInput(props: {
     if (read && read.time !== value) onChange(read.time)
   }
   const nudge = (by: number) => {
-    const from = read?.time ?? (TIME.test(value) ? value : expect?.near && TIME.test(expect.near) ? expect.near : "09:00")
+    const from = read?.time ?? (TIME.test(value) ? value : nudgeFrom(expect))
     const unit = Math.max(1, Math.round((step ?? 300) / 60))
     const minute = Number(from.slice(0, 2)) * 60 + Number(from.slice(3, 5))
     const next = clock(by > 0 ? Math.floor(minute / unit) * unit + unit : Math.ceil(minute / unit) * unit - unit)

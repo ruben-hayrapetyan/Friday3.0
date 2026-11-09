@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 import { blocks, inline } from "./markdown"
-import { type Terms, TermsPage } from "./TermsGate"
+import { longDate, type Terms, TermsPage } from "./TermsGate"
 
 const TEXT = readFileSync(new URL("../../../src/friday/core/terms.md", import.meta.url), "utf8")
 
@@ -57,6 +57,11 @@ describe("the terms page (black box: what you see)", () => {
     expect(html).toContain("Friday&#x27;s terms have changed")
     expect(html).toContain('aria-label="What changed"')
     expect(html).toContain("Section 4 now says what a price covers.")
+  })
+
+  it("gives its version as a date", () => {
+    expect(page(terms(null))).toContain("Version of 9 November 2026")
+    expect(longDate("not a date")).toBe("not a date")
   })
 
   it("says the tab may be closed once Quit couldn't close it", () => {

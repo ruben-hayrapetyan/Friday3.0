@@ -13,6 +13,12 @@ export type Terms = Output<"terms">
 
 export const useTerms = () => useQuery({ queryKey: ["terms"], queryFn: () => query("terms") })
 
+/** "2026-11-09" as "9 November 2026". */
+export function longDate(day: string): string {
+  const d = new Date(`${day}T12:00:00Z`)
+  return Number.isNaN(d.getTime()) ? day : d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
+}
+
 type Bridge = { webkit?: { messageHandlers?: { friday?: { postMessage: (m: unknown) => void } } } }
 
 /** Quit: the Mac app closes; a browser tab closes if it can, else says it may be closed. */
@@ -65,6 +71,7 @@ export function TermsPage({ terms, busy, left, onAccept, onQuit }: { terms: Term
               if (b.items.every((i) => changes.has(i))) return null // shown above, or a first version's note
               return <ul key={n}>{b.items.map((i) => <li key={i}>{inline(i)}</li>)}</ul>
             }
+            if (b.text.startsWith("Version: ")) return <p key={n} className="fr-kicker">Version of {longDate(b.text.slice(9))}</p>
             return <p key={n}>{inline(b.text)}</p>
           })}
         </article>

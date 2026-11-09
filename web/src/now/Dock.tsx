@@ -194,6 +194,7 @@ function Timing({ cur, elapsed, started, next, dot, compact, menu, onMenu }: Sta
   const pause = useCommand("stop", { label: (o) => o.result.message ?? "Paused" })
   const finish = useCommand("stop", { label: (o) => o.result.message ?? "Done" })
   const left = toMin(cur.end) - nowMin
+  const [forgot, setForgot] = useState(false)
   return (
     <>
       <Bar pct={share(cur, nowMin)} live />
@@ -226,44 +227,52 @@ function Timing({ cur, elapsed, started, next, dot, compact, menu, onMenu }: Sta
       {/* Started and finding it's longer (or shorter) than you thought: the estimate, a tap from here. */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 14px 10px 18px", fontSize: 12, color: "var(--color-neutral-400)" }}>
         <EstimateNudge itemId={cur.item_id} runningMin={seconds / 60} />
-        {started && <ForgotToStop started={started} />}
+        {started && !forgot && (
+          <button className="fr-link" onClick={() => setForgot(true)} style={{ marginLeft: "auto", fontSize: 12, flex: "none" }}>
+            Forgot to stop?
+          </button>
+        )}
       </div>
+      {started && forgot && <ForgotToStop started={started} now={nowMin} onClose={() => setForgot(false)} />}
     </>
   )
 }
 
 /** A timer left running (28 Oct: "what if i forgot to turn the timer off"): stop it as of when you really stopped, so
- * only that counts as done and as how long it took. */
-function ForgotToStop({ started }: { started: string }) {
-  const [open, setOpen] = useState(false)
-  const [at, setAt] = useState("")
+ * only that counts as done and as how long it took. Its own row under the timer, opened at the time it is now (9 Nov:
+ * an empty box's arrows counted from 9am, so a timer started at 5:34pm was "stopped" at 8:50am), every control the same
+ * height, the buttons before Cancel and none moving with the time typed (5 Nov). */
+function ForgotToStop({ started, now, onClose }: { started: string; now: number; onClose: () => void }) {
+  const [at, setAt] = useState(() => stoppedGuess(now, toMin(started)))
   const stop = useCommand("stop", { label: (o) => o.result.message ?? "Stopped" })
   const end = (done: boolean) => {
     if (!at) return
     stop({ at: spanOn(started.slice(0, 10), started.slice(11, 16), at).end, done })
-    setOpen(false)
+    onClose()
   }
-  if (!open)
-    return (
-      <button className="fr-link" onClick={() => setOpen(true)} style={{ marginLeft: "auto", fontSize: 12 }}>
-        Forgot to stop?
-      </button>
-    )
+  const control = { fontSize: 12, height: 28, minHeight: 0, padding: "0 10px", flex: "none" } as const
   return (
-    <span role="group" aria-label="When you stopped" onKeyDown={(e) => e.key === "Enter" && end(false)} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}>
-      Stopped at
-      <TimeInput value={at} onChange={setAt} label="Stopped at" expect={{ after: started.slice(11, 16) }} style={{ width: 92, padding: "2px 8px", minHeight: 0, fontSize: 12 }} />
-      <button className="btn btn-secondary" disabled={!at} onClick={() => end(false)} style={{ fontSize: 12, padding: "2px 8px", minHeight: 0 }}>
+    <div role="group" aria-label="When you stopped" onKeyDown={(e) => e.key === "Enter" && end(false)} style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, padding: "0 14px 12px 18px", fontSize: 12, color: "var(--color-neutral-400)" }}>
+      <span style={{ flex: "none" }}>You stopped at</span>
+      <TimeInput value={at} onChange={setAt} label="Stopped at" expect={{ after: started.slice(11, 16), near: stoppedGuess(now, toMin(started)) }} style={{ fontSize: 12, height: 28, minHeight: 0, padding: "0 10px", width: 92 }} />
+      <button className="btn btn-primary fr-press" disabled={!at} onClick={() => end(false)} style={control}>
         Stop then
       </button>
-      <button className="btn btn-secondary" disabled={!at} onClick={() => end(true)} style={{ fontSize: 12, padding: "2px 8px", minHeight: 0 }}>
+      <button className="btn btn-secondary fr-press" disabled={!at} onClick={() => end(true)} style={control}>
         Done then
       </button>
-      <button className="fr-link" onClick={() => setOpen(false)} style={{ fontSize: 12 }}>
+      <button className="btn btn-ghost" onClick={onClose} style={control}>
         Cancel
       </button>
-    </span>
+    </div>
   )
+}
+
+/** Where "you stopped at" starts: now, to the 5 minutes before (it was earlier, and the arrows step by 5), never
+ * before the timer started (a stop before its start would read as the next day's). */
+export function stoppedGuess(now: number, started: number): string {
+  const round = Math.floor(now / 5) * 5
+  return fromMin(round > started ? round : now).slice(11, 16)
 }
 
 /** In a planned block, not timing it yet. */
