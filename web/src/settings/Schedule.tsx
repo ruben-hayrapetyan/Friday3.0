@@ -38,6 +38,7 @@ export function Schedule() {
   const pace = settings.pace as { default: string }
   const planner = settings.planner as { assume_unreviewed: "done" | "not_done" }
   const missed = planner.assume_unreviewed
+  const sittings = settings.sittings as { one_go: boolean; split_first: string[]; factor: number }
   const mon = sleep.mon
   const allNights = (change: Partial<Night>) => save({ key: "sleep", value: Object.fromEntries(DAYS.map((d) => [d, { ...sleep[d], ...change }])) })
   const differs = (k: keyof Night) => DAYS.some((d) => sleep[d][k] !== mon[k])
@@ -101,6 +102,19 @@ export function Schedule() {
           ]}
           value={missed}
           onPick={(v) => save({ key: "planner", value: { ...planner, assume_unreviewed: v } })}
+          size="big"
+        />
+      </Field>
+      {/* Yours since COMBINED.md 38 but only settable by hand: a new user had no way to it (9 Nov, "what do I have that
+          a user who just downloaded the app does not"). */}
+      <Field name="Sittings" note="How Friday cuts work up. In one go, splitting a task costs three times as much, so it keeps each one together where it can.">
+        <Seg
+          options={[
+            { value: "split", label: "Split as needed" },
+            { value: "one_go", label: "In one go" },
+          ]}
+          value={sittings.one_go ? "one_go" : "split"}
+          onPick={(v) => save({ key: "sittings", value: { ...sittings, one_go: v === "one_go" } })}
           size="big"
         />
       </Field>

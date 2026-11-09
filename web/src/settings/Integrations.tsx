@@ -292,6 +292,7 @@ function MailFilters() {
  * Gmail with 2-Step Verification on, no Google Cloud project. The password goes to secrets.toml and never comes back. */
 function GmailApp() {
   const accounts = useQuery({ queryKey: ["gmail_app_accounts"], queryFn: () => query("gmail_app_accounts") })
+  const ai = useAi()
   const gmail = usePart<{ enabled: boolean }>("gmail")
   const sources = (useInbox().data?.sources ?? []).filter((s) => s.kind === "gmail")
   const connect = useCommand("gmail_app_set", { label: (o) => o.result.message ?? "Connected" })
@@ -338,6 +339,12 @@ function GmailApp() {
           {busy ? "Checking with Gmail…" : "Connect"}
         </button>
       </form>
+      {!ai.ready && (
+        // Mail is read by the AI: without one it waits, unread (9 Nov: what a new user lacks that you have)
+        <span className="fr-kicker" style={{ color: "var(--fr-warn)", textWrap: "pretty" }}>
+          Friday reads mail with an AI, and none is set up yet: choose one in the AI card below. Until then, mail waits unread.
+        </span>
+      )}
       {list.length > 0 && gmail?.enabled && <MailFilters />}
     </Card>
   )
