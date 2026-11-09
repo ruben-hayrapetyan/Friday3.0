@@ -113,9 +113,8 @@ def laundry_done_monday_then_planned(app: App, days: float | None) -> int:
     series = weekly_laundry(app)
     app.do("series_spacing", id=series, days=days)
     first = min((r for r in app.table("items") if r["title"] == "Laundry"), key=lambda r: r["due_utc"])["id"]
-    app.do("log", id=first, start="2026-11-02T09:00", end="2026-11-02T12:00")
+    app.at("2026-11-02T12:30").do("log", id=first, start="2026-11-02T09:00", end="2026-11-02T12:00")
     app.do("done", id=first)
-    app.at("2026-11-02T12:30")
     replan(app.conn, app.now_utc)
     return min(parse_utc(b["start_utc"]) for b in app.table("blocks") if b["item_id"] in laundry_ids(app))
 

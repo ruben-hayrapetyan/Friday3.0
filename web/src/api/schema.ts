@@ -778,7 +778,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Record past work on an item, or something that happened (made a fixed item). */
+        /** Record past work on an item, or something that happened (made a fixed item). It must have ended by now: work */
         post: operations["log"];
         delete?: never;
         options?: never;

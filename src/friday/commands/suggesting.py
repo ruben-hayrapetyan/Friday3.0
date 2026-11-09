@@ -56,6 +56,7 @@ def take(
         proposals = sized(f.as_kind(picked.kind, picked.title), picked.minutes) if picked else f.proposals
         if picked and picked.skip:
             proposals = []  # your notes say it needs nothing from you
+        proposals = proposals + all_day_left_out(conn, raw_id, f, now_utc, until)
         made += suggest(conn, settings, now_utc, user_id, raw_id, proposals, bool(source["trusted"]), source["name"])
         conn.execute("UPDATE raw_inputs SET status = 'extracted' WHERE id = ?", [raw_id])
     made += gone(conn, source, {f.external_id for f in found}, settings, now_utc, user_id, until)
@@ -150,18 +151,36 @@ def gone(
         )
         conn.execute("UPDATE raw_inputs SET status = 'ignored' WHERE id = ?", [r["id"]])
         # Everything it made that's still ahead: an exam and the prep you accepted for it go together.
-        drops, seen_ids = [], set()
-        for item in made_items(conn, r["id"]):
-            when = item["start_utc"] or item["due_utc"]
-            if item["id"] in seen_ids or not when or not now_utc <= parse_utc(when):
-                continue
-            if until is not None and parse_utc(when) >= until:
-                continue
-            seen_ids.add(item["id"])
-            drops.append(Proposed("drop", {"id": item["id"], "title": item["title"]}, fixed=True))
+        drops = ahead_drops(made_items(conn, r["id"]), now_utc, until)
         if drops:
             made += suggest(conn, settings, now_utc, user_id, r["id"], drops, bool(source["trusted"]), source["name"])
     return made
+
+
+def ahead_drops(made: list[dict[str, Any]], now_utc: int, until: int | None) -> list[Proposed]:
+    """Drops for what an input made that is still ahead (and before `until`, for a calendar read in a window)."""
+    drops, seen_ids = [], set()
+    for item in made:
+        when = item["start_utc"] or item["due_utc"]
+        if item["id"] in seen_ids or not when or not now_utc <= parse_utc(when):
+            continue
+        if until is not None and parse_utc(when) >= until:
+            continue
+        seen_ids.add(item["id"])
+        drops.append(Proposed("drop", {"id": item["id"], "title": item["title"]}, fixed=True))
+    return drops
+
+
+def all_day_left_out(
+    conn: sqlite3.Connection, raw_id: int, f: Found, now_utc: int, until: int | None
+) -> list[Proposed]:
+    """An event made all-day in its calendar while you leave all-day events out goes, as if deleted there (C68's
+    open list, 9 Nov: a 9-to-5 offsite made all-day in Google stayed 9 to 5 in Friday, busy). Its exam prep stays,
+    read again; made timed again, it comes back."""
+    if f.event is None or f.read is None or f.event.start is not None or f.read.all_day:
+        return []
+    events = [m for m in made_items(conn, raw_id) if m["start_utc"] and m["preset"] != "Exam prep"]
+    return ahead_drops(events, now_utc, until)
 
 
 def made_item(conn: sqlite3.Connection, raw_id: int) -> dict[str, Any] | None:

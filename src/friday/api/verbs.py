@@ -527,7 +527,7 @@ VERBS = {
         commands.LogInput,
         True,
         True,
-        "Record past work on an item, or something that happened (made a fixed item).",
+        "Record past work on an item, or something that happened (made a fixed item). It must have ended by now: work",
     ),
     "log_list": Verb(
         "GET", "/api/q/log_list", commands.LogListInput, False, False, "The latest commands, newest first."

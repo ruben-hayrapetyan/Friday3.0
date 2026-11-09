@@ -17,7 +17,7 @@ def pin(ctx: Ctx, inp: PinInput) -> Changed:
         raise FieldError("id", "That can't be pinned: it's an event at a set time, or it's done")
     start = parse_utc(ctx.utc(inp.start, "start"))
     if inp.end is not None:
-        end = parse_utc(ctx.utc(inp.end, "end"))
+        start, end = ctx.span(inp.start, inp.end)
     else:
         left = remaining_minutes(item, minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0))
         end = start + (left if left else 60)

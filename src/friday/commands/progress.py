@@ -150,7 +150,7 @@ def sitting_edit(ctx: Ctx, inp: SittingEditInput) -> ItemResult:
     """Change when a timed sitting began and ended (28 Oct: "what if i forgot to turn the timer off"): the time
     counted as done, and what Friday learns of how long that takes, are the corrected time."""
     found = timed_in(ctx, inp)
-    start, end = parse_utc(ctx.utc(inp.new_start, "new_start")), parse_utc(ctx.utc(inp.new_end, "new_end"))
+    start, end = ctx.span(inp.new_start, inp.new_end, "new_start", "new_end")
     if end <= start:
         raise FieldError("new_end", "must be after the start")
     if end > ctx.now_utc:
@@ -174,10 +174,13 @@ def sitting_delete(ctx: Ctx, inp: SittingInput) -> Changed:
 
 @command("log", affects_plan=True)
 def log(ctx: Ctx, inp: LogInput) -> ItemResult:
-    """Record past work on an item, or something that happened (made a fixed item)."""
-    start, end = parse_utc(ctx.utc(inp.start, "start")), parse_utc(ctx.utc(inp.end, "end"))
+    """Record past work on an item, or something that happened (made a fixed item). It must have ended by now: work
+    logged ahead would count as done before it was (C68's open list, 9 Nov)."""
+    start, end = ctx.span(inp.start, inp.end)
     if end <= start:
         raise FieldError("end", "must be after the start")
+    if end > ctx.now_utc:
+        raise FieldError("end", "must not be later than now: log work once it's done")
     if inp.id is not None:
         item = require_item(ctx, inp.id)
         write_progress(ctx, inp.id, end - start, "retro", start, end)

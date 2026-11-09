@@ -23,7 +23,8 @@ def finish(app: App, title: str, minutes: int, day: int) -> None:
     item = app.do("add", text=f"{title} #CS ~1h")["item"]["id"]
     start = f"2026-10-{day:02d}T10:00"
     end_min = 10 * 60 + minutes
-    app.do("log", id=item, start=start, end=f"2026-10-{day:02d}T{end_min // 60:02d}:{end_min % 60:02d}")
+    end = f"2026-10-{day:02d}T{end_min // 60:02d}:{end_min % 60:02d}"
+    app.at(end).do("log", id=item, start=start, end=end)  # logged once it's done
     app.do("done", id=item)
 
 

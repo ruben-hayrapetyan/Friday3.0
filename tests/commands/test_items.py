@@ -152,7 +152,7 @@ def test_friday_estimates_a_length_from_similar_finished_items(app: App) -> None
     for minutes in (200, 210, 190):
         item_id = app.do("add", text=f"PS{minutes} #cs ~3h")["item"]["id"]
         app.do(
-            "log", id=item_id, start="2026-10-19T07:00", end=f"2026-10-19T{7 + minutes // 60:02d}:{minutes % 60:02d}"
+            "log", id=item_id, start="2026-10-18T07:00", end=f"2026-10-18T{7 + minutes // 60:02d}:{minutes % 60:02d}"
         )
         app.do("done", id=item_id)
     estimated = app.do("add", text="PS9 #cs")["item"]

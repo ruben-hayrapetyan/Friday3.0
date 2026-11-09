@@ -28,6 +28,7 @@ from friday.core.time import (
     parse_local,
     parse_utc,
     planning_date,
+    span_to_utc,
     to_local,
     to_utc,
 )
@@ -73,11 +74,18 @@ class Ctx:
 
     def utc(self, local: str, field_name: str = "time") -> str:
         """A local `2026-10-20T14:00`, or a spoken `tue 14:00` or `3pm`, as a stored UTC string."""
+        return format_utc(to_utc(self.moment(local, field_name), self.tz))
+
+    def moment(self, local: str, field_name: str = "time") -> datetime:
+        """A local `2026-10-20T14:00`, or a spoken `tue 14:00` or `3pm`, as a clock time."""
         try:
-            moment = parse_local(local)
+            return parse_local(local)
         except ValueError:
-            moment = self.spoken(local, field_name)
-        return format_utc(to_utc(moment, self.tz))
+            return self.spoken(local, field_name)
+
+    def span(self, start: str, end: str, start_name: str = "start", end_name: str = "end") -> tuple[int, int]:
+        """A start and end as UTC minutes; a pair beginning in the hour the clocks skip moves past it whole."""
+        return span_to_utc(self.moment(start, start_name), self.moment(end, end_name), self.tz)
 
     def spoken(self, text: str, field_name: str) -> datetime:
         words = text.lower().split()

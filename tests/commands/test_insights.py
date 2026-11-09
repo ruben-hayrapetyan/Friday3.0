@@ -15,8 +15,8 @@ def app(tmp_path: Path) -> App:
 def test_insights_compare_estimates_by_kind_and_map_working_hours(app: App) -> None:
     for title, worked in (("PS1", ("09:00", "11:00")), ("PS2", ("09:00", "10:00"))):
         item = app.do("add", title=title, preset="Assignment", duration_min=60, due="2026-10-23T17:00")["item"]["id"]
-        app.do("log", id=item, start=f"2026-10-19T{worked[0]}", end=f"2026-10-19T{worked[1]}")
-        app.at("2026-10-19T12:00").do("done", id=item)
+        app.at("2026-10-19T12:00").do("log", id=item, start=f"2026-10-19T{worked[0]}", end=f"2026-10-19T{worked[1]}")
+        app.do("done", id=item)
     out = app.do("insights", weeks=4)
     (kind,) = out["by_kind"]
     assert (kind["kind"], kind["n"], kind["low"], kind["high"]) == ("Assignment", 2, 1.0, 2.0)

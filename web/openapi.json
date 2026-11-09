@@ -3265,7 +3265,7 @@
   },
   "/api/c/log": {
    "post": {
-    "summary": "Record past work on an item, or something that happened (made a fixed item).",
+    "summary": "Record past work on an item, or something that happened (made a fixed item). It must have ended by now: work",
     "operationId": "log",
     "parameters": [
      {

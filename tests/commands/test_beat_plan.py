@@ -49,8 +49,9 @@ def shown_late(app: App, day: int, preset: str = "Assignment") -> int:
 
 def worked_late(app: App, item: int, day: int, until: str = "03:00") -> None:
     """Worked from 12:30am the night after `day` until `until`, done then: before its 9am due."""
+    app.at(f"2026-10-{day + 1:02d}T{until}")
     app.do("log", id=item, start=f"2026-10-{day + 1:02d}T00:30", end=f"2026-10-{day + 1:02d}T{until}")
-    app.at(f"2026-10-{day + 1:02d}T{until}").do("done", id=item)
+    app.do("done", id=item)
 
 
 def three_late_nights(app: App) -> None:
@@ -106,8 +107,9 @@ class TestLaterNights:
     def test_work_finished_after_its_due_teaches_nothing(self, app: App) -> None:
         for day in (19, 20, 21):
             item = shown_late(app, day)
+            app.at(f"2026-10-{day + 1:02d}T10:00")
             app.do("log", id=item, start=f"2026-10-{day + 1:02d}T00:30", end=f"2026-10-{day + 1:02d}T03:00")
-            app.at(f"2026-10-{day + 1:02d}T10:00").do("done", id=item)  # an hour after its due
+            app.do("done", id=item)  # an hour after its due
         assert "learned:beat:nights" not in asked(app)
         out = app.do("beat_plan")
         assert (out["on_time"], out["late"]) == (0, 3)
@@ -122,8 +124,9 @@ class TestLaterNights:
 class TestFaster:
     def finish_fast(self, app: App, day: int) -> int:
         item = shown_late(app, day, preset="Reading")
+        app.at(f"2026-10-{day + 1:02d}T00:30")
         app.do("log", id=item, start=f"2026-10-{day:02d}T23:30", end=f"2026-10-{day + 1:02d}T00:30")
-        app.at(f"2026-10-{day + 1:02d}T00:30").do("done", id=item)  # 1 h of the 3 planned, inside the margin
+        app.do("done", id=item)  # 1 h of the 3 planned, inside the margin
         return item
 
     def test_a_kind_finished_in_a_third_of_its_length_is_offered_at_half(self, app: App) -> None:

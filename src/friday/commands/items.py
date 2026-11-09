@@ -20,7 +20,7 @@ from friday.api.commands import (
     OccurrenceChange,
 )
 from friday.commands.estimates import learned_minutes
-from friday.commands.eventwrites import queue_event_write
+from friday.commands.eventwrites import put_back, queue_event_write
 from friday.commands.fields import (
     all_day_is_free,
     check_parent,
@@ -398,7 +398,9 @@ def reopen(ctx: Ctx, inp: ItemRef) -> ItemResult:
     for row in rows(ctx.conn, "SELECT id FROM completions WHERE item_id = ?", [inp.id]):
         ctx.db.delete("completions", {"id": row["id"]})
     done = minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0)
-    return ItemResult(item=item_out(ctx, set_status(ctx, inp.id, "todo"), done))
+    opened = set_status(ctx, inp.id, "todo")
+    put_back(ctx, inp.id)  # dropped, and gone from its calendar: back there too
+    return ItemResult(item=item_out(ctx, opened, done))
 
 
 @command("done", affects_plan=True)

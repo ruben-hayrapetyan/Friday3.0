@@ -1,7 +1,7 @@
 """Settings and paces (DESIGN §17): settings_set, pace, pace_save, pace_delete, day_override."""
 
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from friday.api.commands import (
@@ -20,6 +20,7 @@ from friday.core.db import rows
 from friday.core.items import FieldError
 from friday.core.pace import Dials, PacePeriod, adjust_dials, dials_on, pace_label, switch_pace
 from friday.core.settings import SleepDay, check_hhmm, to_json, validate_value
+from friday.core.time import format_utc, parse_utc, to_local, to_utc
 from friday.ingest import local_models
 from friday.planner.snapshot import pace_periods
 from friday.planner.store import kv_get, settings_version
@@ -66,13 +67,35 @@ def settings_set(ctx: Ctx, inp: SettingsSetInput) -> Changed:
         now = to_json("sleep", ctx.settings["sleep"])
         value = {day: {**now.get(day, {}), **(value.get(day) or {})} for day in now}
     before = ctx.settings["llm"]  # saving refreshes ctx.settings: the AI as it was, kept first
+    old_zone = ctx.settings["time"].timezone
     write_setting(ctx, inp.key, value)
+    if inp.key == "time" and old_zone and ctx.settings["time"].timezone not in (None, old_zone):
+        keep_whole_days(ctx, old_zone, ctx.settings["time"].timezone)
     if inp.key == "llm":
         # A local model no longer read with goes, if Friday downloaded it (ingest/local_models.py).
         local_models.forget(ctx.conn, ctx.user_id, before, validate_value("llm", value))
     if inp.key == "gcal" and validate_value("gcal", inp.value).include_all_day != all_day:
         reread_calendars(ctx)  # events seen before would otherwise keep the old reading
     return Changed(message=f"Saved {inp.key}")
+
+
+def keep_whole_days(ctx: Ctx, old_zone: str, new_zone: str) -> None:
+    """A new timezone keeps whole-day events on their dates (C68's open list, 9 Nov: a birthday from midnight to
+    midnight in New York was 9pm the evening before to 9pm in Los Angeles). A timed event stays the moment it was."""
+    found = rows(
+        ctx.conn,
+        "SELECT id, start_utc, end_utc FROM items WHERE user_id = ? AND when_kind = 'fixed'"
+        " AND start_utc IS NOT NULL AND end_utc IS NOT NULL",
+        [ctx.user_id],
+    )
+    for item in found:
+        start, end = to_local(parse_utc(item["start_utc"]), old_zone), to_local(parse_utc(item["end_utc"]), old_zone)
+        if end > start and start.time() == end.time() == datetime.min.time():
+            ctx.db.update(
+                "items",
+                {"id": item["id"]},
+                {"start_utc": format_utc(to_utc(start, new_zone)), "end_utc": format_utc(to_utc(end, new_zone))},
+            )
 
 
 # Keys that change what a good plan is: the next replan follows them instead of holding the old plan.

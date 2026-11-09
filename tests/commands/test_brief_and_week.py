@@ -40,8 +40,8 @@ def test_the_week_compares_plan_and_record_by_area_and_scores_deadlines(app: App
     item = app.do("add", text="PS1 #CS due mon 17:00 ~1h")["item"]["id"]
     app.do("pin", id=item, start="2026-10-19T09:00", kind="locked")
     replan(app.conn, app.now_utc)
-    app.do("log", id=item, start="2026-10-19T09:00", end="2026-10-19T10:30")
-    app.at("2026-10-19T11:00").do("done", id=item)
+    app.at("2026-10-19T11:00").do("log", id=item, start="2026-10-19T09:00", end="2026-10-19T10:30")
+    app.do("done", id=item)
     week = app.do("week_review")
     assert (week["start"], week["end"]) == ("2026-10-19", "2026-10-25")
     assert [(a["area"], a["actual_h"]) for a in week["areas"]] == [("CS", 1.5)]
@@ -71,8 +71,8 @@ def test_where_the_time_went_names_courses_kinds_and_the_biggest_to_dos(app: App
     app.do("pin", id=chem, start="2026-10-19T09:00", kind="locked")
     app.do("pin", id=errand, start="2026-10-19T13:00", kind="locked")
     replan(app.conn, app.now_utc)
-    app.do("log", id=chem, start="2026-10-19T09:00", end="2026-10-19T10:30")
-    groups = app.at("2026-10-19T11:00").do("week_review")["groups"]
+    app.at("2026-10-19T11:00").do("log", id=chem, start="2026-10-19T09:00", end="2026-10-19T10:30")
+    groups = app.do("week_review")["groups"]
     rows = {g["name"]: g for g in groups}
     assert rows["Chem"]["by"] == "subject" and rows["Chem"]["actual_h"] == 1.5
     assert rows["Chem"]["items"][0]["title"] == "Chem 2090 Problem Set 9"

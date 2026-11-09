@@ -45,6 +45,16 @@ def to_utc(local: datetime, tz: str) -> int:
     return _naive(aware.astimezone(UTC).replace(tzinfo=None))
 
 
+def span_to_utc(start: datetime, end: datetime, tz: str) -> tuple[int, int]:
+    """A stretch of clock time as UTC minutes. One beginning in the hour the clocks skip moves past the gap whole,
+    keeping its length (9 Nov: "2:30am for 1h" on a spring-forward night became 3:30 to 3:30 and was refused as
+    ending before it began; it is 3:30 to 4:30 now). One beginning before the gap keeps its clock times."""
+    start_utc, end_utc = to_utc(start, tz), to_utc(end, tz)
+    if to_local(start_utc, tz) != start and end > start:
+        end_utc = start_utc + (end - start) // timedelta(minutes=1)
+    return start_utc, end_utc
+
+
 def to_local(minutes: int, tz: str) -> datetime:
     utc = (EPOCH + timedelta(minutes=minutes)).replace(tzinfo=UTC)
     return utc.astimezone(zone(tz)).replace(tzinfo=None)

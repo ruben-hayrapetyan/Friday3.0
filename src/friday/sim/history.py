@@ -216,7 +216,9 @@ def review(life: Life, day: date, outcomes: dict[str, tuple[str, float]]) -> Non
         short = life.real_minutes.get(item["id"], 0) - life.worked.get(item["id"], 0)
         if short > 0:  # straight after its last block that day
             life.worked[item["id"]] += short
-            begin = parse_local(ends.get(item["id"], f"{day}T19:00"))
+            # straight after its last block, ending by the review at the latest: work is logged once it's done
+            begin = min(parse_local(ends.get(item["id"], f"{day}T19:00")),
+                        to_local(life.now, ZONE.key) - timedelta(minutes=short))  # fmt: skip
             life.do("log", id=item["id"], start=f"{begin:%Y-%m-%dT%H:%M}",
                     end=f"{begin + timedelta(minutes=short):%Y-%m-%dT%H:%M}")  # fmt: skip
         life.do("done", id=item["id"], actual_min=life.worked.get(item["id"]))

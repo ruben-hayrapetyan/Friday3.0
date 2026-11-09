@@ -68,6 +68,34 @@ def queue_event_write(ctx: Ctx, item: Item, op: str, target: str | None = None) 
     return True
 
 
+def sent_delete(conn: sqlite3.Connection, item_id: int, user_id: int) -> bool:
+    """The event's last write to its calendar was a delete, and it went: the calendar no longer has it."""
+    last = one(
+        conn,
+        "SELECT op, done_utc FROM event_writes WHERE user_id = ? AND item_id = ? AND op != 'repeat' "
+        "ORDER BY id DESC LIMIT 1",
+        [user_id, item_id],
+    )
+    return last is not None and last["op"] == "delete" and last["done_utc"] is not None
+
+
+def put_back(ctx: Ctx, item_id: int) -> bool:
+    """An event whose delete reached its calendar, back on that calendar (C68's open list, 9 Nov: undone or opened
+    again, it stayed only in Friday). Made there as a new event, as Friday has it: Google may take a change to an
+    event it deleted without bringing it back, so the deleted one isn't patched. Its guests and anything Friday
+    doesn't read (a video link, attachments) aren't on the new one. Says whether it queued it."""
+    item = load_item(ctx.conn, item_id, ctx.user_id)
+    link = event_links(ctx.conn, ctx.user_id).get(item_id)
+    if item is None or item.status != "todo" or link is None or not link.calendar_id:
+        return False
+    if not sent_delete(ctx.conn, item_id, ctx.user_id):
+        return False
+    let_go(ctx.conn, item_id, link)
+    ctx.db.insert("event_writes", {"item_id": item_id, "op": "save", "calendar_id": link.calendar_id,
+                                   "queued_utc": ctx.now_text})  # fmt: skip
+    return True
+
+
 @command("events_to_calendar")
 def events_to_calendar(ctx: Ctx, inp: Empty) -> Changed:
     """Put the events made in Friday that are still to come and on no calendar yet on the one new events go to, so

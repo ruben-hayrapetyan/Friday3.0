@@ -13,7 +13,7 @@ from friday.core.db import one, rows
 from friday.core.items import FieldError, Item, apply_preset, validate, with_defaults
 from friday.core.rows import item_to_row
 from friday.core.textnorm import plain_words
-from friday.core.time import UNIT_MIN
+from friday.core.time import UNIT_MIN, format_utc
 from friday.planner.cushion import cushion
 from friday.planner.progress import remaining_minutes
 from friday.planner.store import EventLink, area_names, event_links, kv_get, load_item
@@ -65,6 +65,9 @@ def to_item_values(ctx: Ctx, given: dict[str, Any]) -> dict[str, Any]:
             out["preset"] = preset_name(ctx, value) if value else None
         else:
             out[name] = value
+    if given.get("start") and given.get("end"):
+        start, end = ctx.span(given["start"], given["end"])
+        out["start_utc"], out["end_utc"] = format_utc(start), format_utc(end)
     return out
 
 
