@@ -302,6 +302,7 @@ class ScriptedClient:
 
     def create(self, **request: Any) -> Any:
         self.calls.append(request)
+        refused(request)
         asked = json.dumps(request["messages"])
         schema = request["output_config"]["format"]["schema"]["properties"]
         if "is_syllabus" in schema:
@@ -315,6 +316,15 @@ class ScriptedClient:
         else:
             answer = {"title": request["messages"][0]["content"][0]["text"][:80]}
         return answered(answer)
+
+
+def refused(request: dict[str, Any]) -> None:
+    """Refuse a request Anthropic's API would refuse: a structured-output schema it doesn't take (10 Nov)."""
+    from friday.core.strict import strict_problems
+
+    schema = (request.get("output_config") or {}).get("format", {}).get("schema")
+    if schema is not None and (problems := strict_problems(schema)):
+        raise ValueError("Anthropic would refuse this schema: " + "; ".join(problems))
 
 
 def answered(answer: dict[str, Any]) -> Any:

@@ -46,7 +46,8 @@ class Friday:
         self.log = (folder / "server.out").open("w")
         self.process = subprocess.Popen([*fridayd, "serve", "--port", str(self.port)], cwd=REPO, env=self.env,
                                         stdout=self.log, stderr=subprocess.STDOUT)  # fmt: skip
-        self.http = httpx.Client(base_url=f"http://127.0.0.1:{self.port}", timeout=60)
+        # A fresh server's first plan compiles the planner: over a minute on CI's slower machines (10 Nov)
+        self.http = httpx.Client(base_url=f"http://127.0.0.1:{self.port}", timeout=300)
         for _ in range(240):
             try:
                 if self.http.get("/api/q/status").status_code == 200:
