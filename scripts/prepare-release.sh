@@ -1,6 +1,6 @@
 #!/bin/bash
 # Prepares a version of Friday for release (HOSTED.md H123, H134, H136, H174): sets the version (VERSION and the
-# same number in both pyproject.toml, web/package.json and both uv.lock) and commits it, builds the Mac app with
+# same number in pyproject.toml, web/package.json and uv.lock) and commits it, builds the Mac app with
 # Friday's Google client, makes the disk image, and uploads it with its draft notes to the laptop. There it waits in
 # the admin hub for you to edit and approve the notes and press
 # Release. Nothing is released here.
@@ -37,7 +37,7 @@ cd "$REPO"
 git diff --quiet HEAD -- || die "commit or set aside your changes first: a version is built from a commit"
 
 echo "==> Friday $VERSION"
-# the number everywhere it's written (H174): VERSION, both pyproject.toml, web/package.json and both uv.lock
+# the number everywhere it's written (H174): VERSION, pyproject.toml, web/package.json and uv.lock
 NUMBERED_SAID="$(python3 scripts/set_version.py "$VERSION")" || die "the version number couldn't be written into its files"
 read -r -a NUMBERED <<< "$NUMBERED_SAID"
 if ! git diff --quiet HEAD -- "${NUMBERED[@]}"; then

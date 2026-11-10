@@ -11,7 +11,7 @@ import pytest
 from scripts.set_version import locked_version, project_version, set_version
 
 REPO = Path(__file__).resolve().parents[1]
-FILES = ["VERSION", "pyproject.toml", "hub/pyproject.toml", "web/package.json", "uv.lock", "hub/uv.lock"]
+FILES = ["VERSION", "pyproject.toml", "web/package.json", "uv.lock"]  # the hub has its own, in Friday-admin (C80)
 
 
 def versions(root: Path) -> dict[str, str]:
@@ -27,10 +27,8 @@ def versions(root: Path) -> dict[str, str]:
     return {
         "VERSION": (root / "VERSION").read_text().strip(),
         "pyproject.toml": project("pyproject.toml"),
-        "hub/pyproject.toml": project("hub/pyproject.toml"),
         "web/package.json": json.loads((root / "web/package.json").read_text())["version"],
         "uv.lock": locked("uv.lock", "friday"),
-        "hub/uv.lock": locked("hub/uv.lock", "friday-hub"),
     }
 
 

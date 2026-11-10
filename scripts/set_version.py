@@ -1,5 +1,5 @@
 """One version number everywhere (HOSTED.md H174, 8 Nov: Friday was 0.3.0 while the repo said 0.1.0): VERSION, which
-the Mac build reads, and the same number in pyproject.toml, the hub's pyproject.toml, web/package.json and both
+the Mac build reads, and the same number in pyproject.toml, web/package.json and
 uv.lock files. `scripts/prepare-release.sh` runs it and commits them together; tests/test_versions.py checks they agree.
 
     python3 scripts/set_version.py 0.4.0
@@ -42,10 +42,8 @@ def set_version(root: Path, value: str) -> list[str]:
     edits = {
         "VERSION": lambda t: value + "\n",
         "pyproject.toml": lambda t: project_version(t, value),
-        "hub/pyproject.toml": lambda t: project_version(t, value),
         "web/package.json": lambda t: package_version(t, value),
         "uv.lock": lambda t: locked_version(t, "friday", value),
-        "hub/uv.lock": lambda t: locked_version(t, "friday-hub", value),
     }
     for name, edit in edits.items():
         path = root / name

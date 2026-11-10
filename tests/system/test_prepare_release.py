@@ -28,7 +28,7 @@ def setup(tmp_path: Path) -> dict[str, Path]:
     shutil.copy2(REPO / "scripts" / "set_version.py", repo / "scripts")
     (repo / "VERSION").write_text("0.1.0\n")
     # every file that names the version (H174), as small as set_version needs them
-    for name, package in (("", "friday"), ("hub/", "friday-hub")):
+    for name, package in (("", "friday"),):  # the hub numbers its own, in Friday-admin (C80)
         (repo / name).mkdir(exist_ok=True)
         (repo / f"{name}pyproject.toml").write_text(f'[project]\nname = "{package}"\nversion = "0.1.0"\n')
         (repo / f"{name}uv.lock").write_text(
@@ -78,7 +78,7 @@ def test_a_prepared_version_waits_on_the_laptop_with_its_notes_and_checksum(setu
     repo = setup["repo"]
     assert (repo / "VERSION").read_text().strip() == "0.2.0" and waiting["commit"] == git(repo, "rev-parse", "HEAD")
     assert git(repo, "log", "-1", "--format=%s") == "Friday 0.2.0, prepared for release"
-    numbered = ["VERSION", "pyproject.toml", "hub/pyproject.toml", "web/package.json", "uv.lock", "hub/uv.lock"]
+    numbered = ["VERSION", "pyproject.toml", "web/package.json", "uv.lock"]  # the hub numbers its own (C80)
     assert sorted(git(repo, "show", "--name-only", "--format=", "HEAD").splitlines()) == sorted(numbered)
     assert all("0.2.0" in (repo / name).read_text() for name in numbered) and not git(repo, "status", "--porcelain")
     assert image[-512:-508] == b"koly"  # a real disk image (UDIF), not a copy of the folder
