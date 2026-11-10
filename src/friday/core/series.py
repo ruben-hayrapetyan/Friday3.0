@@ -20,6 +20,7 @@ class Series:
     release_offset_min: int | None = None
     due_offset_min: int | None = None
     active: bool = True
+    zone: str | None = None  # the timezone it was made in: its times keep their real moment when you move (10 Nov)
 
 
 def materialize(series: Series, today: date, days: int, tz: str, existing: set[tuple[str, int]]) -> list[Item]:
@@ -54,14 +55,19 @@ def materialize(series: Series, today: date, days: int, tz: str, existing: set[t
 
 
 def occurrence_timing(series: Series, moment: datetime, tz: str) -> dict[str, str]:
+    """A time's UTC moments: in the zone the repeat was made in, so a 2pm New York lecture stays 11am in Los Angeles
+    every week after a move (10 Nov, your choice: keep the real moment, as Google Calendar does); a whole-day time
+    keeps its date wherever you are, as whole-day events do (C70)."""
     if series.template.get("when") == "fixed":
         minutes = series.template["length_min"]
+        whole_days = minutes % 1440 == 0 and moment.hour == 0 and moment.minute == 0
+        tz = tz if whole_days else (series.zone or tz)
         start = to_utc(moment, tz)
         # its length in real minutes, so the clocks changing doesn't stretch or squash it (8 Nov: a daily 2:30-3:30
         # was 0 minutes long the day clocks went forward); a whole-day event stays midnight to midnight
-        whole_days = minutes % 1440 == 0 and moment.hour == 0 and moment.minute == 0
         end = to_utc(moment + timedelta(minutes=minutes), tz) if whole_days else start + minutes
         return {"start_utc": format_utc(start), "end_utc": format_utc(end)}
+    tz = series.zone or tz  # a task's window and due keep their real moment too
     if series.release_offset_min is not None or series.due_offset_min is not None:
         release = moment + timedelta(minutes=series.release_offset_min or 0)
         due = moment + timedelta(minutes=series.due_offset_min) if series.due_offset_min is not None else None
