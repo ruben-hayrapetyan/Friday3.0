@@ -19,7 +19,7 @@ from friday.engine.evaluate import Evaluation, evaluate
 from friday.engine.gaps import closed_gaps
 from friday.engine.kernel import init_state, new_state, protected_items, total_violations
 from friday.engine.problem import STAGES, Problem
-from friday.engine.repair import deadline_value, repair
+from friday.engine.repair import MEALS_KEPT, deadline_value, repair
 from friday.engine.sampler import ChainOutcome, SamplerConfig, anneal
 
 CANCEL_POLL_S = 0.05
@@ -49,6 +49,9 @@ class SchedulerConfig:
     fallback_warm_s: float = 1.0
     fallback_workers: int = 8
     use_fallback: bool = True
+    # A plan made afresh starts from this many repaired starts, the chains shared among them, and keeps the best (C91):
+    # on a packed week the start decided how many meals were cut and what went unplanned, the chain count barely did.
+    starts: int = 3
 
 
 @dataclass
@@ -103,21 +106,19 @@ def schedule(
     c, owner = start.c, start.owner
     trace = {"construct": deadline_value(c, owner)}
     seconds["construct"], clock = time.perf_counter() - clock, time.perf_counter()
-    owner = repair(c, owner, config.repair_steps, config.sampler.seed, config.sampler.move_weights, cancel)
-    trace["repair"] = deadline_value(c, owner)
-    if warm and trace["repair"] > 0 and (reordered := due_order(c, owner, config, cancel)) is not None:
-        owner = reordered
-        trace["due_order"] = deadline_value(c, owner)
-    if deadline_value(c, owner) > 0 and (fed := meals_first(c, owner, config, cancel)) is not None:
-        owner = fed
-        trace["meals_first"] = deadline_value(c, owner)
-    if not warm and trace["repair"] > 0:
-        # personal's overload start (COMBINED.md 54): as many tasks on time as can be, kept only if it ends less late.
-        other = construct(c, order=fewest_late_order(c))
-        other = repair(c, other, config.repair_steps, config.sampler.seed, config.sampler.move_weights, cancel)
-        if valid(c, other) and deadline_value(c, other) < trace["repair"]:
-            owner = other
-            trace["fewest_late"] = deadline_value(c, owner)
+    # Cold: several starts, each repaired with its own seed (in parallel: the kernel runs without the GIL). Warm: the
+    # plan you have is the one start.
+    count = 1 if warm else max(1, min(config.starts, config.sampler.chains))
+    seeds = [config.sampler.seed + START_SEED_STEP * k for k in range(count)]
+    if count == 1:
+        begun = [started(c, owner, config, cancel, warm, seeds[0])]
+    else:
+        with ThreadPoolExecutor(count) as pool:
+            begun = list(pool.map(lambda seed: started(c, owner, config, cancel, warm, seed), seeds))
+    owners = [o for o, _ in begun]
+    first = min(range(count), key=lambda k: deadline_value(c, owners[k]))  # the least late start, the fallback's
+    trace |= begun[first][1]
+    owner = owners[first]
     seconds["repair"], clock = time.perf_counter() - clock, time.perf_counter()
     steps = step_budget(config, len(problem.items), warm)
     small = len(problem.items) <= config.fallback_threshold
@@ -125,9 +126,10 @@ def schedule(
     if small and deadline_value(c, owner) > 0:
         owner, fallback = deadline_fallback(c, owner, config, cancel, "first", warm, overloaded)
         trace["fallback"] = deadline_value(c, owner)
+        owners[first] = owner
     seconds["fallback"] = time.perf_counter() - clock
     clock = time.perf_counter()
-    outcomes, protected = sample_from(c, owner, config, steps, warm, cancel)
+    outcomes, protected = sample_from(c, owners, config, steps, warm, cancel)
     owner = outcomes[0].owner
     trace["anneal"] = deadline_value(c, owner)
     seconds["anneal"] = time.perf_counter() - clock
@@ -137,7 +139,7 @@ def schedule(
         trace["fallback"] = deadline_value(c, candidate)
         if deadline_value(c, candidate) < deadline_value(c, owner):
             warm_steps = step_budget(config, len(problem.items), True)
-            outcomes, protected = sample_from(c, candidate, config, warm_steps, True, cancel)
+            outcomes, protected = sample_from(c, [candidate], config, warm_steps, True, cancel)
             owner = outcomes[0].owner
         seconds["fallback"] += time.perf_counter() - clock
     if keep and (kept := better_kept(c, owner)) is not None:  # warm or the nightly cold one: yours stands
@@ -178,14 +180,19 @@ def due_order(c: Compiled, owner: np.ndarray, config: SchedulerConfig, cancel: n
     return other
 
 
-def meals_first(c: Compiled, owner: np.ndarray, config: SchedulerConfig, cancel: np.ndarray) -> np.ndarray | None:
-    """Meals a rule keeps from work (the deadlines stage) short of their minimum placed first: each in the free run
-    nearest its own window (inside it first), what work sat there and in its travel taken out and placed again after;
-    returned when it scores better. A plan with work where dinner could go couldn't trade the two a slot at a time, so
-    lunch and dinner stayed off the plan."""
+def meals_first(
+    c: Compiled, owner: np.ndarray, config: SchedulerConfig, cancel: np.ndarray, seed: int | None = None
+) -> np.ndarray | None:
+    """Meals short of their minimum placed first: each in the free run nearest its own window (inside it first), what
+    work sat there and in its travel taken out and placed again after; returned when it scores better. A plan with work
+    where dinner could go couldn't trade the two a slot at a time, so lunch and dinner stayed off the plan.
+
+    C92: meals kept by a wellbeing rule too (the default's "a meal below its minimum is a skipped meal"), not only by a
+    deadlines one, and whether or not work is late: on a packed week with nothing late it had never run, and every
+    week-two meal was skipped. The work put back is repaired with meals counted (MEALS_KEPT), with this start's seed."""
     M, problem = c.m, c.problem
     index = {k: i for i, k in enumerate(c.keys)}
-    kept = [r for r in problem.rules if r.stage == "deadlines" and r.type == "elastic_shortfall"]
+    kept = [r for r in problem.rules if r.stage in ("deadlines", "wellbeing") and r.type == "elastic_shortfall"]
     meals = [
         k for k, item in problem.items.items() if item.meal_window is not None and any(r.applies(item) for r in kept)
     ]
@@ -238,7 +245,8 @@ def meals_first(c: Compiled, owner: np.ndarray, config: SchedulerConfig, cancel:
         if base[s] >= 0 and c.keys[base[s]] in moved and not M.locked[base[s], s]:
             base[s] = -1
     other = construct(c, base, only=moved, order=fewest_late_order(c))
-    other = repair(c, other, config.repair_steps, config.sampler.seed, config.sampler.move_weights, cancel)
+    seed = config.sampler.seed if seed is None else seed  # each start its own (C92): one seed's repair dropped meals
+    other = repair(c, other, config.repair_steps, seed, config.sampler.move_weights, cancel, MEALS_KEPT)
     if not valid(c, other) or stage_values(c, other) >= stage_values(c, owner):
         return None
     return other
@@ -333,13 +341,41 @@ def current_owner(problem: Problem) -> np.ndarray | None:
     return owner
 
 
+START_SEED_STEP = 100_003  # each start's repair seed apart from the next, so no start repeats another's moves
+
+
+def started(
+    c: Compiled, built: np.ndarray, config: SchedulerConfig, cancel: np.ndarray, warm: bool, seed: int
+) -> tuple[np.ndarray, dict[str, int]]:
+    """One start from the built plan, repaired with `seed`: late work placed again by due (warm), meals first when work
+    is late, and personal's overload start when that ends less late; with the deadlines value after each step."""
+    owner = repair(c, built.copy(), config.repair_steps, seed, config.sampler.move_weights, cancel)
+    trace = {"repair": deadline_value(c, owner)}
+    if warm and trace["repair"] > 0 and (reordered := due_order(c, owner, config, cancel)) is not None:
+        owner = reordered
+        trace["due_order"] = deadline_value(c, owner)
+    if (fed := meals_first(c, owner, config, cancel, seed)) is not None:
+        owner = fed
+        trace["meals_first"] = deadline_value(c, owner)
+    if not warm and trace["repair"] > 0:
+        # personal's overload start (COMBINED.md 54): as many tasks on time as can be, kept only if it ends less late.
+        other = construct(c, order=fewest_late_order(c))
+        other = repair(c, other, config.repair_steps, seed, config.sampler.move_weights, cancel)
+        if valid(c, other) and deadline_value(c, other) < trace["repair"]:
+            owner = other
+            trace["fewest_late"] = deadline_value(c, owner)
+    return owner, trace
+
+
 def sample_from(
-    c: Compiled, owner: np.ndarray, config: SchedulerConfig, steps: int, warm: bool, cancel: np.ndarray
+    c: Compiled, owners: list[np.ndarray], config: SchedulerConfig, steps: int, warm: bool, cancel: np.ndarray
 ) -> tuple[list[ChainOutcome], list[str]]:
-    """Anneal with W9 protecting every item that is complete and on time where annealing starts."""
-    protected = protected_items(c.m, owner)
-    outcomes = anneal(c, owner, protected, config.sampler, steps, warm, config.warm_t0, cancel)
-    return outcomes, [c.keys[i] for i in np.flatnonzero(protected)]
+    """Anneal from each start, the chains taking them in turn, with W9 protecting every item that is complete and on
+    time where its chain starts; the protected items are the winning chain's start's."""
+    protected = [protected_items(c.m, owner) for owner in owners]
+    outcomes = anneal(c, owners, protected, config.sampler, steps, warm, config.warm_t0, cancel)
+    won = protected[outcomes[0].index % len(owners)]
+    return outcomes, [c.keys[i] for i in np.flatnonzero(won)]
 
 
 def deadline_fallback(

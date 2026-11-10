@@ -15,6 +15,10 @@ DEADLINES_ONLY = np.array([1.0, 0.0, 0.0])
 # The research ran repair with its calibration seeing no wellbeing or preference deltas, which leaves the median
 # at 1 point-unit: T runs from 0.3 to 0.003, cold enough that lateness only falls once it is found.
 T0, T1 = 0.3, 0.003
+# Lateness first, but a meal not given up for nothing (C92): a skipped meal is ~1,000 wellbeing points, 0.1 here, far
+# under any lateness yet above the cold end of the temperature, so work late after meals were placed is put right
+# around them rather than over them.
+MEALS_KEPT = np.array([1.0, 1e-4, 0.0])
 
 
 def deadline_value(c: Compiled, owner: np.ndarray) -> int:
@@ -30,6 +34,7 @@ def repair(
     seed: int,
     move_weights: dict[str, float],
     cancel: np.ndarray | None = None,
+    weights: np.ndarray = DEADLINES_ONLY,
 ) -> np.ndarray:
     late = deadline_value(c, owner)
     if late == 0:
@@ -46,7 +51,7 @@ def repair(
         c.m,
         st,
         unprotected,
-        DEADLINES_ONLY,
+        weights,
         np.full(3, -1, dtype=np.int64),
         move_cumulative(move_weights),
         *work,
