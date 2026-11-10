@@ -2,20 +2,26 @@
 # Prepares a version of Friday for release (HOSTED.md H123, H134, H136, H174): sets the version (VERSION and the
 # same number in both pyproject.toml, web/package.json and both uv.lock) and commits it, builds the Mac app with
 # Friday's Google client, makes the disk image, and uploads it with its draft notes to the laptop. There it waits in
-# the admin hub (https://laptop.tailnet.ts.net:8444/) for you to edit and approve the notes and press
+# the admin hub for you to edit and approve the notes and press
 # Release. Nothing is released here.
 #
 #   scripts/prepare-release.sh VERSION NOTES.json
 #
 # NOTES.json: {"summary": "one sentence", "new": [lines], "changed": [lines], "fixed": [lines]} (H143).
-# FRIDAY_RELEASE_HOST is the laptop over ssh (default debian). FRIDAY_PREPARE_APP names an app already built, so its
+# Where the hub is comes from ~/.config/friday/release.env, kept off git: FRIDAY_RELEASE_HOST (the machine over ssh)
+# and FRIDAY_HUB_URL (its page). FRIDAY_PREPARE_APP names an app already built, so its
 # test needn't build one.
 set -euo pipefail
 
 VERSION="${1:-}" NOTES="${2:-}"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-HOST="${FRIDAY_RELEASE_HOST:-debian}"
+# The hub's whereabouts are private (C80): set in the environment, else in ~/.config/friday/release.env.
+RELEASE_ENV="${FRIDAY_RELEASE_ENV:-$HOME/.config/friday/release.env}"
+# shellcheck disable=SC1090
+[ -f "$RELEASE_ENV" ] && . "$RELEASE_ENV"
+HOST="${FRIDAY_RELEASE_HOST:-}"
 die() { echo "Not prepared: $1" >&2; exit 1; }
+[ -n "$HOST" ] || die "say where the hub is: FRIDAY_RELEASE_HOST in $RELEASE_ENV"
 
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "the version should be a number like 0.2.0, not '$VERSION'"
 [ -f "$NOTES" ] || die "no notes at '$NOTES'"
@@ -69,4 +75,4 @@ echo "==> Uploading to the laptop ($HOST)"
 ssh "$HOST" "mkdir -p friday-releases/candidates/$VERSION && rm -f friday-releases/candidates/$VERSION/candidate.json"
 scp -q "$DMG" "$HOST:friday-releases/candidates/$VERSION/Friday-$VERSION.dmg"
 scp -q "$WORK/candidate.json" "$HOST:friday-releases/candidates/$VERSION/candidate.json"
-echo "Friday $VERSION waits in the hub: https://laptop.tailnet.ts.net:8444/"
+echo "Friday $VERSION waits in the hub${FRIDAY_HUB_URL:+: $FRIDAY_HUB_URL}"

@@ -103,3 +103,13 @@ def test_it_refuses_uncommitted_changes_and_needs_no_google_client(setup: dict[s
     git(setup["repo"], "rm", "-q", "Mac/google_client.json")
     git(setup["repo"], "commit", "-qm", "no client")
     assert "Google client" not in prepare(setup, "0.2.0").stderr  # downloads leave it out (C77)
+
+
+def test_where_the_hub_is_comes_from_a_private_file_and_is_said_when_missing(setup: dict[str, Path]) -> None:
+    """The laptop's name and the hub's address aren't in the repo (C80): ~/.config/friday/release.env says them."""
+    env = {"PATH": f"{setup['bin']}:/usr/bin:/bin:/usr/sbin:/sbin", "HOME": str(setup["laptop"]),
+           "FRIDAY_PREPARE_APP": str(setup["app"])}  # fmt: skip
+    script = str(setup["repo"] / "scripts" / "prepare-release.sh")
+    done = subprocess.run([script, "0.2.0", str(setup["notes"])], env=env, capture_output=True, text=True, timeout=60)
+    assert done.returncode != 0 and "say where the hub is" in done.stderr
+    assert "tailnet" not in (setup["repo"] / "scripts" / "prepare-release.sh").read_text()

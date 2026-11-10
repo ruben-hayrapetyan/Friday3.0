@@ -8,12 +8,35 @@ notes, newest first (H142). Run after editing a page; the hub runs it at every R
 import html
 import json
 import re
-import sys
+from datetime import date
 from pathlib import Path
 
 HERE = Path(__file__).parent
-sys.path.insert(0, str(HERE / "hub"))
-from friday_hub import notes as notes_  # noqa: E402  (the hub's own notes, shown the same everywhere)
+SECTIONS = (("new", "New"), ("changed", "Changed"), ("fixed", "Fixed"))
+
+
+class notes_:  # noqa: N801  A version's notes as the hub shows them (the admin repo's friday_hub/notes.py; its tests
+    # check the two say the same), kept here so the public site builds without the admin code.
+    @staticmethod
+    def sections_html(notes: dict, heading: str = "h3") -> str:
+        """The summary, then each section that has lines, as the popup and What's new show them."""
+        parts = [f'<p class="summary">{html.escape(notes["summary"])}</p>']
+        for key, title in SECTIONS:
+            if notes.get(key):
+                items = "".join(f"<li>{html.escape(line)}</li>" for line in notes[key])
+                parts.append(f"<{heading}>{title}</{heading}><ul>{items}</ul>")
+        return "\n".join(parts)
+
+    @staticmethod
+    def long_date(day: str) -> str:
+        """2026-11-06 as 6 November 2026."""
+        when = date.fromisoformat(day)
+        return f"{when.day} {when:%B %Y}"
+
+    @staticmethod
+    def megabytes(size: int) -> str:
+        return f"{round(size / 1_000_000)} MB"
+
 
 NAV = [
     ("features.html", "Features"),
