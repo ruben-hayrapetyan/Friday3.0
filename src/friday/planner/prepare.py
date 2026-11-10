@@ -189,6 +189,11 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
     for block in snapshot.plan_blocks:
         current.setdefault(block.item_id, []).append((block.start_utc, block.end_utc))
     stability = 1.0 if snapshot.next_stability is None else snapshot.next_stability
+    if snapshot.cold_once:
+        # A plan made afresh on purpose (another way, its pick, "Which should win?") lets go of where your blocks are:
+        # held there (minimize_changes, in wellbeing, above every preference), no reweighing could move them, and every
+        # other way came out as your plan or paid for each hour it moved (C89). Pins and what you're timing still hold.
+        stability = 0.0
     last = {k: LastDone(*v) for k, v in snapshot.series_last.items()}
     items, waits, originals = spaced([past_shortened(i, done.get(i.id, 0) // UNIT_MIN) for i in snapshot.items],
                                      snapshot.series_gaps, last)  # fmt: skip
