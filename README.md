@@ -143,5 +143,6 @@ the API keys.
 
 Friday's code is under the [PolyForm Noncommercial License 1.0.0](LICENSE): you may read it, change it and share it
 for any noncommercial purpose, but you may not sell Friday, or anything built from its code, or otherwise make money
-from it, without a licence from Ruben Hayrapetyan. Versions up to 0.3.1 were released under the GNU AGPL v3.0 and stay
-under it. Using the app is covered by its [terms](TERMS.md), which everyone accepts when Friday first opens.
+from it, without a licence from Ruben Hayrapetyan. The code comes as is, with no warranty and no responsibility taken
+for it or for anything built from it. Using the app is covered by its [terms](TERMS.md), which everyone accepts when
+Friday first opens.

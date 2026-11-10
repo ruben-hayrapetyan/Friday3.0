@@ -1,10 +1,12 @@
 # Friday's terms
 
-Version: 2026-11-09
+Version: 2026-11-09.2
 
 ## What changed
 
-- The first terms for Friday. From this version on, Friday's code is under the PolyForm Noncommercial License, and Friday may be paid for in the future.
+- Section 3 says plainly that Friday's code comes with no responsibility from me.
+- Section 6 says more plainly what Friday's check for updates sends.
+- The section on which law and courts apply is gone.
 
 ## 1. Agreeing to these terms
 
@@ -22,11 +24,9 @@ Friday runs on your own computer. You're responsible for your computer, for the 
 
 ## 3. Friday's code
 
-Friday's code is under the PolyForm Noncommercial License 1.0.0 (the `LICENSE` file that comes with it). In short: you may read it, change it and share it for any noncommercial purpose, as long as anyone you share it with gets the licence too.
+Friday's code is available under the PolyForm Noncommercial License 1.0.0 (the `LICENSE` file that comes with it). It comes as is: I take no responsibility for the code, for how it works, or for anything you or anyone else changes in it, builds from it or does with it. Sections 10 and 11 apply to the code as they do to the app.
 
-**You may not sell Friday, or anything built from its code, offer either as a paid service, or otherwise make money from them, without a written licence from me.** This includes copies, forks and changed versions. Using Friday at work, as an app, is fine; selling or charging for Friday or its code is not.
-
-Versions of Friday up to 0.3.1 were released under the GNU Affero General Public License v3.0 and stay under it.
+You may read the code, change it and share it for any noncommercial purpose, as long as anyone you share it with gets the licence too. **You may not sell Friday, or anything built from its code, offer either as a paid service, or otherwise make money from them, without a written licence from me.** This includes copies, forks and changed versions. Using Friday at work, as an app, is fine; selling or charging for Friday or its code is not.
 
 ## 4. Paying for Friday in the future
 
@@ -40,7 +40,7 @@ Friday doesn't come with an AI of its own. Some features (reading mail, reading 
 
 Friday keeps your calendar, tasks, notes and settings on your computer. I don't collect them, don't see them, and never sell them. Friday has no analytics or tracking.
 
-The only thing Friday sends to me is its check for updates: it asks friday-scheduler.com for the newest version, which tells the site the version of Friday you have and your computer's internet (IP) address, as any visit to a website does. The site runs behind Cloudflare, which sees the same.
+Friday checks friday-scheduler.com for new versions. Like any visit to a website, that check tells the site which version of Friday you have and your computer's internet (IP) address; Cloudflare, which the site runs behind, sees the same. Nothing else about you or your data comes to me.
 
 When you connect a service, Friday sends it what that feature needs: your AI gets the text it's asked to read or plan with, and Google or Apple get the events you save to their calendars. What they do with it is under their privacy policies.
 
@@ -70,16 +70,12 @@ If you misuse Friday or break these terms (for example, by selling a copy of Fri
 
 ## 13. Ending your licence
 
-You can stop using Friday at any time by deleting it. If you break these terms, for example by selling Friday or something built from its code, I may end your right to use Friday and its code. Sections 3 and 7 to 14 still apply after that.
+You can stop using Friday at any time by deleting it. If you break these terms, for example by selling Friday or something built from its code, I may end your right to use Friday and its code. Sections 3, 7 to 12 and 15 still apply after that.
 
 ## 14. Changes to these terms
 
 These terms change only with a new version of Friday. Each time they change, Friday shows you the new terms and what changed, and asks you to accept them again before you go on. If you don't accept, Friday stays locked; your data stays on your computer untouched.
 
-## 15. Law and disputes
-
-These terms are governed by the laws of the State of New York, USA, without regard to its conflict-of-law rules. Any dispute about Friday or these terms is heard in the state or federal courts located in New York, and you and I agree to their jurisdiction.
-
-## 16. Everything else
+## 15. Everything else
 
 These terms, with the licence, are the whole agreement between you and me about Friday. If part of them can't be enforced, the rest still applies. If I don't enforce a part, I haven't given it up.

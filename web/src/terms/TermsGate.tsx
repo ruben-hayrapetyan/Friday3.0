@@ -13,10 +13,11 @@ export type Terms = Output<"terms">
 
 export const useTerms = () => useQuery({ queryKey: ["terms"], queryFn: () => query("terms") })
 
-/** "2026-11-09" as "9 November 2026". */
-export function longDate(day: string): string {
+/** "2026-11-09" (or "2026-11-09.2") as "9 November 2026". */
+export function longDate(version: string): string {
+  const day = version.slice(0, 10) // "2026-11-09.2", a second version that day, is that day too
   const d = new Date(`${day}T12:00:00Z`)
-  return Number.isNaN(d.getTime()) ? day : d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
+  return Number.isNaN(d.getTime()) ? version : d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
 }
 
 type Bridge = { webkit?: { messageHandlers?: { friday?: { postMessage: (m: unknown) => void } } } }

@@ -44,7 +44,11 @@ def test_a_change_to_the_terms_asks_again(app: App, monkeypatch: pytest.MonkeyPa
     newer = terms.Terms("2027-01-01", "# Friday's terms\n\nVersion: 2027-01-01\n", ("Prices are in section 4.",))
     monkeypatch.setattr(terms, "current", lambda: newer)
     shown = app.do("terms")
-    assert (shown["needed"], shown["accepted"], shown["changes"]) == (True, "2026-11-09", ["Prices are in section 4."])
+    assert (shown["needed"], shown["accepted"], shown["changes"]) == (
+        True,
+        "2026-11-09.2",
+        ["Prices are in section 4."],
+    )
     app.do("terms_accept", version="2027-01-01")
     assert app.do("terms")["needed"] is False
 
@@ -69,8 +73,8 @@ def test_every_acceptance_is_kept_with_its_time(app: App) -> None:
 
 def test_the_document_names_its_version_and_what_changed() -> None:
     now = terms.current()
-    assert now.version == "2026-11-09"
-    assert now.changes and now.changes[0].startswith("The first terms for Friday")
+    assert now.version == "2026-11-09.2"
+    assert now.changes and now.changes[0].startswith("Section 3 says plainly")
     assert terms.changes_in("# T\n\n## What changed\n\n- one\n- two\n\n## 1. Next\n\n- not this") == ("one", "two")
 
 
@@ -88,7 +92,6 @@ def test_the_terms_say_what_you_decided() -> None:
         "PolyForm Noncommercial License 1.0.0",
         "**You may not sell Friday, or anything built from its code",
         "A version you have already downloaded keeps working for free",
-        "laws of the State of New York",
         "your computer's internet (IP) address",
         "## 7. Not professional advice",
         "## 12. Indemnity",
@@ -96,7 +99,17 @@ def test_the_terms_say_what_you_decided() -> None:
         "free for me to use in Friday",
     ):
         assert said in text, said
-    assert "arbitration" not in text.lower()
+    for gone in (
+        "arbitration",
+        "State of New York",
+        "courts located",
+        "Law and disputes",
+        "Affero",
+        "0.3.1",
+        "The only thing Friday sends",
+    ):
+        assert gone not in text, gone
+    assert "I take no responsibility for the code" in text
 
 
 def test_the_licence_is_polyform_noncommercial() -> None:

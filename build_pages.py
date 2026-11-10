@@ -126,7 +126,7 @@ def terms_html(markdown: str) -> str:
         elif first.startswith("# "):
             out.append(f"<h1>{inline(first[2:])}</h1>")
         elif first.startswith("Version: "):
-            out.append(f'<p class="when">Version of {notes_.long_date(first[9:])}</p>')
+            out.append(f'<p class="when">Version of {notes_.long_date(first[9:19])}</p>')  # "2026-11-09.2" is that day
         elif all(line.startswith("- ") for line in lines):
             out.append("<ul>\n" + "\n".join(f"  <li>{inline(line[2:])}</li>" for line in lines) + "\n</ul>")
         else:

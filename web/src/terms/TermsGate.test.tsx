@@ -49,7 +49,7 @@ describe("the terms page (black box: what you see)", () => {
     expect(headings[0]).toBe("1. Agreeing to these terms")
     expect(headings).toContain("3. Friday&#x27;s code")
     expect(headings).toContain("6. Privacy")
-    expect(headings.at(-1)).toBe("16. Everything else")
+    expect(headings.at(-1)).toBe("15. Everything else")
   })
 
   it("says what changed to someone who accepted an earlier version", () => {
