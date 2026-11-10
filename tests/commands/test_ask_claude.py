@@ -9,6 +9,7 @@ import pytest
 
 from friday.core.items import FieldError
 from friday.ingest import llm
+from friday.sim.fakes import refused
 from tests.commands.helpers import App, new_app
 
 
@@ -18,6 +19,7 @@ class Claude:
         self.messages = self
 
     def create(self, **request: Any) -> Any:
+        refused(request)  # as Anthropic would (10 Nov)
         self.asked.append(request)
         return SimpleNamespace(
             content=[SimpleNamespace(type="text", text=json.dumps(self.answer))],

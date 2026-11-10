@@ -115,8 +115,13 @@ Willard Straight Hall, room 601", with Friday's Salsa as event 41 and this Satur
 location: "Willard Straight Hall, room 215"}, then add {title: "Salsa", when: "fixed", start: "2026-10-31T13:35", end:
 "2026-10-31T14:40", location: "Helen Newman Hall, dance studio", every: "sat", exceptions: [{date: "2026-11-14", skip:
 true}, {date: "2026-10-31", location: "Willard Straight Hall, room 601"}]}.
-If something can't be expressed with these, say so in the reply and propose nothing for it. Never invent ids."""
+If something can't be expressed with these, say so in the reply and propose nothing for it. Never invent ids.
+Write each action's input as a JSON object in a string, e.g. "{\"id\": 41, \"location\": \"Willard Straight Hall\"}"."""
 
+# Anthropic's structured output (and OpenAI's strict mode) take only closed objects, every one saying
+# `additionalProperties: false`, so a command's input, which differs by command, comes as JSON text Friday reads
+# (10 Nov: with an API key, every "Ask the AI" was refused, "additionalProperties must be explicitly set to false";
+# Claude Code doesn't check, so it only showed without it).
 SCHEMA = {
     "type": "object",
     "properties": {
@@ -128,14 +133,27 @@ SCHEMA = {
                 "properties": {
                     "sentence": {"type": "string"},
                     "command": {"type": "string"},
-                    "input": {"type": "object"},
+                    "input": {"type": "string", "description": "the command's input, as a JSON object"},
                 },
                 "required": ["sentence", "command", "input"],
+                "additionalProperties": False,
             },
         },
     },
     "required": ["reply", "actions"],
+    "additionalProperties": False,
 }
+
+
+def input_of(action: dict[str, Any]) -> dict[str, Any]:
+    """An action's input: JSON text, as the schema asks, or an object, as an AI may still give it; {} for neither."""
+    given = action.get("input")
+    if isinstance(given, str):
+        try:
+            given = json.loads(given) if given.strip() else {}
+        except json.JSONDecodeError:
+            return {}
+    return given if isinstance(given, dict) else {}
 
 
 @command("ask_claude", logged=False)
@@ -250,7 +268,7 @@ def proposals(
     actions = []
     proposed: set[tuple[str | None, datetime | None]] = set()
     for a in answer.get("actions") or []:
-        name, given = str(a.get("command", "")), a.get("input") or {}
+        name, given = str(a.get("command", "")), input_of(a)
         error = None
         new_event = event_key_of(given) if name == "add" else (None, None)
         if new_event[0] is not None and new_event in proposed:
