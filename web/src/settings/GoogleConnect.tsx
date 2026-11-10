@@ -17,6 +17,16 @@ export type GoogleAccount = Schemas["GoogleAccountOut"]
 type Need = "calendar" | "gmail"
 
 export const KEY = ["google_connect_status"]
+
+/** How Google comes in (C77, 9 Nov: everyone but your Cloud project's test users who pressed Google's own Connect was
+ * told "Access blocked"). Only your own Friday carries Google's client, so only it offers Google's own connection
+ * as an everyday option; a download brings Google in through the Mac and Gmail with an app password, and keeps
+ * Google's connection for someone with a Google Cloud key of their own, under Advanced. */
+export function googleWay(clientFile: boolean): { direct: boolean; setupMore: string; settingsMore: string } {
+  return clientFile
+    ? { direct: true, setupMore: "More: Gmail, and connecting to Google directly", settingsMore: "More: Gmail, and connecting to Google directly" }
+    : { direct: false, setupMore: "More: Gmail", settingsMore: "Advanced: Google with a Google Cloud key of your own" }
+}
 const AFTER = ["status", "google_calendars", "inbox", "settings", "mail_log"] // what a sign-in or a removal changes
 
 /** Ask again for what connecting or removing an account changes. */

@@ -11,6 +11,7 @@
 # The `friday` command (the CLI assistants use) and fridayd are installed too, as a copy in ~/.local/bin, with the
 # website beside fridayd.
 set -euo pipefail
+export FRIDAY_GOOGLE_CLIENT=1  # your Friday keeps Google's own connection; downloads don't carry it (C77)
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 RESTART=true

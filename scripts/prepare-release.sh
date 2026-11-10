@@ -26,7 +26,7 @@ assert isinstance(notes.get("summary"), str) and notes["summary"].strip()
 assert all(isinstance(notes.get(k, []), list) for k in ("new", "changed", "fixed"))
 assert any(line.strip() for k in ("new", "changed", "fixed") for line in notes.get(k, []))
 PY
-[ -f "$REPO/Mac/google_client.json" ] || die "Mac/google_client.json isn't there: downloads need Friday's Google client"
+unset FRIDAY_GOOGLE_CLIENT  # downloads leave Google's client out (C77): Google lets in only listed test users
 cd "$REPO"
 git diff --quiet HEAD -- || die "commit or set aside your changes first: a version is built from a commit"
 

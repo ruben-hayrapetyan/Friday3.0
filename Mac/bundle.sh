@@ -53,13 +53,15 @@ find "$RUNTIME/python/lib" -maxdepth 2 -type d \( -name idlelib -o -name turtled
 
 mkdir -p "$RUNTIME/python/share/friday"
 ditto "$REPO/web/dist" "$RUNTIME/python/share/friday/web"  # where the server looks beside its Python (web_dist)
-# Friday's own Google client (H112), so Connect works as downloaded: kept beside this script, git-ignored, never read
-# here, only copied (google_auth.SHIPPED_CLIENT). Without it the app asks each person for a key file of their own.
+# Your own Google client goes only into your own Friday (scripts/deploy.sh sets FRIDAY_GOOGLE_CLIENT=1). Downloads
+# leave it out (PROGRESS.md C77, 9 Nov: Google lets in only the test users its Cloud project lists, and everyone else
+# who pressed Connect got "Access blocked"): their calendars come in through the Mac and their mail with an app
+# password; someone with a Google Cloud key of their own can still use it. Never read here, only copied.
 CLIENT="$REPO/Mac/google_client.json"
-if [ -f "$CLIENT" ]; then
+if [ "${FRIDAY_GOOGLE_CLIENT:-}" = 1 ] && [ -f "$CLIENT" ]; then
   install -m 0644 "$CLIENT" "$RUNTIME/python/share/friday/google_client.json"
 else
-  echo "    No Mac/google_client.json: this build asks for a Google key file" >&2
+  echo "    No Google client in this build: Google comes in through the Mac" >&2
 fi
 
 echo "==> Compiling bytecode"

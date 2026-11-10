@@ -96,10 +96,10 @@ def test_it_refuses_what_cant_be_released(setup: dict[str, Path], version: str, 
     assert not (setup["laptop"] / "friday-releases").exists()
 
 
-def test_it_refuses_uncommitted_changes_and_a_missing_google_client(setup: dict[str, Path]) -> None:
+def test_it_refuses_uncommitted_changes_and_needs_no_google_client(setup: dict[str, Path]) -> None:
     (setup["repo"] / "VERSION").write_text("9.9.9\n")
     assert "commit or set aside" in prepare(setup, "0.2.0").stderr
     git(setup["repo"], "checkout", "--", "VERSION")
     git(setup["repo"], "rm", "-q", "Mac/google_client.json")
     git(setup["repo"], "commit", "-qm", "no client")
-    assert "Friday's Google client" in prepare(setup, "0.2.0").stderr
+    assert "Google client" not in prepare(setup, "0.2.0").stderr  # downloads leave it out (C77)

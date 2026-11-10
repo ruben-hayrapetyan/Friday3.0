@@ -28,7 +28,7 @@ import { ampm, parseLength } from "@/lib/format"
 import { AiConnect, useAi, useLocal } from "@/settings/AiConnect"
 import { CHOICES, choiceOf, fromChoice, saying } from "@/settings/calendarChoice"
 import { ConnectedAccounts } from "@/settings/GoogleAccounts"
-import { ConnectGoogle, GmailConnect, GmailSwitch, useGoogleAccess } from "@/settings/GoogleConnect"
+import { ConnectGoogle, GmailConnect, GmailSwitch, googleWay, useGoogleAccess } from "@/settings/GoogleConnect"
 import { AddFeed, Documents, Upload } from "@/settings/Integrations"
 import { Accounts, ACCOUNTS, PRIVACY, inMacApp } from "@/settings/MacAccounts"
 
@@ -661,7 +661,12 @@ function BriefExample({ on }: { on: boolean }) {
 function BringIn() {
   const mac = useQuery({ queryKey: ["mac_calendars"], queryFn: () => query("mac_calendars"), refetchInterval: 3000 }).data ?? []
   const feeds = (useInbox().data?.sources ?? []).filter((s) => s.kind === "ics")
-  const accounts = useGoogleAccess()?.accounts ?? []
+  const access = useGoogleAccess()
+  const accounts = access?.accounts ?? []
+  // Only your own Friday carries Google's client; a download's Google comes in through the Mac and its Gmail with an
+  // app password (C77, 9 Nov: everyone else who pressed Google's own Connect was told "Access blocked").
+  const way = googleWay(!!access?.client_file)
+  const direct = way.direct
   const [more, setMore] = useState(accounts.length > 0)
   const onMac = inMacApp() || mac.length > 0
   return (
@@ -700,9 +705,19 @@ function BringIn() {
         <Documents compact />
       </Source>
       <button type="button" className="st-link st-rise" style={{ ["--i" as string]: 3 }} onClick={() => setMore(!more)} aria-expanded={more}>
-        {more ? "Fewer options" : "More: Gmail, and connecting to Google directly"}
+        {more ? "Fewer options" : way.setupMore}
       </button>
-      {more && (
+      {more && !direct && (
+        <Source icon="envelope-simple" hue="var(--px-gold)" title="Gmail" note="Friday can suggest due dates and events from your mail (it never sends or deletes). Any Gmail works, with an app password." i={0}>
+          <span className="st-chips">
+            <a className="st-chip st-chip-link" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">
+              <Icon name="key" size={14} /> Make an app password…
+            </a>
+          </span>
+          <span className="st-source-note">Name it Friday (Google asks for 2-Step Verification first, if it isn't on), then paste its 16 letters in Settings → Integrations → Gmail.</span>
+        </Source>
+      )}
+      {more && direct && (
         <Source icon="envelope-simple" hue="var(--px-gold)" title="Gmail, and Google's own connection" note="Friday can suggest due dates and events from your mail (it never sends or deletes). Any Gmail can be read with an app password, in Settings → Integrations → Gmail. Google's own connection, below, lets in only the accounts its Google Cloud project lists; it also reads Google Calendar without the Mac." i={0}>
           <ConnectedAccounts accounts={accounts} />
           <ConnectGoogle why={accounts.length ? "Google's page asks which account." : undefined} done="Choose the calendars it reads in Settings → Integrations." />

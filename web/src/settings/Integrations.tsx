@@ -18,7 +18,7 @@ import { useShell } from "@/shell/ShellContext"
 import { Accounts, ACCOUNTS, inMacApp, PRIVACY } from "./MacAccounts"
 import { Calendars, useCalendars, useMacCalendars } from "./Calendars"
 import { AccountList, signInAgain } from "./GoogleAccounts"
-import { ConnectGoogle, GmailConnect, GmailSwitch, offline, readable, useGoogleAccess, wantsSignIn } from "./GoogleConnect"
+import { ConnectGoogle, GmailConnect, GmailSwitch, googleWay, offline, readable, useGoogleAccess, wantsSignIn } from "./GoogleConnect"
 import { MailLog } from "./MailLog"
 import { AiConnect, useAi } from "./AiConnect"
 import { SectionHead } from "./SettingsPage"
@@ -104,7 +104,11 @@ function GoogleDirect() {
   const access = useGoogleAccess()
   const gmail = usePart<{ enabled: boolean }>("gmail")
   const mac = useMacCalendars().data ?? []
-  const used = !!access?.calendar || !!gmail?.enabled || (!inMacApp() && mac.length === 0)
+  // Only your own Friday carries Google's client (C77); in a download this is for someone with a Google Cloud key of
+  // their own, so it stays closed until used.
+  const way = googleWay(!!access?.client_file)
+  const direct = way.direct
+  const used = !!access?.calendar || !!gmail?.enabled || (direct && !inMacApp() && mac.length === 0)
   const [open, setOpen] = useState(used)
   useEffect(() => {
     if (used) setOpen(true)
@@ -113,7 +117,7 @@ function GoogleDirect() {
     <>
       <button className="fr-plain fr-hover" onClick={() => setOpen(!open)} aria-expanded={open} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-md)", alignSelf: "flex-start", color: "var(--color-neutral-300)" }}>
         <Icon name={open ? "caret-down" : "caret-right"} size={13} />
-        More: Gmail, and connecting to Google directly
+        {way.settingsMore}
       </button>
       {open && (
         <>
