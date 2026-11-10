@@ -30,3 +30,14 @@ site/downloads/
 *.db-shm
 *.sqlite
 *.sqlite3
+
+# Personal notes and the Swift app Friday grew out of: kept in this folder for every session to read, never in git
+# (9 Nov: "make sure anything that is personal (including personal md files) aren't public").
+/preferences.md
+/PROGRESS.md
+/HOSTED.md
+/PROMPT.md
+/CLAUDE.md
+/claude_design.md
+/COMBINED.md
+/UI/

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Builds the Mac app around Friday's website (COMBINED.md 1, 5) with the Swift compiler from the Command Line Tools.
-# It reuses the Swift app's hotkeys and live Dock icon from UI/Sources/App rather than copying them. Friday's server,
+# Its hotkeys and live Dock icon (Shared/) came from the Swift app Friday grew out of. Friday's server,
 # with its own Python, the website and the compiled planner, goes inside it (Mac/bundle.sh), so it runs on any
 # Apple-silicon Mac as it is downloaded (HOSTED.md H108–H111).
 #
@@ -48,7 +48,7 @@ fi
 
 BUILD_DIR="build"
 APP="$BUILD_DIR/$APP_NAME.app"
-SHARED="../UI/Sources/App"
+SHARED="Shared"  # the hotkeys and the live Dock icon, from the Swift app Friday grew out of
 SOURCES=(Sources/*.swift "$SHARED/GlobalHotKey.swift" "$SHARED/FridayIcon.swift" "$SHARED/FridayCountdown.swift")
 SDK="$(xcrun --sdk macosx --show-sdk-path)"
 TARGET="$(uname -m)-apple-macos14.0"
@@ -65,7 +65,7 @@ xcrun swiftc -O -swift-version 5 -target "$TARGET" -sdk "$SDK" \
 echo "==> Rendering app icon"
 ICONSET="$BUILD_DIR/AppIcon.iconset"
 xcrun swiftc -swift-version 5 -target "$TARGET" -sdk "$SDK" \
-  ../UI/tools/MakeIcon/main.swift "$SHARED/FridayIcon.swift" "$SHARED/FridayCountdown.swift" -o "$BUILD_DIR/makeicon"
+  tools/MakeIcon/main.swift "$SHARED/FridayIcon.swift" "$SHARED/FridayCountdown.swift" -o "$BUILD_DIR/makeicon"
 "$BUILD_DIR/makeicon" "$ICONSET" ${RIBBON[@]+"${RIBBON[@]}"} >/dev/null
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 rm -r "$ICONSET" "$BUILD_DIR/makeicon"
