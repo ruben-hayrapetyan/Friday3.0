@@ -145,7 +145,7 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
       </div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 48, flex: "0 1 auto", overflow: "hidden" }}>
         <span className="fr-h" style={{ fontSize: layout.tight ? 18 : 24, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {rangeTitle(first, view, layout.main < 900)}
+          {rangeTitle(first, view, layout.main < 900, layout.tight)}
         </span>
         {!layout.tight && (
           <button className="fr-plain fr-hover-text" style={{ color: "var(--color-neutral-500)", whiteSpace: "nowrap" }} onClick={onToday} title="Back to today">
@@ -403,8 +403,14 @@ function paceLabel(p: { now_label: string; period_end: string | null }): string 
   return p.period_end ? `${p.now_label} · to ${weekday(p.period_end.slice(0, 10))}` : p.now_label
 }
 
-function rangeTitle(first: string, view: View, short = false): string {
+export function rangeTitle(first: string, view: View, short = false, phone = false): string {
   const month = (d: string) => (short ? MONTHS[Number(d.slice(5, 7)) - 1].slice(0, 3) : MONTHS[Number(d.slice(5, 7)) - 1])
+  if (phone && view !== "month") {
+    // On a phone the title has room for a few letters, and each day's header says its date: the month alone
+    // (10 Nov: "Thu 12 Nov" showed as "Thu …")
+    const last = addDays(first, (view as number) - 1)
+    return month(first) === month(last) ? month(first) : `${month(first)}–${month(last)}`
+  }
   const day = (d: string) => Number(d.slice(8, 10))
   if (view === "month") return `${month(first)} ${first.slice(0, 4)}`
   if (view === 1) return `${short ? weekday(first) : FULL_DAY[weekday(first)]} ${day(first)} ${month(first)}`

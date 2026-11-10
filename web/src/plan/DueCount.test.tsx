@@ -29,3 +29,4 @@ describe("a day's deadlines in its header", () => {
     expect(dueCountLabel(12)).toBe("12 due")
   })
 })
+

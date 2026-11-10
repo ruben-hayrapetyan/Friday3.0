@@ -126,6 +126,7 @@ def new_series(ctx: Ctx, values: dict[str, Any], repeat: dict[str, Any]) -> int:
         "series",
         {
             "template": json.dumps(template),
+            "zone": ctx.tz,  # its times keep their real moment if you move timezone (10 Nov)
             "rrule": rule,
             "dtstart_local": dtstart,
             "per_window": repeat.get("per_window") or 1,
@@ -258,6 +259,7 @@ def as_series(row: dict[str, Any]) -> Series:
         row["release_offset_min"],
         row["due_offset_min"],
         bool(row["active"]),
+        row["zone"],
     )
 
 
@@ -373,6 +375,7 @@ def edit_series_from(
         "series",
         {
             "template": json.dumps(template),
+            "zone": old["zone"] or ctx.tz,  # the later part of a repeat keeps its zone
             "rrule": counted_on(
                 rule_from(ctx, every) if every else old["rrule"], old["rrule"], parse_local(old["dtstart_local"]), day
             ),  # fmt: skip
@@ -672,6 +675,7 @@ def mirror(ctx: Ctx, item: dict[str, Any], batch: str, external: str, rule: str 
         "series",
         {
             "template": json.dumps(template),
+            "zone": ctx.tz,
             "rrule": rule or calendar_rule(ctx, batch) or weekdays_rule(starts),
             "dtstart_local": first,
             "external_id": external,

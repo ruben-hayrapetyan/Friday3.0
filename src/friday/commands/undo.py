@@ -24,13 +24,16 @@ def undo(ctx: Ctx, inp: UndoInput) -> Changed:
     changes = json.loads(logged["undo"])
     # A delete already sent to a calendar stays sent (its job is the calendar's history, not this command's to take
     # back); the event goes back there instead (C68's open list, 9 Nov).
-    sent = [c for c in changes if sent_write(ctx, c, "delete")]
+    sent = [c for c in changes if sent_write(ctx, c, "delete") or sent_write(ctx, c, "delete_from")]
     try:
         ctx.db.revert([c for c in changes if c not in sent], LaterCommands(ctx.conn, inp.command_id, ctx.user_id))
     except StaleUndo as stale:
         raise FieldError("command_id", f"That can't be undone any more: {stale}") from stale
-    for change in sent:
-        put_back(ctx, change["after"]["item_id"])
+    # every time the undone command dropped goes back ("this and later" dropped several with one write)
+    dropped = {c["key"]["id"] for c in changes if c["table"] == "items" and c["op"] == "update"
+               and (c.get("after") or {}).get("status") == "dropped"}  # fmt: skip
+    for item_id in sorted({c["after"]["item_id"] for c in sent} | (dropped if sent else set())):
+        put_back(ctx, item_id)
     # The log isn't undo data, so these two marks are kept by hand.
     ctx.conn.execute("UPDATE command_log SET undone_by = ? WHERE id = ?", [ctx.command_id, inp.command_id])
     if logged["command"] == "undo":

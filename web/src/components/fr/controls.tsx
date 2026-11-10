@@ -1,6 +1,7 @@
 // The small controls v22 repeats everywhere (theme/friday.css draws them).
 
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react"
+import { useOnScreen } from "@/lib/onScreen"
 
 /** A Phosphor icon by name, e.g. `gear-six`; `fill` for the filled set. */
 export function Icon({ name, size, fill, style }: { name: string; size?: number; fill?: boolean; style?: CSSProperties }) {
@@ -52,6 +53,7 @@ export function Menu<T extends string>(props: { options: readonly Option<T>[]; v
       window.removeEventListener("keydown", escape)
     }
   }, [open])
+  const list = useOnScreen<HTMLDivElement>(open) // right-aligned, on a phone it could run off the left
   return (
     // Escape here closes the list and goes no further: not the pane or dialog it's in (the audit, 31 Oct)
     <div ref={box} className="fr-menu" onKeyDown={(e) => open && e.key === "Escape" && (e.stopPropagation(), setOpen(false))}>
@@ -60,7 +62,7 @@ export function Menu<T extends string>(props: { options: readonly Option<T>[]; v
         <Icon name="caret-down" size={12} />
       </button>
       {open && (
-        <div className="fr-float fr-menu-list" role="listbox" aria-label={label}>
+        <div ref={list} className="fr-float fr-menu-list" role="listbox" aria-label={label}>
           {options.map((o) => (
             <button
               key={o.value}

@@ -2,6 +2,7 @@
 // words on the button when the title row has room, an icon otherwise.
 
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react"
+import { useOnScreen } from "@/lib/onScreen"
 import { useShell } from "@/shell/ShellContext"
 import { Icon } from "./controls"
 
@@ -9,6 +10,7 @@ import { Icon } from "./controls"
 export function Dropdown(props: { tour?: string; icon: string; label: string; badge?: ReactNode; tone?: CSSProperties; wide?: boolean; up?: boolean; children: (close: () => void) => ReactNode }) {
   const { layout } = useShell()
   const [open, setOpen] = useState(false)
+  const menu = useOnScreen<HTMLDivElement>(open) // on a phone, right-aligned it ran off the left edge
   const box = useRef<HTMLSpanElement>(null)
   useEffect(() => {
     if (!open) return
@@ -37,7 +39,7 @@ export function Dropdown(props: { tour?: string; icon: string; label: string; ba
         {words && <Icon name="caret-down" size={11} style={{ opacity: 0.6 }} />}
       </button>
       {open && (
-        <div className="fr-float" style={{ position: "absolute", ...(props.up ? { bottom: "calc(100% + 6px)", left: 0 } : { top: "calc(100% + 6px)", right: 0 }), zIndex: 20, width: "min(300px, calc(100vw - 24px))", padding: 6, display: "flex", flexDirection: "column", gap: 1 }}>
+        <div ref={menu} className="fr-float" style={{ position: "absolute", ...(props.up ? { bottom: "calc(100% + 6px)", left: 0 } : { top: "calc(100% + 6px)", right: 0 }), zIndex: 20, width: "min(300px, calc(100vw - 24px))", padding: 6, display: "flex", flexDirection: "column", gap: 1 }}>
           {props.children(() => setOpen(false))}
         </div>
       )}

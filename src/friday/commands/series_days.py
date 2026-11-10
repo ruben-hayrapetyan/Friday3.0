@@ -25,7 +25,7 @@ from friday.core.recurrence import counted_on, ending_before, moved_rule, occurr
 from friday.core.time import format_local, format_utc, local_midnight, parse_local, parse_utc, to_local, to_utc
 from friday.planner.store import event_links
 
-COPIED = ("template", "rrule", "dtstart_local", "per_window", "release_offset_min", "due_offset_min")
+COPIED = ("template", "rrule", "dtstart_local", "per_window", "release_offset_min", "due_offset_min", "zone")
 
 
 def moves_day(ctx: Ctx, item: Item, times: dict[str, str]) -> bool:
