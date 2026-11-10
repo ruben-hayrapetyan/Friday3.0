@@ -154,15 +154,7 @@ def test_typed_lines_come_out_as_a_student_means_them(planned: dict[str, Planned
 # How the week is planned
 
 
-# Known until the planner tries several starts (C90, your choice, 10 Nov): on Priya's packed week, where the search
-# starts decides how many meals are cut and whether the weekly 3-hour grading gets a place; the chain count barely does.
-SITTINGS_LEFT = {"priya": "ECE 2100 grading is left unplanned from some starts (C90); several starts to come"}
-
-
-@pytest.mark.parametrize(
-    "key",
-    [pytest.param(k, marks=pytest.mark.xfail(reason=SITTINGS_LEFT[k])) if k in SITTINGS_LEFT else k for k in FEASIBLE],
-)
+@pytest.mark.parametrize("key", FEASIBLE)
 def test_a_feasible_week_is_on_time_in_real_sittings_with_no_marathons(planned: dict[str, Planned], key: str) -> None:
     v = planned[key].verdict()
     assert v.late == {}

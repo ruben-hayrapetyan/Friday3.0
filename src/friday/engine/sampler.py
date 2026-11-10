@@ -188,23 +188,27 @@ def run_one_chain(
 
 def anneal(
     c: Compiled,
-    start: np.ndarray,
-    protected: np.ndarray,
+    start: np.ndarray | list[np.ndarray],
+    protected: np.ndarray | list[np.ndarray],
     config: SamplerConfig,
     steps: int,
     warm: bool,
     warm_t0: float,
     cancel: np.ndarray | None = None,
 ) -> list[ChainOutcome]:
-    """Run every chain from the same start; returns them best first."""
+    """Run every chain, chain i from start i mod the number of starts (one start: all from it); returns them best
+    first. A chain's index is its own whichever start it took, so its random moves are too."""
     cancel = np.zeros(1, dtype=np.int64) if cancel is None else cancel
+    starts = start if isinstance(start, list) else [start]
+    guards = protected if isinstance(protected, list) else [protected]
     if c.m.I == 0:  # nothing to move, and every move proposal picks an item
         st = new_state(c.m)
-        init_state(c.m, st, start)
+        init_state(c.m, st, starts[0])
         values = (int(st.stage_value[0]), int(st.stage_value[1]), int(st.stage_value[2]))
-        return [ChainOutcome(0, start.copy(), values, np.zeros((N_MOVES, 3), dtype=np.int64), 0)]
+        return [ChainOutcome(0, starts[0].copy(), values, np.zeros((N_MOVES, 3), dtype=np.int64), 0)]
     t0 = warm_t0 if warm else config.t0
-    run = lambda index: run_one_chain(c, start, protected, config, steps, t0, index, cancel)  # noqa: E731
+    n = len(starts)
+    run = lambda index: run_one_chain(c, starts[index % n], guards[index % n], config, steps, t0, index, cancel)  # noqa: E731
     if config.threads > 1 and config.chains > 1:
         with ThreadPoolExecutor(min(config.threads, config.chains)) as pool:
             outcomes = list(pool.map(run, range(config.chains)))
