@@ -1,7 +1,8 @@
-"""Installing from Terminal (HOSTED.md H131). Glass box: release/make-install.sh fills in the version, the disk image's
-checksum and the site's address, and the script runs nothing until all of it has arrived. Black box over HTTP: the
-site serves install.sh for the disk image it offers, and the pages show the one line that fetches it, with a Copy
-button that works. System (on a Mac, FRIDAY_SITE set): the served line really installs Friday, checked, signed and
+"""Installing from Terminal (HOSTED.md H131; since H178-H180 unlinked, kept for a line someone saved: downloads are
+signed and notarized, so there's nothing to skip). Glass box: release/make-install.sh fills in the version, the disk
+image's checksum and the site's address, and the script runs nothing until all of it has arrived. Black box over
+HTTP: the site serves install.sh for the disk image it offers, and no page shows the line or the steps to allow
+Friday. System (on a Mac, FRIDAY_SITE set): the served line really installs Friday, checked, signed and
 without the quarantine mark that makes macOS ask."""
 
 import hashlib
@@ -73,17 +74,14 @@ def test_the_site_serves_the_script_for_the_disk_image_it_offers(site: str) -> N
     assert f'SHA256="{digest.hexdigest()}"' in script
 
 
-@pytest.mark.parametrize("page", ["index.html", "help.html"])
-def test_the_pages_show_the_line_with_a_copy_button_that_works(site: str, page: str) -> None:  # noqa: F811
+@pytest.mark.parametrize("page", ["index.html", "help.html", "privacy.html"])
+def test_signed_downloads_need_no_terminal_line_and_no_steps_to_allow_them(site: str, page: str) -> None:  # noqa: F811
+    """Downloads are signed and notarized (PROGRESS C88; HOSTED H178-H180): the pages no longer offer the Terminal
+    line nor explain macOS's warning; install.sh stays, unlinked, for a line someone saved."""
     text = fetch(site, "/" + page)[1].decode()
-    assert LINE in text and "data-copy" in text
-    assert "/site.js" in parsed(site, page).scripts and "data-copy" in fetch(site, "/site.js")[1].decode()
-    assert f'URL="{ADDRESS}/' in fetch(site, "/install.sh")[1].decode()  # the line and the script name one site
-
-
-def test_off_a_mac_the_terminal_line_is_hidden_with_the_download(site: str) -> None:  # noqa: F811
-    assert "[data-mac-only]" in fetch(site, "/download.js")[1].decode()
-    assert fetch(site, "/")[1].decode().count("data-mac-only") == 2
+    assert LINE not in text and 'href="/install.sh"' not in text
+    assert "Open Anyway" not in text and "isn't signed by Apple" not in text
+    assert f'URL="{ADDRESS}/' in fetch(site, "/install.sh")[1].decode()  # still served, for a saved line
 
 
 @pytest.mark.skipif(sys.platform != "darwin" or not os.environ.get("FRIDAY_SITE"), reason="a Mac, FRIDAY_SITE=URL")
