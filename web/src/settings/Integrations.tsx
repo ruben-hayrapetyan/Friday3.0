@@ -100,6 +100,12 @@ function MacCalendars() {
   )
 }
 
+/** Whether Google's own connection opens by itself: when it's in use; in your own Friday also while Gmail is on or there
+ * are no Mac calendars. Not for Gmail by app password in a download, which switches Gmail on too (C81). */
+export function advancedOpens(p: { direct: boolean; googleCalendar: boolean; gmailOn: boolean; macCalendars: boolean }): boolean {
+  return p.googleCalendar || (p.direct && (p.gmailOn || !p.macCalendars))
+}
+
 /** Google's own connection and Gmail, under More when the Mac's calendars are the way in: open while either is in use. */
 function GoogleDirect() {
   const access = useGoogleAccess()
@@ -111,7 +117,7 @@ function GoogleDirect() {
   const direct = way.direct
   // Gmail by app password switches `gmail.enabled` on too, so in a download only Google's own connection opens it
   // (C81: a user who connected Gmail properly then saw the key-file card and took Google for calendar-only).
-  const used = !!access?.calendar || (direct && (!!gmail?.enabled || (!inMacApp() && mac.length === 0)))
+  const used = advancedOpens({ direct, googleCalendar: !!access?.calendar, gmailOn: !!gmail?.enabled, macCalendars: inMacApp() || mac.length > 0 })
   const [open, setOpen] = useState(used)
   useEffect(() => {
     if (used) setOpen(true)
