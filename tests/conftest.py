@@ -3,10 +3,16 @@ key is visible, no AI command (`claude`, `codex`, `agy`, `gemini`) is found, Oll
 answers and Google's sign-in page never opens, so nothing reads your config, calls an AI, downloads a model or reaches
 Google."""
 
+import os
 from pathlib import Path
 from typing import Any
 
 import pytest
+
+# Every plan in the tests is made with 3 search chains, as on the smallest Mac a download runs on (an M1's four
+# performance cores, less one), whatever machine runs them: plans depend on the chain count, which follows the cores
+# (C90: on GitHub's 2-CPU machines 1 chain missed Priya's lunch). Servers the system tests start inherit it.
+os.environ["FRIDAY_CHAINS"] = "3"
 
 
 def no_google_page(*args: Any, **kwargs: Any) -> Any:
