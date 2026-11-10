@@ -12,7 +12,9 @@ an edit when it changes, superseded when it goes):
 - Tokens live in secrets.toml (0600), one section per connected source; never in the database, a log or an error."""
 
 import json
+import logging
 import sqlite3
+import threading
 import tomllib
 from collections.abc import Callable
 from typing import Any
@@ -197,6 +199,46 @@ def queue_write(conn: sqlite3.Connection, item_id: int, op: str, actor: str, now
         "VALUES (?, ?, ?, ?, ?, ?)",
         [user_id, came["source_id"], came["external_id"], item_id, op, format_utc(now_utc)],
     )
+    WAKE.set()
+
+
+log = logging.getLogger("friday.integrations")
+WAKE = threading.Event()  # set when something is queued to go back: the sender sends it at once (your "yes", C97)
+SETTLE_S = 0.5  # the command that queued it commits first; one rolled back or undone leaves nothing to send
+
+
+class Sender:
+    """Sends done and reopen back the moment they're queued, not at the integrations job's minute (which still sends
+    anything this missed). Its own thread and connection; a failure is kept for the retry, never raised."""
+
+    def __init__(self, db_path: Any, clock: Callable[[], int]):
+        self.db_path, self.clock = db_path, clock
+        self.stopping = threading.Event()
+        self.thread = threading.Thread(target=self.loop, name="friday-integrations-sender", daemon=True)
+
+    def start(self) -> None:
+        self.thread.start()
+
+    def stop(self) -> None:
+        self.stopping.set()
+        WAKE.set()
+        self.thread.join(1)
+
+    def loop(self) -> None:
+        from friday.core.db import connect
+
+        conn = connect(self.db_path)
+        while not self.stopping.is_set():
+            if not WAKE.wait(5):
+                continue
+            WAKE.clear()
+            if self.stopping.wait(SETTLE_S):
+                break
+            try:
+                send_writes(conn, self.clock())
+            except Exception:  # a bad write mustn't stop the sender; the job's minute tries again
+                log.exception("sending to integrations")
+        conn.close()
 
 
 def send_writes(

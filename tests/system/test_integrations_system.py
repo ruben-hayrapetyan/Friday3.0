@@ -52,9 +52,13 @@ def test_connecting_reviews_the_first_read_then_new_ones_come_straight_in_and_ge
 def test_done_goes_both_ways(world) -> None:  # noqa: ANN001
     friday, fake = world
     passport = next(i for i in friday.q("items") if i["title"] == "Renew passport")
+    import time
+
+    began = time.monotonic()
     friday.c("done", id=passport["id"])
     task = next(t for t in fake.tasks.values() if t["content"] == "Renew passport")
     assert friday.until(lambda: task["checked"])
+    assert time.monotonic() - began < 10, "done reached Todoist at the job's minute, not at once"  # C97
     venue = next(t for t in fake.tasks.values() if t["content"] == "Book the venue")
     venue["checked"] = True
     friday.c("sync_now")
