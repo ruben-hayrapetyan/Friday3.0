@@ -56,6 +56,9 @@ class LlmSettings(Model):
     model: str = DEFAULT_MODELS["claude"][0]  # reads mail and documents; "" until one is chosen
     small_model: str = DEFAULT_MODELS["claude"][1]  # sorts what comes in: each item's kind, title, deadline or time
     base_url: str | None = None  # another service's OpenAI-style address, or a named one's when it moved
+    # Claude, OpenAI and Gemini, asked through their command on this Mac or through an API key: your choice (C95,
+    # 10 Nov: "the user should have the choice between cli commands or api key"). "key" asks through the key alone.
+    via: Literal["command", "key"] = "command"
     daily_calls: int = Field(50, ge=0)
     daily_tokens: int = Field(500_000, ge=0)
 

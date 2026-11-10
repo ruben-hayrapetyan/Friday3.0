@@ -145,15 +145,20 @@ def client(settings: Any = None) -> Any | None:
         if not (info.needs_key and not key) and address and getattr(settings, "model", ""):
             api = OpenAIClient(address, key, "openai" if provider == "openai" else "compatible")
         path = command_for(provider)
-        if path is None:
+        if path is None or by_key(settings):
             return api
         return Routed(CodexClient(path) if provider == "openai" else GeminiCliClient(path), api)
     key = api_key()
     api = anthropic.Anthropic(api_key=key) if key else None
     path = cli_path()
-    if path is None:
+    if path is None or by_key(settings):
         return api
     return Routed(CliClient(path), api)
+
+
+def by_key(settings: Any) -> bool:
+    """You chose to ask through the API key, not the command (C95): then only the key is used, as you chose."""
+    return getattr(settings, "via", "command") == "key"
 
 
 def address_of(settings: Any) -> str | None:
@@ -181,6 +186,9 @@ def missing(settings: Any = None) -> str:
         if not getattr(settings, "base_url", None):
             return f"No address for the AI service: add it {where}"
         return f"Name the model the service runs {where}"
+    if by_key(settings) and provider in ("claude", "openai", "gemini") and not api_key(provider):
+        name = {"openai": "OpenAI", "claude": "Anthropic"}.get(provider, PROVIDERS[provider].name)
+        return f"No {name} API key: add one {where}"  # you chose the key; the command is a click away there
     if provider != "claude":
         name = {"openai": "OpenAI"}.get(provider, PROVIDERS[provider].name)
         tool = {"openai": ", or install the codex command and sign in with ChatGPT",
@@ -199,9 +207,10 @@ def describe(settings: Any = None) -> dict[str, Any]:
     provider = getattr(settings, "provider", "claude")
     has_key = (api_key() if provider == "claude" else api_key(provider)) is not None
     path = command_for(provider)
-    ready = path is not None or (has_key if provider == "claude" else client(settings) is not None)
+    asked = None if by_key(settings) else path  # the command as you'll be asked through it; installed is `command`
+    ready = asked is not None or (has_key if provider == "claude" else client(settings) is not None)
     return {"provider": provider, "name": NAMES[provider], "key": has_key, "cli": path is not None,
-            "command": path.name if path else None, "ready": ready,
+            "command": path.name if path else None, "via": "key" if by_key(settings) else "command", "ready": ready,
             "base_url": getattr(settings, "base_url", None), "note": PROVIDERS[provider].note or None,
             "why": None if ready else missing(settings)}  # fmt: skip
 
