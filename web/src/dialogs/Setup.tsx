@@ -28,6 +28,7 @@ import { ampm, parseLength } from "@/lib/format"
 import { AiConnect, useAi, useLocal } from "@/settings/AiConnect"
 import { CHOICES, choiceOf, fromChoice, saying } from "@/settings/calendarChoice"
 import { ConnectedAccounts } from "@/settings/GoogleAccounts"
+import { APP_PASSWORDS, GmailAppForm } from "@/settings/GmailAppForm"
 import { ConnectGoogle, GmailConnect, GmailSwitch, googleWay, useGoogleAccess } from "@/settings/GoogleConnect"
 import { AddFeed, Documents, Upload } from "@/settings/Integrations"
 import { Accounts, ACCOUNTS, PRIVACY, inMacApp } from "@/settings/MacAccounts"
@@ -704,18 +705,22 @@ function BringIn() {
         </span>
         <Documents compact />
       </Source>
-      <button type="button" className="st-link st-rise" style={{ ["--i" as string]: 3 }} onClick={() => setMore(!more)} aria-expanded={more}>
-        {more ? "Fewer options" : way.setupMore}
-      </button>
-      {more && !direct && (
-        <Source icon="envelope-simple" hue="var(--px-gold)" title="Gmail" note="Friday can suggest due dates and events from your mail (it never sends or deletes). Any Gmail works, with an app password." i={0}>
+      {!direct && (
+        // Gmail in the list, its form right here (C81, 9 Nov: a user found only Google Calendar to connect)
+        <Source icon="envelope-simple" hue="var(--px-gold)" title="Gmail" note="Friday suggests due dates and events from your mail (it never sends or deletes). Any Gmail works, with an app password: not your usual password, a 16-letter one Google makes for Friday." i={3}>
           <span className="st-chips">
-            <a className="st-chip st-chip-link" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">
+            <a className="st-chip st-chip-link" href={APP_PASSWORDS} target="_blank" rel="noreferrer">
               <Icon name="key" size={14} /> Make an app password…
             </a>
           </span>
-          <span className="st-source-note">Name it Friday (Google asks for 2-Step Verification first, if it isn't on), then paste its 16 letters in Settings → Integrations → Gmail.</span>
+          <span className="st-source-note">Name it Friday (Google asks for 2-Step Verification first, if it isn't on), then paste it here with your address.</span>
+          <GmailAppForm />
         </Source>
+      )}
+      {direct && (
+        <button type="button" className="st-link st-rise" style={{ ["--i" as string]: 3 }} onClick={() => setMore(!more)} aria-expanded={more}>
+          {more ? "Fewer options" : way.setupMore}
+        </button>
       )}
       {more && direct && (
         <Source icon="envelope-simple" hue="var(--px-gold)" title="Gmail, and Google's own connection" note="Friday can suggest due dates and events from your mail (it never sends or deletes). Any Gmail can be read with an app password, in Settings → Integrations → Gmail. Google's own connection, below, lets in only the accounts its Google Cloud project lists; it also reads Google Calendar without the Mac." i={0}>

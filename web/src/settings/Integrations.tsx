@@ -18,6 +18,7 @@ import { useShell } from "@/shell/ShellContext"
 import { Accounts, ACCOUNTS, inMacApp, PRIVACY } from "./MacAccounts"
 import { Calendars, useCalendars, useMacCalendars } from "./Calendars"
 import { AccountList, signInAgain } from "./GoogleAccounts"
+import { APP_PASSWORDS, GmailAppForm } from "./GmailAppForm"
 import { ConnectGoogle, GmailConnect, GmailSwitch, googleWay, offline, readable, useGoogleAccess, wantsSignIn } from "./GoogleConnect"
 import { MailLog } from "./MailLog"
 import { AiConnect, useAi } from "./AiConnect"
@@ -108,7 +109,9 @@ function GoogleDirect() {
   // their own, so it stays closed until used.
   const way = googleWay(!!access?.client_file)
   const direct = way.direct
-  const used = !!access?.calendar || !!gmail?.enabled || (direct && !inMacApp() && mac.length === 0)
+  // Gmail by app password switches `gmail.enabled` on too, so in a download only Google's own connection opens it
+  // (C81: a user who connected Gmail properly then saw the key-file card and took Google for calendar-only).
+  const used = !!access?.calendar || (direct && (!!gmail?.enabled || (!inMacApp() && mac.length === 0)))
   const [open, setOpen] = useState(used)
   useEffect(() => {
     if (used) setOpen(true)
@@ -215,6 +218,11 @@ function Google() {
   )
   return (
     <Card icon="google-logo" title="Google Calendar" status={state} note="Events become fixed time. Friday plans around them.">
+      {!access?.client_file && !connected && (
+        <span className="fr-kicker" style={{ color: "var(--fr-warn)", textWrap: "pretty" }}>
+          Most people don't need this: add your Google account to this Mac for its calendars (Calendars on this Mac, at the top), and connect Gmail with an app password (the Gmail card). This is only for someone with a Google Cloud project of their own.
+        </span>
+      )}
       {connected && <AccountList accounts={accounts} calendars={calendars} demo={!!status?.demo} />}
       {access && !status?.demo && <ConnectGoogle why={connected ? another : undefined} done="Switch on the calendars Friday should read below." />}
       {connected && <Calendars />}
@@ -300,21 +308,11 @@ function GmailApp() {
   const gmail = usePart<{ enabled: boolean }>("gmail")
   const sources = (useInbox().data?.sources ?? []).filter((s) => s.kind === "gmail")
   const connect = useCommand("gmail_app_set", { label: (o) => o.result.message ?? "Connected" })
-  const [address, setAddress] = useState("")
-  const [password, setPassword] = useState("")
-  const [busy, setBusy] = useState(false)
   const list = accounts.data ?? []
   // its source is named with its address once there are several, else it's the one "Gmail"
   const errorOf = (a: string) => (sources.find((s) => s.name.includes(a)) ?? (sources.length === 1 ? sources[0] : undefined))?.last_error
   const trouble = list.some((a) => errorOf(a))
   const state: [string, string] = !list.length ? ["Off", "var(--color-neutral-500)"] : !gmail?.enabled ? ["Paused", "var(--fr-warn)"] : trouble ? ["Trouble reading", "var(--fr-due)"] : ["Reading", "var(--color-accent-300)"]
-  const add = async () => {
-    if (busy || !address.trim() || !password.trim()) return
-    setBusy(true)
-    const done = await connect({ address, password })
-    setBusy(false)
-    if (done) (setPassword(""), setAddress(""), accounts.refetch())
-  }
   return (
     <Card icon="envelope-simple" title="Gmail" status={state} note="Friday reads new mail and suggests assignments, due dates and events to your Inbox. It never sends, moves or deletes, and nothing is marked read.">
       {list.map((a) => (
@@ -331,18 +329,12 @@ function GmailApp() {
       ))}
       <span className="fr-kicker" style={{ textWrap: "pretty" }}>
         {list.length ? "Another Gmail: " : ""}Make an app password at{" "}
-        <a className="fr-link" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">
+        <a className="fr-link" href={APP_PASSWORDS} target="_blank" rel="noreferrer">
           myaccount.google.com/apppasswords
         </a>{" "}
         (name it Friday; it needs 2-Step Verification on), then paste its 16 letters here. Your usual password won't work, and the app password can be revoked there any time.
       </span>
-      <form onSubmit={(e) => (e.preventDefault(), add())} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <input className="input" type="email" autoComplete="off" placeholder="you@gmail.com" value={address} onChange={(e) => setAddress(e.target.value)} aria-label="Gmail address" style={{ width: 220 }} />
-        <input className="input" type="password" autoComplete="new-password" placeholder="App password" value={password} onChange={(e) => setPassword(e.target.value)} aria-label="App password" style={{ width: 200 }} />
-        <button className="btn btn-primary" type="submit" disabled={busy || !address.trim() || !password.trim()}>
-          {busy ? "Checking with Gmail…" : "Connect"}
-        </button>
-      </form>
+      <GmailAppForm />
       {!ai.ready && (
         // Mail is read by the AI: without one it waits, unread (9 Nov: what a new user lacks that you have)
         <span className="fr-kicker" style={{ color: "var(--fr-warn)", textWrap: "pretty" }}>

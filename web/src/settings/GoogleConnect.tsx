@@ -25,7 +25,7 @@ export const KEY = ["google_connect_status"]
 export function googleWay(clientFile: boolean): { direct: boolean; setupMore: string; settingsMore: string } {
   return clientFile
     ? { direct: true, setupMore: "More: Gmail, and connecting to Google directly", settingsMore: "More: Gmail, and connecting to Google directly" }
-    : { direct: false, setupMore: "More: Gmail", settingsMore: "Advanced: Google with a Google Cloud key of your own" }
+    : { direct: false, setupMore: "", settingsMore: "Advanced: Google with a Google Cloud key of your own" } // Setup lists Gmail itself (C81)
 }
 const AFTER = ["status", "google_calendars", "inbox", "settings", "mail_log"] // what a sign-in or a removal changes
 

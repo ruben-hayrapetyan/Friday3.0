@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest"
 import { googleWay } from "./GoogleConnect"
 
 describe("how Google comes in", () => {
-  it("a download (no Google client) offers Gmail by app password, and Google's connection only under Advanced", () => {
+  it("a download (no Google client) lists Gmail itself in Setup, and Google's connection only under Advanced", () => {
     const way = googleWay(false)
     expect(way.direct).toBe(false)
-    expect(way.setupMore).toBe("More: Gmail")
+    expect(way.setupMore).toBe("") // no More: Gmail is in Setup's list, with its form (C81)
     expect(way.settingsMore).toMatch(/^Advanced: .*Google Cloud key of your own/)
   })
 
