@@ -63,6 +63,10 @@ print(f"    {len(libraries)} libraries, {len(programs)} programs")
 PY
 
 echo "==> Signing as ${IDENTITY}"
+# One first, on its own: if macOS asks to use the certificate's key, it asks once ("Always Allow"), not once for each
+# of eight signings already waiting (10 Nov: "there are still popups").
+FIRST="$(python3 -I -c 'import sys; print(open(sys.argv[1], "rb").read().split(b"\0")[0].decode())' "$LIST.libraries")"
+[ -z "$FIRST" ] || sign "$FIRST"
 # eight at a time; one that fails stops them all (xargs stops at an exit of 255) and is said
 # shellcheck disable=SC2016  # the inner shell expands them
 xargs -0 -P 8 -n 16 sh -c 'said="$(codesign --force --sign "$0" --options runtime '"${STAMP[*]}"' "$@" 2>&1)" \
