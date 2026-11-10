@@ -1,6 +1,26 @@
 {
-  "current": "0.3.2",
+  "current": "0.3.3",
   "versions": [
+    {
+      "version": "0.3.3",
+      "released": "2026-11-10",
+      "url": "https://friday-scheduler.com/get/Friday-0.3.3.dmg?via=update",
+      "sha256": "19550201b7f3f694b3bd2042e91beb1afc0c63416b4d83e06e775560c09de911",
+      "bytes": 230608349,
+      "minimum_macos": "14.0",
+      "notes": {
+        "summary": "Connecting Gmail is right in Setup, and Settings no longer makes Google look calendar-only.",
+        "new": [
+          "Setup lists Gmail beside your calendars: make an app password, paste it with your address, done."
+        ],
+        "changed": [
+          "Settings → Integrations keeps the advanced Google option (your own Google Cloud key) closed, and says most people don't need it."
+        ],
+        "fixed": [
+          "Connecting Gmail with an app password no longer opens the Google Cloud key-file steps."
+        ]
+      }
+    },
     {
       "version": "0.3.2",
       "released": "2026-11-09",
