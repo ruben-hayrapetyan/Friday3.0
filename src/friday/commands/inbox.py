@@ -94,6 +94,7 @@ def source_remove(ctx: Ctx, inp: SourceRemoveInput) -> Changed:
 def sync_now(ctx: Ctx, inp: Empty) -> Changed:
     """Read every source within the minute instead of at the next poll."""
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "sync_now"}, {"value": json.dumps(ctx.now_text)})
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "integrations_now"}, {"value": json.dumps(True)})  # C96
     return Changed(message="Syncing within a minute")
 
 

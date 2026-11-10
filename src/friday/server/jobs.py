@@ -35,7 +35,8 @@ from friday.core.db import connect, one
 from friday.core.paths import config_path
 from friday.core.settings import minutes_of
 from friday.core.time import format_utc, local_midnight, parse_utc, to_local, to_utc
-from friday.planner.store import current_plan, load_settings
+from friday.integrations import sync as integrations
+from friday.planner.store import current_plan, kv_get, kv_set, load_settings
 from friday.server.config import apply_config
 from friday.server.events import Hub
 from friday.server.worker import Supervisor, set_problem
@@ -82,6 +83,7 @@ def run_due(
         ("questions", questions_due, questions),
         ("config", every_minute, config),
         ("sync", every_minute, sync_sources),
+        ("integrations", every_minute, sync_integrations),
         ("publish", every_minute, publish),
         ("event_writes", every_minute, send_event_writes),
         ("ratings", every_minute, rate_events),
@@ -199,6 +201,26 @@ def sync_sources(
         hub.publish("items.changed")
         if supervisor is not None:
             supervisor.request(settings["planner"].debounce_s, reason="sync")
+
+
+def sync_integrations(
+    conn: sqlite3.Connection,
+    now_utc: int,
+    settings: dict[str, Any],
+    hub: Hub,
+    supervisor: Supervisor | None,
+    backups: Path,
+    user_id: int,
+) -> None:
+    """Todoist and the other integrations (C96): each read when it's due or you asked, then what goes back sent."""
+    asked = bool(kv_get(conn, "integrations_now", False, user_id))
+    if asked:
+        kv_set(conn, "integrations_now", False, user_id)
+    made = integrations.sync_all(conn, settings, now_utc, user_id, asked=asked)
+    if made:
+        hub.publish("items.changed")
+        if supervisor is not None:
+            supervisor.request(settings["planner"].debounce_s, reason="integrations")
 
 
 def google_problem(conn: sqlite3.Connection, settings: dict[str, Any], folder: Path) -> str | None:

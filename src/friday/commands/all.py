@@ -22,6 +22,7 @@ from friday.commands import (  # noqa: F401
     importing,
     inbox,
     insights,
+    integrations,
     items,
     kinds,
     learned,

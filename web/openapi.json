@@ -2539,6 +2539,219 @@
     }
    }
   },
+  "/api/c/integration_connect": {
+   "post": {
+    "summary": "integration_connect",
+    "operationId": "integration_connect",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ConnectInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IntegrationConnectResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/integration_disconnect": {
+   "post": {
+    "summary": "integration_disconnect",
+    "operationId": "integration_disconnect",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DisconnectInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IntegrationDisconnectResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/integration_set": {
+   "post": {
+    "summary": "integration_set",
+    "operationId": "integration_set",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ArrivalInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IntegrationSetResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/kind_add": {
    "post": {
     "summary": "A new kind, starting as a copy of one you have.",
@@ -10574,6 +10787,28 @@
     }
    }
   },
+  "/api/q/integrations": {
+   "get": {
+    "summary": "Integrations connected now.",
+    "operationId": "integrations",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/Connected"
+         },
+         "type": "array",
+         "title": "Response Integrations"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/item": {
    "get": {
     "summary": "One item with its blocks, progress and dependencies.",
@@ -13042,6 +13277,30 @@
     ],
     "title": "AreaWeek"
    },
+   "ArrivalInput": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "arrival": {
+      "type": "string",
+      "enum": [
+       "inbox_first",
+       "straight",
+       "inbox"
+      ],
+      "title": "Arrival"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "arrival"
+    ],
+    "title": "ArrivalInput"
+   },
    "AskAiResult": {
     "properties": {
      "command_id": {
@@ -14499,6 +14758,111 @@
     ],
     "title": "ConflictResolveResult"
    },
+   "ConnectInput": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "title": "Kind"
+     },
+     "token": {
+      "type": "string",
+      "title": "Token"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "kind",
+     "token"
+    ],
+    "title": "ConnectInput"
+   },
+   "ConnectOutput": {
+    "properties": {
+     "message": {
+      "type": "string",
+      "title": "Message"
+     },
+     "source": {
+      "$ref": "#/components/schemas/Connected"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "message",
+     "source"
+    ],
+    "title": "ConnectOutput"
+   },
+   "Connected": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "kind": {
+      "type": "string",
+      "title": "Kind"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "arrival": {
+      "type": "string",
+      "enum": [
+       "inbox_first",
+       "straight",
+       "inbox"
+      ],
+      "title": "Arrival"
+     },
+     "two_way": {
+      "type": "boolean",
+      "title": "Two Way"
+     },
+     "last_sync": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Sync"
+     },
+     "last_error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Error"
+     },
+     "made": {
+      "type": "integer",
+      "title": "Made"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "kind",
+     "name",
+     "arrival",
+     "two_way",
+     "last_sync",
+     "last_error",
+     "made"
+    ],
+    "title": "Connected"
+   },
    "DateInput": {
     "properties": {
      "date": {
@@ -14912,6 +15276,25 @@
      "result"
     ],
     "title": "DependResult"
+   },
+   "DisconnectInput": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "keep": {
+      "type": "boolean",
+      "title": "Keep"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "keep"
+    ],
+    "title": "DisconnectInput"
    },
    "DocumentAddResult": {
     "properties": {
@@ -17909,6 +18292,216 @@
      "best_hours"
     ],
     "title": "InsightsOut"
+   },
+   "IntegrationConnectResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/ConnectOutput"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "IntegrationConnectResult"
+   },
+   "IntegrationDisconnectResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Connected"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "IntegrationDisconnectResult"
+   },
+   "IntegrationSetResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Connected"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "IntegrationSetResult"
    },
    "ItemDetail": {
     "properties": {

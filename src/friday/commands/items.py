@@ -400,6 +400,7 @@ def reopen(ctx: Ctx, inp: ItemRef) -> ItemResult:
     done = minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0)
     opened = set_status(ctx, inp.id, "todo")
     put_back(ctx, inp.id)  # dropped, and gone from its calendar: back there too
+    back_to_its_app(ctx, inp.id, "reopen")
     return ItemResult(item=item_out(ctx, opened, done))
 
 
@@ -432,7 +433,15 @@ def done(ctx: Ctx, inp: DoneInput) -> ItemResult:
         },
     )
     finished = set_status(ctx, inp.id, "done", ctx.now_text)
+    back_to_its_app(ctx, inp.id, "done")
     return ItemResult(item=item_out(ctx, finished, minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0)))
+
+
+def back_to_its_app(ctx: Ctx, item_id: int, op: str) -> None:
+    """Done or opened again here: the same in the to-do app it came from (C96), in this command's transaction."""
+    from friday.integrations.sync import queue_write  # the sync runs commands: imported here, not at the top
+
+    queue_write(ctx.conn, item_id, op, ctx.actor, ctx.now_utc, ctx.user_id)
 
 
 @command("depend", affects_plan=True)
