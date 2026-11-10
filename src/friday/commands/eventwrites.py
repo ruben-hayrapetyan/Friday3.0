@@ -69,21 +69,35 @@ def queue_event_write(ctx: Ctx, item: Item, op: str, target: str | None = None) 
 
 
 def sent_delete(conn: sqlite3.Connection, item_id: int, user_id: int) -> bool:
-    """The event's last write to its calendar was a delete, and it went: the calendar no longer has it."""
+    """The calendar no longer has the event: its last write was a delete ("this and later" too) and it went, or an
+    earlier time of its repeat was deleted with "this and later" since anything was written for this one (10 Nov:
+    that undo was refused once it had reached the calendar)."""
     last = one(
         conn,
-        "SELECT op, done_utc FROM event_writes WHERE user_id = ? AND item_id = ? AND op != 'repeat' "
+        "SELECT id, op, done_utc FROM event_writes WHERE user_id = ? AND item_id = ? AND op != 'repeat' "
         "ORDER BY id DESC LIMIT 1",
         [user_id, item_id],
     )
-    return last is not None and last["op"] == "delete" and last["done_utc"] is not None
+    if last is not None and last["op"] in ("delete", "delete_from"):
+        return last["done_utc"] is not None
+    item = one(conn, "SELECT series_id, occurrence_date FROM items WHERE id = ?", [item_id])
+    if item is None or item["series_id"] is None or item["occurrence_date"] is None:
+        return False
+    later = one(
+        conn,
+        "SELECT w.id FROM event_writes w JOIN items i ON i.id = w.item_id WHERE w.user_id = ? AND w.op = 'delete_from' "
+        "AND w.done_utc IS NOT NULL AND i.series_id = ? AND i.occurrence_date <= ? ORDER BY w.id DESC LIMIT 1",
+        [user_id, item["series_id"], item["occurrence_date"]],
+    )
+    return later is not None and (last is None or last["id"] < later["id"])
 
 
 def put_back(ctx: Ctx, item_id: int) -> bool:
     """An event whose delete reached its calendar, back on that calendar (C68's open list, 9 Nov: undone or opened
     again, it stayed only in Friday). Made there as a new event, as Friday has it: Google may take a change to an
     event it deleted without bringing it back, so the deleted one isn't patched. Its guests and anything Friday
-    doesn't read (a video link, attachments) aren't on the new one. Says whether it queued it."""
+    doesn't read (a video link, attachments) aren't on the new one; times of a repeat deleted with "this and later"
+    come back each as an event of its own, not one repeat. Says whether it queued it."""
     item = load_item(ctx.conn, item_id, ctx.user_id)
     link = event_links(ctx.conn, ctx.user_id).get(item_id)
     if item is None or item.status != "todo" or link is None or not link.calendar_id:
