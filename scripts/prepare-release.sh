@@ -1,7 +1,8 @@
 #!/bin/bash
 # Prepares a version of Friday for release (HOSTED.md H123, H134, H136, H174): sets the version (VERSION and the
-# same number in pyproject.toml, web/package.json and uv.lock) and commits it, builds the Mac app with
-# Friday's Google client, makes the disk image, and uploads it with its draft notes to the laptop. There it waits in
+# same number in pyproject.toml, web/package.json and uv.lock) and commits it, builds the Mac app (without Google's
+# client, C77), signs it with your Developer ID, makes the disk image, has Apple notarize it and staples the ticket
+# to it (C88), and uploads it with its draft notes to the laptop. There it waits in
 # the admin hub for you to edit and approve the notes and press
 # Release. Nothing is released here.
 #
@@ -9,8 +10,10 @@
 #
 # NOTES.json: {"summary": "one sentence", "new": [lines], "changed": [lines], "fixed": [lines]} (H143).
 # Where the hub is comes from ~/.config/friday/release.env, kept off git: FRIDAY_RELEASE_HOST (the machine over ssh)
-# and FRIDAY_HUB_URL (its page). FRIDAY_PREPARE_APP names an app already built, so its
-# test needn't build one.
+# and FRIDAY_HUB_URL (its page). Signing (C88) uses the one "Developer ID Application" certificate in your keychain
+# (or FRIDAY_SIGN_IDENTITY names one) and notarytool's keychain profile FRIDAY_NOTARY_PROFILE (friday-notary unless
+# set): names only, the key and the certificate stay in your keychain. FRIDAY_PREPARE_APP names an app already built,
+# so its test needn't build one.
 set -euo pipefail
 
 VERSION="${1:-}" NOTES="${2:-}"
@@ -36,6 +39,19 @@ unset FRIDAY_GOOGLE_CLIENT  # downloads leave Google's client out (C77): Google 
 cd "$REPO"
 git diff --quiet HEAD -- || die "commit or set aside your changes first: a version is built from a commit"
 
+# Every download is signed and notarized (C88, your choice: every prepare-release build): checked before the build,
+# which takes minutes, so a missing certificate or profile is said at once.
+IDENTITY="${FRIDAY_SIGN_IDENTITY:-}"
+if [ -z "$IDENTITY" ]; then
+  IDENTITY="$(security find-identity -v -p codesigning | sed -n 's/.*"\(Developer ID Application: .*\)"$/\1/p' | sort -u)"
+  [ -n "$IDENTITY" ] || die "no Developer ID Application certificate in your keychain (PROGRESS.md C88 says how to make one)"
+  [ "$(printf '%s\n' "$IDENTITY" | wc -l | tr -d ' ')" = 1 ] \
+    || die "more than one Developer ID Application certificate: name one in FRIDAY_SIGN_IDENTITY ($RELEASE_ENV)"
+fi
+PROFILE="${FRIDAY_NOTARY_PROFILE:-friday-notary}"
+xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null 2>&1 \
+  || die "notarytool has no keychain profile '$PROFILE' that Apple accepts (PROGRESS.md C88 says how to store one)"
+
 echo "==> Friday $VERSION"
 # the number everywhere it's written (H174): VERSION, pyproject.toml, web/package.json and uv.lock
 NUMBERED_SAID="$(python3 scripts/set_version.py "$VERSION")" || die "the version number couldn't be written into its files"
@@ -53,12 +69,30 @@ if [ -z "$APP" ]; then
   APP="$REPO/Mac/build/Friday.app"
 fi
 
-echo "==> Making the disk image"
+echo "==> Signing the app"
 mkdir "$WORK/stage"
 ditto "$APP" "$WORK/stage/Friday.app"  # keeps file times: the compiled planner inside is checked against them
+Mac/sign.sh "$WORK/stage/Friday.app" "$IDENTITY" || die "the app couldn't be signed"
+
+echo "==> Making the disk image"
 ln -s /Applications "$WORK/stage/Applications"
 DMG="$WORK/Friday-$VERSION.dmg"
 hdiutil create -quiet -volname "Friday $VERSION" -srcfolder "$WORK/stage" -format ULFO -ov "$DMG"
+codesign --sign "$IDENTITY" --timestamp "$DMG" || die "the disk image couldn't be signed"
+
+echo "==> Notarizing (Apple checks it; usually a few minutes)"
+# notarytool says Accepted or Invalid and exits 0 either way: the status is read, and Apple's reasons shown if not
+xcrun notarytool submit "$DMG" --keychain-profile "$PROFILE" --wait --output-format json > "$WORK/notary.json" \
+  || die "notarytool couldn't send it: $(cat "$WORK/notary.json")"
+read -r NOTARY_ID NOTARY_STATUS < <(python3 -I -c 'import json, sys; d = json.load(open(sys.argv[1]))
+print(d.get("id", "?"), d.get("status", "?"))' "$WORK/notary.json")
+if [ "$NOTARY_STATUS" != Accepted ]; then
+  xcrun notarytool log "$NOTARY_ID" --keychain-profile "$PROFILE" >&2 || true
+  die "Apple didn't notarize it ($NOTARY_STATUS, submission $NOTARY_ID): its reasons are above"
+fi
+xcrun stapler staple -q "$DMG" || die "the ticket couldn't be stapled to the disk image"
+spctl --assess --type open --context context:primary-signature "$DMG" \
+  || die "Gatekeeper doesn't accept the disk image"
 SHA="$(shasum -a 256 "$DMG" | cut -d' ' -f1)"
 BYTES="$(stat -f %z "$DMG")"
 
