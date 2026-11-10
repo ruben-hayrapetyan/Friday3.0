@@ -70,6 +70,10 @@ def performance_cores() -> int:
 
 
 def default_chains() -> int:
+    """Performance cores − 1, so a plan depends on the Mac (C90: GitHub's 2-CPU machines ran 1 chain and planned
+    worse than any Mac would). FRIDAY_CHAINS fixes the number: the tests set 3, the fewest an Apple-silicon Mac gets."""
+    if fixed := os.environ.get("FRIDAY_CHAINS", "").strip():
+        return max(1, int(fixed))
     return max(1, performance_cores() - 1)
 
 
