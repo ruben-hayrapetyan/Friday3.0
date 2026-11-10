@@ -22,9 +22,16 @@ interface Thing extends Piece {
   changed?: boolean
 }
 
-export function Comparison() {
+/** The question, in Insights or (`bare`, without its section) as an Inbox message, which `onAnswer` tells when it's
+ * answered (C75). */
+export function Comparison({ bare = false, onAnswer }: { bare?: boolean; onAnswer?: (sent: Promise<unknown>) => void } = {}) {
   const questions = useQuery({ queryKey: ["questions"], queryFn: () => query("questions") }).data
-  const answer = useCommand("compare_answer", { label: (o) => o.result.message ?? "Thanks" })
+  const send = useCommand("compare_answer", { label: (o) => o.result.message ?? "Thanks" })
+  const answer = (input: { id: number; answer: "a" | "b" | "skip" }) => {
+    const sent = send(input)
+    onAnswer?.(sent)
+    return sent
+  }
   const q = questions?.comparisons[0]
   const day = q ? String(q.day) : ""
   // The question carries titles and times only: areas come from the items, an event's paint from the day's plan.
@@ -54,8 +61,7 @@ export function Comparison() {
     </div>
   )
   const name = DAY_NAME[weekday(day)] ?? weekday(day)
-  return (
-    <Section title={`Which ${name} looks better?`} note={`Two ways to plan ${dayLabel(day)}. One quick question helps Friday learn what you prefer`}>
+  const body = (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
         <div style={{ flex: "1 1 320px", maxWidth: 620, minWidth: 0, display: "grid", gridTemplateColumns: "38px minmax(0,1fr) minmax(0,1fr)", columnGap: 10, rowGap: 8 }}>
           <span />
@@ -105,6 +111,11 @@ export function Comparison() {
           </button>
         </div>
       </div>
+  )
+  if (bare) return body
+  return (
+    <Section title={`Which ${name} looks better?`} note={`Two ways to plan ${dayLabel(day)}. One quick question helps Friday learn what you prefer`}>
+      {body}
     </Section>
   )
 }

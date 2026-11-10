@@ -2,6 +2,7 @@
 
 from friday.commands import (  # noqa: F401
     ai,
+    asks,
     beat_plan,
     calendar,
     calendars,

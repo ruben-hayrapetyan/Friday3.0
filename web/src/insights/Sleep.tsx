@@ -7,11 +7,12 @@ import { useState } from "react"
 import { useNavigate } from "react-router"
 import type { Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
-import { useCommand } from "@/hooks/useCommand"
 import { useSleep } from "@/hooks/queries"
+import { useAsks } from "@/inbox/asks"
 import { ampm, clock, dayLabel, dur, weekday } from "@/lib/format"
 import { toMin } from "@/lib/time"
 import { daysSaid } from "@/settings/SleepTracking"
+import { InboxLink } from "./Learned"
 import { Section } from "./Section"
 
 const FROM = 20 * 60 // the timeline runs from 8pm on the night's day…
@@ -164,7 +165,7 @@ function Timeline({ nights }: { nights: Schemas["SleepNightOut"][] }) {
 }
 
 function LearnedSleep({ sleep }: { sleep: Schemas["SleepOut"] }) {
-  const use = useCommand("settings_set", { label: () => "Your bedtimes and wake times are updated" })
+  const asks = useAsks().filter((a) => a.key === "sleep-times").length // asked in the Inbox (C75)
   const navigate = useNavigate()
   const left = Math.max(0, (sleep.min_nights ?? 4) - (sleep.recorded_nights ?? 0))
   const routines = Object.entries(sleep.routine_min ?? {})
@@ -194,9 +195,7 @@ function LearnedSleep({ sleep }: { sleep: Schemas["SleepOut"] }) {
           ))}
           {sleep.suggested && (
             <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button className="btn btn-primary fr-press" onClick={() => use({ key: "sleep", value: sleep.suggested })} style={{ fontSize: 12 }}>
-                Use these times
-              </button>
+              <InboxLink n={asks} what="about these times" />
               <button className="fr-link" onClick={() => navigate("/settings/schedule")} style={{ fontSize: 12 }}>
                 or set them yourself
               </button>

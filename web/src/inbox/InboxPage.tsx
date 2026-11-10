@@ -22,6 +22,7 @@ import { useLook } from "@/theme/LookProvider"
 import { usePresets } from "@/todo/AddBox"
 import { LengthInput } from "@/todo/Pickers"
 import { useAllItems } from "@/todo/TodoPage"
+import { AskPane } from "./AskPane"
 import { GapPane, SleepPane } from "./DayPanes"
 import { DecisionPane } from "./Decisions"
 import { type Message, nextAfter, rowOf, waitingCount } from "./messages"
@@ -138,6 +139,8 @@ export function InboxPage() {
       }
       case "repeat":
         return <RepeatPane key={m.key} found={m.found} onDone={deal(m.key)} />
+      case "ask":
+        return <AskPane key={m.key} ask={m.ask} onDone={deal(m.key)} />
     }
   }
   return (

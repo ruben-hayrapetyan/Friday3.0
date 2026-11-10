@@ -438,6 +438,77 @@
     }
    }
   },
+  "/api/c/ask_later": {
+   "post": {
+    "summary": "Not now: out of the Inbox until Friday has more to go on.",
+    "operationId": "ask_later",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AskLaterInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AskLaterResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/batch_accept": {
    "post": {
     "summary": "Accept every pending suggestion of a batch (a syllabus, or a repeating event's instances): events first, so",
@@ -9940,6 +10011,24 @@
     }
    }
   },
+  "/api/q/asks_later": {
+   "get": {
+    "summary": "The questions you said \"Not now\" to, with the evidence each had.",
+    "operationId": "asks_later",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AsksLaterOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/beat_plan": {
    "get": {
     "summary": "Work your plans showed late that you finished on time: how, and what Friday would change.",
@@ -13153,6 +13242,113 @@
      "text"
     ],
     "title": "AskInput"
+   },
+   "AskLaterInput": {
+    "properties": {
+     "key": {
+      "type": "string",
+      "title": "Key"
+     },
+     "evidence": {
+      "type": "string",
+      "title": "Evidence"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "key",
+     "evidence"
+    ],
+    "title": "AskLaterInput"
+   },
+   "AskLaterResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "AskLaterResult"
+   },
+   "AsksLaterOut": {
+    "properties": {
+     "later": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Later"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "later"
+    ],
+    "title": "AsksLaterOut",
+    "description": "Questions you said \"Not now\" to, each with the evidence it was based on (C75)."
    },
    "BatchAcceptResult": {
     "properties": {

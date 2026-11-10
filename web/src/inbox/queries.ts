@@ -9,6 +9,7 @@ import { query, type Schemas } from "@/api/client"
 import { useStatus } from "@/hooks/queries"
 import { addDays } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
+import { useAsks } from "./asks"
 import { type Message, messagesOf, waitingCount } from "./messages"
 
 export const useInbox = () => useQuery({ queryKey: ["inbox"], queryFn: () => query("inbox") })
@@ -32,6 +33,7 @@ export function useInboxMessages(answered: Schemas["SuggestionOut"][] = NONE): M
   const copies = useDuplicates().data
   const again = useToReview().data
   const repeats = useCalendarRepeats().data
+  const asks = useAsks()
   return useMemo(
     () =>
       messagesOf({
@@ -44,8 +46,9 @@ export function useInboxMessages(answered: Schemas["SuggestionOut"][] = NONE): M
         again: again?.items ?? [],
         againSources: again?.sources ?? {},
         repeats: repeats ?? [],
+        asks,
       }),
-    [decisions, before, now, inbox, copies, again, repeats, answered],
+    [decisions, before, now, inbox, copies, again, repeats, answered, asks],
   )
 }
 

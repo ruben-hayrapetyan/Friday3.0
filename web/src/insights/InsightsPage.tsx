@@ -16,7 +16,6 @@ import { useLoad } from "@/hooks/queries"
 import { ampm, weekday } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
 import { BeatPlan } from "./BeatPlan"
-import { Comparison } from "./Comparison"
 import { Learned } from "./Learned"
 import { Section } from "./Section"
 import { WeeklyReview } from "./WeeklyReview"
@@ -99,7 +98,6 @@ export function InsightsPage() {
               <Learned />
             </Section>
             <BeatPlan />
-            <Comparison />
             <Section title="Load ahead" note="Planned hours per week against what you can do" right={<LoadLegend />}>
               <Load />
             </Section>

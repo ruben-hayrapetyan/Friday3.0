@@ -6,6 +6,7 @@
 // planned around yet (29 Oct: "i don't see any concrete action": go, or leave it out).
 
 import type { Item, Schemas } from "@/api/client"
+import type { Ask } from "./asks"
 import { ampm, clock, dayLabel, dur, lateBy, weekday, when } from "@/lib/format"
 import { addDays } from "@/lib/time"
 
@@ -24,6 +25,7 @@ export type Message =
   | { kind: "copies"; key: string; group: Group; from: Record<number, string> }
   | { kind: "again"; key: string; item: Item; from?: string }
   | { kind: "repeat"; key: string; found: Repeat }
+  | { kind: "ask"; key: string; ask: Ask }
 
 export interface Sources {
   decisions: Decision[]
@@ -35,6 +37,7 @@ export interface Sources {
   again: Item[]
   againSources?: Record<number, string>
   repeats: Repeat[] // repeating calendar events waiting to come in, one message each
+  asks?: Ask[] // Friday's questions: what it learned, which day, meals, sleep (C75)
 }
 
 /** A gap still to answer: no answer yet and the task not checked off. */
@@ -45,6 +48,7 @@ export function messagesOf(src: Sources): Message[] {
   for (const day of src.days)
     for (const gap of day.gaps.filter(open)) out.push({ kind: "gap", key: `gap:${day.date}:${gap.item_id}`, date: day.date, gap })
   for (const day of src.days) for (const ask of day.sleep) out.push({ kind: "sleep", key: `sleep:${ask.date}:${ask.kind}`, ask })
+  for (const ask of src.asks ?? []) out.push({ kind: "ask", key: `ask:${ask.key}`, ask })
   const waiting = new Set(src.suggestions.map((s) => s.id))
   for (const s of src.suggestions) out.push({ kind: "suggestion", key: `s:${s.id}`, s })
   for (const s of src.answered ?? []) if (!waiting.has(s.id)) out.push({ kind: "suggestion", key: `s:${s.id}`, s, answered: true })
@@ -109,6 +113,8 @@ export function rowOf(m: Message, today: string): Row {
       return { icon: "arrow-counter-clockwise", title: m.item.title, line: `${m.item.preset ?? "No kind"} · from ${m.from ?? "you"}: keep it?`, meta: "Go over" }
     case "repeat":
       return { icon: "repeat", title: m.found.title, line: `${m.found.pattern}${m.found.location ? ` · ${m.found.location}` : ""}: do you go?`, meta: "Repeats" }
+    case "ask":
+      return { icon: m.ask.icon, title: m.ask.title, line: m.ask.why, meta: "Question" }
   }
 }
 

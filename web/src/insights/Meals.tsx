@@ -9,11 +9,12 @@ import { useState } from "react"
 import { useNavigate } from "react-router"
 import type { Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
-import { useCommand } from "@/hooks/useCommand"
 import { useMeals } from "@/hooks/queries"
+import { useAsks } from "@/inbox/asks"
 import { ampm, clock, dayLabel, dur, weekday } from "@/lib/format"
 import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
+import { InboxLink } from "./Learned"
 import { Section } from "./Section"
 
 const FROM = 6 * 60 // the timeline runs from 6am on the day…
@@ -151,26 +152,15 @@ function Timeline({ days }: { days: Schemas["MealDayOut"][] }) {
 }
 
 function Offers({ meals }: { meals: Schemas["MealsOut"] }) {
-  const length = useCommand("meal_use_length", { label: (o) => o.result.message ?? "Saved" })
-  const time = useCommand("meal_use_time", { label: (o) => o.result.message ?? "Saved" })
-  const plan = useCommand("meal_plan", { label: (o) => o.result.message ?? "Saved" })
+  const asks = useAsks().filter((a) => a.key.startsWith("meal-")).length // asked in the Inbox (C75)
   const changes = meals.changes ?? []
   const times = meals.times ?? []
   const plans = meals.plans ?? []
   if (!changes.length && !times.length && !plans.length) return null
-  type Kind = "breakfast" | "lunch" | "dinner"
   const row = { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 13 } as const
-  const button = { fontSize: 12, padding: "2px 10px" }
   const decided = new Set(meals.decided ?? [])
-  // A meal you let Friday decide: what's offered happens tonight, without a click.
-  const act = (kind: string, label: string, onClick: () => void) =>
-    decided.has(kind) ? (
-      <span className="fr-kicker">Friday does this tonight</span>
-    ) : (
-      <button className="btn btn-secondary fr-press" onClick={onClick} style={button}>
-        {label}
-      </button>
-    )
+  // A meal you let Friday decide: what's offered happens tonight, without a click; the rest are asked in the Inbox.
+  const act = (kind: string) => (decided.has(kind) ? <span className="fr-kicker">Friday does this tonight</span> : null)
   return (
     <div className="fr-well" style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px 14px" }}>
       <span style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 500 }}>
@@ -183,7 +173,7 @@ function Offers({ meals }: { meals: Schemas["MealsOut"] }) {
             {named(c.kind)} takes you about <b style={{ fontWeight: 500 }}>{dur(c.usual_min)}</b>
             <span style={{ color: "var(--color-neutral-500)" }}>; Friday plans {dur(c.planned_min)}</span>
           </span>
-          {act(c.kind, `Plan ${dur(Math.max(15, Math.round(c.usual_min / 15) * 15))}`, () => length({ kind: c.kind as Kind }))}
+          {act(c.kind)}
         </span>
       ))}
       {times.map((t) => (
@@ -192,7 +182,7 @@ function Offers({ meals }: { meals: Schemas["MealsOut"] }) {
             You usually have {t.kind} around <b style={{ fontWeight: 500 }}>{ampm(t.usual_start)}</b>
             <span style={{ color: "var(--color-neutral-500)" }}>; it's planned {ampm(t.start)}–{ampm(t.end)}</span>
           </span>
-          {act(t.kind, `Plan ${ampm(t.new_start)}–${ampm(t.new_end)}`, () => time({ kind: t.kind as Kind }))}
+          {act(t.kind)}
         </span>
       ))}
       {plans.map((p) => (
@@ -208,9 +198,10 @@ function Offers({ meals }: { meals: Schemas["MealsOut"] }) {
               <span style={{ color: "var(--color-neutral-500)" }}>; Friday still plans it</span>
             </span>
           )}
-          {act(p.kind, p.plan ? `Plan ${p.kind}` : "Stop planning it", () => plan({ kind: p.kind as Kind, plan: p.plan }))}
+          {act(p.kind)}
         </span>
       ))}
+      <InboxLink n={asks} what="about your meals" />
     </div>
   )
 }

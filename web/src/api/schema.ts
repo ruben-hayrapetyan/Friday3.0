@@ -106,6 +106,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/ask_later": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Not now: out of the Inbox until Friday has more to go on. */
+        post: operations["ask_later"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/batch_accept": {
         parameters: {
             query?: never;
@@ -2370,6 +2387,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/asks_later": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The questions you said "Not now" to, with the evidence each had. */
+        get: operations["asks_later"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/beat_plan": {
         parameters: {
             query?: never;
@@ -3751,6 +3785,44 @@ export interface components {
         AskInput: {
             /** Text */
             text: string;
+        };
+        /** AskLaterInput */
+        AskLaterInput: {
+            /** Key */
+            key: string;
+            /** Evidence */
+            evidence: string;
+        };
+        /** AskLaterResult */
+        AskLaterResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
+         * AsksLaterOut
+         * @description Questions you said "Not now" to, each with the evidence it was based on (C75).
+         */
+        AsksLaterOut: {
+            /** Later */
+            later: {
+                [key: string]: string;
+            };
         };
         /** BatchAcceptResult */
         BatchAcceptResult: {
@@ -10633,6 +10705,43 @@ export interface operations {
             };
         };
     };
+    ask_later: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskLaterInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskLaterResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     batch_accept: {
         parameters: {
             query?: {
@@ -15509,6 +15618,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AreaOut"][];
+                };
+            };
+        };
+    };
+    asks_later: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsksLaterOut"];
                 };
             };
         };

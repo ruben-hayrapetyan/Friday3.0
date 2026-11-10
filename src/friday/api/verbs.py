@@ -52,6 +52,22 @@ VERBS = {
         False,
         "What Claude would change for what you asked, as commands for you to confirm; nothing is changed.",
     ),
+    "ask_later": Verb(
+        "POST",
+        "/api/c/ask_later",
+        commands.AskLaterInput,
+        True,
+        False,
+        "Not now: out of the Inbox until Friday has more to go on.",
+    ),
+    "asks_later": Verb(
+        "GET",
+        "/api/q/asks_later",
+        commands.Empty,
+        False,
+        False,
+        'The questions you said "Not now" to, with the evidence each had.',
+    ),
     "batch_accept": Verb(
         "POST",
         "/api/c/batch_accept",

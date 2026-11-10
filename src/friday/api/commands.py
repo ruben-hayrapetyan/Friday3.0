@@ -111,6 +111,17 @@ class AreaOut(Model):
     archived: bool
 
 
+class AskLaterInput(Model):
+    key: str  # which question ("durations", "meal-length-lunch")
+    evidence: str  # what it was based on; it's asked again once that changes
+
+
+class AsksLaterOut(Model):
+    """Questions you said "Not now" to, each with the evidence it was based on (C75)."""
+
+    later: dict[str, str]
+
+
 class TermsOut(Model):
     """Friday's terms as they are now, and whether you have yet to accept them (PROGRESS.md C71)."""
 
