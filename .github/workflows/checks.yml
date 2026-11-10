@@ -24,7 +24,6 @@ jobs:
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run pytest --ignore=tests/system
-      - run: cd hub && uv run --frozen pytest -q
       - run: uv run --no-project --with pytest pytest -q site-tests
   system:
     runs-on: ubuntu-latest

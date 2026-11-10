@@ -41,3 +41,7 @@ site/downloads/
 /claude_design.md
 /COMBINED.md
 /UI/
+
+# The admin side lives in the private Friday-admin repo (C80); a leftover local copy never comes back into git.
+/hub/
+/serve/

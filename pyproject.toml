@@ -64,7 +64,5 @@ ignore = ["SIM905"]
 [tool.ruff.lint.per-file-ignores]
 # The kernel model names its array dimensions I, S, D, M, G, as the design does.
 "src/friday/engine/compile.py" = ["E741"]
-# The site's and the hub's pages are HTML written as Python strings: a line of markup reads better whole.
+# The site's pages are HTML written as Python strings: a line of markup reads better whole.
 "build_pages.py" = ["E501"]
-"hub/friday_hub/pages.py" = ["E501"]
-"hub/friday_hub/panels.py" = ["E501"]

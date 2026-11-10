@@ -112,7 +112,7 @@ def test_the_download_button_points_at_a_disk_image_that_is_there(site: str) -> 
     parts = parsed(site, "index.html")
     links = [link for link in parts.links if link.startswith("/get/") and link.endswith(".dmg")]
     assert links, "no download link"
-    image = "/downloads/" + links[0].removeprefix("/get/")  # where the counting link sends you (hub/friday_hub/site.py)
+    image = "/downloads/" + links[0].removeprefix("/get/")  # where the site's counting link sends you
     if not (SITE / image.lstrip("/")).exists():
         pytest.skip("the disk image is kept on the laptop, not in git")
     status, body = fetch(site, image)
