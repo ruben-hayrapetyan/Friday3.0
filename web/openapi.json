@@ -28879,6 +28879,11 @@
       "type": "boolean",
       "title": "Brief"
      },
+     "school": {
+      "type": "boolean",
+      "title": "School",
+      "default": true
+     },
      "calendars": {
       "items": {
        "$ref": "#/components/schemas/SetupCalendar"

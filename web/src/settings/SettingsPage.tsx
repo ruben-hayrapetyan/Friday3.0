@@ -155,6 +155,7 @@ export function Field({ name, note, children }: { name: string; note?: string; c
 // Setup's questions, each one to change on its own (8 Nov: redoing the whole setup to change one answer "is a lot of
 // effort").
 const ANSWERS: [string, string][] = [
+  ["school", "In school or not"],
   ["wake", "When you get up"],
   ["bed", "When you go to bed"],
   ["work", "Work in a normal day"],

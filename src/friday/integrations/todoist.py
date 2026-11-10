@@ -45,8 +45,11 @@ class Todoist:
 
 
 def remote(task: dict[str, Any]) -> Remote:
-    """A Todoist task as Friday reads it: its due, else its deadline; its duration as minutes."""
-    due = (task.get("due") or {}).get("date") or (task.get("deadline") or {}).get("date")
+    """A Todoist task as Friday reads it: its deadline, else its due (soft); its duration as minutes."""
+    # Todoist keeps both (C97, your answer: follow the service): its deadline is the deadline; a due date alone is the
+    # day you meant to do it, planned then but free to slip.
+    deadline = (task.get("deadline") or {}).get("date")
+    due = deadline or (task.get("due") or {}).get("date")
     return Remote(
         external_id=str(task["id"]),
         title=str(task.get("content") or "Untitled task").strip(),
@@ -55,6 +58,7 @@ def remote(task: dict[str, Any]) -> Remote:
         notes=str(task.get("description") or ""),
         url=f"https://app.todoist.com/app/task/{task['id']}",
         done=bool(task.get("checked")),
+        firm=bool(deadline),
     )
 
 

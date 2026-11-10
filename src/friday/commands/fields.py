@@ -1,6 +1,7 @@
 """API item fields ↔ stored items: local times to UTC, minutes to units, area names to ids, presets applied."""
 
 import math
+from collections.abc import Container
 from datetime import date, timedelta
 from typing import Any
 
@@ -10,6 +11,7 @@ from friday.commands.eventwrites import writes_to
 from friday.commands.registry import Ctx
 from friday.core.calendars import event_key, is_filtered, left_out, nearest_pigment
 from friday.core.db import one, rows
+from friday.core.guess import fallback_kind
 from friday.core.items import FieldError, Item, apply_preset, validate, with_defaults
 from friday.core.rows import item_to_row
 from friday.core.textnorm import plain_words
@@ -87,19 +89,19 @@ def area_id(ctx: Ctx, name: str) -> int:
     return ctx.db.insert("areas", {"name": name})
 
 
-def inferred_preset(values: dict[str, Any]) -> str:
+def inferred_preset(values: dict[str, Any], presets: Container[str] = (), school: bool = True) -> str:
     if values.get("start_utc"):
         return "Event"
     if values.get("certainty") == "tentative":
         return "Maybe"
     if values.get("amount") == "open":
         return "Side project"
-    return "Assignment" if values.get("due_utc") else "Errand"
+    return fallback_kind(str(values.get("title") or ""), bool(values.get("due_utc")), presets, school)
 
 
 def new_item(ctx: Ctx, values: dict[str, Any]) -> Item:
     """An item from given values over its preset's defaults, validated."""
-    preset = values.get("preset") or inferred_preset(values)
+    preset = values.get("preset") or inferred_preset(values, ctx.settings["presets"], ctx.settings["school"])
     defaults = ctx.settings["presets"][preset].model_dump(exclude_none=True)
     item = with_defaults(Item(**apply_preset(values | {"preset": preset}, defaults)))
     if item.when == "fixed" and item.event_kind is None:

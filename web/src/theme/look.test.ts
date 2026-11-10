@@ -20,7 +20,8 @@ describe("area colours", () => {
     expect(new Set(AUTO_PAINTS).size).toBe(AUTO_PAINTS.length)
     expect(SCHOOLWORK.map((k) => KIND_PAINT[k])).toEqual(["green", "green", "green", "green"])
     expect(KIND_PAINT.Routine).toBe("yellow")
-    const rest = Object.entries(KIND_PAINT).filter(([k]) => !SCHOOLWORK.includes(k)).map(([, p]) => p)
+    // A Task wears Errand's paint (C97: both personal to-dos; no soft paint is left far from all the others)
+    const rest = Object.entries(KIND_PAINT).filter(([k]) => !SCHOOLWORK.includes(k) && k !== "Task").map(([, p]) => p)
     expect(new Set(rest).size).toBe(rest.length)
     expect(rest).not.toContain("green")
     for (const paint of [...AUTO_PAINTS, ...Object.values(KIND_PAINT)]) expect(ids).toContain(paint)
@@ -44,6 +45,11 @@ describe("area colours", () => {
     expect(yours.Assignment).toBe("green") // schoolwork stays green, meals yellow, errands Manganese Blue
     expect(yours.Routine).toBe("yellow")
     expect(yours.Errand).toBe("manganese")
+    // C97, your choice (b): a Work task wears Cerulean, moved off it when your events wear it and a spare is left
+    expect(KIND_PAINT["Work task"]).toBe("blue")
+    const meetings = kindPaints(new Set(["blue"]))
+    expect(meetings["Work task"]).not.toBe("blue")
+    expect(new Set(["Side project", "Habit", "Maybe", "Work task"].map((k) => meetings[k])).size).toBe(4)
     // Every paint taken: a kind keeps its own rather than wear nothing.
     const all = kindPaints(new Set(PIGMENTS.map((p) => p.id)))
     expect(all.Habit).toBe("purple")

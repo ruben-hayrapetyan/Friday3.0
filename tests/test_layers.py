@@ -16,6 +16,7 @@ LAYERS = {
     "notify": 3,
     "ingest": 3,
     "sync": 3,
+    "integrations": 3,  # C96: to-do apps and other services, on the Inbox's own pieces
     "sim": 3,
     "server": 4,
     "cli": 5,
@@ -29,6 +30,11 @@ LAYER_3_EXCEPTIONS = {
     ("ingest", "friday.estimate"),
     ("ingest", "friday.sync.google_auth"),
     ("sim", "friday.commands"),
+    # Integrations bring things in as the Inbox does (commands/suggesting.py), as `Found` inputs (ingest/ics.py), their
+    # tokens written as Google's are (sync/google_auth.write_private).
+    ("integrations", "friday.commands"),
+    ("integrations", "friday.ingest.ics"),
+    ("integrations", "friday.sync.google_auth"),
 }
 # The one script allowed to read the research code, to write the golden fixtures once.
 FIXTURE_SCRIPT = ROOT / "scripts" / "make_golden_fixtures.py"

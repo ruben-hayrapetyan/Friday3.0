@@ -112,3 +112,12 @@ def test_the_inbox_shows_what_todoist_has_in_lines_not_a_record() -> None:
     said = said_of(remote(fake.tasks[task_id]))
     assert said.splitlines()[:3] == ["Book dentist", "Due 2026-11-12 at 09:30", "Length 15 min"]
     assert "Ask about the crown" in said and said.endswith(f"/task/{task_id}") and "{" not in said
+
+
+def test_a_deadline_is_hard_and_a_due_date_alone_is_the_day_you_meant() -> None:
+    fake = FakeTodoist(TOKEN)
+    meant = fake.add("Laundry", "2026-11-20")
+    due_by = fake.add("Tax return", "2026-11-18", deadline={"date": "2026-11-30", "lang": "en"})
+    a, b = remote(fake.tasks[meant]), remote(fake.tasks[due_by])
+    assert (a.due, a.firm) == ("2026-11-20", False)
+    assert (b.due, b.firm) == ("2026-11-30", True)  # the deadline, not the day it was planned for

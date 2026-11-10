@@ -35,6 +35,7 @@ from friday.commands.timer import timer_out as timing
 from friday.core.db import one, rows
 from friday.core.guess import course_of, guess_preset
 from friday.core.pace import dials_on, pace_label
+from friday.core.presets import in_use
 from friday.core.quickadd import parse
 from friday.core.rows import item_from_row
 from friday.core.settings import to_json
@@ -542,14 +543,16 @@ def parse_line(ctx: Ctx, inp: ParseInput) -> ParseOutput:
         to_local(ctx.now_utc, ctx.tz),
         ctx.day_start,
         area_names(ctx.conn, ctx.user_id).values(),
-        ctx.settings["presets"],
+        in_use(ctx.settings["presets"], ctx.settings["school"]),
     )
     spans = [{"start": s.start, "end": s.end, "kind": s.kind, "value": s.value} for s in result.spans]
     fields = dict(result.fields)
     title = fields.get("title") or ""
     if title and "start_local" not in fields:
         # What add will guess from the title, so the add box shows it as a chip you can change (COMBINED.md 55).
-        if not fields.get("preset") and (preset := guess_preset(title, ctx.settings["presets"])):
+        if not fields.get("preset") and (
+            preset := guess_preset(title, in_use(ctx.settings["presets"], ctx.settings["school"]))
+        ):
             fields["preset"] = preset
         if not fields.get("area") and (course := course_of(title)):
             fields["area"] = course

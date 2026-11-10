@@ -23,7 +23,9 @@ from friday.commands.ai import toml_of
 from friday.commands.registry import run
 from friday.commands.suggesting import accept_trusted, made_items, store, suggest
 from friday.core.db import one, rows
+from friday.core.guess import guess_preset
 from friday.core.paths import secrets_path
+from friday.core.presets import in_use
 from friday.core.time import format_utc, parse_utc
 from friday.ingest.ics import Found, Proposed
 from friday.integrations.base import Connector, ConnectorError, Remote, Transport
@@ -32,7 +34,7 @@ from friday.sync.google_auth import write_private
 
 CONNECTORS: dict[str, type] = {Todoist.kind: Todoist}
 ARRIVALS = ("inbox_first", "straight", "inbox")
-SERVICE_OWNS = ("title", "due", "notes")  # what an edit from the service may change
+SERVICE_OWNS = ("title", "due", "notes", "firmness")  # what an edit from the service may change
 MAX_TRIES = 5
 POLL_MIN = 10  # how often each integration is read, unless you ask for it now
 
@@ -80,15 +82,25 @@ def connector_for(source: dict[str, Any], transport: Transport = None) -> Connec
     return CONNECTORS[kind](token_of(int(source["id"])), config, transport or TRANSPORTS.get(kind))
 
 
-def fields_of(r: Remote) -> dict[str, Any]:
-    """An add from a remote to-do: Friday chooses its kind from the title, as for anything you type."""
+def fields_of(r: Remote, kind: str | None = None) -> dict[str, Any]:
+    """An add from a remote to-do: the kind its title says (an exam's prep), else the integration's own (`kind`, C97:
+    a Task from a to-do app, a Work task from a tracker); a due that's only the day you meant, soft."""
     notes = "\n\n".join(x for x in (r.notes.strip(), r.url or "") if x)
-    out: dict[str, Any] = {"title": r.title, "notes": notes or None}
+    out: dict[str, Any] = {"title": r.title, "notes": notes or None, "preset": kind}
     if r.due:
         out["due"] = r.due if "T" in r.due else f"{r.due}T23:59"  # a whole day: due by its end
+        out["firmness"] = "hard" if r.firm else "soft"
     if r.minutes:
         out["duration_min"] = r.minutes
     return {k: v for k, v in out.items() if v is not None}
+
+
+def kind_for(r: Remote, connector: Connector, settings: dict) -> str | None:
+    """The kind the title says, if it says one you use; else the integration's, if you have it."""
+    kinds = in_use(settings["presets"], settings["school"])
+    if guess_preset(r.title, kinds):
+        return None  # `add` reads it from the title, as for anything you type
+    return connector.caps.kind if connector.caps.kind in kinds else None
 
 
 def said_of(r: Remote) -> str:
@@ -105,8 +117,8 @@ def said_of(r: Remote) -> str:
     return "\n".join(lines)
 
 
-def found_of(r: Remote) -> Found:
-    return Found(r.external_id, r.digest(), r.title, said_of(r), [Proposed("add", fields_of(r))])
+def found_of(r: Remote, kind: str | None = None) -> Found:
+    return Found(r.external_id, r.digest(), r.title, said_of(r), [Proposed("add", fields_of(r, kind))])
 
 
 def sync_source(
@@ -137,7 +149,7 @@ def sync_source(
     batch = f"integration:{source['id']}:first" if first and not straight else None
     made = 0
     for r in remotes:
-        f = found_of(r)
+        f = found_of(r, kind_for(r, connector, settings))
         raw_id = store(conn, int(source["id"]), f, now_utc, user_id)
         if raw_id is None:
             continue

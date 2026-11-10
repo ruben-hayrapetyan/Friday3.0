@@ -83,7 +83,7 @@ def weekly_laundry(app: App) -> int:
     """Laundry every Monday by 8pm, any time in the week before (as yours is: from the Monday before at 8pm)."""
     return app.do(
         "series_add", title="Laundry", every="mon", due_offset_min=20 * 60, release_offset_min=20 * 60 - 7 * DAY,
-        duration_min=180,
+        duration_min=180, preset="Assignment",  # as yours was on 8 Nov, before a dated to-do became a Task (C97)
     )["id"]  # fmt: skip
 
 

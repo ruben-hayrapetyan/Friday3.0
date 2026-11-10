@@ -30,7 +30,7 @@ def add_item(conn: sqlite3.Connection, **changes: object) -> int:
 def test_schema_creates_every_table(conn: sqlite3.Connection) -> None:
     names = {r["name"] for r in rows(conn, "SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert names == TABLES
-    assert schema_version(conn) == 30
+    assert schema_version(conn) == 31
 
 
 def test_every_table_is_strict_and_has_a_user(conn: sqlite3.Connection) -> None:
@@ -42,7 +42,7 @@ def test_every_table_is_strict_and_has_a_user(conn: sqlite3.Connection) -> None:
 
 def test_reconnecting_does_not_migrate_twice(tmp_path: Path) -> None:
     connect(tmp_path / "friday.db").close()
-    assert schema_version(connect(tmp_path / "friday.db")) == 30
+    assert schema_version(connect(tmp_path / "friday.db")) == 31
 
 
 def test_wal_and_foreign_keys_are_on(conn: sqlite3.Connection) -> None:
@@ -117,7 +117,7 @@ def test_rebuilding_the_log_keeps_undone_links_on_an_existing_database(tmp_path:
     old.execute("UPDATE command_log SET undone_by = 2 WHERE id = 1")
     old.close()
     conn = connect(path)
-    assert schema_version(conn) == 30
+    assert schema_version(conn) == 31
     assert one(conn, "SELECT undone_by FROM command_log WHERE id = 1")["undone_by"] == 2
     conn.execute(
         "INSERT INTO command_log (at_utc, actor, command, input, result) VALUES ('x', 'sync:Canvas', 'add', '{}', '{}')"
@@ -171,7 +171,7 @@ def test_migration_5_renames_commitment_to_event_and_adds_the_new_kinds(tmp_path
     conn = connect(path)
     assert one(conn, "SELECT preset FROM items")["preset"] == "Event"
     presets = json.loads(one(conn, "SELECT value FROM settings WHERE key = 'presets'")["value"])
-    assert set(presets) == {"Event", "Exam", "Meeting", "Appointment"}
+    assert set(presets) == {"Event", "Exam", "Meeting", "Appointment", "Task", "Work task"}  # 031 adds the last two
     assert json.loads(one(conn, "SELECT value FROM settings WHERE key = 'kind_order'")["value"]) == ["Event", "Class"]
 
 
@@ -206,7 +206,7 @@ def test_migration_6_rereads_waiting_events_fixes_unacceptable_suggestions_and_c
     )
     old.close()
     conn = connect(path)
-    assert schema_version(conn) == 30
+    assert schema_version(conn) == 31
     assert one(conn, "SELECT content_hash FROM raw_inputs WHERE id = 1")["content_hash"] == ""
     found = {r["id"]: (r["status"], json.loads(r["input"])) for r in rows(conn, "SELECT * FROM suggestions")}
     assert found[2] == ("pending", {"title": "Meet advisor", "preset": "Errand"})

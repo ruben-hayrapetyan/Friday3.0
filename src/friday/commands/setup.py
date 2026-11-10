@@ -109,6 +109,8 @@ def setup_save(ctx: Ctx, inp: SetupInput) -> Changed:
         write_setting(ctx, "busy", {**to_json("busy", busy), "calendars": counted})
     if "brief" in changed:
         write_setting(ctx, "notify", {**to_json("notify", ctx.settings["notify"]), "morning_brief": inp.brief})
+    if "school" in changed:
+        write_setting(ctx, "school", inp.school)
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "setup_done"}, {"value": "true"})
     return Changed(message="Friday is set up the way you said")
 
@@ -141,6 +143,7 @@ def answers(ctx: Ctx, events: dict[str, int]) -> dict[str, Any]:
         "weekend_free": in_hours(param("weekends", "free", "4h")) or 0.0,
         "finish_early_days": param("finish_early", "days", 1) or 0,
         "brief": ctx.settings["notify"].morning_brief,
+        "school": ctx.settings["school"],
         "calendars": [{"name": n, "shown": n not in look.toolbar, "busy": calendar_counts(n, busy)} for n in names],
     }
 

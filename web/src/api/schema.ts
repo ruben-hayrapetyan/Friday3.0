@@ -8887,6 +8887,11 @@ export interface components {
             /** Brief */
             brief: boolean;
             /**
+             * School
+             * @default true
+             */
+            school?: boolean;
+            /**
              * Calendars
              * @default []
              */

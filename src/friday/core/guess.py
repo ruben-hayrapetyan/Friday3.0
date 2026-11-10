@@ -36,6 +36,16 @@ def guess_preset(title: str, presets: Container[str]) -> str | None:
     return found if found is not None and found in presets else None
 
 
+def fallback_kind(title: str, dated: bool, presets: Container[str], school: bool = True) -> str:
+    """A to-do's kind when its title names none Friday knows (C97): schoolwork only when it says so (a course code,
+    for a student), else a plain Task when it's dated, an Errand when not. Kinds you deleted fall back as before."""
+    if school and dated and course_of(title) and "Assignment" in presets:
+        return "Assignment"
+    if dated and "Task" in presets:
+        return "Task"
+    return "Assignment" if dated and "Assignment" in presets else "Errand"
+
+
 def course_of(title: str) -> str | None:
     """A course code in the title, like "CS 2110"."""
     m = COURSE.search(title)

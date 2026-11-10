@@ -90,6 +90,18 @@ def check_each_to_do_comes_in_once_with_its_title_due_and_length(w: World) -> No
         assert report["duration_min"] == 90, report["duration_min"]
 
 
+def check_a_plain_title_comes_in_as_the_integration_s_kind_and_a_school_one_as_itself(w: World) -> None:
+    """C97: "Book dentist" from a to-do app is a Task (from a tracker a Work task), not a 2-hour Assignment; a title
+    that says what it is keeps that."""
+    w.h.add(w.fake, "Book dentist", THU)
+    w.h.add(w.fake, "Study guide for prelim 2", THU)
+    w.connect()
+    w.sync()
+    kind = sync.CONNECTORS[w.h.kind].caps.kind
+    assert w.item("Book dentist")["preset"] == kind, w.item("Book dentist")["preset"]
+    assert w.item("Study guide for prelim 2")["preset"] == "Exam prep"
+
+
 def check_reading_again_with_nothing_changed_makes_nothing_and_sends_nothing(w: World) -> None:
     for n in range(5):
         w.h.add(w.fake, f"Task {n}", THU)

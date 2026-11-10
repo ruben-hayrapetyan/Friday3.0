@@ -523,6 +523,7 @@ class SetupInput(Model):
     weekend_free: float = Field(ge=0, le=13)  # hours kept free each weekend day; 0: the rule off
     finish_early_days: int = Field(ge=0, le=7)  # 0: the rule off
     brief: bool
+    school: bool = True  # in school (C97): school kinds shown and guessed; off, Tasks and Work tasks instead
     calendars: list[SetupCalendar] = []
 
 
