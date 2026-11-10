@@ -55,7 +55,8 @@ def test_nothing_is_asked(seeded: tuple[Friday, dict]) -> None:
 def test_the_calendar_shows_the_hour_missed(seeded: tuple[Friday, dict]) -> None:
     friday, ids = seeded
     day = ids["day"]
-    plan = friday.q("plan", start=f"{day}T04:00", end=f"{day}T23:59")
+    after = (datetime.fromisoformat(day) + timedelta(days=1)).date()  # a Friday day runs 4am to 4am: past midnight too
+    plan = friday.q("plan", start=f"{day}T04:00", end=f"{after}T04:00")
     (essay,) = [b for b in plan["blocks"] if b["item_id"] == ids["essay"] and b["start"] == ids["at"]]
     assert essay["state"] == "missed"
 
