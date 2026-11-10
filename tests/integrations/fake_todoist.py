@@ -50,6 +50,21 @@ class FakeTodoist(FakeService):
             more = start + limit < len(open_)
             return httpx.Response(200, json={"results": page, "next_cursor": str(start + limit) if more else None})
         parts = path.strip("/").split("/")
+        if method == "POST" and path == "/projects":  # the live check's own project
+            return httpx.Response(200, json={"id": "p2", "name": self.body(request)["name"]})
+        if method == "POST" and path == "/tasks":
+            given = self.body(request)
+            minutes = given.get("duration") if given.get("duration_unit", "minute") == "minute" else None
+            task_id = self.add(given["content"], given.get("due_date") or given.get("due_datetime"), minutes)
+            return httpx.Response(200, json=self.tasks[task_id])
+        if len(parts) == 2 and parts[0] == "tasks" and method in ("GET", "DELETE"):
+            task = self.tasks.get(parts[1])
+            if task is None:
+                return httpx.Response(404, json={"error": "Task not found"})
+            if method == "DELETE":
+                task["is_deleted"] = True
+                return httpx.Response(204)
+            return httpx.Response(200, json=task)
         if method == "POST" and len(parts) == 3 and parts[0] == "tasks" and parts[2] in ("close", "reopen"):
             task = self.tasks.get(parts[1])
             if task is None or task["is_deleted"]:

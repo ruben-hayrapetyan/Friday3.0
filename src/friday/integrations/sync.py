@@ -89,8 +89,22 @@ def fields_of(r: Remote) -> dict[str, Any]:
     return {k: v for k, v in out.items() if v is not None}
 
 
+def said_of(r: Remote) -> str:
+    """The to-do as the Inbox shows it under "From the source": what the service has, in lines, not a record."""
+    lines = [r.title]
+    if r.due:
+        lines.append(f"Due {r.due.replace('T', ' at ')}")
+    if r.minutes:
+        lines.append(f"Length {r.minutes} min")
+    if r.notes.strip():
+        lines += ["", r.notes.strip()]
+    if r.url:
+        lines += ["", r.url]
+    return "\n".join(lines)
+
+
 def found_of(r: Remote) -> Found:
-    return Found(r.external_id, r.digest(), r.title, json.dumps(r.__dict__), [Proposed("add", fields_of(r))])
+    return Found(r.external_id, r.digest(), r.title, said_of(r), [Proposed("add", fields_of(r))])
 
 
 def sync_source(

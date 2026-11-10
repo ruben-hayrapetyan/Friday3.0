@@ -14847,6 +14847,11 @@
      "made": {
       "type": "integer",
       "title": "Made"
+     },
+     "waiting": {
+      "type": "integer",
+      "title": "Waiting",
+      "default": 0
      }
     },
     "additionalProperties": false,

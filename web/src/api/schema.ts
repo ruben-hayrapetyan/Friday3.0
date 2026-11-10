@@ -4358,6 +4358,11 @@ export interface components {
             last_error: string | null;
             /** Made */
             made: number;
+            /**
+             * Waiting
+             * @default 0
+             */
+            waiting?: number;
         };
         /** DateInput */
         DateInput: {

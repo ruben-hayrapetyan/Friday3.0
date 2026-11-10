@@ -81,7 +81,7 @@ export async function runCommand<N extends CommandName>(
     return undefined
   } finally {
     // The server's events refresh these too; this covers a dropped stream.
-    client.invalidateQueries({ predicate: (q) => ["items", "item", "now", "status", "meals", "sleep", "duplicates", "to_review", "tokens", "gmail_app_accounts"].includes(String(q.queryKey[0])) })
+    client.invalidateQueries({ predicate: (q) => ["items", "item", "now", "status", "meals", "sleep", "duplicates", "to_review", "tokens", "gmail_app_accounts", "integrations", "inbox"].includes(String(q.queryKey[0])) })
   }
 }
 

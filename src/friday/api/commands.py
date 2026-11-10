@@ -1057,6 +1057,7 @@ class Connected(Model):
     last_sync: str | None
     last_error: str | None
     made: int  # open to-dos it brought in
+    waiting: int = 0  # its to-dos waiting in your Inbox to be accepted
 
 
 class ConnectOutput(Model):

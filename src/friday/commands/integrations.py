@@ -101,4 +101,15 @@ def connected(ctx: Ctx, source_id: int) -> Connected:
         last_sync=ctx.local(s["last_sync_utc"]) if s["last_sync_utc"] else None,
         last_error=s["last_error"],
         made=len(made(ctx, source_id)),
+        waiting=waiting(ctx, source_id),
     )
+
+
+def waiting(ctx: Ctx, source_id: int) -> int:
+    found = one(
+        ctx.conn,
+        "SELECT COUNT(*) AS n FROM suggestions s JOIN raw_inputs r ON r.id = s.raw_input_id "
+        "WHERE r.source_id = ? AND s.status = 'pending'",
+        [source_id],
+    )
+    return int(found["n"]) if found else 0

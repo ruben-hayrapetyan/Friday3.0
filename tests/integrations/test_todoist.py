@@ -102,3 +102,13 @@ def test_slow_down_keeps_how_long_todoist_asked_to_wait() -> None:
     with pytest.raises(ConnectorError) as said:
         connector(fake).read()
     assert said.value.problem == "rate" and said.value.retry_after_s == 42
+
+
+def test_the_inbox_shows_what_todoist_has_in_lines_not_a_record() -> None:
+    from friday.integrations.sync import said_of
+
+    fake = FakeTodoist(TOKEN)
+    task_id = fake.add("Book dentist", "2026-11-12T09:30:00", 15, description="Ask about the crown")
+    said = said_of(remote(fake.tasks[task_id]))
+    assert said.splitlines()[:3] == ["Book dentist", "Due 2026-11-12 at 09:30", "Length 15 min"]
+    assert "Ask about the crown" in said and said.endswith(f"/task/{task_id}") and "{" not in said
