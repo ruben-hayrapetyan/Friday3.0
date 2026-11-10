@@ -1,6 +1,36 @@
 {
-  "current": "0.3.1",
+  "current": "0.3.2",
   "versions": [
+    {
+      "version": "0.3.2",
+      "released": "2026-11-09",
+      "sha256": "07f064364d36d78a2b92d6c319797763bf318575fb599a8f929b9818511181bc",
+      "bytes": 234957096,
+      "commit": "9bac546ba75bec70ef8ae755c6fee6ead1e64d48",
+      "notes": {
+        "summary": "Google works for everyone through your Mac, Friday's questions wait in your Inbox, new terms to accept, and fixes for timers, time steppers and calendar edge cases.",
+        "new": [
+          "Friday's terms: everyone accepts them when Friday opens, and again whenever they change.",
+          "Friday's questions now wait in your Inbox: what it learned, which version of a day you'd rather have, your meal times and your bedtimes. \"Not now\" asks again once Friday knows more; Insights links there.",
+          "When something from your mail updates a task you have, the card says what will change."
+        ],
+        "changed": [
+          "Google comes in through your Mac: add your Google account in System Settings → Internet Accounts for its calendars, and read Gmail with an app password. Signing in to Google directly, which Google blocked for most people, is now only for someone with a Google Cloud key of their own (Settings → Integrations → Advanced).",
+          "Friday's code is under the PolyForm Noncommercial License."
+        ],
+        "fixed": [
+          "\"Forgot to stop?\" starts at the time it is now, not 9am, and its buttons line up.",
+          "Tapping − and + quickly, or going back after overshooting, keeps the length you see.",
+          "Updating a task from your Inbox keeps the name you gave it.",
+          "A 2:30am event on the night the clocks go forward is no longer refused.",
+          "Changing your timezone keeps all-day events on their days.",
+          "An event made all-day in Google while all-day events are off leaves Friday.",
+          "Undoing a delete, or opening a deleted event again, puts it back on its calendar.",
+          "Work can't be logged before it has happened.",
+          "Security updates for the parts Friday is built with."
+        ]
+      }
+    },
     {
       "version": "0.3.1",
       "released": "2026-11-09",
