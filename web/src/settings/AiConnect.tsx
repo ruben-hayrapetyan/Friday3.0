@@ -27,7 +27,8 @@ export interface AiState {
   ready: boolean
   key: boolean
   cli: boolean
-  command: string | null // the command it's asked through ("claude", "codex", "agy", "gemini"), when installed
+  command: string | null // its command ("claude", "codex", "agy", "gemini"), when installed on this Mac
+  via: "command" | "key" // asked through the command or the API key: your choice when both could (C95)
   why: string | null
   note: string | null
   base_url: string | null
@@ -44,6 +45,7 @@ export function useAi(): AiState {
     key: !!llm?.key,
     cli: !!llm?.cli,
     command: llm?.command ?? null,
+    via: llm?.via === "key" ? "key" : "command",
     why: llm?.why ?? null,
     note: llm?.note ?? null,
     base_url: llm?.base_url ?? null,
@@ -52,9 +54,9 @@ export function useAi(): AiState {
 }
 
 export const CHOICES: { id: Provider; title: string; note: string; keyFrom?: string }[] = [
-  { id: "claude", title: "Claude", note: "Anthropic's. Uses Claude Code on this Mac: no key needed. Else an API key.", keyFrom: "console.anthropic.com" },
-  { id: "openai", title: "OpenAI", note: "GPT. Uses the codex command if it's installed (signed in with ChatGPT), else an API key.", keyFrom: "platform.openai.com" },
-  { id: "gemini", title: "Gemini", note: "Google's. Uses Google's agy or gemini command if installed (signed in with Google), else an API key.", keyFrom: "aistudio.google.com" },
+  { id: "claude", title: "Claude", note: "Anthropic's. Through Claude Code on this Mac (no key needed) or an API key: your choice.", keyFrom: "console.anthropic.com" },
+  { id: "openai", title: "OpenAI", note: "GPT. Through the codex command (signed in with ChatGPT) or an API key: your choice.", keyFrom: "platform.openai.com" },
+  { id: "gemini", title: "Gemini", note: "Google's. Through Google's agy or gemini command (signed in with Google) or an API key: your choice.", keyFrom: "aistudio.google.com" },
   { id: "grok", title: "Grok", note: "xAI's, with an API key.", keyFrom: "console.x.ai" },
   { id: "muse", title: "Muse", note: "Meta's, in preview, with an API key from Meta." },
   { id: "compatible", title: "Another service", note: "Anything that speaks OpenAI's API: OpenRouter, Groq, Together, LM Studio…" },
@@ -72,7 +74,7 @@ const MARKS: Record<Provider, [string, string]> = {
   local: ["laptop", "var(--st-work)"],
 }
 
-type Llm = { provider: Provider; model: string; small_model: string; base_url: string | null; daily_calls: number; daily_tokens: number }
+type Llm = { provider: Provider; model: string; small_model: string; base_url: string | null; daily_calls: number; daily_tokens: number; via?: "command" | "key" }
 type Local = Schemas["LocalModelsOut"]
 
 function useRefresh() {
@@ -187,14 +189,58 @@ function Status({ ai }: { ai: AiState }) {
   )
 }
 
-function ClaudeSetup({ ai }: { ai: AiState }) {
-  if (ai.cli)
-    return <span style={{ fontSize: 13 }}>Uses Claude Code on this Mac, signed in as you: no key needed, photos and scanned PDFs included.</span>
+export function ClaudeSetup({ ai }: { ai: AiState }) {
+  if (ai.cli && ai.via === "command")
+    return (
+      <>
+        <Via ai={ai} />
+        <span style={{ fontSize: 13 }}>Uses Claude Code on this Mac, signed in as you: no key needed, photos and scanned PDFs included.</span>
+        <KeyField provider="claude" label="Anthropic API key" has={ai.key} optional from="console.anthropic.com" note="A backup, used only if Claude Code fails." />
+      </>
+    )
   return (
     <>
-      <span style={{ fontSize: 13 }}>Claude Code isn’t installed here: install it (then no key is needed), or add an Anthropic API key.</span>
+      {ai.cli ? <Via ai={ai} /> : <span style={{ fontSize: 13 }}>Claude Code isn’t installed here: install it (then no key is needed), or add an Anthropic API key.</span>}
       <KeyField provider="claude" label="Anthropic API key" has={ai.key} from="console.anthropic.com" />
     </>
+  )
+}
+
+/** What the command is called in the choice. */
+const COMMAND_NAME: Record<string, string> = { claude: "Claude Code on this Mac", codex: "The codex command", agy: "Google’s agy command", gemini: "The gemini command" }
+
+/** Ask through the command or through an API key, when both could (C95, 10 Nov: "the user should have the choice between
+ * cli commands or api key for ai's that have both"). With the key chosen, only the key is used. */
+function Via({ ai }: { ai: AiState }) {
+  const save = useCommand("settings_set", { label: () => "Saved" })
+  const refresh = useRefresh()
+  const pick = async (via: "command" | "key") => {
+    if (via === ai.via) return
+    await save({ key: "llm", value: { via } })
+    refresh()
+  }
+  const options: ["command" | "key", string][] = [["command", COMMAND_NAME[ai.command ?? ""] ?? `The ${ai.command} command`], ["key", "An API key"]]
+  return (
+    <div role="radiogroup" aria-label={`Ask ${ai.name} through`} style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13 }}>
+      <span>Ask {ai.name === "AI" ? "it" : ai.name} through</span>
+      {options.map(([id, label]) => (
+        <button
+          key={id}
+          role="radio"
+          aria-checked={ai.via === id}
+          className="fr-plain"
+          onClick={() => pick(id)}
+          style={{
+            padding: "3px 10px",
+            borderRadius: "var(--radius-md)",
+            background: ai.via === id ? "color-mix(in srgb, var(--color-accent) 14%, var(--color-surface))" : "var(--color-surface)",
+            boxShadow: ai.via === id ? "inset 0 0 0 1.5px var(--color-accent)" : "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 8%, transparent)",
+          }}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -207,30 +253,25 @@ const TO_INSTALL: Partial<Record<Provider, string>> = {
 
 function ServiceSetup({ llm, ai, keyFrom }: { llm: Llm; ai: AiState; keyFrom?: string }) {
   const [moved, setMoved] = useState(!!llm.base_url)
-  const [withKey, setWithKey] = useState(ai.key)
   const label = `${CHOICES.find((c) => c.id === llm.provider)?.title} API key`
-  // Its command on this Mac: no key, and no model to choose (the command picks its own). Photos and scanned PDFs are
-  // what it can't be handed, so a key for those alone is offered, out of the way.
-  if (ai.command)
+  // Its command on this Mac, as you chose: no key, and no model to choose (the command picks its own). Photos and scanned
+  // PDFs are what it can't be handed, so the key for those alone is offered, in plain sight (C95).
+  if (ai.command && ai.via === "command")
     return (
       <>
+        <Via ai={ai} />
         <span style={{ fontSize: 13 }}>
           Uses the {ai.command} command on this Mac{SIGNED_IN[ai.command] ? `, ${SIGNED_IN[ai.command]}` : ""}: no key needed.
         </span>
-        {withKey ? (
-          <KeyField provider={llm.provider} label={label} has={ai.key} optional from={keyFrom} note="Only for photos and scanned PDFs, which the command can't be handed." />
-        ) : (
-          <button className="fr-link" onClick={() => setWithKey(true)} style={{ alignSelf: "flex-start", fontSize: 12 }}>
-            Photos and scanned PDFs need a key: add one
-          </button>
-        )}
+        <KeyField provider={llm.provider} label={label} has={ai.key} optional from={keyFrom} note="For photos and scanned PDFs (a syllabus scan), which the command can’t be handed." />
       </>
     )
   return (
     <>
+      {ai.command && <Via ai={ai} />}
       {ai.note && <span className="fr-kicker">{ai.note}.</span>}
       <KeyField provider={llm.provider} label={label} has={ai.key} from={keyFrom} />
-      {TO_INSTALL[llm.provider] && <span className="fr-kicker">{TO_INSTALL[llm.provider]}</span>}
+      {!ai.command && TO_INSTALL[llm.provider] && <span className="fr-kicker">{TO_INSTALL[llm.provider]}</span>}
       {ai.key && <ModelPicker llm={llm} />}
       {llm.provider === "muse" &&
         (moved ? <AddressField llm={llm} label="Meta's API address, if it moved" /> : (
