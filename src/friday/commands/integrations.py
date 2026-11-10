@@ -4,48 +4,15 @@ read waits in the Inbox to be reviewed together unless you choose otherwise (the
 disconnecting asks whether what it brought in stays (your answer, 10 Nov)."""
 
 import json
-from typing import Literal
 
-from friday.api.types import Model
+from friday.api.commands import ArrivalInput, Connected, ConnectInput, ConnectOutput, DisconnectInput
+from friday.api.types import Empty
 from friday.commands.registry import Ctx, command, query
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.integrations import sync
 from friday.integrations.base import ConnectorError
 from friday.planner.store import kv_set
-
-Arrival = Literal["inbox_first", "straight", "inbox"]
-
-
-class ConnectInput(Model):
-    kind: str
-    token: str
-
-
-class ArrivalInput(Model):
-    id: int
-    arrival: Arrival
-
-
-class DisconnectInput(Model):
-    id: int
-    keep: bool  # what it brought in stays in Friday, or is dropped from it (nothing changes in the service)
-
-
-class Connected(Model):
-    id: int
-    kind: str
-    name: str
-    arrival: Arrival
-    two_way: bool
-    last_sync: str | None
-    last_error: str | None
-    made: int  # open to-dos it brought in
-
-
-class ConnectOutput(Model):
-    message: str
-    source: Connected
 
 
 @command("integration_connect", logged=False)  # a token is never logged
@@ -95,7 +62,7 @@ def integration_disconnect(ctx: Ctx, inp: DisconnectInput) -> Connected:
 
 
 @query("integrations")
-def integrations(ctx: Ctx, inp: Model) -> list[Connected]:
+def integrations(ctx: Ctx, inp: Empty) -> list[Connected]:
     """Integrations connected now."""
     found = rows(ctx.conn, "SELECT id, kind FROM sources WHERE user_id = ? AND enabled = 1", [ctx.user_id])
     return [connected(ctx, int(r["id"])) for r in found if sync.is_integration(r["kind"])]

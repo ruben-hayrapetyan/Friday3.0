@@ -1027,3 +1027,38 @@ class ItemIds(Model):
 class ReviewedInput(Model):
     ids: list[int]
     keep: bool = True  # False takes them off your list (your calendar keeps its event)
+
+
+# Integrations (C96: Todoist and the others; commands/integrations.py)
+Arrival = Literal["inbox_first", "straight", "inbox"]
+
+
+class ConnectInput(Model):
+    kind: str
+    token: str
+
+
+class ArrivalInput(Model):
+    id: int
+    arrival: Arrival
+
+
+class DisconnectInput(Model):
+    id: int
+    keep: bool  # what it brought in stays in Friday, or is dropped from it (nothing changes in the service)
+
+
+class Connected(Model):
+    id: int
+    kind: str
+    name: str
+    arrival: Arrival
+    two_way: bool
+    last_sync: str | None
+    last_error: str | None
+    made: int  # open to-dos it brought in
+
+
+class ConnectOutput(Model):
+    message: str
+    source: Connected
