@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { query } from "@/api/client"
 import { Chip, Icon, Seg } from "@/components/fr/controls"
 import { useClock } from "@/hooks/useClock"
+import { useSteps } from "@/hooks/useSteps"
 import { ampm, dur, parseLength, weekday } from "@/lib/format"
 import { addDays, fromMin, toMin } from "@/lib/time"
 
@@ -207,21 +208,15 @@ export function stepLength(min: number, up: boolean): number {
 
 /** − and + on a length. Presses add up at once and are saved together when you stop (27 Oct: each press read the
  * length before the last one had saved, so six presses made 5h into 5h 15m). */
-export function LengthStepper({ value, onSave }: { value: number | null; onSave: (min: number) => void }) {
-  const [pending, setPending] = useState<number | null>(null)
-  const shown = pending ?? value
-  useEffect(() => {
-    if (pending === null) return
-    const timer = setTimeout(() => (onSave(pending), setPending(null)), SAVE_AFTER_MS)
-    return () => clearTimeout(timer)
-  }, [pending, onSave])
-  const press = (up: boolean) => shown && setPending(stepLength(shown, up))
+export function LengthStepper({ value, onSave }: { value: number | null; onSave: (min: number) => unknown }) {
+  const { shown, set, changing } = useSteps(value, onSave, SAVE_AFTER_MS)
+  const press = (up: boolean) => shown && set(stepLength(shown, up))
   return (
     <>
       <button className="btn btn-icon btn-secondary" disabled={!shown || shown <= 15} onClick={() => press(false)} aria-label={shown ? `Less: ${dur(stepLength(shown, false))}` : "Less time"} title={shown ? dur(stepLength(shown, false)) : undefined} style={{ width: 26, height: 26 }}>
         <Icon name="minus" />
       </button>
-      <span className="tnum" style={{ width: 64, flex: "none", whiteSpace: "nowrap", textAlign: "center", color: pending !== null ? "var(--color-accent-300)" : undefined }}>
+      <span className="tnum" style={{ width: 64, flex: "none", whiteSpace: "nowrap", textAlign: "center", color: changing ? "var(--color-accent-300)" : undefined }}>
         {shown ? dur(shown) : "—"}
       </span>
       <button className="btn btn-icon btn-secondary" disabled={!shown} onClick={() => press(true)} aria-label={shown ? `More: ${dur(stepLength(shown, true))}` : "More time"} title={shown ? dur(stepLength(shown, true)) : undefined} style={{ width: 26, height: 26 }}>

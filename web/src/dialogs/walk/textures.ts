@@ -65,7 +65,7 @@ export function fbm(size: number, cells: number, octaves: number, seed: number, 
   return out
 }
 
-function texture(data: Uint8Array, size: number, unit: [number, number], srgb: boolean): THREE.DataTexture {
+function texture(data: Uint8Array<ArrayBuffer>, size: number, unit: [number, number], srgb: boolean): THREE.DataTexture {
   const t = new THREE.DataTexture(data, size, size, THREE.RGBAFormat)
   t.wrapS = t.wrapT = THREE.RepeatWrapping
   t.magFilter = THREE.LinearFilter
@@ -104,7 +104,7 @@ export function surface(size: number, unit: [number, number], bump: number, at: 
 }
 
 /** A tangent-space normal map from heights. */
-export function normals(height: Float32Array, size: number, bump: number): Uint8Array {
+export function normals(height: Float32Array, size: number, bump: number): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(size * size * 4)
   for (let j = 0; j < size; j++) {
     for (let i = 0; i < size; i++) {
