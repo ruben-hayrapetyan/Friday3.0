@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import type { Block, Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { clock } from "@/lib/format"
+import { useOnScreen } from "@/lib/onScreen"
 
 /** A due marker, as the selected "block" the popover reads. */
 export function dueBlock(d: Schemas["DueMarker"]): Block {
@@ -19,6 +20,7 @@ export function dueCountLabel(n: number): string {
 export function DueCount({ dues, onPick }: { dues: Schemas["DueMarker"][]; onPick: (d: Schemas["DueMarker"]) => void }) {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
+  const list = useOnScreen<HTMLDivElement>(open) // on a phone it would run off the right
   useEffect(() => {
     if (!open) return
     const away = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false)
@@ -44,7 +46,7 @@ export function DueCount({ dues, onPick }: { dues: Schemas["DueMarker"][]; onPic
         <Icon name="caret-down" size={10} />
       </button>
       {open && (
-        <div role="menu" className="fr-float" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, width: "min(280px, calc(100vw - 24px))", maxHeight: "min(420px, 60vh)", overflowY: "auto", overflowX: "hidden", whiteSpace: "normal", padding: 6, display: "flex", flexDirection: "column", gap: 1 }}>
+        <div ref={list} role="menu" className="fr-float" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, width: "min(280px, calc(100vw - 24px))", maxHeight: "min(420px, 60vh)", overflowY: "auto", overflowX: "hidden", whiteSpace: "normal", padding: 6, display: "flex", flexDirection: "column", gap: 1 }}>
           {dues.map((d) => (
             <button
               key={d.item_id}
