@@ -1,6 +1,7 @@
 """Queries (DESIGN §9.3): now, fits, plan, items, item, parse, review, paces, status, settings, log_list, stats."""
 
 import json
+import os
 from datetime import timedelta
 from typing import Any
 
@@ -648,6 +649,9 @@ def status(ctx: Ctx, inp: Empty) -> StatusOut:
         decisions=decisions(ctx, report, late_items),
         config_keys=kv_get(ctx.conn, "config_keys", [], ctx.user_id),
         demo=bool(kv_get(ctx.conn, "demo", False, ctx.user_id)),
+        server_pid=os.getpid(),
+        server_build=os.environ.get("FRIDAY_APP_BUILD") or None,
+        server_orphan=os.getppid() == 1,  # the app that started it quit without stopping it
         suggestions=(
             one(
                 ctx.conn,

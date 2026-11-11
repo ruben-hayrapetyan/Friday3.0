@@ -397,6 +397,14 @@ VERBS = {
         False,
         "Remove a Google account: its token is deleted and Friday stops reading its calendars and mail. What they",
     ),
+    "google_tasks_connect": Verb(
+        "POST",
+        "/api/c/google_tasks_connect",
+        commands.GoogleTasksInput,
+        True,
+        False,
+        "Read Google Tasks from a Google account that has allowed it (C110): an integration like the others, riding",
+    ),
     "import_chroma_colors": Verb(
         "POST",
         "/api/c/import_chroma_colors",
@@ -452,6 +460,14 @@ VERBS = {
         "The service's to-do lists, asked of it now, each with whether it's read and what it brought in.",
     ),
     "integration_set": Verb("POST", "/api/c/integration_set", commands.ArrivalInput, True, False, "integration_set"),
+    "integration_sign_in": Verb(
+        "POST",
+        "/api/c/integration_sign_in",
+        commands.SignInInput,
+        True,
+        False,
+        "The service's own sign-in page, for one connected by signing in (Microsoft, TickTick, Slack): open it, allow",
+    ),
     "integration_token_page": Verb(
         "GET",
         "/api/q/integration_token_page",
@@ -588,6 +604,14 @@ VERBS = {
         False,
         "The Mac's calendars as the Mac app last saw them, alphabetized, with whether each is read and how.",
     ),
+    "mac_plan": Verb(
+        "GET",
+        "/api/q/mac_plan",
+        commands.Empty,
+        False,
+        False,
+        'Whether the Mac app should keep the "Friday" calendar, and the plan\'s blocks for it.',
+    ),
     "mac_sync": Verb(
         "POST",
         "/api/c/mac_sync",
@@ -618,7 +642,7 @@ VERBS = {
         commands.Empty,
         False,
         False,
-        "The mailboxes read by app password; never their passwords.",
+        "The mailboxes read by app password, and Outlook's by Microsoft's sign-in; never their passwords or tokens.",
     ),
     "mail_app_forget": Verb(
         "POST", "/api/c/mail_app_forget", commands.MailAppForgetInput, True, False, "mail_app_forget"
@@ -922,10 +946,10 @@ VERBS = {
     "reminder_writes": Verb(
         "GET",
         "/api/q/reminder_writes",
-        commands.Empty,
+        commands.MacAppInput,
         False,
         False,
-        "Whether the Mac app should read Reminders, and what you marked done or opened again here, to make there.",
+        "Whether the Mac app should read that app, and what you marked done or opened again here, to make there.",
     ),
     "reminder_written": Verb(
         "POST",
@@ -933,7 +957,7 @@ VERBS = {
         commands.ReminderWrittenInput,
         True,
         False,
-        "The Mac app's report on one: made in Reminders, or why not (kept to try again, then said on the box).",
+        "The Mac app's report on one: made in that app, or why not (kept to try again, then said on the box).",
     ),
     "reminders_sync": Verb(
         "POST",
@@ -941,7 +965,7 @@ VERBS = {
         commands.RemindersSyncInput,
         True,
         False,
-        "Your open reminders as the Mac app reads them; read into Friday within the minute.",
+        "Your open to-dos as the Mac app reads them (Reminders, Things); read into Friday within the minute.",
     ),
     "reopen": Verb("POST", "/api/c/reopen", commands.ItemRef, True, True, "Undo a drop or a done."),
     "reorder": Verb(

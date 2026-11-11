@@ -104,6 +104,13 @@ describe("the walk's route", () => {
   })
 })
 
+describe("each question's own scene", () => {
+  it("asks whether you're in school at the desk, not where the alarm is (10 Nov: it had no scene of its own)", () => {
+    expect(STOPS.school.place).toBe(STOPS.wake.place)
+    expect(STOPS.school.spot).not.toBe(STOPS.wake.spot)
+  })
+})
+
 describe("walking", () => {
   it("speeds up, keeps a steady pace, slows down, and arrives exactly", () => {
     const length = 20
@@ -138,6 +145,7 @@ describe("what they do when you change an answer", () => {
   const was = { wake: "07:30", bedtime: "23:30", weekend_wake: "09:00", weekend_bedtime: "00:30", normal_hours: 6, most_hours: 9, focus_hours: 1.5, evening_free: 2, evening_from: "19:00", weekend_free: 4, finish_early_days: 1, brief: true, calendars: [] }
   it("acts the answer out where it's asked, and does nothing that doesn't mean something (30 Oct)", () => {
     expect(reactionTo(was, { ...was, wake: "06:30" })?.kind).toBe("clock") // a look at the alarm clock
+    expect(reactionTo(was, { ...was, school: false })?.kind).toBe("nod") // a nod at the desk's things, swapped
     expect(reactionTo(was, { ...was, normal_hours: 9 })?.kind).toBe("stackRight") // a book onto the day's pile
     expect(reactionTo(was, { ...was, normal_hours: 4 })?.kind).toBe("stackRight") // or off it
     expect(reactionTo(was, { ...was, most_hours: 12 })?.kind).toBe("stackLeft")

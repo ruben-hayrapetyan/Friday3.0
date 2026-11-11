@@ -19,8 +19,9 @@ const answers: Schemas["SetupInput"] = {
   finish_early_days: 1,
   brief: true,
   calendars: [],
+  school: true,
 }
-const STEPS = ["hello", "wake", "work", "heavy", "focus", "deadline", "evening", "bed", "weekend", "brief", "ai", "bring", "calendars", "build", "reveal", "start"]
+const STEPS = ["hello", "school", "wake", "work", "heavy", "focus", "deadline", "evening", "bed", "weekend", "brief", "ai", "bring", "calendars", "build", "reveal", "start"]
 const params = new URLSearchParams(location.search)
 const canvas = document.querySelector("canvas") as HTMLCanvasElement
 const say = document.getElementById("say") as HTMLElement

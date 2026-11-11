@@ -66,6 +66,7 @@ final class Server: ObservableObject {
         if let app {
             settings["FRIDAY_APP_VERSION"] = app.version
             settings["FRIDAY_APP_PATH"] = app.path
+            if let build = app.build { settings["FRIDAY_APP_BUILD"] = build }
             if let feed = app.feed { settings["FRIDAY_UPDATE_FEED"] = feed }
         }
         return Launcher(executable: python, prefix: ["-m", "friday.server.main"],
@@ -85,12 +86,14 @@ final class Server: ObservableObject {
         let version: String
         let path: String
         let feed: String?
+        var build: String? = nil  // stamped by each build (FridayBuild): its server says so in `status`
 
         static var running: ThisApp? {
             guard let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
             else { return nil }
             return ThisApp(version: version, path: Bundle.main.bundlePath,
-                       feed: Bundle.main.object(forInfoDictionaryKey: "FridayUpdateFeed") as? String)
+                           feed: Bundle.main.object(forInfoDictionaryKey: "FridayUpdateFeed") as? String,
+                           build: Bundle.main.object(forInfoDictionaryKey: "FridayBuild") as? String)
         }
     }
 
@@ -113,11 +116,26 @@ final class Server: ObservableObject {
 
     var executable: URL? { launcher?.executable }
 
+    /// A server left over from another build of the app (10 Nov: Friday Test kept talking to its first build's server,
+    /// orphaned when that app went away): started by a Friday app, not this build, and its app gone. Its process, to
+    /// stop; nil for one to use (this build's, one started by hand, or one whose app is still open).
+    nonisolated static func leftover(_ status: [String: Any], mine: String?) -> Int32? {
+        guard let mine, let theirs = status["server_build"] as? String, theirs != mine,
+              status["server_orphan"] as? Bool == true, let pid = status["server_pid"] as? Int, pid > 1 else { return nil }
+        return Int32(pid)
+    }
+
     /// Running already (another copy, or `fridayd` started by hand), or start it.
     func ensureRunning(attempt: Int = 0) async {
-        if await Self.status() != nil {
-            await setUp()
-            return
+        if let found = await Self.status() {
+            guard let stale = Self.leftover(found, mine: ThisApp.running?.build) else {
+                await setUp()
+                return
+            }
+            kill(stale, SIGTERM)
+            for _ in 0 ..< 30 where await Self.status() != nil {  // until the port is free, three seconds at most
+                try? await Task.sleep(for: .milliseconds(100))
+            }
         }
         guard let launcher else {
             state = .failed("Friday's server, fridayd, wasn't found. Choose it in Settings → Mac app.")

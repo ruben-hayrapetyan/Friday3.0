@@ -23,7 +23,13 @@ from typing import Literal
 
 from google_auth_oauthlib.flow import WSGITimeoutError
 
-from friday.api.commands import GoogleAccountInput, GoogleClientInput, GoogleConnectInput
+from friday.api.commands import (
+    ConnectOutput,
+    GoogleAccountInput,
+    GoogleClientInput,
+    GoogleConnectInput,
+    GoogleTasksInput,
+)
 from friday.api.types import Empty
 from friday.api.views import GoogleAccountOut, GoogleConnectOut
 from friday.commands.calendars import let_go
@@ -89,6 +95,7 @@ def google_connect_status(ctx: Ctx, inp: Empty) -> GoogleConnectOut:
             gmail=google_auth.GMAIL_SCOPE in (info.get("scopes") or ()),
             events=google_auth.EVENTS_SCOPE in (info.get("scopes") or ()),
             mail_error=mail_errors.get(account),
+            tasks=google_auth.TASKS_SCOPE in (info.get("scopes") or ()),
         )
         for account, info in google_auth.tokens(folder).items()
     ]
@@ -120,7 +127,10 @@ def google_connect(ctx: Ctx, inp: GoogleConnectInput) -> GoogleConnectOut:
     with LOCK:
         if (found := SIGN_INS.get(db.parent)) is None or found.state != "waiting":
             sign_in = SIGN_INS[db.parent] = SignIn(account=inp.account or None)
-            asked = google_auth.scopes(ctx.settings["gmail"].enabled)  # as `fridayd google-login` asks
+            # as `fridayd google-login` asks, and Tasks while Google Tasks is wanted (C110)
+            tasks = inp.tasks or bool(rows(ctx.conn, "SELECT 1 FROM sources WHERE user_id = ? AND kind = "
+                                                     "'google_tasks' AND enabled = 1", [ctx.user_id]))  # fmt: skip
+            asked = google_auth.scopes(ctx.settings["gmail"].enabled, tasks)
             sign_in.thread = threading.Thread(
                 target=wait_for_google,
                 args=(sign_in, db, client, asked, ctx.user_id, ctx.now_text),
@@ -241,3 +251,23 @@ def google_client_save(ctx: Ctx, inp: GoogleClientInput) -> GoogleConnectOut:
         raise FieldError("file", "that isn't Google's key file. It's the .json file Google Cloud downloads")
     google_auth.keep_client(google_auth.client_file(ctx.settings["google"].client_file), json.dumps(found))
     return google_connect_status(ctx, Empty())
+
+
+@command("google_tasks_connect", logged=False)  # nothing of yours to undo: Disconnect in its box takes it back
+def google_tasks_connect(ctx: Ctx, inp: GoogleTasksInput) -> ConnectOutput:
+    """Read Google Tasks from a Google account that has allowed it (C110): an integration like the others, riding
+    Friday's Google sign-in instead of a token."""
+    from friday.commands.integrations import add_source, connected
+    from friday.integrations import sync
+    from friday.integrations.base import ConnectorError
+    from friday.integrations.google_tasks import GoogleTasks
+
+    folder = data_file(ctx.conn).parent
+    given = {"account": inp.account, "folder": str(folder)}
+    try:
+        account = GoogleTasks("", given, sync.TRANSPORTS.get(GoogleTasks.kind)).check()
+    except ConnectorError as error:
+        raise FieldError("account", str(error)) from error
+    source_id = add_source(ctx.conn, ctx.user_id, GoogleTasks.kind, "", given, account)
+    said = f"Google Tasks connected ({account}): its tasks come to your Inbox within the minute, to review together"
+    return ConnectOutput(message=said, source=connected(ctx, source_id))

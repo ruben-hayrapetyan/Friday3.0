@@ -3,9 +3,9 @@
 // what you've connected on top, then each category; search across all; a box opens a panel over the gallery. This
 // file is the catalog and its search, kept plain so it's tested on its own (gallery.test.ts).
 
-export type Category = "Calendars" | "Mail" | "To-do apps" | "School" | "Work schedules" | "AI" | "Files"
+export type Category = "Calendars" | "Mail" | "Messages" | "To-do apps" | "School" | "Work schedules" | "AI" | "Automation" | "Files"
 
-export const CATEGORIES: Category[] = ["Calendars", "To-do apps", "School", "Work schedules", "Mail", "AI", "Files"]
+export const CATEGORIES: Category[] = ["Calendars", "To-do apps", "School", "Work schedules", "Mail", "Messages", "AI", "Automation", "Files"]
 
 /** Something else connecting asks for beside the token (Jira: your site, your email). */
 export interface TokenField {
@@ -24,11 +24,14 @@ export interface Entry {
   icon: string // a Phosphor icon; services' own logos aren't ours to use
   hue: string // its tile's colour
   // connected by pasting a token (integrations/*); `page` "" when the server knows it (Trello's carries Friday's key)
-  token?: { page: string; label: string; steps: string[]; note?: string; fields?: TokenField[] }
+  // `pageText`: the link's words when the page is help rather than the token page itself (Canvas's is your school's)
+  token?: { page: string; label: string; steps: string[]; note?: string; fields?: TokenField[]; pageText?: string }
   link?: { help: string; steps: string[]; reads: string } // connected by the calendar link it publishes (C96)
   viaMac?: { help: string; steps: string[] } // reaches Friday through the Mac's calendars (no link of its own)
   mail?: { provider: "icloud" | "yahoo" | "fastmail" | "other"; help?: string; steps: string[] } // by app password (C99)
   onMac?: { steps: string[] } // read by Friday's Mac app itself, no account or token: macOS asks (C100)
+  signIn?: { steps: string[]; note?: string } // connected by signing in on the service's own page (C109)
+  howTo?: { steps: string[]; links: { url: string; says: string }[]; note?: string } // nothing to connect: how to (C114)
 }
 
 // Mail beyond Gmail by app password (C99; servers and steps from each provider's help, 10 Nov). Outlook.com isn't
@@ -177,6 +180,15 @@ export const CATALOG: Entry[] = [
     aliases: ["ics", "ical", "webcal", "feed", "canvas feed", "subscribe", "course feeds"],
     icon: "rss",
     hue: "#e0884f",
+  },
+  {
+    id: "mac-plan",
+    name: "Your plan on your iPhone",
+    category: "Calendars",
+    line: "Friday's plan as an iCloud calendar your iPhone and iPad show",
+    aliases: ["iphone", "ipad", "icloud", "apple calendar", "publish", "share plan", "phone"],
+    icon: "device-mobile",
+    hue: "#5c8de0",
   },
   {
     id: "google",
@@ -335,6 +347,57 @@ export const CATALOG: Entry[] = [
     },
   },
   {
+    id: "microsoft_todo",
+    name: "Microsoft To Do",
+    category: "To-do apps",
+    line: "Your To Do lists planned into your week; done goes both ways",
+    aliases: ["microsoft", "to do", "todo", "outlook tasks", "wunderlist", "office 365", "tasks"],
+    icon: "microsoft-outlook-logo",
+    hue: "#2f7ed8",
+    signIn: {
+      steps: [
+        "Press Sign in with Microsoft: Microsoft's page opens in your browser.",
+        "Choose your account (Outlook.com, Hotmail, or your school's or work's) and press Accept.",
+        "Come back to Friday: the open tasks of every To Do list come to your Inbox to review together.",
+      ],
+      note: "Some schools and workplaces let only an administrator approve new apps; Microsoft's page says so if yours does.",
+    },
+  },
+  {
+    id: "google_tasks",
+    name: "Google Tasks",
+    category: "To-do apps",
+    line: "Your Google Tasks planned into your week; done goes both ways",
+    aliases: ["google", "todo", "to-do", "tasks"],
+    icon: "check-square-offset",
+    hue: "#4285f4",
+    signIn: {
+      steps: [
+        "Press Sign in with Google: Google's page opens and asks to let Friday see and change your tasks.",
+        "Back in Friday, choose the account to read Google Tasks from.",
+        "The open tasks of every list come to your Inbox to review together.",
+      ],
+      note: "It uses the same Google sign-in as your calendars and Gmail; signing in again keeps Tasks allowed.",
+    },
+  },
+  {
+    id: "ticktick",
+    name: "TickTick",
+    category: "To-do apps",
+    line: "Your TickTick lists planned into your week; done goes both ways",
+    aliases: ["tick tick", "dida", "todo", "to-do", "tasks"],
+    icon: "check-fat",
+    hue: "#4772fa",
+    signIn: {
+      steps: [
+        "Press Sign in with TickTick: TickTick's page opens in your browser.",
+        "Sign in if it asks, then press Authorize.",
+        "Come back to Friday: the open tasks of your Inbox and every list come to your Inbox to review together.",
+      ],
+      note: "TickTick's sign-in lasts about six months; when it runs out, this box asks you to sign in again.",
+    },
+  },
+  {
     id: "reminders",
     name: "Apple Reminders",
     category: "To-do apps",
@@ -350,8 +413,102 @@ export const CATALOG: Entry[] = [
       ],
     },
   },
+  {
+    id: "canvas",
+    name: "Canvas",
+    category: "School",
+    line: "Assignments and quizzes with exact times; done ticks Canvas's To Do",
+    aliases: ["canvas api", "instructure", "lms", "assignments", "homework", "quizzes", "school"],
+    icon: "student",
+    hue: "#d9534f",
+    token: {
+      page: "https://community.canvaslms.com/t5/Student-Guide/How-do-I-manage-API-access-tokens-as-a-student/ta-p/273",
+      pageText: "Canvas's own help on this",
+      label: "Canvas access token",
+      steps: [
+        "In Canvas, open Account → Settings.",
+        "Under Approved Integrations press New Access Token, write Friday as its purpose, and press Generate Token.",
+        "Copy the token (Canvas shows it only once), paste it here with your school's Canvas address, and press Connect.",
+      ],
+      fields: [{ key: "site", label: "Your school's Canvas address", placeholder: "canvas.yourschool.edu" }],
+      note: "If there's no New Access Token button, your school has turned tokens off: use your Canvas calendar feed under Calendar links instead. Once connected, Canvas's assignments come from here, and your Canvas calendar feed keeps bringing only its events. Finishing one in Friday ticks it in Canvas's To Do, which only you see; nothing is submitted.",
+    },
+  },
+  {
+    id: "things",
+    name: "Things",
+    category: "To-do apps",
+    line: "Your Things to-dos planned into your week; done goes both ways",
+    aliases: ["things 3", "cultured code", "todo", "to-do", "tasks", "gtd"],
+    icon: "check-circle",
+    hue: "#4a90d9",
+    onMac: {
+      steps: [
+        "Have Things 3 on this Mac, then press Connect: nothing to copy, no account.",
+        "macOS asks once whether Friday may control Things. Press OK.",
+        "Your to-dos in Inbox, Today, Upcoming and Anytime come to your Inbox to review together; Someday stays out.",
+        "A Things deadline is the deadline; a When date alone is the day you meant to do it, which Friday can move.",
+      ],
+    },
+  },
   ...LINKS,
   ...MAIL,
+  {
+    id: "outlook_mail",
+    name: "Outlook",
+    category: "Mail",
+    line: "New mail read for deadlines and events, into your Inbox",
+    aliases: ["outlook.com", "hotmail", "live.com", "office 365", "microsoft 365", "exchange", "email", "microsoft"],
+    icon: "envelope-open",
+    hue: "#2f7ed8",
+    signIn: {
+      steps: [
+        "Press Sign in with Microsoft: Microsoft's page opens in your browser.",
+        "Choose your Outlook.com, Hotmail, school or work account and press Accept: Friday asks only to read mail.",
+        "Come back to Friday: new mail is read as Gmail's is, its deadlines and events waiting in your Inbox.",
+      ],
+      note: "Nothing is sent, moved, deleted or marked read. Some schools and workplaces let only an administrator approve new apps.",
+    },
+  },
+  {
+    id: "slack",
+    name: "Slack",
+    category: "Messages",
+    line: "Messages that mention you, waiting in your Inbox to decide on",
+    aliases: ["mentions", "chat", "messages", "workspace", "dm"],
+    icon: "slack-logo",
+    hue: "#7d4a8f",
+    signIn: {
+      steps: [
+        "Press Sign in with Slack: Slack's page opens in your browser.",
+        "Choose your workspace and press Allow: Friday asks only to search for what mentions you.",
+        "Come back to Friday: messages from the last two weeks that mention you wait in your Inbox, each one yours to keep as a to-do or not.",
+      ],
+      note: "Friday can't post, react or read anything else. Slack has retired reminders for apps, so your /remind reminders can't come in.",
+    },
+  },
+  {
+    id: "shortcuts",
+    name: "Shortcuts & Siri",
+    category: "Automation",
+    line: "Add to Friday from Siri, the Shortcuts app or any link",
+    aliases: ["siri", "shortcut", "automation", "url scheme", "friday://", "voice", "hey siri"],
+    icon: "lightning",
+    hue: "#d6589a",
+    howTo: {
+      steps: [
+        "Open the Shortcuts app on this Mac and make a new shortcut.",
+        "Add Ask for Input (Text), then Open URLs with friday://add?text= followed by the Provided Input.",
+        "Name it Add to Friday. Now “Hey Siri, Add to Friday” asks what, and it goes into your plan as if typed in the add box.",
+      ],
+      links: [
+        { url: "friday://add?text=essay 3h due fri", says: "adds a to-do, read the way the add box reads it" },
+        { url: "friday://open?page=inbox", says: "opens a page: plan, todo, projects, inbox, insights, rules, settings" },
+        { url: "friday://new?what=event", says: "opens Friday with a new event (or to-do) ready to type" },
+      ],
+      note: "These links work while Friday's Mac app is installed; it opens them, starting Friday if it isn't running.",
+    },
+  },
   {
     id: "syllabus",
     name: "Syllabus upload",

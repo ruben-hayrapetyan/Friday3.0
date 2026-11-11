@@ -2,6 +2,7 @@
 the tests use (tests/integrations/fake_*.py) can't drift from what the service really does.
 
     uv run python scripts/live-check.py todoist
+    uv run python scripts/live-check.py notion        (asana, linear, jira, github, trello, canvas: read only)
 
 The token is read from your Keychain by name (`security add-generic-password -s friday-live-todoist -a friday -w`
 stores it; this script never prints it), or from FRIDAY_LIVE_TOKEN. Everything happens in a project of its own,
@@ -105,7 +106,31 @@ def todoist() -> int:
     return 1 if drift else 0
 
 
-CHECKS = {"todoist": todoist}
+# The others, read only (11 Nov): the token works, Friday reads your open to-dos through its own connector, and each
+# has a title and a due Friday can read. Nothing of yours is changed. Jira and Canvas also need your site:
+# FRIDAY_LIVE_SITE (and Jira your email, FRIDAY_LIVE_EMAIL).
+READ_ONLY = ("notion", "asana", "linear", "jira", "github", "trello", "canvas")
+
+
+def read_only(kind: str) -> int:
+    from friday.integrations.sync import CONNECTORS, local_due
+
+    make = CONNECTORS[kind]
+    fields = {"site": os.environ.get("FRIDAY_LIVE_SITE", ""), "email": os.environ.get("FRIDAY_LIVE_EMAIL", "")}
+    friday = make(token(kind), {k: v for k, v in fields.items() if k in getattr(make, "fields", ())})
+    print(f"{make.name}, live (read only):")
+    print(f"  token works ({friday.check()})")
+    found = friday.read()
+    print(f"  {len(found)} open to-do{'' if len(found) == 1 else 's'} read")
+    bad = [r.external_id for r in found if not r.title.strip()]
+    assert not bad, f"{len(bad)} read without a title"
+    for r in found:
+        local_due(r.due, "America/New_York")  # a due Friday can't read fails here, said below
+    print("  each has a title, and every due reads")
+    return 0
+
+
+CHECKS = {"todoist": todoist} | {k: (lambda k=k: read_only(k)) for k in READ_ONLY}
 
 if __name__ == "__main__":
     kind = sys.argv[1] if len(sys.argv) > 1 else ""
@@ -113,6 +138,6 @@ if __name__ == "__main__":
         sys.exit(f"Which integration? One of: {', '.join(CHECKS)}")
     try:
         sys.exit(CHECKS[kind]())
-    except (ConnectorError, AssertionError) as error:
+    except (ConnectorError, AssertionError, ValueError) as error:
         print(f"  failed: {error}")
         sys.exit(1)

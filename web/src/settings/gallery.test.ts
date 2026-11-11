@@ -61,6 +61,52 @@ describe("the integrations gallery's catalog", () => {
     expect(github.token!.note).toContain("only reads")
     expect(names(search(CATALOG, "pull requests"))).toEqual(["GitHub"])
   })
+  it("has the Canvas API under School, asking your school's address and saying what happens to the feed (C107)", () => {
+    const canvas = CATALOG.find((e) => e.id === "canvas")!
+    expect(canvas.category).toBe("School")
+    expect(canvas.token!.fields!.map((f) => f.key)).toEqual(["site"])
+    expect(canvas.token!.note).toContain("calendar feed keeps bringing only its events")
+    expect(names(search(CATALOG, "instructure"))).toEqual(["Canvas"])
+  })
+  it("has Things as a to-do app on this Mac, saying Someday stays out (C108)", () => {
+    const things = CATALOG.find((e) => e.id === "things")!
+    expect(things.token).toBeUndefined()
+    expect(things.onMac!.steps.join(" ")).toContain("Someday stays out")
+    expect(names(search(CATALOG, "things 3"))).toEqual(["Things"])
+  })
+  it("connects Microsoft To Do by signing in, not a token (C109)", () => {
+    const todo = CATALOG.find((e) => e.id === "microsoft_todo")!
+    expect(todo.token).toBeUndefined()
+    expect(todo.signIn!.steps.join(" ")).toContain("Sign in with Microsoft")
+    expect(names(search(CATALOG, "wunderlist"))).toEqual(["Microsoft To Do"])
+  })
+  it("has Google Tasks riding the Google sign-in (C110)", () => {
+    const tasks = CATALOG.find((e) => e.id === "google_tasks")!
+    expect(tasks.token).toBeUndefined()
+    expect(tasks.signIn!.note).toContain("same Google sign-in")
+    expect(names(search(CATALOG, "google tasks"))).toEqual(["Google Tasks"])
+  })
+  it("connects TickTick by signing in, saying it lasts about six months (C111)", () => {
+    const tick = CATALOG.find((e) => e.id === "ticktick")!
+    expect(tick.signIn!.note).toContain("six months")
+    expect(names(search(CATALOG, "tick"))).toContain("TickTick")
+  })
+  it("has Slack under Messages, saying reminders can't come in (C112)", () => {
+    const slack = CATALOG.find((e) => e.id === "slack")!
+    expect(slack.category).toBe("Messages")
+    expect(slack.signIn!.note).toContain("retired reminders")
+    expect(names(search(CATALOG, "mentions"))).toEqual(["Slack"])
+  })
+  it("has your plan on your iPhone under Calendars (C113)", () => {
+    expect(CATALOG.find((e) => e.id === "mac-plan")?.category).toBe("Calendars")
+    expect(names(search(CATALOG, "iphone"))).toContain("Your plan on your iPhone")
+  })
+  it("has Shortcuts & Siri under Automation with Friday's links (C114)", () => {
+    const shortcuts = CATALOG.find((e) => e.id === "shortcuts")!
+    expect(shortcuts.category).toBe("Automation")
+    expect(shortcuts.howTo!.links.every((l) => l.url.startsWith("friday://"))).toBe(true)
+    expect(names(search(CATALOG, "hey siri"))).toEqual(["Shortcuts & Siri"])
+  })
   it("has Apple Reminders as a to-do app with no token, said step by step (C100)", () => {
     const reminders = CATALOG.find((e) => e.id === "reminders")!
     expect(reminders.category).toBe("To-do apps")
@@ -144,8 +190,11 @@ describe("the boxes for mail by app password (C99)", () => {
     expect(mail.every((e) => e.category === "Mail" && e.mail!.steps.length >= 3)).toBe(true)
     expect(mail.filter((e) => e.mail!.help).every((e) => e.mail!.help!.startsWith("https://"))).toBe(true)
   })
-  it("leave Outlook out: Microsoft refuses app passwords for its mail", () => {
-    expect(names(search(CATALOG, "outlook")).some((n) => /Outlook/.test(n))).toBe(false)
+  it("have Outlook by Microsoft's sign-in, not an app password, which Microsoft refuses (C109)", () => {
+    const outlook = CATALOG.find((e) => e.id === "outlook_mail")!
+    expect(outlook.mail).toBeUndefined()
+    expect(outlook.signIn!.note).toContain("Nothing is sent, moved, deleted or marked read")
+    expect(names(search(CATALOG, "hotmail"))).toEqual(["Outlook"])
   })
   it("are found by the names people use", () => {
     expect(names(search(CATALOG, "me.com"))).toEqual(["iCloud Mail"])

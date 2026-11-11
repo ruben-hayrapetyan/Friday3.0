@@ -13,6 +13,7 @@ Each request opens its own SQLite connection: WAL lets reads run beside a write,
 writers.
 """
 
+import html
 import inspect
 import logging
 import shutil
@@ -42,6 +43,7 @@ from starlette.types import Scope
 from friday.api.types import CommandResult
 from friday.commands import phones
 from friday.commands.all import REGISTRY
+from friday.commands.integrations import signed_in
 from friday.commands.registry import Spec, run
 from friday.commands.tokens import agent
 from friday.core.db import connect
@@ -182,6 +184,23 @@ def create_app(
         if request.url.path.startswith(("/api/", "/mcp", "/events")):
             return JSONResponse({"field": None, "message": words}, status_code=status)
         return HTMLResponse(f"<!doctype html><meta name=viewport content='width=device-width'><p>{words}</p>", status)
+
+    @app.get("/oauth/callback", response_class=HTMLResponse, include_in_schema=False)
+    def oauth_callback(state: str = "", code: str | None = None, error: str | None = None) -> HTMLResponse:
+        """A service's sign-in page sends your browser back here (commands/integrations.py integration_sign_in)."""
+
+        def finish() -> tuple[bool, str]:
+            with services.connection() as conn:
+                return signed_in(conn, state, code, error)
+
+        ok, words = finish()  # connected: its first read is due within the minute (integrations_now)
+        head = "Connected" if ok else "Not connected"
+        page = (
+            "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'><title>Friday</title>"
+            "<body style='font: 16px -apple-system, system-ui; margin: 3em auto; max-width: 32em'>"
+            f"<h1 style='font-size: 20px'>{head}</h1><p>{html.escape(words)}</p>"
+        )
+        return HTMLResponse(page, status_code=200 if ok else 400)
 
     @app.get("/pair", response_class=HTMLResponse)
     def pair_page() -> HTMLResponse:

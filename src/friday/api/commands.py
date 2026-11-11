@@ -817,9 +817,14 @@ class GoogleClientInput(Model):
 
 class GoogleConnectInput(Model):
     """Which account to sign in: none to add one (Google's page asks which), or one already connected to sign it in
-    again (to allow Gmail, or when its sign-in expired)."""
+    again (to allow Gmail, or when its sign-in expired); `tasks` asks for Google Tasks too (C110)."""
 
     account: str | None = None
+    tasks: bool = False
+
+
+class GoogleTasksInput(Model):
+    account: str  # a Google account that allowed Tasks
 
 
 class GoogleAccountInput(Model):
@@ -1051,12 +1056,40 @@ class DisconnectInput(Model):
     keep: bool  # what it brought in stays in Friday, or is dropped from it (nothing changes in the service)
 
 
+class MacPlanBlock(Model):
+    key: str  # the block's own key: the same block keeps its event
+    title: str
+    start: str  # RFC 3339, UTC
+    end: str
+    tentative: bool
+
+
+class MacPlanOut(Model):
+    """The plan for the Mac app's "Friday" calendar (C113): whether it's wanted, which plan, and its blocks."""
+
+    wanted: bool
+    name: str = "Friday"
+    plan: int | None = None
+    blocks: list[MacPlanBlock] = []
+
+
+class SignInInput(Model):
+    kind: str
+    origin: str  # the page's own address (http://127.0.0.1:<port>), where the service sends your browser back
+    fields: dict[str, str] = {}
+
+
+class SignInOut(Model):
+    url: str  # the service's sign-in page
+
+
 class TokenPageInput(Model):
     kind: str
 
 
 class TokenPageOut(Model):
     url: str | None  # the service's page that gives you a token for Friday; None: not ready in this copy of Friday
+    ready: bool = True  # this copy of Friday can connect it (Friday's app is registered there)
 
 
 class ListsInput(Model):
@@ -1091,6 +1124,7 @@ class Connected(Model):
     made: int  # open to-dos it brought in
     waiting: int = 0  # its to-dos waiting in your Inbox to be accepted
     lists: bool = False  # it has lists to choose from (Notion's databases): integration_lists
+    signs_in: bool = False  # connected by signing in on the service's page (integration_sign_in), not a token
 
 
 class ConnectOutput(Model):
@@ -1126,14 +1160,25 @@ class MacReminder(Model):
     list: str = ""
     url: str | None = None
     completed: bool = False
+    when: str | None = None  # Things: the day you meant to do it ("When"), beside its deadline (`due`)
+
+
+MacKind = Literal["reminders", "things"]
 
 
 class RemindersSyncInput(Model):
-    """Your open reminders, from Friday's Mac app; or `denied` when macOS didn't let it read them."""
+    """Your open to-dos in an app on this Mac (Apple Reminders, Things), from Friday's Mac app; or `denied` when macOS
+    didn't let it read them, `missing` when the app isn't on this Mac."""
 
+    kind: MacKind = "reminders"
     reminders: list[MacReminder] = []
     lists: list[str] = []
     denied: bool = False
+    missing: bool = False
+
+
+class MacAppInput(Model):
+    kind: MacKind = "reminders"
 
 
 class ReminderJob(Model):

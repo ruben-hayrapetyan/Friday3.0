@@ -4,14 +4,15 @@
 // box without a token: Friday's Mac app reads it, once macOS lets it.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
-import { query, type Schemas } from "@/api/client"
+import { command, errorWords, query, type Schemas } from "@/api/client"
 import { Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { when } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
 import type { Entry } from "./gallery"
+import { KEY as GOOGLE_KEY, useGoogleAccess } from "./GoogleConnect"
 import { inMacApp } from "./MacAccounts"
 
 export type Connected = Schemas["Connected"]
@@ -23,8 +24,12 @@ export const ARRIVALS: { value: Arrival; label: string; note: string }[] = [
   { value: "inbox", label: "Always in the Inbox", note: "Every new to-do waits in your Inbox for you to accept." },
 ]
 
-/** macOS's own page where Friday is allowed to see your reminders (C100). */
+/** macOS's own page where Friday is allowed to see your reminders (C100), or to use Things (C108). */
 export const REMINDERS_PRIVACY = "x-apple.systempreferences:com.apple.preference.security?Privacy_Reminders"
+export const PRIVACY_PAGE: Record<string, [string, string]> = {
+  reminders: [REMINDERS_PRIVACY, "Open Privacy & Security → Reminders"],
+  things: ["x-apple.systempreferences:com.apple.preference.security?Privacy_Automation", "Open Privacy & Security → Automation"],
+}
 
 /** How new to-dos arrive: each choice with what it means, stacked, so none is cut short (10 Nov: a row of three was
  * "poorly formatted"). */
@@ -70,14 +75,56 @@ export function useIntegrations() {
   return useQuery({ queryKey: ["integrations"], queryFn: () => query("integrations") as Promise<Connected[]> })
 }
 
+/** Outlook (C109): the mailboxes read by Microsoft's sign-in, each with Remove, and Sign in to add one. */
+export function OutlookMail({ entry }: { entry: Entry }) {
+  const [waiting, setWaiting] = useState(false)
+  const boxes = useQuery({ queryKey: ["mail_app_accounts"], queryFn: () => query("mail_app_accounts"), refetchInterval: waiting ? 3000 : false })
+  const forget = useCommand("mail_app_forget", { label: (o) => o.result.message })
+  const mine = (boxes.data ?? []).filter((b) => b.provider === "outlook")
+  const count = mine.length
+  const [before, setBefore] = useState(count)
+  useEffect(() => {
+    if (waiting && count > before) setWaiting(false) // the new mailbox is here: stop asking
+    if (!waiting) setBefore(count)
+  }, [waiting, count, before])
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {mine.map((b) => (
+        <div key={b.address} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 13 }}>Reading {b.address}</span>
+          <button className="btn btn-secondary" onClick={() => forget({ address: b.address })} style={{ fontSize: 12 }}>
+            Remove
+          </button>
+        </div>
+      ))}
+      <SignInConnect entry={entry} waiting={waiting} onWaiting={setWaiting} />
+    </div>
+  )
+}
+
 export function TokenIntegration({ entry }: { entry: Entry }) {
-  const mine = (useIntegrations().data ?? []).filter((c) => c.kind === entry.id)
+  const [waiting, setWaiting] = useState(false)
+  // while a sign-in page is open in the browser, asked every few seconds: the box turns connected once you're back
+  const all = useQuery({ queryKey: ["integrations"], queryFn: () => query("integrations") as Promise<Connected[]>, refetchInterval: waiting ? 3000 : false })
+  const mine = (all.data ?? []).filter((c) => c.kind === entry.id)
+  useEffect(() => {
+    if (waiting && mine.length > 0) setWaiting(false) // connected: stop asking
+  }, [waiting, mine.length])
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       {mine.map((c) => (
         <ConnectedRow key={c.id} c={c} />
       ))}
-      {mine.length === 0 && (entry.onMac ? <MacConnect entry={entry} /> : <ConnectForm entry={entry} />)}
+      {mine.length === 0 &&
+        (entry.onMac ? (
+          <MacConnect entry={entry} />
+        ) : entry.id === "google_tasks" ? (
+          <GoogleTasksConnect entry={entry} />
+        ) : entry.signIn ? (
+          <SignInConnect entry={entry} waiting={waiting} onWaiting={setWaiting} />
+        ) : (
+          <ConnectForm entry={entry} />
+        ))}
     </div>
   )
 }
@@ -108,7 +155,7 @@ function ConnectForm({ entry }: { entry: Entry }) {
         <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>{entry.name} isn't ready in this copy of Friday yet: it comes with the next update.</span>
       ) : (
         <a className="fr-link" href={page ?? undefined} target="_blank" rel="noreferrer" style={{ fontSize: 12, alignSelf: "flex-start" }}>
-          {token_.page ? `Open ${entry.name}'s token page` : `Open ${entry.name}'s Allow page`}
+          {token_.pageText ?? (token_.page ? `Open ${entry.name}'s token page` : `Open ${entry.name}'s Allow page`)}
         </a>
       )}
       {(token_.fields ?? []).map((f) => (
@@ -151,6 +198,92 @@ function ConnectForm({ entry }: { entry: Entry }) {
       </div>
       {token_.note && <span className="fr-kicker">{token_.note}</span>}
       <span className="fr-kicker">The token stays on this Mac, in Friday's private settings file. Friday checks it with {entry.name} before keeping it.</span>
+    </div>
+  )
+}
+
+/** One connected by signing in on the service's own page (Microsoft, TickTick, Slack; C109): its steps and Sign in,
+ * which opens the page in your browser; the page sends you back to Friday, and this box turns connected. */
+export function SignInConnect({ entry, waiting, onWaiting }: { entry: Entry; waiting: boolean; onWaiting: (w: boolean) => void }) {
+  const ready = useQuery({ queryKey: ["integration_token_page", entry.id], queryFn: () => query("integration_token_page", { kind: entry.id }) })
+  const start = useCommand("integration_sign_in", { label: () => `${entry.name}'s page opened in your browser` })
+  const [url, setUrl] = useState<string | null>(null)
+  const sign = entry.signIn!
+  const go = async () => {
+    const out = await start({ kind: entry.id, origin: window.location.origin })
+    if (!out) return
+    setUrl(out.result.url)
+    onWaiting(true)
+    window.open(out.result.url, "_blank", "noopener")
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <ol style={{ margin: 0, paddingLeft: 20, listStyle: "decimal", display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+        {sign.steps.map((s) => (
+          <li key={s}>{s}</li>
+        ))}
+      </ol>
+      {ready.data && !ready.data.ready ? (
+        <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>{entry.name} isn't ready in this copy of Friday yet: it comes with the next update.</span>
+      ) : (
+        <button className="btn btn-primary" onClick={go} disabled={!ready.data} style={{ fontSize: 12, alignSelf: "flex-start" }}>
+          Sign in with {entry.name.split(" ")[0]}
+        </button>
+      )}
+      {waiting && url && (
+        <span className="fr-kicker">
+          Finish on {entry.name}'s page in your browser; this box turns connected when you're back.{" "}
+          <a className="fr-link" href={url} target="_blank" rel="noreferrer">
+            Open it again
+          </a>
+        </span>
+      )}
+      {sign.note && <span className="fr-kicker">{sign.note}</span>}
+      <span className="fr-kicker">Friday keeps the sign-in on this Mac, in its private settings file; nothing is pasted.</span>
+    </div>
+  )
+}
+
+/** Google Tasks (C110), riding Friday's Google sign-in: Sign in with Google asks for Tasks too; then each account
+ * that allowed it can be read. */
+function GoogleTasksConnect({ entry }: { entry: Entry }) {
+  const access = useGoogleAccess()
+  const client = useQueryClient()
+  const connect = useCommand("google_tasks_connect", { label: (o) => o.result.message })
+  const [problem, setProblem] = useState<string | null>(null)
+  if (!access) return null
+  const allowed = (access.accounts ?? []).filter((a) => a.tasks && a.email)
+  const signIn = async () => {
+    setProblem(null)
+    try {
+      client.setQueryData(GOOGLE_KEY, (await command("google_connect", { tasks: true })).result)
+    } catch (error) {
+      setProblem(errorWords(error))
+    }
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <ol style={{ margin: 0, paddingLeft: 20, listStyle: "decimal", display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+        {entry.signIn!.steps.map((s) => (
+          <li key={s}>{s}</li>
+        ))}
+      </ol>
+      {allowed.map((a) => (
+        <button key={a.email} className="btn btn-primary" onClick={() => connect({ account: a.email })} style={{ fontSize: 12, alignSelf: "flex-start" }}>
+          Read Google Tasks from {a.email}
+        </button>
+      ))}
+      {access.client_file ? (
+        <button className={allowed.length ? "btn btn-secondary" : "btn btn-primary"} onClick={signIn} disabled={access.state === "waiting"} style={{ fontSize: 12, alignSelf: "flex-start" }}>
+          {access.state === "waiting" ? "Waiting for Google's page…" : allowed.length ? "Sign in with another Google account" : "Sign in with Google"}
+        </button>
+      ) : (
+        <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>Connect Google in its own box first: this copy of Friday has no Google key yet.</span>
+      )}
+      {(problem ?? (access.state === "failed" ? access.message : null)) && (
+        <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>{problem ?? access.message}</span>
+      )}
+      {entry.signIn!.note && <span className="fr-kicker">{entry.signIn!.note}</span>}
     </div>
   )
 }
@@ -245,9 +378,9 @@ function ConnectedRow({ c }: { c: Connected }) {
       <span style={{ fontSize: 13, color: c.last_error ? "var(--fr-warn)" : undefined }}>
         {c.last_error ?? (c.last_sync ? `Read ${when(c.last_sync, today)}: ${c.made} open to-do${c.made === 1 ? "" : "s"} from it in your plan.` : "Connected: reading it within the minute.")}
       </span>
-      {c.kind === "reminders" && c.last_error?.includes("Privacy & Security") && (
-        <a className="btn btn-secondary" href={REMINDERS_PRIVACY} style={{ fontSize: 12, alignSelf: "flex-start" }}>
-          Open Privacy & Security → Reminders
+      {PRIVACY_PAGE[c.kind] && c.last_error?.includes("Privacy & Security") && (
+        <a className="btn btn-secondary" href={PRIVACY_PAGE[c.kind][0]} style={{ fontSize: 12, alignSelf: "flex-start" }}>
+          {PRIVACY_PAGE[c.kind][1]}
         </a>
       )}
       {(c.waiting ?? 0) > 0 && (

@@ -543,5 +543,83 @@ test("done or opened again in Friday is made on the reminder, once, and a refusa
     check(test["ok"] as? Bool == false && test["error"] as? String == ReminderWriter.refusal, "Friday Test changes none of yours")
 }
 
+test("Things' to-dos read from its AppleScript answer: the open ones, their deadline and When day (C108)") {
+    func list(_ items: [NSAppleEventDescriptor]) -> NSAppleEventDescriptor {
+        let out = NSAppleEventDescriptor.list()
+        for (i, d) in items.enumerated() { out.insert(d, at: i + 1) }
+        return out
+    }
+    func status(_ code: String) -> NSAppleEventDescriptor { NSAppleEventDescriptor(enumCode: ThingsScript.code(code)) }
+    let nov20 = Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 0))!
+    let answer = list([
+        list([NSAppleEventDescriptor(string: "A1"), NSAppleEventDescriptor(string: "B2")]),
+        list([NSAppleEventDescriptor(string: "File taxes"), NSAppleEventDescriptor(string: "Done already")]),
+        list([NSAppleEventDescriptor(string: "Forms in the drawer"), NSAppleEventDescriptor(string: "")]),
+        list([NSAppleEventDescriptor(date: nov20), NSAppleEventDescriptor.null()]),
+        list([NSAppleEventDescriptor.null(), NSAppleEventDescriptor(date: nov20)]),
+        list([status("tdio"), status("tdcm")]),
+    ])
+    let todos = ThingsScript.todos(answer, list: "Today")
+    check(todos.count == 1, "only the open one: \(todos)")
+    check(todos.first?["id"] as? String == "A1" && todos.first?["due"] as? String == "2026-11-20", "\(todos)")
+    check(todos.first?["when"] == nil && todos.first?["list"] as? String == "Today", "no When day: none sent")
+    check(ThingsScript.todos(list([list([]), list([]), list([]), list([]), list([]), list([])]), list: "Inbox").isEmpty,
+          "an empty list")
+}
+
+test("a Things to-do is ticked only by an id that can't break out of the script; Friday Test ticks none (C108)") {
+    let sneaky = ThingsScript.apply(["id": 3, "external_id": "A1\" to open\ndo shell script \"rm", "op": "done"])
+    check(sneaky["ok"] as? Bool == false, "an id with quotes isn't put in a script")
+    check(ThingsScript.apply(["id": 4, "external_id": "A1", "op": "delete"])["ok"] as? Bool == false, "only done and reopen")
+    check(ThingsScript.refuse(["id": 5])["error"] as? String == ThingsScript.refusal, "Friday Test changes none of yours")
+}
+
+test("the plan's calendar holds exactly the plan: made, moved, renamed, gone, a duplicate removed (C113)") {
+    let t0 = Date(timeIntervalSince1970: 1_792_000_000)
+    let at = { (m: Double) in t0.addingTimeInterval(m * 60) }
+    let have = [
+        PlanCalendar.Have(key: "1@a", title: "essay", start: at(0), end: at(90), id: "e1"),
+        PlanCalendar.Have(key: "2@b", title: "lab", start: at(120), end: at(180), id: "e2"),
+        PlanCalendar.Have(key: "3@c", title: "gone", start: at(200), end: at(260), id: "e3"),
+        PlanCalendar.Have(key: "1@a", title: "essay", start: at(0), end: at(90), id: "e4"),
+    ]
+    let wanted = [
+        PlanCalendar.Wanted(key: "1@a", title: "essay", start: at(0), end: at(90)),
+        PlanCalendar.Wanted(key: "2@b", title: "lab report", start: at(150), end: at(210)),
+        PlanCalendar.Wanted(key: "4@d", title: "reading", start: at(300), end: at(330)),
+    ]
+    let (make, change, remove) = PlanCalendar.changes(have: have, wanted: wanted)
+    check(make.map(\.key) == ["4@d"], "made: \(make)")
+    check(change.map { $0.0.id } == ["e2"], "changed: the lab, moved and renamed")
+    check(Set(remove.map(\.id)) == ["e3", "e4"], "removed: the gone block and the duplicate: \(remove)")
+    let none = PlanCalendar.changes(have: Array(have.prefix(1)), wanted: Array(wanted.prefix(1)))
+    check(none.make.isEmpty && none.change.isEmpty && none.remove.isEmpty, "as it is: nothing touched")
+    let read = PlanCalendar.wanted([["key": "1@a", "title": "essay", "start": "2026-10-19T14:00:00Z", "end": "2026-10-19T15:30:00Z"],
+                                    ["key": "bad", "title": "x", "start": "2026-10-19T15:00:00Z", "end": "2026-10-19T14:00:00Z"]])
+    check(read.count == 1 && read[0].end.timeIntervalSince(read[0].start) == 5400, "the server's blocks read; a backwards one left out")
+}
+
+test("Friday's links: add a to-do, open a page or a new box; anything else is ignored (C114)") {
+    let link = { (s: String) in FridayLink.of(URL(string: s)!, scheme: "friday") }
+    check(link("friday://add?text=essay%203h%20due%20fri") == .add("essay 3h due fri"), "a to-do, as the add box reads it")
+    check(link("friday://add?text=%20%20") == nil && link("friday://add") == nil, "nothing to add: nothing")
+    check(link("friday://open?page=Inbox") == .open(.go("/inbox")) && link("friday://open") == .open(.go("/")), "a page")
+    check(link("friday://open?page=passwords") == nil, "a page Friday doesn't have")
+    check(link("friday://new?what=event") == .open(.newEvent) && link("friday://new") == .open(.newTodo), "a new box")
+    check(link("fridaytest://add?text=x") == nil, "Friday Test's links aren't Friday's")
+    check(FridayLink.of(URL(string: "fridaytest://add?text=x")!, scheme: "fridaytest") == .add("x"), "and the other way")
+    check(link("friday://delete?all=1") == nil, "anything else: ignored")
+}
+
+test("a server left over from another build is stopped; this build's, a hand-started one or a live app's is used") {
+    let theirs: [String: Any] = ["server_build": "old", "server_orphan": true, "server_pid": 4242]
+    check(Server.leftover(theirs, mine: "new") == 4242, "another build's, its app gone: stopped")
+    check(Server.leftover(theirs, mine: "old") == nil, "this build's own: used")
+    check(Server.leftover(theirs.merging(["server_orphan": false]) { $1 }, mine: "new") == nil, "its app still open: used")
+    check(Server.leftover(["server_orphan": true, "server_pid": 4242], mine: "new") == nil, "started by hand: used")
+    check(Server.leftover(theirs, mine: nil) == nil, "a build without a stamp stops nothing")
+    check(Server.leftover(theirs.merging(["server_pid": 1]) { $1 }, mine: "new") == nil, "never launchd")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

@@ -32,11 +32,16 @@ from friday.core.time import format_local, format_utc, parse_utc, zone
 from friday.ingest.ics import Found, Proposed
 from friday.integrations.asana import Asana
 from friday.integrations.base import Connector, ConnectorError, Remote, Transport
+from friday.integrations.canvas import Canvas
 from friday.integrations.github import GitHub
+from friday.integrations.google_tasks import GoogleTasks
 from friday.integrations.jira import Jira
 from friday.integrations.linear import Linear
+from friday.integrations.microsoft import MicrosoftTodo
 from friday.integrations.notion import Notion
-from friday.integrations.reminders import Reminders, WaitingForMac
+from friday.integrations.reminders import Reminders, Things, WaitingForMac
+from friday.integrations.slack import Slack
+from friday.integrations.ticktick import TickTick
 from friday.integrations.todoist import Todoist
 from friday.integrations.trello import Trello
 from friday.sync.google_auth import write_private
@@ -50,6 +55,12 @@ CONNECTORS: dict[str, type] = {
     Linear.kind: Linear,
     Jira.kind: Jira,
     GitHub.kind: GitHub,
+    Canvas.kind: Canvas,
+    Things.kind: Things,
+    MicrosoftTodo.kind: MicrosoftTodo,
+    GoogleTasks.kind: GoogleTasks,
+    TickTick.kind: TickTick,
+    Slack.kind: Slack,
 }
 ARRIVALS = ("inbox_first", "straight", "inbox")
 SERVICE_OWNS = ("title", "due", "notes", "firmness")  # what an edit from the service may change
@@ -97,6 +108,8 @@ def connector_for(source: dict[str, Any], transport: Transport = None) -> Connec
     """The connector a connected source reads with: its kind's, its token, its settings."""
     config = json.loads(source["config"] or "{}")
     kind = source["kind"]
+    # a signed-in service's renewed tokens are kept again (integrations/oauth.py Session)
+    config["_keep"] = lambda token: keep_token(int(source["id"]), kind, token)
     return CONNECTORS[kind](token_of(int(source["id"])), config, transport or TRANSPORTS.get(kind))
 
 
@@ -179,6 +192,8 @@ def sync_source(
         "UPDATE sources SET last_error = NULL, failures = 0, last_sync_utc = ? WHERE id = ?",
         [format_utc(now_utc), source["id"]],
     )
+    if hasattr(connector, "adopt"):  # what another source already brought (the Canvas feed's assignments)
+        connector.adopt(conn, source)
     first = not config.get("synced")
     arrival = config.get("arrival", "inbox_first")
     straight = arrival == "straight" or (arrival == "inbox_first" and not first)
@@ -199,7 +214,8 @@ def sync_source(
         if straight or (before and arrival != "inbox"):
             for s in rows(conn, "SELECT id FROM suggestions WHERE raw_input_id = ? AND status = 'pending'", [raw_id]):
                 accept_trusted(conn, now_utc, user_id, int(s["id"]), source["name"])
-    done_there(conn, source, {r.external_id for r in remotes}, now_utc, user_id)
+    if connector.caps.gone_is_done:
+        done_there(conn, source, {r.external_id for r in remotes}, now_utc, user_id)
     if first:
         synced = json.dumps(config | {"synced": True})
         conn.execute("UPDATE sources SET config = ? WHERE id = ?", [synced, source["id"]])

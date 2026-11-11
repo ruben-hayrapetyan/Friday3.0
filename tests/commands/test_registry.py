@@ -632,6 +632,8 @@ def test_unlogged_commands_are_only_those_with_no_undo_or_a_secret_result() -> N
         "ai_key_set",  # a secret: never logged
         "gmail_app_set",  # an app password: never logged
         "integration_connect",  # a service's token: never logged (C96)
+        "integration_sign_in",  # opens a service's sign-in page; nothing changes until you're back (C109)
+        "google_tasks_connect",  # rides the Google sign-in; Disconnect takes it back (C110)
         "mail_app_set",  # a mailbox's app password: never logged (C99)
         "reminders_sync",  # the Mac app's reading of your reminders, like mac_sync (C100)
         "reminder_written",  # the Mac app saying a change reached Reminders (C100)

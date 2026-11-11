@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let badge = DecisionsBadge()
     private let calendars = CalendarBridge()
     private let reminders = RemindersBridge()
+    private let things = ThingsBridge()
     private var hotKeys: [GlobalHotKey] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -40,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             badge.start()
             calendars.start()
             reminders.start()
+            things.start()
         }
         if !TestUser.isTest { LoginItem.enableOnFirstLaunch() }
     }
@@ -67,6 +69,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.hide(nil)
         } else {
             show(then: .openDrawer)
+        }
+    }
+
+    /// Friday's own links (FridayLink.swift): Shortcuts' "Open URLs", a link anywhere (C114).
+    func application(_ application: NSApplication, open urls: [URL]) {
+        let scheme = TestUser.isTest ? "fridaytest" : "friday"
+        for url in urls {
+            switch FridayLink.of(url, scheme: scheme) {
+            case .add(let text):
+                Task { await Self.add(text) }
+            case .open(let action):
+                show(then: action)
+            case nil:
+                continue
+            }
+        }
+    }
+
+    /// A to-do from a link, read the way the add box reads it; tried for a while if Friday is still starting.
+    private static func add(_ text: String) async {
+        for _ in 0 ..< 20 {
+            if await Server.post("add", ["text": text]) != nil { return }
+            try? await Task.sleep(for: .seconds(1))
         }
     }
 

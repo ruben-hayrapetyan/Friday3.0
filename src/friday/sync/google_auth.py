@@ -32,6 +32,7 @@ CALENDAR_SCOPES = (
 EVENTS_SCOPE = "https://www.googleapis.com/auth/calendar.events"
 LOGIN_SCOPES = (*CALENDAR_SCOPES, EVENTS_SCOPE)
 GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+TASKS_SCOPE = "https://www.googleapis.com/auth/tasks"  # Google Tasks (C110): asked for once you connect it
 DONE_PAGE = "Friday is connected to Google. You can close this tab and go back to Friday."
 LEGACY = ""  # the account of the one token kept before Friday kept several, until its address is known
 LOCK = threading.Lock()  # the sync, a sign-in and Remove may all rewrite the file
@@ -69,9 +70,10 @@ def keep_client(path: Path, text: str) -> None:
     write_private(path, text)
 
 
-def scopes(mail: bool) -> tuple[str, ...]:
-    """What a sign-in asks for: the calendars, changing your events, and your mail when Gmail is on."""
-    return LOGIN_SCOPES + ((GMAIL_SCOPE,) if mail else ())
+def scopes(mail: bool, tasks: bool = False) -> tuple[str, ...]:
+    """What a sign-in asks for: the calendars, changing your events, your mail when Gmail is on, and your tasks once
+    Google Tasks is wanted (so signing in again for the mail doesn't take Tasks away)."""
+    return LOGIN_SCOPES + ((GMAIL_SCOPE,) if mail else ()) + ((TASKS_SCOPE,) if tasks else ())
 
 
 class Flow(InstalledAppFlow):

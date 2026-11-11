@@ -565,6 +565,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/google_tasks_connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read Google Tasks from a Google account that has allowed it (C110): an integration like the others, riding */
+        post: operations["google_tasks_connect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/import_chroma_colors": {
         parameters: {
             query?: never;
@@ -661,6 +678,23 @@ export interface paths {
         put?: never;
         /** integration_set */
         post: operations["integration_set"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/integration_sign_in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The service's own sign-in page, for one connected by signing in (Microsoft, TickTick, Slack): open it, allow */
+        post: operations["integration_sign_in"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1407,7 +1441,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** The Mac app's report on one: made in Reminders, or why not (kept to try again, then said on the box). */
+        /** The Mac app's report on one: made in that app, or why not (kept to try again, then said on the box). */
         post: operations["reminder_written"];
         delete?: never;
         options?: never;
@@ -1424,7 +1458,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Your open reminders as the Mac app reads them; read into Friday within the minute. */
+        /** Your open to-dos as the Mac app reads them (Reminders, Things); read into Friday within the minute. */
         post: operations["reminders_sync"];
         delete?: never;
         options?: never;
@@ -3016,6 +3050,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/mac_plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the Mac app should keep the "Friday" calendar, and the plan's blocks for it. */
+        get: operations["mac_plan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/mac_writes": {
         parameters: {
             query?: never;
@@ -3040,7 +3091,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The mailboxes read by app password; never their passwords. */
+        /** The mailboxes read by app password, and Outlook's by Microsoft's sign-in; never their passwords or tokens. */
         get: operations["mail_app_accounts"];
         put?: never;
         post?: never;
@@ -3261,7 +3312,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Whether the Mac app should read Reminders, and what you marked done or opened again here, to make there. */
+        /** Whether the Mac app should read that app, and what you marked done or opened again here, to make there. */
         get: operations["reminder_writes"];
         put?: never;
         post?: never;
@@ -4528,6 +4579,11 @@ export interface components {
              * @default false
              */
             lists?: boolean;
+            /**
+             * Signs In
+             * @default false
+             */
+            signs_in?: boolean;
         };
         /** DateInput */
         DateInput: {
@@ -5374,6 +5430,11 @@ export interface components {
             events: boolean;
             /** Mail Error */
             mail_error?: string | null;
+            /**
+             * Tasks
+             * @default false
+             */
+            tasks?: boolean;
         };
         /** GoogleCalendarOut */
         GoogleCalendarOut: {
@@ -5466,11 +5527,16 @@ export interface components {
         /**
          * GoogleConnectInput
          * @description Which account to sign in: none to add one (Google's page asks which), or one already connected to sign it in
-         *     again (to allow Gmail, or when its sign-in expired).
+         *     again (to allow Gmail, or when its sign-in expired); `tasks` asks for Google Tasks too (C110).
          */
         GoogleConnectInput: {
             /** Account */
             account?: string | null;
+            /**
+             * Tasks
+             * @default false
+             */
+            tasks?: boolean;
         };
         /**
          * GoogleConnectOut
@@ -5543,6 +5609,32 @@ export interface components {
             repeated?: boolean;
             /** Generation */
             generation?: number | null;
+        };
+        /** GoogleTasksConnectResult */
+        GoogleTasksConnectResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["ConnectOutput"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** GoogleTasksInput */
+        GoogleTasksInput: {
+            /** Account */
+            account: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -5716,6 +5808,27 @@ export interface components {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Connected"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** IntegrationSignInResult */
+        IntegrationSignInResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["SignInOut"];
             /** Provisional */
             provisional?: components["schemas"]["BlockOut"][] | null;
             changes?: components["schemas"]["ChangeOut"] | null;
@@ -6459,6 +6572,39 @@ export interface components {
              */
             location?: string;
         };
+        /** MacPlanBlock */
+        MacPlanBlock: {
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
+            /** Tentative */
+            tentative: boolean;
+        };
+        /**
+         * MacPlanOut
+         * @description The plan for the Mac app's "Friday" calendar (C113): whether it's wanted, which plan, and its blocks.
+         */
+        MacPlanOut: {
+            /** Wanted */
+            wanted: boolean;
+            /**
+             * Name
+             * @default Friday
+             */
+            name?: string;
+            /** Plan */
+            plan?: number | null;
+            /**
+             * Blocks
+             * @default []
+             */
+            blocks?: components["schemas"]["MacPlanBlock"][];
+        };
         /** MacReminder */
         MacReminder: {
             /** Id */
@@ -6484,6 +6630,8 @@ export interface components {
              * @default false
              */
             completed?: boolean;
+            /** When */
+            when?: string | null;
         };
         /**
          * MacSyncInput
@@ -8027,9 +8175,16 @@ export interface components {
         };
         /**
          * RemindersSyncInput
-         * @description Your open reminders, from Friday's Mac app; or `denied` when macOS didn't let it read them.
+         * @description Your open to-dos in an app on this Mac (Apple Reminders, Things), from Friday's Mac app; or `denied` when macOS
+         *     didn't let it read them, `missing` when the app isn't on this Mac.
          */
         RemindersSyncInput: {
+            /**
+             * Kind
+             * @default reminders
+             * @enum {string}
+             */
+            kind?: "reminders" | "things";
             /**
              * Reminders
              * @default []
@@ -8045,6 +8200,11 @@ export interface components {
              * @default false
              */
             denied?: boolean;
+            /**
+             * Missing
+             * @default false
+             */
+            missing?: boolean;
         };
         /** RemindersSyncResult */
         RemindersSyncResult: {
@@ -9390,6 +9550,25 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /** SignInInput */
+        SignInInput: {
+            /** Kind */
+            kind: string;
+            /** Origin */
+            origin: string;
+            /**
+             * Fields
+             * @default {}
+             */
+            fields?: {
+                [key: string]: string;
+            };
+        };
+        /** SignInOut */
+        SignInOut: {
+            /** Url */
+            url: string;
+        };
         /** SittingDeleteResult */
         SittingDeleteResult: {
             /** Command Id */
@@ -9908,6 +10087,18 @@ export interface components {
              * @default false
              */
             demo?: boolean;
+            /**
+             * Server Pid
+             * @default 0
+             */
+            server_pid?: number;
+            /** Server Build */
+            server_build?: string | null;
+            /**
+             * Server Orphan
+             * @default false
+             */
+            server_orphan?: boolean;
             /** Generation */
             generation: number;
             /** Plan Id */
@@ -10430,6 +10621,11 @@ export interface components {
         TokenPageOut: {
             /** Url */
             url: string | null;
+            /**
+             * Ready
+             * @default true
+             */
+            ready?: boolean;
         };
         /** TokenRef */
         TokenRef: {
@@ -12315,6 +12511,43 @@ export interface operations {
             };
         };
     };
+    google_tasks_connect: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoogleTasksInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleTasksConnectResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     import_chroma_colors: {
         parameters: {
             query?: {
@@ -12524,6 +12757,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IntegrationSetResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    integration_sign_in: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignInInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationSignInResult"];
                 };
             };
             /** @description Validation Error */
@@ -17259,6 +17529,26 @@ export interface operations {
             };
         };
     };
+    mac_plan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MacPlanOut"];
+                };
+            };
+        };
+    };
     mac_writes: {
         parameters: {
             query?: never;
@@ -17599,7 +17889,9 @@ export interface operations {
     };
     reminder_writes: {
         parameters: {
-            query?: never;
+            query?: {
+                kind?: "reminders" | "things";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17613,6 +17905,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReminderWritesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

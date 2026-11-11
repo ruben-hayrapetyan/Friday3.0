@@ -125,6 +125,11 @@ class DecisionOption(Model):
 
 class StatusOut(Model):
     demo: bool = False  # `fridayd demo`: made-up sample data, said on every page
+    # this server's process, the Mac app build that started it (none: started by hand) and whether that app is gone,
+    # so a Mac app finding a server left over from another build stops it instead of using it (10 Nov)
+    server_pid: int = 0
+    server_build: str | None = None
+    server_orphan: bool = False
     generation: int
     plan_id: int | None
     plan_generation: int | None
@@ -494,6 +499,7 @@ class GoogleAccountOut(Model):
     gmail: bool  # lets Friday read its mail
     events: bool  # lets Friday save changes to its events
     mail_error: str | None = None  # why its mail couldn't be read last time
+    tasks: bool = False  # lets Friday read and tick its Google Tasks (C110)
 
 
 class GoogleConnectOut(Model):

@@ -2383,6 +2383,77 @@
     }
    }
   },
+  "/api/c/google_tasks_connect": {
+   "post": {
+    "summary": "Read Google Tasks from a Google account that has allowed it (C110): an integration like the others, riding",
+    "operationId": "google_tasks_connect",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GoogleTasksInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/GoogleTasksConnectResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/import_chroma_colors": {
    "post": {
     "summary": "The colour Chroma showed each event in, by the event: its own choice, its calendar's or its category's.",
@@ -2806,6 +2877,77 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/IntegrationSetResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/integration_sign_in": {
+   "post": {
+    "summary": "The service's own sign-in page, for one connected by signing in (Microsoft, TickTick, Slack): open it, allow",
+    "operationId": "integration_sign_in",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SignInInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IntegrationSignInResult"
         }
        }
       }
@@ -5941,7 +6083,7 @@
   },
   "/api/c/reminder_written": {
    "post": {
-    "summary": "The Mac app's report on one: made in Reminders, or why not (kept to try again, then said on the box).",
+    "summary": "The Mac app's report on one: made in that app, or why not (kept to try again, then said on the box).",
     "operationId": "reminder_written",
     "parameters": [
      {
@@ -6012,7 +6154,7 @@
   },
   "/api/c/reminders_sync": {
    "post": {
-    "summary": "Your open reminders as the Mac app reads them; read into Friday within the minute.",
+    "summary": "Your open to-dos as the Mac app reads them (Reminders, Things); read into Friday within the minute.",
     "operationId": "reminders_sync",
     "parameters": [
      {
@@ -11539,6 +11681,24 @@
     }
    }
   },
+  "/api/q/mac_plan": {
+   "get": {
+    "summary": "Whether the Mac app should keep the \"Friday\" calendar, and the plan's blocks for it.",
+    "operationId": "mac_plan",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MacPlanOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/mac_writes": {
    "get": {
     "summary": "Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title",
@@ -11563,7 +11723,7 @@
   },
   "/api/q/mail_app_accounts": {
    "get": {
-    "summary": "The mailboxes read by app password; never their passwords.",
+    "summary": "The mailboxes read by app password, and Outlook's by Microsoft's sign-in; never their passwords or tokens.",
     "operationId": "mail_app_accounts",
     "responses": {
      "200": {
@@ -11946,8 +12106,24 @@
   },
   "/api/q/reminder_writes": {
    "get": {
-    "summary": "Whether the Mac app should read Reminders, and what you marked done or opened again here, to make there.",
+    "summary": "Whether the Mac app should read that app, and what you marked done or opened again here, to make there.",
     "operationId": "reminder_writes",
+    "parameters": [
+     {
+      "name": "kind",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "reminders",
+        "things"
+       ],
+       "type": "string",
+       "default": "reminders",
+       "title": "Kind"
+      }
+     }
+    ],
     "responses": {
      "200": {
       "description": "Successful Response",
@@ -11955,6 +12131,16 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/ReminderWritesOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
         }
        }
       }
@@ -15349,6 +15535,11 @@
       "type": "boolean",
       "title": "Lists",
       "default": false
+     },
+     "signs_in": {
+      "type": "boolean",
+      "title": "Signs In",
+      "default": false
      }
     },
     "additionalProperties": false,
@@ -17969,6 +18160,11 @@
        }
       ],
       "title": "Mail Error"
+     },
+     "tasks": {
+      "type": "boolean",
+      "title": "Tasks",
+      "default": false
      }
     },
     "additionalProperties": false,
@@ -18248,12 +18444,17 @@
        }
       ],
       "title": "Account"
+     },
+     "tasks": {
+      "type": "boolean",
+      "title": "Tasks",
+      "default": false
      }
     },
     "additionalProperties": false,
     "type": "object",
     "title": "GoogleConnectInput",
-    "description": "Which account to sign in: none to add one (Google's page asks which), or one already connected to sign it in\nagain (to allow Gmail, or when its sign-in expired)."
+    "description": "Which account to sign in: none to add one (Google's page asks which), or one already connected to sign it in\nagain (to allow Gmail, or when its sign-in expired); `tasks` asks for Google Tasks too (C110)."
    },
    "GoogleConnectOut": {
     "properties": {
@@ -18476,6 +18677,90 @@
      "result"
     ],
     "title": "GoogleRemoveResult"
+   },
+   "GoogleTasksConnectResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/ConnectOutput"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "GoogleTasksConnectResult"
+   },
+   "GoogleTasksInput": {
+    "properties": {
+     "account": {
+      "type": "string",
+      "title": "Account"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "account"
+    ],
+    "title": "GoogleTasksInput"
    },
    "HTTPValidationError": {
     "properties": {
@@ -19074,6 +19359,76 @@
      "result"
     ],
     "title": "IntegrationSetResult"
+   },
+   "IntegrationSignInResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/SignInOut"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "IntegrationSignInResult"
    },
    "ItemDetail": {
     "properties": {
@@ -21197,6 +21552,79 @@
     "title": "MacEvent",
     "description": "One occurrence of an event on the Mac: timed with an offset (\"2026-10-23T09:00:00-04:00\"), or whole days with\nthe end the day after the last (\"2026-10-23\" to \"2026-10-24\"), as Google gives them."
    },
+   "MacPlanBlock": {
+    "properties": {
+     "key": {
+      "type": "string",
+      "title": "Key"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "start": {
+      "type": "string",
+      "title": "Start"
+     },
+     "end": {
+      "type": "string",
+      "title": "End"
+     },
+     "tentative": {
+      "type": "boolean",
+      "title": "Tentative"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "key",
+     "title",
+     "start",
+     "end",
+     "tentative"
+    ],
+    "title": "MacPlanBlock"
+   },
+   "MacPlanOut": {
+    "properties": {
+     "wanted": {
+      "type": "boolean",
+      "title": "Wanted"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name",
+      "default": "Friday"
+     },
+     "plan": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plan"
+     },
+     "blocks": {
+      "items": {
+       "$ref": "#/components/schemas/MacPlanBlock"
+      },
+      "type": "array",
+      "title": "Blocks",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "wanted"
+    ],
+    "title": "MacPlanOut",
+    "description": "The plan for the Mac app's \"Friday\" calendar (C113): whether it's wanted, which plan, and its blocks."
+   },
    "MacReminder": {
     "properties": {
      "id": {
@@ -21243,6 +21671,17 @@
       "type": "boolean",
       "title": "Completed",
       "default": false
+     },
+     "when": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "When"
      }
     },
     "additionalProperties": false,
@@ -25877,6 +26316,15 @@
    },
    "RemindersSyncInput": {
     "properties": {
+     "kind": {
+      "type": "string",
+      "enum": [
+       "reminders",
+       "things"
+      ],
+      "title": "Kind",
+      "default": "reminders"
+     },
      "reminders": {
       "items": {
        "$ref": "#/components/schemas/MacReminder"
@@ -25897,12 +26345,17 @@
       "type": "boolean",
       "title": "Denied",
       "default": false
+     },
+     "missing": {
+      "type": "boolean",
+      "title": "Missing",
+      "default": false
      }
     },
     "additionalProperties": false,
     "type": "object",
     "title": "RemindersSyncInput",
-    "description": "Your open reminders, from Friday's Mac app; or `denied` when macOS didn't let it read them."
+    "description": "Your open to-dos in an app on this Mac (Apple Reminders, Things), from Friday's Mac app; or `denied` when macOS\ndidn't let it read them, `missing` when the app isn't on this Mac."
    },
    "RemindersSyncResult": {
     "properties": {
@@ -30272,6 +30725,47 @@
     ],
     "title": "ShoveResult"
    },
+   "SignInInput": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "title": "Kind"
+     },
+     "origin": {
+      "type": "string",
+      "title": "Origin"
+     },
+     "fields": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Fields",
+      "default": {}
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "kind",
+     "origin"
+    ],
+    "title": "SignInInput"
+   },
+   "SignInOut": {
+    "properties": {
+     "url": {
+      "type": "string",
+      "title": "Url"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "url"
+    ],
+    "title": "SignInOut"
+   },
    "SittingDeleteResult": {
     "properties": {
      "command_id": {
@@ -31849,6 +32343,27 @@
       "title": "Demo",
       "default": false
      },
+     "server_pid": {
+      "type": "integer",
+      "title": "Server Pid",
+      "default": 0
+     },
+     "server_build": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Server Build"
+     },
+     "server_orphan": {
+      "type": "boolean",
+      "title": "Server Orphan",
+      "default": false
+     },
      "generation": {
       "type": "integer",
       "title": "Generation"
@@ -33362,6 +33877,11 @@
        }
       ],
       "title": "Url"
+     },
+     "ready": {
+      "type": "boolean",
+      "title": "Ready",
+      "default": true
      }
     },
     "additionalProperties": false,

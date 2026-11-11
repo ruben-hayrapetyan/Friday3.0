@@ -161,8 +161,10 @@ export function shortest(d: number): number {
  * go up when you click - that's a bad reaction because it doesn't mean anything"): a look at the alarm clock when the
  * alarm moves, a book onto the day's pile (or off it), one onto the heavy day's, the timer turned, the note moved
  * along the week. Answers shown some other way (the TV or the laptop, the blanket or the bench, the paper or the
- * phone) need nothing more. `aim` is which way: along the board, or toward the clock. */
+ * phone) need nothing more. Whether you're in school: a nod at the desk's things, swapped (places.ts dorm). `aim` is
+ * which way: along the board, or toward the clock. */
 export function reactionTo(was: Answers, now: Answers): { kind: Reaction; aim?: number } | null {
+  if (now.school !== was.school) return { kind: "nod" } // a nod at what's by the desk now (C97)
   if (now.wake !== was.wake) return { kind: "clock", aim: -1 }
   if (now.normal_hours !== was.normal_hours) return { kind: "stackRight" }
   if (now.most_hours !== was.most_hours) return { kind: "stackLeft" }

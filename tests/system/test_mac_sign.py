@@ -42,9 +42,11 @@ def sign(app: Path, identity: str) -> subprocess.CompletedProcess:
                           timeout=120)  # fmt: skip
 
 
-# the Mac's calendars (CalendarBridge.swift) and reminders (RemindersBridge.swift, C100): nothing else
+# the Mac's calendars (CalendarBridge.swift), reminders (RemindersBridge.swift, C100) and Things by AppleScript
+# (ThingsBridge.swift, C108): nothing else
 APP_ENTITLEMENTS = {"com.apple.security.personal-information.calendars": True,
-                    "com.apple.security.personal-information.reminders": True}  # fmt: skip
+                    "com.apple.security.personal-information.reminders": True,
+                    "com.apple.security.automation.apple-events": True}  # fmt: skip
 
 
 def entitlements(path: Path) -> dict:
