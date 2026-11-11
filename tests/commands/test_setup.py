@@ -48,6 +48,7 @@ def test_the_questions_start_from_what_friday_does_now(app: App) -> None:
         "weekend_free": 4.0,
         "finish_early_days": 1,
         "brief": True,
+        "school": True,  # a student unless Setup hears otherwise (C97)
         "calendars": [],
     }
 
