@@ -163,7 +163,7 @@ function Tile({ entry }: { entry: Entry }) {
   )
 }
 
-/** A box's panel, over the gallery: Escape, the ×, or a click beside it closes it. */
+/** A box's popup, in the middle of the window over the gallery: Escape, the ×, or a click beside it closes it. */
 function Panel({ entry, status, onClose, onOpen }: { entry: Entry; status: Status; onClose: () => void; onOpen: (id: string) => void }) {
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose()
@@ -171,13 +171,16 @@ function Panel({ entry, status, onClose, onOpen }: { entry: Entry; status: Statu
     return () => window.removeEventListener("keydown", key)
   }, [onClose])
   return (
-    <div role="presentation" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 40, background: "color-mix(in srgb, black 35%, transparent)", display: "flex", justifyContent: "flex-end" }}>
-      <aside
+    // a popup in the middle of the window, as Friday's other dialogs are (11 Nov: "a central opening popup which then
+    // users can either x out of or hit esc"); a click beside it closes it too
+    <div className="fr-scrim" style={{ position: "fixed", zIndex: 40 }}>
+      <div role="presentation" onClick={onClose} style={{ position: "absolute", inset: 0 }} />
+      <div
         role="dialog"
         aria-modal="true"
         aria-label={entry.name}
-        onClick={(e) => e.stopPropagation()}
-        style={{ width: "min(560px, 100vw)", height: "100%", overflowY: "auto", background: "var(--color-surface)", padding: 22, display: "flex", flexDirection: "column", gap: 16, boxSizing: "border-box" }}
+        className="fr-float fr-dialog"
+        style={{ width: "min(600px, 100%)", padding: 22, gap: 16, boxSizing: "border-box" }}
       >
         <div style={{ display: "grid", gridTemplateColumns: "36px minmax(0,1fr) auto", gap: 12, alignItems: "center" }}>
           <Tile entry={entry} />
@@ -191,7 +194,7 @@ function Panel({ entry, status, onClose, onOpen }: { entry: Entry; status: Statu
         </div>
         <span style={{ fontSize: 13, textWrap: "pretty" }}>{entry.line}.</span>
         <PanelBody entry={entry} onOpen={onOpen} />
-      </aside>
+      </div>
     </div>
   )
 }
