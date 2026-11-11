@@ -63,6 +63,8 @@ CONNECTORS: dict[str, type] = {
     Slack.kind: Slack,
 }
 ARRIVALS = ("inbox_first", "straight", "inbox")
+# A to-do app's open task overdue by under a year still comes in, late (11 Nov, your answer); older ones stay out
+LATE_OK_MIN = 365 * 24 * 60
 SERVICE_OWNS = ("title", "due", "notes", "firmness")  # what an edit from the service may change
 MAX_TRIES = 5
 POLL_MIN = 10  # how often each integration is read, unless you ask for it now
@@ -209,7 +211,8 @@ def sync_source(
         proposals = f.proposals
         if before:  # an edit: only what the service owns
             proposals = [Proposed("add", {k: v for k, v in p.input.items() if k in SERVICE_OWNS}) for p in proposals]
-        made += suggest(conn, settings, now_utc, user_id, raw_id, proposals, False, source["name"], batch)
+        made += suggest(conn, settings, now_utc, user_id, raw_id, proposals, False, source["name"], batch,
+                        late_ok_min=LATE_OK_MIN if connector.caps.late_ok else 0)  # fmt: skip
         conn.execute("UPDATE raw_inputs SET status = 'extracted' WHERE id = ?", [raw_id])
         if straight or (before and arrival != "inbox"):
             for s in rows(conn, "SELECT id FROM suggestions WHERE raw_input_id = ? AND status = 'pending'", [raw_id]):

@@ -242,9 +242,11 @@ def suggest(
     trusted: bool,
     source: str,
     batch: str | None = None,
+    late_ok_min: int = 0,
 ) -> int:
     """Suggestions from one input: a change to what an earlier one made is an edit; a likely duplicate is marked;
-    a trusted source's fixed events are accepted at once."""
+    a trusted source's fixed events are accepted at once. `late_ok_min`: how long overdue a new to-do may be and
+    still come in (a to-do app's open task is still yours to do; a feed's missed deadline isn't)."""
     made_before = made_items(conn, raw_id)
     conn.execute("UPDATE suggestions SET status = 'superseded' WHERE raw_input_id = ? AND status = 'pending'", [raw_id])
     found: list[duplicates.Candidate] | None = None
@@ -259,7 +261,7 @@ def suggest(
     for p in proposals:
         command, fields = p.command, dict(p.input)
         earlier = same_kind(made_before, fields)
-        if command == "add" and not earlier and over(fields, settings["time"].timezone, now_utc):
+        if command == "add" and not earlier and over(fields, settings["time"].timezone, now_utc - late_ok_min):
             continue  # an assignment due last week, read today, is nothing to do now
         if command == "add" and not earlier and not p.fixed and twin_suggested(conn, raw_id):
             continue  # the same event on another of your calendars already made this task
