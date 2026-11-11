@@ -91,6 +91,7 @@ type Status = [string, string, boolean] | null // what it says, its colour, conn
 
 /** Each box's status, from what the cards themselves read. */
 function useStatuses(): (e: Entry) => Status {
+  const settings = useSettings().data as Record<string, unknown> | undefined
   const mac = useMacCalendars().data ?? []
   const sources = (useInbox().data?.sources ?? []) as { kind: string; enabled: boolean; last_error: string | null; service?: string | null }[]
   const ai = useAi()
@@ -105,6 +106,7 @@ function useStatuses(): (e: Entry) => Status {
     return mine.some((x) => x.last_error) ? ["Needs a look", warn, true] : [mine.length > 1 ? `${mine.length} connected` : "Connected", ok, true]
   }
   return (e) => {
+    if (e.id === "mac-plan") return settings?.mac_plan === true ? ["On", ok, true] : null
     if (e.id === "mac-calendars") return mac.some((c) => c.on) ? [`Reading ${mac.filter((c) => c.on).length}`, ok, true] : null
     if (e.id === "calendar-links") return of("ics", null)
     if (e.link) return of("ics", e.id)
@@ -204,6 +206,8 @@ function PanelBody({ entry, onOpen }: { entry: Entry; onOpen: (id: string) => vo
   switch (entry.id) {
     case "mac-calendars":
       return <MacCalendars />
+    case "mac-plan":
+      return <MacPlan />
     case "calendar-links":
       return <Feeds />
     case "google":
@@ -222,6 +226,26 @@ function PanelBody({ entry, onOpen }: { entry: Entry; onOpen: (id: string) => vo
       )
   }
   return null
+}
+
+/** Your plan as a "Friday" calendar in iCloud (C113): Friday's Mac app keeps it equal to the plan, so your iPhone
+ * shows it; switched off, it removes the calendar it made. */
+function MacPlan() {
+  const settings = useSettings().data as Record<string, unknown> | undefined
+  const save = useCommand("settings_set", { label: () => "Saved" })
+  const on = settings?.mac_plan === true
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>Show my plan in Calendar</span>
+        <Switch on={on} onToggle={() => save({ key: "mac_plan", value: !on })} label="Show my plan in Calendar" />
+      </div>
+      <span className="fr-kicker">
+        Friday's Mac app keeps a calendar named Friday in your iCloud account, holding your plan from now to as far as Friday plans. Your iPhone's Calendar shows it once iCloud Calendars is on there. Friday changes it whenever the plan changes; switched off, the calendar goes. Friday never reads it back, so your plan doesn't count as busy time.
+      </span>
+      {!inMacApp() && <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>This needs Friday's Mac app open, with Calendars on this Mac allowed.</span>}
+    </div>
+  )
 }
 
 /** The calendars on this Mac (8 Nov: users "can't connect google", and Setup was the only place this was): every

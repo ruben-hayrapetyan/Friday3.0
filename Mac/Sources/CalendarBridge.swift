@@ -14,6 +14,8 @@ final class CalendarBridge {
     private var writing = false
     private var pending: Task<Void, Never>?
     private var lastSent: (body: Int, at: Date)?
+    private var lastPlan: Int?  // the plan the "Friday" calendar holds (C113)
+    private var planning = false
     static let weeks = 12
 
     func start() {
@@ -34,7 +36,11 @@ final class CalendarBridge {
         writes = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { _ in
             _ = Task { @MainActor in await self.write() }
         }
+        Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
+            _ = Task { @MainActor in await self.plan() }
+        }
         soon()
+        Task { await plan() }
     }
 
     /// Friday's waiting changes, one at a time; each answer goes back before the next (and before the change's own
@@ -50,6 +56,22 @@ final class CalendarBridge {
         }
     }
 
+    /// Your plan as the "Friday" calendar (C113), when you've switched it on: changed only when the plan has.
+    private func plan() async {
+        guard !planning, !TestUser.isTest else { return }  // Friday Test makes no calendar of yours
+        planning = true
+        defer { planning = false }
+        guard let said = await Server.get("api/q/mac_plan") as? [String: Any] else { return }
+        guard said["wanted"] as? Bool == true else {
+            if PlanCalendar.identifier != nil { PlanCalendar.remove(in: store) }
+            lastPlan = nil
+            return
+        }
+        guard let plan = said["plan"] as? Int, plan != lastPlan else { return }
+        let name = said["name"] as? String ?? "Friday"
+        if PlanCalendar.sync(said["blocks"] as? [[String: Any]] ?? [], name: name, in: store) { lastPlan = plan }
+    }
+
     /// A burst of changes (a calendar syncing) sends once, two seconds after the last.
     private func soon() {
         pending?.cancel()
@@ -63,7 +85,8 @@ final class CalendarBridge {
         let now = Date()
         let since = Calendar.current.date(byAdding: .day, value: -1, to: Calendar.current.startOfDay(for: now))!
         let until = Calendar.current.date(byAdding: .day, value: 7 * Self.weeks, to: since)!
-        let calendars = store.calendars(for: .event)
+        // the "Friday" calendar holds your plan (C113): never read back as busy time
+        let calendars = store.calendars(for: .event).filter { $0.calendarIdentifier != PlanCalendar.identifier }
         let found = store.events(matching: store.predicateForEvents(withStart: since, end: until, calendars: calendars))
         let body = MacPayload.body(
             calendars: calendars.map(MacPayload.calendar),

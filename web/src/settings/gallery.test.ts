@@ -97,6 +97,10 @@ describe("the integrations gallery's catalog", () => {
     expect(slack.signIn!.note).toContain("retired reminders")
     expect(names(search(CATALOG, "mentions"))).toEqual(["Slack"])
   })
+  it("has your plan on your iPhone under Calendars (C113)", () => {
+    expect(CATALOG.find((e) => e.id === "mac-plan")?.category).toBe("Calendars")
+    expect(names(search(CATALOG, "iphone"))).toContain("Your plan on your iPhone")
+  })
   it("has Apple Reminders as a to-do app with no token, said step by step (C100)", () => {
     const reminders = CATALOG.find((e) => e.id === "reminders")!
     expect(reminders.category).toBe("To-do apps")

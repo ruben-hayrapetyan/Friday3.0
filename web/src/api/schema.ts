@@ -3050,6 +3050,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/mac_plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the Mac app should keep the "Friday" calendar, and the plan's blocks for it. */
+        get: operations["mac_plan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/mac_writes": {
         parameters: {
             query?: never;
@@ -6554,6 +6571,39 @@ export interface components {
              * @default
              */
             location?: string;
+        };
+        /** MacPlanBlock */
+        MacPlanBlock: {
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
+            /** Tentative */
+            tentative: boolean;
+        };
+        /**
+         * MacPlanOut
+         * @description The plan for the Mac app's "Friday" calendar (C113): whether it's wanted, which plan, and its blocks.
+         */
+        MacPlanOut: {
+            /** Wanted */
+            wanted: boolean;
+            /**
+             * Name
+             * @default Friday
+             */
+            name?: string;
+            /** Plan */
+            plan?: number | null;
+            /**
+             * Blocks
+             * @default []
+             */
+            blocks?: components["schemas"]["MacPlanBlock"][];
         };
         /** MacReminder */
         MacReminder: {
@@ -17463,6 +17513,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GoogleCalendarOut"][];
+                };
+            };
+        };
+    };
+    mac_plan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MacPlanOut"];
                 };
             };
         };

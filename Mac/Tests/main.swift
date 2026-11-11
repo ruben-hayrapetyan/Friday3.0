@@ -574,5 +574,30 @@ test("a Things to-do is ticked only by an id that can't break out of the script;
     check(ThingsScript.refuse(["id": 5])["error"] as? String == ThingsScript.refusal, "Friday Test changes none of yours")
 }
 
+test("the plan's calendar holds exactly the plan: made, moved, renamed, gone, a duplicate removed (C113)") {
+    let t0 = Date(timeIntervalSince1970: 1_792_000_000)
+    let at = { (m: Double) in t0.addingTimeInterval(m * 60) }
+    let have = [
+        PlanCalendar.Have(key: "1@a", title: "essay", start: at(0), end: at(90), id: "e1"),
+        PlanCalendar.Have(key: "2@b", title: "lab", start: at(120), end: at(180), id: "e2"),
+        PlanCalendar.Have(key: "3@c", title: "gone", start: at(200), end: at(260), id: "e3"),
+        PlanCalendar.Have(key: "1@a", title: "essay", start: at(0), end: at(90), id: "e4"),
+    ]
+    let wanted = [
+        PlanCalendar.Wanted(key: "1@a", title: "essay", start: at(0), end: at(90)),
+        PlanCalendar.Wanted(key: "2@b", title: "lab report", start: at(150), end: at(210)),
+        PlanCalendar.Wanted(key: "4@d", title: "reading", start: at(300), end: at(330)),
+    ]
+    let (make, change, remove) = PlanCalendar.changes(have: have, wanted: wanted)
+    check(make.map(\.key) == ["4@d"], "made: \(make)")
+    check(change.map { $0.0.id } == ["e2"], "changed: the lab, moved and renamed")
+    check(Set(remove.map(\.id)) == ["e3", "e4"], "removed: the gone block and the duplicate: \(remove)")
+    let none = PlanCalendar.changes(have: Array(have.prefix(1)), wanted: Array(wanted.prefix(1)))
+    check(none.make.isEmpty && none.change.isEmpty && none.remove.isEmpty, "as it is: nothing touched")
+    let read = PlanCalendar.wanted([["key": "1@a", "title": "essay", "start": "2026-10-19T14:00:00Z", "end": "2026-10-19T15:30:00Z"],
+                                    ["key": "bad", "title": "x", "start": "2026-10-19T15:00:00Z", "end": "2026-10-19T14:00:00Z"]])
+    check(read.count == 1 && read[0].end.timeIntervalSince(read[0].start) == 5400, "the server's blocks read; a backwards one left out")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

@@ -462,6 +462,7 @@ SETTINGS_TYPES: dict[str, Any] = {
     "kind_order": tuple[str, ...],  # presets, most important first: who gets the time when it can't all fit
     "short_term_first": bool,  # the Short term list's work comes before anything on the Long term list
     "school": bool,  # in school (Setup asks, C97): school kinds and schoolwork shown and guessed; off, never
+    "mac_plan": bool,  # the plan as a "Friday" calendar on this Mac, in iCloud, so the iPhone shows it (C113)
     "sleep_tracking": SleepTracking,
     "meal_tracking": MealTracking,
     "phone": PhoneAccess,  # Friday on your phone over Tailscale (C61)
@@ -508,6 +509,7 @@ DEFAULTS: dict[str, Any] = {
     "kind_order": (),
     "short_term_first": False,
     "school": True,  # Friday began as a student's; Setup asks anyone new (C97)
+    "mac_plan": False,  # off until you switch it on in its box
     "sleep_tracking": SleepTracking(),
     "meal_tracking": MealTracking(),
     "phone": PhoneAccess(),

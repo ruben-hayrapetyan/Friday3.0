@@ -11681,6 +11681,24 @@
     }
    }
   },
+  "/api/q/mac_plan": {
+   "get": {
+    "summary": "Whether the Mac app should keep the \"Friday\" calendar, and the plan's blocks for it.",
+    "operationId": "mac_plan",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MacPlanOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/mac_writes": {
    "get": {
     "summary": "Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title",
@@ -21533,6 +21551,79 @@
     ],
     "title": "MacEvent",
     "description": "One occurrence of an event on the Mac: timed with an offset (\"2026-10-23T09:00:00-04:00\"), or whole days with\nthe end the day after the last (\"2026-10-23\" to \"2026-10-24\"), as Google gives them."
+   },
+   "MacPlanBlock": {
+    "properties": {
+     "key": {
+      "type": "string",
+      "title": "Key"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "start": {
+      "type": "string",
+      "title": "Start"
+     },
+     "end": {
+      "type": "string",
+      "title": "End"
+     },
+     "tentative": {
+      "type": "boolean",
+      "title": "Tentative"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "key",
+     "title",
+     "start",
+     "end",
+     "tentative"
+    ],
+    "title": "MacPlanBlock"
+   },
+   "MacPlanOut": {
+    "properties": {
+     "wanted": {
+      "type": "boolean",
+      "title": "Wanted"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name",
+      "default": "Friday"
+     },
+     "plan": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plan"
+     },
+     "blocks": {
+      "items": {
+       "$ref": "#/components/schemas/MacPlanBlock"
+      },
+      "type": "array",
+      "title": "Blocks",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "wanted"
+    ],
+    "title": "MacPlanOut",
+    "description": "The plan for the Mac app's \"Friday\" calendar (C113): whether it's wanted, which plan, and its blocks."
    },
    "MacReminder": {
     "properties": {

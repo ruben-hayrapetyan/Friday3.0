@@ -181,6 +181,15 @@ export const CATALOG: Entry[] = [
     hue: "#e0884f",
   },
   {
+    id: "mac-plan",
+    name: "Your plan on your iPhone",
+    category: "Calendars",
+    line: "Friday's plan as an iCloud calendar your iPhone and iPad show",
+    aliases: ["iphone", "ipad", "icloud", "apple calendar", "publish", "share plan", "phone"],
+    icon: "device-mobile",
+    hue: "#5c8de0",
+  },
+  {
     id: "google",
     name: "Google Calendar",
     category: "Calendars",

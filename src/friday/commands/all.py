@@ -28,6 +28,7 @@ from friday.commands import (  # noqa: F401
     learned,
     learning,
     mac,
+    mac_plan,
     mail,
     mail_app,
     napping,

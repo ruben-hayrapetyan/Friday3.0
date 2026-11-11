@@ -1056,6 +1056,23 @@ class DisconnectInput(Model):
     keep: bool  # what it brought in stays in Friday, or is dropped from it (nothing changes in the service)
 
 
+class MacPlanBlock(Model):
+    key: str  # the block's own key: the same block keeps its event
+    title: str
+    start: str  # RFC 3339, UTC
+    end: str
+    tentative: bool
+
+
+class MacPlanOut(Model):
+    """The plan for the Mac app's "Friday" calendar (C113): whether it's wanted, which plan, and its blocks."""
+
+    wanted: bool
+    name: str = "Friday"
+    plan: int | None = None
+    blocks: list[MacPlanBlock] = []
+
+
 class SignInInput(Model):
     kind: str
     origin: str  # the page's own address (http://127.0.0.1:<port>), where the service sends your browser back

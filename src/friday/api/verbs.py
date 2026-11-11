@@ -604,6 +604,14 @@ VERBS = {
         False,
         "The Mac's calendars as the Mac app last saw them, alphabetized, with whether each is read and how.",
     ),
+    "mac_plan": Verb(
+        "GET",
+        "/api/q/mac_plan",
+        commands.Empty,
+        False,
+        False,
+        'Whether the Mac app should keep the "Friday" calendar, and the plan\'s blocks for it.',
+    ),
     "mac_sync": Verb(
         "POST",
         "/api/c/mac_sync",
