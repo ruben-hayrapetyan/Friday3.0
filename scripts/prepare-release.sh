@@ -36,6 +36,7 @@ assert all(isinstance(notes.get(k, []), list) for k in ("new", "changed", "fixed
 assert any(line.strip() for k in ("new", "changed", "fixed") for line in notes.get(k, []))
 PY
 unset FRIDAY_GOOGLE_CLIENT  # downloads leave Google's client out (C77): Google lets in only listed test users
+export FRIDAY_NO_APP_KEYS=1  # and Friday's own app keys (Mac/app_keys.json), until you decide downloads get them
 cd "$REPO"
 git diff --quiet HEAD -- || die "commit or set aside your changes first: a version is built from a commit"
 

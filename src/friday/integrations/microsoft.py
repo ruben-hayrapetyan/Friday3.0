@@ -1,6 +1,6 @@
 """Microsoft To Do (C96, your choice: both ways; C109). Microsoft Graph (https://graph.microsoft.com/v1.0), signed in
 in your browser with Microsoft's own page (integrations/oauth.py) through Friday's own app in Microsoft Entra: a public
-app with no secret (your answer, 11 Nov), so its id ships in Friday (MS_CLIENT_ID; FRIDAY_MS_CLIENT_ID overrides it),
+app with no secret (your answer, 11 Nov), its id kept out of the code (integrations/keys.py, microsoft_client_id),
 for personal (Outlook.com, Hotmail) and school or work accounts alike.
 
 What comes in is the open tasks of every To Do list (GET me/todo/lists, then each list's tasks not completed; pages by
@@ -10,18 +10,16 @@ started; completed or deleted in To Do is done here. A task is known as "<list i
 import os
 from typing import Any, ClassVar, Literal
 
+from friday.integrations import keys
 from friday.integrations.base import Caps, ConnectorError, Http, Remote, Transport
 from friday.integrations.oauth import Provider, Session
 
 API = "https://graph.microsoft.com/v1.0"
 AUTHORITY = "https://login.microsoftonline.com/common/oauth2/v2.0"
-# Friday's app in Microsoft Entra (portal.azure.com → App registrations → Friday → Application (client) ID): public,
-# set once by Friday's developer
-MS_CLIENT_ID = "[microsoft client id: Mac/app_keys.json]"
 
 
 def client_id() -> str:
-    return (os.environ.get("FRIDAY_MS_CLIENT_ID") or MS_CLIENT_ID).strip()
+    return keys.get("microsoft_client_id")  # Entra → App registrations → Friday → Application (client) ID
 
 
 TODO = Provider(

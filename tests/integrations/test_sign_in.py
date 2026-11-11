@@ -82,8 +82,7 @@ def test_only_this_mac_is_where_the_page_sends_you_back(app: App) -> None:
 
 
 def test_an_unregistered_app_says_so(app: App, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("FRIDAY_MS_CLIENT_ID")
-    monkeypatch.setattr(microsoft, "MS_CLIENT_ID", "")
+    monkeypatch.delenv("FRIDAY_MICROSOFT_CLIENT_ID")
     with pytest.raises(FieldError, match="isn't ready in this copy of Friday"):
         app.do("integration_sign_in", kind="microsoft_todo", origin=ORIGIN)
 

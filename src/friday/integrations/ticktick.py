@@ -1,8 +1,8 @@
 """TickTick (C96, your choice: both ways; C111). Its Open API (https://api.ticktick.com/open/v1), signed in on
 TickTick's own page (integrations/oauth.py) through Friday's own app at developer.ticktick.com, whose id and secret
 ship in Friday (your answer, 11 Nov: TickTick insists on a secret, which can't stay secret in a downloaded app; it
-lets no one into anyone's tasks without their own Allow). TICKTICK_CLIENT_ID / _SECRET, overridden by
-FRIDAY_TICKTICK_CLIENT_ID / _SECRET; until they're set the box says TickTick isn't ready in this copy of Friday.
+lets no one into anyone's tasks without their own Allow), kept out of the code (integrations/keys.py,
+ticktick_client_id / _secret); until they're there the box says TickTick isn't ready in this copy of Friday.
 TickTick's sign-in lasts about six months and can't be renewed: its box says to sign in again when it runs out.
 
 What comes in is the open tasks of your Inbox and every open list (GET project, then each one's data). A due is the
@@ -15,22 +15,20 @@ from datetime import datetime
 from typing import Any, ClassVar, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from friday.integrations import keys
 from friday.integrations.base import Caps, ConnectorError, Http, Remote, Transport
 from friday.integrations.oauth import Provider, Session
 
 API = "https://api.ticktick.com/open/v1"
-# Friday's app at developer.ticktick.com (Manage Apps → Friday): set once by Friday's developer
-TICKTICK_CLIENT_ID = ""
-TICKTICK_CLIENT_SECRET = ""
 INBOX = "inbox"
 
 
 def client_id() -> str:
-    return (os.environ.get("FRIDAY_TICKTICK_CLIENT_ID") or TICKTICK_CLIENT_ID).strip()
+    return keys.get("ticktick_client_id")  # developer.ticktick.com → Manage Apps → Friday
 
 
 def client_secret() -> str:
-    return (os.environ.get("FRIDAY_TICKTICK_CLIENT_SECRET") or TICKTICK_CLIENT_SECRET).strip()
+    return keys.get("ticktick_client_secret")
 
 
 PROVIDER = Provider(
