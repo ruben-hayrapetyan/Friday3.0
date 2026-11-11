@@ -1038,6 +1038,7 @@ Arrival = Literal["inbox_first", "straight", "inbox"]
 class ConnectInput(Model):
     kind: str
     token: str
+    fields: dict[str, str] = {}  # what else the service needs, by name (Jira: your site and email)
 
 
 class ArrivalInput(Model):
@@ -1050,6 +1051,35 @@ class DisconnectInput(Model):
     keep: bool  # what it brought in stays in Friday, or is dropped from it (nothing changes in the service)
 
 
+class TokenPageInput(Model):
+    kind: str
+
+
+class TokenPageOut(Model):
+    url: str | None  # the service's page that gives you a token for Friday; None: not ready in this copy of Friday
+
+
+class ListsInput(Model):
+    id: int  # the integration
+
+
+class TodoListOut(Model):
+    """One of a service's to-do lists (Notion's databases), as its box shows it."""
+
+    id: str
+    name: str
+    on: bool  # read now
+    team: bool  # a team's (a person column): only what's assigned to you is read
+    made: int  # open to-dos it brought into Friday
+
+
+class ListSetInput(Model):
+    id: int  # the integration
+    list: str
+    on: bool
+    keep: bool = True  # switched off: what it brought in stays in Friday (no longer kept in step), or is dropped
+
+
 class Connected(Model):
     id: int
     kind: str
@@ -1060,6 +1090,7 @@ class Connected(Model):
     last_error: str | None
     made: int  # open to-dos it brought in
     waiting: int = 0  # its to-dos waiting in your Inbox to be accepted
+    lists: bool = False  # it has lists to choose from (Notion's databases): integration_lists
 
 
 class ConnectOutput(Model):

@@ -7,6 +7,14 @@ export type Category = "Calendars" | "Mail" | "To-do apps" | "School" | "Work sc
 
 export const CATEGORIES: Category[] = ["Calendars", "To-do apps", "School", "Work schedules", "Mail", "AI", "Files"]
 
+/** Something else connecting asks for beside the token (Jira: your site, your email). */
+export interface TokenField {
+  key: string
+  label: string
+  placeholder: string
+  type?: "email" | "text"
+}
+
 export interface Entry {
   id: string
   name: string
@@ -15,7 +23,8 @@ export interface Entry {
   aliases: string[] // other names people search for it by
   icon: string // a Phosphor icon; services' own logos aren't ours to use
   hue: string // its tile's colour
-  token?: { page: string; label: string; steps: string[] } // connected by pasting a token (integrations/*)
+  // connected by pasting a token (integrations/*); `page` "" when the server knows it (Trello's carries Friday's key)
+  token?: { page: string; label: string; steps: string[]; note?: string; fields?: TokenField[] }
   link?: { help: string; steps: string[]; reads: string } // connected by the calendar link it publishes (C96)
   viaMac?: { help: string; steps: string[] } // reaches Friday through the Mac's calendars (no link of its own)
   mail?: { provider: "icloud" | "yahoo" | "fastmail" | "other"; help?: string; steps: string[] } // by app password (C99)
@@ -203,6 +212,106 @@ export const CATALOG: Entry[] = [
         "Copy the API token shown there.",
         "Paste it here and press Connect.",
       ],
+    },
+  },
+  {
+    id: "notion",
+    name: "Notion",
+    category: "To-do apps",
+    line: "Your Notion to-do databases planned into your week; done goes both ways",
+    aliases: ["database", "databases", "todo", "to-do", "tasks", "notes", "wiki"],
+    icon: "notebook",
+    hue: "#8c7b6b",
+    token: {
+      page: "https://www.notion.so/developers/tokens",
+      label: "Notion personal access token",
+      steps: [
+        "Open Notion's Personal access tokens page (the link below) and press New token.",
+        "Name it Friday, tick Notion API, and choose 1 year (the longest it lasts).",
+        "Press Create token, copy it (Notion shows it only once), paste it here and press Connect.",
+        "Then choose which of your to-do lists Friday reads, right here.",
+      ],
+      note: "On Free and Business plans only workspace owners can make one unless an admin allows it. An integration's secret works too: Friday then reads only the databases you add it to (••• → Connections).",
+    },
+  },
+  {
+    id: "trello",
+    name: "Trello",
+    category: "To-do apps",
+    line: "The Trello cards you're on planned into your week; done goes both ways",
+    aliases: ["cards", "boards", "kanban", "atlassian", "todo", "to-do", "tasks"],
+    icon: "kanban",
+    hue: "#3f7fc4",
+    token: {
+      page: "",
+      label: "Trello token",
+      steps: [
+        "Open Trello's Allow page (the link below), signing in to Trello if it asks.",
+        "Press Allow: Trello shows a long token.",
+        "Copy it, paste it here and press Connect.",
+      ],
+      note: "Friday reads the open cards you're on, on every board. To bring one in, join it in Trello (open the card and press Join, or hover it and press space). Finishing it in Friday ticks its due date complete.",
+    },
+  },
+  {
+    id: "asana",
+    name: "Asana",
+    category: "To-do apps",
+    line: "Your Asana My tasks planned into your week; done goes both ways",
+    aliases: ["my tasks", "projects", "work", "todo", "to-do", "tasks"],
+    icon: "circles-three",
+    hue: "#e8736b",
+    token: {
+      page: "https://app.asana.com/0/my-apps",
+      label: "Asana personal access token",
+      steps: [
+        "Open Asana's developer console (the link below) and press Create new token.",
+        "Name it Friday, agree to Asana's API terms, and press Create token.",
+        "Copy the token (Asana shows it only once), paste it here and press Connect.",
+      ],
+      note: "Friday reads the open tasks assigned to you, in every workspace you're in: your My tasks. They come in as Work tasks.",
+    },
+  },
+  {
+    id: "linear",
+    name: "Linear",
+    category: "To-do apps",
+    line: "The Linear issues assigned to you planned into your week; done goes both ways",
+    aliases: ["issues", "tickets", "engineering", "sprint", "cycle", "work", "tasks"],
+    icon: "line-segments",
+    hue: "#7b7fd8",
+    token: {
+      page: "https://linear.app/settings/account/security",
+      label: "Linear personal API key",
+      steps: [
+        "Open Linear's Security & access settings (the link below).",
+        "Under Personal API keys press New API key, name it Friday, and give it read and write access if Linear asks.",
+        "Copy the key, paste it here and press Connect.",
+      ],
+      note: "Friday reads the open issues assigned to you, as Work tasks. Finishing one in Friday moves it to your team's Done state.",
+    },
+  },
+  {
+    id: "jira",
+    name: "Jira",
+    category: "To-do apps",
+    line: "The Jira issues assigned to you planned into your week; done goes both ways",
+    aliases: ["atlassian", "issues", "tickets", "sprint", "scrum", "work", "tasks", "jira cloud"],
+    icon: "kanban",
+    hue: "#3d7be0",
+    token: {
+      page: "https://id.atlassian.com/manage-profile/security/api-tokens",
+      label: "Atlassian API token",
+      steps: [
+        "Open Atlassian's API tokens page (the link below) and press Create API token.",
+        "Name it Friday, choose how long it lasts (a year is the longest), and press Create.",
+        "Copy the token, paste it here with your Jira site and email, and press Connect.",
+      ],
+      fields: [
+        { key: "site", label: "Your Jira site", placeholder: "yourteam.atlassian.net" },
+        { key: "email", label: "The email you sign in to Jira with", placeholder: "you@company.com", type: "email" },
+      ],
+      note: "Jira Cloud only. Friday reads the open issues assigned to you, as Work tasks; finishing one in Friday moves it to Done through your project's own workflow.",
     },
   },
   {

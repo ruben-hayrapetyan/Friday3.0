@@ -3,10 +3,11 @@
 // connected), Sync now, and Disconnect, which asks whether what it brought in stays. Apple Reminders (C100) is the same
 // box without a token: Friday's Mac app reads it, once macOS lets it.
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { useNavigate } from "react-router"
 import { query, type Schemas } from "@/api/client"
+import { Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { when } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
@@ -83,12 +84,18 @@ export function TokenIntegration({ entry }: { entry: Entry }) {
 
 function ConnectForm({ entry }: { entry: Entry }) {
   const [token, setToken] = useState("")
+  const [fields, setFields] = useState<Record<string, string>>({})
   const connect = useCommand("integration_connect", { label: (o) => o.result.message })
   const token_ = entry.token!
+  // Trello's page carries Friday's own app key, which the server has: asked for, not written here
+  const asked = useQuery({ queryKey: ["integration_token_page", entry.id], queryFn: () => query("integration_token_page", { kind: entry.id }), enabled: !token_.page })
+  const page = token_.page || asked.data?.url
+  const unready = !token_.page && asked.data && !asked.data.url
+  const missing = (token_.fields ?? []).some((f) => !(fields[f.key] ?? "").trim())
   const submit = async () => {
-    if (!token.trim()) return
+    if (!token.trim() || missing) return
     // A refused token is said in a toast, in the service's words; it stays in the box to correct.
-    if (await connect({ kind: entry.id, token })) setToken("")
+    if (await connect({ kind: entry.id, token, fields })) setToken("")
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -97,9 +104,31 @@ function ConnectForm({ entry }: { entry: Entry }) {
           <li key={s}>{s}</li>
         ))}
       </ol>
-      <a className="fr-link" href={token_.page} target="_blank" rel="noreferrer" style={{ fontSize: 12, alignSelf: "flex-start" }}>
-        Open {entry.name}'s token page
-      </a>
+      {unready ? (
+        <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>{entry.name} isn't ready in this copy of Friday yet: it comes with the next update.</span>
+      ) : (
+        <a className="fr-link" href={page ?? undefined} target="_blank" rel="noreferrer" style={{ fontSize: 12, alignSelf: "flex-start" }}>
+          {token_.page ? `Open ${entry.name}'s token page` : `Open ${entry.name}'s Allow page`}
+        </a>
+      )}
+      {(token_.fields ?? []).map((f) => (
+        <div key={f.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <label className="fr-kicker" htmlFor={`field-${entry.id}-${f.key}`}>
+            {f.label}
+          </label>
+          <input
+            id={`field-${entry.id}-${f.key}`}
+            className="input"
+            type={f.type ?? "text"}
+            autoComplete="off"
+            spellCheck={false}
+            value={fields[f.key] ?? ""}
+            onChange={(e) => setFields((was) => ({ ...was, [f.key]: e.target.value }))}
+            placeholder={f.placeholder}
+            style={{ padding: "5px 8px", minHeight: 0, fontSize: 13 }}
+          />
+        </div>
+      ))}
       <label className="fr-kicker" htmlFor={`token-${entry.id}`}>
         {token_.label}
       </label>
@@ -116,10 +145,11 @@ function ConnectForm({ entry }: { entry: Entry }) {
           placeholder="Paste the token"
           style={{ flex: 1, minWidth: 0, padding: "5px 8px", minHeight: 0, fontSize: 13 }}
         />
-        <button className="btn btn-primary" onClick={submit} disabled={!token.trim()} style={{ fontSize: 12 }}>
+        <button className="btn btn-primary" onClick={submit} disabled={!token.trim() || missing || !!unready} style={{ fontSize: 12 }}>
           Connect
         </button>
       </div>
+      {token_.note && <span className="fr-kicker">{token_.note}</span>}
       <span className="fr-kicker">The token stays on this Mac, in Friday's private settings file. Friday checks it with {entry.name} before keeping it.</span>
     </div>
   )
@@ -148,6 +178,61 @@ function MacConnect({ entry }: { entry: Entry }) {
   )
 }
 
+type TodoList = Schemas["TodoListOut"]
+
+/** Which of its lists Friday reads (Notion's databases, C101): a switch each; a team's says only yours come in; one
+ * switched off that brought to-dos in asks, as Disconnect does, whether they stay. */
+function Lists({ c }: { c: Connected }) {
+  const client = useQueryClient()
+  const key = ["integration_lists", c.id]
+  const found = useQuery({ queryKey: key, queryFn: () => query("integration_lists", { id: c.id }) as Promise<TodoList[]> })
+  const set = useCommand("integration_list_set", { label: () => "Saved" })
+  const [leaving, setLeaving] = useState<TodoList | null>(null)
+  const flip = (t: TodoList, on: boolean, keep = true) => {
+    client.setQueryData<TodoList[]>(key, (old) => old?.map((x) => (x.id === t.id ? { ...x, on } : x))) // at once
+    setLeaving(null)
+    return set({ id: c.id, list: t.id, on, keep })
+  }
+  const lists = found.data ?? []
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <span style={{ fontWeight: 500, fontSize: 13 }}>Lists Friday reads</span>
+      {found.isLoading && <span className="fr-kicker">Asking {c.name} for your lists…</span>}
+      {found.error && <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>{String((found.error as Error).message ?? found.error)}</span>}
+      {found.data && lists.length === 0 && <span className="fr-kicker">No to-do lists yet: a database with a Done checkbox or a Status is one.</span>}
+      {lists.map((t) => (
+        <div key={t.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", alignItems: "center", gap: 10, padding: "6px 0" }}>
+          <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+            <span style={{ fontSize: 13 }}>{t.name}</span>
+            <span className="fr-kicker">
+              {[t.team ? "A team's list: only what's assigned to you" : null, t.made ? `${t.made} in your plan` : null].filter(Boolean).join(" · ") || (t.on ? "Read" : "Not read")}
+            </span>
+          </span>
+          <Switch on={t.on} label={`Read ${t.name}`} onToggle={() => (t.on && t.made > 0 ? setLeaving(t) : flip(t, !t.on))} />
+        </div>
+      ))}
+      {leaving && (
+        <div role="alertdialog" aria-label={`Stop reading ${leaving.name}`} className="fr-well" style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: "var(--radius-md)" }}>
+          <span style={{ fontSize: 13 }}>
+            Keep {leaving.made === 1 ? "the to-do" : `the ${leaving.made} to-dos`} {leaving.name} brought in, or remove {leaving.made === 1 ? "it" : "them"} from Friday? Nothing changes in {c.name}.
+          </span>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="btn btn-secondary" onClick={() => flip(leaving, false, true)} style={{ fontSize: 12 }}>
+              Keep them
+            </button>
+            <button className="btn btn-secondary" onClick={() => flip(leaving, false, false)} style={{ fontSize: 12 }}>
+              Remove them
+            </button>
+            <button className="fr-link" onClick={() => setLeaving(null)} style={{ fontSize: 12 }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ConnectedRow({ c }: { c: Connected }) {
   const { today } = useShell()
   const navigate = useNavigate()
@@ -170,6 +255,7 @@ function ConnectedRow({ c }: { c: Connected }) {
           {c.waiting} waiting in your Inbox to review
         </button>
       )}
+      {c.lists && <Lists c={c} />}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <span style={{ fontWeight: 500, fontSize: 13 }}>New to-dos</span>
         <Arrivals value={c.arrival} onPick={(value) => set({ id: c.id, arrival: value })} />

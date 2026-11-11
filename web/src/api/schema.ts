@@ -633,6 +633,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/integration_list_set": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read one of its lists, or not. Off, its to-dos are no longer kept in step: kept as they are, or dropped. */
+        post: operations["integration_list_set"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/integration_set": {
         parameters: {
             query?: never;
@@ -2829,6 +2846,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/integration_lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The service's to-do lists, asked of it now, each with whether it's read and what it brought in. */
+        get: operations["integration_lists"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/integration_token_page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where the service gives you a token for this copy of Friday (Trello's Allow page carries Friday's app key). */
+        get: operations["integration_token_page"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/integrations": {
         parameters: {
             query?: never;
@@ -4432,6 +4483,13 @@ export interface components {
             kind: string;
             /** Token */
             token: string;
+            /**
+             * Fields
+             * @default {}
+             */
+            fields?: {
+                [key: string]: string;
+            };
         };
         /** ConnectOutput */
         ConnectOutput: {
@@ -4465,6 +4523,11 @@ export interface components {
              * @default 0
              */
             waiting?: number;
+            /**
+             * Lists
+             * @default false
+             */
+            lists?: boolean;
         };
         /** DateInput */
         DateInput: {
@@ -5627,6 +5690,27 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /** IntegrationListSetResult */
+        IntegrationListSetResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Connected"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
         /** IntegrationSetResult */
         IntegrationSetResult: {
             /** Command Id */
@@ -6103,6 +6187,20 @@ export interface components {
                     [key: string]: number;
                 };
             };
+        };
+        /** ListSetInput */
+        ListSetInput: {
+            /** Id */
+            id: number;
+            /** List */
+            list: string;
+            /** On */
+            on: boolean;
+            /**
+             * Keep
+             * @default true
+             */
+            keep?: boolean;
         };
         /** LocalDownload */
         LocalDownload: {
@@ -10260,6 +10358,22 @@ export interface components {
             /** Started */
             started: boolean;
         };
+        /**
+         * TodoListOut
+         * @description One of a service's to-do lists (Notion's databases), as its box shows it.
+         */
+        TodoListOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** On */
+            on: boolean;
+            /** Team */
+            team: boolean;
+            /** Made */
+            made: number;
+        };
         /** TokenAddResult */
         TokenAddResult: {
             /** Command Id */
@@ -10311,6 +10425,11 @@ export interface components {
             created: string;
             /** Last Used */
             last_used: string | null;
+        };
+        /** TokenPageOut */
+        TokenPageOut: {
+            /** Url */
+            url: string | null;
         };
         /** TokenRef */
         TokenRef: {
@@ -12331,6 +12450,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IntegrationDisconnectResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    integration_list_set: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListSetInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationListSetResult"];
                 };
             };
             /** @description Validation Error */
@@ -16821,6 +16977,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InsightsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    integration_lists: {
+        parameters: {
+            query: {
+                id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodoListOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    integration_token_page: {
+        parameters: {
+            query: {
+                kind: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenPageOut"];
                 };
             };
             /** @description Validation Error */

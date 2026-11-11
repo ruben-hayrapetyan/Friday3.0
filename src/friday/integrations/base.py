@@ -42,6 +42,7 @@ class Caps:
     lengths: bool = False  # the service keeps a length (an estimate, a duration)
     kind: str = "Task"  # what a to-do from it is when its title says nothing more (C97): "Task", or "Work task"
     on_mac: bool = False  # read and written by the Mac app (Apple Reminders), not over the internet
+    lists: bool = False  # you choose which of its lists are read (Notion's databases); its ids are "<list>/<to-do>"
 
 
 Problem = Literal["token", "access", "rate", "down", "answer"]
@@ -89,7 +90,9 @@ class Http:
     def client(self) -> httpx.Client:
         return httpx.Client(base_url=self.base, headers=self.headers, timeout=TIMEOUT_S, transport=self.transport)
 
-    def call(self, method: str, path: str, **kw: Any) -> httpx.Response:
+    def call(self, method: str, path: str, allow: tuple[int, ...] = (), **kw: Any) -> httpx.Response:
+        """The answer; a failure said in words, except the statuses in `allow`, which the connector reads itself (a
+        GraphQL service's 400 says what went wrong in its body)."""
         self.sent.append(f"{method} {path}")
         try:
             with self.client() as client:
@@ -98,6 +101,8 @@ class Http:
             raise ConnectorError("down", f"{self.name} didn't answer in time: Friday tries again shortly") from error
         except httpx.HTTPError as error:
             raise ConnectorError("down", f"Friday couldn't reach {self.name}: check the internet connection") from error
+        if answer.status_code in allow:
+            return answer
         if answer.status_code in (401, 407):
             raise ConnectorError("token", f"{self.name} didn't accept the token: make a new one and paste it again")
         if answer.status_code == 403:
@@ -112,8 +117,8 @@ class Http:
             raise ConnectorError("answer", f"{self.name} refused the request ({answer.status_code})")
         return answer
 
-    def json(self, method: str, path: str, **kw: Any) -> Any:
-        answer = self.call(method, path, **kw)
+    def json(self, method: str, path: str, allow: tuple[int, ...] = (), **kw: Any) -> Any:
+        answer = self.call(method, path, allow, **kw)
         try:
             return answer.json()
         except ValueError as error:

@@ -29,7 +29,7 @@ class World:
     errors: list[str] = field(default_factory=list)
 
     def connect(self, arrival: str = "straight", token: str | None = None) -> int:
-        out = self.app.do("integration_connect", kind=self.h.kind, token=token or self.h.token)
+        out = self.app.do("integration_connect", kind=self.h.kind, token=token or self.h.token, fields=self.h.fields)
         self.source_id = int(out["source"]["id"])
         if arrival != "inbox_first":
             self.app.do("integration_set", id=self.source_id, arrival=arrival)
@@ -91,7 +91,7 @@ def check_each_to_do_comes_in_once_with_its_title_due_and_length(w: World) -> No
     w.sync()
     report, call = w.item("Write the report"), w.item("Call the landlord")
     assert report["due"].startswith(THU), report["due"]
-    assert call["due"] == FRI_5PM, call["due"]
+    assert call["due"] == (FRI_5PM if w.h.times else f"{FRI_5PM[:10]}T23:59"), call["due"]
     w.item("Someday: learn Rust")
     if w.h.lengths:
         assert report["duration_min"] == 90, report["duration_min"]
