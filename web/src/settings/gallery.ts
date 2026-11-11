@@ -315,6 +315,26 @@ export const CATALOG: Entry[] = [
     },
   },
   {
+    id: "github",
+    name: "GitHub",
+    category: "To-do apps",
+    line: "Issues assigned to you and reviews asked of you, planned into your week",
+    aliases: ["issues", "pull requests", "prs", "reviews", "code", "repos", "developer", "git"],
+    icon: "github-logo",
+    hue: "#6e7681",
+    token: {
+      page: "https://github.com/settings/personal-access-tokens/new",
+      label: "GitHub fine-grained token",
+      steps: [
+        "Open GitHub's new fine-grained token page (the link below).",
+        "Name it Friday, choose when it expires (up to a year), and under Repository access choose All repositories.",
+        "Under Permissions add Issues and Pull requests, both Read-only.",
+        "Press Generate token, copy it, paste it here and press Connect.",
+      ],
+      note: "Friday only reads GitHub: close an issue there (or merge the pull request that closes it) and it's done here. Reviews asked of you come in as “Review: …”. An organization may need to approve the token before its repositories show.",
+    },
+  },
+  {
     id: "reminders",
     name: "Apple Reminders",
     category: "To-do apps",

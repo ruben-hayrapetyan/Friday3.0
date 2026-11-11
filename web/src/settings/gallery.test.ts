@@ -55,6 +55,12 @@ describe("the integrations gallery's catalog", () => {
     expect(jira.token!.note).toContain("Jira Cloud only")
     expect(names(search(CATALOG, "atlassian"))).toContain("Jira")
   })
+  it("walks GitHub through a read-only fine-grained token and says it only reads (C106)", () => {
+    const github = CATALOG.find((e) => e.id === "github")!
+    expect(github.token!.steps.join(" ")).toContain("Read-only")
+    expect(github.token!.note).toContain("only reads")
+    expect(names(search(CATALOG, "pull requests"))).toEqual(["GitHub"])
+  })
   it("has Apple Reminders as a to-do app with no token, said step by step (C100)", () => {
     const reminders = CATALOG.find((e) => e.id === "reminders")!
     expect(reminders.category).toBe("To-do apps")

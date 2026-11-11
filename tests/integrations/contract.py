@@ -169,6 +169,21 @@ def check_done_here_goes_back_exactly_once_and_reopen_too(w: World) -> None:
     assert len(w.writes()) == 2, f"sent {w.writes()}"
 
 
+def check_a_read_only_service_is_sent_nothing(w: World) -> None:
+    """GitHub (C106): done or opened again here stays here."""
+    if w.h.two_way:
+        pytest.skip("both ways")
+    task = w.h.add(w.fake, "Fix the bug", THU)
+    w.connect()
+    w.sync()
+    w.app.do("done", id=w.item("Fix the bug")["id"])
+    w.send()
+    assert w.writes() == [] and not w.h.is_done(w.fake, task), "a read-only service was changed"
+    assert w.app.table("source_writes") == [], "a change waits for a service that takes none"
+    w.sync()
+    assert "Fix the bug" in [i["title"] for i in w.items("done")], "read again, the open issue reopened it here"
+
+
 def check_a_failed_send_is_kept_and_sent_later_once(w: World) -> None:
     if not w.h.two_way:
         pytest.skip("read only")

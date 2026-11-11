@@ -32,6 +32,7 @@ from friday.core.time import format_local, format_utc, parse_utc, zone
 from friday.ingest.ics import Found, Proposed
 from friday.integrations.asana import Asana
 from friday.integrations.base import Connector, ConnectorError, Remote, Transport
+from friday.integrations.github import GitHub
 from friday.integrations.jira import Jira
 from friday.integrations.linear import Linear
 from friday.integrations.notion import Notion
@@ -48,6 +49,7 @@ CONNECTORS: dict[str, type] = {
     Asana.kind: Asana,
     Linear.kind: Linear,
     Jira.kind: Jira,
+    GitHub.kind: GitHub,
 }
 ARRIVALS = ("inbox_first", "straight", "inbox")
 SERVICE_OWNS = ("title", "due", "notes", "firmness")  # what an edit from the service may change

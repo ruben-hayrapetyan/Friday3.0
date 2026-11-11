@@ -12,6 +12,7 @@ from tests.commands.helpers import new_app
 from tests.integrations import contract
 from tests.integrations.contract import World
 from tests.integrations.fake_asana import HARNESS as ASANA
+from tests.integrations.fake_github import HARNESS as GITHUB
 from tests.integrations.fake_jira import HARNESS as JIRA
 from tests.integrations.fake_linear import HARNESS as LINEAR
 from tests.integrations.fake_mac_reminders import HARNESS as REMINDERS
@@ -20,7 +21,7 @@ from tests.integrations.fake_todoist import HARNESS as TODOIST
 from tests.integrations.fake_trello import HARNESS as TRELLO
 from tests.integrations.kit import Harness
 
-HARNESSES = [TODOIST, REMINDERS, NOTION, TRELLO, ASANA, LINEAR, JIRA]
+HARNESSES = [TODOIST, REMINDERS, NOTION, TRELLO, ASANA, LINEAR, JIRA, GITHUB]
 
 
 def cases() -> Iterator:
