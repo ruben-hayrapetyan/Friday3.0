@@ -1,6 +1,6 @@
 // Integrations (v22, shown and explained, decision 134): Google Calendar and Gmail, connected with a button (Google's
 // page opens in your browser; no terminal), one Google account or several, the AI's key and daily budget, course feeds, a syllabus upload, a backup,
-// what was imported lately, and tokens for assistants. Controls work only for keys friday.toml doesn't set. Setup's
+// and tokens for assistants (the "What was imported" list is gone: your ask, 11 Nov). Controls work only for keys friday.toml doesn't set. Setup's
 // last step reuses the Connect button, the feed box, the upload and Gmail's switch.
 
 import { useQuery } from "@tanstack/react-query"
@@ -12,7 +12,6 @@ import { useCommand } from "@/hooks/useCommand"
 import { useSettings, useStatus } from "@/hooks/queries"
 import { spoken } from "@/lib/aiName"
 import { when } from "@/lib/format"
-import { addDays } from "@/lib/time"
 import { useInbox } from "@/inbox/InboxPage"
 import { useShell } from "@/shell/ShellContext"
 import { Accounts, ACCOUNTS, inMacApp, PRIVACY } from "./MacAccounts"
@@ -43,7 +42,6 @@ export function Integrations() {
           Download
         </a>
       </div>
-      <Imported />
       <p className="fr-kicker" style={{ paddingTop: 18 }}>
         Tokens for assistants and scripts are under <a href="#/settings/tokens">Tokens</a>.
       </p>
@@ -751,41 +749,6 @@ function toBase64(bytes: Uint8Array): string {
   let binary = ""
   for (let i = 0; i < bytes.length; i += 32_768) binary += String.fromCharCode(...bytes.subarray(i, i + 32_768))
   return btoa(binary)
-}
-
-/** The last week's imports: what came in from a source and what you accepted, each undoable. */
-function Imported() {
-  const { today } = useShell()
-  const log = useQuery({ queryKey: ["log_list", "recent", 200], queryFn: () => query("log_list", { limit: 200 }) }).data ?? []
-  const undo = useCommand("undo", { label: () => "Import undone" })
-  const weekAgo = addDays(today, -7)
-  const imports = log.filter((l) => (l.actor.startsWith("sync:") || l.command === "batch_accept" || l.command === "suggestion_accept") && l.at.slice(0, 10) >= weekAgo)
-  return (
-    <div style={{ display: "flex", flexDirection: "column", paddingTop: 26 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, paddingBottom: 8 }}>
-        <H size={20}>What was imported</H>
-        <span className="fr-kicker">Last 7 days</span>
-      </div>
-      {imports.map((l) => (
-        <div key={l.id} className="fr-row" style={{ display: "grid", gridTemplateColumns: "96px 20px minmax(0,1fr) auto", gap: 12, alignItems: "center", padding: "9px 0", opacity: l.undone_by ? 0.5 : 1 }}>
-          <span className="tnum fr-kicker">{when(l.at, today)}</span>
-          <Icon name={l.actor.startsWith("sync:") ? "arrows-clockwise" : "tray"} size={15} style={{ color: "var(--color-neutral-400)" }} />
-          <span style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{l.command === "batch_accept" ? `A batch: ${String(l.input.batch ?? "")}` : "An item from your Inbox"}</span>
-            <span className="fr-kicker">{l.actor.startsWith("sync:") ? `Straight in from ${l.actor.slice(5)}` : "Accepted by you"}</span>
-          </span>
-          {l.undone_by ? (
-            <span className="fr-kicker">Undone</span>
-          ) : (
-            <button className="fr-link" onClick={() => undo({ command_id: l.id })} style={{ fontSize: 12 }}>
-              Undo import
-            </button>
-          )}
-        </div>
-      ))}
-      {!imports.length && <span className="fr-row fr-kicker" style={{ padding: "12px 0" }}>Nothing imported this week.</span>}
-    </div>
-  )
 }
 
 /** One tiny call to each model, the way Friday asks, and what came back. */
