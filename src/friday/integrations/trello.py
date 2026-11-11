@@ -1,52 +1,51 @@
-"""Trello (C96, your choice: both ways; C102). Its REST API at https://api.trello.com/1, with Friday's own app key
-(public by Trello's design: it names the app; the Power-Up's secret is never used) and your token, sent as
-`Authorization: OAuth oauth_consumer_key="…", oauth_token="…"` so the token is never in an address.
+"""Trello (C96, your choice: both ways; C102, then C117). Signed in on Atlassian's page (integrations/oauth.py) through
+Friday's own Trello app, a public OAuth 2.0 client (11 Nov: Trello's apps are OAuth 2.0 now, PKCE required, so no key
+and pasted token); its client id ships in Friday (TRELLO_CLIENT_ID; FRIDAY_TRELLO_CLIENT_ID overrides it). The access
+token lasts an hour and is renewed by the refresh token (offline_access), which lasts ninety days of not being used.
+Then Trello's REST API (https://trello.com/1) with the token as a Bearer.
 
-Your answers (10 Nov): Friday's own key, so connecting is Allow on Trello's page and paste the token it shows; the
-cards that come in are the open cards you're on, on any board (GET members/me/cards); done here ticks the card's due
-date complete (PUT cards/{id} dueComplete), and opened again unticks it. A card ticked complete, or archived, in Trello
-is done here. Trello's due is always a moment (UTC); a card keeps no length."""
+Your answers (10 Nov): the cards that come in are the open cards you're on, on any board (GET members/me/cards); done
+here ticks the card's due date complete (PUT cards/{id} dueComplete), and opened again unticks it. A card ticked
+complete, or archived, in Trello is done here. Trello's due is always a moment (UTC); a card keeps no length."""
 
 import os
 from typing import Any, ClassVar, Literal
-from urllib.parse import urlencode
 
 from friday.integrations.base import Caps, ConnectorError, Http, Remote, Transport
+from friday.integrations.oauth import Provider, Session
 
-API = "https://api.trello.com/1"
-# Friday's Power-Up's API key (trello.com/power-ups/admin → Friday → API key): set once by Friday's developer
-APP_KEY = ""
+API = "https://trello.com/1"
+# Friday's Trello app (trello.com/power-ups/admin → Friday → OAuth 2.0 → Client ID): public, set by Friday's developer
+TRELLO_CLIENT_ID = "[trello client id: Mac/app_keys.json]"
 CARD_FIELDS = "name,desc,due,dueComplete,url,idBoard,closed"
 
 
-def app_key() -> str:
-    return (os.environ.get("FRIDAY_TRELLO_KEY") or APP_KEY).strip()
+def client_id() -> str:
+    return (os.environ.get("FRIDAY_TRELLO_CLIENT_ID") or TRELLO_CLIENT_ID).strip()
 
 
-def token_page() -> str | None:
-    """Trello's page that asks you to Allow Friday and then shows your token; None while Friday has no key."""
-    key = app_key()
-    if not key:
-        return None
-    asked = {"key": key, "name": "Friday", "expiration": "never", "scope": "read,write", "response_type": "token"}
-    return f"https://trello.com/1/authorize?{urlencode(asked)}"
+PROVIDER = Provider(
+    kind="trello", name="Trello", authorize="https://auth.atlassian.com/authorize",
+    token="https://auth.atlassian.com/oauth/token", client_id=client_id,
+    scopes=("read:board:trello", "write:board:trello", "read:member:trello", "offline_access"),
+    extra={"prompt": "consent"},
+)  # fmt: skip
 
 
 class Trello:
     kind: ClassVar[str] = "trello"
     name: ClassVar[str] = "Trello"
     caps: ClassVar[Caps] = Caps(two_way=True, lengths=False)
-    token_page = staticmethod(token_page)
+    provider: ClassVar[Provider] = PROVIDER
 
     def __init__(self, token: str, config: dict[str, Any] | None = None, transport: Transport = None):
-        key = app_key()
-        if not key:
-            raise ConnectorError("token", "Trello isn't ready in this copy of Friday yet: it has no Trello app key")
-        if not token.strip():
-            raise ConnectorError("token", "No Trello token: press Allow on Trello's page and paste the token it shows")
+        self.session = Session(PROVIDER, token, (config or {}).get("_keep"))
         base = os.environ.get("FRIDAY_API_TRELLO") or API  # another address: only a fake service, in system tests
-        said = f'OAuth oauth_consumer_key="{key}", oauth_token="{token.strip()}"'
-        self.http = Http(self.name, base, {"Authorization": said}, transport)
+
+        def bearer() -> dict[str, str]:
+            return {"Authorization": f"Bearer {self.session.access()}"}
+
+        self.http = Http(self.name, base, {}, transport, fresh=bearer)
 
     def check(self) -> str:
         me = self.http.json("GET", "/members/me", params={"fields": "username,fullName"})

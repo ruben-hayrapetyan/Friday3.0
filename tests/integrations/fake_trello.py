@@ -1,11 +1,11 @@
-"""A stand-in for Trello's REST API (https://api.trello.com/1), the parts Friday uses, as Trello's reference has them:
+"""A stand-in for Trello's REST API (https://trello.com/1), the parts Friday uses, as Trello's reference has them:
 GET members/me, GET members/me/cards (`filter=open`: the open cards you're a member of), GET members/me/boards (their
-names), PUT cards/{id} (`dueComplete`). The key and token come in an `Authorization: OAuth oauth_consumer_key="…",
-oauth_token="…"` header. Cards look as Trello sends them: `name`, `desc`, `due` (a UTC moment, or null),
-`dueComplete`, `idBoard`, `idMembers`, `closed`, `url`. A due picked as a day in Trello is noon that day, your time."""
+names), PUT cards/{id} (`dueComplete`). The OAuth 2.0 access token comes as a Bearer (C117). Cards look as Trello
+sends them: `name`, `desc`, `due` (a UTC moment, or null), `dueComplete`, `idBoard`, `idMembers`, `closed`, `url`. A
+due picked as a day in Trello is noon that day, your time."""
 
 import itertools
-import re
+import json
 from datetime import datetime, time
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -15,7 +15,7 @@ import httpx
 from tests.integrations.kit import FakeService, Harness
 
 PREFIX = "/1"
-KEY = "f00dcafe0123456789abcdef01234567"  # Friday's app key in tests (Trello's keys are public by design)
+ACCESS = "trello-access-1"
 ME = "5f1e0000000000000000aaaa"
 ZONE = ZoneInfo("America/New_York")  # new_app's
 
@@ -28,10 +28,10 @@ def trello_due(when: str | None) -> str | None:
 
 
 class FakeTrello(FakeService):
-    host = "api.trello.com"
+    host = "trello.com"
 
     def __init__(self, token: str):
-        super().__init__(token)
+        super().__init__(ACCESS)
         self.cards: dict[str, dict[str, Any]] = {}
         self.boards = {"b1": {"id": "b1", "name": "Personal"}, "b2": {"id": "b2", "name": "Team sprint"}}
         self.ids = itertools.count(1)
@@ -45,11 +45,6 @@ class FakeTrello(FakeService):
             "closed": False, "url": f"https://trello.com/c/{card_id[:8]}/{title.lower().replace(' ', '-')}",
         }  # fmt: skip
         return card_id
-
-    def authorized(self, request: httpx.Request) -> bool:
-        said = request.headers.get("authorization", "")
-        found = dict(re.findall(r'(\w+)="([^"]*)"', said))
-        return said.startswith("OAuth ") and found == {"oauth_consumer_key": KEY, "oauth_token": self.token}
 
     def path(self, request: httpx.Request) -> str:
         return request.url.path.removeprefix(PREFIX)
@@ -76,7 +71,7 @@ class FakeTrello(FakeService):
 
 HARNESS = Harness(
     kind="trello",
-    token="ATTA-stand-in-not-a-real-token",  # not shaped like a real one: no scanner takes it for a leak
+    token=json.dumps({"access_token": ACCESS, "refresh_token": "trello-refresh-1", "expires_at": 4_102_444_800}),
     fake=FakeTrello,
     add=lambda fake, title, due=None, minutes=None: fake.add(title, due),
     move=lambda fake, card, due: fake.cards[card].update(due=trello_due(due)),

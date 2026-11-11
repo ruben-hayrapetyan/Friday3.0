@@ -2,7 +2,7 @@
 the tests use (tests/integrations/fake_*.py) can't drift from what the service really does.
 
     uv run python scripts/live-check.py todoist
-    uv run python scripts/live-check.py notion        (asana, linear, jira, github, trello, canvas: read only)
+    uv run python scripts/live-check.py notion        (asana, linear, jira, github, canvas: read only)
 
 The token is read from your Keychain by name (`security add-generic-password -s friday-live-todoist -a friday -w`
 stores it; this script never prints it), or from FRIDAY_LIVE_TOKEN. Everything happens in a project of its own,
@@ -109,7 +109,7 @@ def todoist() -> int:
 # The others, read only (11 Nov): the token works, Friday reads your open to-dos through its own connector, and each
 # has a title and a due Friday can read. Nothing of yours is changed. Jira and Canvas also need your site:
 # FRIDAY_LIVE_SITE (and Jira your email, FRIDAY_LIVE_EMAIL).
-READ_ONLY = ("notion", "asana", "linear", "jira", "github", "trello", "canvas")
+READ_ONLY = ("notion", "asana", "linear", "jira", "github", "canvas")
 
 
 def read_only(kind: str) -> int:
