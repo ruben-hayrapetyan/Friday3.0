@@ -91,6 +91,12 @@ describe("the integrations gallery's catalog", () => {
     expect(tick.signIn!.note).toContain("six months")
     expect(names(search(CATALOG, "tick"))).toContain("TickTick")
   })
+  it("has Slack under Messages, saying reminders can't come in (C112)", () => {
+    const slack = CATALOG.find((e) => e.id === "slack")!
+    expect(slack.category).toBe("Messages")
+    expect(slack.signIn!.note).toContain("retired reminders")
+    expect(names(search(CATALOG, "mentions"))).toEqual(["Slack"])
+  })
   it("has Apple Reminders as a to-do app with no token, said step by step (C100)", () => {
     const reminders = CATALOG.find((e) => e.id === "reminders")!
     expect(reminders.category).toBe("To-do apps")

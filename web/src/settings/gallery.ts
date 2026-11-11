@@ -3,9 +3,9 @@
 // what you've connected on top, then each category; search across all; a box opens a panel over the gallery. This
 // file is the catalog and its search, kept plain so it's tested on its own (gallery.test.ts).
 
-export type Category = "Calendars" | "Mail" | "To-do apps" | "School" | "Work schedules" | "AI" | "Files"
+export type Category = "Calendars" | "Mail" | "Messages" | "To-do apps" | "School" | "Work schedules" | "AI" | "Files"
 
-export const CATEGORIES: Category[] = ["Calendars", "To-do apps", "School", "Work schedules", "Mail", "AI", "Files"]
+export const CATEGORIES: Category[] = ["Calendars", "To-do apps", "School", "Work schedules", "Mail", "Messages", "AI", "Files"]
 
 /** Something else connecting asks for beside the token (Jira: your site, your email). */
 export interface TokenField {
@@ -458,6 +458,23 @@ export const CATALOG: Entry[] = [
         "Come back to Friday: new mail is read as Gmail's is, its deadlines and events waiting in your Inbox.",
       ],
       note: "Nothing is sent, moved, deleted or marked read. Some schools and workplaces let only an administrator approve new apps.",
+    },
+  },
+  {
+    id: "slack",
+    name: "Slack",
+    category: "Messages",
+    line: "Messages that mention you, waiting in your Inbox to decide on",
+    aliases: ["mentions", "chat", "messages", "workspace", "dm"],
+    icon: "slack-logo",
+    hue: "#7d4a8f",
+    signIn: {
+      steps: [
+        "Press Sign in with Slack: Slack's page opens in your browser.",
+        "Choose your workspace and press Allow: Friday asks only to search for what mentions you.",
+        "Come back to Friday: messages from the last two weeks that mention you wait in your Inbox, each one yours to keep as a to-do or not.",
+      ],
+      note: "Friday can't post, react or read anything else. Slack has retired reminders for apps, so your /remind reminders can't come in.",
     },
   },
   {

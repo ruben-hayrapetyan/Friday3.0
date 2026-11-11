@@ -40,6 +40,7 @@ from friday.integrations.linear import Linear
 from friday.integrations.microsoft import MicrosoftTodo
 from friday.integrations.notion import Notion
 from friday.integrations.reminders import Reminders, Things, WaitingForMac
+from friday.integrations.slack import Slack
 from friday.integrations.ticktick import TickTick
 from friday.integrations.todoist import Todoist
 from friday.integrations.trello import Trello
@@ -59,6 +60,7 @@ CONNECTORS: dict[str, type] = {
     MicrosoftTodo.kind: MicrosoftTodo,
     GoogleTasks.kind: GoogleTasks,
     TickTick.kind: TickTick,
+    Slack.kind: Slack,
 }
 ARRIVALS = ("inbox_first", "straight", "inbox")
 SERVICE_OWNS = ("title", "due", "notes", "firmness")  # what an edit from the service may change
@@ -212,7 +214,8 @@ def sync_source(
         if straight or (before and arrival != "inbox"):
             for s in rows(conn, "SELECT id FROM suggestions WHERE raw_input_id = ? AND status = 'pending'", [raw_id]):
                 accept_trusted(conn, now_utc, user_id, int(s["id"]), source["name"])
-    done_there(conn, source, {r.external_id for r in remotes}, now_utc, user_id)
+    if connector.caps.gone_is_done:
+        done_there(conn, source, {r.external_id for r in remotes}, now_utc, user_id)
     if first:
         synced = json.dumps(config | {"synced": True})
         conn.execute("UPDATE sources SET config = ? WHERE id = ?", [synced, source["id"]])

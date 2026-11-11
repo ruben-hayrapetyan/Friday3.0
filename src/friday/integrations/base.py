@@ -43,6 +43,7 @@ class Caps:
     kind: str = "Task"  # what a to-do from it is when its title says nothing more (C97): "Task", or "Work task"
     on_mac: bool = False  # read and written by the Mac app (Apple Reminders), not over the internet
     lists: bool = False  # you choose which of its lists are read (Notion's databases); its ids are "<list>/<to-do>"
+    gone_is_done: bool = True  # one no longer there was done there; not for Slack's mentions, which only age out
 
 
 Problem = Literal["token", "access", "rate", "down", "answer"]
