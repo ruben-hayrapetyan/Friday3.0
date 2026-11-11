@@ -20,7 +20,7 @@ export interface Finding {
   n?: number // how many frames it held for
 }
 
-const STEPS = ["hello", "wake", "work", "heavy", "focus", "deadline", "evening", "bed", "weekend", "brief", "ai", "bring", "calendars", "build", "reveal", "start"]
+const STEPS = ["hello", "school", "wake", "work", "heavy", "focus", "deadline", "evening", "bed", "weekend", "brief", "ai", "bring", "calendars", "build", "reveal", "start"]
 const FPS = 30
 const DIRS = [new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, -1)]
 const VARIANTS: [string, Partial<Answers>][] = [
@@ -122,6 +122,8 @@ export class Audit {
   /** Each answer changed where it's asked: what they do then. */
   private answering(a: Answers): void {
     const changes: [string, Partial<Answers>][] = [
+      ["school", { school: false }],
+      ["school", { school: true }],
       ["wake", { wake: "06:30" }],
       ["wake", { wake: "09:00" }],
       ["work", { normal_hours: 10 }],

@@ -624,7 +624,7 @@ function dorm(): Built {
   g.add(cylinder(0.015, 0.015, 0.22, M.metal(0x2a2a2a), 1.72, FLOOR + 0.56, zb + 0.18, 8))
   // the desk under the window, a chair, a mug
   g.add(table(1.4, 0.6, 0.75, M.wood(0xb08a62), -0.6, zb + 0.32))
-  g.add(chair(M.paint(0x2b2b2b, 0.5, true), -0.5, zb + 0.95, Math.PI + 0.3))
+  g.add(chair(M.paint(0x2b2b2b, 0.5, true), -0.5, zb + 1.0, Math.PI)) // square to the desk, to sit on (the school step)
   g.add(cylinder(0.04, 0.04, 0.1, M.paint(0xd9d4c8, 0.3, true), -0.1, FLOOR + 0.75, zb + 0.3, 14))
   g.add(pile(3, 5).translateX(-1.0).translateY(FLOOR + 0.75).translateZ(zb + 0.3))
   // curtains
@@ -640,26 +640,92 @@ function dorm(): Built {
   shelf.position.set(-w / 2 + 0.36, FLOOR, zb + 3.6)
   shelf.rotation.y = Math.PI / 2
   g.add(shelf)
-  g.add(block(0.32, 0.5, 0.22, M.fabric(0x4a5a3a), 2.4, FLOOR, -T - 0.4, 0.06)) // a backpack by the door
+  // Are you in school? (C97; 10 Nov: "this had none", every other step's scene changes with its answer): beside the
+  // desk, a student's things or a working person's, swapped as you answer, the new ones popping into place
+  const student = new THREE.Group()
+  student.add(block(0.34, 0.5, 0.22, M.fabric(0x4a5a3a), -1.55, FLOOR, zb + 0.62, 0.06)) // the backpack
+  student.add(block(0.26, 0.12, 0.04, M.fabric(0x6b7a52), -1.55, FLOOR + 0.18, zb + 0.75, 0.03)) // its pocket
+  student.add(pile(6, 9).translateX(-0.25).translateY(FLOOR + 0.75).translateZ(zb + 0.34)) // textbooks
+  const pennant = picture(0.62, 0.26, (ctx, pw, ph) => {
+    ctx.fillStyle = "#eee6d8" // the wall's own colour round the felt
+    ctx.fillRect(0, 0, pw, ph)
+    ctx.fillStyle = "#b3262c"
+    ctx.beginPath()
+    ctx.moveTo(0, 0)
+    ctx.lineTo(pw, ph / 2)
+    ctx.lineTo(0, ph)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = "#f4ead8"
+    ctx.font = FONT(800, ph * 0.42)
+    ctx.fillText("GO TEAM", pw * 0.05, ph * 0.64)
+  }, null)
+  pennant.position.set(-2.45, FLOOR + 1.5, zb + 0.02) // on the wall above the bag, left of the window
+  student.add(pennant)
+  const worker = new THREE.Group()
+  worker.add(block(0.42, 0.32, 0.12, M.fabric(0x3b2e26), -1.55, FLOOR, zb + 0.62, 0.03)) // the laptop bag
+  worker.add(block(0.4, 0.05, 0.13, M.fabric(0x2c221c), -1.55, FLOOR + 0.27, zb + 0.6, 0.02)) // its flap
+  worker.add(block(0.34, 0.02, 0.24, M.metal(0x9aa0a6), -0.3, FLOOR + 0.75, zb + 0.34, 0.01)) // a closed laptop
+  worker.add(block(0.15, 0.025, 0.21, M.paint(0x2f4a6b, 0.6, true), 0.05, FLOOR + 0.75, zb + 0.3, 0.004)) // a planner
+  const photo = picture(0.34, 0.26, (ctx, pw, ph) => {
+    ctx.fillStyle = "#9cc3e0"
+    ctx.fillRect(0, 0, pw, ph)
+    ctx.fillStyle = "#6d9a5a"
+    ctx.fillRect(0, ph * 0.62, pw, ph * 0.38)
+    ctx.fillStyle = "#f1d36b"
+    ctx.beginPath()
+    ctx.arc(pw * 0.75, ph * 0.28, ph * 0.12, 0, Math.PI * 2)
+    ctx.fill()
+  }, M.wood(0x5a4030))
+  photo.position.set(-2.45, FLOOR + 1.5, zb + 0.02)
+  worker.add(photo)
+  student.userData.live = worker.userData.live = true // not baked into the room: shown, hidden and popped as you answer
+  worker.visible = false
+  g.add(student, worker)
+  let inSchool: boolean | null = null
+  let swappedAt = -10
+  let swapping = false
   sockets.push({ at: V(0, FLOOR + 2.6, zb + 2.6), color: 0xffd7a8, power: 7, range: 8, night: false })
   finish(g, cut, stub)
   let alarmAt = -10
+  // at the desk for "Are you in school?", its own spot: the chair's in front of it, facing the back wall
+  // round the chair's side and in beside it, to sit across onto it, as at the library's table
+  const atDesk = { via: [V(0.55, FLOOR, zb + 2.0), V(0.55, FLOOR, zb + 1.0)], walk: V(0.3, FLOOR, zb + 1.0), at: V(-0.5, FLOOR, zb + 1.0), yaw: Math.PI, front: V(-0.05, FLOOR, zb + 1.0) }
   return {
     group: g,
     cut,
     stub,
     size: { w: w + 2 * T, d: d + 2 * T },
-    // into bed, the alarm, sitting up: at 6:15 they drag themselves up; by 9 they're bright-eyed
-    scene: (_spot, a) => ({ walk: inBed.side, at: inBed.up, yaw: inBed.yawIn, action: "wake", seat: inBed.top, bed: inBed, mood: { energy: clamp01((minutesOf(a.wake) - 375) / 165) }, cam: cam(V(2.2, 0.9, -4.35), [-2.4, 3.7, 6.2]) }),
+    // into bed, the alarm, sitting up: at 6:15 they drag themselves up; by 9 they're bright-eyed. Spot 1: at the desk,
+    // its things for the school question in view
+    scene: (spot, a) => spot === 1
+      ? { ...atDesk, action: "study" as const, cam: cam(V(-0.75, 1.05, zb + 0.6), [1.7, 1.25, 3.1]) }
+      : ({ walk: inBed.side, at: inBed.up, yaw: inBed.yawIn, action: "wake", seat: inBed.top, bed: inBed, mood: { energy: clamp01((minutesOf(a.wake) - 375) / 165) }, cam: cam(V(2.2, 0.9, -4.35), [-2.4, 3.7, 6.2]) }),
     door: { inside: V(-2, 0, -1.0), outside: V(-2, 0, 1.6) },
     sockets,
     clear: [[-w / 2 - T - 0.3, -d - 2 * T - 0.3, w / 2 + T + 0.3, 0.6], [-2.8, 0, -1.2, 2.8]],
     room: [-w / 2, -d - T, w / 2, -T],
-    show: (a) => clock.set(minutesOf(a.wake)),
+    show: (a) => {
+      clock.set(minutesOf(a.wake))
+      const now = a.school !== false
+      if (inSchool !== null && now !== inSchool) swapping = true // the tick pops them in
+      inSchool = now
+      student.visible = now
+      worker.visible = !now
+    },
     cue: (name, seconds) => {
       if (name === "alarm") alarmAt = seconds
     },
     tick: (seconds) => {
+      if (swapping) {
+        swappedAt = seconds
+        swapping = false
+      }
+      // the things just swapped in grow into place, overshooting a little
+      const t = Math.min(1, (seconds - swappedAt) / 0.45)
+      const pop = t >= 1 ? 1 : 0.4 + 0.6 * (1 + 0.35 * Math.sin(t * Math.PI)) * t
+      const shown = inSchool === false ? worker : student
+      shown.scale.setScalar(pop)
       // the alarm going off: the clock buzzing on the nightstand for a moment
       const ringing = seconds - alarmAt < 1.6
       clock.group.rotation.z = ringing ? Math.sin(seconds * 60) * 0.05 : 0
