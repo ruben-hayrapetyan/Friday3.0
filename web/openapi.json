@@ -32343,6 +32343,27 @@
       "title": "Demo",
       "default": false
      },
+     "server_pid": {
+      "type": "integer",
+      "title": "Server Pid",
+      "default": 0
+     },
+     "server_build": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Server Build"
+     },
+     "server_orphan": {
+      "type": "boolean",
+      "title": "Server Orphan",
+      "default": false
+     },
      "generation": {
       "type": "integer",
       "title": "Generation"

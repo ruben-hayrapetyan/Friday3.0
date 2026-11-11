@@ -611,5 +611,15 @@ test("Friday's links: add a to-do, open a page or a new box; anything else is ig
     check(link("friday://delete?all=1") == nil, "anything else: ignored")
 }
 
+test("a server left over from another build is stopped; this build's, a hand-started one or a live app's is used") {
+    let theirs: [String: Any] = ["server_build": "old", "server_orphan": true, "server_pid": 4242]
+    check(Server.leftover(theirs, mine: "new") == 4242, "another build's, its app gone: stopped")
+    check(Server.leftover(theirs, mine: "old") == nil, "this build's own: used")
+    check(Server.leftover(theirs.merging(["server_orphan": false]) { $1 }, mine: "new") == nil, "its app still open: used")
+    check(Server.leftover(["server_orphan": true, "server_pid": 4242], mine: "new") == nil, "started by hand: used")
+    check(Server.leftover(theirs, mine: nil) == nil, "a build without a stamp stops nothing")
+    check(Server.leftover(theirs.merging(["server_pid": 1]) { $1 }, mine: "new") == nil, "never launchd")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

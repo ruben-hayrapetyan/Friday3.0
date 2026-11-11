@@ -125,6 +125,11 @@ class DecisionOption(Model):
 
 class StatusOut(Model):
     demo: bool = False  # `fridayd demo`: made-up sample data, said on every page
+    # this server's process, the Mac app build that started it (none: started by hand) and whether that app is gone,
+    # so a Mac app finding a server left over from another build stops it instead of using it (10 Nov)
+    server_pid: int = 0
+    server_build: str | None = None
+    server_orphan: bool = False
     generation: int
     plan_id: int | None
     plan_generation: int | None

@@ -10087,6 +10087,18 @@ export interface components {
              * @default false
              */
             demo?: boolean;
+            /**
+             * Server Pid
+             * @default 0
+             */
+            server_pid?: number;
+            /** Server Build */
+            server_build?: string | null;
+            /**
+             * Server Orphan
+             * @default false
+             */
+            server_orphan?: boolean;
             /** Generation */
             generation: number;
             /** Plan Id */
