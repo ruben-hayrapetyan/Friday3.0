@@ -32,6 +32,7 @@ from friday.core.time import format_local, format_utc, parse_utc, zone
 from friday.ingest.ics import Found, Proposed
 from friday.integrations.asana import Asana
 from friday.integrations.base import Connector, ConnectorError, Remote, Transport
+from friday.integrations.canvas import Canvas
 from friday.integrations.github import GitHub
 from friday.integrations.jira import Jira
 from friday.integrations.linear import Linear
@@ -50,6 +51,7 @@ CONNECTORS: dict[str, type] = {
     Linear.kind: Linear,
     Jira.kind: Jira,
     GitHub.kind: GitHub,
+    Canvas.kind: Canvas,
 }
 ARRIVALS = ("inbox_first", "straight", "inbox")
 SERVICE_OWNS = ("title", "due", "notes", "firmness")  # what an edit from the service may change
@@ -179,6 +181,8 @@ def sync_source(
         "UPDATE sources SET last_error = NULL, failures = 0, last_sync_utc = ? WHERE id = ?",
         [format_utc(now_utc), source["id"]],
     )
+    if hasattr(connector, "adopt"):  # what another source already brought (the Canvas feed's assignments)
+        connector.adopt(conn, source)
     first = not config.get("synced")
     arrival = config.get("arrival", "inbox_first")
     straight = arrival == "straight" or (arrival == "inbox_first" and not first)

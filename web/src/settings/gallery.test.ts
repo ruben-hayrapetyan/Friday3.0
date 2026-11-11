@@ -61,6 +61,13 @@ describe("the integrations gallery's catalog", () => {
     expect(github.token!.note).toContain("only reads")
     expect(names(search(CATALOG, "pull requests"))).toEqual(["GitHub"])
   })
+  it("has the Canvas API under School, asking your school's address and saying what happens to the feed (C107)", () => {
+    const canvas = CATALOG.find((e) => e.id === "canvas")!
+    expect(canvas.category).toBe("School")
+    expect(canvas.token!.fields!.map((f) => f.key)).toEqual(["site"])
+    expect(canvas.token!.note).toContain("calendar feed keeps bringing only its events")
+    expect(names(search(CATALOG, "instructure"))).toEqual(["Canvas"])
+  })
   it("has Apple Reminders as a to-do app with no token, said step by step (C100)", () => {
     const reminders = CATALOG.find((e) => e.id === "reminders")!
     expect(reminders.category).toBe("To-do apps")

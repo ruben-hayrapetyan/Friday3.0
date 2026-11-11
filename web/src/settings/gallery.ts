@@ -24,7 +24,8 @@ export interface Entry {
   icon: string // a Phosphor icon; services' own logos aren't ours to use
   hue: string // its tile's colour
   // connected by pasting a token (integrations/*); `page` "" when the server knows it (Trello's carries Friday's key)
-  token?: { page: string; label: string; steps: string[]; note?: string; fields?: TokenField[] }
+  // `pageText`: the link's words when the page is help rather than the token page itself (Canvas's is your school's)
+  token?: { page: string; label: string; steps: string[]; note?: string; fields?: TokenField[]; pageText?: string }
   link?: { help: string; steps: string[]; reads: string } // connected by the calendar link it publishes (C96)
   viaMac?: { help: string; steps: string[] } // reaches Friday through the Mac's calendars (no link of its own)
   mail?: { provider: "icloud" | "yahoo" | "fastmail" | "other"; help?: string; steps: string[] } // by app password (C99)
@@ -348,6 +349,27 @@ export const CATALOG: Entry[] = [
         "macOS asks once whether Friday may see your reminders. Press Allow.",
         "Your open reminders, from every list, come to your Inbox to review together.",
       ],
+    },
+  },
+  {
+    id: "canvas",
+    name: "Canvas",
+    category: "School",
+    line: "Assignments and quizzes with exact times; done ticks Canvas's To Do",
+    aliases: ["canvas api", "instructure", "lms", "assignments", "homework", "quizzes", "school"],
+    icon: "student",
+    hue: "#d9534f",
+    token: {
+      page: "https://community.canvaslms.com/t5/Student-Guide/How-do-I-manage-API-access-tokens-as-a-student/ta-p/273",
+      pageText: "Canvas's own help on this",
+      label: "Canvas access token",
+      steps: [
+        "In Canvas, open Account → Settings.",
+        "Under Approved Integrations press New Access Token, write Friday as its purpose, and press Generate Token.",
+        "Copy the token (Canvas shows it only once), paste it here with your school's Canvas address, and press Connect.",
+      ],
+      fields: [{ key: "site", label: "Your school's Canvas address", placeholder: "canvas.yourschool.edu" }],
+      note: "If there's no New Access Token button, your school has turned tokens off: use your Canvas calendar feed under Calendar links instead. Once connected, Canvas's assignments come from here, and your Canvas calendar feed keeps bringing only its events. Finishing one in Friday ticks it in Canvas's To Do, which only you see; nothing is submitted.",
     },
   },
   ...LINKS,

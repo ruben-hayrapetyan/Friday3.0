@@ -23,6 +23,7 @@ from friday.core.settings import minutes_of
 from friday.core.time import format_utc, parse_utc, planning_date
 from friday.ingest import extract, ics, llm
 from friday.ingest.ics import Found
+from friday.integrations import canvas
 from friday.planner.store import area_names, kv_get, kv_set, load_settings
 from friday.sync import gcal, google_auth, imap_any, imap_mail
 
@@ -319,7 +320,11 @@ def read_feed(
         read = event_reading(
             settings, config.get("kind"), False, config.get("due_pattern"), config.get("class_pattern")
         )
-        return ics.parse_feed(fetch(config["url"]), settings["time"].timezone, read)
+        found = ics.parse_feed(fetch(config["url"]), settings["time"].timezone, read)
+        if canvas.takes_over(conn, source):  # C107: the Canvas API brings its assignments; the feed, its events
+            canvas.let_go(conn, source)
+            found = [f for f in found if not f.external_id.startswith("event-assignment-")]
+        return found
 
     return take(conn, source, read, settings, now_utc, user_id, None, client)
 

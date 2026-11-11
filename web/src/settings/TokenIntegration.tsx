@@ -108,7 +108,7 @@ function ConnectForm({ entry }: { entry: Entry }) {
         <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>{entry.name} isn't ready in this copy of Friday yet: it comes with the next update.</span>
       ) : (
         <a className="fr-link" href={page ?? undefined} target="_blank" rel="noreferrer" style={{ fontSize: 12, alignSelf: "flex-start" }}>
-          {token_.page ? `Open ${entry.name}'s token page` : `Open ${entry.name}'s Allow page`}
+          {token_.pageText ?? (token_.page ? `Open ${entry.name}'s token page` : `Open ${entry.name}'s Allow page`)}
         </a>
       )}
       {(token_.fields ?? []).map((f) => (
