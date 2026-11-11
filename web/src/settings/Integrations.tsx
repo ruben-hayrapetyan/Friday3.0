@@ -25,6 +25,7 @@ import { AiConnect, useAi } from "./AiConnect"
 import { SectionHead } from "./SettingsPage"
 import { CATALOG, type Entry, grouped, search } from "./gallery"
 import { LinkIntegration, ViaMac } from "./LinkIntegration"
+import { MailIntegration, useMailAccounts } from "./MailIntegration"
 import { TokenIntegration, useIntegrations } from "./TokenIntegration"
 
 export function Integrations() {
@@ -94,6 +95,7 @@ function useStatuses(): (e: Entry) => Status {
   const sources = (useInbox().data?.sources ?? []) as { kind: string; enabled: boolean; last_error: string | null; service?: string | null }[]
   const ai = useAi()
   const integrations = useIntegrations().data ?? []
+  const mailboxes = useMailAccounts().data ?? []
   const ok = "var(--color-accent-300)"
   const warn = "var(--fr-warn)"
   // `service`: only the links added from that box; null, only plain ones (the Calendar links box)
@@ -106,6 +108,10 @@ function useStatuses(): (e: Entry) => Status {
     if (e.id === "mac-calendars") return mac.some((c) => c.on) ? [`Reading ${mac.filter((c) => c.on).length}`, ok, true] : null
     if (e.id === "calendar-links") return of("ics", null)
     if (e.link) return of("ics", e.id)
+    if (e.mail) {
+      const mine = mailboxes.filter((a) => a.provider === e.mail!.provider)
+      return mine.length ? [mine.length > 1 ? `${mine.length} connected` : "Connected", ok, true] : null
+    }
     if (e.id === "google") return of("gcal")
     if (e.id === "gmail") return of("gmail")
     if (e.id === "ai") return ai.ready ? ["Ready", ok, true] : ["Not set up", warn, false]
@@ -188,6 +194,7 @@ function Panel({ entry, status, onClose, onOpen }: { entry: Entry; status: Statu
 function PanelBody({ entry, onOpen }: { entry: Entry; onOpen: (id: string) => void }) {
   if (entry.token) return <TokenIntegration entry={entry} />
   if (entry.link) return <LinkIntegration entry={entry} />
+  if (entry.mail) return <MailIntegration entry={entry} />
   if (entry.viaMac) return <ViaMac entry={entry} onOpen={onOpen} />
   switch (entry.id) {
     case "mac-calendars":

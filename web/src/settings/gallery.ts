@@ -18,7 +18,49 @@ export interface Entry {
   token?: { page: string; label: string; steps: string[] } // connected by pasting a token (integrations/*)
   link?: { help: string; steps: string[]; reads: string } // connected by the calendar link it publishes (C96)
   viaMac?: { help: string; steps: string[] } // reaches Friday through the Mac's calendars (no link of its own)
+  mail?: { provider: "icloud" | "yahoo" | "fastmail" | "other"; help?: string; steps: string[] } // by app password (C99)
 }
+
+// Mail beyond Gmail by app password (C99; servers and steps from each provider's help, 10 Nov). Outlook.com isn't
+// here: Microsoft no longer lets an app password read its mail, so it comes with Microsoft's own sign-in.
+const MAIL: Entry[] = [
+  {
+    id: "icloud-mail", name: "iCloud Mail", category: "Mail", icon: "cloud", hue: "#3a8ee6",
+    line: "New mail read for deadlines and events, into your Inbox", aliases: ["apple", "me.com", "mac.com", "email"],
+    mail: { provider: "icloud", help: "https://support.apple.com/en-us/102525", steps: [
+      "Sign in at account.apple.com → Sign-In and Security → App-Specific Passwords (two-factor authentication must be on).",
+      "Make one called Friday and copy it.",
+      "Type your full iCloud address and paste the password here.",
+    ] },
+  },
+  {
+    id: "yahoo-mail", name: "Yahoo Mail", category: "Mail", icon: "envelope-open", hue: "#6b2fd0",
+    line: "New mail read for deadlines and events, into your Inbox", aliases: ["yahoo", "aol", "email"],
+    mail: { provider: "yahoo", help: "https://help.yahoo.com/kb/SLN15241.html", steps: [
+      "Open Yahoo's Account Security page and choose Generate app password.",
+      "Name it Friday and copy the password Yahoo shows (it's shown once).",
+      "Type your full Yahoo address and paste the password here.",
+    ] },
+  },
+  {
+    id: "fastmail", name: "Fastmail", category: "Mail", icon: "envelope-simple-open", hue: "#2b5d9e",
+    line: "New mail read for deadlines and events, into your Inbox", aliases: ["email"],
+    mail: { provider: "fastmail", help: "https://www.fastmail.help/hc/en-us/articles/1500000279961-Setting-up-K-9-Mail", steps: [
+      "In Fastmail, open Settings → Privacy & Security → App passwords and make a new one for mail (not on the Basic plan).",
+      "Copy it.",
+      "Type your full address and paste the password here.",
+    ] },
+  },
+  {
+    id: "other-mail", name: "Other mail (IMAP)", category: "Mail", icon: "at", hue: "#6e7a8c",
+    line: "Any mail server that speaks IMAP: your school's, your own domain's", aliases: ["imap", "email", "school mail", "work mail"],
+    mail: { provider: "other", steps: [
+      "Find your provider's IMAP server name in its help (like imap.example.com; it must use SSL, port 993).",
+      "Make an app password there if it has them; otherwise your password.",
+      "Type the server, your address and the password here.",
+    ] },
+  },
+]
 
 // The steps are each service's own, from its help pages (10 Nov); menu names vary a little between schools.
 const SCHOOL_READS = "Its due dates come to your Inbox, as a Canvas feed's do: assignments and exams by their words."
@@ -163,6 +205,7 @@ export const CATALOG: Entry[] = [
     },
   },
   ...LINKS,
+  ...MAIL,
   {
     id: "syllabus",
     name: "Syllabus upload",

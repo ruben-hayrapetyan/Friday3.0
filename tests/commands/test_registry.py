@@ -620,6 +620,8 @@ def test_unlogged_commands_are_only_those_with_no_undo_or_a_secret_result() -> N
         "ai_key_set",  # a secret: never logged
         "gmail_app_set",  # an app password: never logged
         "integration_connect",  # a service's token: never logged (C96)
+        "mail_app_set",  # a mailbox's app password: never logged (C99)
+        "mail_app_forget",
         "local_model_use",  # a download or a removal on this Mac: nothing Friday can take back
         "local_model_cancel",
         "tour_offered",  # the app's own flag, nothing of yours

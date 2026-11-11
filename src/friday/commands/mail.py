@@ -24,17 +24,26 @@ from friday.sync import gmail
 from friday.sync.google_auth import LEGACY
 
 SOURCE = "Gmail"
+MAIL_KINDS = ("gmail", "mail")  # Gmail's sources, and other mailboxes' by app password (C99): all of it your mail
 OLDER = "A newer message in its thread was read instead (it quotes this one)"
 ELSEWHERE = "The same message came to another of your Google accounts and was seen there"
 WITH_PDFS = "To be read on the next reading of your mail, with its PDFs"
 
 
 def read_mail(
-    conn: sqlite3.Connection, settings: dict, now_utc: int, user_id: int, api: Callable[[], Any], account: str
+    conn: sqlite3.Connection,
+    settings: dict,
+    now_utc: int,
+    user_id: int,
+    api: Callable[[], Any],
+    account: str,
+    kind: str = "gmail",
+    label: str = SOURCE,
 ) -> int:
-    """Store an account's new messages; returns how many will be read by the AI. Gmail being down (or the sign-in
-    expired) shows on the account's source, and the other accounts go on."""
-    source = mail_source(conn, user_id, account)
+    """Store an account's new messages; returns how many will be read by the AI. Its mail being down (or the sign-in
+    expired) shows on the account's source, and the other accounts go on. `kind` and `label`: Gmail's, or another
+    mailbox read by app password ("mail", "iCloud Mail": sync/imap_any.py, C99)."""
+    source = mail_source(conn, user_id, account, kind, label)
     if not source["enabled"]:
         return 0
     try:
@@ -42,7 +51,7 @@ def read_mail(
     except Exception as error:
         conn.execute(
             "UPDATE sources SET last_error = ?, failures = failures + 1, last_sync_utc = ? WHERE id = ?",
-            [kept(error, "Gmail"), format_utc(now_utc), source["id"]],
+            [kept(error, label), format_utc(now_utc), source["id"]],
         )
         return 0
     conn.execute(
@@ -52,21 +61,23 @@ def read_mail(
     return passed
 
 
-def mail_source(conn: sqlite3.Connection, user_id: int, account: str) -> dict[str, Any]:
+def mail_source(
+    conn: sqlite3.Connection, user_id: int, account: str, kind: str = "gmail", label: str = SOURCE
+) -> dict[str, Any]:
     """An account's Gmail source, made the first time its mail is read: "Gmail" while it's the only one, else named
     with its address. The one kept from before Friday kept several accounts (no account in it) goes to the first
     account read; one put away when its account was removed comes back with it."""
-    mine = rows(conn, "SELECT * FROM sources WHERE user_id = ? AND kind = 'gmail' ORDER BY id", [user_id])
+    mine = rows(conn, "SELECT * FROM sources WHERE user_id = ? AND kind = ? ORDER BY id", [user_id, kind])
     found = next((s for s in mine if json.loads(s["config"]).get("account", LEGACY) == account), None)
     if found is None and account != LEGACY:
         found = next((s for s in mine if not json.loads(s["config"]).get("account")), None)
     if found is None:
-        name = SOURCE if all(s["name"] != SOURCE for s in mine) else f"{SOURCE} ({account or 'another account'})"
+        name = label if all(s["name"] != label for s in mine) else f"{label} ({account or 'another account'})"
         config = json.dumps({"account": account} if account else {})
         conn.execute(
-            "INSERT INTO sources (user_id, kind, name, config) VALUES (?, 'gmail', ?, ?)", [user_id, name, config]
+            "INSERT INTO sources (user_id, kind, name, config) VALUES (?, ?, ?, ?)", [user_id, kind, name, config]
         )
-        return mail_source(conn, user_id, account)
+        return mail_source(conn, user_id, account, kind, label)
     config = json.loads(found["config"])
     back = config.pop("account_removed", False)
     claimed = config | ({"account": account} if account else {})
@@ -156,8 +167,8 @@ def elsewhere(conn: sqlite3.Connection, user_id: int, source_id: int, text: str)
     digest = hashlib.sha256(text.encode()).hexdigest()
     found = one(
         conn,
-        "SELECT 1 FROM raw_inputs r JOIN sources s ON s.id = r.source_id WHERE s.user_id = ? AND s.kind = 'gmail' "
-        "AND r.source_id != ? AND r.content_hash = ? LIMIT 1",
+        "SELECT 1 FROM raw_inputs r JOIN sources s ON s.id = r.source_id WHERE s.user_id = ? "
+        "AND s.kind IN ('gmail', 'mail') AND r.source_id != ? AND r.content_hash = ? LIMIT 1",
         [user_id, source_id, digest],
     )
     return ELSEWHERE if found else None
@@ -227,7 +238,8 @@ def mail_log(ctx: Ctx, inp: MailLogInput) -> list[MailOut]:
     found = rows(
         ctx.conn,
         "SELECT r.*, (SELECT COUNT(*) FROM suggestions s WHERE s.raw_input_id = r.id) AS found FROM raw_inputs r "
-        "JOIN sources o ON o.id = r.source_id WHERE r.user_id = ? AND o.kind = 'gmail' ORDER BY r.id DESC LIMIT ?",
+        "JOIN sources o ON o.id = r.source_id WHERE r.user_id = ? AND o.kind IN ('gmail', 'mail') "
+        "ORDER BY r.id DESC LIMIT ?",
         [ctx.user_id, inp.limit],
     )
     return [
@@ -250,7 +262,7 @@ def mail_retry(ctx: Ctx, inp: ItemRef) -> Changed:
     found in it (30 Oct: an invitation read as marketing)."""
     found = ctx.db.fetch("raw_inputs", {"id": inp.id})
     source = ctx.db.fetch("sources", {"id": found["source_id"]}) if found else None
-    if source is None or source["kind"] != "gmail":
+    if source is None or source["kind"] not in MAIL_KINDS:
         raise FieldError("id", "only a message from your mail can be read again")
     nothing = (
         found is not None

@@ -170,7 +170,7 @@ YOURS_ONLY = frozenset({
     "token_add", "token_remove", "phone_set", "phone_pair", "phone_forget", "ai_key_set", "ai_check", "ai_models",
     "gmail_app_set", "google_connect", "google_connect_cancel", "google_remove", "google_client_save",
     "local_model_use", "local_model_cancel", "update_start", "update_stop", "import_personal", "terms_accept",
-    "integration_connect", "integration_disconnect",
+    "integration_connect", "integration_disconnect", "mail_app_set", "mail_app_forget",
 })  # fmt: skip
 YOURS_ONLY_SETTINGS = frozenset({"phone", "llm", "webhooks", "google", "gcal", "gmail", "server", "updates", "notify"})
 

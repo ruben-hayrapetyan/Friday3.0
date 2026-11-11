@@ -90,3 +90,19 @@ describe("the boxes for services connected by their calendar link (C96)", () => 
     expect(names(search(CATALOG, "roster"))).toEqual(["Deputy"])
   })
 })
+
+describe("the boxes for mail by app password (C99)", () => {
+  const mail = CATALOG.filter((e) => e.mail)
+  it("are iCloud, Yahoo, Fastmail and other IMAP, under Mail, each with its steps", () => {
+    expect(mail.map((e) => e.mail!.provider).sort()).toEqual(["fastmail", "icloud", "other", "yahoo"])
+    expect(mail.every((e) => e.category === "Mail" && e.mail!.steps.length >= 3)).toBe(true)
+    expect(mail.filter((e) => e.mail!.help).every((e) => e.mail!.help!.startsWith("https://"))).toBe(true)
+  })
+  it("leave Outlook out: Microsoft refuses app passwords for its mail", () => {
+    expect(names(search(CATALOG, "outlook")).some((n) => /Outlook/.test(n))).toBe(false)
+  })
+  it("are found by the names people use", () => {
+    expect(names(search(CATALOG, "me.com"))).toEqual(["iCloud Mail"])
+    expect(names(search(CATALOG, "imap"))).toContain("Other mail (IMAP)")
+  })
+})

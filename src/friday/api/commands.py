@@ -1065,3 +1065,22 @@ class Connected(Model):
 class ConnectOutput(Model):
     message: str
     source: Connected
+
+
+class MailAppInput(Model):
+    """A mailbox read by app password (C99): iCloud Mail, Yahoo, Fastmail, or another IMAP server (`host`)."""
+
+    provider: Literal["icloud", "yahoo", "fastmail", "other"]
+    address: str
+    password: str  # never logged; kept only in secrets.toml
+    host: str | None = None  # Other mail's IMAP server
+
+
+class MailAppForgetInput(Model):
+    address: str
+
+
+class MailAppAccount(Model):
+    provider: str
+    name: str  # "iCloud Mail"
+    address: str
