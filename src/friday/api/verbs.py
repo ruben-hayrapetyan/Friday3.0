@@ -429,6 +429,14 @@ VERBS = {
         False,
         "The last few weeks: things finished, hours worked, estimates against actual time by kind, and when you work.",
     ),
+    "integration_connect": Verb(
+        "POST", "/api/c/integration_connect", commands.ConnectInput, True, False, "integration_connect"
+    ),
+    "integration_disconnect": Verb(
+        "POST", "/api/c/integration_disconnect", commands.DisconnectInput, True, True, "integration_disconnect"
+    ),
+    "integration_set": Verb("POST", "/api/c/integration_set", commands.ArrivalInput, True, False, "integration_set"),
+    "integrations": Verb("GET", "/api/q/integrations", commands.Empty, False, False, "Integrations connected now."),
     "item": Verb(
         "GET", "/api/q/item", commands.ItemRef, False, False, "One item with its blocks, progress and dependencies."
     ),

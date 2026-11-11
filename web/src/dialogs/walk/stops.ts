@@ -26,6 +26,7 @@ export function minutesOf(hhmm: string): number {
 
 export const STOPS: Record<string, Stop> = {
   hello: { place: "start", spot: 0, title: "Friday", day: "Monday", at: () => 6 * 60 + 40 },
+  school: { place: "dorm", spot: 0, title: "Your room", day: "Monday", at: (a) => minutesOf(a.wake) },
   wake: { place: "dorm", spot: 0, title: "Your room", day: "Monday", at: (a) => minutesOf(a.wake) },
   work: { place: "library", spot: 0, title: "The library", day: "Monday", at: () => 13 * 60 },
   heavy: { place: "library", spot: 1, title: "The library", day: "Thursday", at: () => 13 * 60 + 20 },

@@ -19,7 +19,7 @@ const ANSWERS: Answers = {
 
 describe("setup", () => {
   it("asks along the walk: a Monday from getting up to bed, Saturday, a morning, the AI and your things, then the week", () => {
-    expect(storyFor(ANSWERS)).toEqual(["hello", "wake", "work", "heavy", "focus", "deadline", "evening", "bed", "weekend", "brief", "ai", "bring", "reveal", "start"])
+    expect(storyFor(ANSWERS)).toEqual(["hello", "school", "wake", "work", "heavy", "focus", "deadline", "evening", "bed", "weekend", "brief", "ai", "bring", "reveal", "start"])
   })
 
   it("says where and when each question is asked on the walk", () => {
@@ -87,10 +87,12 @@ describe("setup", () => {
       ["Evenings free", "2h from 6pm"],
       ["Weekends free", "4h a day"],
       ["Morning brief", "yes"],
+      ["In school", "yes"], // C97: asked first, after hello
     ])
-    expect(new Set(badges.map((b) => b.step))).toEqual(new Set(["wake", "bed", "work", "focus", "deadline", "evening", "weekend", "brief"]))
+    expect(new Set(badges.map((b) => b.step))).toEqual(new Set(["wake", "bed", "work", "focus", "deadline", "evening", "weekend", "brief", "school"]))
     const plain = badgesOf({ ...ANSWERS, evening_free: 0, weekend_free: 13, most_hours: 8, finish_early_days: 0, brief: false }).map((b) => b.value)
-    expect(plain).toEqual(["7:30am", "11:30pm", "8h", "3h", "on the day", "none", "all day", "no"])
+    expect(plain).toEqual(["7:30am", "11:30pm", "8h", "3h", "on the day", "none", "all day", "no", "yes"])
+    expect(badgesOf({ ...ANSWERS, school: false }).at(-1)?.value).toBe("no")
     expect([hoursWords(1), hoursWords(1.5), hoursWords(0.75)]).toEqual(["an hour", "1.5 hours", "45 minutes"])
   })
 

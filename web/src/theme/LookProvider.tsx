@@ -77,6 +77,8 @@ export const KIND_PAINT: Record<string, string> = {
   ...Object.fromEntries(SCHOOLWORK.map((kind) => [kind, "green"])),
   Routine: "yellow",
   Errand: "manganese",
+  Task: "manganese", // a personal to-do, as an errand is (C97)
+  "Work task": "blue", // C97, your choice (b): an event paint, moved off any your events wear, as habits' is
   "Side project": "violet",
   Habit: "purple",
   Maybe: "graphite",
@@ -85,7 +87,7 @@ export const KIND_PAINT: Record<string, string> = {
 const SPARE_PAINTS = ["violet", "graphite", "purple", "pink", "orange", "blue", "sapgreen"]
 // The kinds whose paint gives way; schoolwork's green and meals' yellow are yours (COMBINED.md colours) and stay, and
 // errands' is one no event wears.
-const MOVABLE = ["Side project", "Habit", "Maybe"]
+const MOVABLE = ["Side project", "Habit", "Maybe", "Work task"]
 
 /** Each kind's paint, moved off paints your events wear (`taken`: their categories' and calendars' pigments) where a
  * spare one is left: "Professional meetings" in Ultramarine sends habits to another paint. Two kinds never share

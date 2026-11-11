@@ -523,6 +523,7 @@ class SetupInput(Model):
     weekend_free: float = Field(ge=0, le=13)  # hours kept free each weekend day; 0: the rule off
     finish_early_days: int = Field(ge=0, le=7)  # 0: the rule off
     brief: bool
+    school: bool = True  # in school (C97): school kinds shown and guessed; off, Tasks and Work tasks instead
     calendars: list[SetupCalendar] = []
 
 
@@ -1027,3 +1028,39 @@ class ItemIds(Model):
 class ReviewedInput(Model):
     ids: list[int]
     keep: bool = True  # False takes them off your list (your calendar keeps its event)
+
+
+# Integrations (C96: Todoist and the others; commands/integrations.py)
+Arrival = Literal["inbox_first", "straight", "inbox"]
+
+
+class ConnectInput(Model):
+    kind: str
+    token: str
+
+
+class ArrivalInput(Model):
+    id: int
+    arrival: Arrival
+
+
+class DisconnectInput(Model):
+    id: int
+    keep: bool  # what it brought in stays in Friday, or is dropped from it (nothing changes in the service)
+
+
+class Connected(Model):
+    id: int
+    kind: str
+    name: str
+    arrival: Arrival
+    two_way: bool
+    last_sync: str | None
+    last_error: str | None
+    made: int  # open to-dos it brought in
+    waiting: int = 0  # its to-dos waiting in your Inbox to be accepted
+
+
+class ConnectOutput(Model):
+    message: str
+    source: Connected

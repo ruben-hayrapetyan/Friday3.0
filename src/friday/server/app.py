@@ -46,6 +46,7 @@ from friday.commands.registry import Spec, run
 from friday.commands.tokens import agent
 from friday.core.db import connect
 from friday.core.items import FieldError
+from friday.integrations import sync as integrations
 from friday.notify import webhooks
 from friday.planner.store import generation, load_settings
 from friday.server import mcp
@@ -70,6 +71,7 @@ class Services:
         self.hub = Hub()
         self.supervisor: Supervisor | None = None
         self.jobs: JobLoop | None = None
+        self.sender: integrations.Sender | None = None
         self.placer = Placer(db_path, self.hub, clock, plugin_dir)
         self.placing = False  # the placer's thread is running: a change answers before its quick placement
 
@@ -93,12 +95,15 @@ class Services:
             self.supervisor.request(0, reason="start")  # also loads the kernel, so the next plan is quick
             self.jobs = JobLoop(self.db_path, self.hub, self.supervisor, self.clock)
             self.jobs.start()
+            self.sender = integrations.Sender(self.db_path, self.clock)  # done goes back to its app at once (C97)
+            self.sender.start()
 
     def stop(self) -> None:
         """The placer, the job loop and the solver stop side by side: one after another, each waiting on its own
         process, made quitting the Mac app take a second (28 Oct)."""
         self.hub.close()
-        parts = [part for part in (self.placer if self.placing else None, self.jobs, self.supervisor) if part]
+        parts = [part for part in (self.placer if self.placing else None, self.jobs, self.supervisor, self.sender)
+                 if part]  # fmt: skip
         stopping = [threading.Thread(target=part.stop, name=f"stop-{type(part).__name__}") for part in parts]
         for thread in stopping:
             thread.start()

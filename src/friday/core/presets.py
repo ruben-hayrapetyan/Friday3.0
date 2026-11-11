@@ -31,7 +31,16 @@ class Preset(BaseModel):
     pacing: Literal["linear", "front", "back", "none"] = "none"
 
 
+# School kinds (C97): a student's; out of school (Setup asks) they are hidden and never guessed.
+SCHOOL_KINDS = frozenset({"Assignment", "Reading", "Exam prep", "Class", "Exam"})
+
 DEFAULT_PRESETS = {
+    # A to-do whose title says nothing more (C97): "Book dentist", "Call the landlord". Short, in one go; your timer
+    # teaches Friday the real length, and the app it came from gives its own when it has one.
+    "Task": Preset(when="window", amount="fixed", duration_units=2, shape="one_sitting", firmness="hard"),
+    # From a work tracker (Asana, Jira, Linear, GitHub, Trello, Notion): an hour, in sittings, its due a deadline.
+    "Work task": Preset(when="window", amount="fixed", duration_units=4, shape="split", min_chunk_units=2,
+                        chunk_cost=0.1, firmness="hard", energy="deep"),
     "Assignment": Preset(when="window", amount="fixed", duration_units=8, shape="split", min_chunk_units=2,
                          chunk_cost=0.1, firmness="hard", energy="deep", importance=3),
     "Project": Preset(when="window", amount="fixed", duration_units=40, shape="split", min_chunk_units=4,
@@ -61,3 +70,8 @@ DEFAULT_PRESETS = {
     "Maybe": Preset(when="window", amount="fixed", duration_units=4, shape="one_sitting", firmness="none",
                     certainty="tentative"),
 }  # fmt: skip
+
+
+def in_use(presets: dict[str, Preset], school: bool) -> dict[str, Preset]:
+    """The kinds Friday may guess and offer you: all yours, or, out of school, all but the school ones (C97)."""
+    return presets if school else {k: v for k, v in presets.items() if k not in SCHOOL_KINDS}

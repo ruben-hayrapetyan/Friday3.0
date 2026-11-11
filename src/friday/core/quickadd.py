@@ -19,7 +19,7 @@ from friday.core.dates import (
     read_moment,
     time_start,
 )
-from friday.core.guess import guess_preset
+from friday.core.guess import fallback_kind, guess_preset
 from friday.core.recurrence import RRULE_DAYS, read_repeat
 from friday.core.textnorm import plain_words
 from friday.core.time import UNIT_MIN, format_local, local_midnight
@@ -530,7 +530,7 @@ class Parser:
         due = "due_local" in self.fields and not self.bare_day
         if due and "rrule" in self.fields and guess_preset(self.fields["title"], SCHOOLWORK) is None:
             return "Errand"  # "groceries every week due sunday"; "problem set every week due fri" is schoolwork
-        return "Assignment" if due else "Errand"
+        return fallback_kind(self.fields["title"], due, set(self.presets) or SCHOOLWORK | {"Errand"})  # C97
 
     def set_amount(self) -> None:
         length = self.fields.pop("length_min", None)

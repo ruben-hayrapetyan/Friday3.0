@@ -23,22 +23,14 @@ import { ConnectGoogle, GmailConnect, GmailSwitch, googleWay, offline, readable,
 import { MailLog } from "./MailLog"
 import { AiConnect, useAi } from "./AiConnect"
 import { SectionHead } from "./SettingsPage"
+import { CATALOG, type Entry, grouped, search } from "./gallery"
+import { TokenIntegration, useIntegrations } from "./TokenIntegration"
 
 export function Integrations() {
   return (
     <>
-      <SectionHead title="Integrations" note="Bring in fixed events and deadlines. Anything Friday reads from mail or files goes to your Inbox first." />
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <MacCalendars />
-        <GmailApp />
-        <Ai />
-        <AskClaude />
-        <Feeds />
-        <Card icon="file-pdf" title="Syllabus upload" note="One syllabus (a PDF, or a page saved from Canvas or a course site) becomes class times, readings, assignments and exam prep, reviewed together in your Inbox." right={<Upload />}>
-          <Documents />
-        </Card>
-        <GoogleDirect />
-      </div>
+      <SectionHead title="Integrations" note="Bring in your calendars, to-dos, deadlines and mail. Search, or open any box to connect it." />
+      <Gallery />
       <div className="fr-well" style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 12, padding: "14px 18px", borderRadius: "var(--radius-lg)", boxShadow: "none" }}>
         <Icon name="download-simple" size={18} />
         <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
@@ -55,6 +47,164 @@ export function Integrations() {
       </p>
     </>
   )
+}
+
+/** The gallery (C96, your layout): a search box; what you've connected on top; then each category; a box opens its
+ * panel over the gallery, with what it does and, once connected, its settings. */
+function Gallery() {
+  const [text, setText] = useState("")
+  const [open, setOpen] = useState<Entry | null>(null)
+  const status = useStatuses()
+  const found = search(CATALOG, text)
+  const { connected, sections } = grouped(found, new Set(CATALOG.filter((e) => status(e)?.[2]).map((e) => e.id)))
+  const rows: [string, Entry[]][] = [...(connected.length ? [["Connected", connected] as [string, Entry[]]] : []), ...sections]
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <input
+        className="input"
+        type="search"
+        aria-label="Search integrations"
+        placeholder="Search integrations: Todoist, Canvas, Gmail…"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        style={{ maxWidth: 420, padding: "7px 10px", minHeight: 0, fontSize: 13 }}
+      />
+      {rows.length === 0 && <span className="fr-kicker">Nothing called “{text}” yet.</span>}
+      {rows.map(([title, list]) => (
+        <section key={title} aria-label={title} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <H size={13}>{title}</H>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 10 }}>
+            {list.map((e) => (
+              <Box key={e.id} entry={e} status={status(e)} onOpen={() => setOpen(e)} />
+            ))}
+          </div>
+        </section>
+      ))}
+      {open && <Panel entry={open} status={status(open)} onClose={() => setOpen(null)} />}
+    </div>
+  )
+}
+
+type Status = [string, string, boolean] | null // what it says, its colour, connected
+
+/** Each box's status, from what the cards themselves read. */
+function useStatuses(): (e: Entry) => Status {
+  const mac = useMacCalendars().data ?? []
+  const sources = (useInbox().data?.sources ?? []) as { kind: string; enabled: boolean; last_error: string | null }[]
+  const ai = useAi()
+  const integrations = useIntegrations().data ?? []
+  const ok = "var(--color-accent-300)"
+  const warn = "var(--fr-warn)"
+  const of = (kind: string): Status => {
+    const mine = sources.filter((x) => x.kind === kind && x.enabled)
+    if (!mine.length) return null
+    return mine.some((x) => x.last_error) ? ["Needs a look", warn, true] : [mine.length > 1 ? `${mine.length} connected` : "Connected", ok, true]
+  }
+  return (e) => {
+    if (e.id === "mac-calendars") return mac.some((c) => c.on) ? [`Reading ${mac.filter((c) => c.on).length}`, ok, true] : null
+    if (e.id === "calendar-links") return of("ics")
+    if (e.id === "google") return of("gcal")
+    if (e.id === "gmail") return of("gmail")
+    if (e.id === "ai") return ai.ready ? ["Ready", ok, true] : ["Not set up", warn, false]
+    if (e.token) {
+      const mine = integrations.filter((c) => c.kind === e.id)
+      if (!mine.length) return null
+      return mine.some((c) => c.last_error) ? ["Needs a look", warn, true] : ["Connected", ok, true]
+    }
+    return null
+  }
+}
+
+function Box({ entry, status, onOpen }: { entry: Entry; status: Status; onOpen: () => void }) {
+  return (
+    <button
+      className="fr-plain"
+      onClick={onOpen}
+      aria-label={`${entry.name}${status ? `, ${status[0]}` : ""}`}
+      style={{ textAlign: "left", display: "grid", gridTemplateColumns: "36px minmax(0,1fr)", gap: 12, alignItems: "start", padding: 14, borderRadius: "var(--radius-lg)", background: "var(--color-bg)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 8%, transparent)" }}
+    >
+      <Tile entry={entry} />
+      <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+        <span style={{ fontWeight: 500 }}>{entry.name}</span>
+        <span className="fr-kicker" style={{ textWrap: "pretty", lineHeight: 1.35 }}>
+          {entry.line}
+        </span>
+        {status && (
+          <span style={{ display: "inline-flex", gap: 5, alignItems: "center", fontSize: 11, color: status[1] }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: status[1] }} />
+            {status[0]}
+          </span>
+        )}
+      </span>
+    </button>
+  )
+}
+
+function Tile({ entry }: { entry: Entry }) {
+  return (
+    <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: `color-mix(in srgb, ${entry.hue} 22%, var(--color-surface))`, color: entry.hue }}>
+      <Icon name={entry.icon} size={18} />
+    </span>
+  )
+}
+
+/** A box's panel, over the gallery: Escape, the ×, or a click beside it closes it. */
+function Panel({ entry, status, onClose }: { entry: Entry; status: Status; onClose: () => void }) {
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose()
+    window.addEventListener("keydown", key)
+    return () => window.removeEventListener("keydown", key)
+  }, [onClose])
+  return (
+    <div role="presentation" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 40, background: "color-mix(in srgb, black 35%, transparent)", display: "flex", justifyContent: "flex-end" }}>
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label={entry.name}
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: "min(560px, 100vw)", height: "100%", overflowY: "auto", background: "var(--color-surface)", padding: 22, display: "flex", flexDirection: "column", gap: 16, boxSizing: "border-box" }}
+      >
+        <div style={{ display: "grid", gridTemplateColumns: "36px minmax(0,1fr) auto", gap: 12, alignItems: "center" }}>
+          <Tile entry={entry} />
+          <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <H size={17}>{entry.name}</H>
+            <span className="fr-kicker">{status ? `${entry.category} · ${status[0]}` : entry.category}</span>
+          </span>
+          <button className="fr-plain" aria-label="Close" onClick={onClose} style={{ padding: 6, borderRadius: 8 }}>
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+        <span style={{ fontSize: 13, textWrap: "pretty" }}>{entry.line}.</span>
+        <PanelBody entry={entry} />
+      </aside>
+    </div>
+  )
+}
+
+/** What each box opens: the card it has always had, or, for one connected by token, its connect form and settings. */
+function PanelBody({ entry }: { entry: Entry }) {
+  if (entry.token) return <TokenIntegration entry={entry} />
+  switch (entry.id) {
+    case "mac-calendars":
+      return <MacCalendars />
+    case "calendar-links":
+      return <Feeds />
+    case "google":
+      return <GoogleDirect />
+    case "gmail":
+      return <GmailApp />
+    case "ai":
+      return <Ai />
+    case "ask-ai":
+      return <AskClaude />
+    case "syllabus":
+      return (
+        <Card icon="file-pdf" title="Syllabus upload" note="One syllabus (a PDF, or a page saved from Canvas or a course site) becomes class times, readings, assignments and exam prep, reviewed together in your Inbox." right={<Upload />}>
+          <Documents />
+        </Card>
+      )
+  }
+  return null
 }
 
 /** The calendars on this Mac (8 Nov: users "can't connect google", and Setup was the only place this was): every

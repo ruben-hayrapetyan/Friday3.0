@@ -599,6 +599,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/integration_connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** integration_connect */
+        post: operations["integration_connect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/integration_disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** integration_disconnect */
+        post: operations["integration_disconnect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/integration_set": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** integration_set */
+        post: operations["integration_set"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/kind_add": {
         parameters: {
             query?: never;
@@ -2710,6 +2761,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Integrations connected now. */
+        get: operations["integrations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/item": {
         parameters: {
             query?: never;
@@ -3718,6 +3786,16 @@ export interface components {
             /** Actual H */
             actual_h: number;
         };
+        /** ArrivalInput */
+        ArrivalInput: {
+            /** Id */
+            id: number;
+            /**
+             * Arrival
+             * @enum {string}
+             */
+            arrival: "inbox_first" | "straight" | "inbox";
+        };
         /** AskAiResult */
         AskAiResult: {
             /** Command Id */
@@ -4246,6 +4324,46 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /** ConnectInput */
+        ConnectInput: {
+            /** Kind */
+            kind: string;
+            /** Token */
+            token: string;
+        };
+        /** ConnectOutput */
+        ConnectOutput: {
+            /** Message */
+            message: string;
+            source: components["schemas"]["Connected"];
+        };
+        /** Connected */
+        Connected: {
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /**
+             * Arrival
+             * @enum {string}
+             */
+            arrival: "inbox_first" | "straight" | "inbox";
+            /** Two Way */
+            two_way: boolean;
+            /** Last Sync */
+            last_sync: string | null;
+            /** Last Error */
+            last_error: string | null;
+            /** Made */
+            made: number;
+            /**
+             * Waiting
+             * @default 0
+             */
+            waiting?: number;
+        };
         /** DateInput */
         DateInput: {
             /** Date */
@@ -4391,6 +4509,13 @@ export interface components {
             repeated?: boolean;
             /** Generation */
             generation?: number | null;
+        };
+        /** DisconnectInput */
+        DisconnectInput: {
+            /** Id */
+            id: number;
+            /** Keep */
+            keep: boolean;
         };
         /** DocumentAddResult */
         DocumentAddResult: {
@@ -5357,6 +5482,69 @@ export interface components {
             heat: number[][];
             /** Best Hours */
             best_hours: string | null;
+        };
+        /** IntegrationConnectResult */
+        IntegrationConnectResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["ConnectOutput"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** IntegrationDisconnectResult */
+        IntegrationDisconnectResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Connected"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** IntegrationSetResult */
+        IntegrationSetResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Connected"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ItemDetail */
         ItemDetail: {
@@ -8699,6 +8887,11 @@ export interface components {
             /** Brief */
             brief: boolean;
             /**
+             * School
+             * @default true
+             */
+            school?: boolean;
+            /**
              * Calendars
              * @default []
              */
@@ -11765,6 +11958,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImportPersonalResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    integration_connect: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationConnectResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    integration_disconnect: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisconnectInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationDisconnectResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    integration_set: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArrivalInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationSetResult"];
                 };
             };
             /** @description Validation Error */
@@ -16079,6 +16383,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    integrations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Connected"][];
                 };
             };
         };

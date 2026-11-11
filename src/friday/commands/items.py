@@ -47,8 +47,9 @@ from friday.commands.series import (
 from friday.commands.series_days import move_from, moves_day
 from friday.commands.timer import stop_timer
 from friday.core.db import one, rows
-from friday.core.guess import course_of, guess_preset
+from friday.core.guess import course_of, fallback_kind, guess_preset
 from friday.core.items import FieldError, Item, amount_units, validate, would_create_cycle
+from friday.core.presets import in_use
 from friday.core.quickadd import parse
 from friday.core.textnorm import identity_text, norm, plain_words
 from friday.core.time import UNIT_MIN, to_local
@@ -130,7 +131,7 @@ def with_guesses(ctx: Ctx, given: dict[str, Any]) -> dict[str, Any]:
         return given
     out = dict(given)
     if not out.get("preset"):
-        guessed = guess_preset(title, ctx.settings["presets"])
+        guessed = guess_preset(title, in_use(ctx.settings["presets"], ctx.settings["school"]))
         if guessed:
             out["preset"] = guessed
     # "PS 3" with no due date yet is still a problem set, just not a deadline: guessed, or the kind of the section it
@@ -176,7 +177,7 @@ def from_text(ctx: Ctx, text: str) -> tuple[dict[str, Any], list[str], dict[str,
         now_local,
         ctx.day_start,
         area_names(ctx.conn, ctx.user_id).values(),
-        ctx.settings["presets"],
+        in_use(ctx.settings["presets"], ctx.settings["school"]),
         lambda title: find_item(ctx, title),
     )
     fields = dict(result.fields)
@@ -250,7 +251,8 @@ def guessed_minutes(ctx: Ctx, fields: dict[str, Any]) -> int | None:
         return None
     given = with_guesses(ctx, {k: fields[k] for k in ("title", "preset", "area", "due") if fields.get(k)})
     presets = ctx.settings["presets"]
-    typed = str(given.get("preset") or ("Assignment" if given.get("due") else "Errand"))
+    title = str(given.get("title") or "")
+    typed = str(given.get("preset") or fallback_kind(title, bool(given.get("due")), presets, ctx.settings["school"]))
     preset = next((p for p in presets if p.lower() == typed.lower().replace("_", " ")), None)
     kind = presets.get(preset) if preset else None
     if kind is None or (kind.amount or "fixed") != "fixed":
@@ -400,6 +402,7 @@ def reopen(ctx: Ctx, inp: ItemRef) -> ItemResult:
     done = minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0)
     opened = set_status(ctx, inp.id, "todo")
     put_back(ctx, inp.id)  # dropped, and gone from its calendar: back there too
+    back_to_its_app(ctx, inp.id, "reopen")
     return ItemResult(item=item_out(ctx, opened, done))
 
 
@@ -432,7 +435,15 @@ def done(ctx: Ctx, inp: DoneInput) -> ItemResult:
         },
     )
     finished = set_status(ctx, inp.id, "done", ctx.now_text)
+    back_to_its_app(ctx, inp.id, "done")
     return ItemResult(item=item_out(ctx, finished, minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0)))
+
+
+def back_to_its_app(ctx: Ctx, item_id: int, op: str) -> None:
+    """Done or opened again here: the same in the to-do app it came from (C96), in this command's transaction."""
+    from friday.integrations.sync import queue_write  # the sync runs commands: imported here, not at the top
+
+    queue_write(ctx.conn, item_id, op, ctx.actor, ctx.now_utc, ctx.user_id)
 
 
 @command("depend", affects_plan=True)

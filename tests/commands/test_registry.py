@@ -354,6 +354,17 @@ def conflict_sample(app: App) -> dict:
     return {"key": "sleep:mon,tue,wed,thu", "option": "bedtime"}
 
 
+def connected_todoist(app: App) -> int:
+    """A Todoist connected as integration_connect leaves it (C96), without asking Todoist."""
+    found = app.conn.execute("SELECT id FROM sources WHERE kind = 'todoist'").fetchone()
+    if found:
+        return int(found[0])
+    cursor = app.conn.execute(
+        "INSERT INTO sources (kind, name, config) VALUES ('todoist', 'Todoist', '{\"arrival\": \"inbox_first\"}')"
+    )
+    return int(cursor.lastrowid or 0)
+
+
 SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "import_personal": import_sample,
     "import_chroma_colors": chroma_sample,
@@ -411,6 +422,8 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "meal_use_length": longer_lunches,
     "meal_use_time": late_lunches,
     "meal_plan": breakfasts,
+    "integration_set": lambda app: {"id": connected_todoist(app), "arrival": "straight"},
+    "integration_disconnect": lambda app: {"id": connected_todoist(app), "keep": True},
     "other_way_pick": lambda app: {"weights": {"energy": 2.0}, "seed": 1, "rule_totals": {"energy": 100}},
     "add": add_sample,
     "edit": lambda app: {"id": essay(app), "title": "long essay", "duration_min": 180},
@@ -606,6 +619,7 @@ def test_unlogged_commands_are_only_those_with_no_undo_or_a_secret_result() -> N
         "google_remove",
         "ai_key_set",  # a secret: never logged
         "gmail_app_set",  # an app password: never logged
+        "integration_connect",  # a service's token: never logged (C96)
         "local_model_use",  # a download or a removal on this Mac: nothing Friday can take back
         "local_model_cancel",
         "tour_offered",  # the app's own flag, nothing of yours

@@ -28,9 +28,17 @@ interface Manual {
   repeat?: Repeat
 }
 
+// A student's kinds (C97; the server's core/presets.py SCHOOL_KINDS): out of school they're never offered.
+export const SCHOOL_KINDS = ["Assignment", "Reading", "Exam prep", "Class", "Exam"]
+
+/** The kinds to offer: all yours, or out of school all but the school ones. */
+export function kindsFor(all: string[], school: boolean | undefined): string[] {
+  return school === false ? all.filter((k) => !SCHOOL_KINDS.includes(k)) : all
+}
+
 export function usePresets(): string[] {
   const settings = useSettings().data as Record<string, unknown> | undefined
-  return Object.keys((settings?.presets as Record<string, unknown>) ?? {})
+  return kindsFor(Object.keys((settings?.presets as Record<string, unknown>) ?? {}), settings?.school as boolean | undefined)
 }
 
 interface Props {

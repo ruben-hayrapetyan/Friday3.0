@@ -87,7 +87,7 @@ export function withCalendars(draft: Answers, listed: Calendar[] | null | undefi
 // In the order the walk goes: hello; a Monday from getting up, through work, focus and a deadline, to the evening and
 // bed; Saturday; a morning's brief; the AI and where your things are (the calendars after bringing them in, and only
 // when there are some); then Friday builds the week, shows it, and you start.
-const STORY = ["hello", "wake", "work", "heavy", "focus", "deadline", "evening", "bed", "weekend", "brief", "ai", "bring", "calendars", "reveal", "start"]
+const STORY = ["hello", "school", "wake", "work", "heavy", "focus", "deadline", "evening", "bed", "weekend", "brief", "ai", "bring", "calendars", "reveal", "start"]
 
 /** The screens for these answers. */
 export function storyFor(answers: Answers): string[] {
@@ -107,6 +107,7 @@ export function badgesOf(a: Answers): { label: string; value: string; step: stri
     { label: "Evenings free", value: free, step: "evening" },
     { label: "Weekends free", value: weekend, step: "weekend" },
     { label: "Morning brief", value: a.brief ? "yes" : "no", step: "brief" },
+    { label: "In school", value: a.school === false ? "no" : "yes", step: "school" },
   ]
 }
 
@@ -266,6 +267,23 @@ const STEPS: Record<string, Step> = {
   weekend: {
     title: () => "And of each weekend day?",
     control: (a, set) => <HourBar label="Of each weekend day" value={a.weekend_free} min={0} segments={ALL_WEEKEND} names={{ 0: "None", [ALL_WEEKEND]: "All of it" }} hue="var(--ob-free)" say={hoursLabel} onPick={(weekend_free) => set({ weekend_free })} />,
+  },
+  // C97: Friday is for more than students; out of school, its kinds are Tasks, Work tasks and errands, never schoolwork.
+  school: {
+    title: () => "Are you in school?",
+    note: () => "So Friday knows which kinds of work to expect. Change it any time in Settings → Tags/Kinds.",
+    control: (a, set) => (
+      <Choices
+        one
+        label="In school"
+        value={a.school === false ? "no" : "yes"}
+        onPick={(v) => set({ school: v === "yes" })}
+        choices={[
+          { value: "yes", title: "Yes, I'm a student", note: "Classes, assignments, readings and exam prep." },
+          { value: "no", title: "No", note: "Tasks, work and errands; nothing about school." },
+        ]}
+      />
+    ),
   },
   brief: {
     title: () => "Want a morning brief?",

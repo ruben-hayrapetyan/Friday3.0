@@ -156,6 +156,13 @@ function Kinds() {
       </div>
       <div className="fr-row" style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0" }}>
         <span style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+          <span style={{ fontWeight: 500 }}>I'm in school</span>
+          <span className="fr-kicker">Classes, assignments, readings and exam prep. Off, Friday never offers or guesses them; a to-do is a Task, and work from a tracker a Work task.</span>
+        </span>
+        <Switch on={settings?.school !== false} onToggle={() => saveShort({ key: "school", value: settings?.school === false })} label="I'm in school" />
+      </div>
+      <div className="fr-row" style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0" }}>
+        <span style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
           <span style={{ fontWeight: 500 }}>Short term before long term</span>
           <span className="fr-kicker">Long term work waits until this week's short-term work is done (unless it's due this week itself).</span>
         </span>
