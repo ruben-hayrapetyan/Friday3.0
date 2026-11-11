@@ -68,8 +68,8 @@ else
 fi
 
 # Friday's own app ids and secrets at Trello, Microsoft, TickTick and Slack (integrations/keys.py; 11 Nov: kept out
-# of git), into your own builds; a release (scripts/prepare-release.sh sets FRIDAY_NO_APP_KEYS=1) leaves them out
-# until you decide downloads get them. Never read here, only copied.
+# of git), into Friday Test only: Mac/build.sh sets FRIDAY_NO_APP_KEYS=1 for your Friday and for releases, so no
+# service is ever linked to your own Friday (11 Nov). Never read here, only copied.
 KEYS="$REPO/Mac/app_keys.json"
 if [ "${FRIDAY_NO_APP_KEYS:-}" != 1 ] && [ -f "$KEYS" ]; then
   install -m 0644 "$KEYS" "$RUNTIME/python/share/friday/app_keys.json"
