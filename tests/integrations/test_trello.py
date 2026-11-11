@@ -1,12 +1,11 @@
-"""Trello (C102), glass box against its stand-in: Friday's own app key with your token in the Authorization header
-(never in an address), only the open cards you're on, a card ticked complete or archived in Trello taken as done, its
-board said in the notes, done here ticking the due date complete; a Friday without its key says so in words."""
+"""Trello (C102, C117), glass box against its stand-in: signed in by OAuth 2.0 (a Bearer token, never in an address),
+only the open cards you're on, a card ticked complete or archived in Trello taken as done, its board said in the
+notes, done here ticking the due date complete; the sign-in asks Atlassian for exactly what Friday needs."""
 
 import pytest
 
 from friday.integrations import trello
-from friday.integrations.base import ConnectorError
-from tests.integrations.fake_trello import HARNESS, KEY, FakeTrello
+from tests.integrations.fake_trello import ACCESS, HARNESS, FakeTrello
 
 
 def connector(fake: FakeTrello) -> trello.Trello:
@@ -33,8 +32,8 @@ def test_only_open_cards_youre_on_come_in_with_their_board_and_due(monkeypatch: 
 def test_the_token_goes_in_the_header_never_in_an_address() -> None:
     fake = FakeTrello(HARNESS.token)
     connector(fake).read()
-    assert all(HARNESS.token not in str(r.url) and KEY not in str(r.url) for r in fake.requests)
-    assert all(r.headers["authorization"].startswith("OAuth oauth_consumer_key=") for r in fake.requests)
+    assert all(ACCESS not in str(r.url) for r in fake.requests)
+    assert {r.headers["authorization"] for r in fake.requests} == {f"Bearer {ACCESS}"}
 
 
 def test_done_and_opened_again_tick_and_untick_its_due_date() -> None:
@@ -51,29 +50,8 @@ def test_check_says_whose_trello_it_is() -> None:
     assert connector(FakeTrello(HARNESS.token)).check() == "Maria Lopez"
 
 
-def test_a_friday_without_its_trello_key_says_so_and_has_no_page_to_send_to(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.delenv("FRIDAY_TRELLO_KEY")
-    monkeypatch.setattr(trello, "APP_KEY", "")
-    assert trello.token_page() is None
-    with pytest.raises(ConnectorError, match="isn't ready in this copy of Friday"):
-        trello.Trello(HARNESS.token)
-
-
-def test_the_page_asks_trello_for_a_lasting_read_and_write_token_named_friday() -> None:
-    page = trello.token_page()
-    assert page is not None and page.startswith("https://trello.com/1/authorize?")
-    for part in (f"key={KEY}", "name=Friday", "expiration=never", "scope=read%2Cwrite", "response_type=token"):
-        assert part in page, part
-
-
-def test_the_box_asks_the_server_for_the_allow_page(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from tests.commands.helpers import new_app
-
-    app = new_app(tmp_path)
-    assert app.do("integration_token_page", kind="trello")["url"] == trello.token_page()
-    assert app.do("integration_token_page", kind="todoist")["url"] is None  # its page is fixed: the box has it
-    monkeypatch.delenv("FRIDAY_TRELLO_KEY")
-    monkeypatch.setattr(trello, "APP_KEY", "")
-    assert app.do("integration_token_page", kind="trello")["url"] is None
+def test_the_sign_in_asks_atlassian_for_what_friday_needs_and_no_more() -> None:
+    p = trello.PROVIDER
+    assert p.ready() and p.secret is None  # a public client: PKCE, nothing secret shipped
+    assert p.authorize == "https://auth.atlassian.com/authorize" and p.token == "https://auth.atlassian.com/oauth/token"
+    assert p.scopes == ("read:board:trello", "write:board:trello", "read:member:trello", "offline_access")

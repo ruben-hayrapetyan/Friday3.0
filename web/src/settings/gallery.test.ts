@@ -16,7 +16,7 @@ describe("the integrations gallery's catalog", () => {
     }
   })
   it("says, for each one connected by token, where the token is and how to get it", () => {
-    for (const e of CATALOG.filter((x) => x.token && x.id !== "trello")) {
+    for (const e of CATALOG.filter((x) => x.token)) {
       expect(e.token!.page).toMatch(/^https:\/\//)
       expect(e.token!.steps.length).toBeGreaterThanOrEqual(2)
     }
@@ -30,12 +30,12 @@ describe("the integrations gallery's catalog", () => {
     expect(notion.token!.note).toContain("Connections")
     expect(names(search(CATALOG, "notion"))).toEqual(["Notion"])
   })
-  it("has Trello's Allow page from the server, which has Friday's app key (C102)", () => {
+  it("connects Trello by signing in, its OAuth 2.0 (C117)", () => {
     const trello = CATALOG.find((e) => e.id === "trello")!
-    expect(trello.token!.page).toBe("")
-    expect(trello.token!.steps.join(" ")).toContain("Allow")
-    expect(trello.token!.note).toContain("cards you're on")
-    expect(names(search(CATALOG, "kanban"))).toEqual(["Trello"])
+    expect(trello.token).toBeUndefined()
+    expect(trello.signIn!.steps.join(" ")).toContain("Sign in with Trello")
+    expect(trello.signIn!.note).toContain("cards you're on")
+    expect(names(search(CATALOG, "kanban"))).toContain("Trello")
   })
   it("has Asana's own token page and says only your tasks come in (C103)", () => {
     const asana = CATALOG.find((e) => e.id === "asana")!

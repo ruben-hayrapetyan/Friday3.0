@@ -254,13 +254,11 @@ export const CATALOG: Entry[] = [
     aliases: ["cards", "boards", "kanban", "atlassian", "todo", "to-do", "tasks"],
     icon: "kanban",
     hue: "#3f7fc4",
-    token: {
-      page: "",
-      label: "Trello token",
+    signIn: {
       steps: [
-        "Open Trello's Allow page (the link below), signing in to Trello if it asks.",
-        "Press Allow: Trello shows a long token.",
-        "Copy it, paste it here and press Connect.",
+        "Press Sign in with Trello: Atlassian's page opens in your browser (Trello's sign-in).",
+        "Sign in if it asks, then press Accept to let Friday read your boards and tick your cards.",
+        "Come back to Friday: the open cards you're on come to your Inbox to review together.",
       ],
       note: "Friday reads the open cards you're on, on every board. To bring one in, join it in Trello (open the card and press Join, or hover it and press space). Finishing it in Friday ticks its due date complete.",
     },
