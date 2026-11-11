@@ -101,6 +101,12 @@ describe("the integrations gallery's catalog", () => {
     expect(CATALOG.find((e) => e.id === "mac-plan")?.category).toBe("Calendars")
     expect(names(search(CATALOG, "iphone"))).toContain("Your plan on your iPhone")
   })
+  it("has Shortcuts & Siri under Automation with Friday's links (C114)", () => {
+    const shortcuts = CATALOG.find((e) => e.id === "shortcuts")!
+    expect(shortcuts.category).toBe("Automation")
+    expect(shortcuts.howTo!.links.every((l) => l.url.startsWith("friday://"))).toBe(true)
+    expect(names(search(CATALOG, "hey siri"))).toEqual(["Shortcuts & Siri"])
+  })
   it("has Apple Reminders as a to-do app with no token, said step by step (C100)", () => {
     const reminders = CATALOG.find((e) => e.id === "reminders")!
     expect(reminders.category).toBe("To-do apps")

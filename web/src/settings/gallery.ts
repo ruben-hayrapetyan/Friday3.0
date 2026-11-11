@@ -3,9 +3,9 @@
 // what you've connected on top, then each category; search across all; a box opens a panel over the gallery. This
 // file is the catalog and its search, kept plain so it's tested on its own (gallery.test.ts).
 
-export type Category = "Calendars" | "Mail" | "Messages" | "To-do apps" | "School" | "Work schedules" | "AI" | "Files"
+export type Category = "Calendars" | "Mail" | "Messages" | "To-do apps" | "School" | "Work schedules" | "AI" | "Automation" | "Files"
 
-export const CATEGORIES: Category[] = ["Calendars", "To-do apps", "School", "Work schedules", "Mail", "Messages", "AI", "Files"]
+export const CATEGORIES: Category[] = ["Calendars", "To-do apps", "School", "Work schedules", "Mail", "Messages", "AI", "Automation", "Files"]
 
 /** Something else connecting asks for beside the token (Jira: your site, your email). */
 export interface TokenField {
@@ -31,6 +31,7 @@ export interface Entry {
   mail?: { provider: "icloud" | "yahoo" | "fastmail" | "other"; help?: string; steps: string[] } // by app password (C99)
   onMac?: { steps: string[] } // read by Friday's Mac app itself, no account or token: macOS asks (C100)
   signIn?: { steps: string[]; note?: string } // connected by signing in on the service's own page (C109)
+  howTo?: { steps: string[]; links: { url: string; says: string }[]; note?: string } // nothing to connect: how to (C114)
 }
 
 // Mail beyond Gmail by app password (C99; servers and steps from each provider's help, 10 Nov). Outlook.com isn't
@@ -484,6 +485,28 @@ export const CATALOG: Entry[] = [
         "Come back to Friday: messages from the last two weeks that mention you wait in your Inbox, each one yours to keep as a to-do or not.",
       ],
       note: "Friday can't post, react or read anything else. Slack has retired reminders for apps, so your /remind reminders can't come in.",
+    },
+  },
+  {
+    id: "shortcuts",
+    name: "Shortcuts & Siri",
+    category: "Automation",
+    line: "Add to Friday from Siri, the Shortcuts app or any link",
+    aliases: ["siri", "shortcut", "automation", "url scheme", "friday://", "voice", "hey siri"],
+    icon: "lightning",
+    hue: "#d6589a",
+    howTo: {
+      steps: [
+        "Open the Shortcuts app on this Mac and make a new shortcut.",
+        "Add Ask for Input (Text), then Open URLs with friday://add?text= followed by the Provided Input.",
+        "Name it Add to Friday. Now “Hey Siri, Add to Friday” asks what, and it goes into your plan as if typed in the add box.",
+      ],
+      links: [
+        { url: "friday://add?text=essay 3h due fri", says: "adds a to-do, read the way the add box reads it" },
+        { url: "friday://open?page=inbox", says: "opens a page: plan, todo, projects, inbox, insights, rules, settings" },
+        { url: "friday://new?what=event", says: "opens Friday with a new event (or to-do) ready to type" },
+      ],
+      note: "These links work while Friday's Mac app is installed; it opens them, starting Friday if it isn't running.",
     },
   },
   {

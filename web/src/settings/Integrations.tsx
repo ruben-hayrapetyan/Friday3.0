@@ -199,6 +199,7 @@ function Panel({ entry, status, onClose, onOpen }: { entry: Entry; status: Statu
 /** What each box opens: the card it has always had, or, for one connected by token, its connect form and settings. */
 function PanelBody({ entry, onOpen }: { entry: Entry; onOpen: (id: string) => void }) {
   if (entry.id === "outlook_mail") return <OutlookMail entry={entry} />
+  if (entry.howTo) return <HowTo entry={entry} />
   if (entry.token || entry.onMac || entry.signIn) return <TokenIntegration entry={entry} />
   if (entry.link) return <LinkIntegration entry={entry} />
   if (entry.mail) return <MailIntegration entry={entry} />
@@ -226,6 +227,29 @@ function PanelBody({ entry, onOpen }: { entry: Entry; onOpen: (id: string) => vo
       )
   }
   return null
+}
+
+/** Nothing to connect, only how to use it (Shortcuts & Siri, C114): its steps and the links it answers to. */
+function HowTo({ entry }: { entry: Entry }) {
+  const how = entry.howTo!
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <ol style={{ margin: 0, paddingLeft: 20, listStyle: "decimal", display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+        {how.steps.map((s) => (
+          <li key={s}>{s}</li>
+        ))}
+      </ol>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {how.links.map((l) => (
+          <div key={l.url} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <code style={{ fontSize: 12, userSelect: "all" }}>{l.url}</code>
+            <span className="fr-kicker">{l.says}</span>
+          </div>
+        ))}
+      </div>
+      {how.note && <span className="fr-kicker">{how.note}</span>}
+    </div>
+  )
 }
 
 /** Your plan as a "Friday" calendar in iCloud (C113): Friday's Mac app keeps it equal to the plan, so your iPhone

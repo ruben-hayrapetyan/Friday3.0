@@ -599,5 +599,17 @@ test("the plan's calendar holds exactly the plan: made, moved, renamed, gone, a 
     check(read.count == 1 && read[0].end.timeIntervalSince(read[0].start) == 5400, "the server's blocks read; a backwards one left out")
 }
 
+test("Friday's links: add a to-do, open a page or a new box; anything else is ignored (C114)") {
+    let link = { (s: String) in FridayLink.of(URL(string: s)!, scheme: "friday") }
+    check(link("friday://add?text=essay%203h%20due%20fri") == .add("essay 3h due fri"), "a to-do, as the add box reads it")
+    check(link("friday://add?text=%20%20") == nil && link("friday://add") == nil, "nothing to add: nothing")
+    check(link("friday://open?page=Inbox") == .open(.go("/inbox")) && link("friday://open") == .open(.go("/")), "a page")
+    check(link("friday://open?page=passwords") == nil, "a page Friday doesn't have")
+    check(link("friday://new?what=event") == .open(.newEvent) && link("friday://new") == .open(.newTodo), "a new box")
+    check(link("fridaytest://add?text=x") == nil, "Friday Test's links aren't Friday's")
+    check(FridayLink.of(URL(string: "fridaytest://add?text=x")!, scheme: "fridaytest") == .add("x"), "and the other way")
+    check(link("friday://delete?all=1") == nil, "anything else: ignored")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

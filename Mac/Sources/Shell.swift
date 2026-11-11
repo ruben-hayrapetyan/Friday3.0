@@ -72,6 +72,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Friday's own links (FridayLink.swift): Shortcuts' "Open URLs", a link anywhere (C114).
+    func application(_ application: NSApplication, open urls: [URL]) {
+        let scheme = TestUser.isTest ? "fridaytest" : "friday"
+        for url in urls {
+            switch FridayLink.of(url, scheme: scheme) {
+            case .add(let text):
+                Task { await Self.add(text) }
+            case .open(let action):
+                show(then: action)
+            case nil:
+                continue
+            }
+        }
+    }
+
+    /// A to-do from a link, read the way the add box reads it; tried for a while if Friday is still starting.
+    private static func add(_ text: String) async {
+        for _ in 0 ..< 20 {
+            if await Server.post("add", ["text": text]) != nil { return }
+            try? await Task.sleep(for: .seconds(1))
+        }
+    }
+
     func show(then action: HostAction?) {
         NSApp.unhide(nil)
         NSApp.activate()

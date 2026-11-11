@@ -29,7 +29,7 @@ EXECUTABLE="Friday"
 # Its own id, so it runs beside the Swift app until the switch without sharing its settings or login item.
 BUNDLE_ID="com.rubenhayrapetyan.friday.web"
 VERSION="$(tr -d '[:space:]' < ../VERSION)"  # set by scripts/prepare-release.sh (HOSTED.md H136)
-TEST_PLIST="" RIBBON=() FEED_PLIST=""
+TEST_PLIST="" RIBBON=() FEED_PLIST="" SCHEME="friday"
 # Every build but Friday Test looks at the site's feed (H169). Friday Test never does: the site's update is the regular
 # Friday, which would open on your data.
 if ! $TEST; then FEED_PLIST="<key>FridayUpdateFeed</key>       <string>https://friday-scheduler.com/updates.json</string>"; fi
@@ -43,6 +43,7 @@ if $TEST; then
   EXECUTABLE="Friday Test"
   BUNDLE_ID="com.rubenhayrapetyan.friday.test"
   TEST_PLIST="<key>FridayTest</key>              <true/>"
+  SCHEME="fridaytest"  # Friday's links (Mac/Sources/FridayLink.swift) stay yours; Friday Test answers to its own
   RIBBON=(--ribbon TEST)
 fi
 
@@ -95,6 +96,11 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <string>Friday plans around the calendars on this Mac and adds the events you make to the one you choose.</string>
     <key>NSRemindersFullAccessUsageDescription</key>
     <string>Friday plans your open reminders, once you connect Apple Reminders in Settings, and ticks them off when you finish them in Friday.</string>
+    <key>CFBundleURLTypes</key>
+    <array><dict>
+      <key>CFBundleURLName</key><string>Friday link</string>
+      <key>CFBundleURLSchemes</key><array><string>$SCHEME</string></array>
+    </dict></array>
     <key>NSAppleEventsUsageDescription</key>
     <string>Friday reads your Things to-dos, once you connect Things in Settings, and ticks them off when you finish them in Friday.</string>
     <key>NSRemindersUsageDescription</key>
