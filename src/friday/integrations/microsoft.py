@@ -17,7 +17,7 @@ API = "https://graph.microsoft.com/v1.0"
 AUTHORITY = "https://login.microsoftonline.com/common/oauth2/v2.0"
 # Friday's app in Microsoft Entra (portal.azure.com → App registrations → Friday → Application (client) ID): public,
 # set once by Friday's developer
-MS_CLIENT_ID = ""
+MS_CLIENT_ID = "[microsoft client id: Mac/app_keys.json]"
 
 
 def client_id() -> str:
