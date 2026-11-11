@@ -21,6 +21,15 @@ for arg in "$@"; do
   esac
 done
 if $TEST && $INSTALL; then echo "Friday Test stays in build/: no --install" >&2; exit 2; fi
+# Friday's own app keys (Mac/app_keys.json: Trello, Microsoft, TickTick, Slack) go into Friday Test only (11 Nov: "i
+# don't want any of these accounts to be linked to my actual friday account. make them linked to friday test so you
+# can then just delete it"): your Friday and downloads say those services aren't ready. Friday Test also carries
+# Google's client, so Google Tasks can be tried there.
+if $TEST; then
+  export FRIDAY_GOOGLE_CLIENT=1
+else
+  export FRIDAY_NO_APP_KEYS=1
+fi
 
 cd "$(dirname "$0")"
 
