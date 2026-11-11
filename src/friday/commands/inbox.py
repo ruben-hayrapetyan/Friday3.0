@@ -36,6 +36,7 @@ from friday.core.recurrence import describe
 from friday.core.textnorm import course_tag
 from friday.core.time import format_utc
 from friday.ingest import extract, llm
+from friday.integrations.links import LINKS
 from friday.planner.store import area_names, kv_get
 
 FIXED_FIRST = ("Class", "Exam", "Meeting", "Appointment", "Event")  # events before the prep that comes `before:` them
@@ -50,11 +51,25 @@ def source_row(ctx: Ctx, source_id: int) -> dict[str, Any]:
 
 @command("source_add")
 def source_add(ctx: Ctx, inp: SourceInput) -> Changed:
-    """Add a calendar feed to read into the inbox."""
-    ctx.db.insert(
-        "sources",
-        {"kind": inp.kind, "name": inp.name, "config": json.dumps({"url": inp.url}), "trusted": int(inp.trusted)},
-    )
+    """Add a calendar feed to read into the inbox; one from a service's box is read as that service's (C96)."""
+    config: dict[str, Any] = {"url": inp.url}
+    trusted = inp.trusted
+    if inp.service is not None:
+        service = LINKS.get(inp.service)
+        if service is None:
+            raise FieldError("service", f"Friday doesn't know “{inp.service}”")
+        config |= {"service": inp.service, "kind": service.kind}
+        trusted = trusted or service.trusted
+    added = {"kind": inp.kind, "name": inp.name, "config": json.dumps(config), "trusted": int(trusted)}
+    same = one(ctx.conn, "SELECT id, enabled FROM sources WHERE user_id = ? AND kind = ? AND name = ?",
+               [ctx.user_id, inp.kind, inp.name])  # fmt: skip
+    if same and same["enabled"]:
+        raise FieldError("name", f"You already read a link called {inp.name}: remove it first, or give this one a name")
+    if same:  # one you removed (10 Nov: adding it again was refused, the name taken): read again, at its new address
+        ctx.db.update("sources", {"id": same["id"]}, added | {"enabled": 1, "last_error": None, "failures": 0, "last_sync_utc": None})
+    else:
+        ctx.db.insert("sources", added)
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "sync_now"}, {"value": json.dumps(ctx.now_text)})
     return Changed(message=f"Added {inp.name}; it syncs within a minute")
 
 
@@ -510,6 +525,7 @@ def inbox(ctx: Ctx, inp: Empty) -> InboxOut:
             enabled=bool(r["enabled"]),
             last_sync=ctx.local(r["last_sync_utc"]),
             last_error=r["last_error"],
+            service=json.loads(r["config"] or "{}").get("service"),
         )
         for r in rows(ctx.conn, "SELECT * FROM sources WHERE user_id = ? ORDER BY id", [ctx.user_id])
     ]

@@ -3,9 +3,9 @@
 // what you've connected on top, then each category; search across all; a box opens a panel over the gallery. This
 // file is the catalog and its search, kept plain so it's tested on its own (gallery.test.ts).
 
-export type Category = "Calendars" | "Mail" | "To-do apps" | "School" | "AI" | "Files"
+export type Category = "Calendars" | "Mail" | "To-do apps" | "School" | "Work schedules" | "AI" | "Files"
 
-export const CATEGORIES: Category[] = ["Calendars", "To-do apps", "School", "Mail", "AI", "Files"]
+export const CATEGORIES: Category[] = ["Calendars", "To-do apps", "School", "Work schedules", "Mail", "AI", "Files"]
 
 export interface Entry {
   id: string
@@ -16,7 +16,96 @@ export interface Entry {
   icon: string // a Phosphor icon; services' own logos aren't ours to use
   hue: string // its tile's colour
   token?: { page: string; label: string; steps: string[] } // connected by pasting a token (integrations/*)
+  link?: { help: string; steps: string[]; reads: string } // connected by the calendar link it publishes (C96)
+  viaMac?: { help: string; steps: string[] } // reaches Friday through the Mac's calendars (no link of its own)
 }
+
+// The steps are each service's own, from its help pages (10 Nov); menu names vary a little between schools.
+const SCHOOL_READS = "Its due dates come to your Inbox, as a Canvas feed's do: assignments and exams by their words."
+const SHIFT_READS = "Your shifts go straight in as fixed work time, and move when your manager changes the schedule."
+const LINKS: Entry[] = [
+  {
+    id: "blackboard", name: "Blackboard", category: "School", icon: "chalkboard-teacher", hue: "#3c5a99",
+    line: "Due dates from Blackboard's calendar", aliases: ["learn", "ultra", "bb", "lms"],
+    link: { help: "https://help.blackboard.com/Learn/Student/Ultra/Tools/Calendar", reads: SCHOOL_READS, steps: [
+      "In Blackboard, open Calendar from the menu on the left.",
+      "Open the calendar's settings and choose Share Calendar (or “Get External Calendar Link”).",
+      "Copy the link (it ends in .ics) and paste it here.",
+    ] },
+  },
+  {
+    id: "moodle", name: "Moodle", category: "School", icon: "graduation-cap", hue: "#e07b20",
+    line: "Due dates from Moodle's calendar", aliases: ["lms", "course"],
+    link: { help: "https://docs.moodle.org/en/Calendar_export", reads: SCHOOL_READS, steps: [
+      "In Moodle, open the Calendar and click Export calendar (or Import or export calendars) at the bottom.",
+      "Choose All events and “Recent and next 60 days”.",
+      "Click Get calendar URL, copy the link and paste it here (not Export, which is a one-time file).",
+    ] },
+  },
+  {
+    id: "brightspace", name: "Brightspace", category: "School", icon: "student", hue: "#2d8c7e",
+    line: "Due dates from Brightspace (D2L)'s calendar", aliases: ["d2l", "desire2learn", "lms"],
+    link: { help: "https://community.d2l.com/brightspace/kb/articles/18115-calendar", reads: SCHOOL_READS, steps: [
+      "In Brightspace, open the Calendar tool (from your homepage or a course).",
+      "Click Subscribe (some schools first ask you to turn on calendar feeds in its Settings).",
+      "Copy the link shown (not the feed.ics download, which never updates) and paste it here.",
+    ] },
+  },
+  {
+    id: "schoology", name: "Schoology", category: "School", icon: "backpack", hue: "#0b75b5",
+    line: "Due dates from Schoology's calendar", aliases: ["powerschool", "lms", "high school"],
+    link: { help: "https://docs.powerschool.com/SGYH/instructors/personal-account/calendar", reads: SCHOOL_READS, steps: [
+      "In Schoology, click the arrow by your name at the top right and choose Account Settings.",
+      "Under sharing your Schoology calendar, click Enable.",
+      "Copy the link under “Use this iCal link” and paste it here.",
+    ] },
+  },
+  {
+    id: "wheniwork", name: "When I Work", category: "Work schedules", icon: "clock-user", hue: "#51a33d",
+    line: "Your shifts from When I Work, kept up to date", aliases: ["shifts", "schedule", "wiw"],
+    link: { help: "https://help.wheniwork.com/articles/syncing-your-schedule-to-a-calendar-app-computer", reads: SHIFT_READS, steps: [
+      "Log in to When I Work on the web (the phone app's sync adds shifts to the phone only).",
+      "Open Calendar Sync and copy the My Schedule link.",
+      "Paste it here.",
+    ] },
+  },
+  {
+    id: "deputy", name: "Deputy", category: "Work schedules", icon: "identification-badge", hue: "#2f6fd1",
+    line: "Your rostered shifts from Deputy", aliases: ["roster", "shifts", "schedule"],
+    link: { help: "https://help.deputy.com/hc/en-au/articles/4688796818703", reads: SHIFT_READS, steps: [
+      "Open Deputy on the web and go to your profile.",
+      "Copy the calendar sync link (your employer has to have calendar sync turned on).",
+      "Paste it here.",
+    ] },
+  },
+  {
+    id: "7shifts", name: "7shifts", category: "Work schedules", icon: "fork-knife", hue: "#f0663a",
+    line: "Your restaurant shifts from 7shifts", aliases: ["seven shifts", "restaurant", "schedule"],
+    link: { help: "https://kb.7shifts.com/hc/en-us/articles/4861793532691", reads: SHIFT_READS, steps: [
+      "Log in to 7shifts on the web, open Schedules and click Tools.",
+      "Choose calendar sync and copy your personal link (it's yours alone: don't share it).",
+      "Paste it here.",
+    ] },
+  },
+  {
+    id: "sling", name: "Sling", category: "Work schedules", icon: "calendar-check", hue: "#6b4fd6",
+    line: "Your shifts from Sling", aliases: ["toast", "schedule", "shifts"],
+    link: { help: "https://support.getsling.com/en/articles/6062972-calendar-sync", reads: SHIFT_READS, steps: [
+      "Open Sling on the web (the phone app can't make the link), go to Schedule.",
+      "Click the calendar sync icon at the top right and copy the link (Premium and Business plans).",
+      "Paste it here.",
+    ] },
+  },
+  {
+    id: "homebase", name: "Homebase", category: "Work schedules", icon: "house-line", hue: "#e5484d",
+    line: "Your Homebase shifts, through your phone's calendar", aliases: ["schedule", "shifts"],
+    viaMac: { help: "https://support.joinhomebase.com/hc/en-us/articles/360022479511-Calendar-Sync", steps: [
+      "Homebase puts shifts in your phone's calendar rather than giving a link.",
+      "In the Homebase app: More → Settings → Calendar Sync → Enable, and pick a calendar that syncs to this Mac (iCloud or Google).",
+      "Friday then reads your shifts through Calendars on this Mac, with nothing else to connect.",
+    ] },
+  },
+]
 
 export const CATALOG: Entry[] = [
   {
@@ -73,6 +162,7 @@ export const CATALOG: Entry[] = [
       ],
     },
   },
+  ...LINKS,
   {
     id: "syllabus",
     name: "Syllabus upload",

@@ -64,3 +64,29 @@ describe("the gallery's layout", () => {
     expect(sections.every(([, list]) => list.length > 0)).toBe(true)
   })
 })
+
+describe("the boxes for services connected by their calendar link (C96)", () => {
+  const links = CATALOG.filter((e) => e.link)
+  it("are the eight you chose, each with its own help page and steps, saying what Friday does with it", () => {
+    expect(links.map((e) => e.id).sort()).toEqual(["7shifts", "blackboard", "brightspace", "deputy", "moodle", "schoology", "sling", "wheniwork"])
+    for (const e of links) {
+      expect(e.link!.help).toMatch(/^https:\/\//)
+      expect(e.link!.steps.length).toBeGreaterThanOrEqual(3)
+      expect(e.link!.reads.length).toBeGreaterThan(20)
+    }
+  })
+  it("puts school systems under School and shift apps under Work schedules", () => {
+    expect(CATALOG.filter((e) => e.category === "Work schedules").map((e) => e.id).sort()).toEqual(["7shifts", "deputy", "homebase", "sling", "wheniwork"])
+    expect(["blackboard", "moodle", "brightspace", "schoology"].every((id) => CATALOG.find((e) => e.id === id)?.category === "School")).toBe(true)
+  })
+  it("says how Homebase reaches Friday, as it gives no link", () => {
+    const homebase = CATALOG.find((e) => e.id === "homebase")!
+    expect(homebase.link).toBeUndefined()
+    expect(homebase.viaMac!.steps.join(" ")).toContain("Calendars on this Mac")
+  })
+  it("are found by the names people use", () => {
+    expect(names(search(CATALOG, "d2l"))).toEqual(["Brightspace"])
+    expect(names(search(CATALOG, "shifts"))).toEqual(expect.arrayContaining(["When I Work", "Deputy", "7shifts", "Sling", "Homebase"]))
+    expect(names(search(CATALOG, "roster"))).toEqual(["Deputy"])
+  })
+})

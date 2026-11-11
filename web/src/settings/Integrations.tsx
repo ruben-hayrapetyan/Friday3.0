@@ -24,6 +24,7 @@ import { MailLog } from "./MailLog"
 import { AiConnect, useAi } from "./AiConnect"
 import { SectionHead } from "./SettingsPage"
 import { CATALOG, type Entry, grouped, search } from "./gallery"
+import { LinkIntegration, ViaMac } from "./LinkIntegration"
 import { TokenIntegration, useIntegrations } from "./TokenIntegration"
 
 export function Integrations() {
@@ -80,7 +81,7 @@ function Gallery() {
           </div>
         </section>
       ))}
-      {open && <Panel entry={open} status={status(open)} onClose={() => setOpen(null)} />}
+      {open && <Panel entry={open} status={status(open)} onClose={() => setOpen(null)} onOpen={(id) => setOpen(CATALOG.find((e) => e.id === id) ?? null)} />}
     </div>
   )
 }
@@ -90,19 +91,21 @@ type Status = [string, string, boolean] | null // what it says, its colour, conn
 /** Each box's status, from what the cards themselves read. */
 function useStatuses(): (e: Entry) => Status {
   const mac = useMacCalendars().data ?? []
-  const sources = (useInbox().data?.sources ?? []) as { kind: string; enabled: boolean; last_error: string | null }[]
+  const sources = (useInbox().data?.sources ?? []) as { kind: string; enabled: boolean; last_error: string | null; service?: string | null }[]
   const ai = useAi()
   const integrations = useIntegrations().data ?? []
   const ok = "var(--color-accent-300)"
   const warn = "var(--fr-warn)"
-  const of = (kind: string): Status => {
-    const mine = sources.filter((x) => x.kind === kind && x.enabled)
+  // `service`: only the links added from that box; null, only plain ones (the Calendar links box)
+  const of = (kind: string, service?: string | null): Status => {
+    const mine = sources.filter((x) => x.kind === kind && x.enabled && (service === undefined || (x.service ?? null) === service))
     if (!mine.length) return null
     return mine.some((x) => x.last_error) ? ["Needs a look", warn, true] : [mine.length > 1 ? `${mine.length} connected` : "Connected", ok, true]
   }
   return (e) => {
     if (e.id === "mac-calendars") return mac.some((c) => c.on) ? [`Reading ${mac.filter((c) => c.on).length}`, ok, true] : null
-    if (e.id === "calendar-links") return of("ics")
+    if (e.id === "calendar-links") return of("ics", null)
+    if (e.link) return of("ics", e.id)
     if (e.id === "google") return of("gcal")
     if (e.id === "gmail") return of("gmail")
     if (e.id === "ai") return ai.ready ? ["Ready", ok, true] : ["Not set up", warn, false]
@@ -149,7 +152,7 @@ function Tile({ entry }: { entry: Entry }) {
 }
 
 /** A box's panel, over the gallery: Escape, the ×, or a click beside it closes it. */
-function Panel({ entry, status, onClose }: { entry: Entry; status: Status; onClose: () => void }) {
+function Panel({ entry, status, onClose, onOpen }: { entry: Entry; status: Status; onClose: () => void; onOpen: (id: string) => void }) {
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose()
     window.addEventListener("keydown", key)
@@ -175,15 +178,17 @@ function Panel({ entry, status, onClose }: { entry: Entry; status: Status; onClo
           </button>
         </div>
         <span style={{ fontSize: 13, textWrap: "pretty" }}>{entry.line}.</span>
-        <PanelBody entry={entry} />
+        <PanelBody entry={entry} onOpen={onOpen} />
       </aside>
     </div>
   )
 }
 
 /** What each box opens: the card it has always had, or, for one connected by token, its connect form and settings. */
-function PanelBody({ entry }: { entry: Entry }) {
+function PanelBody({ entry, onOpen }: { entry: Entry; onOpen: (id: string) => void }) {
   if (entry.token) return <TokenIntegration entry={entry} />
+  if (entry.link) return <LinkIntegration entry={entry} />
+  if (entry.viaMac) return <ViaMac entry={entry} onOpen={onOpen} />
   switch (entry.id) {
     case "mac-calendars":
       return <MacCalendars />
@@ -540,7 +545,7 @@ function Ai() {
 
 function Feeds() {
   const { today } = useShell()
-  const sources = (useInbox().data?.sources ?? []).filter((s) => s.kind === "ics")
+  const sources = (useInbox().data?.sources ?? []).filter((s) => s.kind === "ics" && !s.service) // a service's own links are in its box (C96)
   const edit = useCommand("source_edit", { label: () => "Saved" })
   const remove = useCommand("source_remove", { label: () => "Removed" })
   return (

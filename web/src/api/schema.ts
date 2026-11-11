@@ -1917,7 +1917,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Add a calendar feed to read into the inbox. */
+        /** Add a calendar feed to read into the inbox; one from a service's box is read as that service's (C96). */
         post: operations["source_add"];
         delete?: never;
         options?: never;
@@ -9413,6 +9413,8 @@ export interface components {
              * @default false
              */
             trusted?: boolean;
+            /** Service */
+            service?: string | null;
         };
         /** SourceOut */
         SourceOut: {
@@ -9430,6 +9432,8 @@ export interface components {
             last_sync: string | null;
             /** Last Error */
             last_error: string | null;
+            /** Service */
+            service?: string | null;
         };
         /** SourceRemoveInput */
         SourceRemoveInput: {

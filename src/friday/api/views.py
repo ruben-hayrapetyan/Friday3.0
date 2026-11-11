@@ -545,6 +545,7 @@ class SourceOut(Model):
     enabled: bool
     last_sync: str | None
     last_error: str | None
+    service: str | None = None  # the gallery box it was added from (integrations/links.py), if any
 
 
 class SetAsideOut(Model):
