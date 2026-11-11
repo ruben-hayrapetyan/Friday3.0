@@ -32,6 +32,10 @@ class FakeTodoist(FakeService):
             "duration": {"amount": minutes, "unit": "minute"} if minutes else extra.get("duration"),
             "checked": False, "is_deleted": False, "child_order": len(self.tasks),
             "added_at": "2026-11-01T12:00:00.000000Z", "updated_at": "2026-11-01T12:00:00.000000Z",
+            # as the real one has them (scripts/live-check.py todoist, 11 Nov), though Friday reads none of them
+            "user_id": "56789012", "added_by_uid": "56789012", "assigned_by_uid": None, "responsible_uid": None,
+            "completed_at": None, "completed_by_uid": None, "completed_count": 0, "postponed_count": 0,
+            "day_order": -1, "is_collapsed": False, "note_count": 0, "order_key": "a0",
         }  # fmt: skip
         return task_id
 

@@ -83,8 +83,14 @@ def todoist() -> int:
     try:
         seen = next((r for r in friday.read() if r.external_id == str(made["id"])), None)
         assert seen is not None, "the task added there wasn't read"
-        assert seen.due == due and seen.minutes == 45, f"read as due {seen.due}, {seen.minutes} min"
-        step("a task added there reads with its due and length")
+        kept = raw.json("GET", f"/tasks/{made['id']}").get("duration")  # free plans don't keep a length (11 Nov)
+        assert seen.due == due, f"read as due {seen.due}"
+        if kept:
+            assert seen.minutes == 45, f"Todoist kept 45 min; read as {seen.minutes}"
+            step("a task added there reads with its due and length")
+        else:
+            assert seen.minutes is None, f"Todoist kept no length; read as {seen.minutes}"
+            step("a task added there reads with its due (this plan keeps no lengths: none read)")
         friday.write(str(made["id"]), "done")
         assert all(r.external_id != str(made["id"]) for r in friday.read()), "done here, still open there"
         step("done through Friday closes it there")
