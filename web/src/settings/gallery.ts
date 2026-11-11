@@ -82,10 +82,10 @@ const LINKS: Entry[] = [
   {
     id: "blackboard", name: "Blackboard", category: "School", icon: "chalkboard-teacher", hue: "#3c5a99",
     line: "Due dates from Blackboard's calendar", aliases: ["learn", "ultra", "bb", "lms"],
-    link: { help: "https://help.blackboard.com/Learn/Student/Ultra/Tools/Calendar", reads: SCHOOL_READS, steps: [
+    link: { help: "https://help.anthology.com/blackboard/student/en/getting-started/calendar.html", reads: SCHOOL_READS, steps: [
       "In Blackboard, open Calendar from the menu on the left.",
-      "Open the calendar's settings and choose Share Calendar (or “Get External Calendar Link”).",
-      "Copy the link (it ends in .ics) and paste it here.",
+      "Click the gear (Calendar Settings), open the … menu and choose Share Calendar. (In the older Original view: My Blackboard → Calendar → Get External Calendar Link.)",
+      "Copy the link and paste it here. It covers all your courses at once.",
     ] },
   },
   {
@@ -100,46 +100,46 @@ const LINKS: Entry[] = [
   {
     id: "brightspace", name: "Brightspace", category: "School", icon: "student", hue: "#2d8c7e",
     line: "Due dates from Brightspace (D2L)'s calendar", aliases: ["d2l", "desire2learn", "lms"],
-    link: { help: "https://community.d2l.com/brightspace/kb/articles/18115-calendar", reads: SCHOOL_READS, steps: [
-      "In Brightspace, open the Calendar tool (from your homepage or a course).",
-      "Click Subscribe (some schools first ask you to turn on calendar feeds in its Settings).",
-      "Copy the link shown (not the feed.ics download, which never updates) and paste it here.",
+    link: { help: "https://community.d2l.com/brightspace/kb/articles/33719-manage-course-events-with-the-calendar-tool", reads: SCHOOL_READS, steps: [
+      "In Brightspace, open Calendar (from your homepage or a course).",
+      "Click Settings (the gear), tick Enable Calendar Feeds and Save: without it there's no Subscribe button.",
+      "Click Subscribe, choose All Calendars and Tasks, then copy the link (not Download, which never updates) and paste it here.",
     ] },
   },
   {
     id: "schoology", name: "Schoology", category: "School", icon: "backpack", hue: "#0b75b5",
     line: "Due dates from Schoology's calendar", aliases: ["powerschool", "lms", "high school"],
-    link: { help: "https://docs.powerschool.com/SGYH/instructors/personal-account/calendar", reads: SCHOOL_READS, steps: [
-      "In Schoology, click the arrow by your name at the top right and choose Account Settings.",
+    link: { help: "https://uc.powerschool-docs.com/en/schoology/latest/personal-account-calendar-sharing-and-account-linking", reads: SCHOOL_READS, steps: [
+      "Sign in to Schoology as yourself (a parent's link is the parent's own calendar), click the arrow by your name at the top right and choose Account Settings.",
       "Under sharing your Schoology calendar, click Enable.",
-      "Copy the link under “Use this iCal link” and paste it here.",
+      "Copy the link under “Use this iCal link” and paste it here. If your calendar is empty, Schoology's link answers with an error until something's on it.",
     ] },
   },
   {
     id: "wheniwork", name: "When I Work", category: "Work schedules", icon: "clock-user", hue: "#51a33d",
     line: "Your shifts from When I Work, kept up to date", aliases: ["shifts", "schedule", "wiw"],
     link: { help: "https://help.wheniwork.com/articles/syncing-your-schedule-to-a-calendar-app-computer", reads: SHIFT_READS, steps: [
-      "Log in to When I Work on the web (the phone app's sync adds shifts to the phone only).",
-      "Open Calendar Sync and copy the My Schedule link.",
+      "Log in to When I Work on the web.",
+      "Go to My Schedule, click Calendar Sync at the top right, and copy the My Schedule link (your published shifts, up to a year ahead).",
       "Paste it here.",
     ] },
   },
   {
     id: "deputy", name: "Deputy", category: "Work schedules", icon: "identification-badge", hue: "#2f6fd1",
     line: "Your rostered shifts from Deputy", aliases: ["roster", "shifts", "schedule"],
-    link: { help: "https://help.deputy.com/hc/en-au/articles/4688796818703", reads: SHIFT_READS, steps: [
-      "Open Deputy on the web and go to your profile.",
-      "Copy the calendar sync link (your employer has to have calendar sync turned on).",
-      "Paste it here.",
+    link: { help: "https://help.deputy.com/hc/en-au/articles/4688796818703-Syncing-your-Deputy-schedule-with-your-own-calendar-application", reads: SHIFT_READS, steps: [
+      "Log in to Deputy on the web and click your Profile.",
+      "Click Add your Shifts to your personal calendar app, choose the WebCal link and click Copy Link (your employer has to have calendar sync turned on).",
+      "Paste it here. If Deputy says linking needs a login, your employer has asked for that, and Friday can't read the link: add it to your Mac's Calendar instead, and Friday reads it from there.",
     ] },
   },
   {
     id: "7shifts", name: "7shifts", category: "Work schedules", icon: "fork-knife", hue: "#f0663a",
     line: "Your restaurant shifts from 7shifts", aliases: ["seven shifts", "restaurant", "schedule"],
     link: { help: "https://kb.7shifts.com/hc/en-us/articles/4861793532691", reads: SHIFT_READS, steps: [
-      "Log in to 7shifts on the web, open Schedules and click Tools.",
-      "Choose calendar sync and copy your personal link (it's yours alone: don't share it).",
-      "Paste it here.",
+      "Log in to 7shifts on the web, open Schedule, click Tools and choose Calendar Sync.",
+      "Pick your location and department, then click the copy icon (the link can't be turned off once shared: keep it to yourself).",
+      "Paste it here. It brings your next 8 weeks of shifts.",
     ] },
   },
   {
@@ -148,7 +148,7 @@ const LINKS: Entry[] = [
     link: { help: "https://support.getsling.com/en/articles/6062972-calendar-sync", reads: SHIFT_READS, steps: [
       "Open Sling on the web (the phone app can't make the link), go to Schedule.",
       "Click the calendar sync icon at the top right and copy the link (Premium and Business plans).",
-      "Paste it here.",
+      "Paste it here. It brings your shifts from a month back to a month ahead (open shifts aren't in it).",
     ] },
   },
   {
