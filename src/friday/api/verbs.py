@@ -452,6 +452,14 @@ VERBS = {
         "The service's to-do lists, asked of it now, each with whether it's read and what it brought in.",
     ),
     "integration_set": Verb("POST", "/api/c/integration_set", commands.ArrivalInput, True, False, "integration_set"),
+    "integration_sign_in": Verb(
+        "POST",
+        "/api/c/integration_sign_in",
+        commands.SignInInput,
+        True,
+        False,
+        "The service's own sign-in page, for one connected by signing in (Microsoft, TickTick, Slack): open it, allow",
+    ),
     "integration_token_page": Verb(
         "GET",
         "/api/q/integration_token_page",
@@ -618,7 +626,7 @@ VERBS = {
         commands.Empty,
         False,
         False,
-        "The mailboxes read by app password; never their passwords.",
+        "The mailboxes read by app password, and Outlook's by Microsoft's sign-in; never their passwords or tokens.",
     ),
     "mail_app_forget": Verb(
         "POST", "/api/c/mail_app_forget", commands.MailAppForgetInput, True, False, "mail_app_forget"

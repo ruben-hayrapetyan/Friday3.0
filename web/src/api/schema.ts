@@ -667,6 +667,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/integration_sign_in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The service's own sign-in page, for one connected by signing in (Microsoft, TickTick, Slack): open it, allow */
+        post: operations["integration_sign_in"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/kind_add": {
         parameters: {
             query?: never;
@@ -3040,7 +3057,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The mailboxes read by app password; never their passwords. */
+        /** The mailboxes read by app password, and Outlook's by Microsoft's sign-in; never their passwords or tokens. */
         get: operations["mail_app_accounts"];
         put?: never;
         post?: never;
@@ -4528,6 +4545,11 @@ export interface components {
              * @default false
              */
             lists?: boolean;
+            /**
+             * Signs In
+             * @default false
+             */
+            signs_in?: boolean;
         };
         /** DateInput */
         DateInput: {
@@ -5716,6 +5738,27 @@ export interface components {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Connected"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** IntegrationSignInResult */
+        IntegrationSignInResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["SignInOut"];
             /** Provisional */
             provisional?: components["schemas"]["BlockOut"][] | null;
             changes?: components["schemas"]["ChangeOut"] | null;
@@ -9404,6 +9447,25 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /** SignInInput */
+        SignInInput: {
+            /** Kind */
+            kind: string;
+            /** Origin */
+            origin: string;
+            /**
+             * Fields
+             * @default {}
+             */
+            fields?: {
+                [key: string]: string;
+            };
+        };
+        /** SignInOut */
+        SignInOut: {
+            /** Url */
+            url: string;
+        };
         /** SittingDeleteResult */
         SittingDeleteResult: {
             /** Command Id */
@@ -10444,6 +10506,11 @@ export interface components {
         TokenPageOut: {
             /** Url */
             url: string | null;
+            /**
+             * Ready
+             * @default true
+             */
+            ready?: boolean;
         };
         /** TokenRef */
         TokenRef: {
@@ -12538,6 +12605,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IntegrationSetResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    integration_sign_in: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignInInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationSignInResult"];
                 };
             };
             /** @description Validation Error */

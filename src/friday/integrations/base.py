@@ -86,9 +86,11 @@ class Http:
     headers: dict[str, str]
     transport: Transport = None
     sent: list[str] = field(default_factory=list)  # method and path of each request, for the contract
+    fresh: Callable[[], dict[str, str]] | None = None  # headers made for each request (a signed-in service's token)
 
     def client(self) -> httpx.Client:
-        return httpx.Client(base_url=self.base, headers=self.headers, timeout=TIMEOUT_S, transport=self.transport)
+        headers = self.headers | (self.fresh() if self.fresh else {})
+        return httpx.Client(base_url=self.base, headers=headers, timeout=TIMEOUT_S, transport=self.transport)
 
     def call(self, method: str, path: str, allow: tuple[int, ...] = (), **kw: Any) -> httpx.Response:
         """The answer; a failure said in words, except the statuses in `allow`, which the connector reads itself (a

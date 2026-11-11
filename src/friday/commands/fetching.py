@@ -23,7 +23,7 @@ from friday.core.settings import minutes_of
 from friday.core.time import format_utc, parse_utc, planning_date
 from friday.ingest import extract, ics, llm
 from friday.ingest.ics import Found
-from friday.integrations import canvas
+from friday.integrations import canvas, outlook
 from friday.planner.store import area_names, kv_get, kv_set, load_settings
 from friday.sync import gcal, google_auth, imap_any, imap_mail
 
@@ -79,6 +79,12 @@ def sync(
                     read_mail(conn, settings, now_utc, user_id, lambda s=service: s, address)
                 finally:
                     service.close()
+        # Outlook by Microsoft's sign-in (C109), each a source of its own; renewed tokens kept again
+        for box in outlook.accounts() if mail is None else []:
+            keep = lambda token, a=box.address: outlook.keep(a, token)  # noqa: E731
+            today = planning_date(now_utc, settings["time"].timezone, minutes_of(settings["time"].day_start))
+            graph = outlook.GraphMailService(box.tokens, {"_keep": keep}, today=today)
+            read_mail(conn, settings, now_utc, user_id, lambda s=graph: s, box.address, "mail", outlook.NAME)
         # iCloud Mail, Yahoo, Fastmail and other mail by app password (C99), each a source of its own
         for box in imap_any.accounts() if mail is None else []:
             other = imap_any.AnyImapService(box.provider, box.address, box.password, box.host)

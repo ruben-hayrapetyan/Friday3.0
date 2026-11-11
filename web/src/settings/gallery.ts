@@ -30,6 +30,7 @@ export interface Entry {
   viaMac?: { help: string; steps: string[] } // reaches Friday through the Mac's calendars (no link of its own)
   mail?: { provider: "icloud" | "yahoo" | "fastmail" | "other"; help?: string; steps: string[] } // by app password (C99)
   onMac?: { steps: string[] } // read by Friday's Mac app itself, no account or token: macOS asks (C100)
+  signIn?: { steps: string[]; note?: string } // connected by signing in on the service's own page (C109)
 }
 
 // Mail beyond Gmail by app password (C99; servers and steps from each provider's help, 10 Nov). Outlook.com isn't
@@ -336,6 +337,23 @@ export const CATALOG: Entry[] = [
     },
   },
   {
+    id: "microsoft_todo",
+    name: "Microsoft To Do",
+    category: "To-do apps",
+    line: "Your To Do lists planned into your week; done goes both ways",
+    aliases: ["microsoft", "to do", "todo", "outlook tasks", "wunderlist", "office 365", "tasks"],
+    icon: "microsoft-outlook-logo",
+    hue: "#2f7ed8",
+    signIn: {
+      steps: [
+        "Press Sign in with Microsoft: Microsoft's page opens in your browser.",
+        "Choose your account (Outlook.com, Hotmail, or your school's or work's) and press Accept.",
+        "Come back to Friday: the open tasks of every To Do list come to your Inbox to review together.",
+      ],
+      note: "Some schools and workplaces let only an administrator approve new apps; Microsoft's page says so if yours does.",
+    },
+  },
+  {
     id: "reminders",
     name: "Apple Reminders",
     category: "To-do apps",
@@ -391,6 +409,23 @@ export const CATALOG: Entry[] = [
   },
   ...LINKS,
   ...MAIL,
+  {
+    id: "outlook_mail",
+    name: "Outlook",
+    category: "Mail",
+    line: "New mail read for deadlines and events, into your Inbox",
+    aliases: ["outlook.com", "hotmail", "live.com", "office 365", "microsoft 365", "exchange", "email", "microsoft"],
+    icon: "envelope-open",
+    hue: "#2f7ed8",
+    signIn: {
+      steps: [
+        "Press Sign in with Microsoft: Microsoft's page opens in your browser.",
+        "Choose your Outlook.com, Hotmail, school or work account and press Accept: Friday asks only to read mail.",
+        "Come back to Friday: new mail is read as Gmail's is, its deadlines and events waiting in your Inbox.",
+      ],
+      note: "Nothing is sent, moved, deleted or marked read. Some schools and workplaces let only an administrator approve new apps.",
+    },
+  },
   {
     id: "syllabus",
     name: "Syllabus upload",

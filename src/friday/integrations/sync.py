@@ -36,6 +36,7 @@ from friday.integrations.canvas import Canvas
 from friday.integrations.github import GitHub
 from friday.integrations.jira import Jira
 from friday.integrations.linear import Linear
+from friday.integrations.microsoft import MicrosoftTodo
 from friday.integrations.notion import Notion
 from friday.integrations.reminders import Reminders, Things, WaitingForMac
 from friday.integrations.todoist import Todoist
@@ -53,6 +54,7 @@ CONNECTORS: dict[str, type] = {
     GitHub.kind: GitHub,
     Canvas.kind: Canvas,
     Things.kind: Things,
+    MicrosoftTodo.kind: MicrosoftTodo,
 }
 ARRIVALS = ("inbox_first", "straight", "inbox")
 SERVICE_OWNS = ("title", "due", "notes", "firmness")  # what an edit from the service may change
@@ -100,6 +102,8 @@ def connector_for(source: dict[str, Any], transport: Transport = None) -> Connec
     """The connector a connected source reads with: its kind's, its token, its settings."""
     config = json.loads(source["config"] or "{}")
     kind = source["kind"]
+    # a signed-in service's renewed tokens are kept again (integrations/oauth.py Session)
+    config["_keep"] = lambda token: keep_token(int(source["id"]), kind, token)
     return CONNECTORS[kind](token_of(int(source["id"])), config, transport or TRANSPORTS.get(kind))
 
 

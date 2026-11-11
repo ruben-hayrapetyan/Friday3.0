@@ -4,7 +4,7 @@
 // box without a token: Friday's Mac app reads it, once macOS lets it.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import { query, type Schemas } from "@/api/client"
 import { Switch } from "@/components/fr/controls"
@@ -74,14 +74,48 @@ export function useIntegrations() {
   return useQuery({ queryKey: ["integrations"], queryFn: () => query("integrations") as Promise<Connected[]> })
 }
 
+/** Outlook (C109): the mailboxes read by Microsoft's sign-in, each with Remove, and Sign in to add one. */
+export function OutlookMail({ entry }: { entry: Entry }) {
+  const [waiting, setWaiting] = useState(false)
+  const boxes = useQuery({ queryKey: ["mail_app_accounts"], queryFn: () => query("mail_app_accounts"), refetchInterval: waiting ? 3000 : false })
+  const forget = useCommand("mail_app_forget", { label: (o) => o.result.message })
+  const mine = (boxes.data ?? []).filter((b) => b.provider === "outlook")
+  const count = mine.length
+  const [before, setBefore] = useState(count)
+  useEffect(() => {
+    if (waiting && count > before) setWaiting(false) // the new mailbox is here: stop asking
+    if (!waiting) setBefore(count)
+  }, [waiting, count, before])
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {mine.map((b) => (
+        <div key={b.address} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 13 }}>Reading {b.address}</span>
+          <button className="btn btn-secondary" onClick={() => forget({ address: b.address })} style={{ fontSize: 12 }}>
+            Remove
+          </button>
+        </div>
+      ))}
+      <SignInConnect entry={entry} waiting={waiting} onWaiting={setWaiting} />
+    </div>
+  )
+}
+
 export function TokenIntegration({ entry }: { entry: Entry }) {
-  const mine = (useIntegrations().data ?? []).filter((c) => c.kind === entry.id)
+  const [waiting, setWaiting] = useState(false)
+  // while a sign-in page is open in the browser, asked every few seconds: the box turns connected once you're back
+  const all = useQuery({ queryKey: ["integrations"], queryFn: () => query("integrations") as Promise<Connected[]>, refetchInterval: waiting ? 3000 : false })
+  const mine = (all.data ?? []).filter((c) => c.kind === entry.id)
+  useEffect(() => {
+    if (waiting && mine.length > 0) setWaiting(false) // connected: stop asking
+  }, [waiting, mine.length])
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       {mine.map((c) => (
         <ConnectedRow key={c.id} c={c} />
       ))}
-      {mine.length === 0 && (entry.onMac ? <MacConnect entry={entry} /> : <ConnectForm entry={entry} />)}
+      {mine.length === 0 &&
+        (entry.onMac ? <MacConnect entry={entry} /> : entry.signIn ? <SignInConnect entry={entry} waiting={waiting} onWaiting={setWaiting} /> : <ConnectForm entry={entry} />)}
     </div>
   )
 }
@@ -155,6 +189,48 @@ function ConnectForm({ entry }: { entry: Entry }) {
       </div>
       {token_.note && <span className="fr-kicker">{token_.note}</span>}
       <span className="fr-kicker">The token stays on this Mac, in Friday's private settings file. Friday checks it with {entry.name} before keeping it.</span>
+    </div>
+  )
+}
+
+/** One connected by signing in on the service's own page (Microsoft, TickTick, Slack; C109): its steps and Sign in,
+ * which opens the page in your browser; the page sends you back to Friday, and this box turns connected. */
+export function SignInConnect({ entry, waiting, onWaiting }: { entry: Entry; waiting: boolean; onWaiting: (w: boolean) => void }) {
+  const ready = useQuery({ queryKey: ["integration_token_page", entry.id], queryFn: () => query("integration_token_page", { kind: entry.id }) })
+  const start = useCommand("integration_sign_in", { label: () => `${entry.name}'s page opened in your browser` })
+  const [url, setUrl] = useState<string | null>(null)
+  const sign = entry.signIn!
+  const go = async () => {
+    const out = await start({ kind: entry.id, origin: window.location.origin })
+    if (!out) return
+    setUrl(out.result.url)
+    onWaiting(true)
+    window.open(out.result.url, "_blank", "noopener")
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <ol style={{ margin: 0, paddingLeft: 20, listStyle: "decimal", display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+        {sign.steps.map((s) => (
+          <li key={s}>{s}</li>
+        ))}
+      </ol>
+      {ready.data && !ready.data.ready ? (
+        <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>{entry.name} isn't ready in this copy of Friday yet: it comes with the next update.</span>
+      ) : (
+        <button className="btn btn-primary" onClick={go} disabled={!ready.data} style={{ fontSize: 12, alignSelf: "flex-start" }}>
+          Sign in with {entry.name.split(" ")[0]}
+        </button>
+      )}
+      {waiting && url && (
+        <span className="fr-kicker">
+          Finish on {entry.name}'s page in your browser; this box turns connected when you're back.{" "}
+          <a className="fr-link" href={url} target="_blank" rel="noreferrer">
+            Open it again
+          </a>
+        </span>
+      )}
+      {sign.note && <span className="fr-kicker">{sign.note}</span>}
+      <span className="fr-kicker">Friday keeps the sign-in on this Mac, in its private settings file; nothing is pasted.</span>
     </div>
   )
 }

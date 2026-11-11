@@ -74,6 +74,12 @@ describe("the integrations gallery's catalog", () => {
     expect(things.onMac!.steps.join(" ")).toContain("Someday stays out")
     expect(names(search(CATALOG, "things 3"))).toEqual(["Things"])
   })
+  it("connects Microsoft To Do by signing in, not a token (C109)", () => {
+    const todo = CATALOG.find((e) => e.id === "microsoft_todo")!
+    expect(todo.token).toBeUndefined()
+    expect(todo.signIn!.steps.join(" ")).toContain("Sign in with Microsoft")
+    expect(names(search(CATALOG, "wunderlist"))).toEqual(["Microsoft To Do"])
+  })
   it("has Apple Reminders as a to-do app with no token, said step by step (C100)", () => {
     const reminders = CATALOG.find((e) => e.id === "reminders")!
     expect(reminders.category).toBe("To-do apps")
@@ -157,8 +163,11 @@ describe("the boxes for mail by app password (C99)", () => {
     expect(mail.every((e) => e.category === "Mail" && e.mail!.steps.length >= 3)).toBe(true)
     expect(mail.filter((e) => e.mail!.help).every((e) => e.mail!.help!.startsWith("https://"))).toBe(true)
   })
-  it("leave Outlook out: Microsoft refuses app passwords for its mail", () => {
-    expect(names(search(CATALOG, "outlook")).some((n) => /Outlook/.test(n))).toBe(false)
+  it("have Outlook by Microsoft's sign-in, not an app password, which Microsoft refuses (C109)", () => {
+    const outlook = CATALOG.find((e) => e.id === "outlook_mail")!
+    expect(outlook.mail).toBeUndefined()
+    expect(outlook.signIn!.note).toContain("Nothing is sent, moved, deleted or marked read")
+    expect(names(search(CATALOG, "hotmail"))).toEqual(["Outlook"])
   })
   it("are found by the names people use", () => {
     expect(names(search(CATALOG, "me.com"))).toEqual(["iCloud Mail"])

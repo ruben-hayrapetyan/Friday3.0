@@ -13,6 +13,7 @@ from friday.commands.settings import write_setting
 from friday.core.db import rows
 from friday.core.items import FieldError
 from friday.core.paths import secrets_path
+from friday.integrations import outlook
 from friday.planner.store import kv_set
 from friday.sync import imap_any
 from friday.sync.google_auth import write_private
@@ -66,7 +67,9 @@ def mail_app_forget(ctx: Ctx, inp: MailAppForgetInput) -> Changed:
     address = inp.address.strip().lower()
     kept = secrets()
     gone = [
-        k for k, v in kept.items() if k.startswith(imap_any.SECTION) and str(v.get("address", "")).lower() == address
+        k
+        for k, v in kept.items()
+        if k.startswith((imap_any.SECTION, outlook.SECTION)) and str(v.get("address", "")).lower() == address
     ]
     if not gone:
         raise FieldError("address", f"{address or 'that address'} isn't connected")
@@ -88,8 +91,8 @@ def of_address(kept: dict, address: str) -> list[str]:
 
 @query("mail_app_accounts")
 def mail_app_accounts(ctx: Ctx, inp: Empty) -> list[MailAppAccount]:
-    """The mailboxes read by app password; never their passwords."""
+    """The mailboxes read by app password, and Outlook's by Microsoft's sign-in; never their passwords or tokens."""
     return [
         MailAppAccount(provider=a.provider, name=imap_any.PROVIDERS[a.provider].name, address=a.address)
         for a in imap_any.accounts()
-    ]
+    ] + [MailAppAccount(provider="outlook", name=outlook.NAME, address=a.address) for a in outlook.accounts()]

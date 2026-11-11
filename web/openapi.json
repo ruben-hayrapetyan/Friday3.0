@@ -2823,6 +2823,77 @@
     }
    }
   },
+  "/api/c/integration_sign_in": {
+   "post": {
+    "summary": "The service's own sign-in page, for one connected by signing in (Microsoft, TickTick, Slack): open it, allow",
+    "operationId": "integration_sign_in",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SignInInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IntegrationSignInResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/kind_add": {
    "post": {
     "summary": "A new kind, starting as a copy of one you have.",
@@ -11563,7 +11634,7 @@
   },
   "/api/q/mail_app_accounts": {
    "get": {
-    "summary": "The mailboxes read by app password; never their passwords.",
+    "summary": "The mailboxes read by app password, and Outlook's by Microsoft's sign-in; never their passwords or tokens.",
     "operationId": "mail_app_accounts",
     "responses": {
      "200": {
@@ -15375,6 +15446,11 @@
       "type": "boolean",
       "title": "Lists",
       "default": false
+     },
+     "signs_in": {
+      "type": "boolean",
+      "title": "Signs In",
+      "default": false
      }
     },
     "additionalProperties": false,
@@ -19100,6 +19176,76 @@
      "result"
     ],
     "title": "IntegrationSetResult"
+   },
+   "IntegrationSignInResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/SignInOut"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "IntegrationSignInResult"
    },
    "ItemDetail": {
     "properties": {
@@ -30323,6 +30469,47 @@
     ],
     "title": "ShoveResult"
    },
+   "SignInInput": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "title": "Kind"
+     },
+     "origin": {
+      "type": "string",
+      "title": "Origin"
+     },
+     "fields": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Fields",
+      "default": {}
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "kind",
+     "origin"
+    ],
+    "title": "SignInInput"
+   },
+   "SignInOut": {
+    "properties": {
+     "url": {
+      "type": "string",
+      "title": "Url"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "url"
+    ],
+    "title": "SignInOut"
+   },
    "SittingDeleteResult": {
     "properties": {
      "command_id": {
@@ -33413,6 +33600,11 @@
        }
       ],
       "title": "Url"
+     },
+     "ready": {
+      "type": "boolean",
+      "title": "Ready",
+      "default": true
      }
     },
     "additionalProperties": false,

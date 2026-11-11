@@ -26,7 +26,7 @@ import { SectionHead } from "./SettingsPage"
 import { CATALOG, type Entry, grouped, search } from "./gallery"
 import { LinkIntegration, ViaMac } from "./LinkIntegration"
 import { MailIntegration, useMailAccounts } from "./MailIntegration"
-import { TokenIntegration, useIntegrations } from "./TokenIntegration"
+import { OutlookMail, TokenIntegration, useIntegrations } from "./TokenIntegration"
 
 export function Integrations() {
   return (
@@ -115,7 +115,11 @@ function useStatuses(): (e: Entry) => Status {
     if (e.id === "google") return of("gcal")
     if (e.id === "gmail") return of("gmail")
     if (e.id === "ai") return ai.ready ? ["Ready", ok, true] : ["Not set up", warn, false]
-    if (e.token || e.onMac) {
+    if (e.id === "outlook_mail") {
+      const mine = mailboxes.filter((a) => a.provider === "outlook")
+      return mine.length ? [mine.length > 1 ? `${mine.length} connected` : "Connected", ok, true] : null
+    }
+    if (e.token || e.onMac || e.signIn) {
       const mine = integrations.filter((c) => c.kind === e.id)
       if (!mine.length) return null
       return mine.some((c) => c.last_error) ? ["Needs a look", warn, true] : ["Connected", ok, true]
@@ -192,7 +196,8 @@ function Panel({ entry, status, onClose, onOpen }: { entry: Entry; status: Statu
 
 /** What each box opens: the card it has always had, or, for one connected by token, its connect form and settings. */
 function PanelBody({ entry, onOpen }: { entry: Entry; onOpen: (id: string) => void }) {
-  if (entry.token || entry.onMac) return <TokenIntegration entry={entry} />
+  if (entry.id === "outlook_mail") return <OutlookMail entry={entry} />
+  if (entry.token || entry.onMac || entry.signIn) return <TokenIntegration entry={entry} />
   if (entry.link) return <LinkIntegration entry={entry} />
   if (entry.mail) return <MailIntegration entry={entry} />
   if (entry.viaMac) return <ViaMac entry={entry} onOpen={onOpen} />

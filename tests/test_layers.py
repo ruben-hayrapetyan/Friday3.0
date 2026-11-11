@@ -35,6 +35,9 @@ LAYER_3_EXCEPTIONS = {
     ("integrations", "friday.commands"),
     ("integrations", "friday.ingest.ics"),
     ("integrations", "friday.sync.google_auth"),
+    # Outlook's mail by Microsoft's sign-in (C109) is read into the mail pipeline's own shapes, from the same day on
+    ("integrations", "friday.sync.gmail"),
+    ("integrations", "friday.sync.imap_any"),
 }
 # The one script allowed to read the research code, to write the golden fixtures once.
 FIXTURE_SCRIPT = ROOT / "scripts" / "make_golden_fixtures.py"

@@ -1051,12 +1051,23 @@ class DisconnectInput(Model):
     keep: bool  # what it brought in stays in Friday, or is dropped from it (nothing changes in the service)
 
 
+class SignInInput(Model):
+    kind: str
+    origin: str  # the page's own address (http://127.0.0.1:<port>), where the service sends your browser back
+    fields: dict[str, str] = {}
+
+
+class SignInOut(Model):
+    url: str  # the service's sign-in page
+
+
 class TokenPageInput(Model):
     kind: str
 
 
 class TokenPageOut(Model):
     url: str | None  # the service's page that gives you a token for Friday; None: not ready in this copy of Friday
+    ready: bool = True  # this copy of Friday can connect it (Friday's app is registered there)
 
 
 class ListsInput(Model):
@@ -1091,6 +1102,7 @@ class Connected(Model):
     made: int  # open to-dos it brought in
     waiting: int = 0  # its to-dos waiting in your Inbox to be accepted
     lists: bool = False  # it has lists to choose from (Notion's databases): integration_lists
+    signs_in: bool = False  # connected by signing in on the service's page (integration_sign_in), not a token
 
 
 class ConnectOutput(Model):
