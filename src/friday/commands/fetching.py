@@ -24,7 +24,7 @@ from friday.core.time import format_utc, parse_utc, planning_date
 from friday.ingest import extract, ics, llm
 from friday.ingest.ics import Found
 from friday.planner.store import area_names, kv_get, kv_set, load_settings
-from friday.sync import gcal, google_auth, imap_mail
+from friday.sync import gcal, google_auth, imap_any, imap_mail
 
 Fetch = Callable[[str], str]
 FAILURES_FOR_BANNER = 3
@@ -78,6 +78,14 @@ def sync(
                     read_mail(conn, settings, now_utc, user_id, lambda s=service: s, address)
                 finally:
                     service.close()
+        # iCloud Mail, Yahoo, Fastmail and other mail by app password (C99), each a source of its own
+        for box in imap_any.accounts() if mail is None else []:
+            other = imap_any.AnyImapService(box.provider, box.address, box.password, box.host)
+            label = imap_any.PROVIDERS[box.provider].name
+            try:
+                read_mail(conn, settings, now_utc, user_id, lambda s=other: s, box.address, "mail", label)
+            finally:
+                other.close()
     made += extract_pending(conn, settings, now_utc, user_id, client)
     # What waits is checked again each pass, read or not: something you added since may be what it proposes.
     set_aside_waiting(conn, settings, user_id, now_utc, write_raw(conn))
@@ -96,7 +104,13 @@ def due(conn: sqlite3.Connection, kind: str, settings: dict, now_utc: int, user_
     return at is None or bool(found and found["unread"]) or now_utc - parse_utc(at) >= settings["ingest"].poll_min
 
 
-WHO = {"gmail": "Gmail", "gcal": "Google Calendar", "mac": "Your Mac's calendars", "canvas": "Canvas"}
+WHO = {
+    "gmail": "Gmail",
+    "mail": "Your mail",
+    "gcal": "Google Calendar",
+    "mac": "Your Mac's calendars",
+    "canvas": "Canvas",
+}
 
 
 def guarded(conn: sqlite3.Connection, kind: str, now_utc: int, user_id: int, read: Callable[[], int]) -> int:
@@ -316,7 +330,7 @@ def extract_pending(
     now_utc: int,
     user_id: int,
     client: Any | None,
-    kinds: tuple[str, ...] = ("upload", "gmail"),
+    kinds: tuple[str, ...] = ("upload", "gmail", "mail"),
 ) -> int:
     """Documents and mail waiting to be read (of these kinds of source), while the day's budget lasts."""
     pending = rows(

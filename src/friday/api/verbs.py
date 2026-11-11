@@ -588,6 +588,18 @@ VERBS = {
         False,
         "What the Mac app made of a change: done, with the event as it now is; or why not, tried again",
     ),
+    "mail_app_accounts": Verb(
+        "GET",
+        "/api/q/mail_app_accounts",
+        commands.Empty,
+        False,
+        False,
+        "The mailboxes read by app password; never their passwords.",
+    ),
+    "mail_app_forget": Verb(
+        "POST", "/api/c/mail_app_forget", commands.MailAppForgetInput, True, False, "mail_app_forget"
+    ),
+    "mail_app_set": Verb("POST", "/api/c/mail_app_set", commands.MailAppInput, True, False, "mail_app_set"),
     "mail_log": Verb(
         "GET",
         "/api/q/mail_log",

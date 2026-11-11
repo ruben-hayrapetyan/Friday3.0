@@ -29,6 +29,7 @@ from friday.commands import (  # noqa: F401
     learning,
     mac,
     mail,
+    mail_app,
     napping,
     optional_events,
     phones,

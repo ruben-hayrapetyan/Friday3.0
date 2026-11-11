@@ -888,6 +888,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/mail_app_forget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** mail_app_forget */
+        post: operations["mail_app_forget"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/mail_app_set": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** mail_app_set */
+        post: operations["mail_app_set"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/mail_retry": {
         parameters: {
             query?: never;
@@ -2906,6 +2940,23 @@ export interface paths {
         };
         /** Changes to the Mac's events waiting for the Mac app, oldest first: an event's times, and its title */
         get: operations["mac_writes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/mail_app_accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The mailboxes read by app password; never their passwords. */
+        get: operations["mail_app_accounts"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6354,6 +6405,79 @@ export interface components {
         };
         /** MacWrittenResult */
         MacWrittenResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** MailAppAccount */
+        MailAppAccount: {
+            /** Provider */
+            provider: string;
+            /** Name */
+            name: string;
+            /** Address */
+            address: string;
+        };
+        /** MailAppForgetInput */
+        MailAppForgetInput: {
+            /** Address */
+            address: string;
+        };
+        /** MailAppForgetResult */
+        MailAppForgetResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
+         * MailAppInput
+         * @description A mailbox read by app password (C99): iCloud Mail, Yahoo, Fastmail, or another IMAP server (`host`).
+         */
+        MailAppInput: {
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "icloud" | "yahoo" | "fastmail" | "other";
+            /** Address */
+            address: string;
+            /** Password */
+            password: string;
+            /** Host */
+            host?: string | null;
+        };
+        /** MailAppSetResult */
+        MailAppSetResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
@@ -12604,6 +12728,80 @@ export interface operations {
             };
         };
     };
+    mail_app_forget: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailAppForgetInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailAppForgetResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mail_app_set: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailAppInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailAppSetResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     mail_retry: {
         parameters: {
             query?: {
@@ -16614,6 +16812,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MacWriteOut"][];
+                };
+            };
+        };
+    };
+    mail_app_accounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailAppAccount"][];
                 };
             };
         };
