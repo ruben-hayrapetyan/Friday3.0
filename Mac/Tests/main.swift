@@ -510,5 +510,38 @@ test("the server stopping while it starts is said with what to do, the detail af
     check(Server.startupWords(started: true, log: "  ").hasSuffix("with what happened."), "no detail: no heading, nothing pointed at")
 }
 
+test("a reminder reaches Friday with its list and its due as Friday reads it (C100)") {
+    check(RemindersPayload.due(DateComponents(year: 2026, month: 11, day: 20)) == "2026-11-20", "a whole day")
+    check(RemindersPayload.due(DateComponents(year: 2026, month: 11, day: 20, hour: 17, minute: 5)) == "2026-11-20T17:05",
+          "at a time, to the minute")
+    check(RemindersPayload.due(DateComponents(year: 2026, month: 11, day: 20, hour: 9)) == "2026-11-20T09:00", "on the hour")
+    check(RemindersPayload.due(DateComponents(hour: 9)) == nil, "no day: no due")
+    let r = EKReminder(eventStore: EKEventStore())
+    r.title = "Pay rent"
+    r.dueDateComponents = DateComponents(year: 2026, month: 11, day: 1, hour: 9, minute: 0)
+    r.url = URL(string: "https://bank.example")
+    let sent = RemindersPayload.reminder(r)
+    check(sent["title"] as? String == "Pay rent" && sent["due"] as? String == "2026-11-01T09:00", "\(sent)")
+    check(sent["url"] as? String == "https://bank.example" && sent["completed"] as? Bool == false, "\(sent)")
+    check(!(sent["id"] as? String ?? "").isEmpty, "known by its own id")
+}
+
+test("done or opened again in Friday is made on the reminder, once, and a refusal said (C100)") {
+    let r = EKReminder(eventStore: EKEventStore())
+    var saved = 0
+    let done = ReminderWriter.apply("done", to: r, id: 4) { _ in saved += 1 }
+    check(r.isCompleted && saved == 1 && done["ok"] as? Bool == true && done["id"] as? Int == 4, "ticked off")
+    _ = ReminderWriter.apply("done", to: r, id: 5) { _ in saved += 1 }
+    check(saved == 1, "already done: not saved again")
+    struct No: LocalizedError { var errorDescription: String? { "The list is read-only" } }
+    let refused = ReminderWriter.apply("reopen", to: r, id: 6) { _ in throw No() }
+    check(r.isCompleted && refused["ok"] as? Bool == false && refused["error"] as? String == "The list is read-only",
+          "refused: left as it was, the reason said")
+    check(ReminderWriter.apply("delete", to: r, id: 7) { _ in saved += 1 }["ok"] as? Bool == false && saved == 1,
+          "only done and reopen")
+    let test = ReminderWriter.refuse(["id": 8])
+    check(test["ok"] as? Bool == false && test["error"] as? String == ReminderWriter.refusal, "Friday Test changes none of yours")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

@@ -115,7 +115,7 @@ function useStatuses(): (e: Entry) => Status {
     if (e.id === "google") return of("gcal")
     if (e.id === "gmail") return of("gmail")
     if (e.id === "ai") return ai.ready ? ["Ready", ok, true] : ["Not set up", warn, false]
-    if (e.token) {
+    if (e.token || e.onMac) {
       const mine = integrations.filter((c) => c.kind === e.id)
       if (!mine.length) return null
       return mine.some((c) => c.last_error) ? ["Needs a look", warn, true] : ["Connected", ok, true]
@@ -192,7 +192,7 @@ function Panel({ entry, status, onClose, onOpen }: { entry: Entry; status: Statu
 
 /** What each box opens: the card it has always had, or, for one connected by token, its connect form and settings. */
 function PanelBody({ entry, onOpen }: { entry: Entry; onOpen: (id: string) => void }) {
-  if (entry.token) return <TokenIntegration entry={entry} />
+  if (entry.token || entry.onMac) return <TokenIntegration entry={entry} />
   if (entry.link) return <LinkIntegration entry={entry} />
   if (entry.mail) return <MailIntegration entry={entry} />
   if (entry.viaMac) return <ViaMac entry={entry} onOpen={onOpen} />

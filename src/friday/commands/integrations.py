@@ -31,9 +31,12 @@ def integration_connect(ctx: Ctx, inp: ConnectInput) -> ConnectOutput:
         [ctx.user_id, inp.kind, name, json.dumps({"arrival": "inbox_first", "account": account})],
     )
     source_id = int(cursor.lastrowid or 0)
-    sync.keep_token(source_id, inp.kind, inp.token)
+    if not make.caps.on_mac:  # Apple Reminders has no token: macOS asks instead
+        sync.keep_token(source_id, inp.kind, inp.token)
     kv_set(ctx.conn, "integrations_now", True, ctx.user_id)
     said = f"{make.name} connected ({account}): its to-dos come to your Inbox within the minute, to review together"
+    if make.caps.on_mac:  # Apple Reminders: the Mac app reads them, once macOS lets it
+        said = f"{make.name} connected: Friday's Mac app reads them once you allow it (macOS asks)"
     return ConnectOutput(message=said, source=connected(ctx, source_id))
 
 

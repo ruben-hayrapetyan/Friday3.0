@@ -22,6 +22,13 @@ describe("the integrations gallery's catalog", () => {
     }
     expect(CATALOG.find((e) => e.id === "todoist")?.token?.page).toContain("todoist.com")
   })
+  it("has Apple Reminders as a to-do app with no token, said step by step (C100)", () => {
+    const reminders = CATALOG.find((e) => e.id === "reminders")!
+    expect(reminders.category).toBe("To-do apps")
+    expect(reminders.token).toBeUndefined()
+    expect(reminders.onMac!.steps.join(" ")).toContain("Allow")
+    expect(names(search(CATALOG, "apple reminders"))).toEqual(["Apple Reminders"])
+  })
 })
 
 describe("searching the gallery", () => {

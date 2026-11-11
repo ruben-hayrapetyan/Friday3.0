@@ -36,13 +36,18 @@ class World:
         return self.source_id
 
     def sync(self) -> int:
+        if hasattr(self.fake, "push"):  # the Mac app sends what it reads first (Apple Reminders)
+            self.fake.push(self.app)
         made = sync.sync_all(self.app.conn, load_settings(self.app.conn), self.app.now_utc, asked=True)
         if (s := self.source()) and s["last_error"]:
             self.errors.append(s["last_error"])
         return made
 
     def send(self) -> int:
-        return sync.send_writes(self.app.conn, self.app.now_utc)
+        sent = sync.send_writes(self.app.conn, self.app.now_utc)
+        if hasattr(self.fake, "deliver"):  # the Mac app does what waits for it
+            sent += self.fake.deliver(self.app)
+        return sent
 
     def source(self) -> dict[str, Any] | None:
         found = [s for s in self.app.table("sources") if s["id"] == self.source_id]
@@ -64,6 +69,8 @@ class World:
 
 
 def check_a_good_token_connects_and_a_bad_one_is_refused_in_words(w: World) -> None:
+    if w.h.on_mac:
+        pytest.skip("no token: macOS asks instead")
     with pytest.raises(FieldError) as refused:
         w.connect(token="not-the-token")
     assert "token" in str(refused.value).lower(), refused.value
@@ -182,6 +189,8 @@ def check_a_failed_send_is_kept_and_sent_later_once(w: World) -> None:
 
 @pytest.mark.parametrize("failure", ["token", "rate", "down", "timeout"])
 def check_a_failure_is_said_in_words_and_loses_nothing(w: World, failure: str) -> None:
+    if w.h.on_mac:
+        pytest.skip("nothing over the internet")
     for n in range(3):
         w.h.add(w.fake, f"Task {n}", THU)
     w.connect()
@@ -200,6 +209,8 @@ def check_a_failure_is_said_in_words_and_loses_nothing(w: World, failure: str) -
 
 
 def check_the_token_is_never_kept_outside_its_secret(w: World) -> None:
+    if w.h.on_mac:
+        pytest.skip("no token")
     w.h.add(w.fake, "Task", THU)
     w.connect()
     w.sync()
@@ -215,6 +226,9 @@ def check_the_token_is_never_kept_outside_its_secret(w: World) -> None:
 
 
 def check_requests_go_only_to_the_service(w: World) -> None:
+    if w.h.on_mac:
+        assert w.fake.requests == [], "the Mac's Reminders went over the internet"
+        return
     w.h.add(w.fake, "Task", THU)
     w.connect()
     w.sync()
@@ -270,7 +284,7 @@ def check_disconnecting_keeps_or_drops_what_it_brought_and_forgets_the_token(w: 
     w.h.add(w.fake, "Kept or not", THU)
     source_id = w.connect()
     w.sync()
-    assert sync.token_of(source_id), "the token wasn't kept"
+    assert w.h.on_mac or sync.token_of(source_id), "the token wasn't kept"
     w.app.do("integration_disconnect", id=source_id, keep=keep)
     assert not sync.token_of(source_id), "the token outlived the connection"
     titles = [i["title"] for i in w.items()]
@@ -278,6 +292,19 @@ def check_disconnecting_keeps_or_drops_what_it_brought_and_forgets_the_token(w: 
     asked = len(w.fake.requests)
     w.sync()
     assert len(w.fake.requests) == asked, "a disconnected integration was still read"
+
+
+def check_until_the_mac_app_is_heard_from_nothing_is_taken_as_done(w: World) -> None:
+    """A Mac-fed integration (Apple Reminders) not yet read: no to-do it brought in is marked done for missing."""
+    if not w.h.on_mac:
+        pytest.skip("fetched, not fed by the Mac app")
+    w.h.add(w.fake, "Water the plants", THU)
+    w.connect()
+    w.sync()
+    assert [i["title"] for i in w.items()] == ["Water the plants"]
+    w.app.conn.execute("DELETE FROM kv WHERE key = 'mac_reminders'")  # as before the app's first reading
+    sync.sync_all(w.app.conn, load_settings(w.app.conn), w.app.now_utc, asked=True)
+    assert [i["title"] for i in w.items()] == ["Water the plants"], "done for want of a reading"
 
 
 CHECKS = {name: fn for name, fn in dict(globals()).items() if name.startswith("check_")}

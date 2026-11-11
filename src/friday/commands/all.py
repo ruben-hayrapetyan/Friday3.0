@@ -38,6 +38,7 @@ from friday.commands import (  # noqa: F401
     progress,
     queries,
     rating,
+    reminders,
     repeats,
     reviews,
     rules,

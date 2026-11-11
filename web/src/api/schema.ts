@@ -1381,6 +1381,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/reminder_written": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The Mac app's report on one: made in Reminders, or why not (kept to try again, then said on the box). */
+        post: operations["reminder_written"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/reminders_sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Your open reminders as the Mac app reads them; read into Friday within the minute. */
+        post: operations["reminders_sync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/reopen": {
         parameters: {
             query?: never;
@@ -3161,6 +3195,23 @@ export interface paths {
         };
         /** Today's unanswered comparisons, a pending rule proposal or wall question, and whether to ask for a check-in. */
         get: operations["questions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/reminder_writes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the Mac app should read Reminders, and what you marked done or opened again here, to make there. */
+        get: operations["reminder_writes"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6310,6 +6361,32 @@ export interface components {
              */
             location?: string;
         };
+        /** MacReminder */
+        MacReminder: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes?: string;
+            /** Due */
+            due?: string | null;
+            /**
+             * List
+             * @default
+             */
+            list?: string;
+            /** Url */
+            url?: string | null;
+            /**
+             * Completed
+             * @default false
+             */
+            completed?: boolean;
+        };
         /**
          * MacSyncInput
          * @description What the Mac app sees on the Mac's calendars, between `since` and `until` (times with an offset).
@@ -7797,6 +7874,100 @@ export interface components {
             } | null;
             /** Checkin */
             checkin: boolean;
+        };
+        /** ReminderJob */
+        ReminderJob: {
+            /** Id */
+            id: number;
+            /** External Id */
+            external_id: string;
+            /**
+             * Op
+             * @enum {string}
+             */
+            op: "done" | "reopen";
+        };
+        /** ReminderWritesOut */
+        ReminderWritesOut: {
+            /** Wanted */
+            wanted: boolean;
+            /**
+             * Jobs
+             * @default []
+             */
+            jobs?: components["schemas"]["ReminderJob"][];
+        };
+        /** ReminderWrittenInput */
+        ReminderWrittenInput: {
+            /** Id */
+            id: number;
+            /** Ok */
+            ok: boolean;
+            /** Error */
+            error?: string | null;
+        };
+        /** ReminderWrittenResult */
+        ReminderWrittenResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
+         * RemindersSyncInput
+         * @description Your open reminders, from Friday's Mac app; or `denied` when macOS didn't let it read them.
+         */
+        RemindersSyncInput: {
+            /**
+             * Reminders
+             * @default []
+             */
+            reminders?: components["schemas"]["MacReminder"][];
+            /**
+             * Lists
+             * @default []
+             */
+            lists?: string[];
+            /**
+             * Denied
+             * @default false
+             */
+            denied?: boolean;
+        };
+        /** RemindersSyncResult */
+        RemindersSyncResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ReopenResult */
         ReopenResult: {
@@ -13801,6 +13972,80 @@ export interface operations {
             };
         };
     };
+    reminder_written: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderWrittenInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderWrittenResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reminders_sync: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RemindersSyncInput"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemindersSyncResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     reopen: {
         parameters: {
             query?: {
@@ -17130,6 +17375,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuestionsOut"];
+                };
+            };
+        };
+    };
+    reminder_writes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderWritesOut"];
                 };
             };
         };

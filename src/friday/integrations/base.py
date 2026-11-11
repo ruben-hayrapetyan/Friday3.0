@@ -41,6 +41,7 @@ class Caps:
     two_way: bool = True  # done and reopen in Friday go back to the service
     lengths: bool = False  # the service keeps a length (an estimate, a duration)
     kind: str = "Task"  # what a to-do from it is when its title says nothing more (C97): "Task", or "Work task"
+    on_mac: bool = False  # read and written by the Mac app (Apple Reminders), not over the internet
 
 
 Problem = Literal["token", "access", "rate", "down", "answer"]

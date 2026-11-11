@@ -35,7 +35,10 @@ WORK="$(mktemp -d)"
 trap 'rm -r "$WORK"' EXIT
 (cd "$REPO" && uv export --frozen --no-dev --no-emit-project --no-hashes --quiet -o "$WORK/packages.txt")
 uv pip install --quiet --python "$PY" --break-system-packages -r "$WORK/packages.txt"
-uv pip install --quiet --python "$PY" --break-system-packages --no-deps --reinstall-package friday "$REPO"
+# built afresh every time (10 Nov: uv keeps a built Friday until pyproject.toml changes, so a bundle had last time's
+# code: Friday Test without Apple Reminders' commands, and a release could have shipped the same way)
+uv pip install --quiet --python "$PY" --break-system-packages --no-deps --reinstall-package friday \
+  --refresh-package friday --no-cache "$REPO"
 # what's installed must not point back at the repo, which lives in ~/Downloads (macOS asks about every read there)
 if grep -rqs "$REPO" "$RUNTIME"/python/lib/python*/site-packages/*.pth; then
   echo "Friday was installed as a link to $REPO, not a copy" >&2
