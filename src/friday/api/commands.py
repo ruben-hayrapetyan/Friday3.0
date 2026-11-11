@@ -1126,14 +1126,25 @@ class MacReminder(Model):
     list: str = ""
     url: str | None = None
     completed: bool = False
+    when: str | None = None  # Things: the day you meant to do it ("When"), beside its deadline (`due`)
+
+
+MacKind = Literal["reminders", "things"]
 
 
 class RemindersSyncInput(Model):
-    """Your open reminders, from Friday's Mac app; or `denied` when macOS didn't let it read them."""
+    """Your open to-dos in an app on this Mac (Apple Reminders, Things), from Friday's Mac app; or `denied` when macOS
+    didn't let it read them, `missing` when the app isn't on this Mac."""
 
+    kind: MacKind = "reminders"
     reminders: list[MacReminder] = []
     lists: list[str] = []
     denied: bool = False
+    missing: bool = False
+
+
+class MacAppInput(Model):
+    kind: MacKind = "reminders"
 
 
 class ReminderJob(Model):

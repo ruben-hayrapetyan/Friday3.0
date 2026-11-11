@@ -23,8 +23,12 @@ export const ARRIVALS: { value: Arrival; label: string; note: string }[] = [
   { value: "inbox", label: "Always in the Inbox", note: "Every new to-do waits in your Inbox for you to accept." },
 ]
 
-/** macOS's own page where Friday is allowed to see your reminders (C100). */
+/** macOS's own page where Friday is allowed to see your reminders (C100), or to use Things (C108). */
 export const REMINDERS_PRIVACY = "x-apple.systempreferences:com.apple.preference.security?Privacy_Reminders"
+export const PRIVACY_PAGE: Record<string, [string, string]> = {
+  reminders: [REMINDERS_PRIVACY, "Open Privacy & Security → Reminders"],
+  things: ["x-apple.systempreferences:com.apple.preference.security?Privacy_Automation", "Open Privacy & Security → Automation"],
+}
 
 /** How new to-dos arrive: each choice with what it means, stacked, so none is cut short (10 Nov: a row of three was
  * "poorly formatted"). */
@@ -245,9 +249,9 @@ function ConnectedRow({ c }: { c: Connected }) {
       <span style={{ fontSize: 13, color: c.last_error ? "var(--fr-warn)" : undefined }}>
         {c.last_error ?? (c.last_sync ? `Read ${when(c.last_sync, today)}: ${c.made} open to-do${c.made === 1 ? "" : "s"} from it in your plan.` : "Connected: reading it within the minute.")}
       </span>
-      {c.kind === "reminders" && c.last_error?.includes("Privacy & Security") && (
-        <a className="btn btn-secondary" href={REMINDERS_PRIVACY} style={{ fontSize: 12, alignSelf: "flex-start" }}>
-          Open Privacy & Security → Reminders
+      {PRIVACY_PAGE[c.kind] && c.last_error?.includes("Privacy & Security") && (
+        <a className="btn btn-secondary" href={PRIVACY_PAGE[c.kind][0]} style={{ fontSize: 12, alignSelf: "flex-start" }}>
+          {PRIVACY_PAGE[c.kind][1]}
         </a>
       )}
       {(c.waiting ?? 0) > 0 && (

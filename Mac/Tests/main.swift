@@ -543,5 +543,36 @@ test("done or opened again in Friday is made on the reminder, once, and a refusa
     check(test["ok"] as? Bool == false && test["error"] as? String == ReminderWriter.refusal, "Friday Test changes none of yours")
 }
 
+test("Things' to-dos read from its AppleScript answer: the open ones, their deadline and When day (C108)") {
+    func list(_ items: [NSAppleEventDescriptor]) -> NSAppleEventDescriptor {
+        let out = NSAppleEventDescriptor.list()
+        for (i, d) in items.enumerated() { out.insert(d, at: i + 1) }
+        return out
+    }
+    func status(_ code: String) -> NSAppleEventDescriptor { NSAppleEventDescriptor(enumCode: ThingsScript.code(code)) }
+    let nov20 = Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 0))!
+    let answer = list([
+        list([NSAppleEventDescriptor(string: "A1"), NSAppleEventDescriptor(string: "B2")]),
+        list([NSAppleEventDescriptor(string: "File taxes"), NSAppleEventDescriptor(string: "Done already")]),
+        list([NSAppleEventDescriptor(string: "Forms in the drawer"), NSAppleEventDescriptor(string: "")]),
+        list([NSAppleEventDescriptor(date: nov20), NSAppleEventDescriptor.null()]),
+        list([NSAppleEventDescriptor.null(), NSAppleEventDescriptor(date: nov20)]),
+        list([status("tdio"), status("tdcm")]),
+    ])
+    let todos = ThingsScript.todos(answer, list: "Today")
+    check(todos.count == 1, "only the open one: \(todos)")
+    check(todos.first?["id"] as? String == "A1" && todos.first?["due"] as? String == "2026-11-20", "\(todos)")
+    check(todos.first?["when"] == nil && todos.first?["list"] as? String == "Today", "no When day: none sent")
+    check(ThingsScript.todos(list([list([]), list([]), list([]), list([]), list([]), list([])]), list: "Inbox").isEmpty,
+          "an empty list")
+}
+
+test("a Things to-do is ticked only by an id that can't break out of the script; Friday Test ticks none (C108)") {
+    let sneaky = ThingsScript.apply(["id": 3, "external_id": "A1\" to open\ndo shell script \"rm", "op": "done"])
+    check(sneaky["ok"] as? Bool == false, "an id with quotes isn't put in a script")
+    check(ThingsScript.apply(["id": 4, "external_id": "A1", "op": "delete"])["ok"] as? Bool == false, "only done and reopen")
+    check(ThingsScript.refuse(["id": 5])["error"] as? String == ThingsScript.refusal, "Friday Test changes none of yours")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

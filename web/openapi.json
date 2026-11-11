@@ -5941,7 +5941,7 @@
   },
   "/api/c/reminder_written": {
    "post": {
-    "summary": "The Mac app's report on one: made in Reminders, or why not (kept to try again, then said on the box).",
+    "summary": "The Mac app's report on one: made in that app, or why not (kept to try again, then said on the box).",
     "operationId": "reminder_written",
     "parameters": [
      {
@@ -6012,7 +6012,7 @@
   },
   "/api/c/reminders_sync": {
    "post": {
-    "summary": "Your open reminders as the Mac app reads them; read into Friday within the minute.",
+    "summary": "Your open to-dos as the Mac app reads them (Reminders, Things); read into Friday within the minute.",
     "operationId": "reminders_sync",
     "parameters": [
      {
@@ -11946,8 +11946,24 @@
   },
   "/api/q/reminder_writes": {
    "get": {
-    "summary": "Whether the Mac app should read Reminders, and what you marked done or opened again here, to make there.",
+    "summary": "Whether the Mac app should read that app, and what you marked done or opened again here, to make there.",
     "operationId": "reminder_writes",
+    "parameters": [
+     {
+      "name": "kind",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "reminders",
+        "things"
+       ],
+       "type": "string",
+       "default": "reminders",
+       "title": "Kind"
+      }
+     }
+    ],
     "responses": {
      "200": {
       "description": "Successful Response",
@@ -11955,6 +11971,16 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/ReminderWritesOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
         }
        }
       }
@@ -21243,6 +21269,17 @@
       "type": "boolean",
       "title": "Completed",
       "default": false
+     },
+     "when": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "When"
      }
     },
     "additionalProperties": false,
@@ -25877,6 +25914,15 @@
    },
    "RemindersSyncInput": {
     "properties": {
+     "kind": {
+      "type": "string",
+      "enum": [
+       "reminders",
+       "things"
+      ],
+      "title": "Kind",
+      "default": "reminders"
+     },
      "reminders": {
       "items": {
        "$ref": "#/components/schemas/MacReminder"
@@ -25897,12 +25943,17 @@
       "type": "boolean",
       "title": "Denied",
       "default": false
+     },
+     "missing": {
+      "type": "boolean",
+      "title": "Missing",
+      "default": false
      }
     },
     "additionalProperties": false,
     "type": "object",
     "title": "RemindersSyncInput",
-    "description": "Your open reminders, from Friday's Mac app; or `denied` when macOS didn't let it read them."
+    "description": "Your open to-dos in an app on this Mac (Apple Reminders, Things), from Friday's Mac app; or `denied` when macOS\ndidn't let it read them, `missing` when the app isn't on this Mac."
    },
    "RemindersSyncResult": {
     "properties": {

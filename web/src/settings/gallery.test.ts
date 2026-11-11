@@ -68,6 +68,12 @@ describe("the integrations gallery's catalog", () => {
     expect(canvas.token!.note).toContain("calendar feed keeps bringing only its events")
     expect(names(search(CATALOG, "instructure"))).toEqual(["Canvas"])
   })
+  it("has Things as a to-do app on this Mac, saying Someday stays out (C108)", () => {
+    const things = CATALOG.find((e) => e.id === "things")!
+    expect(things.token).toBeUndefined()
+    expect(things.onMac!.steps.join(" ")).toContain("Someday stays out")
+    expect(names(search(CATALOG, "things 3"))).toEqual(["Things"])
+  })
   it("has Apple Reminders as a to-do app with no token, said step by step (C100)", () => {
     const reminders = CATALOG.find((e) => e.id === "reminders")!
     expect(reminders.category).toBe("To-do apps")

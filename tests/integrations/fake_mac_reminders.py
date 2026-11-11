@@ -11,6 +11,8 @@ from tests.integrations.kit import Harness
 class FakeMacReminders:
     host = "this Mac"
     transport = None  # nothing over the internet
+    kind = "reminders"
+    list_name = "Reminders"
 
     def __init__(self, token: str = ""):
         self.reminders: dict[str, dict[str, Any]] = {}
@@ -21,7 +23,7 @@ class FakeMacReminders:
 
     def add(self, title: str, due: str | None = None, minutes: int | None = None) -> str:
         rid = f"x-apple-reminder://{next(self.ids):04X}"
-        self.reminders[rid] = {"id": rid, "title": title, "due": due, "list": "Reminders", "completed": False}
+        self.reminders[rid] = {"id": rid, "title": title, "due": due, "list": self.list_name, "completed": False}
         return rid
 
     def fail_next(self, status: int = 0, times: int = 1, headers: Any = None) -> None:
@@ -29,14 +31,14 @@ class FakeMacReminders:
 
     def push(self, app: Any) -> None:
         """As the app does: only while Friday wants Reminders read (it stops once you disconnect)."""
-        if not app.do("reminder_writes")["wanted"]:
+        if not app.do("reminder_writes", kind=self.kind)["wanted"]:
             return
         open_ = [r for r in self.reminders.values() if not r["completed"]]
-        app.do("reminders_sync", reminders=open_, lists=["Reminders"])
+        app.do("reminders_sync", kind=self.kind, reminders=open_, lists=[self.list_name])
 
     def deliver(self, app: Any) -> int:
         made = 0
-        for job in app.do("reminder_writes")["jobs"]:
+        for job in app.do("reminder_writes", kind=self.kind)["jobs"]:
             if self.failing:
                 self.failing -= 1
                 app.do("reminder_written", id=job["id"], ok=False, error="The reminder couldn't be saved")

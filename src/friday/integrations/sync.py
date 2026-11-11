@@ -37,7 +37,7 @@ from friday.integrations.github import GitHub
 from friday.integrations.jira import Jira
 from friday.integrations.linear import Linear
 from friday.integrations.notion import Notion
-from friday.integrations.reminders import Reminders, WaitingForMac
+from friday.integrations.reminders import Reminders, Things, WaitingForMac
 from friday.integrations.todoist import Todoist
 from friday.integrations.trello import Trello
 from friday.sync.google_auth import write_private
@@ -52,6 +52,7 @@ CONNECTORS: dict[str, type] = {
     Jira.kind: Jira,
     GitHub.kind: GitHub,
     Canvas.kind: Canvas,
+    Things.kind: Things,
 }
 ARRIVALS = ("inbox_first", "straight", "inbox")
 SERVICE_OWNS = ("title", "due", "notes", "firmness")  # what an edit from the service may change

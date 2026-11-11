@@ -372,6 +372,23 @@ export const CATALOG: Entry[] = [
       note: "If there's no New Access Token button, your school has turned tokens off: use your Canvas calendar feed under Calendar links instead. Once connected, Canvas's assignments come from here, and your Canvas calendar feed keeps bringing only its events. Finishing one in Friday ticks it in Canvas's To Do, which only you see; nothing is submitted.",
     },
   },
+  {
+    id: "things",
+    name: "Things",
+    category: "To-do apps",
+    line: "Your Things to-dos planned into your week; done goes both ways",
+    aliases: ["things 3", "cultured code", "todo", "to-do", "tasks", "gtd"],
+    icon: "check-circle",
+    hue: "#4a90d9",
+    onMac: {
+      steps: [
+        "Have Things 3 on this Mac, then press Connect: nothing to copy, no account.",
+        "macOS asks once whether Friday may control Things. Press OK.",
+        "Your to-dos in Inbox, Today, Upcoming and Anytime come to your Inbox to review together; Someday stays out.",
+        "A Things deadline is the deadline; a When date alone is the day you meant to do it, which Friday can move.",
+      ],
+    },
+  },
   ...LINKS,
   ...MAIL,
   {

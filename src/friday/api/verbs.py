@@ -922,10 +922,10 @@ VERBS = {
     "reminder_writes": Verb(
         "GET",
         "/api/q/reminder_writes",
-        commands.Empty,
+        commands.MacAppInput,
         False,
         False,
-        "Whether the Mac app should read Reminders, and what you marked done or opened again here, to make there.",
+        "Whether the Mac app should read that app, and what you marked done or opened again here, to make there.",
     ),
     "reminder_written": Verb(
         "POST",
@@ -933,7 +933,7 @@ VERBS = {
         commands.ReminderWrittenInput,
         True,
         False,
-        "The Mac app's report on one: made in Reminders, or why not (kept to try again, then said on the box).",
+        "The Mac app's report on one: made in that app, or why not (kept to try again, then said on the box).",
     ),
     "reminders_sync": Verb(
         "POST",
@@ -941,7 +941,7 @@ VERBS = {
         commands.RemindersSyncInput,
         True,
         False,
-        "Your open reminders as the Mac app reads them; read into Friday within the minute.",
+        "Your open to-dos as the Mac app reads them (Reminders, Things); read into Friday within the minute.",
     ),
     "reopen": Verb("POST", "/api/c/reopen", commands.ItemRef, True, True, "Undo a drop or a done."),
     "reorder": Verb(

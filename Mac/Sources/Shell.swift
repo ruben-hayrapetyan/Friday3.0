@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let badge = DecisionsBadge()
     private let calendars = CalendarBridge()
     private let reminders = RemindersBridge()
+    private let things = ThingsBridge()
     private var hotKeys: [GlobalHotKey] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -40,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             badge.start()
             calendars.start()
             reminders.start()
+            things.start()
         }
         if !TestUser.isTest { LoginItem.enableOnFirstLaunch() }
     }

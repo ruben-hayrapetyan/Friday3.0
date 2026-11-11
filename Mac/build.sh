@@ -95,6 +95,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <string>Friday plans around the calendars on this Mac and adds the events you make to the one you choose.</string>
     <key>NSRemindersFullAccessUsageDescription</key>
     <string>Friday plans your open reminders, once you connect Apple Reminders in Settings, and ticks them off when you finish them in Friday.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Friday reads your Things to-dos, once you connect Things in Settings, and ticks them off when you finish them in Friday.</string>
     <key>NSRemindersUsageDescription</key>
     <string>Friday plans your open reminders, once you connect Apple Reminders in Settings, and ticks them off when you finish them in Friday.</string>
 </dict>

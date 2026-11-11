@@ -1407,7 +1407,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** The Mac app's report on one: made in Reminders, or why not (kept to try again, then said on the box). */
+        /** The Mac app's report on one: made in that app, or why not (kept to try again, then said on the box). */
         post: operations["reminder_written"];
         delete?: never;
         options?: never;
@@ -1424,7 +1424,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Your open reminders as the Mac app reads them; read into Friday within the minute. */
+        /** Your open to-dos as the Mac app reads them (Reminders, Things); read into Friday within the minute. */
         post: operations["reminders_sync"];
         delete?: never;
         options?: never;
@@ -3261,7 +3261,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Whether the Mac app should read Reminders, and what you marked done or opened again here, to make there. */
+        /** Whether the Mac app should read that app, and what you marked done or opened again here, to make there. */
         get: operations["reminder_writes"];
         put?: never;
         post?: never;
@@ -6484,6 +6484,8 @@ export interface components {
              * @default false
              */
             completed?: boolean;
+            /** When */
+            when?: string | null;
         };
         /**
          * MacSyncInput
@@ -8027,9 +8029,16 @@ export interface components {
         };
         /**
          * RemindersSyncInput
-         * @description Your open reminders, from Friday's Mac app; or `denied` when macOS didn't let it read them.
+         * @description Your open to-dos in an app on this Mac (Apple Reminders, Things), from Friday's Mac app; or `denied` when macOS
+         *     didn't let it read them, `missing` when the app isn't on this Mac.
          */
         RemindersSyncInput: {
+            /**
+             * Kind
+             * @default reminders
+             * @enum {string}
+             */
+            kind?: "reminders" | "things";
             /**
              * Reminders
              * @default []
@@ -8045,6 +8054,11 @@ export interface components {
              * @default false
              */
             denied?: boolean;
+            /**
+             * Missing
+             * @default false
+             */
+            missing?: boolean;
         };
         /** RemindersSyncResult */
         RemindersSyncResult: {
@@ -17599,7 +17613,9 @@ export interface operations {
     };
     reminder_writes: {
         parameters: {
-            query?: never;
+            query?: {
+                kind?: "reminders" | "things";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17613,6 +17629,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReminderWritesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
