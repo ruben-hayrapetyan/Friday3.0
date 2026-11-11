@@ -58,3 +58,22 @@ def test_drift_in_the_answers_shape_is_named() -> None:
     said = differences(shape(real), shape(fake))
     assert any("new_field" in d and "the fake doesn't" in d for d in said)
     assert not any(".due" in d for d in said)  # null in the fake stands for any value
+
+
+def test_the_read_only_checks_read_a_service_through_fridays_connector() -> None:
+    """Notion's, against its stand-in on a real port: the token works and the open to-dos are read."""
+    from tests.integrations.fake_notion import HARNESS as NOTION
+    from tests.integrations.fake_notion import FakeNotion
+
+    fake = FakeNotion(NOTION.token)
+    fake.add("Write the report", "2026-10-22", 90)
+    address, stop = serve(fake)
+    try:
+        env = os.environ | {"FRIDAY_LIVE_TOKEN": NOTION.token, "FRIDAY_API_NOTION": f"{address}/v1"}
+        done = subprocess.run([sys.executable, str(REPO / "scripts" / "live-check.py"), "notion"], env=env,
+                              capture_output=True, text=True, timeout=120, cwd=REPO)  # fmt: skip
+    finally:
+        stop()
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "token works (Maria's Notion" in done.stdout and "1 open to-do read" in done.stdout
+    assert NOTION.token not in done.stdout + done.stderr
