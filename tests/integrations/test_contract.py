@@ -21,11 +21,26 @@ from tests.integrations.fake_mac_reminders import HARNESS as REMINDERS
 from tests.integrations.fake_mac_things import HARNESS as THINGS
 from tests.integrations.fake_microsoft import HARNESS as MICROSOFT
 from tests.integrations.fake_notion import HARNESS as NOTION
+from tests.integrations.fake_ticktick import HARNESS as TICKTICK
 from tests.integrations.fake_todoist import HARNESS as TODOIST
 from tests.integrations.fake_trello import HARNESS as TRELLO
 from tests.integrations.kit import Harness
 
-HARNESSES = [TODOIST, REMINDERS, NOTION, TRELLO, ASANA, LINEAR, JIRA, GITHUB, CANVAS, THINGS, MICROSOFT, GOOGLE_TASKS]
+HARNESSES = [
+    TODOIST,
+    REMINDERS,
+    NOTION,
+    TRELLO,
+    ASANA,
+    LINEAR,
+    JIRA,
+    GITHUB,
+    CANVAS,
+    THINGS,
+    MICROSOFT,
+    GOOGLE_TASKS,
+    TICKTICK,
+]
 
 
 def cases() -> Iterator:

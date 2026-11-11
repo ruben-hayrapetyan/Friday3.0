@@ -40,6 +40,7 @@ from friday.integrations.linear import Linear
 from friday.integrations.microsoft import MicrosoftTodo
 from friday.integrations.notion import Notion
 from friday.integrations.reminders import Reminders, Things, WaitingForMac
+from friday.integrations.ticktick import TickTick
 from friday.integrations.todoist import Todoist
 from friday.integrations.trello import Trello
 from friday.sync.google_auth import write_private
@@ -57,6 +58,7 @@ CONNECTORS: dict[str, type] = {
     Things.kind: Things,
     MicrosoftTodo.kind: MicrosoftTodo,
     GoogleTasks.kind: GoogleTasks,
+    TickTick.kind: TickTick,
 }
 ARRIVALS = ("inbox_first", "straight", "inbox")
 SERVICE_OWNS = ("title", "due", "notes", "firmness")  # what an edit from the service may change

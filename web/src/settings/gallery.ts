@@ -371,6 +371,23 @@ export const CATALOG: Entry[] = [
     },
   },
   {
+    id: "ticktick",
+    name: "TickTick",
+    category: "To-do apps",
+    line: "Your TickTick lists planned into your week; done goes both ways",
+    aliases: ["tick tick", "dida", "todo", "to-do", "tasks"],
+    icon: "check-fat",
+    hue: "#4772fa",
+    signIn: {
+      steps: [
+        "Press Sign in with TickTick: TickTick's page opens in your browser.",
+        "Sign in if it asks, then press Authorize.",
+        "Come back to Friday: the open tasks of your Inbox and every list come to your Inbox to review together.",
+      ],
+      note: "TickTick's sign-in lasts about six months; when it runs out, this box asks you to sign in again.",
+    },
+  },
+  {
     id: "reminders",
     name: "Apple Reminders",
     category: "To-do apps",

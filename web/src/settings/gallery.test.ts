@@ -86,6 +86,11 @@ describe("the integrations gallery's catalog", () => {
     expect(tasks.signIn!.note).toContain("same Google sign-in")
     expect(names(search(CATALOG, "google tasks"))).toEqual(["Google Tasks"])
   })
+  it("connects TickTick by signing in, saying it lasts about six months (C111)", () => {
+    const tick = CATALOG.find((e) => e.id === "ticktick")!
+    expect(tick.signIn!.note).toContain("six months")
+    expect(names(search(CATALOG, "tick"))).toContain("TickTick")
+  })
   it("has Apple Reminders as a to-do app with no token, said step by step (C100)", () => {
     const reminders = CATALOG.find((e) => e.id === "reminders")!
     expect(reminders.category).toBe("To-do apps")
