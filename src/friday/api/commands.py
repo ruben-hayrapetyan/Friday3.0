@@ -785,6 +785,7 @@ class SourceInput(Model):
     name: str
     url: str
     trusted: bool = False
+    service: str | None = None  # the service it's from, as the gallery's box for it adds it (integrations/links.py)
 
 
 class SourceEditInput(Model):

@@ -301,7 +301,10 @@ def read_feed(
     config = json.loads(source["config"])
 
     def read() -> list[Found]:
-        read = event_reading(settings, None, False, config.get("due_pattern"), config.get("class_pattern"))
+        # A shift app's link names its kind (integrations/links.py: your shifts are Events); others read by their words
+        read = event_reading(
+            settings, config.get("kind"), False, config.get("due_pattern"), config.get("class_pattern")
+        )
         return ics.parse_feed(fetch(config["url"]), settings["time"].timezone, read)
 
     return take(conn, source, read, settings, now_utc, user_id, None, client)

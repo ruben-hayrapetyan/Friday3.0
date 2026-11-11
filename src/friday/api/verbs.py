@@ -1175,7 +1175,12 @@ VERBS = {
         "A tap you don't remember: the review stops asking for it.",
     ),
     "source_add": Verb(
-        "POST", "/api/c/source_add", commands.SourceInput, True, False, "Add a calendar feed to read into the inbox."
+        "POST",
+        "/api/c/source_add",
+        commands.SourceInput,
+        True,
+        False,
+        "Add a calendar feed to read into the inbox; one from a service's box is read as that service's (C96).",
     ),
     "source_edit": Verb(
         "POST",

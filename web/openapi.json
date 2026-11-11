@@ -8099,7 +8099,7 @@
   },
   "/api/c/source_add": {
    "post": {
-    "summary": "Add a calendar feed to read into the inbox.",
+    "summary": "Add a calendar feed to read into the inbox; one from a service's box is read as that service's (C96).",
     "operationId": "source_add",
     "parameters": [
      {
@@ -30416,6 +30416,17 @@
       "type": "boolean",
       "title": "Trusted",
       "default": false
+     },
+     "service": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Service"
      }
     },
     "additionalProperties": false,
@@ -30470,6 +30481,17 @@
        }
       ],
       "title": "Last Error"
+     },
+     "service": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Service"
      }
     },
     "additionalProperties": false,
