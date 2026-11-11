@@ -44,6 +44,7 @@ class Caps:
     on_mac: bool = False  # read and written by the Mac app (Apple Reminders), not over the internet
     lists: bool = False  # you choose which of its lists are read (Notion's databases); its ids are "<list>/<to-do>"
     gone_is_done: bool = True  # one no longer there was done there; not for Slack's mentions, which only age out
+    late_ok: bool = True  # an open task overdue by under a year still comes in; not a school's (a missed deadline)
 
 
 Problem = Literal["token", "access", "rate", "down", "answer"]

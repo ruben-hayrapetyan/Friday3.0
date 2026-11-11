@@ -45,7 +45,7 @@ def assignment_of(item: dict[str, Any]) -> str | None:
 class Canvas:
     kind: ClassVar[str] = "canvas"
     name: ClassVar[str] = "Canvas"
-    caps: ClassVar[Caps] = Caps(two_way=True, lengths=False, kind="Assignment")
+    caps: ClassVar[Caps] = Caps(two_way=True, lengths=False, kind="Assignment", late_ok=False)
     fields: ClassVar[tuple[str, ...]] = ("site",)
 
     def __init__(self, token: str, config: dict[str, Any] | None = None, transport: Transport = None,

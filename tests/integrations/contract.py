@@ -97,6 +97,19 @@ def check_each_to_do_comes_in_once_with_its_title_due_and_length(w: World) -> No
         assert report["duration_min"] == 90, report["duration_min"]
 
 
+def check_an_overdue_task_comes_in_late_but_one_over_a_year_old_stays_out(w: World) -> None:
+    """11 Nov, your answer: a to-do app's open task you missed is still yours to do; one years old isn't."""
+    w.h.add(w.fake, "Missed last week", "2026-10-12")
+    w.h.add(w.fake, "From long ago", "2024-08-11")
+    w.connect()
+    w.sync()
+    if not sync.CONNECTORS[w.h.kind].caps.late_ok:  # a school's missed deadline stays out (Canvas)
+        assert "Missed last week" not in [i["title"] for i in w.items()], "a missed deadline came in"
+        return
+    assert w.item("Missed last week")["due"].startswith("2026-10-12")
+    assert "From long ago" not in [i["title"] for i in w.items()], "a two-year-old task came in"
+
+
 def check_a_plain_title_comes_in_as_the_integration_s_kind_and_a_school_one_as_itself(w: World) -> None:
     """C97: "Book dentist" from a to-do app is a Task (from a tracker a Work task), not a 2-hour Assignment; a title
     that says what it is keeps that."""
