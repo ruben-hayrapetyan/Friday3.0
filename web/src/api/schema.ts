@@ -565,6 +565,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/google_tasks_connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read Google Tasks from a Google account that has allowed it (C110): an integration like the others, riding */
+        post: operations["google_tasks_connect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/import_chroma_colors": {
         parameters: {
             query?: never;
@@ -5396,6 +5413,11 @@ export interface components {
             events: boolean;
             /** Mail Error */
             mail_error?: string | null;
+            /**
+             * Tasks
+             * @default false
+             */
+            tasks?: boolean;
         };
         /** GoogleCalendarOut */
         GoogleCalendarOut: {
@@ -5488,11 +5510,16 @@ export interface components {
         /**
          * GoogleConnectInput
          * @description Which account to sign in: none to add one (Google's page asks which), or one already connected to sign it in
-         *     again (to allow Gmail, or when its sign-in expired).
+         *     again (to allow Gmail, or when its sign-in expired); `tasks` asks for Google Tasks too (C110).
          */
         GoogleConnectInput: {
             /** Account */
             account?: string | null;
+            /**
+             * Tasks
+             * @default false
+             */
+            tasks?: boolean;
         };
         /**
          * GoogleConnectOut
@@ -5565,6 +5592,32 @@ export interface components {
             repeated?: boolean;
             /** Generation */
             generation?: number | null;
+        };
+        /** GoogleTasksConnectResult */
+        GoogleTasksConnectResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["ConnectOutput"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** GoogleTasksInput */
+        GoogleTasksInput: {
+            /** Account */
+            account: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -12383,6 +12436,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GoogleRemoveResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    google_tasks_connect: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoogleTasksInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleTasksConnectResult"];
                 };
             };
             /** @description Validation Error */

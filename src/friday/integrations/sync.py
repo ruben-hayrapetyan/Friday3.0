@@ -34,6 +34,7 @@ from friday.integrations.asana import Asana
 from friday.integrations.base import Connector, ConnectorError, Remote, Transport
 from friday.integrations.canvas import Canvas
 from friday.integrations.github import GitHub
+from friday.integrations.google_tasks import GoogleTasks
 from friday.integrations.jira import Jira
 from friday.integrations.linear import Linear
 from friday.integrations.microsoft import MicrosoftTodo
@@ -55,6 +56,7 @@ CONNECTORS: dict[str, type] = {
     Canvas.kind: Canvas,
     Things.kind: Things,
     MicrosoftTodo.kind: MicrosoftTodo,
+    GoogleTasks.kind: GoogleTasks,
 }
 ARRIVALS = ("inbox_first", "straight", "inbox")
 SERVICE_OWNS = ("title", "due", "notes", "firmness")  # what an edit from the service may change

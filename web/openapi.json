@@ -2383,6 +2383,77 @@
     }
    }
   },
+  "/api/c/google_tasks_connect": {
+   "post": {
+    "summary": "Read Google Tasks from a Google account that has allowed it (C110): an integration like the others, riding",
+    "operationId": "google_tasks_connect",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/GoogleTasksInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/GoogleTasksConnectResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/import_chroma_colors": {
    "post": {
     "summary": "The colour Chroma showed each event in, by the event: its own choice, its calendar's or its category's.",
@@ -18071,6 +18142,11 @@
        }
       ],
       "title": "Mail Error"
+     },
+     "tasks": {
+      "type": "boolean",
+      "title": "Tasks",
+      "default": false
      }
     },
     "additionalProperties": false,
@@ -18350,12 +18426,17 @@
        }
       ],
       "title": "Account"
+     },
+     "tasks": {
+      "type": "boolean",
+      "title": "Tasks",
+      "default": false
      }
     },
     "additionalProperties": false,
     "type": "object",
     "title": "GoogleConnectInput",
-    "description": "Which account to sign in: none to add one (Google's page asks which), or one already connected to sign it in\nagain (to allow Gmail, or when its sign-in expired)."
+    "description": "Which account to sign in: none to add one (Google's page asks which), or one already connected to sign it in\nagain (to allow Gmail, or when its sign-in expired); `tasks` asks for Google Tasks too (C110)."
    },
    "GoogleConnectOut": {
     "properties": {
@@ -18578,6 +18659,90 @@
      "result"
     ],
     "title": "GoogleRemoveResult"
+   },
+   "GoogleTasksConnectResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/ConnectOutput"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "GoogleTasksConnectResult"
+   },
+   "GoogleTasksInput": {
+    "properties": {
+     "account": {
+      "type": "string",
+      "title": "Account"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "account"
+    ],
+    "title": "GoogleTasksInput"
    },
    "HTTPValidationError": {
     "properties": {

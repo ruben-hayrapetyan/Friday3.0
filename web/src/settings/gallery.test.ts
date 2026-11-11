@@ -80,6 +80,12 @@ describe("the integrations gallery's catalog", () => {
     expect(todo.signIn!.steps.join(" ")).toContain("Sign in with Microsoft")
     expect(names(search(CATALOG, "wunderlist"))).toEqual(["Microsoft To Do"])
   })
+  it("has Google Tasks riding the Google sign-in (C110)", () => {
+    const tasks = CATALOG.find((e) => e.id === "google_tasks")!
+    expect(tasks.token).toBeUndefined()
+    expect(tasks.signIn!.note).toContain("same Google sign-in")
+    expect(names(search(CATALOG, "google tasks"))).toEqual(["Google Tasks"])
+  })
   it("has Apple Reminders as a to-do app with no token, said step by step (C100)", () => {
     const reminders = CATALOG.find((e) => e.id === "reminders")!
     expect(reminders.category).toBe("To-do apps")

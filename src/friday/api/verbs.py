@@ -397,6 +397,14 @@ VERBS = {
         False,
         "Remove a Google account: its token is deleted and Friday stops reading its calendars and mail. What they",
     ),
+    "google_tasks_connect": Verb(
+        "POST",
+        "/api/c/google_tasks_connect",
+        commands.GoogleTasksInput,
+        True,
+        False,
+        "Read Google Tasks from a Google account that has allowed it (C110): an integration like the others, riding",
+    ),
     "import_chroma_colors": Verb(
         "POST",
         "/api/c/import_chroma_colors",

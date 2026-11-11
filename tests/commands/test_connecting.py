@@ -146,7 +146,9 @@ def test_connect_signs_in_once_in_the_background_then_lists_the_calendars(
     status = app.do("google_connect_status")
     assert status["state"] == "connected" and status["calendar"] and status["events"] and status["url"] is None
     assert status["account"] == "me@gmail.com"
-    assert status["accounts"] == [{"email": "me@gmail.com", "gmail": False, "events": True, "mail_error": None}]
+    assert status["accounts"] == [
+        {"email": "me@gmail.com", "gmail": False, "events": True, "mail_error": None, "tasks": False}
+    ]
     assert fake.calls == [google_auth.LOGIN_SCOPES]  # the calendars and changing events; no mail while Gmail is off
     assert fake.asked == [None]  # any account: Google's page asks which
     assert [(c["name"], c["account"]) for c in app.do("google_calendars")] == [("me", "me@gmail.com")]

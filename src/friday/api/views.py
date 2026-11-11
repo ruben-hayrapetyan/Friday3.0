@@ -494,6 +494,7 @@ class GoogleAccountOut(Model):
     gmail: bool  # lets Friday read its mail
     events: bool  # lets Friday save changes to its events
     mail_error: str | None = None  # why its mail couldn't be read last time
+    tasks: bool = False  # lets Friday read and tick its Google Tasks (C110)
 
 
 class GoogleConnectOut(Model):

@@ -6,12 +6,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
-import { query, type Schemas } from "@/api/client"
+import { command, errorWords, query, type Schemas } from "@/api/client"
 import { Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { when } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
 import type { Entry } from "./gallery"
+import { KEY as GOOGLE_KEY, useGoogleAccess } from "./GoogleConnect"
 import { inMacApp } from "./MacAccounts"
 
 export type Connected = Schemas["Connected"]
@@ -115,7 +116,15 @@ export function TokenIntegration({ entry }: { entry: Entry }) {
         <ConnectedRow key={c.id} c={c} />
       ))}
       {mine.length === 0 &&
-        (entry.onMac ? <MacConnect entry={entry} /> : entry.signIn ? <SignInConnect entry={entry} waiting={waiting} onWaiting={setWaiting} /> : <ConnectForm entry={entry} />)}
+        (entry.onMac ? (
+          <MacConnect entry={entry} />
+        ) : entry.id === "google_tasks" ? (
+          <GoogleTasksConnect entry={entry} />
+        ) : entry.signIn ? (
+          <SignInConnect entry={entry} waiting={waiting} onWaiting={setWaiting} />
+        ) : (
+          <ConnectForm entry={entry} />
+        ))}
     </div>
   )
 }
@@ -231,6 +240,50 @@ export function SignInConnect({ entry, waiting, onWaiting }: { entry: Entry; wai
       )}
       {sign.note && <span className="fr-kicker">{sign.note}</span>}
       <span className="fr-kicker">Friday keeps the sign-in on this Mac, in its private settings file; nothing is pasted.</span>
+    </div>
+  )
+}
+
+/** Google Tasks (C110), riding Friday's Google sign-in: Sign in with Google asks for Tasks too; then each account
+ * that allowed it can be read. */
+function GoogleTasksConnect({ entry }: { entry: Entry }) {
+  const access = useGoogleAccess()
+  const client = useQueryClient()
+  const connect = useCommand("google_tasks_connect", { label: (o) => o.result.message })
+  const [problem, setProblem] = useState<string | null>(null)
+  if (!access) return null
+  const allowed = (access.accounts ?? []).filter((a) => a.tasks && a.email)
+  const signIn = async () => {
+    setProblem(null)
+    try {
+      client.setQueryData(GOOGLE_KEY, (await command("google_connect", { tasks: true })).result)
+    } catch (error) {
+      setProblem(errorWords(error))
+    }
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <ol style={{ margin: 0, paddingLeft: 20, listStyle: "decimal", display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+        {entry.signIn!.steps.map((s) => (
+          <li key={s}>{s}</li>
+        ))}
+      </ol>
+      {allowed.map((a) => (
+        <button key={a.email} className="btn btn-primary" onClick={() => connect({ account: a.email })} style={{ fontSize: 12, alignSelf: "flex-start" }}>
+          Read Google Tasks from {a.email}
+        </button>
+      ))}
+      {access.client_file ? (
+        <button className={allowed.length ? "btn btn-secondary" : "btn btn-primary"} onClick={signIn} disabled={access.state === "waiting"} style={{ fontSize: 12, alignSelf: "flex-start" }}>
+          {access.state === "waiting" ? "Waiting for Google's page…" : allowed.length ? "Sign in with another Google account" : "Sign in with Google"}
+        </button>
+      ) : (
+        <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>Connect Google in its own box first: this copy of Friday has no Google key yet.</span>
+      )}
+      {(problem ?? (access.state === "failed" ? access.message : null)) && (
+        <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>{problem ?? access.message}</span>
+      )}
+      {entry.signIn!.note && <span className="fr-kicker">{entry.signIn!.note}</span>}
     </div>
   )
 }

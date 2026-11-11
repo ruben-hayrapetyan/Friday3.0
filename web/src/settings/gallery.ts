@@ -354,6 +354,23 @@ export const CATALOG: Entry[] = [
     },
   },
   {
+    id: "google_tasks",
+    name: "Google Tasks",
+    category: "To-do apps",
+    line: "Your Google Tasks planned into your week; done goes both ways",
+    aliases: ["google", "todo", "to-do", "tasks"],
+    icon: "check-square-offset",
+    hue: "#4285f4",
+    signIn: {
+      steps: [
+        "Press Sign in with Google: Google's page opens and asks to let Friday see and change your tasks.",
+        "Back in Friday, choose the account to read Google Tasks from.",
+        "The open tasks of every list come to your Inbox to review together.",
+      ],
+      note: "It uses the same Google sign-in as your calendars and Gmail; signing in again keeps Tasks allowed.",
+    },
+  },
+  {
     id: "reminders",
     name: "Apple Reminders",
     category: "To-do apps",

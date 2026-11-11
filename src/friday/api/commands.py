@@ -817,9 +817,14 @@ class GoogleClientInput(Model):
 
 class GoogleConnectInput(Model):
     """Which account to sign in: none to add one (Google's page asks which), or one already connected to sign it in
-    again (to allow Gmail, or when its sign-in expired)."""
+    again (to allow Gmail, or when its sign-in expired); `tasks` asks for Google Tasks too (C110)."""
 
     account: str | None = None
+    tasks: bool = False
+
+
+class GoogleTasksInput(Model):
+    account: str  # a Google account that allowed Tasks
 
 
 class GoogleAccountInput(Model):
