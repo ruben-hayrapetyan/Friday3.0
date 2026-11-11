@@ -11,12 +11,14 @@ an edit when it changes, superseded when it goes):
   transaction and sent by the integrations job; a failure is retried, said on the source, never lost.
 - Tokens live in secrets.toml (0600), one section per connected source; never in the database, a log or an error."""
 
+import dataclasses
 import json
 import logging
 import sqlite3
 import threading
 import tomllib
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 from friday.commands.ai import toml_of
@@ -26,14 +28,29 @@ from friday.core.db import one, rows
 from friday.core.guess import guess_preset
 from friday.core.paths import secrets_path
 from friday.core.presets import in_use
-from friday.core.time import format_utc, parse_utc
+from friday.core.time import format_local, format_utc, parse_utc, zone
 from friday.ingest.ics import Found, Proposed
+from friday.integrations.asana import Asana
 from friday.integrations.base import Connector, ConnectorError, Remote, Transport
+from friday.integrations.github import GitHub
+from friday.integrations.jira import Jira
+from friday.integrations.linear import Linear
+from friday.integrations.notion import Notion
 from friday.integrations.reminders import Reminders, WaitingForMac
 from friday.integrations.todoist import Todoist
+from friday.integrations.trello import Trello
 from friday.sync.google_auth import write_private
 
-CONNECTORS: dict[str, type] = {Todoist.kind: Todoist, Reminders.kind: Reminders}
+CONNECTORS: dict[str, type] = {
+    Todoist.kind: Todoist,
+    Reminders.kind: Reminders,
+    Notion.kind: Notion,
+    Trello.kind: Trello,
+    Asana.kind: Asana,
+    Linear.kind: Linear,
+    Jira.kind: Jira,
+    GitHub.kind: GitHub,
+}
 ARRIVALS = ("inbox_first", "straight", "inbox")
 SERVICE_OWNS = ("title", "due", "notes", "firmness")  # what an edit from the service may change
 MAX_TRIES = 5
@@ -96,6 +113,20 @@ def fields_of(r: Remote, kind: str | None = None) -> dict[str, Any]:
     return {k: v for k, v in out.items() if v is not None}
 
 
+def local_due(due: str | None, timezone: str | None) -> str | None:
+    """A due as Friday keeps it, on your clock: a time with an offset or in UTC ("…Z", Todoist's fixed-zone times,
+    Notion's every time) at the same moment in your timezone; a day, or a time already local, as it is."""
+    if not due or "T" not in due or not timezone:
+        return due
+    try:
+        moment = datetime.fromisoformat(due.replace("Z", "+00:00"))
+    except ValueError:
+        return due
+    if moment.tzinfo is None:
+        return due[:16]
+    return format_local(moment.astimezone(zone(timezone)).replace(tzinfo=None))
+
+
 def kind_for(r: Remote, connector: Connector, settings: dict) -> str | None:
     """The kind the title says, if it says one you use; else the integration's, if you have it."""
     kinds = in_use(settings["presets"], settings["school"])
@@ -154,6 +185,7 @@ def sync_source(
     batch = f"integration:{source['id']}:first" if first and not straight else None
     made = 0
     for r in remotes:
+        r = dataclasses.replace(r, due=local_due(r.due, settings["time"].timezone))
         f = found_of(r, kind_for(r, connector, settings))
         raw_id = store(conn, int(source["id"]), f, now_utc, user_id)
         if raw_id is None:

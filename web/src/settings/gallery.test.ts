@@ -16,11 +16,50 @@ describe("the integrations gallery's catalog", () => {
     }
   })
   it("says, for each one connected by token, where the token is and how to get it", () => {
-    for (const e of CATALOG.filter((x) => x.token)) {
+    for (const e of CATALOG.filter((x) => x.token && x.id !== "trello")) {
       expect(e.token!.page).toMatch(/^https:\/\//)
       expect(e.token!.steps.length).toBeGreaterThanOrEqual(2)
     }
     expect(CATALOG.find((e) => e.id === "todoist")?.token?.page).toContain("todoist.com")
+  })
+  it("walks Notion through a personal access token, saying an integration's secret works too (C101)", () => {
+    const notion = CATALOG.find((e) => e.id === "notion")!
+    expect(notion.category).toBe("To-do apps")
+    expect(notion.token!.page).toBe("https://www.notion.so/developers/tokens")
+    expect(notion.token!.steps.join(" ")).toContain("New token")
+    expect(notion.token!.note).toContain("Connections")
+    expect(names(search(CATALOG, "notion"))).toEqual(["Notion"])
+  })
+  it("has Trello's Allow page from the server, which has Friday's app key (C102)", () => {
+    const trello = CATALOG.find((e) => e.id === "trello")!
+    expect(trello.token!.page).toBe("")
+    expect(trello.token!.steps.join(" ")).toContain("Allow")
+    expect(trello.token!.note).toContain("cards you're on")
+    expect(names(search(CATALOG, "kanban"))).toEqual(["Trello"])
+  })
+  it("has Asana's own token page and says only your tasks come in (C103)", () => {
+    const asana = CATALOG.find((e) => e.id === "asana")!
+    expect(asana.token!.page).toBe("https://app.asana.com/0/my-apps")
+    expect(asana.token!.note).toContain("assigned to you")
+    expect(names(search(CATALOG, "my tasks"))).toEqual(["Asana"])
+  })
+  it("has Linear's key page and says done moves an issue to Done (C104)", () => {
+    const linear = CATALOG.find((e) => e.id === "linear")!
+    expect(linear.token!.page).toBe("https://linear.app/settings/account/security")
+    expect(linear.token!.note).toContain("Done state")
+    expect(names(search(CATALOG, "issues"))).toContain("Linear")
+  })
+  it("asks Jira for your site and email beside the token (C105)", () => {
+    const jira = CATALOG.find((e) => e.id === "jira")!
+    expect(jira.token!.fields!.map((f) => f.key)).toEqual(["site", "email"])
+    expect(jira.token!.note).toContain("Jira Cloud only")
+    expect(names(search(CATALOG, "atlassian"))).toContain("Jira")
+  })
+  it("walks GitHub through a read-only fine-grained token and says it only reads (C106)", () => {
+    const github = CATALOG.find((e) => e.id === "github")!
+    expect(github.token!.steps.join(" ")).toContain("Read-only")
+    expect(github.token!.note).toContain("only reads")
+    expect(names(search(CATALOG, "pull requests"))).toEqual(["GitHub"])
   })
   it("has Apple Reminders as a to-do app with no token, said step by step (C100)", () => {
     const reminders = CATALOG.find((e) => e.id === "reminders")!

@@ -29,7 +29,7 @@ class World:
     errors: list[str] = field(default_factory=list)
 
     def connect(self, arrival: str = "straight", token: str | None = None) -> int:
-        out = self.app.do("integration_connect", kind=self.h.kind, token=token or self.h.token)
+        out = self.app.do("integration_connect", kind=self.h.kind, token=token or self.h.token, fields=self.h.fields)
         self.source_id = int(out["source"]["id"])
         if arrival != "inbox_first":
             self.app.do("integration_set", id=self.source_id, arrival=arrival)
@@ -91,7 +91,7 @@ def check_each_to_do_comes_in_once_with_its_title_due_and_length(w: World) -> No
     w.sync()
     report, call = w.item("Write the report"), w.item("Call the landlord")
     assert report["due"].startswith(THU), report["due"]
-    assert call["due"] == FRI_5PM, call["due"]
+    assert call["due"] == (FRI_5PM if w.h.times else f"{FRI_5PM[:10]}T23:59"), call["due"]
     w.item("Someday: learn Rust")
     if w.h.lengths:
         assert report["duration_min"] == 90, report["duration_min"]
@@ -167,6 +167,21 @@ def check_done_here_goes_back_exactly_once_and_reopen_too(w: World) -> None:
     w.send()
     assert not w.h.is_done(w.fake, task), "opened again here, still done there"
     assert len(w.writes()) == 2, f"sent {w.writes()}"
+
+
+def check_a_read_only_service_is_sent_nothing(w: World) -> None:
+    """GitHub (C106): done or opened again here stays here."""
+    if w.h.two_way:
+        pytest.skip("both ways")
+    task = w.h.add(w.fake, "Fix the bug", THU)
+    w.connect()
+    w.sync()
+    w.app.do("done", id=w.item("Fix the bug")["id"])
+    w.send()
+    assert w.writes() == [] and not w.h.is_done(w.fake, task), "a read-only service was changed"
+    assert w.app.table("source_writes") == [], "a change waits for a service that takes none"
+    w.sync()
+    assert "Fix the bug" in [i["title"] for i in w.items("done")], "read again, the open issue reopened it here"
 
 
 def check_a_failed_send_is_kept_and_sent_later_once(w: World) -> None:

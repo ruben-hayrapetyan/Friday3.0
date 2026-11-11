@@ -2681,6 +2681,77 @@
     }
    }
   },
+  "/api/c/integration_list_set": {
+   "post": {
+    "summary": "Read one of its lists, or not. Off, its to-dos are no longer kept in step: kept as they are, or dropped.",
+    "operationId": "integration_list_set",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ListSetInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IntegrationListSetResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/integration_set": {
    "post": {
     "summary": "integration_set",
@@ -11078,6 +11149,88 @@
     }
    }
   },
+  "/api/q/integration_lists": {
+   "get": {
+    "summary": "The service's to-do lists, asked of it now, each with whether it's read and what it brought in.",
+    "operationId": "integration_lists",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/TodoListOut"
+         },
+         "title": "Response Integration Lists"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/integration_token_page": {
+   "get": {
+    "summary": "Where the service gives you a token for this copy of Friday (Trello's Allow page carries Friday's app key).",
+    "operationId": "integration_token_page",
+    "parameters": [
+     {
+      "name": "kind",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Kind"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TokenPageOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/integrations": {
    "get": {
     "summary": "Integrations connected now.",
@@ -15098,6 +15251,14 @@
      "token": {
       "type": "string",
       "title": "Token"
+     },
+     "fields": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Fields",
+      "default": {}
      }
     },
     "additionalProperties": false,
@@ -15183,6 +15344,11 @@
       "type": "integer",
       "title": "Waiting",
       "default": 0
+     },
+     "lists": {
+      "type": "boolean",
+      "title": "Lists",
+      "default": false
      }
     },
     "additionalProperties": false,
@@ -18769,6 +18935,76 @@
     ],
     "title": "IntegrationDisconnectResult"
    },
+   "IntegrationListSetResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Connected"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "IntegrationListSetResult"
+   },
    "IntegrationSetResult": {
     "properties": {
      "command_id": {
@@ -20253,6 +20489,35 @@
      "digest"
     ],
     "title": "LearningOut"
+   },
+   "ListSetInput": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "list": {
+      "type": "string",
+      "title": "List"
+     },
+     "on": {
+      "type": "boolean",
+      "title": "On"
+     },
+     "keep": {
+      "type": "boolean",
+      "title": "Keep",
+      "default": true
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "list",
+     "on"
+    ],
+    "title": "ListSetInput"
    },
    "LocalDownload": {
     "properties": {
@@ -32895,6 +33160,41 @@
     ],
     "title": "ToReviewOut"
    },
+   "TodoListOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "on": {
+      "type": "boolean",
+      "title": "On"
+     },
+     "team": {
+      "type": "boolean",
+      "title": "Team"
+     },
+     "made": {
+      "type": "integer",
+      "title": "Made"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "on",
+     "team",
+     "made"
+    ],
+    "title": "TodoListOut",
+    "description": "One of a service's to-do lists (Notion's databases), as its box shows it."
+   },
    "TokenAddResult": {
     "properties": {
      "command_id": {
@@ -33049,6 +33349,27 @@
      "last_used"
     ],
     "title": "TokenOut"
+   },
+   "TokenPageOut": {
+    "properties": {
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "url"
+    ],
+    "title": "TokenPageOut"
    },
    "TokenRef": {
     "properties": {

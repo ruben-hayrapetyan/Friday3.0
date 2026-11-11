@@ -8,7 +8,7 @@ the same contract against every integration."""
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -79,6 +79,8 @@ class Harness:
     two_way: bool = True
     lengths: bool = False  # the service keeps a length
     on_mac: bool = False  # fed by the Mac app (Apple Reminders): no token, nothing over the internet
+    times: bool = True  # its due can be a time of day (Linear's and Jira's are days only)
+    fields: dict[str, str] = field(default_factory=dict)  # what else connecting asks for (Jira: site, email)
 
 
 def serve(fake: FakeService) -> tuple[str, Callable[[], None]]:

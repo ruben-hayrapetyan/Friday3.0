@@ -365,6 +365,17 @@ def connected_todoist(app: App) -> int:
     return int(cursor.lastrowid or 0)
 
 
+def connected_notion(app: App) -> int:
+    """A Notion connected as integration_connect leaves it (C101), without asking Notion."""
+    found = app.conn.execute("SELECT id FROM sources WHERE kind = 'notion'").fetchone()
+    if found:
+        return int(found[0])
+    cursor = app.conn.execute(
+        "INSERT INTO sources (kind, name, config) VALUES ('notion', 'Notion', '{\"arrival\": \"inbox_first\"}')"
+    )
+    return int(cursor.lastrowid or 0)
+
+
 SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "import_personal": import_sample,
     "import_chroma_colors": chroma_sample,
@@ -424,6 +435,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "meal_plan": breakfasts,
     "integration_set": lambda app: {"id": connected_todoist(app), "arrival": "straight"},
     "integration_disconnect": lambda app: {"id": connected_todoist(app), "keep": True},
+    "integration_list_set": lambda app: {"id": connected_notion(app), "list": "ds-projects", "on": False},
     "other_way_pick": lambda app: {"weights": {"energy": 2.0}, "seed": 1, "rule_totals": {"energy": 100}},
     "add": add_sample,
     "edit": lambda app: {"id": essay(app), "title": "long essay", "duration_min": 180},

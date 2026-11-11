@@ -1,11 +1,23 @@
 """Connecting, setting and disconnecting integrations (C96): Todoist and the others that follow. A token is checked
 with the service before anything is kept, and kept only in secrets.toml (these commands aren't logged); the first
 read waits in the Inbox to be reviewed together unless you choose otherwise (the setting shows once connected);
-disconnecting asks whether what it brought in stays (your answer, 10 Nov)."""
+disconnecting asks whether what it brought in stays (your answer, 10 Nov). One with lists (Notion's databases, C101)
+has a switch for each; one switched off asks the same of what that list brought in."""
 
 import json
 
-from friday.api.commands import ArrivalInput, Connected, ConnectInput, ConnectOutput, DisconnectInput
+from friday.api.commands import (
+    ArrivalInput,
+    Connected,
+    ConnectInput,
+    ConnectOutput,
+    DisconnectInput,
+    ListSetInput,
+    ListsInput,
+    TodoListOut,
+    TokenPageInput,
+    TokenPageOut,
+)
 from friday.api.types import Empty
 from friday.commands.registry import Ctx, command, query
 from friday.core.db import one, rows
@@ -20,15 +32,19 @@ def integration_connect(ctx: Ctx, inp: ConnectInput) -> ConnectOutput:
     if not sync.is_integration(inp.kind):
         raise FieldError("kind", f"Friday doesn't connect to “{inp.kind}”")
     make = sync.CONNECTORS[inp.kind]
+    wanted = getattr(make, "fields", ())
+    given = {k: v.strip() for k, v in inp.fields.items() if k in wanted}
     try:
-        account = make(inp.token, {}, sync.TRANSPORTS.get(inp.kind)).check()
+        connector = make(inp.token, given, sync.TRANSPORTS.get(inp.kind))
+        account = connector.check()
     except ConnectorError as error:
         raise FieldError("token", str(error)) from error
+    given |= getattr(connector, "kept", {})  # as the connector reads them (Jira's site as its address)
     taken = {r["name"] for r in rows(ctx.conn, "SELECT name FROM sources WHERE kind = ?", [inp.kind])}
     name = next(n for n in [make.name, *(f"{make.name} {i}" for i in range(2, 99))] if n not in taken)
     cursor = ctx.conn.execute(
         "INSERT INTO sources (user_id, kind, name, config, trusted) VALUES (?, ?, ?, ?, 0)",
-        [ctx.user_id, inp.kind, name, json.dumps({"arrival": "inbox_first", "account": account})],
+        [ctx.user_id, inp.kind, name, json.dumps({"arrival": "inbox_first", "account": account} | given)],
     )
     source_id = int(cursor.lastrowid or 0)
     if not make.caps.on_mac:  # Apple Reminders has no token: macOS asks instead
@@ -64,6 +80,57 @@ def integration_disconnect(ctx: Ctx, inp: DisconnectInput) -> Connected:
     return connected(ctx, inp.id)
 
 
+@query("integration_token_page")
+def integration_token_page(ctx: Ctx, inp: TokenPageInput) -> TokenPageOut:
+    """Where the service gives you a token for this copy of Friday (Trello's Allow page carries Friday's app key)."""
+    if not sync.is_integration(inp.kind):
+        raise FieldError("kind", f"Friday doesn't connect to “{inp.kind}”")
+    page = getattr(sync.CONNECTORS[inp.kind], "token_page", None)
+    return TokenPageOut(url=page() if page else None)
+
+
+@query("integration_lists")
+def integration_lists(ctx: Ctx, inp: ListsInput) -> list[TodoListOut]:
+    """The service's to-do lists, asked of it now, each with whether it's read and what it brought in."""
+    source = require(ctx, inp.id)
+    connector = sync.connector_for(source)
+    if not connector.caps.lists:
+        raise FieldError("id", f"{source['name']} has no lists to choose from")
+    try:
+        found = connector.lists()
+    except ConnectorError as error:
+        raise FieldError("id", str(error)) from error
+    return [TodoListOut(id=t.id, name=t.name, on=connector.on(t), team=t.team, made=len(made(ctx, inp.id, t.id)))
+            for t in found]  # fmt: skip
+
+
+@command("integration_list_set", affects_plan=True)
+def integration_list_set(ctx: Ctx, inp: ListSetInput) -> Connected:
+    """Read one of its lists, or not. Off, its to-dos are no longer kept in step: kept as they are, or dropped."""
+    source = require(ctx, inp.id)
+    if not sync.CONNECTORS[source["kind"]].caps.lists:
+        raise FieldError("id", f"{source['name']} has no lists to choose from")
+    config = json.loads(source["config"] or "{}")
+    config["lists"] = (config.get("lists") or {}) | {inp.list: inp.on}
+    ctx.db.update("sources", {"id": inp.id}, {"config": json.dumps(config)})
+    if not inp.on:
+        if not inp.keep:
+            from friday.api.commands import ItemRef
+            from friday.commands.items import drop
+
+            for item in made(ctx, inp.id, inp.list):
+                drop(ctx, ItemRef(id=item))
+        # let go: not taken as done when it isn't read (read again, switched back on, it's in step again)
+        for r in rows(ctx.conn, "SELECT id FROM raw_inputs WHERE source_id = ? AND external_id LIKE ? AND status != "
+                      "'ignored'", [inp.id, f"{inp.list}/%"]):  # fmt: skip
+            for pending in rows(ctx.conn, "SELECT id FROM suggestions WHERE raw_input_id = ? AND status = 'pending'",
+                                [r["id"]]):  # fmt: skip
+                ctx.db.update("suggestions", {"id": pending["id"]}, {"status": "superseded"})
+            ctx.db.update("raw_inputs", {"id": r["id"]}, {"status": "ignored"})
+    kv_set(ctx.conn, "integrations_now", True, ctx.user_id)
+    return connected(ctx, inp.id)
+
+
 @query("integrations")
 def integrations(ctx: Ctx, inp: Empty) -> list[Connected]:
     """Integrations connected now."""
@@ -78,15 +145,16 @@ def require(ctx: Ctx, source_id: int) -> dict:
     return found
 
 
-def made(ctx: Ctx, source_id: int) -> list[int]:
-    """The open items it brought in."""
+def made(ctx: Ctx, source_id: int, in_list: str | None = None) -> list[int]:
+    """The open items it brought in (from one of its lists)."""
     return [
         int(r["id"])
         for r in rows(
             ctx.conn,
             "SELECT DISTINCT i.id FROM raw_inputs r JOIN suggestions s ON s.raw_input_id = r.id "
-            "JOIN items i ON i.id = s.item_id WHERE r.source_id = ? AND s.status = 'accepted' AND i.status = 'todo'",
-            [source_id],
+            "JOIN items i ON i.id = s.item_id WHERE r.source_id = ? AND s.status = 'accepted' AND i.status = 'todo'"
+            " AND r.external_id LIKE ?",
+            [source_id, f"{in_list}/%" if in_list else "%"],
         )
     ]
 
@@ -105,6 +173,7 @@ def connected(ctx: Ctx, source_id: int) -> Connected:
         last_error=s["last_error"],
         made=len(made(ctx, source_id)),
         waiting=waiting(ctx, source_id),
+        lists=sync.CONNECTORS[s["kind"]].caps.lists,
     )
 
 

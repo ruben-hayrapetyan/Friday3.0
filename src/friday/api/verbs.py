@@ -435,7 +435,31 @@ VERBS = {
     "integration_disconnect": Verb(
         "POST", "/api/c/integration_disconnect", commands.DisconnectInput, True, True, "integration_disconnect"
     ),
+    "integration_list_set": Verb(
+        "POST",
+        "/api/c/integration_list_set",
+        commands.ListSetInput,
+        True,
+        True,
+        "Read one of its lists, or not. Off, its to-dos are no longer kept in step: kept as they are, or dropped.",
+    ),
+    "integration_lists": Verb(
+        "GET",
+        "/api/q/integration_lists",
+        commands.ListsInput,
+        False,
+        False,
+        "The service's to-do lists, asked of it now, each with whether it's read and what it brought in.",
+    ),
     "integration_set": Verb("POST", "/api/c/integration_set", commands.ArrivalInput, True, False, "integration_set"),
+    "integration_token_page": Verb(
+        "GET",
+        "/api/q/integration_token_page",
+        commands.TokenPageInput,
+        False,
+        False,
+        "Where the service gives you a token for this copy of Friday (Trello's Allow page carries Friday's app key).",
+    ),
     "integrations": Verb("GET", "/api/q/integrations", commands.Empty, False, False, "Integrations connected now."),
     "item": Verb(
         "GET", "/api/q/item", commands.ItemRef, False, False, "One item with its blocks, progress and dependencies."
