@@ -1,6 +1,6 @@
 """Trello (C96, your choice: both ways; C102, then C117). Signed in on Atlassian's page (integrations/oauth.py) through
 Friday's own Trello app, a public OAuth 2.0 client (11 Nov: Trello's apps are OAuth 2.0 now, PKCE required, so no key
-and pasted token); its client id ships in Friday (TRELLO_CLIENT_ID; FRIDAY_TRELLO_CLIENT_ID overrides it). The access
+and pasted token); its client id is kept out of the code (integrations/keys.py, trello_client_id). The access
 token lasts an hour and is renewed by the refresh token (offline_access), which lasts ninety days of not being used.
 Then Trello's REST API (https://trello.com/1) with the token as a Bearer.
 
@@ -11,17 +11,16 @@ complete, or archived, in Trello is done here. Trello's due is always a moment (
 import os
 from typing import Any, ClassVar, Literal
 
+from friday.integrations import keys
 from friday.integrations.base import Caps, ConnectorError, Http, Remote, Transport
 from friday.integrations.oauth import Provider, Session
 
 API = "https://trello.com/1"
-# Friday's Trello app (trello.com/power-ups/admin → Friday → OAuth 2.0 → Client ID): public, set by Friday's developer
-TRELLO_CLIENT_ID = "[trello client id: Mac/app_keys.json]"
 CARD_FIELDS = "name,desc,due,dueComplete,url,idBoard,closed"
 
 
 def client_id() -> str:
-    return (os.environ.get("FRIDAY_TRELLO_CLIENT_ID") or TRELLO_CLIENT_ID).strip()
+    return keys.get("trello_client_id")  # trello.com/power-ups/admin → Friday → OAuth 2.0 → Client ID
 
 
 PROVIDER = Provider(

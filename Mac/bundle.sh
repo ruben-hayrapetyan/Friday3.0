@@ -67,6 +67,16 @@ else
   echo "    No Google client in this build: Google comes in through the Mac" >&2
 fi
 
+# Friday's own app ids and secrets at Trello, Microsoft, TickTick and Slack (integrations/keys.py; 11 Nov: kept out
+# of git), into your own builds; a release (scripts/prepare-release.sh sets FRIDAY_NO_APP_KEYS=1) leaves them out
+# until you decide downloads get them. Never read here, only copied.
+KEYS="$REPO/Mac/app_keys.json"
+if [ "${FRIDAY_NO_APP_KEYS:-}" != 1 ] && [ -f "$KEYS" ]; then
+  install -m 0644 "$KEYS" "$RUNTIME/python/share/friday/app_keys.json"
+else
+  echo "    No app keys in this build: Trello, Microsoft, TickTick and Slack say they aren't ready" >&2
+fi
+
 echo "==> Compiling bytecode"
 "$PY" -m compileall -q -j 0 "$RUNTIME/python/lib" >/dev/null || true  # a few test files of packages don't compile
 

@@ -7,30 +7,29 @@ Signed in on Slack's page as you (a user token, `search:read` only: Friday can't
 or change anything). What comes in is the newest fifty messages mentioning you from the last two weeks (search.messages
 for <@you>), each titled with who and where, its text in the notes and its link; they wait in your Inbox (Always in
 the Inbox: a mention is a question, not yet a to-do). Read only, and a mention that ages out of search isn't taken
-as done. SLACK_CLIENT_ID / _SECRET, FRIDAY_SLACK_* override; until they're set the box says Slack isn't ready."""
+as done. Its id and secret are kept out of the code (integrations/keys.py, slack_client_id / _secret); until they're
+there the box says Slack isn't ready."""
 
 import os
 import re
 import time
 from typing import Any, ClassVar, Literal
 
+from friday.integrations import keys
 from friday.integrations.base import Caps, ConnectorError, Http, Remote, Transport
 from friday.integrations.oauth import Provider, Session
 
 API = "https://slack.com/api"
-# Friday's Slack app (api.slack.com/apps → Friday → Basic Information): set once by Friday's developer
-SLACK_CLIENT_ID = ""
-SLACK_CLIENT_SECRET = ""
 DAYS = 14
 REFUSED = ("invalid_auth", "not_authed", "token_revoked", "token_expired", "account_inactive", "missing_scope")
 
 
 def client_id() -> str:
-    return (os.environ.get("FRIDAY_SLACK_CLIENT_ID") or SLACK_CLIENT_ID).strip()
+    return keys.get("slack_client_id")  # api.slack.com/apps → Friday → Basic Information
 
 
 def client_secret() -> str:
-    return (os.environ.get("FRIDAY_SLACK_CLIENT_SECRET") or SLACK_CLIENT_SECRET).strip()
+    return keys.get("slack_client_secret")
 
 
 def user_tokens(answer: dict[str, Any]) -> dict[str, Any]:

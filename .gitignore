@@ -13,6 +13,8 @@ secrets.toml
 # Google sign-in: the key file from Google Cloud (client_secret_….json), Friday's copy of it and the saved token
 client_secret*.json
 google_client.json
+# Friday's own app ids and secrets at Trello, Microsoft, TickTick, Slack (integrations/keys.py): never in git
+app_keys.json
 secrets.json
 # Agent worktrees
 .claude/
