@@ -185,3 +185,17 @@ def test_every_page_shows_fridays_own_address_and_no_other(site: str, page: str)
     text = fetch(site, "/" + page)[1].decode()
     assert f'href="mailto:{SUPPORT}"' in text
     assert set(re.findall(r"[\w.+-]+@[\w-]+\.[\w.]+", text)) <= {SUPPORT}  # no personal address anywhere
+
+
+def test_search_engines_name_the_site_friday_with_its_icon() -> None:
+    """H181 (11 Nov: "the google search doesn't have a logo and i just want the name to be Friday"): the home page's
+    title is Friday, its structured data names the site Friday with the icon as its logo, and the icons it links are
+    at sizes Google shows (a multiple of 48 pixels square)."""
+    home = (SITE / "index.html").read_text()
+    assert "<title>Friday</title>" in home
+    data = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', home, re.S)[1])
+    names = {node["@type"]: node for node in data["@graph"]}
+    assert names["WebSite"]["name"] == "Friday" and names["Organization"]["logo"].endswith("/images/icon.png")
+    for size in re.findall(r'rel="icon" type="image/png" sizes="(\d+)x\1"', home):
+        assert int(size) % 48 == 0, size
+        assert (SITE / "images" / f"icon-{size}.png").exists()
