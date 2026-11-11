@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Friday.app under the hardened runtime (Mac/sign.sh): the Mac's calendars (CalendarBridge.swift), which a
-     hardened app reaches only with this entitlement. Nothing else is asked for. -->
+<!-- Friday.app under the hardened runtime (Mac/sign.sh): the Mac's calendars (CalendarBridge.swift) and reminders
+     (RemindersBridge.swift, C100), which a hardened app reaches only with these entitlements. Nothing else is asked for. -->
 <plist version="1.0">
 <dict>
     <key>com.apple.security.personal-information.calendars</key><true/>
+    <key>com.apple.security.personal-information.reminders</key><true/>
 </dict>
 </plist>

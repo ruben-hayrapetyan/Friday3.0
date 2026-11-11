@@ -1084,3 +1084,39 @@ class MailAppAccount(Model):
     provider: str
     name: str  # "iCloud Mail"
     address: str
+
+
+# Apple Reminders, through the Mac app (C100; integrations/reminders.py)
+class MacReminder(Model):
+    id: str  # EventKit's calendarItemIdentifier
+    title: str
+    notes: str = ""
+    due: str | None = None  # local: "2026-11-20" (a whole day) or "2026-11-20T17:00"
+    list: str = ""
+    url: str | None = None
+    completed: bool = False
+
+
+class RemindersSyncInput(Model):
+    """Your open reminders, from Friday's Mac app; or `denied` when macOS didn't let it read them."""
+
+    reminders: list[MacReminder] = []
+    lists: list[str] = []
+    denied: bool = False
+
+
+class ReminderJob(Model):
+    id: int
+    external_id: str
+    op: Literal["done", "reopen"]
+
+
+class ReminderWritesOut(Model):
+    wanted: bool  # Reminders is connected: the Mac app reads them (asking macOS first) and sends these
+    jobs: list[ReminderJob] = []
+
+
+class ReminderWrittenInput(Model):
+    id: int
+    ok: bool
+    error: str | None = None

@@ -29,10 +29,11 @@ from friday.core.presets import in_use
 from friday.core.time import format_utc, parse_utc
 from friday.ingest.ics import Found, Proposed
 from friday.integrations.base import Connector, ConnectorError, Remote, Transport
+from friday.integrations.reminders import Reminders, WaitingForMac
 from friday.integrations.todoist import Todoist
 from friday.sync.google_auth import write_private
 
-CONNECTORS: dict[str, type] = {Todoist.kind: Todoist}
+CONNECTORS: dict[str, type] = {Todoist.kind: Todoist, Reminders.kind: Reminders}
 ARRIVALS = ("inbox_first", "straight", "inbox")
 SERVICE_OWNS = ("title", "due", "notes", "firmness")  # what an edit from the service may change
 MAX_TRIES = 5
@@ -131,8 +132,12 @@ def sync_source(
 ) -> int:
     """Read one integration and bring in what's new, changed or done there; returns the suggestions made."""
     config = json.loads(source["config"] or "{}")
+    if hasattr(connector, "load"):  # one the Mac app feeds (Apple Reminders): what it last sent
+        connector.load(conn, user_id)
     try:
         remotes = [r for r in connector.read() if not r.done]
+    except WaitingForMac:
+        return 0  # connected, the Mac app not heard from yet: nothing read, so nothing taken as done
     except ConnectorError as error:
         conn.execute(
             "UPDATE sources SET last_error = ?, failures = failures + 1, last_sync_utc = ? WHERE id = ?",
@@ -264,6 +269,8 @@ def send_writes(
         "WHERE w.done_utc IS NULL AND w.tries < ? AND s.enabled = 1 ORDER BY w.id",
         [MAX_TRIES],
     ):
+        if CONNECTORS[w["kind"]].caps.on_mac:
+            continue  # the Mac app sends these (reminder_writes)
         source = {"id": w["source_id"], "kind": w["kind"], "config": w["config"], "name": w["name"]}
         try:
             make(source).write(w["external_id"], w["op"])

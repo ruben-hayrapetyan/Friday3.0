@@ -11,10 +11,11 @@ from friday.integrations import sync
 from tests.commands.helpers import new_app
 from tests.integrations import contract
 from tests.integrations.contract import World
+from tests.integrations.fake_mac_reminders import HARNESS as REMINDERS
 from tests.integrations.fake_todoist import HARNESS as TODOIST
 from tests.integrations.kit import Harness
 
-HARNESSES = [TODOIST]
+HARNESSES = [TODOIST, REMINDERS]
 
 
 def cases() -> Iterator:

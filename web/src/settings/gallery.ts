@@ -19,6 +19,7 @@ export interface Entry {
   link?: { help: string; steps: string[]; reads: string } // connected by the calendar link it publishes (C96)
   viaMac?: { help: string; steps: string[] } // reaches Friday through the Mac's calendars (no link of its own)
   mail?: { provider: "icloud" | "yahoo" | "fastmail" | "other"; help?: string; steps: string[] } // by app password (C99)
+  onMac?: { steps: string[] } // read by Friday's Mac app itself, no account or token: macOS asks (C100)
 }
 
 // Mail beyond Gmail by app password (C99; servers and steps from each provider's help, 10 Nov). Outlook.com isn't
@@ -201,6 +202,22 @@ export const CATALOG: Entry[] = [
         "Open Todoist's Settings → Integrations → Developer (the link below).",
         "Copy the API token shown there.",
         "Paste it here and press Connect.",
+      ],
+    },
+  },
+  {
+    id: "reminders",
+    name: "Apple Reminders",
+    category: "To-do apps",
+    line: "Your reminders planned into your week; done goes both ways",
+    aliases: ["reminders", "apple", "icloud", "todo", "to-do", "tasks", "siri"],
+    icon: "list-checks",
+    hue: "#e8913a",
+    onMac: {
+      steps: [
+        "Press Connect: nothing to copy, no account to sign in to.",
+        "macOS asks once whether Friday may see your reminders. Press Allow.",
+        "Your open reminders, from every list, come to your Inbox to review together.",
       ],
     },
   },

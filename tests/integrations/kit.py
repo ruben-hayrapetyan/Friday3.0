@@ -78,6 +78,7 @@ class Harness:
     is_done: Callable[[Any, str], bool]  # done there now?
     two_way: bool = True
     lengths: bool = False  # the service keeps a length
+    on_mac: bool = False  # fed by the Mac app (Apple Reminders): no token, nothing over the internet
 
 
 def serve(fake: FakeService) -> tuple[str, Callable[[], None]]:

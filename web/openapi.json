@@ -5868,6 +5868,155 @@
     }
    }
   },
+  "/api/c/reminder_written": {
+   "post": {
+    "summary": "The Mac app's report on one: made in Reminders, or why not (kept to try again, then said on the box).",
+    "operationId": "reminder_written",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ReminderWrittenInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ReminderWrittenResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/reminders_sync": {
+   "post": {
+    "summary": "Your open reminders as the Mac app reads them; read into Friday within the minute.",
+    "operationId": "reminders_sync",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/RemindersSyncInput"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Inp"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RemindersSyncResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/reopen": {
    "post": {
     "summary": "Undo a drop or a done.",
@@ -11635,6 +11784,24 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/QuestionsOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/reminder_writes": {
+   "get": {
+    "summary": "Whether the Mac app should read Reminders, and what you marked done or opened again here, to make there.",
+    "operationId": "reminder_writes",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ReminderWritesOut"
         }
        }
       }
@@ -20765,6 +20932,62 @@
     "title": "MacEvent",
     "description": "One occurrence of an event on the Mac: timed with an offset (\"2026-10-23T09:00:00-04:00\"), or whole days with\nthe end the day after the last (\"2026-10-23\" to \"2026-10-24\"), as Google gives them."
    },
+   "MacReminder": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "notes": {
+      "type": "string",
+      "title": "Notes",
+      "default": ""
+     },
+     "due": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Due"
+     },
+     "list": {
+      "type": "string",
+      "title": "List",
+      "default": ""
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     },
+     "completed": {
+      "type": "boolean",
+      "title": "Completed",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "title"
+    ],
+    "title": "MacReminder"
+   },
    "MacSyncInput": {
     "properties": {
      "calendars": {
@@ -25236,6 +25459,255 @@
     ],
     "title": "QuestionsOut",
     "description": "What the evening review asks (DESIGN \u00a718.9): at most two comparisons a day, a rule proposal or a wall\nquestion, and a check-in when state inference is on."
+   },
+   "ReminderJob": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "external_id": {
+      "type": "string",
+      "title": "External Id"
+     },
+     "op": {
+      "type": "string",
+      "enum": [
+       "done",
+       "reopen"
+      ],
+      "title": "Op"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "external_id",
+     "op"
+    ],
+    "title": "ReminderJob"
+   },
+   "ReminderWritesOut": {
+    "properties": {
+     "wanted": {
+      "type": "boolean",
+      "title": "Wanted"
+     },
+     "jobs": {
+      "items": {
+       "$ref": "#/components/schemas/ReminderJob"
+      },
+      "type": "array",
+      "title": "Jobs",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "wanted"
+    ],
+    "title": "ReminderWritesOut"
+   },
+   "ReminderWrittenInput": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "ok": {
+      "type": "boolean",
+      "title": "Ok"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "ok"
+    ],
+    "title": "ReminderWrittenInput"
+   },
+   "ReminderWrittenResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "ReminderWrittenResult"
+   },
+   "RemindersSyncInput": {
+    "properties": {
+     "reminders": {
+      "items": {
+       "$ref": "#/components/schemas/MacReminder"
+      },
+      "type": "array",
+      "title": "Reminders",
+      "default": []
+     },
+     "lists": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Lists",
+      "default": []
+     },
+     "denied": {
+      "type": "boolean",
+      "title": "Denied",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "RemindersSyncInput",
+    "description": "Your open reminders, from Friday's Mac app; or `denied` when macOS didn't let it read them."
+   },
+   "RemindersSyncResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "RemindersSyncResult"
    },
    "ReopenResult": {
     "properties": {
