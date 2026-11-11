@@ -66,7 +66,8 @@ def source_add(ctx: Ctx, inp: SourceInput) -> Changed:
     if same and same["enabled"]:
         raise FieldError("name", f"You already read a link called {inp.name}: remove it first, or give this one a name")
     if same:  # one you removed (10 Nov: adding it again was refused, the name taken): read again, at its new address
-        ctx.db.update("sources", {"id": same["id"]}, added | {"enabled": 1, "last_error": None, "failures": 0, "last_sync_utc": None})
+        again = {"enabled": 1, "last_error": None, "failures": 0, "last_sync_utc": None}
+        ctx.db.update("sources", {"id": same["id"]}, added | again)
     else:
         ctx.db.insert("sources", added)
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "sync_now"}, {"value": json.dumps(ctx.now_text)})
