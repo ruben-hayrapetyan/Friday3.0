@@ -10,13 +10,16 @@ from typing import Any
 from friday.api.commands import (
     CategoryMergeInput,
     Changed,
+    EditInput,
     EventCategoryInput,
+    EventChoiceInput,
     EventGoingInput,
     EventHoldInput,
     EventKeepInput,
 )
 from friday.commands.categories import CHOICES, clues_for, told
 from friday.commands.fields import require_item
+from friday.commands.items import edit
 from friday.commands.registry import Ctx, command
 from friday.commands.settings import write_setting
 from friday.core.calendars import rating_key
@@ -177,6 +180,34 @@ def event_hold(ctx: Ctx, inp: EventHoldInput) -> Changed:
     loose = [e for e in kv_get(ctx.conn, "event_holds_loose", [], ctx.user_id) or [] if e != event.id]
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "event_holds_loose"}, {"value": json.dumps(loose)})
     return Changed(message=said)
+
+
+@command("event_choice", affects_plan=True)
+def event_choice(ctx: Ctx, inp: EventChoiceInput) -> Changed:
+    """What you'll do in an event's time (12 Nov: "the work through it button should not be the same as the skip
+    button"): go, and work keeps off it; work through it, there but working, so Friday plans work in its time and the
+    event is drawn as it is; or skip it, not going, crossed out with its time free. Going or skipping lets go of a
+    to-do its time was for."""
+    event = require_item(ctx, inp.id)
+    if event.when != "fixed":
+        raise FieldError("id", f"{event.title} isn't an event")
+    through = [e for e in kv_get(ctx.conn, "events_through", [], ctx.user_id) or [] if e != event.id]
+    if inp.choice == "through":
+        through.append(event.id)
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "events_through"}, {"value": json.dumps(sorted(through))})
+    if inp.choice != "through":
+        holds = {str(k): v for k, v in (kv_get(ctx.conn, "event_holds", {}, ctx.user_id) or {}).items()}
+        if holds.pop(str(event.id), None) is not None:
+            ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "event_holds"}, {"value": json.dumps(holds)})
+    blocks = inp.choice == "going"
+    if event.blocks_time != blocks:
+        edit(ctx, EditInput(id=event.id, blocks_time=blocks))  # as Edit would: its calendar told, one time alone
+    said = {
+        "going": f"Going to {event.title}: work keeps off it",
+        "through": f"Working through {event.title}: Friday can plan work in its time",
+        "skip": f"Skipping {event.title}: its time is free",
+    }
+    return Changed(message=said[inp.choice])
 
 
 @command("event_keep", affects_plan=True)

@@ -260,6 +260,14 @@ VERBS = {
         False,
         "The category you choose for an event, for every event with its title: it comes before your words, Claude's",
     ),
+    "event_choice": Verb(
+        "POST",
+        "/api/c/event_choice",
+        commands.EventChoiceInput,
+        True,
+        True,
+        "What you'll do in an event's time (12 Nov: \"the work through it button should not be the same as the skip",
+    ),
     "event_going": Verb(
         "POST",
         "/api/c/event_going",

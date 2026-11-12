@@ -160,7 +160,7 @@ export function BlockPopover() {
             <Icon name="x" />
           </button>
         </div>
-        {event && event.event_kind !== "shove" && (!event.left_out || event.left_out === "skipped") && (
+        {event && event.event_kind !== "shove" && (!event.left_out || event.left_out === "skipped" || event.left_out === "through") && (
           <EventChoice event={event} flags={optionalFlags(client, event.id)} onClose={close} />
         )}
         {flexible && item?.status === "done" && (
@@ -213,7 +213,7 @@ export function BlockPopover() {
           </div>
         )}
         {event && <EventFacts event={event} paint={dot} />}
-        {event && event.event_kind !== "shove" && event.left_out && event.left_out !== "skipped" && <HeldFor event={event} />}
+        {event && event.event_kind !== "shove" && event.left_out && event.left_out !== "skipped" && event.left_out !== "through" && <HeldFor event={event} />}
         {item && !event && (
           <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", fontSize: 12 }}>
             <span style={{ color: "var(--color-neutral-500)" }}>Due</span>
@@ -420,7 +420,7 @@ function ChoiceCard({ label, note, on, onClick }: { label: string; note: string;
 
 /** The task an event's time is for. `only` "work": under Work through it, where a to-do is optional (it's there first,
  * any work has the rest); "likely": only the question whether it's for the task its name suggests. */
-function HeldFor({ event, only, open = event.left_out === "skipped" }: { event: Item; only?: "work" | "likely"; open?: boolean }) {
+function HeldFor({ event, only, open = event.left_out === "skipped" || event.left_out === "through" }: { event: Item; only?: "work" | "likely"; open?: boolean }) {
   const saveHold = useCommand("event_hold", { label: (o) => o.result.message })
   const tasks = (useItems().data ?? []).filter((i) => i.when !== "fixed" && i.status === "todo")
   const [choosing, setChoosing] = useState(false)
@@ -596,37 +596,33 @@ function optionalFlags(client: QueryClient, id: number): Flags | null {
  * your calendar). Working through it, a to-do can have the time first, if you like: none is needed. An optional event
  * (gym) is Friday's to give to work until you choose; one Friday would skip for a to-do says which. */
 function EventChoice({ event, flags, onClose }: { event: Item; flags: Flags | null; onClose: () => void }) {
-  const goBack = useCommand("edit", { label: (o) => `Going to ${o.result.item.title}` })
-  const through = useCommand("edit", { label: (o) => `Working through ${o.result.item.title}: Friday can plan work in its time` })
+  const choose = useCommand("event_choice", { label: (o) => o.result.message })
   const keep = useCommand("event_keep", { label: (o) => o.result.message })
-  const hold = useCommand("event_hold", { label: (o) => o.result.message })
-  const [said, setSaid] = useState<"going" | "work" | null>(null)
+  type Choice = "going" | "through" | "skip"
+  const [said, setSaid] = useState<Choice | null>(null)
   useEffect(() => setSaid(null), [event.id])
-  const held = !!event.holds
-  const skipped = event.left_out === "skipped"
   const optional = !!flags?.optional
   const going = optional ? !!flags?.going : true
   const proposed = !going ? (flags?.gives_way_to ?? event.gives_way_to ?? null) : null
-  const now = said ?? (skipped || held ? "work" : optional && !going ? null : "going")
-  const goNow = () => {
-    setSaid("going")
-    if (held) hold({ id: event.id })
-    if (skipped) goBack({ id: event.id, blocks_time: true })
-    if (optional && !going) keep({ id: event.id, going: true })
-    onClose()
-  }
-  const workNow = () => {
-    if (now === "work") return
-    setSaid("work")
-    if (optional && flags?.going) keep({ id: event.id, going: false })
-    through({ id: event.id, blocks_time: false })
+  const was: Choice | null = event.left_out === "skipped" ? "skip" : event.left_out === "through" || event.holds ? "through" : optional && !going ? null : "going"
+  const now = said ?? was
+  const pick = (choice: Choice) => {
+    if (choice === now) return
+    setSaid(choice)
+    // an optional event (gym): going keeps it; otherwise it's back to Friday's to give
+    if (optional && choice === "going" && !going) keep({ id: event.id, going: true })
+    if (optional && choice !== "going" && flags?.going) keep({ id: event.id, going: false })
+    choose({ id: event.id, choice })
+    if (choice !== "through") onClose() // working through it, a to-do can be picked for its time next
   }
   const line = { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12, color: "var(--color-neutral-300)" } as const
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div role="radiogroup" aria-label="Going or working through it" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <ChoiceCard label="I'm going" note={proposed ? "Go anyway: work keeps off it" : "Work keeps off its time"} on={now === "going"} onClick={goNow} />
-        <ChoiceCard label="Work through it" note="Friday plans work in its time" on={now === "work"} onClick={workNow} />
+      {/* 12 Nov: "the work through it button should not be the same as the skip button": three, one under another */}
+      <div role="radiogroup" aria-label="What you'll do in its time" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 6 }}>
+        <ChoiceCard label="I'm going" note={proposed ? "Go anyway: work keeps off it" : "Work keeps off its time"} on={now === "going"} onClick={() => pick("going")} />
+        <ChoiceCard label="Work through it" note="You're there, and Friday plans work in its time" on={now === "through"} onClick={() => pick("through")} />
+        <ChoiceCard label="Skip it" note="You're not going: crossed out, its time free" on={now === "skip"} onClick={() => pick("skip")} />
       </div>
       {now === null && (
         <div style={line}>
@@ -644,7 +640,9 @@ function EventChoice({ event, flags, onClose }: { event: Item; flags: Flags | nu
         </div>
       )}
       {now === "going" && !said && <HeldFor event={event} only="likely" />}
-      {now === "work" && <HeldFor event={event} only="work" open={said === "work" || skipped} />}
+      {/* open: its time is work's (worked through), so a to-do has it first and any work the rest; an event you
+          said is a to-do's time keeps the rest of it free of other work, and Free it lets it go */}
+      {now === "through" && <HeldFor event={event} only="work" open={said === "through" || event.left_out === "through"} />}
     </div>
   )
 }

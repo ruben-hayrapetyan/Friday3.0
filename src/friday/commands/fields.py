@@ -225,7 +225,10 @@ def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
     start, end = ctx.local(item.start_utc), ctx.local(item.end_utc)
     all_day = bool(start and end and start.endswith("T00:00") and end.endswith("T00:00"))
     if not reason and not item.blocks_time and not all_day:
-        reason = "skipped"
+        # skipped, or worked through: there, but its time is work's (event_choice, 12 Nov), drawn as it is
+        if "events_through" not in ctx.memo:
+            ctx.memo["events_through"] = set(kv_get(ctx.conn, "events_through", [], ctx.user_id) or [])
+        reason = "through" if item.id in ctx.memo["events_through"] else "skipped"
     if "chroma_colors" not in ctx.memo:
         ctx.memo["chroma_colors"] = kv_get(ctx.conn, "chroma_colors", {}, ctx.user_id) or {}
     return {
