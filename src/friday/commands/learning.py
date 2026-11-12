@@ -168,7 +168,10 @@ def learn_reset(ctx: Ctx, inp: ResetInput) -> Changed:
         found = one(ctx.conn, "SELECT 1 FROM kv WHERE user_id = ? AND key = ?", [ctx.user_id, f"learned_{module}"])
         if found:
             ctx.db.delete("kv", {"user_id": ctx.user_id, "key": f"learned_{module}"})
-    theta = dict.fromkeys(learnable(ctx.settings), 1.0) if "weights" in reset else last["theta"]
+    # The weights in use, not the newest profile's: that may be a suggestion still waiting for your yes, or one you
+    # turned down, and starting another module over isn't approving it (audit, 12 Nov).
+    active = profile(ctx.conn, ctx.user_id, "active")
+    theta = dict.fromkeys(learnable(ctx.settings), 1.0) if "weights" in reset else (active or {}).get("theta")
     ctx.db.insert(
         "learned_profile",
         {
