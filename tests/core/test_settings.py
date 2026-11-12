@@ -112,3 +112,14 @@ def test_notes_reach_the_reader_only_when_there_are_some() -> None:
     told = system(date(2026, 10, 21), "America/New_York", [], ["Assignment"], ["Quizzes are in class"])
     assert "- Quizzes are in class" in told
     assert "told Friday" not in system(date(2026, 10, 21), "America/New_York", [], ["Assignment"])
+
+
+def test_exam_focus_with_no_words_finds_no_exams() -> None:
+    # an empty pattern matched every title, so every event was an exam (audit, 12 Nov)
+    from friday.core.settings import ExamFocus
+
+    assert ExamFocus().finds("PHYS 1112 Prelim 2")
+    assert not ExamFocus().finds("Preliminary reading")
+    assert not ExamFocus(words=()).finds("Dinner")
+    assert not ExamFocus(words=("", "  ")).finds("Dinner")
+    assert ExamFocus(words=("", "quiz")).finds("Chem quiz")

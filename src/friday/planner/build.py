@@ -323,11 +323,10 @@ def focus_exams(fixed: Mapping[int, Item], settings: Mapping[str, Any]) -> list[
     focus = settings["exam_focus"]
     if not focus.on:
         return []
-    words = re.compile(r"\b(" + "|".join(re.escape(w) for w in focus.words) + r")\b", re.IGNORECASE)
     return [
         (parse_utc(exam.start_utc), parse_utc(exam.end_utc), exam.title)
         for exam in fixed.values()
-        if exam.start_utc and exam.end_utc and exam.status == "todo" and words.search(exam.title)
+        if exam.start_utc and exam.end_utc and exam.status == "todo" and focus.finds(exam.title)
     ]
 
 

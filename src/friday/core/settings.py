@@ -340,6 +340,14 @@ class ExamFocus(Model):
     days_before: int = Field(3, ge=1, le=14)
     words: tuple[str, ...] = ("exam", "prelim", "midterm", "final")
 
+    def finds(self, title: str) -> bool:
+        """Whether a title is an exam's: one of the words in it, as a word. No words (or blank ones) find nothing: an
+        empty pattern matched every event, so every event was an exam (audit, 12 Nov)."""
+        said = [w.strip() for w in self.words if w.strip()]
+        if not said:
+            return False
+        return re.search(r"\b(" + "|".join(re.escape(w) for w in said) + r")\b", title, re.IGNORECASE) is not None
+
 
 class PhoneAccess(Model):
     """Friday on your phone over Tailscale (C61): off, Friday answers on this Mac alone; on, also at its Tailscale

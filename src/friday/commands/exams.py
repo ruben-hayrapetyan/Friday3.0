@@ -2,7 +2,6 @@
 much is done and left, when the last of it is planned, and whether that is before the exam."""
 
 import json
-import re
 
 from friday.api.types import Empty
 from friday.api.views import ExamOut, ExamPrepOut
@@ -137,7 +136,6 @@ def done_minutes(prep: Item, done: dict[int, int]) -> int:
 def focus_from(ctx: Ctx, exam: Item) -> str | None:
     """When exam focus starts for this exam: the rule's days before it, if the rule is on and the title is an exam's."""
     focus = ctx.settings["exam_focus"]
-    words = re.compile(r"\b(" + "|".join(re.escape(w) for w in focus.words) + r")\b", re.IGNORECASE)
-    if not focus.on or not exam.start_utc or not words.search(exam.title):
+    if not focus.on or not exam.start_utc or not focus.finds(exam.title):
         return None
     return ctx.local(format_utc(parse_utc(exam.start_utc) - focus.days_before * 1440))
