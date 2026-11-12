@@ -1,20 +1,21 @@
 import AppIntents
 
 /// Friday's own Siri and Shortcuts commands (C131: "build the siri one"): said to Siri with no shortcut to make
-/// first, listed in the Shortcuts app under Friday, and in Spotlight. "Add to Friday" asks what to add and reads it
-/// the way the add box does ("essay 3h due fri"); "What's next in Friday" says what's on now and next. They need
+/// first, listed in the Shortcuts app under Friday, and in Spotlight. "New to-do in Friday" asks what it is and reads
+/// it the way the add box does ("essay 3h due fri"); "What's next in Friday" says what's on now and next. No phrase is
+/// "add … to …": Siri gives those to Reminders (12 Nov: "Add to Friday Test" made a reminder). They need
 /// Xcode's App Intents metadata step, which Mac/build.sh runs when Xcode is on the Mac. Friday's links
 /// (FridayLink.swift) still work for Shortcuts that open them.
 
 struct AddToFriday: AppIntent {
-    static let title: LocalizedStringResource = "Add to Friday"
+    static let title: LocalizedStringResource = "New To-do in Friday"
     static let description = IntentDescription("Adds a to-do or an event to Friday, read the way Friday's add box reads it: “essay 3h due fri”.")
 
-    @Parameter(title: "What to add", requestValueDialog: "What should I add?")
+    @Parameter(title: "The to-do", requestValueDialog: "What's the to-do?")
     var text: String
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Add \(\.$text) to Friday")
+        Summary("New to-do in Friday: \(\.$text)")
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
@@ -39,8 +40,8 @@ struct FridayShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: AddToFriday(),
-            phrases: ["Add to \(.applicationName)", "Add a to-do to \(.applicationName)", "New \(.applicationName) to-do"],
-            shortTitle: "Add to Friday",
+            phrases: ["New to-do in \(.applicationName)", "New \(.applicationName) to-do", "Give \(.applicationName) a to-do", "Plan something with \(.applicationName)"],
+            shortTitle: "New To-do",
             systemImageName: "plus.circle"
         )
         AppShortcut(
