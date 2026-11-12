@@ -7,7 +7,8 @@ import pytest
 
 from friday.integrations import linear
 from friday.integrations.base import ConnectorError
-from tests.integrations.fake_linear import HARNESS, FakeLinear
+from tests.integrations.fake_linear import HARNESS, STATES, FakeLinear
+from tests.integrations.odd import odd
 
 
 def connector(fake: FakeLinear) -> linear.Linear:
@@ -68,3 +69,31 @@ def test_graphql_errors_are_said_in_words() -> None:
 
 def test_a_trackers_issue_is_a_work_task() -> None:
     assert linear.Linear.caps.kind == "Work task"
+
+
+def test_an_issue_deleted_in_linear_since_has_nothing_left_to_change() -> None:
+    fake = FakeLinear(HARNESS.token)
+    connector(fake).write("00000000-0000-0000-0000-0000000000ff", "done")
+    assert fake.writes() == []
+
+
+def test_a_team_without_a_done_or_todo_state_is_said_and_nothing_is_moved() -> None:
+    fake = FakeLinear(HARNESS.token)
+    issue = fake.add("Fix", state="st-doing")
+    started = [s for s in STATES if s["type"] == "started"]
+    only = {"data": {"issue": {"team": {"states": {"nodes": started}}}}}
+    stuck = linear.Linear(HARNESS.token, {}, odd(fake, "/graphql", only, op="States"))
+    with pytest.raises(ConnectorError, match="no Done state to move it to"):
+        stuck.write(issue, "done")
+    with pytest.raises(ConnectorError, match="no Todo state"):
+        stuck.write(issue, "reopen")
+    assert fake.writes() == []
+
+
+def test_a_change_linear_doesnt_say_it_saved_is_said() -> None:
+    fake = FakeLinear(HARNESS.token)
+    issue = fake.add("Fix")
+    unsaved = {"data": {"issueUpdate": {"success": False}}}
+    with pytest.raises(ConnectorError, match="Linear didn't save the change") as said:
+        linear.Linear(HARNESS.token, {}, odd(fake, "/graphql", unsaved, op="Move")).write(issue, "done")
+    assert said.value.problem == "answer"

@@ -38,10 +38,10 @@ const dowOf = (date: string) => (new Date(toMin(date) * 60000).getUTCDay() + 6) 
 const DAY_NAMES = [/^mon(day)?$/, /^tue(s|sday)?$/, /^wed(s|nesday)?$/, /^thu(r|rs|rsday)?$/, /^fri(day)?$/, /^sat(urday)?$/, /^sun(day)?$/]
 
 /** "in 3 days", "in 2 hours", "eod", and the plain days ("today", "tomorrow", "fri", "this fri"), each at the end of
- * the day: what's read without asking the server. Null otherwise. */
-export function readRelative(text: string, now: string): string | null {
+ * the day: what's read without asking the server. Null otherwise. `today` is Friday's day, which starts at your day
+ * start: before then, "today" is the day the Today button means (12 Nov: at 00:30 the two named different days). */
+export function readRelative(text: string, now: string, today = now.slice(0, 10)): string | null {
   const t = text.trim().toLowerCase().replace(/\s+/g, " ")
-  const today = now.slice(0, 10)
   if (/^(eod|end of (the )?day|tonight|midnight|today|tod)$/.test(t)) return `${today}T23:59`
   if (/^(tomorrow|tmrw|tmr|tom|tmw)$/.test(t)) return `${addDays(today, 1)}T23:59`
   const day = DAY_NAMES.findIndex((name) => name.test(t.replace(/^this /, "")))
@@ -50,15 +50,15 @@ export function readRelative(text: string, now: string): string | null {
   if (!m) return null
   const n = /^\d/.test(m[1]) ? Number(m[1]) : 1
   const unit = m[2][0]
-  if (unit === "d" || unit === "w") return `${addDays(now.slice(0, 10), n * (unit === "w" ? 7 : 1))}T23:59`
+  if (unit === "d" || unit === "w") return `${addDays(today, n * (unit === "w" ? 7 : 1))}T23:59`
   return fromMin(toMin(now) + Math.round(n * (unit === "h" ? 60 : 1)))
 }
 
 /** A typed due date as Friday reads it: a local time, null for "none", undefined while it can't be read. */
-export function useDueReading(text: string, now: string): { due: string | null | undefined; reading: boolean } {
+export function useDueReading(text: string, now: string, today?: string): { due: string | null | undefined; reading: boolean } {
   const [read, setRead] = useState<{ for: string; due: string | null | undefined }>({ for: "", due: undefined })
   const t = text.trim()
-  const local = !t ? null : /^(none|no due( date)?|clear|-)$/i.test(t) ? null : readRelative(t, now)
+  const local = !t ? null : /^(none|no due( date)?|clear|-)$/i.test(t) ? null : readRelative(t, now, today)
   useEffect(() => {
     if (!t || local !== null || /^(none|no due( date)?|clear|-)$/i.test(t)) return
     const timer = setTimeout(
@@ -98,7 +98,7 @@ export function DuePicker(props: {
   const { value, today, onPick, onDone, autoFocus = true, onEnterEmpty, onSend, placeholder } = props
   const now = fromMin(useClock())
   const [text, setText] = useState("")
-  const { due, reading } = useDueReading(text, now)
+  const { due, reading } = useDueReading(text, now, today)
   // Enter pressed while the server is still reading what was typed: kept, and done once it has read it.
   const [waiting, setWaiting] = useState<"enter" | "send" | null>(null)
   useEffect(() => {

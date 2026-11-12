@@ -42,3 +42,11 @@ def test_it_is_read_only_and_asks_in_githubs_current_version() -> None:
     with pytest.raises(AssertionError, match="read only"):
         connector(fake).write("1", "done")
     assert {r.headers["accept"] for r in fake.requests} == {"application/vnd.github+json"}
+
+
+def test_search_stops_at_the_thousand_results_github_gives() -> None:
+    fake = FakeGitHub(HARNESS.token)
+    for n in range(github.MOST + 5):
+        fake.add(f"Issue {n}")
+    assert len(connector(fake).read()) == github.MOST
+    assert len([r for r in fake.requests if "is:issue" in r.url.params["q"]]) == github.MOST // 100

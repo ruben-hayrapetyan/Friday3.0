@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
@@ -32,6 +33,27 @@ export default defineConfig({
     }),
   ],
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
+  // Two kinds of test: the quick ones, in Node, and the screens (*.screen.test.tsx), the whole app on a page in
+  // happy-dom over a real Friday serving a lived-in sample (src/test/), each file its own copy.
+  test: {
+    projects: [
+      // the same number of workers in both, so one run can measure both together (`pnpm coverage`)
+      { extends: true, test: { name: "unit", include: ["src/**/*.test.{ts,tsx}"], exclude: ["src/**/*.screen.test.tsx", "node_modules/**"], maxWorkers: 4 } },
+      {
+        extends: true,
+        test: {
+          name: "screens",
+          include: ["src/**/*.screen.test.tsx"],
+          environment: "happy-dom",
+          globalSetup: ["src/test/globalSetup.ts"],
+          setupFiles: ["src/test/setup.ts"],
+          testTimeout: 30_000,
+          hookTimeout: 120_000,
+          maxWorkers: 4,
+        },
+      },
+    ],
+  },
   // In development the API is fridayd's; FRIDAY_SERVER points elsewhere, as for the CLI.
   server: {
     proxy: Object.fromEntries(

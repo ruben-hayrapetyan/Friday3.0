@@ -16,6 +16,7 @@ from friday.integrations import oauth, outlook
 from tests.commands.helpers import App, new_app
 from tests.ingest.fakes import FakeClient
 from tests.integrations.fake_microsoft import REFRESH, TOKENS, FakeGraph
+from tests.integrations.odd import odd
 
 NOTHING = {"is_syllabus": False, "items": []}
 
@@ -77,3 +78,20 @@ def test_removed_its_mail_is_no_longer_read(app: App, graph: FakeGraph) -> None:
     assert "no longer reads" in app.do("mail_app_forget", address="maria@outlook.com")["message"]
     assert outlook.accounts() == [] and app.do("mail_app_accounts") == []
     assert not [s for s in app.table("sources") if s["kind"] == "mail" and s["enabled"]]
+
+
+def test_an_html_mail_is_read_as_its_words_and_only_a_small_pdf_is_taken(graph: FakeGraph) -> None:
+    sent = graph.mail("prof@cs.cornell.edu", "Lab 4", "", pdf=True)
+    graph.messages[sent]["body"] = {"contentType": "html", "content": "<p>Lab 4 is <b>due Friday</b>.</p>"}
+    attached = {"value": [
+        {"id": "a1", "name": "Rubric.docx", "contentType": "application/msword", "size": 900},
+        {"id": "a2", "name": "Scans.pdf", "contentType": "application/pdf", "size": outlook.MAX_PDF_BYTES + 1},
+        {"id": "a3", "name": "Lab 4.pdf", "contentType": "application/pdf", "size": 1200},
+    ]}  # fmt: skip
+    reader = outlook.GraphMailService(TOKENS, {}, odd(graph, f"/me/messages/{sent}/attachments", attached))
+    mail = reader.read(sent)
+    assert "Lab 4 is due Friday." in mail.text and "<b>" not in mail.text
+    assert "Attachments: Rubric.docx, Scans.pdf, Lab 4.pdf" in mail.text  # each named, for the reader
+    assert [p.name for p in mail.pdfs] == ["Lab 4.pdf"]  # only the PDF small enough to read
+    reader.close()  # nothing held open: a later read still works
+    assert reader.read(sent).subject == "Lab 4"

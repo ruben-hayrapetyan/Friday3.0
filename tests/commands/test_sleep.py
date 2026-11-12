@@ -184,3 +184,29 @@ def test_the_wind_down_is_learned_from_done_to_bed(app: App) -> None:
     out = app.do("sleep")
     assert out["nights"][0]["wind_down_min"] == 75 and out["nights"][0]["done"].endswith("T22:00")
     assert out["wind_down_min"]["mon"] == 75
+
+
+def test_a_night_less_than_an_hour_short_offers_nothing(app: App) -> None:
+    on(app)
+    app.do("sleep_mark", kind="bed", at="2026-10-19T00:45")  # Sunday night: 6h45 of a seven-hour night
+    app.do("sleep_mark", kind="up", at="2026-10-19T07:30")
+    assert app.do("brief")["sleep"] is None
+
+
+def test_moving_a_tap_that_isnt_there_says_so(app: App) -> None:
+    on(app)
+    with pytest.raises(FieldError, match="no sleep mark 99"):
+        app.do("sleep_mark_edit", id=99, at="2026-10-19T07:30")
+
+
+def test_learned_times_that_break_your_sleep_rule_say_so(app: App) -> None:
+    on(app)
+    app.do("rule_add", text="at least 8 hours of sleep")
+    first = date(2026, 10, 19) - timedelta(days=8)
+    for n in range(8):
+        morning = first + timedelta(days=n + 1)
+        app.do("sleep_mark", kind="bed", at=f"{morning}T00:50")
+        app.do("sleep_mark", kind="up", at=f"{morning}T08:30")
+    out = app.do("sleep")
+    assert out["suggested"] and out["against"]
+    assert all("under your 8 h rule" in said for said in out["against"])

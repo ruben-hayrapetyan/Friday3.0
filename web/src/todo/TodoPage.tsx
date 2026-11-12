@@ -208,11 +208,11 @@ export function TodoPage() {
                       setOver(null)
                       const ids = droppedIds(e.dataTransfer.getData(DRAG)).filter((id) => !g.items.some((i) => i.id === id))
                       if (!fill || !ids.length) return
-                      moveAll(ids, by === "Tag" ? { area: fill.area ?? null } : { preset: fill.preset ?? null }, by === "Kind" ? plural(g.name) : g.name)
+                      moveAll(ids, by === "Tag" ? { area: fill.area ?? null } : { preset: fill.preset ?? null }, by === "Kind" && g.name !== "Done" ? plural(g.name) : g.name)
                     }}
                     style={{ display: "flex", flexDirection: "column", borderRadius: 6, outline: over === g.name ? "1.5px dashed var(--color-accent)" : undefined, outlineOffset: 4 }}
                   >
-                    <SectionRule name={by === "Kind" ? plural(g.name) : g.name} items={g.items} />
+                    <SectionRule name={by === "Kind" && g.name !== "Done" ? plural(g.name) : g.name} items={g.items} />
                     {g.items.map((i) => (
                       <RowOf key={i.id} item={i} by={by} fresh={fresh.includes(i.id)} selected={i.id === selected} picked={picked.includes(i.id)} onSelect={(e) => choose(i.id, e)} dragging={draggedIds(i.id, picked)} />
                     ))}

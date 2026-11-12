@@ -26,7 +26,7 @@ from friday.core.time import ampm, format_utc, parse_utc, to_local
 from friday.engine.rules import RULE_TYPES, build_rules
 from friday.planner.snapshot import take_snapshot
 from friday.planner.spacing import Closer, closer_words
-from friday.planner.store import current_plan, kv_get
+from friday.planner.store import current_plan, kv_get, load_item
 from friday.planner.views import change_list, why_not_view
 from friday.planner.views import preview_weights as run_preview
 from friday.planner.views import triage as run_triage
@@ -137,7 +137,13 @@ def why_not(ctx: Ctx, inp: WhyNotInput) -> WhyNotOut:
 
 
 def change_out(ctx: Ctx, report: dict[str, Any], before: dict[str, int] | None = None) -> ChangeOut:
-    return change_list(report, before or {}, ctx.tz, lambda item_id: require_item(ctx, item_id).title)
+    # An item the plan placed and you then took back (undo of its add) is gone from the database until the next
+    # replan: said as such, not refused (12 Nov: "changes" failed with "That item isn't there any more").
+    def title(item_id: int) -> str:
+        found = load_item(ctx.conn, item_id, ctx.user_id)
+        return found.title if found else "something since taken back"
+
+    return change_list(report, before or {}, ctx.tz, title)
 
 
 @query("changes")

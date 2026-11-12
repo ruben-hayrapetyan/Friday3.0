@@ -136,3 +136,16 @@ def test_the_event_you_placed_stays_when_the_repeat_leaves_its_day_out(app: App)
            every="rrule:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", **ASIDE)  # a Saturday's, every weekday  # fmt: skip
     times = [local(t) for t in todo(app, "Shift")]
     assert times[0] == "Sat 2026-11-14 10:00" and times[1] == "Mon 2026-11-16 10:00"
+
+
+def test_stopped_then_started_before_the_calendar_heard_its_times_simply_come_back(app: App) -> None:
+    google = with_google(app, ["Classes"])
+    made = app.do("add", title="Gym", when="fixed", start="2026-11-10T07:30", end="2026-11-10T08:30",
+                  every="rrule:FREQ=WEEKLY;BYDAY=TU", **ASIDE)  # fmt: skip
+    write_events(app.conn, app.now_utc, google=google)
+    before = [i["id"] for i in todo(app, "Gym")]
+    app.do("series_stop", id=made["series_id"])
+    assert todo(app, "Gym") == [] and app.table("event_writes")  # the deletes wait to go out
+    app.do("series_resume", id=made["series_id"])
+    assert [i["id"] for i in todo(app, "Gym")] == before  # the same ones back, not made again
+    assert not [w for w in app.table("event_writes") if w["op"] in ("delete", "delete_from") and not w["done_utc"]]

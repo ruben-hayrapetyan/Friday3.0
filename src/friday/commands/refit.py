@@ -235,7 +235,9 @@ def state(ctx: Ctx, found: list[Comparison], rules: tuple[str, ...]) -> dict[str
 
 
 def checkin_in(ctx: Ctx, week_no: int) -> str | None:
-    lo, hi = date.fromordinal(1) + timedelta(days=week_no * 7), date.fromordinal(1) + timedelta(days=week_no * 7 + 7)
+    # week_no counts weeks from 1970, as `state` numbers them (12 Nov: counted from year 1, it looked in the year 57)
+    epoch = date(1970, 1, 1)
+    lo, hi = epoch + timedelta(days=week_no * 7), epoch + timedelta(days=week_no * 7 + 7)
     found = one(
         ctx.conn,
         "SELECT state FROM checkins WHERE user_id = ? AND date >= ? AND date < ? ORDER BY date DESC",

@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from friday.core.items import FieldError
 from tests.commands.helpers import App, new_app
 
 
@@ -153,3 +154,73 @@ def test_a_repeat_must_say_how(app: App) -> None:
     task = app.do("add", title="Reading quiz", duration_min=30, due="2026-10-23T17:00")["item"]
     with pytest.raises(Exception, match="say how it repeats"):
         app.do("repeat", id=task["id"], every="every")
+
+
+def test_a_repeat_said_in_words_friday_cant_read_is_refused(app: App) -> None:
+    with pytest.raises(FieldError, match="isn't a repeat like"):
+        app.do("series_add", title="gym", every="whenever I like", duration_min=60)
+
+
+def test_a_saturday_made_to_repeat_on_weekdays_stays_beside_its_repeat(app: App) -> None:
+    sat = app.do("add", title="Club", when="fixed", start="2026-10-24T10:00", end="2026-10-24T11:00")["item"]
+    app.do("repeat", id=sat["id"], every="weekdays")
+    row = next(i for i in app.table("items") if i["id"] == sat["id"])
+    assert (row["series_id"] is not None, row["occurrence_date"], row["occurrence_n"], row["detached"]) == (
+        True,
+        "2026-10-24",
+        0,
+        1,
+    )
+    others = [i for i in app.table("items") if i["title"] == "Club" and i["id"] != sat["id"]]
+    assert others and all(i["series_id"] == row["series_id"] for i in others)
+
+
+def test_a_series_that_isnt_there_is_said_by_its_number(app: App) -> None:
+    with pytest.raises(FieldError, match="no series 99"):
+        app.do("series_stop", id=99)
+
+
+def test_deleting_a_repeat_takes_its_pins_and_waits_with_it_and_leaves_the_one_being_timed(app: App) -> None:
+    made = app.do("series_add", title="practice", every="every day", duration_min=30)
+    first, second, *_ = sorted(
+        (i for i in app.table("items") if i["title"] == "practice"), key=lambda i: i["occurrence_date"]
+    )
+    essay = app.do("add", title="Essay", duration_min=60)["item"]["id"]
+    app.do("start", id=first["id"])
+    app.do("pin", id=second["id"], start="2026-10-20T15:00", kind="preferred")
+    app.do("depend", item_id=essay, depends_on_id=second["id"])
+    app.do("series_delete", id=made["id"])
+    assert app.table("pins") == [] and app.table("dependencies") == []
+    assert sorted(i["title"] for i in app.table("items")) == ["Essay", "practice"]  # the one on the timer stays
+    assert [t["item_id"] for t in app.table("timer")] == [first["id"]]
+
+
+def test_a_new_time_from_a_date_on_ends_after_it_starts(app: App) -> None:
+    app.do("add", title="Salsa", when="fixed", start="2026-10-24T13:35", end="2026-10-24T14:40", every="sat")
+    first = min((i for i in app.table("items") if i["title"] == "Salsa"), key=lambda i: i["occurrence_date"])
+    with pytest.raises(FieldError, match="the end comes before the start"):
+        app.do("edit", id=first["id"], start="2026-10-24T14:00", end="2026-10-24T13:00", from_date="2026-10-24")
+    with pytest.raises(FieldError, match="the end comes before the start"):
+        app.do("edit", id=first["id"], start="2026-10-25T14:00", end="2026-10-25T13:00", from_date="2026-10-24")
+
+
+def test_a_time_that_is_part_of_how_it_repeats_cant_move_to_another_day(app: App) -> None:
+    app.do("add", title="Meds", when="fixed", start="2026-10-20T09:00", end="2026-10-20T09:15",
+           every="rrule:FREQ=DAILY;BYHOUR=9,17")  # fmt: skip
+    first = min((i for i in app.table("items") if i["title"] == "Meds"), key=lambda i: i["start_utc"])
+    with pytest.raises(FieldError, match="part of how it repeats"):
+        app.do("edit", id=first["id"], start="2026-10-21T08:00", end="2026-10-21T08:15", from_date="2026-10-20")
+
+
+def test_deleting_a_calendars_own_repeat_switches_it_off(app: App) -> None:
+    made = app.do("series_add", title="Lecture", every="mon,wed", duration_min=60)
+    app.conn.execute("UPDATE series SET external_id = 'gcal:abc' WHERE id = ?", [made["id"]])
+    out = app.do("series_delete", id=made["id"])
+    assert out["message"] == "Lecture switched off; your calendar won't bring it back"
+    assert app.table("series")[0]["active"] == 0
+
+
+def test_only_a_repeat_has_a_time_to_skip(app: App) -> None:
+    item = app.do("add", title="Laundry", duration_min=30)["item"]
+    with pytest.raises(FieldError, match=f"T{item['id']} doesn't repeat; drop it instead"):
+        app.do("skip", id=item["id"])

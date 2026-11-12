@@ -380,9 +380,10 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   )
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+/** A labelled line of the drawer; `stack`: the label above, for a control that needs the drawer's whole width. */
+function Row({ label, children, stack }: { label: string; children: React.ReactNode; stack?: boolean }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "64px minmax(0,1fr)", gap: 10, alignItems: "center" }}>
+    <div style={{ display: "grid", gridTemplateColumns: stack ? "minmax(0,1fr)" : "64px minmax(0,1fr)", gap: stack ? 6 : 10, alignItems: "center" }}>
       <span className="fr-eyebrow">{label}</span>
       {children}
     </div>
@@ -503,7 +504,7 @@ function WorkMayTake({ title }: { title: string }) {
   const choose = useCommand("event_optional", { label: (o) => o.result.message ?? "Saved" })
   if (!title || !mode) return null
   return (
-    <Row label="Optional">
+    <Row label="Optional" stack>
       <span style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
         <Seg options={MODES} value={mode.mode} onPick={(m) => m !== mode.mode && choose({ title, mode: m })} label={`Can work take ${title}'s time?`} size="small" />
         <span className="fr-kicker">

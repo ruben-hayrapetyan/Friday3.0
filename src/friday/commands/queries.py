@@ -29,7 +29,7 @@ from friday.api.views import (
     Swap,
 )
 from friday.commands.decisions import decisions
-from friday.commands.fields import item_out, require_item
+from friday.commands.fields import item_out, require_item, waiting_on
 from friday.commands.registry import Ctx, query
 from friday.commands.timer import all_running, elapsed_seconds, running
 from friday.commands.timer import timer_out as timing
@@ -463,14 +463,7 @@ def items(ctx: Ctx, inp: ItemsInput) -> list[ItemOut]:
         found = [i for i in found if i.area_id and areas.get(i.area_id, "").lower() == inp.area.lower()]
     if inp.text:
         found = [i for i in found if inp.text.lower() in i.title.lower()]
-    waiting: dict[int, list[int]] = {}
-    for r in rows(
-        ctx.conn,
-        "SELECT d.item_id, d.depends_on_id FROM dependencies d JOIN items o ON o.id = d.depends_on_id "
-        "WHERE o.user_id = ? AND o.status = 'todo' ORDER BY d.depends_on_id",
-        [ctx.user_id],
-    ):
-        waiting.setdefault(r["item_id"], []).append(r["depends_on_id"])
+    waiting = waiting_on(ctx)
     out = [item_out(ctx, i, done.get(i.id or 0, 0)) for i in found]
     return [o.model_copy(update={"waiting_on": waiting.get(o.id, [])}) for o in out]
 

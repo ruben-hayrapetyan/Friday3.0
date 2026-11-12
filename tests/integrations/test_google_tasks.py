@@ -32,6 +32,12 @@ def test_an_account_without_tasks_or_signed_out_is_said_in_words(monkeypatch: py
     assert error.value.problem == "access"
 
 
+def test_an_account_that_allowed_tasks_reads_with_its_sign_ins_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    allowed = SimpleNamespace(has_scopes=lambda scopes: scopes == [google_auth.TASKS_SCOPE], token="ya29.stand-in")
+    monkeypatch.setattr(google_auth, "credentials", lambda folder, account: allowed)
+    assert google_tasks.access_token(Path("."), ACCOUNT) == "ya29.stand-in"
+
+
 @pytest.fixture
 def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> App:
     fake = FakeGoogleTasks(HARNESS.token)

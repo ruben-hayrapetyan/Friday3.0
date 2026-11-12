@@ -14,6 +14,7 @@ from friday.planner.store import kv_get
 @command("replan", logged=False)
 def replan(ctx: Ctx, inp: Empty) -> ReplanOutput:
     """Solve now."""
+    _ = ctx.tz  # before setup: "timezone: not set yet" in words, not a crash deep in the planner (12 Nov)
     reason = f"replan by {ctx.actor}"
     if ctx.solver is not None:
         plan_id = ctx.solver(reason)

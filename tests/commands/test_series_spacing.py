@@ -148,3 +148,10 @@ def test_with_little_room_the_next_laundry_is_closer_rather_than_late(app: App) 
     replan(app.conn, app.now_utc)
     late = app.do("status")["late"]
     assert not any("Laundry" in title for title in late)
+
+
+def test_a_next_time_that_starts_later_than_the_gap_keeps_its_own_start() -> None:
+    nxt = replace(laundry(2, "2026-11-16T01:00Z"), release_utc="2026-11-15T23:00Z")  # starts after the week's wait
+    done = LastDone(parse_utc("2026-11-08T22:00Z"), parse_utc("2026-11-09T01:00Z"), parse_utc("2026-11-09T01:00Z"))
+    out = after_last(nxt, 7 * DAY, done)
+    assert out.release_utc == "2026-11-15T23:00Z" and out.due_utc == "2026-11-16T01:00Z"

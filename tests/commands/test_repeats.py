@@ -29,3 +29,11 @@ def test_a_task_made_to_repeat_keeps_its_due_each_week(tmp_path: Path) -> None:
     dues = sorted((i["due_utc"], i["id"]) for i in app.table("items") if i["title"] == "Weekly reflection")
     assert dues[0] == ("2026-10-23T21:00Z", task) and dues[1][0] == "2026-10-30T21:00Z"
     assert next(i for i in app.do("items") if i["id"] == task)["done_min"] == 15  # what you'd done stays with it
+
+
+def test_a_repeating_calendar_event_no_longer_waiting_is_said_so(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    with pytest.raises(FieldError, match="isn't waiting any more"):
+        app.do("repeats_import", repeats=[{"batch": "repeat:gone"}])
+    with pytest.raises(FieldError, match="isn't waiting any more"):
+        app.do("repeats_leave_out", batch="repeat:gone")

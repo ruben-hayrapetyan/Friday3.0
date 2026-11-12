@@ -46,6 +46,11 @@ def test_presets_make_valid_items(item: Item) -> None:
         (Item("x", importance=6), "importance"),
         (Item(" "), "title"),
         (Item("x", release_utc=DUE, due_utc=RELEASE), "due_utc"),
+        (Item("x", chunk_cost=1.5), "chunk_cost"),
+        (Item("x", neglect_carry=-0.1), "neglect_carry"),
+        (Item("x", duration_units=-1), "duration_units"),
+        (Item("x", amount="target", release_utc=RELEASE, due_utc=DUE), "target_units"),
+        (Item("x", duration_units=8, min_chunk_units=4, max_chunk_units=2), "max_chunk_units"),
     ],
 )
 def test_validation_names_the_field(item: Item, field: str) -> None:

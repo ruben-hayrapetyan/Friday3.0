@@ -29,3 +29,11 @@ def test_a_projects_steps_keep_the_order_you_give_them(app: App) -> None:
     steps = [c["id"] for c in app.do("projects")[0]["children"]]
     app.do("reorder", parent_id=project, ids=list(reversed(steps)))
     assert [c["id"] for c in app.do("projects")[0]["children"]] == list(reversed(steps))
+
+
+def test_under_two_hours_of_work_says_no_best_hours_yet(app: App) -> None:
+    item = app.do("add", title="PS1", preset="Assignment", duration_min=60, due="2026-10-23T17:00")["item"]["id"]
+    app.at("2026-10-19T12:00").do("log", id=item, start="2026-10-19T09:00", end="2026-10-19T10:00")
+    app.do("done", id=item)
+    out = app.do("insights", weeks=4)
+    assert out["heat"][0][1] == 60 and out["best_hours"] is None

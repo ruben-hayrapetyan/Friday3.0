@@ -18,7 +18,7 @@ from friday.api.commands import (
 from friday.api.types import Empty, ItemOut
 from friday.api.views import ProjectOut, WeekLoad
 from friday.commands.calendar import dues
-from friday.commands.fields import item_out, require_item
+from friday.commands.fields import item_out, require_item, waiting_on
 from friday.commands.items import add, add_dependency
 from friday.commands.registry import Ctx, command, query
 from friday.commands.settings import write_setting
@@ -72,12 +72,17 @@ def projects(ctx: Ctx, inp: Empty) -> list[ProjectOut]:
     done = minutes_by_item(ctx.conn, ctx.user_id)
     left = {i: remaining_minutes(it, done.get(i, 0)) or 0 for i, it in items.items() if it.when != "fixed"}
     finish = finishes(ctx, left)
+    waiting = waiting_on(ctx)
     out = []
     for item in items.values():
         is_project = children.get(item.id or 0) or item.preset == "Project"
         if not is_project or item.status != "todo" or (item.parent_id in items and item.preset != "Project"):
             continue
-        tree = [item_out(ctx, items[i], done.get(i, 0)) for i in descendants(children, item.id or 0)]
+        # each step with what it waits on, as the items query has it (12 Nov: a step's "Waits on" never showed)
+        tree = [
+            item_out(ctx, items[i], done.get(i, 0)).model_copy(update={"waiting_on": waiting.get(i, [])})
+            for i in descendants(children, item.id or 0)
+        ]
         out.append(project_out(ctx, item_out(ctx, item, done.get(item.id or 0, 0)), tree, finish))
     return sorted(out, key=lambda p: (p.item.due or "9999", p.item.id))
 

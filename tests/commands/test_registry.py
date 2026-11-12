@@ -10,10 +10,13 @@ from typing import Any
 import pytest
 
 from friday.commands.all import REGISTRY
+from friday.commands.registry import tried, tried_many
 from friday.core import terms
+from friday.core.db import connect
 from friday.core.items import FieldError
+from friday.core.time import parse_local, to_utc
 from friday.planner.service import replan
-from tests.commands.helpers import App, new_app
+from tests.commands.helpers import MONDAY_9, TZ, App, new_app
 
 # Tables a command's undo doesn't restore: the log itself, the plan generation, and derived plans.
 DERIVED = {"command_log", "kv", "plans", "blocks", "users", "sqlite_sequence"}
@@ -648,3 +651,47 @@ def test_unlogged_commands_are_only_those_with_no_undo_or_a_secret_result() -> N
         "update_stop",
         "whats_new_seen",
     } == UNLOGGED
+
+
+def test_a_command_that_changed_nothing_has_nothing_to_undo(app: App) -> None:
+    nothing = app.full("edit", payload={"id": essay(app)}, provisional=False)
+    with pytest.raises(FieldError, match="That change left nothing to undo"):
+        app.do("undo", command_id=nothing.command_id)
+    with pytest.raises(FieldError, match=r"There's nothing to undo \(no change C999\)"):
+        app.do("undo", command_id=999)
+
+
+def test_an_unknown_command_is_refused_by_name(app: App) -> None:
+    with pytest.raises(FieldError, match="no command named 'frobnicate'"):
+        app.do("frobnicate")
+
+
+def test_a_time_said_in_words_must_be_a_time(app: App) -> None:
+    with pytest.raises(FieldError, match="'whenever' is not a time like 2026-10-20T14:00 or tue 14:00"):
+        app.do("pin", id=essay(app), start="whenever")
+
+
+def test_before_setup_a_time_is_refused_until_the_timezone_is_set(tmp_path: Path) -> None:
+    fresh = App(connect(tmp_path / "friday.db"), to_utc(parse_local(MONDAY_9), TZ))
+    with pytest.raises(FieldError, match="timezone: not set yet; run `fridayd init`"):
+        fresh.do("add", title="Gym", when="fixed", start="2026-10-20T14:00", end="2026-10-20T15:00")
+
+
+def test_before_setup_a_replan_is_refused_until_the_timezone_is_set(tmp_path: Path) -> None:
+    fresh = App(connect(tmp_path / "friday.db"), to_utc(parse_local(MONDAY_9), TZ))
+    with pytest.raises(FieldError, match="timezone"):
+        fresh.do("replan")
+
+
+def test_only_logged_changes_can_be_tried(app: App) -> None:
+    with pytest.raises(FieldError, match="'settings' isn't a change Friday can try"):
+        tried(app.conn, "settings", {}, lambda conn: None, now_utc=app.now_utc)
+    done, _ = tried_many(
+        app.conn, [("settings", {}), ("nope", {}), ("add", {"text": "x ~30m"})], lambda conn, d: d, now_utc=app.now_utc
+    )
+    assert [d.error for d in done] == [
+        "'settings' isn't a change Friday can try",
+        "'nope' isn't a change Friday can try",
+        None,
+    ]
+    assert done[2].created and app.do("items") == []

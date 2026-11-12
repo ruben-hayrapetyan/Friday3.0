@@ -48,14 +48,18 @@ function Week({ week }: { week: Full }) {
   const top = Math.max(1, ...groups.map((g) => Math.max(g.planned_h, g.actual_h)))
   const suggested = feel === "Rough" || feel === "Heavy" ? "Easy" : feel === "Great" ? "Push" : (paces?.default ?? "Normal")
   const nextMonday = addDays(week.end, 1)
+  // "Next week" starts it next Monday: only for work due after then (12 Nov: one due sooner was refused, and the
+  // review still said it was done)
+  const canWait = (c: { when: string }) => !c.when || c.when >= `${nextMonday}T00:00`
   const finish = async () => {
+    let failed = false
     for (const c of week.carried) {
-      if (carry[c.item_id] === "Drop") await drop({ id: c.item_id })
-      if (carry[c.item_id] === "Next week") await edit({ id: c.item_id, release: `${nextMonday}T00:00` })
+      if (carry[c.item_id] === "Drop") failed = !(await drop({ id: c.item_id })) || failed
+      if (carry[c.item_id] === "Next week" && canWait(c)) failed = !(await edit({ id: c.item_id, release: `${nextMonday}T00:00` })) || failed
     }
     const chosen = pace ?? suggested
-    if (paces && chosen !== paces.now_label) await setPaceCmd({ name: chosen, for_days: 7 })
-    setFinished(true)
+    if (paces && chosen !== paces.now_label) failed = !(await setPaceCmd({ name: chosen, for_days: 7 })) || failed
+    if (!failed) setFinished(true) // a refusal is said in its toast; the review stays open to try again
   }
   // "26 October – 1 November" across two months, "19–25 October" within one
   const month = (d: string) => MONTHS[Number(d.slice(5, 7)) - 1]
@@ -142,7 +146,7 @@ function Week({ week }: { week: Full }) {
                     {c.when ? `, due ${when(c.when, today)}` : ""}
                   </span>
                 </span>
-                <Seg options={["Keep", "Next week", "Drop"] as const} value={carry[c.item_id] ?? "Keep"} onPick={(v) => setCarry({ ...carry, [c.item_id]: v })} size="small" onBg />
+                <Seg options={canWait(c) ? (["Keep", "Next week", "Drop"] as const) : (["Keep", "Drop"] as const)} value={carry[c.item_id] ?? "Keep"} onPick={(v) => setCarry({ ...carry, [c.item_id]: v })} size="small" onBg />
               </div>
             ))}
             {!week.carried.length && <span className="fr-kicker">Nothing.</span>}

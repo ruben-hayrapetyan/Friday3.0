@@ -150,3 +150,20 @@ def test_a_saved_web_page_is_read_as_its_text(app: App) -> None:
     assert "PS 3 due Oct 30" in raw["content"] and "tracking" not in raw["content"]
     with pytest.raises(FieldError, match="no text"):
         app.do("document_add", name="empty.html", content="<html><script>x</script></html>")
+
+
+def test_a_file_read_with_nothing_in_it_to_plan_says_so_when_uploaded_again(app: App) -> None:
+    app.do("document_add", name="Notes.txt", content="Nothing to do here.")
+    app.conn.execute("UPDATE raw_inputs SET status = 'extracted'")
+    out = app.do("document_add", name="Notes.txt", content="Nothing to do here.")
+    assert out["message"] == "You uploaded Notes.txt already: it was read, and had nothing to plan in it"
+
+
+def test_a_file_too_big_to_read_is_refused(app: App) -> None:
+    with pytest.raises(FieldError, match="too big"):
+        app.do("document_add", name="huge.txt", content="x" * 14_000_001)
+
+
+def test_retrying_a_document_that_isnt_one_is_refused(app: App) -> None:
+    with pytest.raises(FieldError, match="no uploaded document 42"):
+        app.do("document_retry", id=42)

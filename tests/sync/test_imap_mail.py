@@ -113,6 +113,41 @@ class TestGlassBox:
         with pytest.raises(imap_mail.ImapRefused, match=re.escape(words)):
             imap_mail.check(ADDRESS, "wrongwrongwrongw")
 
+    def test_a_message_gmail_no_longer_has_is_said_to_be_gone(self, gmail: FakeImap) -> None:
+        with pytest.raises(LookupError, match="no longer has that message"):
+            imap_mail.ImapService(ADDRESS, PASSWORD).read(f"{9007:x}")
+
+    def test_nothing_found_asks_for_nothing_more(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        empty = FakeImap([])
+        monkeypatch.setattr(imap_mail, "CONNECT", [empty])
+        assert imap_mail.ImapService(ADDRESS, PASSWORD).message_ids("newer_than:14d", 50) == []
+
+    def test_lines_of_an_answer_that_name_no_message_are_passed_over(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        class Chatty(FakeImap):
+            def uid(self, verb: str, *args: object) -> tuple[str, "list[object]"]:
+                said, lines = super().uid(verb, *args)
+                return said, (lines + [None, b")", b"* 9 (UID 9)"] if verb == "FETCH" else lines)
+
+        monkeypatch.setattr(imap_mail, "CONNECT", [Chatty([(1, 501, message("a@b.c", "Hi", "Hello"))])])
+        assert imap_mail.ImapService(ADDRESS, PASSWORD).message_ids("", 50) == [(f"{1007:x}", f"{501:x}")]
+
+    def test_a_message_in_a_charset_python_doesnt_know_is_still_read(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        raw = (b"From: Prof <prof@cs.cornell.edu>\r\nSubject: Quiz\r\nMIME-Version: 1.0\r\n"
+               b"Content-Type: text/plain; charset=x-unknown-8\r\n\r\nQuiz on Friday \xe9\r\n")  # fmt: skip
+        monkeypatch.setattr(imap_mail, "CONNECT", [FakeImap([(1, 501, raw)])])
+        mail = imap_mail.ImapService(ADDRESS, PASSWORD).read(f"{1007:x}")
+        assert "Quiz on Friday \ufffd" in mail.text  # the bytes read as UTF-8, what can't be shown replaced
+
+    @pytest.mark.parametrize(
+        ("listed", "name"),
+        [([b'(\\HasNoChildren) "/" "INBOX"'], "INBOX"),
+         (['(\\All \\HasNoChildren) "/" Alle Nachrichten'], '"Alle Nachrichten"'),
+         (None, "INBOX")],
+    )  # fmt: skip
+    def test_all_mail_is_found_whatever_its_name_else_the_inbox(self, listed: list | None, name: str) -> None:
+        box = type("Box", (), {"list": lambda self: ("OK", listed)})()
+        assert imap_mail.all_mail(box) == name
+
 
 @pytest.fixture
 def app(tmp_path: Path) -> App:

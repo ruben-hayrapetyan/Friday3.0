@@ -1,6 +1,7 @@
 """The inbox through the registry (DESIGN §22.1–22.7): feeds and documents become suggestions; nothing changes the
 plan until accepted, except a trusted feed's events; duplicates, updates, syllabus batches and the AI budget."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -247,3 +248,55 @@ def test_an_event_suggested_without_an_end_shows_the_end_it_will_have() -> None:
     timed = {"title": "Talk", "preset": "Event", "start": "2026-10-30T18:00", "end": "2026-10-30T20:00"}
     assert addable(timed, presets) == timed  # an end it was given stays
     assert "end" not in addable({"title": "PS4", "preset": "Assignment", "due": "2026-10-30T23:59"}, presets)
+
+
+def test_a_source_is_renamed_moved_and_switched_off_by_editing_it(app: App) -> None:
+    app.do("source_add", name="Canvas", url="https://example.edu/feed.ics")
+    source = app.table("sources")[-1]
+    out = app.do("source_edit", id=source["id"], name="Canvas CS", url="https://example.edu/new.ics", enabled=False)
+    assert out["message"] == "Saved Canvas CS"
+    edited = app.table("sources")[-1]
+    assert (edited["name"], json.loads(edited["config"])["url"], edited["enabled"]) == (
+        "Canvas CS",
+        "https://example.edu/new.ics",
+        0,
+    )
+    assert app.do("source_edit", id=source["id"], trusted=True)["message"] == "Saved Canvas CS"
+
+
+def test_a_source_that_isnt_there_is_said_by_its_number(app: App) -> None:
+    with pytest.raises(FieldError, match="no source 99"):
+        app.do("source_edit", id=99, name="x")
+    with pytest.raises(FieldError, match="no source 99"):
+        app.do("source_remove", id=99)
+
+
+def test_a_suggestion_decided_already_cant_be_decided_again(app: App) -> None:
+    feed(app)
+    essay = pending(app)["Essay draft"]["id"]
+    app.do("suggestion_reject", id=essay)
+    with pytest.raises(FieldError, match=f"no pending suggestion {essay}"):
+        app.do("suggestion_reject", id=essay)
+    with pytest.raises(FieldError, match=f"no pending suggestion {essay}"):
+        app.do("suggestion_accept", id=essay)
+    with pytest.raises(FieldError, match="no pending suggestion 999"):
+        app.do("suggestion_accept", id=999)
+
+
+def test_a_batch_with_nothing_waiting_is_refused(app: App) -> None:
+    with pytest.raises(FieldError, match="nothing pending in that batch"):
+        app.do("batch_accept", batch="syllabus-1")
+
+
+def test_an_event_suggested_with_a_start_friday_cant_read_isnt_given_an_end(app: App) -> None:
+    app.do("document_add", name="mail.txt", content="Social Friday 10pm")
+    raw = app.table("raw_inputs")[-1]["id"]
+    app.conn.execute(
+        "INSERT INTO suggestions (user_id, raw_input_id, command, input, status, created_utc) "
+        "VALUES (1, ?, 'add', ?, 'pending', '2026-10-19T13:00Z')",
+        [raw, '{"title": "Social", "preset": "Event", "start": "Friday 10pm"}'],
+    )
+    (social,) = app.do("inbox")["suggestions"]
+    with pytest.raises(FieldError, match="needs a start and an end"):
+        app.do("suggestion_accept", id=social["id"])
+    assert app.table("items") == [] and app.table("suggestions")[0]["status"] == "pending"

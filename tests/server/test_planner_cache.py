@@ -72,3 +72,8 @@ def test_numba_reads_the_seeded_code_and_compiles_more_only_into_the_cache(tmp_p
     assert sorted(p.name for p in (folder / "__pycache__").iterdir()) == built  # nothing added beside the source
     added = [p.name for p in planner_cache.cache_folder(cache, folder).iterdir() if p.suffix == ".nbc"]
     assert len(added) == 2, added
+
+
+def test_the_planners_source_is_found_without_importing_it() -> None:
+    folder = planner_cache.engine_folder()
+    assert folder.name == "engine" and (folder / "kernel.py").exists() and folder.parent.name == "friday"

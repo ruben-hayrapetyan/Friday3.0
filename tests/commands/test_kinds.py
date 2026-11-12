@@ -53,3 +53,28 @@ def test_suggestions_waiting_in_the_inbox_move_with_a_deleted_kind(app: App) -> 
     )
     app.do("kind_remove", name="Errand", move_to="Chore")
     assert json.loads(app.table("suggestions")[-1]["input"])["preset"] == "Chore"
+
+
+def test_a_new_kind_needs_a_name_and_a_kind_to_copy(app: App) -> None:
+    with pytest.raises(FieldError, match="give it a name"):
+        app.do("kind_add", name="  ", like="Assignment")
+    with pytest.raises(FieldError, match="no kind called Homework"):
+        app.do("kind_add", name="Lab report", like="Homework")
+
+
+def test_deleting_needs_a_kind_that_exists_and_another_to_move_to(app: App) -> None:
+    with pytest.raises(FieldError, match="no kind called Homework"):
+        app.do("kind_remove", name="Homework", move_to="Chore")
+    with pytest.raises(FieldError, match="pick another kind"):
+        app.do("kind_remove", name="Errand", move_to="Errand")
+
+
+def test_deleting_a_kind_drops_its_buffer(app: App) -> None:
+    rules = app.do("settings")["rules"]
+    for r in rules:
+        if r["type"] == "buffer":
+            r["params"]["by_preset"] = {"Errand": "1d", "Chore": "2h"}
+    app.do("settings_set", key="rules", value=rules)
+    app.do("kind_remove", name="Errand", move_to="Chore")
+    (buffer,) = [r for r in app.do("settings")["rules"] if r["type"] == "buffer"]
+    assert buffer["params"]["by_preset"] == {"Chore": "2h"}

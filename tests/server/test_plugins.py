@@ -50,3 +50,9 @@ def test_the_plugin_folder_is_beside_the_config_a_server_is_given(tmp_path: Path
 
     assert folder(str(tmp_path / "config" / "friday.toml")) == str(tmp_path / "config" / "rules")
     assert folder(None) == str(Path("~/.config/friday/rules").expanduser())
+
+
+def test_a_plugin_that_doesnt_parse_is_named_with_its_line(tmp_path: Path) -> None:
+    (tmp_path / "typo.py").write_text("x = 1\ny = (\n")
+    [error] = load_plugins(tmp_path)
+    assert error.startswith(f"{tmp_path / 'typo.py'}:2: SyntaxError: ")

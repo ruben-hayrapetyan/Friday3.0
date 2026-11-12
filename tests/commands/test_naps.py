@@ -171,3 +171,29 @@ class TestSnacks:
                due_offset_min=420, min_min=30, ideal_min=30, max_min=30)  # fmt: skip
         app.do("meal_start", kind="breakfast")
         assert take_snapshot(app.conn, app.now_utc).away is None
+
+
+def test_a_new_nap_hours_after_one_left_running_ends_that_one_first(app: App) -> None:
+    app.at("2026-10-19T10:00")
+    app.do("nap_start")
+    app.at("2026-10-19T15:00")
+    assert app.do("nap_start")["message"] == "Napping since 3pm"
+    out = app.do("sleep")
+    assert naps(app) == [("2026-10-19T10:00", "2026-10-19T10:30", 30)]
+    assert out["napping"]["start"] == "2026-10-19T15:00"
+
+
+def test_up_at_a_time_you_give_must_be_after_you_lay_down_and_not_too_long(app: App) -> None:
+    app.at("2026-10-19T14:10")
+    app.do("nap_start")
+    with pytest.raises(FieldError, match="before you lay down"):
+        app.do("nap_end", at="2026-10-19T14:00")
+    app.at("2026-10-19T20:00")
+    with pytest.raises(FieldError):
+        app.do("nap_end", at="2026-10-19T19:30")  # five hours is no nap
+    assert app.do("nap_end", at="2026-10-19T14:40")["message"] == "Nap: 30 min"
+
+
+def test_putting_right_a_nap_that_isnt_there_says_so(app: App) -> None:
+    with pytest.raises(FieldError, match="no nap 99"):
+        app.do("nap_edit", id=99, start="2026-10-19T14:00")

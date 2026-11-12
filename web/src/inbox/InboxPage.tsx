@@ -77,7 +77,8 @@ export function InboxPage() {
   const [reading, setReading] = useState(false)
   const showList = !tight || !reading
   const showPane = !tight || reading
-  useEffect(() => setGone((was) => was.filter((k) => messages.some((m) => m.key === k))), [messages])
+  // only a changed list makes a new one: the same keys kept give back the same array, so nothing re-renders for it
+  useEffect(() => setGone((was) => (was.every((k) => messages.some((m) => m.key === k)) ? was : was.filter((k) => messages.some((m) => m.key === k)))), [messages])
   useEffect(() => {
     const press = (e: KeyboardEvent) => {
       if (typing(e) || e.metaKey || e.ctrlKey || e.altKey) return

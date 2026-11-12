@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from friday.core.items import FieldError
 from friday.ingest import llm, local_models
+from friday.planner.store import kv_set
 from tests.commands.helpers import App, new_app
 from tests.fake_ollama import GB, FakeOllama
 
@@ -135,6 +136,16 @@ def test_a_failed_download_keeps_the_ai_you_had(app: App, ollama: FakeOllama) ->
     assert ai(app)["model"] == "qwen3:8b" and "qwen3:8b" in ollama.models and ollama.deleted == []
     download = app.do("local_models")["download"]
     assert (download["status"], download["error"]) == ("failed", "no space left on device")
+
+
+def test_a_download_friday_cant_switch_to_says_why_and_keeps_the_ai_you_had(app: App, ollama: FakeOllama) -> None:
+    use(app, "qwen3:8b")
+    kv_set(app.conn, "config_keys", ["llm"])  # friday.toml sets the AI now
+    use(app, "mistral:7b")
+    assert ai(app)["model"] == "qwen3:8b" and "mistral:7b" in ollama.models
+    download = app.do("local_models")["download"]
+    assert download["status"] == "failed"
+    assert download["error"] == "Downloaded, but couldn't switch to it: key: llm is set in friday.toml; change it there"
 
 
 def test_a_stopped_download_keeps_the_ai_you_had(app: App, ollama: FakeOllama) -> None:

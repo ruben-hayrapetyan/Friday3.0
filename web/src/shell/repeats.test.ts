@@ -42,3 +42,13 @@ describe("how an event repeats", () => {
     expect(movedRule(null, FRIDAY, "2026-10-31T18:15")).toBeNull()
   })
 })
+
+describe("a repeat from before the choices said its day", () => {
+  it("is said with the event's own day, with how many times when it ends", () => {
+    expect(sayRepeat("rrule:FREQ=WEEKLY", FRIDAY)).toBe("Every week on Friday")
+    expect(sayRepeat("rrule:FREQ=WEEKLY;INTERVAL=2;COUNT=4", FRIDAY)).toBe("Every other Friday, 4 times")
+    expect(sayRepeat("rrule:FREQ=MONTHLY", FRIDAY)).toBe("Every month on the 30th")
+    expect(sayRepeat("rrule:FREQ=YEARLY", FRIDAY)).toBe("Repeats")
+    expect(sayRepeat(null, FRIDAY)).toBe("Doesn't repeat")
+  })
+})

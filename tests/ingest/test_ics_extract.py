@@ -100,3 +100,17 @@ def test_a_quick_add_with_pages_gets_a_length_not_a_pages_field() -> None:
     client = FakeClient({"title": "Read ch. 5", "preset": "Reading", "pages": 10, "quotes": [], "confidence": 0.9})
     fields, _ = extract.quick_add(client, "m", "read ch 5 (10 pages)", date(2026, 10, 19), TZ, [], ["Reading"])
     assert fields == {"title": "Read ch. 5", "preset": "Reading", "duration_min": 30}
+
+
+def test_an_image_goes_to_the_model_as_an_image_and_an_item_without_a_title_is_left_out() -> None:
+    answer = {
+        "is_syllabus": False,
+        "items": [
+            {"title": "", "due": "2026-10-23T17:00", "confidence": 0.9, "quotes": {}},
+            {"title": "Poster", "confidence": 0.9, "quotes": {}},
+        ],
+    }
+    client = FakeClient(answer)
+    found, _, _ = extract.extract(client, "m", "iVBORw0K", "image/png", date(2026, 10, 19), TZ, [], [])
+    assert [f.input["title"] for f in found] == ["Poster"]
+    assert client.calls[0]["messages"][0]["content"][0]["type"] == "image"

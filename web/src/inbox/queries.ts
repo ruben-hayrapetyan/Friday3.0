@@ -16,7 +16,10 @@ export const useInbox = () => useQuery({ queryKey: ["inbox"], queryFn: () => que
 export const useDuplicates = () => useQuery({ queryKey: ["duplicates"], queryFn: () => query("duplicates") })
 export const useToReview = () => useQuery({ queryKey: ["to_review"], queryFn: () => query("to_review") })
 export const useReview = (date: string) => useQuery({ queryKey: ["review", date], queryFn: () => query("review", { date }) }).data
-export const useDecisions = (): Schemas["Decision"][] => useStatus().data?.decisions ?? []
+// one empty list, the same each time: a new [] each render while status loads re-made every message and looped
+// (12 Nov: opening /inbox before status answered hit React's "Maximum update depth exceeded")
+const NO_DECISIONS: Schemas["Decision"][] = []
+export const useDecisions = (): Schemas["Decision"][] => useStatus().data?.decisions ?? NO_DECISIONS
 export const useCalendarRepeats = () => useQuery({ queryKey: ["calendar_repeats"], queryFn: () => query("calendar_repeats") })
 
 const NONE: Schemas["SuggestionOut"][] = []

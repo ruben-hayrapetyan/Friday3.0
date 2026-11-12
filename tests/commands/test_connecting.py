@@ -429,3 +429,52 @@ def test_google_login_uses_the_shipped_client_without_copying_it_into_your_confi
     client = shipped()
     main(["--data-dir", str(tmp_path / "data"), "google-login"])
     assert asked == [client] and not (no_personal_config / "google_client.json").exists()
+
+
+def test_a_calendar_two_accounts_share_is_read_through_the_one_left_when_the_other_goes(
+    app: App, monkeypatch: pytest.MonkeyPatch, no_personal_config: Path
+) -> None:
+    with_client(no_personal_config)
+    shared = {"shared@group": []}
+    monkeypatch.setattr(
+        google_auth,
+        "calendar",
+        Accounts({"me@gmail.com": FakeGoogle(dict(shared)), "b@x.edu": FakeGoogle(dict(shared))}),
+    )
+    signed_in(app, monkeypatch, FakeSignIn())
+    signed_in(app, monkeypatch, FakeSignIn(who="b@x.edu"))
+    (before,) = app.do("google_calendars")
+    assert before["account"] == "me@gmail.com"
+    app.do("google_remove", account="me@gmail.com")
+    (after,) = app.do("google_calendars")
+    assert after["id"] == "shared@group" and after["account"] == "b@x.edu"
+
+
+def test_calendars_that_cant_be_listed_after_signing_in_wait_for_the_sync(
+    app: App, monkeypatch: pytest.MonkeyPatch, no_personal_config: Path
+) -> None:
+    with_client(no_personal_config)
+
+    def down(folder: Path, account: str | None = None) -> FakeGoogle:
+        raise ConnectionError("Google is down")
+
+    monkeypatch.setattr(google_auth, "calendar", down)
+    status = signed_in(app, monkeypatch, FakeSignIn())
+    assert status["state"] == "connected"
+    assert kv_get(app.conn, "sync_now", None) is not None  # the sync job lists them within the minute
+
+
+def test_a_database_in_memory_has_nowhere_to_keep_the_token() -> None:
+    from friday.core.db import connect  # noqa: PLC0415
+
+    with pytest.raises(FieldError, match="isn't in a folder"):
+        connecting.data_file(connect(":memory:"))
+
+
+def test_any_other_failure_says_its_kind_and_to_try_again() -> None:
+    assert connecting.plainly(RuntimeError("boom")) == "Connecting didn't finish (RuntimeError: boom). Try again."
+
+
+def test_a_file_too_big_to_be_googles_key_file_is_refused(app: App) -> None:
+    with pytest.raises(FieldError, match="too big"):
+        app.do("google_client_save", content="x" * 64_001)

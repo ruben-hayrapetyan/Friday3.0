@@ -41,13 +41,12 @@ const KIND: Record<string, string> = {
 }
 const FIRM: Record<string, string> = { hard: "Hard deadline", soft: "Soft deadline", none: "No deadline" }
 
-function BigButton({ icon, label, note, onClick, primary, tight, hint, pressed }: { icon: string; label: string; note: string; onClick: () => void; primary?: boolean; tight?: boolean; hint?: string; pressed?: boolean }) {
+function BigButton({ icon, label, note, onClick, primary, tight, hint }: { icon: string; label: string; note: string; onClick: () => void; primary?: boolean; tight?: boolean; hint?: string }) {
   return (
     <button
       className={`btn ${primary ? "btn-primary" : "btn-secondary"}`}
       onClick={onClick}
       title={hint}
-      aria-pressed={pressed}
       style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: tight ? "9px 8px" : "10px 12px", minHeight: 58, minWidth: 0 }}
     >
       <span style={{ display: "flex", gap: tight ? 5 : 8, alignItems: "center", fontSize: tight ? 13 : 15, whiteSpace: "nowrap" }}>
@@ -115,6 +114,9 @@ export function BlockPopover() {
     const press = (e: PointerEvent) => {
       const target = e.target instanceof Element ? e.target : null
       if (target && (card.current?.contains(target) || target.closest(`[data-block-key="${CSS.escape(key)}"]`))) return
+      // ⌘-click on another block picks this one with it (the grid reads what's selected): let go of it after that
+      // (12 Nov: let go of here first, the first ⌘-click picked only the block clicked)
+      if (target?.closest("[data-block-key]") && (e.metaKey || e.ctrlKey || e.shiftKey)) return
       select(null)
     }
     window.addEventListener("pointerdown", press, true)
@@ -382,6 +384,40 @@ function SittingTimes({ itemId, start, end, onDone }: { itemId: number; start: s
   )
 }
 
+/** One of an event's two choices (12 Nov: the buttons were "very poorly formatted": a label running off the edge,
+ * the two of different heights, the chosen one only outlined): a radio card like "How new to-dos arrive", the same
+ * height as its neighbour, its words from the top left, the chosen one filled with its dot. */
+function ChoiceCard({ label, note, on, onClick }: { label: string; note: string; on: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={on}
+      onClick={onClick}
+      className="fr-plain"
+      style={{
+        display: "grid",
+        gridTemplateColumns: "14px minmax(0, 1fr)",
+        alignContent: "start",
+        columnGap: 8,
+        rowGap: 3,
+        minWidth: 0,
+        padding: "10px 11px",
+        textAlign: "left",
+        borderRadius: "var(--radius-md)",
+        background: on ? "color-mix(in srgb, var(--color-accent) 14%, var(--color-surface))" : "var(--color-surface)",
+        boxShadow: on ? "inset 0 0 0 1.5px var(--color-accent)" : "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 10%, transparent)",
+      }}
+    >
+      <span aria-hidden="true" style={{ width: 14, height: 14, marginTop: 2, borderRadius: "50%", boxSizing: "border-box", border: on ? "4px solid var(--color-accent)" : "1.5px solid color-mix(in srgb, var(--color-text) 35%, transparent)" }} />
+      <span style={{ fontWeight: 500, fontSize: 13.5, lineHeight: 1.3, whiteSpace: "nowrap" }}>{label}</span>
+      <span className="fr-kicker" style={{ gridColumn: 2, lineHeight: 1.35, textWrap: "pretty" }}>
+        {note}
+      </span>
+    </button>
+  )
+}
+
 /** The task an event's time is for. `only` "work": under Work through it, where a to-do is optional (it's there first,
  * any work has the rest); "likely": only the question whether it's for the task its name suggests. */
 function HeldFor({ event, only, open = event.left_out === "skipped" }: { event: Item; only?: "work" | "likely"; open?: boolean }) {
@@ -588,9 +624,9 @@ function EventChoice({ event, flags, onClose }: { event: Item; flags: Flags | nu
   const line = { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12, color: "var(--color-neutral-300)" } as const
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div role="group" aria-label="Going or working through it" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <BigButton icon="check" label="I'm going" note={proposed ? "Go anyway: work keeps off it" : "Work keeps off its time"} onClick={goNow} primary={now === "going"} pressed={now === "going"} tight />
-        <BigButton icon="briefcase" label="Work through it" note="Friday plans work in its time" onClick={workNow} primary={now === "work"} pressed={now === "work"} tight />
+      <div role="radiogroup" aria-label="Going or working through it" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <ChoiceCard label="I'm going" note={proposed ? "Go anyway: work keeps off it" : "Work keeps off its time"} on={now === "going"} onClick={goNow} />
+        <ChoiceCard label="Work through it" note="Friday plans work in its time" on={now === "work"} onClick={workNow} />
       </div>
       {now === null && (
         <div style={line}>

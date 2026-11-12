@@ -3,6 +3,9 @@
 import json
 from pathlib import Path
 
+import pytest
+
+from friday.core.items import FieldError
 from tests.commands.helpers import new_app
 
 TODOS = [
@@ -78,3 +81,14 @@ def test_a_task_that_cant_come_in_is_named_and_the_rest_still_do(tmp_path: Path)
     assert out["message"].startswith("Imported 1 task from Todo List. Left out, to add by hand: Broken (")
     assert [i["title"] for i in app.do("items")] == ["Fine"]
     assert app.do("import_personal", **paths)["message"].startswith("Imported 0 tasks")  # Fine isn't added twice
+
+
+def test_a_file_that_isnt_todo_lists_is_said_not_a_crash(tmp_path: Path) -> None:
+    app = new_app(tmp_path)
+    none = str(tmp_path / "none.json")
+    (tmp_path / "garbled.json").write_text("{not json")
+    (tmp_path / "object.json").write_text(json.dumps({"tasks": []}))
+    with pytest.raises(FieldError, match="it isn't JSON"):
+        app.do("import_personal", todos_path=str(tmp_path / "garbled.json"), categories_path=none)
+    with pytest.raises(FieldError, match="not the list of tasks it writes"):
+        app.do("import_personal", todos_path=str(tmp_path / "object.json"), categories_path=none)

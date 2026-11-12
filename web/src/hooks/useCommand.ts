@@ -80,8 +80,9 @@ export async function runCommand<N extends CommandName>(
     toast({ message: errorWords(error), tone: "error" })
     return undefined
   } finally {
-    // The server's events refresh these too; this covers a dropped stream.
-    client.invalidateQueries({ predicate: (q) => ["items", "item", "now", "status", "meals", "sleep", "duplicates", "to_review", "tokens", "gmail_app_accounts", "mail_app_accounts", "integrations", "integration_lists", "inbox"].includes(String(q.queryKey[0])) })
+    // The server's events refresh these too; this covers a dropped stream (projects and exams too, 12 Nov: a new
+    // project or prep didn't show without the stream).
+    client.invalidateQueries({ predicate: (q) => ["items", "item", "now", "status", "meals", "sleep", "duplicates", "to_review", "tokens", "gmail_app_accounts", "mail_app_accounts", "integrations", "integration_lists", "inbox", "projects", "exams"].includes(String(q.queryKey[0])) })
   }
 }
 
