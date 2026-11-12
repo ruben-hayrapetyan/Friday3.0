@@ -98,9 +98,9 @@ def run_due(
         ("updates", every_minute, look_for_updates),
     )
     for name, is_due, job in jobs:
-        if not is_due(last_run(conn, name, user_id), now_utc, settings):
-            continue
-        try:
+        try:  # whether it's due too: one raising there (a time that can't be read) stopped every job after it
+            if not is_due(last_run(conn, name, user_id), now_utc, settings):
+                continue
             job(conn, now_utc, settings, hub, supervisor, backups, user_id)
             record(conn, name, now_utc, user_id, None)
         except Exception as error:  # one failing job mustn't stop the others or the loop
@@ -135,7 +135,8 @@ def nightly_due(last: int | None, now_utc: int, settings: dict[str, Any]) -> boo
 
 
 def tick_due(last: int | None, now_utc: int, settings: dict[str, Any]) -> bool:
-    return last is None or now_utc - last >= settings["jobs"].tick_replan_min
+    # at most once a minute: 0 or less replanned at every pass of the loop
+    return last is None or now_utc - last >= max(1, settings["jobs"].tick_replan_min)
 
 
 def nightly(
@@ -362,7 +363,7 @@ def backup(conn: sqlite3.Connection, folder: Path, keep: int, today: date) -> Pa
         conn.backup(copy)
     finally:
         copy.close()
-    for old in sorted(folder.glob("friday-*.db"))[:-keep]:
+    for old in sorted(folder.glob("friday-*.db"))[: -max(1, keep)]:  # today's always: `[:-0]` removed none
         old.unlink()
     return target
 
