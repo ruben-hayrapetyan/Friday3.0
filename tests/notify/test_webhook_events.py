@@ -64,3 +64,25 @@ def test_unsigned_without_a_secret_and_given_up_after_three_tries(
     assert len(calls) == 3 and "x-friday-signature" not in calls[0]
     assert pauses == [2.0, 4.0]  # a longer wait before each retry, none after the last
     assert "failed 3 times" in caplog.text
+
+
+def test_a_secrets_file_that_doesnt_read_sends_nothing_and_never_fails_the_change_that_fired(
+    no_personal_config: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    # A typo in secrets.toml made `done` answer 500 after it was saved, and stopped the worker before it released the
+    # plan (audit, 12 Nov). Sent unsigned it would go out without the signature you asked for: it isn't sent.
+    secrets_path().write_text('[webhooks]\nsecret = "s3cret\n')
+    sent: list[str] = []
+    monkeypatch.setattr(httpx, "post", lambda url, **_: sent.append(url))
+    started: list[threading.Thread] = []
+    real = threading.Thread
+
+    def thread(*args: Any, **kwargs: Any) -> threading.Thread:
+        started.append(real(*args, **kwargs))
+        return started[-1]
+
+    monkeypatch.setattr(webhooks.threading, "Thread", thread)
+    webhooks.fire([Webhook(url="https://a.test/done", events=("item.done",))], "item.done", {"id": 3})
+    for t in started:
+        t.join(5)
+    assert sent == [] and "secrets.toml" in caplog.text

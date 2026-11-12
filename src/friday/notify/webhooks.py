@@ -31,7 +31,18 @@ def fire(hooks: Sequence[Webhook], event: str, data: dict[str, Any]) -> None:
     wanted = [h.url for h in hooks if event in h.events]
     if wanted:
         body = json.dumps({"event": event, "data": data}, default=str).encode()
-        threading.Thread(target=send_all, args=(wanted, body, secret()), daemon=True).start()
+        threading.Thread(target=send_signed, args=(wanted, body), daemon=True).start()
+
+
+def send_signed(urls: list[str], body: bytes) -> None:
+    """The secret read on the sending thread: a secrets.toml that doesn't read sends nothing, rather than failing the
+    change that fired it (audit, 12 Nov: a typo there made `done` answer 500 once it was saved) or going unsigned."""
+    try:
+        key = secret()
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        log.warning("webhooks not sent: secrets.toml can't be read (%s)", type(error).__name__)
+        return
+    send_all(urls, body, key)
 
 
 def send_all(urls: list[str], body: bytes, key: str | None) -> None:
