@@ -33,7 +33,7 @@ describe("the add line", () => {
     expect(chip("How often it comes back").textContent).toBe("Once")
     expect(chip("What it belongs to").textContent).toBe("No tag")
     // With a due, whether there's time for it shows by itself.
-    expect(await screen.findByText(/Checking whether you have time…|fits|late|tight|time/i)).toBeTruthy()
+    expect((await screen.findAllByText(/Checking whether you have time…|fits|late|tight|time/i)).length).toBeGreaterThan(0)
     await user.keyboard("{Enter}")
     const sent = await waitForSent("add")
     expect(sent.body).toEqual({ text: "essay 3h due fri", preset: "Assignment" })

@@ -2,9 +2,13 @@
 // moved to it so the app's fetches reach it as they would in a browser, and every command the app sends noted, so
 // a test can say what a click sent. What browsers have and happy-dom doesn't is stood in for here.
 
-import { cleanup } from "@testing-library/react"
+import { cleanup, configure } from "@testing-library/react"
 import { afterAll, afterEach, beforeAll, inject } from "vitest"
 import { copyOf, freePort, serve, stop } from "./server"
+
+// A real server answers, and replans after each change: waits get ten seconds, not testing-library's one (a save,
+// then the list read again, often took longer while other files ran too)
+configure({ asyncUtilTimeout: 10_000 })
 
 type Sent = { name: string; body: unknown }
 /** The commands the app sent, oldest first: `sent.at(-1)?.name`. */

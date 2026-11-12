@@ -148,7 +148,9 @@ export function Shell() {
       {dialog === "search" && <Search />}
       {dialog === "ways" && <OtherWaysDialog onClose={() => setDialog(null)} />}
       {dialog === "ask" && <AskClaudeDialog onClose={() => setDialog(null)} />}
-      {dialog === "setup" && <SetupDialog only={setupDone ? setupStep : null} onClose={() => setDialog(null)} />}
+      {/* one answer alone, unless Setup was never done (12 Nov: picked before Setup's state had loaded, the whole walk
+          opened instead, and stayed) */}
+      {dialog === "setup" && <SetupDialog only={setupDone === false ? null : setupStep} onClose={() => setDialog(null)} />}
       <UpdateDialogs />
       {tour && dialog !== "setup" && <Tour />}
       <FirstTour ready={setupDone === true && dialog === null && briefDecided === today} toured={toured} />
