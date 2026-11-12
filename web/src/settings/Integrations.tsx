@@ -119,7 +119,7 @@ function useStatuses(): (e: Entry) => Status {
       const mine = mailboxes.filter((a) => a.provider === "outlook")
       return mine.length ? [mine.length > 1 ? `${mine.length} connected` : "Connected", ok, true] : null
     }
-    if (e.token || e.onMac || e.signIn) {
+    if (e.token || e.onMac || e.signIn || e.script) {
       const mine = integrations.filter((c) => c.kind === e.id)
       if (!mine.length) return null
       return mine.some((c) => c.last_error) ? ["Needs a look", warn, true] : ["Connected", ok, true]
@@ -201,7 +201,7 @@ function Panel({ entry, status, onClose, onOpen }: { entry: Entry; status: Statu
 function PanelBody({ entry, onOpen }: { entry: Entry; onOpen: (id: string) => void }) {
   if (entry.id === "outlook_mail") return <OutlookMail entry={entry} />
   if (entry.howTo) return <HowTo entry={entry} />
-  if (entry.token || entry.onMac || entry.signIn) return <TokenIntegration entry={entry} />
+  if (entry.token || entry.onMac || entry.signIn || entry.script) return <TokenIntegration entry={entry} />
   if (entry.link) return <LinkIntegration entry={entry} />
   if (entry.mail) return <MailIntegration entry={entry} />
   if (entry.viaMac) return <ViaMac entry={entry} onOpen={onOpen} />

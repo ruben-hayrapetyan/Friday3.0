@@ -21,6 +21,7 @@ from tests.integrations.fake_mac_reminders import HARNESS as REMINDERS
 from tests.integrations.fake_mac_things import HARNESS as THINGS
 from tests.integrations.fake_microsoft import HARNESS as MICROSOFT
 from tests.integrations.fake_notion import HARNESS as NOTION
+from tests.integrations.fake_tasks_script import HARNESS as TASKS_SCRIPT
 from tests.integrations.fake_ticktick import HARNESS as TICKTICK
 from tests.integrations.fake_todoist import HARNESS as TODOIST
 from tests.integrations.fake_trello import HARNESS as TRELLO
@@ -39,6 +40,7 @@ HARNESSES = [
     THINGS,
     MICROSOFT,
     GOOGLE_TASKS,
+    TASKS_SCRIPT,
     TICKTICK,
 ]
 
@@ -50,9 +52,9 @@ def cases() -> Iterator:
             params = next((m.args for m in marks if m.name == "parametrize"), None)
             if params:
                 for value in params[1]:
-                    yield pytest.param(h, name, {params[0]: value}, id=f"{h.kind}-{name[6:]}-{value}")
+                    yield pytest.param(h, name, {params[0]: value}, id=f"{h.label or h.kind}-{name[6:]}-{value}")
             else:
-                yield pytest.param(h, name, {}, id=f"{h.kind}-{name[6:]}")
+                yield pytest.param(h, name, {}, id=f"{h.label or h.kind}-{name[6:]}")
 
 
 def world(h: Harness, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> World:

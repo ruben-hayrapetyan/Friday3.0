@@ -621,5 +621,31 @@ test("a server left over from another build is stopped; this build's, a hand-sta
     check(Server.leftover(theirs.merging(["server_pid": 1]) { $1 }, mine: "new") == nil, "never launchd")
 }
 
+test("Siri says what's on and what's next, in 12-hour times, the day named when it isn't today (C131)") {
+    let today = "2026-11-11"
+    let gym: [String: Any] = ["title": "Gym", "start": "2026-11-12T07:30", "end": "2026-11-12T09:00"]
+    let essay: [String: Any] = ["title": "CS essay", "start": "2026-11-11T15:00", "end": "2026-11-11T16:45"]
+    check(SiriSays.next(["current": essay, "current_source": "plan", "next": gym], today: today)
+          == "Now: CS essay, until 4:45pm. Then Gym at 7:30am tomorrow.", "on now, then next")
+    check(SiriSays.next(["current": NSNull(), "next": gym], today: today) == "You're free until 7:30am tomorrow. Then Gym.", "free")
+    check(SiriSays.next(["current": essay, "current_source": "timer", "next": NSNull()], today: today)
+          == "You're timing CS essay.", "timing, nothing after")
+    check(SiriSays.next(["current": NSNull(), "next": NSNull()], today: today) == "Nothing else is planned.", "nothing")
+    check(SiriSays.next(nil, today: today) == SiriSays.notRunning, "Friday not answering")
+    check(SiriSays.time("2026-11-11T12:00") == "12pm" && SiriSays.time("2026-11-11T00:05") == "12:05am", "noon, midnight")
+    check(SiriSays.day("2026-11-14T10:00", today: today) == " on Saturday", "this week: its day")
+    check(SiriSays.day("2026-11-20T10:00", today: today) == " on 20 Nov", "later: its date")
+    check(SiriSays.day("2026-11-11T10:00", today: today, always: true) == " today", "today, when asked")
+}
+
+test("Siri says what was added, or why it wasn't (C131)") {
+    check(SiriSays.added(["message": "give it a title: what is it?"]) == "Friday couldn't add that: give it a title: what is it?", "refused")
+    check(SiriSays.added(["result": ["item": ["title": "Read ch. 4", "when": "flexible"]]]) == "Added Read ch. 4. Friday plans it.", "a to-do")
+    check(SiriSays.added(["result": ["series_id": 3, "occurrences": 8]]) == "Added, repeating: 8 planned so far.", "a repeat")
+    check(SiriSays.added(nil) == SiriSays.notRunning, "not answering")
+    let due = SiriSays.added(["result": ["item": ["title": "Essay", "when": "flexible", "due": "2099-01-02T17:00"]]])
+    check(due == "Added Essay, due 5pm on 2 Jan.", "with its due: \(due)")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

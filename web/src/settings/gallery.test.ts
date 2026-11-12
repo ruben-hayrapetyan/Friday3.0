@@ -80,10 +80,13 @@ describe("the integrations gallery's catalog", () => {
     expect(todo.signIn!.steps.join(" ")).toContain("Sign in with Microsoft")
     expect(names(search(CATALOG, "wunderlist"))).toEqual(["Microsoft To Do"])
   })
-  it("has Google Tasks riding the Google sign-in (C110)", () => {
+  it("connects Google Tasks through your own script, warning of Google's screen and what to press (C130)", () => {
     const tasks = CATALOG.find((e) => e.id === "google_tasks")!
     expect(tasks.token).toBeUndefined()
-    expect(tasks.signIn!.note).toContain("same Google sign-in")
+    expect(tasks.script!.open).toBe("https://script.new")
+    expect(tasks.script!.steps.join(" ")).toContain("Who has access: Anyone")
+    expect(tasks.script!.warning.says).toBe("Google hasn't verified this app")
+    expect(tasks.script!.warning.then.join(" ")).toContain("Go to Friday Tasks (unsafe)")
     expect(names(search(CATALOG, "google tasks"))).toEqual(["Google Tasks"])
   })
   it("connects TickTick by signing in, saying it lasts about six months (C111)", () => {

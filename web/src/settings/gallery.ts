@@ -31,6 +31,8 @@ export interface Entry {
   mail?: { provider: "icloud" | "yahoo" | "fastmail" | "other"; help?: string; steps: string[] } // by app password (C99)
   onMac?: { steps: string[] } // read by Friday's Mac app itself, no account or token: macOS asks (C100)
   signIn?: { steps: string[]; note?: string } // connected by signing in on the service's own page (C109)
+  // connected through a script you make in your own account from Friday's, deployed as a Web app (C130: Google Tasks)
+  script?: { open: string; steps: string[]; warning: { before: string; says: string; why: string; then: string[] }; note?: string }
   howTo?: { steps: string[]; links: { url: string; says: string }[]; note?: string } // nothing to connect: how to (C114)
 }
 
@@ -369,13 +371,29 @@ export const CATALOG: Entry[] = [
     aliases: ["google", "todo", "to-do", "tasks"],
     icon: "check-square-offset",
     hue: "#4285f4",
-    signIn: {
+    // C130 (11 Nov, your choice): a script in your own Google account, so no limit on how many people use it
+    script: {
+      open: "https://script.new",
       steps: [
-        "Press Sign in with Google: Google's page opens and asks to let Friday see and change your tasks.",
-        "Back in Friday, choose the account to read Google Tasks from.",
-        "The open tasks of every list come to your Inbox to review together.",
+        "Press Copy script below.",
+        "Press Open Google Apps Script: a new, empty project opens in your browser (sign in to Google if it asks). Click Untitled project at the top and name it Friday Tasks.",
+        "Select everything in the editor (⌘A), paste Friday's script over it (⌘V) and press Save (⌘S).",
+        "On the left, next to Services, press +, choose Google Tasks API and press Add.",
+        "Press Deploy (top right) → New deployment. Next to Select type press the gear ⚙ and choose Web app. Set Execute as: Me and Who has access: Anyone, then press Deploy.",
+        "Press Authorize access and choose your Google account. Google warns that it hasn't verified the app: see below for what to press.",
+        "Copy the Web app URL Google shows (it ends in /exec), paste it below and press Connect.",
       ],
-      note: "It uses the same Google sign-in as your calendars and Gmail; signing in again keeps Tasks allowed.",
+      warning: {
+        before: "At step 6 Google shows a warning. It's expected.",
+        says: "Google hasn't verified this app",
+        why: "The app it means is the script you just made, in your own account: Google verifies only apps published for other people. Friday never sees your Google password or your account, only the tasks the script sends it.",
+        then: [
+          "Press Advanced (small, at the bottom left of the warning).",
+          "Press Go to Friday Tasks (unsafe).",
+          "Press Allow (if Google lists what it may do, tick Select all first, then Continue).",
+        ],
+      },
+      note: "Who has access: Anyone means the link answers without a Google sign-in, so Friday can reach it; it does nothing without the key in the script, which only this Friday has. Changed the script later? Deploy → Manage deployments → ✎ → Version: New version → Deploy.",
     },
   },
   {
