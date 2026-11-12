@@ -33,7 +33,8 @@ install_friday() {
 
   work="$(mktemp -d)"
   mount="$work/disk"
-  trap 'hdiutil detach -quiet "$mount" 2>/dev/null || true; rm -r "$work"' EXIT
+  # a disk image something still holds (Spotlight, Finder) is let go of by force, so the folder holding it goes too
+  trap 'hdiutil detach -quiet "$mount" 2>/dev/null || hdiutil detach -quiet -force "$mount" 2>/dev/null || true; rm -rf "$work"' EXIT
 
   printf 'Downloading Friday %s (about 240 MB)...\n' "$VERSION"
   curl -fL --progress-bar -o "$work/Friday.dmg" "$URL?via=terminal" || fail "the download didn't finish. Try again."
@@ -45,6 +46,8 @@ install_friday() {
     || fail "the disk image wouldn't open."
   # beside the old copy first, so a failed copy leaves the Friday you have; file times kept (the compiled planner
   # inside is checked against them)
+  # a copy left from a run cut short is cleared first: copied into, it became a mix of two versions
+  rm -rf "$app.new"
   ditto "$mount/Friday.app" "$app.new" || fail "couldn't copy Friday into $target."
   if [ -d "$app" ]; then rm -r "$app"; fi
   mv "$app.new" "$app"

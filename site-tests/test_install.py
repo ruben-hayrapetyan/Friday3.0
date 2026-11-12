@@ -56,6 +56,8 @@ def test_the_script_checks_the_download_before_installing_and_keeps_the_old_copy
     assert script.index("shasum -a 256") < script.index("hdiutil attach") < script.index('ditto "$mount')
     assert script.index('"$app.new"') < script.index('rm -r "$app"')  # a failed copy leaves the Friday you have
     assert "pgrep" in script and "Quit it" in script  # never replaces a Friday that's open
+    # a Friday.app.new left by a run cut short is cleared, not copied into (audit, 12 Nov: a mix of two versions)
+    assert script.index('rm -rf "$app.new"') < script.index('ditto "$mount')
 
 
 def test_the_site_serves_the_script_for_the_disk_image_it_offers(site: str) -> None:  # noqa: F811
