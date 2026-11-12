@@ -47,7 +47,11 @@ def connect(path: str | Path) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA busy_timeout = 5000")
-    migrate(conn)
+    try:
+        migrate(conn)
+    except BaseException:
+        conn.close()  # not left for the collector, holding the write lock while the error is kept
+        raise
     return conn
 
 
@@ -62,8 +66,15 @@ def migrate(conn: sqlite3.Connection) -> None:
             # Rebuilding a table (SQLite can't alter a CHECK) drops it while rows still point at it, so foreign
             # keys are off for the migration and checked once it is done (SQLite's documented procedure).
             conn.execute("PRAGMA foreign_keys = OFF")
-            conn.executescript(f"BEGIN;\n{path.read_text()}\nPRAGMA user_version = {number};\nCOMMIT;")
-            conn.execute("PRAGMA foreign_keys = ON")
+            try:
+                conn.executescript(f"BEGIN;\n{path.read_text()}\nPRAGMA user_version = {number};\nCOMMIT;")
+            except BaseException:
+                # A statement that fails stops the script inside its transaction: none of it is kept (audit, 12 Nov)
+                if conn.in_transaction:
+                    conn.execute("ROLLBACK")
+                raise
+            finally:
+                conn.execute("PRAGMA foreign_keys = ON")
             broken = conn.execute("PRAGMA foreign_key_check").fetchall()
             if broken:
                 raise sqlite3.IntegrityError(f"migration {path.name} left broken references: {broken[:3]}")

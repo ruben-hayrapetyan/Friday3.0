@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from friday.core import db
 from friday.core.db import connect, one, rows, schema_version, transaction
 
 TABLES = {
@@ -87,6 +88,27 @@ def test_a_failed_transaction_leaves_nothing(conn: sqlite3.Connection) -> None:
         add_item(conn)
         add_item(conn, amount="lots")
     assert rows(conn, "SELECT id FROM items") == []
+
+
+def test_a_migration_that_fails_takes_back_all_of_itself_and_holds_no_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # It left its transaction open on a connection the error still pointed to: every other write waited on the lock
+    # until that connection was collected (audit, 12 Nov).
+    folder = tmp_path / "migrations"
+    folder.mkdir()
+    latest = max(int(path.name.split("_")[0]) for path in db.MIGRATIONS.glob("*.sql"))
+    for path in db.MIGRATIONS.glob("*.sql"):
+        (folder / path.name).write_text(path.read_text())
+    (folder / "999_broken.sql").write_text("CREATE TABLE half (x INTEGER) STRICT;\nINSERT INTO nowhere VALUES (1);\n")
+    monkeypatch.setattr(db, "MIGRATIONS", folder)
+    with pytest.raises(sqlite3.OperationalError) as failed:
+        connect(tmp_path / "friday.db")
+    other = sqlite3.connect(tmp_path / "friday.db", timeout=0, isolation_level=None)
+    other.execute("BEGIN IMMEDIATE")  # no other writer holds it
+    other.execute("ROLLBACK")
+    assert failed.value is not None and schema_version(other) == latest
+    assert other.execute("SELECT 1 FROM sqlite_master WHERE name = 'half'").fetchone() is None
 
 
 def test_migration_2_keeps_sent_notifications_and_adds_the_check_kind(tmp_path: Path) -> None:
