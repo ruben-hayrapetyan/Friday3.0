@@ -31,6 +31,12 @@ def write_setting(ctx: Ctx, key: str, value: Any) -> Any:
         parsed = validate_value(key, value)
     except ValueError as error:
         raise FieldError("value", str(error)) from error
+    # The default pace is a saved one (audit, 12 Nov: one that wasn't was a crash wherever a day's pace is read).
+    # friday.toml may set both keys, in either order, so it isn't held to it one key at a time.
+    default = parsed.default if key == "pace" else ctx.settings["pace"].default
+    paces = parsed if key == "paces" else ctx.settings["paces"]
+    if key in ("pace", "paces") and ctx.actor != "config" and default not in paces:
+        raise FieldError("value", f"the default pace, {default}, isn't one of your saved paces: {', '.join(paces)}")
     version = settings_version(ctx.conn, ctx.user_id) + 1
     ctx.db.upsert(
         "settings",
@@ -125,6 +131,8 @@ def end_date(ctx: Ctx, inp: PaceInput) -> date | None:
         found = read_date(inp.until.lower().split(), 0, ctx.today)
         if found is None:
             raise FieldError("until", f"{inp.until!r} isn't a date")
+        if found[0] < ctx.today:  # a pace starts today (audit, 12 Nov: a day gone by was a database error)
+            raise FieldError("until", f"{found[0]:%a %b} {found[0].day} is before today")
         return found[0]
     return None
 

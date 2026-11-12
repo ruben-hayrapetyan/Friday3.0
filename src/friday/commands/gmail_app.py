@@ -3,6 +3,7 @@ your address and an app password from your Google account, checked with Gmail on
 friday.toml (readable by you alone, never in settings, sent back or logged), and read like any Gmail from then on
 (`sync/imap_mail.py`). No Google Cloud project, so it works for anyone with 2-Step Verification on."""
 
+import json
 import tomllib
 
 from friday.api.commands import Changed, GmailAppInput
@@ -62,10 +63,16 @@ def forget(ctx: Ctx, address: str) -> Changed:
     for k in gone:
         del kept[k]
     write_private(secrets_path(), toml_of(kept))
-    for source in rows(ctx.conn, "SELECT id, config FROM sources WHERE user_id = ? AND kind = 'gmail'", [ctx.user_id]):
-        if address in source["config"]:
-            ctx.conn.execute("UPDATE sources SET enabled = 0 WHERE id = ?", [source["id"]])
+    switch_off(ctx, "gmail", address)
     return Changed(message=f"Removed: Friday no longer reads {address}. What its mail brought in stays")
+
+
+def switch_off(ctx: Ctx, kind: str, address: str) -> None:
+    """The mailbox's own source stops being read: its account, not every one with the address inside it (audit,
+    12 Nov: forgetting bob@gmail.com switched off jimbob@gmail.com too)."""
+    for source in rows(ctx.conn, "SELECT id, config FROM sources WHERE user_id = ? AND kind = ?", [ctx.user_id, kind]):
+        if str(json.loads(source["config"] or "{}").get("account", "")).lower() == address:
+            ctx.conn.execute("UPDATE sources SET enabled = 0 WHERE id = ?", [source["id"]])
 
 
 @query("gmail_app_accounts")

@@ -414,6 +414,8 @@ def done(ctx: Ctx, inp: DoneInput) -> ItemResult:
         raise FieldError("id", "That's done already")
     if item.status == "dropped":  # audit, 8 Nov: a dropped one was marked done, and counted as finished work
         raise FieldError("id", "That one was dropped: open it again first if you did it after all")
+    if inp.actual_min is not None and inp.actual_min < 0:  # it taught Friday a negative length (audit, 12 Nov)
+        raise FieldError("actual_min", "the time it took can't be less than nothing")
     if ctx.conn.execute("SELECT 1 FROM timer WHERE user_id = ? AND item_id = ?", [ctx.user_id, inp.id]).fetchone():
         stop_timer(ctx, item_id=inp.id)  # its own: another may be running alongside
     progress = progress_rows(ctx.conn, ctx.user_id).get(inp.id, [])
@@ -502,6 +504,8 @@ def undepend(ctx: Ctx, inp: DependInput) -> Changed:
 @command("area_add")
 def area_add(ctx: Ctx, inp: AreaInput) -> AreaOut:
     """Add an area."""
+    if not inp.name.strip():
+        raise FieldError("name", "give the tag a name")
     if any(name.lower() == inp.name.lower() for name in area_names(ctx.conn, ctx.user_id).values()):
         raise FieldError("name", f"an area called {inp.name} exists")
     area_id = ctx.db.insert("areas", {"name": inp.name, "color": inp.color})
@@ -514,6 +518,12 @@ def area_edit(ctx: Ctx, inp: AreaEditInput) -> AreaOut:
     found = one(ctx.conn, "SELECT * FROM areas WHERE user_id = ? AND id = ?", [ctx.user_id, inp.id])
     if found is None:
         raise FieldError("id", f"no area {inp.id}")
+    if inp.name is not None:  # renamed to one you have was a database error (audit, 12 Nov)
+        if not inp.name.strip():
+            raise FieldError("name", "give the tag a name")
+        others = [n for i, n in area_names(ctx.conn, ctx.user_id).items() if i != inp.id]
+        if any(n.lower() == inp.name.lower() for n in others):
+            raise FieldError("name", f"an area called {inp.name} exists")
     changes = {k: v for k, v in {"name": inp.name, "color": inp.color}.items() if v is not None}
     if inp.archived is not None:
         changes["archived"] = int(inp.archived)

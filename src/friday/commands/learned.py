@@ -14,7 +14,7 @@ from friday.commands.progress import day_bounds
 from friday.commands.registry import Ctx, command
 from friday.commands.writer import Writer
 from friday.core.db import one, rows
-from friday.core.pace import dials_on
+from friday.core.pace import Dials, dials_on
 from friday.core.textnorm import similarity, type_text
 from friday.core.time import format_utc, parse_utc, planning_date, to_local
 from friday.estimate.durations import LEARNED_SOURCES, estimate_length
@@ -47,10 +47,13 @@ def kinds(titles: list[str], min_similarity: float) -> list[str]:
 
 
 def default_pace_days(conn: sqlite3.Connection, settings: dict[str, Any], user_id: int) -> Any:
-    periods, paces, default = list(pace_periods(conn, user_id)), settings["paces"], settings["pace"].default
+    periods, default = list(pace_periods(conn, user_id)), settings["pace"].default
+    # a default pace that isn't saved (friday.toml may say one) is the usual dials, not a crash (audit, 12 Nov)
+    usual = settings["paces"].get(default, Dials())
+    paces = settings["paces"] | {default: usual}
 
     def is_default(day: date) -> bool:
-        return dials_on(day, periods, paces, default, settings["pace"].weekly) == paces[default]
+        return dials_on(day, periods, paces, default, settings["pace"].weekly) == usual
 
     return is_default
 

@@ -249,6 +249,14 @@ def run_in_transaction(
 ) -> CommandResult:
     begin_write(conn, spec.name)
     try:
+        # Looked for again under the lock: a retry sent while the first was still running found nothing before, and
+        # the key's second row was a database error (audit, 12 Nov).
+        earlier = None if preview or idempotency_key is None else conn.execute(
+            "SELECT id, result FROM command_log WHERE user_id = ? AND idempotency_key = ?", [user_id, idempotency_key]
+        ).fetchone()  # fmt: skip
+        if earlier:
+            conn.execute("ROLLBACK")
+            return CommandResult(command_id=earlier["id"], result=json.loads(earlier["result"]), repeated=True)
         command_id = log_start(conn, spec, inp, now_utc, actor, user_id, None if preview else idempotency_key)
         ctx = Ctx(conn, Writer(conn, user_id), now_utc, actor, user_id, settings, command_id)
         result = dump(spec.fn(ctx, inp))
@@ -272,7 +280,8 @@ def run_in_transaction(
         )
         conn.execute("COMMIT")
     except BaseException:
-        conn.execute("ROLLBACK")
+        if conn.in_transaction:  # a full preview's solve fails after its rollback: its own error, not "no transaction"
+            conn.execute("ROLLBACK")
         raise
     out = CommandResult(command_id=command_id, result=result, provisional=ghosts, generation=made)
     out._placing = placing

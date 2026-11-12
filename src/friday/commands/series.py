@@ -385,6 +385,7 @@ def edit_series_from(
             ),  # fmt: skip
             "dtstart_local": format_local(first),
             "per_window": per_window or old["per_window"],
+            "active": old["active"],  # a stopped repeat changed stays stopped (audit, 12 Nov: it started again)
             "release_offset_min": old["release_offset_min"],
             "due_offset_min": old["due_offset_min"],
             **(offsets or {}),
@@ -530,6 +531,8 @@ def skip(ctx: Ctx, inp: ItemRef) -> ItemResult:
     item = require_item(ctx, inp.id)
     if item.series_id is None:
         raise FieldError("id", f"T{inp.id} doesn't repeat; drop it instead")
+    if item.status == "done":  # skipped, it was no longer done, though its time was kept (audit, 12 Nov)
+        raise FieldError("id", f"{item.title} is done that day: open it again first if you didn't do it")
     ctx.db.update("items", {"id": inp.id}, {"status": "skipped", "updated_utc": ctx.now_text})
     queue_event_write(ctx, item, "delete")  # one time of a calendar's repeating event: gone from the calendar too
     return ItemResult(item=item_out(ctx, require_item(ctx, inp.id)))
@@ -552,6 +555,8 @@ def series_resume(ctx: Ctx, inp: SeriesRef) -> SeriesOut:
     """Start a stopped series again; its occurrences come back from today (an imported calendar repeat's with the
     next sync, which reads them again)."""
     found = load_series(ctx, inp.id)
+    if found["active"]:  # running already: the times you dropped stay dropped (audit, 12 Nov: they came back)
+        return series_out(ctx, inp.id)
     ctx.db.update("series", {"id": inp.id}, {"active": 1, "updated_utc": ctx.now_text})
     if found["external_id"]:
         reread_repeat(ctx, found["external_id"])

@@ -20,7 +20,10 @@ def calendar(ctx: Ctx, inp: CalendarInput) -> CalendarOut:
     """Day headers, sleep, the time axis (to the latest core sleep) and due markers for a run of days."""
     if ctx.settings["sleep"] is None:
         raise FieldError("sleep", "not set yet; run `fridayd init`")
-    first = date.fromisoformat(inp.start) if inp.start else ctx.today
+    try:
+        first = date.fromisoformat(inp.start) if inp.start else ctx.today
+    except ValueError as error:  # said on the field, not a crash (audit, 12 Nov)
+        raise FieldError("start", f"{inp.start!r} isn't a date like 2026-10-20") from error
     dates = [first + timedelta(days=n) for n in range(inp.days)]
     overrides = day_overrides(ctx.conn, ctx.user_id)
     periods = list(pace_periods(ctx.conn, ctx.user_id))

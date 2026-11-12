@@ -80,6 +80,10 @@ def source_edit(ctx: Ctx, inp: SourceEditInput) -> Changed:
     found = source_row(ctx, inp.id)
     changes: dict[str, Any] = {}
     if inp.name is not None:
+        taken = one(ctx.conn, "SELECT 1 AS yes FROM sources WHERE user_id = ? AND kind = ? AND name = ? AND id != ?",
+                    [ctx.user_id, found["kind"], inp.name, inp.id])  # fmt: skip
+        if taken:  # was a database error (audit, 12 Nov)
+            raise FieldError("name", f"You already read one called {inp.name}: give this one another name")
         changes["name"] = inp.name
     if inp.url is not None:
         changes["config"] = json.dumps(json.loads(found["config"]) | {"url": inp.url})

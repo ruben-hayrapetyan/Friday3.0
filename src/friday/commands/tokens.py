@@ -10,6 +10,7 @@ from typing import Any
 from friday.api.commands import Changed, TokenInput, TokenMade, TokenRef
 from friday.api.types import Empty
 from friday.api.views import TokenOut
+from friday.commands.phones import alone
 from friday.commands.registry import Ctx, command, query
 from friday.core.items import FieldError
 from friday.core.time import format_utc
@@ -36,12 +37,13 @@ def keep(conn: sqlite3.Connection, user_id: int, tokens: dict[str, dict[str, Any
 @command("token_add", logged=False)
 def token_add(ctx: Ctx, inp: TokenInput) -> TokenMade:
     """Make a token for an assistant (MCP) or a script; it is shown once."""
-    tokens = saved(ctx.conn, ctx.user_id)
-    if inp.name in tokens:
-        raise FieldError("name", f"there is already a token named {inp.name}")
     token = "fr_" + secrets.token_urlsafe(24)
-    tokens[inp.name] = {"hash": digest(token), "scope": inp.scope, "created": ctx.now_text, "last_used": None}
-    keep(ctx.conn, ctx.user_id, tokens)
+    with alone(ctx.conn):  # unlogged, so outside a command's transaction: nothing writes between
+        tokens = saved(ctx.conn, ctx.user_id)
+        if inp.name in tokens:
+            raise FieldError("name", f"there is already a token named {inp.name}")
+        tokens[inp.name] = {"hash": digest(token), "scope": inp.scope, "created": ctx.now_text, "last_used": None}
+        keep(ctx.conn, ctx.user_id, tokens)
     return TokenMade(name=inp.name, scope=inp.scope, token=token)
 
 
@@ -65,11 +67,26 @@ def tokens(ctx: Ctx, inp: Empty) -> list[TokenOut]:
 
 
 def agent(conn: sqlite3.Connection, user_id: int, token: str, now_utc: int) -> tuple[str, str] | None:
-    """The token's name and scope, noting its use; None for a token that doesn't exist (any more)."""
-    found = saved(conn, user_id)
-    for name, t in found.items():
-        if secrets.compare_digest(t["hash"], digest(token)):
-            t["last_used"] = format_utc(now_utc)
+    """The token's name and scope, noting its use (at most once a minute); None for a token that doesn't exist (any
+    more)."""
+    seen = saved(conn, user_id)
+    name = matching(seen, token)
+    if name is None:
+        return None
+    if seen[name]["last_used"] == format_utc(now_utc):  # noted this minute: nothing to write
+        return name, seen[name]["scope"]
+    # Noted with nothing else writing between, as phones are (audit, 12 Nov: a token revoked a moment after a
+    # request read the tokens was written back with the request's last use, and worked again).
+    with alone(conn):
+        found = saved(conn, user_id)
+        name = matching(found, token)
+        if name is None:
+            return None
+        if found[name]["last_used"] != format_utc(now_utc):
+            found[name]["last_used"] = format_utc(now_utc)
             keep(conn, user_id, found)
-            return name, t["scope"]
-    return None
+        return name, found[name]["scope"]
+
+
+def matching(found: dict[str, dict[str, Any]], token: str) -> str | None:
+    return next((name for name, t in found.items() if secrets.compare_digest(t["hash"], digest(token))), None)

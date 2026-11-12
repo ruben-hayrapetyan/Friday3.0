@@ -71,9 +71,11 @@ def phone_pair(ctx: Ctx, inp: Empty) -> PairCode:
     if where is None:
         raise FieldError("phone", "This Mac isn't on Tailscale right now: open Tailscale and sign in, then try again")
     code = secrets.token_urlsafe(18)
-    codes = {h: c for h, c in stored(ctx.conn, ctx.user_id, "phone_codes").items() if c["until"] > ctx.now_utc}
-    codes[digest(code)] = {"until": ctx.now_utc + PAIR_MINUTES}
-    store(ctx.conn, ctx.user_id, "phone_codes", codes)
+    # alone: a code a phone used a moment ago isn't written back, to work again (audit, 12 Nov)
+    with alone(ctx.conn):
+        codes = {h: c for h, c in stored(ctx.conn, ctx.user_id, "phone_codes").items() if c["until"] > ctx.now_utc}
+        codes[digest(code)] = {"until": ctx.now_utc + PAIR_MINUTES}
+        store(ctx.conn, ctx.user_id, "phone_codes", codes)
     # The code after the #: a browser never sends that part, so it's in no address log on the way.
     url = f"http://{where}:{ctx.settings['server'].port}/pair#{code}"
     return PairCode(url=url, svg=qr_svg(url), minutes=PAIR_MINUTES)
