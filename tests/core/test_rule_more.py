@@ -40,6 +40,9 @@ def test_ahead_names_the_event_left_once_the_condition_and_its_verbs_go() -> Non
     r = rule_more.read_ahead(" never go to happy hour unless i'm ahead ")
     assert r and r.events == ("happy hour",)
     assert rule_more.read_ahead(" i like going to the big friday night party with friends if i'm ahead ") is None
+    # Nothing left once the condition goes is no event: the Rules list's words failed on it (audit, 12 Nov)
+    assert rule_more.read_ahead(" only and if i'm ahead ") is None
+    assert read("only and if i'm ahead")[0] is None
 
 
 def test_deadlines_need_lateness_and_something_against_it_and_not_another_kinds_words() -> None:

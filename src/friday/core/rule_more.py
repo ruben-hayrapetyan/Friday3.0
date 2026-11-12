@@ -110,7 +110,8 @@ def read_ahead(t: str) -> Reading | None:
     rest = " ".join(re.sub(r"[,.;:]", " ", rest).split())
     if not rest or len(rest.split()) > 3 or re.search(r"\b(?:extra|more|longer|day|days|week|less)\b", rest):
         return None  # "if I'm ahead, go to the gym an extra day": more of it, not whether to go
-    return Reading("ahead", "events", events=titles_in(rest))
+    titles = titles_in(rest)  # "only and if i'm ahead" leaves "and": no event (audit, 12 Nov)
+    return Reading("ahead", "events", events=titles) if titles else None
 
 
 LATE = r"\b(?:late|overdue|past (?:the |its |their )?(?:deadline|due date)|due dates?|deadlines?|on time|by its due)\b"
