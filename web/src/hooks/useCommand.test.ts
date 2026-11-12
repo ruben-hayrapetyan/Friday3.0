@@ -121,3 +121,34 @@ describe("a nap", () => {
     expect(client.getQueryData<{ napping: unknown }>(["sleep"])?.napping).toBeNull()
   })
 })
+
+describe("a setting changed", () => {
+  // the audit, 12 Nov: no setting showed before Friday answered, and two quick clicks each wrote the whole list back
+  // from the settings as they were before either
+  it("shows at once, the whole setting or only what it names for a setting saved in part, and goes back when refused", async () => {
+    const { client, toast } = setup()
+    const was = { calendar_look: { toolbar: ["Work"], show_past_plan: true }, pace: { default: "Normal", by_day: {} } }
+    client.setQueryData(["settings"], was)
+    let refuse = (_: Response) => {}
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((answer) => (refuse = answer))))
+    const look = runCommand(client, toast, "settings_set", { key: "calendar_look", value: { toolbar: [], show_past_plan: false } })
+    await vi.waitFor(() => expect(client.getQueryData(["settings"])).toMatchObject({ calendar_look: { toolbar: [], show_past_plan: false } }))
+    refuse(new Response(JSON.stringify({ command_id: 4, result: { message: "Saved calendar_look" } })))
+    await look
+    const pace = runCommand(client, toast, "settings_set", { key: "pace", value: { by_day: { sat: "Easy" } } })
+    await vi.waitFor(() => expect(client.getQueryData(["settings"])).toMatchObject({ pace: { default: "Normal", by_day: { sat: "Easy" } } }))
+    refuse(new Response(JSON.stringify({ message: "No such pace" }), { status: 422 }))
+    await pace
+    expect(client.getQueryData<typeof was>(["settings"])?.pace).toEqual(was.pace)
+  })
+
+  it("is read again, with everything else a setting can change, when the live stream is down", async () => {
+    const { client, toast } = setup()
+    for (const key of ["settings", "paces", "areas", "series_list", "google_calendars", "mac_calendars", "documents", "calendar_repeats"]) client.setQueryData([key], {})
+    answer(200, { command_id: 5, result: { message: "Saved calendar_look" } })
+    await runCommand(client, toast, "settings_set", { key: "calendar_look", value: {} })
+    await vi.waitFor(() => {
+      for (const key of ["settings", "paces", "areas", "series_list", "google_calendars", "mac_calendars", "documents", "calendar_repeats"]) expect(client.getQueryState([key])?.isInvalidated, key).toBe(true)
+    })
+  })
+})

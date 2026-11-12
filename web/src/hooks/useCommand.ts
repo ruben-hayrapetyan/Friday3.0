@@ -5,7 +5,7 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useCallback } from "react"
 import { command, type CommandInput, type CommandName, errorWords, type Output } from "@/api/client"
-import { staleSoon, streamLive } from "@/api/events"
+import { refreshFor, staleSoon, streamLive } from "@/api/events"
 import { type Toast, useToast } from "@/components/Toasts"
 import { markedDone, mealEnded, mealSkipped, mealStarted, napEnded, napStarted, sleepMarked, timerStarted, timerStopped } from "@/now/instant"
 import { pending } from "@/plan/pending"
@@ -26,7 +26,28 @@ const INSTANT: Record<string, (client: QueryClient, input: never) => void> = {
   sleep_mark: sleepMarked,
   nap_start: napStarted,
   nap_end: napEnded,
+  settings_set: settingSet,
 }
+
+// Settings the server saves in part, keeping what the change doesn't name (commands/settings.py settings_set).
+const SAVED_IN_PART = new Set(["event_kinds", "pace", "llm", "sleep"])
+
+/** A setting shows changed at once, so a second click builds on the first rather than on the settings from before
+ * either (the audit, 12 Nov: two quick clicks each wrote the whole list back, and the first was lost); refused, it goes
+ * back with the rest. */
+function settingSet(client: QueryClient, input: { key?: string; value?: unknown } | null): void {
+  const key = input?.key
+  if (!key) return
+  client.setQueryData<Record<string, unknown>>(["settings"], (was) => {
+    if (!was) return was
+    const now = was[key]
+    const value = input?.value
+    const inPart = SAVED_IN_PART.has(key) && isObject(now) && isObject(value)
+    return { ...was, [key]: inPart ? { ...now, ...value } : value }
+  })
+}
+
+const isObject = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x)
 
 // The newest change this page made, for ⌘Z: one command, or several made as one (a change to many to-dos).
 let lastCommands: number[] = []
@@ -89,8 +110,10 @@ export async function runCommand<N extends CommandName>(
     return undefined
   } finally {
     // A dropped stream's stand-in: while it's live its events refresh what changed (projects and exams too, 12 Nov: a
-    // new project or prep didn't show without the stream), and this would only read it all a second time.
-    if (!streamLive) staleSoon(client, ["items", "item", "now", "status", "meals", "sleep", "duplicates", "to_review", "tokens", "gmail_app_accounts", "mail_app_accounts", "integrations", "integration_lists", "inbox", "projects", "exams"])
+    // new project or prep didn't show without the stream), and this would only read it all a second time. Without it,
+    // what the stream's events would have made stale (the audit, 12 Nov: a hand-kept list left settings, paces, areas,
+    // repeats and calendars stale after a change).
+    if (!streamLive) staleSoon(client, [...refreshFor("items.changed", name), ...refreshFor("plan.changed")])
   }
 }
 
