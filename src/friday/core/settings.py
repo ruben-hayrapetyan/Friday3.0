@@ -436,6 +436,15 @@ class JobsSettings(Model):
     tick_replan_min: int = 15
     backup_keep: int = 14
 
+    @field_validator("nightly_replan_at")
+    @classmethod
+    def a_time(cls, value: str) -> str:
+        """A clock time, "03:30" or "3:30": the job loop reads it before each pass, and "noon" stopped every job until
+        Friday started again (audit, 12 Nov)."""
+        if not re.match(r"^([01]?\d|2[0-3]):[0-5]\d$", value):
+            raise ValueError(f"{value!r} is not a time like 03:30")
+        return value
+
 
 class ServerSettings(Model):
     port: int = 8765

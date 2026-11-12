@@ -67,11 +67,18 @@ def test_reference_rules_match_the_design() -> None:
         ("templates", {"Essay": []}, "templates"),
         ("calendar_look", {"colors": {"Home": "neon"}}, "calendar_look"),
         ("categories", {"categories": [{"name": "Labs", "slug": "lab", "color": "neon"}]}, "categories"),
+        # read by the job loop before each pass: "noon" stopped every job until Friday restarted (audit, 12 Nov)
+        ("jobs", {"nightly_replan_at": "noon"}, "jobs.nightly_replan_at"),
+        ("jobs", {"nightly_replan_at": "24:30"}, "jobs.nightly_replan_at"),
     ],
 )
 def test_invalid_values_name_their_field(key: str, value: object, field: str) -> None:
     with pytest.raises(ValueError, match=f"^{field.replace('.', '[.]')}:"):
         validate_value(key, value)
+
+
+def test_a_nightly_time_without_its_leading_zero_still_reads() -> None:
+    assert validate_value("jobs", {"nightly_replan_at": "3:30"}).nightly_replan_at == "3:30"
 
 
 def test_import_validates_everything_before_returning() -> None:
