@@ -174,6 +174,11 @@ describe("the add line", () => {
     expect(within(repeat()).getByText("2 times a week")).toBeTruthy()
     await user.click(within(repeat()).getByRole("button", { name: "After 10 times" }))
     expect(within(repeat()).getByText("2 times a week, 10 times. Friday picks the days.")).toBeTruthy()
+    // More or fewer keeps when it ends (audit, 12 Nov: it went back to never, the chip still on "After 10 times")
+    await user.click(within(repeat()).getByRole("button", { name: "More" }))
+    expect(within(repeat()).getByText("3 times a week, 10 times. Friday picks the days.")).toBeTruthy()
+    await user.click(within(repeat()).getByRole("button", { name: "Fewer" }))
+    expect(within(repeat()).getByText("2 times a week, 10 times. Friday picks the days.")).toBeTruthy()
     await user.click(within(repeat()).getByRole("button", { name: "On days" }))
     // A repeat needs no due: Enter adds it without asking.
     await user.click(line)
