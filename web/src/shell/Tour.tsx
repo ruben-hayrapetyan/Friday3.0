@@ -196,13 +196,18 @@ export function Tour() {
   const navigate = useNavigate()
   useEffect(() => void navigate(stop.page), [stop.page, navigate])
 
+  // in case the guide never says it's gone; let go of with this tour, so it can't end one taken after it (the audit,
+  // 12 Nov)
+  const giveUp = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(giveUp.current), [])
   const close = (end: boolean) => {
     const g = guide.current
     if (!g || !roomy) return setTour(false)
     setLeaving(true)
     g.onGone = () => setTour(false)
     g.leave(end)
-    window.setTimeout(() => setTour(false), 4000)
+    window.clearTimeout(giveUp.current)
+    giveUp.current = window.setTimeout(() => setTour(false), 4000)
   }
   useEffect(() => {
     const key = (e: KeyboardEvent) => {

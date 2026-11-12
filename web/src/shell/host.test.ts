@@ -45,6 +45,11 @@ describe("moving the calendar from the menus", () => {
     expect(placeAfter({ action: "previous" }, { view: 7, first: null }, today)).toEqual({ view: 7, first: "2026-10-16" })
   })
 
+  it("comes out of this month to the days around today, and out of another month to its first day", () => {
+    expect(placeAfter({ action: "view", argument: "week" }, { view: "month", first: "2026-10-01" }, today)).toEqual({ view: 7, first: null })
+    expect(placeAfter({ action: "view", argument: "day" }, { view: "month", first: "2026-12-01" }, today)).toEqual({ view: 1, first: "2026-12-01" })
+  })
+
   it("comes back to today, keeping the view", () => {
     expect(placeAfter({ action: "today" }, { view: 7, first: "2026-12-07" }, today)).toEqual({ view: 7, first: null })
   })

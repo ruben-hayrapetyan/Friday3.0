@@ -433,8 +433,10 @@ function HeldFor({ event, only, open = event.left_out === "skipped" || event.lef
   useEffect(() => (setChoosing(false), setText(""), setPicked(undefined)), [event.id])
   const hold = ({ id, task_id }: { id: number; task_id?: number }) => {
     const task = task_id == null ? null : tasks.find((t) => t.id === task_id)
-    setPicked(task ? { id: task.id, title: task.title } : task_id == null ? null : undefined)
-    saveHold(task_id == null ? { id } : { id, task_id })
+    const shown = task ? { id: task.id, title: task.title } : task_id == null ? null : undefined
+    setPicked(shown)
+    // refused: what it was holds again, not the pick (the audit, 12 Nov)
+    void saveHold(task_id == null ? { id } : { id, task_id }).then((out) => out || setPicked((now) => (now === shown ? undefined : now)))
   }
   const held = (picked !== undefined ? picked : event.holds) as { id: number; title: string; loose?: boolean } | null | undefined
   const likely = held ? null : likelyTask(event.title, tasks)
@@ -615,7 +617,8 @@ function EventChoice({ event, flags }: { event: Item; flags: Flags | null }) {
     // an optional event (gym): going keeps it; otherwise it's back to Friday's to give
     if (optional && choice === "going" && !going) keep({ id: event.id, going: true })
     if (optional && choice !== "going" && flags?.going) keep({ id: event.id, going: false })
-    choose({ id: event.id, choice }) // the card stays open on its new choice (12 Nov)
+    // the card stays open on its new choice (12 Nov); refused, it goes back to what it was (the audit, 12 Nov)
+    void choose({ id: event.id, choice }).then((out) => out || setSaid((now) => (now === choice ? null : now)))
   }
   const line = { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12, color: "var(--color-neutral-300)" } as const
   return (

@@ -106,6 +106,19 @@ describe("the header", () => {
     expect(backToToday().textContent).toBe("Today")
   })
 
+  it("comes back from this month to the week, three days or day around today, by key", async () => {
+    // the audit, 12 Nov: m then w showed the week around the 1st of the month, not the week you were on
+    const { user } = await openFriday("/")
+    for (const [key, view, said] of [["w", "Week", "This week"], ["3", "3 days", "Around today"], ["d", "Day", "Today"]]) {
+      await user.keyboard("m")
+      expect(backToToday().textContent).toBe("This month")
+      await user.keyboard(key)
+      expect(pressed()).toBe(view)
+      expect(backToToday().textContent).toBe(said)
+      if (view === "Day") expect(screen.getAllByText(new RegExp(`^${Number((await today()).slice(8, 10))}$`)).length).toBeGreaterThan(0)
+    }
+  })
+
   it("opens a month's day in the day view, and its events in the card", async () => {
     const { user } = await openFriday("/")
     await user.click(within(view()).getByRole("button", { name: "Month" }))

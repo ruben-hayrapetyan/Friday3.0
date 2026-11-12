@@ -176,9 +176,27 @@ describe("a planned block's card", () => {
     const move = inCard().queryByRole("button", { name: "Move there" })
     if (move) {
       expect(inCard().getByText(/costs (no more|[\d.]+ points more)/)).toBeTruthy()
-      await user.click(move)
-      expect((await waitForSent("pin")).body).toMatchObject({ id: block.item_id, kind: "preferred", from_start: block.start })
-      expect(card()).toBeNull()
+      // it moves on the calendar at once, before Friday answers (the audit, 12 Nov: it stayed put until the replan)
+      const real = window.fetch
+      let answer = () => {}
+      const held = new Promise<void>((go) => (answer = go))
+      window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes("/api/c/pin")) {
+          sent.push({ name: "pin", body: JSON.parse(String(init?.body)) }) // said as sent, then held
+          await held
+        }
+        return real(input, init)
+      }) as typeof fetch
+      try {
+        await user.click(move)
+        const pin = (await waitForSent("pin")).body as { start: string }
+        expect(pin).toMatchObject({ id: block.item_id, kind: "preferred", from_start: block.start })
+        expect(card()).toBeNull()
+        await waitFor(() => expect(box(`T${block.item_id}@${pin.start}`)).not.toBeNull(), { timeout: 2000 })
+      } finally {
+        answer()
+        window.fetch = real
+      }
     } else {
       expect(inCard().getByText(/^Nowhere else/)).toBeTruthy()
     }
@@ -299,6 +317,25 @@ describe("an event's card", () => {
     await openCard(ofEvent(event))
     await waitFor(() => expect(inCard().getByRole("radio", { name: /^Skip it/ }).getAttribute("aria-checked")).toBe("true"))
     expect(inCard().getByRole("radio", { name: /^Work through it/ }).getAttribute("aria-checked")).toBe("false")
+  })
+
+  it("goes back to what it was when Friday refuses the choice", async () => {
+    // the audit, 12 Nov: Skip it stayed chosen on the card after the server said no, though nothing had changed
+    const event = await lecture("ENGL 1170 Seminar", 2)
+    const { user } = await openCard(ofEvent(event))
+    const going = await inCard().findByRole("radio", { name: /^I'm going/ }, { timeout: 5000 })
+    expect(going.getAttribute("aria-checked")).toBe("true")
+    const real = window.fetch
+    window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes("/api/c/event_choice") ? new Response(JSON.stringify({ message: "Friday couldn't save that" }), { status: 500 }) : real(input, init)) as typeof fetch
+    try {
+      await user.click(inCard().getByRole("radio", { name: /^Skip it/ }))
+      expect(await screen.findByText("Friday couldn't save that")).toBeTruthy()
+      await waitFor(() => expect(inCard().getByRole("radio", { name: /^I'm going/ }).getAttribute("aria-checked")).toBe("true"))
+      expect(inCard().getByRole("radio", { name: /^Skip it/ }).getAttribute("aria-checked")).toBe("false")
+    } finally {
+      window.fetch = real
+    }
   })
 
   it("asks whether an event's time is for the task its name suggests", async () => {

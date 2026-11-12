@@ -41,6 +41,21 @@ describe("a command", () => {
     expect(toasts).toEqual([{ message: "That item (T2) isn't there any more", tone: "error" }])
   })
 
+  it("that fails with nothing shown for it leaves what was read meanwhile, not the list from before it", async () => {
+    // the audit, 12 Nov: a failed pin put back the to-dos as they were when it was sent, over a refresh that came
+    // while it waited, and with the stream live nothing read them again
+    const { client, toasts, toast } = setup()
+    let refuse = (_: Response) => {}
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((answer) => (refuse = answer))))
+    const running = runCommand(client, toast, "pin", { id: 1, start: "2026-10-19T10:00", kind: "preferred" })
+    const fresh = [...items, { id: 3, title: "added on the phone" }] as Item[]
+    client.setQueryData(["items"], fresh) // a refresh lands while the pin waits
+    refuse(new Response(JSON.stringify({ message: "That time is in the past" }), { status: 422 }))
+    await running
+    expect(client.getQueryData(["items"])).toEqual(fresh)
+    expect(toasts).toEqual([{ message: "That time is in the past", tone: "error" }])
+  })
+
   it("undoes several commands newest first, as one action", async () => {
     const { client, toasts, toast } = setup()
     const fetch = vi.fn(async (_url: string, _init: RequestInit) => new Response(JSON.stringify({ command_id: null, result: {} })))
@@ -104,5 +119,36 @@ describe("a nap", () => {
     answer(200, { command_id: 10, result: { message: "Nap: 25 min" } })
     await runCommand(client, toast, "nap_end", {})
     expect(client.getQueryData<{ napping: unknown }>(["sleep"])?.napping).toBeNull()
+  })
+})
+
+describe("a setting changed", () => {
+  // the audit, 12 Nov: no setting showed before Friday answered, and two quick clicks each wrote the whole list back
+  // from the settings as they were before either
+  it("shows at once, the whole setting or only what it names for a setting saved in part, and goes back when refused", async () => {
+    const { client, toast } = setup()
+    const was = { calendar_look: { toolbar: ["Work"], show_past_plan: true }, pace: { default: "Normal", by_day: {} } }
+    client.setQueryData(["settings"], was)
+    let refuse = (_: Response) => {}
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((answer) => (refuse = answer))))
+    const look = runCommand(client, toast, "settings_set", { key: "calendar_look", value: { toolbar: [], show_past_plan: false } })
+    await vi.waitFor(() => expect(client.getQueryData(["settings"])).toMatchObject({ calendar_look: { toolbar: [], show_past_plan: false } }))
+    refuse(new Response(JSON.stringify({ command_id: 4, result: { message: "Saved calendar_look" } })))
+    await look
+    const pace = runCommand(client, toast, "settings_set", { key: "pace", value: { by_day: { sat: "Easy" } } })
+    await vi.waitFor(() => expect(client.getQueryData(["settings"])).toMatchObject({ pace: { default: "Normal", by_day: { sat: "Easy" } } }))
+    refuse(new Response(JSON.stringify({ message: "No such pace" }), { status: 422 }))
+    await pace
+    expect(client.getQueryData<typeof was>(["settings"])?.pace).toEqual(was.pace)
+  })
+
+  it("is read again, with everything else a setting can change, when the live stream is down", async () => {
+    const { client, toast } = setup()
+    for (const key of ["settings", "paces", "areas", "series_list", "google_calendars", "mac_calendars", "documents", "calendar_repeats"]) client.setQueryData([key], {})
+    answer(200, { command_id: 5, result: { message: "Saved calendar_look" } })
+    await runCommand(client, toast, "settings_set", { key: "calendar_look", value: {} })
+    await vi.waitFor(() => {
+      for (const key of ["settings", "paces", "areas", "series_list", "google_calendars", "mac_calendars", "documents", "calendar_repeats"]) expect(client.getQueryState([key])?.isInvalidated, key).toBe(true)
+    })
   })
 })
