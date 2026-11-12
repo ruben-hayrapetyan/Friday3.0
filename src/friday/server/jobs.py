@@ -82,8 +82,10 @@ def run_due(
         ("tick", tick_due, tick),
         ("questions", questions_due, questions),
         ("config", every_minute, config),
-        ("sync", every_minute, sync_sources),
+        # before the calendars and mail: quick, and a first read of a Mac's calendars (hundreds of events) took
+        # minutes, which the integrations waited behind (11 Nov, Friday Test)
         ("integrations", every_minute, sync_integrations),
+        ("sync", every_minute, sync_sources),
         ("publish", every_minute, publish),
         ("event_writes", every_minute, send_event_writes),
         ("ratings", every_minute, rate_events),
