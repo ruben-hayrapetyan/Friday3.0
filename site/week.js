@@ -74,6 +74,8 @@
 
   function drawFrame() {
     var days = visible();
+    // the "1 due" tag stays as it was when the heads are made again for a new width (a resize lost it until the next loop)
+    var dueOn = !!dueTag && dueTag.classList.contains("on");
     board.style.setProperty("--days", days.length);
     head.innerHTML = "";
     days.forEach(function (d) {
@@ -83,6 +85,7 @@
       head.appendChild(cell);
     });
     dueTag = head.querySelector(".due");
+    if (dueTag && dueOn) dueTag.classList.add("on");
     hours.innerHTML = "";
     grid.querySelectorAll(".col, .line").forEach(function (n) { n.remove(); });
     for (var h = FIRST + 1; h < LAST; h++) {
