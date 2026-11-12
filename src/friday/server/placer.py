@@ -71,6 +71,10 @@ class Placer:
         self.pipe: Connection | None = None  # to the placing process, once started
 
     def start(self) -> None:
+        self.spawn()
+        self.thread.start()
+
+    def spawn(self) -> None:
         orphaned_streams()
         context = mp.get_context("spawn")
         self.pipe, theirs = context.Pipe()
@@ -78,7 +82,6 @@ class Placer:
             target=child, args=(theirs, self.db_path, self.plugin_dir), name="friday-placer", daemon=True
         )
         self.process.start()
-        self.thread.start()
 
     def stop(self) -> None:
         """The placing process only reads, so at shutdown it's ended at once rather than asked (as the solver's)."""
@@ -144,8 +147,17 @@ class Placer:
 
     def ask(self, user_id: int, changed: set[int], left: dict[int, list[tuple[int, int]]]) -> Placed | None:
         assert self.pipe is not None
-        self.pipe.send((self.clock(), user_id, changed, left))
-        kind, value = self.pipe.recv()
+        try:
+            self.pipe.send((self.clock(), user_id, changed, left))
+            kind, value = self.pipe.recv()
+        except (EOFError, OSError):
+            # The process died (killed, out of memory): started again, as the solver's is, or no change was placed
+            # again until Friday restarted. This one waits for the solve.
+            if not self.stopping.is_set():
+                code = getattr(getattr(self, "process", None), "exitcode", None)
+                log.warning("the placing process exited (code %s); starting it again", code)
+                self.spawn()
+            return None
         if kind == "error":
             log.error("quick placement failed in its process:\n%s", value)
             return None
