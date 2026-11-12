@@ -719,5 +719,14 @@ test("a swap that can't move the old app aside opens it again, rather than leavi
     try? files.removeItem(at: root)
 }
 
+test("a server that stops by itself is started again, but not a fourth time in five minutes (audit, 12 Nov)") {
+    let now = Date()
+    check(Server.restartAgain(after: [], now: now), "the first time")
+    check(Server.restartAgain(after: [now.addingTimeInterval(-60), now.addingTimeInterval(-30)], now: now), "the third")
+    let three = [now.addingTimeInterval(-200), now.addingTimeInterval(-60), now.addingTimeInterval(-30)]
+    check(!Server.restartAgain(after: three, now: now), "not a fourth within five minutes")
+    check(Server.restartAgain(after: three.map { $0.addingTimeInterval(-400) }, now: now), "long ago don't count")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

@@ -19,6 +19,7 @@ final class Server: ObservableObject {
     @Published private(set) var slow = false  // starting for a while: macOS may be asking for access
     private var process: Process?
     private var log = ""
+    private var restarts: [Date] = []
 
     /// Where `fridayd` may be: what you chose in Settings, then the usual places.
     nonisolated static func candidates(chosen: String?, home: URL) -> [URL] {
@@ -157,6 +158,9 @@ final class Server: ObservableObject {
             pipe.fileHandleForReading.readabilityHandler = Self.reader { text in
                 Task { @MainActor in Server.shared.keep(text) }
             }
+            started.terminationHandler = { ended in
+                Task { @MainActor in Server.shared.ended(ended) }
+            }
             do {
                 try started.run()
             } catch {
@@ -187,6 +191,30 @@ final class Server: ObservableObject {
         state = .failed("Friday's server didn't answer within a minute. Your Mac may be very busy: wait a moment and "
             + "press Try again. If it keeps happening, quit Friday and open it again.\n\nWhat it said last:\n"
             + log.suffix(600))
+    }
+
+    /// The server this app started stopped. Once Friday was running, it's started again (audit, 12 Nov: nothing did,
+    /// and the window asked a server that wasn't there for ever); while starting, `ensureRunning` says what happened.
+    /// Stopped on purpose, it's let go of first (`stop`), so nothing happens here.
+    private func ended(_ ended: Process) {
+        guard ended === process, state == .ready else { return }
+        process = nil
+        guard Self.restartAgain(after: restarts, now: Date()) else {
+            state = .failed(Self.startupWords(started: true, log: log))
+            return
+        }
+        restarts = restarts.filter { $0.timeIntervalSinceNow > -Self.restartWindow } + [Date()]
+        log = ""
+        state = .starting
+        Task { await ensureRunning() }
+    }
+
+    nonisolated static let restartWindow: TimeInterval = 300
+
+    /// Whether to start the server again after it stopped by itself: not a fourth time within five minutes, when
+    /// something is wrong that starting again won't fix, and what it said is shown instead.
+    nonisolated static func restartAgain(after restarts: [Date], now: Date) -> Bool {
+        restarts.filter { now.timeIntervalSince($0) < restartWindow }.count < 3
     }
 
     /// What reads the server's output, a piece at a time, to `keep`. At its end (the server stopped) it stops reading:
