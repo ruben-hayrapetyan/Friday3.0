@@ -96,7 +96,8 @@ class TextOnly(HTMLParser):
             self.out.append("\n")
 
     def handle_endtag(self, tag: str) -> None:
-        self.hidden -= tag in ("style", "script")
+        # never below zero: a stray </style> hid every word after it
+        self.hidden = max(0, self.hidden - (tag in ("style", "script")))
 
     def handle_data(self, data: str) -> None:
         if not self.hidden:
