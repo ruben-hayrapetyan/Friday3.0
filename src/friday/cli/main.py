@@ -96,7 +96,7 @@ def value_of(name: str, field: FieldInfo, given: Any) -> Any:
 
 
 def is_id(name: str) -> bool:
-    return name in ("id", "after", "before") or name.endswith(("_id", "_ids"))
+    return name in ("id", "ids", "after", "before") or name.endswith(("_id", "_ids"))
 
 
 def takes_json(annotation: Any) -> bool:
@@ -126,6 +126,8 @@ def parameter(verb_name: str, name: str, field: FieldInfo) -> inspect.Parameter:
     kind = inspect.Parameter.KEYWORD_ONLY
     if ARGUMENT_FIRST.get(verb_name) == name:
         return inspect.Parameter(name, kind, default=None, annotation=Annotated[str | None, typer.Argument()])
+    if field.is_required() and is_list(field.annotation):  # `friday late-accept T3 T4`: one argument each
+        return inspect.Parameter(name, kind, annotation=Annotated[list[str], typer.Argument(help=help_text)])
     if field.is_required() and not is_flag(field.annotation):
         return inspect.Parameter(name, kind, annotation=Annotated[str, typer.Argument(help=help_text)])
     if is_flag(field.annotation):

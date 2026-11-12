@@ -1,10 +1,13 @@
 """The generated CLI: arguments and options from each input model, ids with their letter, JSON for mappings, and
 plain rendering."""
 
+from typing import Any
+
+import pytest
 from typer.testing import CliRunner
 
 from friday.api.commands import AddInput, SettingsSetInput, UndoInput
-from friday.cli import render
+from friday.cli import main, render
 from friday.cli.main import app, takes_json, value_of
 
 
@@ -17,6 +20,17 @@ def test_required_fields_are_arguments_and_add_takes_its_line() -> None:
     runner = CliRunner()
     assert "COMMAND_ID" in runner.invoke(app, ["undo", "--help"]).output.upper()
     assert "[TEXT]" in runner.invoke(app, ["add", "--help"]).output.upper()
+
+
+def test_a_required_list_takes_each_value_as_its_own_argument(monkeypatch: pytest.MonkeyPatch) -> None:
+    # `friday late-accept T3 T4` was "unexpected extra argument", and one id went as "3", not a list (audit, 12 Nov)
+    sent: list[dict[str, Any]] = []
+    monkeypatch.setattr(main, "call", lambda verb, payload, preview=False: sent.append(payload) or {"message": "ok"})
+    ran = CliRunner().invoke(app, ["late-accept", "T3", "T4"])
+    assert ran.exit_code == 0, ran.output
+    ran = CliRunner().invoke(app, ["reorder", "T1", "T5"])
+    assert ran.exit_code == 0, ran.output
+    assert sent == [{"item_ids": ["3", "4"]}, {"parent_id": "1", "ids": ["5"]}]
 
 
 def test_ids_lose_their_letter_and_mappings_are_json() -> None:
