@@ -454,8 +454,9 @@ export class World {
     const running = this.trip?.out
     if (running && running.t < running.keys[running.keys.length - 1].at) out = running
     else if (this.script) {
-      if (this.script.t >= 1.4 && act.site !== this.script.site) out = this.keysOut(this.script.bed, this.script.site)
-    } else if (this.act?.bed && act.site !== this.act.site && !this.trip?.path) out = this.keysOut(this.act.bed, this.act.site)
+      if (this.script.t >= 1.4 && (act.site !== this.script.site || !act.bed)) out = this.keysOut(this.script.bed, this.script.site)
+    } else if (this.act?.bed && (act.site !== this.act.site || !act.bed) && !this.trip?.path) out = this.keysOut(this.act.bed, this.act.site)
+    // (11 Nov: from bed to the desk in the same room they walked out through the mattress: out of bed first there too)
     this.script = null
     const seated = !out && this.act && !this.act.bed && this.act.front && this.weight > 0.3 ? this.act : null
     const from = out ? out.keys[out.keys.length - 1].pos : seated?.front ? seated.front : this.pos
