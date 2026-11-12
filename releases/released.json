@@ -1,6 +1,53 @@
 {
-  "current": "0.3.3",
+  "current": "0.4.0",
   "versions": [
+    {
+      "version": "0.4.0",
+      "released": "2026-11-12",
+      "sha256": "6193b7fdfaacf8e53e07bd812a75edbea4c515ce826cea9e8aa0d4cab7af21dc",
+      "bytes": 246478210,
+      "commit": "9dd72c07956a9810bbb64e0bea637b7f2d2f6b7e",
+      "notes": {
+        "summary": "Friday plans the to-dos from the apps you already use, asks what you'll do in an event's time, and every click answers at once.",
+        "new": [
+          "Todoist, TickTick, Notion, Trello, Apple Reminders, Things and Google Tasks: their to-dos are planned into your week, and ticking one off in either place ticks it off in both.",
+          "Asana, Linear, Jira and GitHub: work assigned to you is planned in. Canvas's own assignments, and Slack messages that mention you.",
+          "More calendar links from school and work, each with its steps: Blackboard, Moodle, Brightspace, Schoology, Homebase, When I Work, Deputy, 7shifts and Sling.",
+          "Mail from iCloud, Yahoo, Fastmail or any other provider, with an app password, beside Gmail.",
+          "Your plan as a \"Friday\" calendar in iCloud, so your iPhone shows it.",
+          "An event's card asks what you'll do: go, work through it (Friday plans work in its time), or skip it.",
+          "The first time Friday opens, a short tour shows each page and what it's for; afterwards the ? numbers the buttons on the page you're on and lists what each does.",
+          "friday:// links for Shortcuts: add a to-do or open a page."
+        ],
+        "changed": [
+          "Clicks answer at once: Inbox answers, timers and the length steppers no longer wait for Friday to finish saving.",
+          "Notes about you are on the Rules page, beside your rules: type one and press Keep as a note.",
+          "A block's card stays open after what you do in it, showing what changed.",
+          "Each integration opens in a box of its own, closed with × or Esc.",
+          "Settings says less, and more plainly."
+        ],
+        "fixed": [
+          "The Inbox no longer freezes when it opens before Friday has finished loading.",
+          "Enter in search, with nothing found, adds what you typed as a to-do.",
+          "A project's step shows what it waits on.",
+          "The weekly review offers Next week only for work due after next Monday.",
+          "A task due at midnight repeats on the right days.",
+          "What changed opens after you undo an add.",
+          "⌘-clicking a second block picks the one you'd selected too.",
+          "Change a Setup answer opens the question you picked.",
+          "\"today\" typed after midnight means the same day as the Today button.",
+          "The to-do list's done section is called Done.",
+          "Double clicks no longer make two exams, projects, steps or to-dos, or send a review twice.",
+          "One integration that can't be read no longer stops the others from syncing.",
+          "Friday left open overnight moves on to the new day by itself.",
+          "The Mac app starts Friday again if it stops by itself, and no longer keeps the processor busy after it stops.",
+          "An event moved by an hour in Calendar or Reminders is synced at once, not up to an hour later.",
+          "Work due at exactly the start of a day is planned the day before.",
+          "Renaming a tag keeps the rules that name it.",
+          "Forgetting one mailbox no longer switches off another whose address ends the same."
+        ]
+      }
+    },
     {
       "version": "0.3.3",
       "released": "2026-11-10",
