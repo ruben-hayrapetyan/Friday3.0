@@ -127,3 +127,15 @@ def test_29_a_pace_for_three_days_ends_on_the_fourth_and_undo_restores_the_earli
     assert scales[0].daily_load_threshold == 1.0
     app.do("undo", command_id=easy.command_id)
     assert app.do("paces")["now_label"] == "Push"
+
+
+def test_a_plan_made_just_before_the_day_starts_reads_the_new_days_pace_and_cap(app: App) -> None:
+    # At 3:50am the plan begins at 4:00, the next planning day: its first day had been given the day before's pace,
+    # and its cap less the work done the day before.
+    app.full("pace", payload={"name": "easy", "for_days": 1}, provisional=False)  # Monday only
+    essay = app.do("add", title="Essay", duration_min=180)["item"]["id"]
+    app.do("log", id=essay, start="2026-10-19T08:00", end="2026-10-19T09:00")
+    app.at("2026-10-20T03:50")
+    inp = build_input(take_snapshot(app.conn, app.now_utc))
+    assert inp.day_scales is not None and inp.day_scales[0].daily_load_threshold == 1.0
+    assert inp.progress_units[essay] == 4 and not any(inp.progress_today_units.values())
