@@ -6,9 +6,11 @@ Several accounts may be connected (a personal one and a school one, say). Signin
 replaces its token. A token saved before Friday kept several sits under `google` with no address; it counts as one
 account (`LEGACY`) until the sync lists its calendars, whose primary one names it, and it moves under that name."""
 
+import contextlib
 import json
 import os
 import sys
+import tempfile
 import threading
 import urllib.request
 from collections.abc import Callable
@@ -58,10 +60,20 @@ def client_to_use(named: str | None) -> Path:
 
 
 def write_private(path: Path, text: str) -> None:
-    """Write a file only you can read, from its first byte."""
+    """Write a file only you can read, from its first byte. Written beside it, then put in its place in one step:
+    emptied and then written, a read meanwhile (a sync's token, on another thread) found nothing in it, and one
+    written back from that read kept only its own section, every other key and password gone."""
+    path = path.resolve()  # a link (a dotfiles folder's) keeps pointing at the file
     path.parent.mkdir(parents=True, exist_ok=True)
-    with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w") as out:
-        out.write(text)
+    handle, temporary = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")  # 0600 from the start
+    try:
+        with os.fdopen(handle, "w") as out:
+            out.write(text)
+        os.replace(temporary, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(temporary)
+        raise
     os.chmod(path, 0o600)
 
 
