@@ -27,7 +27,7 @@ export function Repeating() {
   ]
   return (
     <>
-      <SectionHead title="Repeating" note="Everything that comes back. Add repeats from the to-do box (“gym 3x a week ~1h”), or bring them in from your calendar." />
+      <SectionHead title="Repeating" note="Everything that comes back. Add one in the to-do box, like “gym 3x a week ~1h”." />
       <RepeatImport />
       {groups
         .filter(([, , rows]) => rows.length)

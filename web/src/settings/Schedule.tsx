@@ -63,7 +63,7 @@ export function Schedule() {
           ))}
         </select>
       </Field>
-      <Field name="Past bedtime, if a deadline needs it" note="The most Friday will run over when there is no other room; it costs a lot, and less sleep makes the next night cost more. The rest of your sleep is never used.">
+      <Field name="Past bedtime, if a deadline needs it" note="The most Friday will plan past bedtime when there’s no other room, and only as a last resort.">
         <Seg options={[30, 45, 60, 90].map((m) => ({ value: m, label: dur(m) }))} value={mon.margin_min} onPick={(m) => allNights({ margin_min: m })} size="big" />
       </Field>
       <Field name="Buffer between blocks" note="Breathing room so one thing running long doesn’t knock everything else.">
@@ -94,7 +94,7 @@ export function Schedule() {
           size="big"
         />
       </Field>
-      <Field name="When a block passes and you didn’t time it or mark it" note={missed === "not_done" ? "Friday plans that work again, so a missed block moves instead of staying on your plan, and the Inbox doesn’t ask about it. Click a missed block to say you did it after all." : "Friday counts it as done until you say otherwise: the Inbox asks how much you did, so the plan doesn’t move unless you tell it."}>
+      <Field name="When a block passes and you didn’t time it or mark it" note={missed === "not_done" ? "Friday plans the work again and the Inbox doesn’t ask. Click a missed block if you did it after all." : "Friday counts it as done, and the Inbox asks how much you actually did."}>
         <Seg
           options={[
             { value: "not_done", label: "Plan it again" },
@@ -107,7 +107,7 @@ export function Schedule() {
       </Field>
       {/* Yours since COMBINED.md 38 but only settable by hand: a new user had no way to it (9 Nov, "what do I have that
           a user who just downloaded the app does not"). */}
-      <Field name="Sittings" note="How Friday cuts work up. In one go, splitting a task costs three times as much, so it keeps each one together where it can.">
+      <Field name="Sittings" note="Whether Friday may split a task across sittings. In one go keeps each task together where it can.">
         <Seg
           options={[
             { value: "split", label: "Split as needed" },
@@ -118,7 +118,7 @@ export function Schedule() {
           size="big"
         />
       </Field>
-      <Field name="Morning brief" note="What's planned and what matters most today, when you first open Friday before noon. It's always in the Plan menu too.">
+      <Field name="Morning brief" note="Today’s plan and what matters most, when you first open Friday before noon. It’s always in the Plan menu too.">
         <Seg
           options={[
             { value: "on", label: "Show it" },

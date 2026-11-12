@@ -25,7 +25,7 @@ const field = (name: string) => screen.getByText(name, { selector: "span" }).clo
 describe("the settings page", () => {
   it("opens at Integrations the first time, then at the section you were last in", async () => {
     const { user, unmount } = await openFriday("/settings")
-    expect(await screen.findByText("Bring in your calendars, to-dos, deadlines and mail. Search, or open any box to connect it.")).toBeTruthy()
+    expect(await screen.findByText("Bring in your calendars, to-dos, deadlines and mail. Open a box to connect it.")).toBeTruthy()
     expect(window.location.hash).toBe("#/settings/integrations")
     await user.click(screen.getByRole("link", { name: "Schedule" }))
     expect(await screen.findByText("The shape of a normal day. Friday plans inside these limits.")).toBeTruthy()
@@ -298,11 +298,11 @@ describe("Schedule", () => {
     await user.click(within(await waitFor(() => field("Week starts on"))).getByRole("button", { name: "Sunday" }))
     expect((await waitForSent("settings_set")).body).toMatchObject({ key: "time", value: { week_start: "sun" } })
     const missed = field("When a block passes and you didn’t time it or mark it")
-    expect(within(missed).getByText(/Friday counts it as done until you say otherwise/)).toBeTruthy()
+    expect(within(missed).getByText(/Friday counts it as done, and the Inbox asks how much you actually did/)).toBeTruthy()
     await user.click(within(missed).getByRole("button", { name: "Plan it again" }))
     expect((await waitForSent("settings_set")).body).toMatchObject({ key: "planner", value: { assume_unreviewed: "not_done" } })
     await answered(client)
-    expect(await screen.findByText(/Friday plans that work again, so a missed block moves/)).toBeTruthy()
+    expect(await screen.findByText(/Friday plans the work again and the Inbox doesn’t ask/)).toBeTruthy()
     await user.click(within(field("Sittings")).getByRole("button", { name: "In one go" }))
     expect((await waitForSent("settings_set")).body).toMatchObject({ key: "sittings", value: { one_go: true, factor: 3 } })
     await user.click(within(field("Morning brief")).getByRole("button", { name: "Don't" }))

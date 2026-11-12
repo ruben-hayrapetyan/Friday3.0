@@ -29,18 +29,18 @@ export function Calendars({ mac = false }: { mac?: boolean }) {
       <span className="fr-kicker" style={{ textWrap: "pretty" }}>
         {mac ? (
           <>
-            Friday's Mac app sends this Mac's calendars once it runs and you allow it to read them:{" "}
+            These appear once the Mac app runs and may read your calendars:{" "}
             <a className="fr-link" href={PRIVACY}>
               Privacy & Security → Calendars
             </a>
-            . To bring in Google's, add your Google account to the Mac:{" "}
+            . For Google's, add your account to the Mac in{" "}
             <a className="fr-link" href={ACCOUNTS}>
               Internet Accounts
             </a>
             .
           </>
         ) : (
-          "Google's calendars list here after the first sync with Google connected (Settings → Integrations → More). In the Mac app, Google's calendars can come in through the Mac instead, above."
+          "Google's calendars appear after the first sync once Google is connected (Settings → Integrations → More), or through the Mac app above."
         )}
       </span>
     )
@@ -119,9 +119,9 @@ function List({ calendars, mac }: { calendars: Listed; mac: boolean }) {
       ))}
       <span className="fr-kicker" style={{ paddingTop: 8, textWrap: "pretty" }}>
         {mac
-          ? "A calendar Friday also reads from Google, a subscription or birthdays starts off, so nothing comes in twice. “Edit here” saves what you change in Friday (times, a new title, deleting) back to the calendar on your Mac, which passes it on to Google or iCloud; your notes stay in Friday. "
-          : "“Edit here” saves what you change in Friday (times, a new title, deleting) back to Google; your notes stay in Friday. "}
-        “Per event” reads due dates, exams (with prep), classes and other commitments from each event’s title; a kind reads every event as that kind. Turning a calendar off withdraws what it suggested that you haven’t answered; what you accepted stays.
+          ? "Calendars Friday already gets from Google, subscriptions and birthdays start off, so nothing comes in twice. “Edit here” sends your changes back to your Mac’s calendar; your notes stay in Friday. "
+          : "“Edit here” sends your changes back to Google; your notes stay in Friday. "}
+        “Per event” sorts each event by its title; a kind reads every event as that kind. Turning a calendar off drops its suggestions you haven’t answered.
       </span>
     </>
   )

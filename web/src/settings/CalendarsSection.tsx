@@ -62,7 +62,7 @@ function AroundEvents({ kinds, onSave }: { kinds: Record<string, Gap>; onSave: (
   const set = (kind: string, side: keyof Gap, minutes: number) => onSave({ [kind]: { ...(kinds[kind] ?? { before_min: 0, after_min: 0 }), [side]: minutes } })
   const options = GAPS.map((m) => ({ value: String(m), label: gapLabel(m) }))
   return (
-    <Field name="Time around events" note="Kept free of work before and after your events, to get there and to get back to where you work.">
+    <Field name="Time around events" note="Kept free of work around your events, so you have time to get there and back.">
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
         <span style={{ fontSize: 12, color: "var(--color-neutral-400)", marginRight: 4 }}>Before and after every event</span>
         {[0, 10, 15, 30].map((m) => (
@@ -113,15 +113,15 @@ export function CalendarsSection() {
   return (
     <>
       <SectionHead title="Calendars" note="What Friday plans around, and how your events look." />
-      <Field name="What counts as busy" note="Not everything on a calendar is a commitment. These are left out of planning unless you switch them on; they stay on your calendar either way.">
+      <Field name="What counts as busy" note="Switch these on to plan around them too. They stay on your calendar either way.">
         <Toggle on={busy.count_reminders} onToggle={() => setBusy({ count_reminders: !busy.count_reminders })} label="Reminders that something is due" hint="“Problem Set 8 due”, “Essay deadline”" />
         <Toggle on={busy.count_free} onToggle={() => setBusy({ count_free: !busy.count_free })} label="Events marked free" hint="Free in their calendar, like a reminder or a hold" />
         <Toggle on={busy.count_filtered} onToggle={() => setBusy({ count_filtered: !busy.count_filtered })} label={filter ? `${filter.label}` : "Events the filter hides"} hint={filter ? "What the categories’ filter hides" : "Set a filter under Categories"} />
       </Field>
       <AroundEvents kinds={settings.event_kinds as Record<string, Gap>} onSave={(value) => save({ key: "event_kinds", value })} />
-      <Field name="Your calendars" note="For each: plan around its events, just show them (dashed, and work may go over them), or hide it until you switch it on under Show (⌥⌘1–9). And a pigment. Calendars of room bookings start out just shown.">
+      <Field name="Your calendars" note="Plan around each calendar, just show it (work may go over it), or hide it. Hidden ones come back under Show (⌥⌘1–9).">
         {reading.length === 0 ? (
-          <span className="fr-kicker">Calendars list here once the Mac app sends the Mac's (Google's too, once your Google account is added to the Mac: Settings → Integrations), or once Google is connected directly.</span>
+          <span className="fr-kicker">Your calendars appear here once the Mac app or Google is connected (Settings → Integrations).</span>
         ) : (
           groups.map(([label, list]) => (
             <Fragment key={label ?? "all"}>
@@ -163,10 +163,10 @@ export function CalendarsSection() {
           ))
         )}
       </Field>
-      <Field name="This Mac’s calendars" note="Sent by the Mac app. Choose which Friday reads, and whether their events skip the Inbox. One you switch off leaves your calendar, its events and repeats coming back if you switch it on again.">
+      <Field name="This Mac’s calendars" note="Choose which ones Friday reads and whether their events skip the Inbox. Switching one off removes its events until you switch it back on.">
         <Calendars mac />
       </Field>
-      <Field name="New events go to" note="Your default calendar: events you make in Friday are saved to it too, wear its colour, and follow it from then on. Each new event can choose another in its drawer. Kept only in Friday when none is chosen.">
+      <Field name="New events go to" note="Events you make in Friday are saved here too and take its colour. Each event can pick another in its drawer.">
         <select
           className="input"
           value={(settings.gcal as { new_events_to?: string | null }).new_events_to ?? ""}
@@ -272,7 +272,7 @@ function Categories({ value, onSave }: { value: CategorySettings; onSave: (value
   return (
     <Field
       name="Categories"
-      note={`Friday puts each event in one: the one you chose on its card; else the first whose words are in its title; else ${whose(ai)} pick, given what the event shares with ones you know; else, when that's clear, the events most like it. Words are optional, for what's always that category, written as regular expressions without regard to case: “office hours|drop.?in”.`}
+      note={`Each event goes in the category you pick on its card, else the first whose words are in its title, else ${whose(ai)} best guess. Words are optional patterns, like “office hours|drop.?in”.`}
     >
       {draft.categories.map((c, i) => (
         <div key={i} className="fr-row" style={{ display: "grid", gridTemplateColumns: "minmax(0,0.8fr) minmax(0,1.2fr) auto auto", gap: 8, alignItems: "center", padding: "8px 0" }}>

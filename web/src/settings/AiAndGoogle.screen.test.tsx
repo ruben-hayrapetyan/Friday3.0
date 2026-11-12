@@ -253,7 +253,7 @@ describe("Google's own connection", () => {
     undo.push(answer("google_connect_cancel", () => ((access = { ...connectedAccess, state: "idle", message: "Sign-in stopped: nothing was connected" }), done(access))))
     const { user, dialog } = await openBox("Google Calendar, 7 connected")
     const add = await within(dialog).findByRole("button", { name: "Add another Google account" })
-    expect(within(dialog).getByText(/For your school's or work's calendar too/)).toBeTruthy()
+    expect(within(dialog).getByText(/For a school or work account too/)).toBeTruthy()
     const blocked = within(dialog).getByText(/Google says “Access blocked/).closest("details")!
     expect(blocked.open).toBe(false)
     await user.click(add)

@@ -87,7 +87,7 @@ export function LinkIntegration({ entry }: { entry: Entry }) {
           Add
         </button>
       </div>
-      <span className="fr-kicker">The link is private to you: Friday keeps it on this Mac and reads it every half hour.</span>
+      <span className="fr-kicker">Your link stays private on this Mac; Friday reads it every half hour.</span>
     </div>
   )
 }

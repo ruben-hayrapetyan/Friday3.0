@@ -78,7 +78,7 @@ const MAIL: Entry[] = [
 ]
 
 // The steps are each service's own, from its help pages (10 Nov); menu names vary a little between schools.
-const SCHOOL_READS = "Its due dates come to your Inbox, as a Canvas feed's do: assignments and exams by their words."
+const SCHOOL_READS = "Its due dates, assignments and exams come to your Inbox."
 const SHIFT_READS = "Your shifts go straight in as fixed work time, and move when your manager changes the schedule."
 const LINKS: Entry[] = [
   {
@@ -245,7 +245,7 @@ export const CATALOG: Entry[] = [
         "Press Create token, copy it (Notion shows it only once), paste it here and press Connect.",
         "Then choose which of your to-do lists Friday reads, right here.",
       ],
-      note: "On Free and Business plans only workspace owners can make one unless an admin allows it. An integration's secret works too: Friday then reads only the databases you add it to (••• → Connections).",
+      note: "On Free and Business plans, only workspace owners can make one unless an admin allows it. An integration’s secret also works, for just the databases you add it to (••• → Connections).",
     },
   },
   {
@@ -262,7 +262,7 @@ export const CATALOG: Entry[] = [
         "Sign in if it asks, then press Accept to let Friday read your boards and tick your cards.",
         "Come back to Friday: the open cards you're on come to your Inbox to review together.",
       ],
-      note: "Friday reads the open cards you're on, on every board. To bring one in, join it in Trello (open the card and press Join, or hover it and press space). Finishing it in Friday ticks its due date complete.",
+      note: "Friday reads the open cards you're on, on every board. To add one, join it in Trello (open the card and press Join).",
     },
   },
   {
@@ -281,7 +281,7 @@ export const CATALOG: Entry[] = [
         "Name it Friday, agree to Asana's API terms, and press Create token.",
         "Copy the token (Asana shows it only once), paste it here and press Connect.",
       ],
-      note: "Friday reads the open tasks assigned to you, in every workspace you're in: your My tasks. They come in as Work tasks.",
+      note: "Your open tasks assigned to you, from every workspace, come in as Work tasks.",
     },
   },
   {
@@ -300,7 +300,7 @@ export const CATALOG: Entry[] = [
         "Under Personal API keys press New API key, name it Friday, and give it read and write access if Linear asks.",
         "Copy the key, paste it here and press Connect.",
       ],
-      note: "Friday reads the open issues assigned to you, as Work tasks. Finishing one in Friday moves it to your team's Done state.",
+      note: "Your open issues come in as Work tasks; finishing one moves it to your team's Done state.",
     },
   },
   {
@@ -323,7 +323,7 @@ export const CATALOG: Entry[] = [
         { key: "site", label: "Your Jira site", placeholder: "yourteam.atlassian.net" },
         { key: "email", label: "The email you sign in to Jira with", placeholder: "you@company.com", type: "email" },
       ],
-      note: "Jira Cloud only. Friday reads the open issues assigned to you, as Work tasks; finishing one in Friday moves it to Done through your project's own workflow.",
+      note: "Jira Cloud only. Your open issues come in as Work tasks; finishing one moves it to Done.",
     },
   },
   {
@@ -343,7 +343,7 @@ export const CATALOG: Entry[] = [
         "Under Permissions add Issues and Pull requests, both Read-only.",
         "Press Generate token, copy it, paste it here and press Connect.",
       ],
-      note: "Friday only reads GitHub: close an issue there (or merge the pull request that closes it) and it's done here. Reviews asked of you come in as “Review: …”. An organization may need to approve the token before its repositories show.",
+      note: "Friday only reads GitHub: closing an issue there marks it done here. An organization may need to approve the token before its repositories show.",
     },
   },
   {
@@ -393,7 +393,7 @@ export const CATALOG: Entry[] = [
           "Press Allow (if Google lists what it may do, tick Select all first, then Continue).",
         ],
       },
-      note: "Who has access: Anyone means the link answers without a Google sign-in, so Friday can reach it; it does nothing without the key in the script, which only this Friday has. Changed the script later? Deploy → Manage deployments → ✎ → Version: New version → Deploy.",
+      note: "Anyone can reach the link, but it does nothing without your Friday’s key. Changed the script later? Deploy → Manage deployments → ✎ → Version: New version → Deploy.",
     },
   },
   {
@@ -447,7 +447,7 @@ export const CATALOG: Entry[] = [
         "Copy the token (Canvas shows it only once), paste it here with your school's Canvas address, and press Connect.",
       ],
       fields: [{ key: "site", label: "Your school's Canvas address", placeholder: "canvas.yourschool.edu" }],
-      note: "If there's no New Access Token button, your school has turned tokens off: use your Canvas calendar feed under Calendar links instead. Once connected, Canvas's assignments come from here, and your Canvas calendar feed keeps bringing only its events. Finishing one in Friday ticks it in Canvas's To Do, which only you see; nothing is submitted.",
+      note: "No New Access Token button? Your school has turned tokens off; use your Canvas calendar feed under Calendar links instead. Finishing one in Friday ticks it in Canvas’s To Do; nothing is submitted.",
     },
   },
   {
@@ -500,7 +500,7 @@ export const CATALOG: Entry[] = [
         "Choose your workspace and press Allow: Friday asks only to search for what mentions you.",
         "Come back to Friday: messages from the last two weeks that mention you wait in your Inbox, each one yours to keep as a to-do or not.",
       ],
-      note: "Friday can't post, react or read anything else. Slack sends you back to Friday through friday-scheduler.com, which hands the sign-in straight to Friday on your Mac. Slack has retired reminders for apps, so your /remind reminders can't come in.",
+      note: "Friday can't post, react or read anything else. Sign-in returns to Friday through friday-scheduler.com. Slack has retired reminders for apps, so /remind reminders can't come in.",
     },
   },
   {
