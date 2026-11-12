@@ -7,14 +7,17 @@ import itertools
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from dateutil.rrule import rrulestr
 from googleapiclient.errors import HttpError
 
-EASTERN = timezone(timedelta(hours=-4))
+# The calendars' timezone, not a fixed offset: a fixed -04:00 put every time after the clocks went back an hour
+# early, and a weekly repeat made in October came back at 2pm instead of 3pm in November.
+EASTERN = ZoneInfo("America/New_York")
 
 
 class Call:
@@ -183,7 +186,7 @@ def until_of(rule: str) -> datetime:
 
 def repeated(master: dict[str, Any], rule: str, times: int = 12) -> list[dict[str, Any]]:
     """A repeating event's first `times` times, each with an id of its own and its event's as `recurringEventId`."""
-    start, end = instant(master["start"]), instant(master["end"])
+    start, end = (instant(master[k]).astimezone(EASTERN) for k in ("start", "end"))  # repeated by the clock
     out = []
     for at in itertools.islice(rrulestr(rule, dtstart=start), times):
         stamp = at.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -219,8 +222,8 @@ def event(eid: str, summary: str, start: str, end: str, **extra: Any) -> dict[st
     return {
         "id": eid,
         "summary": summary,
-        "start": {"dateTime": f"{start}:00-04:00"},
-        "end": {"dateTime": f"{end}:00-04:00"},
+        "start": {"dateTime": datetime.fromisoformat(start).replace(tzinfo=EASTERN).isoformat()},
+        "end": {"dateTime": datetime.fromisoformat(end).replace(tzinfo=EASTERN).isoformat()},
     } | extra
 
 

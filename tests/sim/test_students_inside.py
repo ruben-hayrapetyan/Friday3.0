@@ -12,7 +12,7 @@ import pytest
 
 from friday.core.time import parse_local, to_utc
 from friday.sim.cornell import ZONE, Meeting, Routine, Student, Work, term
-from friday.sim.fakes import ScriptedClient, until_of
+from friday.sim.fakes import ScriptedClient, event, repeated, until_of
 from friday.sim.first_evening import add_routines, import_repeats
 from friday.sim.history import hand_in_or_drop, typed_early, work_the_plan
 from friday.sim.judge import judge
@@ -71,6 +71,17 @@ def test_only_canvas_and_homework_work_is_on_a_calendar() -> None:
 def test_an_until_with_a_time_is_that_moment_and_a_dates_is_the_end_of_that_day() -> None:
     assert until_of("FREQ=WEEKLY;UNTIL=20261022T035900Z") == datetime(2026, 10, 22, 3, 59, tzinfo=UTC)
     assert until_of("FREQ=DAILY;UNTIL=20261030;BYDAY=MO") == datetime(2026, 10, 31, tzinfo=UTC)
+
+
+def test_an_event_at_new_york_times_keeps_its_clock_time_after_the_clocks_go_back() -> None:
+    assert event("a", "Lecture", "2026-10-20T10:00", "2026-10-20T11:00")["start"]["dateTime"].endswith("-04:00")
+    after = event("b", "Lecture", "2026-11-10T10:00", "2026-11-10T11:00")
+    assert datetime.fromisoformat(after["start"]["dateTime"]) == datetime(2026, 11, 10, 15, 0, tzinfo=UTC)
+
+
+def test_a_weekly_repeat_stays_at_its_clock_time_across_the_change() -> None:
+    times = repeated(event("w", "Office hours", "2026-10-27T15:00", "2026-10-27T16:00"), "FREQ=WEEKLY", times=2)
+    assert [t["start"]["dateTime"] for t in times] == ["2026-10-27T15:00:00-04:00", "2026-11-03T15:00:00-05:00"]
 
 
 def strict(properties: dict[str, Any]) -> dict[str, Any]:
