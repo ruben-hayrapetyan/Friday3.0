@@ -1,0 +1,9 @@
+{
+  "name": "deepmerge",
+  "version": "4.3.1-friday.1",
+  "description": "deepmerge 4.3.1 with Friday's patch for GHSA-gcqx-w48m-w2h4 (no fixed release exists): keys that reach a prototype are never written",
+  "main": "dist/cjs.js",
+  "types": "index.d.ts",
+  "license": "MIT",
+  "private": true
+}
