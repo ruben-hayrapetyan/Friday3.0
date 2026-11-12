@@ -164,7 +164,7 @@ describe("a service that publishes a calendar link (Blackboard)", () => {
     const { user, dialog } = await openBox("Blackboard")
     expect(within(dialog).getByText(/In Blackboard, open Calendar from the menu on the left/)).toBeTruthy()
     expect(within(dialog).getByRole("link", { name: "Blackboard's own help on this" }).getAttribute("href")).toContain("anthology.com")
-    expect(within(dialog).getByText(/Its due dates come to your Inbox/)).toBeTruthy()
+    expect(within(dialog).getByText(/Its due dates, assignments and exams come to your Inbox/)).toBeTruthy()
     const box = within(dialog).getByLabelText("Blackboard's calendar link")
     const add = within(dialog).getByRole("button", { name: "Add" })
     await user.type(box, "blackboard calendar")
@@ -318,7 +318,7 @@ describe("the AI", () => {
     expect((await waitForSent("settings_set")).body).toEqual({ key: "claude", value: { events_without_asking: true } })
     await screen.findByText("Saved")
     await client.invalidateQueries()
-    expect(await within(dialog).findByText(/applies as soon as Claude answers, with Undo/)).toBeTruthy()
+    expect(await within(dialog).findByText(/Event changes apply as soon as Claude answers, with Undo/)).toBeTruthy()
   })
 })
 

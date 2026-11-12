@@ -27,7 +27,7 @@ const REFRESH: Record<string, string[]> = {
 // had the page read some 35 things at once, and the next click waited behind them).
 const WORK = ["items", "item", "status", "now", "calendar", "review", "week_review", "projects", "exams", "inbox", "to_review", "duplicates", "questions", "asks_later", "insights", "load", "triage", "brief", "why", "why_not", "rule_totals", "series_list", "log_list", "events", "changes"]
 const BY_COMMAND: Record<string, string[]> = Object.fromEntries([
-  ...["suggestion_accept", "suggestion_reject", "suggestion_restore", "batch_accept", "add", "edit", "done", "reopen", "drop", "start", "stop", "pin", "unpin", "skip", "settle", "depend", "undepend", "event_hold", "event_keep", "reorder", "progress", "log", "stuck", "sitting_edit", "sitting_delete", "review_task"].map((c) => [c, WORK]),
+  ...["suggestion_accept", "suggestion_reject", "suggestion_restore", "batch_accept", "add", "edit", "done", "reopen", "drop", "start", "stop", "pin", "unpin", "skip", "settle", "depend", "undepend", "event_hold", "event_keep", "event_choice", "reorder", "progress", "log", "stuck", "sitting_edit", "sitting_delete", "review_task"].map((c) => [c, WORK]),
   ...["meal_start", "meal_end", "meal_skip", "meal_log", "meal_edit", "meal_remove"].map((c) => [c, [...WORK, "meals"]]),
   ...["sleep_mark", "sleep_mark_edit", "sleep_mark_remove", "nap_start", "nap_end"].map((c) => [c, [...WORK, "sleep"]]),
 ])

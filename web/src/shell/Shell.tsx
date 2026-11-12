@@ -38,6 +38,7 @@ import { TodoPage } from "@/todo/TodoPage"
 import { nextHour, placeAfter, useHost } from "./host"
 import { SIDEBAR } from "./layout"
 import { useShell } from "./ShellContext"
+import { HelpOverlay } from "./HelpOverlay"
 import { FirstTour, Tour } from "./Tour"
 import { UpdateDialogs } from "@/updates/UpdateDialogs"
 import { Icon } from "@/components/fr/controls"
@@ -47,7 +48,7 @@ import { closes, type Opener, wasInFront } from "./toggles"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 
 export function Shell() {
-  const { today, pop, setPop, dialog, setDialog, drawer, event, layout, drawerOver, drawerWidth, navOpen, setNavOpen, tour, setupStep } = useShell()
+  const { today, pop, setPop, dialog, setDialog, drawer, event, layout, drawerOver, drawerWidth, navOpen, setNavOpen, tour, help, setupStep } = useShell()
   const client = useQueryClient()
   const toast = useToast()
   const shove = async (range: string) => {
@@ -153,6 +154,7 @@ export function Shell() {
       {dialog === "setup" && <SetupDialog only={setupDone === false ? null : setupStep} onClose={() => setDialog(null)} />}
       <UpdateDialogs />
       {tour && dialog !== "setup" && <Tour />}
+      {help && !tour && <HelpOverlay />}
       <FirstTour ready={setupDone === true && dialog === null && briefDecided === today} toured={toured} />
     </DragProvider>
   )

@@ -53,7 +53,7 @@ export function MailIntegration({ entry }: { entry: Entry }) {
           {entry.name}'s own help on this
         </a>
       )}
-      <span className="fr-kicker">Friday only reads: nothing is sent, moved, deleted or marked read. Mail that looks like a deadline or an event comes to your Inbox; the rest is skipped by the same senders and words the Gmail box lists, which apply to every mailbox.</span>
+      <span className="fr-kicker">Friday only reads: nothing is sent, moved, deleted or marked read. Deadlines and events go to your Inbox, filtered by the senders and words in the Gmail box.</span>
       {other && <input {...field} aria-label="IMAP server" placeholder="IMAP server, like imap.example.com" value={host} onChange={(e) => setHost(e.target.value)} />}
       <input {...field} aria-label="Address" type="email" placeholder="Your address" value={address} onChange={(e) => setAddress(e.target.value)} />
       <div style={{ display: "flex", gap: 8 }}>
@@ -62,7 +62,7 @@ export function MailIntegration({ entry }: { entry: Entry }) {
           Connect
         </button>
       </div>
-      <span className="fr-kicker">The password stays on this Mac, in Friday's private settings file. Friday signs in once to check it before keeping it.</span>
+      <span className="fr-kicker">Your password stays on this Mac. Friday signs in once to check it.</span>
     </div>
   )
 }

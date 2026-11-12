@@ -28,7 +28,7 @@ const PAGES = [
 export function Sidebar({ rail = false, onClose }: { rail?: boolean; onClose?: () => void }) {
   const navigate = useNavigate()
   const { drag } = useDragging()
-  const { setTour } = useShell()
+  const { setHelp } = useShell()
   const dropping = !!drag?.moved && drag.kind !== "row" && drag.itemId !== null
   if (rail) return <Rail />
   return (
@@ -49,7 +49,7 @@ export function Sidebar({ rail = false, onClose }: { rail?: boolean; onClose?: (
       <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "0 6px" }}>
         <Mark />
         <span style={{ flex: 1 }} />
-        <button className="btn btn-icon btn-ghost" data-tour="help" onClick={() => setTour(true)} aria-label="Take the tour" title="Take the tour" style={{ width: 28, height: 28 }}>
+        <button className="btn btn-icon btn-ghost" data-tour="help" onClick={() => setHelp(true)} aria-label="What's on this page" title="What's on this page" style={{ width: 28, height: 28 }}>
           <Icon name="question" size={16} />
         </button>
         <button className="btn btn-icon btn-ghost" data-tour="settings" onClick={() => navigate("/settings")} aria-label="Settings" title="Settings" style={{ width: 28, height: 28 }}>
@@ -122,7 +122,7 @@ function Ring() {
 /** A section of the sidebar that opens and closes, remembered on this device. */
 function Rail() {
   const navigate = useNavigate()
-  const { setTour } = useShell()
+  const { setHelp } = useShell()
   const waiting = useInboxCount()
   return (
     <aside data-tour="nav" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "18px 0 16px", minHeight: 0, overflowY: "auto", background: "color-mix(in srgb, var(--color-bg) 70%, transparent)" }}>
@@ -134,6 +134,7 @@ function Rail() {
           key={p.to}
           to={p.to}
           end={p.to === "/"}
+          data-tour={`nav-${p.to === "/" ? "plan" : p.to.slice(1)}`}
           title={p.label}
           aria-label={p.label}
           className="fr-hover"
@@ -154,7 +155,7 @@ function Rail() {
         </NavLink>
       ))}
       <span style={{ flex: 1 }} />
-      <button className="btn btn-icon btn-ghost" data-tour="help" onClick={() => setTour(true)} aria-label="Take the tour" title="Take the tour" style={{ width: 36, height: 36 }}>
+      <button className="btn btn-icon btn-ghost" data-tour="help" onClick={() => setHelp(true)} aria-label="What's on this page" title="What's on this page" style={{ width: 36, height: 36 }}>
         <Icon name="question" size={18} />
       </button>
       <button className="btn btn-icon btn-ghost" data-tour="settings" onClick={() => navigate("/settings")} aria-label="Settings" title="Settings" style={{ width: 36, height: 36 }}>
@@ -182,6 +183,7 @@ function Pages() {
           key={p.to}
           to={p.to}
           end={p.to === "/"}
+          data-tour={`nav-${p.to === "/" ? "plan" : p.to.slice(1)}`}
           style={({ isActive }) => ({
             display: "flex",
             gap: 10,

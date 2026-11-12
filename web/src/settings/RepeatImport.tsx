@@ -55,7 +55,7 @@ export function RepeatImport() {
           <span style={{ fontWeight: 500 }}>
             {found.length} repeating {found.length === 1 ? "event" : "events"} in your Google calendars
           </span>
-          <span style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>Each series comes in as one repeat, not as separate events. Pick a tag and whether it’s fixed.</span>
+          <span style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>Each series comes in as one repeat. Pick its tag and kind.</span>
         </span>
       </div>
       {found.map((f) => (

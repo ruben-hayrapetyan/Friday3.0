@@ -65,7 +65,7 @@ describe("a token form (Todoist)", () => {
     expect(within(dialog).getByRole("link", { name: "Open Todoist's token page" }).getAttribute("href")).toBe("https://app.todoist.com/app/settings/integrations/developer")
     expect(within(dialog).getByLabelText("Todoist API token").getAttribute("type")).toBe("password")
     expect((within(dialog).getByRole("button", { name: "Connect" }) as HTMLButtonElement).disabled).toBe(true)
-    expect(within(dialog).getByText(/Friday checks it with Todoist before keeping it/)).toBeTruthy()
+    expect(within(dialog).getByText(/Friday checks it with Todoist first/)).toBeTruthy()
   })
 
   it("says a refused token in Todoist's words and keeps it in the box to correct", async () => {
@@ -170,7 +170,7 @@ describe("token forms that ask for more (Jira, Canvas)", () => {
   it("Canvas links its own help, and says when the school's address isn't one", async () => {
     const { user, dialog } = await openBox("Canvas")
     expect(within(dialog).getByRole("link", { name: "Canvas's own help on this" }).getAttribute("href")).toContain("community.canvaslms.com")
-    expect(within(dialog).getByText(/If there's no New Access Token button/)).toBeTruthy()
+    expect(within(dialog).getByText(/No New Access Token button\? Your school has turned tokens off/)).toBeTruthy()
     await user.type(within(dialog).getByLabelText("Your school's Canvas address"), "my school")
     await user.type(within(dialog).getByLabelText("Canvas access token"), "canvas-token{Enter}")
     expect((await waitForSent("integration_connect")).body).toEqual({ kind: "canvas", token: "canvas-token", fields: { site: "my school" } })
@@ -225,7 +225,7 @@ describe("a sign-in box", () => {
     opened.length = 0
     const { user, dialog } = await openBox("Microsoft To Do")
     expect(within(dialog).getByText(/Some schools and workplaces let only an administrator approve new apps/)).toBeTruthy()
-    expect(within(dialog).getByText(/nothing is pasted/)).toBeTruthy()
+    expect(within(dialog).getByText(/Your sign-in stays on this Mac/)).toBeTruthy()
     const sign = await within(dialog).findByRole("button", { name: "Sign in with Microsoft" })
     await waitFor(() => expect((sign as HTMLButtonElement).disabled).toBe(false))
     await user.click(sign)
@@ -272,13 +272,13 @@ describe("one the Mac app reads (Apple Reminders)", () => {
     const { dialog } = await openBox("Apple Reminders")
     expect(within(dialog).getByText(/macOS asks once whether Friday may see your reminders/)).toBeTruthy()
     expect((within(dialog).getByRole("button", { name: "Connect" }) as HTMLButtonElement).disabled).toBe(true)
-    expect(within(dialog).getByText("Apple Reminders is read by Friday's Mac app: open Friday on your Mac to connect it.")).toBeTruthy()
+    expect(within(dialog).getByText("Open Friday on your Mac to connect Apple Reminders.")).toBeTruthy()
   })
 
   it("in the Mac app, connects with no token, and points to macOS's privacy page when it's needed", async () => {
     const agent = vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 FridayMac/1.0")
     const { user, dialog, unmount } = await openBox("Apple Reminders")
-    expect(within(dialog).getByText(/stays on this Mac: Friday's Mac app reads it while it's open/)).toBeTruthy()
+    expect(within(dialog).getByText(/Friday's Mac app reads .+ while it's open; nothing leaves this Mac/)).toBeTruthy()
     await user.click(within(dialog).getByRole("button", { name: "Connect" }))
     expect((await waitForSent("integration_connect")).body).toEqual({ kind: "reminders", token: "" })
     expect(await within(dialog).findByText("Connected: reading it within the minute.")).toBeTruthy()

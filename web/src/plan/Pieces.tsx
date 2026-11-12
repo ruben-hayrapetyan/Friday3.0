@@ -389,6 +389,7 @@ export const LEFT_OUT: Record<string, string> = {
   free: "marked free",
   filtered: "the filter's office hours",
   skipped: "you're not going",
+  through: "you're working through it",
 }
 
 export function GhostBox({ p }: { p: Placed<Block> }) {

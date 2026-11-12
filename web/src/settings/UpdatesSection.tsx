@@ -23,7 +23,7 @@ export function UpdatesSection() {
   return (
     <>
       <SectionHead title="Updates" note="Friday looks for a new version when it opens and once a month, and asks before updating." />
-      <Field name="Version" note={status?.checks ? undefined : "This copy doesn't look for updates: Friday Test, and Friday run from its code, never do."}>
+      <Field name="Version" note={status?.checks ? undefined : "This copy doesn't check for updates; Friday Test and copies run from code never do."}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           {status?.checks && (
             <button className="btn btn-secondary" onClick={() => act("update_check")} disabled={busy}>
@@ -45,7 +45,7 @@ export function UpdatesSection() {
         </div>
         {status?.message && <span style={{ color: "var(--fr-warn)" }}>{status.message}</span>}
       </Field>
-      <Field name="After updating" note="When a downloaded update goes in: Friday restarts into it, or swaps it in as you quit and opens it next time.">
+      <Field name="After updating" note="Restart into a downloaded update right away, or install it when you quit.">
         <Seg options={RESTART} value={updates?.restart ?? "now"} onPick={(restart) => save({ key: "updates", value: { restart } })} label="When an update goes in" />
       </Field>
     </>

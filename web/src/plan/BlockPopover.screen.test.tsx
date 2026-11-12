@@ -254,7 +254,7 @@ describe("an event's card", () => {
     const event = await lecture("ENGL 1170 Seminar")
     const { user } = await openCard(ofEvent(event))
     await user.click(await inCard().findByRole("radio", { name: /^Work through it/ }, { timeout: 5000 }))
-    expect((await waitForSent("edit")).body).toEqual({ id: event.id, blocks_time: false })
+    expect((await waitForSent("event_choice")).body).toEqual({ id: event.id, choice: "through" })
     expect(inCard().getByRole("radio", { name: /^Work through it/ }).getAttribute("aria-checked")).toBe("true")
     expect(inCard().getByText("Any work Friday picks.")).toBeTruthy()
     await user.click(inCard().getByRole("button", { name: "Pick a to-do" }))
@@ -263,7 +263,7 @@ describe("an event's card", () => {
     expect(inCard().getByText("No task by that name.")).toBeTruthy()
     await user.clear(find)
     await user.type(find, "CHEM")
-    // the event comes back skipped meanwhile and the card redraws: the pick is made on the list as it is then
+    // the event comes back worked through meanwhile and the card redraws: the pick is made on the list as it is then
     await waitFor(
       async () => {
         const task = inCard().queryAllByRole("button").find((b) => /^CHEM 2090 lab report/.test(b.textContent ?? ""))
@@ -278,13 +278,26 @@ describe("an event's card", () => {
     await user.click(inCard().getByRole("button", { name: "Cancel" }))
     await user.click(inCard().getByRole("button", { name: "Any work" }))
     expect((await waitForSent("event_hold")).body).toEqual({ id: event.id })
-    // skipped now: going again puts its time back
+    // worked through still: going again puts its time back
     await settled()
     await openCard(ofEvent(event))
     await waitFor(() => expect(inCard().getByRole("radio", { name: /^Work through it/ }).getAttribute("aria-checked")).toBe("true"))
     await user.click(inCard().getByRole("radio", { name: /^I'm going/ }))
-    expect((await waitForSent("edit")).body).toEqual({ id: event.id, blocks_time: true })
+    expect((await waitForSent("event_choice")).body).toEqual({ id: event.id, choice: "going" })
     expect(card()).toBeNull()
+  })
+
+  it("is skipped: not going, crossed out, its time free; not the same as working through it", async () => {
+    const event = await lecture("ENGL 1170 Seminar", 1)
+    const { user } = await openCard(ofEvent(event))
+    await user.click(await inCard().findByRole("radio", { name: /^Skip it/ }, { timeout: 5000 }))
+    expect((await waitForSent("event_choice")).body).toEqual({ id: event.id, choice: "skip" })
+    expect(card()).toBeNull()
+    await waitFor(async () => expect(((await friday.q("item", { id: String(event.id) })) as { item: Item }).item.left_out).toBe("skipped"))
+    await settled()
+    await openCard(ofEvent(event))
+    await waitFor(() => expect(inCard().getByRole("radio", { name: /^Skip it/ }).getAttribute("aria-checked")).toBe("true"))
+    expect(inCard().getByRole("radio", { name: /^Work through it/ }).getAttribute("aria-checked")).toBe("false")
   })
 
   it("asks whether an event's time is for the task its name suggests", async () => {

@@ -89,7 +89,7 @@ class ItemOut(Model):
     category_like: str | None = None  # the event it's like, when its clues decided
     category_hint: str | None = None  # the clues' unsure guess, offered on the card and not painted
     chroma_color: str | None = None  # the pigment Chroma showed it in, before your own or its category's
-    left_out: str | None = None  # why it doesn't count as busy: calendar, reminder, free, filtered or skipped
+    left_out: str | None = None  # why it doesn't count as busy: calendar, reminder, free, filtered, skipped or through
     filtered: bool = False  # the categories' filter hides it (office hours), when you hide what it hides
     # An optional event (gym, climbing club) the plan gives to work, with the work that takes it: you're skipping it,
     # and the calendar says so rather than draw the work over it (plan query). `going`: you said you'd go this time.

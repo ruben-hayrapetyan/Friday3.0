@@ -90,12 +90,12 @@ describe("Phone", () => {
     expect((await waitForSent("phone_set")).body).toEqual({ on: true })
     await screen.findByText("Friday answers on your tailnet")
     await client.invalidateQueries({ queryKey: ["phone_status"] })
-    expect(await screen.findByText("On: Friday answers on your tailnet at mac.tail0000.ts.net. Your Mac must be awake for the phone to reach it.")).toBeTruthy()
+    expect(await screen.findByText("On at mac.tail0000.ts.net. Your Mac must be awake for your phone to reach it.")).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Pair a phone" }))
     await waitForSent("phone_pair")
     const code = await screen.findByRole("img", { name: "Pairing code to scan" })
     expect(code.innerHTML).toContain('<svg width="180" height="180" viewBox="0 0 10 10">')
-    expect(screen.getByText(/Good once, for 10 minutes/)).toBeTruthy()
+    expect(screen.getByText(/Works once, for 10 minutes/)).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Hide the code" }))
     expect(screen.queryByRole("img", { name: "Pairing code to scan" })).toBeNull()
     expect(screen.getByRole("button", { name: "Pair a phone" })).toBeTruthy()
@@ -104,7 +104,7 @@ describe("Phone", () => {
   it("says when this Mac isn't on Tailscale", async () => {
     undo.push(answer("phone_status", () => ({ json: { on: true, address: null, name: null, phones: [] } })))
     await openFriday("/settings/phone")
-    expect(await screen.findByText(/^This Mac isn't on Tailscale right now: open Tailscale and sign in/)).toBeTruthy()
+    expect(await screen.findByText(/^This Mac isn't on Tailscale. Open Tailscale and sign in/)).toBeTruthy()
     expect(screen.queryByRole("button", { name: "Pair a phone" })).toBeNull()
   })
 
@@ -129,7 +129,7 @@ describe("Updates", () => {
   it("says this copy doesn't look for updates, and when an update goes in", async () => {
     const { user } = await openFriday("/settings/updates")
     expect(await screen.findByText("This Friday doesn't look for updates")).toBeTruthy()
-    expect(screen.getByText(/This copy doesn't look for updates: Friday Test, and Friday run from its code, never do/)).toBeTruthy()
+    expect(screen.getByText(/This copy doesn't check for updates; Friday Test and copies run from code never do/)).toBeTruthy()
     expect(screen.getByText("You have a build from here")).toBeTruthy()
     expect(screen.queryByRole("button", { name: "Check now" })).toBeNull()
     const restart = screen.getByRole("group", { name: "When an update goes in" })

@@ -215,8 +215,8 @@ describe("the Mac app's menus", () => {
     expect(await screen.findByText(/Everything fits|won’t make it|Working out what could give/)).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Cancel" }))
     await host("tour")
-    expect(await screen.findByRole("region", { name: "Quests: getting to know Friday" })).toBeTruthy()
-    await user.click(screen.getByRole("button", { name: "Close the quests" }))
+    expect(await screen.findByRole("dialog", { name: /^Tour of Friday/ })).toBeTruthy()
+    await user.click(screen.getByRole("button", { name: "End the tour" }))
     await host("setup")
     expect(await screen.findByRole("heading", { name: "Fit Friday to your week again." }, { timeout: 5000 })).toBeTruthy()
     await host("go", "/todo") // setup first: nothing else takes its place
@@ -272,7 +272,7 @@ describe("a narrower window", () => {
   const page = () => (window as unknown as { happyDOM: { setViewport(v: { width: number; height: number }): void } }).happyDOM
   const resize = (width: number) => act(() => (page().setViewport({ width, height: 900 }), void window.dispatchEvent(new Event("resize"))))
 
-  it("shows the sidebar as a rail of the pages' icons, with the tour and Settings", async () => {
+  it("shows the sidebar as a rail of the pages' icons, with the page's help and Settings", async () => {
     await resize(1000)
     try {
       const { user } = await openFriday("/")
@@ -281,9 +281,9 @@ describe("a narrower window", () => {
       expect(rail.queryByText("Demo")).toBeNull() // no room for words
       await user.click(rail.getByRole("link", { name: "Rules" }))
       await waitFor(() => expect(route()).toBe("/rules"))
-      await user.click(rail.getByRole("button", { name: "Take the tour" }))
-      expect(await screen.findByRole("region", { name: "Quests: getting to know Friday" })).toBeTruthy()
-      await user.click(screen.getByRole("button", { name: "Close the quests" }))
+      await user.click(rail.getByRole("button", { name: "What's on this page" }))
+      expect(await screen.findByRole("dialog", { name: "What's on this page" })).toBeTruthy()
+      await user.keyboard("{Escape}")
       await user.click(rail.getByRole("button", { name: "Settings" }))
       await waitFor(() => expect(route()).toMatch(/^\/settings/))
     } finally {

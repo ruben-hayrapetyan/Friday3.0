@@ -32,8 +32,8 @@ export function Tracking({ what }: { what: "sleep" | "meals" }) {
   const name = what === "sleep" ? "Track my sleep" : "Track my meals"
   const note =
     what === "sleep"
-      ? "Optional. Tap “Done with work”, “Going to bed” and “I’m up” in the Now bar (or log a night in Insights → Sleep); Friday learns your real bedtime, wake time, morning routine and wind-down before bed. Off, nothing is recorded or learned."
-      : "Optional. Tap “Eating now” and “Done eating” in the Now bar (or log a meal in Insights → Meals); Friday learns when you eat, for how long and what you skip, and keeps your meal free while you eat. Off, nothing is recorded or learned."
+      ? "Tap “Done with work”, “Going to bed” and “I’m up” in the Now bar, and Friday learns your real bedtime, wake time and routines. Off, nothing is recorded."
+      : "Tap “Eating now” and “Done eating” in the Now bar, and Friday learns when and how long you eat. Off, nothing is recorded."
   return (
     <Field name={name} note={note}>
       <span style={{ display: "flex", alignItems: "center", gap: 10 }}>

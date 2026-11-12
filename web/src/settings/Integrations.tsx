@@ -30,13 +30,13 @@ import { OutlookMail, TokenIntegration, useIntegrations } from "./TokenIntegrati
 export function Integrations() {
   return (
     <>
-      <SectionHead title="Integrations" note="Bring in your calendars, to-dos, deadlines and mail. Search, or open any box to connect it." />
+      <SectionHead title="Integrations" note="Bring in your calendars, to-dos, deadlines and mail. Open a box to connect it." />
       <Gallery />
       <div className="fr-well" style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 12, padding: "14px 18px", borderRadius: "var(--radius-lg)", boxShadow: "none" }}>
         <Icon name="download-simple" size={18} />
         <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
           <span style={{ fontWeight: 500 }}>Back up</span>
-          <span className="fr-kicker">Download your tasks, tags, rules and history as one file (the whole database; copy it into the data folder to restore).</span>
+          <span className="fr-kicker">Your tasks, tags, rules and history in one file. To restore, copy it into Friday’s data folder.</span>
         </span>
         <a className="btn btn-secondary" href="/api/backup" download style={{ fontSize: 12, color: "var(--color-text)" }}>
           Download
@@ -222,7 +222,7 @@ function PanelBody({ entry, onOpen }: { entry: Entry; onOpen: (id: string) => vo
       return <AskClaude />
     case "syllabus":
       return (
-        <Card icon="file-pdf" title="Syllabus upload" note="One syllabus (a PDF, or a page saved from Canvas or a course site) becomes class times, readings, assignments and exam prep, reviewed together in your Inbox." right={<Upload />}>
+        <Card icon="file-pdf" title="Syllabus upload" note="Turns a syllabus PDF or saved course page into classes, readings and assignments in your Inbox." right={<Upload />}>
           <Documents />
         </Card>
       )
@@ -266,7 +266,7 @@ function MacPlan() {
         <Switch on={on} onToggle={() => save({ key: "mac_plan", value: !on })} label="Show my plan in Calendar" />
       </div>
       <span className="fr-kicker">
-        Friday's Mac app keeps a calendar named Friday in your iCloud account, holding your plan from now to as far as Friday plans. Your iPhone's Calendar shows it once iCloud Calendars is on there. Friday changes it whenever the plan changes; switched off, the calendar goes. Friday never reads it back, so your plan doesn't count as busy time.
+        Keeps a “Friday” calendar in iCloud matching your plan, so your iPhone shows it too. Switching this off removes that calendar.
       </span>
       {!inMacApp() && <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>This needs Friday's Mac app open, with Calendars on this Mac allowed.</span>}
     </div>
@@ -282,14 +282,14 @@ function MacCalendars() {
   const reading = mac.filter((c) => c.on)
   if (!onMac)
     return (
-      <Card icon="calendar-dots" title="Your calendars" note="In Friday's Mac app, Friday reads every calendar on your Mac: iCloud, Google, Outlook, your school's, with nothing to connect. In a browser, paste a calendar's private link under Course feeds below.">
+      <Card icon="calendar-dots" title="Your calendars" note="The Mac app reads every calendar on your Mac, with nothing to connect. In a browser, paste a calendar’s private link under Course feeds.">
         <a className="fr-link" href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>
           Find your Google calendar's private link (“Secret address in iCal format”)
         </a>
       </Card>
     )
   return (
-    <Card icon="calendar-dots" title="Calendars on this Mac" status={reading.length ? [`Reading ${reading.length}`, "var(--color-accent-300)"] : ["None yet", "var(--fr-warn)"]} note="Friday reads every calendar the Mac's Calendar app has. To bring in Google, iCloud or Outlook, add that account to the Mac: no sign-in in Friday.">
+    <Card icon="calendar-dots" title="Calendars on this Mac" status={reading.length ? [`Reading ${reading.length}`, "var(--color-accent-300)"] : ["None yet", "var(--fr-warn)"]} note="Friday reads every calendar in your Mac’s Calendar app. Add Google, iCloud or Outlook to the Mac to bring them in.">
       {mac.length > 0 && <Accounts calendars={mac} />}
       <span style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 12 }}>
         <a className="fr-link" href={ACCOUNTS}>
@@ -300,11 +300,11 @@ function MacCalendars() {
         </button>
       </span>
       <span className="fr-kicker" style={{ textWrap: "pretty" }}>
-        In System Settings choose Google (or another), sign in, and keep Calendars on: its calendars appear here within a few seconds.
+        In System Settings, choose the account, sign in and keep Calendars on; its calendars appear here in seconds.
         {mac.length === 0 && (
           <>
             {" "}
-            Nothing here? Friday needs your permission to see them:{" "}
+            Nothing here? Allow Friday in{" "}
             <a className="fr-link" href={PRIVACY}>
               Privacy & Security → Calendars
             </a>
@@ -398,13 +398,13 @@ function AskClaude() {
   const on = !!claude?.events_without_asking
   const ai = useAi().name
   return (
-    <Card icon="chat-circle-text" title={`Ask ${ai}`} note={`Say what you want in your own words (⌘J); ${spoken(ai)} proposes the changes as Friday's own, each to keep or not.`}>
+    <Card icon="chat-circle-text" title={`Ask ${ai}`} note={`Ask for changes in your own words (⌘J); ${spoken(ai)} suggests each one for you to keep or not.`}>
       <label style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Switch on={on} onToggle={() => save({ key: "claude", value: { ...claude, events_without_asking: !on } })} label="Change calendar events without asking" />
         <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <span>Change calendar events without asking</span>
           <span className="fr-kicker" style={{ textWrap: "pretty" }}>
-            {on ? `Adding, moving, repeating or deleting events applies as soon as ${spoken(ai)} answers, with Undo.` : `Off: ${spoken(ai)} asks before every change.`} Tasks, rules and settings always ask.
+            {on ? `Event changes apply as soon as ${spoken(ai)} answers, with Undo.` : `Off: ${spoken(ai)} asks before every change.`} Tasks, rules and settings always ask.
             {(status?.config_keys ?? []).includes("claude") ? " Set in friday.toml." : ""}
           </span>
         </span>
@@ -431,11 +431,11 @@ function Google() {
   const last = reading.map((c) => c.last_sync).filter(Boolean).sort().at(-1)
   const another = (
     <>
-      For your school's or work's calendar too. Google's page asks which account; if it says access is blocked, add that address as a test user in{" "}
+      For a school or work account too. If Google says access is blocked, add that address as a test user in{" "}
       <a className="fr-link" href={CONSENT} target="_blank" rel="noreferrer">
         Google Cloud
       </a>{" "}
-      first, as you did for your own.
+      first.
     </>
   )
   return (
@@ -480,7 +480,7 @@ function Gmail() {
   const away = allowed.some((a) => offline(a.mail_error))
   const state: [string, string] = !gmail?.enabled ? ["Off", "var(--color-neutral-500)"] : !granted ? ["Needs Google's OK", "var(--fr-warn)"] : expired ? ["Connect again", "var(--fr-warn)"] : trouble ? ["Trouble reading", "var(--fr-due)"] : away ? ["Offline", "var(--fr-warn)"] : ["Reading", "var(--color-accent-300)"]
   return (
-    <Card icon="envelope-simple" title="Gmail through Google's connection" status={state} note="Friday reads new mail and suggests assignments, due dates and events. It never sends or deletes. Only for accounts Google lets in: an app password (above) works for any Gmail.">
+    <Card icon="envelope-simple" title="Gmail through Google's connection" status={state} note="Friday suggests due dates and events from new mail; it never sends or deletes. Works only for accounts Google allows; an app password works for any Gmail.">
       <GmailSwitch />
       {gmail?.enabled && <GmailConnect done="Friday reads its new mail within the minute." />}
       {gmail?.enabled && granted && <MailFilters />}
@@ -506,7 +506,7 @@ function MailFilters() {
             <Command text={gmail.query} />
           </span>
           <span className="fr-kicker" style={{ textWrap: "pretty" }}>
-            The AI reads mail with one of these words, mail from these senders, and mail from a person asking for something by a day. Newsletters and other bulk mail only when the subject has one of the words.
+            The AI reads mail with these words, from these senders, or from a person asking for something by a date. Bulk mail only when its subject has one of the words.
           </span>
           <ListField label="Words" value={gmail.keywords} locked={owned.includes("gmail")} onSave={(keywords) => save({ key: "gmail", value: { ...gmail, keywords } })} />
           <ListField label="Always read mail from" placeholder="e.g. cornell.edu" value={gmail.sender_domains} locked={owned.includes("gmail")} onSave={(sender_domains) => save({ key: "gmail", value: { ...gmail, sender_domains } })} />
@@ -536,7 +536,7 @@ function GmailApp() {
   const trouble = list.some((a) => errorOf(a))
   const state: [string, string] = !list.length ? ["Off", "var(--color-neutral-500)"] : !gmail?.enabled ? ["Paused", "var(--fr-warn)"] : trouble ? ["Trouble reading", "var(--fr-due)"] : ["Reading", "var(--color-accent-300)"]
   return (
-    <Card icon="envelope-simple" title="Gmail" status={state} note="Friday reads new mail and suggests assignments, due dates and events to your Inbox. It never sends, moves or deletes, and nothing is marked read.">
+    <Card icon="envelope-simple" title="Gmail" status={state} note="Friday suggests assignments, due dates and events from new mail. It never sends, moves, deletes or marks anything read.">
       {list.map((a) => (
         <div key={a} style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Icon name="google-logo" size={14} />
@@ -554,7 +554,7 @@ function GmailApp() {
         <a className="fr-link" href={APP_PASSWORDS} target="_blank" rel="noreferrer">
           myaccount.google.com/apppasswords
         </a>{" "}
-        (name it Friday; it needs 2-Step Verification on), then paste its 16 letters here. Your usual password won't work, and the app password can be revoked there any time.
+        (name it Friday; it needs 2-Step Verification), then paste its 16 letters here. Your usual password won't work; you can revoke this one there any time.
       </span>
       <GmailAppForm />
       {!ai.ready && (
@@ -576,7 +576,7 @@ function Ai() {
   const owned = (useStatus().data?.config_keys ?? []) as string[]
   const save = useCommand("settings_set", { label: () => "Saved" })
   return (
-    <Card icon="sparkle" title="AI" status={ai.ready ? ["Ready", "var(--color-accent-300)"] : ["Not set up", "var(--fr-warn)"]} note="Reads syllabi and mail into your Inbox, rules Friday can't read itself, and what you ask it. Choose whose.">
+    <Card icon="sparkle" title="AI" status={ai.ready ? ["Ready", "var(--color-accent-300)"] : ["Not set up", "var(--fr-warn)"]} note="Reads your syllabi, mail and requests into Friday. Choose which AI.">
       {owned.includes("llm") ? <span className="fr-kicker">Set in friday.toml: change it there.</span> : <AiConnect />}
       {llm && llmSettings && (
         <>
@@ -597,7 +597,7 @@ function Ai() {
               {llm.calls} used today, {Math.round(llm.tokens / 1000)}k tokens
             </span>
           </div>
-          <span className="fr-kicker">When the limit is reached, Friday stops reading until tomorrow and tells you.</span>
+          <span className="fr-kicker">At the limit, Friday stops reading until tomorrow and tells you.</span>
         </>
       )}
     </Card>

@@ -65,7 +65,7 @@ describe("the integrations gallery's catalog", () => {
     const canvas = CATALOG.find((e) => e.id === "canvas")!
     expect(canvas.category).toBe("School")
     expect(canvas.token!.fields!.map((f) => f.key)).toEqual(["site"])
-    expect(canvas.token!.note).toContain("calendar feed keeps bringing only its events")
+    expect(canvas.token!.note).toContain("calendar feed under Calendar links")
     expect(names(search(CATALOG, "instructure"))).toEqual(["Canvas"])
   })
   it("has Things as a to-do app on this Mac, saying Someday stays out (C108)", () => {

@@ -62,6 +62,8 @@ interface Shell {
   setNavOpen: (open: boolean) => void
   tour: boolean // the tour of Friday is showing
   setTour: (on: boolean) => void
+  help: boolean // the ?'s labels on the page (HelpOverlay.tsx)
+  setHelp: (on: boolean) => void
   setupStep: string | null // Setup opened at one question, to change that answer alone (8 Nov); null for all of it
   openSetup: (step?: string) => void
 }
@@ -110,6 +112,7 @@ export function ShellProvider({ today, children }: { today: string; children: Re
   const layout = useMemo(() => layoutFor(width), [width])
   const [navOpen, setNavOpen] = useState(false)
   const [tour, setTour] = useState(false)
+  const [help, setHelp] = useState(false)
   const [setupStep, setSetupStep] = useState<string | null>(null)
   const openSetup = useCallback((step?: string) => {
     setSetupStep(step ?? null)
@@ -122,8 +125,8 @@ export function ShellProvider({ today, children }: { today: string; children: Re
   }, [])
   const over = drawerOver(layout, drawerWidth)
   const value = useMemo(
-    () => ({ today, pop, setPop, selected, select, drawer, setDrawer, dialog, setDialog, place, setPlace, agendaDay, setAgendaDay, event, setEvent, drawerWidth, setDrawerWidth, way, setWay, ask, askClaude, layout, drawerOver: over, navOpen, setNavOpen, tour, setTour, setupStep, openSetup }),
-    [today, pop, selected, drawer, dialog, place, agendaDay, event, drawerWidth, setDrawerWidth, way, ask, askClaude, layout, over, navOpen, tour, setupStep, openSetup],
+    () => ({ today, pop, setPop, selected, select, drawer, setDrawer, dialog, setDialog, place, setPlace, agendaDay, setAgendaDay, event, setEvent, drawerWidth, setDrawerWidth, way, setWay, ask, askClaude, layout, drawerOver: over, navOpen, setNavOpen, tour, setTour, help, setHelp, setupStep, openSetup }),
+    [today, pop, selected, drawer, dialog, place, agendaDay, event, drawerWidth, setDrawerWidth, way, ask, askClaude, layout, over, navOpen, tour, help, setupStep, openSetup],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

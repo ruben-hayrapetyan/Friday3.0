@@ -1,17 +1,16 @@
-// Getting to know Friday, by doing it (31 Oct: "right now i really don't love the app tour. its kindof tedious and
-// boring, make it better"): not a slideshow of Next, Next, Next but six small quests done in the app itself, at your
-// own pace, with the guide from setup beside them (dialogs/walk/Guide.ts). Each quest notices when you've done it (a
-// command you ran, a page you opened, a block you clicked) and the guide cheers; "Show me" sends them running to the
-// control it's about. Nothing is dimmed or blocked: the card sits in a corner and tucks away into a pill. All six
-// done, the guide tears Friday off the calendar and dances off to the weekend.
+// The tour of Friday (12 Nov: "instead of the todo list onboarding, there should be a new onboarding that covers how to
+// generally use the app ... the first time i saw a user using the app ... they didn't have any rules, they were making
+// "breakfast" and "lunch" and "dinner" events ... just walk through each of the tabs and explain what it is for. you
+// can still have the little guy follow around but ... this should be a tour not a list of tasks"). It replaces the six
+// quests of 31 Oct. One stop per page: the guide from setup (dialogs/walk/Guide.ts) runs to the page in the sidebar
+// and points at it, and the card says what it's for and one thing worth knowing. Back and Next (or ← →); × or Esc
+// ends it.
 //
-// It opens by itself once, when setup first finishes (`setup.toured`, kept by Friday, not the window: 31 Oct, "make
-// sure that when the initialization screen gets merged into the main, that it doesn't run every time"), then only from
-// the ? beside Settings, search ("Take the tour") or the Mac app's Help menu. Where you are in it is kept on this
-// device; a tucked-away card comes back as its pill until you finish or close it.
+// It opens by itself once, when setup first finishes (`setup.toured`, kept by Friday, not the window: 31 Oct), and
+// again from search ("Take the tour") or the Mac app's Help menu. The ? beside Settings is the page's own help
+// (HelpOverlay.tsx): labels beside its buttons.
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { useLocation, useNavigate } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import { command, type Schemas } from "@/api/client"
 import type { Gesture, Guide } from "@/dialogs/walk/Guide"
@@ -19,93 +18,92 @@ import { STRIP } from "@/dialogs/walk/strip"
 import { useShell } from "./ShellContext"
 import "./guide.css"
 
-export interface Quest {
+export interface Stop {
   id: string
   title: string
-  hint: string
-  page?: string // where "Show me" takes you
-  target?: string // the control it points at (a data-tour name; "block": a planned block on the calendar)
-  gesture: Gesture // what the guide does showing you
-  drawer?: "open" | "closed" // "Show me" opens the to-do list beside the calendar, or closes it to show the calendar
-  done: Partial<Signal> // what counts as done
+  body: string // what the page is for
+  tip?: string // one thing worth knowing there
+  target: string // the data-tour it points at
+  gesture: Gesture
 }
 
-/** What you did that a quest can count: a command that ran, a page you opened, a block you clicked, a dialog. */
-export interface Signal {
-  command: string
-  page: string
-  picked: boolean
-  dialog: string
-}
-
-export const QUESTS: Quest[] = [
-  { id: "add", title: "Add a to-do", hint: "Type it as you’d say it: “essay 3h due Fri”", page: "/", target: "drawer-add", gesture: "write", drawer: "open", done: { command: "add" } },
-  { id: "find", title: "Find where Friday put it", hint: "Click a coloured block: work Friday planned", page: "/", target: "block", gesture: "point", drawer: "closed", done: { picked: true } },
-  { id: "start", title: "Start working on it", hint: "Start, on the block or with Space: Friday learns your pace", page: "/", target: "now", gesture: "timer", drawer: "closed", done: { command: "start" } },
-  { id: "search", title: "Find anything", hint: "⌘K: tasks, events, settings, all in one place", page: "/", target: "search", gesture: "search", done: { dialog: "search" } },
-  { id: "inbox", title: "Look in your Inbox", hint: "What needs you waits there, a message each", page: "/inbox", target: "inbox", gesture: "mail", done: { page: "/inbox" } },
-  { id: "rule", title: "Write a rule", hint: "In your own words: “no work after 10pm”", page: "/rules", target: "rule-new", gesture: "think", done: { command: "rule_add" } },
+export const STOPS: Stop[] = [
+  {
+    id: "plan",
+    title: "Here's your plan",
+    body: "Your classes, events, meals and sleep, with the work Friday fits around them. Click a block to start it, finish it or move it.",
+    tip: "You don't plan the week yourself: tell Friday what's due, and it finds the time, and finds it again when things change.",
+    target: "nav-plan",
+    gesture: "present",
+  },
+  {
+    id: "todo",
+    title: "To-do: what you have to do",
+    body: "Type it the way you'd say it, “essay 3h due fri”, and Friday plans it at once. Lists for the short term, the long term and what's due.",
+    tip: "Work is a to-do, not an event: add it here and Friday gives it a time.",
+    target: "nav-todo",
+    gesture: "point",
+  },
+  {
+    id: "projects",
+    title: "Projects and exams",
+    body: "Big things in parts: a project split into steps, and exam prep planned in the days before each exam.",
+    target: "nav-projects",
+    gesture: "point",
+  },
+  {
+    id: "inbox",
+    title: "Inbox: what needs you",
+    body: "Deadlines and events Friday found in your mail, calendars and apps, and its questions for you. Accept, change or reject each one.",
+    tip: "Friday never sends notifications: anything that needs you waits here, with a count.",
+    target: "nav-inbox",
+    gesture: "mail",
+  },
+  {
+    id: "insights",
+    title: "Insights: how it really went",
+    body: "How long things take you, where your time went, your sleep and meals, and a short look back at each week.",
+    target: "nav-insights",
+    gesture: "point",
+  },
+  {
+    id: "rules",
+    title: "Rules: how you like your days",
+    body: "Say it in your own words, “no work after 10pm” or “readings in the morning”, and Friday plans by it. Notes about you go here too.",
+    tip: "Meals and sleep come from your setup answers: no need to make Breakfast, Lunch or Dinner events.",
+    target: "nav-rules",
+    gesture: "think",
+  },
+  {
+    id: "settings",
+    title: "Settings",
+    body: "Your calendars, mail and other apps (Integrations), how Friday looks, and your setup answers, one at a time.",
+    target: "settings",
+    gesture: "point",
+  },
+  {
+    id: "end",
+    title: "That's Friday",
+    body: "Add what's due, and look in the Inbox now and then. Friday does the rest.",
+    tip: "Lost on a page? The ? beside Settings labels its buttons.",
+    target: "help",
+    gesture: "wave",
+  },
 ]
 
-/** The quests a signal completes, of those not done yet. */
-export function completes(signal: Partial<Signal>, done: string[]): string[] {
-  return QUESTS.filter(
-    (q) =>
-      !done.includes(q.id) &&
-      Object.entries(q.done).every(([k, v]) => (k === "page" ? signal.page !== undefined && signal.page.startsWith(String(v)) : signal[k as keyof Signal] === v)),
-  ).map((q) => q.id)
-}
-
-// What the card says when one's done, in turn
-const CHEERS = ["Nice!", "There you go!", "Look at you!", "Nailed it!", "Easy, right?", "One more!"]
-
-interface Kept {
-  done: string[]
-  small: boolean // tucked away into the pill
-  over: boolean // finished or closed
-}
-
-const KEY = "friday-quests"
-
-export function keptQuests(): Kept | null {
-  try {
-    const raw = localStorage.getItem(KEY)
-    return raw ? (JSON.parse(raw) as Kept) : null
-  } catch {
-    return null
-  }
-}
-
-function keep(k: Kept): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(k))
-  } catch {
-    // private mode: it starts over next visit
-  }
-}
-
-/** Whether the quests are under way on this device (to bring the pill back when Friday opens). */
-export function questsUnderway(): boolean {
-  const k = keptQuests()
-  return !!k && !k.over
-}
-
-/** The visible element a quest points at, if any. */
-function find(target?: string): HTMLElement | null {
-  if (!target) return null
-  const selector = target === "block" ? '[data-block-key^="T"]' : `[data-tour="${target}"]`
-  for (const el of document.querySelectorAll<HTMLElement>(selector)) {
+/** The visible element a stop points at, if any. */
+function find(target: string): HTMLElement | null {
+  for (const el of document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`)) {
     const r = el.getBoundingClientRect()
     if (r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight) return el
   }
   return null
 }
 
-export const CARD = 330 // the card's width, at most
+export const CARD = 340 // the card's width, at most
 const MARGIN = 16
 const BODY = 48 // half the guide's width with an arm out
 const NARROW = 640 // below this, the card alone: no room for the guide
-const SHOW_FOR = 6000 // ms the guide stays by a control they're showing you
 
 /** Where the guide stands by default: just left of the card, which sits in the window's bottom-right corner. */
 export function homeOf(width: number): number {
@@ -118,43 +116,20 @@ export function standFor(rect: { left: number; width: number }, width: number): 
 }
 
 export function Tour() {
-  const { setTour, setDrawer, selected, dialog } = useShell()
-  const navigate = useNavigate()
-  const location = useLocation()
+  const { setTour } = useShell()
   const reduced = useMemo(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false, [])
-  const [kept, setKept] = useState<Kept>(() => {
-    const k = keptQuests()
-    return k && !k.over ? k : { done: [], small: false, over: false }
-  })
-  const [current, setCurrent] = useState<string | null>(null) // the quest picked, else the first left
-  const [cheer, setCheer] = useState<string | null>(null) // just done: what the card says a moment
-  const [just, setJust] = useState<string | null>(null) // the quest just done, for its tick
-  const [showing, setShowing] = useState<Quest | null>(null) // "Show me" under way
-  const [ring, setRing] = useState<DOMRect | null>(null) // the control being shown
+  const [at, setAt] = useState(0)
+  const [ring, setRing] = useState<DOMRect | null>(null)
   const [width, setWidth] = useState(window.innerWidth)
   const [loaded, setLoaded] = useState(false)
-  const [torn, setTorn] = useState(false)
-  const [glowing, setGlowing] = useState(false)
   const [leaving, setLeaving] = useState(false)
-  const [where, setWhere] = useState<{ x: number; width: number; height: number } | null>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const guide = useRef<Guide | null>(null)
-  const row = useRef<HTMLLIElement>(null)
-  const calendar = useRef<HTMLDivElement>(null)
-  const later = useRef<number[]>([])
-  const left = QUESTS.filter((q) => !kept.done.includes(q.id))
-  const quest = QUESTS.find((q) => q.id === current && !kept.done.includes(q.id)) ?? left[0] ?? null
-  const finished = left.length === 0
+  const next = useRef<HTMLButtonElement>(null)
+  const stop = STOPS[at]
+  const last = at === STOPS.length - 1
   const roomy = width >= NARROW
-  // On a phone the card would cover half the screen (8 Nov, Friday on your phone): it starts as its pill there
-  const [openNarrow, setOpenNarrow] = useState(false)
-  const pill = kept.small || (!roomy && !openNarrow)
   const card = Math.min(CARD, width - 2 * MARGIN)
-  const save = (k: Kept) => (keep(k), setKept(k))
-  // kept from the start, not only once one's done: Friday opened again before any, the quests come back with it
-  useEffect(() => {
-    if (!keptQuests()) keep(kept)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // the guide, loaded with the 3D only now; without WebGL (or room), the card alone
   useEffect(() => {
@@ -172,51 +147,14 @@ export function Tour() {
         }
       })
       .catch(() => {})
-    const timers = later.current
     return () => {
       gone = true
-      timers.forEach(clearTimeout)
       guide.current?.dispose()
       guide.current = null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [reduced])
 
-  // done: whatever you did that a quest counts
-  const latest = useRef(kept)
-  latest.current = kept
-  const mark = (signal: Partial<Signal>) => {
-    const was = latest.current
-    const now = completes(signal, was.done)
-    if (!now.length || was.over) return
-    const next = { ...was, done: [...was.done, ...now] }
-    latest.current = next
-    save(next)
-    setJust(now[0])
-    setCheer(CHEERS[(next.done.length - 1) % CHEERS.length])
-    setShowing(null)
-    setRing(null)
-    if (next.done.length < QUESTS.length) guide.current?.celebrate()
-  }
-  useEffect(() => {
-    const ran = (e: Event) => mark({ command: (e as CustomEvent<{ name: string }>).detail.name })
-    window.addEventListener("friday:command", ran)
-    return () => window.removeEventListener("friday:command", ran)
-  })
-  useEffect(() => mark({ page: location.pathname }), [location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (selected?.key.startsWith("T")) mark({ picked: true })
-  }, [selected?.key]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (dialog) mark({ dialog })
-  }, [dialog]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!cheer) return
-    const t = setTimeout(() => (setCheer(null), setJust(null)), 2200)
-    return () => clearTimeout(t)
-  }, [cheer])
-
-  // following the window, the control being shown, and the guide (for a poke)
+  // following the window and what the stop points at
   useLayoutEffect(() => {
     let frame = 0
     const measure = () => {
@@ -225,192 +163,101 @@ export function Tour() {
         setWidth(window.innerWidth)
         guide.current?.resize(window.innerWidth)
       }
-      const at = guide.current?.box()
-      if (at) setWhere((was) => (was && Math.abs(was.x - at.x) < 2 && was.height === at.height ? was : at))
-      if (showing) {
-        const r = find(showing.target)?.getBoundingClientRect() ?? null
-        setRing((was) => (r && was && Math.abs(was.left - r.left) < 1 && Math.abs(was.top - r.top) < 1 ? was : r))
-      }
+      const r = find(stop.target)?.getBoundingClientRect() ?? null
+      setRing((was) => (r && was && Math.abs(was.left - r.left) < 1 && Math.abs(was.top - r.top) < 1 && Math.abs(was.width - r.width) < 1 ? was : r))
     }
     measure()
     return () => cancelAnimationFrame(frame)
-  }, [width, showing])
+  }, [width, stop.target])
 
-  // where the guide is and what they're doing: showing you something, or by the card pointing at your next quest
+  // the guide by what the stop is about, pointing at it
   useEffect(() => {
     const g = guide.current
-    if (!g || leaving || finished) return
-    if (kept.small || !roomy) return g.leave()
-    if (showing && ring) {
-      g.cue({ x: standFor(ring, width), gesture: showing.gesture, aim: { x: ring.left + ring.width / 2, y: ring.top + ring.height / 2 }, jump: ring.top < window.innerHeight * 0.25 })
-      return
-    }
-    const r = row.current?.getBoundingClientRect()
-    const first = !kept.done.length
-    g.cue({ x: homeOf(width), gesture: first ? "wave" : "point", aim: r ? { x: r.left + 20, y: r.top + r.height / 2 } : null, jump: first, cheer: first })
-  }, [loaded, kept.small, kept.done.length, showing, ring, width, roomy, quest?.id, finished, leaving])
+    if (!g || leaving) return
+    if (!roomy) return g.leave()
+    const aim = ring ? { x: ring.left + ring.width / 2, y: ring.top + ring.height / 2 } : null
+    g.cue({ x: ring ? standFor(ring, width) : homeOf(width), gesture: stop.gesture, aim, jump: at === 0, cheer: at === 0 })
+  }, [loaded, at, ring, width, roomy, leaving, stop.gesture])
 
-  // back by the card after showing you something a while
-  useEffect(() => {
-    if (!showing) return
-    const t = setTimeout(() => (setShowing(null), setRing(null)), SHOW_FOR)
-    return () => clearTimeout(t)
-  }, [showing])
+  useEffect(() => next.current?.focus(), [at])
 
-  // all six done: Friday torn off the calendar, a jump for joy, sunglasses, a dance; Done sends them off to the weekend
-  useEffect(() => {
-    const g = guide.current
-    if (!finished || !g || leaving || kept.small || !roomy) return
-    const page = calendar.current?.getBoundingClientRect()
-    g.onArrive = () => {
-      g.onArrive = null
-      later.current.forEach(clearTimeout)
-      const at = (ms: number, then: () => void) => later.current.push(window.setTimeout(then, reduced ? 0 : ms))
-      at(500, () => setTorn(true))
-      at(900, () => g.hop(true))
-      at(1700, () => g.act("dance", { shades: true }))
-    }
-    setTorn(false)
-    g.cue({ x: page ? page.left - BODY - 30 : homeOf(width), gesture: "point", aim: page ? { x: page.left + page.width / 2, y: page.top + page.height / 2 } : null })
-  }, [finished, loaded, kept.small, width]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const show = (q: Quest) => {
-    setCurrent(q.id)
-    if (q.page && !(q.page === "/" ? location.pathname === "/" : location.pathname.startsWith(q.page))) navigate(q.page)
-    if (q.drawer) setDrawer(q.drawer === "open")
-    setShowing(q)
-  }
   const close = (end: boolean) => {
-    save({ ...kept, over: true })
     const g = guide.current
-    if (!g || !roomy || kept.small) return setTour(false)
+    if (!g || !roomy) return setTour(false)
     setLeaving(true)
     g.onGone = () => setTour(false)
-    if (end) setGlowing(true)
     g.leave(end)
-    later.current.push(window.setTimeout(() => setTour(false), 4000))
+    window.setTimeout(() => setTour(false), 4000)
   }
-  const tuck = (small: boolean) => save({ ...kept, small })
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select")) return
+      if (e.key === "Escape") close(false)
+      if (e.key === "ArrowRight" && !last) setAt((n) => n + 1)
+      if (e.key === "ArrowLeft" && at > 0) setAt((n) => n - 1)
+    }
+    window.addEventListener("keydown", key)
+    return () => window.removeEventListener("keydown", key)
+  })
 
-  const sign = finished && !kept.small && roomy
   return (
     <div className="gd-quests" data-leaving={leaving ? "" : undefined}>
-      {ring && showing && <div className="gd-ring" style={{ left: ring.left - 6, top: ring.top - 6, width: ring.width + 12, height: ring.height + 12 }} />}
-      {sign && (
-        <>
-          <div className="gd-cal" ref={calendar} aria-hidden="true" style={{ right: card + MARGIN + 200 }}>
-            <span className="gd-cal-under">
-              Sat
-              <b />
-            </span>
-            <span className="gd-cal-page" data-torn={torn ? "" : undefined}>
-              Fri
-            </span>
-          </div>
-          <div className="gd-sign" data-lit={glowing ? "" : undefined} aria-hidden="true" style={{ right: card + MARGIN + 24 }}>
-            <span>Weekend →</span>
-            <i />
-          </div>
-        </>
-      )}
+      {ring && !leaving && <div className="gd-ring" style={{ left: ring.left - 6, top: ring.top - 6, width: ring.width + 12, height: ring.height + 12 }} />}
       <canvas ref={canvas} className="gd-strip" aria-hidden="true" style={{ height: STRIP, display: roomy ? undefined : "none" }} />
-      {where && loaded && roomy && !leaving && !kept.small && (
-        // a click on the guide: a twirl (poke them three times and they get dizzy)
-        <button className="gd-poke" tabIndex={-1} aria-label="Poke the guide" onClick={() => guide.current?.poke()} style={{ left: where.x - where.width / 2, width: where.width, height: where.height }} />
-      )}
-      {!leaving &&
-        (pill ? (
-          <button className="gd-pill" onClick={() => (kept.small ? tuck(false) : null, setOpenNarrow(true))} aria-label={`Quests, ${kept.done.length} of ${QUESTS.length} done: open`}>
-            <span>Quests</span>
-            <b>
-              {kept.done.length}/{QUESTS.length}
-            </b>
-          </button>
-        ) : (
-          <section className="gd-card" aria-label="Quests: getting to know Friday" style={{ width: card }}>
-            <header className="gd-card-head">
-              <span className="gd-where" aria-live="polite">
-                {finished ? "All done" : (cheer ?? "Quests")}
-              </span>
-              <span className="gd-count">
-                {kept.done.length}/{QUESTS.length}
-              </span>
-              <button className="gd-icon" onClick={() => (tuck(true), setOpenNarrow(false))} aria-label="Tuck the quests away" title="Tuck away">
-                –
-              </button>
-              <button className="gd-icon" onClick={() => close(false)} aria-label="Close the quests" title="Close">
-                ×
-              </button>
-            </header>
-            {finished ? (
-              <div className="gd-end">
-                <h2 className="gd-title">That’s Friday!</h2>
-                <ul className="gd-body">
-                  <li data-said="">You know your way round</li>
-                  <li data-said="">The ? brings these back any time</li>
-                  <li data-said="">Next stop: the weekend</li>
-                </ul>
-                <div className="gd-foot">
-                  <span style={{ flex: 1 }} />
-                  <button className="gd-go" onClick={() => close(true)} autoFocus>
-                    Done
-                    <i />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <ol className="gd-list">
-                {QUESTS.map((q) => {
-                  const done = kept.done.includes(q.id)
-                  const on = q.id === quest?.id
-                  return (
-                    <li key={q.id} ref={on ? row : undefined} data-done={done ? "" : undefined} data-on={on ? "" : undefined} data-just={just === q.id ? "" : undefined}>
-                      <button className="gd-quest" onClick={() => !done && setCurrent(q.id)} disabled={done} aria-expanded={on}>
-                        <i aria-hidden="true" />
-                        <span>{q.title}</span>
-                      </button>
-                      {on && !done && (
-                        <div className="gd-hint">
-                          <span>{q.hint}</span>
-                          <button className="gd-show" onClick={() => show(q)}>
-                            Show me
-                          </button>
-                        </div>
-                      )}
-                    </li>
-                  )
-                })}
-              </ol>
+      {!leaving && (
+        <section className="gd-card" role="dialog" aria-label={`Tour of Friday: ${stop.title}`} style={{ width: card }}>
+          <header className="gd-card-head">
+            <span className="gd-where" aria-live="polite">
+              Tour of Friday
+            </span>
+            <span className="gd-count">
+              {at + 1}/{STOPS.length}
+            </span>
+            <button className="gd-icon" onClick={() => close(false)} aria-label="End the tour" title="End the tour (Esc)">
+              ×
+            </button>
+          </header>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "4px 2px 2px" }}>
+            <h2 className="gd-title">{stop.title}</h2>
+            <p style={{ margin: 0, lineHeight: 1.45, textWrap: "pretty" }}>{stop.body}</p>
+            {stop.tip && (
+              <p style={{ margin: 0, display: "flex", gap: 8, lineHeight: 1.4, fontSize: 13, opacity: 0.85, textWrap: "pretty" }}>
+                <span aria-hidden="true">💡</span>
+                <span>{stop.tip}</span>
+              </p>
             )}
-          </section>
-        ))}
+          </div>
+          <div className="gd-foot">
+            {at > 0 && (
+              <button className="gd-show" onClick={() => setAt(at - 1)}>
+                Back
+              </button>
+            )}
+            <span style={{ flex: 1 }} />
+            <button ref={next} className="gd-go" onClick={() => (last ? close(true) : setAt(at + 1))}>
+              {last ? "Done" : "Next"}
+              <i />
+            </button>
+          </div>
+        </section>
+      )}
     </div>
   )
 }
 
-/** The quests the first time setup finishes (once: Friday remembers it offered them), and their pill again when
- * Friday opens with them under way on this device. */
+/** The tour the first time setup finishes, once: Friday remembers it offered it. */
 export function FirstTour({ ready, toured }: { ready: boolean; toured: boolean | undefined }) {
   const { setTour } = useShell()
   const client = useQueryClient()
   useEffect(() => {
-    if (!ready || toured === undefined) return
-    if (!toured) {
-      const timer = setTimeout(() => {
-        try {
-          localStorage.removeItem(KEY) // a new user's quests start from the beginning
-        } catch {
-          // no storage: they start fresh anyway
-        }
-        setTour(true)
-        // offered: remembered by Friday, and known here at once, so it isn't offered again (or its progress wiped)
-        // before the next read of setup
-        client.setQueryData<Schemas["SetupOut"]>(["setup"], (was) => (was ? { ...was, toured: true } : was))
-        command("tour_offered", {}).catch(() => {})
-      }, 900)
-      return () => clearTimeout(timer)
-    }
-    if (questsUnderway()) setTour(true)
+    if (!ready || toured === undefined || toured) return
+    const timer = setTimeout(() => {
+      setTour(true)
+      // offered: remembered by Friday, and known here at once, so it isn't offered again before the next read of setup
+      client.setQueryData<Schemas["SetupOut"]>(["setup"], (was) => (was ? { ...was, toured: true } : was))
+      command("tour_offered", {}).catch(() => {})
+    }, 900)
+    return () => clearTimeout(timer)
   }, [ready, toured, setTour, client])
   return null
 }

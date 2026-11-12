@@ -120,7 +120,7 @@ describe("your calendars", () => {
 
   it("says the Mac's calendars come from the Mac app, and lists them once it sends them", async () => {
     const { unmount } = await openFriday("/settings/calendars")
-    expect(await screen.findByText(/^Friday's Mac app sends this Mac's calendars once it runs/)).toBeTruthy()
+    expect(await screen.findByText(/^These appear once the Mac app runs and may read your calendars/)).toBeTruthy()
     unmount()
     undo.push(answer("mac_calendars", () => ({ json: MAC })))
     const { user } = await openFriday("/settings/calendars")
@@ -128,7 +128,7 @@ describe("your calendars", () => {
     await user.click(await within(mac).findByRole("button", { name: /^On this Mac 1 of 3 read: Home/ }))
     expect(within(mac).getByText("Not read: Friday reads it from Google")).toBeTruthy()
     expect(within(mac).getAllByText(/^Read /).length).toBeGreaterThan(0)
-    expect(within(mac).getByText(/A calendar Friday also reads from Google, a subscription or birthdays starts off/)).toBeTruthy()
+    expect(within(mac).getByText(/Calendars Friday already gets from Google, subscriptions and birthdays start off/)).toBeTruthy()
     await user.click(within(mac).getByRole("switch", { name: "Read Birthdays" }))
     expect((await waitForSent("calendar_set")).body).toEqual({ id: "mac-birthdays", on: true, mac: true })
     // off, and not one Friday may change: its switches do nothing

@@ -19,7 +19,7 @@ export type Connected = Schemas["Connected"]
 type Arrival = Connected["arrival"]
 
 export const ARRIVALS: { value: Arrival; label: string; note: string }[] = [
-  { value: "inbox_first", label: "Review the first, then straight in", note: "Its first to-dos wait in your Inbox to review together; new ones after that go straight into your plan." },
+  { value: "inbox_first", label: "Review the first, then straight in", note: "The first batch waits in your Inbox; later ones go straight into your plan." },
   { value: "straight", label: "Always straight in", note: "Every to-do goes straight into your plan." },
   { value: "inbox", label: "Always in the Inbox", note: "Every new to-do waits in your Inbox for you to accept." },
 ]
@@ -197,7 +197,7 @@ function ConnectForm({ entry }: { entry: Entry }) {
         </button>
       </div>
       {token_.note && <span className="fr-kicker">{token_.note}</span>}
-      <span className="fr-kicker">The token stays on this Mac, in Friday's private settings file. Friday checks it with {entry.name} before keeping it.</span>
+      <span className="fr-kicker">Your token stays on this Mac. Friday checks it with {entry.name} first.</span>
     </div>
   )
 }
@@ -239,7 +239,7 @@ export function SignInConnect({ entry, waiting, onWaiting }: { entry: Entry; wai
         </span>
       )}
       {sign.note && <span className="fr-kicker">{sign.note}</span>}
-      <span className="fr-kicker">Friday keeps the sign-in on this Mac, in its private settings file; nothing is pasted.</span>
+      <span className="fr-kicker">Your sign-in stays on this Mac.</span>
     </div>
   )
 }
@@ -344,7 +344,7 @@ function ScriptConnect({ entry }: { entry: Entry }) {
         </span>
       )}
       {s.note && <span className="fr-kicker" style={{ textWrap: "pretty" }}>{s.note}</span>}
-      <span className="fr-kicker">The link and key stay on this Mac, in Friday's private settings file. Friday checks them with your script before keeping them.</span>
+      <span className="fr-kicker">The link and key stay on this Mac. Friday checks them with your script first.</span>
     </div>
   )
 }
@@ -365,8 +365,8 @@ function MacConnect({ entry }: { entry: Entry }) {
       </button>
       <span className="fr-kicker">
         {here
-          ? `${entry.name} stays on this Mac: Friday's Mac app reads it while it's open, and nothing goes over the internet.`
-          : `${entry.name} is read by Friday's Mac app: open Friday on your Mac to connect it.`}
+          ? `Friday's Mac app reads ${entry.name} while it's open; nothing leaves this Mac.`
+          : `Open Friday on your Mac to connect ${entry.name}.`}
       </span>
     </div>
   )

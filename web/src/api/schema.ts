@@ -395,6 +395,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/event_choice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What you'll do in an event's time (12 Nov: "the work through it button should not be the same as the skip */
+        post: operations["event_choice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/event_going": {
         parameters: {
             query?: never;
@@ -5096,6 +5113,37 @@ export interface components {
         };
         /** EventCategoryResult */
         EventCategoryResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** EventChoiceInput */
+        EventChoiceInput: {
+            /** Id */
+            id: number;
+            /**
+             * Choice
+             * @enum {string}
+             */
+            choice: "going" | "through" | "skip";
+        };
+        /** EventChoiceResult */
+        EventChoiceResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["Changed"];
@@ -12128,6 +12176,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventCategoryResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    event_choice: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventChoiceInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventChoiceResult"];
                 };
             };
             /** @description Validation Error */

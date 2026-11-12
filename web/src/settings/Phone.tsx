@@ -23,7 +23,7 @@ export function Phone() {
   const where = status.name ?? status.address
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <SectionHead title="Phone" note="Friday in your phone's browser, over Tailscale. Your data stays on this Mac; the phone is a window onto it." />
+      <SectionHead title="Phone" note="Use Friday in your phone’s browser over Tailscale. Your data stays on this Mac." />
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Switch on={status.on} onToggle={() => (setCode(null), set({ on: !status.on }))} label="Use Friday on my phone" />
         <span style={{ fontWeight: 500 }}>Use Friday on my phone</span>
@@ -32,8 +32,8 @@ export function Phone() {
         {!status.on
           ? "Off: Friday answers on this Mac alone."
           : where
-            ? `On: Friday answers on your tailnet at ${where}. Your Mac must be awake for the phone to reach it.`
-            : "This Mac isn't on Tailscale right now: open Tailscale and sign in, and Friday answers there within a few seconds."}
+            ? `On at ${where}. Your Mac must be awake for your phone to reach it.`
+            : "This Mac isn't on Tailscale. Open Tailscale and sign in; Friday is reachable within seconds."}
       </span>
       {status.on && where && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -43,7 +43,7 @@ export function Phone() {
               <span aria-label="Pairing code to scan" role="img" style={{ width: 180, lineHeight: 0, borderRadius: 8, overflow: "hidden" }} dangerouslySetInnerHTML={{ __html: code.svg.replace("<svg ", '<svg width="180" height="180" ') }} />
               <span style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 320 }}>
                 <span>Point your phone's camera at the code and open the link. That phone is then paired until you remove it here.</span>
-                <span className="fr-kicker">Good once, for {code.minutes} minutes. Your phone needs Tailscale on, signed in to the same account.</span>
+                <span className="fr-kicker">Works once, for {code.minutes} minutes. Your phone needs Tailscale on, with the same account.</span>
                 <button className="btn btn-ghost" onClick={() => setCode(null)} style={{ alignSelf: "flex-start", fontSize: 12 }}>
                   Hide the code
                 </button>

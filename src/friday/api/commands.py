@@ -614,6 +614,11 @@ class EventKeepInput(Model):
     going: bool = True  # you're going this time, so work keeps off it; False leaves it to Friday again
 
 
+class EventChoiceInput(Model):
+    id: int  # the event (one time of a repeating one)
+    choice: Literal["going", "through", "skip"]  # go; work through it (there, working); skip it (not going)
+
+
 class EventHoldInput(Model):
     id: int  # the event
     task_id: int | None = None  # the task its time is for; None makes it an event like any other again
