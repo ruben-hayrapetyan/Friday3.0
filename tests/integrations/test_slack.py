@@ -116,3 +116,19 @@ def test_connected_mentions_wait_in_the_inbox_and_aging_out_isnt_done(app: App, 
     assert [i["status"] for i in app.table("items")] == ["todo"], "a mention aging out was taken as done"
     app.do("done", id=app.table("items")[0]["id"])
     assert sync.send_writes(app.conn, app.now_utc) == 0 and app.table("source_writes") == []
+
+
+def test_slacks_sign_in_returns_by_friday_s_https_page_with_this_mac_s_port(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """H182: Slack lets only https return addresses into other workspaces, so it sends you to Friday's page on
+    friday-scheduler.com, which forwards to this Mac at the port carried at the front of `state`."""
+    from urllib.parse import parse_qs, urlsplit
+
+    monkeypatch.setenv("FRIDAY_SLACK_CLIENT_ID", "1.2")
+    monkeypatch.setenv("FRIDAY_SLACK_CLIENT_SECRET", "s")
+    url = new_app(tmp_path).do("integration_sign_in", kind="slack", origin="http://127.0.0.1:8770")["url"]
+    asked = {k: v[0] for k, v in parse_qs(urlsplit(url).query).items()}
+    assert asked["redirect_uri"] == "https://friday-scheduler.com/slack-signin.html"
+    assert asked["state"].startswith("8770-") and asked["user_scope"] == "search:read"
+    assert oauth.PENDING[asked["state"]].redirect == asked["redirect_uri"]  # the same address when trading the code

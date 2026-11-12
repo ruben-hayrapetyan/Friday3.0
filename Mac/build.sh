@@ -21,13 +21,13 @@ for arg in "$@"; do
   esac
 done
 if $TEST && $INSTALL; then echo "Friday Test stays in build/: no --install" >&2; exit 2; fi
-# Friday's own app keys (Mac/app_keys.json: Trello, Microsoft, TickTick, Slack) go into Friday Test only (11 Nov: "i
-# don't want any of these accounts to be linked to my actual friday account. make them linked to friday test so you
-# can then just delete it"): your Friday and downloads say those services aren't ready. Friday Test also carries
-# Google's client, so Google Tasks can be tried there.
+# Friday's own app keys (Mac/app_keys.json: Trello, Microsoft, TickTick, Slack) go into Friday Test and downloads
+# (11 Nov: "ship the keys in download"), never into your own Friday ("i don't want any of these accounts to be linked
+# to my actual friday account"). Friday Test also carries Google's client, so Google Tasks can be tried there;
+# downloads don't (C77: an unverified Google app lets in 100 people, ever).
 if $TEST; then
   export FRIDAY_GOOGLE_CLIENT=1
-else
+elif [ "${FRIDAY_RELEASE:-}" != 1 ]; then
   export FRIDAY_NO_APP_KEYS=1
 fi
 

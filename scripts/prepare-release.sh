@@ -36,7 +36,9 @@ assert all(isinstance(notes.get(k, []), list) for k in ("new", "changed", "fixed
 assert any(line.strip() for k in ("new", "changed", "fixed") for line in notes.get(k, []))
 PY
 unset FRIDAY_GOOGLE_CLIENT  # downloads leave Google's client out (C77): Google lets in only listed test users
-export FRIDAY_NO_APP_KEYS=1  # and Friday's own app keys (Mac/app_keys.json), until you decide downloads get them
+export FRIDAY_RELEASE=1  # downloads carry Friday's own app keys (Mac/app_keys.json): Trello, Microsoft, TickTick,
+                        # Slack sign in for anyone (11 Nov); a release without the file says so and stops
+[ -f "$REPO/Mac/app_keys.json" ] || { echo "No Mac/app_keys.json: downloads would have no Trello, Microsoft, TickTick or Slack" >&2; exit 1; }
 cd "$REPO"
 git diff --quiet HEAD -- || die "commit or set aside your changes first: a version is built from a commit"
 

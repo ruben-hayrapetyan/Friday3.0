@@ -482,7 +482,7 @@ export const CATALOG: Entry[] = [
         "Choose your workspace and press Allow: Friday asks only to search for what mentions you.",
         "Come back to Friday: messages from the last two weeks that mention you wait in your Inbox, each one yours to keep as a to-do or not.",
       ],
-      note: "Friday can't post, react or read anything else. Slack has retired reminders for apps, so your /remind reminders can't come in.",
+      note: "Friday can't post, react or read anything else. Slack sends you back to Friday through friday-scheduler.com, which hands the sign-in straight to Friday on your Mac. Slack has retired reminders for apps, so your /remind reminders can't come in.",
     },
   },
   {
