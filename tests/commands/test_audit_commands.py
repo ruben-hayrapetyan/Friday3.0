@@ -1,15 +1,17 @@
 """Bugs the audit of 12 Nov found in the commands, each kept fixed: a pace until a day gone by, a "never" rule's
 hours past midnight and a day's pace read from the UTC date, a revoked token or a used pairing code written back by a
 request reading them a moment before, forgetting one mailbox switching off another whose address ends the same, a
-broken Chroma file or calendar date as a crash, a rule about two kinds not keeping either, and a retried request
-with the same idempotency key, or a full preview that failed, said as a database error."""
+broken Chroma file or calendar date as a crash, a default pace that isn't saved, a rule about two kinds not keeping
+either, and a retried request with the same idempotency key, or a full preview that failed, said as a database
+error."""
 
 import sqlite3
+from datetime import date
 from pathlib import Path
 
 import pytest
 
-from friday.commands import phones, refit, registry, tokens
+from friday.commands import learned, phones, refit, registry, tokens
 from friday.commands.registry import Ctx, run
 from friday.commands.writer import Writer
 from friday.core.db import connect
@@ -193,3 +195,18 @@ def test_a_full_preview_that_fails_says_why(app: App, monkeypatch: pytest.Monkey
     with pytest.raises(FieldError, match="can't be worked out"):
         app.full("add", payload={"title": "Essay"}, preview="full")
     assert app.table("items") == []
+
+
+def test_the_default_pace_is_one_you_saved(app: App) -> None:
+    with pytest.raises(FieldError, match="isn't one of your saved paces"):
+        app.do("settings_set", key="pace", value={"default": "Gone"})
+    paces = {k: v for k, v in app.do("settings")["paces"].items() if k != "Normal"}
+    with pytest.raises(FieldError, match="isn't one of your saved paces"):
+        app.do("settings_set", key="paces", value=paces)
+
+
+def test_a_default_pace_friday_toml_names_but_doesnt_save_is_the_usual_dials(app: App) -> None:
+    gone = {"key": "pace", "value": {"default": "Gone"}}
+    run(app.conn, "settings_set", gone, now_utc=app.now_utc, actor="config", provisional=False)
+    is_default = learned.default_pace_days(app.conn, load_settings(app.conn, 1), 1)
+    assert is_default(date(2026, 10, 19))
