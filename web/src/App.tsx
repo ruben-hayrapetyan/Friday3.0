@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { HashRouter } from "react-router"
 import { useServerEvents } from "@/api/events"
@@ -52,15 +52,27 @@ function Root() {
   )
 }
 
-/** The planning date, which starts at `day_start`, as the server counts it. */
-function useToday(): string {
+/** The planning date, which starts at `day_start`, as the server counts it. Asked again every few minutes and when
+ * the window comes back: read only when the calendar was, a Friday left open overnight stayed on yesterday past
+ * day_start until something changed (audit, 12 Nov). */
+export function useToday(): string {
   const [today, setToday] = useState(() => fromMin(nowMin()).slice(0, 10))
   const calendar = useCalendar(today, 1).data
+  const client = useQueryClient()
   useEffect(() => {
     if (calendar && calendar.today !== today) setToday(calendar.today)
   }, [calendar, today])
+  useEffect(() => {
+    const ask = () => void client.invalidateQueries({ queryKey: ["calendar", today, 1], exact: true })
+    const back = () => document.visibilityState === "visible" && ask()
+    const every = window.setInterval(ask, TODAY_EVERY)
+    document.addEventListener("visibilitychange", back)
+    return () => (window.clearInterval(every), document.removeEventListener("visibilitychange", back))
+  }, [client, today])
   return today
 }
+
+export const TODAY_EVERY = 5 * 60_000
 
 function Notice({ children }: { children: React.ReactNode }) {
   return <main style={{ display: "grid", placeItems: "center", height: "100vh", color: "var(--color-neutral-400)" }}>{children}</main>
