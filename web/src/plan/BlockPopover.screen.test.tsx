@@ -176,9 +176,27 @@ describe("a planned block's card", () => {
     const move = inCard().queryByRole("button", { name: "Move there" })
     if (move) {
       expect(inCard().getByText(/costs (no more|[\d.]+ points more)/)).toBeTruthy()
-      await user.click(move)
-      expect((await waitForSent("pin")).body).toMatchObject({ id: block.item_id, kind: "preferred", from_start: block.start })
-      expect(card()).toBeNull()
+      // it moves on the calendar at once, before Friday answers (the audit, 12 Nov: it stayed put until the replan)
+      const real = window.fetch
+      let answer = () => {}
+      const held = new Promise<void>((go) => (answer = go))
+      window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes("/api/c/pin")) {
+          sent.push({ name: "pin", body: JSON.parse(String(init?.body)) }) // said as sent, then held
+          await held
+        }
+        return real(input, init)
+      }) as typeof fetch
+      try {
+        await user.click(move)
+        const pin = (await waitForSent("pin")).body as { start: string }
+        expect(pin).toMatchObject({ id: block.item_id, kind: "preferred", from_start: block.start })
+        expect(card()).toBeNull()
+        await waitFor(() => expect(box(`T${block.item_id}@${pin.start}`)).not.toBeNull(), { timeout: 2000 })
+      } finally {
+        answer()
+        window.fetch = real
+      }
     } else {
       expect(inCard().getByText(/^Nowhere else/)).toBeTruthy()
     }

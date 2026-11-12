@@ -6,6 +6,7 @@ import { useState } from "react"
 import { type Block, query } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
+import { moveBlock } from "@/hooks/useDrop"
 import { when } from "@/lib/format"
 import { fromMin, toMin } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
@@ -22,7 +23,8 @@ export function Elsewhere({ block, onMoved }: { block: Block; onMoved: () => voi
   const [open, setOpen] = useState<"where" | "history" | null>(null)
   const where = useQuery({ queryKey: ["why_not", block.key], queryFn: () => query("why_not", { key: block.key }), enabled: open === "where" })
   const history = useQuery({ queryKey: ["log_list", "item", block.item_id], queryFn: () => query("log_list", { item_id: block.item_id, limit: 12 }), enabled: open === "history" })
-  const pin = useCommand("pin", { label: () => `Moved ${block.title}` })
+  // there on the calendar at once, as a drag there shows it (the audit, 12 Nov: it stayed put until the replan)
+  const pin = useCommand("pin", { label: () => `Moved ${block.title}`, optimistic: (c, i) => moveBlock(c, block.key, i.start, i.end as string, "preferred") })
   // Each rule by its sentence on the Rules page ("Wind down before bed"), not its name.
   const rules = useQuery({ queryKey: ["rules"], queryFn: () => query("rules"), enabled: open === "where" }).data ?? []
   const said = new Map(rules.map((r) => [r.name, r.sentence]))
