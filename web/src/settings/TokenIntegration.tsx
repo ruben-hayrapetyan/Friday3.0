@@ -4,15 +4,15 @@
 // box without a token: Friday's Mac app reads it, once macOS lets it.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router"
-import { command, errorWords, query, type Schemas } from "@/api/client"
-import { Switch } from "@/components/fr/controls"
+import { query, type Schemas } from "@/api/client"
+import { Icon, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { when } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
 import type { Entry } from "./gallery"
-import { KEY as GOOGLE_KEY, useGoogleAccess } from "./GoogleConnect"
+import { SCRIPT_LINK, scriptKey, scriptToken, tasksScript } from "./tasksScript"
 import { inMacApp } from "./MacAccounts"
 
 export type Connected = Schemas["Connected"]
@@ -118,8 +118,8 @@ export function TokenIntegration({ entry }: { entry: Entry }) {
       {mine.length === 0 &&
         (entry.onMac ? (
           <MacConnect entry={entry} />
-        ) : entry.id === "google_tasks" ? (
-          <GoogleTasksConnect entry={entry} />
+        ) : entry.script ? (
+          <ScriptConnect entry={entry} />
         ) : entry.signIn ? (
           <SignInConnect entry={entry} waiting={waiting} onWaiting={setWaiting} />
         ) : (
@@ -244,46 +244,107 @@ export function SignInConnect({ entry, waiting, onWaiting }: { entry: Entry; wai
   )
 }
 
-/** Google Tasks (C110), riding Friday's Google sign-in: Sign in with Google asks for Tasks too; then each account
- * that allowed it can be read. */
-function GoogleTasksConnect({ entry }: { entry: Entry }) {
-  const access = useGoogleAccess()
-  const client = useQueryClient()
-  const connect = useCommand("google_tasks_connect", { label: (o) => o.result.message })
-  const [problem, setProblem] = useState<string | null>(null)
-  if (!access) return null
-  const allowed = (access.accounts ?? []).filter((a) => a.tasks && a.email)
-  const signIn = async () => {
-    setProblem(null)
+/** Google Tasks through a script in your own Google account (C130): the script with this Friday's key to copy, the
+ * steps to deploy it, Google's "hasn't verified this app" warning said before you meet it with what to press, and the
+ * Web app link to paste. */
+function ScriptConnect({ entry }: { entry: Entry }) {
+  const s = entry.script!
+  const [key] = useState(() => scriptKey())
+  const script = useMemo(() => tasksScript(key), [key])
+  const [copied, setCopied] = useState(false)
+  const [showing, setShowing] = useState(false)
+  const [link, setLink] = useState("")
+  const area = useRef<HTMLTextAreaElement>(null)
+  const connect = useCommand("integration_connect", { label: (o) => o.result.message })
+  const copy = async () => {
     try {
-      client.setQueryData(GOOGLE_KEY, (await command("google_connect", { tasks: true })).result)
-    } catch (error) {
-      setProblem(errorWords(error))
+      await navigator.clipboard.writeText(script)
+      setCopied(true)
+    } catch {
+      // no clipboard here: the script shows, selected, to copy with ⌘C
+      setShowing(true)
+      requestAnimationFrame(() => area.current?.select())
     }
   }
+  const good = SCRIPT_LINK.test(link.trim())
+  const submit = async () => {
+    if (!good) return
+    // A refusal is said in a toast with what to do; the link stays in the box to try again.
+    if (await connect({ kind: entry.id, token: scriptToken(link, key), fields: {} })) setLink("")
+  }
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <ol style={{ margin: 0, paddingLeft: 20, listStyle: "decimal", display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-        {entry.signIn!.steps.map((s) => (
-          <li key={s}>{s}</li>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <ol style={{ margin: 0, paddingLeft: 20, listStyle: "decimal", display: "flex", flexDirection: "column", gap: 5, fontSize: 13 }}>
+        {s.steps.map((step) => (
+          <li key={step} style={{ textWrap: "pretty" }}>
+            {step}
+          </li>
         ))}
       </ol>
-      {allowed.map((a) => (
-        <button key={a.email} className="btn btn-primary" onClick={() => connect({ account: a.email })} style={{ fontSize: 12, alignSelf: "flex-start" }}>
-          Read Google Tasks from {a.email}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <button className="btn btn-primary" onClick={copy} style={{ fontSize: 12 }}>
+          <Icon name={copied ? "check" : "copy"} />
+          {copied ? "Copied" : "Copy script"}
         </button>
-      ))}
-      {access.client_file ? (
-        <button className={allowed.length ? "btn btn-secondary" : "btn btn-primary"} onClick={signIn} disabled={access.state === "waiting"} style={{ fontSize: 12, alignSelf: "flex-start" }}>
-          {access.state === "waiting" ? "Waiting for Google's page…" : allowed.length ? "Sign in with another Google account" : "Sign in with Google"}
+        <a className="btn btn-secondary" href={s.open} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>
+          <Icon name="arrow-square-out" />
+          Open Google Apps Script
+        </a>
+        <button className="fr-link" onClick={() => setShowing((v) => !v)} style={{ fontSize: 12 }}>
+          {showing ? "Hide the script" : "Read the script"}
         </button>
-      ) : (
-        <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>Connect Google in its own box first: this copy of Friday has no Google key yet.</span>
+      </div>
+      {showing && (
+        <textarea
+          ref={area}
+          readOnly
+          value={script}
+          aria-label="Friday's Google Tasks script"
+          spellCheck={false}
+          style={{ width: "100%", height: 180, fontFamily: "var(--fr-mono, ui-monospace, monospace)", fontSize: 11, lineHeight: 1.4, padding: 8, borderRadius: "var(--radius-md)", background: "var(--color-bg)", color: "var(--color-text)", border: "1px solid color-mix(in srgb, var(--color-text) 12%, transparent)", resize: "vertical" }}
+        />
       )}
-      {(problem ?? (access.state === "failed" ? access.message : null)) && (
-        <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>{problem ?? access.message}</span>
+      <div role="note" style={{ display: "flex", flexDirection: "column", gap: 6, padding: 12, borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--fr-warn) 10%, var(--color-surface))", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--fr-warn) 45%, transparent)", fontSize: 13 }}>
+        <span style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 600 }}>
+          <Icon name="warning" size={16} style={{ color: "var(--fr-warn)" }} />
+          {s.warning.before}
+        </span>
+        <span>
+          It says <strong>“{s.warning.says}”</strong>. {s.warning.why}
+        </span>
+        <span style={{ fontWeight: 500 }}>To go on:</span>
+        <ol style={{ margin: 0, paddingLeft: 20, listStyle: "decimal", display: "flex", flexDirection: "column", gap: 3 }}>
+          {s.warning.then.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      </div>
+      <label className="fr-kicker" htmlFor={`script-${entry.id}`}>
+        The script's Web app URL
+      </label>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          id={`script-${entry.id}`}
+          className="input"
+          autoComplete="off"
+          spellCheck={false}
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          placeholder="https://script.google.com/macros/s/…/exec"
+          style={{ flex: 1, minWidth: 0, padding: "5px 8px", minHeight: 0, fontSize: 13 }}
+        />
+        <button className="btn btn-primary" onClick={submit} disabled={!good} style={{ fontSize: 12 }}>
+          Connect
+        </button>
+      </div>
+      {link.trim() && !good && (
+        <span style={{ fontSize: 12, color: "var(--fr-warn)" }}>
+          {/\/dev(\?|$)/.test(link.trim()) ? "That's the test link: use the Web app URL, the one ending in /exec." : "That isn't the Web app URL yet: it starts https://script.google.com/ and ends in /exec."}
+        </span>
       )}
-      {entry.signIn!.note && <span className="fr-kicker">{entry.signIn!.note}</span>}
+      {s.note && <span className="fr-kicker" style={{ textWrap: "pretty" }}>{s.note}</span>}
+      <span className="fr-kicker">The link and key stay on this Mac, in Friday's private settings file. Friday checks them with your script before keeping them.</span>
     </div>
   )
 }

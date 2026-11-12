@@ -81,6 +81,8 @@ class Harness:
     on_mac: bool = False  # fed by the Mac app (Apple Reminders): no token, nothing over the internet
     times: bool = True  # its due can be a time of day (Linear's and Jira's are days only)
     fields: dict[str, str] = field(default_factory=dict)  # what else connecting asks for (Jira: site, email)
+    label: str = ""  # its name in the contract's rows, when two ways reach one service (Google Tasks' script)
+    token_word: str = "token"  # what a refused one is called in its words (a script's "link")
 
 
 def serve(fake: FakeService) -> tuple[str, Callable[[], None]]:

@@ -127,9 +127,11 @@ def google_connect(ctx: Ctx, inp: GoogleConnectInput) -> GoogleConnectOut:
     with LOCK:
         if (found := SIGN_INS.get(db.parent)) is None or found.state != "waiting":
             sign_in = SIGN_INS[db.parent] = SignIn(account=inp.account or None)
-            # as `fridayd google-login` asks, and Tasks while Google Tasks is wanted (C110)
+            # as `fridayd google-login` asks, and Tasks while Google Tasks is read with it (C110), not by your own
+            # script (C130)
             tasks = inp.tasks or bool(rows(ctx.conn, "SELECT 1 FROM sources WHERE user_id = ? AND kind = "
-                                                     "'google_tasks' AND enabled = 1", [ctx.user_id]))  # fmt: skip
+                                                     "'google_tasks' AND enabled = 1 AND "
+                                                     "json_extract(config, '$.via') IS NOT 'script'", [ctx.user_id]))  # fmt: skip
             asked = google_auth.scopes(ctx.settings["gmail"].enabled, tasks)
             sign_in.thread = threading.Thread(
                 target=wait_for_google,

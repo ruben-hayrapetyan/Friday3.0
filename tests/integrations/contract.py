@@ -73,7 +73,7 @@ def check_a_good_token_connects_and_a_bad_one_is_refused_in_words(w: World) -> N
         pytest.skip("no token: macOS asks instead")
     with pytest.raises(FieldError) as refused:
         w.connect(token="not-the-token")
-    assert "token" in str(refused.value).lower(), refused.value
+    assert w.h.token_word in str(refused.value).lower(), refused.value
     assert w.h.token not in str(refused.value)
     assert not [s for s in w.app.table("sources") if s["kind"] == w.h.kind], "a refused token left a source"
     w.connect()
@@ -229,7 +229,7 @@ def check_a_failure_is_said_in_words_and_loses_nothing(w: World, failure: str) -
         w.fake.fail_next({"token": 401, "rate": 429, "down": 500}[failure], headers={"retry-after": "30"})
     w.sync()
     said = (w.source() or {})["last_error"] or ""
-    words = {"token": "token", "rate": "slow down", "down": "again", "timeout": "in time"}[failure]
+    words = {"token": w.h.token_word, "rate": "slow down", "down": "again", "timeout": "in time"}[failure]
     assert words in said.lower(), f"{failure}: said {said!r}"
     assert len(w.items()) == 3, "a failed read lost to-dos"
     w.sync()
@@ -263,7 +263,7 @@ def check_requests_go_only_to_the_service(w: World) -> None:
     w.app.do("done", id=w.item("Task")["id"])
     w.send()
     hosts = {r.url.host for r in w.fake.requests}
-    assert hosts == {w.fake.host}, f"requests went to {hosts}"
+    assert hosts <= getattr(w.fake, "hosts", {w.fake.host}) and w.fake.host in hosts, f"requests went to {hosts}"
     assert all(r.url.scheme == "https" for r in w.fake.requests), "a request wasn't https"
 
 
