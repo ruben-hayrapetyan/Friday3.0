@@ -146,6 +146,7 @@ def create_app(
     app.state.services = services
     app.add_exception_handler(FieldError, field_error)
     app.add_exception_handler(ValidationError, validation_error)
+    app.add_exception_handler(OverflowError, too_large)
     app.add_exception_handler(Exception, unexpected_error)
     for spec in REGISTRY.values():
         if spec.mutates:
@@ -297,6 +298,14 @@ def unexpected_error(request: Request, error: Exception) -> JSONResponse:
     but not every failure is one (review, 8 Nov), so it doesn't promise that nothing changed."""
     logging.getLogger("friday.server").error("%s %s failed", request.method, request.url.path, exc_info=error)
     return JSONResponse({"field": None, "message": UNEXPECTED.format(kind=type(error).__name__)}, status_code=500)
+
+
+def too_large(request: Request, error: Exception) -> JSONResponse:
+    """A number too big for the database to keep (past 2^63: an id, a length) is what was asked, not Friday failing:
+    it answered 500."""
+    if "SQLite" not in str(error):
+        return unexpected_error(request, error)
+    return JSONResponse({"field": None, "message": "A number given is too large"}, status_code=422)
 
 
 def validation_error(request: Request, error: Exception) -> JSONResponse:

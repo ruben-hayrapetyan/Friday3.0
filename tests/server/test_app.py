@@ -137,3 +137,11 @@ def test_a_change_saved_is_answered_as_saved_when_its_quick_placement_fails(
     assert answer.status_code == 200 and answer.json()["result"]["item"]["title"] == "essay"
     assert answer.json()["provisional"] is None
     assert [i["title"] for i in client.get("/api/q/items").json()] == ["essay"]
+
+
+def test_a_number_too_large_to_keep_is_refused_not_a_crash(client: TestClient) -> None:
+    # SQLite keeps integers to 2^63: a bigger id or length raised OverflowError on its way in, answered as a 500
+    for answer in (client.post("/api/c/done", json={"id": 10**30}), client.get("/api/q/item", params={"id": 10**25}),
+                   client.post("/api/c/add", json={"title": "essay", "duration_min": 10**30})):  # fmt: skip
+        assert answer.status_code == 422 and "too large" in answer.json()["message"], answer.text
+    assert client.get("/api/q/items").json() == []
