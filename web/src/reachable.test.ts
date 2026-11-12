@@ -20,6 +20,7 @@ export const BEHIND_THE_SCENES: Record<string, string> = {
   close_day: "the nightly job settles yesterday",
   materialize: "the nightly job makes repeats' new times",
   replan: "every change replans by itself",
+  google_tasks_connect: "Google Tasks by Google sign-in (C110), for an assistant or the CLI: the box connects through your own script (C130)",
   mac_sync: "the Mac app sends its calendars",
   mac_writes: "the Mac app asks what to change",
   mac_written: "the Mac app says what it changed",

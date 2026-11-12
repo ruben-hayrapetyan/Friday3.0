@@ -150,8 +150,8 @@ class Script:
                                     allow=(404,), follow_redirects=True)  # fmt: skip
         except ConnectorError as error:
             if error.problem in ("token", "access"):  # Google's 401/403: the deployment isn't open to Friday
-                raise ConnectorError("token", "Google refused the script's link: in the script, Deploy → Manage "
-                                     "deployments, check Execute as: Me and Who has access: Anyone") from error  # fmt: skip
+                said = "Google refused the script's link: in the script, Deploy → Manage deployments, check "
+                raise ConnectorError("token", said + "Execute as: Me and Who has access: Anyone") from error
             raise
         if answer.url.host == "accounts.google.com":
             raise ConnectorError("token", "The script asks for a Google sign-in: in the script, Deploy → Manage "
@@ -175,7 +175,7 @@ class Script:
             raise ConnectorError("access", "The script can't reach Google Tasks yet: in the script editor, next to "
                                  f"Services press +, add Google Tasks API, save, then {REDEPLOY}")  # fmt: skip
         if said == "op":
-            raise ConnectorError("answer", f"The script is older than this Friday: copy it from the box again, then {REDEPLOY}")
+            raise ConnectorError("answer", f"The script is older than this Friday: copy it again, then {REDEPLOY}")
         if said:
             raise ConnectorError("answer", f"The script said: {said[:200]}")
         return body
