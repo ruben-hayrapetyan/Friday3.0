@@ -34,3 +34,21 @@ def test_a_long_hold_is_said(caplog: pytest.LogCaptureFixture, monkeypatch: pyte
         db.held("a quick one", time.perf_counter())
     assert "saving a plan held the database for" in caplog.text
     assert "a quick one" not in caplog.text
+
+
+def test_only_a_command_that_holds_the_lock_throughout_is_said_to_hold_it(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # replan solves outside the lock and saves inside it; the whole of it was logged as holding the database
+    # (audit, 12 Nov: "replan by you held the database for 5482 ms" for a 3 ms save)
+    from friday.commands import registry
+    from tests.commands.helpers import new_app
+
+    app = new_app(tmp_path)
+    monkeypatch.setattr(registry, "SLOW_MS", -1)
+    with caplog.at_level(logging.WARNING, logger="friday.commands"):
+        app.do("tour_offered")
+        app.do("area_add", name="Chem")
+    held = [r.getMessage() for r in caplog.records if "held the database" in r.getMessage()]
+    assert any(m.startswith("area_add") for m in held)
+    assert not any(m.startswith("tour_offered") for m in held)

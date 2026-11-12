@@ -156,7 +156,9 @@ def run(
     spec = REGISTRY.get(name)
     ms = (time.perf_counter() - started) * 1000
     wait = waited(conn)  # of that time, how long it stood behind another write
-    if spec is not None and spec.mutates and ms - wait > SLOW_MS:
+    # held only by a command run in one transaction: one that isn't (replan) takes the lock itself, for its save, and
+    # says so there; its solve, outside the lock, was called holding the database (audit, 12 Nov)
+    if spec is not None and spec.mutates and spec.logged and ms - wait > SLOW_MS:
         log.warning("%s by %s held the database for %.0f ms (other writes waited)", name, actor, ms - wait)
     if spec is not None and spec.mutates and spec.logged:
         given = payload.model_dump(exclude_none=True) if isinstance(payload, BaseModel) else payload or {}
