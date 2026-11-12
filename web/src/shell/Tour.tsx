@@ -85,7 +85,7 @@ export const STOPS: Stop[] = [
     id: "end",
     title: "That's Friday",
     body: "Add what's due, and look in the Inbox now and then. Friday does the rest.",
-    tip: "Lost on a page? The ? beside Settings labels its buttons.",
+    tip: "Lost on a page? The ? beside Settings shows what its buttons do.",
     target: "help",
     gesture: "wave",
   },
