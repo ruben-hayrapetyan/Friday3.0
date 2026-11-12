@@ -15,6 +15,11 @@ import { LookProvider } from "@/theme/LookProvider"
 const client = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1 } } })
 
 export default function App() {
+  return <Friday client={client} />
+}
+
+/** The whole app over a query cache of its own (the screen tests give each test a fresh one). */
+export function Friday({ client }: { client: QueryClient }) {
   return (
     <QueryClientProvider client={client}>
       <LookProvider>

@@ -47,3 +47,9 @@ site/downloads/
 # The admin side lives in the private Friday-admin repo (C80); a leftover local copy never comes back into git.
 /hub/
 /serve/
+
+# coverage reports (scripts/coverage.sh, pnpm --dir web coverage): made on demand, never kept
+/web/coverage/
+/coverage/
+.coverage
+.coverage.*
