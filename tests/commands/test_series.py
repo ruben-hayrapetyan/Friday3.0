@@ -224,3 +224,16 @@ def test_only_a_repeat_has_a_time_to_skip(app: App) -> None:
     item = app.do("add", title="Laundry", duration_min=30)["item"]
     with pytest.raises(FieldError, match=f"T{item['id']} doesn't repeat; drop it instead"):
         app.do("skip", id=item["id"])
+
+
+def test_a_task_due_at_midnight_repeats_with_each_time_due_after_it_can_start(app: App) -> None:
+    # 12 Nov (found by the random sequences): its times began at the day's start on the date it was due, hours after
+    # its due; a midnight due belongs to the day before it
+    essay = app.do("add", title="Essay", duration_min=15, due="2026-10-20T00:00")["item"]["id"]
+    app.do("repeat", id=essay, every="day")
+    rows = app.conn.execute(
+        "SELECT release_utc, due_utc, occurrence_date FROM items WHERE title = 'Essay' ORDER BY due_utc"
+    ).fetchall()
+    assert len(rows) > 3
+    assert all(r["release_utc"] is None or r["release_utc"] < r["due_utc"] for r in rows)
+    assert len({r["occurrence_date"] for r in rows}) == len(rows), "two times on one day"
