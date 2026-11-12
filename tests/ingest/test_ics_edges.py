@@ -60,3 +60,31 @@ def test_a_feed_is_fetched_and_a_refusal_is_raised(monkeypatch: pytest.MonkeyPat
     assert asked[0][1]["follow_redirects"] is True
     with pytest.raises(httpx.HTTPStatusError):
         ics.fetch("https://example.test/gone.ics")
+
+
+def test_an_all_day_event_with_no_end_lasts_its_one_day() -> None:
+    # RFC 5545: a DATE start with neither DTEND nor DURATION is one day long; it came in ending as it started, a
+    # whole-day event of no length
+    text = feed("BEGIN:VEVENT\nUID:holiday\nSUMMARY:Fall break\nDTSTART;VALUE=DATE:20261120\nEND:VEVENT\n")
+    (holiday,) = ics.parse_feed(text, TZ, ics.reading(r"^due", r"exam", r"lecture", all_day=True))
+    assert holiday.proposals[0].input | {"location": None} == {
+        "title": "Fall break", "preset": "Event", "start": "2026-11-20T00:00", "end": "2026-11-21T00:00",
+        "blocks_time": False, "location": None,
+    }  # fmt: skip
+
+
+def test_one_time_of_a_repeat_moved_in_the_feed_is_there_once() -> None:
+    # A feed moves one time of a repeat by a second VEVENT with the same UID and a RECURRENCE-ID: the repeat skips
+    # that time, as it does an EXDATE, or the lecture showed both at 10:00 Monday and at 2:00 Tuesday
+    text = feed(
+        "BEGIN:VEVENT\nUID:lecture\nSUMMARY:Lecture\nDTSTART;TZID=America/New_York:20261102T100000\n"
+        "DTEND;TZID=America/New_York:20261102T110000\nRRULE:FREQ=WEEKLY;COUNT=4\n"
+        "EXDATE;TZID=America/New_York:20261123T100000\nEND:VEVENT\n",
+        "BEGIN:VEVENT\nUID:lecture\nSUMMARY:Lecture\nRECURRENCE-ID;TZID=America/New_York:20261109T100000\n"
+        "DTSTART;TZID=America/New_York:20261110T140000\nDTEND;TZID=America/New_York:20261110T150000\nEND:VEVENT\n",
+    )
+    found = {f.external_id: f for f in ics.parse_feed(text, TZ, READ)}
+    series = found["lecture"].proposals[0].input["every"]
+    assert series == "rrule:FREQ=WEEKLY;COUNT=4;EXDATE=20261109T100000,20261123T100000"
+    moved = found["lecture#2026-11-09T10:00:00-05:00"].proposals[0].input
+    assert (moved["start"], moved["end"]) == ("2026-11-10T14:00", "2026-11-10T15:00")
