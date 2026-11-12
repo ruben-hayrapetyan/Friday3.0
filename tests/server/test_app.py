@@ -1,5 +1,6 @@
 """The HTTP API generated from the registry, without the worker: `replan` solves in the request."""
 
+import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from friday.commands.all import REGISTRY
 from friday.server.app import create_app
+from friday.server.placer import Placer
 from tests.commands.helpers import App, new_app
 
 
@@ -120,3 +122,26 @@ def test_the_websites_own_pages_open_on_a_reload_and_missing_files_stay_missing(
         assert client.get("/assets/app.js").text == "ok"
         assert client.get("/assets/gone.js").status_code == 404
         assert client.get("/api/q/no_such_query").status_code == 404
+
+
+def test_a_change_saved_is_answered_as_saved_when_its_quick_placement_fails(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The placement is made after the change is committed: it failing (the database locked by a long write) answered
+    # 500 for a change that was kept, and the command line, told it failed, added it again
+    def locked(*args: object, **kwargs: object) -> None:
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(Placer, "place", locked)
+    answer = client.post("/api/c/add", json={"text": "essay ~2h"}, headers={"X-Friday-Client": "cli"})
+    assert answer.status_code == 200 and answer.json()["result"]["item"]["title"] == "essay"
+    assert answer.json()["provisional"] is None
+    assert [i["title"] for i in client.get("/api/q/items").json()] == ["essay"]
+
+
+def test_a_number_too_large_to_keep_is_refused_not_a_crash(client: TestClient) -> None:
+    # SQLite keeps integers to 2^63: a bigger id or length raised OverflowError on its way in, answered as a 500
+    for answer in (client.post("/api/c/done", json={"id": 10**30}), client.get("/api/q/item", params={"id": 10**25}),
+                   client.post("/api/c/add", json={"title": "essay", "duration_min": 10**30})):  # fmt: skip
+        assert answer.status_code == 422 and "too large" in answer.json()["message"], answer.text
+    assert client.get("/api/q/items").json() == []

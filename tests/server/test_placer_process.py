@@ -80,3 +80,34 @@ def test_a_placement_that_cant_be_kept_is_rolled_back(tmp_path: Path, monkeypatc
     with pytest.raises(RuntimeError, match="disk full"):
         quick.place(app.conn, 1)
     assert not app.conn.in_transaction and heard.events == []
+
+
+class Gone:
+    """The pipe to a placing process that has died (killed, out of memory): every use fails."""
+
+    def send(self, message: Any) -> None:
+        raise BrokenPipeError(32, "Broken pipe")
+
+    def recv(self) -> Any:
+        raise EOFError
+
+
+def test_a_placing_process_that_died_is_started_again(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    # The solver's is restarted when it dies (server/worker.py); the placer's wasn't, so every quick placement after
+    # failed until Friday was restarted
+    app = new_app(tmp_path, horizon_days=3)
+    heard = Heard()
+    quick = Placer(tmp_path / "friday.db", heard, lambda: app.now_utc)  # type: ignore[arg-type]
+    started: list[bool] = []
+
+    def spawn() -> None:
+        started.append(True)
+        quick.pipe = Pipe(("placed", None))  # type: ignore[assignment]
+
+    quick.spawn = spawn  # type: ignore[method-assign]
+    quick.pipe = Gone()  # type: ignore[assignment]
+    quick.request(1, changed(app))
+    assert quick.place(app.conn, 1) is None and started == [True]
+    assert "placing process exited" in caplog.text
+    quick.request(1, changed(app))
+    assert quick.place(app.conn, 1) is None and started == [True]  # the new one answers

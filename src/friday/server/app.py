@@ -146,6 +146,7 @@ def create_app(
     app.state.services = services
     app.add_exception_handler(FieldError, field_error)
     app.add_exception_handler(ValidationError, validation_error)
+    app.add_exception_handler(OverflowError, too_large)
     app.add_exception_handler(Exception, unexpected_error)
     for spec in REGISTRY.values():
         if spec.mutates:
@@ -299,6 +300,14 @@ def unexpected_error(request: Request, error: Exception) -> JSONResponse:
     return JSONResponse({"field": None, "message": UNEXPECTED.format(kind=type(error).__name__)}, status_code=500)
 
 
+def too_large(request: Request, error: Exception) -> JSONResponse:
+    """A number too big for the database to keep (past 2^63: an id, a length) is what was asked, not Friday failing:
+    it answered 500."""
+    if "SQLite" not in str(error):
+        return unexpected_error(request, error)
+    return JSONResponse({"field": None, "message": "A number given is too large"}, status_code=422)
+
+
 def validation_error(request: Request, error: Exception) -> JSONResponse:
     # Pydantic errors raised inside a command (a settings value, say), not the request's own validation.
     assert isinstance(error, ValidationError)
@@ -363,7 +372,10 @@ def execute(
             # Placed before answering where there's no thread to do it (tests), or for the command line, which says
             # where a new task will probably go ("Probably Tue 2pm").
             if not services.placing or request.headers.get("x-friday-client") == "cli":
-                out.provisional = services.placer.place(conn, user, here=True)
+                try:
+                    out.provisional = services.placer.place(conn, user, here=True)
+                except Exception:  # the change is saved: said as done, not as failed (the CLI added it again)
+                    logging.getLogger("friday.server").exception("quick placement after %s", spec.name)
     if not out.preview and not out.repeated and spec.logged:
         announce(services, spec, out, settings["planner"].debounce_s)
         if spec.name == "done":

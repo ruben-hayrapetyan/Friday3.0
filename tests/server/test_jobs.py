@@ -2,14 +2,16 @@
 
 from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
 from friday.planner.service import replan
 from friday.planner.store import load_settings
+from friday.server import jobs
 from friday.server.events import Hub
-from friday.server.jobs import backup, nightly_due, run_due
+from friday.server.jobs import backup, nightly_due, run_due, tick_due
 from tests.commands.helpers import App, new_app
 
 
@@ -153,3 +155,33 @@ def test_the_integrations_are_read_before_the_calendars_and_mail(app: App, tmp_p
     ran = run_jobs(app, Worker(), tmp_path)
     assert "integrations" in ran and "sync" in ran
     assert ran.index("integrations") < ran.index("sync"), ran
+
+
+@pytest.mark.parametrize("keep", [0, -1])
+def test_backups_kept_none_or_fewer_still_keep_todays_alone(app: App, tmp_path: Path, keep: int) -> None:
+    # `[:-0]` is nothing to remove: 0 kept every backup ever made; -1 removed only the oldest
+    for day in (18, 19, 20):
+        backup(app.conn, tmp_path / "backups", keep, date(2026, 10, day))
+    assert [p.name for p in (tmp_path / "backups").iterdir()] == ["friday-2026-10-20.db"]
+
+
+@pytest.mark.parametrize("every", [0, -5])
+def test_a_tick_of_no_minutes_comes_once_a_minute(every: int) -> None:
+    settings = {"jobs": SimpleNamespace(tick_replan_min=every)}
+    assert tick_due(None, 100, settings) and tick_due(99, 100, settings)
+    assert not tick_due(100, 100, settings)  # not every pass of the loop, every thirty seconds
+
+
+def test_a_job_whose_time_cant_be_told_is_said_and_the_others_still_run(
+    app: App, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Whether a job is due was asked outside its try: one raising there (a time that can't be read) stopped every
+    # job after it, each pass
+    def broken(*args: Any) -> bool:
+        raise ValueError("nightly_replan_at: '25:99' isn't a time")
+
+    monkeypatch.setattr(jobs, "nightly_due", broken)
+    ran = run_jobs(app, Worker(), tmp_path)
+    assert "nightly" in ran and ran[-1] == "updates"
+    (nightly,) = [r for r in app.table("job_runs") if r["name"] == "nightly"]
+    assert nightly["last_status"] == "error" and "isn't a time" in nightly["last_error"]

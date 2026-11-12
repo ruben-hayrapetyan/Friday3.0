@@ -9,6 +9,7 @@ one kind for all its events instead. Times come out as local wall time in your t
 import hashlib
 import json
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 from typing import Any
@@ -116,6 +117,13 @@ def reading(due: str, exam: str, lesson: str, **rest: Any) -> Reading:
 
 def parse_feed(text: str, tz: str, read: Reading) -> list[Found]:
     calendar = Calendar.from_ical(text)
+    # One time of a repeat moved (or changed) comes as its own VEVENT, the repeat's UID and the time it replaces as
+    # its RECURRENCE-ID: the repeat skips that time, as it does an EXDATE, or it showed twice
+    moved: dict[str, set[str]] = {}
+    for component in calendar.walk("VEVENT"):
+        recurrence = component.get("RECURRENCE-ID")
+        if recurrence is not None and (at := local(recurrence.dt, tz)):
+            moved.setdefault(str(component.get("UID", "")), set()).add(at)
     out = []
     for component in calendar.walk():
         if component.name not in ("VEVENT", "VTODO"):
@@ -124,14 +132,14 @@ def parse_feed(text: str, tz: str, read: Reading) -> list[Found]:
         uid = str(component.get("UID", hashlib.sha256(raw.encode()).hexdigest()[:16]))
         recurrence = component.get("RECURRENCE-ID")
         external = f"{uid}#{recurrence.dt.isoformat()}" if recurrence is not None else uid
-        facts = event(component, tz) if component.name == "VEVENT" else None
+        facts = event(component, tz, moved.get(uid, ())) if component.name == "VEVENT" else None
         proposals = from_facts(facts, read) if facts else todo(component, tz) if component.name == "VTODO" else []
         summary = str(component.get("SUMMARY", "")).strip()
         out.append(Found(external, hashlib.sha256(raw.encode()).hexdigest(), summary, raw, proposals, facts, read))
     return out
 
 
-def event(component: Any, tz: str) -> Event | None:
+def event(component: Any, tz: str, moved: Iterable[str] = ()) -> Event | None:
     summary = str(component.get("SUMMARY", "")).strip()
     start_raw = component.get("DTSTART")
     if not summary or start_raw is None:
@@ -142,17 +150,20 @@ def event(component: Any, tz: str) -> Event | None:
     end_dt = end_raw.dt if end_raw is not None else start_raw.dt + (duration.dt if duration else timedelta(0))
     where = str(component.get("LOCATION", "")).strip() or None
     if start is None:
+        if not isinstance(end_dt, datetime) and end_dt <= start_raw.dt:  # no end: the day (RFC 5545), not no time
+            end_dt = start_raw.dt + timedelta(days=1)
         return Event(summary, None, None, start_raw.dt.isoformat(), end_dt.isoformat(), location=where)
     rule = component.get("RRULE")
-    every = "rrule:" + rule.to_ical().decode() + skipped(component, tz) if rule is not None else None
+    every = "rrule:" + rule.to_ical().decode() + skipped(component, tz, moved) if rule is not None else None
     return Event(summary, start, local(end_dt, tz), None, None, every, location=where)
 
 
-def skipped(component: Any, tz: str) -> str:
-    """The rule's cancelled times (EXDATE, one property or several), as `;EXDATE=…` local, or nothing."""
+def skipped(component: Any, tz: str, moved: Iterable[str] = ()) -> str:
+    """The rule's cancelled times (EXDATE, one property or several) and those `moved` to an event of their own, as
+    `;EXDATE=…` local, or nothing."""
     found = component.get("EXDATE")
     lists = found if isinstance(found, list) else [found] if found is not None else []
-    moments = sorted({at for lst in lists for d in lst.dts if (at := local(d.dt, tz))})
+    moments = sorted({at for lst in lists for d in lst.dts if (at := local(d.dt, tz))} | set(moved))
     return ";EXDATE=" + ",".join(m.replace("-", "").replace(":", "") + "00" for m in moments) if moments else ""
 
 

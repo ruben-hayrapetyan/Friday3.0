@@ -5,6 +5,7 @@ Cancel stops only a sign-in waiting on this Mac, the account's address is its pr
 API passes plain values through."""
 
 import json
+import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -195,3 +196,32 @@ class TestAsking:
         path = tmp_path / "config" / "google_client.json"
         google_auth.keep_client(path, json.dumps(CLIENT))
         assert json.loads(path.read_text()) == CLIENT and path.stat().st_mode & 0o777 == 0o600
+
+
+def test_a_private_file_written_again_is_never_seen_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # secrets.toml was emptied, then written: a read meanwhile (a sync's token, on another thread) found no tokens,
+    # and one written back from that read kept only its own, every other key and password gone
+    path = tmp_path / "secrets.toml"
+    google_auth.write_private(path, '[todoist]\ntoken = "kept"\n')
+    seen: list[str] = []
+    opened = os.fdopen
+
+    class Watched:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            self.file = opened(*args, **kwargs)
+
+        def __enter__(self) -> "Watched":
+            return self
+
+        def __exit__(self, *exc: object) -> None:
+            self.file.close()
+
+        def write(self, text: str) -> int:
+            seen.append(path.read_text())  # what a reader on another thread finds at this moment
+            return self.file.write(text)
+
+    monkeypatch.setattr(google_auth.os, "fdopen", Watched)
+    google_auth.write_private(path, '[todoist]\ntoken = "new"\n')
+    assert seen == ['[todoist]\ntoken = "kept"\n']
+    assert path.read_text() == '[todoist]\ntoken = "new"\n' and path.stat().st_mode & 0o777 == 0o600
+    assert [p.name for p in tmp_path.iterdir()] == ["secrets.toml"]

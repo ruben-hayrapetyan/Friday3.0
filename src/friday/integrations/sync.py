@@ -185,10 +185,7 @@ def sync_source(
     except WaitingForMac:
         return 0  # connected, the Mac app not heard from yet: nothing read, so nothing taken as done
     except ConnectorError as error:
-        conn.execute(
-            "UPDATE sources SET last_error = ?, failures = failures + 1, last_sync_utc = ? WHERE id = ?",
-            [str(error), format_utc(now_utc), source["id"]],
-        )
+        failed(conn, source, str(error), now_utc)
         return 0
     conn.execute(
         "UPDATE sources SET last_error = NULL, failures = 0, last_sync_utc = ? WHERE id = ?",
@@ -219,10 +216,18 @@ def sync_source(
                 accept_trusted(conn, now_utc, user_id, int(s["id"]), source["name"])
     if connector.caps.gone_is_done:
         done_there(conn, source, {r.external_id for r in remotes}, now_utc, user_id)
-    if first:
-        synced = json.dumps(config | {"synced": True})
+    if first:  # onto its config as it is now: the one read before the read undid a choice made in its box meanwhile
+        now = one(conn, "SELECT config FROM sources WHERE id = ?", [source["id"]])
+        synced = json.dumps(json.loads((now or {}).get("config") or "{}") | {"synced": True})
         conn.execute("UPDATE sources SET config = ? WHERE id = ?", [synced, source["id"]])
     return made
+
+
+def failed(conn: sqlite3.Connection, source: dict[str, Any], said: str, now_utc: int) -> None:
+    conn.execute(
+        "UPDATE sources SET last_error = ?, failures = failures + 1, last_sync_utc = ? WHERE id = ?",
+        [said, format_utc(now_utc), source["id"]],
+    )
 
 
 def done_there(
@@ -309,10 +314,20 @@ class Sender:
         conn.close()
 
 
+SENDING = threading.Lock()  # the sender and the integrations job send one at a time
+
+
 def send_writes(
     conn: sqlite3.Connection, now_utc: int, make: Callable[[dict[str, Any]], Connector] = connector_for
 ) -> int:
-    """What waits to go back, oldest first, each to its integration; a failure is kept and retried, then said."""
+    """What waits to go back, oldest first, each to its integration; a failure is kept and retried, then said. One
+    sending at a time: the sender and the job's minute each read what waits on their own connection, and one still
+    sending a done when the other began sent it again, after a reopen made meanwhile (done there, open here)."""
+    with SENDING:
+        return send_waiting(conn, now_utc, make)
+
+
+def send_waiting(conn: sqlite3.Connection, now_utc: int, make: Callable[[dict[str, Any]], Connector]) -> int:
     sent = 0
     for w in rows(
         conn,
@@ -354,7 +369,17 @@ def sync_all(
     """Every connected integration that's due, then what waits to go back."""
     made = 0
     for source in rows(conn, "SELECT * FROM sources WHERE user_id = ? AND enabled = 1", [user_id]):
-        if is_integration(source["kind"]) and due_now(source, now_utc, asked):
+        if not (is_integration(source["kind"]) and due_now(source, now_utc, asked)):
+            continue
+        # One that can't be read (its token gone, a bug on an answer) is said on its own box; it raised out of the
+        # whole sync, and every integration after it, and all that waits to go back, waited behind it.
+        try:
             made += sync_source(conn, source, make(source), settings, now_utc, user_id)
+        except ConnectorError as error:
+            failed(conn, source, str(error), now_utc)
+        except Exception as error:
+            log.exception("reading %s", source["name"])
+            failed(conn, source, f"Friday couldn't read {source['name']} ({type(error).__name__}): it tries again "
+                   "shortly; if this stays, the details are in Settings → Advanced → Diagnose", now_utc)  # fmt: skip
     send_writes(conn, now_utc, make)
     return made

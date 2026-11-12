@@ -8,6 +8,7 @@ import pytest
 from friday.commands.fetching import sync
 from friday.ingest import llm
 from friday.sim.fakes import FakeGmail, mail
+from friday.sync.gmail import strip_html
 from tests.commands.helpers import App, new_app
 from tests.ingest.fakes import FakeClient
 
@@ -149,3 +150,9 @@ def test_an_email_about_an_event_is_read_from_a_list_and_the_forums_tab(tmp_path
     assert log[screening] == "read" and log["Talk: Robots that learn"] == "read"
     assert log[CAREERS] == "read" and log[WEBINAR] == "read"
     assert log["Big sale this weekend"] == "skipped"
+
+
+def test_a_stray_closing_style_tag_doesnt_hide_the_rest_of_the_mail() -> None:
+    # A newsletter template's `</style>` with no opening one counted below zero, and every word after it was dropped
+    assert strip_html("<p>Hi</p></style><p>PS5 is due Friday at 5pm</p>") == "Hi\nPS5 is due Friday at 5pm"
+    assert strip_html("<style>p {}</style><p>Kept</p><script>x()</script>") == "Kept"

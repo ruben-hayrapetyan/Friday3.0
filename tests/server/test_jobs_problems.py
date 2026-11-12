@@ -2,6 +2,8 @@
 publishing's failure is said in words, `friday.toml` changing tells the app, and Google or Gmail chosen but not
 connected is said with where to connect."""
 
+import sqlite3
+import time
 from pathlib import Path
 from typing import Any
 
@@ -86,3 +88,31 @@ def test_gmail_on_without_its_permission_says_to_allow_it(
     )
     monkeypatch.setattr(jobs, "connected", lambda folder, scopes=(): True)
     assert jobs.google_problem(app.conn, jobs.load_settings(app.conn), tmp_path) is None
+
+
+def test_the_job_loop_outlives_a_database_held_too_long(
+    app: App, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    # Recording a job's run is a write: the database held past its five seconds raised "database is locked" out of
+    # the loop's thread, and no sync, plan tick or backup ran again until Friday restarted
+    calls: list[int] = []
+
+    def run_due(*args: Any) -> list[str]:
+        calls.append(1)
+        if len(calls) == 1:
+            raise sqlite3.OperationalError("database is locked")
+        return []
+
+    monkeypatch.setattr(jobs, "run_due", run_due)
+    monkeypatch.setattr(jobs, "WAKE_S", 0.05)
+    loop = jobs.JobLoop(tmp_path / "friday.db", Recorder(), None, lambda: app.now_utc)  # type: ignore[arg-type]
+    loop.start()
+    try:
+        for _ in range(100):
+            if len(calls) >= 2:
+                break
+            time.sleep(0.05)
+        assert len(calls) >= 2 and loop.thread.is_alive()
+        assert "database is locked" in caplog.text
+    finally:
+        loop.stop()

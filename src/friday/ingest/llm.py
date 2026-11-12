@@ -508,6 +508,9 @@ class CliClient:
         if out.returncode != 0:
             raise RuntimeError(f"claude exited {out.returncode}: {(out.stderr or out.stdout).strip()[:300]}")
         envelope = json.loads(out.stdout)
+        if not isinstance(envelope, dict) or envelope.get("is_error"):  # ended well, but said it failed
+            said = envelope.get("result") if isinstance(envelope, dict) else envelope
+            raise RuntimeError(f"claude didn't answer: {str(said).strip()[:300]}")
         structured = envelope.get("structured_output")
         text = json.dumps(structured) if structured is not None else str(envelope.get("result", ""))
         return answered(text, envelope.get("usage"))
