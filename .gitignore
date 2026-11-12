@@ -50,6 +50,6 @@ site/downloads/
 
 # coverage reports (scripts/coverage.sh, pnpm --dir web coverage): made on demand, never kept
 /web/coverage/
-/coverage/
+/.cover/
 .coverage
 .coverage.*
