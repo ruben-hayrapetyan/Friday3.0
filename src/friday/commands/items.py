@@ -45,6 +45,7 @@ from friday.commands.series import (
     without_times,
 )
 from friday.commands.series_days import move_from, moves_day
+from friday.commands.settings import write_setting
 from friday.commands.timer import stop_timer
 from friday.core.db import one, rows
 from friday.core.guess import course_of, fallback_kind, guess_preset
@@ -512,6 +513,27 @@ def area_add(ctx: Ctx, inp: AreaInput) -> AreaOut:
     return AreaOut(id=area_id, name=inp.name, color=inp.color, archived=False)
 
 
+def follow_rename(ctx: Ctx, old: str, new: str) -> None:
+    """The rules that name a tag follow it to its new name: a buffer by tag and a rule about a tag's work named it by
+    its old one, so they stopped reaching anything (audit, 12 Nov)."""
+    rules = [r.model_dump() for r in ctx.settings["rules"]]
+    moved = False
+    for r in rules:
+        by_area = (r.get("params") or {}).get("by_area")
+        if isinstance(by_area, dict) and old in by_area:
+            r["params"]["by_area"] = {new if k == old else k: v for k, v in by_area.items()}
+            moved = True
+        area = (r.get("scope") or {}).get("area")
+        if area == old:
+            r["scope"]["area"] = new
+            moved = True
+        elif isinstance(area, list) and old in area:
+            r["scope"]["area"] = [new if a == old else a for a in area]
+            moved = True
+    if moved:
+        write_setting(ctx, "rules", rules)
+
+
 @command("area_edit", affects_plan=True)
 def area_edit(ctx: Ctx, inp: AreaEditInput) -> AreaOut:
     """Rename, recolour or archive an area."""
@@ -528,5 +550,7 @@ def area_edit(ctx: Ctx, inp: AreaEditInput) -> AreaOut:
     if inp.archived is not None:
         changes["archived"] = int(inp.archived)
     ctx.db.update("areas", {"id": inp.id}, changes)
+    if inp.name is not None and inp.name != found["name"]:
+        follow_rename(ctx, found["name"], inp.name)
     after = found | changes
     return AreaOut(id=inp.id, name=after["name"], color=after["color"], archived=bool(after["archived"]))

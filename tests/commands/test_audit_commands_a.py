@@ -117,3 +117,19 @@ def test_skipping_a_time_with_its_timer_running_stops_the_timer(app: App) -> Non
     app.do("start", id=first)
     app.do("skip", id=first)
     assert not app.conn.execute("SELECT 1 FROM timer WHERE item_id = ?", [first]).fetchone()
+
+
+def test_a_tag_renamed_keeps_the_rules_that_name_it(app: App) -> None:
+    # a buffer by tag and a rule about a tag named it by its old name, so they stopped reaching anything (audit, 12 Nov)
+    chem = app.do("area_add", name="Chem")["id"]
+    rules = app.do("settings")["rules"]
+    for r in rules:
+        if r["name"] == "buffer":
+            r["params"] = {**r["params"], "by_area": {"Chem": "15m", "Math": "10m"}}
+    rules.append({"type": "time_preference", "name": "you:chem mornings", "weight": 2, "scope": {"area": "Chem"},
+                  "params": {"start": "08:00", "end": "12:00"}})  # fmt: skip
+    app.do("settings_set", key="rules", value=rules)
+    app.do("area_edit", id=chem, name="Chemistry")
+    after = {r["name"]: r for r in app.do("settings")["rules"]}
+    assert after["buffer"]["params"]["by_area"] == {"Chemistry": "15m", "Math": "10m"}
+    assert after["you:chem mornings"]["scope"] == {"area": "Chemistry"}
