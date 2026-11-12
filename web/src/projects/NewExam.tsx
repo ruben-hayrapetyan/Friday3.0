@@ -3,7 +3,7 @@
 // closes it.
 
 import { useQueryClient } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { command, errorWords } from "@/api/client"
 import { useToast } from "@/components/Toasts"
 import { Chip, H, Icon, Seg } from "@/components/fr/controls"
@@ -41,8 +41,14 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
   const client = useQueryClient()
   const toast = useToast()
   const start = `${day}T${time}`
+  // Once: a second click while the first is on its way made a second exam and prep (audit, 12 Nov).
+  const sending = useRef(false)
+  const [busy, setBusy] = useState(false)
   // The exam and its prep are one action: one toast, and Undo takes back both.
   const create = async () => {
+    if (sending.current) return
+    sending.current = true
+    setBusy(true)
     const ids: number[] = []
     try {
       const made = await command("add", { title, preset: "Exam", start, end: fromMin(toMin(start) + length), area })
@@ -58,6 +64,8 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
       toast({ message: errorWords(error), tone: "error" })
       if (ids.length) onClose(true) // the exam was made; only its prep wasn't
     } finally {
+      sending.current = false
+      setBusy(false)
       client.invalidateQueries()
     }
   }
@@ -115,7 +123,7 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
           <button className="btn btn-ghost" onClick={() => onClose()}>
             Cancel
           </button>
-          <button className="btn btn-primary" onClick={create} disabled={!title.trim()}>
+          <button className="btn btn-primary" onClick={create} disabled={!title.trim() || busy}>
             Add exam
           </button>
         </div>

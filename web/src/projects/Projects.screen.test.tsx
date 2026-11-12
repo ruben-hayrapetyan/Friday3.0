@@ -102,10 +102,12 @@ describe("projects", () => {
     const { user, client } = await page()
     await user.click(await screen.findByRole("button", { name: /Rocketry design review/ }))
     const parent = await itemNamed("Rocketry design review")
-    await user.type(await screen.findByRole("textbox", { name: "Add a step" }), "Print handouts ~30m{Enter}")
+    // ↩ twice adds it once (audit, 12 Nov: the second ↩ came before the first was saved, and added it again)
+    await user.type(await screen.findByRole("textbox", { name: "Add a step" }), "Print handouts ~30m{Enter}{Enter}")
     expect((await waitForSent("add")).body).toEqual({ text: "Print handouts ~30m", parent_id: parent.id, area: "Rocketry" })
     await live(client, () => expect(step("Print handouts")).toBeTruthy())
     await waitFor(() => expect((screen.getByRole("textbox", { name: "Add a step" }) as HTMLInputElement).value).toBe(""))
+    expect(sent.filter((s) => s.name === "add")).toHaveLength(1)
     await user.click(within(step("Print handouts")).getByRole("button", { name: "Move up" }))
     const order = await waitForSent("reorder")
     expect(order.body).toMatchObject({ parent_id: parent.id })
@@ -227,8 +229,11 @@ describe("exams", () => {
     await user.click(within(phys).getByRole("button", { name: "Add" }))
     expect((await waitForSent("add")).body).toEqual({ text: "practice prelim ~2h", preset: "Exam prep", due: exam.start, area: "PHYS 1112", before: [exam.id] })
     await waitFor(() => expect((line as HTMLInputElement).value).toBe(""))
-    await user.type(line, "formula sheet ~30m{Enter}")
+    sent.length = 0
+    await user.type(line, "formula sheet ~30m{Enter}{Enter}")
     expect((await waitForSent("add")).body).toMatchObject({ text: "formula sheet ~30m" })
+    await waitFor(() => expect((line as HTMLInputElement).value).toBe(""))
+    expect(sent.filter((s) => s.name === "add")).toHaveLength(1)
   })
 
   it("ticks prep done and opens it again", async () => {
@@ -330,8 +335,10 @@ describe("exams", () => {
     await user.type(within(dialog).getByPlaceholderText("Name, e.g. MATH 2940 Prelim 2"), "Rocketry safety quiz")
     for (let n = 0; n < 4; n++) await user.click(within(dialog).getByRole("button", { name: "Less prep" }))
     expect(within(dialog).getByText("None")).toBeTruthy()
-    await user.click(within(dialog).getByRole("button", { name: "Add exam" }))
+    // a double click adds it once (audit, 12 Nov: it made two)
+    await user.dblClick(within(dialog).getByRole("button", { name: "Add exam" }))
     expect(await screen.findByText("Exam added")).toBeTruthy()
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "New exam" })).toBeNull())
     expect(sent.filter((s) => s.name === "add")).toHaveLength(1)
   })
 

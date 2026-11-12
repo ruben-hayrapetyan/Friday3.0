@@ -1,7 +1,7 @@
 // One exam ahead, as a card: when it is and how far off, in its course's colour; how ready you are; each piece of
 // prep with where it stands in the plan (tick it off, open it); a line to add more prep; and exam focus, if it's on.
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useNavigate } from "react-router"
 import type { Block } from "@/api/client"
 import { Check, H, Icon } from "@/components/fr/controls"
@@ -150,10 +150,16 @@ function PrepRow({ s, onOpen }: { s: PrepState; onOpen: () => void }) {
 function AddPrep({ exam, area }: { exam: Exam; area: string | null }) {
   const add = useCommand("add", { label: () => "Prep added" })
   const [text, setText] = useState("")
+  const sending = useRef(false) // ↩ twice, or ↩ and Add, adds it once
   const submit = async () => {
-    if (!text.trim()) return
-    const out = await add({ text, preset: "Exam prep", due: exam.item.start, area, before: [exam.item.id] })
-    if (out) setText("")
+    if (!text.trim() || sending.current) return
+    sending.current = true
+    try {
+      const out = await add({ text, preset: "Exam prep", due: exam.item.start, area, before: [exam.item.id] })
+      if (out) setText("")
+    } finally {
+      sending.current = false
+    }
   }
   return (
     <div className="fr-row" style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 0 0", marginTop: exam.prep.length ? -14 : 0 }}>

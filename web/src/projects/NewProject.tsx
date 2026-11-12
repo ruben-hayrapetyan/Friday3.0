@@ -1,7 +1,7 @@
 // A new project (v22): a name, a template's steps (or none), a tag, a due date and about how long it all takes.
 // Escape or a click outside closes it.
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Chip, H, Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useAreas, useSettings } from "@/hooks/queries"
@@ -32,11 +32,22 @@ export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
   }, [onClose])
   const apply = useCommand("template_apply", { label: () => "Project made" })
   const add = useCommand("add", { label: () => "Project made" })
+  // Once: a second click while the first is on its way made the project twice (audit, 12 Nov).
+  const sending = useRef(false)
+  const [busy, setBusy] = useState(false)
   const create = async () => {
-    const out = template
-      ? await apply({ template, title, hours, due, area })
-      : await add({ title, preset: "Project", due, area, duration_min: hours * 60 })
-    if (out) onClose(out.result.item?.id)
+    if (sending.current) return
+    sending.current = true
+    setBusy(true)
+    try {
+      const out = template
+        ? await apply({ template, title, hours, due, area })
+        : await add({ title, preset: "Project", due, area, duration_min: hours * 60 })
+      if (out) onClose(out.result.item?.id)
+    } finally {
+      sending.current = false
+      setBusy(false)
+    }
   }
   return (
     <div className="fr-scrim">
@@ -96,7 +107,7 @@ export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
           <button className="btn btn-ghost" onClick={() => onClose()}>
             Cancel
           </button>
-          <button className="btn btn-primary" onClick={create} disabled={!title.trim()}>
+          <button className="btn btn-primary" onClick={create} disabled={!title.trim() || busy}>
             Create project
           </button>
         </div>
