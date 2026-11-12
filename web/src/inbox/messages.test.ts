@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { Item, Schemas } from "@/api/client"
-import { type Message, messagesOf, nextAfter, rowOf, type Sources, spans, waitingCount } from "./messages"
+import { type Message, messagesOf, nextAfter, rowOf, shownFields, type Sources, spans, waitingCount } from "./messages"
 
 const TODAY = "2026-10-29"
 const YESTERDAY = "2026-10-28"
@@ -80,5 +80,21 @@ describe("when a task's time was", () => {
   it("lists each block", () => {
     const two = spans({ spans: [["2026-10-28T08:00", "2026-10-28T08:45"], ["2026-10-28T22:15", "2026-10-28T23:30"]] })
     expect(two).toBe("8–8:45am, 10:15–11:30pm")
+  })
+})
+
+describe("a suggestion's fields", () => {
+  const event = { title: "Advising", start: "2026-10-30T11:40", end: "2026-10-30T12:10", location: "Day Hall" }
+  const keys = (shown: [string, string][]) => shown.map(([k]) => k)
+
+  it("lists those it has, and work's length always", () => {
+    expect(keys(shownFields(event, "add", false, {}))).toEqual(["title", "start", "end", "location"])
+    expect(keys(shownFields({ title: "PS 9", due: "2026-10-31T23:59" }, "add", false, {}))).toEqual(["title", "due", "duration_min"])
+  })
+
+  it("keeps a field you emptied while you edit it, to type another", () => {
+    const edits = { location: null }
+    expect(keys(shownFields({ ...event, ...edits }, "add", true, edits))).toContain("location")
+    expect(keys(shownFields({ ...event, ...edits }, "add", false, edits))).not.toContain("location")
   })
 })

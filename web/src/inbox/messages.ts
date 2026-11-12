@@ -126,3 +126,23 @@ export function nextAfter(messages: Message[], key: string, gone: Set<string>): 
   const before = [...messages.slice(0, Math.max(0, at))].reverse().find(live)
   return (after ?? before)?.key ?? null
 }
+
+const FIELDS: [string, string][] = [
+  ["title", "Title"],
+  ["preset", "Kind"],
+  ["area", "Tag"],
+  ["due", "Due"],
+  ["start", "Starts"],
+  ["end", "Ends"],
+  ["location", "Where"],
+  ["duration_min", "Length"],
+  ["every", "Repeats"],
+]
+
+/** A suggestion's fields as its message lists them, [key, label]: those it has; work's length always, so a 12-hour
+ * assignment isn't accepted as Friday's 2-hour guess unnoticed; and while you edit, the kind, tag, due and length to
+ * set, and any you've changed, emptied too (audit, 12 Nov: clearing Where to type another took its box away). */
+export function shownFields(fields: Record<string, unknown>, command: string, editing: boolean, edits: Record<string, unknown>): [string, string][] {
+  const work = fields.start == null && command === "add"
+  return FIELDS.filter(([k]) => fields[k] != null || (k === "duration_min" && work) || (editing && (["preset", "area", "due", "duration_min"].includes(k) || k in edits)))
+}
