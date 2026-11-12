@@ -70,7 +70,9 @@ export function placeAfter(request: HostRequest, place: CalendarPlace, today: st
       return step(1)
     case "view": {
       const view = request.argument === "day" ? 1 : request.argument === "three" ? 3 : request.argument === "week" ? 7 : "month"
-      return { view, first: view === "month" ? monthStart(shown) : place.first }
+      // out of this month to the days: around today, as the Plan page's keys do (the audit, 12 Nov)
+      const thisMonth = place.view === "month" && shown === monthStart(today)
+      return { view, first: view === "month" ? monthStart(shown) : thisMonth ? null : place.first }
     }
     default:
       return null

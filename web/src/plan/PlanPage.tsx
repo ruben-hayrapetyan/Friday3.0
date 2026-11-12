@@ -48,7 +48,9 @@ export function PlanPage() {
   // A week or three days are centred on the day picked, or today (lib/time.ts); `first` holds that centre.
   const centre = first ?? today
   const shown = view === "month" ? (first ?? monthStart(today)) : pageStart(centre, view)
-  const setView = (v: View) => setPlace({ view: v, first: v === "month" ? monthStart(centre) : first })
+  // Out of the month view to the days, around today while it's this month you're on, else from the month's first day
+  // (the audit, 12 Nov: m then w showed the week around the 1st, not the one you were on)
+  const setView = (v: View) => setPlace({ view: v, first: v === "month" ? monthStart(centre) : view === "month" && shown === monthStart(today) ? null : first })
   const setFirst = (f: string | null) => setPlace({ view: place.view, first: f }) // keeps the week you chose, even while it shows a day
   const step = (by: number) => setFirst(view === "month" ? shiftMonth(shown, by) : addDays(centre, by * view))
   const nudge = useNudge()
