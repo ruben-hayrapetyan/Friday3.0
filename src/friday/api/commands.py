@@ -78,7 +78,7 @@ class EffectInput(Model):
 
 class DoneInput(Model):
     id: int
-    actual_min: int | None = None
+    actual_min: int | None = Field(None, ge=1)  # what it took (audit, 12 Nov: -30 was kept, and learned from)
 
 
 class ItemResult(Model):
