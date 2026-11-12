@@ -115,13 +115,20 @@ final class Page: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate
         }
     }
 
-    /// A page that failed to load (the server restarting) tries again shortly.
+    /// A page that failed to load (the server restarting) tries again shortly. Not one stopped for another (⌘R while
+    /// loading, a link followed): that took you back to the Plan two seconds later (audit, 12 Nov).
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        retry()
+        if !Page.interrupted(error) { retry() }
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        retry()
+        if !Page.interrupted(error) { retry() }
+    }
+
+    /// A load given up for another, not one that failed: cancelled, or WebKit's "frame load interrupted" (102).
+    nonisolated static func interrupted(_ error: Error) -> Bool {
+        let e = error as NSError
+        return (e.domain == NSURLErrorDomain && e.code == NSURLErrorCancelled) || (e.domain == "WebKitErrorDomain" && e.code == 102)
     }
 
     private func retry() {
