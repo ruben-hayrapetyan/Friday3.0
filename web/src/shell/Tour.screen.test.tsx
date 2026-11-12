@@ -57,13 +57,13 @@ describe("the tour", () => {
 })
 
 describe("the ?: what's on this page", () => {
-  it("dims the page and labels its controls; a click anywhere, or Esc, closes it", async () => {
+  it("dims the page, numbers its controls and lists what each does; a click outside the list, or Esc, closes it", async () => {
     const { user } = await openFriday("/")
     await user.click(screen.getAllByRole("button", { name: "What's on this page" })[0])
     const help = await screen.findByRole("dialog", { name: "What's on this page" })
-    const notes = () => within(help).getAllByRole("note").map((n) => n.textContent)
-    expect(notes()).toContain("To-do: everything you have to do")
-    expect(notes()).toContain("Find anything: to-dos, events, settings (⌘K)")
+    const notes = () => within(help).getAllByRole("listitem").map((n) => n.textContent?.replace(/^\d+/, ""))
+    await waitFor(() => expect(notes()).toContain("Find anything: to-dos, events, settings (⌘K)"))
+    expect(notes()).not.toContain("To-do: everything you have to do") // the sidebar's pages are the tour's
     // the calendar too, once it's drawn: the labels follow the page as it settles
     await waitFor(() => expect(notes().some((n) => /^Click a block to start, finish or move it/.test(n ?? ""))).toBe(true))
     await user.keyboard("{Escape}")

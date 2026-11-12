@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { HELP, place } from "./HelpOverlay"
+import { BADGE, CARD_W, corner, HELP, mark } from "./HelpOverlay"
 import { CARD, homeOf, STOPS, standFor } from "./Tour"
 
 describe("the tour", () => {
@@ -21,32 +21,58 @@ describe("the tour", () => {
   })
 })
 
-describe("the ?'s labels", () => {
+describe("the ?'s numbers", () => {
   const rect = (left: number, top: number, width: number, height: number) => ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect
 
-  it("sit beside their control, on the side with room, and clear of each other", () => {
-    const labels = place(
+  it("number the page's own controls in reading order, the big areas last, and leave the sidebar's pages to the tour", () => {
+    // 12 Nov: "everything is super cluttered and it doesn't look good": numbers and one list, not a label on everything
+    const marks = mark(
       [
-        { key: "search", rect: rect(900, 10, 30, 30) },
-        { key: "views", rect: rect(900, 14, 200, 24) },
+        { key: "calendar", rect: rect(250, 60, 1000, 700) },
+        { key: "search", rect: rect(1100, 12, 30, 30) },
+        { key: "views", rect: rect(900, 14, 160, 26) },
         { key: "nav-todo", rect: rect(10, 100, 180, 30) },
+        { key: "settings", rect: rect(10, 10, 30, 30) },
+        { key: "now", rect: rect(500, 740, 600, 60) },
       ],
-      1200,
-      800,
+      1300,
+      820,
     )
-    const by = Object.fromEntries(labels.map((l) => [l.key, l]))
-    expect(by["nav-todo"].side).toBe("right")
-    expect(by.views.side).toBe("left") // no room to its right
-    expect(by.search.at.left).toBeGreaterThan(930)
-    const [a, b] = [by.search, by.views]
-    const overlap = a.at.left < b.at.left + 230 && a.at.left + 230 > b.at.left && a.at.top < b.at.top + 44 && a.at.top + 44 > b.at.top
-    expect(overlap).toBe(false)
+    expect(marks.map((m) => [m.n, m.key])).toEqual([
+      [1, "views"],
+      [2, "search"],
+      [3, "now"],
+      [4, "calendar"],
+    ])
+    expect(marks.find((m) => m.key === "calendar")?.big).toBe(true)
+    expect(marks.find((m) => m.key === "views")?.big).toBe(false)
   })
 
-  it("go inside a big area, not off the edge", () => {
-    const [cal] = place([{ key: "calendar", rect: rect(250, 80, 1000, 700) }], 1300, 820)
-    expect(cal.side).toBe("inside")
-    expect(cal.at.top + 44).toBeLessThanOrEqual(820)
+  it("count a wide box as a control, not an area: it's numbered in its place and lit", () => {
+    const marks = mark(
+      [
+        { key: "now", rect: rect(500, 740, 600, 60) },
+        { key: "rule-new", rect: rect(250, 150, 800, 180) },
+      ],
+      1300,
+      820,
+    )
+    expect(marks.map((m) => [m.key, m.big])).toEqual([
+      ["rule-new", false],
+      ["now", false],
+    ])
+  })
+
+  it("keep each number on screen", () => {
+    const [m] = mark([{ key: "search", rect: rect(1290, 0, 30, 30) }], 1300, 820)
+    expect(m.badge.left + BADGE).toBeLessThanOrEqual(1300)
+    expect(m.badge.top).toBeGreaterThanOrEqual(0)
+  })
+
+  it("put the list in the bottom corner that hides fewer of them", () => {
+    const low = (left: number) => mark([{ key: "drawer-add", rect: rect(left, 760, 200, 30) }], 1300, 820)
+    expect(corner(low(20), 1300, 820)).toBe("right")
+    expect(corner(low(1300 - CARD_W), 1300, 820)).toBe("left")
   })
 })
 
