@@ -55,6 +55,7 @@ export function Search() {
   const { color } = useLook()
   const [q, setQ] = useState("")
   const [at, setAt] = useState(0)
+  const [moved, setMoved] = useState(false) // you moved through the list with the arrow keys or the mouse
   const ref = useRef<HTMLInputElement>(null)
   const items = useAllItems(false).data ?? [] // open tasks only (3 Nov)
   const projects = useProjects().data ?? []
@@ -120,12 +121,16 @@ export function Search() {
     ].filter(([, hits]) => (hits as Hit[]).length) as [string, Hit[]][]
   }, [q, text, items, events, projects, next, today, color, place.view, breaks])
   const flat = groups.flatMap(([, hits]) => hits)
+  // Only "Ask …" matching (it names whatever you typed) is nothing matching: Enter adds the to-do, and ↓ reaches Ask
+  // (12 Nov: Enter always opened Ask, and "Nothing matches" never showed). -1: nothing picked yet.
+  const nothing = !!q.trim() && flat.every((h) => h.key === "ask")
+  const picked = nothing && at === 0 && !moved ? -1 : at
   const key = async (e: React.KeyboardEvent) => {
     if (e.key === "Escape") close()
-    if (e.key === "ArrowDown") (e.preventDefault(), setAt(Math.min(flat.length - 1, at + 1)))
-    if (e.key === "ArrowUp") (e.preventDefault(), setAt(Math.max(0, at - 1)))
+    if (e.key === "ArrowDown") (e.preventDefault(), setMoved(true), setAt(picked < 0 ? 0 : Math.min(flat.length - 1, at + 1)))
+    if (e.key === "ArrowUp") (e.preventDefault(), setMoved(true), setAt(Math.max(0, at - 1)))
     if (e.key === "Enter") {
-      if (flat[at]) flat[at].run()
+      if (flat[picked]) flat[picked].run()
       else if (q.trim() && (await add({ text: q }))) close()
     }
   }
@@ -138,7 +143,7 @@ export function Search() {
           <input
             ref={ref}
             value={q}
-            onChange={(e) => (setQ(e.target.value), setAt(0))}
+            onChange={(e) => (setQ(e.target.value), setAt(0), setMoved(false))}
             onKeyDown={key}
             placeholder="Search to-dos, events, projects, settings…"
             aria-label="Search"
@@ -156,9 +161,9 @@ export function Search() {
                   <button
                     key={h.key}
                     onClick={h.run}
-                    onMouseEnter={() => setAt(i)}
+                    onMouseEnter={() => (setAt(i), setMoved(true))}
                     className="fr-plain"
-                    style={{ display: "grid", gridTemplateColumns: "18px minmax(0,1fr) auto", gap: 10, alignItems: "center", padding: 8, borderRadius: "var(--radius-md)", background: i === at ? "color-mix(in srgb, var(--color-accent) 14%, transparent)" : undefined }}
+                    style={{ display: "grid", gridTemplateColumns: "18px minmax(0,1fr) auto", gap: 10, alignItems: "center", padding: 8, borderRadius: "var(--radius-md)", background: i === picked ? "color-mix(in srgb, var(--color-accent) 14%, transparent)" : undefined }}
                   >
                     <span style={{ display: "flex", justifyContent: "center" }}>
                       {h.swatch ? <span className="fr-swatch" style={{ background: h.swatch }} /> : <Icon name={h.icon ?? "circle"} size={15} style={{ color: "var(--color-neutral-400)" }} />}
@@ -172,7 +177,7 @@ export function Search() {
               })}
             </div>
           ))}
-          {!flat.length && <div style={{ padding: "18px 10px", color: "var(--color-neutral-400)" }}>Nothing matches. Press Enter to add it as a to-do.</div>}
+          {(!flat.length || nothing) && <div style={{ padding: "18px 10px", color: "var(--color-neutral-400)", order: -1 }}>Nothing matches. Press Enter to add it as a to-do.</div>}
         </div>
         <div style={{ display: "flex", gap: 14, padding: "8px 16px", fontSize: 11, color: "var(--color-neutral-500)", boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--color-text) 7%, transparent)" }}>
           <span>↑↓ to move</span>

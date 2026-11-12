@@ -37,7 +37,8 @@ export default defineConfig({
   // happy-dom over a real Friday serving a lived-in sample (src/test/), each file its own copy.
   test: {
     projects: [
-      { extends: true, test: { name: "unit", include: ["src/**/*.test.{ts,tsx}"], exclude: ["src/**/*.screen.test.tsx", "node_modules/**"] } },
+      // the same number of workers in both, so one run can measure both together (`pnpm coverage`)
+      { extends: true, test: { name: "unit", include: ["src/**/*.test.{ts,tsx}"], exclude: ["src/**/*.screen.test.tsx", "node_modules/**"], maxWorkers: 4 } },
       {
         extends: true,
         test: {

@@ -110,7 +110,7 @@ export function ViaMac({ entry, onOpen }: { entry: Entry; onOpen: (id: string) =
         <button className="btn btn-secondary" onClick={() => onOpen("mac-calendars")} style={{ fontSize: 12 }}>
           Calendars on this Mac
         </button>
-        <button className="fr-link" onClick={() => navigate("/settings#/settings/calendars")} style={{ fontSize: 12 }}>
+        <button className="fr-link" onClick={() => navigate("/settings/calendars")} style={{ fontSize: 12 }}>
           Choose which calendars Friday reads
         </button>
       </div>
