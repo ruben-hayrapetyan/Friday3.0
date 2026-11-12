@@ -1,4 +1,5 @@
-// Settings (v22): appearance, tags and kinds, schedule, repeating, integrations, about you and shortcuts, with
+// Settings (v22): appearance, tags and kinds, schedule, repeating, integrations and shortcuts (About you moved to
+// Rules, 12 Nov), with
 // Advanced for the rest (learning, plugins, saved paces and any key). Changes apply right away; keys friday.toml
 // sets are read-only here and say so.
 
@@ -7,7 +8,6 @@ import { type ReactNode, useEffect, useState } from "react"
 import { Navigate, NavLink, useNavigate, useParams } from "react-router"
 import { H, Icon } from "@/components/fr/controls"
 import { useStatus } from "@/hooks/queries"
-import { AboutYou } from "./AboutYou"
 import { AdvancedSection } from "./Advanced"
 import { Appearance } from "./Appearance"
 import { CalendarsSection } from "./CalendarsSection"
@@ -29,7 +29,6 @@ const SECTIONS = [
   { id: "integrations", label: "Integrations", icon: "plugs", page: Integrations },
   { id: "phone", label: "Phone", icon: "device-mobile", page: Phone },
   { id: "tokens", label: "Tokens", icon: "key", page: Tokens },
-  { id: "about", label: "About you", icon: "user", page: AboutYou },
   { id: "shortcuts", label: "Shortcuts", icon: "keyboard", page: Shortcuts },
   { id: "updates", label: "Updates", icon: "arrow-circle-up", page: UpdatesSection },
   { id: "advanced", label: "Advanced", icon: "brackets-curly", page: AdvancedSection },
@@ -54,6 +53,10 @@ export function SettingsPage() {
   const navigate = useNavigate()
   const owned = useStatus().data?.config_keys ?? []
   const known = SECTIONS.find((s) => s.id === section)
+  // About you is on the Rules page now (12 Nov: "the about you in the settings should be merged with rules")
+  useEffect(() => {
+    if (section === "about") navigate("/rules", { replace: true })
+  }, [section, navigate])
   useEffect(() => {
     try {
       if (known) localStorage.setItem(LAST, known.id)

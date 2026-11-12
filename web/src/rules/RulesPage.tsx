@@ -19,6 +19,7 @@ import { spoken } from "@/lib/aiName"
 import { dayLabel } from "@/lib/format"
 import { WeekPaces } from "./WeekPaces"
 import { TimeInput } from "@/components/fr/TimeInput"
+import { NOTE_EXAMPLES, useNotes } from "@/settings/AboutYou"
 
 type Strength = "Prefer" | "Strongly" | "Always"
 const STRENGTHS: Strength[] = ["Prefer", "Strongly", "Always"]
@@ -53,9 +54,9 @@ export function RulesPage() {
         <div className="fr-gutter" style={{ maxWidth: 1000, padding: "28px 40px 140px", display: "flex", flexDirection: "column", gap: 34 }}>
           <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <H size={22}>Rules</H>
+              <H size={22}>Rules and notes</H>
               <span style={{ color: "var(--color-neutral-400)", textWrap: "pretty" }}>
-                Tell Friday how you like your days, in your own words. Friday turns each one into a rule for the planner. Preferences bend when they must, and Friday learns how much each one matters from your reviews. Rules marked Always never bend.
+                Tell Friday how you work, in your own words. A rule changes how it plans ("no work after 10pm"); a note changes how it reads your mail, calendars and documents ("labs are done in the lab session"). Rules marked Always never bend; the rest bend when they must.
               </span>
             </div>
             {owned ? <span className="fr-kicker">Your rules are set in friday.toml; change them there.</span> : <NewRule />}
@@ -86,9 +87,38 @@ export function RulesPage() {
               </div>
             </details>
           </section>
+          <Notes />
         </div>
       </div>
     </>
+  )
+}
+
+/** Notes about you (Settings' About you until 12 Nov): what the AI keeps in mind reading your mail, calendars and
+ * documents, so it skips what needs no time and uses your lengths and your section's deadlines. */
+function Notes() {
+  const { notes, remove } = useNotes()
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <span style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+        <H size={18}>Notes</H>
+        <span className="fr-kicker">Read with every email, calendar entry and document. They don't change the plan; rules do.</span>
+      </span>
+      {notes.map((n, i) => (
+        <div key={n} className="fr-row" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg)" }}>
+          <Icon name="note-pencil" size={15} style={{ color: "var(--color-neutral-400)", flex: "none" }} />
+          <span style={{ flex: 1, textWrap: "pretty" }}>{n}</span>
+          <button className="btn btn-ghost" onClick={() => remove(i)} aria-label={`Forget: ${n}`} style={{ padding: "2px 6px" }}>
+            <Icon name="x" />
+          </button>
+        </div>
+      ))}
+      {!notes.length && (
+        <span className="fr-kicker" style={{ textWrap: "pretty" }}>
+          None yet. Type one in the box above and press Keep as a note, e.g. “{NOTE_EXAMPLES[0]}” or “{NOTE_EXAMPLES[4]}”.
+        </span>
+      )}
+    </section>
   )
 }
 
@@ -119,6 +149,13 @@ function NewRule() {
     enabled: !!text.trim(),
   }).data
   const add = useCommand("rule_add", { label: (o) => o.result.message ?? "Added" })
+  const notes = useNotes()
+  // a note, not a rule: what Friday reads keeps it in mind; the plan doesn't change (About you, 12 Nov)
+  const keepNote = () => {
+    if (!text.trim()) return
+    notes.add(text)
+    clear()
+  }
   const switchOff = useCommand("rule_set", { label: () => "Switched off" })
   const reading = preview?.reading as Reading | null | undefined
   const chosen = strength ?? ((preview?.strength as Strength) || "Prefer")
@@ -172,6 +209,9 @@ function NewRule() {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <Icon name="plus" size={18} style={{ color: "var(--color-accent-300)" }} />
         <input value={text} onChange={(e) => (setText(e.target.value), setOverrides({}), setStrength(null), setClaude(null))} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="I prefer eating lunch before 1pm" aria-label="New rule" style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontSize: 16 }} />
+        <button className="btn btn-secondary" onClick={keepNote} disabled={!text.trim()} title="Kept for reading your mail, calendars and documents; the plan doesn't change">
+          Keep as a note
+        </button>
         <button className="btn btn-primary" onClick={() => submit()} disabled={!text.trim() || (unread && !ai) || !!claude?.busy || (!!claude?.answer && !claude.kept.length && !!claude.answer.actions.length)}>
           {asking && ai && !claude?.answer && <Icon name="sparkle" />}
           {!asking || !ai ? (all.length > 1 ? `Add ${all.length} rules` : "Add rule") : claude?.busy ? `Asking ${aiName}…` : claude?.answer?.actions.length ? `Add ${claude.kept.length > 1 ? `${claude.kept.length} rules` : "rule"}` : claude?.answer ? "Ask again" : `Ask ${aiName}`}

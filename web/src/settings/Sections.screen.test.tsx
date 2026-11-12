@@ -1,5 +1,5 @@
 // Settings' sections other than the integrations and the calendars: the page itself (its sections, the one it opens
-// at, Setup's answers one at a time, Back to plan), Appearance, Tags/Kinds, Schedule, Repeating, About you, Shortcuts
+// at, Setup's answers one at a time, Back to plan), Appearance, Tags/Kinds, Schedule, Repeating, Shortcuts
 // and Advanced, each driven as you would and checked by what it sent and what Friday then holds. Alex's sample; the
 // server's live updates are stood in for by asking again (`client.invalidateQueries()`), as their stream would.
 
@@ -39,7 +39,7 @@ describe("the settings page", () => {
     const { user } = await openFriday("/settings/shortcuts")
     const nav = screen.getByText("Appearance").closest("nav")!
     const sections = within(nav).getAllByRole("link").map((a) => a.textContent)
-    expect(sections).toEqual(["Appearance", "Calendars", "Tags/Kinds", "Schedule", "Repeating", "Integrations", "Phone", "Tokens", "About you", "Shortcuts", "Updates", "Advanced"])
+    expect(sections).toEqual(["Appearance", "Calendars", "Tags/Kinds", "Schedule", "Repeating", "Integrations", "Phone", "Tokens", "Shortcuts", "Updates", "Advanced"])
     expect(screen.getByText("Changes apply right away")).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Back to plan" }))
     await waitFor(() => expect(window.location.hash).toBe("#/"))
@@ -416,26 +416,22 @@ describe("Repeating", () => {
   })
 })
 
-describe("About you", () => {
-  it("adds a note in your own words or from an example, and forgets one", async () => {
+describe("About you, now notes on the Rules page", () => {
+  it("its old address opens Rules, where a note is kept from the box and forgotten from its row", async () => {
     const { user, client } = await openFriday("/settings/about")
-    expect(await screen.findByText("Nothing yet. Some things people tell Friday:")).toBeTruthy()
-    const box = screen.getByPlaceholderText("e.g. Lab reports take me about 2 hours")
-    const add = screen.getByRole("button", { name: "Add" }) as HTMLButtonElement
-    expect(add.disabled).toBe(true)
-    await user.type(box, "  Lab reports take me about 2 hours  {Enter}")
+    await waitFor(() => expect(window.location.hash).toContain("/rules"))
+    expect(await screen.findByText(/None yet\. Type one in the box above and press Keep as a note/)).toBeTruthy()
+    const box = screen.getByRole("textbox", { name: "New rule" })
+    const keep = screen.getByRole("button", { name: "Keep as a note" }) as HTMLButtonElement
+    expect(keep.disabled).toBe(true)
+    await user.type(box, "  Lab reports take me about 2 hours  ")
+    await user.click(keep)
     expect((await waitForSent("settings_set")).body).toEqual({ key: "notes", value: ["Lab reports take me about 2 hours"] })
+    expect((box as HTMLInputElement).value).toBe("")
     await answered(client)
     expect(await screen.findByText("Lab reports take me about 2 hours")).toBeTruthy()
-    await user.click(screen.getByRole("button", { name: "Quizzes are in class; don't plan prep for them" }))
-    expect((box as HTMLInputElement).value).toBe("Quizzes are in class; don't plan prep for them")
-    await user.click(add)
-    expect((await waitForSent("settings_set")).body).toEqual({ key: "notes", value: ["Lab reports take me about 2 hours", "Quizzes are in class; don't plan prep for them"] })
-    await answered(client)
-    // an example told already isn't offered again
-    await waitFor(() => expect(screen.queryByRole("button", { name: "Quizzes are in class; don't plan prep for them" })).toBeNull())
     await user.click(screen.getByRole("button", { name: "Forget: Lab reports take me about 2 hours" }))
-    expect((await waitForSent("settings_set")).body).toEqual({ key: "notes", value: ["Quizzes are in class; don't plan prep for them"] })
+    expect((await waitForSent("settings_set")).body).toEqual({ key: "notes", value: [] })
   })
 })
 
