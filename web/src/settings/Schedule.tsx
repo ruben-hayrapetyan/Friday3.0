@@ -14,6 +14,7 @@ import { TrackMeals, TrackSleep } from "./SleepTracking"
 import { TimeInput } from "@/components/fr/TimeInput"
 import { SLEEP_HOURS } from "@/lib/ampm"
 import { useBriefSwitch } from "@/dialogs/Dialogs"
+import { HeldNumber, HeldRange } from "./Held"
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 interface Night {
@@ -22,6 +23,15 @@ interface Night {
   margin_min: number
 }
 const times = (from: number, to: number) => Array.from({ length: (to - from) * 2 + 1 }, (_, i) => `${String(Math.floor(from + i / 2) % 24).padStart(2, "0")}:${i % 2 ? "30" : "00"}`)
+
+/** The half-hours to pick from, with the time saved among them when it's another (a 7:15am wake set day by day): the
+ * box showed nothing for it, or the first time as if that were saved (audit, 12 Nov). */
+export function timesWith(from: number, to: number, saved: string): string[] {
+  const all = times(from, to)
+  if (!saved || all.includes(saved)) return all
+  const key = (t: string) => ((Number(t.slice(0, 2)) - from + 36) % 24) * 60 + Number(t.slice(3, 5)) // from 12 hours before the first
+  return [...all, saved].sort((a, b) => key(a) - key(b))
+}
 
 export function Schedule() {
   const settings = useSettings().data as Record<string, unknown> | undefined
@@ -47,7 +57,7 @@ export function Schedule() {
       <SectionHead title="Schedule" note="The shape of a normal day. Friday plans inside these limits." />
       <Field name="Day starts" note={`Nothing flexible is planned before this.${differs("wake") ? " Some days differ; this sets them all." : ""}`}>
         <select className="input" value={mon.wake} onChange={(e) => allNights({ wake: e.target.value })} style={{ alignSelf: "flex-start", width: 140 }}>
-          {times(5, 11).map((t) => (
+          {timesWith(5, 11, mon.wake).map((t) => (
             <option key={t} value={t}>
               {ampm(t)}
             </option>
@@ -56,7 +66,7 @@ export function Schedule() {
       </Field>
       <Field name="Bedtime" note={`Friday stops planning here; only a deadline can push past it.${differs("bedtime") ? " Some days differ; this sets them all." : ""}`}>
         <select className="input" value={mon.bedtime} onChange={(e) => allNights({ bedtime: e.target.value })} style={{ alignSelf: "flex-start", width: 140 }}>
-          {times(21, 26).map((t) => (
+          {timesWith(21, 26, mon.bedtime).map((t) => (
             <option key={t} value={t}>
               {ampm(t)}
             </option>
@@ -74,7 +84,7 @@ export function Schedule() {
       </Field>
       <Field name="Daily limit" note="The most focused work Friday will plan in a day. Pace can raise or lower it for a while.">
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <input type="range" min={4} max={12} step={0.5} value={caps.mon} onChange={(e) => save({ key: "daily_cap", value: Object.fromEntries(DAYS.map((d) => [d, Number(e.target.value)])) })} aria-label="Daily limit" style={{ flex: 1, maxWidth: 320, accentColor: "var(--color-accent)" }} />
+          <HeldRange min={4} max={12} step={0.5} value={caps.mon} onSave={(v) => save({ key: "daily_cap", value: Object.fromEntries(DAYS.map((d) => [d, v])) })} aria-label="Daily limit" style={{ flex: 1, maxWidth: 320, accentColor: "var(--color-accent)" }} />
           <span className="fr-h tnum" style={{ fontSize: 20 }}>
             {caps.mon} h
           </span>
@@ -157,8 +167,8 @@ function ByDay({ sleep, caps }: { sleep: Record<string, Night>; caps: Record<str
           <span style={{ textTransform: "capitalize" }}>{d}</span>
           <TimeInput value={sleep[d].wake} onChange={(wake) => night(d, { wake })} expect={{ hours: SLEEP_HOURS.up }} label={`${d} wake`} style={input} />
           <TimeInput value={sleep[d].bedtime} onChange={(bedtime) => night(d, { bedtime })} expect={{ hours: SLEEP_HOURS.bed }} label={`${d} bedtime`} style={input} />
-          <input type="number" className="input" min={0} max={240} step={15} value={sleep[d].margin_min} onChange={(e) => night(d, { margin_min: Number(e.target.value) })} style={input} />
-          <input type="number" className="input" min={0} max={16} step={0.5} value={caps[d]} onChange={(e) => save({ key: "daily_cap", value: { ...caps, [d]: Number(e.target.value) } })} style={input} />
+          <HeldNumber className="input" min={0} max={240} step={15} value={sleep[d].margin_min} onSave={(margin_min) => night(d, { margin_min })} aria-label={`${d} past bedtime`} style={input} />
+          <HeldNumber className="input" min={0} max={16} step={0.5} value={caps[d]} onSave={(cap) => save({ key: "daily_cap", value: { ...caps, [d]: cap } })} aria-label={`${d} limit`} style={input} />
         </Row>
       ))}
     </div>

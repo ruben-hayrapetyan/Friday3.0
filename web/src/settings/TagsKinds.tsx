@@ -17,7 +17,8 @@ import { SectionHead } from "./SettingsPage"
 const SWATCHES: { id: string; name: string }[] = [...PIGMENTS.map((p) => ({ id: p.id, name: p.name })), { id: "n", name: "Grey" }]
 
 export function TagsKinds() {
-  const areas = (useAreas().data ?? []).filter((a) => !a.archived)
+  const all = useAreas().data ?? []
+  const areas = all.filter((a) => !a.archived)
   const { light } = useLook()
   const { buffers, set } = useBuffers()
   const add = useCommand("area_add", { label: () => "Tag added" })
@@ -33,7 +34,7 @@ export function TagsKinds() {
           <div key={a.id} className="fr-row" style={{ display: "grid", gridTemplateColumns: "28px minmax(0,180px) minmax(0,1fr)", gap: "10px 16px", alignItems: "center", padding: "14px 0" }}>
             <span style={{ width: 28, height: 28, borderRadius: 8, background: paintOf(hue, light) }} />
             <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, gridColumn: "2" }}>
-              <NameInput name={a.name} onSave={(name) => edit({ id: a.id, name })} />
+              <NameInput key={a.name} name={a.name} onSave={(name) => edit({ id: a.id, name })} />
               <span className="tnum fr-kicker">{hours.get(a.name) ?? 0} h this week</span>
             </div>
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
@@ -67,7 +68,7 @@ export function TagsKinds() {
         )
       })}
       <div className="fr-row" style={{ display: "flex", gap: 8, paddingTop: 16 }}>
-        <button className="btn btn-secondary" onClick={() => add({ name: `Tag ${areas.length + 1}`, color: AUTO_PAINTS[areas.length % AUTO_PAINTS.length] })}>
+        <button className="btn btn-secondary" onClick={() => add({ name: tagName(areas.length + 1, all.map((a) => a.name)), color: AUTO_PAINTS[areas.length % AUTO_PAINTS.length] })}>
           <Icon name="plus" size={15} />
           Add tag
         </button>
@@ -81,13 +82,27 @@ export function TagsKinds() {
   )
 }
 
-function NameInput({ name, onSave }: { name: string; onSave: (name: string) => void }) {
+/** "Tag 3", or the next number no tag has, archived ones too (audit, 12 Nov: with one archived, Add tag offered a
+ * name in use and was refused every time). */
+export function tagName(from: number, taken: string[]): string {
+  const used = new Set(taken.map((t) => t.toLowerCase()))
+  let n = from
+  while (used.has(`tag ${n}`)) n++
+  return `Tag ${n}`
+}
+
+/** A tag's name, saved as you leave it; a name Friday refuses goes back (keyed on the name, so Undo shows too). */
+function NameInput({ name, onSave }: { name: string; onSave: (name: string) => Promise<unknown> }) {
   const [value, setValue] = useState(name)
+  const save = async () => {
+    if (!value.trim() || value === name) return setValue(name)
+    if (!(await onSave(value.trim()))) setValue(name)
+  }
   return (
     <input
       value={value}
       onChange={(e) => setValue(e.target.value)}
-      onBlur={() => value.trim() && value !== name && onSave(value.trim())}
+      onBlur={save}
       onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
       aria-label="Tag name"
       style={{ border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontWeight: 500, padding: 0 }}
@@ -120,7 +135,7 @@ function AddKind({ presets }: { presets: string[] }) {
   const [like, setLike] = useState("Assignment")
   return (
     <div className="fr-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 0", flexWrap: "wrap" }}>
-      <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="New kind, e.g. Lab report" style={{ width: 200, padding: "5px 8px", minHeight: 0 }} />
+      <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="New kind, e.g. Lab report" aria-label="New kind" style={{ width: 200, padding: "5px 8px", minHeight: 0 }} />
       <span className="fr-kicker">works like</span>
       <Menu options={presets.map((p) => ({ value: p, label: p }))} value={like} onPick={setLike} label="Starts as a copy of" />
       <button className="btn btn-secondary" disabled={!name.trim()} onClick={async () => (await add({ name: name.trim(), like })) && setName("")} style={{ fontSize: 12 }}>

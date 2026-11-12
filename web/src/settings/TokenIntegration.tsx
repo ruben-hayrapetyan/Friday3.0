@@ -14,6 +14,7 @@ import { useShell } from "@/shell/ShellContext"
 import type { Entry } from "./gallery"
 import { SCRIPT_LINK, scriptKey, scriptToken, tasksScript } from "./tasksScript"
 import { inMacApp } from "./MacAccounts"
+import { useOnce } from "./Held"
 
 export type Connected = Schemas["Connected"]
 type Arrival = Connected["arrival"]
@@ -139,11 +140,13 @@ function ConnectForm({ entry }: { entry: Entry }) {
   const page = token_.page || asked.data?.url
   const unready = !token_.page && asked.data && !asked.data.url
   const missing = (token_.fields ?? []).some((f) => !(fields[f.key] ?? "").trim())
-  const submit = async () => {
-    if (!token.trim() || missing) return
-    // A refused token is said in a toast, in the service's words; it stays in the box to correct.
-    if (await connect({ kind: entry.id, token, fields })) setToken("")
-  }
+  const [busy, once] = useOnce() // pressed twice, a second account of the same: connected once
+  const submit = () =>
+    once(async () => {
+      if (!token.trim() || missing) return
+      // A refused token is said in a toast, in the service's words; it stays in the box to correct.
+      if (await connect({ kind: entry.id, token, fields })) setToken("")
+    })
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <ol style={{ margin: 0, paddingLeft: 20, listStyle: "decimal", display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
@@ -192,7 +195,7 @@ function ConnectForm({ entry }: { entry: Entry }) {
           placeholder="Paste the token"
           style={{ flex: 1, minWidth: 0, padding: "5px 8px", minHeight: 0, fontSize: 13 }}
         />
-        <button className="btn btn-primary" onClick={submit} disabled={!token.trim() || missing || !!unready} style={{ fontSize: 12 }}>
+        <button className="btn btn-primary" onClick={submit} disabled={!token.trim() || missing || !!unready || busy} style={{ fontSize: 12 }}>
           Connect
         </button>
       </div>
@@ -267,11 +270,13 @@ function ScriptConnect({ entry }: { entry: Entry }) {
     }
   }
   const good = SCRIPT_LINK.test(link.trim())
-  const submit = async () => {
-    if (!good) return
-    // A refusal is said in a toast with what to do; the link stays in the box to try again.
-    if (await connect({ kind: entry.id, token: scriptToken(link, key), fields: {} })) setLink("")
-  }
+  const [busy, once] = useOnce()
+  const submit = () =>
+    once(async () => {
+      if (!good) return
+      // A refusal is said in a toast with what to do; the link stays in the box to try again.
+      if (await connect({ kind: entry.id, token: scriptToken(link, key), fields: {} })) setLink("")
+    })
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <ol style={{ margin: 0, paddingLeft: 20, listStyle: "decimal", display: "flex", flexDirection: "column", gap: 5, fontSize: 13 }}>
@@ -334,7 +339,7 @@ function ScriptConnect({ entry }: { entry: Entry }) {
           placeholder="https://script.google.com/macros/s/…/exec"
           style={{ flex: 1, minWidth: 0, padding: "5px 8px", minHeight: 0, fontSize: 13 }}
         />
-        <button className="btn btn-primary" onClick={submit} disabled={!good} style={{ fontSize: 12 }}>
+        <button className="btn btn-primary" onClick={submit} disabled={!good || busy} style={{ fontSize: 12 }}>
           Connect
         </button>
       </div>
@@ -382,10 +387,13 @@ function Lists({ c }: { c: Connected }) {
   const found = useQuery({ queryKey: key, queryFn: () => query("integration_lists", { id: c.id }) as Promise<TodoList[]> })
   const set = useCommand("integration_list_set", { label: () => "Saved" })
   const [leaving, setLeaving] = useState<TodoList | null>(null)
-  const flip = (t: TodoList, on: boolean, keep = true) => {
+  const flip = async (t: TodoList, on: boolean, keep = true) => {
     client.setQueryData<TodoList[]>(key, (old) => old?.map((x) => (x.id === t.id ? { ...x, on } : x))) // at once
     setLeaving(null)
-    return set({ id: c.id, list: t.id, on, keep })
+    const out = await set({ id: c.id, list: t.id, on, keep })
+    // refused: back as it was (audit, 12 Nov: the switch stayed flipped, this query isn't one a command takes back)
+    if (!out) client.setQueryData<TodoList[]>(key, (old) => old?.map((x) => (x.id === t.id ? { ...x, on: t.on } : x)))
+    return out
   }
   const lists = found.data ?? []
   return (

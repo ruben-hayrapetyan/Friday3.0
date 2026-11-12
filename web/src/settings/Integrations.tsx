@@ -23,9 +23,10 @@ import { MailLog } from "./MailLog"
 import { AiConnect, useAi } from "./AiConnect"
 import { SectionHead } from "./SettingsPage"
 import { CATALOG, type Entry, grouped, search } from "./gallery"
-import { LinkIntegration, ViaMac } from "./LinkIntegration"
+import { freeName, LinkIntegration, useLinkSources, ViaMac } from "./LinkIntegration"
 import { MailIntegration, useMailAccounts } from "./MailIntegration"
 import { OutlookMail, TokenIntegration, useIntegrations } from "./TokenIntegration"
+import { HeldRange, useOnce } from "./Held"
 
 export function Integrations() {
   return (
@@ -584,7 +585,7 @@ function Ai() {
             Daily limit
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <input type="range" min={5} max={200} step={5} value={llmSettings.daily_calls} disabled={owned.includes("llm")} onChange={(e) => save({ key: "llm", value: { daily_calls: Number(e.target.value) } })} aria-label="Daily reads" style={{ flex: 1, maxWidth: 300, accentColor: "var(--color-accent)" }} />
+            <HeldRange min={5} max={200} step={5} value={llmSettings.daily_calls} disabled={owned.includes("llm")} onSave={(daily_calls) => save({ key: "llm", value: { daily_calls } })} aria-label="Daily reads" style={{ flex: 1, maxWidth: 300, accentColor: "var(--color-accent)" }} />
             <span className="fr-h tnum" style={{ fontSize: 20 }}>
               {llmSettings.daily_calls} reads
             </span>
@@ -659,11 +660,13 @@ export function feedName(link: string): string {
  * suggested in the Inbox first (a course feed's). */
 export function AddFeed({ trusted = false }: { trusted?: boolean }) {
   const add = useCommand("source_add", { label: (o) => o.result.message ?? "Added" })
+  const links = useLinkSources()
+  const [busy, once] = useOnce()
   const [url, setUrl] = useState("")
   return (
     <div style={{ display: "flex", gap: 6 }}>
       <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste a calendar link" aria-label="Calendar link" style={{ flex: 1, maxWidth: 380, padding: "5px 8px", minHeight: 0 }} />
-      <button className="btn btn-secondary" disabled={!/^(https?|webcal):\/\//i.test(url.trim())} onClick={async () => (await add({ kind: "ics", name: feedName(url), url: feedUrl(url), trusted })) && setUrl("")} style={{ fontSize: 12 }}>
+      <button className="btn btn-secondary" disabled={!/^(https?|webcal):\/\//i.test(url.trim()) || busy} onClick={() => once(async () => (await add({ kind: "ics", name: freeName(feedName(url), links.map((s) => s.name)), url: feedUrl(url), trusted })) && setUrl(""))} style={{ fontSize: 12 }}>
         Add feed
       </button>
     </div>
@@ -682,7 +685,11 @@ export function Upload() {
   }
   return (
     <>
-      <input ref={file} type="file" accept="application/pdf,image/png,image/jpeg,text/plain,text/html,.html,.htm" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && send(e.target.files[0])} />
+      <input ref={file} type="file" accept="application/pdf,image/png,image/jpeg,text/plain,text/html,.html,.htm" style={{ display: "none" }} onChange={(e) => {
+          const picked = e.target.files?.[0]
+          e.target.value = "" // the same file picked again is read again (audit, 12 Nov: nothing happened)
+          if (picked) send(picked)
+        }} />
       <button className="btn btn-secondary" onClick={() => file.current?.click()} style={{ fontSize: 12 }}>
         <Icon name="upload-simple" />
         Upload PDF or page

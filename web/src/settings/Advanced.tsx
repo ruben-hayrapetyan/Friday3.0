@@ -9,6 +9,7 @@ import { usePaces, useSettings, useStatus } from "@/hooks/queries"
 import { Advanced } from "@/screens/SettingsRules"
 import { useShell } from "@/shell/ShellContext"
 import { SectionHead } from "./SettingsPage"
+import { HeldRange } from "./Held"
 
 const DIALS: [string, number, number][] = [
   ["capacity", 0.3, 1.5],
@@ -63,7 +64,7 @@ function Paces() {
           {DIALS.map(([dial, lo, hi]) => (
             <label key={dial} style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 11, color: "var(--color-neutral-500)" }}>
               {dial} {dials[dial]?.toFixed(1)}
-              <input type="range" min={lo} max={hi} step={0.1} defaultValue={dials[dial]} onMouseUp={(e) => save({ name: pace, [dial]: Number(e.currentTarget.value) })} style={{ accentColor: "var(--color-accent)" }} />
+              <HeldRange min={lo} max={hi} step={0.1} value={dials[dial]} onSave={(v) => save({ name: pace, [dial]: v })} aria-label={`${pace} ${dial}`} style={{ accentColor: "var(--color-accent)" }} />
             </label>
           ))}
           {pace !== paces.default && pace !== paces.now_label ? (
@@ -76,7 +77,7 @@ function Paces() {
         </div>
       ))}
       <div style={{ display: "flex", gap: 8 }}>
-        <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="New pace, e.g. Exam week" style={{ width: 220, padding: "5px 8px", minHeight: 0 }} />
+        <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="New pace, e.g. Exam week" aria-label="New pace" style={{ width: 220, padding: "5px 8px", minHeight: 0 }} />
         <button className="btn btn-secondary" disabled={!name.trim()} onClick={async () => (await save({ name: name.trim(), ...paces.now_dials })) && setName("")} style={{ fontSize: 12 }}>
           Save the dials in use
         </button>

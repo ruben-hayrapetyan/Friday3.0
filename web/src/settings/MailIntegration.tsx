@@ -7,6 +7,7 @@ import { useState } from "react"
 import { query, type Schemas } from "@/api/client"
 import { useCommand } from "@/hooks/useCommand"
 import type { Entry } from "./gallery"
+import { useOnce } from "./Held"
 
 export type MailAccount = Schemas["MailAppAccount"]
 
@@ -24,14 +25,16 @@ export function MailIntegration({ entry }: { entry: Entry }) {
   const [host, setHost] = useState("")
   const other = box.provider === "other"
   const ready = address.includes("@") && password.trim() && (!other || host.includes("."))
-  const submit = async () => {
-    if (!ready) return
-    if (await connect({ provider: box.provider, address, password, host: other ? host : null })) {
-      setAddress("")
-      setPassword("")
-      setHost("")
-    }
-  }
+  const [busy, once] = useOnce() // Enter and Connect during the slow check connect it once
+  const submit = () =>
+    once(async () => {
+      if (!ready) return
+      if (await connect({ provider: box.provider, address, password, host: other ? host : null })) {
+        setAddress("")
+        setPassword("")
+        setHost("")
+      }
+    })
   const field = { className: "input", spellCheck: false, style: { padding: "5px 8px", minHeight: 0, fontSize: 13 } }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -58,7 +61,7 @@ export function MailIntegration({ entry }: { entry: Entry }) {
       <input {...field} aria-label="Address" type="email" placeholder="Your address" value={address} onChange={(e) => setAddress(e.target.value)} />
       <div style={{ display: "flex", gap: 8 }}>
         <input {...field} aria-label="App password" type="password" autoComplete="off" placeholder="App password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} style={{ ...field.style, flex: 1, minWidth: 0 }} />
-        <button className="btn btn-primary" onClick={submit} disabled={!ready} style={{ fontSize: 12 }}>
+        <button className="btn btn-primary" onClick={submit} disabled={!ready || busy} style={{ fontSize: 12 }}>
           Connect
         </button>
       </div>
