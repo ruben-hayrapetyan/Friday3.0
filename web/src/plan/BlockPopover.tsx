@@ -114,6 +114,9 @@ export function BlockPopover() {
     const press = (e: PointerEvent) => {
       const target = e.target instanceof Element ? e.target : null
       if (target && (card.current?.contains(target) || target.closest(`[data-block-key="${CSS.escape(key)}"]`))) return
+      // ⌘-click on another block picks this one with it (the grid reads what's selected): let go of it after that
+      // (12 Nov: let go of here first, the first ⌘-click picked only the block clicked)
+      if (target?.closest("[data-block-key]") && (e.metaKey || e.ctrlKey || e.shiftKey)) return
       select(null)
     }
     window.addEventListener("pointerdown", press, true)
