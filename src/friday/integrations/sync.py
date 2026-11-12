@@ -216,8 +216,9 @@ def sync_source(
                 accept_trusted(conn, now_utc, user_id, int(s["id"]), source["name"])
     if connector.caps.gone_is_done:
         done_there(conn, source, {r.external_id for r in remotes}, now_utc, user_id)
-    if first:
-        synced = json.dumps(config | {"synced": True})
+    if first:  # onto its config as it is now: the one read before the read undid a choice made in its box meanwhile
+        now = one(conn, "SELECT config FROM sources WHERE id = ?", [source["id"]])
+        synced = json.dumps(json.loads((now or {}).get("config") or "{}") | {"synced": True})
         conn.execute("UPDATE sources SET config = ? WHERE id = ?", [synced, source["id"]])
     return made
 

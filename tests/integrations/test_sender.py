@@ -2,6 +2,7 @@
 commits; what was rolled back sends nothing; stopping it is quick; a change the app keeps refusing is tried again,
 then said on its box; a send that breaks doesn't stop it. And when each integration is read."""
 
+import json
 import threading
 import time
 from pathlib import Path
@@ -13,6 +14,7 @@ from friday.core.db import connect
 from friday.core.time import format_utc
 from friday.integrations import sync
 from friday.integrations.base import ConnectorError
+from friday.integrations.todoist import Todoist
 from tests.commands.helpers import new_app
 from tests.integrations.contract import THU, World
 from tests.integrations.fake_todoist import HARNESS
@@ -164,3 +166,20 @@ def test_the_sender_and_the_job_never_send_the_same_change_twice_or_out_of_order
     second.join(5)
     other.close()
     assert sent == ["done", "reopen"]
+
+
+def test_a_choice_made_while_the_first_read_runs_is_kept(w: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    # The first read marks the integration read by writing its whole config back as it was when the read began: a
+    # choice made in its box meanwhile (how new to-dos arrive, which lists), just after connecting, was undone
+    w.h.add(w.fake, "Pay rent", THU)
+    source = w.connect()
+    reading = Todoist.read
+
+    def read(self: Todoist) -> Any:
+        w.app.do("integration_set", id=source, arrival="inbox")  # in its box, while Todoist answers
+        return reading(self)
+
+    monkeypatch.setattr(Todoist, "read", read)
+    w.sync()
+    config = json.loads(w.source()["config"])  # type: ignore[index]
+    assert config["synced"] is True and config["arrival"] == "inbox"
