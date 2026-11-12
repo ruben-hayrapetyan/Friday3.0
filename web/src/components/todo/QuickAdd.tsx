@@ -8,13 +8,18 @@ import { useCommand } from "@/hooks/useCommand"
 type Parsed = Schemas["ParseOutput"]
 
 
-/** How a quick-add line reads, asked of the server 120 ms after typing stops. */
+/** How a quick-add line reads, asked of the server 120 ms after typing stops. An answer that comes once the line has
+ * changed is dropped (the audit, 12 Nov: "essay fri"'s came after the box was emptied, and showed its due on nothing). */
 export function useParsed(text: string): Parsed | null {
   const [parsed, setParsed] = useState<Parsed | null>(null)
   useEffect(() => {
     if (!text.trim()) return setParsed(null)
-    const timer = setTimeout(() => query("parse", { text }).then(setParsed, () => setParsed(null)), 120)
-    return () => clearTimeout(timer)
+    let gone = false
+    const timer = setTimeout(() => query("parse", { text }).then((p) => gone || setParsed(p), () => gone || setParsed(null)), 120)
+    return () => {
+      gone = true
+      clearTimeout(timer)
+    }
   }, [text])
   return parsed
 }
