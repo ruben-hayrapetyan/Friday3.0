@@ -34,6 +34,7 @@ from friday.planner.store import area_names, current_plan, kv_get
 from friday.planner.views import rule_clash as find_clash
 
 DEFAULT_WEIGHT = {r.name: r.weight for r in REFERENCE_RULES}
+LEARNED_WEIGHT = 1.0  # a rule a yes to a proposal adds (`learn/proposals.py`) starts at this weight
 ALWAYS = {"late_work", "late_tasks", "quota"}  # deadlines: they never bend
 SAID = {
     "late_work": "Deadlines come first",
@@ -358,8 +359,16 @@ def restrength(ctx: Ctx, rule: dict[str, Any], strength: str) -> None:
         return
     if rule["name"] in ALWAYS or strength == "Always":
         raise FieldError("strength", "this rule's strength can be Prefer or Strongly")
-    base = DEFAULT_WEIGHT.get(rule["name"], rule["weight"])
-    rule["weight"] = base * (3 if strength == "Strongly" else 1)
+    base = base_weight(rule["name"])
+    rule["weight"] = (rule["weight"] if base is None else base) * (3 if strength == "Strongly" else 1)
+
+
+def base_weight(name: str) -> float | None:
+    """A rule's weight at Prefer: a default's, or a learned rule's (12 Nov: each Strongly on a learned rule tripled
+    it again, and Prefer never brought it back), None for one Friday doesn't know the start of."""
+    if name in DEFAULT_WEIGHT:
+        return DEFAULT_WEIGHT[name]
+    return LEARNED_WEIGHT if name.startswith("learned:") else None
 
 
 @command("rule_remove", affects_plan=True)
@@ -496,7 +505,7 @@ def strength_of(rule: Any, mine: dict[str, Any]) -> str:
         return mine[rule.name]["strength"]
     if rule.name in ALWAYS or rule.params.get("price") == "forbid":
         return "Always"
-    base = DEFAULT_WEIGHT.get(rule.name)
+    base = base_weight(rule.name)
     return "Strongly" if base is not None and rule.weight >= 3 * base > 0 else "Prefer"
 
 
