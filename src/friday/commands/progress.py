@@ -262,7 +262,13 @@ def review_submit(ctx: Ctx, inp: ReviewSubmitInput) -> Changed:
             write_review(ctx, block, entry.status, entry.share)
             settled.add((block["item_id"], block["start"]))
         elif entry.item_id is not None and entry.start and entry.end:
-            s, e = parse_utc(ctx.utc(entry.start, "start")), parse_utc(ctx.utc(entry.end, "end"))
+            # as `log` checks it (audit, 12 Nov: one ending before it began, or after now, or of nothing, was taken)
+            require_item(ctx, entry.item_id)
+            s, e = ctx.span(entry.start, entry.end)
+            if e <= s:
+                raise FieldError("end", "must be after the start")
+            if e > ctx.now_utc:
+                raise FieldError("end", "must not be later than now: log work once it's done")
             write_progress(ctx, entry.item_id, e - s, "review", s, e)
     if ctx.settings["planner"].assume_unreviewed == "done":
         for block in day_blocks(ctx, day):
