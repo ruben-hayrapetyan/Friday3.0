@@ -63,6 +63,7 @@ describe("Tokens", () => {
     await user.click(screen.getByRole("button", { name: "Delete" }))
     expect((await waitForSent("token_remove")).body).toEqual({ name: "script" })
     await waitFor(async () => expect((await tokens()).map((t) => t.name).sort()).toEqual(["claude", "shortcut"]))
+    await screen.findByText("2 in use") // the list read again, so Delete all counts what's left
     await user.click(await screen.findByRole("button", { name: "Delete all" }))
     expect(screen.getByText("Delete all 2?")).toBeTruthy()
     sent.length = 0

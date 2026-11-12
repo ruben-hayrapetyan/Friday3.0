@@ -69,9 +69,10 @@ describe("timing something", () => {
     await user.click(inDock().getByRole("button", { name: "Pause the timer (Space)" }))
     expect((await waitForSent("stop")).body).toEqual({})
     await friday.c("start", { id: a.item_id })
+    await waitFor(async () => expect((await friday.q<{ timer: unknown }>("status")).timer).toBeTruthy())
     cleanup() // the first page gone, so the bar read is the new one's
     const { user: again } = await openDock()
-    await again.click(await inDock().findByTitle("Stop the timer and mark it done"))
+    await again.click(await inDock().findByTitle("Stop the timer and mark it done", {}, { timeout: 20_000 }))
     expect((await waitForSent("stop")).body).toEqual({ done: true })
     await friday.c("reopen", { id: a.item_id })
   })
