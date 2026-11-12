@@ -74,3 +74,8 @@ def test_a_task_or_an_answered_suggestion_says_nothing(app: App) -> None:
     app.do("suggestion_reject", id=sid)
     with pytest.raises(FieldError, match="no pending suggestion"):
         app.do("suggestion_effect", id=sid)
+
+
+def test_an_edited_time_that_ends_before_it_starts_is_refused(app: App) -> None:
+    with pytest.raises(FieldError, match="the event ends before it starts"):
+        app.do("suggestion_effect", id=suggested(app, screening()), start="2026-10-19T21:00", end="2026-10-19T19:00")

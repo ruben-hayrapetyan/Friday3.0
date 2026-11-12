@@ -223,3 +223,70 @@ def test_an_assignment_planned_at_a_share_of_its_length_gets_the_rest_once_its_w
     blocks = app.do("item", id=item)["blocks"]
     planned = sum((parse_local(b["end"]) - parse_local(b["start"])).total_seconds() / 60 for b in blocks)
     assert planned == 90 and all(b["end"] <= "2026-10-19T16:00" for b in blocks)
+
+
+def test_a_repeat_can_ask_for_several_times_in_each_window(app: App) -> None:
+    out = app.do("add", title="Gym", duration_min=60, every="week", per_window=3)
+    assert app.table("series")[-1]["per_window"] == 3 and out["occurrences"] >= 3
+
+
+def test_waiting_for_an_item_that_isnt_there_names_it(app: App) -> None:
+    with pytest.raises(FieldError, match="no item called 'Essay'"):
+        app.do("add", text='PS4 ~1h after:"Essay"')
+
+
+def test_changing_from_a_date_on_is_only_for_a_repeat(app: App) -> None:
+    item = app.do("add", title="Essay", duration_min=60)["item"]
+    with pytest.raises(FieldError, match=f"T{item['id']} doesn't repeat"):
+        app.do("edit", id=item["id"], from_date="2026-10-21", title="Essay 2")
+
+
+def test_an_event_made_a_class_keeps_a_classs_time_around_it(app: App) -> None:
+    event = app.do("add", title="Meeting", start="2026-10-20T10:00", end="2026-10-20T11:00")["item"]
+    app.do("edit", id=event["id"], preset="Class")
+    (row,) = app.table("items")
+    assert (row["preset"], row["event_kind"]) == ("Class", "class")
+
+
+def test_done_twice_is_refused(app: App) -> None:
+    item = app.do("add", title="Laundry", duration_min=30)["item"]
+    app.do("done", id=item["id"])
+    with pytest.raises(FieldError, match="done already"):
+        app.do("done", id=item["id"])
+
+
+def test_waiting_for_none_of_another_item_is_refused(app: App) -> None:
+    first = app.do("add", title="Read", duration_min=60)["item"]["id"]
+    then = app.do("add", title="Write", duration_min=60)["item"]["id"]
+    with pytest.raises(FieldError, match="above 0 and at most 1"):
+        app.do("depend", item_id=then, depends_on_id=first, fraction=0)
+
+
+def test_an_area_is_archived_and_one_that_isnt_there_is_refused(app: App) -> None:
+    area = app.do("area_add", name="Chem")
+    out = app.do("area_edit", id=area["id"], archived=True)
+    assert out["archived"] is True and app.table("areas")[-1]["archived"] == 1
+    with pytest.raises(FieldError, match="no area 99"):
+        app.do("area_edit", id=99, name="x")
+
+
+def test_a_suggestion_of_an_unknown_kind_has_no_guessed_length(app: App) -> None:
+    app.do("document_add", name="n.txt", content="x")
+    raw = app.table("raw_inputs")[-1]["id"]
+    app.conn.execute(
+        "INSERT INTO suggestions (user_id, raw_input_id, command, input, status, created_utc) "
+        "VALUES (1, ?, 'add', ?, 'pending', '2026-10-19T13:00Z')",
+        [raw, '{"title": "Thing", "preset": "Nonsense"}'],
+    )
+    (found,) = app.do("inbox")["suggestions"]
+    assert found["guess_min"] is None
+
+
+def test_a_kind_that_isnt_one_is_refused(app: App) -> None:
+    with pytest.raises(FieldError, match="no preset named 'Nonsense'"):
+        app.do("add", title="Thing", preset="Nonsense")
+
+
+def test_a_maybe_and_an_open_ended_one_get_their_kinds(app: App) -> None:
+    assert app.do("add", title="Party at Sam's", certainty="tentative")["item"]["preset"] == "Maybe"
+    assert app.do("add", title="Learn guitar", amount="open")["item"]["preset"] == "Side project"

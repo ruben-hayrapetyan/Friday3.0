@@ -11,6 +11,7 @@ from friday.integrations import jira, sync
 from friday.integrations.base import ConnectorError
 from tests.commands.helpers import new_app
 from tests.integrations.fake_jira import EMAIL, HARNESS, FakeJira
+from tests.integrations.odd import odd
 
 
 def connector(fake: FakeJira) -> jira.Jira:
@@ -77,3 +78,22 @@ def test_connecting_keeps_site_and_email_and_logs_neither(tmp_path: Path, monkey
     assert '"site": "https://acme.atlassian.net"' in source["config"] and f'"email": "{EMAIL}"' in source["config"]
     assert '"other"' not in source["config"]
     assert EMAIL not in str(app.table("command_log")) and HARNESS.token not in str(app.table("sources"))
+
+
+def test_a_workflow_without_a_step_to_done_is_said_and_nothing_is_moved() -> None:
+    fake = FakeJira(HARNESS.token)
+    issue = fake.add("Fix", status="doing")
+    stuck = jira.Jira(HARNESS.token, HARNESS.fields, odd(fake, f"/issue/{issue}/transitions", {"transitions": []}))
+    with pytest.raises(ConnectorError, match="no step from this issue's status to Done") as said:
+        stuck.write(issue, "done")
+    assert said.value.problem == "answer"
+    with pytest.raises(ConnectorError, match="to To Do"):
+        stuck.write(issue, "reopen")
+    assert fake.writes() == [] and fake.issues[issue]["status"] == "doing"
+
+
+def test_reading_stops_after_a_hundred_pages() -> None:
+    fake = FakeJira(HARNESS.token, page_size=1)
+    for n in range(103):
+        fake.add(f"Issue {n}")
+    assert len(connector(fake).read()) == 100 and len(fake.requests) == 100

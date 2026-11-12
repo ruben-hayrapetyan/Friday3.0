@@ -84,3 +84,37 @@ def test_work_due_past_the_horizon_isnt_reported_late(app: App) -> None:
     app.do("template_apply", template="Essay", title="Thesis", hours=40, due="2026-12-18T17:00")
     app.do("replan")
     assert app.do("changes")["late_hours"] == {}
+
+
+def test_a_project_whose_steps_are_all_done_is_done(app: App) -> None:
+    project = app.do("template_apply", template="Essay", title="History essay", hours=3, due="2026-11-20T17:00")["item"]
+    for kid in [i for i in app.do("items") if i["parent_id"] == project["id"]]:
+        app.do("done", id=kid["id"])
+    (found,) = app.do("projects")
+    assert (found["item"]["id"], found["status"]) == (project["id"], "done")
+
+
+def test_the_load_ahead_needs_a_plan(app: App) -> None:
+    with pytest.raises(FieldError, match="there's no plan yet"):
+        app.do("load")
+
+
+def test_a_template_that_isnt_saved_is_refused_with_those_that_are(app: App) -> None:
+    with pytest.raises(FieldError, match="no template called Thesis; saved: .*Essay"):
+        app.do("template_apply", template="Thesis", title="My thesis", hours=40)
+
+
+def test_a_project_with_nothing_inside_cant_be_saved_as_a_template(app: App) -> None:
+    project = app.do("add", title="Move house", preset="Project", duration_min=60)["item"]["id"]
+    with pytest.raises(FieldError, match=f"T{project} has no items inside it"):
+        app.do("template_save", name="Move", project_id=project)
+
+
+def test_a_projects_steps_say_what_they_wait_on(app: App) -> None:
+    project = app.do("add", title="Robot", preset="Project")["item"]["id"]
+    design = app.do("add", title="design", parent_id=project, duration_min=60)["item"]["id"]
+    build = app.do("add", title="build", parent_id=project, duration_min=60)["item"]["id"]
+    app.do("depend", item_id=build, depends_on_id=design)
+    (robot,) = [p for p in app.do("projects") if p["item"]["id"] == project]
+    steps = {s["title"]: s["waiting_on"] for s in robot["children"]}
+    assert steps == {"design": [], "build": [design]}

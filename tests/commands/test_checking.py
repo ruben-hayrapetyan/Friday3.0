@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from friday.commands.fetching import sync
+from friday.core.items import FieldError
 from tests.commands.helpers import App, new_app
 from tests.sync.test_mac_calendars import SINCE, UNTIL, calendar, mac_event
 
@@ -89,3 +90,26 @@ def test_the_same_deadline_on_two_calendars_makes_one_task(app: App) -> None:
     app.do("mac_sync", calendars=[google, icloud], events=twin, since=SINCE, until=UNTIL)
     sync(app.conn, app.now_utc)
     assert len([s for s in app.do("inbox")["suggestions"] if s["command"] == "add"]) == 1
+
+
+def test_a_copy_cant_be_both_kept_and_removed(app: App) -> None:
+    first, second = add(app, "Psych WA7 draft"), add(app, "psych WA7 Draft")
+    with pytest.raises(FieldError, match="can't be both kept and removed"):
+        app.do("duplicates_merge", groups=[{"keep": first, "drop": [first, second]}])
+
+
+def test_a_removed_copys_ties_move_to_the_kept_one_once_and_its_pins_go(app: App) -> None:
+    kept, copy = add(app, "Essay draft"), add(app, "essay  draft")
+    outline, reading, final, review = add(app, "Outline"), add(app, "Reading"), add(app, "Final"), add(app, "Review")
+    app.do("depend", item_id=copy, depends_on_id=outline)  # the copy waits on the outline: moved to the kept one
+    app.do("depend", item_id=kept, depends_on_id=reading)
+    app.do("depend", item_id=copy, depends_on_id=reading)  # the kept one waits on it already: dropped
+    app.do("depend", item_id=final, depends_on_id=copy)  # the final waits on the copy: now on the kept one
+    app.do("depend", item_id=review, depends_on_id=kept)
+    app.do("depend", item_id=review, depends_on_id=copy)  # waits on the kept one already: dropped
+    app.do("depend", item_id=copy, depends_on_id=kept)  # the copy waits on the kept one: nothing waits on itself
+    app.do("pin", id=copy, start="2026-10-20T14:00")
+    app.do("duplicates_merge", groups=[{"keep": kept, "drop": [copy]}])
+    assert [p for p in app.table("pins") if p["item_id"] == copy] == []  # its pin goes with it
+    ties = sorted((d["item_id"], d["depends_on_id"]) for d in app.table("dependencies"))
+    assert ties == sorted([(kept, outline), (kept, reading), (final, kept), (review, kept)])

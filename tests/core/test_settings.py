@@ -64,6 +64,9 @@ def test_reference_rules_match_the_design() -> None:
         ("paces", {"Easy": {"capacity": 9}}, "paces.Easy.capacity"),
         ("sleep", {"mon": {"bedtime": "23:30", "wake": "07:30", "margin_min": 60}}, "sleep"),
         ("nonsense", {}, "nonsense"),
+        ("templates", {"Essay": []}, "templates"),
+        ("calendar_look", {"colors": {"Home": "neon"}}, "calendar_look"),
+        ("categories", {"categories": [{"name": "Labs", "slug": "lab", "color": "neon"}]}, "categories"),
     ],
 )
 def test_invalid_values_name_their_field(key: str, value: object, field: str) -> None:

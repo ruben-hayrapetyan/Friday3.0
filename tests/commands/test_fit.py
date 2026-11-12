@@ -56,3 +56,27 @@ def test_the_exact_check_plans_the_change_and_compares_it_with_the_plan_you_have
     assert late["exact"] and late["verdict"] == "late" and late["later"][0]["title"] == "Essay"
     fine = app.do("fit", command="add", input={"text": "laundry ~1h"}, exact=True)
     assert fine["verdict"] in ("fits", "tight") and not fine["later"]
+
+
+def test_work_that_fits_your_free_time_but_not_your_daily_limits_is_tight(app: App) -> None:
+    app.do("settings_set", key="daily_cap", value=dict.fromkeys(("mon", "tue", "wed", "thu", "fri", "sat", "sun"), 3))
+    out = app.do("fit", command="add", input={"title": "Report", "duration_min": 480, "due": "2026-10-20T17:00"})
+    assert (out["verdict"], out["said"]) == ("tight", "Fits in your free time, but not within your daily limits: "
+                                                      "check exactly")  # fmt: skip
+    assert app.do("fit", command="add", input={"text": "laundry ~1h"})["verdict"] == "fits"  # no due, no limit
+
+
+def test_the_exact_check_says_when_it_fits_only_with_later_nights(app: App) -> None:
+    busy(app, ("2026-10-19T09:00", "2026-10-19T21:00"))
+    replan(app.conn, app.now_utc)
+    out = app.do("fit", command="add", input={"title": "PS", "duration_min": 150, "due": "2026-10-20T08:00"},
+                 exact=True)  # fmt: skip
+    assert out["verdict"] == "tight" and out["later_nights"] and not out["later"]
+    assert out["said"] == "Fits, but only with later nights than you have now"
+
+
+def test_an_event_over_twelve_hours_is_offered_no_other_times(app: App) -> None:
+    app.do("add", title="Essay", duration_min=180, due="2026-10-19T23:00")
+    out = app.do("fit", command="add", input={"title": "Trip", "when": "fixed", "start": "2026-10-19T09:00",
+                                              "end": "2026-10-20T09:00"})  # fmt: skip
+    assert out["verdict"] == "late" and out["instead"] == []

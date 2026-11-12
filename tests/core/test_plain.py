@@ -41,6 +41,7 @@ class TestGlassBox:
             (404, "The calendar link", "isn't there any more (404)"),
             (429, "Gmail", "asked Friday to slow down (429: too many requests). Friday waits and tries again"),
             (503, "Canvas", "had a problem on its side (503). Friday tries again by itself"),
+            (418, "Canvas", "Canvas said no (418)"),
         ],
     )
     def test_each_status_is_said_with_what_to_do(self, status: int, who: str, words: str) -> None:

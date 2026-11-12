@@ -72,6 +72,8 @@ def test_the_server_never_sends_reminders_changes_itself(w: World) -> None:
     w.app.do("done", id=w.item("Call mom")["id"])
     assert sync.send_writes(w.app.conn, w.app.now_utc) == 0  # left for the Mac app
     assert len(w.app.do("reminder_writes")["jobs"]) == 1
+    with pytest.raises(AssertionError, match="the Mac app sends Reminders' changes"):
+        Reminders().write("x-1", "done")  # were it ever asked to, it refuses rather than sending nothing silently
 
 
 def test_a_report_on_a_change_that_isnt_reminders_is_refused(w: World) -> None:

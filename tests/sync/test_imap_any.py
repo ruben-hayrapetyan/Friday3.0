@@ -138,6 +138,30 @@ class TestGlassBox:
         assert all(p.passwords and p.steps for p in imap_any.PROVIDERS.values())
         assert "outlook" not in imap_any.PROVIDERS  # Microsoft refuses app passwords over IMAP (C99)
 
+    def test_an_empty_inbox_asks_for_nothing_more(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        empty = FakeMailServer([])
+        monkeypatch.setattr(imap_mail, "CONNECT", [empty])
+        assert service().message_ids("newer_than:14d", 50) == [] and len(empty.searches) == 1
+
+    def test_parts_of_an_answer_that_name_no_message_are_passed_over(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        class Chatty(FakeMailServer):
+            def uid(self, verb: str, *args: object) -> tuple[str, list]:
+                said, parts = super().uid(verb, *args)
+                if verb == "FETCH" and str(args[1]).startswith("(BODY.PEEK[HEADER"):
+                    parts = [(b"* 9 FETCH (FLAGS ())", b"Message-ID: <stray@x>\r\n\r\n"), *parts]
+                return said, parts
+
+        monkeypatch.setattr(imap_mail, "CONNECT", [Chatty(MAILS[:1])])
+        assert service().message_ids("", 50) == [("ps5@cornell.edu", "ps5@cornell.edu")]
+
+    def test_a_message_without_a_message_id_is_found_again_by_its_place(self, server: FakeMailServer) -> None:
+        mail = service().read("uid-2@imap.mail.me.com")  # named by its UID when it had no Message-ID
+        assert mail.subject == "Big sale" and server.searches == []  # no search: its place says which
+
+    def test_a_message_the_server_no_longer_has_is_said_to_be_gone(self, server: FakeMailServer) -> None:
+        with pytest.raises(LookupError, match="iCloud Mail no longer has that message"):
+            service().read("deleted@cornell.edu")
+
 
 @pytest.fixture
 def app(tmp_path: Path) -> App:

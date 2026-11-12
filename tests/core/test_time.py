@@ -151,3 +151,15 @@ def test_a_sentence_already_on_twelve_hours_reads_the_same() -> None:
     assert ampm_in("Gym between 7am and 8:30pm on weekdays") == "Gym between 7am and 8:30pm on weekdays"
     assert ampm_in("Keep Fri, Sat 8pm–11:59pm free") == "Keep Fri, Sat 8pm–11:59pm free"
     assert ampm_in("between 12:20 and 13:10") == "between 12:20pm and 1:10pm"
+
+
+def test_a_slots_hours_and_a_minute_outside_the_grid() -> None:
+    grid = make_grid(utc("2026-10-19T09:00"), UTC_SPEC)
+    assert grid.hours(0) == 0.25 and grid.hours(len(grid.slots) - 1) == 0.5  # a fine slot, then a coarse one
+    assert grid.slot_at(utc("2026-10-19T08:00")) == -1 and grid.slot_at(grid.horizon_end) == -1
+    assert grid.slot_at(utc("2026-10-19T09:20")) == 1
+
+
+def test_a_grid_ending_before_it_begins_has_no_slots() -> None:
+    with pytest.raises(ValueError, match="the grid has no slots"):
+        make_grid(utc("2026-10-19T09:00"), UTC_SPEC, end_utc=utc("2026-10-19T08:00"))

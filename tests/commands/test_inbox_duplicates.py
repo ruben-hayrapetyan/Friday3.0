@@ -288,3 +288,22 @@ class TestRepeatingEvents:
         )
         sync(app.conn, app.now_utc)
         assert statuses(app, "Daily reflection") == ["pending"] * 3
+
+
+class TestHalfRead:
+    """What a reader proposed with no title, or a date it couldn't read, is never anything's twin."""
+
+    def test_a_suggestion_without_a_title_or_with_an_unread_date_waits_as_it_is(self, app: App) -> None:
+        app.do("add", title="PS4", duration_min=60, due="2026-10-22T23:59")
+        n = len(app.table("raw_inputs"))
+        app.do("document_add", name=f"Mail {n}.txt", content=f"read {n}")
+        raw = app.table("raw_inputs")[-1]["id"]
+        for given in ('{"due": "2026-10-22T23:59"}', '{"title": "Lab report", "due": "sometime soon"}'):
+            app.conn.execute(
+                "INSERT INTO suggestions (user_id, raw_input_id, command, input, status, created_utc) "
+                "VALUES (1, ?, 'add', ?, 'pending', '2026-10-19T13:00Z')",
+                [raw, given],
+            )
+        sync(app.conn, app.now_utc)
+        assert [s["status"] for s in app.table("suggestions")] == ["pending", "pending"]
+        assert aside(app) == {}

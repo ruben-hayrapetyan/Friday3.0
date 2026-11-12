@@ -132,3 +132,27 @@ def test_slacks_sign_in_returns_by_friday_s_https_page_with_this_mac_s_port(
     assert asked["redirect_uri"] == "https://friday-scheduler.com/slack-signin.html"
     assert asked["state"].startswith("8770-") and asked["user_scope"] == "search:read"
     assert oauth.PENDING[asked["state"]].redirect == asked["redirect_uri"]  # the same address when trading the code
+
+
+def test_it_is_read_only_and_an_odd_answer_is_said_in_words(fake: FakeSlack) -> None:
+    with pytest.raises(AssertionError, match="read only"):
+        connector(fake).write("C1/1.0", "done")
+    odd = httpx.MockTransport(lambda request: httpx.Response(200, json=["ok"]))
+    with pytest.raises(ConnectorError, match="Slack answered in a shape Friday doesn't know") as said:
+        slack.Slack(TOKEN, {}, odd, now=NOW).check()
+    assert said.value.problem == "answer"
+
+
+def test_markup_reads_as_words_even_without_knowing_who_you_are() -> None:
+    assert slack.plain("<@U0MARIA> see <#C1|general> and <@U0SAM|sam>") == "@someone see #general and @sam"
+
+
+def test_the_sign_in_trades_its_code_with_fridays_secret_in_the_body(
+    fake: FakeSlack, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FRIDAY_SLACK_CLIENT_ID", "1.2")
+    monkeypatch.setenv("FRIDAY_SLACK_CLIENT_SECRET", "slack-stand-in-secret")
+    tokens = oauth.trade(slack.PROVIDER, {"grant_type": "authorization_code", "code": "c"}, now=NOW)
+    assert tokens == {"access_token": "xoxp-new"}  # the user's own token, from under authed_user
+    (asked,) = fake.requests
+    assert "client_secret=slack-stand-in-secret" in asked.content.decode() and "authorization" not in asked.headers

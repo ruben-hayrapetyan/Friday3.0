@@ -146,3 +146,70 @@ def test_the_gate_stays_shut_for_a_user_without_moods() -> None:
         model.score(week, model.predict_h(None, None), model.theta)
         model.add(week)
     assert not model.units_on(2.0)
+
+
+def test_a_planted_missing_feature_is_proposed_as_a_rule_and_said_in_words() -> None:
+    rng = np.random.default_rng(2)
+    planted = next(t for t in TEMPLATES if t.name == "fri_sat:late:deep")
+    found, extra = comparisons(np.ones(D), 150, rng, extra_w=3.0)
+    extras = [({planted.name: w}, {planted.name: lo}) for w, lo in extra]
+    best, gain = propose(found, extras, RULES, set(), 0.05)
+    assert best == planted and gain > 0.05
+    assert best.sentence() == "You seem to prefer no deep work on Friday and Saturday late evenings."
+    assert best.rule() == {
+        "type": "time_preference",
+        "name": "learned:fri_sat:late:deep",
+        "weight": 1.0,
+        "params": {"start": "19:00", "end": "23:59", "price": 1.0, "days": ["fri", "sat"]},
+        "scope": {"energy": "deep"},
+    }
+
+
+def test_a_template_for_any_day_and_any_work_has_no_days_or_scope() -> None:
+    every = next(t for t in TEMPLATES if t.name == "all:night:any")
+    assert every.rule()["params"] == {"start": "21:00", "end": "23:59", "price": 1.0} and "scope" not in every.rule()
+    assert every.sentence() == "You seem to prefer no work on any day nights."
+
+
+def test_no_gain_above_the_bar_proposes_nothing_but_says_the_best_gain() -> None:
+    rng = np.random.default_rng(6)
+    found, _ = comparisons(np.ones(D), 30, rng)
+    best, gain = propose(found, [({}, {})] * 30, RULES, set(), 10.0)
+    assert best is None and gain < 10.0
+
+
+def test_with_nothing_answered_the_hand_set_weights_stand() -> None:
+    assert fit([], RULES) == dict.fromkeys(RULES, 1.0)
+    assert fit(comparisons(np.ones(D), 3, np.random.default_rng(0))[0], ()) == {}
+    assert accuracy([], RULES, dict.fromkeys(RULES, 1.0)) == 0.0
+
+
+def test_under_twelve_answers_the_answer_noise_is_the_default() -> None:
+    found, _ = comparisons(np.ones(D), 11, np.random.default_rng(0), noise=0.5)
+    x, _ = design(found, RULES)
+    assert answer_scale(x, np.ones(D)) == 0.05
+
+
+def test_a_picked_pace_is_the_weeks_state_and_a_check_in_moves_it() -> None:
+    model = StateModel(RULES)
+    tired = model.predict_h(None, "tired")
+    assert np.array_equal(tired, PACE_H["tired"]) and tired is not PACE_H["tired"]
+    assert np.array_equal(model.predict_h(None, None), np.zeros(4))
+    said_tired = model.predict_h("tired", None)
+    assert model.mood(said_tired) == "tired"
+
+
+def test_skipped_blocks_count_in_a_weeks_likelihood() -> None:
+    model = StateModel(RULES)
+    empty = np.zeros((0, D))
+    none_skipped = Week(empty, np.zeros(0), 0, 10, None, None)
+    most_skipped = Week(empty, np.zeros(0), 9, 10, None, None)
+    rested = np.zeros(4)
+    assert model.week_ll(model.theta, rested, none_skipped) > model.week_ll(model.theta, rested, most_skipped)
+    assert model.week_ll(model.theta, rested, Week(empty, np.zeros(0), 0, 0, None, None)) == 0.0
+
+
+def test_a_week_without_comparisons_leaves_the_gate_tally_alone() -> None:
+    model = StateModel(RULES)
+    model.score(Week(np.zeros((0, D)), np.zeros(0), 2, 5, "tired", None), np.zeros(4), model.theta)
+    assert model.ll_units == 0.0 and set(model.ll_taste.values()) == {0.0}

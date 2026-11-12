@@ -13,7 +13,18 @@ import httpx
 import pytest
 
 from friday.ingest import local_models
-from friday.ingest.local_models import Download, Downloads, Ollama, forget, full, record, save, tidy, valid
+from friday.ingest.local_models import (
+    Download,
+    Downloads,
+    Ollama,
+    error_of,
+    forget,
+    full,
+    record,
+    save,
+    tidy,
+    valid,
+)
 from tests.commands.helpers import App, new_app
 from tests.fake_ollama import GB, FakeOllama
 
@@ -286,3 +297,12 @@ def test_a_download_s_size_is_the_known_one_until_ollama_has_said_more() -> None
     job.total = 5_300_000_000
     assert job.out()["total"] == 5_300_000_000
     assert Download("someone/model", completed=1, total=10).out()["total"] == 10  # not in the catalog: Ollama's
+
+
+def test_blank_lines_in_a_download_are_passed_over_and_an_error_that_isnt_json_is_said_as_it_is() -> None:
+    said = '\n\n{"status": "pulling", "digest": "a", "total": 10, "completed": 5}\n\n{"status": "success"}\n'
+    ollama = Ollama(transport=httpx.MockTransport(lambda request: httpx.Response(200, text=said)))
+    seen: list[tuple[int, int, str]] = []
+    ollama.pull("llama3.1", lambda done, total, status: seen.append((done, total, status)), threading.Event())
+    assert seen == [(5, 10, "pulling"), (5, 10, "success")]
+    assert error_of("upstream gone") == "upstream gone" and error_of("") is None

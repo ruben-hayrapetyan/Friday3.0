@@ -149,6 +149,13 @@ class TestFaster:
         assert app.do("item", id=reading)["item"]["duration_min"] == 120  # what you said is kept as said
         assert "learned:beat:speed:Reading" not in asked(app)
 
+    def test_no_keeps_planning_that_kind_at_full_length(self, app: App) -> None:
+        for day in (19, 20, 21):
+            self.finish_fast(app, day)
+        assert answer(app, "learned:beat:speed:Reading", "keep") == "Planning Reading at full length"
+        assert not kv_get(app.conn, SHARES)
+        assert "learned:beat:speed:Reading" not in asked(app)
+
 
 class TestTheQuery:
     def test_it_says_what_friday_learned_and_what_it_asks(self, app: App) -> None:

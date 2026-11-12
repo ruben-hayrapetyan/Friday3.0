@@ -919,3 +919,19 @@ def test_start_over_counts_nothing_done_and_plans_all_of_it_again(tmp_path: Path
     ]
     minutes = sum((parse_local(b["end"]) - parse_local(b["start"])).total_seconds() / 60 for b in planned)
     assert minutes == 180
+
+
+def test_a_pin_that_ends_before_it_starts_is_refused(app: App) -> None:
+    item = app.do("add", text="essay ~2h")["item"]["id"]
+    with pytest.raises(FieldError, match="must be after the start"):
+        app.do("pin", id=item, start="2026-10-19T15:00", end="2026-10-19T14:00")
+
+
+def test_resolve_needs_the_locks_to_let_move_and_only_locked_ones(app: App) -> None:
+    item = app.do("add", text="essay ~2h")["item"]["id"]
+    app.do("pin", id=item, start="2026-10-19T15:00", kind="preferred")
+    with pytest.raises(FieldError, match="name the locks to let move"):
+        app.do("resolve", unlock_pin_ids=[])
+    pin_id = app.table("pins")[-1]["id"]  # preferred, not locked
+    with pytest.raises(FieldError, match=f"no locked pin {pin_id}"):
+        app.do("resolve", unlock_pin_ids=[pin_id])

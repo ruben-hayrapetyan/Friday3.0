@@ -78,3 +78,17 @@ def test_where_the_time_went_names_courses_kinds_and_the_biggest_to_dos(app: App
     assert rows["Chem"]["items"][0]["title"] == "Chem 2090 Problem Set 9"
     assert rows["Errands"]["by"] == "kind" and rows["Errands"]["preset"] == "Errand"
     assert "No area" not in rows and "No tag" not in rows
+
+
+def test_the_brief_says_a_pace_set_for_a_while_and_then_that_it_is_over(app: App) -> None:
+    app.do("pace", name="Easy", for_days=1)
+    replan(app.conn, app.now_utc)
+    brief = app.do("brief")
+    assert brief["pace"].startswith("Easy pace until") and brief["pace"] in brief["summary"]
+    app.at("2026-10-20T08:05")
+    assert app.do("brief")["pace"] == "Back to Normal today"
+
+
+def test_a_week_with_no_plan_yet_planned_nothing(app: App) -> None:
+    week = app.do("week_review")
+    assert (week["start"], week["areas"], week["groups"]) == ("2026-10-19", [], [])

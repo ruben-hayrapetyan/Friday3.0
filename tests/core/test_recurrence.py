@@ -89,3 +89,14 @@ def test_next_occurrence_and_cutting_a_rule_at_a_date() -> None:
 
 def test_describe_shows_count() -> None:
     assert describe("FREQ=DAILY;COUNT=5") == "Every day, 5 times"
+
+
+def test_rules_said_in_words_every_few_weeks_and_ones_friday_has_no_words_for() -> None:
+    assert describe("FREQ=WEEKLY;INTERVAL=3;BYDAY=MO") == "Every 3 weeks on Monday"
+    assert describe("FREQ=HOURLY;INTERVAL=2") == "Repeats (FREQ=HOURLY;INTERVAL=2)"
+
+
+def test_the_next_time_passes_over_the_ones_it_skips() -> None:
+    start = datetime(2026, 10, 19, 10)
+    rule = "FREQ=DAILY;EXDATE=20261020T100000,20261021T100000"
+    assert next_occurrence(rule, start, start) == datetime(2026, 10, 22, 10)

@@ -73,3 +73,14 @@ def test_work_takes_an_optional_events_time_only_once_it_must(app: App) -> None:
     app.do("event_optional", title=GYM, mode="optional")
     replan(app.conn, app.now_utc)
     assert [b for b in app.table("blocks") if b["item_id"] == essay]
+
+
+def test_work_that_needs_only_a_corner_of_an_optional_event_takes_just_that(app: App) -> None:
+    """An hour due at 2pm with the morning busy: the plan takes the gym's first hour, and keeping the gym whole
+    would make it late, so only the corner goes."""
+    app.do("add", text="Busy morning", when="fixed", start="2026-11-02T09:00", end="2026-11-02T13:00")
+    essay = app.do("add", title="Essay", duration_min=60, due="2026-11-02T14:00")["item"]["id"]
+    app.do("event_optional", title=GYM, mode="optional")
+    replan(app.conn, app.now_utc)
+    taken = [(b["start_utc"], b["end_utc"]) for b in app.table("blocks") if b["item_id"] == essay]
+    assert taken == [("2026-11-02T18:00Z", "2026-11-02T19:00Z")]  # 1 to 2pm in New York

@@ -215,3 +215,28 @@ def test_a_copy_that_cant_replace_itself_says_so_before_downloading(
         assert app.do("update_status")["state"] == "idle"
     finally:
         shut.chmod(0o755)
+
+
+def test_a_look_a_month_later_clears_a_failed_downloads_message(app: App, site: Site) -> None:
+    launch(app)
+    site.image = b"tampered"
+    app.do("update_start")
+    assert finish(app)["state"] == "failed"
+    look_for_updates(app.conn, app.now_utc + updates.MONTH_MIN, {}, Hub(), None, Path("."), 1)  # the same run
+    status = app.do("update_status")
+    assert status["state"] == "idle" and status["message"] is None
+
+
+def test_a_copy_that_doesnt_know_its_version_never_reaches_the_site(
+    app: App, site: Site, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("FRIDAY_APP_VERSION")
+    status = launch(app)
+    assert status["versions"] == [] and status["last_checked"] is None and status["message"] is None
+
+
+def test_up_to_date_there_is_nothing_to_download(app: App, site: Site, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FRIDAY_APP_VERSION", "0.3.0")
+    launch(app)
+    with pytest.raises(FieldError, match="there's no newer version to download"):
+        app.do("update_start")

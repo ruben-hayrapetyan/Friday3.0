@@ -2,11 +2,13 @@
 left out, an all-day task due on its own day in its own time zone, a timed one at its moment, done sent to the task's
 real list (the Inbox's own id), opened again set back to normal; a sign-in that has run out says to sign in again."""
 
+import base64
 import json
 
+import httpx
 import pytest
 
-from friday.integrations import ticktick
+from friday.integrations import oauth, ticktick
 from friday.integrations.base import ConnectorError
 from tests.integrations.fake_ticktick import HARNESS, INBOX_ID, FakeTickTick
 
@@ -50,3 +52,26 @@ def test_the_sign_in_asks_with_fridays_secret_by_basic_auth(monkeypatch: pytest.
     monkeypatch.setenv("FRIDAY_TICKTICK_CLIENT_SECRET", "tt-secret")
     assert ticktick.PROVIDER.ready() and not ticktick.PROVIDER.secret_in_body
     assert ticktick.PROVIDER.scopes == ("tasks:read", "tasks:write")
+
+
+def test_an_all_day_task_in_a_time_zone_python_doesnt_know_is_on_its_utc_day() -> None:
+    task = {"dueDate": "2026-11-20T05:00:00.000+0000", "isAllDay": True, "timeZone": "Mars/Olympus_Mons"}
+    assert ticktick.due_of(task) == "2026-11-20"
+    assert ticktick.due_of(task | {"timeZone": "America/Los_Angeles"}) == "2026-11-19"  # its own day where it was set
+
+
+def test_the_sign_in_trades_its_code_with_fridays_secret_by_basic_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FRIDAY_TICKTICK_CLIENT_ID", "tt-friday")
+    monkeypatch.setenv("FRIDAY_TICKTICK_CLIENT_SECRET", "tt-secret")
+    asked: list[httpx.Request] = []
+
+    def token_endpoint(request: httpx.Request) -> httpx.Response:
+        asked.append(request)
+        return httpx.Response(200, json={"access_token": "tt-access-2", "token_type": "bearer", "expires_in": 3600})
+
+    monkeypatch.setitem(oauth.TRANSPORTS, "ticktick", httpx.MockTransport(token_endpoint))
+    tokens = oauth.trade(ticktick.PROVIDER, {"grant_type": "authorization_code", "code": "c"}, now=1000.0)
+    assert tokens == {"access_token": "tt-access-2", "expires_at": 4600.0}
+    (request,) = asked
+    assert request.headers["authorization"] == "Basic " + base64.b64encode(b"tt-friday:tt-secret").decode()
+    assert "tt-secret" not in request.content.decode()  # not in the body as well

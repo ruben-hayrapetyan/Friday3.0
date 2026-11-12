@@ -65,6 +65,10 @@ def settings_set(ctx: Ctx, inp: SettingsSetInput) -> Changed:
     if inp.key == "sleep" and isinstance(value, dict) and ctx.settings["sleep"] is not None:
         # "bed by 11 on weeknights": the nights and times named change, the rest stay (27 Oct).
         now = to_json("sleep", ctx.settings["sleep"])
+        # a night that isn't its own times is said, not a crash (12 Nov: {"mon": "bad"} was a 500)
+        odd = next((day for day, given in value.items() if given is not None and not isinstance(given, dict)), None)
+        if odd is not None:
+            raise FieldError("value", f'{odd}: give its times, like {{"bedtime": "23:30", "wake": "07:30"}}')
         value = {day: {**now.get(day, {}), **(value.get(day) or {})} for day in now}
     before = ctx.settings["llm"]  # saving refreshes ctx.settings: the AI as it was, kept first
     old_zone = ctx.settings["time"].timezone
@@ -245,11 +249,14 @@ def day_override(ctx: Ctx, inp: DayOverrideInput) -> Changed:
     """One date's bedtime, wake, sleep margin or daily cap, over the weekday settings; what you leave out stays."""
     try:
         day = date.fromisoformat(inp.date)
-        for name in ("bedtime", "wake"):
-            if getattr(inp, name) is not None:
-                check_hhmm(getattr(inp, name))
     except ValueError as error:
         raise FieldError("date", str(error)) from error
+    for name in ("bedtime", "wake"):  # a bad time is said on its own field, not the date's (12 Nov)
+        if getattr(inp, name) is not None:
+            try:
+                check_hhmm(getattr(inp, name))
+            except ValueError as error:
+                raise FieldError(name, str(error)) from error
     if inp.margin_min is not None:
         SleepDay(bedtime="23:00", wake="07:00", margin_min=inp.margin_min)
     # Only the fields given (null clears one): Thursday's cap stays when its sleep margin is set later.

@@ -5,9 +5,10 @@ from pathlib import Path
 import pytest
 
 from friday.commands.learned import learn_nightly
+from friday.core.db import connect
 from friday.planner.service import replan
 from friday.planner.snapshot import take_snapshot
-from friday.planner.store import kv_get
+from friday.planner.store import kv_get, kv_set
 from tests.commands.helpers import App, new_app
 
 
@@ -95,3 +96,30 @@ def test_the_learning_query_says_how_many_timed_things_lengths_wait_for(app: App
     app.do("done", id=untimed)
     assert app.do("learning")["progress"]["lengths"] == {"have": 3, "need": 5}
     assert app.do("learning")["progress"]["order"] == {"have": 0, "need": 4}
+
+
+def test_in_auto_mode_lengths_wait_until_they_predict_better_and_hours_are_used_at_once(app: App) -> None:
+    for n in range(8):
+        finish(app, f"problem set {n + 1}", 180, n + 1)
+    app.at("2026-10-12T09:00")
+    learn_nightly(app.conn, app.now_utc)
+    prices = [[0.0] * 48 for _ in range(7)]
+    prices[0][40] = 2.0  # Monday 8pm
+    kv_set(app.conn, "learned_energy", {"prices": prices, "observations": 5})
+    app.do("settings_set", key="learn", value={"durations": "auto", "energy": "auto"})
+    kv_set(app.conn, "learned_durations", kv_get(app.conn, "learned_durations") | {"better": False})
+    learned = app.do("learning")
+    assert learned["durations"]["in_use"] is False and learned["energy"]["in_use"] is True
+    assert learned["energy"]["worst"] == [{"day": "Mon", "time": "20:00", "price": 2.0}]
+    kv_set(app.conn, "learned_durations", kv_get(app.conn, "learned_durations") | {"better": True})
+    assert app.do("learning")["durations"]["in_use"] is True
+
+
+def test_nothing_is_learned_before_friday_knows_your_timezone(tmp_path: Path) -> None:
+    conn = connect(tmp_path / "fresh.db")
+    learn_nightly(conn, 0)
+    assert kv_get(conn, "learned_durations") is None and kv_get(conn, "learned_energy") is None
+
+
+def test_using_what_isnt_learned_yet_says_so(app: App) -> None:
+    assert app.do("learn_module", module="energy", use=True)["message"] == "Nothing learned yet"

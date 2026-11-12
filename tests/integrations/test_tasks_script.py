@@ -102,3 +102,23 @@ def test_a_refused_link_is_never_kept(app: App, fake: FakeTasksScript) -> None:
 
 def test_the_sign_in_way_still_reads_with_a_google_account() -> None:
     assert GoogleTasks("", {"account": ACCOUNT}).script is None
+
+
+@pytest.mark.parametrize(("answer", "words"), [
+    (["ok"], "The script answered in a shape Friday doesn't know"),
+    ({"error": "op"}, "The script is older than this Friday: copy it again"),
+    ({"error": "Exception: Service invoked too many times for one day: tasks."}, "The script said: Exception: Ser"),
+])  # fmt: skip
+def test_what_the_script_says_that_isnt_its_answer_is_said_in_words(
+    fake: FakeTasksScript, answer: object, words: str
+) -> None:
+    fake.answer = lambda ask: answer  # type: ignore[method-assign]
+    error = refused(fake, HARNESS.token)
+    assert error.problem == "answer" and words in str(error)
+
+
+def test_a_read_without_its_lists_is_said_not_taken_as_nothing_open(fake: FakeTasksScript) -> None:
+    fake.answer = lambda ask: {"ok": True, "v": 1, "lists": None}  # type: ignore[method-assign]
+    with pytest.raises(ConnectorError, match="answered in a shape Friday doesn't know") as said:
+        GoogleTasks(HARNESS.token, {}, fake.transport).read()
+    assert said.value.problem == "answer"

@@ -143,3 +143,42 @@ def test_a_feed_from_another_school_or_a_plain_link_keeps_its_assignments(world:
     app.do("source_add", name="Other school", url="https://canvas.otherschool.edu/feeds/calendars/user_x.ics")
     read_feeds(app.conn, app.now_utc, fetch=lambda url: FEED)
     assert any("Problem set 5" in (s["title"] or "") for s in app.table("raw_inputs")), "another school's was taken"
+
+
+def test_the_assignment_behind_an_item_is_its_own_a_quizs_or_none() -> None:
+    assert canvas.assignment_of({"plannable_type": "assignment", "plannable_id": 51001, "plannable": {}}) == "51001"
+    assert canvas.assignment_of({"plannable_type": "quiz", "plannable": {"assignment_id": 951001}}) == "951001"
+    assert canvas.assignment_of({"plannable_type": "discussion_topic", "plannable": {"assignment": {"id": 7}}}) == "7"
+    assert canvas.assignment_of({"plannable_type": "discussion_topic", "plannable_id": 8, "plannable": {}}) is None
+
+
+def test_syncing_again_after_the_handover_keeps_the_one_to_do(world: World) -> None:
+    app = world.app
+    app.do("source_add", name="Canvas", url=f"https://{SITE}/feeds/calendars/user_abc123.ics")
+    read_feeds(app.conn, app.now_utc, fetch=lambda url: FEED)
+    accept_all(app)
+    world.fake.add("Problem set 5", "2026-10-23T17:00", assignment=951001, kind="quiz")
+    world.fake.add("Reading response", "2026-10-23", kind="discussion_topic")  # no assignment behind it to adopt
+    world.connect()
+    world.sync()
+    world.sync()  # what it adopted is its own now: not adopted again
+    titles = [i["title"] for i in app.table("items") if i["status"] == "todo"]
+    assert titles.count("Problem set 5") == 1 and "Reading response" in titles, titles
+
+
+def test_a_feeds_assignment_the_api_doesnt_bring_is_let_go_without_being_dropped(world: World) -> None:
+    app = world.app
+    app.do("source_add", name="Canvas", url=f"https://{SITE}/feeds/calendars/user_abc123.ics")
+    read_feeds(app.conn, app.now_utc, fetch=lambda url: FEED)  # its suggestions wait in the Inbox
+    world.connect()
+    world.sync()  # the API's planner doesn't have Problem set 5 (handed in, or in another course)
+    read_feeds(app.conn, app.now_utc + 24 * 60, fetch=lambda url: FEED)  # the feed's next read, a day on
+    (feed_id,) = [s["id"] for s in app.table("sources") if s["kind"] == "ics"]
+    raws = {r["external_id"]: r for r in app.table("raw_inputs") if r["source_id"] == feed_id}
+    (assignment,) = [r for e, r in raws.items() if e.startswith("event-assignment-")]
+    assert assignment["status"] == "ignored", "the feed still brings the assignment the API took over"
+    asked = [s for s in app.table("suggestions") if s["raw_input_id"] == assignment["id"]]
+    assert asked and {s["status"] for s in asked} == {"superseded"}, asked
+    assert [s for s in app.table("suggestions") if s["command"] == "drop"] == [], "it was taken as gone"
+    events = [r for e, r in raws.items() if e.startswith("event-calendar-event-")]
+    assert events and events[0]["status"] != "ignored", "the feed stopped bringing its events"

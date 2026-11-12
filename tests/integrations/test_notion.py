@@ -14,6 +14,7 @@ from friday.integrations.sync import local_due
 from tests.commands.helpers import new_app
 from tests.integrations.contract import World
 from tests.integrations.fake_notion import HARNESS, ME, STATUS, FakeNotion, notion_date, rich
+from tests.integrations.odd import odd
 
 
 def connector(fake: FakeNotion, lists: dict[str, bool] | None = None) -> notion.Notion:
@@ -93,6 +94,33 @@ def test_a_list_unshared_since_is_said_when_its_page_is_ticked(fake: FakeNotion)
         connector(fake).write(f"ds-tasks/{page}", "done")
 
 
+def test_a_personal_tokens_you_is_its_person_and_a_workspace_secret_has_no_one(fake: FakeNotion) -> None:
+    person = {"object": "user", "id": "u-person", "type": "person", "person": {"email": "maria@acme.test"}}
+    assert notion.Notion(HARNESS.token, {}, odd(fake, "/users/me", person)).my_id() == "u-person"
+    assert connector(fake).my_id() == ME  # the bot's owner
+    assert connector(FakeNotion(HARNESS.token, personal=False)).my_id() is None
+
+
+def test_a_list_that_no_longer_says_done_is_said_when_its_page_is_ticked(fake: FakeNotion) -> None:
+    page = fake.add("Write", "2026-10-23")
+    plain = {"object": "data_source", "id": "ds-tasks", "properties": {"Name": {"id": "title", "type": "title"}}}
+    with pytest.raises(ConnectorError, match="no longer has a Done checkbox or a Status") as said:
+        notion.Notion(HARNESS.token, {}, odd(fake, "/data_sources/ds-tasks", plain)).write(f"ds-tasks/{page}", "done")
+    assert said.value.problem == "answer" and fake.writes() == []
+
+
+def test_a_number_that_isnt_minutes_or_hours_isnt_a_length() -> None:
+    assert notion.length_of({"Points": {"type": "number"}, "Name": {"type": "title"}}) is None
+    assert notion.length_of({"Points": {"type": "number"}, "Time (hrs)": {"type": "number"}}) == ("Time (hrs)", 60)
+
+
+def test_a_status_without_a_to_do_option_can_be_done_but_not_opened_again() -> None:
+    d = notion.Done("Stage", "status", ("Shipped",), None)
+    assert notion.done_value(d, "done") == {"status": {"name": "Shipped"}}
+    with pytest.raises(ConnectorError, match="“Stage” has no To-do option"):
+        notion.done_value(d, "reopen")
+
+
 @pytest.mark.parametrize(("names", "found"), [
     ({"Due date": "date"}, "Due date"), ({"do_date": "date", "Created on": "date"}, "do_date"),
     ({"When": "date"}, "When"), ({"Start": "date", "End": "date"}, None), ({"Anything": "date"}, "Anything"),
@@ -120,6 +148,7 @@ def test_notion_is_asked_in_its_current_version_and_nothing_else(fake: FakeNotio
     ("2026-10-23T21:00Z", "2026-10-23T17:00"),  # Todoist's fixed-zone time
     ("2026-10-23T17:00-04:00", "2026-10-23T17:00"), ("2026-10-23T23:00+02:00", "2026-10-23T17:00"),
     ("2026-10-23T17:00", "2026-10-23T17:00"), ("2026-10-23", "2026-10-23"), (None, None),
+    ("2026-10-23Tnoon", "2026-10-23Tnoon"),  # not a time Friday can read: kept as it came
 ])  # fmt: skip
 def test_a_due_with_an_offset_is_put_on_your_clock(due: str | None, local: str | None) -> None:
     assert local_due(due, "America/New_York") == local

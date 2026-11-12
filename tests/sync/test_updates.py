@@ -5,6 +5,7 @@ disk image (on a Mac). The network is a stand-in throughout."""
 import hashlib
 import io
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -73,6 +74,74 @@ def test_a_stopped_download_leaves_nothing(tmp_path: Path) -> None:
     with pytest.raises(UpdateError, match="stopped"):
         updates.download(entry(), tmp_path, cancelled=lambda: True, opener=answer(IMAGE))
     assert list(tmp_path.iterdir()) == []
+
+
+def test_a_version_that_isnt_a_number_is_said_so() -> None:
+    with pytest.raises(UpdateError, match="'0.3-beta' isn't a version number"):
+        updates.newer({"current": "0.3-beta", "versions": [entry("0.3-beta")]}, "0.2.0")
+
+
+def test_a_download_cut_off_leaves_nothing_and_says_try_again(tmp_path: Path) -> None:
+    class CutOff(io.BytesIO):
+        def read(self, size: int = -1) -> bytes:
+            if self.tell():
+                raise ConnectionResetError("connection reset by peer")
+            return super().read(10)
+
+    with pytest.raises(UpdateError, match="didn't finish; check the connection"):
+        updates.download(entry(), tmp_path, opener=lambda request, timeout: CutOff(IMAGE))
+    assert list(tmp_path.iterdir()) == []
+
+
+class Hdiutil:
+    """hdiutil and ditto, stood in for: attaching "mounts" `holds` (a folder standing for the image's contents)."""
+
+    def __init__(self, holds: Path, fails: str | None = None) -> None:
+        self.holds, self.fails = holds, fails
+        self.ran: list[str] = []
+
+    def __call__(self, command: list[str], **kwargs: object) -> None:
+        verb = command[1] if command[0] == "hdiutil" else command[0]
+        self.ran.append(verb)
+        if verb == self.fails:
+            raise subprocess.CalledProcessError(1, command)
+        if verb == "attach":
+            mount = Path(command[command.index("-mountpoint") + 1])
+            for part in self.holds.iterdir():
+                (mount / part.name).symlink_to(part)
+        if verb == "ditto" and Path(command[1]).exists():
+            shutil.copytree(Path(command[1]).resolve(), command[2])
+
+
+def contents(tmp_path: Path, with_friday: bool) -> Path:
+    holds = tmp_path / "image"
+    (holds / ("Friday.app" if with_friday else "Other.app") / "Contents" / "MacOS").mkdir(parents=True)
+    return holds
+
+
+def test_a_version_unpacked_before_is_replaced(tmp_path: Path) -> None:
+    old = tmp_path / "out" / "Friday.app" / "Contents" / "Resources" / "old-version"
+    old.parent.mkdir(parents=True)
+    old.write_text("0.1.0")
+    run = Hdiutil(contents(tmp_path, with_friday=True))
+    staged = updates.unpack(tmp_path / "Friday.dmg", tmp_path / "out", run=run)
+    assert (staged / "Contents" / "MacOS").is_dir() and not old.exists()
+    assert run.ran == ["attach", "ditto", "detach"]
+
+
+def test_an_image_without_friday_is_refused_and_let_go(tmp_path: Path) -> None:
+    run = Hdiutil(contents(tmp_path, with_friday=False))
+    with pytest.raises(UpdateError, match="didn't hold Friday"):
+        updates.unpack(tmp_path / "Friday.dmg", tmp_path / "out", run=run)
+    assert run.ran == ["attach", "ditto", "detach"]
+
+
+@pytest.mark.parametrize("fails", ["attach", "ditto"])
+def test_an_image_that_cant_be_opened_or_copied_says_press_update_again(tmp_path: Path, fails: str) -> None:
+    run = Hdiutil(contents(tmp_path, with_friday=True), fails=fails)
+    with pytest.raises(UpdateError, match="press Update to try again"):
+        updates.unpack(tmp_path / "Friday.dmg", tmp_path / "out", run=run)
+    assert run.ran == (["attach"] if fails == "attach" else ["attach", "ditto", "detach"])  # let go once attached
 
 
 def disk_image(tmp_path: Path, with_friday: bool) -> Path:

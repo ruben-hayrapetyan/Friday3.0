@@ -52,3 +52,63 @@ def test_strength_switch_and_delete(app: App) -> None:
 def test_the_deadline_rules_cant_be_deleted(app: App) -> None:
     with pytest.raises(FieldError, match="deadlines"):
         app.do("rule_remove", name="late_work")
+
+
+def test_rules_set_in_the_config_file_are_changed_there(app: App) -> None:
+    app.conn.execute("INSERT INTO kv (user_id, key, value) VALUES (1, 'config_keys', '[\"rules\"]')")
+    with pytest.raises(FieldError, match="rules are set in friday.toml"):
+        app.do("rule_add", text="no work after 6pm")
+
+
+def test_a_rule_said_only_by_its_fields_is_added(app: App) -> None:
+    out = app.do("rule_add", text="", overrides={"kind": "free", "subject": "work", "at": "18:00", "rel": "after"})
+    assert out["message"].startswith("Added")
+
+
+def test_overrides_that_arent_json_are_refused(app: App) -> None:
+    with pytest.raises(FieldError, match="not JSON"):
+        app.do("rule_read", text="no work after 6pm", overrides="{at: 6}")
+
+
+def test_letting_friday_decide_a_meal_says_meal_tracking_is_off(app: App) -> None:
+    out = app.do("rule_read", text="Let Friday decide breakfast")
+    assert "Meal tracking is off" in out["effect"]
+
+
+def test_a_sentence_friday_cant_read_isnt_added(app: App) -> None:
+    with pytest.raises(FieldError, match="can’t read that as a rule"):
+        app.do("rule_add", text="make me a sandwich")
+
+
+def test_a_rule_that_isnt_there_is_said_by_its_name(app: App) -> None:
+    with pytest.raises(FieldError, match="no rule named nope"):
+        app.do("rule_set", name="nope", enabled=False)
+    with pytest.raises(FieldError, match="no rule named nope"):
+        app.do("rule_remove", name="nope")
+
+
+def test_breathing_room_once_set_says_how_much(app: App) -> None:
+    rules = [r.model_dump() for r in app_rules(app)]
+    next(r for r in rules if r["name"] == "buffer")["params"]["minutes"] = "10m"
+    app.do("settings_set", key="rules", value=rules)
+    assert find(app, "buffer")["sentence"] == "Breathing room between blocks: 10m"
+
+
+def test_a_built_in_rule_missing_a_number_still_reads_as_itself(app: App) -> None:
+    rules = [r.model_dump() for r in app_rules(app)]
+    next(r for r in rules if r["name"] == "deep_run")["params"].pop("threshold")
+    app.do("settings_set", key="rules", value=rules)
+    assert find(app, "deep_run")["sentence"] == "No more than {threshold} of focused work in a row"
+
+
+def app_rules(app: App) -> list:
+    from friday.planner.store import load_settings
+
+    return load_settings(app.conn, 1)["rules"]
+
+
+def test_a_weekly_pace_needs_a_pace_by_that_name(app: App) -> None:
+    paces = {k: v for k, v in app.do("settings")["paces"].items() if k != "Easy"}
+    app.do("settings_set", key="paces", value=paces)
+    with pytest.raises(FieldError, match="no pace named Easy"):
+        app.do("rule_add", text="take it easy on weekends")

@@ -213,3 +213,9 @@ def test_going_through_again_changes_only_what_you_change(app: App) -> None:
     app.do("setup_save", **answers(app, wake="08:00"))  # the wake time changed: only that
     assert settings(app)["sleep"]["tue"].wake == "08:00" and settings(app)["sleep"]["sat"].wake != "08:00"
     assert settings(app)["daily_cap"]["sat"] == 4 and not rule(app, "deep_run").enabled
+
+
+def test_saying_you_are_not_in_school_is_kept(app: App) -> None:
+    assert settings(app)["school"] is True
+    app.do("setup_save", **answers(app, school=False))
+    assert settings(app)["school"] is False and app.do("setup")["answers"]["school"] is False

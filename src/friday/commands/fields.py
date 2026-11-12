@@ -305,6 +305,19 @@ def check_parent(ctx: Ctx, item_id: int | None, parent_id: int | None) -> None:
         at = parent.parent_id
 
 
+def waiting_on(ctx: Ctx) -> dict[int, list[int]]:
+    """Each item's unfinished items it depends on: the `items` query's and `projects`' steps' `waiting_on`."""
+    waiting: dict[int, list[int]] = {}
+    for r in rows(
+        ctx.conn,
+        "SELECT d.item_id, d.depends_on_id FROM dependencies d JOIN items o ON o.id = d.depends_on_id "
+        "WHERE o.user_id = ? AND o.status = 'todo' ORDER BY d.depends_on_id",
+        [ctx.user_id],
+    ):
+        waiting.setdefault(r["item_id"], []).append(r["depends_on_id"])
+    return waiting
+
+
 def require_item(ctx: Ctx, item_id: int) -> Item:
     item = load_item(ctx.conn, item_id, ctx.user_id)
     if item is None:

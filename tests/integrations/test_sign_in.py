@@ -8,12 +8,13 @@ import json
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
+import httpx
 import pytest
 
 from friday.commands.integrations import signed_in
 from friday.core.items import FieldError
 from friday.core.paths import secrets_path
-from friday.integrations import microsoft, oauth, sync
+from friday.integrations import keys, microsoft, oauth, sync
 from friday.integrations.base import ConnectorError
 from tests.commands.helpers import App, new_app
 from tests.integrations.fake_microsoft import ACCESS, REFRESH, FakeGraph
@@ -96,3 +97,54 @@ def test_an_expiring_token_is_renewed_and_kept_again(graph: FakeGraph) -> None:
     assert json.loads(kept[0])["refresh_token"] == REFRESH and json.loads(kept[0])["expires_at"] == 990 + 3599
     with pytest.raises(ConnectorError, match="press Sign in again"):
         oauth.Session(microsoft.TODO, json.dumps({"access_token": "x", "expires_at": 1}), clock=lambda: 9e9).access()
+
+
+def test_a_sign_in_page_left_open_too_long_is_forgotten_when_the_next_begins(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(oauth, "PENDING", {})
+    first = oauth.begin(microsoft.TODO, f"{ORIGIN}/oauth/callback", now=1000.0)
+    old = parse_qs(urlsplit(first).query)["state"][0]
+    second = oauth.begin(microsoft.TODO, f"{ORIGIN}/oauth/callback", now=1000.0 + oauth.WAIT_S + 1)
+    assert list(oauth.PENDING) == [parse_qs(urlsplit(second).query)["state"][0]] and old not in oauth.PENDING
+
+
+def test_a_token_endpoint_that_cant_be_reached_or_answers_a_page_is_said(monkeypatch: pytest.MonkeyPatch) -> None:
+    def unreachable(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("no route to host", request=request)
+
+    monkeypatch.setitem(oauth.TRANSPORTS, "microsoft_todo", httpx.MockTransport(unreachable))
+    renew = {"grant_type": "refresh_token", "refresh_token": REFRESH}
+    with pytest.raises(ConnectorError, match="couldn't reach Microsoft To Do to sign in") as said:
+        oauth.trade(microsoft.TODO, renew)
+    assert said.value.problem == "down"
+    page = httpx.MockTransport(lambda request: httpx.Response(502, text="<html>Bad gateway</html>"))
+    monkeypatch.setitem(oauth.TRANSPORTS, "microsoft_todo", page)
+    with pytest.raises(ConnectorError, match="answered the sign-in with something Friday can't read") as said:
+        oauth.trade(microsoft.TODO, renew)
+    assert said.value.problem == "answer" and REFRESH not in str(said.value)
+
+
+def test_kept_tokens_that_cant_be_read_say_to_sign_in_again() -> None:
+    for kept in ("{not json", json.dumps({"refresh_token": REFRESH}), ""):
+        with pytest.raises(ConnectorError, match="isn't signed in to Microsoft To Do: press Sign in again"):
+            oauth.Session(microsoft.TODO, kept)
+
+
+def test_a_token_renewed_with_nowhere_to_keep_it_is_still_used(graph: FakeGraph) -> None:
+    old = json.dumps({"access_token": ACCESS, "refresh_token": REFRESH, "expires_at": 1000})
+    graph.token = "ms-access-2"
+    session = oauth.Session(microsoft.TODO, old, None, clock=lambda: 990.0)
+    assert session.access() == "ms-access-2" and session.tokens["refresh_token"] == REFRESH
+
+
+def test_a_keys_file_that_isnt_a_table_is_passed_over_for_the_next(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    listed, kept = tmp_path / "bundle.json", tmp_path / "checkout.json"
+    listed.write_text('["trello_client_id"]')
+    kept.write_text('{"ticktick_client_id": "tt-from-the-checkout"}')
+    monkeypatch.setattr(keys, "PLACES", [tmp_path / "missing.json", listed, kept])
+    keys.kept.cache_clear()
+    try:
+        assert keys.get("ticktick_client_id") == "tt-from-the-checkout"
+    finally:
+        keys.kept.cache_clear()

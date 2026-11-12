@@ -169,6 +169,7 @@ class TestInside:
         assert held(fixed | {"title": "Dentist", "start": "2026-10-23T11:00"}) is None
         assert held(fixed | {"title": "Mira's Birthday", "start": "2028-02-01T00:00"}) is not None
         assert held(fixed | {"title": "Mira's Birthday", "start": "2028-02-02T00:00"}) is None
+        assert held({"title": "Dentist", "due": "2026-10-23T10:00"}) is None  # a task is never held
 
     def test_the_prompt_says_how_an_all_day_event_is_made(self) -> None:
         assert 'next day\'s "T00:00"' in SYSTEM and "Leave out what the context already has" in SYSTEM

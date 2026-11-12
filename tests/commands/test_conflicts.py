@@ -162,3 +162,48 @@ class TestMeals:
 def test_an_answer_to_something_settled_is_refused(app: App) -> None:
     with pytest.raises(FieldError, match="settled"):
         app.do("conflict_resolve", key="wind_down", option="rule")
+
+
+def test_a_rule_learned_far_up_is_said_in_times_and_counts_double_meanwhile(app: App) -> None:
+    app.do("rule_add", text="keep friday evenings free", strength="Strongly")
+    name = next(r["name"] for r in app.do("rules") if r["name"].startswith("you:"))
+    weigh(app, **{name.replace(":", "__").replace("-", "_"): 3.2})
+    (d,) = learned(app)
+    assert d["title"].startswith("Your moves go far beyond") and "about 3.2 times what you set" in d["detail"]
+    assert [o["id"] for o in d["options"]] == ["keep", "free"]  # making it a preference only brings one down
+    with pytest.raises(FieldError, match="no answer 'prefer' to that"):
+        answer(app, d, "prefer")
+
+
+def test_with_sleep_tracking_on_and_no_nights_yet_nothing_is_asked_about_winding_down(app: App) -> None:
+    app.do("settings_set", key="sleep_tracking", value={"on": True})
+    assert learned(app) == []
+
+
+def test_meals_are_asked_about_only_when_mostly_skipped_and_kept_by_a_rule_of_yours(
+    app: App, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import friday.commands.eating as eating  # noqa: PLC0415
+
+    app.do("settings_set", key="meal_tracking", value={"on": True})
+    monkeypatch.setattr(eating, "learned", lambda ctx: [Learned("lunch", "weekdays", 8, "12:30", 30, None, 0.75)])
+    assert learned(app) == []  # no rule of yours keeps a meal
+    rules = app.do("settings")["rules"] + [{
+        "type": "elastic_shortfall", "name": "you:lunch-is-never-skipped", "weight": 1.0,
+        "stage": "deadlines", "scope": {"preset": "Routine", "title_regex": ["(?i)\\blunch\\b"]},
+        "reason": "Lunch is never skipped", "params": {"steep": 10000.0, "gentle": 0.0},
+    }]  # fmt: skip
+    app.do("settings_set", key="rules", value=rules)
+    monkeypatch.setattr(
+        eating,
+        "learned",
+        lambda ctx: [
+            Learned("lunch", "weekdays", 8, "12:30", 30, None, 0.75),
+            Learned("lunch", "weekends", 4, "13:00", 30, None, 0.25),  # mostly had
+            Learned("breakfast", "weekdays", 8, "08:00", 15, None, 0.9),  # no rule keeps it
+        ],
+    )
+    (d,) = learned(app)
+    assert d["title"] == "You skip lunch on most weekdays, but your rule says it's never skipped"
+    assert answer(app, d, "keep") == "Kept the rule"
+    assert next(r for r in app.do("settings")["rules"] if r["name"] == "you:lunch-is-never-skipped")["enabled"]

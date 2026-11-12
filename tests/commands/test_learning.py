@@ -113,3 +113,60 @@ def test_a_check_in_is_asked_only_while_state_inference_is_on(app: App) -> None:
     assert app.do("questions")["checkin"]
     app.do("checkin", state="tired")
     assert not app.do("questions")["checkin"]
+
+
+def test_with_learning_off_nothing_is_asked_or_fitted(app: App) -> None:
+    app.do("settings_set", key="learn", value={"weights": "off"})
+    assert prepare_questions(app.conn, app.now_utc) == 0
+    app.at("2026-10-19T21:00").do("review_submit")
+    assert app.table("learned_profile") == [] and app.do("learning")["suggested"] is None
+
+
+def many_answers(app: App, copies: int = 14) -> None:
+    """Today's questions answered, then the same answers again as if from other evenings (3 × 15 = 45)."""
+    prepare_questions(app.conn, app.now_utc)
+    answer_all(app)
+    columns = "user_id, asked_utc, plan_a, plan_b, features_a, features_b, answer, answered_utc, source, dials"
+    for _ in range(copies):
+        app.conn.execute(f"INSERT INTO comparisons ({columns}) SELECT {columns} FROM comparisons WHERE id <= 3")
+
+
+def test_a_rule_is_proposed_only_once_its_week_comes(app: App) -> None:
+    many_answers(app)
+    app.at("2026-10-19T21:00").do("review_submit")
+    learned = app.do("learning")
+    assert learned["comparisons"] == 45 and learned["proposals"]["pending"] is None  # proposals start in week 6
+    assert 0 < learned["answer_noise"] < 0.15  # enough answers to measure how noisy they are
+
+
+def test_enough_answers_from_the_proposal_week_propose_the_best_rule(app: App) -> None:
+    app.do("settings_set", key="learn", value={"proposal_from_week": 0, "proposal_every_weeks": 1})
+    many_answers(app)
+    app.at("2026-10-19T21:00").do("review_submit")
+    assert app.do("learning")["proposals"]["pending"] == "weekdays:afternoon:any"
+    assert app.do("questions")["proposal"]["name"] == "weekdays:afternoon:any"
+
+
+def test_no_proposal_when_proposals_are_off(app: App) -> None:
+    app.do("settings_set", key="learn", value={"proposals": "off", "proposal_from_week": 0, "proposal_every_weeks": 1})
+    many_answers(app)
+    app.at("2026-10-19T21:00").do("review_submit")
+    assert app.do("learning")["proposals"]["pending"] is None
+
+
+def test_with_state_inference_on_the_refit_records_this_weeks_state(app: App) -> None:
+    app.do("settings_set", key="learn", value={"state_inference": "on"})
+    prepare_questions(app.conn, app.now_utc)
+    answer_all(app)
+    app.at("2026-10-19T21:00").do("review_submit")
+    state = app.do("learning")["state"]
+    assert len(state["h"]) == 4 and state["on"] is False and state["mood"] == "normal"
+
+
+def test_this_weeks_check_in_reaches_the_state(app: App) -> None:
+    app.do("settings_set", key="learn", value={"state_inference": "on"})
+    prepare_questions(app.conn, app.now_utc)
+    answer_all(app)
+    app.do("checkin", state="tired")
+    app.at("2026-10-19T21:00").do("review_submit")
+    assert app.do("learning")["state"]["mood"] == "tired"

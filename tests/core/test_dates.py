@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from friday.core.dates import parse_duration, parse_time, read_date, read_moment
+from friday.core.dates import parse_date_word, parse_duration, parse_time, read_date, read_moment
 
 TODAY = date(2026, 10, 18)  # a Sunday
 
@@ -80,3 +80,8 @@ def test_date_and_time_join_with_a_space_or_an_at_sign() -> None:
     assert read_moment(["oct", "20", "9:30am"], 0, TODAY) == (date(2026, 10, 20), 570, 3)
     assert read_moment(["5pm"], 0, TODAY) == (TODAY, 1020, 1)
     assert read_moment(["tue", "reading"], 0, TODAY) == (date(2026, 10, 20), None, 1)
+
+
+def test_a_date_with_its_year_that_isnt_a_day_is_none() -> None:
+    assert parse_date_word("2/30/2026", TODAY) is None
+    assert parse_date_word("2/28/26", TODAY) == date(2026, 2, 28)

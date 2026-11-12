@@ -89,6 +89,16 @@ def test_what_you_choose_spreads_to_events_like_it_before_claude(app: App) -> No
     assert app.do("item", id=mandatory)["item"]["category_like"] == "CATC GBody"
 
 
+def test_an_event_much_like_one_claude_placed_takes_its_category_as_similar(app: App) -> None:
+    names = ("Jane Street info session", "Citadel info session", "Optiver info session", "IMC info session")
+    for day, title in enumerate(names, start=20):
+        event(app, title, day)
+    claude_said(app, dict.fromkeys(names, "Professional"))
+    virtual = event(app, "Citadel info session (virtual)", 26)
+    assert facts(app, virtual) == ("Professional", "similar")
+    assert app.do("item", id=virtual)["item"]["category_like"] == "Citadel info session"
+
+
 def test_an_unsure_guess_is_offered_not_painted(app: App) -> None:
     event(app, "Jane Street info session", 20)
     event(app, "Citadel info session", 21)

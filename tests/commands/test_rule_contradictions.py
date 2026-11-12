@@ -176,3 +176,20 @@ def test_one_event_one_rule_a_new_optional_rule_takes_its_events_from_the_others
         "Climbing Club only when you’re ahead: work takes its time first",
         "Gym only when you’re ahead: work takes its time first",
     }
+
+
+def test_the_same_amount_twice_overlaps_as_the_same_rule(app: App) -> None:
+    app.do("rule_add", text="sleep at least 7 hours a night", strength="Prefer")
+    assert said(app, "sleep at least 7 hours a night") == [
+        ("At least 7 h of sleep a night", "the same night's sleep", True)
+    ]
+    app.do("rule_add", text="finish things 2 days early", strength="Prefer")
+    assert ("Finish things 2 days before they're due", "the same head start for work", True) in said(
+        app, "finish things 2 days early"
+    )
+
+
+def test_an_amount_rule_without_its_amount_is_compared_with_nothing() -> None:
+    cap = {"type": "daily_load", "name": "cap", "params": {"threshold": "8h"}}
+    unsaid = {"type": "daily_load", "name": "unsaid", "params": {}}
+    assert against(unsaid, [cap]) == [] and contradictions([cap, unsaid], []) == {}
