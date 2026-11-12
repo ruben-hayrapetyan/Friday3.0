@@ -64,7 +64,12 @@ class JobLoop:
     def loop(self) -> None:
         conn = connect(self.db_path)
         while not self.stopping.is_set():
-            run_due(conn, self.clock(), self.hub, self.supervisor, self.db_path.parent / "backups")
+            try:
+                run_due(conn, self.clock(), self.hub, self.supervisor, self.db_path.parent / "backups")
+            except Exception:  # the database held too long, say: tried again next time, not the thread ended
+                log.exception("the job loop")
+                if conn.in_transaction:
+                    conn.execute("ROLLBACK")
             self.stopping.wait(WAKE_S)
         conn.close()
 
