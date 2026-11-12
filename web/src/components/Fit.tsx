@@ -23,12 +23,14 @@ export function useFit(command: FitCommand, input: Record<string, unknown> | nul
   const key = input ? JSON.stringify([command, input]) : null
   const [fit, setFit] = useState<{ for: string; out: Fit } | null>(null)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // for the change it was about, as the fit is: a check of what the change was, failing late, doesn't stand under the
+  // change as it is now (the audit, 12 Nov)
+  const [error, setError] = useState<{ for: string; said: string } | null>(null)
+  const cleared = (k: string) => setError((e) => (e?.for === k ? null : e))
   useEffect(() => {
     if (!key || !input) return
-    setError(null)
     const timer = setTimeout(
-      () => queryBody("fit", { command, input, exact: false }).then((out) => setFit({ for: key, out }), (e) => setError(errorWords(e))),
+      () => queryBody("fit", { command, input, exact: false }).then((out) => (setFit({ for: key, out }), cleared(key)), (e) => setError({ for: key, said: errorWords(e) })),
       400,
     )
     return () => clearTimeout(timer)
@@ -38,12 +40,13 @@ export function useFit(command: FitCommand, input: Record<string, unknown> | nul
     setBusy(true)
     try {
       setFit({ for: key, out: await queryBody("fit", { command, input, exact: true }) })
+      cleared(key)
     } catch (e) {
-      setError(errorWords(e))
+      setError({ for: key, said: errorWords(e) })
     }
     setBusy(false)
   }
-  return { fit: fit && fit.for === key ? fit.out : null, exact, busy, error }
+  return { fit: fit && fit.for === key ? fit.out : null, exact, busy, error: error && error.for === key ? error.said : null }
 }
 
 /** One line under the change: whether you have time, and what would be late; for an event, other times. */
