@@ -32,12 +32,13 @@ export function useDialogKeys(onClose: () => void): RefObject<HTMLDivElement | n
   return box
 }
 
-export function Modal({ onClose, children, top, width = 560 }: { onClose: () => void; children: ReactNode; top?: boolean; width?: number }) {
+/** `label`: what the dialog is, for a screen reader (the audit, 12 Nov: the brief, what changed and triage had no name). */
+export function Modal({ onClose, children, top, width = 560, label }: { onClose: () => void; children: ReactNode; top?: boolean; width?: number; label?: string }) {
   const box = useDialogKeys(onClose)
   return (
     <div className="fr-scrim" style={top ? { alignItems: "flex-start", padding: "56px 24px 24px", background: "color-mix(in srgb, #05070b 60%, transparent)" } : undefined}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0 }} />
-      <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" className="fr-float fr-dialog" style={{ width: `min(${width}px, 100%)`, outline: "none" }}>
+      <div ref={box} tabIndex={-1} role="dialog" aria-modal="true" aria-label={label} className="fr-float fr-dialog" style={{ width: `min(${width}px, 100%)`, outline: "none" }}>
         {children}
       </div>
     </div>
@@ -64,7 +65,7 @@ export function ChangesDialog({ onClose }: { onClose: () => void }) {
   const { today } = useShell()
   const changes = useQuery({ queryKey: ["changes"], queryFn: () => query("changes"), retry: false })
   return (
-    <Modal onClose={onClose} top>
+    <Modal onClose={onClose} top label="What changed">
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
           <H size={28}>What changed</H>
@@ -95,7 +96,7 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
   const next = nextBlocks(blocks.filter((b) => b.start.startsWith(today)))
   const first = brief?.rocks.map((r) => next.get(r.item_id)).find(Boolean)
   return (
-    <Modal onClose={onClose} top width={720}>
+    <Modal onClose={onClose} top width={720} label="Morning brief">
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={{ fontSize: 13, color: "var(--color-neutral-400)" }}>{dayName(today)}</span>
@@ -289,7 +290,7 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
     client.invalidateQueries({ queryKey: ["plan"] })
   }
   return (
-    <Modal onClose={onClose}>
+    <Modal onClose={onClose} label="What gives when it can't all fit">
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
           <H size={26} style={{ lineHeight: 1.05 }}>

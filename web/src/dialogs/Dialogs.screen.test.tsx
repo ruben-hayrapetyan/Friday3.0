@@ -74,7 +74,8 @@ describe("the morning brief", () => {
     const { user } = await openFriday("/")
     await fromPlanMenu(user, /^Morning brief/)
     await screen.findByText("Good morning")
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Close" }))
+    // named, as a dialog must be for a screen reader (the audit, 12 Nov: the brief, what changed and triage had none)
+    await user.click(within(screen.getByRole("dialog", { name: "Morning brief" })).getByRole("button", { name: "Close" }))
     await waitFor(() => expect(screen.queryByText("Good morning")).toBeNull())
     await fromPlanMenu(user, /^Morning brief/)
     await screen.findByText("Good morning")
@@ -88,7 +89,7 @@ describe("what changed", () => {
     const { user } = await openFriday("/")
     await fromPlanMenu(user, /^What changed/)
     expect(await screen.findByText("What changed")).toBeTruthy()
-    const dialog = screen.getByRole("dialog")
+    const dialog = screen.getByRole("dialog", { name: "What changed" })
     await waitFor(() => expect(within(dialog).queryByText("Working out what would move…")).toBeNull())
     await user.click(within(dialog).getByRole("button", { name: "Close" }))
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
@@ -99,6 +100,7 @@ describe("what gives when it can't all fit", () => {
   it("says everything fits when nothing is late", async () => {
     const triage = await friday.q<{ late: Record<string, number> }>("triage")
     const { user } = await openFriday("/?triage")
+    expect(await screen.findByRole("dialog", { name: "What gives when it can't all fit" })).toBeTruthy()
     if (Object.keys(triage.late).length) return
     expect(await screen.findByText("Everything fits", {}, { timeout: 15_000 })).toBeTruthy()
     expect(screen.getByText("Nothing is going late.")).toBeTruthy()
