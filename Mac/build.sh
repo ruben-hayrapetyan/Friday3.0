@@ -62,19 +62,56 @@ SHARED="Shared"  # the hotkeys and the live Dock icon, from the Swift app Friday
 SOURCES=(Sources/*.swift "$SHARED/GlobalHotKey.swift" "$SHARED/FridayIcon.swift" "$SHARED/FridayCountdown.swift")
 SDK="$(xcrun --sdk macosx --show-sdk-path)"
 TARGET="$(uname -m)-apple-macos14.0"
+SWIFTC=(xcrun swiftc)
+# Siri's own commands (C131, Sources/FridayIntents.swift) need Xcode's App Intents metadata step: with Xcode on this
+# Mac, Friday is compiled with its compiler and SDK, which also say what the step reads. Without it Friday builds the
+# same, Siri's commands left out (its links still work); a release insists on it.
+XCODE_DEV="${FRIDAY_XCODE:-/Applications/Xcode.app/Contents/Developer}"
+TOOLCHAIN="$XCODE_DEV/Toolchains/XcodeDefault.xctoolchain"
+INTENTS=false
+if [ -x "$TOOLCHAIN/usr/bin/appintentsmetadataprocessor" ]; then
+  INTENTS=true
+  SDK="$XCODE_DEV/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+  SWIFTC=("$TOOLCHAIN/usr/bin/swiftc")
+elif [ "${FRIDAY_RELEASE:-}" = 1 ]; then
+  echo "A release needs Xcode for Siri's commands (C131): install it from the App Store, open it once, and build again." >&2
+  exit 1
+else
+  echo "==> No Xcode here: building without Siri's own commands"
+fi
 
 echo "==> Cleaning"
 [ -d "$APP" ] && rm -r "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 echo "==> Compiling"
-xcrun swiftc -O -swift-version 5 -target "$TARGET" -sdk "$SDK" \
+CONSTS=()
+if $INTENTS; then
+  # what the metadata step reads: the values of the App Intents types, as the compiler sees them
+  printf '%s\n' '["AppIntent","EntityQuery","AppEntity","TransientEntity","AppEnum","AppShortcutProviding","AppShortcutsProvider","AnyResolverProviding","AppIntentsPackage","DynamicOptionsProvider"]' > "$BUILD_DIR/intent-protocols.json"
+  CONSTS=(-emit-const-values-path "$BUILD_DIR/Friday.swiftconstvalues" -Xfrontend -const-gather-protocols-file -Xfrontend "$BUILD_DIR/intent-protocols.json")
+fi
+"${SWIFTC[@]}" -O -wmo -module-name Friday -swift-version 5 -target "$TARGET" -sdk "$SDK" \
   -framework WebKit -framework Carbon -framework EventKit -framework UserNotifications -framework ServiceManagement \
-  "${SOURCES[@]}" -o "$APP/Contents/MacOS/$EXECUTABLE"
+  "${SOURCES[@]}" ${CONSTS[@]+"${CONSTS[@]}"} -o "$APP/Contents/MacOS/$EXECUTABLE"
+
+if $INTENTS; then
+  echo "==> Siri's commands (App Intents metadata)"
+  for f in "${SOURCES[@]}"; do echo "$PWD/$f"; done > "$BUILD_DIR/intent-sources.txt"
+  echo "$PWD/$BUILD_DIR/Friday.swiftconstvalues" > "$BUILD_DIR/intent-consts.txt"
+  XCODE_BUILD="$(/usr/libexec/PlistBuddy -c "Print :ProductBuildVersion" "$XCODE_DEV/../version.plist")"
+  "$TOOLCHAIN/usr/bin/appintentsmetadataprocessor" --toolchain-dir "$TOOLCHAIN" --module-name Friday --sdk-root "$SDK" \
+    --xcode-version "$XCODE_BUILD" --platform-family macOS --deployment-target 14.0 --target-triple "$TARGET" \
+    --source-file-list "$BUILD_DIR/intent-sources.txt" --swift-const-vals-list "$BUILD_DIR/intent-consts.txt" \
+    --output "$APP/Contents/Resources" --no-app-shortcuts-localization --force >/dev/null 2>"$BUILD_DIR/intents.txt" \
+    || { cat "$BUILD_DIR/intents.txt" >&2; exit 1; }
+  [ -f "$APP/Contents/Resources/Metadata.appintents/extract.actionsdata" ] || { echo "Siri's commands weren't written" >&2; exit 1; }
+  rm "$BUILD_DIR/intent-protocols.json" "$BUILD_DIR/intent-sources.txt" "$BUILD_DIR/intent-consts.txt" "$BUILD_DIR/Friday.swiftconstvalues" "$BUILD_DIR/intents.txt"
+fi
 
 echo "==> Rendering app icon"
 ICONSET="$BUILD_DIR/AppIcon.iconset"
-xcrun swiftc -swift-version 5 -target "$TARGET" -sdk "$SDK" \
+"${SWIFTC[@]}" -swift-version 5 -target "$TARGET" -sdk "$SDK" \
   tools/MakeIcon/main.swift "$SHARED/FridayIcon.swift" "$SHARED/FridayCountdown.swift" -o "$BUILD_DIR/makeicon"
 "$BUILD_DIR/makeicon" "$ICONSET" ${RIBBON[@]+"${RIBBON[@]}"} >/dev/null
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
