@@ -309,10 +309,20 @@ class Sender:
         conn.close()
 
 
+SENDING = threading.Lock()  # the sender and the integrations job send one at a time
+
+
 def send_writes(
     conn: sqlite3.Connection, now_utc: int, make: Callable[[dict[str, Any]], Connector] = connector_for
 ) -> int:
-    """What waits to go back, oldest first, each to its integration; a failure is kept and retried, then said."""
+    """What waits to go back, oldest first, each to its integration; a failure is kept and retried, then said. One
+    sending at a time: the sender and the job's minute each read what waits on their own connection, and one still
+    sending a done when the other began sent it again, after a reopen made meanwhile (done there, open here)."""
+    with SENDING:
+        return send_waiting(conn, now_utc, make)
+
+
+def send_waiting(conn: sqlite3.Connection, now_utc: int, make: Callable[[dict[str, Any]], Connector]) -> int:
     sent = 0
     for w in rows(
         conn,

@@ -2,12 +2,14 @@
 commits; what was rolled back sends nothing; stopping it is quick; a change the app keeps refusing is tried again,
 then said on its box; a send that breaks doesn't stop it. And when each integration is read."""
 
+import threading
 import time
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from friday.core.db import connect
 from friday.core.time import format_utc
 from friday.integrations import sync
 from friday.integrations.base import ConnectorError
@@ -128,3 +130,37 @@ def test_an_integration_is_read_when_asked_new_or_ten_minutes_on() -> None:
     assert sync.due_now(last, 1001, asked=True)
     assert not sync.due_now(last, 1000 + sync.POLL_MIN - 1, asked=False)
     assert sync.due_now(last, 1000 + sync.POLL_MIN, asked=False)
+
+
+def test_the_sender_and_the_job_never_send_the_same_change_twice_or_out_of_order(w: World, tmp_path: Path) -> None:
+    # The sender and the integrations job's minute each send what waits, on connections of their own: one still
+    # sending a done when the other started sent it again, after the reopen made meanwhile, so the task ended done
+    # there while open here
+    w.h.add(w.fake, "Pay rent", THU)
+    w.connect()
+    w.sync()
+    mine = w.item("Pay rent")["id"]
+    w.app.do("done", id=mine)
+    sent: list[str] = []
+    entered, go = threading.Event(), threading.Event()
+
+    class Slow:
+        def write(self, external_id: str, op: str) -> None:
+            if not entered.is_set():
+                entered.set()
+                go.wait(5)
+            sent.append(op)
+
+    first = threading.Thread(target=sync.send_writes, args=(w.app.conn, w.app.now_utc, lambda s: Slow()))
+    first.start()
+    assert entered.wait(5)
+    w.app.do("reopen", id=mine)
+    other = connect(tmp_path / "friday.db")
+    second = threading.Thread(target=sync.send_writes, args=(other, w.app.now_utc, lambda s: Slow()))
+    second.start()
+    second.join(0.5)
+    go.set()
+    first.join(5)
+    second.join(5)
+    other.close()
+    assert sent == ["done", "reopen"]
