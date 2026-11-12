@@ -184,13 +184,18 @@ class DeadlineModel:
     def ensure_cum(self, item: EngineItem) -> None:
         if (item.key, 1) in self.cum:
             return
-        top = max(item.total_units, item.need) + 1
+        top = self.most_units(item)
         before: Any = 0
         for t in range(1, self.g.S + 1):
             v = self.cum[item.key, t] = self.m.new_int_var(0, top, f"cum_{item.key}_{t}")
             step = int(self.g.units[t - 1]) * self.x[item.key, t - 1] if (item.key, t - 1) in self.x else 0
             self.m.add(v == before + step)
             before = v
+
+    def most_units(self, item: EngineItem) -> int:
+        """The most units the item can hold: all its slots. Its full amount and one more had capped a routine placed
+        past its ideal (up to its max), so a valid plan with work waiting on it was infeasible here."""
+        return int(sum(int(self.g.units[s]) for s in item.allowed))
 
     def variable(self, var: Any) -> Any:
         kind = var[0]
@@ -220,8 +225,7 @@ class DeadlineModel:
         if var[0] == "over":
             return 0, self.p.items[var[1]].need
         if var[0] == "cum":
-            item = self.p.items[var[1]]
-            return 0, max(item.total_units, item.need) + 1
+            return 0, self.most_units(self.p.items[var[1]])
         return 0, 1
 
     def expression(self, lin: Lin) -> Any:
