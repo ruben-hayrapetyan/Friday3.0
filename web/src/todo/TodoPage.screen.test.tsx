@@ -303,8 +303,9 @@ describe("the To-do page", () => {
     expect(screen.queryByTitle(`Breakfast${TIP}`)).toBeNull()
     const rows = [...document.querySelectorAll("[data-todo-row]")]
     expect(rows[0].getAttribute("title")).toBe(`Overdue worksheet${TIP}`)
-    const now = screen.getByRole("separator", { name: "Now" })
-    expect(rows[0].compareDocumentPosition(now) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // the list's now line (the calendar beside it may draw its own)
+    const nows = screen.getAllByRole("separator", { name: "Now" })
+    expect(nows.some((now) => rows[0].compareDocumentPosition(now) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true)
     // No sections or sort here: the view options keep only the rows and done.
     await viewOptions(user)
     expect(screen.queryByRole("button", { name: "By kind" })).toBeNull()
@@ -359,7 +360,8 @@ describe("the To-do page", () => {
     await late("Slipping reading", /late$|not planned/)
     await user.click(screen.getByRole("button", { name: "View options" }))
     await user.click(screen.getByRole("button", { name: "Two lines" }))
-    const two = screen.getAllByText("Impossible lab writeup")[0].closest("[data-todo-row]") as HTMLElement
+    // the row, not another place its title shows (a toast, the calendar)
+    const two = await waitFor(() => screen.getAllByText("Impossible lab writeup").map((t) => t.closest("[data-todo-row]")).find(Boolean) as HTMLElement)
     expect(within(two).getByText(/late$/)).toBeTruthy()
   }, 40_000)
 

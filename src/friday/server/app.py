@@ -388,7 +388,10 @@ def query_by_get(spec: Spec) -> bool:
 
 
 def announce(services: Services, spec: Spec, out: CommandResult, debounce_s: float) -> None:
-    services.hub.publish("items.changed")
+    """Tell the app what changed, by command: it refreshes only what that command touches (web/src/api/events.ts),
+    every refresh being work done on the same Mac (12 Nov: each click had the app read some 35 things again, and the
+    next click waited behind them); and the planner to plan again."""
+    services.hub.publish("items.changed", {"command": spec.name})
     if spec.affects_plan and services.supervisor is not None:
         services.supervisor.request(debounce_s)
 

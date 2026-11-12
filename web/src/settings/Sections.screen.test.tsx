@@ -239,7 +239,7 @@ describe("Tags/Kinds", () => {
     expect(add.disabled).toBe(true)
     await user.type(name, "Lab report")
     await user.click(screen.getByRole("button", { name: "Starts as a copy of" }))
-    await user.click(screen.getByRole("option", { name: "Reading" }))
+    await user.click(await screen.findByRole("option", { name: "Reading" }))
     await user.click(add)
     expect((await waitForSent("kind_add")).body).toEqual({ name: "Lab report", like: "Reading" })
     await waitFor(async () => expect(Object.keys((await settings()).presets)).toContain("Lab report"))

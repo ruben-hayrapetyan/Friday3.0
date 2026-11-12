@@ -21,8 +21,21 @@ const REFRESH: Record<string, string[]> = {
   "updates.changed": ["updates"],
 }
 
-/** The query keys (by their first part) an event makes stale; "*" is all of them. */
-export function refreshFor(event: string): string[] {
+// What the commands you click most change (the server names the command with items.changed, server/app.py
+// announce): the to-dos and what's read from them, not settings, rules, terms, meals or sleep. Any other command
+// still refreshes everything; the plan's own queries come with plan.changed once it's planned again (12 Nov: a click
+// had the page read some 35 things at once, and the next click waited behind them).
+const WORK = ["items", "item", "status", "now", "calendar", "review", "week_review", "projects", "exams", "inbox", "to_review", "duplicates", "questions", "asks_later", "insights", "load", "triage", "brief", "why", "why_not", "rule_totals", "series_list", "log_list", "events", "changes"]
+const BY_COMMAND: Record<string, string[]> = Object.fromEntries([
+  ...["suggestion_accept", "suggestion_reject", "suggestion_restore", "batch_accept", "add", "edit", "done", "reopen", "drop", "start", "stop", "pin", "unpin", "skip", "settle", "depend", "undepend", "event_hold", "event_keep", "reorder", "progress", "log", "stuck", "sitting_edit", "sitting_delete", "review_task"].map((c) => [c, WORK]),
+  ...["meal_start", "meal_end", "meal_skip", "meal_log", "meal_edit", "meal_remove"].map((c) => [c, [...WORK, "meals"]]),
+  ...["sleep_mark", "sleep_mark_edit", "sleep_mark_remove", "nap_start", "nap_end"].map((c) => [c, [...WORK, "sleep"]]),
+])
+
+/** The query keys (by their first part) an event makes stale; "*" is all of them. `command`: the one that changed
+ * things, for items.changed. */
+export function refreshFor(event: string, command?: string): string[] {
+  if (event === "items.changed" && command && BY_COMMAND[command]) return BY_COMMAND[command]
   return REFRESH[event] ?? []
 }
 
@@ -30,10 +43,36 @@ export function setGhosts(client: QueryClient, ghosts: Block[]): void {
   client.setQueryData(GHOSTS, ghosts)
 }
 
-function refresh(client: QueryClient, event: string): void {
-  const stale = refreshFor(event)
+/** Whether the live stream is open: while it is, its events refresh what changed and a command needn't do it too. */
+export let streamLive = false
+
+// Events close together refresh once (12 Nov: a command's items.changed, then plan.changed, then its own refresh, each
+// read the page's queries again): what they make stale is gathered for a moment, then read once.
+const GATHER_MS = 120
+const gathered = new Map<QueryClient, { keys: Set<string>; timer: ReturnType<typeof setTimeout> }>()
+
+export function refresh(client: QueryClient, event: string, command?: string): void {
+  staleSoon(client, refreshFor(event, command))
+}
+
+/** Marks these query families stale (EVERYTHING: all) once the moment's events are in. */
+export function staleSoon(client: QueryClient, keys: string[]): void {
+  const now = gathered.get(client)
+  if (now) {
+    for (const k of keys) now.keys.add(k)
+    return
+  }
+  const pending = { keys: new Set(keys), timer: setTimeout(() => flush(client), GATHER_MS) }
+  gathered.set(client, pending)
+}
+
+function flush(client: QueryClient): void {
+  const pending = gathered.get(client)
+  gathered.delete(client)
+  if (!pending) return
+  const all = pending.keys.has(EVERYTHING)
   // Ghosts are put there by hand (Other ways' preview): refetching them would only empty them.
-  client.invalidateQueries({ predicate: (q) => q.queryKey[0] !== GHOSTS[0] && (stale.includes(EVERYTHING) || stale.includes(String(q.queryKey[0]))) })
+  void client.invalidateQueries({ predicate: (q) => q.queryKey[0] !== GHOSTS[0] && (all || pending.keys.has(String(q.queryKey[0]))) })
 }
 
 /** Events sent while the stream wasn't open are lost: once it's back, refresh everything; the first time it opens,
@@ -55,17 +94,28 @@ export function useServerEvents(): void {
     let dropped = false
     source.onerror = () => {
       dropped = true
+      streamLive = false
     }
     source.onopen = () => {
       refreshMissed(client, dropped, Date.now())
       dropped = false
+      streamLive = true
     }
     for (const event of Object.keys(REFRESH)) {
-      source.addEventListener(event, () => {
+      source.addEventListener(event, (e) => {
         if (event === "plan.changed") setGhosts(client, [])
-        refresh(client, event)
+        let command: string | undefined
+        try {
+          command = (JSON.parse((e as MessageEvent).data ?? "{}") as { command?: string }).command
+        } catch {
+          command = undefined
+        }
+        refresh(client, event, command)
       })
     }
-    return () => source.close()
+    return () => {
+      streamLive = false
+      source.close()
+    }
   }, [client])
 }

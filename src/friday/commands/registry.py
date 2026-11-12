@@ -19,6 +19,7 @@ from pydantic import BaseModel, ValidationError
 from friday.api.types import ChangeOut, CommandResult
 from friday.commands.writer import Writer
 from friday.core.dates import read_moment
+from friday.core.db import SLOW_MS, begin_write, waited
 from friday.core.items import FieldError
 from friday.core.settings import minutes_of
 from friday.core.time import (
@@ -154,10 +155,14 @@ def run(
         raise
     spec = REGISTRY.get(name)
     ms = (time.perf_counter() - started) * 1000
+    wait = waited(conn)  # of that time, how long it stood behind another write
+    if spec is not None and spec.mutates and ms - wait > SLOW_MS:
+        log.warning("%s by %s held the database for %.0f ms (other writes waited)", name, actor, ms - wait)
     if spec is not None and spec.mutates and spec.logged:
         given = payload.model_dump(exclude_none=True) if isinstance(payload, BaseModel) else payload or {}
         said = f"C{out.command_id}" if out.command_id is not None else "preview" if preview else "repeat"
-        log.info("%s by %s: %s, %.0f ms, %s", name, actor, said, ms, json.dumps(given)[:120])
+        behind = f" (waited {wait:.0f} ms)" if wait >= 50 else ""
+        log.info("%s by %s: %s, %.0f ms%s, %s", name, actor, said, ms, behind, json.dumps(given)[:120])
     else:
         log.debug("%s by %s: %.0f ms", name, actor, ms)
     return out
@@ -242,7 +247,7 @@ def run_in_transaction(
     idempotency_key: str | None,
     provisional: bool,
 ) -> CommandResult:
-    conn.execute("BEGIN IMMEDIATE")
+    begin_write(conn, spec.name)
     try:
         command_id = log_start(conn, spec, inp, now_utc, actor, user_id, None if preview else idempotency_key)
         ctx = Ctx(conn, Writer(conn, user_id), now_utc, actor, user_id, settings, command_id)

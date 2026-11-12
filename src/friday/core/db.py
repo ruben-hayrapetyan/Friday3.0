@@ -1,12 +1,43 @@
 """SQLite: connection, migrations and small query helpers (DESIGN §7). No ORM."""
 
+import logging
 import sqlite3
+import time
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 MIGRATIONS = Path(__file__).parent / "migrations"
+
+
+log = logging.getLogger("friday.db")
+SLOW_MS = 300  # a wait for the write lock, or a hold of it, past this is logged: a click waits that long too
+_waited: dict[int, float] = {}
+
+
+def begin_write(conn: sqlite3.Connection, who: str) -> None:
+    """BEGIN IMMEDIATE, timed: how long it waited for another writer is kept for `waited` (the command's log line),
+    and said when it was long (12 Nov: clicks took seconds while something else held the lock, and the log couldn't
+    say what)."""
+    started = time.perf_counter()
+    conn.execute("BEGIN IMMEDIATE")
+    ms = (time.perf_counter() - started) * 1000
+    _waited[id(conn)] = ms
+    if ms > SLOW_MS:
+        log.warning("%s waited %.0f ms for the database (another write held it)", who, ms)
+
+
+def waited(conn: sqlite3.Connection) -> float:
+    """How long this connection's last `begin_write` waited, in ms (0 when it didn't)."""
+    return _waited.pop(id(conn), 0.0)
+
+
+def held(who: str, since: float) -> None:
+    """Say a write that held the lock long: `since` is time.perf_counter() when it took it."""
+    ms = (time.perf_counter() - since) * 1000
+    if ms > SLOW_MS:
+        log.warning("%s held the database for %.0f ms (other writes waited)", who, ms)
 
 
 def connect(path: str | Path) -> sqlite3.Connection:

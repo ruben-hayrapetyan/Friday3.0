@@ -102,9 +102,10 @@ export function InboxPage() {
       setGone((was) => [...was, ...keys])
       sent?.then((out) => out === undefined && setGone((was) => was.filter((k) => !keys.includes(k))))
     }
-  const resolve = (rs: Resolved[]) => {
+  // `advance` false: the answer the server gave for one already shown as answered (its Undo), not a new answer
+  const resolve = (rs: Resolved[], advance = true) => {
     const without = new Set([...gone, ...rs.map((r) => `s:${r.s.id}`)])
-    if (current) setSelected(nextAfter(list, current.key, without))
+    if (current && advance) setSelected(nextAfter(list, current.key, without))
     setResolved((all) => [...all.filter((r) => !rs.some((x) => x.s.id === r.s.id)), ...rs])
   }
   const open = (key: string) => (setSelected(key), setReading(true))
@@ -317,7 +318,7 @@ interface DetailProps {
   all: Suggestion[]
   waiting: Suggestion[] // still to answer from the same source, this one too
   resolved: Resolved | null
-  onResolved: (r: Resolved[]) => void
+  onResolved: (r: Resolved[], advance?: boolean) => void
   onReopen: () => void
 }
 
@@ -336,14 +337,16 @@ function Detail({ s, all, waiting, resolved, onResolved, onReopen }: DetailProps
   const batch = useCommand("batch_accept", { label: (o) => o.result.message ?? "Accepted" })
   const fields: Record<string, unknown> = { ...(s.input as Record<string, unknown>), ...edits }
   const dup = s.duplicate_of != null ? items.find((i) => i.id === s.duplicate_of) : null
-  const doAccept = async () => {
-    const out = await accept({ id: s.id, edits: edits as Record<string, never> })
-    if (out) onResolved([{ s, accepted: true, commandId: out.command_id }])
+  // Answered at once, the next one open, while Friday saves it (12 Nov: "the acceptances and rejections for the
+  // inbox are very very slow"); back as it was if Friday refuses (its toast says why).
+  const answer = async (accepted: boolean, send: () => Promise<{ command_id: number | null } | undefined>) => {
+    onResolved([{ s, accepted, commandId: null }])
+    const out = await send()
+    if (out) onResolved([{ s, accepted, commandId: out.command_id }], false)
+    else onReopen()
   }
-  const doReject = async () => {
-    const out = await reject({ id: s.id })
-    if (out) onResolved([{ s, accepted: false, commandId: out.command_id }])
-  }
+  const doAccept = () => answer(true, () => accept({ id: s.id, edits: edits as Record<string, never> }))
+  const doReject = () => answer(false, () => reject({ id: s.id }))
   /** Everything still waiting from this source, accepted as it is: a document's in one go, the rest one by one. */
   const acceptAll = async () => {
     const batches = [...new Set(waiting.map((x) => x.batch).filter((b): b is string => !!b))]

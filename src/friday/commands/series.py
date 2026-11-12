@@ -36,7 +36,7 @@ from friday.core.items import FieldError, with_defaults
 from friday.core.recurrence import counted_on, describe, ending_before, next_occurrence, read_repeat
 from friday.core.rows import item_to_row
 from friday.core.series import Series, make_occurrence, materialize, occurrence_timing
-from friday.core.time import ampm, format_local, local_midnight, parse_local, parse_utc, to_local
+from friday.core.time import ampm, format_local, local_midnight, parse_local, parse_utc, planning_date, to_local
 from friday.planner.store import area_names, event_links, kv_get
 
 TIME_KEYS = ("start_utc", "end_utc", "release_utc", "due_utc")
@@ -114,7 +114,9 @@ def new_series(ctx: Ctx, values: dict[str, Any], repeat: dict[str, Any]) -> int:
     else:
         # a task with a due repeats from its due's day (8 Nov: "pay rent" due the 1st came due the 1st, the 31st, …
         # as its offset was counted from today)
-        due = to_local(parse_utc(values["due_utc"]), ctx.tz).date() if values.get("due_utc") else ctx.today
+        # Friday's day of it, not the calendar's (12 Nov: due at midnight, its copies began at 4am the day it was due,
+        # four hours after it was due)
+        due = planning_date(parse_utc(values["due_utc"]), ctx.tz, ctx.day_start) if values.get("due_utc") else ctx.today
         dtstart = repeat.get("dtstart_local") or format_local(local_midnight(due) + timedelta(minutes=ctx.day_start))
     offsets = {k: repeat.get(k) for k in ("release_offset_min", "due_offset_min")}
     for key, field in (("release_offset_min", "release_utc"), ("due_offset_min", "due_utc")):
@@ -177,8 +179,9 @@ def repeat(ctx: Ctx, inp: RepeatInput) -> SeriesOut:
     repeat_of: dict[str, Any] = {"every": inp.every}
     if not item.start_utc and item.due_utc:
         # a task repeats from its own due day (it began from today's, so a Friday's came due on the wrong days)
-        due = to_local(parse_utc(item.due_utc), ctx.tz)
-        repeat_of["dtstart_local"] = format_local(local_midnight(due.date()) + timedelta(minutes=ctx.day_start))
+        # Friday's day of the due, not the calendar's: one due at midnight belongs to the day before it (12 Nov)
+        day = planning_date(parse_utc(item.due_utc), ctx.tz, ctx.day_start)
+        repeat_of["dtstart_local"] = format_local(local_midnight(day) + timedelta(minutes=ctx.day_start))
     series_id = new_series(ctx, values, repeat_of)
     if item.id in (kv_get(ctx.conn, "friday_only_events", [], ctx.user_id) or []):
         keep_calendar(ctx, series_id, "")  # one you kept only in Friday: its repeats stay here too
@@ -191,7 +194,8 @@ def repeat(ctx: Ctx, inp: RepeatInput) -> SeriesOut:
         ctx.db.update("items", {"id": item.id}, {"series_id": series_id, "occurrence_date": mine.occurrence_date,
                                                  "occurrence_n": mine.occurrence_n})  # fmt: skip
     else:  # its own day isn't one of the rule's ("every weekday" for a Saturday's): it stays, beside the repeat
-        when = to_local(parse_utc(item.start_utc or item.due_utc or ctx.now_text), ctx.tz)
+        # on Friday's day of it, as its repeats count their days (a due at midnight is the day before's)
+        when = planning_date(parse_utc(item.start_utc or item.due_utc or ctx.now_text), ctx.tz, ctx.day_start)
         ctx.db.update("items", {"id": item.id}, {"series_id": series_id, "occurrence_date": f"{when:%Y-%m-%d}",
                                                  "occurrence_n": 0, "detached": 1})  # fmt: skip
     materialize_series(ctx, series_id)

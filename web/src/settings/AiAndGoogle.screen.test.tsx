@@ -220,8 +220,8 @@ describe("Google's own connection", () => {
     const advanced = within(dialog).getByRole("button", { name: "Advanced: Google with a Google Cloud key of your own" })
     expect(advanced.getAttribute("aria-expanded")).toBe("false")
     await user.click(advanced)
-    expect(within(dialog).getByText(/Most people don't need this: add your Google account to this Mac/)).toBeTruthy()
-    expect(within(dialog).getByText("Make a project")).toBeTruthy()
+    expect(await within(dialog).findByText(/Most people don't need this: add your Google account to this Mac/)).toBeTruthy()
+    expect(await within(dialog).findByText("Make a project")).toBeTruthy()
     expect(within(dialog).getByRole("link", { name: /^Credentials/ }).getAttribute("href")).toBe("https://console.cloud.google.com/apis/credentials")
     const file = dialog.querySelector('input[type="file"][accept=".json,application/json"]') as HTMLInputElement
     await user.upload(file, new File(['{"web": {}}'], "notes.json", { type: "application/json" }))
@@ -239,7 +239,7 @@ describe("Google's own connection", () => {
     undo.push(answer("google_connect_status", () => ({ json: { ...connectedAccess, client_file: false, calendar: false, accounts: [] } })))
     const { user, dialog } = await openBox(/^Google Calendar/)
     await user.click(within(dialog).getByRole("button", { name: /^Advanced:/ }))
-    expect(within(dialog).getByText("fridayd google-login --client-file ~/Downloads/client_secret.json")).toBeTruthy()
+    expect(await within(dialog).findByText("fridayd google-login --client-file ~/Downloads/client_secret.json")).toBeTruthy()
     await user.click(within(dialog).getByRole("button", { name: "Copy" }))
     expect(await within(dialog).findByRole("button", { name: "Copied" })).toBeTruthy()
     expect(await navigator.clipboard.readText()).toBe("fridayd google-login --client-file ~/Downloads/client_secret.json")
@@ -339,7 +339,7 @@ describe("Google's own connection", () => {
     expect((await within(dialog).findAllByText("Trouble reading")).length).toBeGreaterThan(0)
     expect(within(dialog).getByText("Couldn't reach the internet; reads again once you're online")).toBeTruthy()
     expect(within(dialog).getByText("IMAP said: too many connections")).toBeTruthy()
-    await user.click(within(dialog).getByRole("button", { name: /^Calendars \d+ of \d+ read/ }))
+    await user.click(await within(dialog).findByRole("button", { name: /^Calendars \d+ of \d+ read/ }))
     expect(within(dialog).getByText("HttpError 404: Not Found")).toBeTruthy()
   })
 

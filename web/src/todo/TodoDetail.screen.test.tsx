@@ -119,7 +119,9 @@ describe("a task's detail", () => {
   })
 
   it("says how much is done with a click along the bar", async () => {
-    const { user, aside, item } = await detailOf("MATH 1910 WebWork 9")
+    // a task of its own, open whatever day the sample was lived to
+    await friday.c("add", { title: "Bar reading", preset: "Reading", duration_min: 120 })
+    const { user, aside, item } = await detailOf("Bar reading")
     const slider = within(aside).getByRole("slider", { name: "How much is done" })
     // happy-dom lays nothing out: the bar is given a width, as a browser would.
     slider.getBoundingClientRect = () => ({ left: 100, width: 200, top: 0, height: 10, right: 300, bottom: 10, x: 100, y: 0, toJSON: () => ({}) })
