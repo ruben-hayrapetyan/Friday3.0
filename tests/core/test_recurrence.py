@@ -96,6 +96,15 @@ def test_rules_said_in_words_every_few_weeks_and_ones_friday_has_no_words_for() 
     assert describe("FREQ=HOURLY;INTERVAL=2") == "Repeats (FREQ=HOURLY;INTERVAL=2)"
 
 
+def test_a_calendar_feeds_monthly_days_are_said_not_a_crash() -> None:
+    # A feed's "1st and 15th of each month" broke the series view (audit, 12 Nov: int("1,15")), and the last day of
+    # the month read "the -1th"; the second Tuesday was just "Monthly".
+    assert describe("FREQ=MONTHLY;BYMONTHDAY=1,15") == "Monthly on the 1st and 15th"
+    assert describe("FREQ=MONTHLY;BYMONTHDAY=-1") == "Monthly on the last day"
+    assert describe("FREQ=MONTHLY;INTERVAL=2;BYDAY=2TU") == "Every 2 months on the 2nd Tuesday"
+    assert describe("FREQ=MONTHLY;BYDAY=-1FR") == "Monthly on the last Friday"
+
+
 def test_the_next_time_passes_over_the_ones_it_skips() -> None:
     start = datetime(2026, 10, 19, 10)
     rule = "FREQ=DAILY;EXDATE=20261020T100000,20261021T100000"

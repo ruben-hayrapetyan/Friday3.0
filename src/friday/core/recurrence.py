@@ -132,12 +132,31 @@ def describe_frequency(parts: dict[str, str]) -> str:
     if freq == "WEEKLY":
         return describe_weekly(parts.get("BYDAY", "").split(",") if "BYDAY" in parts else [], interval)
     if freq == "MONTHLY":
-        day = parts.get("BYMONTHDAY")
         every = "Monthly" if interval == 1 else f"Every {interval} months"
-        return f"{every} on the {ordinal(int(day))}" if day else every
+        on = monthly_days(parts)
+        return f"{every} on the {on}" if on else every
     if freq == "YEARLY":
         return "Yearly" if interval == 1 else f"Every {interval} years"
     return f"Repeats ({';'.join(f'{k}={v}' for k, v in parts.items())})"
+
+
+def monthly_days(parts: dict[str, str]) -> str | None:
+    """A month's days as said: "1st and 15th", "last day", "2nd Tuesday" (a calendar feed's `BYMONTHDAY=1,15` was a
+    crash, audit 12 Nov); None when the rule names none, or names them in a way this doesn't say."""
+    said: list[str | None] = []
+    for day in filter(None, parts.get("BYMONTHDAY", "").split(",")):
+        if not re.fullmatch(r"-?\d{1,2}", day):
+            return None
+        said.append("last day" if day == "-1" else ordinal(int(day)) if int(day) > 0 else None)
+    for day in filter(None, parts.get("BYDAY", "").split(",")):
+        found = re.fullmatch(r"([+-]?\d)?(MO|TU|WE|TH|FR|SA|SU)", day)
+        if not found or not found[1] or found[1] in ("0", "+0", "-0"):
+            return None
+        n = int(found[1])
+        name = calendar.day_name[RRULE_DAYS.index(found[2])]
+        said.append(f"last {name}" if n == -1 else f"{ordinal(n)} {name}" if n > 0 else None)
+    words = [w for w in said if w is not None]
+    return join_words(words) if words and len(words) == len(said) else None
 
 
 def describe_weekly(days: list[str], interval: int) -> str:
