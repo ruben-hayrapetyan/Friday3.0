@@ -213,7 +213,8 @@ def test_format_line_keeps_a_task_that_runs_by_itself() -> None:
     assert quick(format_line(fields)) == fields
 
 
-@pytest.mark.parametrize("text", ["x 12/31/9999 23:59", "x oct 99999999999999999999"])
+# the last: a time said after the day, which moves the time to that day (audit, 12 Nov: past 9999 it crashed)
+@pytest.mark.parametrize("text", ["x 12/31/9999 23:59", "x oct 99999999999999999999", "x 12/31/9999 !high 23:59"])
 def test_out_of_range_dates_do_not_crash(text: str) -> None:
     quick(text)
 

@@ -472,8 +472,12 @@ class Parser:
             return
         start = datetime.fromisoformat(self.fields["start_local"])
         moved = datetime.combine(day, start.time())
+        try:
+            end = moved + (datetime.fromisoformat(self.fields.get("end_local") or self.fields["start_local"]) - start)
+        except OverflowError:  # an end past the year 9999: the times stay where they were
+            return
         if "end_local" in self.fields:
-            self.fields["end_local"] = format_local(moved + (datetime.fromisoformat(self.fields["end_local"]) - start))
+            self.fields["end_local"] = format_local(end)
         self.fields["start_local"] = format_local(moved)
 
     def finish(self) -> None:
