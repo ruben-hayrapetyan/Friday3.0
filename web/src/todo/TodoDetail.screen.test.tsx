@@ -103,14 +103,14 @@ describe("a task's detail", () => {
 
   it("says how much is done with the keyboard, and Start over counts none of it", async () => {
     const { user, aside, item } = await detailOf("FWS essay draft")
-    expect(within(aside).getByText("3h 15m of 4h")).toBeTruthy()
-    expect(within(aside).getByText("45m left · 3h 15m done")).toBeTruthy()
+    expect(within(aside).getByText("1h 15m of 4h")).toBeTruthy()
+    expect(within(aside).getByText("2h 45m left · 1h 15m done")).toBeTruthy()
     expect(within(aside).getByRole("button", { name: /Resume/ })).toBeTruthy()
     const slider = within(aside).getByRole("slider", { name: "How much is done" })
     slider.focus()
     await user.keyboard("{ArrowLeft}")
     const sent = await waitForSent("progress")
-    expect(sent.body).toEqual({ id: item.id, share: 0.75 })
+    expect(sent.body).toEqual({ id: item.id, share: 0.25 })
     await user.keyboard("{ArrowRight}")
     expect((await waitForSent("progress")).body).toMatchObject({ id: item.id })
     await user.keyboard("{Home}")

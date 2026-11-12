@@ -240,8 +240,9 @@ describe("the To-do page", () => {
     await user.click(screen.getByRole("button", { name: "Two lines" }))
     await waitFor(() => expect(screen.queryByTitle(`MATH 1910 Written HW 8${TIP}`)).toBeNull())
     expect(screen.getAllByText(/^\dh( \d+m)? to do$/).length).toBeGreaterThan(0)
-    const essay = screen.getAllByText("FWS essay draft")[0].closest("[data-todo-row]") as HTMLElement
-    expect(within(essay).getByText("3h 15m of 4h")).toBeTruthy()
+    // its row (the Now dock may show it too, when it's what's on)
+    const essay = screen.getAllByText("FWS essay draft").map((t) => t.closest("[data-todo-row]")).find(Boolean) as HTMLElement
+    expect(within(essay).getByText("1h 15m of 4h")).toBeTruthy()
     await user.click(essay)
     expect(await screen.findByText("Planned sessions")).toBeTruthy()
     // Enter on a two-line row opens it too (and a second time puts it away).

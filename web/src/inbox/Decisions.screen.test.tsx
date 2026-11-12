@@ -189,7 +189,8 @@ describe("Friday's questions", () => {
     expect(screen.getAllByText(/moved$/)).toHaveLength(2)
     // each piece says where it is, and whether the other version has it elsewhere
     expect(document.querySelector('[title*=", fixed"]')).toBeTruthy()
-    expect(document.querySelector('[title*="the same in both"]')).toBeTruthy()
+    // the same in both, or where it is in the other (which the sample's two versions have depends on its plan)
+    expect([...document.querySelectorAll("[title]")].some((e) => /the same in both|in the other version\)$/.test(e.getAttribute("title") ?? ""))).toBe(true)
     await user.click(screen.getByRole("button", { name: "Skip" }))
     expect((await waitForSent("compare_answer")).body).toMatchObject({ answer: "skip" })
     await gone("Which version of the day looks better?")
