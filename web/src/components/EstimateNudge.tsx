@@ -36,7 +36,7 @@ export function EstimateNudge({ itemId, runningMin = 0 }: { itemId: number; runn
         </button>
       ))}
       <span className="tnum" data-testid="estimate-text" title="How long it's expected to take, all told" style={{ color: changing ? "var(--color-accent-300)" : undefined, whiteSpace: "nowrap" }}>
-        {dur(total)} expected · {left > 0 ? `${dur(left)} left` : `${dur(-left || 1)} over`}
+        {dur(total)} expected · {left > 0 ? `${dur(left)} left` : left === 0 ? "none left" : `${dur(-left)} over`}
       </span>
     </span>
   )

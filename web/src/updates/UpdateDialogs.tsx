@@ -96,7 +96,7 @@ export function UpdateDialogs() {
   }
   const versions = status.versions ?? []
   return (
-    <Modal onClose={later} width={560}>
+    <Modal onClose={later} width={560} label="Update Friday">
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
           <H size={24}>{working ? headline(status) : `Friday ${newest(status)?.version} is ready`}</H>
@@ -132,7 +132,7 @@ export function UpdateDialogs() {
 function WhatsNew({ status, onSeen }: { status: UpdateStatus; onSeen: () => void }) {
   const versions = status.whats_new ?? []
   return (
-    <Modal onClose={onSeen} width={560}>
+    <Modal onClose={onSeen} width={560} label={`What's new in Friday ${status.have}`}>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <span className="fr-kicker">Updated</span>
         <H size={24}>What's new in Friday {status.have}</H>
