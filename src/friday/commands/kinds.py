@@ -9,6 +9,7 @@ from friday.commands.registry import Ctx, command
 from friday.commands.settings import write_setting
 from friday.core.db import rows
 from friday.core.items import FieldError
+from friday.engine.rules import as_list
 
 READ_INTO = ("Assignment", "Exam prep", "Class", "Exam", "Event")  # calendars and mail are read into these
 
@@ -39,7 +40,8 @@ def kind_remove(ctx: Ctx, inp: KindRemoveInput) -> Changed:
         raise FieldError("name", f"calendars and mail are read into {inp.name}, so it stays")
     if inp.move_to not in presets or inp.move_to == inp.name:
         raise FieldError("move_to", "pick another kind for what used it")
-    bound = [r.name for r in ctx.settings["rules"] if (r.scope or {}).get("preset") == inp.name]
+    # one kind or several ("no errands or chores after 8pm" names both; audit, 12 Nov: that one was left naming none)
+    bound = [r.name for r in ctx.settings["rules"] if inp.name in (as_list((r.scope or {}).get("preset")) or [])]
     if bound:
         raise FieldError("name", f"the rule {bound[0]} is about {inp.name}; change or delete it first")
     moved = move_items(ctx, inp.name, inp.move_to)

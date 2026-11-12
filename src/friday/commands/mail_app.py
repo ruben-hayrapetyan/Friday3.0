@@ -7,10 +7,9 @@ import re
 from friday.api.commands import Changed, MailAppAccount, MailAppForgetInput, MailAppInput
 from friday.api.types import Empty
 from friday.commands.ai import toml_of
-from friday.commands.gmail_app import secrets
+from friday.commands.gmail_app import secrets, switch_off
 from friday.commands.registry import Ctx, command, query
 from friday.commands.settings import write_setting
-from friday.core.db import rows
 from friday.core.items import FieldError
 from friday.core.paths import secrets_path
 from friday.integrations import outlook
@@ -76,9 +75,7 @@ def mail_app_forget(ctx: Ctx, inp: MailAppForgetInput) -> Changed:
     for k in gone:
         del kept[k]
     write_private(secrets_path(), toml_of(kept))
-    for source in rows(ctx.conn, "SELECT id, config FROM sources WHERE user_id = ? AND kind = 'mail'", [ctx.user_id]):
-        if address in source["config"]:
-            ctx.conn.execute("UPDATE sources SET enabled = 0 WHERE id = ?", [source["id"]])
+    switch_off(ctx, "mail", address)
     return Changed(message=f"Removed: Friday no longer reads {address}. What its mail brought in stays")
 
 

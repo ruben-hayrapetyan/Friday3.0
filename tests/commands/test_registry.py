@@ -468,7 +468,9 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
         "id": app.do("add", title="Gym", when="fixed", start="2026-10-20T12:00", end="2026-10-20T13:00")["item"]["id"]
     },
     "event_choice": lambda app: {
-        "id": app.do("add", title="Lecture", when="fixed", start="2026-10-20T10:00", end="2026-10-20T11:00")["item"]["id"],
+        "id": app.do("add", title="Lecture", when="fixed", start="2026-10-20T10:00", end="2026-10-20T11:00")["item"][
+            "id"
+        ],
         "choice": "through",
     },
     "event_hold": lambda app: {

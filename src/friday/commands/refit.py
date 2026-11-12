@@ -15,6 +15,7 @@ from friday.commands.registry import Ctx
 from friday.core.db import one, rows
 from friday.core.settings import minutes_of
 from friday.core.time import format_utc, parse_utc, planning_date, to_local
+from friday.engine.rules import in_hour_window, matching_weekdays, parse_clock
 from friday.learn.preferences import Comparison, answer_scale, design, fit
 from friday.learn.proposals import propose
 from friday.learn.queries import choose
@@ -191,17 +192,21 @@ def forbidden_work(ctx: Ctx, walls: dict[str, Any]) -> str | None:
     for rule in ctx.settings["rules"]:
         if rule.type != "time_preference" or rule.params.get("price") != "forbid" or rule.name in walls["decided"]:
             continue
-        days = rule.params.get("days")
-        lo, hi = rule.params.get("start", "00:00"), rule.params.get("end", "23:59")
+        # As the planner reads the rule (engine/rules/prices.py): its days, or all but `days_except`, by the planning
+        # day, and hours that may run past midnight (audit, 12 Nov: "no work after 11pm", 23:00 to 04:00, matched
+        # nothing, and "only on weekends" asked about Saturday's work).
+        days = matching_weekdays(rule.params.get("days"), rule.params.get("days_except"))
+        lo, hi = (parse_clock(rule.params[k]) if rule.params.get(k) else None for k in ("start", "end"))
         for r in rows(
             ctx.conn,
             "SELECT start_utc, end_utc FROM progress WHERE user_id = ? AND source IN "
             "('timer', 'review', 'retro') AND start_utc IS NOT NULL",
             [ctx.user_id],
         ):
-            start = to_local(parse_utc(r["start_utc"]), tz)
-            day_name = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")[start.weekday()]
-            if (days is None or day_name in days) and lo <= start.strftime("%H:%M") < hi:
+            at = parse_utc(r["start_utc"])
+            start = to_local(at, tz)
+            day = planning_date(at, tz, ctx.day_start)
+            if day.weekday() in days and in_hour_window(start.hour * 60 + start.minute, lo, hi):
                 return rule.name
     return None
 

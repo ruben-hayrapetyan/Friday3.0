@@ -50,7 +50,7 @@ def import_personal(ctx: Ctx, inp: ImportPersonalInput) -> Changed:
     rules = 0
     # The starter set (a new install's) gives way to Chroma's as none did; a set you've changed is yours and stays.
     if categories_file.exists() and ctx.settings["categories"].categories in ((), STARTER_CATEGORIES):
-        rules = import_categories(ctx, listed(categories_file, "categories_path", object))
+        rules = import_categories(ctx, listed(categories_file, "categories_path", dict))
     parts = [f"{added} task{'' if added == 1 else 's'} from Todo List"] + (
         [f"{rules} categories from Chroma"] if rules else []
     )
@@ -94,7 +94,8 @@ def listed(path: Path, field: str, shape: type) -> Any:
     except (UnicodeDecodeError, json.JSONDecodeError, OSError) as error:
         raise FieldError(field, f"{path} isn't the file that app keeps (it isn't JSON)") from error
     if not isinstance(found, shape) or (shape is list and not all(isinstance(t, dict) for t in found)):
-        raise FieldError(field, f"{path} isn't the file that app keeps (not the list of tasks it writes)")
+        what = "the list of tasks it writes" if shape is list else "what it writes"
+        raise FieldError(field, f"{path} isn't the file that app keeps (not {what})")
     return found
 
 
@@ -105,7 +106,7 @@ def import_chroma_colors(ctx: Ctx, inp: ChromaColorsInput) -> Changed:
     colors_file = Path(inp.colors_path or COLORS).expanduser()
     if not colors_file.exists():
         raise FieldError("colors_path", f"found no {colors_file}")
-    found = chroma_colors(json.loads(colors_file.read_text()))
+    found = chroma_colors(listed(colors_file, "colors_path", dict))  # a broken file said, not a crash (12 Nov)
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "chroma_colors"}, {"value": json.dumps(found)})
     return Changed(message=f"Brought in Chroma's colours for {len(found)} event{'' if len(found) == 1 else 's'}")
 

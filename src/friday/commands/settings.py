@@ -125,6 +125,8 @@ def end_date(ctx: Ctx, inp: PaceInput) -> date | None:
         found = read_date(inp.until.lower().split(), 0, ctx.today)
         if found is None:
             raise FieldError("until", f"{inp.until!r} isn't a date")
+        if found[0] < ctx.today:  # a pace starts today (audit, 12 Nov: a day gone by was a database error)
+            raise FieldError("until", f"{found[0]:%a %b} {found[0].day} is before today")
         return found[0]
     return None
 

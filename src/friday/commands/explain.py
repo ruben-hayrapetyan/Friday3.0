@@ -22,7 +22,7 @@ from friday.commands.rules import readings, words
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.settings import validate_value
-from friday.core.time import ampm, format_utc, parse_utc, to_local
+from friday.core.time import ampm, format_utc, parse_utc, planning_date, to_local
 from friday.engine.rules import RULE_TYPES, build_rules
 from friday.planner.snapshot import take_snapshot
 from friday.planner.spacing import Closer, closer_words
@@ -86,7 +86,8 @@ def sentence(ctx: Ctx, block: dict[str, Any], costs: dict[str, int]) -> str:
     shaped = shaping(ctx, parse_utc(start))
     if shaped:
         parts.append(shaped)
-    day = start[:10]
+    # the plan's paces are by planning day (audit, 12 Nov: the UTC date gave an evening block the next day's pace)
+    day = planning_date(parse_utc(start), ctx.tz, ctx.day_start).isoformat()
     label = report.get("pace", {}).get(day)
     if label and label != ctx.settings["pace"].default:
         parts.append(f"{label} pace that day")
