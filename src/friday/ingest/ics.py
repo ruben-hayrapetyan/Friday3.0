@@ -17,6 +17,8 @@ from zoneinfo import ZoneInfo
 import httpx
 from icalendar import Calendar
 
+from friday.core.time import UNIT_MIN
+
 
 @dataclass
 class Proposed:
@@ -188,6 +190,11 @@ def classify(
         fixed |= {"end": f"{day_end}T00:00", "blocks_time": False}
         return [Proposed("add", fixed, quotes, fixed=True), *(prep if exam else [])]
     kind = read.kind or ("Exam" if exam else "Class" if read.lesson.search(summary) else "Event")
+    if end is None or end <= start:
+        # a moment marked on a calendar read as events (no length, or an end before its start): Friday's smallest
+        # block, not refused (11 Nov: one in a Family calendar was, "end_utc: must be after the start"); a calendar
+        # read by the rules takes a moment as something due, above
+        end = (datetime.strptime(start, "%Y-%m-%dT%H:%M") + timedelta(minutes=UNIT_MIN)).strftime("%Y-%m-%dT%H:%M")
     fields: dict[str, Any] = {"title": named, "preset": kind, "start": start, "end": end}
     if days := whole_days(start, end):
         # A birthday the Mac gives as 12:00 AM to 11:59 PM (3 Nov: "don't make full day events actually look like they

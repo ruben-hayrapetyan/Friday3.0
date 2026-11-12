@@ -50,8 +50,8 @@ def test_nightly_closes_yesterday_backs_up_and_asks_for_a_cold_replan(app: App, 
         "tick",
         "questions",
         "config",
-        "sync",
         "integrations",
+        "sync",
         "publish",
         "event_writes",
         "ratings",
@@ -93,8 +93,8 @@ def test_tick_replans_when_a_block_boundary_passed_and_not_for_a_timer(app: App,
             "tick",
             "questions",
             "config",
-            "sync",
             "integrations",
+            "sync",
             "publish",
             "event_writes",
             "ratings",
@@ -145,3 +145,11 @@ def test_meals_you_let_friday_decide_are_planned_by_the_job(app: App, tmp_path: 
     run_jobs(app, worker, tmp_path)
     assert any(r["title"] == "Breakfast" for r in app.table("items"))
     assert {"warm": True, "reason": "meals"} in worker.requests
+
+
+def test_the_integrations_are_read_before_the_calendars_and_mail(app: App, tmp_path: Path) -> None:
+    """11 Nov, Friday Test: a first read of the Mac's calendars took minutes, and the integrations (quick) waited
+    behind it; they come first now."""
+    ran = run_jobs(app, Worker(), tmp_path)
+    assert "integrations" in ran and "sync" in ran
+    assert ran.index("integrations") < ran.index("sync"), ran

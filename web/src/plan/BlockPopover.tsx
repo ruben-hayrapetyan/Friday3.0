@@ -41,12 +41,13 @@ const KIND: Record<string, string> = {
 }
 const FIRM: Record<string, string> = { hard: "Hard deadline", soft: "Soft deadline", none: "No deadline" }
 
-function BigButton({ icon, label, note, onClick, primary, tight, hint }: { icon: string; label: string; note: string; onClick: () => void; primary?: boolean; tight?: boolean; hint?: string }) {
+function BigButton({ icon, label, note, onClick, primary, tight, hint, pressed }: { icon: string; label: string; note: string; onClick: () => void; primary?: boolean; tight?: boolean; hint?: string; pressed?: boolean }) {
   return (
     <button
       className={`btn ${primary ? "btn-primary" : "btn-secondary"}`}
       onClick={onClick}
       title={hint}
+      aria-pressed={pressed}
       style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: tight ? "9px 8px" : "10px 12px", minHeight: 58, minWidth: 0 }}
     >
       <span style={{ display: "flex", gap: tight ? 5 : 8, alignItems: "center", fontSize: tight ? 13 : 15, whiteSpace: "nowrap" }}>
@@ -86,11 +87,6 @@ export function BlockPopover() {
   const giveBack = useCommand("unshove", { label: () => "That time is for work again" })
   const deleteSeries = useCommand("series_delete", { label: (o) => o.result.message ?? "Deleted" })
   const repeat = useCommand("repeat", { label: (o) => `${b?.title} repeats ${o.result.description.replace(/^Every/, "every")}` })
-  const keep = useCommand("event_keep", { label: (o) => o.result.message })
-  // Not going to an event this time (30 Oct: "when i click an event (like salsa) it should give me the option to
-  // skip"): it stays on your calendar, and its time is Friday's to plan; going after all gives it back
-  const notGoing = useCommand("edit", { label: (o) => `Not going to ${o.result.item.title}: Friday can plan work over it` })
-  const goingAfterAll = useCommand("edit", { label: (o) => `Going to ${o.result.item.title}` })
   const client = useQueryClient()
   const pattern = useSeriesPattern(detail?.item.series_id)
   const [asking, setAsking] = useState(false)
@@ -162,6 +158,9 @@ export function BlockPopover() {
             <Icon name="x" />
           </button>
         </div>
+        {event && event.event_kind !== "shove" && (!event.left_out || event.left_out === "skipped") && (
+          <EventChoice event={event} flags={optionalFlags(client, event.id)} onClose={close} />
+        )}
         {flexible && item?.status === "done" && (
           // Finished: nothing to start; it says so, and can be opened again.
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -212,7 +211,7 @@ export function BlockPopover() {
           </div>
         )}
         {event && <EventFacts event={event} paint={dot} />}
-        {event && event.event_kind !== "shove" && <HeldFor event={event} />}
+        {event && event.event_kind !== "shove" && event.left_out && event.left_out !== "skipped" && <HeldFor event={event} />}
         {item && !event && (
           <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", fontSize: 12 }}>
             <span style={{ color: "var(--color-neutral-500)" }}>Due</span>
@@ -279,18 +278,6 @@ export function BlockPopover() {
               Unlock
             </button>
           )}
-          {event && event.event_kind !== "shove" && event.left_out === "skipped" && (
-            <button className="btn btn-secondary" onClick={run(() => goingAfterAll({ id: event.id, blocks_time: true }))} title="Its time is yours again: work keeps off it">
-              <Icon name="check" />
-              Going after all
-            </button>
-          )}
-          {event && event.event_kind !== "shove" && !event.left_out && !event.gives_way_to && (
-            <button className="btn btn-secondary" onClick={run(() => notGoing({ id: event.id, blocks_time: false }))} title="Not going this time: it stays on your calendar, and Friday can plan work over it">
-              <Icon name="skip-forward" />
-              Skip it
-            </button>
-          )}
           {item?.series_id != null && !event && !asking && (
             <button className="btn btn-ghost" onClick={run(() => skip({ id: b.item_id }))}>
               <Icon name="skip-forward" />
@@ -320,7 +307,6 @@ export function BlockPopover() {
           )}
         </div>
         {flexible && !sitting && <Elsewhere block={b} onMoved={close} />}
-        {event && <OptionalEvent flags={optionalFlags(client, event.id)} onKeep={(going) => (keep({ id: event.id, going }), close())} />}
         {item?.series_id != null ? (
           <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
             <Icon name="repeat" size={13} />
@@ -396,20 +382,31 @@ function SittingTimes({ itemId, start, end, onDone }: { itemId: number; start: s
   )
 }
 
-function HeldFor({ event }: { event: Item }) {
-  const hold = useCommand("event_hold", { label: (o) => o.result.message })
+/** The task an event's time is for. `only` "work": under Work through it, where a to-do is optional (it's there first,
+ * any work has the rest); "likely": only the question whether it's for the task its name suggests. */
+function HeldFor({ event, only, open = event.left_out === "skipped" }: { event: Item; only?: "work" | "likely"; open?: boolean }) {
+  const saveHold = useCommand("event_hold", { label: (o) => o.result.message })
   const tasks = (useItems().data ?? []).filter((i) => i.when !== "fixed" && i.status === "todo")
   const [choosing, setChoosing] = useState(false)
   const [text, setText] = useState("")
-  useEffect(() => (setChoosing(false), setText("")), [event.id])
-  const held = event.holds as { id: number; title: string; loose?: boolean } | null | undefined
+  // what you just picked shows at once, before the event comes back with it
+  const [picked, setPicked] = useState<{ id: number; title: string } | null | undefined>(undefined)
+  useEffect(() => (setChoosing(false), setText(""), setPicked(undefined)), [event.id])
+  const hold = ({ id, task_id }: { id: number; task_id?: number }) => {
+    const task = task_id == null ? null : tasks.find((t) => t.id === task_id)
+    setPicked(task ? { id: task.id, title: task.title } : task_id == null ? null : undefined)
+    saveHold(task_id == null ? { id } : { id, task_id })
+  }
+  const held = (picked !== undefined ? picked : event.holds) as { id: number; title: string; loose?: boolean } | null | undefined
   const likely = held ? null : likelyTask(event.title, tasks)
   const found = ranked(event.title, tasks.filter((t) => t.title.toLowerCase().includes(text.trim().toLowerCase()))).slice(0, 6)
   const box = { display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: "var(--radius-md)", background: "var(--color-bg)" } as const
+  // `open`: worked through, so any work may have what the to-do doesn't use
+  if (only === "likely" && (held || !likely)) return null
   if (choosing)
     return (
       <div style={box}>
-        <span className="fr-kicker">Whose time is this? Friday plans that task here and keeps other work off it.</span>
+        <span className="fr-kicker">{open ? "Which to-do first? Friday plans it here; any work can have the rest." : "Whose time is this? Friday plans that task here and keeps other work off it."}</span>
         <input className="input" autoFocus value={text} onChange={(e) => setText(e.target.value)} placeholder="Find a task" aria-label="Find a task" style={{ fontSize: 13 }} />
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {found.map((t) => (
@@ -432,7 +429,7 @@ function HeldFor({ event }: { event: Item }) {
         <span style={{ flex: "1 1 160px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
           <span>Time for {held.title}</span>
           <span className="fr-kicker">
-            {held.loose ? "Planned here when it can: you let it move when holding it made work late. Yes again holds it." : "Planned here first; other work keeps off it."}
+            {held.loose ? "Planned here when it can: you let it move when holding it made work late. Yes again holds it." : open ? "Planned here first; any work can have the rest." : "Planned here first; other work keeps off it."}
           </span>
         </span>
         {held.loose && (
@@ -443,8 +440,8 @@ function HeldFor({ event }: { event: Item }) {
         <button className="btn btn-ghost" onClick={() => setChoosing(true)} style={{ fontSize: 12 }}>
           Change
         </button>
-        <button className="btn btn-ghost" onClick={() => hold({ id: event.id })} style={{ fontSize: 12 }} title="An event like any other again: work keeps off it">
-          Free it
+        <button className="btn btn-ghost" onClick={() => hold({ id: event.id })} style={{ fontSize: 12 }} title={open ? "No to-do first: any work Friday picks" : "An event like any other again: work keeps off it"}>
+          {open ? "Any work" : "Free it"}
         </button>
       </div>
     )
@@ -457,6 +454,14 @@ function HeldFor({ event }: { event: Item }) {
       </button>
       <button className="btn btn-ghost" onClick={() => setChoosing(true)} style={{ fontSize: 12 }}>
         Another task
+      </button>
+    </div>
+  ) : only === "work" ? (
+    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12, color: "var(--color-neutral-300)" }}>
+      <Icon name="briefcase" size={13} />
+      <span style={{ flex: 1 }}>Any work Friday picks.</span>
+      <button className="btn btn-ghost" onClick={() => setChoosing(true)} style={{ fontSize: 12 }} title="Optional: a to-do gets this time first">
+        Pick a to-do
       </button>
     </div>
   ) : (
@@ -550,37 +555,60 @@ function optionalFlags(client: QueryClient, id: number): Flags | null {
   return null
 }
 
-/** An optional event's say: skipped for work (go anyway), or one you're going to (let Friday decide again). */
-function OptionalEvent({ flags, onKeep }: { flags: Flags | null; onKeep: (going: boolean) => void }) {
-  if (!flags?.optional) return null
+/** What you'll do in an event's time, as two big choices (11 Nov: "make the UI for choosing an event or whether to
+ * work through it nicer"): go, and work keeps off it; or work through it, its time Friday's for any work (it stays on
+ * your calendar). Working through it, a to-do can have the time first, if you like: none is needed. An optional event
+ * (gym) is Friday's to give to work until you choose; one Friday would skip for a to-do says which. */
+function EventChoice({ event, flags, onClose }: { event: Item; flags: Flags | null; onClose: () => void }) {
+  const goBack = useCommand("edit", { label: (o) => `Going to ${o.result.item.title}` })
+  const through = useCommand("edit", { label: (o) => `Working through ${o.result.item.title}: Friday can plan work in its time` })
+  const keep = useCommand("event_keep", { label: (o) => o.result.message })
+  const hold = useCommand("event_hold", { label: (o) => o.result.message })
+  const [said, setSaid] = useState<"going" | "work" | null>(null)
+  useEffect(() => setSaid(null), [event.id])
+  const held = !!event.holds
+  const skipped = event.left_out === "skipped"
+  const optional = !!flags?.optional
+  const going = optional ? !!flags?.going : true
+  const proposed = !going ? (flags?.gives_way_to ?? event.gives_way_to ?? null) : null
+  const now = said ?? (skipped || held ? "work" : optional && !going ? null : "going")
+  const goNow = () => {
+    setSaid("going")
+    if (held) hold({ id: event.id })
+    if (skipped) goBack({ id: event.id, blocks_time: true })
+    if (optional && !going) keep({ id: event.id, going: true })
+    onClose()
+  }
+  const workNow = () => {
+    if (now === "work") return
+    setSaid("work")
+    if (optional && flags?.going) keep({ id: event.id, going: false })
+    through({ id: event.id, blocks_time: false })
+  }
   const line = { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12, color: "var(--color-neutral-300)" } as const
-  if (flags.going)
-    return (
-      <div style={line}>
-        <Icon name="check-circle" size={13} />
-        <span style={{ flex: 1 }}>You're going: work keeps off it.</span>
-        <button className="btn btn-ghost" onClick={() => onKeep(false)} style={{ fontSize: 12 }}>
-          Let Friday decide
-        </button>
-      </div>
-    )
-  if (flags.gives_way_to)
-    return (
-      <div style={line}>
-        <Icon name="skip-forward" size={13} />
-        <span style={{ flex: 1 }}>Skipping it: {flags.gives_way_to} needs the time.</span>
-        <button className="btn btn-secondary" onClick={() => onKeep(true)} style={{ fontSize: 12 }}>
-          Go anyway
-        </button>
-      </div>
-    )
   return (
-    <div style={line}>
-      <Icon name="question" size={13} />
-      <span style={{ flex: 1 }}>Optional: Friday uses its time only if work needs it.</span>
-      <button className="btn btn-ghost" onClick={() => onKeep(true)} style={{ fontSize: 12 }}>
-        I'm going
-      </button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div role="group" aria-label="Going or working through it" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <BigButton icon="check" label="I'm going" note={proposed ? "Go anyway: work keeps off it" : "Work keeps off its time"} onClick={goNow} primary={now === "going"} pressed={now === "going"} tight />
+        <BigButton icon="briefcase" label="Work through it" note="Friday plans work in its time" onClick={workNow} primary={now === "work"} pressed={now === "work"} tight />
+      </div>
+      {now === null && (
+        <div style={line}>
+          <Icon name="question" size={13} />
+          <span style={{ flex: 1 }}>{proposed ? `Friday would skip it: ${proposed} needs the time.` : "Optional: Friday uses its time only if work needs it."}</span>
+        </div>
+      )}
+      {now === "going" && optional && !said && (
+        <div style={line}>
+          <Icon name="check-circle" size={13} />
+          <span style={{ flex: 1 }}>You're going: work keeps off it.</span>
+          <button className="btn btn-ghost" onClick={() => (keep({ id: event.id, going: false }), onClose())} style={{ fontSize: 12 }}>
+            Let Friday decide
+          </button>
+        </div>
+      )}
+      {now === "going" && !said && <HeldFor event={event} only="likely" />}
+      {now === "work" && <HeldFor event={event} only="work" open={said === "work" || skipped} />}
     </div>
   )
 }

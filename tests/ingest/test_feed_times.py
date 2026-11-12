@@ -21,3 +21,17 @@ def test_utc_named_zone_floating_and_whole_day_times_land_on_your_clock() -> Non
     starts = {str(e["UID"]): local(e.decoded("DTSTART"), TZ) for e in feed.walk("VEVENT")}
     assert starts["a"] == starts["b"] == starts["c"] == "2026-10-23T17:00", starts
     assert starts["d"] is None  # a whole day isn't a time: read as a day, by whole_days
+
+
+def test_an_event_with_no_length_or_ending_before_it_starts_is_friday_s_smallest_block() -> None:
+    """11 Nov: an event in a Family calendar (read as events) was refused, "end_utc: must be after the start"; such
+    a moment comes in as fifteen minutes from its start. A calendar read by the rules still takes one as a due."""
+    from friday.ingest.ics import classify, reading
+
+    events = reading(r"\bdue\b", r"\bexam\b", r"\blecture\b", kind="Event")
+    for end in ("2026-10-23T17:00", "2026-10-23T16:00"):
+        (p,) = classify("Pick up Ani", "2026-10-23T17:00", end, None, None, events)
+        assert (p.input["start"], p.input["end"]) == ("2026-10-23T17:00", "2026-10-23T17:15"), p.input
+    rules = reading(r"\bdue\b", r"\bexam\b", r"\blecture\b")
+    (due,) = classify("Problem set 5", "2026-10-23T23:59", "2026-10-23T23:59", None, None, rules)
+    assert due.input == {"title": "Problem set 5", "preset": "Assignment", "due": "2026-10-23T23:59"}
