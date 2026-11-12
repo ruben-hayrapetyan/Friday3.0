@@ -1,2 +1,3 @@
-# Every change is reviewed by the owner before it's merged (main's protection requires a code owner's review).
+# Every change to Friday is approved by its owner before it reaches main (12 Nov: "all pr's must be approved by me
+# personally"): main's ruleset asks for a code owner's review, and this makes that review Ruben's.
 * @ruben-hayrapetyan
