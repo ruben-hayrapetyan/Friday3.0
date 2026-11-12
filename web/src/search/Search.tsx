@@ -125,13 +125,19 @@ export function Search() {
   // (12 Nov: Enter always opened Ask, and "Nothing matches" never showed). -1: nothing picked yet.
   const nothing = !!q.trim() && flat.every((h) => h.key === "ask")
   const picked = nothing && at === 0 && !moved ? -1 : at
+  const adding = useRef(false) // a second Enter, or a held one, while it's being added makes one to-do (the audit, 12 Nov)
   const key = async (e: React.KeyboardEvent) => {
     if (e.key === "Escape") close()
     if (e.key === "ArrowDown") (e.preventDefault(), setMoved(true), setAt(picked < 0 ? 0 : Math.min(flat.length - 1, at + 1)))
     if (e.key === "ArrowUp") (e.preventDefault(), setMoved(true), setAt(Math.max(0, at - 1)))
     if (e.key === "Enter") {
       if (flat[picked]) flat[picked].run()
-      else if (q.trim() && (await add({ text: q }))) close()
+      else if (q.trim() && !adding.current) {
+        adding.current = true
+        const added = await add({ text: q })
+        adding.current = false
+        if (added) close()
+      }
     }
   }
   return (

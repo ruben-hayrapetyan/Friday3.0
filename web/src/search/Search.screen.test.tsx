@@ -97,6 +97,15 @@ describe("search", () => {
     await waitFor(async () => expect((await friday.q<Item[]>("items")).some((i) => /zqxj buy stamps/i.test(i.title))).toBe(true), { timeout: 10_000 })
   })
 
+  it("adds it once when Enter is pressed again while it's being added", async () => {
+    // the audit, 12 Nov: a second Enter (or a held one) before the first add answered made the to-do twice
+    const { user } = await openFriday("/")
+    await search(user, "zqxj post the letter")
+    await user.keyboard("{Enter}{Enter}")
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull(), { timeout: 10_000 })
+    expect(sent.filter((c) => c.name === "add" && (c.body as { text?: string }).text === "zqxj post the letter")).toHaveLength(1)
+  })
+
   it("with nothing matching, ↓ then Enter still asks the AI", async () => {
     const { user } = await openFriday("/")
     await search(user, "zqxj what should I do")
