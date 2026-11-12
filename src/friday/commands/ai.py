@@ -15,7 +15,7 @@ from friday.core.items import FieldError
 from friday.core.paths import secrets_path
 from friday.core.plain import plain
 from friday.ingest import extract, llm, local_models
-from friday.sync.google_auth import write_private
+from friday.sync.google_auth import SECRETS_HELD, write_private
 
 PING = {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"], "additionalProperties": False}
 
@@ -53,16 +53,17 @@ def ai_key_set(ctx: Ctx, inp: AiKeyInput) -> Changed:
         raise FieldError("key", "a key has no spaces or line breaks in it: paste it again")
     section = llm.SECRETS[inp.provider][0]
     path = secrets_path()
-    kept = tomllib.loads(path.read_text()) if path.exists() else {}
-    if any(not isinstance(v, dict) or any(isinstance(x, dict | list) for x in v.values()) for v in kept.values()):
-        raise FieldError("key", f"{path} holds more than Friday writes there: add the key to it by hand")
-    if key:
-        kept[section] = {**kept.get(section, {}), "api_key": key}
-    elif section in kept:
-        kept[section].pop("api_key", None)
-        if not kept[section]:
-            del kept[section]
-    write_private(path, toml_of(kept))
+    with SECRETS_HELD:  # one change to secrets.toml at a time: two at once lost one (audit, 12 Nov)
+        kept = tomllib.loads(path.read_text()) if path.exists() else {}
+        if any(not isinstance(v, dict) or any(isinstance(x, dict | list) for x in v.values()) for v in kept.values()):
+            raise FieldError("key", f"{path} holds more than Friday writes there: add the key to it by hand")
+        if key:
+            kept[section] = {**kept.get(section, {}), "api_key": key}
+        elif section in kept:
+            kept[section].pop("api_key", None)
+            if not kept[section]:
+                del kept[section]
+        write_private(path, toml_of(kept))
     name = {"claude": "Anthropic", "openai": "OpenAI", "compatible": "AI service"}.get(
         inp.provider, PROVIDERS[inp.provider].name
     )

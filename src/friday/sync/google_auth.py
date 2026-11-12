@@ -59,6 +59,11 @@ def client_to_use(named: str | None) -> Path:
     return SHIPPED_CLIENT if not yours.exists() and SHIPPED_CLIENT.exists() else yours
 
 
+SECRETS_HELD = threading.RLock()
+"""Held while secrets.toml is read, changed and written back: the sync's token renewals, the Sender and a save in
+Settings each read it and wrote it whole, so two at once kept only the later one's change (audit, 12 Nov)."""
+
+
 def write_private(path: Path, text: str) -> None:
     """Write a file only you can read, from its first byte. Written beside it, then put in its place in one step:
     emptied and then written, a read meanwhile (a sync's token, on another thread) found nothing in it, and one

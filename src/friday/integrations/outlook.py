@@ -121,13 +121,14 @@ def accounts() -> list[Account]:
 def keep(address: str, tokens: str) -> None:
     """A mailbox's tokens, kept (again, when renewed) under its section."""
     from friday.commands.ai import toml_of
-    from friday.sync.google_auth import write_private
+    from friday.sync.google_auth import SECRETS_HELD, write_private
 
-    all_kept = kept()
-    mine = next((a.section for a in accounts() if a.address == address.lower()), None)
-    section = mine or next(s for s in [SECTION, *(f"{SECTION}_{n}" for n in range(2, 99))] if s not in all_kept)
-    all_kept[section] = {
-        "address": address.lower(),
-        "tokens": tokens if isinstance(tokens, str) else json.dumps(tokens),
-    }
-    write_private(secrets_path(), toml_of(all_kept))
+    with SECRETS_HELD:  # one change to secrets.toml at a time (audit, 12 Nov)
+        all_kept = kept()
+        mine = next((a.section for a in accounts() if a.address == address.lower()), None)
+        section = mine or next(s for s in [SECTION, *(f"{SECTION}_{n}" for n in range(2, 99))] if s not in all_kept)
+        all_kept[section] = {
+            "address": address.lower(),
+            "tokens": tokens if isinstance(tokens, str) else json.dumps(tokens),
+        }
+        write_private(secrets_path(), toml_of(all_kept))

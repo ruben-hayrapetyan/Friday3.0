@@ -44,7 +44,7 @@ from friday.integrations.slack import Slack
 from friday.integrations.ticktick import TickTick
 from friday.integrations.todoist import Todoist
 from friday.integrations.trello import Trello
-from friday.sync.google_auth import write_private
+from friday.sync.google_auth import SECRETS_HELD, write_private
 
 CONNECTORS: dict[str, type] = {
     Todoist.kind: Todoist,
@@ -88,15 +88,17 @@ def token_of(source_id: int) -> str:
 
 
 def keep_token(source_id: int, kind: str, token: str) -> None:
-    kept = secrets()
-    kept[section(source_id)] = {"kind": kind, "token": token.strip()}
-    write_private(secrets_path(), toml_of(kept))
+    with SECRETS_HELD:  # one change to secrets.toml at a time: two at once lost one (audit, 12 Nov)
+        kept = secrets()
+        kept[section(source_id)] = {"kind": kind, "token": token.strip()}
+        write_private(secrets_path(), toml_of(kept))
 
 
 def forget_token(source_id: int) -> None:
-    kept = secrets()
-    if kept.pop(section(source_id), None) is not None:
-        write_private(secrets_path(), toml_of(kept))
+    with SECRETS_HELD:  # as keep_token
+        kept = secrets()
+        if kept.pop(section(source_id), None) is not None:
+            write_private(secrets_path(), toml_of(kept))
 
 
 Make = Callable[[dict[str, Any]], Connector]

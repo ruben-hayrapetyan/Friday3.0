@@ -15,7 +15,7 @@ from friday.core.paths import secrets_path
 from friday.integrations import outlook
 from friday.planner.store import kv_set
 from friday.sync import imap_any
-from friday.sync.google_auth import write_private
+from friday.sync.google_auth import SECRETS_HELD, write_private
 from friday.sync.imap_mail import ImapRefused
 
 HOST = r"^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
@@ -41,19 +41,24 @@ def mail_app_set(ctx: Ctx, inp: MailAppInput) -> Changed:
         raise FieldError(
             "address", f"Friday couldn't reach {provider.name}: check the connection and server"
         ) from error
-    kept = secrets()
-    mine = [
-        k for k, v in kept.items() if k.startswith(imap_any.SECTION) and str(v.get("address", "")).lower() == address
-    ]
-    section = (
-        mine[0]
-        if mine
-        else next(s for s in [imap_any.SECTION, *(f"{imap_any.SECTION}_{n}" for n in range(2, 99))] if s not in kept)
-    )
-    kept[section] = {"provider": inp.provider, "address": address, "password": password} | (
-        {"host": host} if host else {}
-    )
-    write_private(secrets_path(), toml_of(kept))
+    with SECRETS_HELD:  # one change to secrets.toml at a time: two at once lost one (audit, 12 Nov)
+        kept = secrets()
+        mine = [
+            k
+            for k, v in kept.items()
+            if k.startswith(imap_any.SECTION) and str(v.get("address", "")).lower() == address
+        ]
+        section = (
+            mine[0]
+            if mine
+            else next(
+                s for s in [imap_any.SECTION, *(f"{imap_any.SECTION}_{n}" for n in range(2, 99))] if s not in kept
+            )
+        )
+        kept[section] = {"provider": inp.provider, "address": address, "password": password} | (
+            {"host": host} if host else {}
+        )
+        write_private(secrets_path(), toml_of(kept))
     gmail = ctx.settings["gmail"]  # the mail settings every mailbox shares (what's read, the pre-filter)
     if not gmail.enabled:
         write_setting(ctx, "gmail", gmail.model_dump() | {"enabled": True})
@@ -64,17 +69,18 @@ def mail_app_set(ctx: Ctx, inp: MailAppInput) -> Changed:
 @command("mail_app_forget", logged=False)
 def mail_app_forget(ctx: Ctx, inp: MailAppForgetInput) -> Changed:
     address = inp.address.strip().lower()
-    kept = secrets()
-    gone = [
-        k
-        for k, v in kept.items()
-        if k.startswith((imap_any.SECTION, outlook.SECTION)) and str(v.get("address", "")).lower() == address
-    ]
-    if not gone:
-        raise FieldError("address", f"{address or 'that address'} isn't connected")
-    for k in gone:
-        del kept[k]
-    write_private(secrets_path(), toml_of(kept))
+    with SECRETS_HELD:  # one change to secrets.toml at a time (audit, 12 Nov)
+        kept = secrets()
+        gone = [
+            k
+            for k, v in kept.items()
+            if k.startswith((imap_any.SECTION, outlook.SECTION)) and str(v.get("address", "")).lower() == address
+        ]
+        if not gone:
+            raise FieldError("address", f"{address or 'that address'} isn't connected")
+        for k in gone:
+            del kept[k]
+        write_private(secrets_path(), toml_of(kept))
     switch_off(ctx, "mail", address)
     return Changed(message=f"Removed: Friday no longer reads {address}. What its mail brought in stays")
 
