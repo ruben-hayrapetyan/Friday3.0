@@ -41,6 +41,9 @@ class Provider:
     extra: dict[str, str] = field(default_factory=dict)  # more the sign-in page wants (prompt, access_type…)
     secret_in_body: bool = True  # else HTTP Basic, as TickTick wants
     tokens_of: Callable[[dict[str, Any]], dict[str, Any]] = lambda answer: answer  # Slack's sit under authed_user
+    # an https page the service sends your browser back to, which forwards it to this Mac (Slack, which lets only
+    # https return addresses into other workspaces): the port it forwards to rides in `state`
+    relay: str | None = None
 
     def ready(self) -> bool:
         return bool(self.client_id().strip())
@@ -61,13 +64,17 @@ TRANSPORTS: dict[str, Transport] = {}  # a fake service's token endpoint, in tes
 
 
 def begin(provider: Provider, redirect: str, fields: dict[str, str] | None = None, now: float | None = None) -> str:
-    """The service's sign-in page for this sign-in: its address, remembered under a fresh `state`."""
+    """The service's sign-in page for this sign-in: its address, remembered under a fresh `state`. A provider with a
+    relay page is sent back there instead, with this Mac's port at the front of `state` for it to forward to."""
     if not provider.ready():
         raise ConnectorError(
             "token", f"{provider.name} isn't ready in this copy of Friday yet: it comes with an update"
         )
     now = time.time() if now is None else now
     state, verifier = random.token_urlsafe(24), random.token_urlsafe(48)
+    if provider.relay:
+        port = redirect.split("://", 1)[-1].split("/", 1)[0].rsplit(":", 1)[-1]
+        state, redirect = f"{port}-{state}", provider.relay
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
     with LOCK:
         for old in [s for s, p in PENDING.items() if now - p.at > WAIT_S]:

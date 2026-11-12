@@ -42,7 +42,7 @@ def user_tokens(answer: dict[str, Any]) -> dict[str, Any]:
 PROVIDER = Provider(
     kind="slack", name="Slack", authorize="https://slack.com/oauth/v2/authorize", token=f"{API}/oauth.v2.access",
     client_id=client_id, secret=client_secret, scopes=("search:read",), scope_param="user_scope",
-    tokens_of=user_tokens,
+    tokens_of=user_tokens, relay="https://friday-scheduler.com/slack-signin.html",
 )  # fmt: skip
 
 

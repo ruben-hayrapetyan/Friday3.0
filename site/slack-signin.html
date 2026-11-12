@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Signing in to Slack · Friday</title>
+<meta name="description" content="Sends your browser back to Friday on your Mac after you allow it in Slack.">
+<link rel="icon" type="image/png" sizes="48x48" href="/images/icon-48.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<!-- Slack lets an app into other workspaces only with an https return address; Friday is on your Mac
+     (http://127.0.0.1:<port>), so Slack sends you here and this page sends you on to it (HOSTED.md H182). Nothing is
+     kept or sent anywhere else: the code is useless without what Friday on your Mac holds. -->
+<main class="wrap" style="padding: 4em 1em; max-width: 32em">
+  <h1>Back to Friday…</h1>
+  <p id="said">Taking you back to Friday on your Mac.</p>
+</main>
+<script src="/slack-signin.js"></script>
+</body>
+</html>

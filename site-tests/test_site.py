@@ -199,3 +199,12 @@ def test_search_engines_name_the_site_friday_with_its_icon() -> None:
     for size in re.findall(r'rel="icon" type="image/png" sizes="(\d+)x\1"', home):
         assert int(size) % 48 == 0, size
         assert (SITE / "images" / f"icon-{size}.png").exists()
+
+
+def test_slacks_return_page_forwards_only_to_this_mac() -> None:
+    """H182: Slack's sign-in comes back to an https page that sends the browser on to Friday on the person's own Mac
+    (127.0.0.1 at the port in `state`), never anywhere else, and isn't listed by search engines."""
+    page, script = (SITE / "slack-signin.html").read_text(), (SITE / "slack-signin.js").read_text()
+    assert '<script src="/slack-signin.js">' in page and 'name="robots" content="noindex"' in page
+    assert re.findall(r"https?://[^\"' )]+", script) == ["http://127.0.0.1:"]
+    assert "/^\\d{4,5}$/" in script and "location.replace" in script

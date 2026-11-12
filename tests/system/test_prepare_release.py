@@ -41,6 +41,8 @@ def setup(tmp_path: Path) -> dict[str, Path]:
     (repo / "web").mkdir()
     (repo / "web" / "package.json").write_text('{\n  "name": "friday-web",\n  "version": "0.1.0"\n}\n')
     (repo / "Mac" / "google_client.json").write_text("{}")  # a stand-in: the real one is never read
+    (repo / "Mac" / "app_keys.json").write_text('{"trello_client_id": "stand-in"}')  # downloads carry it (11 Nov)
+    (repo / ".gitignore").write_text("app_keys.json\n")  # and, as in Friday's repo, git never does
     git(repo, "init", "-q")
     git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "add", "-A")
     git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "start")
@@ -196,3 +198,11 @@ def test_a_named_certificate_and_profile_are_used_as_given(setup: dict[str, Path
     assert not any(c.startswith("security") for c in calls)  # named, so not looked up
     assert any("--sign Developer ID Application: Other (TEAM2)" in c for c in calls)
     assert any(c.startswith("xcrun notarytool submit") and "--keychain-profile mine" in c for c in calls)
+
+
+def test_a_release_without_the_app_keys_stops_before_building(setup: dict[str, Path]) -> None:
+    """11 Nov: downloads carry Friday's own app keys, so Trello, Microsoft, TickTick and Slack sign in for anyone; a
+    release made where the keys file is missing would quietly have none, so it stops and says so."""
+    (setup["repo"] / "Mac" / "app_keys.json").unlink()
+    done = prepare(setup, "0.2.0")
+    assert done.returncode != 0 and "No Mac/app_keys.json" in done.stderr
