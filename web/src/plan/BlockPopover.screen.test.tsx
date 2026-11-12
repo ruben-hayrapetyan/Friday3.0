@@ -301,6 +301,25 @@ describe("an event's card", () => {
     expect(inCard().getByRole("radio", { name: /^Work through it/ }).getAttribute("aria-checked")).toBe("false")
   })
 
+  it("goes back to what it was when Friday refuses the choice", async () => {
+    // the audit, 12 Nov: Skip it stayed chosen on the card after the server said no, though nothing had changed
+    const event = await lecture("ENGL 1170 Seminar", 2)
+    const { user } = await openCard(ofEvent(event))
+    const going = await inCard().findByRole("radio", { name: /^I'm going/ }, { timeout: 5000 })
+    expect(going.getAttribute("aria-checked")).toBe("true")
+    const real = window.fetch
+    window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes("/api/c/event_choice") ? new Response(JSON.stringify({ message: "Friday couldn't save that" }), { status: 500 }) : real(input, init)) as typeof fetch
+    try {
+      await user.click(inCard().getByRole("radio", { name: /^Skip it/ }))
+      expect(await screen.findByText("Friday couldn't save that")).toBeTruthy()
+      await waitFor(() => expect(inCard().getByRole("radio", { name: /^I'm going/ }).getAttribute("aria-checked")).toBe("true"))
+      expect(inCard().getByRole("radio", { name: /^Skip it/ }).getAttribute("aria-checked")).toBe("false")
+    } finally {
+      window.fetch = real
+    }
+  })
+
   it("asks whether an event's time is for the task its name suggests", async () => {
     const day = addDays(await today(), 5)
     await friday.c("add", { title: "CHEM 2090 lab report 6 writing time", when: "fixed", start: `${day}T16:30`, end: `${day}T17:30` })
