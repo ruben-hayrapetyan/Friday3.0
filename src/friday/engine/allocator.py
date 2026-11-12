@@ -92,6 +92,12 @@ class DayIndex:
         return len(self.starts) if t >= self.end else bisect_right(self.starts, t) - 1
 
 
+def day_due(day_of: DayIndex, due_utc: int) -> int:
+    """The day work must be done by: the one holding the due's last minute before it. Due as a day begins (4am), the
+    day before; read as the day it begins, that whole day after the due counted as on time."""
+    return day_of(due_utc - 1)
+
+
 def claim_reserved_time(inp: AllocatorInput, caps: list[int], day_of: DayIndex) -> None:
     """Elastic items take their ideal amount and target items their target before fixed work is placed."""
     days = len(caps)
@@ -144,7 +150,7 @@ def ready_days(todo: list[EngineItem], units: dict[str, list[float]], ready: dic
 
 def effective_due_days(todo: list[EngineItem], day_of: DayIndex, caps: list[int]) -> dict[str, int | None]:
     """Due days, with a dependency source due early enough for its dependents to follow (after the lag) in time."""
-    due = {it.key: day_of(it.due_utc) if it.due_utc is not None else None for it in todo}
+    due = {it.key: day_due(day_of, it.due_utc) if it.due_utc is not None else None for it in todo}
     typical_cap = max(1.0, sum(caps) / len(caps))
     for _ in range(len(todo)):
         changed = False
@@ -228,7 +234,7 @@ class AllocatorLP:
         for item in self.todo:
             if item.firmness != "hard" or item.due_utc is None:
                 continue
-            due_day = self.day_of(item.due_utc)
+            due_day = day_due(self.day_of, item.due_utc)
             for d in range(max(0, due_day) + 1, self.A):
                 if (item.key, d) in self.y:
                     terms[self.y[item.key, d]] = item.importance * (d - due_day)
