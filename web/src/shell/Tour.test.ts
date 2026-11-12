@@ -1,31 +1,52 @@
 import { describe, expect, it } from "vitest"
-import { CARD, completes, homeOf, QUESTS, standFor } from "./Tour"
+import { HELP, place } from "./HelpOverlay"
+import { CARD, homeOf, STOPS, standFor } from "./Tour"
 
-describe("the quests", () => {
-  it("are a handful, each done by something you do in the app", () => {
-    // 31 Oct: "its kindof tedious and boring, make it better"
-    expect(QUESTS.length).toBeLessThanOrEqual(6)
-    expect(new Set(QUESTS.map((q) => q.id)).size).toBe(QUESTS.length)
-    for (const q of QUESTS) {
-      expect(Object.keys(q.done).length).toBeGreaterThan(0)
-      expect(q.hint.length).toBeLessThanOrEqual(64)
-    }
+describe("the tour", () => {
+  it("is one stop per page, each saying what it's for, short enough to read at a glance", () => {
+    // 12 Nov: "walk through each of the tabs and explain what it is for ... a tour not a list of tasks"
+    expect(STOPS.map((s) => s.id)).toEqual(["plan", "todo", "projects", "inbox", "insights", "rules", "settings", "end"])
+    for (const s of STOPS) expect(s.body.length).toBeLessThanOrEqual(160)
   })
 
-  it("notice what you did: a command, a page, a block clicked, a dialog", () => {
-    expect(completes({ command: "add" }, [])).toEqual(["add"])
-    expect(completes({ picked: true }, [])).toEqual(["find"])
-    expect(completes({ command: "start" }, [])).toEqual(["start"])
-    expect(completes({ dialog: "search" }, [])).toEqual(["search"])
-    expect(completes({ page: "/inbox" }, [])).toEqual(["inbox"])
-    expect(completes({ command: "rule_add" }, [])).toEqual(["rule"])
+  it("tells a new user what they got wrong first: work is a to-do, meals come from setup, rules in your words", () => {
+    const said = STOPS.map((s) => `${s.body} ${s.tip ?? ""}`).join(" ")
+    expect(said).toMatch(/Work is a to-do, not an event/)
+    expect(said).toMatch(/no need to make Breakfast, Lunch or Dinner events/)
+    expect(said).toMatch(/no work after 10pm/)
   })
 
-  it("don't count anything else, or a quest twice", () => {
-    expect(completes({ command: "edit" }, [])).toEqual([])
-    expect(completes({ page: "/" }, [])).toEqual([])
-    expect(completes({ dialog: "ask" }, [])).toEqual([])
-    expect(completes({ command: "add" }, ["add"])).toEqual([])
+  it("points at things the help labels too", () => {
+    for (const s of STOPS) expect(HELP[s.target] ?? s.target).toBeTruthy()
+  })
+})
+
+describe("the ?'s labels", () => {
+  const rect = (left: number, top: number, width: number, height: number) => ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect
+
+  it("sit beside their control, on the side with room, and clear of each other", () => {
+    const labels = place(
+      [
+        { key: "search", rect: rect(900, 10, 30, 30) },
+        { key: "views", rect: rect(900, 14, 200, 24) },
+        { key: "nav-todo", rect: rect(10, 100, 180, 30) },
+      ],
+      1200,
+      800,
+    )
+    const by = Object.fromEntries(labels.map((l) => [l.key, l]))
+    expect(by["nav-todo"].side).toBe("right")
+    expect(by.views.side).toBe("left") // no room to its right
+    expect(by.search.at.left).toBeGreaterThan(930)
+    const [a, b] = [by.search, by.views]
+    const overlap = a.at.left < b.at.left + 230 && a.at.left + 230 > b.at.left && a.at.top < b.at.top + 44 && a.at.top + 44 > b.at.top
+    expect(overlap).toBe(false)
+  })
+
+  it("go inside a big area, not off the edge", () => {
+    const [cal] = place([{ key: "calendar", rect: rect(250, 80, 1000, 700) }], 1300, 820)
+    expect(cal.side).toBe("inside")
+    expect(cal.at.top + 44).toBeLessThanOrEqual(820)
   })
 })
 
