@@ -4,13 +4,16 @@ service's own odd answer ("answer"), never a crash or a to-do made from half of 
 is "down"; a connector made without its token says where to make one; and a cursor that never ends stops."""
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
 
-from friday.integrations import asana, canvas, github, google_tasks, jira, linear, notion, outlook, sync
+from friday.integrations import asana, canvas, github, google_tasks, jira, linear, notion, outlook, sync, trello
 from friday.integrations.base import ConnectorError, Http, pages
+from friday.planner.store import load_settings
+from tests.commands.helpers import new_app
 from tests.integrations import (
     fake_asana,
     fake_canvas,
@@ -143,3 +146,35 @@ def test_a_list_paged_one_by_one_stops_after_a_hundred_pages(h: Harness, make: C
     for n in range(103):
         h.add(fake, f"Task {n}", "2026-11-02")
     assert len(sync.CONNECTORS[h.kind](h.token, h.fields, fake.transport).read()) == 100
+
+
+def connected(app: Any, h: Harness, monkeypatch: pytest.MonkeyPatch) -> tuple[Any, int]:
+    fake = h.fake(h.token)
+    monkeypatch.setitem(sync.TRANSPORTS, h.kind, fake.transport)
+    source = int(app.do("integration_connect", kind=h.kind, token=h.token, fields=h.fields)["source"]["id"])
+    app.do("integration_set", id=source, arrival="straight")
+    return fake, source
+
+
+@pytest.mark.parametrize("trouble", ["token gone", "a bug"])
+def test_one_integration_that_cant_be_read_stops_none_of_the_others(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, trouble: str
+) -> None:
+    # A connector that can't be made (its token gone from secrets.toml) or that breaks on an answer raised out of
+    # the whole sync: every integration read after it, and everything waiting to go back, waited behind it
+    app = new_app(tmp_path)
+    _, broken = connected(app, fake_trello.HARNESS, monkeypatch)
+    fake, _ = connected(app, fake_asana.HARNESS, monkeypatch)
+    fake_asana.HARNESS.add(fake, "Pay rent", "2026-10-22")
+    if trouble == "token gone":
+        sync.forget_token(broken)
+    else:
+        monkeypatch.setattr(trello.Trello, "read", lambda self: {}["id"])
+    sync.sync_all(app.conn, load_settings(app.conn), app.now_utc, asked=True)
+    assert [i["title"] for i in app.do("items")] == ["Pay rent"]
+    said = next(s for s in app.table("sources") if s["id"] == broken)
+    assert said["failures"] == 1
+    if trouble == "token gone":
+        assert said["last_error"] == "Friday isn't signed in to Trello: press Sign in again"
+    else:
+        assert "Trello" in said["last_error"] and "reading Trello" in caplog.text
