@@ -363,7 +363,10 @@ def execute(
             # Placed before answering where there's no thread to do it (tests), or for the command line, which says
             # where a new task will probably go ("Probably Tue 2pm").
             if not services.placing or request.headers.get("x-friday-client") == "cli":
-                out.provisional = services.placer.place(conn, user, here=True)
+                try:
+                    out.provisional = services.placer.place(conn, user, here=True)
+                except Exception:  # the change is saved: said as done, not as failed (the CLI added it again)
+                    logging.getLogger("friday.server").exception("quick placement after %s", spec.name)
     if not out.preview and not out.repeated and spec.logged:
         announce(services, spec, out, settings["planner"].debounce_s)
         if spec.name == "done":
