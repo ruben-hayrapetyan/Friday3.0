@@ -1,17 +1,20 @@
-# Updates for what Friday is built on, as pull requests that go through the same checks and review as any other.
+# Security fixes for what Friday is built on arrive as pull requests (Dependabot security updates, on in the repo's
+# settings). Routine version bumps don't (12 Nov: nine opened the hour the repo went public): limit 0 turns them off,
+# and they're taken in tested batches instead.
 version: 2
 updates:
   - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
   - package-ecosystem: npm
     directory: /web
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
