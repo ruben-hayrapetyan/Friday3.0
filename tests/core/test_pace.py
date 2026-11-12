@@ -47,6 +47,12 @@ def test_days_without_a_period_use_the_default_pace() -> None:
     assert dials_on(day(5), periods, DEFAULT_PACES, "Normal") == NORMAL
 
 
+def test_a_default_pace_that_isnt_saved_plans_at_normal_dials_rather_than_failing() -> None:
+    # friday.toml's `[pace] default = "normal"` (or a pace list without it) was a KeyError in every plan (audit, 12 Nov)
+    assert dials_on(MON, [], DEFAULT_PACES, "normal") == NORMAL
+    assert dials_on(MON, [], {"Easy": EASY}, "Normal", {"sat": "Easy"}) == Dials()
+
+
 def test_switching_replaces_the_active_period_from_today() -> None:
     periods = switch_pace([], MON, EASY, "Easy", None, "Normal")
     periods = switch_pace(periods, day(2), DEFAULT_PACES["Push"], "Push", None, "Normal")

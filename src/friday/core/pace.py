@@ -83,7 +83,8 @@ def dials_on(
     if period:
         return period.dials
     name = (weekly or {}).get(WEEKDAYS[day.weekday()])
-    return paces[name] if name in paces else paces[default_pace]
+    # A default that isn't a saved pace (friday.toml's "normal") plans at Normal's dials, not a KeyError in every plan
+    return paces[name] if name in paces else paces.get(default_pace, Dials())
 
 
 def switch_pace(
