@@ -16,7 +16,7 @@ from tests.commands.helpers import App, new_app
 @pytest.fixture
 def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> App:
     monkeypatch.setattr(tailnet, "address", lambda *_: "100.64.0.1")
-    monkeypatch.setattr(tailnet, "name", lambda *_: "mac.tailnet.ts.net")
+    monkeypatch.setattr(tailnet, "name", lambda *_: "mac.example.ts.net")
     app = new_app(tmp_path)
     app.do("phone_set", on=True)
     return app

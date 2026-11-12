@@ -7,8 +7,8 @@ import pytest
 
 from friday.server.phone import Tailnet, TailnetListener
 
-NAME = "mac.tailnet.ts.net"
-ADDRESS = "100.85.1.2"
+NAME = "mac.example.ts.net"
+ADDRESS = "100.101.1.2"
 
 
 def test_a_failed_check_is_logged_and_the_next_one_runs(caplog: pytest.LogCaptureFixture) -> None:

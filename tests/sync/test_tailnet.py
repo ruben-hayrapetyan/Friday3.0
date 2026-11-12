@@ -32,11 +32,11 @@ def test_the_address_and_name_are_read_from_the_system_each_time(monkeypatch: py
     said = {
         ("ifconfig",): "",  # not on this system: `ip` instead
         ("ip", "-4", "addr"): "inet 127.0.0.1/8 scope host lo\n    inet 100.101.102.103/32 scope global tailscale0",
-        ("/usr/bin/tailscale", "status", "--json"): '{"Self": {"DNSName": "mac.tailnet.ts.net."}}',
+        ("/usr/bin/tailscale", "status", "--json"): '{"Self": {"DNSName": "mac.example.ts.net."}}',
     }
     monkeypatch.setattr(tailnet, "run", lambda *command: said[command])
     monkeypatch.setattr(tailnet, "cli", lambda: "/usr/bin/tailscale")
-    assert tailnet.address() == "100.101.102.103" and tailnet.name() == "mac.tailnet.ts.net"
+    assert tailnet.address() == "100.101.102.103" and tailnet.name() == "mac.example.ts.net"
 
 
 def test_tailscale_is_found_on_the_path_else_in_its_app_else_not(

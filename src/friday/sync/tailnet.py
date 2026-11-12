@@ -1,5 +1,5 @@
 """This Mac on your tailnet (C61): its Tailscale address (100.64.0.0/10, as Tailscale gives them) and its name there
-(`laptop.tailnet.ts.net`), read from the system each time they're asked for, so Friday follows Tailscale being turned
+(`laptop.example.ts.net`), read from the system each time they're asked for, so Friday follows Tailscale being turned
 on, off or signed into another tailnet. None when Tailscale isn't running here."""
 
 import ipaddress

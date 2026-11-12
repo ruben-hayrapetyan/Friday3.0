@@ -16,15 +16,15 @@ from friday.server.phone import Tailnet, TailnetListener, host_of, own_address, 
 from friday.sync import tailnet
 from tests.commands.helpers import App, new_app
 
-NAME = "mac.tailnet.ts.net"
-ADDRESS = "100.85.1.2"
+NAME = "mac.example.ts.net"
+ADDRESS = "100.101.1.2"
 PHONE = ("100.101.9.9", 50000)
 IFCONFIG = """lo0: flags=8049<UP,LOOPBACK> mtu 16384
 \tinet 127.0.0.1 netmask 0xff000000
 en0: flags=8863<UP,BROADCAST> mtu 1500
 \tinet 192.168.1.20 netmask 0xffffff00 broadcast 192.168.1.255
 utun4: flags=8051<UP,POINTOPOINT> mtu 1280
-\tinet 100.85.1.2 --> 100.85.1.2 netmask 0xffffffff
+\tinet 100.101.1.2 --> 100.101.1.2 netmask 0xffffffff
 """
 
 
@@ -57,7 +57,7 @@ class TestGlassBox:
     def test_this_macs_tailscale_address_and_name(self) -> None:
         assert tailnet.address(IFCONFIG) == ADDRESS
         assert tailnet.address("inet 192.168.1.20 netmask") is None
-        assert tailnet.name('{"Self": {"DNSName": "mac.tailnet.ts.net."}}') == NAME
+        assert tailnet.name('{"Self": {"DNSName": "mac.example.ts.net."}}') == NAME
         assert tailnet.name("not json") is None and tailnet.name("{}") is None
 
     def test_the_listener_follows_the_switch_and_tailscale(self) -> None:
@@ -70,9 +70,9 @@ class TestGlassBox:
         assert opened == [ADDRESS] and net.names() == {ADDRESS, NAME}
         listener.step()
         assert opened == [ADDRESS]  # already serving there
-        read[0] = ("100.85.7.7", NAME)
+        read[0] = ("100.101.7.7", NAME)
         listener.step()
-        assert opened == [ADDRESS, "100.85.7.7"]  # a new address: closed and opened again
+        assert opened == [ADDRESS, "100.101.7.7"]  # a new address: closed and opened again
         on[0] = False
         listener.step()
         assert listener.serving is None and net.names() == set()

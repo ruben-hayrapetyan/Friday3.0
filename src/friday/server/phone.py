@@ -34,7 +34,7 @@ class Tailnet:
 
 
 def host_of(header: str | None) -> str:
-    """The name a request was sent to, without its port: "laptop.tailnet.ts.net:8765" → "laptop.tailnet.ts.net"."""
+    """The name a request was sent to, without its port: "laptop.example.ts.net:8765" → "laptop.example.ts.net"."""
     host = (header or "").strip().lower()
     if host.startswith("["):  # [::1]:8765
         return host[1 : host.find("]")] if "]" in host else host

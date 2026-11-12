@@ -96,7 +96,7 @@ def test_a_pairing_code_used_while_another_is_made_works_once(
     app: App, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app.do("phone_set", on=True)
-    monkeypatch.setattr("friday.sync.tailnet.name", lambda: "mac.tailnet.ts.net")
+    monkeypatch.setattr("friday.sync.tailnet.name", lambda: "mac.example.ts.net")
     monkeypatch.setattr("friday.sync.tailnet.address", lambda: "100.64.0.1")
     first = app.do("phone_pair")["url"].split("#")[1]
     other = connect(tmp_path / "friday.db")
