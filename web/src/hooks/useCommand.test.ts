@@ -41,6 +41,21 @@ describe("a command", () => {
     expect(toasts).toEqual([{ message: "That item (T2) isn't there any more", tone: "error" }])
   })
 
+  it("that fails with nothing shown for it leaves what was read meanwhile, not the list from before it", async () => {
+    // the audit, 12 Nov: a failed pin put back the to-dos as they were when it was sent, over a refresh that came
+    // while it waited, and with the stream live nothing read them again
+    const { client, toasts, toast } = setup()
+    let refuse = (_: Response) => {}
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((answer) => (refuse = answer))))
+    const running = runCommand(client, toast, "pin", { id: 1, start: "2026-10-19T10:00", kind: "preferred" })
+    const fresh = [...items, { id: 3, title: "added on the phone" }] as Item[]
+    client.setQueryData(["items"], fresh) // a refresh lands while the pin waits
+    refuse(new Response(JSON.stringify({ message: "That time is in the past" }), { status: 422 }))
+    await running
+    expect(client.getQueryData(["items"])).toEqual(fresh)
+    expect(toasts).toEqual([{ message: "That time is in the past", tone: "error" }])
+  })
+
   it("undoes several commands newest first, as one action", async () => {
     const { client, toasts, toast } = setup()
     const fetch = vi.fn(async (_url: string, _init: RequestInit) => new Response(JSON.stringify({ command_id: null, result: {} })))

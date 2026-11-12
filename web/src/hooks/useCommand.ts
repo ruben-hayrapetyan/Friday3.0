@@ -76,7 +76,13 @@ export async function runCommand<N extends CommandName>(
     return out
   } catch (error) {
     pending.drop(drawn)
-    for (const [key, data] of saved) client.setQueryData(key, data)
+    // What it showed at once goes back as it was when it was sent, and is read again in case anything came meanwhile;
+    // one that showed nothing puts nothing back (the audit, 12 Nov: a failed pin put back the to-dos from before it,
+    // over a refresh that came while it waited)
+    if (optimistic || instant) {
+      for (const [key, data] of saved) client.setQueryData(key, data)
+      staleSoon(client, OPTIMISTIC)
+    }
     client.invalidateQueries({ queryKey: ["plan"] }) // drawn back as it was; read again in case some of it went through
     toast({ message: errorWords(error), tone: "error" })
     return undefined
