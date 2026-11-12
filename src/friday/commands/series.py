@@ -31,6 +31,7 @@ from friday.commands.fields import (
     to_item_values,
 )
 from friday.commands.registry import Ctx, command, query
+from friday.commands.timer import stop_timer
 from friday.core.db import one, rows
 from friday.core.items import FieldError, with_defaults
 from friday.core.recurrence import counted_on, describe, ending_before, next_occurrence, read_repeat
@@ -533,6 +534,8 @@ def skip(ctx: Ctx, inp: ItemRef) -> ItemResult:
         raise FieldError("id", f"T{inp.id} doesn't repeat; drop it instead")
     if item.status == "done":  # skipped, it was no longer done, though its time was kept (audit, 12 Nov)
         raise FieldError("id", f"{item.title} is done that day: open it again first if you didn't do it")
+    if ctx.conn.execute("SELECT 1 FROM timer WHERE user_id = ? AND item_id = ?", [ctx.user_id, inp.id]).fetchone():
+        stop_timer(ctx, item_id=inp.id)  # as drop does: its time kept, the timer not left counting (audit, 12 Nov)
     ctx.db.update("items", {"id": inp.id}, {"status": "skipped", "updated_utc": ctx.now_text})
     queue_event_write(ctx, item, "delete")  # one time of a calendar's repeating event: gone from the calendar too
     return ItemResult(item=item_out(ctx, require_item(ctx, inp.id)))

@@ -7,6 +7,7 @@ times you had dropped."""
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from friday.core.items import FieldError
 from tests.commands.helpers import App, new_app
@@ -47,10 +48,12 @@ def test_a_source_renamed_to_one_you_read_is_refused_in_words(app: App) -> None:
 
 def test_done_with_a_negative_time_is_refused(app: App) -> None:
     item = app.do("add", title="Essay", duration_min=60)["item"]["id"]
-    with pytest.raises(FieldError, match="actual_min|minutes"):
+    with pytest.raises((FieldError, ValidationError), match="actual_min|minutes"):
         app.do("done", id=item, actual_min=-30)
+    with pytest.raises((FieldError, ValidationError), match="actual_min|minutes"):
+        app.do("done", id=item, actual_min=0)  # a length of nothing would be learned from too (DoneInput: at least 1)
     assert not app.table("completions")
-    app.do("done", id=item, actual_min=0)  # no time at all is still something you can say
+    app.do("done", id=item)  # done without a time is still fine
 
 
 def test_something_that_happened_in_a_review_must_end_after_it_starts_and_by_now(app: App) -> None:
@@ -103,3 +106,14 @@ def test_starting_a_running_repeat_again_keeps_the_times_you_dropped(app: App) -
     statuses = [r["status"] for r in app.table("items") if r["series_id"] == series_id]
     assert "dropped" in statuses, statuses
     assert app.conn.execute("SELECT status FROM items WHERE id = ?", [second]).fetchone()["status"] == "dropped"
+
+
+def test_skipping_a_time_with_its_timer_running_stops_the_timer(app: App) -> None:
+    # as drop does: a timer left on a skipped time ran on, counting time on something you said you won't do
+    out = app.do("add", title="Run", duration_min=30, every="day")
+    first = app.conn.execute(
+        "SELECT id FROM items WHERE series_id = ? ORDER BY occurrence_date LIMIT 1", [out["series_id"]]
+    ).fetchone()["id"]
+    app.do("start", id=first)
+    app.do("skip", id=first)
+    assert not app.conn.execute("SELECT 1 FROM timer WHERE item_id = ?", [first]).fetchone()
