@@ -127,3 +127,10 @@ def test_overflow_when_capacity_is_short() -> None:
 def test_the_same_input_gives_the_same_allocation() -> None:
     items = [work(f"i{k}", 4 + k, 5 + k % 9, pacing="linear" if k % 3 == 0 else "none") for k in range(30)]
     assert run(items).units == run(items).units
+
+
+def test_work_due_as_a_day_begins_is_done_by_the_day_before() -> None:
+    # Due at 4am Thursday, as Thursday begins: Thursday's own time is after the due, so it isn't the due day.
+    item = EngineItem(key="a", need=8, due_utc=at(3, "04:00"), firmness="hard")
+    alloc = run([item])
+    assert sum(alloc.units["a"][3:]) == pytest.approx(0) and sum(alloc.units["a"][:3]) == pytest.approx(8)

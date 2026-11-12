@@ -117,3 +117,14 @@ def test_a_hint_is_kept_when_nothing_beats_it() -> None:
     hint = random_plan(p, np.random.default_rng(0), 0.0)
     result = DeadlineModel(p).solve(hint, 5.0, 1)
     assert result.status in ("OPTIMAL", "FEASIBLE")
+
+
+def test_work_waiting_on_a_routine_placed_past_its_ideal_is_still_a_feasible_plan() -> None:
+    # The routine's ideal is a quarter hour and it holds an hour, as its max allows: the count of its work done before
+    # each slot had been capped at its ideal and a quarter hour more, so the valid plan was infeasible.
+    routine = item("routine", 1, min_units=1, ideal_units=1, max_units=4, release_utc=MON10, due_utc=MON10 + 120)
+    work = item("assignment", 2, duration_units=2, due_utc=MON10 + 120)
+    p = problem([routine, work], ["late_work"], deps=[Dependency(2, 1)])
+    plan = {"item:1": (0, 1, 2, 3), "item:2": (4, 5)}
+    assert check(p, plan) == []
+    assert fixed_to(DeadlineModel(p), plan) == cp_model.OPTIMAL

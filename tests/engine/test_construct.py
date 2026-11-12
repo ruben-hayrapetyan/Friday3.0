@@ -10,7 +10,7 @@ from friday.engine.kernel import init_state, new_state, total_violations
 from friday.planner.build import Dependency, Pin
 from tests.bench.generator import ADVERSARIAL, reference_instance, tiny
 from tests.engine.brute import brute_force
-from tests.engine.helpers import MON10, item, problem
+from tests.engine.helpers import MON10, at, item, problem, zone_problem
 
 FAMILIES = {"ref20": lambda s: reference_instance(20, s), "ref60": lambda s: reference_instance(60, s), **ADVERSARIAL}
 
@@ -78,3 +78,23 @@ def test_a_lock_that_breaks_its_own_chunk_rule_becomes_preferred() -> None:
     start = prepare_start(p)
     assert start.violations == 0
     assert not p.items["item:1"].locked
+
+
+def test_new_work_beside_a_lock_as_long_as_the_longest_chunk_leaves_the_lock_kept() -> None:
+    # The lock (midnight to 1am) is a whole longest chunk; new work placed right before it made one run of two hours,
+    # past the longest chunk, and the lock was demoted to a preferred pin though nothing stopped it being kept.
+    work = [item("assignment", 1, duration_units=8, max_chunk_units=4, release_utc=at(0, "23:00"),
+                 due_utc=at(1, "12:00"))]  # fmt: skip
+    p = zone_problem(work, ["late_work"], pins=[Pin(1, at(1, "00:00"), at(1, "01:00"), "locked")])
+    start = prepare_start(p)
+    assert start.demoted == [] and len(p.items["item:1"].locked) == 4
+    assert start.violations == 0 and check(p, start.c.plan_from_owner(start.owner)) == []
+
+
+def test_work_across_the_start_of_a_planning_day_keeps_to_the_longest_chunk() -> None:
+    # 03:00–04:00 ends one planning day and 04:00 begins the next: chunks filled on each side met in one long run.
+    work = [item("assignment", 1, duration_units=8, max_chunk_units=4, release_utc=at(1, "03:00"),
+                 due_utc=at(1, "12:00"))]  # fmt: skip
+    p = zone_problem(work, ["late_work"])
+    start = prepare_start(p)
+    assert start.violations == 0 and check(p, start.c.plan_from_owner(start.owner)) == []

@@ -312,6 +312,13 @@ def fill_run(M: Model, owner: np.ndarray, day_units: np.ndarray, placed: np.ndar
         while pos < len(piece) and remaining - total > 0:
             left = remaining - total
             room = int(M.day_cap[M.day[piece[pos]]] - day_units[M.day[piece[pos]]])
+            # Work of its own right before (a lock, or the last chunk of the day before, as one planning day runs
+            # into the next) joins this chunk: together they keep to the longest chunk. Joined past it, a lock you
+            # could keep was demoted to a preferred pin.
+            before = own_run(M, owner, i, piece[pos], -1) if largest >= 0 else 0
+            if largest >= 0 and before >= largest:
+                pos += 1
+                continue
             chunk, units = [], 0
             for t in piece[pos:]:
                 u = int(M.units[t])
@@ -319,16 +326,27 @@ def fill_run(M: Model, owner: np.ndarray, day_units: np.ndarray, placed: np.ndar
                     break
                 chunk.append(t)
                 units += u
-            if largest >= 0 and units > largest:
-                chunk, units = cut_to(M, chunk, largest)
+            if largest >= 0 and units > largest - before:
+                chunk, units = cut_to(M, chunk, largest - before)
             if 0 < left - units < smallest:  # leave a remainder that is still a legal chunk
                 chunk, units = cut_to(M, chunk, left - smallest)
+            if chunk and largest >= 0 and before + units + own_run(M, owner, i, chunk[-1], 1) > largest:
+                chunk, units = cut_to(M, chunk, units - int(M.units[chunk[-1]]))  # a free slot before what follows
             if units < smallest or not chunk:
                 pos += max(1, len(chunk))
                 continue
             total += write(M, owner, day_units, placed, i, chunk)
             pos += len(chunk) + 1  # a free slot between chunks keeps them from merging
     return total
+
+
+def own_run(M: Model, owner: np.ndarray, i: int, t: int, step: int) -> int:
+    """Units of item i's work right beside slot t, going back (step −1) or on (+1): what a chunk at t would join."""
+    units, t = 0, t + step
+    while 0 <= t < M.S and owner[t] == i:
+        units += int(M.units[t])
+        t += step
+    return units
 
 
 def cut_to(M: Model, chunk: list[int], limit: int) -> tuple[list[int], int]:

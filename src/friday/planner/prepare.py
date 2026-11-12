@@ -19,8 +19,11 @@ def block_key(item_id: int, start_utc: int) -> str:
 
 
 def today(snapshot: Snapshot) -> date:
+    """The plan's first day: the planning date of the quarter hour it begins at, the grid's day 0. At 3:50am, with
+    days starting at 4am, that is the coming day: read from now, its pace and cap were the day before's, and the cap
+    less the work done the day before."""
     time = snapshot.settings["time"]
-    return planning_date(snapshot.now_utc, time.timezone, minutes_of(time.day_start))
+    return planning_date(-(-snapshot.now_utc // UNIT_MIN) * UNIT_MIN, time.timezone, minutes_of(time.day_start))
 
 
 def day_of(snapshot: Snapshot, moment: int) -> date:
