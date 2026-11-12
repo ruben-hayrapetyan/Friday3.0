@@ -92,7 +92,7 @@ describe("a planned block's card", () => {
     const { user } = await openCard(block)
     await user.click(inCard().getByRole("button", { name: /^(Start|Resume)/ }))
     expect((await waitForSent("start")).body).toEqual({ id: block.item_id })
-    expect(card()).toBeNull()
+    expect(card()).not.toBeNull() // the card stays open (12 Nov)
     await openCard(await blockFor(block.item_id))
     await user.click(await inCard().findByRole("button", { name: /^Pause/ }, { timeout: 10_000 }))
     expect((await waitForSent("stop")).body).toEqual({ id: block.item_id })
@@ -284,7 +284,7 @@ describe("an event's card", () => {
     await waitFor(() => expect(inCard().getByRole("radio", { name: /^Work through it/ }).getAttribute("aria-checked")).toBe("true"))
     await user.click(inCard().getByRole("radio", { name: /^I'm going/ }))
     expect((await waitForSent("event_choice")).body).toEqual({ id: event.id, choice: "going" })
-    expect(card()).toBeNull()
+    expect(inCard().getByRole("radio", { name: /^I'm going/ }).getAttribute("aria-checked")).toBe("true") // still open
   })
 
   it("is skipped: not going, crossed out, its time free; not the same as working through it", async () => {
@@ -292,7 +292,8 @@ describe("an event's card", () => {
     const { user } = await openCard(ofEvent(event))
     await user.click(await inCard().findByRole("radio", { name: /^Skip it/ }, { timeout: 5000 }))
     expect((await waitForSent("event_choice")).body).toEqual({ id: event.id, choice: "skip" })
-    expect(card()).toBeNull()
+    // the card stays open on its new choice (12 Nov: "when i hit skip it, the sidebar shouldn't close")
+    expect(inCard().getByRole("radio", { name: /^Skip it/ }).getAttribute("aria-checked")).toBe("true")
     await waitFor(async () => expect(((await friday.q("item", { id: String(event.id) })) as { item: Item }).item.left_out).toBe("skipped"))
     await settled()
     await openCard(ofEvent(event))

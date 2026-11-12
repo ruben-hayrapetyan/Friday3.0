@@ -136,7 +136,10 @@ export function BlockPopover() {
   const dot = event ? eventPaint(event, light) : color(b.area ?? item?.area)
   const date = b.start.slice(0, 10)
   const whenText = kind === "due" ? `Due ${when(b.start, today)}` : `${weekday(date)} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1]} · ${clock(b.start)}–${clock(b.end)}`
-  const run = (f: () => void) => () => (f(), close())
+  // What you do in the card leaves it open, showing what changed (12 Nov: "the sidebar shouldn't close ... don't have
+  // that be a thing for any sidebar"); what takes the block away, or opens it elsewhere, closes it
+  const run = (f: () => void) => () => f()
+  const runAndClose = (f: () => void) => () => (f(), close())
   const worked = item?.done_min ?? 0
   const timed = sittings(detail?.progress ?? [], date)
   const startNote = timing?.item_id ? "Pauses what's running" : worked ? `${dur(worked)} done${item?.remaining_min ? ` · ${dur(item.remaining_min)} left` : ""}` : "Times this sitting"
@@ -161,7 +164,7 @@ export function BlockPopover() {
           </button>
         </div>
         {event && event.event_kind !== "shove" && (!event.left_out || event.left_out === "skipped" || event.left_out === "through") && (
-          <EventChoice event={event} flags={optionalFlags(client, event.id)} onClose={close} />
+          <EventChoice event={event} flags={optionalFlags(client, event.id)} />
         )}
         {flexible && item?.status === "done" && (
           // Finished: nothing to start; it says so, and can be opened again.
@@ -250,7 +253,7 @@ export function BlockPopover() {
         {kind === "timed" && b.item_id != null && <SittingTimes itemId={b.item_id} start={b.start} end={b.end} onDone={close} />}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {event && event.event_kind !== "shove" && (
-            <button className="btn btn-secondary" onClick={run(() => setEvent(draftOf(event)))} title="Open it in the drawer: title, day, times, colour, notes">
+            <button className="btn btn-secondary" onClick={runAndClose(() => setEvent(draftOf(event)))} title="Open it in the drawer: title, day, times, colour, notes">
               <Icon name="pencil-simple" />
               Edit
             </button>
@@ -281,28 +284,28 @@ export function BlockPopover() {
             </button>
           )}
           {item?.series_id != null && !event && !asking && (
-            <button className="btn btn-ghost" onClick={run(() => skip({ id: b.item_id }))}>
+            <button className="btn btn-ghost" onClick={runAndClose(() => skip({ id: b.item_id }))}>
               <Icon name="skip-forward" />
               Skip this one
             </button>
           )}
           {asking ? (
             <span style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
-              <button className="btn btn-ghost" onClick={run(() => skip({ id: b.item_id }))}>
+              <button className="btn btn-ghost" onClick={runAndClose(() => skip({ id: b.item_id }))}>
                 Just this one
               </button>
-              <button className="btn btn-ghost" onClick={run(() => deleteSeries({ id: item?.series_id as number }))} style={{ color: "var(--fr-due)" }}>
+              <button className="btn btn-ghost" onClick={runAndClose(() => deleteSeries({ id: item?.series_id as number }))} style={{ color: "var(--fr-due)" }}>
                 Every one
               </button>
             </span>
           ) : sitting ? null : event?.event_kind === "shove" ? (
             // Time you shoved, given back to the plan (3 Nov: `unshove` had no button; ⌘Z only took back the last)
-            <button className="btn btn-secondary" onClick={run(() => giveBack({ id: event.id }))} title="Friday may plan work here again" style={{ marginLeft: "auto" }}>
+            <button className="btn btn-secondary" onClick={runAndClose(() => giveBack({ id: event.id }))} title="Friday may plan work here again" style={{ marginLeft: "auto" }}>
               <Icon name="arrow-counter-clockwise" />
               Give it back
             </button>
           ) : (
-            <button className="btn btn-ghost" onClick={repeats ? () => setAsking(true) : run(() => drop({ id: b.item_id }))} title="Delete (⌫)" style={{ marginLeft: "auto", color: "var(--fr-due)" }}>
+            <button className="btn btn-ghost" onClick={repeats ? () => setAsking(true) : runAndClose(() => drop({ id: b.item_id }))} title="Delete (⌫)" style={{ marginLeft: "auto", color: "var(--fr-due)" }}>
               <Icon name="trash" />
               Delete
             </button>
@@ -595,7 +598,7 @@ function optionalFlags(client: QueryClient, id: number): Flags | null {
  * work through it nicer"): go, and work keeps off it; or work through it, its time Friday's for any work (it stays on
  * your calendar). Working through it, a to-do can have the time first, if you like: none is needed. An optional event
  * (gym) is Friday's to give to work until you choose; one Friday would skip for a to-do says which. */
-function EventChoice({ event, flags, onClose }: { event: Item; flags: Flags | null; onClose: () => void }) {
+function EventChoice({ event, flags }: { event: Item; flags: Flags | null }) {
   const choose = useCommand("event_choice", { label: (o) => o.result.message })
   const keep = useCommand("event_keep", { label: (o) => o.result.message })
   type Choice = "going" | "through" | "skip"
@@ -612,8 +615,7 @@ function EventChoice({ event, flags, onClose }: { event: Item; flags: Flags | nu
     // an optional event (gym): going keeps it; otherwise it's back to Friday's to give
     if (optional && choice === "going" && !going) keep({ id: event.id, going: true })
     if (optional && choice !== "going" && flags?.going) keep({ id: event.id, going: false })
-    choose({ id: event.id, choice })
-    if (choice !== "through") onClose() // working through it, a to-do can be picked for its time next
+    choose({ id: event.id, choice }) // the card stays open on its new choice (12 Nov)
   }
   const line = { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12, color: "var(--color-neutral-300)" } as const
   return (
@@ -634,7 +636,7 @@ function EventChoice({ event, flags, onClose }: { event: Item; flags: Flags | nu
         <div style={line}>
           <Icon name="check-circle" size={13} />
           <span style={{ flex: 1 }}>You're going: work keeps off it.</span>
-          <button className="btn btn-ghost" onClick={() => (keep({ id: event.id, going: false }), onClose())} style={{ fontSize: 12 }}>
+          <button className="btn btn-ghost" onClick={() => keep({ id: event.id, going: false })} style={{ fontSize: 12 }}>
             Let Friday decide
           </button>
         </div>

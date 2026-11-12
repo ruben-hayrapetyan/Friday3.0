@@ -58,6 +58,13 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
     if (at >= 0) whatIf.remove(at)
   }
   const retime = useRetime()
+  // The block whose card is open, as the plan has it now: what you do in the card leaves it open, showing what changed
+  // (12 Nov: "when i hit skip it, the sidebar shouldn't close")
+  useEffect(() => {
+    if (!selected?.key.startsWith("T")) return
+    const fresh = plan.blocks?.find((b) => b.key === selected.key)
+    if (fresh && fresh !== selected && JSON.stringify(fresh) !== JSON.stringify(selected)) select(fresh)
+  }, [plan.blocks]) // eslint-disable-line react-hooks/exhaustive-deps
   const stays = (f: Item) => !!f.gives_way_to || lookOf(f.id) === "gone"
   const letGo = (f: Item) => selected?.key === `F${f.id}` && select(null) // its popover would act on where it was
   // Several picked with ⌘ or Shift (plan/picks.ts): drawn as selected, and dragged together.
