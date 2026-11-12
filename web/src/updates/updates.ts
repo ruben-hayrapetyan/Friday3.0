@@ -2,9 +2,10 @@
 // (commands/updates.py); the page asks you, shows what's new, and tells the Mac app to swap the new version in
 // (Mac/Sources/Updater.swift), right away or when you quit, as Settings → Updates says.
 
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useCallback, useEffect, useRef } from "react"
-import { command, query, type Schemas } from "@/api/client"
+import { command, errorWords, query, type Schemas } from "@/api/client"
+import { type Toast, useToast } from "@/components/Toasts"
 import { inMacApp } from "@/dialogs/Setup"
 
 export type UpdateStatus = Schemas["UpdateStatusOut"]
@@ -23,17 +24,25 @@ export function useUpdates() {
   })
 }
 
-/** Run one of the updater's commands; its answer is the new state, shown at once. */
+/** One of the updater's commands; its answer is the new state, shown at once. A refusal ("this Friday is built from
+ * its code here", Friday not where it can be replaced) is said in a toast, and the state read again (audit, 12 Nov:
+ * it went nowhere, and Update did nothing you could see). Undefined then. */
+export async function runUpdateAct(client: QueryClient, toast: (t: Toast) => void, name: Act): Promise<UpdateStatus | undefined> {
+  try {
+    const out = await command(name, {})
+    client.setQueryData(KEY, out.result)
+    return out.result
+  } catch (error) {
+    toast({ message: errorWords(error), tone: "error" })
+    void client.invalidateQueries({ queryKey: KEY })
+    return undefined
+  }
+}
+
 export function useUpdateAct() {
   const client = useQueryClient()
-  return useCallback(
-    async (name: Act) => {
-      const out = await command(name, {})
-      client.setQueryData(KEY, out.result)
-      return out.result
-    },
-    [client],
-  )
+  const toast = useToast()
+  return useCallback((name: Act) => runUpdateAct(client, toast, name), [client, toast])
 }
 
 /** The newest version you could update to, or nothing. */
