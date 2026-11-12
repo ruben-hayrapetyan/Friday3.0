@@ -92,6 +92,22 @@ async function read<T>(response: Response): Promise<T> {
   throw new ApiError(messageFrom(response.status, body), response.status, field)
 }
 
+/** Reads wait their turn, a few at a time, and what you do goes first (12 Nov: one click had the page ask some 35
+ * things again at once, all on this Mac, and the next click waited behind them): commands never wait here. */
+const READS_AT_ONCE = 4
+let reading = 0
+const waitingReads: (() => void)[] = []
+async function inTurn<T>(read: () => Promise<T>): Promise<T> {
+  if (reading >= READS_AT_ONCE) await new Promise<void>((go) => waitingReads.push(go))
+  reading++
+  try {
+    return await read()
+  } finally {
+    reading--
+    waitingReads.shift()?.()
+  }
+}
+
 export async function command<N extends CommandName>(
   name: N,
   input: CommandInput<N>,
@@ -112,7 +128,7 @@ export async function command<N extends CommandName>(
 }
 
 export async function queryBody<N extends BodyQueryName>(name: N, body: Json<Body<N>>): Promise<Output<N>> {
-  return read(await fetch(`/api/q/${name}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }))
+  return inTurn(async () => read(await fetch(`/api/q/${name}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })))
 }
 
 export async function query<N extends QueryName>(name: N, params?: QueryParams<N>, signal?: AbortSignal): Promise<Output<N>> {
@@ -122,5 +138,5 @@ export async function query<N extends QueryName>(name: N, params?: QueryParams<N
     for (const v of Array.isArray(value) ? value : [value]) search.append(key, String(v))
   }
   const text = search.toString()
-  return read(await fetch(`/api/q/${name}${text ? `?${text}` : ""}`, signal ? { signal } : undefined))
+  return inTurn(async () => read(await fetch(`/api/q/${name}${text ? `?${text}` : ""}`, signal ? { signal } : undefined)))
 }

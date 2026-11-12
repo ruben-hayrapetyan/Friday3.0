@@ -5,6 +5,7 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
 import { useCallback } from "react"
 import { command, type CommandInput, type CommandName, errorWords, type Output } from "@/api/client"
+import { staleSoon, streamLive } from "@/api/events"
 import { type Toast, useToast } from "@/components/Toasts"
 import { markedDone, mealEnded, mealSkipped, mealStarted, napEnded, napStarted, sleepMarked, timerStarted, timerStopped } from "@/now/instant"
 import { pending } from "@/plan/pending"
@@ -80,9 +81,9 @@ export async function runCommand<N extends CommandName>(
     toast({ message: errorWords(error), tone: "error" })
     return undefined
   } finally {
-    // The server's events refresh these too; this covers a dropped stream (projects and exams too, 12 Nov: a new
-    // project or prep didn't show without the stream).
-    client.invalidateQueries({ predicate: (q) => ["items", "item", "now", "status", "meals", "sleep", "duplicates", "to_review", "tokens", "gmail_app_accounts", "mail_app_accounts", "integrations", "integration_lists", "inbox", "projects", "exams"].includes(String(q.queryKey[0])) })
+    // A dropped stream's stand-in: while it's live its events refresh what changed (projects and exams too, 12 Nov: a
+    // new project or prep didn't show without the stream), and this would only read it all a second time.
+    if (!streamLive) staleSoon(client, ["items", "item", "now", "status", "meals", "sleep", "duplicates", "to_review", "tokens", "gmail_app_accounts", "mail_app_accounts", "integrations", "integration_lists", "inbox", "projects", "exams"])
   }
 }
 

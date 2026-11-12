@@ -111,8 +111,8 @@ describe("the Inbox", () => {
     // it stays in the list, greyed and said Accepted, and the next message opens
     await waitFor(() => expect(row("PHYS 1112 practice prelim").textContent).toContain("Accepted"))
     expect(current()).not.toBe(row("PHYS 1112 practice prelim"))
-    const inbox = await friday.q<Inbox>("inbox")
-    expect(inbox.suggestions.map((s) => s.id)).not.toContain(151)
+    // shown at once; Friday saves it just after
+    await waitFor(async () => expect((await friday.q<Inbox>("inbox")).suggestions.map((s) => s.id)).not.toContain(151))
     const items = await friday.q<{ title: string; duration_min: number | null }[]>("items")
     expect(items.find((i) => i.title === "Practice prelim 2")?.duration_min).toBe(180)
     // opened again: what happened, and Undo to answer it again

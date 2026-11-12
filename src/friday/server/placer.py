@@ -13,13 +13,14 @@ import logging
 import multiprocessing as mp
 import sqlite3
 import threading
+import time
 import traceback
 from collections.abc import Callable
 from multiprocessing.connection import Connection
 from pathlib import Path
 
 from friday.api.types import BlockOut
-from friday.core.db import connect
+from friday.core.db import begin_write, connect, held
 from friday.planner.assemble import PlannedBlock
 from friday.planner.service import keep_provisional, placement
 from friday.planner.store import current_plan
@@ -129,13 +130,15 @@ class Placer:
         if placed is None:
             return None
         made_at, blocks, shown = placed
-        conn.execute("BEGIN IMMEDIATE")
+        begin_write(conn, "keeping a quick placement")
+        since = time.perf_counter()
         try:
             keep_provisional(conn, user_id, made_at, blocks)
             conn.execute("COMMIT")
         except BaseException:
             conn.execute("ROLLBACK")
             raise
+        held("keeping a quick placement", since)
         self.hub.publish("plan.provisional", {"generation": made_at})
         return shown
 

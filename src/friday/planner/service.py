@@ -2,12 +2,14 @@
 
 import json
 import sqlite3
+import time
 from collections.abc import Callable
 from dataclasses import replace
 
 import numpy as np
 
 from friday.api.types import BlockOut
+from friday.core.db import begin_write, held
 from friday.core.time import UNIT_MIN, format_local, format_utc, parse_utc, to_local
 from friday.engine.construct import prepare_start
 from friday.engine.evaluate import evaluate
@@ -54,7 +56,8 @@ def plan_snapshot(snapshot: Snapshot, warm: bool, cancel: np.ndarray | None = No
 
 
 def save_plan(conn: sqlite3.Connection, snapshot: Snapshot, plan: AssembledPlan, reason: str) -> int | None:
-    conn.execute("BEGIN IMMEDIATE")
+    begin_write(conn, "saving a plan")
+    since = time.perf_counter()
     try:
         saved = current_plan(conn, snapshot.user_id)
         if saved is not None and saved["generation"] > plan.generation:
@@ -65,6 +68,7 @@ def save_plan(conn: sqlite3.Connection, snapshot: Snapshot, plan: AssembledPlan,
     except BaseException:
         conn.execute("ROLLBACK")
         raise
+    held("saving a plan", since)
     return plan_id
 
 
