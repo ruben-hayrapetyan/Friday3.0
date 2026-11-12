@@ -57,7 +57,8 @@ export async function runCommand<N extends CommandName>(
   const saved = client.getQueriesData(matches)
   let drawn: number[] = [] // the change's look on the calendar, kept until a plan has it (plan/pending.ts)
   const instant = INSTANT[name]
-  if (optimistic || instant) {
+  const shows = !!(optimistic || instant) // it changes what's on screen before the server answers
+  if (shows) {
     await client.cancelQueries(matches)
     instant?.(client, input as never)
     if (optimistic) drawn = pending.collect(() => optimistic(client, input))
@@ -79,7 +80,7 @@ export async function runCommand<N extends CommandName>(
     // What it showed at once goes back as it was when it was sent, and is read again in case anything came meanwhile;
     // one that showed nothing puts nothing back (the audit, 12 Nov: a failed pin put back the to-dos from before it,
     // over a refresh that came while it waited)
-    if (optimistic || instant) {
+    if (shows) {
       for (const [key, data] of saved) client.setQueryData(key, data)
       staleSoon(client, OPTIMISTIC)
     }
