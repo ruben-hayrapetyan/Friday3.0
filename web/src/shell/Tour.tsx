@@ -2,7 +2,8 @@
 // generally use the app ... the first time i saw a user using the app ... they didn't have any rules, they were making
 // "breakfast" and "lunch" and "dinner" events ... just walk through each of the tabs and explain what it is for. you
 // can still have the little guy follow around but ... this should be a tour not a list of tasks"). It replaces the six
-// quests of 31 Oct. One stop per page: the guide from setup (dialogs/walk/Guide.ts) runs to the page in the sidebar
+// quests of 31 Oct. One stop per page: Friday opens the page itself (12 Nov: "it should actually navigate to each of
+// the pages not just flip the tabs"), the guide from setup (dialogs/walk/Guide.ts) runs to its place in the sidebar
 // and points at it, and the card says what it's for and one thing worth knowing. Back and Next (or ← →); × or Esc
 // ends it.
 //
@@ -12,6 +13,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "react-router"
 import { command, type Schemas } from "@/api/client"
 import type { Gesture, Guide } from "@/dialogs/walk/Guide"
 import { STRIP } from "@/dialogs/walk/strip"
@@ -23,6 +25,7 @@ export interface Stop {
   title: string
   body: string // what the page is for
   tip?: string // one thing worth knowing there
+  page: string // the page it opens
   target: string // the data-tour it points at
   gesture: Gesture
 }
@@ -30,6 +33,7 @@ export interface Stop {
 export const STOPS: Stop[] = [
   {
     id: "plan",
+    page: "/",
     title: "Here's your plan",
     body: "Your classes, events, meals and sleep, with the work Friday fits around them. Click a block to start it, finish it or move it.",
     tip: "You don't plan the week yourself: tell Friday what's due, and it finds the time, and finds it again when things change.",
@@ -38,6 +42,7 @@ export const STOPS: Stop[] = [
   },
   {
     id: "todo",
+    page: "/todo",
     title: "To-do: what you have to do",
     body: "Type it the way you'd say it, “essay 3h due fri”, and Friday plans it at once. Lists for the short term, the long term and what's due.",
     tip: "Work is a to-do, not an event: add it here and Friday gives it a time.",
@@ -46,6 +51,7 @@ export const STOPS: Stop[] = [
   },
   {
     id: "projects",
+    page: "/projects",
     title: "Projects and exams",
     body: "Big things in parts: a project split into steps, and exam prep planned in the days before each exam.",
     target: "nav-projects",
@@ -53,6 +59,7 @@ export const STOPS: Stop[] = [
   },
   {
     id: "inbox",
+    page: "/inbox",
     title: "Inbox: what needs you",
     body: "Deadlines and events Friday found in your mail, calendars and apps, and its questions for you. Accept, change or reject each one.",
     tip: "Friday never sends notifications: anything that needs you waits here, with a count.",
@@ -61,6 +68,7 @@ export const STOPS: Stop[] = [
   },
   {
     id: "insights",
+    page: "/insights",
     title: "Insights: how it really went",
     body: "How long things take you, where your time went, your sleep and meals, and a short look back at each week.",
     target: "nav-insights",
@@ -68,6 +76,7 @@ export const STOPS: Stop[] = [
   },
   {
     id: "rules",
+    page: "/rules",
     title: "Rules: how you like your days",
     body: "Say it in your own words, “no work after 10pm” or “readings in the morning”, and Friday plans by it. Notes about you go here too.",
     tip: "Meals and sleep come from your setup answers: no need to make Breakfast, Lunch or Dinner events.",
@@ -76,6 +85,7 @@ export const STOPS: Stop[] = [
   },
   {
     id: "settings",
+    page: "/settings",
     title: "Settings",
     body: "Your calendars, mail and other apps (Integrations), how Friday looks, and your setup answers, one at a time.",
     target: "settings",
@@ -83,6 +93,7 @@ export const STOPS: Stop[] = [
   },
   {
     id: "end",
+    page: "/",
     title: "That's Friday",
     body: "Add what's due, and look in the Inbox now and then. Friday does the rest.",
     tip: "Lost on a page? The ? beside Settings shows what its buttons do.",
@@ -180,6 +191,10 @@ export function Tour() {
   }, [loaded, at, ring, width, roomy, leaving, stop.gesture])
 
   useEffect(() => next.current?.focus(), [at])
+
+  // the stop's page, opened for you
+  const navigate = useNavigate()
+  useEffect(() => void navigate(stop.page), [stop.page, navigate])
 
   const close = (end: boolean) => {
     const g = guide.current

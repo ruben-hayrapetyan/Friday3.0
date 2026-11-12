@@ -220,7 +220,7 @@ describe("the Mac app's menus", () => {
     await host("setup")
     expect(await screen.findByRole("heading", { name: "Fit Friday to your week again." }, { timeout: 5000 })).toBeTruthy()
     await host("go", "/todo") // setup first: nothing else takes its place
-    expect(route()).toBe("/insights")
+    expect(route()).toBe("/") // where the tour left you: its first stop opens the plan
     await user.click(screen.getByRole("button", { name: "Close" }))
     await waitFor(() => expect(screen.queryByRole("heading", { name: "Fit Friday to your week again." })).toBeNull())
   })

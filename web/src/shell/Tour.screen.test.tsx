@@ -20,9 +20,10 @@ afterEach(() => {
   Element.prototype.getBoundingClientRect = measure
 })
 const card = () => within(tour() as HTMLElement)
+const route = () => window.location.hash.replace(/^#/, "").split("?")[0] || "/"
 
 describe("the tour", () => {
-  it("goes page by page, each saying what it's for, with Back and Next", async () => {
+  it("goes page by page, opening each one and saying what it's for, with Back and Next", async () => {
     const { user } = await openFriday("/")
     await user.click(screen.getAllByRole("button", { name: "What's on this page" })[0])
     await user.click(await screen.findByRole("button", { name: "Take the tour" }))
@@ -32,13 +33,17 @@ describe("the tour", () => {
     await user.click(card().getByRole("button", { name: "Next" }))
     expect(card().getByRole("heading", { name: "To-do: what you have to do" })).toBeTruthy()
     expect(card().getByText(/Work is a to-do, not an event/)).toBeTruthy()
+    // the page itself, not just its tab (12 Nov: "it should actually navigate to each of the pages")
+    await waitFor(() => expect(route()).toBe("/todo"))
     // what it's about is ringed: the page in the sidebar
     await waitFor(() => expect(document.querySelector(".gd-ring")).not.toBeNull())
     await user.click(card().getByRole("button", { name: "Back" }))
     expect(card().getByRole("heading", { name: "Here's your plan" })).toBeTruthy()
+    await waitFor(() => expect(route()).toBe("/"))
     await user.keyboard("{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}")
     expect(card().getByRole("heading", { name: "Rules: how you like your days" })).toBeTruthy()
     expect(card().getByText(/no need to make Breakfast, Lunch or Dinner events/)).toBeTruthy()
+    await waitFor(() => expect(route()).toBe("/rules"))
     await user.click(card().getByRole("button", { name: "Next" }))
     await user.click(card().getByRole("button", { name: "Next" }))
     expect(card().getByRole("heading", { name: "That's Friday" })).toBeTruthy()
