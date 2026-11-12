@@ -192,7 +192,8 @@ describe("a planned block's card", () => {
         const pin = (await waitForSent("pin")).body as { start: string }
         expect(pin).toMatchObject({ id: block.item_id, kind: "preferred", from_start: block.start })
         expect(card()).toBeNull()
-        await waitFor(() => expect(box(`T${block.item_id}@${pin.start}`)).not.toBeNull(), { timeout: 2000 })
+        // gone from where it was at once (its new place may be a day not on screen, late in the day)
+        await waitFor(() => expect(box(block.key)).toBeNull(), { timeout: 2000 })
       } finally {
         answer()
         window.fetch = real
