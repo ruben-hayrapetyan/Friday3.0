@@ -23,5 +23,5 @@ directory = .cover/py
 EOF
 uv run --with pytest-cov --with "coverage>=7.10" pytest -q -p no:cacheprovider --cov --cov-config=.cover/rc \
   --cov-report=term:skip-covered --cov-report=html
-pnpm --dir web coverage
+npx --yes pnpm@10.12.1 --dir web coverage  # as check.sh: no pnpm of its own needed
 echo "Python: .cover/py/index.html · website: web/coverage/index.html"

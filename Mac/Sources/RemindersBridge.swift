@@ -14,7 +14,7 @@ final class RemindersBridge {
     private var watching = false
     private var asked = false  // macOS asked this launch: it answers once, from Settings after that
     private var pending: Task<Void, Never>?
-    private var lastSent: (body: Int, at: Date)?
+    private var lastSent: (body: Data, at: Date)?
     private var lastDenied: Date?
 
     func start() {
@@ -92,9 +92,11 @@ final class RemindersBridge {
         let body: [String: Any] = ["reminders": open, "lists": lists.map(\.title)]
         let now = Date()
         // the same as last time, within the hour: nothing to say
-        let digest = (try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys]))?.hashValue ?? 0
-        if let lastSent, lastSent.body == digest, now.timeIntervalSince(lastSent.at) < 3600 { return }
-        if await Server.post("reminders_sync", body) != nil { lastSent = (digest, now) }
+        // The body itself, not its hashValue: Data's hash reads only its length and first 80 bytes, which are the
+        // same header here, so an event moved an hour counted as nothing changed (audit, 12 Nov).
+        let sent = (try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])) ?? Data()
+        if let lastSent, MacPayload.unchanged(sent, since: lastSent, now: now) { return }
+        if await Server.post("reminders_sync", body) != nil { lastSent = (sent, now) }
     }
 }
 

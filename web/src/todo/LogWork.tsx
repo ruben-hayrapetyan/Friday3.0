@@ -1,7 +1,7 @@
 // "I worked on this": time spent without the timer, on a task's page (3 Nov: `log` had no button). It counts as done
 // and as how long that kind of work takes, as a timed sitting does.
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { TimeInput } from "@/components/fr/TimeInput"
 import { Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
@@ -17,11 +17,20 @@ export function LogWork({ itemId, title, today, now, onDone }: { itemId: number;
   const log = useCommand("log", { label: () => `Logged time on ${title}` })
   const span = spanOn(day, from, to)
   const minutes = Math.max(0, (Date.parse(`${span.end}:00Z`) - Date.parse(`${span.start}:00Z`)) / 60000)
+  // Once, however it's asked: Enter in a time, or the button (audit, 12 Nov: Enter on Log it logged the time twice, and
+  // Enter on Cancel or the day logged it too).
+  const sending = useRef(false)
   const save = async () => {
-    if (await log({ id: itemId, start: span.start, end: span.end })) onDone()
+    if (sending.current) return
+    sending.current = true
+    try {
+      if (await log({ id: itemId, start: span.start, end: span.end })) onDone()
+    } finally {
+      sending.current = false
+    }
   }
   return (
-    <div role="group" aria-label="Time you worked" onKeyDown={(e) => e.key === "Enter" && save()} className="fr-well" style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12 }}>
+    <div role="group" aria-label="Time you worked" onKeyDown={(e) => e.key === "Enter" && !(e.target instanceof HTMLButtonElement) && save()} className="fr-well" style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12 }}>
       <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>Time you worked on it without the timer:</span>
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
         <Menu label="Day" value={day} onPick={setDay} options={recentDays(today)} />

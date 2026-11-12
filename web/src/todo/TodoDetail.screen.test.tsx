@@ -4,7 +4,7 @@
 import { configure, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import type { Item } from "@/api/client"
-import { friday, openFriday, waitForSent } from "@/test/friday"
+import { friday, openFriday, sent, waitForSent } from "@/test/friday"
 
 // A real server, replanning after each change: a moment longer than the default second to answer.
 configure({ asyncUtilTimeout: 5000 })
@@ -164,6 +164,22 @@ describe("a task's detail", () => {
     await user.keyboard("3:30pm{Enter}")
     const sent = await waitForSent("log")
     expect(sent.body).toEqual({ id: item.id, start: expect.stringMatching(/T14:00$/), end: expect.stringMatching(/T15:30$/) })
+  })
+
+  it("logs it once with Enter on Log it, and Enter on Cancel logs nothing", async () => {
+    const { user, aside } = await detailOf("PHYS 1112 Mastering Physics 11")
+    await user.click(within(aside).getByRole("button", { name: "Log time" }))
+    let group = within(aside).getByRole("group", { name: "Time you worked" })
+    within(group).getByRole("button", { name: "Cancel" }).focus()
+    await user.keyboard("{Enter}")
+    expect(within(aside).queryByRole("group", { name: "Time you worked" })).toBeNull()
+    await user.click(within(aside).getByRole("button", { name: "Log time" }))
+    group = within(aside).getByRole("group", { name: "Time you worked" })
+    within(group).getByRole("button", { name: "Log it" }).focus()
+    await user.keyboard("{Enter}")
+    await waitForSent("log")
+    await waitFor(() => expect(within(aside).queryByRole("group", { name: "Time you worked" })).toBeNull())
+    expect(sent.filter((s) => s.name === "log")).toHaveLength(1)
   })
 
   it("starts the timer on it, then times another alongside", async () => {

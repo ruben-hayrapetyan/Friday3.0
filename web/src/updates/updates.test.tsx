@@ -2,9 +2,11 @@
 // a download's progress with its seconds) and what it tells the Mac app once an update is unpacked. Black box: a
 // version's notes drawn as the popup and "what's new" show them.
 import { renderToStaticMarkup } from "react-dom/server"
-import { describe, expect, it } from "vitest"
+import { QueryClient } from "@tanstack/react-query"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import type { Toast } from "@/components/Toasts"
 import { Notes } from "./UpdateDialogs"
-import { headline, lookedAgo, macMessage, progressLine, type UpdateStatus } from "./updates"
+import { headline, lookedAgo, macMessage, progressLine, runUpdateAct, type UpdateStatus } from "./updates"
 
 const version = (v: string) => ({ version: v, released: "2026-11-07", summary: `About ${v}.`, new: [`New in ${v}`], changed: [], fixed: [] })
 const status = (over: Partial<UpdateStatus>): UpdateStatus => ({ checks: true, have: "0.1.0", state: "idle", progress: 0, versions: [], popup: false, whats_new: [], restart: "now", ...over }) as UpdateStatus
@@ -54,5 +56,25 @@ describe("a version's notes", () => {
 
   it("no title when it's the only version shown", () => {
     expect(renderToStaticMarkup(<Notes version={version("0.3.0")} titled={false} />)).not.toContain("Friday 0.3.0")
+  })
+})
+
+describe("the updater's commands", () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it("says a refusal, rather than doing nothing you can see", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ field: "updates", message: "Friday isn't in Applications, so it can't be replaced" }), { status: 422 })))
+    const client = new QueryClient()
+    const toasts: Toast[] = []
+    expect(await runUpdateAct(client, (t) => toasts.push(t), "update_start")).toBeUndefined()
+    expect(toasts).toEqual([expect.objectContaining({ tone: "error", message: expect.stringContaining("can't be replaced") })])
+  })
+
+  it("shows the state it answers with at once", async () => {
+    const now = status({ state: "downloading", versions: [version("0.3.0")] })
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ command_id: null, result: now }), { status: 200 })))
+    const client = new QueryClient()
+    expect(await runUpdateAct(client, () => {}, "update_start")).toEqual(now)
+    expect(client.getQueryData(["updates"])).toEqual(now)
   })
 })

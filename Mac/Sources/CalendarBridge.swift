@@ -13,7 +13,7 @@ final class CalendarBridge {
     private var writes: Timer?
     private var writing = false
     private var pending: Task<Void, Never>?
-    private var lastSent: (body: Int, at: Date)?
+    private var lastSent: (body: Data, at: Date)?
     private var lastPlan: Int?  // the plan the "Friday" calendar holds (C113)
     private var planning = false
     static let weeks = 12
@@ -94,9 +94,11 @@ final class CalendarBridge {
             since: since, until: until
         )
         // the same as last time, within the hour: nothing to say
-        let digest = (try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys]))?.hashValue ?? 0
-        if let lastSent, lastSent.body == digest, now.timeIntervalSince(lastSent.at) < 3600 { return }
-        if await Server.post("mac_sync", body) != nil { lastSent = (digest, now) }
+        // The body itself, not its hashValue: Data's hash reads only its length and first 80 bytes, which are the
+        // same header here, so an event moved an hour counted as nothing changed (audit, 12 Nov).
+        let sent = (try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])) ?? Data()
+        if let lastSent, MacPayload.unchanged(sent, since: lastSent, now: now) { return }
+        if await Server.post("mac_sync", body) != nil { lastSent = (sent, now) }
     }
 }
 
@@ -304,6 +306,11 @@ final class Made: @unchecked Sendable {
 
 /// What `mac_sync` takes (api/commands.py MacSyncInput), from EventKit's objects.
 enum MacPayload {
+    /// The same body sent within the hour: nothing to say again.
+    static func unchanged(_ body: Data, since last: (body: Data, at: Date), now: Date) -> Bool {
+        last.body == body && now.timeIntervalSince(last.at) < 3600
+    }
+
     static func body(calendars: [[String: Any]], events: [[String: Any]], since: Date, until: Date) -> [String: Any] {
         ["calendars": calendars, "events": events, "since": timestamp(since), "until": timestamp(until)]
     }

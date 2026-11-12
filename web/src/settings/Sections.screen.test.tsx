@@ -167,6 +167,11 @@ describe("Tags/Kinds", () => {
     expect((await waitForSent("area_edit")).body).toEqual({ id: 1, name: "Rocketry team" })
     await answered(client)
     await waitFor(async () => expect((await friday.q<{ name: string }[]>("areas")).map((a) => a.name)).toContain("Rocketry team"))
+    // Undo puts the name back in its box too (audit, 12 Nov: the box kept the new name)
+    await user.click(screen.getAllByRole("button", { name: "Undo" }).at(-1) as HTMLElement)
+    await waitForSent("undo")
+    await answered(client)
+    await waitFor(() => expect((screen.getAllByRole("textbox", { name: "Tag name" }) as HTMLInputElement[]).map((n) => n.value)).toContain("Rocketry"))
   })
 
   it("paints a tag, archives one, and gives one a buffer of its own", async () => {
@@ -285,7 +290,13 @@ describe("Schedule", () => {
     await user.click(within(field("Buffer between blocks")).getByRole("button", { name: "15 min" }))
     const rules = (await waitForSent("settings_set")).body as { key: string; value: { type: string; params: { minutes: string } }[] }
     expect(rules.value.find((r) => r.type === "buffer")!.params.minutes).toBe("15m")
-    fireEvent.change(screen.getByRole("slider", { name: "Daily limit" }), { target: { value: "8.5" } })
+    // a drag is saved once, when you let go (audit, 12 Nov: each step it passed was a save)
+    sent.length = 0
+    const limit = screen.getByRole("slider", { name: "Daily limit" })
+    for (const v of ["9.5", "9", "8.5"]) fireEvent.change(limit, { target: { value: v } })
+    expect((limit as HTMLInputElement).value).toBe("8.5")
+    expect(sent.filter((s) => s.name === "settings_set")).toHaveLength(0)
+    fireEvent.pointerUp(limit)
     expect((await waitForSent("settings_set")).body).toEqual({ key: "daily_cap", value: { mon: 8.5, tue: 8.5, wed: 8.5, thu: 8.5, fri: 8.5, sat: 8.5, sun: 8.5 } })
     await user.click(await within(field("Default pace")).findByRole("button", { name: "Easy" }))
     expect((await waitForSent("settings_set")).body).toMatchObject({ key: "pace", value: { default: "Easy" } })
@@ -334,8 +345,14 @@ describe("Schedule", () => {
     expect(night.key).toBe("sleep")
     expect(night.value.fri.bedtime).toBe("01:00")
     expect(night.value.thu.bedtime).toBe(thursday) // the other days as they were
-    const limits = screen.getAllByRole("spinbutton")
-    fireEvent.change(limits[limits.length - 1], { target: { value: "6" } })
+    // an emptied box saves nothing (audit, 12 Nov: it saved a limit of 0); a number is saved as you leave it
+    sent.length = 0
+    const sun = screen.getByRole("spinbutton", { name: "sun limit" })
+    fireEvent.change(sun, { target: { value: "" } })
+    fireEvent.blur(sun)
+    expect(sent.filter((s) => s.name === "settings_set")).toHaveLength(0)
+    fireEvent.change(sun, { target: { value: "6" } })
+    fireEvent.blur(sun)
     expect((await waitForSent("settings_set")).body).toMatchObject({ key: "daily_cap", value: { sun: 6 } })
     await user.click(screen.getByRole("button", { name: "Hide" }))
     expect(screen.queryByRole("textbox", { name: "fri bedtime" })).toBeNull()
@@ -467,7 +484,8 @@ describe("Advanced", () => {
     const row = screen.getByText(other).parentElement as HTMLElement
     const capacity = row.querySelector('input[type="range"]') as HTMLInputElement
     fireEvent.change(capacity, { target: { value: "1.4" } })
-    fireEvent.mouseUp(capacity)
+    // let go with the keyboard too (audit, 12 Nov: only a mouse's release saved it)
+    fireEvent.keyUp(capacity, { key: "ArrowRight" })
     expect((await waitForSent("pace_save")).body).toEqual({ name: other, capacity: 1.4 })
     await answered(client) // saved before it's deleted
     await user.click(screen.getByRole("button", { name: `Delete ${other}` }))

@@ -303,6 +303,7 @@ describe("the AI", () => {
     expect(within(dialog).getByText("50 reads")).toBeTruthy()
     const { fireEvent } = await import("@testing-library/react")
     fireEvent.change(within(dialog).getByRole("slider", { name: "Daily reads" }), { target: { value: "80" } })
+    fireEvent.pointerUp(within(dialog).getByRole("slider", { name: "Daily reads" }))
     expect((await waitForSent("settings_set")).body).toEqual({ key: "llm", value: { daily_calls: 80 } })
     await user.click(within(dialog).getByRole("button", { name: "Check it works" }))
     const checks = await within(dialog).findAllByText(/: works$/)

@@ -22,8 +22,21 @@ interface Source {
 
 /** The links added from this service's box, still read. */
 export function useServiceLinks(service: string): Source[] {
+  return useLinkSources().filter((s) => s.service === service)
+}
+
+/** Every calendar link Friday reads. */
+export function useLinkSources(): Source[] {
   const sources = (useInbox().data?.sources ?? []) as Source[]
-  return sources.filter((s) => s.kind === "ics" && s.enabled && s.service === service)
+  return sources.filter((s) => s.kind === "ics" && s.enabled)
+}
+
+/** A name none of `taken` has (Friday refuses a second link, or tag, of the same name): `base`, else "base 2",
+ * "base 3"… from `from` (audit, 12 Nov: one named by how many there were came back as one still in use). */
+export function freeName(base: string, taken: string[], from = 2): string {
+  const used = new Set(taken.map((t) => t.toLowerCase()))
+  if (!used.has(base.toLowerCase())) return base
+  for (let n = from; ; n++) if (!used.has(`${base} ${n}`.toLowerCase())) return `${base} ${n}`
 }
 
 /** webcal:// is a calendar app's way of saying https:// (or http://). */
@@ -38,6 +51,7 @@ export function looksLikeALink(link: string): boolean {
 
 export function LinkIntegration({ entry }: { entry: Entry }) {
   const mine = useServiceLinks(entry.id)
+  const links = useLinkSources()
   const add = useCommand("source_add", { label: (o) => o.result.message })
   const remove = useCommand("source_remove", { label: (o) => o.result.message })
   const { today } = useShell()
@@ -45,7 +59,7 @@ export function LinkIntegration({ entry }: { entry: Entry }) {
   const steps = entry.link!
   const submit = async () => {
     if (!looksLikeALink(link)) return
-    const name = mine.length ? `${entry.name} ${mine.length + 1}` : entry.name
+    const name = freeName(entry.name, links.map((s) => s.name))
     if (await add({ name, url: asFetchable(link), service: entry.id })) setLink("")
   }
   return (

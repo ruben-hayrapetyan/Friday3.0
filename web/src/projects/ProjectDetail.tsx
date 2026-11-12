@@ -1,7 +1,7 @@
 // One project (v22): its steps in order (move them, tick them, set what each waits on and how long it takes), and a
 // timeline of when each is planned against the due date. A way back to Projects & exams, and to the other projects.
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import type { Item } from "@/api/client"
 import { Box, Check, H, Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
@@ -21,6 +21,16 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
   // A project you'll do again, as a template New project offers (3 Nov: `template_save` had no button)
   const saveTemplate = useCommand("template_save", { label: (o) => `${o.result.message ?? "Saved"}: New project offers it` })
   const [text, setText] = useState("")
+  const sending = useRef(false) // ↩ twice adds the step once
+  const addStep = async () => {
+    if (!text.trim() || sending.current) return
+    sending.current = true
+    try {
+      if (await add({ text, parent_id: p.item.id, area: p.item.area })) setText("")
+    } finally {
+      sending.current = false
+    }
+  }
   const steps = p.children.filter((c) => c.parent_id === p.item.id)
   const total = p.done_min + p.remaining_min
   const [label, tone] = PROJECT_STATUS[p.status]
@@ -90,7 +100,7 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            onKeyDown={async (e) => e.key === "Enter" && text.trim() && (await add({ text, parent_id: p.item.id, area: p.item.area })) && setText("")}
+            onKeyDown={(e) => e.key === "Enter" && addStep()}
             placeholder="Add a step ~2h"
             aria-label="Add a step"
             style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit" }}

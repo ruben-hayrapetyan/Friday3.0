@@ -30,7 +30,8 @@ export function EditCard(props: { title: string; said?: ReactNode; children: Rea
       className="fr-well"
       role="group"
       aria-label={title}
-      onKeyDown={(e) => (e.key === "Escape" ? onCancel() : e.key === "Enter" && canSave && !busy && onSave())}
+      // Enter in a time saves; on a button it's that button's (audit, 12 Nov: Enter on Cancel or Delete saved too)
+      onKeyDown={(e) => (e.key === "Escape" ? onCancel() : e.key === "Enter" && !(e.target instanceof HTMLButtonElement) && canSave && !busy && onSave())}
       style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 14px", margin: "4px 0 8px" }}
     >
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>

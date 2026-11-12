@@ -647,5 +647,77 @@ test("Siri says what was added, or why it wasn't (C131)") {
     check(due == "Added Essay, due 5pm on 2 Jan.", "with its due: \(due)")
 }
 
+test("the server's output is read until it stops, then no more (audit, 12 Nov: the end was read for ever)") {
+    final class Count: @unchecked Sendable {
+        var calls = 0
+        var text = ""
+        let lock = NSLock()
+    }
+    let count = Count()
+    let echo = Process()
+    echo.executableURL = URL(fileURLWithPath: "/bin/echo")
+    echo.arguments = ["Uvicorn running"]
+    let pipe = Pipe()
+    echo.standardOutput = pipe
+    pipe.fileHandleForReading.readabilityHandler = Server.reader { text in
+        count.lock.lock()
+        count.calls += 1
+        count.text += text
+        count.lock.unlock()
+    }
+    try? echo.run()
+    echo.waitUntilExit()
+    Thread.sleep(forTimeInterval: 0.5)
+    count.lock.lock()
+    let (calls, text) = (count.calls, count.text)
+    count.lock.unlock()
+    check(text == "Uvicorn running\n", "what it said: \(text)")
+    check(calls < 5, "read \(calls) times after it stopped")
+    check(pipe.fileHandleForReading.readabilityHandler == nil, "stopped reading at the end")
+}
+
+test("a calendar or reminders body counts as unchanged only when it's the same, not just as long (audit, 12 Nov)") {
+    let header = String(repeating: "x", count: 90)
+    let ten = Data("\(header)10:00".utf8), eleven = Data("\(header)11:00".utf8)
+    let now = Date()
+    check(!MacPayload.unchanged(eleven, since: (ten, now), now: now), "an event moved an hour is a change")
+    check(MacPayload.unchanged(ten, since: (ten, now.addingTimeInterval(-60)), now: now), "the same within the hour")
+    check(!MacPayload.unchanged(ten, since: (ten, now.addingTimeInterval(-3700)), now: now), "sent again after an hour")
+}
+
+test("a swap that can't move the old app aside opens it again, rather than leaving Friday closed") {
+    let files = FileManager.default
+    let root = files.temporaryDirectory.appendingPathComponent("friday-stuck-\(UUID().uuidString)")
+    let folder = root.appendingPathComponent("Applications")
+    let app = folder.appendingPathComponent("Friday.app")
+    let staged = root.appendingPathComponent("updates/0.2.0/Friday.app")
+    let bin = root.appendingPathComponent("bin")
+    try? files.createDirectory(at: app, withIntermediateDirectories: true)
+    try? files.createDirectory(at: staged, withIntermediateDirectories: true)
+    try? files.createDirectory(at: bin, withIntermediateDirectories: true)
+    // `open` stood in for: it notes what it was asked to open
+    let opened = root.appendingPathComponent("opened")
+    let open = bin.appendingPathComponent("open")
+    try? "#!/bin/sh\necho \"$1\" > '\(opened.path)'\n".write(to: open, atomically: true, encoding: .utf8)
+    try? files.setAttributes([.posixPermissions: 0o755], ofItemAtPath: open.path)
+    try? files.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)  // Friday.app can't be moved
+    let gone = Process()
+    gone.executableURL = URL(fileURLWithPath: "/usr/bin/true")
+    try? gone.run()
+    gone.waitUntilExit()
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/bin/sh")
+    process.arguments = Updater.swapArguments(pid: gone.processIdentifier, app: app, staged: staged, reopen: true)
+    process.environment = ["PATH": "\(bin.path):/usr/bin:/bin"]
+    try? process.run()
+    process.waitUntilExit()
+    let said = (try? String(contentsOf: opened, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines)
+    check(process.terminationStatus == 1, "it says it failed")
+    check(said == app.path, "the old Friday opened again: \(said ?? "nothing")")
+    check(files.fileExists(atPath: staged.path), "the new one left where it was")
+    try? files.setAttributes([.posixPermissions: 0o755], ofItemAtPath: folder.path)
+    try? files.removeItem(at: root)
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

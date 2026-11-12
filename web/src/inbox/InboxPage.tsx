@@ -25,7 +25,7 @@ import { useAllItems } from "@/todo/TodoPage"
 import { AskPane } from "./AskPane"
 import { GapPane, SleepPane } from "./DayPanes"
 import { DecisionPane } from "./Decisions"
-import { type Message, nextAfter, rowOf, waitingCount } from "./messages"
+import { type Message, nextAfter, rowOf, shownFields, waitingCount } from "./messages"
 import { Actions, After, Pane } from "./Pane"
 import { useDuplicates, useInbox, useInboxMessages, useToReview } from "./queries"
 import { AgainPane, CopiesPane } from "./TaskPanes"
@@ -40,18 +40,6 @@ interface Resolved {
   commandId: number | null
 }
 type Done = (sent?: Promise<unknown>) => void
-
-const FIELDS: [string, string][] = [
-  ["title", "Title"],
-  ["preset", "Kind"],
-  ["area", "Tag"],
-  ["due", "Due"],
-  ["start", "Starts"],
-  ["end", "Ends"],
-  ["location", "Where"],
-  ["duration_min", "Length"],
-  ["every", "Repeats"],
-]
 
 // Not while you type, nor while a dialog is open over the Inbox (audit, 8 Nov: "r" behind the update dialog rejected
 // the suggestion under it).
@@ -377,9 +365,7 @@ function Detail({ s, all, waiting, resolved, onResolved, onReopen }: DetailProps
     if (typeof v === "string" && /^\d{4}-\d\d-\d\dT/.test(v)) return when(v, today)
     return String(v)
   }
-  // Work's length always shows, so a 12-hour assignment isn't accepted as Friday's 2-hour guess unnoticed.
-  const work = fields.start == null && s.command === "add"
-  const shown = FIELDS.filter(([k]) => fields[k] != null || (k === "duration_min" && work) || (editing && ["preset", "area", "due", "duration_min"].includes(k)))
+  const shown = shownFields(fields, s.command, editing, edits)
   const actionLabel = s.command === "drop" ? "Drop it" : dup || s.command === "edit" ? "Update it" : "Accept"
   return (
     <div className="fr-gutter" style={{ overflowY: "auto", minHeight: 0, padding: "24px 28px 60px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 28, alignItems: "start" }}>

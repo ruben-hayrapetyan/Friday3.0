@@ -63,3 +63,22 @@ def test_only_the_projects_own_entries_change() -> None:
 def test_a_version_must_be_a_number() -> None:
     with pytest.raises(ValueError, match="like 0.4.0"):
         set_version(REPO, "next")
+
+
+def test_a_file_whose_version_isnt_found_stops_it_before_anything_is_written(tmp_path: Path) -> None:
+    # audit, 12 Nov: a [project] with a list before its version was written back unchanged, and said to be done
+    for name in FILES:
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(REPO / name, tmp_path / name)
+    toml = (tmp_path / "pyproject.toml").read_text()
+    (tmp_path / "pyproject.toml").write_text(toml.replace("[project]\n", '[project]\nkeywords = ["plan"]\n', 1))
+    before = {name: (tmp_path / name).read_text() for name in FILES}
+    with pytest.raises(ValueError, match="pyproject.toml"):
+        set_version(tmp_path, "9.8.7")
+    assert {name: (tmp_path / name).read_text() for name in FILES} == before
+
+
+def test_a_missing_file_is_said_not_made(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError, match="VERSION"):
+        set_version(tmp_path, "9.8.7")
+    assert not (tmp_path / "VERSION").exists()

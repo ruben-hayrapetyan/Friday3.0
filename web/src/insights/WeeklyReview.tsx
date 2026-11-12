@@ -3,7 +3,7 @@
 // next Sunday. Choices apply when you finish.
 
 import { useQuery } from "@tanstack/react-query"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useNavigate } from "react-router"
 import { query, type Schemas } from "@/api/client"
 import { H, Icon, Seg } from "@/components/fr/controls"
@@ -51,7 +51,21 @@ function Week({ week }: { week: Full }) {
   // "Next week" starts it next Monday: only for work due after then (12 Nov: one due sooner was refused, and the
   // review still said it was done)
   const canWait = (c: { when: string }) => !c.when || c.when >= `${nextMonday}T00:00`
+  // Once: a second click while it saves dropped and moved the same work again (audit, 12 Nov).
+  const sending = useRef(false)
+  const [busy, setBusy] = useState(false)
   const finish = async () => {
+    if (sending.current) return
+    sending.current = true
+    setBusy(true)
+    try {
+      await finishWeek()
+    } finally {
+      sending.current = false
+      setBusy(false)
+    }
+  }
+  const finishWeek = async () => {
     let failed = false
     for (const c of week.carried) {
       if (carry[c.item_id] === "Drop") failed = !(await drop({ id: c.item_id })) || failed
@@ -236,7 +250,7 @@ function Week({ week }: { week: Full }) {
           </div>
         ) : (
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <button className="btn btn-primary" onClick={finish} style={{ padding: "10px 16px", fontSize: 14 }}>
+            <button className="btn btn-primary" onClick={finish} disabled={busy} style={{ padding: "10px 16px", fontSize: 14 }}>
               <Icon name="check" />
               Finish review and plan the week
             </button>

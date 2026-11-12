@@ -11,7 +11,7 @@
 // and Google's commands can't be handed those, so a key for them is offered, quietly, for that alone.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { errorWords, query, type Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { Card } from "@/dialogs/SetupParts"
@@ -159,7 +159,7 @@ export function AiConnect({ compact = false }: { compact?: boolean }) {
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {llm.provider === "claude" && <ClaudeSetup ai={ai} />}
-        {["openai", "gemini", "grok", "muse"].includes(llm.provider) && <ServiceSetup llm={llm} ai={ai} keyFrom={chosen.keyFrom} />}
+        {["openai", "gemini", "grok", "muse"].includes(llm.provider) && <ServiceSetup key={llm.provider} llm={llm} ai={ai} keyFrom={chosen.keyFrom} />}
         {llm.provider === "compatible" && <OtherSetup llm={llm} ai={ai} />}
         {llm.provider === "local" && <LocalSetup llm={llm} local={local.data} />}
         {!(llm.provider === "local" && local.data?.download?.status === "downloading") && <Status ai={ai} />}
@@ -357,6 +357,12 @@ function KeyField(props: { provider: Provider; label: string; has: boolean; opti
 
 function AddressField({ llm, label }: { llm: Llm; label: string }) {
   const [text, setText] = useState(llm.base_url ?? "")
+  // the address saved, as Undo or another window changes it: shown, unless you're typing one (audit, 12 Nov: the box
+  // kept the old one, and leaving it saved that again)
+  const typing = useRef(false)
+  useEffect(() => {
+    if (!typing.current) setText(llm.base_url ?? "")
+  }, [llm.base_url])
   const save = useCommand("settings_set", { label: () => "Address saved" })
   const refresh = useRefresh()
   const submit = async () => {
@@ -366,7 +372,7 @@ function AddressField({ llm, label }: { llm: Llm; label: string }) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <span className="fr-kicker">{label}</span>
-      <input id="ai-address" className="input" value={text} onChange={(e) => setText(e.target.value)} onBlur={submit} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="https://…/v1" spellCheck={false} style={{ maxWidth: 520, padding: "5px 8px", minHeight: 0, fontSize: 13 }} />
+      <input id="ai-address" className="input" value={text} onFocus={() => (typing.current = true)} onChange={(e) => setText(e.target.value)} onBlur={() => ((typing.current = false), submit())} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="https://…/v1" spellCheck={false} style={{ maxWidth: 520, padding: "5px 8px", minHeight: 0, fontSize: 13 }} />
     </label>
   )
 }

@@ -142,23 +142,29 @@ final class Server: ObservableObject {
             return
         }
         state = .starting
-        let started = Process()
-        Self.prepare(started, launcher, ["serve"])
-        started.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser  // not wherever the app was opened from
-        let pipe = Pipe()
-        started.standardOutput = pipe
-        started.standardError = pipe
-        pipe.fileHandleForReading.readabilityHandler = { handle in
-            let text = String(data: handle.availableData, encoding: .utf8) ?? ""
-            Task { @MainActor in Server.shared.keep(text) }
+        let started: Process
+        if let running = process, running.isRunning {
+            // Still starting from before (Try again after a slow first start): waited for, not started twice, which
+            // left the first running when Friday quit (audit, 12 Nov).
+            started = running
+        } else {
+            started = Process()
+            Self.prepare(started, launcher, ["serve"])
+            started.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser  // not wherever the app was opened from
+            let pipe = Pipe()
+            started.standardOutput = pipe
+            started.standardError = pipe
+            pipe.fileHandleForReading.readabilityHandler = Self.reader { text in
+                Task { @MainActor in Server.shared.keep(text) }
+            }
+            do {
+                try started.run()
+            } catch {
+                state = .failed(Self.startupWords(started: false, log: error.localizedDescription))
+                return
+            }
+            process = started
         }
-        do {
-            try started.run()
-        } catch {
-            state = .failed(Self.startupWords(started: false, log: error.localizedDescription))
-            return
-        }
-        process = started
         for tick in 0 ..< 120 {
             slow = tick >= 16  // its first start compiles the scheduler: up to a minute
             if await Self.status() != nil {
@@ -181,6 +187,19 @@ final class Server: ObservableObject {
         state = .failed("Friday's server didn't answer within a minute. Your Mac may be very busy: wait a moment and "
             + "press Try again. If it keeps happening, quit Friday and open it again.\n\nWhat it said last:\n"
             + log.suffix(600))
+    }
+
+    /// What reads the server's output, a piece at a time, to `keep`. At its end (the server stopped) it stops reading:
+    /// an empty read at the end comes back at once, for ever, and kept the main thread busy at 100% (audit, 12 Nov).
+    nonisolated static func reader(_ keep: @escaping @Sendable (String) -> Void) -> @Sendable (FileHandle) -> Void {
+        { handle in
+            let data = handle.availableData
+            if data.isEmpty {
+                handle.readabilityHandler = nil
+                return
+            }
+            keep(String(data: data, encoding: .utf8) ?? "")
+        }
     }
 
     /// Why the server stopped while starting, in words with what to do (8 Nov: "make all errors and warnings very

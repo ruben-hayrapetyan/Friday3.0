@@ -320,11 +320,11 @@ export function RepeatPicker({ value, onPick }: { value: Repeat; onPick: (v: Rep
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button className="btn btn-icon btn-secondary" onClick={() => onPick({ every: "week", perWindow: Math.max(1, times - 1) })} aria-label="Fewer" style={{ width: 26, height: 26 }}>
+          <button className="btn btn-icon btn-secondary" onClick={() => onPick({ every: withEnd("week", ends), perWindow: Math.max(1, times - 1) })} aria-label="Fewer" style={{ width: 26, height: 26 }}>
             <Icon name="minus" />
           </button>
           <span style={{ width: 104, flex: "none", whiteSpace: "nowrap", textAlign: "center" }}>{times} times a week</span>
-          <button className="btn btn-icon btn-secondary" onClick={() => onPick({ every: "week", perWindow: Math.min(7, times + 1) })} aria-label="More" style={{ width: 26, height: 26 }}>
+          <button className="btn btn-icon btn-secondary" onClick={() => onPick({ every: withEnd("week", ends), perWindow: Math.min(7, times + 1) })} aria-label="More" style={{ width: 26, height: 26 }}>
             <Icon name="plus" />
           </button>
           <span style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>Friday picks the days</span>

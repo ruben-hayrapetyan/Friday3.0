@@ -3,7 +3,7 @@
 // and the Sleep and Meals tabs, once tracking is on and there are nights and meals to learn from.
 import { fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import { friday, openFriday, waitForSent } from "@/test/friday"
+import { friday, openFriday, sent, waitForSent } from "@/test/friday"
 
 const day = (offset: number) => {
   const d = new Date(Date.now() + offset * 86_400_000)
@@ -149,11 +149,14 @@ describe("Insights → This week", () => {
     const changes = Number(!!later) + Number(!!other)
     expect(screen.getByText(new RegExp(`^${changes} changes to carried work`))).toBeTruthy()
     await user.click(await screen.findByRole("button", { name: /^Easy/ }))
-    await user.click(screen.getByRole("button", { name: /Finish review and plan the week/ }))
+    // a double click finishes it once (audit, 12 Nov: the second dropped and moved the same work again)
+    await user.dblClick(screen.getByRole("button", { name: /Finish review and plan the week/ }))
     if (later) expect((await waitForSent("edit")).body).toEqual({ id: later.item_id, release: `${monday}T00:00` })
     if (other) expect((await waitForSent("drop")).body).toEqual({ id: other.item_id })
     expect((await waitForSent("pace", 15_000)).body).toEqual({ name: "Easy", for_days: 7 })
     expect(await screen.findByText(/The week is reviewed/, undefined, { timeout: 15_000 })).toBeTruthy()
+    expect(sent.filter((s) => s.name === "pace")).toHaveLength(1)
+    expect(sent.filter((s) => s.name === "drop")).toHaveLength(Number(!!other))
     if (later) {
       const moved = (await friday.q<{ id: number; release: string | null }[]>("items", { status: "all" })).find((i) => i.id === later.item_id)
       expect(moved?.release).toBe(`${monday}T00:00`)
@@ -246,5 +249,18 @@ describe("Insights → Sleep and Meals", () => {
     expect(await screen.findByText(/Learned from 6 nights: suggests a new time/)).toBeTruthy()
     expect(await screen.findByText(/Breakfast about 10am, 20m/)).toBeTruthy()
     expect(screen.getAllByRole("link", { name: "Open" })).toHaveLength(2)
+  })
+
+  it("closes a night's card with Enter on Cancel, saving nothing", async () => {
+    await friday.c("settings_set", { key: "sleep_tracking", value: { on: true, min_nights: 4, morning_hours: 4 } })
+    const { user } = await openFriday("/insights?tab=sleep")
+    const nights = await screen.findAllByTitle("Change this night", {}, { timeout: 10_000 })
+    await user.click(nights.at(-1) as HTMLElement)
+    const card = screen.getAllByRole("group").find((g) => / night$/.test(g.getAttribute("aria-label") ?? "")) as HTMLElement
+    sent.length = 0
+    within(card).getByRole("button", { name: "Cancel" }).focus()
+    await user.keyboard("{Enter}")
+    await waitFor(() => expect(screen.getAllByRole("group").some((g) => / night$/.test(g.getAttribute("aria-label") ?? ""))).toBe(false))
+    expect(sent.map((s) => s.name)).toEqual([])
   })
 })

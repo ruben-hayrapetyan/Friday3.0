@@ -45,10 +45,33 @@ def set_version(root: Path, value: str) -> list[str]:
         "web/package.json": lambda t: package_version(t, value),
         "uv.lock": lambda t: locked_version(t, "friday", value),
     }
+    # Every file read and changed before any is written: one whose line moved (a `[` before `version` in [project],
+    # uv.lock's entry written another way) was written back unchanged, and the release went out mismatched (audit,
+    # 12 Nov); a file not there was made empty.
+    written = {}
     for name, edit in edits.items():
         path = root / name
-        path.write_text(edit(path.read_text() if path.exists() else ""))
+        if not path.exists():
+            raise FileNotFoundError(f"{name} isn't there: run it from Friday's repo")
+        after = edit(path.read_text())
+        if not has_version(name, after, value):
+            raise ValueError(f"couldn't find Friday's version in {name}: set it there by hand")
+        written[path] = after
+    for path, after in written.items():
+        path.write_text(after)
     return list(edits)
+
+
+def has_version(name: str, text: str, value: str) -> bool:
+    """Whether `text`, the file `name` after the edit, names `value` where Friday's version goes."""
+    v = re.escape(value)
+    if name == "VERSION":
+        return text.strip() == value
+    if name == "web/package.json":
+        return json.loads(text).get("version") == value
+    if name == "pyproject.toml":
+        return re.search(rf'(?m)^\[project\][^\[]*?^version = "{v}"', text) is not None
+    return re.search(rf'(?m)^name = "friday"\nversion = "{v}"\nsource = {{ editable = "\." }}', text) is not None
 
 
 if __name__ == "__main__":

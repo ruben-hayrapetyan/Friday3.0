@@ -41,9 +41,11 @@ final class MenuBarTimer: NSObject {
             menu.addItem(.separator())
             menu.addItem(withTitle: "Open Friday", action: #selector(open), keyEquivalent: "").target = self
             item?.menu = menu
-            tick = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            let timer = Timer(timeInterval: 1, repeats: true) { _ in
                 Task { @MainActor in self.draw() }
             }
+            RunLoop.main.add(timer, forMode: .common)  // ticking while its menu is open too (audit, 12 Nov: it froze)
+            tick = timer
         }
         draw()
     }

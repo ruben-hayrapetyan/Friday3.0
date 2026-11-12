@@ -57,12 +57,13 @@ final class Updater: NSObject, WKScriptMessageHandler {
         ["-c", swapScript, "friday-swap", String(pid), app.path, staged.path, reopen ? "1" : "0"]
     }
 
-    /// Waits for Friday to quit, moves the old app aside, the new one in, and drops the old; reopens if asked.
+    /// Waits for Friday to quit, moves the old app aside, the new one in, and drops the old; reopens if asked, the old
+    /// one too when it couldn't be moved (audit, 12 Nov: Friday had quit and never came back).
     nonisolated static let swapScript = """
     pid="$1" app="$2" staged="$3" reopen="$4"
     while kill -0 "$pid" 2>/dev/null; do sleep 0.2; done
     aside="$app.replaced-$$"
-    mv "$app" "$aside" || exit 1
+    if ! mv "$app" "$aside"; then [ "$reopen" = 1 ] && open "$app"; exit 1; fi
     if mv "$staged" "$app"; then rm -r "$aside"; else mv "$aside" "$app"; fi
     if [ "$reopen" = 1 ]; then open "$app"; fi
     """
