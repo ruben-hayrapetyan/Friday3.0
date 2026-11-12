@@ -109,3 +109,16 @@ def test_a_prompt_that_starts_with_a_dash_goes_in_on_stdin() -> None:
     )
     assert handed["input"] == "- Poker night\n- CS 2112 Lecture"
     assert not any(a.startswith("- Poker") for a in handed["args"])
+
+
+def test_an_error_the_command_answers_with_goes_to_the_api_not_into_the_answer() -> None:
+    # `claude -p --output-format json` can end well yet say it failed (`is_error`, its words in `result`): taken as
+    # the answer, "Invalid API key · Please run /login" was read as JSON and failed there, past the key behind it
+    said = {"type": "result", "is_error": True, "result": "Invalid API key · Please run /login"}
+    api = Api()
+    routed = llm.Routed(llm.CliClient(Path("/bin/claude"), run=answering(said, [])), api)
+    assert routed.messages.create(model="m", system="s", messages=[{"role": "user", "content": "Ping"}]) == (
+        "from the api"
+    )
+    with pytest.raises(RuntimeError, match="Please run /login"):
+        llm.CliClient(Path("/bin/claude"), run=answering(said, [])).create(model="m", system="s", messages=[])
