@@ -625,6 +625,23 @@ test("a + in a link's text is a +, %2B one too, and %20 or a space a space (the 
     }
 }
 
+test("an add link's text is everything after text=, & and # included, as Shortcuts sends it (13 Nov)") {
+    let link = { (s: String) in FridayLink.of(URL(string: s)!, scheme: "friday") }
+    // Shortcuts' Open URLs puts the Provided Input after text= as it is: an & or # in it isn't a new part of the link
+    check(link("friday://add?text=Tom%20&%20Jerry%20due%20fri") == .add("Tom & Jerry due fri"), "an & stays in the text")
+    check(link("friday://add?text=read%20ch.%204#2") == .add("read ch. 4#2"), "a # stays in the text")
+    check(link("friday://add?text=Q&A%20prep%20#cs2110") == .add("Q&A prep #cs2110"), "both, and a #tag")
+    check(link("friday://add?text=a&b=c") == .add("a&b=c"), "even what looks like another setting")
+    check(link("friday://add?text=Tom%20%26%20Jerry") == .add("Tom & Jerry"), "an encoded & (%26) is an & too")
+    check(link("friday://add?text=100%25%20done") == .add("100% done"), "%25 is a %")
+    check(link("friday://add?text=C++%20#1") == .add("C++ #1"), "a + stays a +")
+    check(link("friday://add?text=&") == .add("&") && link("friday://add?text=#") == .add("#"), "an & or # alone is text")
+    if let typed = URL(string: "friday://add?text=Tom & Jerry 2h") {
+        check(FridayLink.of(typed, scheme: "friday") == .add("Tom & Jerry 2h"), "typed with spaces: \(typed.absoluteString)")
+    }
+    check(link("friday://open?page=inbox&x=1") == .open(.go("/inbox")), "open and new still read their settings")
+}
+
 test("a server left over from another build is stopped; this build's, a hand-started one or a live app's is used") {
     let theirs: [String: Any] = ["server_build": "old", "server_orphan": true, "server_pid": 4242]
     check(Server.leftover(theirs, mine: "new") == 4242, "another build's, its app gone: stopped")
