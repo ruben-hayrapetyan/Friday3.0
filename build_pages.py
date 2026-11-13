@@ -66,7 +66,10 @@ def page(name: str, title: str, description: str, body: str) -> str:
 <meta name="color-scheme" content="light dark">
 <title>{html.escape(title)}</title>
 <meta name="description" content="{html.escape(description)}">
-<link rel="icon" href="/images/icon.png">
+<link rel="canonical" href="https://friday-scheduler.com/{name}">
+<link rel="icon" type="image/png" sizes="48x48" href="/images/icon-48.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png">
+<link rel="apple-touch-icon" href="/images/icon.png">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -87,6 +90,7 @@ def page(name: str, title: str, description: str, body: str) -> str:
   {foot}
   <a href="mailto:friday_support@friday-scheduler.com">friday_support@friday-scheduler.com</a>
 </div></footer>
+<script src="/download.js"></script>
 <script src="/site.js"></script>
 </body>
 </html>
@@ -104,11 +108,12 @@ def versions(record: dict) -> str:
     parts = []
     for v in offered(record):
         name = html.escape(v["version"])
-        download = (f' · <a href="/get/Friday-{name}.dmg" download>Download</a>'
-                    if v["version"] == record["current"] else "")  # fmt: skip
+        current = v["version"] == record["current"]  # its download, matched to the computer like the home page's (H189)
+        download = f' · <a href="/get/Friday-{name}.dmg" download data-download>Download</a>' if current else ""
+        other = '\n  <p class="other" data-download-other hidden></p>' if current else ""
         parts.append(f"""<div class="version" id="{name}">
   <h2>Friday {name}</h2>
-  <p class="when">{notes_.long_date(v["released"])}{download}</p>
+  <p class="when">{notes_.long_date(v["released"])}{download}</p>{other}
 {notes_.sections_html(v["notes"])}
 </div>""")
     return "\n\n".join(parts)

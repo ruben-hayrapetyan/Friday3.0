@@ -7,6 +7,8 @@ import functools
 import importlib.util
 import json
 import re
+import shutil
+import subprocess
 import threading
 from html.parser import HTMLParser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -40,6 +42,7 @@ class Parts(HTMLParser):
         self.scripts: list[str] = []
         self.ids: set[str] = set()
         self.current: list[str] = []
+        self.canonical: list[str] = []  # the page's own https address (H184): named, not loaded
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         a = dict(attrs)
@@ -49,7 +52,9 @@ class Parts(HTMLParser):
             self.links.append(a["href"] or "")
             if a.get("aria-current") == "page":
                 self.current.append(a["href"] or "")
-        if tag == "link" and a.get("href"):
+        if tag == "link" and a.get("rel") == "canonical":
+            self.canonical.append(a.get("href") or "")
+        elif tag == "link" and a.get("href"):
             self.links.append(a["href"] or "")
         if tag == "img":
             self.images.append(a)
@@ -208,3 +213,139 @@ def test_slacks_return_page_forwards_only_to_this_mac() -> None:
     assert '<script src="/slack-signin.js">' in page and 'name="robots" content="noindex"' in page
     assert re.findall(r"https?://[^\"' )]+", script) == ["http://127.0.0.1:"]
     assert "/^\\d{4,5}$/" in script and "location.replace" in script
+
+
+@pytest.mark.parametrize("page", PAGES)
+def test_every_page_names_its_https_address(site: str, page: str) -> None:
+    """H184: Google had the home page at http://, which the site also answered; each page names its own https address
+    (the home page as the site's root), and only that one."""
+    want = "https://friday-scheduler.com/" + ("" if page == "index.html" else page)
+    assert parsed(site, page).canonical == [want]
+
+
+def test_the_home_page_offers_the_week_as_its_picture() -> None:
+    """H184 (13 Nov: "have there be a nice picture - not nothingg"): the week is the picture offered beside the result
+    (Open Graph, the page's structured data), at its true size, and large previews are allowed; the icon stays the
+    logo (H181)."""
+    home = (SITE / "index.html").read_text()
+    meta = dict(re.findall(r'<meta (?:property|name)="([^"]+)" content="([^"]*)">', home))
+    assert meta["og:image"] == "https://friday-scheduler.com/images/week.jpg"
+    week = (SITE / "images" / "week.jpg").read_bytes()
+    found = re.search(rb"\xff[\xc0\xc2]..\x08(..)(..)", week, re.S)  # a JPEG's frame header: height, then width
+    assert found and (int(meta["og:image:width"]), int(meta["og:image:height"])) == (
+        int.from_bytes(found[2], "big"), int.from_bytes(found[1], "big"))
+    assert "max-image-preview:large" in meta["robots"] and meta["twitter:card"] == "summary_large_image"
+    assert len(meta["og:image:alt"]) > 20
+    data = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', home, re.S)[1])
+    nodes = {node["@type"]: node for node in data["@graph"]}
+    assert nodes["WebPage"]["primaryImageOfPage"] == meta["og:image"]
+    assert nodes["Organization"]["logo"].endswith("/images/icon.png")
+
+
+def test_google_calendar_and_gmail_are_not_called_coming() -> None:
+    """H186: they're in the download (Google's calendars through the Mac's Internet Accounts, Gmail with an app
+    password), so no page says they're coming, and the FAQ says how."""
+    for page in PAGES:
+        text = (SITE / page).read_text()
+        assert "coming to the download" not in text and "once they're in the download" not in text, page
+    home = (SITE / "index.html").read_text()
+    answer = re.search(r"Does it work with Google Calendar\?</summary><p>(.*?)</p>", home)[1]
+    assert answer.startswith("Yes.") and "Internet Accounts" in answer and "app password" in answer
+
+
+def test_privacy_and_the_terms_say_what_the_update_check_sends_and_the_code_sends_that() -> None:
+    """H187: both pages say the check sends the version you have (and the address any request shows, which Cloudflare
+    sees too), and the updater's request carries exactly that version."""
+    privacy = (SITE / "privacy.html").read_text()
+    update = re.search(r"<b>Looking for updates\.</b>(.*?)</li>", privacy, re.S)[1]
+    assert "which version of Friday you have" in update and "Cloudflare" in update
+    assert "sends nothing about you or your data;" not in update
+    terms = (ROOT / "TERMS.md").read_text()
+    assert "which version of Friday you have" in terms and "Cloudflare" in terms
+    spec = importlib.util.spec_from_file_location("updates", ROOT / "src" / "friday" / "sync" / "updates.py")
+    assert spec and spec.loader
+    updates = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(updates)
+    assert updates.asking("https://friday-scheduler.com/updates.json", "0.4.1").get_header("User-agent") == (
+        "Friday/0.4.1 (Mac)")
+
+
+def test_whats_new_download_is_matched_to_the_computer_like_the_home_page() -> None:
+    """H189: the current version's Download on What's new is a [data-download] with its note, and the page runs the
+    same download.js as the home page; older versions have no download."""
+    page = (SITE / "whats-new.html").read_text()
+    assert page.count("data-download>Download</a>") == 1 and page.count("data-download-other hidden") == 1
+    assert '<script src="/download.js"></script>' in page
+    current = re.search(r'<div class="version" id="([^"]+)">', page)[1]  # newest first
+    assert f'href="/get/Friday-{current}.dmg" download data-download>' in page
+
+
+HARNESS = r"""
+// download.js in a made-up browser: argv[2] is the visitor (JSON), the result the buttons and notes as left.
+const visitor = JSON.parse(process.argv[2]);
+function el(attrs, text) {
+  return { attrs: Object.assign({}, attrs), textContent: text, hidden: "hidden" in attrs, innerHTML: "",
+    getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }, setAttribute(k, v) { this.attrs[k] = v; },
+    removeAttribute(k) { delete this.attrs[k]; } };
+}
+const buttons = [el({ href: "/get/Friday-0.4.1.dmg", download: "" }, "Download for Mac"),
+                 el({ href: "/get/Friday-0.4.1.dmg", download: "" }, "Download")];
+const notes = [el({ hidden: "" }, "")], macOnly = [el({}, "")];
+const all = { "[data-download]": buttons, "[data-download-other]": notes, "[data-mac-only]": macOnly };
+global.document = { querySelector: (q) => (all[q] || [])[0] || null, querySelectorAll: (q) => all[q] || [] };
+const nav = { platform: visitor.platform, userAgent: visitor.agent, maxTouchPoints: visitor.touch || 0 };
+if (visitor.arch !== undefined) nav.userAgentData = { platform: visitor.uaPlatform || "macOS",
+  getHighEntropyValues: async () => (visitor.arch === null ? {} : { architecture: visitor.arch }) };
+Object.defineProperty(global, "navigator", { value: nav, configurable: true });
+require(process.argv[3]);
+setTimeout(() => console.log(JSON.stringify({
+  buttons: buttons.map((b) => ({ text: b.textContent, href: b.getAttribute("href"), off: b.getAttribute("aria-disabled") })),
+  note: notes[0].hidden ? null : notes[0].innerHTML, macOnlyHidden: macOnly[0].hidden })), 20);
+"""
+
+MAC_SAFARI = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15"
+MAC_CHROME = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130.0 Safari/537.36"
+
+
+def visit(tmp_path: Path, **visitor: object) -> dict:
+    if not shutil.which("node"):
+        pytest.skip("node isn't installed")
+    harness = tmp_path / "harness.cjs"
+    harness.write_text(HARNESS)
+    script = tmp_path / "download.cjs"
+    script.write_text((SITE / "download.js").read_text())
+    run = subprocess.run(["node", str(harness), json.dumps(visitor), str(script)], capture_output=True, text=True,
+                         check=True)
+    return json.loads(run.stdout)
+
+
+@pytest.mark.parametrize("arch", ["arm", None])
+def test_an_apple_silicon_mac_or_one_that_does_not_say_keeps_the_download(tmp_path: Path, arch: str | None) -> None:
+    for seen in (visit(tmp_path, platform="MacIntel", agent=MAC_CHROME, arch=arch),
+                 visit(tmp_path, platform="MacIntel", agent=MAC_SAFARI)):  # Safari: no userAgentData
+        assert all(b["href"] == "/get/Friday-0.4.1.dmg" and b["off"] is None for b in seen["buttons"])
+        assert seen["note"] is None and seen["macOnlyHidden"] is False
+
+
+def test_an_intel_mac_that_says_so_is_told_friday_needs_apple_silicon(tmp_path: Path) -> None:
+    """H188: Chrome and Edge tell the chip ("x86" on Intel): the buttons say Friday needs an Apple silicon Mac, the
+    note says why and still offers the file, and the Mac-only parts (the Terminal line) stay."""
+    seen = visit(tmp_path, platform="MacIntel", agent=MAC_CHROME, arch="x86")
+    assert {b["text"] for b in seen["buttons"]} == {"Friday needs an Apple silicon Mac"}
+    assert all(b["href"] is None and b["off"] == "true" for b in seen["buttons"])
+    assert "Intel chip" in seen["note"] and "Apple silicon (M1 or later)" in seen["note"]
+    assert 'href="/get/Friday-0.4.1.dmg" download>Download anyway</a>' in seen["note"]
+    assert seen["macOnlyHidden"] is False
+
+
+@pytest.mark.parametrize(("platform", "agent", "touch", "label"), [
+    ("iPhone", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)", 5, "Friday is a Mac app"),
+    ("MacIntel", MAC_SAFARI, 5, "Friday is a Mac app"),  # an iPad asks for the desktop site
+    ("Win32", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0", 0, "Friday is for Mac for now"),
+    ("Linux x86_64", "Mozilla/5.0 (X11; Linux x86_64) Firefox/131.0", 0, "Friday is for Mac for now"),
+])
+def test_other_computers_are_told_friday_is_for_mac(tmp_path: Path, platform: str, agent: str, touch: int,
+                                                     label: str) -> None:
+    seen = visit(tmp_path, platform=platform, agent=agent, touch=touch)
+    assert {b["text"] for b in seen["buttons"]} == {label} and all(b["href"] is None for b in seen["buttons"])
+    assert "Download for Mac anyway</a>" in seen["note"] and seen["macOnlyHidden"] is True

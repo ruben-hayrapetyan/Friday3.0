@@ -245,7 +245,7 @@ section.band { padding-top: 120px; }
 .get-it img { width: 88px; height: 88px; margin-bottom: 20px; }
 .get-it h2 { font: 800 clamp(34px, 4.6vw, 56px)/1.05 var(--head); letter-spacing: -0.025em; margin-bottom: 24px; }
 .get-it .specs { margin-top: 14px; font: 400 13px/1.5 var(--mono); color: var(--quiet); }
-.get-it .other { font-size: 14px; color: var(--quiet); }
+.get-it .other, .version .other { font-size: 14px; color: var(--quiet); }
 
 /* Text pages */
 main.page { padding: 64px 0 96px; }
