@@ -1,8 +1,9 @@
 """Late work's last chance (8 Nov: "If math homework becomes overdue, it must be done before sunday"). A rule of type
 `late_cutoff` names the work (its scope) and a weekday: once that work is past its due it may still be planned, as
 urgently as any late work, but never on or after that day ("before sunday") or after it ends ("by sunday"). The day is
-the first such weekday after the due's own day ("before") or on or after it ("by"), in your time. Past it, the work
-isn't planned at all: like work that's pointless once late, with a few days' grace."""
+the first such weekday after the due's own day ("before") or on or after it ("by"), in your time; a due at midnight
+is the day's that ends then. Past it, the work isn't planned at all: like work that's pointless once late, with a few
+days' grace."""
 
 from collections.abc import Iterable
 from datetime import timedelta
@@ -17,8 +18,10 @@ PLANNER_TYPE = "late_cutoff"
 
 def cutoff_after(due_utc: int, day: str, before: bool, tz: str) -> int:
     """'before sunday': the start of the first Sunday after the due's day; 'by sunday': the end of the first Sunday on
-    or after it. UTC minutes."""
-    due_day = to_local(due_utc, tz).date()
+    or after it. UTC minutes. The due's day holds its last minute before it, as `allocator.day_due` reads it: due at
+    12am Sunday is due as Saturday ends (audit, 12 Nov: read as Sunday's, "before sunday" was a week on, where 11:59pm
+    Saturday had no time at all)."""
+    due_day = to_local(due_utc - 1, tz).date()
     ahead = (WEEKDAYS.index(day) - due_day.weekday()) % 7
     if before and ahead == 0:
         ahead = 7  # due on a Sunday: before Sunday is the next one
