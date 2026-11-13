@@ -233,7 +233,9 @@ def test_the_home_page_offers_the_week_as_its_picture() -> None:
     week = (SITE / "images" / "week.jpg").read_bytes()
     found = re.search(rb"\xff[\xc0\xc2]..\x08(..)(..)", week, re.S)  # a JPEG's frame header: height, then width
     assert found and (int(meta["og:image:width"]), int(meta["og:image:height"])) == (
-        int.from_bytes(found[2], "big"), int.from_bytes(found[1], "big"))
+        int.from_bytes(found[2], "big"),
+        int.from_bytes(found[1], "big"),
+    )
     assert "max-image-preview:large" in meta["robots"] and meta["twitter:card"] == "summary_large_image"
     assert len(meta["og:image:alt"]) > 20
     data = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', home, re.S)[1])
@@ -267,7 +269,8 @@ def test_privacy_and_the_terms_say_what_the_update_check_sends_and_the_code_send
     updates = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(updates)
     assert updates.asking("https://friday-scheduler.com/updates.json", "0.4.1").get_header("User-agent") == (
-        "Friday/0.4.1 (Mac)")
+        "Friday/0.4.1 (Mac)"
+    )
 
 
 def test_whats_new_download_is_matched_to_the_computer_like_the_home_page() -> None:
@@ -299,7 +302,8 @@ if (visitor.arch !== undefined) nav.userAgentData = { platform: visitor.uaPlatfo
 Object.defineProperty(global, "navigator", { value: nav, configurable: true });
 require(process.argv[3]);
 setTimeout(() => console.log(JSON.stringify({
-  buttons: buttons.map((b) => ({ text: b.textContent, href: b.getAttribute("href"), off: b.getAttribute("aria-disabled") })),
+  buttons: buttons.map((b) => ({ text: b.textContent, href: b.getAttribute("href"),
+    off: b.getAttribute("aria-disabled") })),
   note: notes[0].hidden ? null : notes[0].innerHTML, macOnlyHidden: macOnly[0].hidden })), 20);
 """
 
@@ -314,15 +318,18 @@ def visit(tmp_path: Path, **visitor: object) -> dict:
     harness.write_text(HARNESS)
     script = tmp_path / "download.cjs"
     script.write_text((SITE / "download.js").read_text())
-    run = subprocess.run(["node", str(harness), json.dumps(visitor), str(script)], capture_output=True, text=True,
-                         check=True)
+    run = subprocess.run(
+        ["node", str(harness), json.dumps(visitor), str(script)], capture_output=True, text=True, check=True
+    )
     return json.loads(run.stdout)
 
 
 @pytest.mark.parametrize("arch", ["arm", None])
 def test_an_apple_silicon_mac_or_one_that_does_not_say_keeps_the_download(tmp_path: Path, arch: str | None) -> None:
-    for seen in (visit(tmp_path, platform="MacIntel", agent=MAC_CHROME, arch=arch),
-                 visit(tmp_path, platform="MacIntel", agent=MAC_SAFARI)):  # Safari: no userAgentData
+    for seen in (
+        visit(tmp_path, platform="MacIntel", agent=MAC_CHROME, arch=arch),
+        visit(tmp_path, platform="MacIntel", agent=MAC_SAFARI),
+    ):  # Safari: no userAgentData
         assert all(b["href"] == "/get/Friday-0.4.1.dmg" and b["off"] is None for b in seen["buttons"])
         assert seen["note"] is None and seen["macOnlyHidden"] is False
 
@@ -338,14 +345,18 @@ def test_an_intel_mac_that_says_so_is_told_friday_needs_apple_silicon(tmp_path: 
     assert seen["macOnlyHidden"] is False
 
 
-@pytest.mark.parametrize(("platform", "agent", "touch", "label"), [
-    ("iPhone", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)", 5, "Friday is a Mac app"),
-    ("MacIntel", MAC_SAFARI, 5, "Friday is a Mac app"),  # an iPad asks for the desktop site
-    ("Win32", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0", 0, "Friday is for Mac for now"),
-    ("Linux x86_64", "Mozilla/5.0 (X11; Linux x86_64) Firefox/131.0", 0, "Friday is for Mac for now"),
-])
-def test_other_computers_are_told_friday_is_for_mac(tmp_path: Path, platform: str, agent: str, touch: int,
-                                                     label: str) -> None:
+@pytest.mark.parametrize(
+    ("platform", "agent", "touch", "label"),
+    [
+        ("iPhone", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)", 5, "Friday is a Mac app"),
+        ("MacIntel", MAC_SAFARI, 5, "Friday is a Mac app"),  # an iPad asks for the desktop site
+        ("Win32", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0", 0, "Friday is for Mac for now"),
+        ("Linux x86_64", "Mozilla/5.0 (X11; Linux x86_64) Firefox/131.0", 0, "Friday is for Mac for now"),
+    ],
+)
+def test_other_computers_are_told_friday_is_for_mac(
+    tmp_path: Path, platform: str, agent: str, touch: int, label: str
+) -> None:
     seen = visit(tmp_path, platform=platform, agent=agent, touch=touch)
     assert {b["text"] for b in seen["buttons"]} == {label} and all(b["href"] is None for b in seen["buttons"])
     assert "Download for Mac anyway</a>" in seen["note"] and seen["macOnlyHidden"] is True
