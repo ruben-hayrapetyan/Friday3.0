@@ -102,6 +102,8 @@ describe("a task's detail", () => {
   })
 
   it("says how much is done with the keyboard, and Start over counts none of it", async () => {
+    // how much the sample did depends on the day it's lived to: set to 1h 15m of its 4h
+    await friday.c("progress", { id: (await itemNamed("FWS essay draft")).id, share: 0.3125 })
     const { user, aside, item } = await detailOf("FWS essay draft")
     expect(within(aside).getByText("1h 15m of 4h")).toBeTruthy()
     expect(within(aside).getByText("2h 45m left · 1h 15m done")).toBeTruthy()

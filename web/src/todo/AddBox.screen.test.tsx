@@ -25,18 +25,20 @@ describe("the add line", () => {
   it("reads a line as you type it, fills in its section's kind, and adds it on Enter", async () => {
     const { user } = await todo()
     const line = screen.getByLabelText("Add an assignment…")
-    await user.type(line, "essay 3h due fri")
+    // a day three ahead: a day name that is today's means today, and its chip shows only the time
+    const day = new Date(Date.now() + 3 * 86_400_000).toLocaleDateString("en-US", { weekday: "short" })
+    await user.type(line, `essay 3h due ${day.toLowerCase()}`)
     expect(screen.getByText("↵ add · ⇧↵ from any field")).toBeTruthy()
     await waitFor(() => expect(chip("How long it takes").textContent).toBe("3h"))
     expect(chip("What sort of work").textContent).toBe("Assignment")
-    await waitFor(() => expect(chip("When it's due").textContent).toMatch(/^Due Fri/))
+    await waitFor(() => expect(chip("When it's due").textContent).toMatch(new RegExp(`^Due ${day}`)))
     expect(chip("How often it comes back").textContent).toBe("Once")
     expect(chip("What it belongs to").textContent).toBe("No tag")
     // With a due, whether there's time for it shows by itself.
     expect((await screen.findAllByText(/Checking whether you have time…|fits|late|tight|time/i)).length).toBeGreaterThan(0)
     await user.keyboard("{Enter}")
     const sent = await waitForSent("add")
-    expect(sent.body).toEqual({ text: "essay 3h due fri", preset: "Assignment" })
+    expect(sent.body).toEqual({ text: `essay 3h due ${day.toLowerCase()}`, preset: "Assignment" })
     const added = await row("essay")
     expect(within(added).getByText("new")).toBeTruthy()
     expect((line as HTMLInputElement).value).toBe("")

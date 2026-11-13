@@ -234,6 +234,8 @@ describe("the To-do page", () => {
   })
 
   it("draws two-line rows with progress when asked, which also tick off and open", async () => {
+    // how much the sample did depends on the day it's lived to: set to 1h 15m of its 4h
+    await friday.c("progress", { id: (await itemNamed("FWS essay draft")).id, share: 0.3125 })
     const { user } = await openFriday("/todo")
     await row("MATH 1910 Written HW 8")
     await viewOptions(user)
