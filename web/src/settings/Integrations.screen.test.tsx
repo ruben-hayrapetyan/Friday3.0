@@ -8,7 +8,7 @@
 import { screen, waitFor, within } from "@testing-library/react"
 import { afterAll, describe, expect, it, vi } from "vitest"
 import { friday, openFriday, waitForSent } from "@/test/friday"
-import { standIn } from "./screen.test.helpers"
+import { openIntegration, standIn } from "./screen.test.helpers"
 
 const ICS = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Friday tests//EN", "BEGIN:VEVENT", "UID:hw1@test", "DTSTAMP:20261101T000000Z", "DTSTART:20261120T170000Z", "DTEND:20261120T180000Z", "SUMMARY:Essay 2 due", "END:VEVENT", "END:VCALENDAR", ""].join("\r\n")
 const calendar = await standIn((req) => (req.url?.endsWith(".ics") ? { text: ICS, type: "text/calendar" } : undefined))
@@ -18,14 +18,21 @@ type Source = { id: number; kind: string; name: string; enabled: boolean; servic
 const sources = async () => ((await friday.q<{ sources: Source[] }>("inbox")).sources ?? []).filter((s) => s.enabled)
 
 /** The gallery, and the popup of the box whose button is called `box` ("Gmail, Connected") once it's opened. */
-async function openBox(box: string) {
-  const app = await openFriday("/settings/integrations")
-  await app.user.click(await screen.findByRole("button", { name: box }))
-  const dialog = await screen.findByRole("dialog", { name: box.split(", ")[0] })
-  return { ...app, dialog }
-}
+const openBox = (box: string) => openIntegration(box, box.split(", ")[0])
 
 describe("the integrations gallery", () => {
+  it("moves a connected box to Connected once it knows, as a new box: a click on the one found before opens nothing, so the tests open boxes once it has settled", async () => {
+    const app = await openFriday("/settings/integrations")
+    const early = await screen.findByRole("button", { name: /^Google Calendar/ }) // before what's connected loads
+    await waitFor(() => expect(app.client.isFetching()).toBe(0), { timeout: 20_000 })
+    const settled = within(screen.getByRole("region", { name: "Connected" })).getByRole("button", { name: /^Google Calendar/ })
+    expect(early).not.toBe(settled) // the box found first was in its category: it isn't on the page now
+    expect(early.isConnected).toBe(false)
+    await app.user.click(settled)
+    expect(await screen.findByRole("dialog", { name: "Google Calendar" })).toBeTruthy()
+  })
+
+
   it("puts what's connected on top, then each category, with what each box brings", async () => {
     await openFriday("/settings/integrations")
     const connected = await screen.findByRole("region", { name: "Connected" })

@@ -6,8 +6,8 @@
 
 import { fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest"
-import { friday, openFriday, waitForSent } from "@/test/friday"
-import { answer, refused, standIn } from "./screen.test.helpers"
+import { friday, waitForSent } from "@/test/friday"
+import { answer, openIntegration, refused, standIn } from "./screen.test.helpers"
 
 type Connected = { id: number; kind: string; name: string; arrival: string; last_error: string | null; made: number; waiting: number; lists: boolean; last_sync: string | null }
 
@@ -51,12 +51,7 @@ afterEach(() => {
 const connected = () => friday.q<Connected[]>("integrations")
 
 /** The gallery, and the popup of the box whose button is called `box`. */
-async function openBox(box: string) {
-  const app = await openFriday("/settings/integrations")
-  await app.user.click(await screen.findByRole("button", { name: box }))
-  const dialog = await screen.findByRole("dialog", { name: box.split(", ")[0] })
-  return { ...app, dialog }
-}
+const openBox = (box: string) => openIntegration(box, box.split(", ")[0])
 
 describe("a token form (Todoist)", () => {
   it("says the steps, links the token page, and connects only with a token", async () => {

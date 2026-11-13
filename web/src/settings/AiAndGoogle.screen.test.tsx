@@ -6,8 +6,8 @@
 
 import { fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { friday, openFriday, waitForSent } from "@/test/friday"
-import { answer, answered, done, refused } from "./screen.test.helpers"
+import { friday, waitForSent } from "@/test/friday"
+import { answer, answered, done, openIntegration, refused } from "./screen.test.helpers"
 
 const undo: (() => void)[] = []
 afterEach(() => {
@@ -18,11 +18,7 @@ afterEach(() => {
 type Llm = { provider: string; model: string; base_url: string | null; via?: string }
 const llm = async () => (await friday.q<{ llm: Llm }>("settings")).llm
 
-async function openBox(box: string | RegExp, dialog = typeof box === "string" ? box.split(", ")[0] : "Google Calendar") {
-  const app = await openFriday("/settings/integrations")
-  await app.user.click(await screen.findByRole("button", { name: box }))
-  return { ...app, dialog: await screen.findByRole("dialog", { name: dialog }) }
-}
+const openBox = (box: string | RegExp, dialog = typeof box === "string" ? box.split(", ")[0] : "Google Calendar") => openIntegration(box, dialog)
 
 describe("the AI box", () => {
   it("asks Claude through Claude Code, with a key kept only as a backup", async () => {

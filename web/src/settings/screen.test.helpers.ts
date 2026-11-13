@@ -4,9 +4,9 @@
 // Nothing here reaches a real service.
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http"
-import { configure, waitFor } from "@testing-library/react"
+import { configure, screen, waitFor } from "@testing-library/react"
 import { beforeAll, expect } from "vitest"
-import { sent } from "@/test/friday"
+import { openFriday, sent } from "@/test/friday"
 
 // A whole Friday answering on a busy machine: a second's wait for what shows is too little at times.
 configure({ asyncUtilTimeout: 5000 })
@@ -34,6 +34,17 @@ beforeAll(() => {
 export async function answered(client: { invalidateQueries: () => Promise<void> }) {
   await waitFor(() => expect(unanswered).toBe(0))
   await client.invalidateQueries()
+}
+
+/** Settings → Integrations once it has settled, and the popup of the box whose button is called `box` ("Gmail,
+ * Connected"), named `dialog`. Settled first: until what's connected has loaded, a connected box sits in its
+ * category, then moves to Connected as a new element; a click on the one found before that opened nothing, and on a
+ * busy machine the tests failed now and then (13 Nov). */
+export async function openIntegration(box: string | RegExp, dialog: string) {
+  const app = await openFriday("/settings/integrations")
+  await waitFor(() => expect(app.client.isFetching()).toBe(0), { timeout: 20_000 })
+  await app.user.click(await screen.findByRole("button", { name: box }))
+  return { ...app, dialog: await screen.findByRole("dialog", { name: dialog }) }
 }
 
 type Reply = { status?: number; json?: unknown; text?: string; type?: string }
