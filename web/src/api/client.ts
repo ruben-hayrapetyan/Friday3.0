@@ -93,18 +93,29 @@ async function read<T>(response: Response): Promise<T> {
 }
 
 /** Reads wait their turn, a few at a time, and what you do goes first (12 Nov: one click had the page ask some 35
- * things again at once, all on this Mac, and the next click waited behind them): commands never wait here. */
-const READS_AT_ONCE = 4
-let reading = 0
-const waitingReads: (() => void)[] = []
-async function inTurn<T>(read: () => Promise<T>): Promise<T> {
-  if (reading >= READS_AT_ONCE) await new Promise<void>((go) => waitingReads.push(go))
-  reading++
+ * things again at once, all on this Mac, and the next click waited behind them): commands never wait here. Reads that
+ * plan your week (What if, a suggestion's effect, another way, the exact fit check) take seconds, so they have turns
+ * of their own: two of them at once used to hold half the page's turns (13 Nov). */
+export type Lane = "quick" | "planning"
+const AT_ONCE: Record<Lane, number> = { quick: 4, planning: 2 }
+const PLANNING = new Set(["whatif", "suggestion_effect", "other_way"])
+const reading: Record<Lane, number> = { quick: 0, planning: 0 }
+const waitingReads: Record<Lane, (() => void)[]> = { quick: [], planning: [] }
+
+/** Which turns a read takes: the fit check's quick answer is quick, its exact one plans. */
+export function laneOf(name: string, body?: unknown): Lane {
+  if (name === "fit") return (body as { exact?: boolean } | undefined)?.exact ? "planning" : "quick"
+  return PLANNING.has(name) ? "planning" : "quick"
+}
+
+async function inTurn<T>(lane: Lane, read: () => Promise<T>): Promise<T> {
+  if (reading[lane] >= AT_ONCE[lane]) await new Promise<void>((go) => waitingReads[lane].push(go))
+  reading[lane]++
   try {
     return await read()
   } finally {
-    reading--
-    waitingReads.shift()?.()
+    reading[lane]--
+    waitingReads[lane].shift()?.()
   }
 }
 
@@ -128,7 +139,7 @@ export async function command<N extends CommandName>(
 }
 
 export async function queryBody<N extends BodyQueryName>(name: N, body: Json<Body<N>>): Promise<Output<N>> {
-  return inTurn(async () => read(await fetch(`/api/q/${name}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })))
+  return inTurn(laneOf(name, body), async () => read(await fetch(`/api/q/${name}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })))
 }
 
 export async function query<N extends QueryName>(name: N, params?: QueryParams<N>, signal?: AbortSignal): Promise<Output<N>> {
@@ -138,5 +149,5 @@ export async function query<N extends QueryName>(name: N, params?: QueryParams<N
     for (const v of Array.isArray(value) ? value : [value]) search.append(key, String(v))
   }
   const text = search.toString()
-  return inTurn(async () => read(await fetch(`/api/q/${name}${text ? `?${text}` : ""}`, signal ? { signal } : undefined)))
+  return inTurn(laneOf(name), async () => read(await fetch(`/api/q/${name}${text ? `?${text}` : ""}`, signal ? { signal } : undefined)))
 }
