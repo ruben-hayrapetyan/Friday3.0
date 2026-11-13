@@ -1,6 +1,8 @@
 // The API speaks local wall time ("2026-10-20T14:00"). The client never converts zones: it counts minutes on a
 // zone-free clock, which is all drawing and ordering need.
 
+import { dayStartMin } from "./dayStart"
+
 export const ROW_MIN = 15
 
 export function toMin(local: string): number {
@@ -53,12 +55,12 @@ export interface Span {
   end: string
 }
 
-const DAY_START = 4 * 60 // before 4am is the night before, as the server counts days
 
 /** The axis stretched, to the hour, to take in what's on these days: a 6am class opens the day at 6am rather than
  * being cut at the wake time. Something after midnight belongs to the evening before; a day stays a day long. */
 export function fitAxis(axis: Axis, things: Span[], dates: string[]): Axis {
   let { startMin, endMin } = axis
+  const DAY_START = dayStartMin() // before it is the night before, as the server counts days
   const shown = new Set(dates)
   for (const t of things) {
     const date = t.start.slice(0, 10)

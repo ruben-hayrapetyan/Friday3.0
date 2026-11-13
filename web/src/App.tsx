@@ -4,8 +4,9 @@ import { HashRouter } from "react-router"
 import { useServerEvents } from "@/api/events"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { Toasts } from "@/components/Toasts"
-import { useCalendar, useStatus } from "@/hooks/queries"
+import { useCalendar, useSettings, useStatus } from "@/hooks/queries"
 import { nowMin } from "@/hooks/useClock"
+import { setDayStart } from "@/lib/dayStart"
 import { fromMin } from "@/lib/time"
 import { Shell } from "@/shell/Shell"
 import { ShellProvider } from "@/shell/ShellContext"
@@ -35,8 +36,16 @@ export function Friday({ client }: { client: QueryClient }) {
   )
 }
 
+/** Your day start, given to the helpers that place things by day (lib/dayStart.ts): set while rendering, so what
+ * draws below already follows it. */
+export function useDayStart(): void {
+  const settings = useSettings().data as Record<string, { day_start?: string }> | undefined
+  setDayStart(settings?.time?.day_start)
+}
+
 function Root() {
   useServerEvents()
+  useDayStart()
   const status = useStatus()
   const terms = useTerms()
   const today = useToday()

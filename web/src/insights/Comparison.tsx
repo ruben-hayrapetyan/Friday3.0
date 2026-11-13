@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { type Item, query } from "@/api/client"
 import { useCommand } from "@/hooks/useCommand"
 import { useItems } from "@/hooks/queries"
+import { dayStartClock } from "@/lib/dayStart"
 import { clock, dayLabel, weekday } from "@/lib/format"
 import { eventPaint, wash } from "@/lib/pigments"
 import { addDays, layout, type Placed, toMin } from "@/lib/time"
@@ -37,7 +38,7 @@ export function Comparison({ bare = false, onAnswer }: { bare?: boolean; onAnswe
   // The question carries titles and times only: areas come from the items, an event's paint from the day's plan.
   const items = useItems().data
   const start = `${day}T00:00`
-  const end = day ? `${addDays(day, 1)}T04:00` : ""
+  const end = day ? `${addDays(day, 1)}T${dayStartClock()}` : "" // the day runs to the next day start
   const plan = useQuery({ queryKey: ["plan", start, end], queryFn: () => query("plan", { start, end }), enabled: !!q }).data
   if (!q) return null
   const a = q.a as unknown as Piece[]

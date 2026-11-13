@@ -1,4 +1,5 @@
 import { parseLength as readLength } from "./lengths"
+import { dayStartClock } from "./dayStart"
 import { ampm, fromMin, toMin } from "./time"
 
 export { ampm }
@@ -23,9 +24,8 @@ export function dayLabel(date: string): string {
 export function when(local: string, today: string): string {
   const date = local.slice(0, 10)
   const time = local.length > 10 ? clock(local) : ""
-  // A repeat's window ends as the next planning day starts (04:00): that is the end of the day before.
-  // ponytail: assumes the default day start; read time.day_start if anyone changes it.
-  if (local.slice(11, 16) === "04:00") return `${when(new Date((toMin(date) - 1440) * 60000).toISOString().slice(0, 10), today)}, end of day`
+  // A repeat's window ends as the next planning day starts (your day start): that is the end of the day before.
+  if (local.slice(11, 16) === dayStartClock()) return `${when(new Date((toMin(date) - 1440) * 60000).toISOString().slice(0, 10), today)}, end of day`
   if (local.startsWith(today) && time) return time
   const days = Math.abs(toMin(date) - toMin(today)) / 1440
   const day = days < 7 ? weekday(date) : `${weekday(date)} ${Number(date.slice(8, 10))} ${MONTH[Number(date.slice(5, 7)) - 1]}`

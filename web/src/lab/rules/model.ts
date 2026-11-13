@@ -2,6 +2,7 @@
 // change list applied to it, what a plan looks like in plain numbers, and the dial and ranking mappings.
 
 import type { Block, Schemas } from "@/api/client"
+import { dayStartMin } from "@/lib/dayStart"
 import { toMin } from "@/lib/time"
 
 export interface RuleSpec {
@@ -73,9 +74,9 @@ export interface Shape {
   sittings: number
 }
 
-const DAY_START = 4 * 60 // planning days start at 04:00, so 01:00 work belongs to the evening before
-
-export function shapeOf(plan: PlanMap): Shape {
+/** `dayStart`: minutes after midnight the planning day starts (your settings'), so 01:00 work belongs to the evening
+ * before. */
+export function shapeOf(plan: PlanMap, dayStart = dayStartMin()): Shape {
   const spans = [...plan.values()].flatMap((e) => e.spans).map(([a, b]) => [toMin(a), toMin(b)] as const)
   spans.sort((x, y) => x[0] - y[0])
   const byDay = new Map<number, number>()
@@ -83,7 +84,7 @@ export function shapeOf(plan: PlanMap): Shape {
   for (let [s, e] of spans) {
     for (; s < e; s += 15) {
       const clock = ((s % 1440) + 1440) % 1440
-      const day = Math.floor((s - DAY_START) / 1440)
+      const day = Math.floor((s - dayStart) / 1440)
       const weekday = new Date(day * 86400000).getUTCDay()
       const weekend = weekday === 0 || weekday === 6
       shape.total += 0.25
