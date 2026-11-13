@@ -14,7 +14,7 @@ from friday.api.views import NapOut
 from friday.commands.registry import Ctx, command
 from friday.core.db import one, rows
 from friday.core.items import FieldError
-from friday.core.time import ampm, format_local, format_utc, parse_utc, planning_date, to_local
+from friday.core.time import ampm, format_local, format_utc, parse_utc, planning_date, to_local, to_zoned
 from friday.learn.sleep import NAP_LONGEST_MIN, NAP_USUAL_MIN, Nap, usual_nap
 
 FORGOT_MIN = 3 * 60  # "I'm up" this long after lying down was a tap forgotten, not a three-hour nap
@@ -62,7 +62,7 @@ def recorded(ctx: Ctx, days: int) -> list[Nap]:
     found = rows(
         ctx.conn, "SELECT * FROM naps WHERE user_id = ? AND date >= ? ORDER BY start_utc", [ctx.user_id, since]
     )
-    local = lambda t: to_local(parse_utc(t), ctx.tz) if t else None  # noqa: E731
+    local = lambda t: to_zoned(parse_utc(t), ctx.tz) if t else None  # noqa: E731  (zoned: real lengths, 12 Nov)
     return [Nap(r["id"], date.fromisoformat(r["date"]), local(r["start_utc"]), local(r["end_utc"])) for r in found]  # type: ignore[arg-type]
 
 

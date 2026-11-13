@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from statistics import median, quantiles
 
+from friday.core.time import minutes_between
+
 KINDS = ("breakfast", "lunch", "dinner", "snack")
 WEEKENDS = (5, 6)  # Saturday, Sunday
 QUARTER = 15
@@ -28,16 +30,18 @@ class Meal:
     id: int
     kind: str
     date: date  # the planning day
-    start: datetime | None  # local; None when skipped
-    end: datetime | None  # local; None while eating or skipped
+    start: datetime | None  # local, zoned as read (a plain one is a clock time); None when skipped
+    end: datetime | None  # local, zoned as read; None while eating or skipped
     skipped: bool = False
     item_id: int | None = None  # the routine it ticked off (Lunch that day), if one
 
     @property
     def minutes(self) -> int | None:
+        """The real minutes it took, across a change of the clocks too (audit, 12 Nov: read as clock times, a late
+        snack the night they went back was an hour short, or no length at all)."""
         if self.start is None or self.end is None:
             return None
-        minutes = int((self.end - self.start).total_seconds() // 60)
+        minutes = minutes_between(self.start, self.end)
         return minutes if 0 < minutes <= 4 * 60 else None
 
 
@@ -57,8 +61,9 @@ def group_of(day: date) -> str:
 
 
 def minute_of(moment: datetime, day: date) -> int:
-    """Minutes from the planning day's midnight: a meal after midnight counts past 24:00, so the median stays right."""
-    return int((moment - datetime.combine(day, datetime.min.time(), moment.tzinfo)).total_seconds() // 60)
+    """Minutes from the planning day's midnight: a meal after midnight counts past 24:00, so the median stays right. By
+    the clock: lunch at noon is 12:00 the day the clocks change too."""
+    return int((moment.replace(tzinfo=None) - datetime.combine(day, datetime.min.time())).total_seconds() // 60)
 
 
 def clock(minutes: int) -> str:
@@ -117,12 +122,19 @@ def length_changes(learned: list[Learned], planned: dict[str, int]) -> dict[str,
 ORDINALS = ("", "second", "third", "fourth", "fifth")
 
 
+def began(at: datetime) -> float:
+    """When a meal started, in real time for a zoned one: in the hour the clocks repeat, 1:15 after the change came
+    after 1:45 before it."""
+    return at.timestamp() if at.tzinfo is not None else (at - datetime.min).total_seconds()
+
+
 def nths(meals: Iterable[Meal]) -> dict[int, int]:
     """Each meal's place among the meals of its kind eaten that day, by when it started: 2 is a second dinner. A
     skipped one is 1, as is a snack: having several of those needs no counting."""
     out: dict[int, int] = {}
     counted: dict[tuple[date, str], int] = {}
-    eaten = sorted((m for m in meals if not m.skipped and m.start is not None), key=lambda m: (m.start, m.id))
+    eaten = [m for m in meals if not m.skipped and m.start is not None]
+    eaten.sort(key=lambda m: (began(m.start), m.id))  # type: ignore[arg-type]  (each has a start)
     for m in eaten:
         if m.kind == "snack":
             continue

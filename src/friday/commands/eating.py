@@ -38,7 +38,17 @@ from friday.commands.series import create_series, edit_series_from, load_series,
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.settings import minutes_of
-from friday.core.time import UNIT_MIN, ampm, format_local, format_utc, parse_local, parse_utc, planning_date, to_local
+from friday.core.time import (
+    UNIT_MIN,
+    ampm,
+    format_local,
+    format_utc,
+    parse_local,
+    parse_utc,
+    planning_date,
+    to_local,
+    to_zoned,
+)
 from friday.learn.meals import Learned, Meal, learn, length_changes, meal_name, nths
 from friday.planner.store import kv_get, kv_set, load_item, load_settings
 
@@ -305,7 +315,7 @@ def recorded(ctx: Ctx, days: int) -> list[Meal]:
         "SELECT * FROM meals WHERE user_id = ? AND date >= ? ORDER BY date, start_utc, id",
         [ctx.user_id, since],
     )
-    local = lambda t: to_local(parse_utc(t), ctx.tz) if t else None  # noqa: E731
+    local = lambda t: to_zoned(parse_utc(t), ctx.tz) if t else None  # noqa: E731  (zoned: real lengths, 12 Nov)
     return [
         Meal(r["id"], r["kind"], date.fromisoformat(r["date"]), local(r["start_utc"]), local(r["end_utc"]),
              bool(r["skipped"]), r["item_id"])
