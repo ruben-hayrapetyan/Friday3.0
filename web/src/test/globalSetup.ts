@@ -5,12 +5,13 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import type { TestProject } from "vitest/node"
-import { freePort, serve, stop } from "./server"
+import { freePort, serve, shiftToThursday, stop } from "./server"
 
 export default async function setup(project: TestProject) {
   const folder = mkdtempSync(path.join(tmpdir(), "friday-sample-"))
   const port = await freePort()
-  const server = await serve(folder, port)
+  const shiftDays = shiftToThursday() // one shift for the whole run: the server and every file's page agree
+  const server = await serve(folder, port, 240, shiftDays)
   const base = `http://127.0.0.1:${port}`
   const terms = (await (await fetch(`${base}/api/q/terms`)).json()) as { version: string; needed: boolean }
   if (terms.needed) {
@@ -27,11 +28,13 @@ export default async function setup(project: TestProject) {
   await post("tour_offered", {})
   await stop(server)
   project.provide("fridaySample", folder)
+  project.provide("fridayShiftDays", shiftDays)
   return () => rmSync(folder, { recursive: true, force: true })
 }
 
 declare module "vitest" {
   export interface ProvidedContext {
     fridaySample: string
+    fridayShiftDays: number
   }
 }

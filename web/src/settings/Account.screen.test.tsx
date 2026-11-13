@@ -123,7 +123,8 @@ describe("Phone", () => {
 
 type Status = Record<string, unknown>
 const version = (v: string, notes: Partial<Record<"new" | "changed" | "fixed", string[]>> = {}) => ({ version: v, released: "2026-11-10", summary: `Friday ${v} plans around your shifts.`, new: [], changed: [], fixed: [], ...notes })
-const idle: Status = { checks: true, have: "0.3.3", last_checked: new Date(Date.now() - 5 * 60_000).toISOString(), state: "idle", progress: 0, message: null, versions: [], popup: false, whats_new: [], restart: "now", staged: null }
+/** Up to date, looked 5 minutes ago by the page's clock: read when a test runs, after setup has set that clock. */
+const idle = (): Status => ({ checks: true, have: "0.3.3", last_checked: new Date(Date.now() - 5 * 60_000).toISOString(), state: "idle", progress: 0, message: null, versions: [], popup: false, whats_new: [], restart: "now", staged: null })
 
 describe("Updates", () => {
   it("says this copy doesn't look for updates, and when an update goes in", async () => {
@@ -140,9 +141,9 @@ describe("Updates", () => {
   })
 
   it("checks now, saying when it last looked, and that it's up to date", async () => {
-    let status = idle
+    let status = idle()
     undo.push(answer("update_status", () => ({ json: status })))
-    undo.push(answer("update_check", () => ((status = { ...idle, state: "checking" }), { json: { command_id: null, result: status } })))
+    undo.push(answer("update_check", () => ((status = { ...idle(), state: "checking" }), { json: { command_id: null, result: status } })))
     const { user } = await openFriday("/settings/updates")
     expect(await screen.findByText("Friday is up to date")).toBeTruthy()
     expect(screen.getByText("You have 0.3.3 · Looked 5 minutes ago")).toBeTruthy()
@@ -150,12 +151,12 @@ describe("Updates", () => {
     await waitForSent("update_check")
     expect(await screen.findByText("Looking for a new version…")).toBeTruthy()
     expect((screen.getByRole("button", { name: "Check now" }) as HTMLButtonElement).disabled).toBe(true)
-    status = { ...idle, message: "Couldn't reach the update feed: try again later" }
+    status = { ...idle(), message: "Couldn't reach the update feed: try again later" }
     expect(await screen.findByText("Couldn't reach the update feed: try again later", {}, { timeout: 4000 })).toBeTruthy()
   })
 
   it("shows a newer version's notes, and Later puts it off", async () => {
-    const ready = { ...idle, versions: [version("0.4.0", { new: ["Shifts from When I Work"], fixed: ["Sync now after waking"] }), version("0.3.4")] }
+    const ready = { ...idle(), versions: [version("0.4.0", { new: ["Shifts from When I Work"], fixed: ["Sync now after waking"] }), version("0.3.4")] }
     undo.push(answer("update_status", () => ({ json: ready })))
     undo.push(answer("update_later", () => ({ json: { command_id: null, result: ready } })))
     const { user } = await openFriday("/settings/updates")
@@ -174,7 +175,7 @@ describe("Updates", () => {
   })
 
   it("updates: the download's progress, Stop, and then going in when you quit", async () => {
-    const ready = { ...idle, popup: true, restart: "quit", versions: [version("0.4.0")] }
+    const ready = { ...idle(), popup: true, restart: "quit", versions: [version("0.4.0")] }
     let status: Status = ready
     undo.push(answer("update_status", () => ({ json: status })))
     undo.push(answer("update_start", () => ((status = { ...ready, state: "downloading", progress: 0.42 }), { json: { command_id: null, result: status } })))
@@ -204,16 +205,16 @@ describe("Updates", () => {
     Object.assign(window, { webkit: { messageHandlers: { friday: { postMessage: post } } } })
     vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 FridayMac/1.0")
     undo.push(() => delete (window as { webkit?: unknown }).webkit)
-    undo.push(answer("update_status", () => ({ json: { ...idle, state: "ready", staged: "/Users/alex/Library/Caches/Friday/Friday.app", versions: [version("0.4.0")] } })))
+    undo.push(answer("update_status", () => ({ json: { ...idle(), state: "ready", staged: "/Users/alex/Library/Caches/Friday/Friday.app", versions: [version("0.4.0")] } })))
     await openFriday("/settings/updates")
     await waitFor(() => expect(post).toHaveBeenCalledWith({ update: "install", app: "/Users/alex/Library/Caches/Friday/Friday.app" }))
     expect(await screen.findByText("Friday is restarting into it…")).toBeTruthy()
   })
 
   it("says what changed in the version that just opened, once", async () => {
-    let status: Status = { ...idle, whats_new: [version("0.3.3", { changed: ["Settings open where you left them"] })] }
+    let status: Status = { ...idle(), whats_new: [version("0.3.3", { changed: ["Settings open where you left them"] })] }
     undo.push(answer("update_status", () => ({ json: status })))
-    undo.push(answer("whats_new_seen", () => ((status = idle), { json: { command_id: null, result: idle } })))
+    undo.push(answer("whats_new_seen", () => ((status = idle()), { json: { command_id: null, result: idle() } })))
     const { user } = await openFriday("/")
     const popup = await screen.findByRole("dialog")
     expect(within(popup).getByText("What's new in Friday 0.3.3")).toBeTruthy()

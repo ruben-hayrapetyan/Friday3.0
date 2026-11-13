@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -83,11 +84,14 @@ def main(argv: list[str] | None = None) -> None:
         help="a test profile (`python -m friday.sim.profiles list`), very light to overloaded",
     )
     demo.add_argument("--ready", action="store_true", help="three weeks into using Friday (sim/history.py)")
+    demo.add_argument(
+        "--shift-days", type=int, default=0, help="lived and served as if this many days from now (screen tests)"
+    )
     args = parser.parse_args(argv)
     if args.command == "demo":  # never in your own data folder
         name = "-".join(["friday-demo", *([args.case] if args.case else []), *(["lived"] if args.ready else [])])
         folder = args.data_dir if args.data_dir != DATA_DIR else DATA_DIR.with_name(name)
-        return run_demo(folder, args.port, serve_forever, initialize, args.case, args.ready)
+        return run_demo(folder, args.port, serve_forever, initialize, args.case, args.ready, args.shift_days)
     args.data_dir.mkdir(parents=True, exist_ok=True)
     db_path = args.data_dir / "friday.db"
     if args.command == "init":
@@ -105,7 +109,7 @@ def main(argv: list[str] | None = None) -> None:
         serve_forever(db_path, getattr(args, "host", "127.0.0.1"), getattr(args, "port", None))
 
 
-def serve_forever(db_path: Path, host: str, port: int | None) -> None:
+def serve_forever(db_path: Path, host: str, port: int | None, clock: Callable[[], int] = wall_clock) -> None:
     conn = connect(db_path)
     server = load_settings(conn)["server"]
     conn.close()
@@ -115,7 +119,7 @@ def serve_forever(db_path: Path, host: str, port: int | None) -> None:
     )
     planner_cache.seed()  # before the worker plans: the Mac app's compiled planner, kept outside the app
     tailnet = Tailnet()
-    app = create_app(db_path, web_dist=WEB_DIST, tailnet=tailnet)
+    app = create_app(db_path, clock=clock, web_dist=WEB_DIST, tailnet=tailnet)
     # Settings → Phone on: Friday answers on this Mac's Tailscale address too (C61). Served on every address already
     # (--host 0.0.0.0), it only keeps that address known, for the pairing rule.
     TailnetListener(

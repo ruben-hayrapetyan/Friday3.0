@@ -3,7 +3,7 @@
 // a test can say what a click sent. What browsers have and happy-dom doesn't is stood in for here.
 
 import { cleanup, configure } from "@testing-library/react"
-import { afterAll, afterEach, beforeAll, inject } from "vitest"
+import { afterAll, afterEach, beforeAll, inject, vi } from "vitest"
 import { copyOf, freePort, serve, stop } from "./server"
 
 // A real server answers, and replans after each change: waits get ten seconds, not testing-library's one (a save,
@@ -33,7 +33,10 @@ export const friday = {
 
 beforeAll(async () => {
   const port = await freePort()
-  server = await serve(copyOf(inject("fridaySample")), port, 60)
+  const shiftDays = inject("fridayShiftDays")
+  server = await serve(copyOf(inject("fridaySample")), port, 60, shiftDays)
+  // the page's clock as the server's: the same days ahead, still ticking (only Date; timers stay real)
+  if (shiftDays) vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true, now: Date.now() + shiftDays * 86_400_000 })
   base = `http://127.0.0.1:${port}`
   const page = (window as unknown as { happyDOM: { setURL(url: string): void; setViewport(v: { width: number; height: number }): void } }).happyDOM
   page.setURL(`${base}/`)
@@ -64,6 +67,7 @@ afterEach(() => {
 })
 
 afterAll(async () => {
+  vi.useRealTimers()
   if (server) await stop(server)
 })
 
