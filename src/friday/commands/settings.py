@@ -77,10 +77,14 @@ def settings_set(ctx: Ctx, inp: SettingsSetInput) -> Changed:
             raise FieldError("value", f'{odd}: give its times, like {{"bedtime": "23:30", "wake": "07:30"}}')
         value = {day: {**now.get(day, {}), **(value.get(day) or {})} for day in now}
     before = ctx.settings["llm"]  # saving refreshes ctx.settings: the AI as it was, kept first
-    old_zone = ctx.settings["time"].timezone
+    old_zone, old_day_start = ctx.settings["time"].timezone, ctx.settings["time"].day_start
     write_setting(ctx, inp.key, value)
     if inp.key == "time" and old_zone and ctx.settings["time"].timezone not in (None, old_zone):
         keep_whole_days(ctx, old_zone, ctx.settings["time"].timezone)
+    if inp.key == "time":
+        from friday.commands.rules import follow_day_start  # noqa: PLC0415 (rules saves through this module)
+
+        follow_day_start(ctx, old_day_start, ctx.settings["time"].day_start)
     if inp.key == "llm":
         # A local model no longer read with goes, if Friday downloaded it (ingest/local_models.py).
         local_models.forget(ctx.conn, ctx.user_id, before, validate_value("llm", value))

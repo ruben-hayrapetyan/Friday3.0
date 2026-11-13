@@ -503,10 +503,25 @@ def series_spacing(ctx: Ctx, inp: SeriesSpacingInput) -> SeriesOut:
 def series_stop(ctx: Ctx, inp: SeriesRef) -> SeriesOut:
     """Stop a series; its undone future occurrences go (an imported calendar repeat stops coming in too)."""
     found = load_series(ctx, inp.id)
+    undone = todo_ids(ctx, inp.id)
     ctx.db.update("series", {"id": inp.id}, {"active": 0, "updated_utc": ctx.now_text})
     # in Friday only for a calendar's own repeat: it stays on the calendar, as switching it off says
     remove_future_occurrences(ctx, inp.id, ctx.today, from_calendar=not found["external_id"])
+    # The times taken off a calendar stay here as dropped. Kept, so Start brings back these and not the times you
+    # dropped yourself (audit, 12 Nov: those came back too); stopped again, it adds to them. One stopped before
+    # Friday kept them (NULL) stays as it was.
+    if found["active"] or found["stopped_items"] is not None:
+        taken = [i for i in undone if (ctx.db.fetch("items", {"id": i}) or {}).get("status") == "dropped"]
+        earlier = [] if found["active"] else json.loads(found["stopped_items"])
+        ctx.db.update("series", {"id": inp.id}, {"stopped_items": json.dumps(sorted({*earlier, *taken}))})
     return series_out(ctx, inp.id)
+
+
+def todo_ids(ctx: Ctx, series_id: int) -> list[int]:
+    """A repeat's times still to do from today on."""
+    found = rows(ctx.conn, "SELECT id FROM items WHERE series_id = ? AND status = 'todo' AND occurrence_date >= ?",
+                 [series_id, ctx.today.isoformat()])  # fmt: skip
+    return [r["id"] for r in found]
 
 
 @command("series_delete", affects_plan=True)
@@ -560,23 +575,28 @@ def series_resume(ctx: Ctx, inp: SeriesRef) -> SeriesOut:
     found = load_series(ctx, inp.id)
     if found["active"]:  # running already: the times you dropped stay dropped (audit, 12 Nov: they came back)
         return series_out(ctx, inp.id)
-    ctx.db.update("series", {"id": inp.id}, {"active": 1, "updated_utc": ctx.now_text})
+    ctx.db.update("series", {"id": inp.id}, {"active": 1, "stopped_items": "[]", "updated_utc": ctx.now_text})
     if found["external_id"]:
         reread_repeat(ctx, found["external_id"])
     else:
-        bring_back_stopped(ctx, inp.id)
+        taken = found["stopped_items"]
+        bring_back_stopped(ctx, inp.id, None if taken is None else json.loads(taken))
         materialize_series(ctx, inp.id)
     return series_out(ctx, inp.id)
 
 
-def bring_back_stopped(ctx: Ctx, series_id: int) -> None:
+def bring_back_stopped(ctx: Ctx, series_id: int, taken: list[int] | None) -> None:
     """The times Stop took off a calendar, kept as dropped so its copies stay tied until they're gone, come back on
     Start (8 Nov: they counted as made, and some 17 weeks stayed empty): one whose delete hasn't gone out is simply
-    back; one gone from the calendar already is made afresh, and saved there again."""
+    back; one gone from the calendar already is made afresh, and saved there again. Only the ones Stop took
+    (`taken`): a time you dropped yourself stays dropped (audit, 12 Nov). None, for a repeat stopped before Friday
+    kept them: every dropped time from today on, as it was."""
+    only = "" if taken is None else f" AND id IN ({', '.join('?' * len(taken)) or 'NULL'})"
     for row in rows(
         ctx.conn,
-        "SELECT id FROM items WHERE series_id = ? AND status = 'dropped' AND detached = 0 AND occurrence_date >= ?",
-        [series_id, ctx.today.isoformat()],
+        "SELECT id FROM items WHERE series_id = ? AND status = 'dropped' AND detached = 0 AND occurrence_date >= ?"
+        + only,
+        [series_id, ctx.today.isoformat(), *(taken or [])],
     ):
         pending = rows(
             ctx.conn,

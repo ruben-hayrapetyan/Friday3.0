@@ -130,7 +130,7 @@ def rule_read(ctx: Ctx, inp: RuleTextInput) -> RuleReadOut:
 def read_out(ctx: Ctx, reading: Reading, strength: str) -> RuleReadOut:
     """What one rule would be and do, and the rules it would contradict."""
     areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
-    new = spec(reading, strength, "preview", areas, presets)
+    new = spec(reading, strength, "preview", areas, presets, ctx.settings["time"].day_start)
     effect = EFFECT.get(reading.kind if reading.kind in ("ahead", "meals_kept") else new["type"], "")
     if reading.kind == "meals_learned" and not ctx.settings["meal_tracking"].on:
         effect += ". Meal tracking is off: turn it on in Insights → Meals so Friday has something to learn from"
@@ -235,7 +235,7 @@ def add_reading(ctx: Ctx, reading: Reading, text: str, strength: str) -> Changed
     rules = [r.model_dump() for r in ctx.settings["rules"]]
     name = unique(f"you:{slug(sentence(reading))}", {r["name"] for r in rules})
     areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
-    new = spec(reading, strength, name, areas, presets)  # type: ignore[arg-type]
+    new = spec(reading, strength, name, areas, presets, ctx.settings["time"].day_start)  # type: ignore[arg-type]
     mine = readings(ctx)
     rules, moved = taken_from(rules, new, mine) if new["type"] == "skippable" else (rules, [])
     write_setting(ctx, "rules", [*rules, new])
@@ -353,6 +353,7 @@ def restrength(ctx: Ctx, rule: dict[str, Any], strength: str) -> None:
                 rule["name"],
                 areas,
                 presets,
+                ctx.settings["time"].day_start,
             )
         )  # type: ignore[arg-type]
         keep(ctx, {**readings(ctx), rule["name"]: {**mine, "strength": strength}})
@@ -516,6 +517,27 @@ def current_report(ctx: Ctx) -> dict[str, Any]:
 
 def keep(ctx: Ctx, value: dict[str, Any]) -> None:
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "rule_readings"}, {"value": json.dumps(value)})
+
+
+# Which end of a rule's hours is your day's start: "no work after 10pm" runs from 10pm to it, "before 9am" from it.
+DAY_START_END = {"before": "end", "after": "start"}
+
+
+def follow_day_start(ctx: Ctx, old: str, new: str) -> None:
+    """A new day start moves the rules whose hours ran to the old one (audit, 12 Nov: they kept 4am whatever your day
+    start): your "before" and "after" rules, read from your words; an end you set to another time yourself stays,
+    and so do rules friday.toml sets."""
+    if old == new or "rules" in (kv_get(ctx.conn, "config_keys", [], ctx.user_id) or []):
+        return
+    mine, moved = readings(ctx), False
+    rules = [r.model_dump() for r in ctx.settings["rules"]]
+    for rule in rules:
+        reading = mine.get(rule["name"], {}).get("reading") or {}
+        end = DAY_START_END.get(reading.get("rel")) if reading.get("kind") == "window" else None
+        if end and rule["type"] == "time_preference" and rule["params"].get(end) == old:
+            rule["params"][end], moved = new, True
+    if moved:
+        write_setting(ctx, "rules", rules)
 
 
 def slug(text: str) -> str:

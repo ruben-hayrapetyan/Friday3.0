@@ -58,7 +58,7 @@ def event_optional(ctx: Ctx, inp: EventOptionalInput) -> Changed:
         reading = Reading(inp.mode, "events", events=(title,))
         name = unique(f"you:{slug(sentence(reading))}", {r["name"] for r in rules})
         areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
-        made = spec(reading, "Prefer", name, areas, presets)
+        made = spec(reading, "Prefer", name, areas, presets, ctx.settings["time"].day_start)
         made["reason"] = made["reason"].replace(titled(title), title)  # your title as you wrote it, not "Gym With Sam"
         rules.append(made)
         mine[name] = {"reading": reading.to_dict(), "strength": "Prefer", "text": made["reason"]}

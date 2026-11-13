@@ -100,12 +100,20 @@ def source_remove(ctx: Ctx, inp: SourceRemoveInput) -> Changed:
     """Stop reading a source; with `forget`, also delete what it brought in that you haven't accepted."""
     found = source_row(ctx, inp.id)
     if inp.forget:
+        kept = 0
         for r in rows(ctx.conn, "SELECT id FROM raw_inputs WHERE source_id = ?", [inp.id]):
-            for s in rows(ctx.conn, "SELECT id FROM suggestions WHERE raw_input_id = ?", [r["id"]]):
-                ctx.db.delete("suggestions", {"id": s["id"]})
+            for s in rows(ctx.conn, "SELECT id, status FROM suggestions WHERE raw_input_id = ?", [r["id"]]):
+                if s["status"] == "accepted":
+                    # yours now (audit, 12 Nov: forgetting deleted these too): let go of the input, whose delete
+                    # would otherwise take it along
+                    ctx.db.update("suggestions", {"id": s["id"]}, {"raw_input_id": None})
+                    kept += 1
+                else:
+                    ctx.db.delete("suggestions", {"id": s["id"]})
             ctx.db.delete("raw_inputs", {"id": r["id"]})
         ctx.db.delete("sources", {"id": inp.id})
-        return Changed(message=f"Removed {found['name']} and what it brought in")
+        what = f"; the {kept} you accepted stay" if kept > 1 else "; the one you accepted stays" if kept else ""
+        return Changed(message=f"Removed {found['name']} and what it brought in{what}")
     ctx.db.update("sources", {"id": inp.id}, {"enabled": 0})
     return Changed(message=f"Stopped reading {found['name']}")
 

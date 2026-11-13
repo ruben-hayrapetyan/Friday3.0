@@ -1984,8 +1984,14 @@ AHEAD_PRICE = 1.0  # among your preferences, below a Prefer rule: work takes it 
 WEIGHT = {"Prefer": 1.0, "Strongly": 3.0, "Always": 10.0}
 
 
-def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: list[str]) -> dict[str, Any]:
-    """The planner rule for a reading: {type, name, weight, scope, reason, params}."""
+DAY_START = "04:00"  # the `time.day_start` setting's default
+
+
+def spec(
+    r: Reading, strength: Strength, name: str, areas: list[str], presets: list[str], day_start: str = DAY_START
+) -> dict[str, Any]:
+    """The planner rule for a reading: {type, name, weight, scope, reason, params}. `day_start` (HH:MM, your
+    `time.day_start`) is where the hours of "before" and "after" a time run to."""
     if r.kind == "optional":  # their time is priced, not walled off (build), so it goes only when work must
         return {"name": name, "type": "skippable", "weight": 1.0, "scope": None, "reason": sentence(r),
                 "params": {"titles": with_singulars(r.events), "price": 8.0}}  # fmt: skip
@@ -2048,10 +2054,11 @@ def spec(r: Reading, strength: Strength, name: str, areas: list[str], presets: l
     base = {"name": name, "scope": scope, "reason": sentence(r)}
     if r.kind == "window":
         # The hours to avoid: after `at` (for before), before it (for after), outside [at, until) (for between),
-        # inside it (for not_between).
+        # inside it (for not_between). Before and after run to your day's start (audit, 12 Nov: always 4am, so with
+        # a 6am start "no work after 10pm" left 4am to 6am open).
         start, end = {
-            "before": (r.at, "04:00"),
-            "after": ("04:00", r.at),
+            "before": (r.at, day_start),
+            "after": (day_start, r.at),
             "between": (r.until, r.at),
             "not_between": (r.at, r.until),
         }[r.rel or "before"]

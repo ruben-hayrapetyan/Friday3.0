@@ -221,14 +221,15 @@ def shortfall_hours(night: Night, planned_min: int) -> float:
 class Nap:
     id: int
     date: date  # the planning day
-    start: datetime  # local
+    start: datetime  # local, zoned as read (a plain one is a clock time)
     end: datetime | None = None  # None while you nap
 
     @property
     def minutes(self) -> int | None:
+        """The real minutes you napped, across a change of the clocks too (audit, 12 Nov: read as clock times)."""
         if self.end is None:
             return None
-        minutes = int((self.end - self.start).total_seconds() // 60)
+        minutes = minutes_between(self.start, self.end)
         return minutes if 0 < minutes <= NAP_LONGEST_MIN else None
 
 

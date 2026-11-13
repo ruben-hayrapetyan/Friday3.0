@@ -803,7 +803,7 @@ class SourceEditInput(Model):
 
 class SourceRemoveInput(Model):
     id: int
-    forget: bool = False  # also delete what it brought in (its raw inputs and pending suggestions)
+    forget: bool = False  # also delete what it brought in (its raw inputs, and the suggestions you haven't accepted)
 
 
 class DocumentInput(Model):
