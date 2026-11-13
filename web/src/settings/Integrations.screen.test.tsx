@@ -80,6 +80,32 @@ describe("the integrations gallery", () => {
     expect(screen.queryByRole("dialog")).toBeNull()
   })
 
+  it("keeps Tab and Shift-Tab inside a box's popup, and Escape gives the focus back to the box", async () => {
+    // the audit, 12 Nov: "integration panel has no focus trap"
+    const { user, dialog } = await openBox("Todoist")
+    const box = screen.getByRole("button", { name: "Todoist" })
+    expect(dialog.contains(document.activeElement)).toBe(true)
+    for (let i = 0; i < 25; i++) {
+      await user.tab()
+      expect(dialog.contains(document.activeElement)).toBe(true)
+    }
+    for (let i = 0; i < 25; i++) {
+      await user.tab({ shift: true })
+      expect(dialog.contains(document.activeElement)).toBe(true)
+    }
+    await user.keyboard("{Escape}")
+    expect(screen.queryByRole("dialog")).toBeNull()
+    expect(document.activeElement).toBe(box)
+
+    // a box that's connected, closed by its ×
+    await user.click(screen.getByRole("button", { name: "Gmail, Connected" }))
+    const gmail = screen.getByRole("dialog", { name: "Gmail" })
+    await user.tab({ shift: true })
+    expect(gmail.contains(document.activeElement)).toBe(true)
+    await user.click(within(gmail).getByRole("button", { name: "Close" }))
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Gmail, Connected" }))
+  })
+
   it("says what a connected box is, in its popup's heading", async () => {
     const { dialog } = await openBox("Google Calendar, 7 connected")
     expect(within(dialog).getByText("Calendars · 7 connected")).toBeTruthy()

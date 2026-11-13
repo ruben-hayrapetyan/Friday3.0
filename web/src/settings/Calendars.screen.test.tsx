@@ -101,6 +101,21 @@ describe("your calendars", () => {
     expect((await waitForSent("settings_set")).body).toMatchObject({ key: "calendar_look", value: { colors: {} } })
   })
 
+  it("closes a calendar's pigment menu on Escape, the focus back on its button and nothing saved", async () => {
+    // the audit, 12 Nov: "PigmentMenu has no Esc"
+    const { user } = await openFriday("/settings/calendars")
+    const row = (await screen.findByRole("group", { name: "Work on your calendar" })).closest(".fr-row") as HTMLElement
+    const button = within(row).getByRole("button", { name: "No pigment" })
+    sent.length = 0
+    await user.click(button)
+    within(row).getByRole("option", { name: "Cerulean" }).focus()
+    await user.keyboard("{Escape}")
+    expect(within(row).queryByRole("listbox")).toBeNull()
+    expect(document.activeElement).toBe(button)
+    expect(screen.getByRole("group", { name: "Work on your calendar" })).toBeTruthy() // still on the page
+    expect(sent.filter((s) => s.name === "settings_set")).toEqual([])
+  })
+
   it("puts new events on a calendar you choose, and Friday's events already made there too", async () => {
     const { user, client } = await openFriday("/settings/calendars")
     const to = (await screen.findByRole("combobox", { name: "New events go to" })) as HTMLSelectElement

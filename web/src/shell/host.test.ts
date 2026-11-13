@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { toMin } from "@/lib/time"
-import { nextHour, placeAfter, readHost, shiftMonth } from "./host"
+import { nextHour, placeAfter, readHost, shiftMonth, switchView } from "./host"
 
 describe("a request from the Mac app", () => {
   it("is read when Friday knows it", () => {
@@ -75,5 +75,36 @@ describe("a new event from the menu", () => {
     expect(nextHour(toMin("2026-10-23T14:20"))).toBe("2026-10-23T15:00")
     expect(nextHour(toMin("2026-10-23T14:00"))).toBe("2026-10-23T15:00")
     expect(nextHour(toMin("2026-10-23T23:30"))).toBe("2026-10-24T00:00")
+  })
+})
+
+describe("changing the view (switchView), as the View buttons, the keys and the menus all do", () => {
+  // the audit, 12 Nov: the View buttons jumped back to today; the keys and the menus kept the day you were on
+  const today = "2026-11-12"
+  it("keeps the day you're looking at", () => {
+    expect(switchView({ view: 7, first: "2026-11-26" }, 1, today)).toEqual({ view: 1, first: "2026-11-26" })
+    expect(switchView({ view: 1, first: "2026-11-26" }, 3, today)).toEqual({ view: 3, first: "2026-11-26" })
+    expect(switchView({ view: 3, first: "2026-12-30" }, 7, today)).toEqual({ view: 7, first: "2026-12-30" })
+  })
+
+  it("stays on today while it's on today", () => {
+    expect(switchView({ view: 7, first: null }, 1, today)).toEqual({ view: 1, first: null })
+  })
+
+  it("goes to the month the day is in", () => {
+    expect(switchView({ view: 7, first: "2026-12-30" }, "month", today)).toEqual({ view: "month", first: "2026-12-01" })
+    expect(switchView({ view: 1, first: null }, "month", today)).toEqual({ view: "month", first: "2026-11-01" })
+  })
+
+  it("comes out of this month around today, and out of another from its first day", () => {
+    expect(switchView({ view: "month", first: "2026-11-01" }, 7, today)).toEqual({ view: 7, first: null })
+    expect(switchView({ view: "month", first: null }, 3, today)).toEqual({ view: 3, first: null })
+    expect(switchView({ view: "month", first: "2027-01-01" }, 1, today)).toEqual({ view: 1, first: "2027-01-01" })
+  })
+
+  it("is what the menus' view does", () => {
+    const place = { view: 7 as const, first: "2026-11-26" }
+    expect(placeAfter({ action: "view", argument: "day" }, place, today)).toEqual(switchView(place, 1, today))
+    expect(placeAfter({ action: "view", argument: "month" }, place, today)).toEqual(switchView(place, "month", today))
   })
 })

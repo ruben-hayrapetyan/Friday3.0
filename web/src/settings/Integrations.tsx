@@ -27,6 +27,7 @@ import { freeName, LinkIntegration, useLinkSources, ViaMac } from "./LinkIntegra
 import { MailIntegration, useMailAccounts } from "./MailIntegration"
 import { OutlookMail, TokenIntegration, useIntegrations } from "./TokenIntegration"
 import { HeldRange, useOnce } from "./Held"
+import { useDialogKeys } from "@/dialogs/Dialogs"
 
 export function Integrations() {
   return (
@@ -55,6 +56,7 @@ export function Integrations() {
 function Gallery() {
   const [text, setText] = useState("")
   const [open, setOpen] = useState<Entry | null>(null)
+  const [from, setFrom] = useState("") // the box that opened the popup, given the focus back when it closes
   const status = useStatuses()
   const found = search(CATALOG, text)
   const { connected, sections } = grouped(found, new Set(CATALOG.filter((e) => status(e)?.[2]).map((e) => e.id)))
@@ -76,12 +78,12 @@ function Gallery() {
           <H size={13}>{title}</H>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 10 }}>
             {list.map((e) => (
-              <Box key={e.id} entry={e} status={status(e)} onOpen={() => setOpen(e)} />
+              <Box key={e.id} entry={e} status={status(e)} onOpen={() => (setOpen(e), setFrom(e.id))} />
             ))}
           </div>
         </section>
       ))}
-      {open && <Panel entry={open} status={status(open)} onClose={() => setOpen(null)} onOpen={(id) => setOpen(CATALOG.find((e) => e.id === id) ?? null)} />}
+      {open && <Panel entry={open} from={from} status={status(open)} onClose={() => setOpen(null)} onOpen={(id) => setOpen(CATALOG.find((e) => e.id === id) ?? null)} />}
     </div>
   )
 }
@@ -134,6 +136,7 @@ function Box({ entry, status, onOpen }: { entry: Entry; status: Status; onOpen: 
     <button
       className="fr-plain"
       onClick={onOpen}
+      data-integration={entry.id}
       aria-label={`${entry.name}${status ? `, ${status[0]}` : ""}`}
       style={{ textAlign: "left", display: "grid", gridTemplateColumns: "36px minmax(0,1fr)", gap: 12, alignItems: "start", padding: 14, borderRadius: "var(--radius-lg)", background: "var(--color-bg)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 8%, transparent)" }}
     >
@@ -162,24 +165,24 @@ function Tile({ entry }: { entry: Entry }) {
   )
 }
 
-/** A box's popup, in the middle of the window over the gallery: Escape, the ×, or a click beside it closes it. */
-function Panel({ entry, status, onClose, onOpen }: { entry: Entry; status: Status; onClose: () => void; onOpen: (id: string) => void }) {
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose()
-    window.addEventListener("keydown", key)
-    return () => window.removeEventListener("keydown", key)
-  }, [onClose])
+/** A box's popup, in the middle of the window over the gallery: Escape, the ×, or a click beside it closes it. It keeps
+ * Tab inside it, and closed, gives the focus back to the box that opened it (`from`), wherever that box now sits: one
+ * just connected moves up into Connected. */
+function Panel({ entry, from, status, onClose, onOpen }: { entry: Entry; from: string; status: Status; onClose: () => void; onOpen: (id: string) => void }) {
+  const box = useDialogKeys(onClose, () => document.querySelector<HTMLElement>(`[data-integration="${from}"]`))
   return (
     // a popup in the middle of the window, as Friday's other dialogs are (11 Nov: "a central opening popup which then
     // users can either x out of or hit esc"); a click beside it closes it too
     <div className="fr-scrim" style={{ position: "fixed", zIndex: 40 }}>
       <div role="presentation" onClick={onClose} style={{ position: "absolute", inset: 0 }} />
       <div
+        ref={box}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={entry.name}
         className="fr-float fr-dialog"
-        style={{ width: "min(600px, 100%)", padding: 22, gap: 16, boxSizing: "border-box" }}
+        style={{ width: "min(600px, 100%)", padding: 22, gap: 16, boxSizing: "border-box", outline: "none" }}
       >
         <div style={{ display: "grid", gridTemplateColumns: "36px minmax(0,1fr) auto", gap: 12, alignItems: "center" }}>
           <Tile entry={entry} />

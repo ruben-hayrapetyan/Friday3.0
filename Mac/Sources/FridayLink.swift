@@ -14,7 +14,8 @@ enum FridayLink: Equatable {
     static let pages = ["plan": "/", "todo": "/todo", "projects": "/projects", "inbox": "/inbox",
                         "insights": "/insights", "rules": "/rules", "settings": "/settings"]
 
-    /// What a link asks; nil for one Friday doesn't know (it's ignored, nothing happens).
+    /// What a link asks; nil for one Friday doesn't know (it's ignored, nothing happens). Its query is read as a URL's,
+    /// not a form's: a + stays a + ("C++", "+1"), %2B is one too, and only %20 (or a space) is a space.
     static func of(_ url: URL, scheme: String) -> FridayLink? {
         guard url.scheme?.lowercased() == scheme, let parts = URLComponents(url: url, resolvingAgainstBaseURL: false)
         else { return nil }

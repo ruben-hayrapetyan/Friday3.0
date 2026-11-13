@@ -3,8 +3,8 @@
 // button in the title row (under its Google account's address when there are several), and the categories that colour
 // events by their titles, with the filter that hides the ones you'd rather not see (office hours).
 
-import { Fragment, useEffect, useState } from "react"
-import { Chip, Icon, Menu, Switch } from "@/components/fr/controls"
+import { Fragment, useEffect, useRef, useState } from "react"
+import { Chip, Icon, Menu, Switch, useMenuClose } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings } from "@/hooks/queries"
 import { whose } from "@/lib/aiName"
@@ -215,13 +215,16 @@ function omit(colors: Record<string, string>, name: string): Record<string, stri
   return Object.fromEntries(Object.entries(colors).filter(([k]) => k !== name))
 }
 
-/** A pigment from personal's palette, or none. */
+/** A pigment from personal's palette, or none; Escape or a press beside it closes the list, as Friday's other menus. */
 export function PigmentMenu({ value, onPick }: { value: string | null; onPick: (id: string | null) => void }) {
   const { light } = useLook()
   const [open, setOpen] = useState(false)
+  const box = useRef<HTMLSpanElement>(null)
+  const button = useRef<HTMLButtonElement>(null)
+  const escape = useMenuClose(open, setOpen, box, button)
   return (
-    <span style={{ position: "relative" }}>
-      <button className="fr-menu-button" onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open} style={{ minWidth: 130 }}>
+    <span ref={box} style={{ position: "relative" }} onKeyDown={escape}>
+      <button ref={button} className="fr-menu-button" onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open} style={{ minWidth: 130 }}>
         <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: pigment(value, light) ?? "transparent", boxShadow: "inset 0 0 0 1px var(--fr-rule)" }} />
           {PIGMENTS.find((p) => p.id === value)?.name ?? "No pigment"}
@@ -231,7 +234,7 @@ export function PigmentMenu({ value, onPick }: { value: string | null; onPick: (
       {open && (
         <div className="fr-menu-list fr-float" role="listbox" style={{ minWidth: 170 }}>
           {[null, ...PIGMENTS.map((p) => p.id)].map((id) => (
-            <button key={id ?? "none"} role="option" aria-selected={id === value} onClick={() => (onPick(id), setOpen(false))}>
+            <button key={id ?? "none"} role="option" aria-selected={id === value} onClick={() => (onPick(id), setOpen(false), button.current?.focus())}>
               <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <span style={{ width: 10, height: 10, borderRadius: "50%", background: pigment(id, light) ?? "transparent", boxShadow: "inset 0 0 0 1px var(--fr-rule)" }} />
                 {PIGMENTS.find((p) => p.id === id)?.name ?? "No pigment"}

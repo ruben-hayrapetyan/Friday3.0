@@ -2,6 +2,7 @@
 // today's agenda move the calendar and open what's on it, and the keys and the Mac app's menus work on every page.
 import { act, cleanup, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
+import { addDays } from "@/lib/time"
 import { friday, openFriday, waitForSent } from "@/test/friday"
 
 // Not opened here: the Inbox page. Opened in these tests it sometimes renders without end (InboxPage re-rendering
@@ -85,6 +86,34 @@ describe("the sidebar's mini month", () => {
     await user.click(sidebar().getByRole("button", { name: "Previous month" }))
     await user.click(sidebar().getByRole("button", { name: "Previous month" }))
     expect(sidebar().getByText(month(-1))).toBeTruthy()
+  })
+
+  it("follows the calendar to the month it moves to, a week or a month at a time", async () => {
+    // the audit, 12 Nov: "mini month doesn't follow the main calendar"
+    const { user } = await openFriday("/")
+    const today = await todayInMonth()
+    const monthOf = (date: string) => new Date(`${date}T12:00:00`).toLocaleString("en-US", { month: "long" })
+    const shown = () => sidebar().getByRole("button", { name: "Next month" }).closest("div")!.querySelector(".fr-h")!.textContent
+    expect(shown()).toContain(monthOf(today))
+    for (let week = 1; week <= 6; week++) {
+      await user.click(screen.getByRole("button", { name: "Next" }))
+      await waitFor(() => expect(shown()).toContain(monthOf(addDays(today, 7 * week))))
+    }
+    await user.click(screen.getByTitle("Back to today"))
+    await waitFor(() => expect(shown()).toContain(monthOf(today)))
+    await user.click(within(screen.getByRole("group", { name: "View" })).getByRole("button", { name: "Month" }))
+    await user.click(screen.getByRole("button", { name: "Previous" }))
+    const before = new Date(`${today.slice(0, 7)}-15T12:00:00`)
+    before.setMonth(before.getMonth() - 1)
+    await waitFor(() => expect(shown()).toContain(before.toLocaleString("en-US", { month: "long" })))
+    // its own arrows still look around, until the calendar moves again
+    await user.click(sidebar().getByRole("button", { name: "Next month" }))
+    await user.click(sidebar().getByRole("button", { name: "Next month" }))
+    await user.click(sidebar().getByRole("button", { name: "Next month" }))
+    expect(shown()).not.toContain(before.toLocaleString("en-US", { month: "long" }))
+    await user.click(screen.getByRole("button", { name: "Next" }))
+    await waitFor(() => expect(shown()).toContain(monthOf(today)))
+    await user.click(screen.getByTitle("Back to today"))
   })
 
   it("shows a day you click in the agenda, and brings you to the plan", async () => {

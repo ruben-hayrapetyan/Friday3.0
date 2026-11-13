@@ -1,6 +1,6 @@
 // The small controls v22 repeats everywhere (theme/friday.css draws them).
 
-import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react"
+import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from "react"
 import { useOnScreen } from "@/lib/onScreen"
 
 /** A Phosphor icon by name, e.g. `gear-six`; `fill` for the filled set. */
@@ -42,22 +42,12 @@ export function Menu<T extends string>(props: { options: readonly Option<T>[]; v
   const { options, value, onPick, label, disabled } = props
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const away = (e: PointerEvent) => box.current && !box.current.contains(e.target as Node) && setOpen(false)
-    const escape = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false)
-    window.addEventListener("pointerdown", away)
-    window.addEventListener("keydown", escape)
-    return () => {
-      window.removeEventListener("pointerdown", away)
-      window.removeEventListener("keydown", escape)
-    }
-  }, [open])
+  const button = useRef<HTMLButtonElement>(null)
+  const escape = useMenuClose(open, setOpen, box, button)
   const list = useOnScreen<HTMLDivElement>(open) // right-aligned, on a phone it could run off the left
   return (
-    // Escape here closes the list and goes no further: not the pane or dialog it's in (the audit, 31 Oct)
-    <div ref={box} className="fr-menu" onKeyDown={(e) => open && e.key === "Escape" && (e.stopPropagation(), setOpen(false))}>
-      <button className="fr-menu-button" aria-haspopup="listbox" aria-expanded={open} aria-label={label} disabled={disabled} onClick={() => setOpen(!open)}>
+    <div ref={box} className="fr-menu" onKeyDown={escape}>
+      <button ref={button} className="fr-menu-button" aria-haspopup="listbox" aria-expanded={open} aria-label={label} disabled={disabled} onClick={() => setOpen(!open)}>
         <span>{options.find((o) => o.value === value)?.label ?? value}</span>
         <Icon name="caret-down" size={12} />
       </button>
@@ -71,6 +61,7 @@ export function Menu<T extends string>(props: { options: readonly Option<T>[]; v
               onClick={() => {
                 onPick(o.value)
                 setOpen(false)
+                button.current?.focus()
               }}
             >
               <span>{o.label}</span>
@@ -81,6 +72,32 @@ export function Menu<T extends string>(props: { options: readonly Option<T>[]; v
       )}
     </div>
   )
+}
+
+/** An open menu's list closes on Escape or a press outside `box`; Escape puts the focus back on its `button` (the audit,
+ * 12 Nov: the pigment menu had no Escape). Returns the menu's own key handler: an Escape that closes the list goes no
+ * further, not to the pane or dialog it's in (the audit, 31 Oct), while one pressed with it closed does. The window
+ * hears Escape too, for when the focus is nowhere (a click in Safari doesn't focus a button). */
+export function useMenuClose(open: boolean, setOpen: (open: boolean) => void, box: RefObject<HTMLElement | null>, button: RefObject<HTMLButtonElement | null>): (e: ReactKeyboardEvent) => void {
+  const shut = useRef(setOpen)
+  shut.current = setOpen
+  useEffect(() => {
+    if (!open) return
+    const away = (e: PointerEvent) => box.current && !box.current.contains(e.target as Node) && shut.current(false)
+    const escape = (e: KeyboardEvent) => e.key === "Escape" && (shut.current(false), button.current?.focus())
+    window.addEventListener("pointerdown", away)
+    window.addEventListener("keydown", escape)
+    return () => {
+      window.removeEventListener("pointerdown", away)
+      window.removeEventListener("keydown", escape)
+    }
+  }, [open, box, button])
+  return (e) => {
+    if (!open || e.key !== "Escape") return
+    e.stopPropagation()
+    shut.current(false)
+    button.current?.focus()
+  }
 }
 
 export function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => void; label: string }) {

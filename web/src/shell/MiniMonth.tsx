@@ -1,5 +1,7 @@
 // The sidebar's mini month (personal's, COMBINED.md 10): each day tinted by how full it is, today underlined, the
-// agenda's day filled. A click shows that day in the calendar and the agenda; a task dropped on a day is due then.
+// agenda's day filled. A click shows that day in the calendar and the agenda; a task dropped on a day is due then. It
+// follows the calendar: moved to another week or month, it shows that month (the audit, 12 Nov: it stayed where it
+// opened); its own arrows look around until the calendar moves again.
 
 import { useShownPlan } from "@/plan/shown"
 import { useState } from "react"
@@ -9,16 +11,31 @@ import { Icon } from "@/components/fr/controls"
 import { useCalendar, useSettings } from "@/hooks/queries"
 import { addDays, toMin } from "@/lib/time"
 import { monthStart } from "@/plan/MonthView"
-import { useShell } from "./ShellContext"
+import { type CalendarPlace, useShell } from "./ShellContext"
 
 const DOWS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+/** The month the calendar is in: the one the month view shows, or the one holding the day a day, three days or a week
+ * are centred on (today, when it's on today). */
+export function followedMonth(place: CalendarPlace, today: string): string {
+  return monthStart(place.first ?? today)
+}
 
 export function MiniMonth() {
   const { today, place, setPlace, agendaDay, setAgendaDay } = useShell()
   const navigate = useNavigate()
   const { drag } = useDragging()
-  const [month, setMonth] = useState(() => monthStart(place.first ?? today))
+  const follows = followedMonth(place, today)
+  const [month, setMonth] = useState(follows)
+  // Any move of the calendar brings the mini month back to it, even within the month it's in; set while drawing, not
+  // in an effect, so it never shows a frame behind the calendar.
+  const moved = `${place.view}/${place.first}/${follows}`
+  const [followed, setFollowed] = useState(moved)
+  if (followed !== moved) {
+    setFollowed(moved)
+    setMonth(follows)
+  }
   const settings = useSettings().data as Record<string, { week_start?: string }> | undefined
   const offset = Math.max(0, DOWS.findIndex((d) => d.toLowerCase() === (settings?.time?.week_start ?? "mon")))
   const dow = (new Date(toMin(month) * 60000).getUTCDay() + 6) % 7

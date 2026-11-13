@@ -15,19 +15,34 @@ import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { dayName } from "@/inbox/messages"
 import { fixedToday } from "./fixedToday"
+import { inAnotherDialog, keepTabInside } from "@/lib/focusTrap"
 
-/** A dialog takes the keys while it's open: Esc closes it, and Tab starts inside it (the audit, 31 Oct). */
-export function useDialogKeys(onClose: () => void): RefObject<HTMLDivElement | null> {
+/** A dialog takes the keys while it's open: Esc closes it, and Tab starts inside it (the audit, 31 Oct) and stays
+ * there, Shift-Tab too; closed, it gives the focus back to what opened it, or to `back()` when that can move (the
+ * audit, 12 Nov: the integration panel let Tab out). A dialog opened over it, with the focus, has the keys instead. */
+export function useDialogKeys(onClose: () => void, back?: () => HTMLElement | null): RefObject<HTMLDivElement | null> {
   const box = useRef<HTMLDivElement>(null)
   const close = useRef(onClose)
   close.current = onClose
+  const backTo = useRef(back)
+  backTo.current = back
   useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
     if (!box.current?.contains(document.activeElement)) box.current?.focus({ preventScroll: true })
     const press = (e: KeyboardEvent) => {
+      if (!box.current || inAnotherDialog(box.current)) return
       if (e.key === "Escape" && !e.defaultPrevented) close.current()
+      else keepTabInside(e, box.current)
     }
     window.addEventListener("keydown", press)
-    return () => window.removeEventListener("keydown", press)
+    return () => {
+      window.removeEventListener("keydown", press)
+      // only when the focus went with the dialog: not when closing it put the focus somewhere on purpose
+      const now = document.activeElement
+      if (now && now !== document.body && now.isConnected) return
+      const to = backTo.current?.() ?? opener
+      if (to?.isConnected) to.focus({ preventScroll: true })
+    }
   }, [])
   return box
 }

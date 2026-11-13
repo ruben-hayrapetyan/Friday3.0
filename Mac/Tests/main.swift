@@ -611,6 +611,20 @@ test("Friday's links: add a to-do, open a page or a new box; anything else is ig
     check(link("friday://delete?all=1") == nil, "anything else: ignored")
 }
 
+test("a + in a link's text is a +, %2B one too, and %20 or a space a space (the audit, 12 Nov)") {
+    let link = { (s: String) in FridayLink.of(URL(string: s)!, scheme: "friday") }
+    check(link("friday://add?text=C++%20homework") == .add("C++ homework"), "C++ stays C++, not \"C  \"")
+    check(link("friday://add?text=+1%20call%20mom") == .add("+1 call mom"), "+1 keeps its +")
+    check(link("friday://add?text=essay+3h") == .add("essay+3h"), "a + is never read as a space (a link isn't a form)")
+    check(link("friday://add?text=a%2Bb%20c") == .add("a+b c"), "%2B is a +, %20 a space")
+    check(link("friday://add?text=%2B%2B") == .add("++"), "only pluses")
+    check(link("friday://add?text=+") == .add("+") && link("friday://add?text=%2B") == .add("+"), "a + alone is something to add")
+    // Shortcuts' Open URLs hands over the text as typed; macOS encodes its spaces, never its pluses
+    if let typed = URL(string: "friday://add?text=C++ 2h due fri") {
+        check(FridayLink.of(typed, scheme: "friday") == .add("C++ 2h due fri"), "typed with spaces: \(typed.absoluteString)")
+    }
+}
+
 test("a server left over from another build is stopped; this build's, a hand-started one or a live app's is used") {
     let theirs: [String: Any] = ["server_build": "old", "server_orphan": true, "server_pid": 4242]
     check(Server.leftover(theirs, mine: "new") == 4242, "another build's, its app gone: stopped")
