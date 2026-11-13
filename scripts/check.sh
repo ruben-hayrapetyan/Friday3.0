@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.."
 
 uv run ruff check
 uv run ruff format --check
-uv run pytest -q
+uv run pytest  # already -q (pyproject addopts): another -q hides the pass and fail counts
 # the download site's pages (the hub and the site's server are private, in Friday-admin: its own scripts/check.sh)
 uv run --no-project --with pytest pytest -q site-tests
 # the pnpm web/package.json names, through npx: a fresh machine set up as the README says has no pnpm of its own
