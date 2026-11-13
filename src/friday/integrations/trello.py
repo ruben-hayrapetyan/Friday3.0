@@ -38,7 +38,7 @@ class Trello:
     provider: ClassVar[Provider] = PROVIDER
 
     def __init__(self, token: str, config: dict[str, Any] | None = None, transport: Transport = None):
-        self.session = Session(PROVIDER, token, (config or {}).get("_keep"))
+        self.session = Session(PROVIDER, token, (config or {}).get("_keep"), load=(config or {}).get("_load"))
         base = os.environ.get("FRIDAY_API_TRELLO") or API  # another address: only a fake service, in system tests
 
         def bearer() -> dict[str, str]:

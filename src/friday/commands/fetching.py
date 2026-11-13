@@ -83,7 +83,8 @@ def sync(
         for box in outlook.accounts() if mail is None else []:
             keep = lambda token, a=box.address: outlook.keep(a, token)  # noqa: E731
             today = planning_date(now_utc, settings["time"].timezone, minutes_of(settings["time"].day_start))
-            graph = outlook.GraphMailService(box.tokens, {"_keep": keep}, today=today)
+            load = lambda a=box.address: next((b.tokens for b in outlook.accounts() if b.address == a), "")  # noqa: E731
+            graph = outlook.GraphMailService(box.tokens, {"_keep": keep, "_load": load}, today=today)
             read_mail(conn, settings, now_utc, user_id, lambda s=graph: s, box.address, "mail", outlook.NAME)
         # iCloud Mail, Yahoo, Fastmail and other mail by app password (C99), each a source of its own
         for box in imap_any.accounts() if mail is None else []:

@@ -61,6 +61,9 @@ class Pending:
 PENDING: dict[str, Pending] = {}  # by `state`: the sign-ins whose page is open
 LOCK = threading.Lock()
 TRANSPORTS: dict[str, Transport] = {}  # a fake service's token endpoint, in tests
+# Renewals one at a time: two reads at once both renewed with the same refresh token, and a service that hands out a
+# new one each time refused the second (audit, 12 Nov). Rare and quick, so one lock for every service.
+REFRESHING = threading.Lock()
 
 
 def begin(provider: Provider, redirect: str, fields: dict[str, str] | None = None, now: float | None = None) -> str:
@@ -132,7 +135,7 @@ class Session:
     again (`keep`) so the next read has it."""
 
     def __init__(self, provider: Provider, token: str, keep: Callable[[str], None] | None = None,
-                 clock: Callable[[], float] = time.time):  # fmt: skip
+                 clock: Callable[[], float] = time.time, load: Callable[[], str] | None = None):  # fmt: skip
         try:
             self.tokens: dict[str, Any] = (
                 json.loads(token) if token.strip().startswith("{") else {"access_token": token}
@@ -141,15 +144,35 @@ class Session:
             self.tokens = {}
         if not self.tokens.get("access_token"):
             raise ConnectorError("token", f"Friday isn't signed in to {provider.name}: press Sign in again")
-        self.provider, self.keep, self.clock = provider, keep, clock
+        self.provider, self.keep, self.clock, self.load = provider, keep, clock, load
+
+    def expiring(self) -> bool:
+        expires = self.tokens.get("expires_at")
+        return expires is not None and self.clock() > float(expires) - EARLY_S
 
     def access(self) -> str:
-        expires = self.tokens.get("expires_at")
-        if expires is not None and self.clock() > float(expires) - EARLY_S:
-            if not self.tokens.get("refresh_token"):
-                raise ConnectorError("token", f"{self.provider.name}'s sign-in ran out: press Sign in again")
-            renew = {"grant_type": "refresh_token", "refresh_token": self.tokens["refresh_token"]}
-            self.tokens = trade(self.provider, renew, self.clock())
-            if self.keep is not None:
-                self.keep(json.dumps(self.tokens))
+        if self.expiring():
+            with REFRESHING:
+                self.adopt_kept()  # renewed by another read while this one waited: used as they are
+                if self.expiring():
+                    if not self.tokens.get("refresh_token"):
+                        raise ConnectorError("token", f"{self.provider.name}'s sign-in ran out: press Sign in again")
+                    renew = {"grant_type": "refresh_token", "refresh_token": self.tokens["refresh_token"]}
+                    self.tokens = trade(self.provider, renew, self.clock())
+                    if self.keep is not None:
+                        self.keep(json.dumps(self.tokens))
         return str(self.tokens["access_token"])
+
+    def adopt_kept(self) -> None:
+        """The kept tokens (`load`), when they last longer than these: another read renewed them."""
+        if self.load is None:
+            return
+        try:
+            kept = json.loads(self.load())
+        except (ValueError, TypeError, OSError):
+            return
+        if not isinstance(kept, dict) or not kept.get("access_token"):
+            return
+        mine, theirs = self.tokens.get("expires_at"), kept.get("expires_at")
+        if theirs is not None and (mine is None or float(theirs) > float(mine)):
+            self.tokens = kept

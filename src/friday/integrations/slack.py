@@ -67,7 +67,7 @@ class Slack:
 
     def __init__(self, token: str, config: dict[str, Any] | None = None, transport: Transport = None,
                  now: float | None = None):  # fmt: skip
-        self.session = Session(PROVIDER, token, (config or {}).get("_keep"))
+        self.session = Session(PROVIDER, token, (config or {}).get("_keep"), load=(config or {}).get("_load"))
         self.now = time.time() if now is None else now
         base = os.environ.get("FRIDAY_API_SLACK") or API  # another address: only a fake service, in system tests
 

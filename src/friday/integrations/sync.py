@@ -114,6 +114,7 @@ def connector_for(source: dict[str, Any], transport: Transport = None) -> Connec
     kind = source["kind"]
     # a signed-in service's renewed tokens are kept again (integrations/oauth.py Session)
     config["_keep"] = lambda token: keep_token(int(source["id"]), kind, token)
+    config["_load"] = lambda: token_of(int(source["id"]))  # read again before renewing: another read may have
     return CONNECTORS[kind](token_of(int(source["id"])), config, transport or TRANSPORTS.get(kind))
 
 

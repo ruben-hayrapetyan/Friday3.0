@@ -36,7 +36,7 @@ class MicrosoftTodo:
 
     def __init__(self, token: str, config: dict[str, Any] | None = None, transport: Transport = None):
         config = config or {}
-        self.session = Session(self.provider, token, config.get("_keep"))
+        self.session = Session(self.provider, token, config.get("_keep"), load=config.get("_load"))
         base = os.environ.get("FRIDAY_API_GRAPH") or API  # another address: only a fake service, in system tests
         self.http = Http(
             self.name, base, {}, transport, fresh=lambda: {"Authorization": f"Bearer {self.session.access()}"}

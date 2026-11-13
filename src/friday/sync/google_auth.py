@@ -60,6 +60,7 @@ def client_to_use(named: str | None) -> Path:
 
 
 SECRETS_HELD = threading.RLock()
+REFRESHING = threading.Lock()  # an account's token renewed by one read at a time (credentials)
 """Held while secrets.toml is read, changed and written back: the sync's token renewals, the Sender and a save in
 Settings each read it and wrote it whole, so two at once kept only the later one's change (audit, 12 Nov)."""
 
@@ -226,8 +227,13 @@ def credentials(folder: Path, account: str | None = None) -> Credentials | None:
         return None
     creds = Credentials.from_authorized_user_info(info)
     if not creds.valid and creds.refresh_token:
-        creds.refresh(Request())
-        save(folder, account, creds)
+        with REFRESHING:  # one renewal at a time; one renewed meanwhile is read again and used (audit, 12 Nov)
+            again = tokens(folder).get(account)
+            if again:
+                creds = Credentials.from_authorized_user_info(again)
+            if not creds.valid and creds.refresh_token:
+                creds.refresh(Request())
+                save(folder, account, creds)
     return creds
 
 

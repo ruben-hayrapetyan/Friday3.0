@@ -40,7 +40,7 @@ class GraphMailService:
     def __init__(self, token: str, config: dict[str, Any] | None = None, transport: Transport = None,
                  today: date | None = None):  # fmt: skip
         config = config or {}
-        self.session = Session(OUTLOOK, token, config.get("_keep"))
+        self.session = Session(OUTLOOK, token, config.get("_keep"), load=config.get("_load"))
         self.today = today or date.today()
         base = os.environ.get("FRIDAY_API_GRAPH") or API
         self.http = Http(NAME, base, IMMUTABLE, transport or TRANSPORT[0],
