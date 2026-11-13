@@ -4,7 +4,7 @@
 import { useEffect, useRef } from "react"
 import { fromMin } from "@/lib/time"
 import { monthStart } from "@/plan/MonthView"
-import type { CalendarPlace } from "./ShellContext"
+import type { CalendarPlace, View } from "./ShellContext"
 
 export type HostName =
   | "newEvent"
@@ -68,15 +68,22 @@ export function placeAfter(request: HostRequest, place: CalendarPlace, today: st
       return step(-1)
     case "next":
       return step(1)
-    case "view": {
-      const view = request.argument === "day" ? 1 : request.argument === "three" ? 3 : request.argument === "week" ? 7 : "month"
-      // out of this month to the days: around today, as the Plan page's keys do (the audit, 12 Nov)
-      const thisMonth = place.view === "month" && shown === monthStart(today)
-      return { view, first: view === "month" ? monthStart(shown) : thisMonth ? null : place.first }
-    }
+    case "view":
+      return switchView(place, request.argument === "day" ? 1 : request.argument === "three" ? 3 : request.argument === "week" ? 7 : "month", today)
     default:
       return null
   }
+}
+
+/** The calendar in another view, still on the day you're looking at: the View buttons, the keys and the Mac app's menus
+ * all change it so (the audit, 12 Nov: the buttons went back to today). A month starts on the 1st; out of this month
+ * to the days goes around today (the audit, 12 Nov: m then w showed the week around the 1st), out of another month
+ * from its first day. */
+export function switchView(place: CalendarPlace, view: View, today: string): CalendarPlace {
+  const centre = place.first ?? today
+  if (view === "month") return { view, first: monthStart(centre) }
+  const thisMonth = place.view === "month" && monthStart(centre) === monthStart(today)
+  return { view, first: thisMonth ? null : place.first }
 }
 
 function addDaysTo(date: string, days: number): string {

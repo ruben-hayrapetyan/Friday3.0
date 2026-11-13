@@ -5,7 +5,8 @@
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import type { Schemas } from "@/api/client"
-import { addDays } from "@/lib/time"
+import { addDays, pageStart } from "@/lib/time"
+import { rangeTitle } from "./PlanPage"
 import { friday, openFriday, waitForSent } from "@/test/friday"
 
 type Plan = Schemas["PlanOut"]
@@ -84,6 +85,25 @@ describe("the header", () => {
     for (const day of ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]) expect(screen.getAllByText(day).length).toBeGreaterThan(0)
     await user.click(within(view()).getByRole("button", { name: "Week" }))
     expect(backToToday().textContent).toBe("This week")
+  })
+
+  it("keeps the day you're looking at when a View button changes the view", async () => {
+    // the audit, 12 Nov: "View buttons jump to today"
+    const { user } = await openFriday("/")
+    const day = addDays(await today(), 14)
+    await user.click(screen.getByRole("button", { name: "Next" }))
+    await user.click(screen.getByRole("button", { name: "Next" }))
+    const title = () => document.querySelector('[data-testid="day-arrows"]')!.parentElement!.querySelector(".fr-h")!.textContent
+    const titled = (view: 1 | 3 | 7) => [rangeTitle(pageStart(day, view), view), rangeTitle(pageStart(day, view), view, true)]
+    for (const [name, view] of [["Day", 1], ["3 days", 3], ["Week", 7]] as const) {
+      await user.click(within(screen.getByRole("group", { name: "View" })).getByRole("button", { name }))
+      expect(pressed()).toBe(name)
+      expect(titled(view)).toContain(title())
+    }
+    await user.click(within(view()).getByRole("button", { name: "Month" }))
+    expect(title()).toBe(rangeTitle(`${day.slice(0, 7)}-01`, "month"))
+    await user.click(backToToday())
+    expect(backToToday().textContent).toBe("This month")
   })
 
   it("answers the keys: d, 3, w and m for the views, [ and ] to step", async () => {

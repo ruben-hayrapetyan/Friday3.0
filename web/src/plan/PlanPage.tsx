@@ -19,7 +19,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/components/Toasts"
 import { runCommand } from "@/hooks/useCommand"
 import { inOrder, moveBlock, moveGroup } from "@/hooks/useDrop"
-import { shiftMonth } from "@/shell/host"
+import { shiftMonth, switchView } from "@/shell/host"
 import { useShell, type View } from "@/shell/ShellContext"
 import { DayAside } from "./DayAside"
 import { Grid } from "./Grid"
@@ -48,9 +48,8 @@ export function PlanPage() {
   // A week or three days are centred on the day picked, or today (lib/time.ts); `first` holds that centre.
   const centre = first ?? today
   const shown = view === "month" ? (first ?? monthStart(today)) : pageStart(centre, view)
-  // Out of the month view to the days, around today while it's this month you're on, else from the month's first day
-  // (the audit, 12 Nov: m then w showed the week around the 1st, not the one you were on)
-  const setView = (v: View) => setPlace({ view: v, first: v === "month" ? monthStart(centre) : view === "month" && shown === monthStart(today) ? null : first })
+  // The keys and the View buttons alike keep the day you're looking at (shell/host.ts switchView)
+  const setView = (v: View) => setPlace(switchView(place, v, today))
   const setFirst = (f: string | null) => setPlace({ view: place.view, first: f }) // keeps the week you chose, even while it shows a day
   const step = (by: number) => setFirst(view === "month" ? shiftMonth(shown, by) : addDays(centre, by * view))
   const nudge = useNudge()
@@ -71,7 +70,6 @@ export function PlanPage() {
     later: block ? () => nudge(15) : undefined,
     open: block ? () => nudge(0) : undefined,
   })
-  const pick = (v: View) => setPlace({ view: v, first: null })
   const { on: whatIfOn, panel: whatIfPanel } = useWhatIf()
   useEffect(() => {
     whatIf.here(true) // What if stages changes made here, and only here
@@ -79,7 +77,7 @@ export function PlanPage() {
   }, [])
   return (
     <>
-      <Header view={view} first={shown} onView={pick} onStep={step} onToday={() => setFirst(null)} />
+      <Header view={view} first={shown} onView={setView} onStep={step} onToday={() => setFirst(null)} />
       {view === "month" ? <MonthView first={shown} onDay={(d) => setPlace({ view: 1, first: d })} /> : <Days first={shown} view={view} drawer={(drawer || !!event || (whatIfOn && whatIfPanel)) && !drawerOver ? drawerWidth : 0} aside={layout.dayAside} />}
     </>
   )
