@@ -27,7 +27,10 @@ export function freePort(): Promise<number> {
 
 /** `fridayd demo` over `folder` on `port`; resolves once it answers. */
 export async function serve(folder: string, port: number, seconds = 240): Promise<ChildProcess> {
-  const env = { ...process.env }
+  // Made-up app keys (integrations/keys.py reads FRIDAY_<NAME> first): the services' boxes are ready whether or not
+  // this checkout has the gitignored Mac/app_keys.json, as on a contributor's fork or GitHub's checks
+  const keys = { MICROSOFT_CLIENT_ID: "test-microsoft-id", SLACK_CLIENT_ID: "test-slack-id", SLACK_CLIENT_SECRET: "test-slack-secret", TICKTICK_CLIENT_ID: "test-ticktick-id", TICKTICK_CLIENT_SECRET: "test-ticktick-secret", TRELLO_CLIENT_ID: "test-trello-id" }
+  const env: NodeJS.ProcessEnv = { ...process.env, ...Object.fromEntries(Object.entries(keys).map(([k, v]) => [`FRIDAY_${k}`, v])) }
   delete env.VIRTUAL_ENV
   const child = spawn("uv", ["run", "--quiet", "fridayd", "--data-dir", folder, "demo", "--case", CASE, "--ready", "--port", String(port)], {
     cwd: REPO,
