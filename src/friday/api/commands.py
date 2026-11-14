@@ -900,6 +900,7 @@ class TokenMade(Model):
 class RuleTextInput(Model):
     text: str = ""
     overrides: str = "{}"  # JSON: Reading fields you set yourself (a query string can't carry a mapping)
+    editing: str = ""  # the rule this reading would replace, when you're editing one (it isn't compared with itself)
 
 
 class PhoneSetInput(Model):
@@ -935,6 +936,17 @@ class RuleSetInput(Model):
 
 class RuleRef(Model):
     name: str
+
+
+class RuleEditInput(Model):
+    """A rule changed where it stands: your words and Friday's reading of them (with your corrections), or a built-in
+    rule's number; and its strength."""
+
+    name: str
+    text: str | None = None  # new words, for a rule of yours; None keeps them
+    overrides: dict[str, Any] = {}  # Reading fields you set yourself, as rule_add takes them
+    strength: Literal["Prefer", "Strongly", "Always"] | None = None
+    number: float | None = None  # a built-in rule's number: its hours, days or minutes
 
 
 class MailLogInput(Model):

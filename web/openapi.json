@@ -7252,6 +7252,77 @@
     }
    }
   },
+  "/api/c/rule_edit": {
+   "post": {
+    "summary": "Change a rule where it stands (14 Nov: deleting one and adding it again lost its place and its history): your",
+    "operationId": "rule_edit",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RuleEditInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RuleEditResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/rule_remove": {
    "post": {
     "summary": "Delete a rule (a default one comes back only by adding it again in Settings \u2192 Advanced).",
@@ -12327,6 +12398,16 @@
        "type": "string",
        "default": "{}",
        "title": "Overrides"
+      }
+     },
+     {
+      "name": "editing",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "default": "",
+       "title": "Editing"
       }
      }
     ],
@@ -28299,6 +28380,185 @@
     "title": "RuleConflict",
     "description": "Two rules at odds, found from the rules themselves (`planner/contradictions.py`)."
    },
+   "RuleEditInput": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "text": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Text"
+     },
+     "overrides": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Overrides",
+      "default": {}
+     },
+     "strength": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "Prefer",
+         "Strongly",
+         "Always"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Strength"
+     },
+     "number": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Number"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "title": "RuleEditInput",
+    "description": "A rule changed where it stands: your words and Friday's reading of them (with your corrections), or a built-in\nrule's number; and its strength."
+   },
+   "RuleEditResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "RuleEditResult"
+   },
+   "RuleNumber": {
+    "properties": {
+     "value": {
+      "type": "number",
+      "title": "Value"
+     },
+     "unit": {
+      "type": "string",
+      "title": "Unit"
+     },
+     "label": {
+      "type": "string",
+      "title": "Label"
+     },
+     "low": {
+      "type": "number",
+      "title": "Low"
+     },
+     "high": {
+      "type": "number",
+      "title": "High"
+     },
+     "step": {
+      "type": "number",
+      "title": "Step"
+     },
+     "said": {
+      "type": "string",
+      "title": "Said"
+     },
+     "one": {
+      "type": "string",
+      "title": "One"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "value",
+     "unit",
+     "label",
+     "low",
+     "high",
+     "step",
+     "said",
+     "one"
+    ],
+    "title": "RuleNumber",
+    "description": "A built-in rule's one number (hours of focused work in a row, days early): what it is, and its sentence with\nanother in its place, `{n}` where the number goes (`one` for 1), so a change shows before the server answers."
+   },
    "RuleOut": {
     "properties": {
      "name": {
@@ -28370,6 +28630,39 @@
       "type": "array",
       "title": "Contradicts",
       "default": []
+     },
+     "words": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Words"
+     },
+     "reading": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reading"
+     },
+     "number": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/RuleNumber"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "additionalProperties": false,
@@ -28428,6 +28721,16 @@
       "type": "array",
       "title": "Also",
       "default": []
+     },
+     "starts_over": {
+      "type": "boolean",
+      "title": "Starts Over",
+      "default": false
+     },
+     "replaces": {
+      "type": "string",
+      "title": "Replaces",
+      "default": ""
      }
     },
     "additionalProperties": false,

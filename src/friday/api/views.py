@@ -620,6 +620,10 @@ class RuleReadOut(Model):
     effect: str
     conflicts: list["RuleConflict"] = []  # the switched-on rules it would contradict or overlap
     also: list["RuleReadOut"] = []  # the sentence's other rules, when it says several stretches of the day (8 Nov)
+    # Editing a rule: whether this reads as another kind of rule than the one it replaces, so it would be a new rule
+    # whose kept history starts over, and that rule's sentence.
+    starts_over: bool = False
+    replaces: str = ""
 
 
 class RuleConflict(Model):
@@ -646,6 +650,23 @@ class RuleOut(Model):
     wins_over: list[str] = []  # rules you said this one beats when they clash ("Which should win?")
     gives_way_to: list[str] = []  # rules you said beat this one
     contradicts: list[RuleConflict] = []  # switched-on rules this one can't be kept together with
+    words: str | None = None  # what you typed, for a rule of yours: the pencil opens it in the rule box
+    reading: dict[str, Any] | None = None  # Friday's reading of your words, with your corrections
+    number: "RuleNumber | None" = None  # a built-in rule's number the pencil changes
+
+
+class RuleNumber(Model):
+    """A built-in rule's one number (hours of focused work in a row, days early): what it is, and its sentence with
+    another in its place, `{n}` where the number goes (`one` for 1), so a change shows before the server answers."""
+
+    value: float
+    unit: str  # "h", "days" or "min"
+    label: str
+    low: float
+    high: float
+    step: float
+    said: str
+    one: str
 
 
 class SetupOut(Model):

@@ -7,12 +7,12 @@
 import { useAi } from "@/settings/AiConnect"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
-import { Link, useNavigate } from "react-router"
-import { command, errorWords, query, type Schemas } from "@/api/client"
+import { Link, useNavigate, useSearchParams } from "react-router"
+import { command, type CommandInput, errorWords, type Output, query, type Schemas } from "@/api/client"
 import { Box, H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { applyActions } from "@/dialogs/AskClaude"
-import { useCommand } from "@/hooks/useCommand"
+import { runCommand, useCommand } from "@/hooks/useCommand"
 import { useStatus } from "@/hooks/queries"
 import { useInbox } from "@/inbox/InboxPage"
 import { spoken } from "@/lib/aiName"
@@ -32,11 +32,37 @@ const DAY_OPTS: { value: string; label: string; days: string[] | null }[] = [
 
 export const useRules = () => useQuery({ queryKey: ["rules"], queryFn: () => query("rules") })
 
+type RuleOut = Schemas["RuleOut"]
+
+/** A rule command that shows its change in the list at once (`patch`), put back if the server refuses it. */
+function useRuleCommand<N extends "rule_set" | "rule_remove" | "rule_edit">(name: N, label: (out: Output<N>) => string) {
+  const client = useQueryClient()
+  const toast = useToast()
+  return (input: CommandInput<N>, patch: (rules: RuleOut[]) => RuleOut[]) =>
+    runCommand(client, toast, name, input, { label, optimistic: (c) => c.setQueryData<RuleOut[]>(["rules"], (was) => was && patch(was)) })
+}
+
+const changed = (name: string, update: Partial<RuleOut>) => (rules: RuleOut[]) => rules.map((r) => (r.name === name ? { ...r, ...update } : r))
+
 export function RulesPage() {
   const rules = useRules().data ?? []
   const byName = new Map(rules.map((r) => [r.name, r]))
   const owned = (useStatus().data?.config_keys ?? []).includes("rules")
   const mine = rules.filter((r) => r.source === "you").length
+  // ?edit=<name> opens that rule in the box (the Projects page's "Exam focus … in Rules"); ?text= starts a new one
+  const [params, setParams] = useSearchParams()
+  const [editing, setEditing] = useState<{ rule: RuleOut; opened: number } | null>(null)
+  const wanted = params.get("edit")
+  useEffect(() => {
+    const rule = wanted ? byName.get(wanted) : undefined
+    if (rule && editing?.rule.name !== rule.name) setEditing({ rule, opened: Date.now() })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted, rules.length])
+  const edit = (rule: RuleOut | null) => {
+    setEditing(rule ? { rule, opened: Date.now() } : null)
+    if (params.has("edit") || params.has("text")) setParams({}, { replace: true })
+  }
+  const row = (r: RuleOut) => <RuleRow key={r.name} rule={r} locked={owned} byName={byName} editing={editing?.rule.name === r.name} onEdit={() => edit(r)} />
   return (
     <>
       <div className="fr-page-head">
@@ -58,7 +84,7 @@ export function RulesPage() {
                 Tell Friday how you work, in your own words. A rule changes how it plans ("no work after 10pm"); a note changes how it reads your mail, calendars and documents ("labs are done in the lab session"). Rules marked Always never bend; the rest bend when they must.
               </span>
             </div>
-            {owned ? <span className="fr-kicker">Your rules are set in friday.toml; change them there.</span> : <NewRule />}
+            {owned ? <span className="fr-kicker">Your rules are set in friday.toml; change them there.</span> : <NewRule editing={editing} start={params.get("text") ?? ""} onDone={() => edit(null)} />}
             <div data-tour="week-paces" style={{ display: "flex", flexDirection: "column", gap: 8, padding: "6px 0 4px" }}>
               <span style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 500 }}>Your week</span>
@@ -67,23 +93,13 @@ export function RulesPage() {
               <WeekPaces />
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              {rules
-                .filter((r) => !r.background)
-                .map((r) => (
-                  <RuleRow key={r.name} rule={r} locked={owned} byName={byName} />
-                ))}
+              {rules.filter((r) => !r.background).map(row)}
             </div>
             <details>
               <summary className="fr-kicker" style={{ cursor: "pointer", padding: "6px 0" }}>
                 How Friday fills in the rest ({rules.filter((r) => r.background).length})
               </summary>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                {rules
-                  .filter((r) => r.background)
-                  .map((r) => (
-                    <RuleRow key={r.name} rule={r} locked={owned} byName={byName} />
-                  ))}
-              </div>
+              <div style={{ display: "flex", flexDirection: "column" }}>{rules.filter((r) => r.background).map(row)}</div>
             </details>
           </section>
           <Notes />
@@ -124,30 +140,50 @@ function Notes() {
 /** Claude reading a rule Friday couldn't: asking, what it said, and which of its rules you've ticked. */
 type ClaudeReading = { busy: boolean; error?: string; answer?: Schemas["AskClaudeOut"]; kept: number[] }
 
-function NewRule() {
+/** What the box is editing: a rule, and when its pencil was pressed (pressed again, it opens afresh). */
+type Editing = { rule: RuleOut; opened: number } | null
+
+function NewRule({ editing, start, onDone }: { editing: Editing; start: string; onDone: () => void }) {
   const navigate = useNavigate()
   const client = useQueryClient()
   const toast = useToast()
   const [claude, setClaude] = useState<ClaudeReading | null>(null)
   const llm = useInbox().data?.llm as { ready?: boolean } | undefined
   const demo = !!useStatus().data?.demo // the demo's stand-in AI
-  const ai = !!llm?.ready || demo // an AI that can be asked (whichever is chosen)
   const aiName = useAi().name
   const strengths = new Map((useRules().data ?? []).map((r) => [r.name, r.strength]))
-  const [text, setText] = useState("")
+  const [text, setText] = useState(start)
   const [overrides, setOverrides] = useState<Record<string, unknown>>({})
   const [strength, setStrength] = useState<Strength | null>(null)
-  const typed = JSON.stringify({ text, overrides })
+  // Editing a rule of yours: its saved reading stands under your corrections while its words are the same
+  const [base, setBase] = useState<Record<string, unknown>>({})
+  const box = useRef<HTMLDivElement>(null)
+  const input = useRef<HTMLInputElement>(null)
+  const yours = editing?.rule.words != null ? editing.rule : null
+  const ai = (!!llm?.ready || demo) && !yours // an AI that can be asked (whichever is chosen); it adds, so not in an edit
+  useEffect(() => {
+    if (!editing) return
+    setText(editing.rule.words ?? "")
+    setBase((editing.rule.reading as Record<string, unknown>) ?? {})
+    setOverrides({})
+    setStrength(editing.rule.strength as Strength)
+    setClaude(null)
+    box.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" })
+    input.current?.focus()
+  }, [editing])
+  const sent = yours && text === yours.words ? { ...base, ...overrides } : overrides
+  const typed = JSON.stringify({ text, overrides: sent, editing: yours?.name ?? "" })
   const settled = useSettled(typed, 200)
   const preview = useQuery({
     queryKey: ["rule_read", settled],
     queryFn: () => {
-      const { text, overrides } = JSON.parse(settled)
-      return query("rule_read", { text, overrides: JSON.stringify(overrides) })
+      const { text, overrides, editing } = JSON.parse(settled)
+      return query("rule_read", { text, overrides: JSON.stringify(overrides), editing })
     },
     enabled: !!text.trim(),
   }).data
   const add = useCommand("rule_add", { label: (o) => o.result.message ?? "Added" })
+  const save = useRuleCommand("rule_edit", (o) => o.result.message ?? "Saved")
   const notes = useNotes()
   // a note, not a rule: what Friday reads keeps it in mind; the plan doesn't change (About you, 12 Nov)
   const keepNote = () => {
@@ -164,7 +200,8 @@ function NewRule() {
   // Asking the AI: what Friday couldn't read, or what it read and you'd rather the AI read (8 Nov: "the deterministic
   // interpretation might be wrong").
   const asking = unread || !!claude
-  const clear = () => (setText(""), setOverrides({}), setStrength(null), setClaude(null))
+  const clear = () => (setText(""), setOverrides({}), setBase({}), setStrength(null), setClaude(null))
+  const cancel = () => (clear(), onDone())
   /** What Friday couldn't read, to Claude, answered here (no dialog): its rules, ticked, for ↩ or Add to apply. */
   const askInline = async () => {
     setClaude({ busy: true, kept: [] })
@@ -180,14 +217,21 @@ function NewRule() {
     const answer = claude?.answer
     if (answer && (await applyActions(claude.kept.map((i) => answer.actions[i]), client, toast))) clear()
   }
-  /** ↩ or the button: add what Friday read, or hand what it couldn't read to Claude. Read again if typing ran ahead. */
+  /** ↩ or the button: add what Friday read (or save the rule you're editing), or hand what it couldn't read to
+   * Claude. Read again if typing ran ahead. */
   const sending = useRef(false) // ↩ twice, or ↩ and a click, adds it once
   const submit = async (replacing?: string) => {
     if (!text.trim() || sending.current) return
     sending.current = true
     try {
-      const now = settled === typed && preview ? preview : await query("rule_read", { text, overrides: JSON.stringify(overrides) }).catch(() => null)
+      const now = settled === typed && preview ? preview : await query("rule_read", { text, overrides: JSON.stringify(sent), editing: yours?.name ?? "" }).catch(() => null)
       if (!now) return
+      if (yours) {
+        if (!now.reading || now.also?.length) return
+        const update = { sentence: now.sentence, strength: chosen, words: text, reading: now.reading }
+        if (await save({ name: yours.name, text, overrides: sent as Record<string, never>, strength: chosen }, changed(yours.name, update))) cancel()
+        return
+      }
       if (!now.reading || claude) {
         if (!ai || claude?.busy) return
         if (!claude?.answer?.actions.length) return await askInline() // asked again only when Claude had nothing, or not yet
@@ -203,17 +247,34 @@ function NewRule() {
     }
   }
   const set = (k: string, v: unknown) => setOverrides({ ...overrides, [k]: v })
+  if (editing && !yours) return <BuiltInEdit key={editing.opened} rule={editing.rule} onDone={onDone} />
+  const label = yours ? "Save" : !asking || !ai ? (all.length > 1 ? `Add ${all.length} rules` : "Add rule") : claude?.busy ? `Asking ${aiName}…` : claude?.answer?.actions.length ? `Add ${claude.kept.length > 1 ? `${claude.kept.length} rules` : "rule"}` : claude?.answer ? "Ask again" : `Ask ${aiName}`
+  const blocked = yours ? !reading || all.length > 1 : (unread && !ai) || !!claude?.busy || (!!claude?.answer && !claude.kept.length && !!claude.answer.actions.length)
   return (
-    <div data-tour="rule-new" style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, borderRadius: "var(--radius-lg)", background: "var(--color-bg)" }}>
+    <div ref={box} data-tour="rule-new" data-editing={yours ? yours.name : undefined} style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, borderRadius: "var(--radius-lg)", background: "var(--color-bg)", boxShadow: yours ? "inset 0 0 0 1px var(--color-accent-300)" : undefined }}>
+      {yours && (
+        <span className="fr-kicker" style={{ display: "flex", gap: 6, alignItems: "baseline", textWrap: "pretty" }}>
+          <Icon name="pencil-simple" size={12} style={{ alignSelf: "center" }} />
+          <span>
+            Editing <span style={{ fontWeight: 500, color: "var(--color-text)" }}>“{yours.sentence}”</span>: change the words or Friday’s reading, then Save. It stays where it is.
+          </span>
+        </span>
+      )}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Icon name="plus" size={18} style={{ color: "var(--color-accent-300)" }} />
-        <input value={text} onChange={(e) => (setText(e.target.value), setOverrides({}), setStrength(null), setClaude(null))} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="I prefer eating lunch before 1pm" aria-label="New rule" style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontSize: 16 }} />
-        <button className="btn btn-secondary" onClick={keepNote} disabled={!text.trim()} title="Kept for reading your mail, calendars and documents; the plan doesn't change">
-          Keep as a note
-        </button>
-        <button className="btn btn-primary" onClick={() => submit()} disabled={!text.trim() || (unread && !ai) || !!claude?.busy || (!!claude?.answer && !claude.kept.length && !!claude.answer.actions.length)}>
+        <Icon name={yours ? "pencil-simple" : "plus"} size={18} style={{ color: "var(--color-accent-300)" }} />
+        <input ref={input} value={text} onChange={(e) => (setText(e.target.value), setOverrides({}), setStrength(yours ? chosen : null), setClaude(null))} onKeyDown={(e) => (e.key === "Enter" ? submit() : e.key === "Escape" && yours ? cancel() : undefined)} placeholder="I prefer eating lunch before 1pm" aria-label={yours ? "Rule" : "New rule"} style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontSize: 16 }} />
+        {yours ? (
+          <button className="btn btn-secondary" onClick={cancel}>
+            Cancel
+          </button>
+        ) : (
+          <button className="btn btn-secondary" onClick={keepNote} disabled={!text.trim()} title="Kept for reading your mail, calendars and documents; the plan doesn't change">
+            Keep as a note
+          </button>
+        )}
+        <button className="btn btn-primary" onClick={() => submit()} disabled={!text.trim() || blocked}>
           {asking && ai && !claude?.answer && <Icon name="sparkle" />}
-          {!asking || !ai ? (all.length > 1 ? `Add ${all.length} rules` : "Add rule") : claude?.busy ? `Asking ${aiName}…` : claude?.answer?.actions.length ? `Add ${claude.kept.length > 1 ? `${claude.kept.length} rules` : "rule"}` : claude?.answer ? "Ask again" : `Ask ${aiName}`}
+          {label}
         </button>
       </div>
       {text.trim() && preview ? (
@@ -227,6 +288,11 @@ function NewRule() {
                 </button>
               )}
             </>
+          ) : !reading && yours ? (
+            <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12, color: "var(--fr-warn)", textWrap: "pretty" }}>
+              <Icon name="question" size={13} style={{ flexShrink: 0, alignSelf: "center" }} />
+              <span>Friday can’t read that as a rule: say it another way. Cancel keeps the rule as it was.</span>
+            </span>
           ) : !reading ? (
             // What the grammar can't read goes to Claude (COMBINED.md 37), as rules to confirm: ↩ sends it.
             <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12, color: ai ? "var(--color-neutral-300)" : "var(--fr-warn)", textWrap: "pretty" }}>
@@ -254,6 +320,14 @@ function NewRule() {
                   {r.sentence}
                 </H>
               ))}
+              {yours && preview.starts_over && (
+                // 14 Nov: an edit that says another kind of rule is a new rule, and saying so before Save
+                <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12, color: "var(--fr-warn)", textWrap: "pretty" }}>
+                  <Icon name="warning" size={13} style={{ flexShrink: 0, alignSelf: "center" }} />
+                  <span>This is another kind of rule than “{preview.replaces}”, so it takes its place as a new rule: how often it’s kept starts over.</span>
+                </span>
+              )}
+              {yours && all.length > 1 && <span className="fr-kicker" style={{ color: "var(--fr-warn)", textWrap: "pretty" }}>An edit is one rule: say one here, and add the others as new rules.</span>}
               {all.length > 1 ? (
                 <>
                   <span className="fr-kicker">{preview.effect}{chosen === "Always" ? ", and never bends." : ", unless it has to."}</span>
@@ -287,7 +361,7 @@ function NewRule() {
               )}
               {all.length === 1 &&
                 (preview.conflicts ?? []).map((c) => (
-                  <Conflict key={c.other} conflict={c} mine={chosen} theirs={strengths.get(c.other)} onReplace={() => submit(c.other)} />
+                  <Conflict key={c.other} conflict={c} mine={chosen} theirs={strengths.get(c.other)} onReplace={yours ? undefined : () => submit(c.other)} />
                 ))}
               {all.length > 1 &&
                 all.flatMap((r) => r.conflicts ?? []).map((c) => (
@@ -306,6 +380,60 @@ function NewRule() {
           )}
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/** A built-in rule in the box (14 Nov): its words stay, its number (hours of focused work in a row, days early) and
+ * its strength change. The sentence shows the new number as you change it. */
+function BuiltInEdit({ rule, onDone }: { rule: RuleOut; onDone: () => void }) {
+  const box = useRef<HTMLDivElement>(null)
+  const n = rule.number
+  const [value, setValue] = useState(n?.value ?? 0)
+  const [strength, setStrength] = useState(rule.strength as Strength)
+  const save = useRuleCommand("rule_edit", (o) => o.result.message ?? "Saved")
+  useEffect(() => box.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" }), [])
+  const fits = !n || (Number.isFinite(value) && value >= n.low && value <= n.high)
+  const said = !n ? rule.sentence : value === 1 ? n.one : n.said.replace("{n}", String(value))
+  const options = rule.strength === "Always" ? (["Always"] as Strength[]) : (["Prefer", "Strongly"] as Strength[])
+  const submit = async () => {
+    if (!fits) return
+    const input = { name: rule.name, strength, ...(n && value !== n.value ? { number: value } : {}) }
+    const number = n ? { ...n, value } : n
+    if (await save(input, changed(rule.name, { sentence: said, strength, number }))) onDone()
+  }
+  return (
+    <div ref={box} data-tour="rule-new" data-editing={rule.name} style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, borderRadius: "var(--radius-lg)", background: "var(--color-bg)", boxShadow: "inset 0 0 0 1px var(--color-accent-300)" }}>
+      <span className="fr-kicker" style={{ display: "flex", gap: 6, alignItems: "baseline", textWrap: "pretty" }}>
+        <Icon name="pencil-simple" size={12} style={{ alignSelf: "center" }} />
+        <span>Editing a built-in rule: its words stay; {n ? "its number and strength change" : "its strength changes"}. It stays where it is.</span>
+      </span>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Icon name="sliders-horizontal" size={18} style={{ color: "var(--color-accent-300)" }} />
+        <span style={{ flex: 1, minWidth: 0, fontSize: 16, textWrap: "pretty" }}>{said}</span>
+        <button className="btn btn-secondary" onClick={onDone}>
+          Cancel
+        </button>
+        <button className="btn btn-primary" onClick={submit} disabled={!fits}>
+          Save
+        </button>
+      </div>
+      <div className="fr-row" style={{ display: "grid", gridTemplateColumns: "72px minmax(0,1fr)", gap: "8px 12px", alignItems: "center", padding: "12px 14px", marginLeft: 28, borderRadius: "var(--radius-md)", background: "var(--color-surface)" }}>
+        {n && (
+          <>
+            <span className="fr-kicker">{n.label}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="number" className="input" aria-label={n.label} min={n.low} max={n.high} step={n.step} value={Number.isFinite(value) ? value : ""} onChange={(e) => setValue(e.target.value === "" ? Number.NaN : Number(e.target.value))} onKeyDown={(e) => (e.key === "Enter" ? submit() : e.key === "Escape" ? onDone() : undefined)} style={{ width: 90, padding: "4px 8px", fontSize: 12, minHeight: 0 }} />
+              <span className="fr-kicker" style={{ color: fits ? undefined : "var(--fr-warn)" }}>
+                {n.unit}
+                {fits ? "" : `: from ${n.low} to ${n.high}`}
+              </span>
+            </span>
+          </>
+        )}
+        <span className="fr-kicker">Strength</span>
+        <Seg options={options} value={strength} onPick={setStrength} onBg />
+      </div>
     </div>
   )
 }
@@ -351,7 +479,7 @@ function ClaudeRules({ claude, onTick }: { claude: ClaudeReading; onTick: (kept:
 }
 
 /** Before adding: “Contradicts …” (or “Overlaps …”), what it means at these strengths, and adding it in that one's place. */
-function Conflict({ conflict: c, mine, theirs, onReplace }: { conflict: Schemas["RuleConflict"]; mine: string; theirs?: string; onReplace: () => void }) {
+function Conflict({ conflict: c, mine, theirs, onReplace }: { conflict: Schemas["RuleConflict"]; mine: string; theirs?: string; onReplace?: () => void }) {
   const outcome = c.overlap ? "" : mine === "Always" && theirs === "Always" ? " Both are Always, so Friday can’t keep both." : theirs === "Always" ? " That one is Always, so this one would give way there." : mine === "Always" ? " This one is Always, so that one would give way there." : " Friday would bend one of them; once both are in, you can say which wins."
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 12px", borderRadius: "var(--radius-md)", background: c.overlap ? "var(--color-bg)" : "color-mix(in srgb, var(--fr-warn) 9%, var(--color-bg))" }}>
@@ -361,9 +489,11 @@ function Conflict({ conflict: c, mine, theirs, onReplace }: { conflict: Schemas[
           {c.overlap ? "Overlaps" : "Contradicts"} <span style={{ fontWeight: 500 }}>“{c.other_sentence}”</span>: {c.why}.{outcome}
         </span>
       </span>
-      <button className="fr-link" onClick={onReplace} style={{ alignSelf: "flex-start", fontSize: 12, marginLeft: 21 }}>
-        Add this, and switch that one off
-      </button>
+      {onReplace && (
+        <button className="fr-link" onClick={onReplace} style={{ alignSelf: "flex-start", fontSize: 12, marginLeft: 21 }}>
+          Add this, and switch that one off
+        </button>
+      )}
     </div>
   )
 }
@@ -428,17 +558,20 @@ function Fields(props: { reading: Reading; overrides: Record<string, unknown>; o
   )
 }
 
-function RuleRow({ rule, locked, byName }: { rule: Schemas["RuleOut"]; locked: boolean; byName: Map<string, Schemas["RuleOut"]> }) {
+function RuleRow(props: { rule: RuleOut; locked: boolean; byName: Map<string, RuleOut>; editing: boolean; onEdit: () => void }) {
+  const { rule, locked, byName, editing, onEdit } = props
   const said = (name: string) => byName.get(name)?.sentence ?? name
-  const set = useCommand("rule_set", { label: () => "Saved" })
-  const remove = useCommand("rule_remove", { label: () => "Deleted" })
+  const setRule = useRuleCommand("rule_set", () => "Saved")
+  const set = (input: { name: string; enabled?: boolean; strength?: Strength }) => setRule(input, changed(input.name, input))
+  const removeRule = useRuleCommand("rule_remove", () => "Deleted")
+  const remove = (input: { name: string }) => removeRule(input, (rules) => rules.filter((r) => r.name !== input.name))
   const win = useCommand("rule_win", { label: (o) => o.result.message ?? "Saved" })
   const [asking, setAsking] = useState(false)
   const bends = rule.enabled && rule.strength !== "Always" && rule.effect === "Gives way in this plan"
   const [icon, source] = SOURCES[rule.source] ?? SOURCES.default
   const options = rule.source === "you" ? STRENGTHS : rule.strength === "Always" ? (["Always"] as Strength[]) : (["Prefer", "Strongly"] as Strength[])
   return (
-    <div className="fr-row fr-rule-row" style={{ display: "grid", gridTemplateColumns: "36px minmax(180px,1fr) auto 28px", gap: "8px 14px", alignItems: "center", padding: "12px 0", opacity: rule.enabled ? 1 : 0.5 }}>
+    <div className="fr-row fr-rule-row" data-editing={editing || undefined} style={{ display: "grid", gridTemplateColumns: "36px minmax(180px,1fr) auto 60px", gap: "8px 14px", alignItems: "center", padding: "12px 0", opacity: rule.enabled ? 1 : 0.5, boxShadow: editing ? "inset 3px 0 0 var(--color-accent-300)" : undefined }}>
       <Switch on={rule.enabled} onToggle={() => !locked && set({ name: rule.name, enabled: !rule.enabled })} label={`${rule.enabled ? "Switch off" : "Switch on"} ${rule.sentence}`} />
       <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
         <span style={{ fontWeight: 500 }}>{rule.sentence}</span>
@@ -472,9 +605,14 @@ function RuleRow({ rule, locked, byName }: { rule: Schemas["RuleOut"]; locked: b
         </span>
       </span>
       {!locked && rule.editable ? (
-        <button className="btn btn-icon btn-ghost" onClick={() => remove({ name: rule.name })} aria-label="Delete rule" style={{ width: 28, height: 28, color: "var(--color-neutral-500)" }}>
-          <Icon name="trash" />
-        </button>
+        <span style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+          <button className="btn btn-icon btn-ghost" onClick={onEdit} aria-label="Edit rule" aria-pressed={editing} title={rule.words != null ? "Change its words, its reading or its strength" : "Change its number or its strength"} style={{ width: 28, height: 28, color: editing ? "var(--color-accent-300)" : "var(--color-neutral-500)" }}>
+            <Icon name="pencil-simple" />
+          </button>
+          <button className="btn btn-icon btn-ghost" onClick={() => remove({ name: rule.name })} aria-label="Delete rule" style={{ width: 28, height: 28, color: "var(--color-neutral-500)" }}>
+            <Icon name="trash" />
+          </button>
+        </span>
       ) : (
         <span />
       )}

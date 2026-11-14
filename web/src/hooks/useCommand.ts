@@ -12,7 +12,7 @@ import { pending } from "@/plan/pending"
 import { whatIf } from "@/whatif/store"
 
 // settings too: a look flipped on the calendar goes back when the server refuses it (audit, 8 Nov)
-const OPTIMISTIC = ["items", "item", "plan", "now", "status", "meals", "sleep", "settings"]
+const OPTIMISTIC = ["items", "item", "plan", "now", "status", "meals", "sleep", "settings", "rules"]
 
 // What these change in the Now bar and the timer, shown before the server answers wherever they're made from: the
 // bar, a block's card, a to-do, Space (now/instant.ts).
