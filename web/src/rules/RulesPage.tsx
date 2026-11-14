@@ -16,7 +16,6 @@ import { runCommand, useCommand } from "@/hooks/useCommand"
 import { useStatus } from "@/hooks/queries"
 import { useInbox } from "@/inbox/InboxPage"
 import { spoken } from "@/lib/aiName"
-import { dayLabel } from "@/lib/format"
 import { WeekPaces } from "./WeekPaces"
 import { TimeInput } from "@/components/fr/TimeInput"
 import { NOTE_EXAMPLES, useNotes } from "@/settings/AboutYou"
@@ -567,11 +566,12 @@ function RuleRow(props: { rule: RuleOut; locked: boolean; byName: Map<string, Ru
   const remove = (input: { name: string }) => removeRule(input, (rules) => rules.filter((r) => r.name !== input.name))
   const win = useCommand("rule_win", { label: (o) => o.result.message ?? "Saved" })
   const [asking, setAsking] = useState(false)
-  const bends = rule.enabled && rule.strength !== "Always" && rule.effect === "Gives way in this plan"
+  // 14 Nov: "Violated on Tue, Thu" and a Why? that says plainly what took the time, not "Gives way" and "What to?"
+  const bends = rule.enabled && rule.strength !== "Always" && (rule.violated ?? []).length > 0
   const [icon, source] = SOURCES[rule.source] ?? SOURCES.default
   const options = rule.source === "you" ? STRENGTHS : rule.strength === "Always" ? (["Always"] as Strength[]) : (["Prefer", "Strongly"] as Strength[])
   return (
-    <div className="fr-row fr-rule-row" data-editing={editing || undefined} style={{ display: "grid", gridTemplateColumns: "36px minmax(180px,1fr) auto 60px", gap: "8px 14px", alignItems: "center", padding: "12px 0", opacity: rule.enabled ? 1 : 0.5, boxShadow: editing ? "inset 3px 0 0 var(--color-accent-300)" : undefined }}>
+    <div className="fr-row fr-rule-row" data-rule={rule.name} data-editing={editing || undefined} style={{ display: "grid", gridTemplateColumns: "36px minmax(180px,1fr) auto 60px", gap: "8px 14px", alignItems: "center", padding: "12px 0", opacity: rule.enabled ? 1 : 0.5, boxShadow: editing ? "inset 3px 0 0 var(--color-accent-300)" : undefined }}>
       <Switch on={rule.enabled} onToggle={() => !locked && set({ name: rule.name, enabled: !rule.enabled })} label={`${rule.enabled ? "Switch off" : "Switch on"} ${rule.sentence}`} />
       <span style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
         <span style={{ fontWeight: 500 }}>{rule.sentence}</span>
@@ -580,12 +580,17 @@ function RuleRow(props: { rule: RuleOut; locked: boolean; byName: Map<string, Ru
             <Icon name={icon} size={12} />
             {source}
           </span>
-          <span>{rule.effect}</span>
-          {bends && !locked && (
-            <button className="fr-plain fr-link" onClick={() => setAsking(!asking)} aria-expanded={asking} style={{ fontSize: 12 }}>
-              What to?
-            </button>
-          )}
+          <span>
+            {rule.effect}
+            {bends && !locked && (
+              <>
+                {" · "}
+                <button className="fr-plain fr-link" onClick={() => setAsking(!asking)} aria-expanded={asking} style={{ fontSize: 12 }}>
+                  Why?
+                </button>
+              </>
+            )}
+          </span>
           {(rule.wins_over ?? []).map((other) => (
             <button key={other} className="fr-plain fr-hover-text" title="Click to let it win instead" onClick={() => !locked && win({ winner: other, loser: rule.name })} style={{ fontSize: 12 }}>
               Wins over “{said(other)}”
@@ -616,7 +621,7 @@ function RuleRow(props: { rule: RuleOut; locked: boolean; byName: Map<string, Ru
       ) : (
         <span />
       )}
-      {asking && <Clash rule={rule} onAnswer={(winner, loser) => (win({ winner, loser }), setAsking(false))} />}
+      {asking && <Why rule={rule} onAnswer={(winner, loser) => win({ winner, loser })} />}
       {rule.enabled &&
         (rule.contradicts ?? []).map((c) => (
           <Contradiction key={c.other} rule={rule} other={byName.get(c.other)} conflict={c} locked={locked} onWin={(winner, loser) => win({ winner, loser })} onOff={() => set({ name: rule.name, enabled: false })} />
@@ -662,38 +667,55 @@ function Contradiction(props: { rule: Schemas["RuleOut"]; other?: Schemas["RuleO
   )
 }
 
-/** "This clashes with … Which should win?" (the v22 design): planned once more with the rule weighed far higher. */
-function Clash({ rule, onAnswer }: { rule: Schemas["RuleOut"]; onAnswer: (winner: string, loser: string) => void }) {
+/** Why a rule is violated in this plan (14 Nov), said plainly: the work that took its time and what it's due by, read
+ * from the plan at once ("Tue and Thu: CS essay (due Wed) needed those hours"); and, planned once more with the rule
+ * weighed far higher (a few seconds), another rule it clashes with, and which should win. Stays open once answered. */
+function Why({ rule, onAnswer }: { rule: RuleOut; onAnswer: (winner: string, loser: string) => void }) {
+  const why = useQuery({ queryKey: ["rule_why", rule.name], queryFn: () => query("rule_why", { name: rule.name }), staleTime: 30_000 })
   const found = useQuery({ queryKey: ["rule_clash", rule.name], queryFn: () => query("rule_clash", { name: rule.name }), staleTime: 60_000 })
+  const [answered, setAnswered] = useState<string | null>(null)
   const clash = found.data
+  const lines = why.data?.lines ?? []
+  const answer = (winner: string, loser: string, said: string) => (onAnswer(winner, loser), setAnswered(said))
   return (
-    <div style={{ gridColumn: "2 / -1", display: "flex", flexDirection: "column", gap: 10, padding: "12px 14px", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--fr-warn) 9%, var(--color-bg))" }}>
-      {found.isLoading ? (
-        <span className="fr-kicker">Planning once more with this rule weighed far higher (a few seconds)…</span>
-      ) : found.isError || !clash ? (
-        <span className="fr-kicker">Couldn’t find out just now.</span>
-      ) : !clash.other ? (
-        <span className="fr-kicker">Weighed far higher, it bends no less, or no other rule gives way for it: your deadlines and the work itself are what bend it.</span>
+    <div style={{ gridColumn: "2 / -1", display: "flex", flexDirection: "column", gap: 8, padding: "12px 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg)" }}>
+      {why.isLoading ? (
+        <span className="fr-kicker">Looking at this plan…</span>
       ) : (
-        <>
-          <span style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-            <Icon name="warning" size={14} style={{ color: "var(--fr-warn)" }} />
-            <span style={{ textWrap: "pretty" }}>
-              This clashes with <span style={{ fontWeight: 500 }}>{clash.other_sentence}</span>
-              {clash.days?.length ? ` on ${clash.days.map(dayLabel).join(", ")}` : ""}. Which should win?
-            </span>
+        lines.map((line) => (
+          <span key={line.said} style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 13, textWrap: "pretty" }}>
+            <Icon name="calendar-dots" size={13} style={{ color: "var(--color-neutral-400)", flexShrink: 0, alignSelf: "center" }} />
+            <span>{line.said}</span>
           </span>
-          <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <button className="btn btn-secondary" onClick={() => onAnswer(rule.name, clash.other as string)} style={{ fontSize: 12 }}>
-              {clash.sentence}
-            </button>
-            <button className="btn btn-secondary" onClick={() => onAnswer(clash.other as string, rule.name)} style={{ fontSize: 12 }}>
-              {clash.other_sentence}
-            </button>
-          </span>
-          <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>Friday remembers your answer for these two rules. Click the result to change it.</span>
-        </>
+        ))
       )}
+      {found.isLoading ? (
+        <span className="fr-kicker">Checking whether another rule is in the way (a few seconds)…</span>
+      ) : clash?.other ? (
+        <>
+          <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 13, textWrap: "pretty" }}>
+            <Icon name="warning" size={13} style={{ color: "var(--fr-warn)", flexShrink: 0, alignSelf: "center" }} />
+            <span>{clash.said}</span>
+          </span>
+          {answered ? (
+            <span className="fr-kicker" style={{ marginLeft: 21 }}>{answered} Click it above to change it.</span>
+          ) : (
+            <>
+              <span style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: 21 }}>
+                <button className="btn btn-secondary" onClick={() => answer(rule.name, clash.other as string, `“${clash.sentence}” wins from now on.`)} style={{ fontSize: 12 }}>
+                  {clash.sentence}
+                </button>
+                <button className="btn btn-secondary" onClick={() => answer(clash.other as string, rule.name, `“${clash.other_sentence}” wins from now on.`)} style={{ fontSize: 12 }}>
+                  {clash.other_sentence}
+                </button>
+              </span>
+              <span style={{ fontSize: 11, color: "var(--color-neutral-500)", marginLeft: 21 }}>Friday remembers your answer for these two rules.</span>
+            </>
+          )}
+        </>
+      ) : !why.isLoading && !lines.length ? (
+        <span className="fr-kicker">Friday couldn’t tell what took that time in this plan.</span>
+      ) : null}
     </div>
   )
 }

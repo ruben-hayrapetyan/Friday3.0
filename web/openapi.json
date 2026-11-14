@@ -12485,6 +12485,45 @@
     }
    }
   },
+  "/api/q/rule_why": {
+   "get": {
+    "summary": "Why this plan violates a rule: on each day, the work there and its due.",
+    "operationId": "rule_why",
+    "parameters": [
+     {
+      "name": "name",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Name"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RuleWhyOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/rules": {
    "get": {
     "summary": "Every rule in your words: where it came from, its strength, whether it's on and how often the plan keeps it.",
@@ -28299,6 +28338,11 @@
       "type": "string",
       "title": "Other Sentence",
       "default": ""
+     },
+     "said": {
+      "type": "string",
+      "title": "Said",
+      "default": ""
      }
     },
     "additionalProperties": false,
@@ -28597,6 +28641,14 @@
       },
       "type": "array",
       "title": "Contradicts",
+      "default": []
+     },
+     "violated": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Violated",
       "default": []
      },
      "words": {
@@ -28905,6 +28957,64 @@
      "result"
     ],
     "title": "RuleSetResult"
+   },
+   "RuleWhyLine": {
+    "properties": {
+     "days": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Days"
+     },
+     "said": {
+      "type": "string",
+      "title": "Said"
+     },
+     "items": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Items",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "days",
+     "said"
+    ],
+    "title": "RuleWhyLine"
+   },
+   "RuleWhyOut": {
+    "properties": {
+     "rule": {
+      "type": "string",
+      "title": "Rule"
+     },
+     "sentence": {
+      "type": "string",
+      "title": "Sentence"
+     },
+     "lines": {
+      "items": {
+       "$ref": "#/components/schemas/RuleWhyLine"
+      },
+      "type": "array",
+      "title": "Lines",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "rule",
+     "sentence"
+    ],
+    "title": "RuleWhyOut",
+    "description": "Why this plan violates a rule, from the plan itself: the work placed where the rule is broken, day by day, and\nwhat it's due by (14 Nov: the answer said plainly and concretely)."
    },
    "RuleWinInput": {
     "properties": {

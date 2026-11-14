@@ -1121,6 +1121,14 @@ VERBS = {
         False,
         "Cost per rule in the current plan, or on one day.",
     ),
+    "rule_why": Verb(
+        "GET",
+        "/api/q/rule_why",
+        commands.RuleRef,
+        False,
+        False,
+        "Why this plan violates a rule: on each day, the work there and its due.",
+    ),
     "rule_win": Verb(
         "POST",
         "/api/c/rule_win",

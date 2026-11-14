@@ -3424,6 +3424,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/rule_why": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Why this plan violates a rule, read from the plan (no planning, so at once): on each day it's broken, the work */
+        get: operations["rule_why"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/rules": {
         parameters: {
             query?: never;
@@ -8854,6 +8871,11 @@ export interface components {
              * @default
              */
             other_sentence?: string;
+            /**
+             * Said
+             * @default
+             */
+            said?: string;
         };
         /**
          * RuleConflict
@@ -8986,6 +9008,11 @@ export interface components {
              * @default []
              */
             contradicts?: components["schemas"]["RuleConflict"][];
+            /**
+             * Violated
+             * @default []
+             */
+            violated?: string[];
             /** Words */
             words?: string | null;
             /** Reading */
@@ -9082,6 +9109,34 @@ export interface components {
             repeated?: boolean;
             /** Generation */
             generation?: number | null;
+        };
+        /** RuleWhyLine */
+        RuleWhyLine: {
+            /** Days */
+            days: string[];
+            /** Said */
+            said: string;
+            /**
+             * Items
+             * @default []
+             */
+            items?: number[];
+        };
+        /**
+         * RuleWhyOut
+         * @description Why this plan violates a rule, from the plan itself: the work placed where the rule is broken, day by day, and
+         *     what it's due by (14 Nov: the answer said plainly and concretely).
+         */
+        RuleWhyOut: {
+            /** Rule */
+            rule: string;
+            /** Sentence */
+            sentence: string;
+            /**
+             * Lines
+             * @default []
+             */
+            lines?: components["schemas"]["RuleWhyLine"][];
         };
         /**
          * RuleWinInput
@@ -18272,6 +18327,37 @@ export interface operations {
                     "application/json": {
                         [key: string]: number;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rule_why: {
+        parameters: {
+            query: {
+                name: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleWhyOut"];
                 };
             };
             /** @description Validation Error */

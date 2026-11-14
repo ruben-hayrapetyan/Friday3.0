@@ -5,6 +5,7 @@ logged and undoable; your sentence and reading are kept in kv `rule_readings` to
 import json
 import re
 from dataclasses import replace
+from datetime import date, timedelta
 from typing import Any
 
 from friday.api.commands import (
@@ -18,15 +19,15 @@ from friday.api.commands import (
     SeriesSpacingInput,
 )
 from friday.api.types import Empty
-from friday.api.views import RuleClashOut, RuleConflict, RuleNumber, RuleOut, RuleReadOut
+from friday.api.views import RuleClashOut, RuleConflict, RuleNumber, RuleOut, RuleReadOut, RuleWhyLine, RuleWhyOut
 from friday.commands.registry import Ctx, command, query
 from friday.commands.settings import write_setting
 from friday.core.db import rows
 from friday.core.items import FieldError
 from friday.core.rule_text import Reading, days_spoken, read, read_all, sentence, spec, with_overrides, with_singulars
-from friday.core.settings import REFERENCE_RULES
+from friday.core.settings import REFERENCE_RULES, minutes_of
 from friday.core.textnorm import identity_text, norm
-from friday.core.time import clock_times
+from friday.core.time import clock_times, parse_utc, planning_date, to_local
 from friday.engine.rules.prices import has_words
 from friday.planner.contradictions import Conflict, against, contradictions
 from friday.planner.learning import learnable
@@ -548,11 +549,13 @@ def rules(ctx: Ctx, inp: Empty) -> list[RuleOut]:
     wins = kv_get(ctx.conn, "rule_wins", [], ctx.user_id)
     said = {r.name: words(r, mine) for r in ctx.settings["rules"]}
     against_each = contradictions([r.model_dump() for r in ctx.settings["rules"]], wins)
+    days = sorted(d for d in by_day if d != "other")  # "other" is what no one day carries, not a day
     out = []
     for r in ctx.settings["rules"]:
         source = "you" if r.name.startswith("you:") else "default" if r.name in DEFAULT_WEIGHT else "learned"
-        days_bent = sum(1 for totals in by_day.values() if totals.get(r.name, 0) > 0)
-        kept = f"kept {len(by_day) - days_bent} of {len(by_day)} days" if by_day and r.enabled else ""
+        bent = [d for d in days if by_day[d].get(r.name, 0) > 0] if r.enabled else []
+        kept = f"kept {len(days) - len(bent)} of {len(days)} days" if days and r.enabled else ""
+        elsewhere = r.enabled and by_day.get("other", {}).get(r.name, 0) > 0
         out.append(
             RuleOut(
                 name=r.name,
@@ -562,9 +565,8 @@ def rules(ctx: Ctx, inp: Empty) -> list[RuleOut]:
                 strength=strength_of(r, mine),
                 enabled=r.enabled,
                 kept=kept,
-                effect=("Gives way in this plan" if days_bent else "Kept throughout this plan")
-                if by_day and r.enabled
-                else "Off",
+                effect=violated_said(bent, elsewhere, ctx.today) if by_day and r.enabled else "Off",
+                violated=bent,
                 editable=r.name not in ALWAYS,
                 background=source == "default" and (r.type in BACKGROUND or unset_buffer(r)),
                 wins_over=[w["loser"] for w in wins if w["winner"] == r.name],
@@ -591,13 +593,106 @@ def rule_clash(ctx: Ctx, inp: RuleRef) -> RuleClashOut:
     found = find_clash(take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id), inp.name)
     if found is None:
         return RuleClashOut(rule=inp.name, other=None, sentence=said[inp.name])
+    other = said.get(found.other, found.other)
+    when = f"{days_and(found.days, ctx.today)}: it" if found.days else "It"
     return RuleClashOut(
         rule=inp.name,
         other=found.other,
         days=found.days,
         sentence=said[inp.name],
-        other_sentence=said.get(found.other, found.other),
+        other_sentence=other,
+        said=f"{when} clashes with “{other}”. Which should win?",
     )
+
+
+@query("rule_why")
+def rule_why(ctx: Ctx, inp: RuleRef) -> RuleWhyOut:
+    """Why this plan violates a rule: on each day, the work there and its due.
+
+    Read from the plan, with no planning, so at once: on each day it's broken, the work the plan put where it breaks
+    it, and what that work is due by. Days with the same work say it once."""
+    rule = next((r for r in ctx.settings["rules"] if r.name == inp.name), None)
+    if rule is None:
+        raise FieldError("name", f"no rule named {inp.name}")
+    sentence_of = words(rule, readings(ctx))
+    saved = current_plan(ctx.conn, ctx.user_id)
+    if saved is None:
+        return RuleWhyOut(rule=inp.name, sentence=sentence_of)
+    by_day = json.loads(saved["report"]).get("rule_totals_by_day", {})
+    bent = sorted(d for d, totals in by_day.items() if d != "other" and totals.get(inp.name, 0) > 0)
+    work = work_by_day(ctx, saved["id"], inp.name)
+    grouped: dict[tuple[int, ...], list[str]] = {}
+    for day in bent:
+        grouped.setdefault(tuple(i for i, _ in work.get(day, [])), []).append(day)
+    titles = {i: said for found in work.values() for i, said in found}
+    lines = []
+    for items, on in grouped.items():
+        if items:
+            what = listed([titles[i] for i in items], 3)
+            said = f"{days_and(on, ctx.today)}: {what} needed those hours"
+        else:
+            said = f"{days_and(on, ctx.today)}: the day's work as a whole needed the time"
+        lines.append(RuleWhyLine(days=on, said=clock_times(said), items=list(items)))
+    return RuleWhyOut(rule=inp.name, sentence=sentence_of, lines=lines)
+
+
+def work_by_day(ctx: Ctx, plan_id: int, name: str) -> dict[str, list[tuple[int, str]]]:
+    """Each day's work in the plan that costs this rule something, the costliest first: (item id, "CS essay (due
+    Wed)")."""
+    tz, day_start = ctx.tz, minutes_of(ctx.settings["time"].day_start)
+    cost: dict[str, dict[int, int]] = {}
+    said: dict[int, str] = {}
+    found = rows(
+        ctx.conn,
+        "SELECT b.item_id, b.start_utc, b.cost, i.title, i.due_utc FROM blocks b JOIN items i ON i.id = b.item_id "
+        "WHERE b.plan_id = ?",
+        [plan_id],
+    )
+    for block in found:
+        paid = json.loads(block["cost"]).get(name, 0)
+        if paid <= 0:
+            continue
+        day = planning_date(parse_utc(block["start_utc"]), tz, day_start).isoformat()
+        cost.setdefault(day, {})
+        cost[day][block["item_id"]] = cost[day].get(block["item_id"], 0) + paid
+        late = bool(block["due_utc"]) and parse_utc(block["start_utc"]) >= parse_utc(block["due_utc"])
+        said[block["item_id"]] = f"{block['title']} ({due_said(ctx, block['due_utc'], late)})"
+    return {d: [(i, said[i]) for i, _ in sorted(c.items(), key=lambda kv: -kv[1])] for d, c in cost.items()}
+
+
+def due_said(ctx: Ctx, due_utc: str | None, late: bool = False) -> str:
+    """ "due Wed" this week, "due Nov 24" further off, "late: due Mon" when it's planned after it, "no due date"."""
+    if not due_utc:
+        return "no due date"
+    due = to_local(parse_utc(due_utc), ctx.tz)
+    when = f"{due:%a}" if abs((due.date() - ctx.today).days) < 7 else f"{due:%b} {due.day}"
+    return f"late: due {when}" if late else f"due {when}"
+
+
+def listed(things: list[str], most: int) -> str:
+    shown = things[:most] + ([f"{len(things) - most} more"] if len(things) > most else [])
+    return shown[0] if len(shown) == 1 else ", ".join(shown[:-1]) + " and " + shown[-1]
+
+
+def day_names(isos: list[str], today: date) -> list[str]:
+    """ "Tue", or "Tue 24" when the days run past a week, so two Tuesdays aren't one."""
+    days = [date.fromisoformat(d) for d in isos]
+    long = bool(days) and (max(days) - min(today, *days)) >= timedelta(days=7)
+    return [f"{d:%a} {d.day}" if long else f"{d:%a}" for d in days]
+
+
+def days_and(isos: list[str], today: date) -> str:
+    return listed(day_names(isos, today), 4) if isos else ""
+
+
+def violated_said(bent: list[str], elsewhere: bool, today: date) -> str:
+    """ "Violated on Tue, Thu" (14 Nov: the user's word, not "bent" or "gives way"), or kept throughout."""
+    if bent:
+        names = day_names(bent, today)
+        return "Violated on " + (
+            ", ".join(names) if len(names) <= 4 else f"{', '.join(names[:4])} and {len(names) - 4} more"
+        )
+    return "Violated in this plan" if elsewhere else "Kept throughout this plan"
 
 
 @command("rule_win", affects_plan=True)

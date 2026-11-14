@@ -650,6 +650,7 @@ class RuleOut(Model):
     wins_over: list[str] = []  # rules you said this one beats when they clash ("Which should win?")
     gives_way_to: list[str] = []  # rules you said beat this one
     contradicts: list[RuleConflict] = []  # switched-on rules this one can't be kept together with
+    violated: list[str] = []  # the days (ISO dates) this plan doesn't keep it, as "Violated on Tue, Thu" says them
     words: str | None = None  # what you typed, for a rule of yours: the pencil opens it in the rule box
     reading: dict[str, Any] | None = None  # Friday's reading of your words, with your corrections
     number: "RuleNumber | None" = None  # a built-in rule's number the pencil changes
@@ -686,6 +687,22 @@ class RuleClashOut(Model):
     days: list[str] = []  # ISO dates
     sentence: str = ""
     other_sentence: str = ""
+    said: str = ""  # "Thu: it clashes with “No work before 10am”. Which should win?"
+
+
+class RuleWhyLine(Model):
+    days: list[str]  # ISO dates
+    said: str  # "Tue and Thu: CS essay (due Wed) needed those hours"
+    items: list[int] = []  # the work that took the time, most of it first
+
+
+class RuleWhyOut(Model):
+    """Why this plan violates a rule, from the plan itself: the work placed where the rule is broken, day by day, and
+    what it's due by (14 Nov: the answer said plainly and concretely)."""
+
+    rule: str
+    sentence: str
+    lines: list[RuleWhyLine] = []
 
 
 class PairCode(Model):
