@@ -8,8 +8,7 @@ import pytest
 from friday.core.items import FieldError
 from friday.core.time import parse_local, to_utc
 from friday.planner.snapshot import take_snapshot
-from friday.planner.solve import prepared_problem
-from tests.commands.helpers import TZ, App, new_app
+from tests.commands.helpers import App, new_app
 
 
 @pytest.fixture
@@ -74,7 +73,6 @@ def test_weeks_of_late_nights_are_offered_as_a_later_bedtime(app: App) -> None:
 def problem_of(app: App):
     from friday.planner.build import build_problem
     from friday.planner.prepare import build_input
-    from friday.planner.snapshot import take_snapshot
 
     return build_problem(build_input(take_snapshot(app.conn, app.now_utc)))
 
@@ -84,7 +82,6 @@ def slot_at(problem, local: str) -> int:
 
 
 def app_utc(problem, local: str) -> int:
-    from friday.core.time import parse_local, to_utc
 
     return to_utc(parse_local(local), problem.grid.spec.timezone)
 
@@ -152,26 +149,71 @@ def test_done_with_work_is_not_offered_while_a_timer_runs(app: App) -> None:
     assert app.do("sleep")["next"] == "done"
 
 
-def test_after_done_with_work_nothing_more_is_planned_tonight_unless_it_is_due(app: App) -> None:
+def test_after_done_with_work_nothing_more_is_planned_that_night(app: App) -> None:
+    """14 Nov, your answer: after "Done with work", nothing at all is planned that night; what then can't be done on
+    time shows as late, for the Inbox to ask about. (Before, work after the tap only cost as working past bedtime does,
+    and a night already broken for one deadline was filled with work due days later: Math HW due in 5 days at 3am.)"""
     on(app)
     app.now_utc += 11 * 60  # Monday 8pm
-    app.do("add", text="reading ~2h due fri 5pm")
-
-    def nine_pm() -> float:  # what an hour of work at 9pm tonight costs
-        _, problem, _ = prepared_problem(take_snapshot(app.conn, app.now_utc))
-        rule = next(r for r in problem.rules if r.type == "late_night")
-        at = to_utc(parse_local("2026-10-19T21:00"), TZ)
-        slot = next(s for s in range(problem.grid.S) if problem.grid.slots[s].start_utc == at)
-        return rule.price(next(iter(problem.items.values())), slot)
-
-    assert nine_pm() == 0
-    app.do("sleep_mark", kind="done")
-    assert nine_pm() >= 20  # as an hour past bedtime: only a deadline brings work back
+    reading = app.do("add", text="reading ~2h due fri 5pm")["item"]["id"]
     urgent = app.do("add", title="Quiz corrections", duration_min=45, due="2026-10-19T23:00")["item"]["id"]
     app.do("replan")
-    tonight = app.do("plan", start="2026-10-19T20:00", end="2026-10-20T04:00")["blocks"]
-    assert any(b["item_id"] == urgent for b in tonight)
-    assert all(b["item_id"] == urgent for b in tonight if not b.get("fixed"))
+    tonight = lambda: [  # noqa: E731
+        b for b in app.do("plan", start="2026-10-19T20:00", end="2026-10-20T10:00")["blocks"] if not b.get("fixed")
+    ]
+    assert any(b["item_id"] == urgent for b in tonight())  # before the tap: due tonight, so planned tonight
+    app.do("sleep_mark", kind="done")
+    app.do("replan")
+    assert tonight() == []  # nothing after the tap, not even what's due tonight
+    status = app.do("status")
+    late = {i["item_id"] for i in [*status["late_items"], *status["slipping"]]}
+    assert urgent in late and reading not in late  # the quiz is late, for you to decide; the reading waits for Tuesday
+    assert any(
+        b["item_id"] == reading for b in app.do("plan", start="2026-10-20T10:00", end="2026-10-24T00:00")["blocks"]
+    )
+
+
+def test_the_tap_starts_the_nights_wall_and_a_later_bedtime_doesnt_move_it(app: App) -> None:
+    """The night's wall (never planned in) starts at the tap when that's before bedtime's margin; a tap after it
+    changes nothing, and a tap last night doesn't reach tonight."""
+    from friday.engine.problem import Night
+
+    night = Night(bedtime_utc=1000, wake_utc=1500, margin_min=60, done_utc=900)
+    assert night.core == (900, 1500)
+    assert Night(bedtime_utc=1000, wake_utc=1500, margin_min=60, done_utc=1200).core == (1060, 1500)
+    assert Night(bedtime_utc=1000, wake_utc=1500, margin_min=60).core == (1060, 1500)
+    on(app)
+    app.now_utc += 11 * 60  # Monday 8pm
+    app.do("sleep_mark", kind="done")
+    problem = problem_of(app)
+    nights = sorted(problem.nights.items())
+    tonight = next(n for d, n in nights if str(d) == "2026-10-19")
+    assert tonight.core[0] == app.now_utc  # from the tap, 8pm
+    assert all(n.core[0] == n.bedtime_utc + n.margin_min for d, n in nights if str(d) != "2026-10-19")
+
+
+def test_a_tap_after_midnight_still_ends_that_nights_work(app: App) -> None:
+    """Your case, 14 Nov: "Done with work" at 12:48am, bedtime later than that; the night's work due days later (and
+    a chore that runs by itself) was planned at 1am to 3:30am."""
+    on(app)
+    days = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+    app.do(
+        "settings_set", key="sleep", value={d: {"wake": "11:00", "bedtime": "03:00", "margin_min": 30} for d in days}
+    )
+    app.now_utc += 16 * 60 + 48  # Tuesday 12:48am, Monday's night
+    # due at 4pm with an 11am wake: before, this broke the night, and the rest of the night was filled
+    app.do("add", title="CUAI HW", duration_min=360, due="2026-10-20T16:00")
+    later = app.do("add", title="Math HW", duration_min=30, due="2026-10-24T00:00")["item"]["id"]
+    app.do("replan")
+    night = lambda: [  # noqa: E731
+        b for b in app.do("plan", start="2026-10-20T00:48", end="2026-10-20T11:00")["blocks"] if not b.get("fixed")
+    ]
+    app.do("sleep_mark", kind="done")
+    app.do("replan")
+    assert night() == []
+    assert any(
+        b["item_id"] == later for b in app.do("plan", start="2026-10-20T11:00", end="2026-10-24T00:00")["blocks"]
+    )
 
 
 def test_the_wind_down_is_learned_from_done_to_bed(app: App) -> None:

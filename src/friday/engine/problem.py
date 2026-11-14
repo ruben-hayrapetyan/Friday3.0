@@ -139,14 +139,18 @@ class Night:
     debt_hours: float = 0.0  # sleep debt D_n from the previous nights (DESIGN §12.3)
     routine_min: int | None = None  # the next morning's routine, learned from tracked sleep; None: late_night's own
     wind_down_min: int | None = None  # the evening's wind-down before bed, learned from tracked sleep
-    done_utc: int | None = None  # tonight's "Done with work": work after it costs as past bedtime does
+    done_utc: int | None = None  # tonight's "Done with work": nothing is planned after it (`core`)
 
     @property
     def core(self) -> tuple[int, int]:
         """Never planned in: past bedtime's margin until waking, and the morning routine after it (29 Oct: "if it
         assumes that i have a 45 minute morning routine then how does it give me work at 8am sharp?"). "Ready to
-        work" ends the routine early (its routine is 0 then)."""
-        return self.bedtime_utc + self.margin_min, self.wake_utc + (self.routine_min or 0)
+        work" ends the routine early (its routine is 0 then). "Done with work" starts it at the tap (14 Nov, your
+        answer: "nothing at all" that night; what can't be done on time then shows as late, for the Inbox)."""
+        start = self.bedtime_utc + self.margin_min
+        if self.done_utc is not None:
+            start = min(start, self.done_utc)
+        return start, self.wake_utc + (self.routine_min or 0)
 
 
 @dataclass
