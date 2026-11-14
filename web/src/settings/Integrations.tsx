@@ -25,7 +25,7 @@ import { SectionHead } from "./SettingsPage"
 import { CATALOG, type Entry, grouped, search } from "./gallery"
 import { freeName, LinkIntegration, useLinkSources, ViaMac } from "./LinkIntegration"
 import { MailIntegration, useMailAccounts } from "./MailIntegration"
-import { OutlookMail, TokenIntegration, useIntegrations } from "./TokenIntegration"
+import { OutlookMail, Spinner, TokenIntegration, useIntegrations } from "./TokenIntegration"
 import { HeldRange, useOnce } from "./Held"
 import { useDialogKeys } from "@/dialogs/Dialogs"
 
@@ -88,7 +88,7 @@ function Gallery() {
   )
 }
 
-type Status = [string, string, boolean] | null // what it says, its color, connected
+export type Status = [string, string, boolean, boolean?] | null // what it says, its color, connected, being read for the first time
 
 /** Each box's status, from what the cards themselves read. */
 function useStatuses(): (e: Entry) => Status {
@@ -122,13 +122,17 @@ function useStatuses(): (e: Entry) => Status {
       const mine = mailboxes.filter((a) => a.provider === "outlook")
       return mine.length ? [mine.length > 1 ? `${mine.length} connected` : "Connected", ok, true] : null
     }
-    if (e.token || e.onMac || e.signIn || e.script) {
-      const mine = integrations.filter((c) => c.kind === e.id)
-      if (!mine.length) return null
-      return mine.some((c) => c.last_error) ? ["Needs a look", warn, true] : ["Connected", ok, true]
-    }
+    if (e.token || e.onMac || e.signIn || e.script) return integrationStatus(integrations.filter((c) => c.kind === e.id))
     return null
   }
+}
+
+/** The box of one connected by token, sign-in, script or the Mac app: a problem first, then its first read under
+ * way (a spinner, 13 Nov), then connected. */
+export function integrationStatus(mine: Pick<Schemas["Connected"], "last_error" | "reading">[]): Status {
+  if (!mine.length) return null
+  if (mine.some((c) => c.last_error)) return ["Needs a look", "var(--fr-warn)", true]
+  return [mine.some((c) => c.reading) ? "Reading" : "Connected", "var(--color-accent-300)", true, mine.some((c) => c.reading)]
 }
 
 function Box({ entry, status, onOpen }: { entry: Entry; status: Status; onOpen: () => void }) {
@@ -148,8 +152,8 @@ function Box({ entry, status, onOpen }: { entry: Entry; status: Status; onOpen: 
         </span>
         {status && (
           <span style={{ display: "inline-flex", gap: 5, alignItems: "center", fontSize: 11, color: status[1] }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: status[1] }} />
-            {status[0]}
+            {status[3] ? <Spinner /> : <span style={{ width: 6, height: 6, borderRadius: "50%", background: status[1] }} />}
+            {status[3] ? "Reading for the first time…" : status[0]}
           </span>
         )}
       </span>

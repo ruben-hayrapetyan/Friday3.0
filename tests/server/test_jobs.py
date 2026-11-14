@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from friday.integrations import sync as integrations
 from friday.planner.service import replan
 from friday.planner.store import load_settings
 from friday.server import jobs
@@ -185,3 +186,31 @@ def test_a_job_whose_time_cant_be_told_is_said_and_the_others_still_run(
     assert "nightly" in ran and ran[-1] == "updates"
     (nightly,) = [r for r in app.table("job_runs") if r["name"] == "nightly"]
     assert nightly["last_status"] == "error" and "isn't a time" in nightly["last_error"]
+
+
+def test_integrations_asked_for_are_read_at_once_not_only_once_their_minute_is_up(app: App, tmp_path: Path) -> None:
+    """13 Nov: a first read (and a Reminders list switched back on) waited for the job's minute, up to a minute and
+    a half; asked for (connected, a list switched, Sync now), the integrations are read at the loop's next wake."""
+    run_jobs(app, Worker(), tmp_path)
+    assert run_jobs(app, Worker(), tmp_path) == []  # within the minute: nothing due
+    integrations.read_soon(app.conn, 1)
+    assert run_jobs(app, Worker(), tmp_path) == ["integrations"]
+    assert run_jobs(app, Worker(), tmp_path) == []  # asked once, read once
+
+
+def test_the_loop_wakes_when_a_read_is_asked_for_and_still_stops_at_once(tmp_path: Path) -> None:
+    import threading
+    import time
+
+    loop = jobs.JobLoop(tmp_path / "unused.db", Hub(), None, lambda: 0)
+    integrations.READ_NOW.clear()
+    threading.Timer(0.2, integrations.READ_NOW.set).start()
+    began = time.monotonic()
+    loop.rest()
+    assert time.monotonic() - began < 5, "slept its thirty seconds through a read asked for"
+    assert not integrations.READ_NOW.is_set()  # woken once, not every pass after
+    loop.stopping.set()
+    integrations.READ_NOW.set()
+    began = time.monotonic()
+    loop.rest()
+    assert time.monotonic() - began < 0.2, "waited to let a command commit while stopping"

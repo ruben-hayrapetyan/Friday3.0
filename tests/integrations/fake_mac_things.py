@@ -22,6 +22,9 @@ class FakeMacThings(FakeMacReminders):
         self.reminders[tid] = {"id": tid, "title": title, "due": due, "when": when, "list": where, "completed": False}
         return tid
 
+    def sent_lists(self) -> list[str]:
+        return [self.list_name]  # Things' lists by title, as ThingsBridge sends them
+
 
 def _move(fake: FakeMacThings, tid: str, due: str) -> None:
     fake.reminders[tid]["due"] = due

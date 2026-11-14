@@ -24,7 +24,7 @@ from typing import Any
 from friday.commands.ai import toml_of
 from friday.commands.registry import run
 from friday.commands.suggesting import accept_trusted, made_items, store, suggest
-from friday.core.db import one, rows
+from friday.core.db import begin_write, one, rows
 from friday.core.guess import guess_preset
 from friday.core.paths import secrets_path
 from friday.core.presets import in_use
@@ -44,6 +44,7 @@ from friday.integrations.slack import Slack
 from friday.integrations.ticktick import TickTick
 from friday.integrations.todoist import Todoist
 from friday.integrations.trello import Trello
+from friday.planner.store import kv_set
 from friday.sync.google_auth import SECRETS_HELD, write_private
 
 CONNECTORS: dict[str, type] = {
@@ -196,6 +197,9 @@ def sync_source(
     )
     if hasattr(connector, "adopt"):  # what another source already brought (the Canvas feed's assignments)
         connector.adopt(conn, source)
+    held = connector.held_back() if hasattr(connector, "held_back") else set()  # in a list you switched off
+    if connector.caps.off_removes:  # what a list switched off took out, read again: back first, then in step
+        put_back(conn, source, {r.external_id for r in remotes}, held, now_utc, user_id)
     first = not config.get("synced")
     arrival = config.get("arrival", "inbox_first")
     straight = arrival == "straight" or (arrival == "inbox_first" and not first)
@@ -217,8 +221,10 @@ def sync_source(
         if straight or (before and arrival != "inbox"):
             for s in rows(conn, "SELECT id FROM suggestions WHERE raw_input_id = ? AND status = 'pending'", [raw_id]):
                 accept_trusted(conn, now_utc, user_id, int(s["id"]), source["name"])
+    if held:
+        let_go(conn, source, held, now_utc, user_id)
     if connector.caps.gone_is_done:
-        done_there(conn, source, {r.external_id for r in remotes}, now_utc, user_id)
+        done_there(conn, source, {r.external_id for r in remotes} | held, now_utc, user_id)
     if first:  # onto its config as it is now: the one read before the read undid a choice made in its box meanwhile
         now = one(conn, "SELECT config FROM sources WHERE id = ?", [source["id"]])
         synced = json.dumps(json.loads((now or {}).get("config") or "{}") | {"synced": True})
@@ -251,6 +257,100 @@ def done_there(
                 provisional=False)  # fmt: skip
 
 
+HELD = "held"  # in a source's config: the items Friday took out because their list was off, to put back
+
+
+def held_of(config: dict[str, Any]) -> set[int]:
+    return {int(i) for i in config.get(HELD) or []}
+
+
+def with_held(config: dict[str, Any], held: set[int]) -> dict[str, Any]:
+    return {k: v for k, v in config.items() if k != HELD} | ({HELD: sorted(held)} if held else {})
+
+
+def hold(conn: sqlite3.Connection, source_id: int, add: set[int], remove: set[int]) -> None:
+    """Change the items held out, on the source's config as it is now (a command may have changed it meanwhile)."""
+    begin_write(conn, "integrations")
+    try:
+        now = one(conn, "SELECT config FROM sources WHERE id = ?", [source_id])
+        config = json.loads((now or {}).get("config") or "{}")
+        held = (held_of(config) | add) - remove
+        conn.execute("UPDATE sources SET config = ? WHERE id = ?", [json.dumps(with_held(config, held)), source_id])
+        conn.execute("COMMIT")
+    except BaseException:
+        conn.execute("ROLLBACK")
+        raise
+
+
+def brought_from(conn: sqlite3.Connection, source_id: int, items: set[int]) -> list[tuple[int, str]]:
+    """Each of these items with the remote id of the to-do it was brought in from."""
+    if not items:
+        return []
+    found = rows(
+        conn,
+        "SELECT DISTINCT s.item_id, r.external_id FROM suggestions s JOIN raw_inputs r ON r.id = s.raw_input_id "
+        f"WHERE r.source_id = ? AND s.status = 'accepted' AND s.item_id IN ({', '.join('?' * len(items))})",
+        [source_id, *sorted(items)],
+    )
+    return [(int(r["item_id"]), str(r["external_id"])) for r in found]
+
+
+def let_go(conn: sqlite3.Connection, source: dict[str, Any], held: set[str], now_utc: int, user_id: int) -> None:
+    """Still open there but in a list you switched off (one moved into it there, say): out of Friday, not done, so
+    nothing goes back; held, to be put back once it's read again."""
+    gone: set[int] = set()
+    for r in rows(
+        conn, "SELECT id, external_id FROM raw_inputs WHERE source_id = ? AND status != 'ignored'", [source["id"]]
+    ):
+        if r["external_id"] not in held:
+            continue
+        conn.execute(
+            "UPDATE suggestions SET status = 'superseded' WHERE raw_input_id = ? AND status = 'pending'", [r["id"]]
+        )
+        conn.execute("UPDATE raw_inputs SET status = 'ignored' WHERE id = ?", [r["id"]])
+        for item in brought(conn, int(r["id"])):  # only what it brought in: never a to-do of yours it matched
+            run(conn, "drop", {"id": item}, now_utc=now_utc, actor=f"sync:{source['name']}", user_id=user_id,
+                provisional=False)  # fmt: skip
+            gone.add(item)
+    if gone:
+        hold(conn, int(source["id"]), gone, set())
+
+
+def put_back(
+    conn: sqlite3.Connection, source: dict[str, Any], read: set[str], off: set[str], now_utc: int, user_id: int
+) -> None:
+    """What letting go of a list took out (dropped, not by you), read again: open once more, so the read that follows
+    puts it in step (a new add would be set aside as the same as the one dropped). Its list switched on, or the
+    to-do moved back to one that's on. One no longer open there (`read`, `off`: open in a list that's off) is let
+    go of for good: done or deleted in Reminders meanwhile."""
+    now = one(conn, "SELECT config FROM sources WHERE id = ?", [source["id"]])
+    held = held_of(json.loads((now or {}).get("config") or "{}"))
+    if not held:
+        return
+    whence = dict(brought_from(conn, int(source["id"]), held))
+    back = {item for item, external in whence.items() if external in read}
+    for item in back:
+        if (one(conn, "SELECT status FROM items WHERE id = ?", [item]) or {}).get("status") == "dropped":
+            run(conn, "reopen", {"id": item}, now_utc=now_utc, actor=f"sync:{source['name']}", user_id=user_id,
+                provisional=False)  # fmt: skip
+    over = {item for item in held if whence.get(item) not in read | off}
+    if back or over:
+        hold(conn, int(source["id"]), set(), back | over)
+
+
+def brought(conn: sqlite3.Connection, raw_id: int) -> list[int]:
+    """The open items an input brought into Friday (accepted from it), as Disconnect's Remove them takes out."""
+    return [
+        int(r["item_id"])
+        for r in rows(
+            conn,
+            "SELECT DISTINCT s.item_id FROM suggestions s JOIN items i ON i.id = s.item_id "
+            "WHERE s.raw_input_id = ? AND s.status = 'accepted' AND i.status = 'todo'",
+            [raw_id],
+        )
+    ]
+
+
 def origin(conn: sqlite3.Connection, item_id: int) -> dict[str, Any] | None:
     """The integration and remote id an item came from, if it came from one."""
     found = one(
@@ -279,6 +379,17 @@ def queue_write(conn: sqlite3.Connection, item_id: int, op: str, actor: str, now
 
 
 log = logging.getLogger("friday.integrations")
+# Set when you ask for a read (connected, a list switched, Sync now, the Mac app's reminders): the job loop reads at
+# once rather than at its next pass, so a first read, or a list switched back on, isn't up to a minute and a half away
+READ_NOW = threading.Event()
+
+
+def read_soon(conn: sqlite3.Connection, user_id: int) -> None:
+    """Every integration read now, by the job loop, once this command has committed."""
+    kv_set(conn, "integrations_now", True, user_id)
+    READ_NOW.set()
+
+
 WAKE = threading.Event()  # set when something is queued to go back: the sender sends it at once (your "yes", C97)
 SETTLE_S = 0.5  # the command that queued it commits first; one rolled back or undone leaves nothing to send
 

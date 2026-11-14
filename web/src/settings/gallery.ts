@@ -425,7 +425,7 @@ export const CATALOG: Entry[] = [
       steps: [
         "Press Connect: nothing to copy, no account to sign in to.",
         "macOS asks once whether Friday may see your reminders. Press Allow.",
-        "Your open reminders, from every list, come to your Inbox to review together.",
+        "Your open reminders, from every list, come to your Inbox to review together; once connected, switch off any list (a shopping list, say) to leave it out.",
       ],
     },
   },

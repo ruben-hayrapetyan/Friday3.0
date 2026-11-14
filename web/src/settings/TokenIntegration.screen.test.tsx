@@ -9,7 +9,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest"
 import { friday, waitForSent } from "@/test/friday"
 import { answer, openIntegration, refused, standIn } from "./screen.test.helpers"
 
-type Connected = { id: number; kind: string; name: string; arrival: string; last_error: string | null; made: number; waiting: number; lists: boolean; last_sync: string | null }
+type Connected = { id: number; kind: string; name: string; arrival: string; last_error: string | null; made: number; waiting: number; lists: boolean; last_sync: string | null; reading: boolean; off_removes: boolean }
 
 const GOOD = "good-token"
 const todoist = await standIn((req) => {
@@ -77,8 +77,11 @@ describe("a token form (Todoist)", () => {
     const { user, dialog } = await openBox("Todoist")
     await user.type(within(dialog).getByLabelText("Todoist API token"), GOOD)
     await user.click(within(dialog).getByRole("button", { name: "Connect" }))
-    // an unlogged command (a token is never logged) says nothing more: the box turns connected
-    expect(await within(dialog).findByText("Connected: reading it within the minute.")).toBeTruthy()
+    // an unlogged command (a token is never logged) says nothing more: the box turns connected, reading Todoist
+    // for the first time (a spinner) until the read is in, which says what it read
+    expect(await within(dialog).findByText(/^(Reading Todoist for the first time…|Read .+ in your plan\.)$/)).toBeTruthy()
+    expect(await within(dialog).findByText(/^Read .+ in your plan\.$/)).toBeTruthy()
+    expect(within(dialog).queryByText("Reading Todoist for the first time…")).toBeNull()
     const arrivals = within(dialog).getByRole("radiogroup", { name: "How new to-dos arrive" })
     expect(within(arrivals).getByRole("radio", { name: /^Review the first, then straight in/ }).getAttribute("aria-checked")).toBe("true")
     const [row] = await connected()
@@ -276,7 +279,8 @@ describe("one the Mac app reads (Apple Reminders)", () => {
     expect(within(dialog).getByText(/Friday's Mac app reads .+ while it's open; nothing leaves this Mac/)).toBeTruthy()
     await user.click(within(dialog).getByRole("button", { name: "Connect" }))
     expect((await waitForSent("integration_connect")).body).toEqual({ kind: "reminders", token: "" })
-    expect(await within(dialog).findByText("Connected: reading it within the minute.")).toBeTruthy()
+    // the Mac app reads them, once macOS lets it: until it has, the first read is still under way
+    expect(await within(dialog).findByText("Reading Apple Reminders for the first time…")).toBeTruthy()
     const [row] = (await connected()).filter((c) => c.kind === "reminders")
     expect(row.name).toBe("Apple Reminders")
     agent.mockRestore()
@@ -284,6 +288,75 @@ describe("one the Mac app reads (Apple Reminders)", () => {
     undo.push(answer("integrations", () => ({ json: [{ ...row, last_error: "Friday isn't allowed to see your reminders: open System Settings → Privacy & Security → Reminders" }] })))
     const again = await openBox("Apple Reminders, Needs a look")
     expect(within(again.dialog).getByRole("link", { name: "Open Privacy & Security → Reminders" }).getAttribute("href")).toBe("x-apple.systempreferences:com.apple.preference.security?Privacy_Reminders")
+  })
+})
+
+describe("Apple Reminders' lists (13 Nov: a Shopping List came in as tasks to plan)", () => {
+  // as RemindersBridge sends them: each list by EventKit's calendarIdentifier, each reminder with its list's
+  const HOME = { id: "CAL-0001-HOME", title: "Home" }
+  const SHOPPING = { id: "CAL-0002-SHOPPING", title: "Shopping List" }
+  const reminder = (id: string, title: string, list: { id: string; title: string }) => ({ id, title, notes: "", list: list.title, list_id: list.id, completed: false })
+  const open = async () => new Set((await friday.q<{ title: string }[]>("items")).map((i) => i.title))
+
+  it("lists every list with a switch, all on, with what each brought in", async () => {
+    const [row] = (await connected()).filter((c) => c.kind === "reminders")
+    await friday.c("integration_set", { id: row.id, arrival: "straight" })
+    await friday.c("reminders_sync", { reminders: [reminder("r-1", "Buy milk", SHOPPING), reminder("r-2", "Buy eggs", SHOPPING), reminder("r-3", "Water the plants", HOME)], lists: [HOME, SHOPPING] })
+    await waitFor(async () => expect([...(await open())]).toEqual(expect.arrayContaining(["Buy milk", "Buy eggs", "Water the plants"])), { timeout: 30_000 })
+    const { dialog } = await openBox("Apple Reminders, Connected")
+    expect(await within(dialog).findByText("Lists Friday reads")).toBeTruthy()
+    expect(within(dialog).getByText(/A list switched off leaves Friday at once; its to-dos stay in Apple Reminders/)).toBeTruthy()
+    expect(await within(dialog).findByText("2 in your plan")).toBeTruthy()
+    for (const name of ["Home", "Shopping List"]) expect(within(dialog).getByRole("switch", { name: `Read ${name}` }).getAttribute("aria-checked")).toBe("true")
+  })
+
+  it("a list switched off leaves Friday at once without asking, the panel open; switched on, it's back", async () => {
+    const [row] = (await connected()).filter((c) => c.kind === "reminders")
+    const { user, dialog } = await openBox("Apple Reminders, Connected")
+    const shopping = await within(dialog).findByRole("switch", { name: "Read Shopping List" })
+    await user.click(shopping)
+    expect(shopping.getAttribute("aria-checked")).toBe("false") // at once, before the server answers
+    expect(within(dialog).queryByRole("alertdialog")).toBeNull() // Notion's box asks; this one doesn't
+    expect((await waitForSent("integration_list_set")).body).toEqual({ id: row.id, list: SHOPPING.id, on: false, keep: false })
+    await waitFor(async () => expect(await open()).not.toContain("Buy milk"))
+    expect(await open()).toContain("Water the plants")
+    expect(screen.getByRole("dialog", { name: "Apple Reminders" })).toBe(dialog) // stays open
+    await user.click(within(dialog).getByRole("switch", { name: "Read Shopping List" }))
+    expect(within(dialog).getByRole("switch", { name: "Read Shopping List" }).getAttribute("aria-checked")).toBe("true")
+    await waitFor(async () => expect([...(await open())]).toEqual(expect.arrayContaining(["Buy milk", "Buy eggs"])))
+    expect(await within(dialog).findByText("2 in your plan")).toBeTruthy()
+  })
+
+  it("says where the lists come from before the Mac app has sent them", async () => {
+    undo.push(answer("integration_lists", () => ({ json: [] })))
+    const { dialog } = await openBox("Apple Reminders, Connected")
+    expect(await within(dialog).findByText("Your lists show here once Friday's Mac app has read Apple Reminders.")).toBeTruthy()
+  })
+})
+
+describe("the first read's spinner (13 Nov)", () => {
+  const todoist: Connected & Record<string, unknown> = { id: 9001, kind: "todoist", name: "Todoist", arrival: "inbox_first", two_way: true, last_sync: null, last_error: null, made: 0, waiting: 0, lists: false, off_removes: false, reading: true, signs_in: false }
+
+  it("turns on the box and in its panel while the first read runs, then gives way to what it read", async () => {
+    let row: Record<string, unknown> = todoist
+    undo.push(answer("integrations", (_, url) => (url.pathname.endsWith("/integrations") ? { json: [row] } : undefined)))
+    const { dialog } = await openBox("Todoist, Reading")
+    expect(within(dialog).getByText("Reading Todoist for the first time…").querySelector("[data-spinner]")).toBeTruthy()
+    const box = () => document.querySelector<HTMLElement>('[data-integration="todoist"]')!
+    expect(within(box()).getByText("Reading for the first time…").querySelector("[data-spinner]")).toBeTruthy()
+    row = { ...todoist, reading: false, last_sync: "2026-11-11T09:00", waiting: 3 }
+    // asked again by itself while it's being read: no click, no reopening
+    expect(await within(dialog).findByText(/^Read .*: 0 open to-dos from it in your plan\.$/, {}, { timeout: 8000 })).toBeTruthy()
+    expect(dialog.querySelector("[data-spinner]")).toBeNull()
+    await waitFor(() => expect(box().getAttribute("aria-label")).toBe("Todoist, Connected"))
+    expect(box().querySelector("[data-spinner]")).toBeNull()
+  })
+
+  it("a first read that went wrong says so, with no spinner", async () => {
+    undo.push(answer("integrations", (_, url) => (url.pathname.endsWith("/integrations") ? { json: [{ ...todoist, last_error: "Todoist is having trouble (503): Friday tries again" }] } : undefined)))
+    const { dialog } = await openBox("Todoist, Needs a look")
+    expect(within(dialog).getByText("Todoist is having trouble (503): Friday tries again")).toBeTruthy()
+    expect(document.querySelector("[data-spinner]")).toBeNull()
   })
 })
 

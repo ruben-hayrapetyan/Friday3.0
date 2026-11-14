@@ -9,7 +9,7 @@ import pytest
 from friday.commands.reminders import DENIED
 from friday.core.items import FieldError
 from friday.integrations import sync
-from friday.integrations.reminders import Reminders, remote
+from friday.integrations.reminders import Reminders, list_of, remote
 from tests.commands.helpers import new_app
 from tests.integrations.contract import THU, World
 from tests.integrations.fake_mac_reminders import HARNESS
@@ -79,3 +79,58 @@ def test_the_server_never_sends_reminders_changes_itself(w: World) -> None:
 def test_a_report_on_a_change_that_isnt_reminders_is_refused(w: World) -> None:
     with pytest.raises(FieldError, match="no such change"):
         w.app.do("reminder_written", id=999, ok=True)
+
+
+# Which lists come in (13 Nov), glass box: the connector's own reading of the lists the Mac app sent
+
+
+def sent(*reminders: dict, lists: list | None = None) -> Reminders:
+    """A connector as `load` leaves it, the Mac app having sent these, with `config` set on it by the caller."""
+    connector = Reminders()
+    connector.sent = {"reminders": list(reminders), "lists": lists or []}
+    return connector
+
+
+HOME = {"id": "CAL-HOME", "title": "Home"}
+SHOPPING = {"id": "CAL-SHOP", "title": "Shopping List"}
+MILK = {"id": "r-1", "title": "Milk", "list": "Shopping List", "list_id": "CAL-SHOP"}
+RENT = {"id": "r-2", "title": "Pay rent", "list": "Home", "list_id": "CAL-HOME"}
+
+
+def test_lists_are_known_by_eventkits_id_and_by_title_from_a_mac_app_that_sent_no_ids() -> None:
+    assert [(t.id, t.name, t.team) for t in sent(lists=[HOME, SHOPPING]).lists()] == [
+        ("CAL-HOME", "Home", False), ("CAL-SHOP", "Shopping List", False)]  # fmt: skip
+    assert [(t.id, t.name) for t in sent(lists=["Home"]).lists()] == [("Home", "Home")]
+    assert sent().lists() == []
+    assert list_of(MILK) == "CAL-SHOP"
+    assert list_of({"id": "r", "list": "Home"}) == "Home"  # no id sent: its title
+    assert list_of({"id": "r"}) == ""
+
+
+def test_every_list_is_read_until_switched_off_and_a_new_one_is_on() -> None:
+    connector = sent(MILK, RENT, lists=[HOME, SHOPPING])
+    assert {r.title for r in connector.read()} == {"Milk", "Pay rent"}
+    connector.chosen = {"CAL-SHOP": False}
+    assert [r.title for r in connector.read()] == ["Pay rent"]
+    assert connector.held_back() == {"r-1"}
+    assert connector.members("CAL-SHOP") == {"r-1"} and connector.members("CAL-HOME") == {"r-2"}
+    assert [connector.on(t) for t in connector.lists()] == [True, False]
+
+
+def test_a_list_back_under_a_new_id_keeps_the_choice_made_for_its_name() -> None:
+    connector = sent(dict(MILK, list_id="CAL-NEW"), lists=[HOME, {"id": "CAL-NEW", "title": "Shopping List"}])
+    connector.chosen, connector.names = {"CAL-SHOP": False}, {"CAL-SHOP": "Shopping List"}
+    assert [r.title for r in connector.read()] == []  # iCloud rebuilt it: still off
+    renamed = sent(lists=[{"id": "CAL-SHOP", "title": "Groceries"}, {"id": "CAL-2", "title": "Shopping List"}])
+    renamed.chosen, renamed.names = {"CAL-SHOP": False}, {"CAL-SHOP": "Shopping List"}
+    # the list switched off is still there, renamed: a new list that took its old name is a new list, on
+    assert [renamed.on(t) for t in renamed.lists()] == [False, True]
+
+
+def test_things_reads_every_list_whatever_is_switched() -> None:
+    from friday.integrations.reminders import Things
+
+    things = Things(config={"lists": {"Today": False}})
+    things.sent = {"reminders": [{"id": "t-1", "title": "Call", "list": "Today"}], "lists": ["Today"]}
+    assert [r.title for r in things.read()] == ["Call"] and things.held_back() == set()
+    assert not Things.caps.lists and Reminders.caps.lists and Reminders.caps.off_removes

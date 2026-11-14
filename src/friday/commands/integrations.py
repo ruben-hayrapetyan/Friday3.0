@@ -68,7 +68,7 @@ def add_source(
     source_id = int(cursor.lastrowid or 0)
     if not make.caps.on_mac:  # Apple Reminders has no token: macOS asks instead
         sync.keep_token(source_id, kind, token)
-    kv_set(conn, "integrations_now", True, user_id)
+    sync.read_soon(conn, user_id)
     return source_id
 
 
@@ -171,44 +171,96 @@ def integration_token_page(ctx: Ctx, inp: TokenPageInput) -> TokenPageOut:
 
 @query("integration_lists")
 def integration_lists(ctx: Ctx, inp: ListsInput) -> list[TodoListOut]:
-    """The service's to-do lists, asked of it now, each with whether it's read and what it brought in."""
+    """The service's to-do lists, asked of it now, each with whether it's read and what it brought in (Apple
+    Reminders': as the Mac app last sent them)."""
     source = require(ctx, inp.id)
-    connector = sync.connector_for(source)
+    connector = reading(ctx, source)
     if not connector.caps.lists:
         raise FieldError("id", f"{source['name']} has no lists to choose from")
     try:
         found = connector.lists()
     except ConnectorError as error:
         raise FieldError("id", str(error)) from error
-    return [TodoListOut(id=t.id, name=t.name, on=connector.on(t), team=t.team, made=len(made(ctx, inp.id, t.id)))
-            for t in found]  # fmt: skip
+    return [TodoListOut(id=t.id, name=t.name, on=connector.on(t), team=t.team,
+                        made=len(made(ctx, inp.id, t.id, members(connector, t.id)))) for t in found]  # fmt: skip
 
 
 @command("integration_list_set", affects_plan=True)
 def integration_list_set(ctx: Ctx, inp: ListSetInput) -> Connected:
-    """Read one of its lists, or not. Off, its to-dos are no longer kept in step: kept as they are, or dropped."""
+    """Read one of its lists, or not. Off, its to-dos are no longer kept in step: kept as they are, or dropped.
+    Apple Reminders' are always dropped (your answer, 13 Nov), and back at once when the list is switched on again
+    (those still open in it), then in step with Reminders at its next read."""
+    from friday.api.commands import ItemRef
+    from friday.commands.items import drop, set_status
+
     source = require(ctx, inp.id)
-    if not sync.CONNECTORS[source["kind"]].caps.lists:
+    caps = sync.CONNECTORS[source["kind"]].caps
+    if not caps.lists:
         raise FieldError("id", f"{source['name']} has no lists to choose from")
+    connector = reading(ctx, source) if caps.on_mac else None  # Notion's lists needn't be asked of Notion here
     config = json.loads(source["config"] or "{}")
     config["lists"] = (config.get("lists") or {}) | {inp.list: inp.on}
-    ctx.db.update("sources", {"id": inp.id}, {"config": json.dumps(config)})
+    held = sync.held_of(config)
+    within = members(connector, inp.list)
+    if connector is not None and caps.off_removes:  # its name too: the same list back under a new id keeps your choice
+        name = next((t.name for t in connector.lists() if t.id == inp.list), None)
+        if name is not None:
+            config["list_names"] = (config.get("list_names") or {}) | {inp.list: name}
+    if inp.on and caps.off_removes:
+        back = [i for i, external in sync.brought_from(ctx.conn, inp.id, held) if external in (within or set())]
+        for item in back:
+            if require_status(ctx, item) == "dropped":
+                set_status(ctx, item, "todo")
+        held -= set(back)
     if not inp.on:
-        if not inp.keep:
-            from friday.api.commands import ItemRef
-            from friday.commands.items import drop
-
-            for item in made(ctx, inp.id, inp.list):
+        if not inp.keep or caps.off_removes:
+            gone = made(ctx, inp.id, inp.list, within)
+            for item in gone:
                 drop(ctx, ItemRef(id=item))
+            if caps.off_removes:
+                held |= set(gone)
         # let go: not taken as done when it isn't read (read again, switched back on, it's in step again)
-        for r in rows(ctx.conn, "SELECT id FROM raw_inputs WHERE source_id = ? AND external_id LIKE ? AND status != "
-                      "'ignored'", [inp.id, f"{inp.list}/%"]):  # fmt: skip
+        for r in of_list(ctx, inp.id, inp.list, within):
             for pending in rows(ctx.conn, "SELECT id FROM suggestions WHERE raw_input_id = ? AND status = 'pending'",
                                 [r["id"]]):  # fmt: skip
                 ctx.db.update("suggestions", {"id": pending["id"]}, {"status": "superseded"})
             ctx.db.update("raw_inputs", {"id": r["id"]}, {"status": "ignored"})
-    kv_set(ctx.conn, "integrations_now", True, ctx.user_id)
+    ctx.db.update("sources", {"id": inp.id}, {"config": json.dumps(sync.with_held(config, held))})
+    sync.read_soon(ctx.conn, ctx.user_id)
     return connected(ctx, inp.id)
+
+
+def require_status(ctx: Ctx, item_id: int) -> str | None:
+    found = one(ctx.conn, "SELECT status FROM items WHERE id = ? AND user_id = ?", [item_id, ctx.user_id])
+    return found["status"] if found else None
+
+
+def reading(ctx: Ctx, source: dict) -> Any:
+    """The source's connector, with what the Mac app last sent loaded for one it feeds (Apple Reminders)."""
+    connector = sync.connector_for(source)
+    if hasattr(connector, "load"):
+        connector.load(ctx.conn, ctx.user_id)
+    return connector
+
+
+def members(connector: Any, list_id: str) -> set[str] | None:
+    """The to-dos in one of its lists, by id, for a service whose ids don't say their list (Reminders); None: they
+    do ("<list>/<to-do>", Notion's)."""
+    return connector.members(list_id) if connector is not None and hasattr(connector, "members") else None
+
+
+def in_list(list_id: str | None, within: set[str] | None) -> tuple[str, list[Any]]:
+    """SQL (on raw_inputs as r) for the to-dos of one list, and its values."""
+    if within is not None:
+        return f" AND r.external_id IN ({', '.join('?' * len(within))})", sorted(within)
+    return " AND r.external_id LIKE ?", [f"{list_id}/%" if list_id else "%"]
+
+
+def of_list(ctx: Ctx, source_id: int, list_id: str, within: set[str] | None) -> list[dict]:
+    """What one of its lists brought, still kept in step."""
+    where, values = in_list(list_id, within)
+    return rows(ctx.conn, f"SELECT r.id FROM raw_inputs r WHERE r.source_id = ? AND r.status != 'ignored'{where}",
+                [source_id, *values])  # fmt: skip
 
 
 @query("integrations")
@@ -225,16 +277,17 @@ def require(ctx: Ctx, source_id: int) -> dict:
     return found
 
 
-def made(ctx: Ctx, source_id: int, in_list: str | None = None) -> list[int]:
-    """The open items it brought in (from one of its lists)."""
+def made(ctx: Ctx, source_id: int, in_list_id: str | None = None, within: set[str] | None = None) -> list[int]:
+    """The open items it brought in (from one of its lists: by its ids' prefix, or `within`, the ids in it)."""
+    where, values = in_list(in_list_id, within)
     return [
         int(r["id"])
         for r in rows(
             ctx.conn,
             "SELECT DISTINCT i.id FROM raw_inputs r JOIN suggestions s ON s.raw_input_id = r.id "
-            "JOIN items i ON i.id = s.item_id WHERE r.source_id = ? AND s.status = 'accepted' AND i.status = 'todo'"
-            " AND r.external_id LIKE ?",
-            [source_id, f"{in_list}/%" if in_list else "%"],
+            f"JOIN items i ON i.id = s.item_id WHERE r.source_id = ? AND s.status = 'accepted' AND i.status = 'todo'"
+            f"{where}",
+            [source_id, *values],
         )
     ]
 
@@ -254,6 +307,8 @@ def connected(ctx: Ctx, source_id: int) -> Connected:
         made=len(made(ctx, source_id)),
         waiting=waiting(ctx, source_id),
         lists=sync.CONNECTORS[s["kind"]].caps.lists,
+        off_removes=sync.CONNECTORS[s["kind"]].caps.off_removes,
+        reading=not config.get("synced") and not s["last_error"],
         signs_in=hasattr(sync.CONNECTORS[s["kind"]], "provider"),
     )
 

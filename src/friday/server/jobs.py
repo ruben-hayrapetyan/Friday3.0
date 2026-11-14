@@ -59,6 +59,7 @@ class JobLoop:
         """A job mid-way (a sync waiting on Google) isn't waited out at shutdown: the thread goes with the process,
         what it was writing rolls back, and the job runs again at the next start."""
         self.stopping.set()
+        integrations.READ_NOW.set()
         self.thread.join(1)
 
     def loop(self) -> None:
@@ -70,8 +71,15 @@ class JobLoop:
                 log.exception("the job loop")
                 if conn.in_transaction:
                     conn.execute("ROLLBACK")
-            self.stopping.wait(WAKE_S)
+            self.rest()
         conn.close()
+
+    def rest(self) -> None:
+        """WAKE_S, or less when you've asked for the integrations to be read (`integrations.read_soon`): woken, it
+        lets the command that asked commit first."""
+        if integrations.READ_NOW.wait(WAKE_S) and not self.stopping.is_set():
+            integrations.READ_NOW.clear()
+            self.stopping.wait(integrations.SETTLE_S)
 
 
 def run_due(
@@ -99,7 +107,7 @@ def run_due(
     )
     for name, is_due, job in jobs:
         try:  # whether it's due too: one raising there (a time that can't be read) stopped every job after it
-            if not is_due(last_run(conn, name, user_id), now_utc, settings):
+            if not (is_due(last_run(conn, name, user_id), now_utc, settings) or asked(conn, name, user_id)):
                 continue
             job(conn, now_utc, settings, hub, supervisor, backups, user_id)
             record(conn, name, now_utc, user_id, None)
@@ -108,6 +116,13 @@ def run_due(
             record(conn, name, now_utc, user_id, f"{type(error).__name__}: {error}")
         ran.append(name)
     return ran
+
+
+ASKED = {"integrations": "integrations_now"}  # due at once when you asked, not only once its minute is up
+
+
+def asked(conn: sqlite3.Connection, name: str, user_id: int) -> bool:
+    return name in ASKED and bool(kv_get(conn, ASKED[name], False, user_id))
 
 
 def last_run(conn: sqlite3.Connection, name: str, user_id: int) -> int | None:

@@ -89,7 +89,7 @@ final class RemindersBridge {
                 done.resume(returning: (found ?? []).map(RemindersPayload.reminder))
             }
         }
-        let body: [String: Any] = ["reminders": open, "lists": lists.map(\.title)]
+        let body = RemindersPayload.body(reminders: open, lists: lists)
         let now = Date()
         // the same as last time, within the hour: nothing to say
         // The body itself, not its hashValue: Data's hash reads only its length and first 80 bytes, which are the
@@ -100,14 +100,24 @@ final class RemindersBridge {
     }
 }
 
-/// What `reminders_sync` takes for one reminder (api/commands.py MacReminder).
+/// What `reminders_sync` takes for one reminder (api/commands.py MacReminder) and for your lists (MacList). A list is
+/// known by its calendarIdentifier, which stays when you rename it, so the switch you set for it in Settings stays too.
 enum RemindersPayload {
+    static func body(reminders: [[String: Any]], lists: [EKCalendar]) -> [String: Any] {
+        ["reminders": reminders, "lists": lists.map(list)]
+    }
+
+    static func list(_ c: EKCalendar) -> [String: Any] {
+        ["id": c.calendarIdentifier, "title": c.title]
+    }
+
     static func reminder(_ r: EKReminder) -> [String: Any] {
         var out: [String: Any] = [
             "id": r.calendarItemIdentifier,
             "title": r.title ?? "",
             "notes": r.notes ?? "",
             "list": r.calendar?.title ?? "",
+            "list_id": r.calendar?.calendarIdentifier ?? "",
             "completed": r.isCompleted,
         ]
         if let due = r.dueDateComponents.flatMap(due) { out["due"] = due }

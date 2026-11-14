@@ -1129,6 +1129,8 @@ class Connected(Model):
     made: int  # open to-dos it brought in
     waiting: int = 0  # its to-dos waiting in your Inbox to be accepted
     lists: bool = False  # it has lists to choose from (Notion's databases): integration_lists
+    off_removes: bool = False  # a list switched off takes its to-dos out of Friday at once, without asking
+    reading: bool = False  # connected, its first read not done yet (and nothing wrong): the box shows a spinner
     signs_in: bool = False  # connected by signing in on the service's page (integration_sign_in), not a token
 
 
@@ -1163,9 +1165,17 @@ class MacReminder(Model):
     notes: str = ""
     due: str | None = None  # local: "2026-11-20" (a whole day) or "2026-11-20T17:00"
     list: str = ""
+    list_id: str = ""  # its list's EventKit calendarIdentifier (none from Things, or a Mac app before 13 Nov)
     url: str | None = None
     completed: bool = False
     when: str | None = None  # Things: the day you meant to do it ("When"), beside its deadline (`due`)
+
+
+class MacList(Model):
+    """One of your lists in Reminders: EventKit's calendarIdentifier, which stays when the list is renamed."""
+
+    id: str
+    title: str
 
 
 MacKind = Literal["reminders", "things"]
@@ -1177,7 +1187,7 @@ class RemindersSyncInput(Model):
 
     kind: MacKind = "reminders"
     reminders: list[MacReminder] = []
-    lists: list[str] = []
+    lists: list[MacList | str] = []  # Reminders' lists with their ids; Things' (and an older Mac app's) by title
     denied: bool = False
     missing: bool = False
 
