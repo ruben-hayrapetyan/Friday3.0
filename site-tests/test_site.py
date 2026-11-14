@@ -360,3 +360,13 @@ def test_other_computers_are_told_friday_is_for_mac(
     seen = visit(tmp_path, platform=platform, agent=agent, touch=touch)
     assert {b["text"] for b in seen["buttons"]} == {label} and all(b["href"] is None for b in seen["buttons"])
     assert "Download for Mac anyway</a>" in seen["note"] and seen["macOnlyHidden"] is True
+
+
+def test_features_and_help_say_what_0_4_1_brings() -> None:
+    """H192–H194 (14 Nov): Features says Reminders' lists can be chosen, and that times can be on a 24-hour clock and
+    what's due sits under each date; Help says a list switched off leaves the plan and comes back."""
+    features, help_ = (SITE / "features.html").read_text(), (SITE / "help.html").read_text()
+    assert "choose\n    which lists come in" in features or "choose which lists come in" in " ".join(features.split())
+    assert "<b>Your clock:</b> times in 12-hour or 24-hour" in features
+    assert "<b>What's due, under each date:</b>" in features
+    assert "its to-dos leave your plan" in " ".join(help_.split()) and "come back if you switch it on" in help_
