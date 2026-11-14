@@ -116,8 +116,7 @@ def test_a_heavy_week_is_on_time_without_overfull_days_or_scraps(app: App) -> No
 
 
 def test_exam_prep_comes_before_the_exam_over_more_than_one_day(app: App) -> None:
-    # spread by a rule you say (14 Nov): exam prep isn't marked spread by its kind any more
-    app.do("rule_add", text="spread exam prep over several days")
+    # by the built-in rule "Exam prep is spread over the days before the exam" (14 Nov), not a field on the task
     app.do("add", title="CHEM Prelim", preset="Exam", start="2026-10-22T19:30", end="2026-10-22T21:00")
     prep = int(app.do("add", title="Prep: CHEM Prelim", preset="Exam prep", due="2026-10-22T19:30")["item"]["id"])
     app.do("replan")

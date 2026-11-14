@@ -59,6 +59,8 @@ SAID = {
     "minimize_changes": "Keep the plan steady",
     "finish_early": "Finish work {days} before it’s due",
 }
+# Built-in rules said by their name, where their type says something else ("spread" is also a rule you write).
+SAID_BY_NAME = {"exam_prep_spread": "Exam prep is spread over the days before the exam, not crammed into one"}
 # Built-in rules that are how the planner works rather than how you like your days: shown folded, below the rest.
 BACKGROUND = {"quota", "energy", "soft_late", "unscheduled", "target_shortfall", "elastic_shortfall", "open_value",
               "minimize_changes"}  # fmt: skip
@@ -753,7 +755,7 @@ def words(rule: Any, mine: dict[str, Any]) -> str:
 def written(rule: Any, mine: dict[str, Any]) -> str:
     if rule.name in mine or (rule.reason and rule.reason != rule.name):
         return rule.reason or rule.name
-    said = SAID.get(rule.type) or rule.name.replace("_", " ").capitalize()
+    said = SAID_BY_NAME.get(rule.name) or SAID.get(rule.type) or rule.name.replace("_", " ").capitalize()
     params = {k: hours(v) for k, v in rule.params.items()}
     if rule.type == "finish_early":  # "a day", "2 days"
         days = rule.params.get("days", 1)

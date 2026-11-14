@@ -951,6 +951,7 @@ rules = [
   { type = "unscheduled",       name = "unscheduled",       weight = 0.5, params = { base = 1 } },
   { type = "chunk_cost",        name = "chunk_cost",        weight = 10 },
   { type = "buffer",            name = "buffer",            weight = 3,   params = { minutes = "0m", by_area = {}, by_preset = {} } },
+  { type = "spread",            name = "exam_prep_spread",  weight = 3,   scope = { preset = ["Exam prep"] } },
   { type = "target_shortfall",  name = "target_shortfall",                params = { curve = [[0.4, 8], [1.0, 3]] } },
   { type = "elastic_shortfall", name = "elastic_shortfall",               stage = "wellbeing", params = { steep = 20, gentle = 2 } },
   { type = "open_value",        name = "open_value",                      params = { curve = [[0.5, 1], [1.0, 0.5]] } },

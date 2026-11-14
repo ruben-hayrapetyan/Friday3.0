@@ -129,3 +129,5 @@ def test_the_weeks_were_lived_with_the_old_spread_rules_and_today_has_none(
     assert any({"spread", "cluster"} <= {r["name"] for r in value} for value in rules)
     assert not {"spread", "cluster"} & {r["name"] for r in ask(lived[key], "settings")["rules"]}
     assert not {"spread", "cluster"} & {r["name"] for r in ask(lived[key], "rules")}
+    names = [r["name"] for r in ask(lived[key], "settings")["rules"]]
+    assert names[names.index("buffer") + 1] == "exam_prep_spread"  # today's, where the old one stood

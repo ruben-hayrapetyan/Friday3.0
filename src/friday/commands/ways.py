@@ -75,6 +75,7 @@ PHRASES = {
     "chunk_cost": ("fewer, longer sittings", "more, shorter sittings"),
     "same_course": ("fewer switches between courses", "more switches between courses"),
     "buffer": ("more room between blocks", "less room between blocks"),
+    "exam_prep_spread": ("exam prep spread over more days", "exam prep crammed into fewer days"),
     "target_shortfall": ("more of your weekly targets", "less of your weekly targets"),
     "elastic_shortfall": ("routines nearer their ideal", "routines cut shorter"),
     "elastic_minimum": ("meals kept", "meals cut"),

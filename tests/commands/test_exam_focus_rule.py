@@ -129,8 +129,9 @@ def test_migration_35_adds_it_to_your_rules_and_keeps_your_readings(tmp_path: Pa
     }
     conn = migrated(tmp_path, {"rules": mine, "exam_focus": {"on": True, "days_before": 1}}, {"rule_readings": kept})
     rules = saved(conn, "rules")
-    assert [r["name"] for r in rules] == ["deep_run", "you:no-work-after-10pm", NAME]
-    assert rules[-1]["reason"] == "Focus on an exam's course the day before it"
+    # and exam prep spread after it, from migration 036 (no buffer here: at the end)
+    assert [r["name"] for r in rules] == ["deep_run", "you:no-work-after-10pm", NAME, "exam_prep_spread"]
+    assert rules[-2]["reason"] == "Focus on an exam's course the day before it"
     readings = json.loads(one(conn, "SELECT value FROM kv WHERE key = 'rule_readings'")["value"])
     assert set(readings) == {"you:no-work-after-10pm", NAME}
 

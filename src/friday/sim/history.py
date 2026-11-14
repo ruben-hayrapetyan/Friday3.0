@@ -23,6 +23,7 @@ from friday.commands.fetching import sync
 from friday.commands.refit import prepare_questions
 from friday.commands.registry import run
 from friday.core.db import connect
+from friday.core.settings import DEFAULTS
 from friday.core.time import format_local, parse_local, to_local, to_utc
 from friday.sim.cornell import ZONE, Student, monday_of, term, typed_date
 from friday.sim.first_evening import accept_inbox, add_routines, connect_google, shifted, type_lines
@@ -37,8 +38,9 @@ TASTE = {"late_night": 3.0, "weekday_evenings": 2.0}  # the student's weights wh
 UNIT = 15
 # The students lived their weeks before 14 Nov, when a kind marked its tasks spread (exam prep, habits) or clustered
 # (projects) and two built-in rules held them to it. Those weeks are lived as they were then, with the two rules where
-# they stood, for the work of those kinds; after, they go, as migration 034 takes them out of saved rules: what got done
-# and when stays as it was, so the sample the screen tests use isn't reshuffled.
+# they stood, for the work of those kinds, in place of today's "Exam prep is spread over the days before the exam";
+# after, that one is back where they stood, as migrations 034 and 036 leave saved rules: what got done and when stays
+# as it was, so the sample the screen tests use isn't reshuffled.
 BEFORE_14_NOV = (
     {"type": "spread", "name": "spread", "weight": 3.0, "scope": {"preset": ["Exam prep", "Habit"]},
      "params": {"before_due": False}},
@@ -86,8 +88,8 @@ def open_lived_in(db_path: Path, student: Student, now_utc: int, weeks: int = 3)
     while day < today:
         live_day(life, day)
         day += timedelta(days=1)
-    rules = life.do("settings")["rules"]
-    life.do("settings_set", key="rules", value=[r for r in rules if r["name"] not in ("spread", "cluster")])
+    rules = [r for r in life.do("settings")["rules"] if r["name"] != "cluster"]
+    life.do("settings_set", key="rules", value=[TODAYS if r["name"] == "spread" else r for r in rules])
     life.now = now_utc
     life.do("settings_set", key="engine", value={})  # the defaults again
     life.do("replan")
@@ -104,8 +106,11 @@ def start(life: Life) -> None:
     for sentence in life.student.rules:
         life.do("rule_add", text=sentence)
     rules = life.do("settings")["rules"]
-    at = next(n for n, r in enumerate(rules) if r["name"] == "buffer") + 1
-    life.do("settings_set", key="rules", value=[*rules[:at], *BEFORE_14_NOV, *rules[at:]])
+    at = next(n for n, r in enumerate(rules) if r["name"] == "exam_prep_spread")
+    life.do("settings_set", key="rules", value=[*rules[:at], *BEFORE_14_NOV, *rules[at + 1 :]])
+
+
+TODAYS = next(r.model_dump() for r in DEFAULTS["rules"] if r.name == "exam_prep_spread")
 
 
 def live_day(life: Life, day: date) -> None:

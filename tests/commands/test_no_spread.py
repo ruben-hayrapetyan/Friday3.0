@@ -110,7 +110,8 @@ def test_migration_34_drops_the_column_the_kinds_facet_and_the_two_rules(tmp_pat
     kept = json.loads(one(conn, "SELECT value FROM settings WHERE key = 'presets'")["value"])
     assert kept == {"Project": {"when": "window"}, "Essay": {"when": "window"}}  # in their order
     left = json.loads(one(conn, "SELECT value FROM settings WHERE key = 'rules'")["value"])
-    assert [r["name"] for r in left] == ["deep_run", "you:no-work-after-10pm", "you:spread-essays"]
+    names = [r["name"] for r in left]  # and exam prep spread, from migration 036, at the end with no buffer here
+    assert names == ["deep_run", "you:no-work-after-10pm", "you:spread-essays", "exam_prep_spread"]
 
 
 def test_a_change_made_before_the_column_went_can_still_be_undone(app: App) -> None:
