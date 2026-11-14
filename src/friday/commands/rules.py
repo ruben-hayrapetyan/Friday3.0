@@ -25,7 +25,7 @@ from friday.core.items import FieldError
 from friday.core.rule_text import Reading, days_spoken, read, read_all, sentence, spec, with_overrides, with_singulars
 from friday.core.settings import REFERENCE_RULES
 from friday.core.textnorm import identity_text, norm
-from friday.core.time import ampm_in
+from friday.core.time import clock_times
 from friday.engine.rules.prices import has_words
 from friday.planner.contradictions import Conflict, against, contradictions
 from friday.planner.learning import learnable
@@ -150,7 +150,11 @@ def read_out(ctx: Ctx, reading: Reading, strength: str) -> RuleReadOut:
     rules = [r.model_dump() for r in ctx.settings["rules"]]
     conflicts = [conflict_out(c, said) for c in against(new, rules)] if reading.kind not in NOT_COMPARED else []
     return RuleReadOut(
-        reading=reading.to_dict(), strength=strength, sentence=sentence(reading), effect=effect, conflicts=conflicts
+        reading=reading.to_dict(),
+        strength=strength,
+        sentence=clock_times(sentence(reading)),
+        effect=effect,
+        conflicts=conflicts,
     )
 
 
@@ -276,7 +280,7 @@ def event_key(title: str) -> str:
 
 
 def words_of(rule: dict[str, Any], mine: dict[str, Any]) -> str:
-    return ampm_in(rule.get("reason") or mine.get(rule["name"], {}).get("text") or rule["name"])
+    return clock_times(rule.get("reason") or mine.get(rule["name"], {}).get("text") or rule["name"])
 
 
 def deadlines_first(ctx: Ctx) -> Changed:
@@ -478,7 +482,7 @@ def unset_buffer(rule: Any) -> bool:
 
 
 def words(rule: Any, mine: dict[str, Any]) -> str:
-    return ampm_in(written(rule, mine))  # rules saved before the 12-hour clock read the same as new ones
+    return clock_times(written(rule, mine))  # rules saved before the 12-hour clock read the same as new ones
 
 
 def written(rule: Any, mine: dict[str, Any]) -> str:

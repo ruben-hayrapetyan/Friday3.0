@@ -7,7 +7,7 @@ from friday.api.commands import InsightsInput
 from friday.api.views import InsightsOut, KindAccuracy
 from friday.commands.registry import Ctx, query
 from friday.core.db import rows
-from friday.core.time import ampm, format_utc, parse_utc, to_local
+from friday.core.time import clock_time, format_utc, parse_utc, to_local
 from friday.estimate.durations import LEARNED_SOURCES
 
 FIRST_HOUR, LAST_HOUR = 8, 23  # the heatmap's columns
@@ -85,4 +85,5 @@ def best_hours(grid: list[list[int]]) -> str | None:
         return None
     day = max(range(7), key=lambda d: sum(grid[d]))
     hour = max(range(len(grid[day]) - 1), key=lambda h: grid[day][h] + grid[day][h + 1]) + FIRST_HOUR
-    return f"You get the most done on {DAYS[day]}, {ampm(f'{hour:02d}:00')} to {ampm(f'{(hour + 2) % 24:02d}:00')}."
+    start, end = clock_time(f"{hour:02d}:00"), clock_time(f"{(hour + 2) % 24:02d}:00")
+    return f"You get the most done on {DAYS[day]}, {start} to {end}."

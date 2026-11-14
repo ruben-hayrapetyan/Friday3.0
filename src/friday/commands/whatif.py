@@ -30,7 +30,7 @@ from friday.core.db import rows
 from friday.core.items import FieldError, Item
 from friday.core.rule_text import read, sentence
 from friday.core.settings import minutes_of
-from friday.core.time import ampm, parse_utc, planning_date, to_local
+from friday.core.time import clock_time, clock_times, parse_utc, planning_date, to_local
 from friday.planner.assemble import AssembledPlan, PlannedBlock
 from friday.planner.build import id_of
 from friday.planner.service import plan_snapshot, write_plan
@@ -190,7 +190,7 @@ def when(ctx: Ctx, stored: str | None) -> str:
     if not stored:
         return ""
     local = to_local(parse_utc(stored), ctx.tz)
-    return f"{local:%a} {ampm(f'{local:%H:%M}')}"
+    return f"{local:%a} {clock_time(f'{local:%H:%M}')}"
 
 
 def said(
@@ -228,7 +228,7 @@ def said(
         return f"Keep {payload.get('range', 'that time')} free"
     if name == "rule_add":
         reading, _ = read(str(payload.get("text", "")))
-        return f"Rule: {sentence(reading) if reading else payload.get('text', '')}"
+        return f"Rule: {clock_times(sentence(reading)) if reading else payload.get('text', '')}"
     if name == "day_override":
         return f"Change {payload.get('date', 'a day')}'s limits"
     return name.replace("_", " ").capitalize()

@@ -40,7 +40,7 @@ from friday.core.items import FieldError
 from friday.core.settings import minutes_of
 from friday.core.time import (
     UNIT_MIN,
-    ampm,
+    clock_time,
     format_local,
     format_utc,
     parse_local,
@@ -81,7 +81,7 @@ def day_of(ctx: Ctx, moment: int) -> date:
 
 
 def said(ctx: Ctx, moment: int) -> str:
-    return ampm(to_local(moment, ctx.tz))
+    return clock_time(to_local(moment, ctx.tz))
 
 
 def routine_of(ctx: Ctx, kind: str, day: date) -> dict | None:
@@ -412,7 +412,8 @@ def meal_use_time(ctx: Ctx, inp: MealLengthInput) -> Changed:
     offsets = {"release_offset_min": lo - base, "due_offset_min": lo - base + width}
     edit_series_from(ctx, item.series_id, ctx.today.isoformat(), {}, offsets=offsets)
     return Changed(
-        message=f"{inp.kind.capitalize()} is planned {ampm(offer.new_start)} to {ampm(offer.new_end)} from today"
+        message=f"{inp.kind.capitalize()} is planned {clock_time(offer.new_start)} to {clock_time(offer.new_end)} "
+        "from today"
     )
 
 
@@ -438,7 +439,9 @@ def meal_plan(ctx: Ctx, inp: MealPlanInput) -> Changed:
     repeat = {"every": "day", "release_offset_min": start - MEAL_ROOM - ctx.day_start,
               "due_offset_min": start + length + MEAL_ROOM - ctx.day_start}  # fmt: skip
     create_series(ctx, given, repeat)
-    return Changed(message=f"{kind.capitalize()} is planned around {ampm(usual.usual_start)}, {length} min, every day")
+    return Changed(
+        message=f"{kind.capitalize()} is planned around {clock_time(usual.usual_start)}, {length} min, every day"
+    )
 
 
 def decided(settings: Mapping[str, Any]) -> list[str]:

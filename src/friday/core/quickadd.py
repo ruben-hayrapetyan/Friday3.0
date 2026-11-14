@@ -22,7 +22,7 @@ from friday.core.dates import (
 from friday.core.guess import fallback_kind, guess_preset
 from friday.core.recurrence import RRULE_DAYS, read_repeat
 from friday.core.textnorm import plain_words
-from friday.core.time import UNIT_MIN, format_local, local_midnight
+from friday.core.time import UNIT_MIN, clock_time, format_local, local_midnight
 
 # A repeat at a set time is a class only when it says so; "club meeting every tue 7pm" is an event.
 CLASSLIKE = re.compile(
@@ -497,7 +497,10 @@ class Parser:
         if self.fields["preset"] in FLEXIBLE_KINDS:
             self.range_as_window()
         if self.fields["preset"] == "Routine" and "rrule" in self.fields and "due_local" not in self.fields:
-            self.result.warnings.append("no time window, so it can land any time of day; add one like 11:30am-2pm")
+            self.result.warnings.append(
+                "no time window, so it can land any time of day; "
+                f"add one like {clock_time('11:30')}-{clock_time('14:00')}"
+            )
         self.set_amount()
         self.start_on_its_day()
         if "rrule" in self.fields:

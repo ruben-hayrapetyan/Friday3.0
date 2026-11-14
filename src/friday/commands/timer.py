@@ -14,7 +14,7 @@ from friday.commands.fields import require_item
 from friday.commands.registry import Ctx
 from friday.core.db import one, rows
 from friday.core.items import FieldError
-from friday.core.time import EPOCH, format_utc, parse_utc
+from friday.core.time import EPOCH, clock_time, format_utc, parse_utc
 
 
 def write_progress(
@@ -104,7 +104,7 @@ def stop_timer(ctx: Ctx, at: int | None = None, item_id: int | None = None) -> T
     start = parse_utc(timer["start_utc"])
     if at is not None:
         if at <= start:
-            raise FieldError("at", f"must be after you started, at {ctx.local(timer['start_utc'])[11:16]}")
+            raise FieldError("at", f"must be after you started, at {clock_time(ctx.local(timer['start_utc']))}")
         if at > ctx.now_utc:
             raise FieldError("at", "must not be later than now")
         seconds = min(seconds, (at - start) * 60)

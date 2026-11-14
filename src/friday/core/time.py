@@ -5,9 +5,13 @@ and the API speaks local `YYYY-MM-DDTHH:MM`; both convert here.
 """
 
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from functools import cache
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -87,19 +91,73 @@ def format_local(local: datetime) -> str:
     return local.strftime("%Y-%m-%dT%H:%M")
 
 
+def _hour_minute(time: str | datetime) -> tuple[int, int]:
+    if isinstance(time, datetime):
+        return time.hour, time.minute
+    hour, minute = map(int, time[-5:].split(":"))
+    return hour, minute
+
+
 def ampm(time: str | datetime) -> str:
-    """A time the way you read it, on a 12-hour clock: "14:30" is "2:30pm", "14:00" is "2pm", "00:00" is "12am".
-    Takes "HH:MM", a local "YYYY-MM-DDTHH:MM" or a datetime; only words for you use it, never stored times."""
-    hour, minute = (time.hour, time.minute) if isinstance(time, datetime) else map(int, time[-5:].split(":"))
+    """A time on a 12-hour clock: "14:30" is "2:30pm", "14:00" is "2pm", "00:00" is "12am". Takes "HH:MM", a local
+    "YYYY-MM-DDTHH:MM" or a datetime. Words for you use `clock_time`, which follows your choice of clock."""
+    hour, minute = _hour_minute(time)
     return f"{(hour - 1) % 12 + 1}{f':{minute:02d}' if minute else ''}{'am' if hour % 24 < 12 else 'pm'}"
 
 
+def hhmm(time: str | datetime) -> str:
+    """A time on a 24-hour clock, with its leading zero: "14:05", "09:30", "00:00"."""
+    hour, minute = _hour_minute(time)
+    return f"{hour % 24:02d}:{minute:02d}"
+
+
+# Your clock (settings `clock`, Settings → Appearance → Clock): the one every sentence Friday writes for you uses.
+# The registry sets it for each command and query from your settings (commands/registry.py), the planner for the plan
+# it assembles; anything else (a test, a script) reads times on the 12-hour clock, Friday's default.
+Clock = Literal["12h", "24h"]
+CLOCK: ContextVar[Clock] = ContextVar("clock", default="12h")
+
+
+@contextmanager
+def clock_set(clock: Clock) -> Iterator[None]:
+    """Words written inside it use `clock`."""
+    token = CLOCK.set(clock)
+    try:
+        yield
+    finally:
+        CLOCK.reset(token)
+
+
+def clock_time(time: str | datetime) -> str:
+    """A time for you, on your clock: "2:30pm" on the 12-hour clock, "14:30" on the 24-hour one. Only words for you
+    use it, never stored times."""
+    return hhmm(time) if CLOCK.get() == "24h" else ampm(time)
+
+
 TIMES = re.compile(r"(?<![\dT:])([01]?\d|2[0-3]):([0-5]\d)(?![\d:]|\s?[ap]m)")  # "8:30pm" is already on 12 hours
+# "10pm", "8:30 am", "12am": a time on the 12-hour clock in a sentence (not "7 amps" or "2 pmol")
+TWELVE = re.compile(r"(?<![\d:])(1[0-2]|0?[1-9])(?::([0-5]\d))?\s?([ap])m\b", re.IGNORECASE)
 
 
 def ampm_in(text: str) -> str:
     """A sentence with its 24-hour times ("No work after 22:00") on a 12-hour clock ("No work after 10pm")."""
     return TIMES.sub(lambda m: ampm(f"{int(m[1]):02d}:{m[2]}"), text)
+
+
+def hhmm_in(text: str) -> str:
+    """A sentence with its 12-hour times ("No work after 10pm") on a 24-hour clock ("No work after 22:00"); a
+    24-hour time there already ("between 7:30 and 9") stays as it was."""
+
+    def turned(m: re.Match[str]) -> str:
+        hour = int(m[1]) % 12 + (12 if m[3].lower() == "p" else 0)
+        return f"{hour:02d}:{m[2] or '00'}"
+
+    return TWELVE.sub(turned, text)
+
+
+def clock_times(text: str) -> str:
+    """A sentence with its times on your clock, however it was written: a rule's text, saved as you typed it."""
+    return hhmm_in(text) if CLOCK.get() == "24h" else ampm_in(text)
 
 
 def utc_offset(minutes: int, tz: str) -> timedelta:
