@@ -212,7 +212,8 @@ GO_DAYS = 7  # "go" is said for the coming week's events: further out, the plan 
 def given_way(problem: Problem, blocks: list[PlannedBlock], tz: str, now: int) -> list[str]:
     """Optional events the plan uses the time of (`skippable`), or the night before of (a night-before rule's night
     the plan lifted: planner/solve.py), because the work wouldn't fit otherwise: skip; and the coming week's events you
-    go to only when you're ahead (`ahead`) whose time and night the plan leaves free: go."""
+    go to only when you're ahead (`ahead`) whose time and night the plan leaves free: go. One you haven't chosen
+    that starts before you'd be up is skipped either way: it doesn't wake you (14 Nov, "Give the sleep back")."""
     ahead = {
         (f.title, f.start_utc)
         for r in problem.rules
@@ -226,6 +227,11 @@ def given_way(problem: Problem, blocks: list[PlannedBlock], tz: str, now: int) -
         night = nights.get((event.title, event.start_utc))
         late = [b for b in blocks if night and b.start_utc < night[1] and b.end_utc > night[0]]
         when = to_local(event.start_utc, tz)
+        if problem.asleep_at(event.start_utc):  # unchosen, it didn't wake you (14 Nov: "Give the sleep back")
+            if now <= event.start_utc < now + GO_DAYS * 1440:
+                out.append(f"Skip {event.title} on {when:%a} at {clock_time(when)}: it’s before you’d be up, so "
+                           "you sleep; say you’re going and Friday wakes you for it")  # fmt: skip
+            continue
         if over or late:
             work = problem.items.get(key_of((over or late)[0].item_id))
             needs = work.title if work else "work"
