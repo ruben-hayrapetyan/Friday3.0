@@ -116,6 +116,15 @@ def schedule(
         with ThreadPoolExecutor(count) as pool:
             begun = list(pool.map(lambda seed: started(c, owner, config, cancel, warm, seed), seeds))
     owners = [o for o, _ in begun]
+    extra: list[np.ndarray] = []
+    if warm and (have := plan_you_have(c)) is not None and stage_values(c, have) < stage_values(c, owners[0]):
+        # The plan you have, as it stands, is better than the start made from it (what it had left out put back and
+        # repaired), so one more chain searches from it: it used to stand only when nothing the search found beat
+        # it, and then stood whole, so no replan could better it a block at a time (14 Nov: a half hour at 1:45am,
+        # with an evening beside the laundry free, kept by every replan for being the plan you have). The other
+        # chains still search from the start, which can find what neither has.
+        extra = [have]
+        trace["kept"] = deadline_value(c, have)
     first = min(range(count), key=lambda k: deadline_value(c, owners[k]))  # the least late start, the fallback's
     trace |= begun[first][1]
     owner = owners[first]
@@ -129,7 +138,7 @@ def schedule(
         owners[first] = owner
     seconds["fallback"] = time.perf_counter() - clock
     clock = time.perf_counter()
-    outcomes, protected = sample_from(c, owners, config, steps, warm, cancel)
+    outcomes, protected = sample_from(c, owners, config, steps, warm, cancel, extra)
     owner = outcomes[0].owner
     trace["anneal"] = deadline_value(c, owner)
     seconds["anneal"] = time.perf_counter() - clock
@@ -278,13 +287,21 @@ def better_kept(c: Compiled, owner: np.ndarray) -> np.ndarray | None:
     only for one that is better, deadlines first, then wellbeing, then preferences (where moving costs). The nightly
     cold plan too: it searches afresh, but replaces yours only when what it finds is better, so the morning's first
     replan doesn't reshuffle a third of the week from a fresh plan that wasn't."""
+    kept = plan_you_have(c)
+    if kept is None:
+        return None
+    return kept if stage_values(c, kept) <= stage_values(c, owner) and (kept != owner).any() else None
+
+
+def plan_you_have(c: Compiled) -> np.ndarray | None:
+    """The current plan where it still may be, nothing added, or None when there's none or it breaks a wall now."""
     have = {k: tuple(item.current) for k, item in c.problem.items.items() if item.current}
     if not have:
         return None
     kept = construct(c, c.owner_from_plan(have), only=set())
     if not valid(c, kept) or check(c.problem, c.plan_from_owner(kept)):
         return None
-    return kept if stage_values(c, kept) <= stage_values(c, owner) and (kept != owner).any() else None
+    return kept
 
 
 def dated_first(c: Compiled, owner: np.ndarray, cancel: np.ndarray | None = None) -> np.ndarray:
@@ -368,13 +385,24 @@ def started(
 
 
 def sample_from(
-    c: Compiled, owners: list[np.ndarray], config: SchedulerConfig, steps: int, warm: bool, cancel: np.ndarray
+    c: Compiled,
+    owners: list[np.ndarray],
+    config: SchedulerConfig,
+    steps: int,
+    warm: bool,
+    cancel: np.ndarray,
+    extra: list[np.ndarray] | None = None,
 ) -> tuple[list[ChainOutcome], list[str]]:
-    """Anneal from each start, the chains taking them in turn, with W9 protecting every item that is complete and on
-    time where its chain starts; the protected items are the winning chain's start's."""
+    """Anneal from each start, the chains taking them in turn, and one more chain from each `extra` start, with W9
+    protecting every item that is complete and on time where its chain starts; the protected items are the winning
+    chain's start's."""
+    extra = extra or []
     protected = [protected_items(c.m, owner) for owner in owners]
-    outcomes = anneal(c, owners, protected, config.sampler, steps, warm, config.warm_t0, cancel)
-    won = protected[outcomes[0].index % len(owners)]
+    guards = [protected_items(c.m, owner) for owner in extra]
+    outcomes = anneal(c, owners, protected, config.sampler, steps, warm, config.warm_t0, cancel,
+                      extra=extra, extra_protected=guards)  # fmt: skip
+    index = outcomes[0].index
+    won = protected[index % len(owners)] if index < config.sampler.chains else guards[index - config.sampler.chains]
     return outcomes, [c.keys[i] for i in np.flatnonzero(won)]
 
 

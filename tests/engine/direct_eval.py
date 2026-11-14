@@ -237,6 +237,19 @@ def measure_rule_cost(p: Problem, rule: Rule, items: list[EngineItem], X: dict[s
                     if others and into:
                         value = sum(int(X[k][s]) for k in others) + sum(int(X[m.key][s + 1]) for m in into)
                         hinges.append(("above", 1, 1.0, "count", 1.0, value))
+    elif kind == "sleep_min":
+        # The sleep a night loses: from asleep-by to the end of its last work, less events' own time.
+        if rule.p.price != FORBID:
+            weekdays = matching_weekdays(rule.p.days, None)
+            for day, night in sorted(p.nights.items()):
+                if day.weekday() not in weekdays:
+                    continue
+                asleep_by = night.wake_utc - round(rule.p.hours * 60) - (night.wind_down_min or 0)
+                tonight = [s for s in range(grid.S) if grid.start[s] < night.wake_utc and grid.end[s] > asleep_by]
+                worked = [s for s in tonight if any(X[it.key][s] for it in items)]
+                if worked:
+                    lost = sum(int(U[s]) for s in tonight if s <= max(worked) and not p.blocked[s] and not p.core[s])
+                    hinges.append(("above", 0, float(rule.p.price), "units", 1.0, lost))
     elif kind == "target_shortfall":
         for it in items:
             share, amount, weight = window_share_and_growth(p, it)

@@ -429,8 +429,15 @@ class SleepMin(Rule):
     "don't count wind down inside [the] hours, it should be from sleep to wakeup"), so work that ends there still
     leaves the whole `hours` asleep. Your bedtime and wake stay as set; what this guards is how far past bedtime a
     deadline may push (the night's margin, which `late_night` only prices) and a bedtime set later than that before
-    waking. Work there costs `price` an hour, on top of `late_night`'s, or with `forbid` never goes there, so work is
-    late before your night is short. `days`: the nights it holds on, by the evening's weekday."""
+    waking. Work there costs `price` an hour of the sleep it takes, on top of `late_night`'s, or with `forbid` never
+    goes there, so work is late before your night is short. `days`: the nights it holds on, by the evening's weekday.
+
+    The sleep a night loses runs from when you'd be asleep to the end of its last work there, empty time between
+    included (14 Nov: "there is a large chunk of time that doesn't make any sense why there is that kind of a gap
+    between events"): you don't sleep the hour and a half between a block ending at midnight and one at 1:45am. Priced
+    by the quarter hour of work, the rest of a broken night was free, so a half hour at 1:45am cost what it would at
+    midnight, right after the work before it. Each kept quarter hour costs when any work comes at or after it that
+    night; an event's own time there isn't work's to pay for."""
 
     default_stage = "wellbeing"
 
@@ -445,19 +452,34 @@ class SleepMin(Rule):
         nights = matching_weekdays(self.p.days, None)
         span = round(self.p.hours * 60)
         kept = np.zeros(grid.S, dtype=bool)
-        for day, night in problem.nights.items():
+        self.nights_kept: list[list[int]] = []  # each night's kept slots, in order
+        for day, night in sorted(problem.nights.items()):
             if day.weekday() in nights:
                 asleep_by = night.wake_utc - span - (night.wind_down_min or 0)
-                kept |= (grid.start[: grid.S] < night.wake_utc) & (grid.end[: grid.S] > asleep_by)
+                tonight = (grid.start[: grid.S] < night.wake_utc) & (grid.end[: grid.S] > asleep_by)
+                kept |= tonight
+                self.nights_kept.append([int(s) for s in np.flatnonzero(tonight)])
         self.kept = kept
-
-    def price(self, item, s):
-        if s == self.problem.grid.S or self.p.price == FORBID or not self.kept[s]:
-            return 0.0
-        return float(self.p.price)
 
     def forbids(self, item, s):
         return self.p.price == FORBID and s < self.problem.grid.S and bool(self.kept[s])
+
+    def measures(self, ctx):
+        if self.p.price == FORBID:
+            return
+        problem = self.problem
+        scoped = self.scoped_items()
+        for slots in self.nights_kept:
+            # Who may work in each kept slot: the pairs of every quarter hour at or after a slot are its group's.
+            later: list[tuple[str, int]] = []
+            for s in reversed(slots):
+                later = [(i.key, s) for i in scoped if s in i.allowed_set] + later
+                if problem.blocked[s] or problem.core[s]:
+                    continue  # an event's time (its gaps too) isn't lost to work; the core is never worked in
+                awake = ctx.any_of(f"{self.name}:awake@{s}", later)
+                if not awake.is_const():
+                    units = int(problem.grid.units[s])
+                    yield Measure(f"awake@{s}", awake * units, "units", (Hinge("above", 0, float(self.p.price)),))
 
 
 @rule_type("meal_window")

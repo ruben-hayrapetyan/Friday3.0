@@ -827,6 +827,8 @@ The objective is the deadlines stage value from the compiled model (late-work pr
 
 Start from the previous plan (construction with `base`), repair if it is late, protect what is on time, and anneal with the stage policy from `T0 = 0.01 × m` with the warm step budget, with `minimize_changes` active. Research numbers: 0.9 s median for a usable replan, with churn (hours of surviving items' work moved) equal to CP-SAT's given 30 s. The first replan after a pace switch multiplies `minimize_changes` by `pace.switch_stability` (section 17.6), and the first after a change to `rules`, `sleep`, `daily_cap`, `energy_map`, `kind_order` or `event_kinds` by 0: you asked for a different plan, and holding the old one (wellbeing outranks every preference) made a changed rule look like it did nothing (M16). The factor never applies to preferred pins, which keep their full hold.
 
+When the plan you have, as it stands (kept where it still may be, nothing added), scores better in the stages' order than the start made from it, one more chain (on a thread of its own) searches from it, the others still from the start, so the result is never worse than theirs alone. The start puts back what the plan had left out and repairs the result, and on a packed week that could come out worse than the plan itself; the plan you have then stood whole, so no replan could better it a block at a time (14 Nov: a half hour at 1:45am kept by every replan, with an evening beside the laundry free).
+
 ### 11.12 Solution and the evaluator
 
 - **Solution:** `owner` per slot, the derived blocks, `over` per item, stage values, per-rule totals, chains run, steps run, the fallback's use and status, and wall time.
@@ -927,6 +929,8 @@ Notation: `end(s)` and `start(s)` are slot times; `imp` is importance; w is weig
 Sleep is a setting, not an item: per-weekday bedtime, wake and margin, plus day overrides. The protected core (bedtime + margin → wake) is pruned for every item, and `late_night` prices the evening gradient and the margin.
 
 **Sleep debt.** For night n, D_n is the hours of recorded progress inside the margins of the previous three nights. The night's multiplier is m_n = 1 + `debt_factor` × D_n (default `debt_factor` 0.5). D_n only uses past nights, so m_n is a constant when the model is built, and prices stay linear. Short sleep last night makes working into the margin tonight more expensive.
+
+**A night's hours of sleep** (`sleep_min`, "At least 7 h of sleep a night"): the `hours` before each wake, and the evening's learned wind-down before them, are kept for sleep. With a price, the sleep a night loses is what costs: from when you'd be asleep to the end of the night's last work there, empty time between included (one `any` group per kept slot: any work at or after it that night; an event's own time isn't work's to pay for). Work straight on into the kept hours costs what its hours do, as when each worked quarter hour was priced; a quarter hour at 1:45am after work that ended at midnight now costs the hour and three quarters between as well (14 Nov), so the rest of a broken night isn't free. `forbid` keeps work out of the kept hours.
 
 ### 12.4 Reference rules (the defaults shipped in settings)
 

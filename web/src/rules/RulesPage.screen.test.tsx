@@ -27,7 +27,7 @@ describe("the Rules page", () => {
   })
 
   it("has no row of examples under the box, and a rule typed is read as you type it", async () => {
-    // 14 Nov: the "Try" row of 16 gray examples under the box was too many ("all of those grey boxes after try");
+    // 14 Nov: the "Try" row of 16 gray examples under the box was too many ("all of those [gray] boxes after try");
     // the box's placeholder is the one example left
     const { user } = await openFriday("/rules")
     expect((await screen.findByRole("textbox", { name: "New rule" })).getAttribute("placeholder")).toBe("I prefer eating lunch before 1pm")
