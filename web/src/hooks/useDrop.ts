@@ -151,7 +151,8 @@ async function sendMoves(client: QueryClient, toast: (t: Toast) => void, moved: 
  * event holds may be the task's ("A4dd" is when you write "CS A4 Design Doc", 27 Oct), so Friday asks. */
 export function eventUnder(client: QueryClient, start: string, end: string): Item | null {
   for (const [, plan] of client.getQueriesData<{ fixed?: Item[] }>({ queryKey: ["plan"] })) {
-    const found = plan?.fixed?.find((f) => f.start && f.end && f.start < end && f.end > start && !f.left_out && !f.holds && f.event_kind !== "shove" && !f.gives_way_to)
+    // not a calendar you hid: it isn't named outside the calendar (plan/shown.ts)
+    const found = plan?.fixed?.find((f) => f.start && f.end && f.start < end && f.end > start && !f.left_out && !f.holds && f.event_kind !== "shove" && !f.gives_way_to && !f.hidden_calendar)
     if (found) return found
   }
   return null

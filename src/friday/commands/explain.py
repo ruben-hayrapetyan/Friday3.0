@@ -111,6 +111,8 @@ def shaping(ctx: Ctx, start: int) -> str | None:
         "SELECT * FROM items WHERE user_id = ? AND when_kind = 'fixed' AND end_utc <= ? AND end_utc >= ?",
         [ctx.user_id, format_utc(start), format_utc(start - 120)],
     ):
+        if ctx.hidden.calendar(r["id"]):
+            continue  # a hidden calendar's events aren't named (planner/hidden.py)
         kind = kinds.get(r["event_kind"] or "other", kinds["other"])
         after = r["buffer_after_min"] if r["buffer_after_min"] is not None else kind.after_min
         if parse_utc(r["end_utc"]) + after == start:

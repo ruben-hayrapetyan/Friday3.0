@@ -42,7 +42,7 @@ export function MiniMonth() {
   const gridStart = addDays(month, -((dow - offset + 7) % 7))
   const days = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i))
   const calendar = useCalendar(gridStart, 42).data
-  const plan = useShownPlan(`${gridStart}T00:00`, `${addDays(gridStart, 42)}T00:00`).data
+  const plan = useShownPlan(`${gridStart}T00:00`, `${addDays(gridStart, 42)}T00:00`, { quiet: true }).data
   const fullness = (date: string) => {
     const cap = calendar?.days.find((d) => d.date === date)?.cap_hours ?? 8
     const fixed = (plan?.fixed ?? [])

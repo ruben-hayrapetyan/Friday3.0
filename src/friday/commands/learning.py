@@ -75,11 +75,15 @@ def fixed_on(ctx: Ctx, day: str) -> list[dict[str, Any]]:
     hi = format_utc(parse_utc(lo) + 24 * 60)
     found = rows(
         ctx.conn,
-        "SELECT title, start_utc, end_utc FROM items WHERE user_id = ? AND when_kind = 'fixed' AND blocks_time = 1 "
+        "SELECT id, title, start_utc, end_utc FROM items WHERE user_id = ? AND when_kind = 'fixed' AND blocks_time = 1 "
         "AND status = 'todo' AND start_utc >= ? AND start_utc < ? ORDER BY start_utc",
         [ctx.user_id, lo, hi],
     )
-    return [{"title": r["title"], "start": ctx.local(r["start_utc"]), "end": ctx.local(r["end_utc"])} for r in found]
+    return [
+        {"title": r["title"], "start": ctx.local(r["start_utc"]), "end": ctx.local(r["end_utc"])}
+        for r in found
+        if not ctx.hidden.calendar(r["id"])  # a calendar you hid isn't drawn (planner/hidden.py)
+    ]
 
 
 @command("compare_answer")

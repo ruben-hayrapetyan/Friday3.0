@@ -182,7 +182,8 @@ def notices(problem: Problem, demoted: list[str]) -> list[str]:
     tz = problem.grid.spec.timezone
     over = [
         f"Your lock on {problem.items[k].title} ({to_local(at, tz):%a} {clock_time(to_local(at, tz))}) "
-        f"is during {event}, so Friday planned it elsewhere: move the lock, or make {event} optional"
+        f"is during {event}, so Friday planned it elsewhere: move the lock"
+        + ("" if event.startswith("an event") else f", or make {event} optional")
         for k, event, at in problem.locks_over_events
         if k in problem.items
     ]
@@ -191,7 +192,9 @@ def notices(problem: Problem, demoted: list[str]) -> list[str]:
 
 def clashes(problem: Problem, tz: str) -> list[str]:
     """Events at the same time, like a prelim during a lab: one has to give, and only you can say which."""
-    events = sorted((f for f in problem.fixed if f.blocks_time and f.kind != "shove"), key=lambda f: f.start_utc)
+    # a calendar you hid is never named (planner/hidden.py): its events clash with nothing you can see
+    events = sorted((f for f in problem.fixed if f.blocks_time and f.kind != "shove" and not f.hidden),
+                    key=lambda f: f.start_utc)  # fmt: skip
     out = []
     for n, a in enumerate(events):
         for b in events[n + 1 :]:
@@ -218,7 +221,7 @@ def given_way(problem: Problem, blocks: list[PlannedBlock], tz: str, now: int) -
     }
     nights = lifted_nights(problem)
     out = []
-    for event in sorted((f for f in problem.fixed if f.skippable), key=lambda f: f.start_utc):
+    for event in sorted((f for f in problem.fixed if f.skippable and not f.hidden), key=lambda f: f.start_utc):
         over = [b for b in blocks if b.start_utc < event.end_utc and b.end_utc > event.start_utc]
         night = nights.get((event.title, event.start_utc))
         late = [b for b in blocks if night and b.start_utc < night[1] and b.end_utc > night[0]]

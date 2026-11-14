@@ -22,7 +22,8 @@ from friday.planner.store import area_names
 
 
 def waiting(ctx: Ctx) -> dict[str, list[dict[str, Any]]]:
-    """Pending instances by repeating event, earliest first."""
+    """Pending instances by repeating event, earliest first; not a hidden calendar's (planner/hidden.py)."""
+    away = ctx.hidden.suggestions
     found = rows(
         ctx.conn,
         "SELECT s.*, src.name AS calendar FROM suggestions s JOIN raw_inputs r ON r.id = s.raw_input_id "
@@ -32,6 +33,8 @@ def waiting(ctx: Ctx) -> dict[str, list[dict[str, Any]]]:
     )
     out: dict[str, list[dict[str, Any]]] = {}
     for s in found:
+        if s["id"] in away:
+            continue
         s["fields"] = json.loads(s["input"])
         out.setdefault(s["batch"], []).append(s)
     for instances in out.values():

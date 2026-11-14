@@ -44,7 +44,12 @@ def suggestion_effect(ctx: Ctx, inp: EffectInput) -> EffectOut:
     clashes = [
         span(ctx, i.title, i.start_utc, i.end_utc)
         for i in snapshot.items
-        if i.when == "fixed" and i.status == "todo" and i.blocks_time and i.id != replaces and overlaps(i, lo, hi)
+        if i.when == "fixed"
+        and i.status == "todo"
+        and i.blocks_time
+        and i.id != replaces
+        and overlaps(i, lo, hi)
+        and not ctx.hidden.calendar(i.id)  # not named: a calendar you hid (planner/hidden.py)
     ]
     saved = current_plan(ctx.conn, ctx.user_id)
     takes = [

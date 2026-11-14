@@ -6020,6 +6020,8 @@ export interface components {
              * @default false
              */
             filtered?: boolean;
+            /** Hidden Calendar */
+            hidden_calendar?: string | null;
             /** Gives Way To */
             gives_way_to?: string | null;
             /**
@@ -11227,6 +11229,11 @@ export interface components {
             start: string;
             /** End */
             end: string;
+            /**
+             * With Hidden
+             * @default false
+             */
+            with_hidden?: boolean;
         };
         /** WhatIfKeepInput */
         WhatIfKeepInput: {
@@ -17897,6 +17904,7 @@ export interface operations {
             query?: {
                 start?: string | null;
                 end?: string | null;
+                with_hidden?: boolean;
             };
             header?: never;
             path?: never;

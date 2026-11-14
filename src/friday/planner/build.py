@@ -111,6 +111,7 @@ class BuildInput:
     done_utc: int | None = None  # tracked sleep: tonight's "Done with work"
     end_utc: int | None = None  # truncates the grid (tests, brute force)
     going: frozenset[int] = frozenset()  # optional events you said you'd go to this time: they hold their time
+    hidden: frozenset[int] = frozenset()  # events of calendars you hid (planner/hidden.py): not named in the notes
     away: tuple[str, int, int] | None = None  # a nap or a snack now: no work from start to end (`prepare.away_hold`)
 
 
@@ -227,7 +228,7 @@ def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOc
             continue
         skippable = item.blocks_time and item.id not in inp.going and any(has_words(title, o) for o in optional)
         out.append(FixedOcc(item.title, item.event_kind or "other", start, end_at, tuple(item.tags), before, after,
-                            item.blocks_time and not skippable, title, skippable))  # fmt: skip
+                            item.blocks_time and not skippable, title, skippable, item.id in inp.hidden))  # fmt: skip
     return out, by_id
 
 
@@ -615,7 +616,12 @@ def repair_locks(problem: Problem, pins: dict[str, dict[str, set[int]]], inp: Bu
         if over_fixed:  # said in the plan's notes: a lock you made, not kept, and why
             first = int(grid.start[min(over_fixed)])
             event = next(
-                (f.title for f in problem.fixed if f.blocks_time and f.blocked_lo <= first < f.blocked_hi), "an event"
+                (
+                    "an event on a calendar you hid" if f.hidden else f.title
+                    for f in problem.fixed
+                    if f.blocks_time and f.blocked_lo <= first < f.blocked_hi
+                ),
+                "an event",
             )
             problem.locks_over_events.append((key, event, first))
     for key, slots in pins.items():

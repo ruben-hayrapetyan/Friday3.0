@@ -190,15 +190,16 @@ def events_named(ctx: Ctx, words: tuple[str, ...]) -> list[str]:
     """The upcoming events a rule's words find, as the planner matches them: by the words in their titles."""
     rules = ctx.settings["text"].rules()
     wanted = [identity_text(norm(w, rules)) for w in with_singulars(words)]  # "exams" finds "Biology Exam"
-    titles = [
+    titles = dict.fromkeys(  # not a hidden calendar's (planner/hidden.py)
         r["title"]
         for r in rows(
             ctx.conn,
-            "SELECT DISTINCT title FROM items WHERE user_id = ? AND when_kind = 'fixed' AND status = 'todo' "
+            "SELECT id, title FROM items WHERE user_id = ? AND when_kind = 'fixed' AND status = 'todo' "
             "AND start_utc >= ? ORDER BY title",
             [ctx.user_id, ctx.now_text],
         )
-    ]
+        if not ctx.hidden.calendar(r["id"])
+    )
     return [t for t in titles if any(has_words(identity_text(norm(t, rules)), w) for w in wanted)][:6]
 
 

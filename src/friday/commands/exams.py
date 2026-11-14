@@ -25,7 +25,7 @@ def exams(ctx: Ctx, inp: Empty) -> list[ExamOut]:
     """Upcoming exams, soonest first, each with its prep: what it waits on, and exam prep for its course due at it."""
     now = format_utc(ctx.now_utc)
     until = format_utc(ctx.now_utc + AHEAD_DAYS * 1440)
-    events = [
+    events = [  # not a hidden calendar's (planner/hidden.py)
         item_from_row(r)
         for r in rows(
             ctx.conn,
@@ -33,6 +33,7 @@ def exams(ctx: Ctx, inp: Empty) -> list[ExamOut]:
             "AND start_utc < ? ORDER BY start_utc, id",
             [ctx.user_id, now, until],
         )
+        if not ctx.hidden.calendar(r["id"])
     ]
     work = {
         r["id"]: item_from_row(r)

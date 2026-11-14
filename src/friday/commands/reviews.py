@@ -221,10 +221,12 @@ def week_review(ctx: Ctx, inp: DateInput) -> WeekOut:
     fixed: dict[str, float] = defaultdict(float)
     for r in rows(
         ctx.conn,
-        "SELECT event_kind, start_utc, end_utc FROM items WHERE user_id = ? AND when_kind = 'fixed' "
+        "SELECT id, event_kind, start_utc, end_utc FROM items WHERE user_id = ? AND when_kind = 'fixed' "
         "AND status != 'dropped' AND start_utc >= ? AND start_utc < ?",
         [ctx.user_id, format_utc(lo), format_utc(hi)],
     ):
+        if ctx.hidden.calendar(r["id"]):
+            continue  # not counted among the week's events (planner/hidden.py)
         fixed[r["event_kind"] or "other"] += (parse_utc(r["end_utc"]) - parse_utc(r["start_utc"])) / 60
     return WeekOut(
         start=first.isoformat(),
@@ -336,6 +338,7 @@ def week_items(ctx: Ctx, condition: str, bounds: list[int], at: str) -> list[Wee
             note="fixed" if r["when_kind"] == "fixed" else ("due" if r["due_utc"] else ""),
         )
         for r in found
+        if not ctx.hidden.calendar(r["id"])  # a hidden calendar's events aren't coming up (planner/hidden.py)
     ]
 
 

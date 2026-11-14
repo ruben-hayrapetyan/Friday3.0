@@ -38,6 +38,7 @@ from friday.core.recurrence import counted_on, describe, ending_before, next_occ
 from friday.core.rows import item_to_row
 from friday.core.series import Series, make_occurrence, materialize, occurrence_timing
 from friday.core.time import clock_time, format_local, local_midnight, parse_local, parse_utc, planning_date, to_local
+from friday.planner.hidden import hidden_series
 from friday.planner.store import area_names, event_links, kv_get
 
 TIME_KEYS = ("start_utc", "end_utc", "release_utc", "due_utc")
@@ -615,8 +616,11 @@ def bring_back_stopped(ctx: Ctx, series_id: int, taken: list[int] | None) -> Non
 def series_list(ctx: Ctx, inp: Empty) -> list[SeriesRow]:
     """Everything that repeats: what, how often, when next, and where it came from."""
     areas = area_names(ctx.conn, ctx.user_id)
+    unnamed = hidden_series(ctx.conn, ctx.hidden)  # a hidden calendar's repeats aren't listed (planner/hidden.py)
     out = []
     for row in rows(ctx.conn, "SELECT * FROM series WHERE user_id = ? ORDER BY id", [ctx.user_id]):
+        if row["id"] in unnamed:
+            continue
         template = json.loads(row["template"])
         nxt = one(
             ctx.conn,

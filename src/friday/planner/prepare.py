@@ -224,6 +224,7 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
         wind_down_min=snapshot.sleep.wind_down_min if snapshot.sleep else {},
         done_utc=snapshot.sleep.done_utc if snapshot.sleep else None,
         going=snapshot.going,
+        hidden=snapshot.hidden,
     )
     if not originals:
         return inp

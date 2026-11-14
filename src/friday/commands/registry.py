@@ -34,6 +34,7 @@ from friday.core.time import (
     to_local,
     to_utc,
 )
+from friday.planner.hidden import Hidden, hidden_of
 from friday.planner.service import plan_snapshot
 from friday.planner.service import provisional as placement
 from friday.planner.snapshot import Snapshot, read_snapshot
@@ -61,6 +62,15 @@ class Ctx:
         if tz is None:
             raise FieldError("timezone", "not set yet; run `fridayd init`")
         return tz
+
+    @property
+    def hidden(self) -> Hidden:
+        """What the calendars you hid keep out of sight (planner/hidden.py), read once a request, and again if the
+        request hides or shows one."""
+        key = ("hidden", self.settings["calendar_look"].toolbar)
+        if key not in self.memo:
+            self.memo[key] = hidden_of(self.conn, self.settings, self.user_id)
+        return self.memo[key]
 
     @property
     def day_start(self) -> int:

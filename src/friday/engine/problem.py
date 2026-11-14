@@ -119,6 +119,7 @@ class FixedOcc:
     blocks_time: bool = True
     norm_title: str = ""
     skippable: bool = False  # optional (`skippable` rule): its time is priced, not walled off
+    hidden: bool = False  # on a calendar you hid: planned around as it is, but never named in the plan's notes
 
     @property
     def blocked_lo(self) -> int:

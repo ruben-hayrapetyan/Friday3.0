@@ -223,6 +223,8 @@ def skip_actions(
     for event in snapshot.items:
         if event.when != "fixed" or not event.blocks_time or event.status != "todo" or not event.start_utc:
             continue
+        if event.id in snapshot.hidden:
+            continue  # a calendar you hid isn't offered to skip: it isn't named (planner/hidden.py)
         start, end = parse_utc(event.start_utc), parse_utc(event.end_utc or event.start_utc)
         if not snapshot.now_utc <= start < until or rating_key(event.title) in going:
             continue
