@@ -85,13 +85,13 @@ def main(argv: list[str] | None = None) -> None:
     )
     demo.add_argument("--ready", action="store_true", help="three weeks into using Friday (sim/history.py)")
     demo.add_argument(
-        "--shift-days", type=int, default=0, help="lived and served as if this many days from now (screen tests)"
+        "--shift-minutes", type=int, default=0, help="lived and served as if this many minutes from now (screen tests)"
     )
     args = parser.parse_args(argv)
     if args.command == "demo":  # never in your own data folder
         name = "-".join(["friday-demo", *([args.case] if args.case else []), *(["lived"] if args.ready else [])])
         folder = args.data_dir if args.data_dir != DATA_DIR else DATA_DIR.with_name(name)
-        return run_demo(folder, args.port, serve_forever, initialize, args.case, args.ready, args.shift_days)
+        return run_demo(folder, args.port, serve_forever, initialize, args.case, args.ready, args.shift_minutes)
     args.data_dir.mkdir(parents=True, exist_ok=True)
     db_path = args.data_dir / "friday.db"
     if args.command == "init":

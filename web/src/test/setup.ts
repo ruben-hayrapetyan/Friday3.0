@@ -33,10 +33,10 @@ export const friday = {
 
 beforeAll(async () => {
   const port = await freePort()
-  const shiftDays = inject("fridayShiftDays")
-  server = await serve(copyOf(inject("fridaySample")), port, 60, shiftDays)
+  const shiftMinutes = inject("fridayShiftMinutes")
+  server = await serve(copyOf(inject("fridaySample")), port, 60, shiftMinutes)
   // the page's clock as the server's: the same days ahead, still ticking (only Date; timers stay real)
-  if (shiftDays) vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true, now: Date.now() + shiftDays * 86_400_000 })
+  if (shiftMinutes) vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true, now: Date.now() + shiftMinutes * 60_000 })
   base = `http://127.0.0.1:${port}`
   const page = (window as unknown as { happyDOM: { setURL(url: string): void; setViewport(v: { width: number; height: number }): void } }).happyDOM
   page.setURL(`${base}/`)

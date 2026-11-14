@@ -10,8 +10,8 @@ import { freePort, serve, shiftToThursday, stop } from "./server"
 export default async function setup(project: TestProject) {
   const folder = mkdtempSync(path.join(tmpdir(), "friday-sample-"))
   const port = await freePort()
-  const shiftDays = shiftToThursday() // one shift for the whole run: the server and every file's page agree
-  const server = await serve(folder, port, 240, shiftDays)
+  const shiftMinutes = shiftToThursday() // one shift for the whole run: the server and every file's page agree
+  const server = await serve(folder, port, 240, shiftMinutes)
   const base = `http://127.0.0.1:${port}`
   const terms = (await (await fetch(`${base}/api/q/terms`)).json()) as { version: string; needed: boolean }
   if (terms.needed) {
@@ -28,13 +28,13 @@ export default async function setup(project: TestProject) {
   await post("tour_offered", {})
   await stop(server)
   project.provide("fridaySample", folder)
-  project.provide("fridayShiftDays", shiftDays)
+  project.provide("fridayShiftMinutes", shiftMinutes)
   return () => rmSync(folder, { recursive: true, force: true })
 }
 
 declare module "vitest" {
   export interface ProvidedContext {
     fridaySample: string
-    fridayShiftDays: number
+    fridayShiftMinutes: number
   }
 }

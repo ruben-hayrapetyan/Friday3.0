@@ -1,7 +1,7 @@
 """`fridayd` itself (server/main.py, server/demo.py): `init` without a timezone it can find says how to give one, the
 timezone comes from TZ when set, and a lived-in demo is made once in its own folder and served from then on."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -53,9 +53,9 @@ def test_a_lived_in_demo_is_made_once_then_served(tmp_path: Path, monkeypatch: p
 
 
 def test_a_shifted_demo_is_lived_and_served_days_from_now(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """`fridayd demo --shift-days 3` (the screen tests pin their weekday with it): the three weeks are lived up to three
-    days from now, the server's clock runs three days ahead, and the stand-in Google and mail are dated from that
-    day's Monday."""
+    """`fridayd demo --shift-minutes` (the screen tests run as Thursday at 2pm with it): three days and 90 minutes
+    ahead, the three weeks are lived up to then, the server's clock runs that far ahead, and the stand-in Google and
+    mail are dated from that day's Monday."""
     monkeypatch.setenv("FRIDAY_CONFIG", str(tmp_path / "unused.toml"))
     monkeypatch.setattr(jobs, "SAMPLE_APIS", {})
     monkeypatch.setattr(llm, "client", llm.client)
@@ -73,16 +73,17 @@ def test_a_shifted_demo_is_lived_and_served_days_from_now(tmp_path: Path, monkey
         demo.cornell, "term", lambda student, today: (term_days.append(today), real_term(student, today))[1]
     )
     served: list[tuple[Any, ...]] = []
-    demo.run_demo(tmp_path / "d", 8799, lambda *where: served.append(where), fridayd.initialize, "maya", True, 3)
+    ahead = 3 * 1440 + 90
+    demo.run_demo(tmp_path / "d", 8799, lambda *where: served.append(where), fridayd.initialize, "maya", True, ahead)
     clock = served[0][3]
-    assert abs(lived_at[0] - (wall_clock() + 3 * 1440)) <= 1 and abs(clock() - (wall_clock() + 3 * 1440)) <= 1
-    assert term_days == [date.today() + timedelta(days=3)]
+    assert abs(lived_at[0] - (wall_clock() + ahead)) <= 1 and abs(clock() - (wall_clock() + ahead)) <= 1
+    assert term_days == [(datetime.now() + timedelta(minutes=ahead)).date()]
 
 
 def test_the_shift_reaches_the_demo_from_the_command_line(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     called: list[tuple[Any, ...]] = []
     monkeypatch.setattr(fridayd, "run_demo", lambda *args: called.append(args))
-    fridayd.main(["--data-dir", str(tmp_path / "x"), "demo", "--case", "maya", "--ready", "--shift-days", "-2"])
-    assert called[0][-1] == -2
+    fridayd.main(["--data-dir", str(tmp_path / "x"), "demo", "--case", "maya", "--ready", "--shift-minutes", "-2000"])
+    assert called[0][-1] == -2000
     fridayd.main(["--data-dir", str(tmp_path / "x"), "demo"])
     assert called[1][-1] == 0

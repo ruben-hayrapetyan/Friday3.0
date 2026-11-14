@@ -26,15 +26,20 @@ export function freePort(): Promise<number> {
 }
 
 /** `fridayd demo` over `folder` on `port`; resolves once it answers. */
-/** How many days from now the screen tests' Friday runs: to Thursday of this planning week (its days start at 4am),
- * at the time of day it is. Alex's sample is planned from its Monday, so on a Friday the week's Thursday event was
- * already over and the tests read a different week (13 Nov); a fixed weekday reads the same week every run. */
+/** The hour of the screen tests' Thursday. */
+export const SCREEN_HOUR = 14
+
+/** How many minutes from now the screen tests' Friday runs: to 2pm on Thursday of this planning week (its days start at
+ * 4am). Alex's sample is planned from its Monday, so on a Friday the week's Thursday event was already over (13 Nov),
+ * and late in the evening the Inbox's late work read differently than at 2pm: one weekday and hour, every run. */
 export function shiftToThursday(now = new Date()): number {
-  const planningDay = new Date(now.getTime() - 4 * 3_600_000).getDay() // 0 Sunday … 6 Saturday
-  return 4 - (planningDay === 0 ? 7 : planningDay) // Monday 1 … Sunday 7, to Thursday 4
+  const planning = new Date(now.getTime() - 4 * 3_600_000)
+  const weekday = planning.getDay() === 0 ? 7 : planning.getDay() // Monday 1 … Sunday 7
+  const thursday = new Date(planning.getFullYear(), planning.getMonth(), planning.getDate() + (4 - weekday), SCREEN_HOUR, 0)
+  return Math.round((thursday.getTime() - now.getTime()) / 60_000)
 }
 
-export async function serve(folder: string, port: number, seconds = 240, shiftDays = 0): Promise<ChildProcess> {
+export async function serve(folder: string, port: number, seconds = 240, shiftMinutes = 0): Promise<ChildProcess> {
   // Made-up app keys (integrations/keys.py reads FRIDAY_<NAME> first): the services' boxes are ready whether or not
   // this checkout has the gitignored Mac/app_keys.json, as on a contributor's fork or GitHub's checks
   const keys = { MICROSOFT_CLIENT_ID: "test-microsoft-id", SLACK_CLIENT_ID: "test-slack-id", SLACK_CLIENT_SECRET: "test-slack-secret", TICKTICK_CLIENT_ID: "test-ticktick-id", TICKTICK_CLIENT_SECRET: "test-ticktick-secret", TRELLO_CLIENT_ID: "test-trello-id" }
@@ -43,7 +48,7 @@ export async function serve(folder: string, port: number, seconds = 240, shiftDa
   const steady = { FRIDAY_CHAINS: "3", FRIDAY_FIXED_EFFORT: "1" }
   const env: NodeJS.ProcessEnv = { ...process.env, ...steady, ...Object.fromEntries(Object.entries(keys).map(([k, v]) => [`FRIDAY_${k}`, v])) }
   delete env.VIRTUAL_ENV
-  const child = spawn("uv", ["run", "--quiet", "fridayd", "--data-dir", folder, "demo", "--case", CASE, "--ready", "--port", String(port), "--shift-days", String(shiftDays)], {
+  const child = spawn("uv", ["run", "--quiet", "fridayd", "--data-dir", folder, "demo", "--case", CASE, "--ready", "--port", String(port), "--shift-minutes", String(shiftMinutes)], {
     cwd: REPO,
     env,
     stdio: ["ignore", "ignore", "pipe"],
