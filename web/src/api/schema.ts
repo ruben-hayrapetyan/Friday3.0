@@ -3431,7 +3431,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Why this plan violates a rule, read from the plan (no planning, so at once): on each day it's broken, the work */
+        /** Why this plan violates a rule: on each day, the work there and its due. */
         get: operations["rule_why"];
         put?: never;
         post?: never;
@@ -7664,7 +7664,7 @@ export interface components {
         };
         /**
          * OtherWay
-         * @description Another way to plan the same work (COMBINED.md 25).
+         * @description Another way to plan the same work.
          */
         OtherWay: {
             /** Weights */
@@ -10683,7 +10683,7 @@ export interface components {
         };
         /**
          * TermsOut
-         * @description Friday's terms as they are now, and whether you have yet to accept them (PROGRESS.md C71).
+         * @description Friday's terms as they are now, and whether you have yet to accept them.
          */
         TermsOut: {
             /** Version */
@@ -11096,7 +11096,7 @@ export interface components {
         };
         /**
          * UpdateStatusOut
-         * @description Friday's own updater (HOSTED.md H118–H124, H144–H147).
+         * @description Friday's own updater.
          */
         UpdateStatusOut: {
             /** Checks */
@@ -11164,7 +11164,7 @@ export interface components {
         };
         /**
          * UpdateVersionOut
-         * @description A version of Friday and its notes (HOSTED.md H143): a sentence, then New, Changed and Fixed.
+         * @description A version of Friday and its notes: a sentence, then New, Changed and Fixed.
          */
         UpdateVersionOut: {
             /** Version */

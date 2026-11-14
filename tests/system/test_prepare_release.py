@@ -167,15 +167,15 @@ def test_the_app_is_signed_before_the_image_and_the_image_notarized_and_stapled_
 
 
 @pytest.mark.parametrize(("missing", "said"), [
-    ("no-certificate", "no Developer ID Application certificate"),
-    ("no-profile", "no keychain profile 'friday-notary'"),
+    ("no-certificate", "no Developer ID Application certificate in your keychain: make one in Xcode"),
+    ("no-profile", "profile 'friday-notary' that Apple accepts: store one with xcrun notarytool store-credentials"),
 ])  # fmt: skip
 def test_without_a_certificate_or_a_notary_profile_nothing_is_built_numbered_or_sent(
     setup: dict[str, Path], missing: str, said: str
 ) -> None:
     (setup["tmp"] / missing).touch()
     done = prepare(setup, "0.2.0")
-    assert done.returncode != 0 and said in done.stderr and "C88" in done.stderr
+    assert done.returncode != 0 and said in done.stderr  # it says how to fix it, not where a note says so
     assert git(setup["repo"], "log", "-1", "--format=%s") == "start"  # the version wasn't committed
     assert not (setup["laptop"] / "friday-releases").exists()
     assert not any(c.startswith("codesign") for c in apple_calls(setup))

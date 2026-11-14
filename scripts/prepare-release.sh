@@ -47,13 +47,13 @@ git diff --quiet HEAD -- || die "commit or set aside your changes first: a versi
 IDENTITY="${FRIDAY_SIGN_IDENTITY:-}"
 if [ -z "$IDENTITY" ]; then
   IDENTITY="$(security find-identity -v -p codesigning | sed -n 's/.*"\(Developer ID Application: .*\)"$/\1/p' | sort -u)"
-  [ -n "$IDENTITY" ] || die "no Developer ID Application certificate in your keychain (says how to make one)"
+  [ -n "$IDENTITY" ] || die "no Developer ID Application certificate in your keychain: make one in Xcode → Settings → Accounts → Manage Certificates → + → Developer ID Application, then run this again"
   [ "$(printf '%s\n' "$IDENTITY" | wc -l | tr -d ' ')" = 1 ] \
     || die "more than one Developer ID Application certificate: name one in FRIDAY_SIGN_IDENTITY ($RELEASE_ENV)"
 fi
 PROFILE="${FRIDAY_NOTARY_PROFILE:-friday-notary}"
 xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null 2>&1 \
-  || die "notarytool has no keychain profile '$PROFILE' that Apple accepts (says how to store one)"
+  || die "notarytool has no keychain profile '$PROFILE' that Apple accepts: store one with xcrun notarytool store-credentials $PROFILE (your Apple ID, team id and an app-specific password from account.apple.com)"
 
 echo "==> Friday $VERSION"
 # the number everywhere it's written (H174): VERSION, pyproject.toml, web/package.json and uv.lock

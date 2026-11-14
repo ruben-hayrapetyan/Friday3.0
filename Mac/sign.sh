@@ -17,7 +17,7 @@ die() { echo "Not signed: $1" >&2; exit 1; }
 
 if [ -z "$IDENTITY" ]; then
   FOUND="$(security find-identity -v -p codesigning | sed -n 's/.*"\(Developer ID Application: .*\)"$/\1/p' | sort -u)"
-  [ -n "$FOUND" ] || die "no Developer ID Application certificate in your keychain (says how to get one)"
+  [ -n "$FOUND" ] || die "no Developer ID Application certificate in your keychain: make one in Xcode → Settings → Accounts → Manage Certificates → + → Developer ID Application, then run this again"
   [ "$(printf '%s\n' "$FOUND" | wc -l | tr -d ' ')" = 1 ] || die "more than one Developer ID: name one in FRIDAY_SIGN_IDENTITY"
   IDENTITY="$FOUND"
 fi

@@ -24894,7 +24894,7 @@
      "rule_totals"
     ],
     "title": "OtherWay",
-    "description": "Another way to plan the same work (COMBINED.md 25)."
+    "description": "Another way to plan the same work."
    },
    "OtherWayPickInput": {
     "properties": {
@@ -34062,7 +34062,7 @@
      "needed"
     ],
     "title": "TermsOut",
-    "description": "Friday's terms as they are now, and whether you have yet to accept them (PROGRESS.md C71)."
+    "description": "Friday's terms as they are now, and whether you have yet to accept them."
    },
    "TimeGroup": {
     "properties": {
@@ -35366,7 +35366,7 @@
      "state"
     ],
     "title": "UpdateStatusOut",
-    "description": "Friday's own updater (HOSTED.md H118\u2013H124, H144\u2013H147)."
+    "description": "Friday's own updater."
    },
    "UpdateStopResult": {
     "properties": {
@@ -35485,7 +35485,7 @@
      "summary"
     ],
     "title": "UpdateVersionOut",
-    "description": "A version of Friday and its notes (HOSTED.md H143): a sentence, then New, Changed and Fixed."
+    "description": "A version of Friday and its notes: a sentence, then New, Changed and Fixed."
    },
    "ValidationError": {
     "properties": {
