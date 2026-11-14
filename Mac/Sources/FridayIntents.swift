@@ -20,7 +20,9 @@ struct AddToFriday: AppIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let said = words.isEmpty ? "Nothing to add." : SiriSays.added(await SiriSays.ask { await Server.post("add", ["text": words]) })
+        guard !words.isEmpty else { return .result(value: "Nothing to add.", dialog: "Nothing to add.") }
+        let answer = await SiriSays.ask { await Server.post("add", ["text": words]) }
+        let said = SiriSays.added(answer, clock: SiriSays.clock(await Server.get("api/q/settings")))
         return .result(value: said, dialog: "\(said)")
     }
 }
@@ -31,7 +33,7 @@ struct WhatsNext: AppIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
         let now = await SiriSays.ask { await Server.get("api/q/now") }
-        let said = SiriSays.next(now as? [String: Any], today: SiriSays.today())
+        let said = SiriSays.next(now as? [String: Any], today: SiriSays.today(), clock: SiriSays.clock(await Server.get("api/q/settings")))
         return .result(value: said, dialog: "\(said)")
     }
 }
