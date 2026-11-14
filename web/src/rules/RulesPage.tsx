@@ -173,14 +173,19 @@ function NewRule({ editing, start, onDone }: { editing: Editing; start: string; 
   const sent = yours && text === yours.words ? { ...base, ...overrides } : overrides
   const typed = JSON.stringify({ text, overrides: sent, editing: yours?.name ?? "" })
   const settled = useSettled(typed, 200)
-  const preview = useQuery({
+  const readingQuery = useQuery({
     queryKey: ["rule_read", settled],
     queryFn: () => {
       const { text, overrides, editing } = JSON.parse(settled)
       return query("rule_read", { text, overrides: JSON.stringify(overrides), editing })
     },
     enabled: !!text.trim(),
-  }).data
+    // the last reading stays while the next is read (14 Nov: it blinked away at each keystroke); ↩ reads again when
+    // the words ran ahead of it
+    placeholderData: (previous) => previous,
+  })
+  const preview = readingQuery.data
+  const current = !readingQuery.isPlaceholderData && settled === typed // the reading shown is of the words as typed
   const add = useCommand("rule_add", { label: (o) => o.result.message ?? "Added" })
   const save = useRuleCommand("rule_edit", (o) => o.result.message ?? "Saved")
   const notes = useNotes()
@@ -223,7 +228,7 @@ function NewRule({ editing, start, onDone }: { editing: Editing; start: string; 
     if (!text.trim() || sending.current) return
     sending.current = true
     try {
-      const now = settled === typed && preview ? preview : await query("rule_read", { text, overrides: JSON.stringify(sent), editing: yours?.name ?? "" }).catch(() => null)
+      const now = current && preview ? preview : await query("rule_read", { text, overrides: JSON.stringify(sent), editing: yours?.name ?? "" }).catch(() => null)
       if (!now) return
       if (yours) {
         if (!now.reading || now.also?.length) return

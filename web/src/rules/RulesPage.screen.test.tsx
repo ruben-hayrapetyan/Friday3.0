@@ -41,6 +41,21 @@ describe("the Rules page", () => {
     expect(screen.getByRole("button", { name: "Every day" }).getAttribute("aria-pressed")).toBe("true")
   })
 
+  it("keeps showing its reading while the next one is read, rather than blinking away as you type", async () => {
+    // 14 Nov: each keystroke's reading was a new query with nothing to show until the server answered, so the reading
+    // and the button's words came and went while typing (a full check under load clicked "Ask" in such a gap)
+    const { user } = await openFriday("/rules")
+    await user.type(await screen.findByRole("textbox", { name: "New rule" }), "No work after 10pm")
+    expect(await screen.findByText("Friday read this as")).toBeTruthy()
+    let blinked = false // the reading gone from the page at any moment until the next one shows
+    const watch = new MutationObserver(() => (blinked ||= !document.body.textContent?.includes("Friday read this as")))
+    watch.observe(document.body, { childList: true, subtree: true, characterData: true })
+    await user.type(box(), " on weekdays")
+    expect(await screen.findByText("No work after 10pm on weekdays")).toBeTruthy()
+    watch.disconnect()
+    expect(blinked).toBe(false)
+  })
+
   it("adds a rule as read, at the strength you pick", async () => {
     const { user } = await openFriday("/rules")
     await user.type(await screen.findByRole("textbox", { name: "New rule" }), "No work after 10pm")
@@ -119,7 +134,7 @@ describe("the Rules page", () => {
     const { user } = await openFriday("/rules")
     await user.type(await screen.findByRole("textbox", { name: "New rule" }), "blorp the zinger")
     expect(await screen.findByText(/Friday can’t read this one itself/)).toBeTruthy()
-    const ask = screen.getByRole("button", { name: /^Ask / })
+    const ask = await screen.findByRole("button", { name: /^Ask / })
     await user.click(ask)
     const asked = await waitForSent("ask_claude")
     expect(asked.body).toEqual({ text: "blorp the zinger", purpose: "rule" })
