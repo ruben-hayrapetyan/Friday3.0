@@ -26,10 +26,14 @@ describe("the Rules page", () => {
     expect(screen.getByRole("link", { name: /Try new rule designs/ }).getAttribute("href")).toContain("/lab/rules")
   })
 
-  it("offers examples to try, and one picked fills the box with how Friday reads it", async () => {
+  it("has no row of examples under the box, and a rule typed is read as you type it", async () => {
+    // 14 Nov: the "Try" row of 16 gray examples under the box was too many ("all of those grey boxes after try");
+    // the box's placeholder is the one example left
     const { user } = await openFriday("/rules")
-    await user.click(await screen.findByRole("button", { name: "Deep work in the morning" }))
-    expect((box() as HTMLInputElement).value).toBe("Deep work in the morning")
+    expect((await screen.findByRole("textbox", { name: "New rule" })).getAttribute("placeholder")).toBe("I prefer eating lunch before 1pm")
+    expect(screen.queryByText("Try")).toBeNull()
+    for (const example of ["No work after 10pm", "Gym is optional", "Deep work in the morning"]) expect(screen.queryByRole("button", { name: example })).toBeNull()
+    await user.type(box() as HTMLInputElement, "Deep work in the morning")
     expect(await screen.findByText("Friday read this as")).toBeTruthy()
     expect(await screen.findByText("Deep work between 8am and 12pm")).toBeTruthy()
     // what, when and which days, to correct

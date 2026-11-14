@@ -23,7 +23,6 @@ import { NOTE_EXAMPLES, useNotes } from "@/settings/AboutYou"
 
 type Strength = "Prefer" | "Strongly" | "Always"
 const STRENGTHS: Strength[] = ["Prefer", "Strongly", "Always"]
-const EXAMPLES = ["I prefer eating lunch before 1pm", "No work after 10pm", "Keep Saturday mornings free", "At most 6 hours a day", "Deep work in the morning", "Gym right after class", "Finish things a day early", "Go easier on Saturdays", "Gym is optional", "Climbing club only if I'm ahead", "No work after 10pm the night before climbing club", "30 minutes before and after gym", "Exam prep as close to the exam as possible", "Never skip lunch or dinner", "Let Friday decide breakfast", "Short tasks in short gaps, long tasks in long stretches"]
 const SOURCES: Record<string, [string, string]> = { you: ["user", "Yours"], learned: ["sparkle", "Learned from you"], default: ["sliders-horizontal", "Built in"] }
 const DAY_OPTS: { value: string; label: string; days: string[] | null }[] = [
   { value: "every", label: "Every day", days: null },
@@ -240,7 +239,7 @@ function NewRule() {
                   <button className="fr-link" onClick={() => navigate("/settings/integrations")} style={{ fontSize: 12 }}>
                     Set up an AI
                   </button>{" "}
-                  or try one of the examples.
+                  or say it another way, like the example in the box.
                 </span>
               )}
             </span>
@@ -306,18 +305,7 @@ function NewRule() {
             </>
           )}
         </div>
-      ) : (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, paddingLeft: 28, alignItems: "center" }}>
-          <span className="fr-kicker" style={{ marginRight: 4 }}>
-            Try
-          </span>
-          {EXAMPLES.map((x) => (
-            <button key={x} className="fr-chip" onClick={() => setText(x)} style={{ color: "var(--color-neutral-300)" }}>
-              {x}
-            </button>
-          ))}
-        </div>
-      )}
+      ) : null}
     </div>
   )
 }
