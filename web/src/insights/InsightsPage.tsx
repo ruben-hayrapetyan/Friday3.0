@@ -136,9 +136,9 @@ function Accuracy({ kinds }: { kinds: { kind: string; n: number; median: number;
           const fill = k.median > 1.15 ? "var(--fr-warn)" : k.median < 0.85 ? "var(--color-accent)" : "var(--color-neutral-400)"
           const label = Math.abs(k.median - 1) < 0.08 ? "On estimate" : k.median > 1 ? `${k.median}× as long` : `${Math.round((1 - k.median) * 100)}% quicker`
           return (
-            <div key={k.kind} style={{ display: "grid", gridTemplateColumns: "120px minmax(0,1fr) 150px", gap: 16, alignItems: "center" }}>
+            <div key={k.kind} className="fr-accuracy" style={{ display: "grid", gridTemplateColumns: "120px minmax(0,1fr) 150px", gap: 16, alignItems: "center" }}>
               <span>{k.kind}</span>
-              <div style={{ position: "relative", height: 22 }}>
+              <div className="fr-accuracy-bar" style={{ position: "relative", height: 22 }}>
                 <div style={{ position: "absolute", left: "50%", top: -3, bottom: -3, width: 1, background: "var(--color-neutral-500)" }} />
                 <div style={{ position: "absolute", top: 6, height: 10, borderRadius: 5, left: `${Math.min(from, to - 1)}%`, width: `${Math.max(2, to - from)}%`, background: fill }} />
               </div>
@@ -149,9 +149,9 @@ function Accuracy({ kinds }: { kinds: { kind: string; n: number; median: number;
           )
         })}
         {!kinds.length && <span className="fr-kicker">Nothing finished with an estimate yet.</span>}
-        <div style={{ display: "grid", gridTemplateColumns: "120px minmax(0,1fr) 150px", gap: 16, fontSize: 11, color: "var(--color-neutral-500)" }}>
+        <div className="fr-accuracy fr-accuracy-axis" style={{ display: "grid", gridTemplateColumns: "120px minmax(0,1fr) 150px", gap: 16, fontSize: 11, color: "var(--color-neutral-500)" }}>
           <span />
-          <span style={{ display: "flex", justifyContent: "space-between" }}>
+          <span className="fr-accuracy-bar" style={{ display: "flex", justifyContent: "space-between" }}>
             <span>Quicker</span>
             <span>On estimate</span>
             <span>Longer</span>
@@ -187,8 +187,8 @@ function Heat({ heat }: { heat: number[][] }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "40px repeat(16, minmax(0,1fr))", gap: 3, alignItems: "center" }}>
       <span />
-      {HOURS.map((h) => (
-        <span key={h} className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>
+      {HOURS.map((h, i) => (
+        <span key={h} className="tnum fr-heat-hour" data-between={i % 2 ? "" : undefined} style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>
           {shortHour(Number(h))}
         </span>
       ))}

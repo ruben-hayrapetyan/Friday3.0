@@ -157,7 +157,7 @@ export function Search() {
           />
           <kbd className="fr-kbd">Esc</kbd>
         </div>
-        <div style={{ overflowY: "auto", padding: "6px 8px 10px", display: "flex", flexDirection: "column" }}>
+        <div className="fr-scroll-column" style={{ overflowY: "auto", padding: "6px 8px 10px", display: "flex", flexDirection: "column" }}>
           {groups.map(([name, hits]) => (
             <div key={name} style={{ display: "flex", flexDirection: "column", paddingTop: 6 }}>
               <span style={{ fontSize: 11, color: "var(--color-neutral-500)", padding: "4px 8px" }}>{name}</span>

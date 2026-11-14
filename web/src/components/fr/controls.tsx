@@ -48,7 +48,7 @@ export function Menu<T extends string>(props: { options: readonly Option<T>[]; v
   return (
     <div ref={box} className="fr-menu" onKeyDown={escape}>
       <button ref={button} className="fr-menu-button" aria-haspopup="listbox" aria-expanded={open} aria-label={label} disabled={disabled} onClick={() => setOpen(!open)}>
-        <span>{options.find((o) => o.value === value)?.label ?? value}</span>
+        <MenuChoice options={options} value={value} />
         <Icon name="caret-down" size={12} />
       </button>
       {open && (
@@ -71,6 +71,31 @@ export function Menu<T extends string>(props: { options: readonly Option<T>[]; v
         </div>
       )}
     </div>
+  )
+}
+
+/** The chosen option's words, in a cell as wide as the longest option's (the others laid under it, unseen): the
+ * button keeps its width whichever is picked, and is no wider than they need (14 Nov). The others' words are drawn
+ * by CSS from an attribute, so they aren't text a search of the page, or a screen reader, would come upon. */
+export function MenuChoice<T extends string>({ options, value }: { options: readonly Option<T>[]; value: T }) {
+  const chosen = options.some((o) => o.value === value)
+  return (
+    <span className="fr-menu-choice">
+      {!chosen && <span data-chosen="">{value}</span>}
+      {options.map((o) =>
+        o.value === value ? (
+          <span key={o.value} data-chosen="">
+            {o.label}
+          </span>
+        ) : typeof o.label === "string" ? (
+          <span key={o.value} aria-hidden data-label={o.label} />
+        ) : (
+          <span key={o.value} aria-hidden>
+            {o.label}
+          </span>
+        ),
+      )}
+    </span>
   )
 }
 

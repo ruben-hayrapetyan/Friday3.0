@@ -106,7 +106,7 @@ export function UpdateDialogs() {
           <Icon name="x" />
         </button>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 18, maxHeight: "50vh", overflowY: "auto" }}>
+      <div className="fr-scroll-column" style={{ display: "flex", flexDirection: "column", gap: 18, maxHeight: "50vh", overflowY: "auto" }}>
         {versions.map((v) => (
           <Notes key={v.version} version={v} titled={versions.length > 1} />
         ))}
@@ -137,7 +137,7 @@ function WhatsNew({ status, onSeen }: { status: UpdateStatus; onSeen: () => void
         <span className="fr-kicker">Updated</span>
         <H size={24}>What's new in Friday {status.have}</H>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 18, maxHeight: "55vh", overflowY: "auto" }}>
+      <div className="fr-scroll-column" style={{ display: "flex", flexDirection: "column", gap: 18, maxHeight: "55vh", overflowY: "auto" }}>
         {versions.map((v) => (
           <Notes key={v.version} version={v} titled={versions.length > 1} />
         ))}

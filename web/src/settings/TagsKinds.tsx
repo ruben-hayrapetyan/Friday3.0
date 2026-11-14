@@ -31,7 +31,7 @@ export function TagsKinds() {
       {areas.map((a, i) => {
         const hue = hueOf(a.color, i)
         return (
-          <div key={a.id} className="fr-row" style={{ display: "grid", gridTemplateColumns: "28px minmax(0,180px) minmax(0,1fr)", gap: "10px 16px", alignItems: "center", padding: "14px 0" }}>
+          <div key={a.id} className="fr-row fr-tag-row" style={{ display: "grid", gridTemplateColumns: "28px minmax(0,180px) minmax(0,1fr)", gap: "10px 16px", alignItems: "center", padding: "14px 0" }}>
             <span style={{ width: 28, height: 28, borderRadius: 8, background: paintOf(hue, light) }} />
             <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, gridColumn: "2" }}>
               <NameInput key={a.name} name={a.name} onSave={(name) => edit({ id: a.id, name })} />
