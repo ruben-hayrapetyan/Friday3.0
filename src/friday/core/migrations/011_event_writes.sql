@@ -1,4 +1,4 @@
--- The combined Friday (COMBINED.md 69): changes you make in Friday to events from an editable Google calendar, and
+-- The combined Friday: changes you make in Friday to events from an editable Google calendar, and
 -- events you make while `gcal.new_events_to` names a calendar, wait here until the job saves them to Google. A
 -- command queues; the job loop (with the network) writes, so a command never waits on Google.
 CREATE TABLE event_writes (

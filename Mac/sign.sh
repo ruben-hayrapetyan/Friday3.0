@@ -1,5 +1,5 @@
 #!/bin/bash
-# Signs Friday.app for downloading (PROGRESS.md C88): every compiled file in it with your Developer ID, under the
+# Signs Friday.app for downloading: every compiled file in it with your Developer ID, under the
 # hardened runtime and with a secure timestamp, as Apple's notarizing requires; innermost first, the app last.
 #
 #   Mac/sign.sh APP [IDENTITY]
@@ -17,7 +17,7 @@ die() { echo "Not signed: $1" >&2; exit 1; }
 
 if [ -z "$IDENTITY" ]; then
   FOUND="$(security find-identity -v -p codesigning | sed -n 's/.*"\(Developer ID Application: .*\)"$/\1/p' | sort -u)"
-  [ -n "$FOUND" ] || die "no Developer ID Application certificate in your keychain (PROGRESS.md C88 says how to get one)"
+  [ -n "$FOUND" ] || die "no Developer ID Application certificate in your keychain (says how to get one)"
   [ "$(printf '%s\n' "$FOUND" | wc -l | tr -d ' ')" = 1 ] || die "more than one Developer ID: name one in FRIDAY_SIGN_IDENTITY"
   IDENTITY="$FOUND"
 fi

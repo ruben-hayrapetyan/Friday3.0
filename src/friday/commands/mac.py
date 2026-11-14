@@ -1,4 +1,4 @@
-"""The Mac's calendars (COMBINED.md 4), fed in by the Mac app: it posts what EventKit sees, and the sync job reads each
+"""The Mac's calendars, fed in by the Mac app: it posts what EventKit sees, and the sync job reads each
 calendar you switched on from that, as it reads Google's, within the minute. A Mac calendar starts on unless it is a
 copy of one Friday reads from Google (the same name), a subscription or birthdays; its events skip the inbox, as they
 did in the Mac app.

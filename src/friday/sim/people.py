@@ -1,4 +1,4 @@
-"""Forty-three made-up people to try the hosted Friday on (HOSTED.md, before S1), beside the seven Cornell students:
+"""Forty-three made-up people to try the hosted Friday on (before S1), beside the seven Cornell students:
 students at a made-up university, people with jobs, parents and carers, and shift workers and freelancers, each from
 very light to overloaded. A person is made from their key alone, so they are the same every time, and is a
 `Student` (sim/cornell.py) so everything that sets a student up, lives their weeks or serves them works on them:

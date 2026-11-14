@@ -555,7 +555,7 @@ def parse_line(ctx: Ctx, inp: ParseInput) -> ParseOutput:
     fields = dict(result.fields)
     title = fields.get("title") or ""
     if title and "start_local" not in fields:
-        # What add will guess from the title, so the add box shows it as a chip you can change (COMBINED.md 55).
+        # What add will guess from the title, so the add box shows it as a chip you can change.
         if not fields.get("preset") and (
             preset := guess_preset(title, in_use(ctx.settings["presets"], ctx.settings["school"]))
         ):

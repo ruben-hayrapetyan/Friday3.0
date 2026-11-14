@@ -1,4 +1,4 @@
-"""Kinds and courses read from titles (COMBINED.md 55), and the title keys and fallback ratings for skips (56)."""
+"""Kinds and courses read from titles, and the title keys and fallback ratings for skips (56)."""
 
 import pytest
 

@@ -123,7 +123,7 @@ class AsksLaterOut(Model):
 
 
 class TermsOut(Model):
-    """Friday's terms as they are now, and whether you have yet to accept them (PROGRESS.md C71)."""
+    """Friday's terms as they are now, and whether you have yet to accept them."""
 
     version: str
     text: str  # markdown
@@ -540,7 +540,7 @@ class ChromaColorsInput(Model):
 
 
 class OtherWay(Model):
-    """Another way to plan the same work (COMBINED.md 25)."""
+    """Another way to plan the same work."""
 
     weights: dict[str, float]  # each learnable rule's factor
     seed: int  # the search seed it was made with

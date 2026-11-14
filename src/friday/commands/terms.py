@@ -1,4 +1,4 @@
-"""Accepting Friday's terms (PROGRESS.md C71, 9 Nov: everyone accepts them, and people already using Friday get "a
+"""Accepting Friday's terms (9 Nov: everyone accepts them, and people already using Friday get "a
 popup on their screen" and accept before going on). The app stays locked on a page with the terms, Accept and Quit
 until `needed` is false; each change to the terms asks again. Each acceptance is kept, with its time, as the record
 that you agreed; only you can accept, never an assistant (registry.YOURS_ONLY)."""

@@ -1,5 +1,5 @@
 #!/bin/bash
-# A practice update in Friday Test, all on this Mac (HOSTED.md H148, on rhayrapetyan/download-site): Friday Test is
+# A practice update in Friday Test, all on this Mac: Friday Test is
 # built at this version, looking for updates at a feed served on this Mac, which offers the same Friday Test numbered
 # one higher, with practice notes. Opening Friday Test shows the update popup; Update downloads it, restarts into it
 # with the same test user, and shows what's new. Nothing goes to the site or the hub.

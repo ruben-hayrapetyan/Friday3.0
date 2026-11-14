@@ -135,7 +135,7 @@ def pointless_late(item: Item, settings: dict[str, Any]) -> bool:
 
 
 def item_cushion(ctx: Ctx, item: Item, area: str | None) -> float:
-    """The learned cushion on your estimate (COMBINED.md 41), when you gave one."""
+    """The learned cushion on your estimate, when you gave one."""
     if item.when == "fixed" or item.duration_source != "you":
         return 1.0
     memo = ctx.memo.setdefault("cushions", {})
@@ -201,7 +201,7 @@ def held_task(ctx: Ctx, event_id: int | None) -> dict[str, Any] | None:
 
 
 def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
-    """An event's calendar, category and whether it counts as busy (COMBINED.md 17, 28)."""
+    """An event's calendar, category and whether it counts as busy."""
     if item.when != "fixed":
         return {}
     link = links(ctx).get(item.id or 0)

@@ -1,5 +1,5 @@
 #!/bin/bash
-# The disk image people download (HOSTED.md H116): Friday.app beside an Applications folder to drag it onto, made on
+# The disk image people download: Friday.app beside an Applications folder to drag it onto, made on
 # a Mac (hdiutil) from an app built on main (Mac/build.sh).
 #
 #   release/make-dmg.sh APP VERSION OUT_DIR     writes OUT_DIR/Friday-VERSION.dmg and prints its path

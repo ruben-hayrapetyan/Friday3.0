@@ -1,6 +1,6 @@
 #!/bin/bash
-# Friday's server inside the Mac app, so it runs on any Apple-silicon Mac without Friday installed (HOSTED.md H108–H111,
-# on the rhayrapetyan/download-site branch): a standalone Python (the python-build-standalone build uv installs) with
+# Friday's server inside the Mac app, so it runs on any Apple-silicon Mac without Friday installed: a standalone
+# Python (the python-build-standalone build uv installs) with
 # Friday and its packages as uv.lock pins them, the website beside it, and the planner already compiled.
 #
 #   Mac/bundle.sh APP     fills APP/Contents/Resources/friday (build.sh calls it; web/dist must be built)
@@ -57,7 +57,7 @@ find "$RUNTIME/python/lib" -maxdepth 2 -type d \( -name idlelib -o -name turtled
 mkdir -p "$RUNTIME/python/share/friday"
 ditto "$REPO/web/dist" "$RUNTIME/python/share/friday/web"  # where the server looks beside its Python (web_dist)
 # Your own Google client goes only into your own Friday (scripts/deploy.sh sets FRIDAY_GOOGLE_CLIENT=1). Downloads
-# leave it out (PROGRESS.md C77, 9 Nov: Google lets in only the test users its Cloud project lists, and everyone else
+# leave it out (9 Nov: Google lets in only the test users its Cloud project lists, and everyone else
 # who pressed Connect got "Access blocked"): their calendars come in through the Mac and their mail with an app
 # password; someone with a Google Cloud key of their own can still use it. Never read here, only copied.
 CLIENT="$REPO/Mac/google_client.json"

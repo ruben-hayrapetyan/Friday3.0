@@ -55,7 +55,7 @@ def test_late_work_across_the_zone_boundary() -> None:
     assert cost(p, plan(item_1=(B - 2, B - 1)), "late_work") == 0
 
 
-# late_tasks (personal's, COMBINED.md 49): weight 10, a count per hard task late at all (importance × 48) and
+# late_tasks (personal's): weight 10, a count per hard task late at all (importance × 48) and
 # importance × h² / 96 per unit late; unplaced work counts as late.
 
 LATE_TASKS = ["late_tasks"]

@@ -1,4 +1,4 @@
-"""How much each event needs attending, rated by the AI with the title as a fallback (COMBINED.md 56)."""
+"""How much each event needs attending, rated by the AI with the title as a fallback."""
 
 import json
 from pathlib import Path

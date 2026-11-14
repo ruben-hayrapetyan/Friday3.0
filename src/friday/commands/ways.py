@@ -1,4 +1,4 @@
-"""Other ways to plan the same work (personal's three options, COMBINED.md 25): asked for on demand beside m16's live
+"""Other ways to plan the same work (personal's three options): asked for on demand beside m16's live
 plan. Each way is described by how it differs from your plan, rule by rule; picking one makes it your plan (the next
 replan starts afresh with its weights, for a week) and counts as a comparison your pick won, which is how Friday
 learns what you like (DESIGN §21)."""

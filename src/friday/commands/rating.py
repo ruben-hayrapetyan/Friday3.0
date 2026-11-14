@@ -1,4 +1,4 @@
-"""Which events you could skip in a week with more due than fits (personal's, COMBINED.md 56): each upcoming event's
+"""Which events you could skip in a week with more due than fits (personal's): each upcoming event's
 title rated once by the AI and kept (kv `event_ratings`), and the ones you said you go to (kv `events_going`), which
 are never offered again. Triage reads both; the job loop rates new titles as they arrive."""
 

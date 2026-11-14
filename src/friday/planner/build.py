@@ -282,7 +282,7 @@ def long_after_short(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[D
 
 
 def parts_in_order(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[Dependency]:
-    """Parts of one set done one after the other (personal's, COMBINED.md 53): tasks of the same kind due the same day
+    """Parts of one set done one after the other (personal's): tasks of the same kind due the same day
     whose titles start with the same two words ("PS 7 odds" and "PS 7 evens", "Chem HW 5" and "Chem HW 6") each wait
     for the one before, by title, so a plan never alternates between them. Left alone when you tied any yourself."""
     tied = {d.item_id for d in inp.dependencies} | {d.depends_on_id for d in inp.dependencies}
@@ -357,7 +357,7 @@ def focused_release(
     item: Item, release: int | None, due: int | None, exams: list[tuple[int, int, str]], settings: Mapping[str, Any],
     now: int,
 ) -> int | None:  # fmt: skip
-    """Exam focus (personal's, COMBINED.md 38): while an exam is `days_before` days off or less, another course's work
+    """Exam focus (personal's): while an exam is `days_before` days off or less, another course's work
     due after it waits until the exam ends, when a day and half again its length still fit before its own due."""
     focus = exam_focus_of(settings)
     if not focus.on or due is None or item.preset == "Exam prep":
@@ -372,7 +372,7 @@ def focused_release(
 
 
 def exam_due(item: Item, due: int | None, fixed: Mapping[int, Item], now: int) -> int | None:
-    """Prep for an exam or quiz on the calendar is due when it starts (personal's, COMBINED.md 50): the same course's
+    """Prep for an exam or quiz on the calendar is due when it starts (personal's): the same course's
     exam within three days before the prep's due ("Math quiz prep" due the evening of the quiz is due at the quiz).
     Of several, the one nearest the due, and never one already begun: Monday's quiz isn't what Wednesday's midterm
     review is for."""
@@ -448,7 +448,7 @@ def free_run(grid: Grid, busy: list[tuple[int, int]], lo: int, hi: int) -> int:
 
 
 def expires(item: Item, settings: Mapping[str, Any]) -> bool:
-    """Pointless once late (COMBINED.md 50): your say on the item, else the kinds and titles in settings."""
+    """Pointless once late: your say on the item, else the kinds and titles in settings."""
     if item.due_utc is None:
         return False
     return (
@@ -467,7 +467,7 @@ def fading(item: Item, settings: Mapping[str, Any], now: int) -> float:
 
 
 def sitting_cost(item: Item, settings: Mapping[str, Any]) -> float:
-    """What splitting an item costs, after your split preference (COMBINED.md 38): kept between 0 and 1."""
+    """What splitting an item costs, after your split preference: kept between 0 and 1."""
     sittings = settings["sittings"]
     if not sittings.one_go:
         return item.chunk_cost

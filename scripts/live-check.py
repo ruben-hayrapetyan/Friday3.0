@@ -1,4 +1,4 @@
-"""The live check (PROGRESS.md C96): an integration's connector against the real service, before a release, so the fake
+"""The live check: an integration's connector against the real service, before a release, so the fake
 the tests use (tests/integrations/fake_*.py) can't drift from what the service really does.
 
     uv run python scripts/live-check.py todoist

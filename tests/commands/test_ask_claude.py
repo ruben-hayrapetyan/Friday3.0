@@ -1,4 +1,4 @@
-"""Ask Claude (COMBINED.md 20, 37): proposals as Friday's own commands, checked before you see them; nothing runs."""
+"""Ask Claude: proposals as Friday's own commands, checked before you see them; nothing runs."""
 
 import json
 from pathlib import Path

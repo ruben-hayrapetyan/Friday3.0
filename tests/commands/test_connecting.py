@@ -365,7 +365,7 @@ def test_cancel_ends_googles_real_sign_in_waiting_on_this_mac(tmp_path: Path, mo
     assert not google_auth.tokens(tmp_path)  # nothing kept
 
 
-# Friday's own client, shipped in the Mac app (HOSTED.md H112): a downloaded Friday connects with nothing to set up.
+# Friday's own client, shipped in the Mac app: a downloaded Friday connects with nothing to set up.
 
 
 def shipped() -> Path:

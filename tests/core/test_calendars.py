@@ -1,4 +1,4 @@
-"""Categories, the filter and what counts as busy, as personal's Mac app had them (COMBINED.md 17, 28)."""
+"""Categories, the filter and what counts as busy, as personal's Mac app had them."""
 
 from friday.core.calendars import (
     BusySettings,

@@ -282,7 +282,7 @@ def send_event_writes(
     backups: Path,
     user_id: int,
 ) -> None:
-    """Changes to your events saved back to Google (COMBINED.md 69)."""
+    """Changes to your events saved back to Google."""
     google = SAMPLE_APIS.get("google")
     write_events(conn, now_utc, user_id, backups.parent, google)  # changes to an account short of the OK wait
     waiting = (
@@ -315,7 +315,7 @@ def rate_events(
     backups: Path,
     user_id: int,
 ) -> None:
-    """How much each new event needs attending, for triage's skips (COMBINED.md 56)."""
+    """How much each new event needs attending, for triage's skips."""
     rate_upcoming(conn, now_utc, user_id, SAMPLE_APIS.get("client"))
 
 
@@ -392,7 +392,7 @@ def look_for_updates(
     backups: Path,
     user_id: int,
 ) -> None:
-    """A downloaded Friday looks for a newer version at launch and once a month (HOSTED.md H121, commands/updates.py);
+    """A downloaded Friday looks for a newer version at launch and once a month (commands/updates.py);
     checked every minute, it reaches the site only then."""
     if updates.due(conn, now_utc, user_id):
         updates.check_due(conn, now_utc, user_id)

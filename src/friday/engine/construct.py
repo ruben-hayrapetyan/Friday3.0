@@ -140,14 +140,14 @@ def placement_order(c: Compiled) -> list[int]:
             break
     hard = [bool(M.hard_due[i]) or effective[i] < due[i] for i in range(M.I)]
     importance = [problem.items[k].importance for k in c.keys]
-    # A meal's minimum first (COMBINED.md: personal pinned lunch): placed after the work, it found its window taken
+    # A meal's minimum first (personal pinned lunch): placed after the work, it found its window taken
     # by work due days later, and the anneal rarely moved both to give it back.
     meal = [M.amount_kind[i] == 1 and problem.items[c.keys[i]].min > 0 for i in range(M.I)]
     return sorted(range(M.I), key=lambda i: (0 if meal[i] else 1, 0 if hard[i] else 1, effective[i], -importance[i], i))
 
 
 def fewest_late_order(c: Compiled) -> list[int]:
-    """personal's start for an overloaded week (COMBINED.md 54): Moore–Hodgson on the hard items. In deadline order,
+    """personal's start for an overloaded week: Moore–Hodgson on the hard items. In deadline order,
     whenever the work so far can't fit before the latest due, the longest task so far is set aside; the kept ones go
     first, in deadline order, so as many as can be are on time, and the set-aside ones fill what's left after them."""
     M, problem = c.m, c.problem

@@ -186,7 +186,7 @@ def rule(type: str, name: str, weight: float = 1.0, **params: Any) -> RuleSpec:
 NOT_ROUTINES = {"except_preset": ["Routine"]}
 REFERENCE_RULES = (
     rule("late_work", "late_work", 10, overflow_extra_hours=48),
-    # personal's (COMBINED.md 49): each late task counts, and lateness costs more the later it is.
+    # personal's: each late task counts, and lateness costs more the later it is.
     rule("late_tasks", "late_tasks", 10, hours=48, square_hours=96),
     rule("quota", "quota", 3),
     # Meals and other routines aren't work: counted as load, any wellbeing cost outweighed a whole meal (M16).
@@ -315,7 +315,7 @@ class FadingLate(Model):
 
 
 class PointlessLate(Model):
-    """Work that's pointless once its deadline has passed (COMBINED.md 50): never planned after it."""
+    """Work that's pointless once its deadline has passed: never planned after it."""
 
     kinds: tuple[str, ...] = ("Exam prep",)  # prep for an exam is no use after the exam
     titles: tuple[str, ...] = ()  # patterns (regular expressions, any case), from rules like "no point … after …"
@@ -334,7 +334,7 @@ def _matches(pattern: str, title: str) -> bool:
 
 
 class ExamFocus(Model):
-    """personal's exam focus (COMBINED.md 38): in the days before an exam, other courses' work that is due after it
+    """personal's exam focus: in the days before an exam, other courses' work that is due after it
     waits until the exam is over, when a day and half again its length are left before its own due. A rule (14 Nov:
     "this kind of thing should always be a rule and shouldn't be stored in another way"), type `exam_focus`, whose
     params these are; off until you add it in Rules ("focus on exams 3 days before"). `exam_focus_of` reads it."""
@@ -400,7 +400,7 @@ class SleepTracking(Model):
 
 
 class Sittings(Model):
-    """personal's split preference (COMBINED.md 38): "I like to do things in one go, but split problem sets first".
+    """personal's split preference: "I like to do things in one go, but split problem sets first".
     `one_go` makes splitting cost `factor` times more, except for the kinds in `split_first`, which cost half."""
 
     one_go: bool = False
@@ -441,7 +441,7 @@ class EstimateSettings(Model):
     bias_min_samples: int = 5
     bias_threshold: float = 1.15
     bias_consistency: float = 0.7
-    cushion: bool = True  # plan your estimates at how far over you consistently run (COMBINED.md 41)
+    cushion: bool = True  # plan your estimates at how far over you consistently run
     cushion_cap: float = Field(2.0, ge=1)
 
 
@@ -486,7 +486,7 @@ class ServerSettings(Model):
 
 
 class UpdateSettings(Model):
-    """When a downloaded update is swapped in (HOSTED.md H146): right away, or when you quit Friday."""
+    """When a downloaded update is swapped in: right away, or when you quit Friday."""
 
     restart: Literal["now", "quit"] = "now"
 
@@ -521,14 +521,14 @@ SETTINGS_TYPES: dict[str, Any] = {
     "notify": NotifySettings,
     "jobs": JobsSettings,
     "server": ServerSettings,
-    "updates": UpdateSettings,  # Friday's own updater (HOSTED.md H146)
+    "updates": UpdateSettings,  # Friday's own updater
     "notes": tuple[str, ...],  # what you've told Friday about yourself, read by the AI with everything it reads
-    "categories": CategorySettings,  # events colored by their titles, and the filter (COMBINED.md 17, 59)
-    "busy": BusySettings,  # which events count as busy when planning (COMBINED.md 28)
-    "pointless_late": PointlessLate,  # work never planned after its due (COMBINED.md 50)
+    "categories": CategorySettings,  # events colored by their titles, and the filter
+    "busy": BusySettings,  # which events count as busy when planning
+    "pointless_late": PointlessLate,  # work never planned after its due
     "fading_late": FadingLate,  # work that matters less the longer it's overdue (3 Nov)
-    "sittings": Sittings,  # one go, and which kinds to split first (COMBINED.md 38)
-    "calendar_look": CalendarLook,  # each calendar's pigment and toolbar button (COMBINED.md 17, 19)
+    "sittings": Sittings,  # one go, and which kinds to split first
+    "calendar_look": CalendarLook,  # each calendar's pigment and toolbar button
     **INTEGRATION_TYPES,
 }
 ADAPTERS = {key: TypeAdapter(kind) for key, kind in SETTINGS_TYPES.items()}

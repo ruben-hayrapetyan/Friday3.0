@@ -1,4 +1,4 @@
-"""A repeating task's times kept apart (PROGRESS.md C50, 8 Nov: "laundry sessions should have a minimum of 7 days
+"""A repeating task's times kept apart (8 Nov: "laundry sessions should have a minimum of 7 days
 between each event"; weekly Laundry was planned on Sunday and again on Tuesday). Set on the repeat (`min_gap_days`),
 by its field or a rule in words. Counted from when you did the last one: the next waits until that many days after
 its start, and if that one was done late its due moves by as much. Each later one waits that long after the one before

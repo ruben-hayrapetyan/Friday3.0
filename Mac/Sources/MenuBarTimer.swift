@@ -1,6 +1,6 @@
 import AppKit
 
-/// The running timer in the menu bar (COMBINED.md 31): what you're timing and for how long, with Pause and Done, so
+/// The running timer in the menu bar: what you're timing and for how long, with Pause and Done, so
 /// it's in sight with Friday's window away. Hidden while nothing is timed.
 @MainActor
 final class MenuBarTimer: NSObject {

@@ -1,4 +1,4 @@
-"""How much an event needs attending (personal's events.py, COMBINED.md 56): so an overloaded week can offer the least
+"""How much an event needs attending (personal's events.py): so an overloaded week can offer the least
 important ones to skip, as triage's fixes. The AI rates each distinct title once (required, likely or optional, with a
 few words of reason) and the answers are kept; without the AI, titles that say what they are decide, and the rest are
 "likely". Classes, labs, exams, shifts and appointments are required and never offered. Given your categories, it also

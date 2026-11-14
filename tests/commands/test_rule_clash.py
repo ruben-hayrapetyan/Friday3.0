@@ -1,4 +1,4 @@
-"""Which should win? (COMBINED.md 66): a rule the plan bends is planned once more weighed far higher, and the rule that
+"""Which should win?: a rule the plan bends is planned once more weighed far higher, and the rule that
 then gives way on the same days is what it clashes with. Your answer is kept for that pair: the winner weighs ×3 and
 the other ÷3 from then on, and a new answer for the same two replaces it."""
 

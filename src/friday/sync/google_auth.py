@@ -29,7 +29,7 @@ CALENDAR_SCOPES = (
     "https://www.googleapis.com/auth/calendar.readonly",
     "https://www.googleapis.com/auth/calendar.app.created",  # only the "Friday" calendar it makes
 )
-# Editing your events from Friday (COMBINED.md 69) needs this as well; asked for at every sign-in, and an older login
+# Editing your events from Friday needs this as well; asked for at every sign-in, and an older login
 # without it keeps reading but can't write.
 EVENTS_SCOPE = "https://www.googleapis.com/auth/calendar.events"
 LOGIN_SCOPES = (*CALENDAR_SCOPES, EVENTS_SCOPE)
@@ -39,7 +39,7 @@ DONE_PAGE = "Friday is connected to Google. You can close this tab and go back t
 LEGACY = ""  # the account of the one token kept before Friday kept several, until its address is known
 LOCK = threading.Lock()  # the sync, a sign-in and Remove may all rewrite the file
 # Friday's own Desktop client, put beside the server's Python by Mac/bundle.sh, so a downloaded Friday connects Google
-# with nothing to set up (HOSTED.md H112, on rhayrapetyan/download-site). Never in git: the repo will be open source.
+# with nothing to set up. Never in git: the repo will be open source.
 SHIPPED_CLIENT = Path(sys.prefix) / "share" / "friday" / "google_client.json"
 
 

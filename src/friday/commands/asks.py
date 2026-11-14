@@ -1,4 +1,4 @@
-"""Questions Friday asks you, set aside with "Not now" (PROGRESS.md C75, 9 Nov: "anything that needs the user's
+"""Questions Friday asks you, set aside with "Not now" (9 Nov: "anything that needs the user's
 attention (like questions friday asks to the user) should go into inbox instead of insights"; your answer: "Not now"
 asks again once Friday has more to go on). Each is kept with the evidence it was based on (how many timed things, the
 learned time); the Inbox leaves it out while that evidence is the same, and asks again when it changes. Kept here, not

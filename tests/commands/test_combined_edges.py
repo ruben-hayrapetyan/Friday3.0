@@ -1,4 +1,4 @@
-"""Edge cases of the combined Friday's planning ports (COMBINED.md 25, 41, 50, 53, 55, 56), beyond the examples in
+"""Edge cases of the combined Friday's planning ports, beyond the examples in
 test_personal_planning.py: what each does not do, as much as what it does."""
 
 import json

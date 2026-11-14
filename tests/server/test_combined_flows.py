@@ -1,4 +1,4 @@
-"""The combined Friday end to end through the HTTP API the web app uses (COMBINED.md): whole flows as a person goes
+"""The combined Friday end to end through the HTTP API the web app uses: whole flows as a person goes
 through them, each request as the app sends it, the plan solved in the request (no worker)."""
 
 import json

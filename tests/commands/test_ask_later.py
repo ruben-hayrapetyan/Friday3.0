@@ -1,4 +1,4 @@
-"""Not now, for Friday's questions in the Inbox (PROGRESS.md C75): kept on the server with what each was based on,
+"""Not now, for Friday's questions in the Inbox: kept on the server with what each was based on,
 so the Mac and the phone count the same Inbox; asked again once that changes (the Inbox compares)."""
 
 from pathlib import Path

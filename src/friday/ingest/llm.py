@@ -1,4 +1,4 @@
-"""The AI Friday reads with (DESIGN §22.5, COMBINED.md 34), chosen in Settings → Integrations → AI (`llm.provider`):
+"""The AI Friday reads with (DESIGN §22.5), chosen in Settings → Integrations → AI (`llm.provider`):
 
 - Claude: the `claude` command first, signed in as you, the way personal's Mac app used it, so no key is needed while
   the server runs on your Mac: PDFs and images too, handed to it as files it may only read (`CliClient`); the Anthropic

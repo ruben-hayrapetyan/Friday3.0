@@ -1,4 +1,4 @@
-"""Friday's own updater, the network half (HOSTED.md H118–H121, H139, H169): the update feed the admin hub writes
+"""Friday's own updater, the network half: the update feed the admin hub writes
 (`updates.json`: the current version and every offered version's notes), the newer versions in it, and a new version
 fetched, checked against its checksum and unpacked from its disk image beside the app, ready for the Mac app to swap
 in. Every Mac build but Friday Test reads the site's feed (Mac/build.sh). Friday names itself in each request

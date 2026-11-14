@@ -1,7 +1,7 @@
 import SwiftUI
 import WebKit
 
-/// The website, in the window (COMBINED.md 1): one UI for the Mac and the browser. Links to other sites open in your
+/// The website, in the window: one UI for the Mac and the browser. Links to other sites open in your
 /// browser; the menus and hotkeys reach the page through `HostAction`. File pickers (a syllabus upload) and downloads
 /// (a backup) need the app's own panels: WebKit on the Mac does nothing with them otherwise.
 @MainActor

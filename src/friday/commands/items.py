@@ -126,7 +126,7 @@ def excepted(ctx: Ctx, series_id: int, change: OccurrenceChange) -> str | None:
 
 
 def with_guesses(ctx: Ctx, given: dict[str, Any]) -> dict[str, Any]:
-    """A kind and a course tag read from the title when you gave neither (COMBINED.md 55); events are left alone."""
+    """A kind and a course tag read from the title when you gave neither; events are left alone."""
     title = given.get("title") or ""
     if not title or given.get("when") == "fixed" or given.get("start"):
         return given

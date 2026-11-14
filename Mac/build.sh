@@ -1,12 +1,12 @@
 #!/bin/bash
-# Builds the Mac app around Friday's website (COMBINED.md 1, 5) with the Swift compiler from the Command Line Tools.
+# Builds the Mac app around Friday's website with the Swift compiler from the Command Line Tools.
 # Its hotkeys and live Dock icon (Shared/) came from the Swift app Friday grew out of. Friday's server,
 # with its own Python, the website and the compiled planner, goes inside it (Mac/bundle.sh), so it runs on any
-# Apple-silicon Mac as it is downloaded (HOSTED.md H108–H111).
+# Apple-silicon Mac as it is downloaded.
 #
 #   ./build.sh                build into build/ for this Mac
 #   ./build.sh --install      build, then replace /Applications/Friday.app and launch it (the switch, C11)
-#   Every build but Friday Test looks for updates on the site (HOSTED.md H169): yours as a downloaded copy does.
+#   Every build but Friday Test looks for updates on the site: yours as a downloaded copy does.
 #   ./build.sh --test [--open]  Friday Test, a brand-new user's Friday beside yours (Sources/TestUser.swift), into
 #                               build/ only: never /Applications. --open opens it.
 set -euo pipefail
@@ -37,7 +37,7 @@ APP_NAME="Friday"
 EXECUTABLE="Friday"
 # Its own id, so it runs beside the Swift app until the switch without sharing its settings or login item.
 BUNDLE_ID="com.rubenhayrapetyan.friday.web"
-VERSION="$(tr -d '[:space:]' < ../VERSION)"  # set by scripts/prepare-release.sh (HOSTED.md H136)
+VERSION="$(tr -d '[:space:]' < ../VERSION)"  # set by scripts/prepare-release.sh
 TEST_PLIST="" RIBBON=() FEED_PLIST="" SCHEME="friday"
 # Every build but Friday Test looks at the site's feed (H169). Friday Test never does: the site's update is the regular
 # Friday, which would open on your data.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Prepares a version of Friday for release (HOSTED.md H123, H134, H136, H174): sets the version (VERSION and the
+# Prepares a version of Friday for release: sets the version (VERSION and the
 # same number in pyproject.toml, web/package.json and uv.lock) and commits it, builds the Mac app (without Google's
 # client, C77), signs it with your Developer ID, makes the disk image, has Apple notarize it and staples the ticket
 # to it (C88), and uploads it with its draft notes to the laptop. There it waits in
@@ -47,13 +47,13 @@ git diff --quiet HEAD -- || die "commit or set aside your changes first: a versi
 IDENTITY="${FRIDAY_SIGN_IDENTITY:-}"
 if [ -z "$IDENTITY" ]; then
   IDENTITY="$(security find-identity -v -p codesigning | sed -n 's/.*"\(Developer ID Application: .*\)"$/\1/p' | sort -u)"
-  [ -n "$IDENTITY" ] || die "no Developer ID Application certificate in your keychain (PROGRESS.md C88 says how to make one)"
+  [ -n "$IDENTITY" ] || die "no Developer ID Application certificate in your keychain (says how to make one)"
   [ "$(printf '%s\n' "$IDENTITY" | wc -l | tr -d ' ')" = 1 ] \
     || die "more than one Developer ID Application certificate: name one in FRIDAY_SIGN_IDENTITY ($RELEASE_ENV)"
 fi
 PROFILE="${FRIDAY_NOTARY_PROFILE:-friday-notary}"
 xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null 2>&1 \
-  || die "notarytool has no keychain profile '$PROFILE' that Apple accepts (PROGRESS.md C88 says how to store one)"
+  || die "notarytool has no keychain profile '$PROFILE' that Apple accepts (says how to store one)"
 
 echo "==> Friday $VERSION"
 # the number everywhere it's written (H174): VERSION, pyproject.toml, web/package.json and uv.lock

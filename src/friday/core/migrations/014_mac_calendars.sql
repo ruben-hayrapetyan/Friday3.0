@@ -1,4 +1,4 @@
--- C10: the Mac's calendars, fed in by the Mac app (COMBINED.md 4), are sources of their own kind. SQLite can't change
+-- C10: the Mac's calendars, fed in by the Mac app, are sources of their own kind. SQLite can't change
 -- a CHECK, so the table is rebuilt.
 CREATE TABLE sources_new (
   id INTEGER PRIMARY KEY,

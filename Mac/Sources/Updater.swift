@@ -1,7 +1,7 @@
 import AppKit
 import WebKit
 
-/// Friday's own updater, the Mac half (HOSTED.md H120, H146, on rhayrapetyan/download-site). The server downloads a
+/// Friday's own updater, the Mac half. The server downloads a
 /// new version, checks it and unpacks it into ~/Library/Caches/Friday/updates (commands/updates.py); the page then
 /// tells the app here (`window.webkit.messageHandlers.friday`) to swap it in: right away, quitting and reopening, or
 /// when you next quit, as Settings → Updates says. A small shell script does the swap once Friday has quit, since an
@@ -12,7 +12,7 @@ final class Updater: NSObject, WKScriptMessageHandler {
     private var atQuit: URL?
 
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
-        // Quit on Friday's terms page (PROGRESS.md C71): not accepting closes Friday, your data untouched.
+        // Quit on Friday's terms page: not accepting closes Friday, your data untouched.
         if let body = message.body as? [String: Any], body["quit"] as? Bool == true {
             NSApp.terminate(nil)
             return

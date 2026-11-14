@@ -1,4 +1,4 @@
-"""Ask Claude (personal's, COMBINED.md 20, 37): say what you want in your own words ("move my 5pm to Thursday",
+"""Ask Claude (personal's): say what you want in your own words ("move my 5pm to Thursday",
 "prioritize assignments over readings", "I want to focus on an exam before it") and Claude proposes the changes as
 Friday's own commands, each with a sentence. Nothing runs until you apply it, one or all, through the same commands
 as everything else, so each can be undone. The Rules page sends what its grammar can't read here with purpose "rule".

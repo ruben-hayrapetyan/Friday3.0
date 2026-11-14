@@ -1,4 +1,4 @@
-"""Calendar events as personal's Mac app saw them (COMBINED.md 17, 19, 28, 59): categories that color an event by its
+"""Calendar events as personal's Mac app saw them: categories that color an event by its
 title, a filter for the ones you'd rather not see (office hours), and which events count as busy when planning.
 
 Categories come from Chroma's `categories.json` (imported once) and are edited in Settings. An event is left out of
@@ -199,7 +199,7 @@ def check_colors(settings: CategorySettings | CalendarLook) -> None:
             raise ValueError(f"categories: {category.name}'s color must be one of {', '.join(PIGMENTS)}")
 
 
-# How much an event needs attending, by its title alone (personal's events.py fallback; COMBINED.md 56): what the AI's
+# How much an event needs attending, by its title alone (personal's events.py fallback): what the AI's
 # rating falls back on, and what triage reads when nothing was rated yet.
 _REQUIRED = re.compile(
     r"\b(lec(ture)?|lab|disc(ussion)?|recitation|section|seminar|exam|prelim|midterm|quiz|final|interview|"

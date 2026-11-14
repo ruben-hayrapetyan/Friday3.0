@@ -1,4 +1,4 @@
-"""Black box: the Mac app as someone downloads it (HOSTED.md H108–H111, on rhayrapetyan/download-site). A copy of
+"""Black box: the Mac app as someone downloads it. A copy of
 Mac/build/Friday.app, moved somewhere else as a download is, runs Friday's server from its own Python as the app does
 (Server.swift's bundled launcher), plans a sample week at once with the planner compiled in the build, serves the
 website from inside itself, reads nothing of the repo and writes nothing into itself. Skipped until `Mac/build.sh` has

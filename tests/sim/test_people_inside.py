@@ -1,4 +1,4 @@
-"""Glass box: how sim/people.py makes its people and sim/profiles.py lists them (HOSTED.md H73–H76)."""
+"""Glass box: how sim/people.py makes its people and sim/profiles.py lists them."""
 
 from collections import Counter
 from dataclasses import replace

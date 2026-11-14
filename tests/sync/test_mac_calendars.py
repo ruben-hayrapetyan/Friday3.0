@@ -1,4 +1,4 @@
-"""The Mac's calendars, fed in by the Mac app (COMBINED.md 4): `mac_sync` keeps what EventKit sees, and the sync job
+"""The Mac's calendars, fed in by the Mac app: `mac_sync` keeps what EventKit sees, and the sync job
 reads each calendar you switched on from it as it reads Google's. A calendar starts on unless it's a copy of one read
 from Google, a subscription or birthdays; its events skip the inbox; one gone from the Mac is suggested dropped."""
 

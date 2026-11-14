@@ -1,6 +1,6 @@
 import Foundation
 
-/// `fridayd`, the server the Mac app shows (COMBINED.md 1, 2): found running, or started and kept for as long as the
+/// `fridayd`, the server the Mac app shows: found running, or started and kept for as long as the
 /// app runs. Set up the first time with your time zone and personal's sleep times, which Settings can change.
 @MainActor
 final class Server: ObservableObject {
@@ -47,7 +47,7 @@ final class Server: ObservableObject {
         }
     }
 
-    /// The Python inside the app (Mac/bundle.sh, HOSTED.md H109): Friday's server as anyone who downloads Friday has it.
+    /// The Python inside the app (Mac/bundle.sh): Friday's server as anyone who downloads Friday has it.
     nonisolated static func bundledPython(resources: URL?, isExecutable: (String) -> Bool) -> URL? {
         guard let python = resources?.appendingPathComponent("friday/python/bin/python3.12"),
               isExecutable(python.path) else { return nil }

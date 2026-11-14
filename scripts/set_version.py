@@ -1,4 +1,4 @@
-"""One version number everywhere (HOSTED.md H174, 8 Nov: Friday was 0.3.0 while the repo said 0.1.0): VERSION, which
+"""One version number everywhere (Nov: Friday was 0.3.0 while the repo said 0.1.0): VERSION, which
 the Mac build reads, and the same number in pyproject.toml, web/package.json and
 uv.lock files. `scripts/prepare-release.sh` runs it and commits them together; tests/test_versions.py checks they agree.
 

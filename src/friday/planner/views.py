@@ -27,7 +27,7 @@ from friday.planner.snapshot import Snapshot, picked
 from friday.planner.solve import solve
 
 MAX_TRIAGE_ACTIONS = 8
-MAX_SKIPS = 4  # events offered to skip, least important first (COMBINED.md 56)
+MAX_SKIPS = 4  # events offered to skip, least important first
 
 
 @dataclass
@@ -102,7 +102,7 @@ Way = tuple[dict[str, float], int, AssembledPlan]  # the rules' factors, the see
 
 
 def other_ways(snapshot: Snapshot, n: int = 2, tries: int = WAY_TRIES) -> list[Way]:
-    """Other ways to plan the same work (personal's options, COMBINED.md 25): each a plan made from scratch with the
+    """Other ways to plan the same work (personal's options): each a plan made from scratch with the
     learnable rules weighed differently (×e^N(0, 1)) and another search seed, kept when its blocks differ from the plan
     you have and from the ways already found. Picking one plans with those weights afresh, so it comes out the same."""
     seen = {signature(snapshot.plan_blocks)}
@@ -145,7 +145,7 @@ class Clash:
 
 
 def rule_clash(snapshot: Snapshot, name: str) -> Clash | None:
-    """What a rule the plan bends is up against ("Which should win?", COMBINED.md 66): plan afresh with it weighed far
+    """What a rule the plan bends is up against ("Which should win?"): plan afresh with it weighed far
     more, and see, on the days it is then kept better, which other rule is bent more. Both plans are made from
     scratch with the same seed (a warm start stays where it is), so the weight is what differs. None when keeping it
     costs no other rule: deadlines bend it, or nothing would."""
@@ -188,7 +188,7 @@ def triage(
     snapshot: Snapshot, ratings: Mapping[str, Mapping[str, str]] | None = None, going: frozenset[str] = frozenset()
 ) -> tuple[dict[int, float], list[TriageOption]]:
     """Ways to make late hard work less late, each tested with a quick replan (§16): m16's, and events you could skip
-    (personal's, COMBINED.md 56), rated by how much they need attending; `going` are titles you said you go to."""
+    (personal's), rated by how much they need attending; `going` are titles you said you go to."""
     inp = build_input(snapshot)
     _, late = quick_late(inp, with_fallback=False)
     if not late:

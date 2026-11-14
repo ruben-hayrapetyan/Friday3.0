@@ -1,4 +1,4 @@
-"""The download site (HOSTED.md H106, H116, H117, H129, H130; step 1). Glass box: build_pages.py wraps each page in
+"""The download site (step 1). Glass box: build_pages.py wraps each page in
 the header and footer, marking the page it is. Black box over HTTP, as served: every page answers, every link and
 picture on them resolves on the site, every picture says what it shows, nothing is loaded from elsewhere (no
 trackers, H106 privacy), and the download button points at a disk image that is there."""
@@ -20,7 +20,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "site"
-SUPPORT = "friday_support@friday-scheduler.com"  # the only address the site shows (HOSTED.md H164, H166)
+SUPPORT = "friday_support@friday-scheduler.com"  # the only address the site shows
 PAGES = [
     "index.html",
     "features.html",

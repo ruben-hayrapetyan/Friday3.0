@@ -59,7 +59,7 @@ class Item:
     neglect_carry: float = 0.5
     energy: Energy | None = None
     location: str | None = None
-    color: str | None = None  # an event's pigment (COMBINED.md 17): one of PIGMENTS, or None for its calendar's
+    color: str | None = None  # an event's pigment: one of PIGMENTS, or None for its calendar's
     certainty: Certainty = "planned"
     event_kind: str | None = None
     blocks_time: bool = True

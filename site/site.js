@@ -1,4 +1,4 @@
-// Sections arrive as you reach them (HOSTED.md H129): a short rise and fade, once. Nothing moves with reduced motion,
+// Sections arrive as you reach them: a short rise and fade, once. Nothing moves with reduced motion,
 // and without scripts everything simply shows (only a page that runs scripts hides them first: `.js`).
 (function () {
   var parts = document.querySelectorAll(".reveal");
@@ -14,7 +14,7 @@
   parts.forEach(function (el) { seen.observe(el); });
 })();
 
-// Copy puts the Terminal line on the clipboard (HOSTED.md H131) and says so for a moment.
+// Copy puts the Terminal line on the clipboard and says so for a moment.
 (function () {
   document.querySelectorAll("[data-copy]").forEach(function (button) {
     button.addEventListener("click", function () {

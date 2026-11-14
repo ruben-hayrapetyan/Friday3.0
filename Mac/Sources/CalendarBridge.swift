@@ -1,7 +1,7 @@
 import AppKit
 import EventKit
 
-/// The Mac's calendars, fed to Friday's server (COMBINED.md 4): what EventKit sees from yesterday to twelve weeks out,
+/// The Mac's calendars, fed to Friday's server: what EventKit sees from yesterday to twelve weeks out,
 /// posted to `mac_sync` at launch, whenever a calendar changes and every ten minutes. The server reads each calendar
 /// you switch on in Settings → Calendars, as it reads Google's. The other way, every twenty seconds: what you changed
 /// in Friday about those calendars' events (`mac_writes`), made here so a Google or iCloud calendar gets it from the

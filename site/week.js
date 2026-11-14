@@ -1,4 +1,4 @@
-// The home page's week, which plans and replans while you watch (HOSTED.md H129): drawn as Friday draws a week
+// The home page's week, which plans and replans while you watch: drawn as Friday draws a week
 // (hour lines, blocks in Chroma's pigments with their times on a 12-hour clock, a red now line), and played as four
 // steps on a loop: an essay typed in, planned into three gaps before Friday; a shift moved onto one of them; the two
 // blocks it hit moved, and nothing else. Reduced motion shows the finished plan, still. Pause stops it anywhere.

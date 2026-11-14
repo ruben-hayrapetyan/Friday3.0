@@ -1,4 +1,4 @@
-"""The updater end to end on a Mac (HOSTED.md H118–H124, H144–H146): a real Friday server, started the way a
+"""The updater end to end on a Mac: a real Friday server, started the way a
 downloaded copy is (its version, its place and the feed's address), finds a newer version in an update feed served
 over HTTP, shows it with its notes, downloads it, checks it, unpacks it from a real disk image, and the Mac app's own
 swap script (Mac/Sources/Updater.swift) puts it in place of the old app once that has quit. The new version is a

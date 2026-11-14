@@ -1,4 +1,4 @@
-"""Stuck (DESIGN §18, COMBINED.md 66): saying you're stuck goes in the item's history and changes nothing else; the
+"""Stuck (DESIGN §18): saying you're stuck goes in the item's history and changes nothing else; the
 Now bar then offers what else fits."""
 
 import json

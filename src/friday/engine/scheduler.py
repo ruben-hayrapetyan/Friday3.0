@@ -375,7 +375,7 @@ def started(
         owner = fed
         trace["meals_first"] = deadline_value(c, owner)
     if not warm and trace["repair"] > 0:
-        # personal's overload start (COMBINED.md 54): as many tasks on time as can be, kept only if it ends less late.
+        # personal's overload start: as many tasks on time as can be, kept only if it ends less late.
         other = construct(c, order=fewest_late_order(c))
         other = repair(c, other, config.repair_steps, seed, config.sampler.move_weights, cancel)
         if valid(c, other) and deadline_value(c, other) < trace["repair"]:

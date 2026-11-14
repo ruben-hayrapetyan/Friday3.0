@@ -1,7 +1,7 @@
 """Writes the site's pages into site/ from pages/*.html (a title and description, ---, then the body): each wrapped
 in the site's header and footer, except one marked `wrap: no` (the home page, a whole document of its own).
 
-The current version (releases/released.json, written by the hub's Release and Roll back, HOSTED.md H134–H142) fills
+The current version (releases/released.json, written by the hub's Release and Roll back) fills
 {{version}}, {{dmg}} and {{size}} in every page, and {{versions}} becomes What's new: every offered version's
 notes, newest first (H142). Run after editing a page; the hub runs it at every Release."""
 

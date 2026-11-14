@@ -306,8 +306,8 @@ def event_holds(conn: sqlite3.Connection, user_id: int) -> dict[int, int]:
 
 
 def busy_as_you_count(item: Item, settings: dict[str, Any], calendars: dict[int, str]) -> Item:
-    """An event left out of planning (a due reminder, marked free, filtered, a calendar of room bookings; COMBINED.md
-    28) is kept in the snapshot but blocks no time."""
+    """An event left out of planning (a due reminder, marked free, filtered, a calendar of room bookings)
+    is kept in the snapshot but blocks no time."""
     if item.when != "fixed" or not item.blocks_time:
         return item
     reason = left_out(item.title, calendars.get(item.id or 0), item.free, settings["categories"], settings["busy"])
@@ -371,7 +371,7 @@ def away(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any], user_
 
 
 def with_picked_way(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any], user_id: int) -> dict[str, Any]:
-    """The rules' weights as the other way you picked had them (COMBINED.md 25), for a week, while what you learned
+    """The rules' weights as the other way you picked had them, for a week, while what you learned
     from the pick catches up."""
     way = kv_get(conn, "other_way", None, user_id)
     if not way or parse_utc(way["until"]) <= now_utc:
@@ -383,7 +383,7 @@ WIN = 3.0  # an answer to "Which should win?": the winner weighs ×3, the other 
 
 
 def with_rule_wins(conn: sqlite3.Connection, settings: dict[str, Any], user_id: int) -> dict[str, Any]:
-    """The rules' weights with your answers to "Which should win?" (COMBINED.md 66), each for its pair of rules."""
+    """The rules' weights with your answers to "Which should win?", each for its pair of rules."""
     names = {r.name for r in settings["rules"]}
     factors: dict[str, float] = {}
     for answer in kv_get(conn, "rule_wins", [], user_id):

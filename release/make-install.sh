@@ -1,5 +1,5 @@
 #!/bin/bash
-# The site's install script for a version (HOSTED.md H131): release/install-template.sh with the version, the disk
+# The site's install script for a version: release/install-template.sh with the version, the disk
 # image's checksum and the site's address filled in, written to site/install.sh.
 #
 #   release/make-install.sh VERSION [SITE]     SITE defaults to the domain (H156)

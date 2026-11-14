@@ -1,6 +1,6 @@
 import Foundation
 
-/// What the Mac app asks of the web app (COMBINED.md 5): a menu item, a global hotkey. Each is a `friday:host` event
+/// What the Mac app asks of the web app: a menu item, a global hotkey. Each is a `friday:host` event
 /// the web app listens for (web/src/shell/useHost.ts), so the menus and the page share one implementation.
 enum HostAction: Equatable {
     case newEvent

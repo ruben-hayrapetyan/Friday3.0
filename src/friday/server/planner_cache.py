@@ -1,4 +1,4 @@
-"""The planner's compiled code, kept out of the Mac app (HOSTED.md H111, on rhayrapetyan/download-site).
+"""The planner's compiled code, kept out of the Mac app.
 
 The app ships the planner already compiled (Mac/bundle.sh), but numba files compiled code under the exact macOS
 version and the argument types it saw, so a real week, or another Mac, compiles more. Left alone, numba writes that

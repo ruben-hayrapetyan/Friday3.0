@@ -26,7 +26,7 @@ struct TestUser: Codable, Equatable {
     static let keepKey = "keepTestUser"  // Keep This User Next Time
     static let claudeKey = "testUserClaude"  // a new user has the `claude` command
     static let askedKey = "testUserAsked"  // Start Over, for the next opening
-    static let updatedKey = "testUserUpdated"  // an update swapped in: the next opening keeps this user (HOSTED.md H146)
+    static let updatedKey = "testUserUpdated"  // an update swapped in: the next opening keeps this user
     static let keeping = 8  // test users' folders kept, the newest
     static let firstPort = 8770  // yours is 8765; scripts/fresh_user.sh's start at 8790
     static var root: URL {

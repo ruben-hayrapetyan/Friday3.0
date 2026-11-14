@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installs Friday on this Mac from the site, with no warning from macOS (HOSTED.md H131): run as
+# Installs Friday on this Mac from the site, with no warning from macOS: run as
 #   curl -fsSL https://friday-scheduler.com/install.sh | sh
 # macOS checks only what a browser downloads, so Friday fetched here opens like any app. The disk image is checked
 # against its checksum before anything is installed. Written by release/make-install.sh for each version.

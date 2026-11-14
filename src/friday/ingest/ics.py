@@ -259,7 +259,7 @@ def google_event(event: dict[str, Any], tz: str, read: Reading, rule: str | None
         text = json.dumps({"summary": summary, "start": start, "end": end, "recurrence": rule} | where, sort_keys=True)
     found = Found(event["id"], digest, summary, text, from_facts(facts, read))
     if event.get("transparency") == "transparent":
-        # Marked free: kept, but not busy unless you count free events (COMBINED.md 28).
+        # Marked free: kept, but not busy unless you count free events.
         facts = replace(facts, free=True)
         for p in found.proposals:
             if p.fixed:

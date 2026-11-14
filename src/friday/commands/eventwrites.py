@@ -1,4 +1,4 @@
-"""Your events, changed in Friday, saved back to Google Calendar (COMBINED.md 69), and to the Mac's calendars.
+"""Your events, changed in Friday, saved back to Google Calendar, and to the Mac's calendars.
 
 A change you make to an event read from a calendar you may edit, or an event you make while `gcal.new_events_to`
 names a calendar, is queued in `event_writes` by the command, in its transaction (so undoing the command before the

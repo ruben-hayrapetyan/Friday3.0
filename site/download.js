@@ -1,4 +1,4 @@
-// The download buttons name the visitor's computer (HOSTED.md H54): Friday is a Mac app for now (H110), so on
+// The download buttons name the visitor's computer: Friday is a Mac app for now (H110), so on
 // Windows, Linux or a phone they say so instead of downloading something that won't open there. Friday runs on
 // Apple silicon only: Chrome and Edge can tell an Intel Mac, which is told so (H188); Safari and Firefox can't, and
 // there the specs line under each button ("Apple silicon, macOS 14 or later") is the only warning.

@@ -1,4 +1,4 @@
-"""Sleep debt (DESIGN §12.3, COMBINED.md 67): work recorded inside the margin after bedtime makes working late dearer
+"""Sleep debt (DESIGN §12.3): work recorded inside the margin after bedtime makes working late dearer
 on each of the three nights after it. The test week's weekday bedtime is 23:30 with an hour's margin; the weekend's is
 00:30, so Sunday night's margin runs from 00:30 to 01:30 on Monday."""
 

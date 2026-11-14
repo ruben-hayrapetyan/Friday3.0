@@ -1,4 +1,4 @@
-"""Friday's own updater (HOSTED.md H118–H124, H145–H147, H169).
+"""Friday's own updater.
 
 The Mac app starts its server with its version and the update feed's address (FRIDAY_APP_VERSION, FRIDAY_UPDATE_FEED):
 every build but Friday Test (Mac/build.sh). It looks at launch and once a month (the `updates` job), and when you press

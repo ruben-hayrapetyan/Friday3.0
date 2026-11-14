@@ -1,5 +1,5 @@
 #!/bin/bash
-# A released version on GitHub, from the Mac (HOSTED.md H172–H175): tags the commit it was built from as vX.Y.Z and
+# A released version on GitHub, from the Mac: tags the commit it was built from as vX.Y.Z and
 # makes a GitHub Release with its notes and a link to the site for the download, from releases/released.json. The hub
 # does this itself on Release once it has its token; this is for a version it couldn't, and for 0.2.0 and 0.3.0,
 # released before it could (H175). Uses `gh`, signed in as you. A version already there is left as it is.

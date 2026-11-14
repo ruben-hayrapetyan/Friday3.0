@@ -49,7 +49,7 @@ class LateWork(Rule):
 
 @rule_type("late_tasks")
 class LateTasks(Rule):
-    """personal's lateness (COMBINED.md 49, its decisions 38–39), on top of late_work: a fixed cost for each hard task
+    """personal's lateness (its decisions 38–39), on top of late_work: a fixed cost for each hard task
     that is late at all, since people count late tasks and late_work alone prefers many tasks a little late to one;
     and a price that grows with the square of the hours late, so one task very late costs more than several a little.
     `hours`: what a late task costs, in hours late of one unit of its work; `square_hours`: h² / square_hours per unit

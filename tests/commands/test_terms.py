@@ -1,4 +1,4 @@
-"""Friday's terms (PROGRESS.md C71): everyone accepts them before Friday opens, again each time they change; only you
+"""Friday's terms: everyone accepts them before Friday opens, again each time they change; only you
 can accept them; the copy on GitHub is the one in the app; the license is PolyForm Noncommercial."""
 
 import json

@@ -1,4 +1,4 @@
-"""The fifty test profiles for the hosted Friday (HOSTED.md H73–H76): the seven Cornell students and the forty-three
+"""The fifty test profiles for the hosted Friday: the seven Cornell students and the forty-three
 people of sim/people.py. About half have lived three weeks with Friday (sim/history.py); the rest have just set it
 up on their first evening (sim/first_evening.py), the plan made.
 

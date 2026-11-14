@@ -3,7 +3,7 @@ import Carbon.HIToolbox
 import ServiceManagement
 import SwiftUI
 
-/// The Mac app around Friday's website (COMBINED.md 1, 5): one window showing the website, and what a browser can't
+/// The Mac app around Friday's website: one window showing the website, and what a browser can't
 /// do — personal's global hotkeys, the live Dock icon (with the count of decisions waiting in the Inbox), opening at
 /// login, the menus and the timer in the menu bar. It starts `fridayd` when nothing answers, and stays running with its window closed, so the
 /// hotkeys still work.
@@ -144,7 +144,7 @@ struct FridayShell: App {
     }
 }
 
-/// The menu bar: every action the web app has a key for, as Mac menus with Mac shortcuts (COMBINED.md 58).
+/// The menu bar: every action the web app has a key for, as Mac menus with Mac shortcuts.
 struct FridayMenus: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -195,7 +195,7 @@ struct FridayMenus: Commands {
     }
 }
 
-/// The Mac app's own settings (COMBINED.md 60): the rest are on the website's Settings page.
+/// The Mac app's own settings: the rest are on the website's Settings page.
 struct MacSettings: View {
     @AppStorage("hotkeys") private var hotkeys = true
     @AppStorage("menuBarTimer") private var menuBarTimer = true

@@ -1,4 +1,4 @@
-"""The learned cushion (COMBINED.md 41): your length is planned exactly, until the work you've timed of the same tag
+"""The learned cushion: your length is planned exactly, until the work you've timed of the same tag
 (or kind, without one) shows you consistently run over. Then the plan reserves that much more for your estimate, up
 to `estimate.cushion_cap` times it. Running under never shortens it. Settings → Advanced switches it off.
 

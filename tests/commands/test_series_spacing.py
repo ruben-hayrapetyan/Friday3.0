@@ -1,4 +1,4 @@
-"""A repeating task's times kept apart (planner/spacing.py, PROGRESS.md C50). Glass box: the next time after the last
+"""A repeating task's times kept apart (planner/spacing.py). Glass box: the next time after the last
 one done, the waits between the rest, and never a wait that would make one late. Black box through the commands: the
 repeat's field set and cleared, a rule in words setting it. The whole system: weekly laundry planned with a week
 between, where before it went on Sunday and again on Tuesday."""

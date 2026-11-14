@@ -40,7 +40,7 @@ def test_nothing_personal_is_shipped() -> None:
 
 def test_reference_rules_match_the_design() -> None:
     names = [r.name for r in DEFAULTS["rules"]]
-    # the design's 21, personal's late_tasks after late_work (COMBINED.md 49), one course for a stretch (C64), less
+    # the design's 21, personal's late_tasks after late_work, one course for a stretch (C64), less
     # spread and cluster for "marked" work (14 Nov: a rule you write says those, for the work it names), and exam prep
     # spread over the days before its exam in their place (14 Nov, later)
     assert (

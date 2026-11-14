@@ -1,4 +1,4 @@
-"""The hosted Friday's test profiles, the whole system (HOSTED.md H73–H76): `python -m friday.sim.profiles build`
+"""The hosted Friday's test profiles, the whole system: `python -m friday.sim.profiles build`
 writes a fresh worker's and a lived-in shift worker's data folders, and `fridayd demo --case` serves each over HTTP
 the way S1 will on the server: their own calendars by name, their plan, a sync through the stand-in Google, and the
 page marked as sample data."""

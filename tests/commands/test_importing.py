@@ -1,4 +1,4 @@
-"""Todo List's tasks and Chroma's categories, brought in once (COMBINED.md 24)."""
+"""Todo List's tasks and Chroma's categories, brought in once."""
 
 import json
 from pathlib import Path

@@ -1,4 +1,4 @@
-/* Friday's site, in Friday's own materials (HOSTED.md H56): the calendar's paper and hour lines, Chroma's pigments for
+/* Friday's site, in Friday's own materials: the calendar's paper and hour lines, Chroma's pigments for
    blocks (schoolwork green, meals ochre, red only for now and due), Archivo for headings (the app's heavy face), Inter
    to read, JetBrains Mono for times. Flat: no gradients. Grays for words 4.5:1 or better, light and dark. */
 
@@ -291,7 +291,7 @@ footer.site img { width: 18px; height: 18px; }
   section.band { padding-top: 84px; }
 }
 
-/* The Terminal install (HOSTED.md H131): one line to copy. Copy comes first and keeps its width, so it never moves
+/* The Terminal install: one line to copy. Copy comes first and keeps its width, so it never moves
    with the command beside it; the command wraps on a phone rather than running off the page. */
 .terminal { margin: 22px auto 0; max-width: 720px; font-size: 14px; color: var(--quiet); }
 .terminal .command { width: fit-content; max-width: 100%; margin-inline: auto; box-sizing: border-box; }
@@ -305,7 +305,7 @@ footer.site img { width: 18px; height: 18px; }
 @media (min-width: 760px) { .command code { white-space: nowrap; } }
 [id] { scroll-margin-top: 80px; }  /* a jump to a heading lands below the sticky header */
 
-/* The contact form (HOSTED.md H154) */
+/* The contact form */
 .contact { display: grid; gap: 16px; max-width: 34em; margin-top: 24px; }
 .contact label { display: grid; gap: 6px; font-weight: 600; }
 .contact label small { font-weight: 400; color: var(--quiet); }

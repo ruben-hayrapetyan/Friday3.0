@@ -1,4 +1,4 @@
-"""What every integration is (PROGRESS.md C96, 10 Nov: "since this app is not only for university students, the
+"""What every integration is (10 Nov: "since this app is not only for university students, the
 personally tailored list of canvas, gmail, calendar, and syllabus is not enough"): a connector that reads a service's
 to-dos as `Remote`s and, when it works both ways, writes done and reopen back. The shared sync (integrations/sync.py)
 does everything else the same way for all of them: stored once, changed in place, gone means done, your edits kept.

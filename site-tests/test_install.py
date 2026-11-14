@@ -1,4 +1,4 @@
-"""Installing from Terminal (HOSTED.md H131; since H178-H180 unlinked, kept for a line someone saved: downloads are
+"""Installing from Terminal (unlinked from the site since 11 Nov, kept for a line someone saved: downloads are
 signed and notarized, so there's nothing to skip). Glass box: release/make-install.sh fills in the version, the disk
 image's checksum and the site's address, and the script runs nothing until all of it has arrived. Black box over
 HTTP: the site serves install.sh for the disk image it offers, and no page shows the line or the steps to allow

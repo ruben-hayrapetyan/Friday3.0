@@ -517,7 +517,7 @@ class GoogleConnectOut(Model):
 
 
 class UpdateVersionOut(Model):
-    """A version of Friday and its notes (HOSTED.md H143): a sentence, then New, Changed and Fixed."""
+    """A version of Friday and its notes: a sentence, then New, Changed and Fixed."""
 
     version: str
     released: str  # 2026-11-07
@@ -528,7 +528,7 @@ class UpdateVersionOut(Model):
 
 
 class UpdateStatusOut(Model):
-    """Friday's own updater (HOSTED.md H118–H124, H144–H147)."""
+    """Friday's own updater."""
 
     checks: bool  # looks for updates: every Mac build but Friday Test (H169)
     have: str | None  # the version running

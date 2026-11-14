@@ -1,4 +1,4 @@
-"""scripts/prepare-release.sh (HOSTED.md H123, H134, H136), run as it is on a Mac: on a throwaway repo, with a small
+"""scripts/prepare-release.sh, run as it is on a Mac: on a throwaway repo, with a small
 stand-in app and stand-ins for ssh and scp that write into a pretend laptop, and for Apple's signing and notarizing
 tools (C88: codesign, security, notarytool, stapler and spctl write down how they were called). It refuses what can't
 be released, commits the version number, signs the app before the disk image is made, has the image notarized and

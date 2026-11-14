@@ -1,4 +1,4 @@
-"""A task's kind and course read from its title when you didn't say (COMBINED.md 55), as personal's adapter read them:
+"""A task's kind and course read from its title when you didn't say, as personal's adapter read them:
 "MATH 2940 HW 7" is an Assignment for MATH 2940, "Study guide for prelim 2" is Exam prep. Only presets you have are
 guessed, and only when the title says so plainly; the add box shows the guess as a chip you can change. Pure.
 """

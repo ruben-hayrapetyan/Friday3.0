@@ -1,5 +1,5 @@
 #!/bin/bash
-# Your Friday as everyone gets it (HOSTED.md H115, on rhayrapetyan/download-site): the packaged Mac app, with Friday's
+# Your Friday as everyone gets it: the packaged Mac app, with Friday's
 # server, its own Python, the website and the compiled planner inside (Mac/build.sh, Mac/bundle.sh), installed in
 # /Applications and opened. Your data stays in ~/.local/share/friday. The app reads nothing in this repo, which lives
 # in ~/Downloads, where macOS asks about every read (29 Oct: "“Friday Test.app” would like to access files in your

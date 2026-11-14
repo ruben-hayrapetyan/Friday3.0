@@ -1,4 +1,4 @@
-"""personal's start for an overloaded week (COMBINED.md 54): Moore–Hodgson keeps as many tasks on time as can be."""
+"""personal's start for an overloaded week: Moore–Hodgson keeps as many tasks on time as can be."""
 
 from friday.engine.compile import compile_problem
 from friday.engine.construct import fewest_late_order

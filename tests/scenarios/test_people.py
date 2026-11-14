@@ -1,4 +1,4 @@
-"""Black box: the forty-three people of the hosted Friday's test profiles (HOSTED.md H73–H76), each set up on their
+"""Black box: the forty-three people of the hosted Friday's test profiles, each set up on their
 first evening as the app would be (calendars, mail, quick-add, routines, rules) and planned on the default budget.
 Whatever they do for a living, what came in lands once as itself and the plan never puts work in their meetings,
 shifts, classes or the children's activities.

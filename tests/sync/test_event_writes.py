@@ -1,4 +1,4 @@
-"""Your events, changed in Friday, saved back to Google Calendar (COMBINED.md 69): a change is queued by the command
+"""Your events, changed in Friday, saved back to Google Calendar: a change is queued by the command
 and sent by the job, the next sync finds nothing new, and a new event lands in the calendar you named."""
 
 import json

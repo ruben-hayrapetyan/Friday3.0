@@ -1,4 +1,4 @@
-"""Friday's terms (PROGRESS.md C71): the text everyone accepts when Friday first opens, and again each time it
+"""Friday's terms: the text everyone accepts when Friday first opens, and again each time it
 changes. The text is `terms.md` beside this file (TERMS.md at the top of the repo is the same, for readers on
 GitHub); its `Version:` line names it, and its "What changed" list is what the app shows someone who accepted an
 earlier version."""

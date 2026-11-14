@@ -1,7 +1,7 @@
-"""Bringing in the two apps Friday replaces, once (COMBINED.md 24): Todo List's open tasks and Chroma's categories,
+"""Bringing in the two apps Friday replaces, once: Todo List's open tasks and Chroma's categories,
 and the color Chroma showed each event in.
 
-The server runs on your Mac (COMBINED.md 2), so it reads their files where they are. Tasks keep their title, due
+The server runs on your Mac, so it reads their files where they are. Tasks keep their title, due
 date and list (short or long term); a reading is a Reading, an assignment an Assignment and an email a quick Errand,
 the rest are read by their titles like anything you add. Each task is brought in once, however often you run it;
 categories only when you have none yet, or only the starter set. It is one command, so one Undo takes it all back.

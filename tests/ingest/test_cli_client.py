@@ -1,4 +1,4 @@
-"""The `claude` command standing in for the Anthropic client (COMBINED.md 34)."""
+"""The `claude` command standing in for the Anthropic client."""
 
 import json
 import subprocess

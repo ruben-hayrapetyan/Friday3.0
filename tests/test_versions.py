@@ -1,4 +1,4 @@
-"""One version number everywhere (HOSTED.md H174; 8 Nov: Friday was 0.3.0 while the repo said 0.1.0). Black box: the
+"""One version number everywhere (8 Nov: Friday was 0.3.0 while the repo said 0.1.0). Black box: the
 repo's files agree. Glass box: set_version writes each of them, and leaves other packages in a lock file alone."""
 
 import json

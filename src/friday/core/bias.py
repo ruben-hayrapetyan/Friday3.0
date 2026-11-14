@@ -1,5 +1,5 @@
 """How your own estimates run (DESIGN §6.6's bias check): the median of actual ÷ estimate, when it is consistently
-off. Shared by the estimate's warning and the planner's learned cushion (COMBINED.md 41). Pure."""
+off. Shared by the estimate's warning and the planner's learned cushion. Pure."""
 
 from statistics import median
 from typing import Any

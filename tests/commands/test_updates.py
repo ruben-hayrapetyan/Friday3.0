@@ -1,4 +1,4 @@
-"""Friday's own updater as the page uses it (commands/updates.py; HOSTED.md H118–H124, H144–H147), black box through
+"""Friday's own updater as the page uses it (commands/updates.py), black box through
 its commands and the `updates` job. The update feed and the disk image are stand-ins; unpacking is faked here (it's
 tested on a real disk image in tests/sync/test_updates.py). Each test is one Friday: a new launch is a new run."""
 
