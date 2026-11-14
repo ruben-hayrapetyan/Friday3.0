@@ -49,7 +49,7 @@ from friday.planner.assemble import PlannedBlock
 from friday.planner.build import id_of, key_of
 from friday.planner.progress import minutes_by_item, remaining_minutes
 from friday.planner.service import ahead
-from friday.planner.snapshot import pace_periods, take_snapshot
+from friday.planner.snapshot import pace_periods, take_snapshot, with_steps
 from friday.planner.store import area_names, current_plan, generation, kv_get, settings_version
 from friday.planner.timed import OWN, background_ids, sittings_between, timed_over
 from friday.planner.views import Current, fits_view, now_view
@@ -576,21 +576,27 @@ NOT_SLIPPING = ("Routine", "Habit")  # a meal or a habit missed is missed, not l
 
 def slipping(ctx: Ctx, saved: dict | None, late: set[int]) -> list[LateItem]:
     """Work with a due the plan finishes after it, or doesn't plan at all though it's due in the plan's range: soft
-    deadlines (readings) and anything hard the report doesn't already call late. Soonest due first."""
+    deadlines (readings) and anything hard the report doesn't already call late. Soonest due first. A project is
+    judged by its steps, as the planner plans them: the project itself never (it has no blocks of its own, so it read
+    "not planned" though its steps were planned days before its due, 13 Nov), and a step with no due of its own is due
+    when its project is."""
     if saved is None:
         return []
     horizon_end = ctx.now_utc + ctx.settings["time"].horizon_days * 1440
     done = minutes_by_item(ctx.conn, ctx.user_id)
+    projects = with_steps(ctx.conn, ctx.user_id)
     out = []
     for r in rows(
         ctx.conn,
-        "SELECT i.id, i.title, i.due_utc, i.preset, MAX(b.end_utc) AS last FROM items i "
+        "SELECT i.id, i.title, COALESCE(i.due_utc, p.due_utc) AS due_utc, i.preset, MAX(b.end_utc) AS last "
+        "FROM items i LEFT JOIN items p ON p.id = i.parent_id "
         "LEFT JOIN blocks b ON b.item_id = i.id AND b.plan_id = ? "
-        "WHERE i.user_id = ? AND i.status = 'todo' AND i.when_kind != 'fixed' AND i.due_utc IS NOT NULL "
+        "WHERE i.user_id = ? AND i.status = 'todo' AND i.when_kind != 'fixed' "
+        "AND COALESCE(i.due_utc, p.due_utc) IS NOT NULL "
         "AND i.amount != 'open' AND COALESCE(i.duration_units, 1) > 0 GROUP BY i.id",
         [saved["id"], ctx.user_id],
     ):
-        if r["id"] in late or r["preset"] in NOT_SLIPPING:
+        if r["id"] in late or r["id"] in projects or r["preset"] in NOT_SLIPPING:
             continue
         due = parse_utc(r["due_utc"])
         if r["last"] is not None and parse_utc(r["last"]) > due:
@@ -614,8 +620,14 @@ def status(ctx: Ctx, inp: Empty) -> StatusOut:
     ready = ctx.settings["time"].timezone is not None and ctx.settings["sleep"] is not None
     report = json.loads(saved["report"]) if saved else {}
     notices = report.get("notices", [])
-    found = {
-        r["id"]: r for r in rows(ctx.conn, "SELECT id, title, due_utc FROM items WHERE user_id = ?", [ctx.user_id])
+    found = {  # a step with no due of its own is due when its project is, as the planner judged it late
+        r["id"]: r
+        for r in rows(
+            ctx.conn,
+            "SELECT i.id, i.title, COALESCE(i.due_utc, p.due_utc) AS due_utc FROM items i "
+            "LEFT JOIN items p ON p.id = i.parent_id WHERE i.user_id = ?",
+            [ctx.user_id],
+        )
     }
     late_hours = {int(k): hours for k, hours in report.get("late_hours", {}).items() if int(k) in found}
     late = {found[k]["title"]: hours for k, hours in late_hours.items()}

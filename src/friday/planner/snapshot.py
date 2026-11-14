@@ -268,7 +268,33 @@ def snapshot_items(conn: sqlite3.Connection, now_utc: int, settings: dict[str, A
         parents = rows(conn, f"SELECT * FROM items WHERE id IN ({', '.join('?' * len(missing))})", list(missing))
         items |= {r["id"]: item_from_row(r) for r in parents}
         missing = {i.parent_id for i in items.values() if i.parent_id is not None} - set(items)
-    return tuple(items[k] for k in sorted(items))
+    return tuple(items[k] for k in sorted(without_finished_projects(items, with_steps(conn, user_id))))
+
+
+def without_finished_projects(items: dict[int, Item], projects: set[int]) -> dict[int, Item]:
+    """Less the projects with nothing left in them: once a project's steps are all done, the planner would plan its own
+    length as work (13 Nov: 6h15 of "CDJ Article" planned after its three steps were ticked off). Leaving one out can
+    leave the project around it with nothing left too, so until none is."""
+    items = dict(items)
+    while True:
+        parents = {i.parent_id for i in items.values() if i.parent_id is not None}
+        finished = [k for k, i in items.items() if k in projects and k not in parents and i.when != "fixed"]
+        if not finished:
+            return items
+        for k in finished:
+            del items[k]
+
+
+def with_steps(conn: sqlite3.Connection, user_id: int) -> set[int]:
+    """Items with steps in them (a project): their steps are their work, so the item itself is never planned and never
+    late or unplanned on its own; it is judged by its steps (13 Nov: a project whose steps were all planned days before
+    its due was called "not planned before it's due"). A step done still counts; one deleted doesn't."""
+    found = rows(
+        conn,
+        "SELECT DISTINCT parent_id FROM items WHERE user_id = ? AND parent_id IS NOT NULL AND status != 'dropped'",
+        [user_id],
+    )
+    return {r["parent_id"] for r in found}
 
 
 def event_holds(conn: sqlite3.Connection, user_id: int) -> dict[int, int]:

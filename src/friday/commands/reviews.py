@@ -28,7 +28,7 @@ from friday.core.guess import subject_of, subjects
 from friday.core.rows import item_from_row
 from friday.core.time import UNIT_MIN, format_utc, parse_utc
 from friday.planner.progress import minutes_by_item, remaining_minutes
-from friday.planner.snapshot import day_overrides, pace_periods
+from friday.planner.snapshot import day_overrides, pace_periods, with_steps
 from friday.planner.store import area_names, current_plan, kv_get
 
 
@@ -94,16 +94,20 @@ def brief(ctx: Ctx, inp: Empty) -> BriefOut:
     saved = current_plan(ctx.conn, ctx.user_id)
     slack = json.loads(saved["report"]).get("slack_minutes", {}) if saved else {}
     soon = format_utc(ctx.now_utc + 48 * 60)
+    # A step with no due of its own is due when its project is, as the planner has it; the project itself is its
+    # steps, never a rock of its own ("CDJ Article", not today, beside its steps planned today: 13 Nov)
     candidates = rows(
         ctx.conn,
-        "SELECT * FROM items WHERE user_id = ? AND status = 'todo' AND when_kind != 'fixed' "
-        "AND (firmness = 'hard' AND due_utc <= ?)",
+        "SELECT i.id FROM items i LEFT JOIN items p ON p.id = i.parent_id AND i.due_utc IS NULL "
+        "WHERE i.user_id = ? AND i.status = 'todo' AND i.when_kind != 'fixed' "
+        "AND COALESCE(p.firmness, i.firmness) = 'hard' AND COALESCE(i.due_utc, p.due_utc) <= ?",
         [ctx.user_id, soon],
     )
     routines = {
         r["id"] for r in rows(ctx.conn, "SELECT id FROM items WHERE user_id = ? AND preset = 'Routine'", [ctx.user_id])
     }
-    ids = (set(planned) | {r["id"] for r in candidates}) - routines  # lunch isn't what matters most today
+    # lunch isn't what matters most today
+    ids = (set(planned) | {r["id"] for r in candidates}) - routines - with_steps(ctx.conn, ctx.user_id)
     rocks = [rock(ctx, item_id, planned.get(item_id, 0), soon) for item_id in ids]
     rocks = sorted(
         (r for r in rocks if r is not None),
@@ -159,12 +163,14 @@ def rock(ctx: Ctx, item_id: int, planned_min: int, soon: str) -> Rock | None:
     found = one(ctx.conn, "SELECT * FROM items WHERE id = ?", [item_id])
     if found is None or found["when_kind"] == "fixed":
         return None
-    hard = found["firmness"] == "hard" and found["due_utc"] is not None and found["due_utc"] <= soon
+    due, firmness = found["due_utc"], found["firmness"]
+    if due is None and found["parent_id"] is not None and (project := one(ctx.conn, "SELECT * FROM items WHERE id = ?",
+                                                                          [found["parent_id"]])):  # fmt: skip
+        due, firmness = project["due_utc"], project["firmness"]  # a step is due when its project is
+    hard = firmness == "hard" and due is not None and due <= soon
     if not planned_min and not hard:
         return None
-    return Rock(
-        item_id=item_id, title=found["title"], planned_min=planned_min, due=ctx.local(found["due_utc"]), hard=hard
-    )
+    return Rock(item_id=item_id, title=found["title"], planned_min=planned_min, due=ctx.local(due), hard=hard)
 
 
 def pace_line(ctx: Ctx) -> str | None:
