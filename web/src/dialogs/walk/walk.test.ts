@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { hazeColor, hourOf, lightAt, moonAt, skyColor, sunAt, timeStep } from "./sky"
 import { along, paceFor, reactionTo, shortest } from "./World"
-import { clockTime, GAP, minutesOf, placeZ, ROUTE, sideOf, STOPS } from "./stops"
+import { clockFace, GAP, minutesOf, placeZ, ROUTE, sideOf, STOPS } from "./stops"
 
 const ANSWERS = {
   wake: "07:30",
@@ -97,10 +97,10 @@ describe("the walk's route", () => {
   })
 
   it("says times as a clock shows them", () => {
-    expect(clockTime(7 * 60 + 30)).toBe("7:30 AM")
-    expect(clockTime(0)).toBe("12:00 AM")
-    expect(clockTime(12 * 60 + 5)).toBe("12:05 PM")
-    expect(clockTime(1440 + 23 * 60)).toBe("11:00 PM")
+    expect(clockFace(7 * 60 + 30)).toBe("7:30 AM")
+    expect(clockFace(0)).toBe("12:00 AM")
+    expect(clockFace(12 * 60 + 5)).toBe("12:05 PM")
+    expect(clockFace(1440 + 23 * 60)).toBe("11:00 PM")
   })
 })
 

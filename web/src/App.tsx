@@ -6,6 +6,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { Toasts } from "@/components/Toasts"
 import { useCalendar, useSettings, useStatus } from "@/hooks/queries"
 import { nowMin } from "@/hooks/useClock"
+import { setClock } from "@/lib/clock"
 import { setDayStart } from "@/lib/dayStart"
 import { fromMin } from "@/lib/time"
 import { Shell } from "@/shell/Shell"
@@ -43,9 +44,17 @@ export function useDayStart(): void {
   setDayStart(settings?.time?.day_start)
 }
 
+/** Your clock, given to the helpers that write times (lib/clock.ts): set while rendering, as the day start is, so a
+ * change of clock shows on everything drawn below at once. */
+export function useClockSetting(): void {
+  const settings = useSettings().data as { clock?: unknown } | undefined
+  setClock(settings?.clock)
+}
+
 function Root() {
   useServerEvents()
   useDayStart()
+  useClockSetting()
   const status = useStatus()
   const terms = useTerms()
   const today = useToday()

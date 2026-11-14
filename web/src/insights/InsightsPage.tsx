@@ -13,14 +13,14 @@ import { query } from "@/api/client"
 import { H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useLoad } from "@/hooks/queries"
-import { ampm, weekday } from "@/lib/format"
+import { clockTime, weekday } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
 import { BeatPlan } from "./BeatPlan"
 import { Learned } from "./Learned"
 import { Section } from "./Section"
 import { WeeklyReview } from "./WeeklyReview"
 import { useSettings } from "@/hooks/queries"
-import { addDays } from "@/lib/time"
+import { addDays, shortHour } from "@/lib/time"
 
 export { Section }
 
@@ -189,7 +189,7 @@ function Heat({ heat }: { heat: number[][] }) {
       <span />
       {HOURS.map((h) => (
         <span key={h} className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>
-          {ampm(`${h}:00`).replace(/[ap]m$/, (s) => s[0])}
+          {shortHour(Number(h))}
         </span>
       ))}
       {heat.map((row, d) => (
@@ -206,7 +206,7 @@ function Row({ day, row, top }: { day: string; row: number[]; top: number }) {
       {row.map((m, h) => (
         <span
           key={h}
-          title={`${day} ${ampm(`${HOURS[h]}:00`)}, ${m} min`}
+          title={`${day} ${clockTime(`${HOURS[h]}:00`)}, ${m} min`}
           style={{ height: 22, borderRadius: 4, background: m ? `color-mix(in srgb, var(--color-accent) ${Math.round(8 + (m / top) * 92)}%, transparent)` : "color-mix(in srgb, var(--color-text) 4%, transparent)" }}
         />
       ))}

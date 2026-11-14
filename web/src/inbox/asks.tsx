@@ -12,7 +12,8 @@ import { query, type Schemas } from "@/api/client"
 import { useMeals, useSleep } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
 import { dur } from "@/lib/format"
-import { ampm } from "@/lib/time"
+import { clockSetting } from "@/lib/clock"
+import { clockTime } from "@/lib/time"
 import { daysSaid } from "@/settings/SleepTracking"
 import type { Change } from "@/insights/shapes"
 import { Weights } from "@/insights/Weights"
@@ -67,6 +68,7 @@ function useAllAsks(): Ask[] {
   // the list stays the same object until what's asked changes (else the Inbox, keyed on it, renders forever).
   const latest = useRef({ apply, reject, answer, use, order, mealLength, mealTime, mealPlan, setting })
   latest.current = { apply, reject, answer, use, order, mealLength, mealTime, mealPlan, setting }
+  const clock = clockSetting()
   return useMemo(() => {
   const { apply, reject, answer, use, order, mealLength, mealTime, mealPlan, setting } = {
     apply: (i: Parameters<typeof latest.current.apply>[0]) => latest.current.apply(i),
@@ -150,7 +152,7 @@ function useAllAsks(): Ask[] {
       icon: "battery-low",
       kicker: learnedKicker,
       title: "Plan less deep work when it tends to slip",
-      why: `Planned work often slips around ${energy.worst.slice(0, 3).map((w) => `${w.day} ${ampm(w.time)}`).join(", ")}.`,
+      why: `Planned work often slips around ${energy.worst.slice(0, 3).map((w) => `${w.day} ${clockTime(w.time)}`).join(", ")}.`,
       yes: { label: "Plan less then", run: () => use({ module: "energy", use: true }) },
       learned: true,
     })
@@ -189,7 +191,7 @@ function useAllAsks(): Ask[] {
       icon: "moon",
       kicker: "Your sleep",
       title: "Your real times differ from your schedule",
-      why: sleep.changes.map((c) => `${daysSaid(c.days, c.field)}: ${c.field === "bedtime" ? "to bed" : "up"} around ${ampm(c.learned)}, not ${ampm(c.now)}`).join("; ") + ".",
+      why: sleep.changes.map((c) => `${daysSaid(c.days, c.field)}: ${c.field === "bedtime" ? "to bed" : "up"} around ${clockTime(c.learned)}, not ${clockTime(c.now)}`).join("; ") + ".",
       body: sleep.against?.length ? (
         <span style={{ fontSize: 12, color: "var(--fr-warn)", textWrap: "pretty" }}>{sleep.against.map((a) => `${a}.`).join(" ")} Taking these times leaves a question here: your bedtime or the rule.</span>
       ) : undefined,
@@ -197,7 +199,7 @@ function useAllAsks(): Ask[] {
     })
   }
   return out
-  }, [learning, questions, rules, meals, sleep])
+  }, [learning, questions, rules, meals, sleep, clock]) // a change of clock writes its times again
 }
 
 type MealRun = { length: (i: { kind: Meal }) => Ran; time: (i: { kind: Meal }) => Ran; plan: (i: { kind: Meal; plan: boolean }) => Ran }
@@ -213,7 +215,7 @@ export function mealAsks(meals: Schemas["MealsOut"], run: MealRun): Ask[] {
   }
   for (const t of meals.times ?? []) {
     if (decided.has(t.kind)) continue
-    out.push({ key: `meal-time:${t.kind}`, evidence: t.usual_start, icon: "fork-knife", kicker: "Your meals", title: `You usually have ${t.kind} around ${ampm(t.usual_start)}`, why: `It's planned ${ampm(t.start)}–${ampm(t.end)}. Plan it ${ampm(t.new_start)}–${ampm(t.new_end)} instead?`, yes: { label: `Plan ${ampm(t.new_start)}–${ampm(t.new_end)}`, run: () => run.time({ kind: t.kind as Meal }) } })
+    out.push({ key: `meal-time:${t.kind}`, evidence: t.usual_start, icon: "fork-knife", kicker: "Your meals", title: `You usually have ${t.kind} around ${clockTime(t.usual_start)}`, why: `It's planned ${clockTime(t.start)}–${clockTime(t.end)}. Plan it ${clockTime(t.new_start)}–${clockTime(t.new_end)} instead?`, yes: { label: `Plan ${clockTime(t.new_start)}–${clockTime(t.new_end)}`, run: () => run.time({ kind: t.kind as Meal }) } })
   }
   for (const p of meals.plans ?? []) {
     if (decided.has(p.kind)) continue
@@ -222,7 +224,7 @@ export function mealAsks(meals: Schemas["MealsOut"], run: MealRun): Ask[] {
       evidence: `${p.plan}${p.usual_start ?? ""}`,
       icon: "fork-knife",
       kicker: "Your meals",
-      title: p.plan ? `You have ${p.kind} most days, around ${ampm(p.usual_start ?? "08:00")}` : `You usually skip ${p.kind}`,
+      title: p.plan ? `You have ${p.kind} most days, around ${clockTime(p.usual_start ?? "08:00")}` : `You usually skip ${p.kind}`,
       why: p.plan ? "Friday doesn't plan it. Plan it from now on?" : "Friday still plans it. Stop planning it?",
       yes: { label: p.plan ? `Plan ${p.kind}` : "Stop planning it", run: () => run.plan({ kind: p.kind as Meal, plan: p.plan }) },
     })

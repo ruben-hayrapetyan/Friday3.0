@@ -6,7 +6,7 @@ import { useState } from "react"
 import { Seg } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { usePaces, useSettings } from "@/hooks/queries"
-import { ampm, dur } from "@/lib/format"
+import { clockTime, dur } from "@/lib/format"
 import { useNavigate } from "react-router"
 import { BUFFER_OPTIONS, bufferLabel, useBuffers } from "./buffers"
 import { Field, SectionHead } from "./SettingsPage"
@@ -59,7 +59,7 @@ export function Schedule() {
         <select className="input" value={mon.wake} onChange={(e) => allNights({ wake: e.target.value })} style={{ alignSelf: "flex-start", width: 140 }}>
           {timesWith(5, 11, mon.wake).map((t) => (
             <option key={t} value={t}>
-              {ampm(t)}
+              {clockTime(t)}
             </option>
           ))}
         </select>
@@ -68,7 +68,7 @@ export function Schedule() {
         <select className="input" value={mon.bedtime} onChange={(e) => allNights({ bedtime: e.target.value })} style={{ alignSelf: "flex-start", width: 140 }}>
           {timesWith(21, 26, mon.bedtime).map((t) => (
             <option key={t} value={t}>
-              {ampm(t)}
+              {clockTime(t)}
             </option>
           ))}
         </select>

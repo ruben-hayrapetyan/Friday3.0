@@ -6,7 +6,7 @@ import { query } from "@/api/client"
 import { Chip, Icon, Seg } from "@/components/fr/controls"
 import { useClock } from "@/hooks/useClock"
 import { useSteps } from "@/hooks/useSteps"
-import { ampm, dur, parseLength, weekday } from "@/lib/format"
+import { clockTime, dur, parseLength, weekday } from "@/lib/format"
 import { addDays, fromMin, toMin } from "@/lib/time"
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
@@ -165,7 +165,7 @@ export function dueSummary(value: string | null, today: string): string {
   const date = value.slice(0, 10)
   const days = Math.round((toMin(date) - toMin(today)) / 1440)
   const away = days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`
-  return `Due ${weekday(date)} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1].slice(0, 3)}, ${ampm(value)} (${away})`
+  return `Due ${weekday(date)} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1].slice(0, 3)}, ${clockTime(value)} (${away})`
 }
 
 /** A length typed as people say it ("45", "1h30", "an hour and a half", "2–3 hours"; personal's reader, COMBINED.md

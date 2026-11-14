@@ -4,6 +4,7 @@
 import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react"
 import type { Block, Item } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
+import { clockSetting } from "@/lib/clock"
 import { clock, dur, when } from "@/lib/format"
 import { eventPaint, wash } from "@/lib/pigments"
 import { type Placed, type Span, toMin } from "@/lib/time"
@@ -359,7 +360,7 @@ function TimeField({ time }: { time: Timing }) {
       }}
       aria-label="Time"
       aria-invalid={!typed}
-      title="Type a time, like 10–11:30 or 3pm; Return saves, Escape doesn't"
+      title={`Type a time, like ${clockSetting() === "24h" ? "10–11:30 or 15:00" : "10–11:30 or 3pm"}; Return saves, Escape doesn't`}
       style={{
         display: "block",
         flex: "none",

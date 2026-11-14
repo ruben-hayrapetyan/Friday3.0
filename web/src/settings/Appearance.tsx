@@ -1,10 +1,16 @@
 // Appearance (v22): theme, accent hue, block style, glow, floating panels, the Now bar and the heading face, on this
-// device, with a live preview. Each choice is a card with a small picture of what it looks like (ChoiceCards).
+// device, with a live preview. Each choice is a card with a small picture of what it looks like (ChoiceCards). The
+// clock is the one choice kept by Friday rather than this device (settings `clock`): the server's sentences, the
+// command line and Siri follow it too.
 
 import { Icon } from "@/components/fr/controls"
+import { useSettings } from "@/hooks/queries"
+import { useCommand } from "@/hooks/useCommand"
+import type { Clock } from "@/lib/clock"
+import { clockTime } from "@/lib/time"
 import { accentHex, areaHex, type Look } from "@/theme/look"
 import { useLook } from "@/theme/LookProvider"
-import { BlocksArt, ChromeArt, DeadlinesArt, FaceArt, GlowArt, HoursArt, NowBarArt, ThemeArt } from "./appearanceArt"
+import { BlocksArt, ChromeArt, ClockArt, DeadlinesArt, FaceArt, GlowArt, HoursArt, NowBarArt, ThemeArt } from "./appearanceArt"
 import { ChoiceCards } from "./ChoiceCards"
 import { Field, SectionHead } from "./SettingsPage"
 
@@ -13,10 +19,11 @@ const HUES = Array.from({ length: 16 }, (_, i) => Math.round(i * 22.5))
 export function Appearance() {
   const { look, light, setLook, skinOf } = useLook()
   const pick = <K extends keyof Look>(k: K) => (v: Look[K]) => setLook({ [k]: v } as Partial<Look>)
+  const span = (a: string, b: string) => `${clockTime(a)}–${clockTime(b)}`
   const preview = [
-    { title: "PS5", meta: "09:00–12:00", top: 8, h: 96, kind: "planned" as const, area: null, col: areaHex(265, light) },
-    { title: "Lunch", meta: "12:30", top: 112, h: 34, kind: "routine" as const, area: null, col: "" },
-    { title: "Project draft", meta: "14:00–15:30", top: 150, h: 60, kind: "preferred" as const, area: null, col: areaHex(60, light) },
+    { title: "PS5", meta: span("09:00", "12:00"), top: 8, h: 96, kind: "planned" as const, area: null, col: areaHex(265, light) },
+    { title: "Lunch", meta: clockTime("12:30"), top: 112, h: 34, kind: "routine" as const, area: null, col: "" },
+    { title: "Project draft", meta: span("14:00", "15:30"), top: 150, h: 60, kind: "preferred" as const, area: null, col: areaHex(60, light) },
   ]
   return (
     <>
@@ -57,7 +64,7 @@ export function Appearance() {
           </div>
           <div style={{ height: 2, width: 120, borderRadius: 1, background: "var(--color-accent)", boxShadow: "0 0 calc(12px * var(--g-today)) calc(1px * var(--g-today)) var(--color-accent)" }} />
           <div style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>
-            PS5 runs until 12:00. Project draft is pinned after lunch. <a style={{ textDecoration: "underline" }}>Why here?</a>
+            PS5 runs until {clockTime("12:00")}. Project draft is pinned after lunch. <a style={{ textDecoration: "underline" }}>Why here?</a>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <button className="btn btn-primary">
@@ -66,7 +73,7 @@ export function Appearance() {
             </button>
             <button className="btn btn-secondary">+15</button>
             <span style={{ display: "inline-flex", gap: 4, alignItems: "center", fontSize: 12, padding: "2px 8px", borderRadius: "var(--radius-sm)", background: "color-mix(in srgb, var(--color-accent) 16%, transparent)", color: "var(--color-accent-200)" }}>
-              <span style={{ color: "var(--color-accent-400)" }}>Due</span>Wed 17:00
+              <span style={{ color: "var(--color-accent-400)" }}>Due</span>Wed {clockTime("17:00")}
             </span>
           </div>
         </div>
@@ -74,6 +81,7 @@ export function Appearance() {
       <Field name="Theme" note="Light, dark, or follow your device.">
         <ChoiceCards label="Theme" value={look.theme} onPick={pick("theme")} choices={(["Dark", "Light", "Match system"] as const).map((v) => ({ value: v, label: v, art: <ThemeArt theme={v} hue={look.accentHue} /> }))} />
       </Field>
+      <ClockField />
       <Field name="Ink" note="The colour of buttons, today and highlights.">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(16, 1fr)", gap: 6 }}>
           {HUES.map((h) => (
@@ -130,6 +138,25 @@ export function Appearance() {
         <ChoiceCards label="Heading weight" value={look.headWeight} onPick={pick("headWeight")} choices={(["Bold", "Black"] as const).map((v) => ({ value: v, label: v, art: <FaceArt font={look.headFont} weight={v} /> }))} />
       </Field>
     </>
+  )
+}
+
+/** 12-hour or 24-hour times: saved to Friday, so it's the same on every device you open Friday on. */
+function ClockField() {
+  const clock: Clock = (useSettings().data as { clock?: Clock } | undefined)?.clock === "24h" ? "24h" : "12h"
+  const save = useCommand("settings_set", { label: () => "Clock saved" })
+  return (
+    <Field name="Clock" note="How every time reads: on each device, the command line and Siri too.">
+      <ChoiceCards
+        label="Clock"
+        value={clock}
+        onPick={(value) => value !== clock && void save({ key: "clock", value })}
+        choices={[
+          { value: "12h", label: "12-hour", art: <ClockArt clock="12h" /> },
+          { value: "24h", label: "24-hour", art: <ClockArt clock="24h" /> },
+        ]}
+      />
+    </Field>
   )
 }
 

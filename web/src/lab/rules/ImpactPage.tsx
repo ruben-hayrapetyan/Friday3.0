@@ -8,7 +8,7 @@ import { query, type Schemas } from "@/api/client"
 import { useHorizon } from "@/hooks/queries"
 import { useShell } from "@/shell/ShellContext"
 import { useRules } from "@/rules/RulesPage"
-import { when } from "@/lib/format"
+import { clockTime, when } from "@/lib/format"
 import { applyChanges, fmtH, type PlanMap, type Shape, shapeOf } from "./model"
 import { compare, MiniWeek, Outcome, Page, useBaseline, usePreview } from "./shared"
 
@@ -43,7 +43,7 @@ export function ImpactPage() {
 function ShapeLine({ shape }: { shape: Shape }) {
   const parts = [
     `${fmtH(shape.total)} planned`,
-    `${fmtH(shape.lateNight)} after 10pm`,
+    `${fmtH(shape.lateNight)} after ${clockTime("22:00")}`,
     `${fmtH(shape.weekends)} on weekends`,
     `heaviest day ${fmtH(shape.heaviestDay)}`,
     `longest sitting ${fmtH(shape.longestSitting)}`,

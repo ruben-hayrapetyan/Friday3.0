@@ -9,7 +9,7 @@ import type { Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useSleep } from "@/hooks/queries"
 import { useAsks } from "@/inbox/asks"
-import { ampm, clock, dayLabel, dur, weekday } from "@/lib/format"
+import { clockTime, clock, dayLabel, dur, weekday } from "@/lib/format"
 import { toMin } from "@/lib/time"
 import { daysSaid } from "@/settings/SleepTracking"
 import { InboxLink } from "./Learned"
@@ -74,8 +74,8 @@ function Usual({ sleep }: { sleep: Schemas["SleepOut"] }) {
   const quarter = (m: number) => dur(Math.max(15, Math.round(m / 15) * 15))
   const stats: [string, string][] = [
     [sleep.average_slept_min ? dur(sleep.average_slept_min) : "—", "of sleep a night, lately"],
-    [bed ? ampm(bed) : "—", "usually to bed"],
-    [up ? ampm(up) : "—", "usually up"],
+    [bed ? clockTime(bed) : "—", "usually to bed"],
+    [up ? clockTime(up) : "—", "usually up"],
     [wind != null ? quarter(wind) : "—", "from done with work to bed"],
     [routine != null ? quarter(routine) : "—", "from up to ready to work"],
   ]
@@ -106,7 +106,7 @@ function Timeline({ nights }: { nights: Schemas["SleepNightOut"][] }) {
         <span style={{ position: "relative", height: 14 }}>
           {TICKS.map((h) => (
             <span key={h} className="tnum" style={{ position: "absolute", left: `${((h * 60 - FROM) / SPAN) * 100}%`, transform: "translateX(-50%)" }}>
-              {ampm(`${String(h % 24).padStart(2, "0")}:00`)}
+              {clockTime(`${String(h % 24).padStart(2, "0")}:00`)}
             </span>
           ))}
         </span>
@@ -183,8 +183,8 @@ function LearnedSleep({ sleep }: { sleep: Schemas["SleepOut"] }) {
           </span>
           {sleep.changes.map((c) => (
             <span key={`${c.field}${c.days.join()}`} style={{ fontSize: 13 }}>
-              {daysSaid(c.days, c.field)}: {c.field === "bedtime" ? "to bed" : "up"} around <b style={{ fontWeight: 500 }}>{ampm(c.learned)}</b>
-              <span style={{ color: "var(--color-neutral-500)" }}>, not {ampm(c.now)}</span>
+              {daysSaid(c.days, c.field)}: {c.field === "bedtime" ? "to bed" : "up"} around <b style={{ fontWeight: 500 }}>{clockTime(c.learned)}</b>
+              <span style={{ color: "var(--color-neutral-500)" }}>, not {clockTime(c.now)}</span>
             </span>
           ))}
           {(sleep.against ?? []).map((a) => (

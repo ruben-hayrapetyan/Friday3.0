@@ -3,7 +3,7 @@
 // recorded, quietly, rather than hours "over" in red (27 Oct: lunch and dinner were always overtime).
 
 import { useClock } from "@/hooks/useClock"
-import { ampm, dueLabel } from "@/lib/format"
+import { clockTime, dueLabel } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
 
 export function DueLabel({ due, prefix = "Due ", routine = false }: { due: string; prefix?: string; routine?: boolean }) {
@@ -13,7 +13,7 @@ export function DueLabel({ due, prefix = "Due ", routine = false }: { due: strin
   if (routine && tone !== "plain")
     return (
       <span className="tnum" style={{ color: "var(--color-neutral-500)" }} title="Tick it off, or log it in Insights → Meals when it's a meal">
-        {tone === "over" ? "not recorded" : `until ${ampm(due.slice(11, 16))}`}
+        {tone === "over" ? "not recorded" : `until ${clockTime(due.slice(11, 16))}`}
       </span>
     )
   const color = tone === "over" ? "var(--fr-due)" : tone === "soon" ? "var(--fr-warn)" : undefined

@@ -7,9 +7,10 @@
 
 import * as THREE from "three"
 import type { Schemas } from "@/api/client"
+import { clockSetting } from "@/lib/clock"
 import type { Action, Mood } from "./character"
 import { ball, bake, block, cylinder, gable, M, panel, span } from "./props"
-import { clockTime, minutesOf, type Place } from "./stops"
+import { clockFace, minutesOf, type Place } from "./stops"
 import { Board, hash, random } from "./textures"
 
 type Answers = Schemas["SetupInput"]
@@ -423,10 +424,10 @@ function alarmClock(): { group: THREE.Group; set: (minutes: number) => void } {
   return {
     group: g,
     set: (minutes) =>
-      board.draw(String(minutes), (ctx, w, h) => {
+      board.draw(`${clockSetting()} ${minutes}`, (ctx, w, h) => {
         ctx.fillStyle = "#040404"
         ctx.fillRect(0, 0, w, h)
-        const [time, half] = clockTime(minutes).split(" ")
+        const [time, half = ""] = clockFace(minutes).split(" ")
         ctx.fillStyle = "#ff3324"
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
@@ -940,7 +941,7 @@ function hall(): Built {
     [1.02, 1.38, 0.36, 0.44, 4],
   ]
   const FLYERS = [
-    ["CHESS CLUB", "Thursdays 7pm", "Room 112"],
+    ["CHESS CLUB", `Thursdays ${clockSetting() === "24h" ? "19:00" : "7pm"}`, "Room 112"],
     ["OPEN MIC", "Friday night", "The Commons"],
     ["STUDY GROUP", "Calc II", "Library, 2nd floor"],
     ["BIKE FOR SALE", "Barely used", "Ask at the desk"],

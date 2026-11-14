@@ -1,15 +1,16 @@
 import { parseLength as readLength } from "./lengths"
 import { dayStartClock } from "./dayStart"
-import { ampm, fromMin, toMin } from "./time"
+import { clockSetting } from "./clock"
+import { ampm, clockTime, fromMin, toMin } from "./time"
 
-export { ampm }
+export { ampm, clockTime }
 
 const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-/** A local time on a 12-hour clock: "2:30pm". */
+/** A local time on your clock: "2:30pm" or "14:30". */
 export function clock(local: string): string {
-  return ampm(local.slice(11, 16))
+  return clockTime(local.slice(11, 16))
 }
 
 export function weekday(date: string): string {
@@ -47,7 +48,8 @@ export function dur(minutes: number): string {
   return h ? `${h}h${r ? ` ${r}m` : ""}` : `${r}m`
 }
 
-/** A day's timed sittings, in order: "2:45–2:48pm, 3:11–3:36pm" (each from its start for as long as it ran; one
+/** A day's timed sittings, in order: "2:45–2:48pm, 3:11–3:36pm", or "14:45–14:48, 15:11–15:36" on the 24-hour clock
+ * (each from its start for as long as it ran; one
  * that picks up where the last ended, as a replan's cut leaves it, is the same sitting). */
 export function sittings(rows: { source?: unknown; start?: unknown; minutes?: unknown }[], date: string): string {
   const spans = rows
@@ -62,11 +64,18 @@ export function sittings(rows: { source?: unknown; start?: unknown; minutes?: un
   }
   return joined
     .map(([from, to]) => {
-      const a = clock(fromMin(from))
-      const b = clock(fromMin(to))
-      return a.slice(-2) === b.slice(-2) ? `${a.slice(0, -2)}–${b}` : `${a}–${b}`
+      return clockSpan(fromMin(from), fromMin(to))
     })
     .join(", ")
+}
+
+/** Two times as a span on your clock, the half said once when both share it: "2:45–3:30pm", "11am–1pm", "14:45–15:30"
+ * (only the 12-hour clock has a half to drop: two 24-hour times ending alike, 14:45 and 15:45, keep both). */
+export function clockSpan(start: string, end: string): string {
+  const a = clockTime(start.slice(-5))
+  const b = clockTime(end.slice(-5))
+  if (clockSetting() === "24h") return `${a}–${b}`
+  return a.slice(-2) === b.slice(-2) ? `${a.slice(0, -2)}–${b}` : `${a}–${b}`
 }
 
 /** How late the plan finishes something, roughly: "30m", "3h", "2 days". */

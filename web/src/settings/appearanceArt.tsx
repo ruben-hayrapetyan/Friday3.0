@@ -2,6 +2,8 @@
 // card (container units: 120 units = the card's width), in the app's own colours so it matches light and dark.
 
 import type { CSSProperties, ReactNode } from "react"
+import type { Clock } from "@/lib/clock"
+import { shortHour } from "@/lib/time"
 import { accentHex, FACES, type Look } from "@/theme/look"
 
 /** Grid units to container width. */
@@ -99,9 +101,9 @@ export function HoursArt({ hours }: { hours: Look["hours"] }) {
       <Fill bg="var(--color-surface)">
         <Bx x={18} y={60} w={102} h={12} style={{ background: sleep }} />
         <HourLines x={18} y0={4} step={8} n={8} />
-        <Tiny x={3} y={1}>7a</Tiny>
-        <Tiny x={3} y={29}>3p</Tiny>
-        <Tiny x={3} y={57}>11p</Tiny>
+        <Tiny x={3} y={1}>{shortHour(7)}</Tiny>
+        <Tiny x={3} y={29}>{shortHour(15)}</Tiny>
+        <Tiny x={3} y={57}>{shortHour(23)}</Tiny>
         <Block x={24} y={10} w={88} h={16} />
         <Block x={24} y={36} w={60} h={10} />
       </Fill>
@@ -111,11 +113,33 @@ export function HoursArt({ hours }: { hours: Look["hours"] }) {
       <Bx x={18} y={0} w={102} h={21} style={{ background: sleep }} />
       <Bx x={18} y={66} w={102} h={6} style={{ background: sleep }} />
       <HourLines x={18} y0={0} step={3} n={24} />
-      <Tiny x={3} y={1}>12a</Tiny>
-      <Tiny x={3} y={33}>12p</Tiny>
-      <Tiny x={3} y={63}>11p</Tiny>
+      <Tiny x={3} y={1}>{shortHour(0)}</Tiny>
+      <Tiny x={3} y={33}>{shortHour(12)}</Tiny>
+      <Tiny x={3} y={63}>{shortHour(23)}</Tiny>
       <Block x={24} y={27} w={88} h={7} />
       <Block x={24} y={45} w={60} h={4} />
+    </Fill>
+  )
+}
+
+// ---- Clock
+
+const CLOCK_ART: Record<Clock, string[]> = { "12h": ["9am", "12pm", "3pm", "2:30pm"], "24h": ["09:00", "12:00", "15:00", "14:30"] }
+
+/** A calendar's hours and a block's time, on each clock (its own, whichever is chosen). */
+export function ClockArt({ clock }: { clock: Clock }) {
+  const [nine, noon, three, at] = CLOCK_ART[clock]
+  return (
+    <Fill bg="var(--color-surface)">
+      <HourLines x={26} y0={4} step={22} n={4} />
+      <Tiny x={3} y={1}>{nine}</Tiny>
+      <Tiny x={3} y={23}>{noon}</Tiny>
+      <Tiny x={3} y={45}>{three}</Tiny>
+      <Bx x={30} y={45} w={84} h={20} r={2.5} style={{ background: mix("var(--color-accent)", 22, "var(--color-surface)"), borderLeft: `${u(2)} solid var(--color-accent)` }}>
+        <Bx x={4} y={4} w={70} h={12} style={{ fontFamily: "var(--fr-mono)", fontSize: u(9), lineHeight: 1, color: "var(--color-text)", whiteSpace: "nowrap" }}>
+          {at}
+        </Bx>
+      </Bx>
     </Fill>
   )
 }

@@ -6,6 +6,7 @@
 // there; walk/World.ts builds the street and walks it.
 
 import type { Schemas } from "@/api/client"
+import { clockSetting } from "@/lib/clock"
 
 type Answers = Schemas["SetupInput"]
 
@@ -72,9 +73,10 @@ export function sideOf(place: Place): number {
   return ROUTE.find(([p]) => p === place)?.[1] ?? 0
 }
 
-/** "7:30 AM": a time as a clock shows it. */
-export function clockTime(minutes: number): string {
+/** "7:30 AM", or "07:30" on the 24-hour clock (lib/clock.ts): a time as a clock shows it. */
+export function clockFace(minutes: number): string {
   const m = ((Math.round(minutes) % 1440) + 1440) % 1440
   const h = Math.floor(m / 60)
+  if (clockSetting() === "24h") return `${String(h).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`
   return `${h % 12 || 12}:${String(m % 60).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`
 }
