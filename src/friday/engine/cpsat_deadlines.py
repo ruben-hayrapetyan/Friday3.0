@@ -5,6 +5,7 @@ measures the evaluator uses, so its value for a plan equals the evaluator's dead
 place a plan can depend on time: it runs with a time limit, and the scheduler reports when it was used.
 """
 
+import os
 import threading
 from dataclasses import dataclass
 from typing import Any
@@ -15,6 +16,11 @@ from friday.engine.checker import lag_slot
 from friday.engine.problem import EngineItem, Plan, Problem
 from friday.engine.pwl import Lin, hinge_coefficient
 from friday.engine.rules import BuildContext, price_row
+
+# Set (to anything) by the screen tests' Friday (web/src/test/server.ts): one thread and a deterministic budget
+# instead of seconds, so a busy machine plans the same week the same way (13 Nov). Your Friday doesn't set it.
+FIXED_EFFORT = "FRIDAY_FIXED_EFFORT"
+STUCK_S = 120  # with a fixed effort, only a backstop for a machine that has stopped
 
 
 @dataclass
@@ -270,9 +276,14 @@ class DeadlineModel:
         if hint is not None:
             self.hint(hint)
         solver = self.solver = cp_model.CpSolver()
-        solver.parameters.num_workers = workers
         solver.parameters.random_seed = seed
-        solver.parameters.max_time_in_seconds = seconds
+        if os.environ.get(FIXED_EFFORT):
+            solver.parameters.num_workers = 1
+            solver.parameters.max_deterministic_time = seconds
+            solver.parameters.max_time_in_seconds = max(STUCK_S, seconds)
+        else:
+            solver.parameters.num_workers = workers
+            solver.parameters.max_time_in_seconds = seconds
         if self.stopped.is_set():
             return FallbackResult(None, "CANCELLED", None)
         status = solver.solve(self.m)
