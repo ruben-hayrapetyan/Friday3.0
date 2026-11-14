@@ -23,6 +23,7 @@ import { useLook } from "@/theme/LookProvider"
 import { draftOf, useSeriesPattern } from "@/shell/EventPane"
 import { repeatChoices } from "@/shell/repeats"
 import { useShell } from "@/shell/ShellContext"
+import { StepOf, useProjectOf } from "@/projects/StepOf"
 import { Elsewhere } from "./Elsewhere"
 import { kindOf } from "./Pieces"
 
@@ -69,6 +70,8 @@ export function BlockPopover() {
   const { color, light } = useLook()
   const card = useRef<HTMLElement>(null)
   const detail = useItem(b?.item_id ?? null).data
+  // a step with no due of its own is due when its project is, with its project's deadline (the planner's view of it)
+  const project = useProjectOf(detail?.item)?.project
   const isBlock = !!b && b.key.startsWith("T")
   const why = useWhy(isBlock ? b.key : null).data
   const start = useCommand("start", { label: () => `Started ${b?.title}` })
@@ -147,7 +150,7 @@ export function BlockPopover() {
     <>
       <aside ref={card} className="fr-float fr-block-card" style={{ position: "absolute", right: 24, top: 72, width: 340, maxWidth: "calc(100% - 48px)", maxHeight: "calc(100% - 96px)", overflowY: "auto", zIndex: 10, padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, boxShadow: `0 0 calc(8px * var(--g-accent)) ${dot}` }} />
               {event ? [event.calendar ?? "Event", event.area].filter(Boolean).join(", ") : [item?.area, item?.preset].filter(Boolean).join(", ") || "No tag"}
@@ -158,6 +161,7 @@ export function BlockPopover() {
             <div className="tnum" style={{ color: "var(--color-neutral-300)" }}>
               {whenText}
             </div>
+            {!event && <StepOf item={item} />}
           </div>
           <button className="btn btn-icon btn-ghost" onClick={close} aria-label="Close" style={{ width: 28, height: 28, color: "var(--color-neutral-400)" }}>
             <Icon name="x" />
@@ -220,9 +224,9 @@ export function BlockPopover() {
         {item && !event && (
           <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", fontSize: 12 }}>
             <span style={{ color: "var(--color-neutral-500)" }}>Due</span>
-            <span>{item.due ? when(item.due, today) : "—"}</span>
+            <span>{item.due ? when(item.due, today) : project?.due ? `${when(project.due, today)}, with its project` : "—"}</span>
             <span style={{ color: "var(--color-neutral-500)" }}>Deadline</span>
-            <span>{FIRM[item.firmness] ?? "—"}</span>
+            <span>{FIRM[!item.due && project?.due ? project.firmness : item.firmness] ?? "—"}</span>
             <span style={{ color: "var(--color-neutral-500)" }}>{item.amount === "fixed" && item.duration_min != null ? "Expected" : "Remaining"}</span>
             {item.amount === "fixed" && item.duration_min != null ? (
               <EstimateNudge itemId={item.id} runningMin={timing?.item_id === item.id ? (timing.elapsed_s ?? 0) / 60 : 0} />

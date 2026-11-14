@@ -20,9 +20,10 @@ export interface Group {
   items: Item[]
 }
 
-/** The groups in order; `always` are shown even when empty, so each has its add line (personal's buckets). */
-export function grouped(items: Item[], blocks: Block[], today: string, by: GroupBy, sort: SortBy, always: string[] = []): Group[] {
-  const next = nextBlocks(blocks)
+/** The groups in order; `always` are shown even when empty, so each has its add line (personal's buckets). `all` is
+ * every open item, so a project in the list goes where its steps are planned though they're in another list. */
+export function grouped(items: Item[], blocks: Block[], today: string, by: GroupBy, sort: SortBy, always: string[] = [], all: Item[] = items): Group[] {
+  const next = nextBlocks(blocks, all)
   const key = (i: Item): string => {
     if (i.status === "done") return "Done"
     if (by === "Tag") return i.area ?? "No tag"

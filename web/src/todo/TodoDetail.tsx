@@ -11,6 +11,7 @@ import { clock, dur, weekday, when } from "@/lib/format"
 import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
+import { StepOf, useProjectOf } from "@/projects/StepOf"
 import { TimesApart, useSeriesRow } from "@/settings/Repeating"
 import { usePresets } from "./AddBox"
 import { progress } from "./groups"
@@ -58,6 +59,8 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
   const [logging, setLogging] = useState(false)
   const halfLife = (useSettings().data as { fading_late?: { half_life_days?: number } } | undefined)?.fading_late?.half_life_days ?? 3
   const series = useSeriesRow(detail?.item.series_id) // a repeating task: its times apart are set here too (8 Nov)
+  const project = useProjectOf(detail?.item)?.project
+  const projectDue = !detail?.item.due && project?.due ? project : undefined
   if (!detail) return <aside />
   const item = detail.item
   const p = progress(item)
@@ -92,6 +95,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
           <span className="fr-h" style={{ fontSize: 30, lineHeight: 1 }}>
             {item.title}
           </span>
+          <StepOf item={item} />
         </div>
         <button className="btn btn-icon btn-ghost" onClick={onClose} aria-label="Close" style={{ width: 28, height: 28, color: "var(--color-neutral-400)" }}>
           <Icon name="x" />
@@ -167,12 +171,20 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
         {button("due", (
           <>
             <Icon name="flag" size={12} />
-            {item.due ? when(item.due, today) : "No due date"}
+            {item.due ? when(item.due, today) : projectDue ? `${when(projectDue.due as string, today)}, with its project` : "No due date"}
           </>
         ))}
         {pick === "due" && panel(<DuePicker value={item.due} today={today} onPick={(v) => edit({ id, due: v })} stacked />)}
         <span className="fr-kicker">Deadline</span>
-        <Seg options={FIRMNESS} value={item.firmness} onPick={(v) => edit({ id, firmness: v as "hard" | "soft" | "none" })} />
+        {projectDue ? (
+          // a step with no due of its own is planned to its project's due and deadline, until it has one
+          <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <Seg options={FIRMNESS} value={item.firmness} onPick={(v) => edit({ id, firmness: v as "hard" | "soft" | "none" })} />
+            <span className="fr-kicker">Its project's for now: {FIRMNESS.find((f) => f.value === projectDue.firmness)?.label.toLowerCase()}, until it has a due of its own.</span>
+          </span>
+        ) : (
+          <Seg options={FIRMNESS} value={item.firmness} onPick={(v) => edit({ id, firmness: v as "hard" | "soft" | "none" })} />
+        )}
         <span className="fr-kicker" title="Never planned after its due: pointless once late (COMBINED.md 50)">After it's due</span>
         <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <Seg

@@ -16,6 +16,7 @@ import { useClock } from "@/hooks/useClock"
 import { type DueGroup, type Late, dueGroups, lateWarning, overdueBy } from "@/lib/dueSoon"
 import { dur, when } from "@/lib/format"
 import { nextBlocks } from "@/lib/todo"
+import { useProjectOf } from "@/projects/StepOf"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { Dropdown } from "@/components/fr/Dropdown"
@@ -204,7 +205,8 @@ function Row(props: { item: Item; late?: Late; overdueBy?: string; picked: boole
   const { begin } = useDragging()
   const blocks = useHorizon().data?.blocks ?? []
   const done = useCommand("done", { label: () => `${item.title}: done` })
-  const next = nextBlocks(blocks).get(item.id)
+  const next = nextBlocks(blocks, useItems().data).get(item.id) // a project's: its steps' soonest
+  const project = useProjectOf(item) // a step says whose (13 Nov)
   const length = lengthOf(item)
   const overdue = !!item.due && item.due < `${today}T00:00`
   // A picked row takes the others picked with it, in the list's order.
@@ -237,6 +239,7 @@ function Row(props: { item: Item; late?: Late; overdueBy?: string; picked: boole
         </span>
         <span className="tnum" style={{ fontSize: 11, color: overdue ? "var(--fr-due)" : "var(--color-neutral-500)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {overdueText ? `${overdueText} · ` : ""}
+          {project ? `${project.project.title} · ` : ""}
           {next ? when(next.start, today) : "not planned"}
           {item.due && !overdueText && (
             <>

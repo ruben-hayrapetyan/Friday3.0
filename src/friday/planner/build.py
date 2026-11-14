@@ -11,7 +11,7 @@ from datetime import date, timedelta
 from typing import Any, Literal
 
 from friday.core.guess import EXAM, same_course, subject_of, subjects
-from friday.core.items import Item
+from friday.core.items import Firmness, Item
 from friday.core.pace import DayScales
 from friday.core.quickadd import MEAL
 from friday.core.settings import SleepDay, bedtime_minutes, minutes_of
@@ -317,6 +317,16 @@ def window(item: Item, inp: BuildInput, by_id: Mapping[int, Item], fixed: Mappin
     return focused_release(item, release, due, exams, inp.settings, now), due
 
 
+def firmness_of(item: Item, by_id: Mapping[int, Item]) -> Firmness:
+    """A step with no due of its own keeps its project's, as `window` gives it the project's due: a project due Monday
+    5pm as a hard deadline holds its steps to it (13 Nov: the steps had no deadline at all, so nothing kept them
+    before the project's due)."""
+    parent = by_id.get(item.parent_id) if item.parent_id is not None else None
+    if item.due_utc is None and parent is not None and parent.due_utc:
+        return parent.firmness
+    return item.firmness
+
+
 def focus_exams(fixed: Mapping[int, Item], settings: Mapping[str, Any]) -> list[tuple[int, int, str]]:
     """The exams exam focus looks at, as start, end and title: found once a build, not once a task (each task
     searched every event's title, 27 Oct)."""
@@ -377,7 +387,7 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
         preset=item.preset, energy=item.energy,
         importance=importance(item, inp.settings["kind_order"], inp.settings["short_term_first"])
         * fading(item, inp.settings, grid.now),
-        firmness=item.firmness,
+        firmness=firmness_of(item, by_id),
         amount=item.amount, release_utc=release, due_utc=due, shape=item.shape,
         min_chunk=1 if item.shape == "one_sitting" else max(1, item.min_chunk_units),
         max_chunk=item.max_chunk_units, chunk_cost=sitting_cost(item, inp.settings), spread=item.spread,
