@@ -188,6 +188,10 @@ class Problem:
             )
         self.refresh_locks()
 
+    def asleep_at(self, t: int) -> bool:
+        """Whether UTC minute t is in a night's core: asleep, or in the morning routine after waking."""
+        return any(lo <= t < hi for lo, hi in (n.core for n in self.nights.values()))
+
     def slots_covered(self, ranges: Any) -> np.ndarray:
         covered = np.zeros(self.grid.S, dtype=bool)
         for lo, hi in ranges:

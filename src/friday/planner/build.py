@@ -191,14 +191,7 @@ def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOc
     """Occurrences overlapping [now, end + a day), and every fixed item by id."""
     kinds = inp.settings["event_kinds"]
     text = inp.settings["text"].rules()
-    # Events you said are optional don't wall off their time; the `skippable` rule prices it instead.
-    optional = [
-        identity_text(norm(t, text))
-        for r in inp.settings["rules"]
-        if r.type == "skippable" and r.enabled
-        for t in r.params.get("titles", [])
-        if t.strip()
-    ]
+    optional = optional_titles(inp)
     # Time kept around some events by name ("30 minutes before and after gym"), on top of their kind's.
     travel = [
         (identity_text(norm(t, text)), int(r.params.get("before_min", 0)), int(r.params.get("after_min", 0)))
@@ -230,6 +223,25 @@ def fixed_occurrences(inp: BuildInput, now: int, end: int) -> tuple[list[FixedOc
         out.append(FixedOcc(item.title, item.event_kind or "other", start, end_at, tuple(item.tags), before, after,
                             item.blocks_time and not skippable, title, skippable, item.id in inp.hidden))  # fmt: skip
     return out, by_id
+
+
+def optional_titles(inp: BuildInput) -> list[str]:
+    """The titles of events you said are optional (a `skippable` rule's), as identity text: they don't wall off their
+    time; the rule prices it instead."""
+    text = inp.settings["text"].rules()
+    return [
+        identity_text(norm(t, text))
+        for r in inp.settings["rules"]
+        if r.type == "skippable" and r.enabled
+        for t in r.params.get("titles", [])
+        if t.strip()
+    ]
+
+
+def optional_unchosen(inp: BuildInput, item: Item, optional: list[str]) -> bool:
+    """An optional event you haven't said you're going to: Friday decides, so it holds no time of its own."""
+    title = identity_text(norm(item.title, inp.settings["text"].rules()))
+    return item.id not in inp.going and any(has_words(title, o) for o in optional)
 
 
 def flexible_items(inp: BuildInput, grid: Grid, fixed: Mapping[int, Item]) -> dict[str, EngineItem]:
@@ -548,12 +560,20 @@ def early_event(inp: BuildInput, after: int, before: int) -> int | None:
     """The start of the first event you're going to between `after` (your night, past bedtime's margin) and `before`
     (up and ready, as your sleep times say), or None (29 Oct: Gym at 7:30 and Climbing Club at 6 on mornings Friday
     took you to be asleep until 8, so the 7 hours of sleep were counted back from 8 on those nights too). A whole-day
-    event isn't one to get up for."""
+    event isn't one to get up for.
+
+    Only an event that holds its time wakes you: one that isn't optional, or an optional one you said you're going to
+    (14 Nov, your answer "Give the sleep back"). An optional one you haven't chosen is Friday's to decide, and a plan
+    that woke you at 5:30 for a 6am club then gave the club's time to exam prep, while the evening before was kept for
+    sleep. Unchosen, it's before you'd be up: you sleep, and the morning is a normal one; say you're going and you're
+    woken for it. Whether you go is never read from the plan, so the night doesn't depend on what it plans in it."""
+    optional = optional_titles(inp)
     starts = [
         start
         for i in inp.items
         if i.when == "fixed" and i.status == "todo" and i.blocks_time and i.start_utc and i.end_utc
         and after < (start := parse_utc(i.start_utc)) < before and parse_utc(i.end_utc) - start < 12 * 60
+        and not optional_unchosen(inp, i, optional)
     ]  # fmt: skip
     return min(starts, default=None)
 

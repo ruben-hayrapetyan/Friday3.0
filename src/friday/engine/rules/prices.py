@@ -256,7 +256,13 @@ class BeforeEvent(Rule):
     def prepare(self, problem):
         super().prepare(problem)
         spec = problem.grid.spec
-        going = [f for f in titled(problem, self.p.titles) if f.blocks_time or f.skippable]
+        # An optional event you haven't chosen that starts while you'd be asleep isn't one you go to: it didn't wake
+        # you (planner/build.py early_event), so its night before isn't kept for it either (14 Nov).
+        going = [
+            f
+            for f in titled(problem, self.p.titles)
+            if f.blocks_time or (f.skippable and not problem.asleep_at(f.start_utc))
+        ]
         days = {planning_date(f.start_utc, spec.timezone, spec.day_start) for f in going}
         days -= {date.fromisoformat(d) for d in self.p.skip_days}
         self.nights = {d - timedelta(days=1) for d in days}
