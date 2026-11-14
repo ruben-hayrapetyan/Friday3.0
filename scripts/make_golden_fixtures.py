@@ -1,4 +1,4 @@
-"""Write tests/fixtures/golden/ from the research code, once (REUSE.md rule 3).
+"""Write tests/fixtures/golden/ from the research code, once: the ported engine is held to what the research measured.
 
 This is the only file in the repo that may import the research package. Run it inside the research environment:
 

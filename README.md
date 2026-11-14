@@ -41,7 +41,7 @@ no Friday server.
 | [`pages`](pages) → [`site`](site) | [friday-scheduler.com](https://friday-scheduler.com) (`build_pages.py` makes `site/` from `pages/`) |
 | [`scripts`](scripts) | Building, checking, deploying and releasing |
 | [`DESIGN.md`](DESIGN.md) | The design: the engine, the server and every page |
-| [`BackendGuidelines`](BackendGuidelines) | Research behind the planning engine |
+| [`docs/research`](docs/research) | Research behind the planning engine: its report and the engine reference |
 
 The Mac app's menus and shortcuts send the website a `friday:host` event
 ([`web/src/shell/host.ts`](web/src/shell/host.ts)), so the Mac app and a browser share one implementation.

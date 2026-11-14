@@ -4,6 +4,6 @@
 
 ## How it was tested
 
-- [ ] `scripts/check.sh` passes (ruff, pytest, the hub's and the site's tests, the web app's typecheck and tests)
+- [ ] `scripts/check.sh` passes (ruff, pytest, the site's tests, the web app's typecheck and tests, the Mac app's tests)
 - [ ] New behavior has tests: written from what it should do, and from how it works inside
-- [ ] Changes to the screen were looked at in a browser (`docs/qa.md`)
+- [ ] Changes to the screen were looked at in a browser, at a laptop's width and a narrow one

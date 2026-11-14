@@ -168,8 +168,8 @@ Extra rules:
 
 ```text
 friday/
-  DESIGN.md  PROMPT.md  REUSE.md  PROGRESS.md  CLAUDE.md
-  reference/research/             # read-only research code to port from (git-ignored; see REUSE.md)
+  DESIGN.md  README.md  CONTRIBUTING.md
+  docs/research/                  # the research behind the planning engine: its report and engine reference
   pyproject.toml                  # Python package, entry points `friday`, `fridayd`
   src/friday/
     core/
@@ -1308,8 +1308,8 @@ Your settings say how Friday plans a normal day. The **dials** say how hard to p
 
 ## 18. Web app (`web/`)
 
-> **Since M11 the app's look and screens follow `design/friday-v22.dc.html`** (Claude Design "Friday v22"; PROGRESS
-> decisions 134–141). Where this section and the design differ, the design wins. It is desktop only for now (about
+> **Since M11 the app's look and screens follow the v22 design** (its tokens and patterns are in
+> `web/src/theme/nocturne.css` and `friday.css`). Where this section and the app differ, the app wins. It is desktop only for now (about
 > 1100 px); the phone layout below waits for a phone design. The behavior described here (commands, previews,
 > undo, drag, live updates, offline reading) still holds.
 
