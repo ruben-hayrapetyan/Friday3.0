@@ -113,6 +113,9 @@ def test_pointless_late_work_that_can_t_fit_is_left_off_not_planned_late(app: Ap
 
 
 def test_exam_prep_ignores_an_exam_more_than_three_days_before_its_due(app: App) -> None:
+    # the morning before the quiz is taken, so prep due at the quiz couldn't be planned at all (14 Nov: it was spread
+    # over days by its kind, so some of it fell after the quiz anyway; nothing spreads it now)
+    app.do("add", title="Class", when="fixed", start="2026-10-19T09:00", end="2026-10-19T13:45")
     app.do("add", title="MATH 2940 Quiz 3", when="fixed", start="2026-10-19T14:00", end="2026-10-19T15:00")
     prep = app.do("add", title="MATH 2940 quiz prep", preset="Exam prep", due="2026-10-23T23:59",
                   duration_min=120)["item"]  # fmt: skip

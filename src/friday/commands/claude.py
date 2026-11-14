@@ -88,8 +88,10 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
   stops, and times, from what meal tracking learns), fit_gaps (short tasks in short gaps between events, long ones
   in long free stretches), runs_while_working (things that run by themselves, laundry, run only while you're working:
   never through an event or the night), sleep_min (amount: hours of sleep a night that work never cuts into, e.g. 7
-  for "at least 7 hours of sleep"; days: the nights it holds, by the evening's weekday). subject: "work", "deep
-  work", a tag, a kind or a title. A bedtime or wake time ("bed by 11") is the sleep setting, not a rule.
+  for "at least 7 hours of sleep"; days: the nights it holds, by the evening's weekday), spread (each task the
+  subject names spread over the days before it's due: "spread my essays over several days"), cluster (each one's
+  sittings on as few days as can be: "keep problem sets on few days"). subject: "work", "deep work", a tag, a kind or
+  a title. A bedtime or wake time ("bed by 11") is the sleep setting, not a rule.
 - settings_set: {key, value} for these keys only: kind_order (kinds most important first, e.g. ["Assignment",
   "Reading"] for "prioritize assignments over readings"), short_term_first (true for "prioritize short-term work over
   long-term", meaning the to-do's Short term list over its Long term list), exam_focus ({on: true, days_before} for

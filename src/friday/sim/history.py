@@ -35,6 +35,15 @@ FEELS = ("Heavy", "Fine", "Good", "Fine", "Rough", "Good")
 HISTORY_ENGINE = {"chains": 2, "step_budgets": [{"max_items": 1000, "cold": 100_000, "warm": 50_000}]}
 TASTE = {"late_night": 3.0, "weekday_evenings": 2.0}  # the student's weights where they differ from 1
 UNIT = 15
+# The students lived their weeks before 14 Nov, when a kind marked its tasks spread (exam prep, habits) or clustered
+# (projects) and two built-in rules held them to it. Those weeks are lived as they were then, with the two rules where
+# they stood, for the work of those kinds; after, they go, as migration 034 takes them out of saved rules: what got done
+# and when stays as it was, so the sample the screen tests use isn't reshuffled.
+BEFORE_14_NOV = (
+    {"type": "spread", "name": "spread", "weight": 3.0, "scope": {"preset": ["Exam prep", "Habit"]},
+     "params": {"before_due": False}},
+    {"type": "cluster", "name": "cluster", "weight": 3.0, "scope": {"preset": ["Project"]}, "params": {"per_day": 2.0}},
+)  # fmt: skip
 
 
 class Life:
@@ -77,6 +86,8 @@ def open_lived_in(db_path: Path, student: Student, now_utc: int, weeks: int = 3)
     while day < today:
         live_day(life, day)
         day += timedelta(days=1)
+    rules = life.do("settings")["rules"]
+    life.do("settings_set", key="rules", value=[r for r in rules if r["name"] not in ("spread", "cluster")])
     life.now = now_utc
     life.do("settings_set", key="engine", value={})  # the defaults again
     life.do("replan")
@@ -92,6 +103,9 @@ def start(life: Life) -> None:
     type_lines(life.do, life.student, life.monday, dated_only=False)
     for sentence in life.student.rules:
         life.do("rule_add", text=sentence)
+    rules = life.do("settings")["rules"]
+    at = next(n for n, r in enumerate(rules) if r["name"] == "buffer") + 1
+    life.do("settings_set", key="rules", value=[*rules[:at], *BEFORE_14_NOV, *rules[at:]])
 
 
 def live_day(life: Life, day: date) -> None:

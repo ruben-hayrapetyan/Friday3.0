@@ -8,7 +8,6 @@ from typing import Any, Literal
 When = Literal["fixed", "window", "anytime"]
 Amount = Literal["fixed", "elastic", "target", "open"]
 Shape = Literal["one_sitting", "split"]
-Spread = Literal["none", "spread", "cluster"]
 Firmness = Literal["hard", "soft", "none"]
 Energy = Literal["deep", "light", "physical", "social"]
 Certainty = Literal["planned", "tentative"]
@@ -55,7 +54,6 @@ class Item:
     min_chunk_units: int = 2
     max_chunk_units: int | None = None
     chunk_cost: float = 0.0
-    spread: Spread = "none"
     firmness: Firmness = "none"
     importance: int = 3
     neglect_carry: float = 0.5

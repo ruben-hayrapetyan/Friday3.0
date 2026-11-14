@@ -3799,8 +3799,6 @@ export interface components {
             max_chunk_min?: number | null;
             /** Chunk Cost */
             chunk_cost?: number | null;
-            /** Spread */
-            spread?: ("none" | "spread" | "cluster") | null;
             /** Firmness */
             firmness?: ("hard" | "soft" | "none") | null;
             /** Importance */
@@ -5030,8 +5028,6 @@ export interface components {
             max_chunk_min?: number | null;
             /** Chunk Cost */
             chunk_cost?: number | null;
-            /** Spread */
-            spread?: ("none" | "spread" | "cluster") | null;
             /** Firmness */
             firmness?: ("hard" | "soft" | "none") | null;
             /** Importance */
@@ -9166,8 +9162,6 @@ export interface components {
             max_chunk_min?: number | null;
             /** Chunk Cost */
             chunk_cost?: number | null;
-            /** Spread */
-            spread?: ("none" | "spread" | "cluster") | null;
             /** Firmness */
             firmness?: ("hard" | "soft" | "none") | null;
             /** Importance */
@@ -9302,8 +9296,6 @@ export interface components {
             max_chunk_min?: number | null;
             /** Chunk Cost */
             chunk_cost?: number | null;
-            /** Spread */
-            spread?: ("none" | "spread" | "cluster") | null;
             /** Firmness */
             firmness?: ("hard" | "soft" | "none") | null;
             /** Importance */

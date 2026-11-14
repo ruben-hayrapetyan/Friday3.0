@@ -214,7 +214,9 @@ def test_a_chunk_runs_across_the_zone_boundary() -> None:
     assert cost(p, plan(item_1=(B - 2, B + 1)), "chunk_cost") == 500
 
 
-# spread: weight 3; per day, units above ⌈need / days with allowed time⌉
+# spread: weight 3; per day, units above ⌈need / days with allowed time⌉, for the work its scope names (14 Nov: a rule
+# says it, "spread exam prep over several days"; tasks aren't marked spread)
+SPREAD = [{"type": "spread", "name": "spread", "weight": 3, "scope": {"preset": "Exam prep"}}]
 
 
 def spreading(units: int):  # noqa: ANN201
@@ -222,27 +224,51 @@ def spreading(units: int):  # noqa: ANN201
 
 
 def test_spread_is_zero_when_spread() -> None:
-    p = problem([spreading(4)], ["spread"], slots=None, days=2)
+    p = problem([spreading(4)], (), SPREAD, slots=None, days=2)
     tuesday = [s for s in p.grid.day_slots[1] if s in p.items["item:1"].allowed_set]
     assert cost(p, plan(item_1=(*p.grid.day_slots[0][:2], *tuesday[:2])), "spread") == 0
 
 
 def test_spread_counts_units_above_the_daily_share() -> None:
-    p = problem([spreading(4)], ["spread"], slots=None, days=2)
+    p = problem([spreading(4)], (), SPREAD, slots=None, days=2)
     assert cost(p, plan(item_1=tuple(p.grid.day_slots[0][:4])), "spread") == 2 * 75
 
 
+def test_spread_reaches_only_the_work_its_scope_names() -> None:
+    other = problem([clustering(4)], (), SPREAD, slots=None, days=2)  # a project, not exam prep
+    assert cost(other, plan(item_1=tuple(other.grid.day_slots[0][:4])), "spread") == 0
+    unscoped = [{"type": "spread", "name": "spread", "weight": 3}]  # the built-in rule of before 14 Nov
+    p = problem([spreading(4)], (), unscoped, slots=None, days=2)
+    assert cost(p, plan(item_1=tuple(p.grid.day_slots[0][:4])), "spread") == 0
+
+
+def test_spread_is_over_the_days_before_the_due() -> None:
+    # 14 Nov: work can be planned after its due (late), so spreading over every day of a two-week horizon made an
+    # essay's share a day so small that two long sittings cost no more than five short ones
+    due = item("assignment", 1, duration_units=6, min_chunk_units=1, due_utc=at(1, "12:00"))
+    rule = [SPREAD[0] | {"scope": {"preset": "Assignment"}}]
+    p = problem([due], (), rule, slots=None, days=3)
+    assert len([d for d in range(3) if any(s in p.items["item:1"].allowed_set for s in p.grid.day_slots[d])]) == 3
+    assert cost(p, plan(item_1=tuple(p.grid.day_slots[0][:6])), "spread") == 3 * 75  # share ⌈6 / 2 days⌉ = 3
+    research = [rule[0] | {"params": {"before_due": False}}]  # as the golden fixtures measure it
+    p = problem([due], (), research, slots=None, days=3)
+    assert cost(p, plan(item_1=tuple(p.grid.day_slots[0][:6])), "spread") == 4 * 75  # share ⌈6 / 3 days⌉ = 2
+
+
 def test_spread_is_avoided() -> None:
-    p = problem([spreading(2)], ["spread", "unscheduled"], NOT_10_TO_11, slots=None, days=2)
+    p = problem([spreading(2)], ["unscheduled"], [*NOT_10_TO_11, *SPREAD], slots=None, days=2)
     assert_avoided(p, "spread")
 
 
 def test_spread_across_the_zone_boundary() -> None:
-    p = zone_problem([spreading(6)], ["spread"])
+    p = zone_problem([spreading(6)], (), SPREAD)
     assert cost(p, plan(item_1=(B, B + 1, B + 2)), "spread") == 3 * 75
 
 
-# cluster: weight 3; days used above one, per_day 2 each
+# cluster: weight 3; days used above one, per_day 2 each, for the work its scope names ("keep projects on few days")
+CLUSTER = [
+    {"type": "cluster", "name": "cluster", "weight": 3, "scope": {"preset": "Project"}, "params": {"per_day": 2}}
+]
 
 
 def clustering(units: int):  # noqa: ANN201
@@ -250,23 +276,29 @@ def clustering(units: int):  # noqa: ANN201
 
 
 def test_cluster_is_zero_on_one_day() -> None:
-    p = problem([clustering(2)], ["cluster"], slots=None, days=2)
+    p = problem([clustering(2)], (), CLUSTER, slots=None, days=2)
     assert cost(p, plan(item_1=tuple(p.grid.day_slots[0][:2])), "cluster") == 0
 
 
 def test_cluster_counts_extra_days() -> None:
-    p = problem([clustering(2)], ["cluster"], slots=None, days=2)
+    p = problem([clustering(2)], (), CLUSTER, slots=None, days=2)
     tuesday = [s for s in p.grid.day_slots[1] if s in p.items["item:1"].allowed_set]
     assert cost(p, plan(item_1=(p.grid.day_slots[0][0], tuesday[0])), "cluster") == 600
 
 
+def test_cluster_reaches_only_the_work_its_scope_names() -> None:
+    p = problem([spreading(2)], (), CLUSTER, slots=None, days=2)  # exam prep, not a project
+    tuesday = [s for s in p.grid.day_slots[1] if s in p.items["item:1"].allowed_set]
+    assert cost(p, plan(item_1=(p.grid.day_slots[0][0], tuesday[0])), "cluster") == 0
+
+
 def test_cluster_is_avoided() -> None:
-    p = problem([clustering(2)], ["cluster", "unscheduled"], NOT_10_TO_11, slots=None, days=2)
+    p = problem([clustering(2)], ["unscheduled"], [*NOT_10_TO_11, *CLUSTER], slots=None, days=2)
     assert_avoided(p, "cluster")
 
 
 def test_cluster_across_the_zone_boundary() -> None:
-    p = zone_problem([clustering(4)], ["cluster"])
+    p = zone_problem([clustering(4)], (), CLUSTER)
     assert cost(p, plan(item_1=(B - 1, B, B + 1)), "cluster") == 600  # Monday's planning day, then Tuesday's
 
 

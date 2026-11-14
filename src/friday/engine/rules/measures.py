@@ -183,15 +183,22 @@ class ChunkCost(Rule):
 
 @rule_type("spread")
 class Spread(Rule):
+    """Each in-scope task's work spread over the days it can be done, a share a day ("spread my essays over several
+    days"). Only what the rule's scope names: tasks aren't marked spread any more (14 Nov), so a rule with no scope,
+    like the built-in one before then, spreads nothing."""
+
     applies_to = {"fixed"}
 
+    class Params(Rule.Params):
+        before_due: bool = True  # over the days before its due (see spread_days); the research spread over all
+
     def applies_also(self, item):
-        return item.spread == "spread"
+        return self.scope is not None
 
     def measures(self, ctx):
         grid = ctx.grid
         for item in self.scoped_items():
-            days = [d for d in range(grid.n_days) if any(s in item.allowed_set for s in grid.day_slots[d])]
+            days = spread_days(grid, item, self.p.before_due)
             if not days:
                 continue
             share = math.ceil(item.need / len(days))
@@ -199,6 +206,17 @@ class Spread(Rule):
                 expr = ctx.placed_in(item.key, grid.day_slots[d])
                 if sum(expr.terms.values()) > share:
                     yield Measure(f"{self.name}:{item.key}@d{d}", expr, "units", (Hinge("above", share, 1.0),))
+
+
+def spread_days(grid: Any, item: Any, before_due: bool = True) -> list[int]:
+    """The days an item's work is spread over: those it can be done on, before its due when it has one (14 Nov: work
+    may be planned after its due, late, so with a two-week horizon an essay due Thursday was spread over fourteen
+    days, its share a day so small that two long sittings cost no more than five short ones)."""
+    days = [d for d in range(grid.n_days) if any(s in item.allowed_set for s in grid.day_slots[d])]
+    if item.due_utc is None or not before_due:
+        return days
+    before = [d for d in days if int(grid.start[grid.day_slots[d][0]]) < item.due_utc]
+    return before or days
 
 
 @rule_type("cluster")
@@ -209,7 +227,7 @@ class Cluster(Rule):
         per_day: float = 2.0
 
     def applies_also(self, item):
-        return item.spread == "cluster"
+        return self.scope is not None  # "keep problem sets on few days": the work it names (see Spread)
 
     def measures(self, ctx):
         grid = ctx.grid

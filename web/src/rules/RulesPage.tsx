@@ -540,7 +540,7 @@ function Fields(props: { reading: Reading; overrides: Record<string, unknown>; o
           <input type="number" min={1} max={16} step={0.5} className="input" value={reading.amount ?? 6} onChange={(e) => onSet("amount", Number(e.target.value))} style={{ width: 90, padding: "4px 8px", fontSize: 12, minHeight: 0 }} />
         </>
       )}
-      {reading.kind !== "cap" && reading.kind !== "early" && reading.kind !== "after" && (
+      {!["cap", "early", "after", "spread", "cluster"].includes(reading.kind) && (
         <>
           <span className="fr-kicker">Days</span>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>

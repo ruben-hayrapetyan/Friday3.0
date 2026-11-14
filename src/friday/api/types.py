@@ -36,7 +36,6 @@ class ItemFields(Model):
     min_chunk_min: int | None = None
     max_chunk_min: int | None = None
     chunk_cost: float | None = None
-    spread: Literal["none", "spread", "cluster"] | None = None
     firmness: Literal["hard", "soft", "none"] | None = None
     importance: int | None = None
     neglect_carry: float | None = None

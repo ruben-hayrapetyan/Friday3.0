@@ -2858,7 +2858,7 @@ C = [
     ("breaks", "52/17 work-break cycle", "new:break every N minutes"),
     ("breaks", "15 min break between tasks", "new:breaks between work sessions"),
     ("breaks", "2 hours of free time every night minimum", "new:daily free time minimum"),
-    ("batch", "spread studying for the final over 5 days", "new:spread work over days"),
+    ("batch", "spread studying for the final over 5 days", {"kind": "spread", "subject": "exam prep"}),
     ("batch", "run 3 times a week", "new:frequency goal"),
     ("batch", "go to the gym at least 4 days a week", "new:frequency goal"),
     ("batch", "switch subjects every hour", "new:interleave subjects"),

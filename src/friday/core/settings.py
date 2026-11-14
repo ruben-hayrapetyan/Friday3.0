@@ -223,8 +223,6 @@ REFERENCE_RULES = (
     rule("chunk_cost", "chunk_cost", 10),
     # Off until you set a buffer (Settings → Schedule, or per tag and kind): 0 minutes makes no measures.
     rule("buffer", "buffer", 3, minutes="0m", by_area={}, by_preset={}),
-    rule("spread", "spread", 3),
-    rule("cluster", "cluster", 3, per_day=2),
     # One course for a stretch (8 Nov: "math for the entire time not 3 different things"), a count per switch.
     rule("same_course", "same_course", 2),
     rule("target_shortfall", "target_shortfall", curve=[[0.4, 8], [1.0, 3]]),

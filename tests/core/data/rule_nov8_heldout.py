@@ -946,7 +946,7 @@ C = [
     ("new", "batch all my errands into one trip", "new:group errands together"),
     ("new", "if i get sick move everything back a day", "new:shift plan when sick"),
     ("new", "plan less during my period", "new:lighter load during period"),
-    ("new", "spread essay writing over at least 3 days", "new:spread essays over 3+ days"),
+    ("new", "spread essay writing over at least 3 days", {"kind": "spread", "subject": "essays"}),
     ("new", "at least one full day off every week", "new:one day off weekly, any day"),
     ("new", "dont schedule tasks on public holidays", "new:no tasks on holidays"),
     ("new", "work on only one subject per day", "new:one subject per day"),

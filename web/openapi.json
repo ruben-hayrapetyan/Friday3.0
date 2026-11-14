@@ -13291,22 +13291,6 @@
       ],
       "title": "Chunk Cost"
      },
-     "spread": {
-      "anyOf": [
-       {
-        "type": "string",
-        "enum": [
-         "none",
-         "spread",
-         "cluster"
-        ]
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Spread"
-     },
      "firmness": {
       "anyOf": [
        {
@@ -16977,22 +16961,6 @@
        }
       ],
       "title": "Chunk Cost"
-     },
-     "spread": {
-      "anyOf": [
-       {
-        "type": "string",
-        "enum": [
-         "none",
-         "spread",
-         "cluster"
-        ]
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Spread"
      },
      "firmness": {
       "anyOf": [
@@ -29301,22 +29269,6 @@
       ],
       "title": "Chunk Cost"
      },
-     "spread": {
-      "anyOf": [
-       {
-        "type": "string",
-        "enum": [
-         "none",
-         "spread",
-         "cluster"
-        ]
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Spread"
-     },
      "firmness": {
       "anyOf": [
        {
@@ -29959,22 +29911,6 @@
        }
       ],
       "title": "Chunk Cost"
-     },
-     "spread": {
-      "anyOf": [
-       {
-        "type": "string",
-        "enum": [
-         "none",
-         "spread",
-         "cluster"
-        ]
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Spread"
      },
      "firmness": {
       "anyOf": [

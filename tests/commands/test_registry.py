@@ -512,7 +512,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "phone_forget": lambda app: {"id": a_paired_phone(app)},
     "rule_set": lambda app: {"name": "daily_load", "enabled": False},
     "rule_edit": lambda app: {"name": "daily_load", "number": 6},
-    "rule_remove": lambda app: {"name": "cluster"},
+    "rule_remove": lambda app: {"name": "same_course"},
     "mail_retry": lambda app: {"id": a_skipped_mail(app)},
     "repeats_import": lambda app: {"repeats": [{"batch": a_waiting_repeat(app)}]},
     "repeats_leave_out": lambda app: {"batch": a_waiting_repeat(app)},

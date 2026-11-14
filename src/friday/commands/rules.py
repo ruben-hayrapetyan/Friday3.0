@@ -51,8 +51,6 @@ SAID = {
     "chunk_cost": "Fewer, longer sessions",
     "same_course": "Stay on one course for a stretch",
     "buffer": "Breathing room between blocks",
-    "spread": "Spread out what you marked spread",
-    "cluster": "Keep clustered work on few days",
     "target_shortfall": "Reach weekly targets",
     "elastic_shortfall": "Give flexible items their ideal time",
     "elastic_minimum": "Don't skip meals and routines",
@@ -61,8 +59,8 @@ SAID = {
     "finish_early": "Finish work {days} before it’s due",
 }
 # Built-in rules that are how the planner works rather than how you like your days: shown folded, below the rest.
-BACKGROUND = {"quota", "energy", "soft_late", "unscheduled", "spread", "cluster", "target_shortfall",
-              "elastic_shortfall", "open_value", "minimize_changes"}  # fmt: skip
+BACKGROUND = {"quota", "energy", "soft_late", "unscheduled", "target_shortfall", "elastic_shortfall", "open_value",
+              "minimize_changes"}  # fmt: skip
 EFFECT = {
     "spacing": "Friday plans each time at least that long after the last one you did",
     "late_cutoff": "Once it's overdue, Friday plans it as soon as it can and never on a later day; when that day "
@@ -71,6 +69,8 @@ EFFECT = {
     "reserve": "Friday keeps that time free",
     "daily_load": "Friday plans less on full days",
     "finish_early": "Friday aims to finish early",
+    "spread": "Friday spreads each one over the days before it's due, a share a day",
+    "cluster": "Friday keeps each one's sittings on as few days as it can",
     "after_event": "Friday places it right after",
     "pace": "Every week, Friday plans less on Easy days and more on Push days",
     "skippable": "Friday plans around them as usual, and uses their time only when work would be late otherwise; "

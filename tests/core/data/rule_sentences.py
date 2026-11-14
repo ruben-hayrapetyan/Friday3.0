@@ -1272,7 +1272,7 @@ C = [
     # ---- batching, spreading, balance ----
     ("batch", "group all errands on one day", "new:batch similar work"),
     ("batch", "switch subjects every couple hours so I don't get bored", "new:interleave subjects"),
-    ("batch", "spread essay writing over 3+ days", "new:spread work over days"),
+    ("batch", "spread essay writing over 3+ days", {"kind": "spread", "subject": "essays"}),
     ("batch", "study a bit every day for the final instead of cramming", "new:spread work over days"),
     ("batch", "balance my workload across the week", "new:even load across week"),
     ("batch", "hit the gym 4 times a week", "new:frequency goal"),

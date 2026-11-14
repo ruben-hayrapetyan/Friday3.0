@@ -16,7 +16,7 @@ from typing import Any
 # two tasks every quarter hour.
 # Setup's answers too (audit, 8 Nov): a normal day's hours, the longest stretch, free evenings and weekends.
 STATED_TYPES = frozenset({"late_night", "finish_early", "sleep_min", "chunk_cost", "same_course", "elastic_minimum",
-                          "elastic_shortfall", "spread", "daily_load", "deep_run", "reserve"})  # fmt: skip
+                          "elastic_shortfall", "spread", "cluster", "daily_load", "deep_run", "reserve"})  # fmt: skip
 BAND = (0.5, 2.0)  # how far learning may move what you said, until you decide
 HELD = "rules_held"  # kv: rules you said to keep as written
 FREED = "rules_learned_free"  # kv: rules you let Friday weigh as learned
