@@ -68,6 +68,9 @@ describe("timing something", () => {
     expect(inDock().getByText(/then /)).toBeTruthy()
     await user.click(inDock().getByRole("button", { name: "Pause the timer (Space)" }))
     expect((await waitForSent("stop")).body).toEqual({})
+    // the pause has landed before the timer starts again: sent isn't done, and a stop landing after the start
+    // left no timer on a busy machine (13 Nov)
+    await waitFor(async () => expect((await friday.q<{ timer: unknown }>("status")).timer).toBeNull(), { timeout: 10_000 })
     await friday.c("start", { id: a.item_id })
     await waitFor(async () => expect((await friday.q<{ timer: unknown }>("status")).timer).toBeTruthy())
     cleanup() // the first page gone, so the bar read is the new one's
