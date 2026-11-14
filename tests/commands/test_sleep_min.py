@@ -132,3 +132,23 @@ def test_claude_may_set_bedtimes_and_only_the_nights_named_change(app: App) -> N
     sleep = app.do("settings")["sleep"]
     assert sleep["mon"]["bedtime"] == "23:00" and sleep["tue"]["bedtime"] == "23:30"
     assert sleep["mon"]["wake"] == "07:30"
+
+
+def test_a_night_cut_short_is_cut_short_once_the_work_straight_on(app: App) -> None:
+    """Math and chemistry that fit only past 11pm, the night you want 8.5 hours of: they go one after the other (14 Nov:
+    a half hour at 1:45am after work that ended at midnight, "a large chunk of time that doesn't make any sense").
+    Priced by the quarter hour worked, the rest of the broken night cost nothing, and a gap between two courses
+    spared a switch. The late-night rule is off here (yours was all but off, its weight learned down)."""
+    app.do("settings_set", key="sleep", value={"mon": {"bedtime": "23:30", "wake": "07:30", "margin_min": 120}})
+    rules = [r | {"weight": 0.0} if r["type"] == "late_night" else r for r in app.do("settings")["rules"]]
+    app.do("settings_set", key="rules", value=rules)
+    app.do("add", title="busy", when="fixed", start="2026-10-19T09:00", end="2026-10-19T22:30")
+    math = app.do("add", text="Math 1920 HW due tue 01:30 ~1h")["item"]["id"]
+    chem = app.do("add", text="Chem 2090 PS due tue 01:30 ~30m")["item"]["id"]
+    app.do("rule_add", text="at least 8.5 hours of sleep")
+    replan(app.conn, app.now_utc)
+    tonight = sorted((b["start"], b["end"]) for b in app.do("plan")["blocks"]
+                     if b["item_id"] in (math, chem) and b["start"] >= "2026-10-19T22:00")  # fmt: skip
+    assert sum(1 for _ in tonight) >= 2
+    assert all(a[1] == b[0] for a, b in zip(tonight, tonight[1:], strict=False)), tonight
+    assert not app.do("status")["late"]
