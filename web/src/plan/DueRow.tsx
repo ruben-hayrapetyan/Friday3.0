@@ -99,7 +99,7 @@ function DueLine({ due, late, roomy = false }: { due: Due; late: boolean; roomy?
       </button>
       {/* in the row, a time only when it isn't the day's end: "end of day" took a week column's room from the title */}
       {(roomy || !due.due.endsWith("T23:59")) && (
-        <span className="tnum" style={{ fontSize: 10.5, color: color ?? "var(--color-neutral-500)", whiteSpace: "nowrap" }}>
+        <span className="tnum" style={{ fontSize: 11, color: color ?? "var(--color-neutral-500)", whiteSpace: "nowrap" }}>
           {dueAt(due)}
         </span>
       )}
