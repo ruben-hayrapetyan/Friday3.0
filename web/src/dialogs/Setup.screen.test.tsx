@@ -223,3 +223,33 @@ describe("Setup, one answer alone", () => {
     expect(await title("Fit Friday to your week again.")).toBeTruthy()
   })
 })
+
+describe("the week it shows at the end", () => {
+  // 13 Nov, a client: with an early wake and a late bed, "Up 6am" and "Bed 2am" left the day bars' box; they lean in
+  // at the ends now (setupWeek.ts underBar). The bar spans 6am to 2am, so these are its two ends.
+  it("keeps the Up and Bed times inside the day bars at a 6am wake and a 2am bed", async () => {
+    const { user } = await openFriday("/")
+    await openSetup(user)
+    for (let step = 0; step < 30; step++) {
+      const heading = (await screen.findAllByRole("heading")).map((h) => h.textContent ?? "").find((t) => /\?|week/.test(t)) ?? ""
+      if (heading.startsWith("Here's your week.")) break
+      if (heading.startsWith("When do you usually get up?")) {
+        await user.click(radio("Up at: the usual times", "6:30am"))
+        await user.click(screen.getByRole("button", { name: "Up at, a quarter hour earlier" }))
+        await user.click(screen.getByRole("button", { name: "Up at, a quarter hour earlier" }))
+      }
+      if (heading.startsWith("When do you go to bed?")) {
+        await user.click(radio("Bed at: the usual times", "1am"))
+        for (let k = 0; k < 4; k++) await user.click(screen.getByRole("button", { name: "Bed at, a quarter hour later" }))
+      }
+      await next(user)
+      await waitFor(() => expect(screen.getAllByRole("heading").map((h) => h.textContent).join()).not.toBe(heading))
+    }
+    expect(await title("Here's your week.")).toBeTruthy()
+    const ups = screen.getAllByText("Up 6am")
+    const beds = screen.getAllByText("Bed 2am")
+    for (const up of ups) expect([up.style.left, up.style.translate]).toEqual(["0%", "0% 0"]) // starts at the left edge
+    for (const bed of beds) expect([bed.style.left, bed.style.translate]).toEqual(["100%", "-100% 0"]) // ends at the right
+    await user.click(screen.getByRole("button", { name: "Close" }))
+  })
+})
