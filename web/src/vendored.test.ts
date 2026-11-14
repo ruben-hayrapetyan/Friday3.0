@@ -29,7 +29,7 @@ describe("deepmerge, patched", () => {
 })
 
 describe("shadcn's Tailwind layer", () => {
-  it("is Friday's own file, with its licence", () => {
+  it("is Friday's own file, with its license", () => {
     expect(readFileSync(new URL("./index.css", import.meta.url), "utf8")).toContain('@import "./theme/shadcn-tailwind.css"')
     expect(readFileSync(new URL("./theme/shadcn-tailwind.css", import.meta.url), "utf8")).toContain("Copyright (c) 2023 shadcn")
   })

@@ -35,7 +35,7 @@ Each learner has its own trajectory; 3 users per type, 12 weeks; three replicate
   from the plan is local, and the scale of the weights is not identifiable from a likelihood (it is the temperature), so CD
   keeps sum(theta) fixed. "Learning from likelihood alone, without the supervisor" is safe but slow.
 - **Drags are the cleanest evidence.** v2's moves-only learner was the most robust to adversarial users (0.83) because drags
-  come from behaviour, not from answers that can be flipped; weighting drags 3x inside the likelihood keeps that benefit.
+  come from behavior, not from answers that can be flipped; weighting drags 3x inside the likelihood keeps that benefit.
 - **The answer temperature is the noise detector** (E011c): fitted per user, it sits at 0.05-0.08 for consistent users and at
   0.18-0.5 for noisy, moody, missing-feature and adversarial users. Using it to rescale the fit helped adversarial users and
   hurt moody ones, so it is used to set policies (how many questions to ask, whether contradictions are noise), not the fit.

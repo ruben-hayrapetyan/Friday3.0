@@ -22,7 +22,7 @@ export interface Entry {
   line: string // what it brings, in one line
   aliases: string[] // other names people search for it by
   icon: string // a Phosphor icon; services' own logos aren't ours to use
-  hue: string // its tile's colour
+  hue: string // its tile's color
   // connected by pasting a token (integrations/*); `page` "" when the server knows it (Trello's carries Friday's key)
   // `pageText`: the link's words when the page is help rather than the token page itself (Canvas's is your school's)
   token?: { page: string; label: string; steps: string[]; note?: string; fields?: TokenField[]; pageText?: string }

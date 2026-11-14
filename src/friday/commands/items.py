@@ -536,7 +536,7 @@ def follow_rename(ctx: Ctx, old: str, new: str) -> None:
 
 @command("area_edit", affects_plan=True)
 def area_edit(ctx: Ctx, inp: AreaEditInput) -> AreaOut:
-    """Rename, recolour or archive an area."""
+    """Rename, recolor or archive an area."""
     found = one(ctx.conn, "SELECT * FROM areas WHERE user_id = ? AND id = ?", [ctx.user_id, inp.id])
     if found is None:
         raise FieldError("id", f"no area {inp.id}")

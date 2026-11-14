@@ -1,6 +1,6 @@
 """A third corpus of rule sentences a college student might type into Friday's Rules box, written 27 Oct for wider
 coverage of how people really word rules: slang, typos and missing apostrophes, abbreviations, word numbers, 12h and
-24h times, ranges, day lists, flipped order, emphasis and reasons tacked on. Each is labelled with what the writer
+24h times, ranges, day lists, flipped order, emphasis and reasons tacked on. Each is labeled with what the writer
 means, judged by hand and never by running Friday's reader. None repeat rule_sentences.py.
 
 Labels follow rule_sentences.py's module docstring exactly (the same `want` forms, the same conventions), plus:

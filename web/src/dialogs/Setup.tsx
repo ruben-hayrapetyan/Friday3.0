@@ -11,7 +11,7 @@
 // notice board, home on the sofa, asleep, in the park, at the café, at the post office. Each question is asked where
 // it happens, in a game's dialog box, and the place shows your answer: the clock, the books, the essay's day. Next stop
 // walks on (the hours pass in the sky as they go); the end is the town at dusk and your week. No gradients (29 Oct:
-// "i don't want gradients in the startup page"): every colour flat.
+// "i don't want gradients in the startup page"): every color flat.
 
 import "./setup.css"
 import "@fontsource/pixelify-sans/500.css"
@@ -589,7 +589,7 @@ function Reveal({ a, go }: { a: Answers; go: (step: string) => void }) {
 }
 
 /** What your answers make of a day, a weekday's and a weekend's (31 Oct: "the boxes don't mean anything", of the
- * week drawn here before, made-up classes and work in unlabelled colours): from 6 AM to 2 AM, each stretch named. */
+ * week drawn here before, made-up classes and work in unlabeled colors): from 6 AM to 2 AM, each stretch named. */
 function YourDays({ a }: { a: Answers }) {
   const pct = (t: number) => ((Math.min(Math.max(t, VIEW.from), VIEW.to) - VIEW.from) / (VIEW.to - VIEW.from)) * 100
   const at = (t: number) => clockTime(`${String(Math.floor(t / 60) % 24).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`)

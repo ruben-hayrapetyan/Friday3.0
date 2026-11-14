@@ -1,4 +1,4 @@
-"""Scoring a parse against the hand-labelled cases in gold.py (rules in gold.py's docstring)."""
+"""Scoring a parse against the hand-labeled cases in gold.py (rules in gold.py's docstring)."""
 from __future__ import annotations
 
 import itertools

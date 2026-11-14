@@ -49,7 +49,7 @@ def rate_upcoming(conn: sqlite3.Connection, now_utc: int, user_id: int = 1, clie
     settings = load_settings(conn, user_id)
     categories = [c.name for c in settings["categories"].categories]
     # Rated before it was asked for a category, or put in one since deleted: once a day, again, so its events get
-    # their colour.
+    # their color.
     uncolored = lambda k: (  # noqa: E731
         retry and bool(categories) and ("category" not in kept[k] or kept[k]["category"] not in [*categories, ""])
     )

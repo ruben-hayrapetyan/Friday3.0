@@ -1,6 +1,6 @@
 // personal's pigments (UI/Sources/Calendar/EventColors.swift): what an event can wear, named after real paints.
 // The ids match the server's PIGMENTS; light is the paint on paper, dark the same paint lifted for the dark page.
-// Meals' Ochre sits between two of them; Amber and Sap Green, its neighbours, looked like it on a block (31 Oct: clubs
+// Meals' Ochre sits between two of them; Amber and Sap Green, its neighbors, looked like it on a block (31 Oct: clubs
 // and professor office hours beside dinner), so they moved off it, to Burnt Sienna and Permanent Green (OKLab, x100:
 // 12 and 13 from Ochre on paper, 10 and 12 on the dark page, where they were 8 and 10; at least 10 from every other).
 
@@ -12,7 +12,7 @@ export interface Pigment {
 }
 
 // In the order every menu lists them: round the rainbow, the gray last (13 Nov, a client: "cobalt violet between
-// ultramarine and magenta, grey last"; pigments.order.test.ts checks each one's hue).
+// ultramarine and magenta, gray last"; pigments.order.test.ts checks each one's hue).
 export const PIGMENTS: Pigment[] = [
   { id: "red", name: "Vermilion", light: "#c2402d", dark: "#e0715f" },
   { id: "orange", name: "Burnt Sienna", light: "#d07758", dark: "#ec9c7c" },
@@ -38,7 +38,7 @@ export function pigment(id: string | null | undefined, light: boolean): string |
   return found ? (light ? found.light : found.dark) : null
 }
 
-export const UNMARKED = "#8a9199" // Chroma's slate for an event no colour reached
+export const UNMARKED = "#8a9199" // Chroma's slate for an event no color reached
 
 type Painted = { color?: string | null; chroma_color?: string | null; category_color?: string | null; calendar_color?: string | null }
 

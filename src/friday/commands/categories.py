@@ -8,7 +8,7 @@ chose a category for, the clues come before Claude: what you choose spreads to t
 guess is offered on the card, never painted.
 
 An event on a calendar that doesn't count as busy, others' room bookings, isn't guessed at (31 Oct: Library Rooms'
-"Rohan: Olin 603" came out Social, by the friend's name): it wears its calendar's colour unless you choose for it.
+"Rohan: Olin 603" came out Social, by the friend's name): it wears its calendar's color unless you choose for it.
 """
 
 import hashlib
@@ -171,7 +171,7 @@ def place(ctx: Ctx, item_id: int | None, title: str, calendar: str | None, locat
     elif rule is not None:
         found = Placed(rule, "always")
     elif not calendar_counts(calendar, ctx.settings["busy"]):
-        found = Placed(None)  # others' bookings: its calendar's colour
+        found = Placed(None)  # others' bookings: its calendar's color
     else:
         verdict = model(ctx).judge(clues_of(title, calendar, location, sender), skip=key)
         clued = named.get(verdict.category or "") if verdict.sure else None

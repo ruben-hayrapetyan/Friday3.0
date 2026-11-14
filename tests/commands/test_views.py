@@ -31,7 +31,7 @@ def test_due_markers_fall_in_the_range(tmp_path: Path) -> None:
     assert [(d["title"], d["due"]) for d in out["dues"]] == [("essay", "2026-10-21T17:00")]
 
 
-def test_areas_list_their_colours(tmp_path: Path) -> None:
+def test_areas_list_their_colors(tmp_path: Path) -> None:
     app = new_app(tmp_path)
     app.do("area_add", name="CS", color="#3b82f6")
     assert [(a["name"], a["color"]) for a in app.do("areas")] == [("CS", "#3b82f6")]

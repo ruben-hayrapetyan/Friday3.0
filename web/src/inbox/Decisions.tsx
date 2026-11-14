@@ -114,7 +114,7 @@ function Late({ decision, onDone }: { decision: Decision; onDone: Done }) {
 }
 
 /** What Friday learned against a rule of yours (29 Oct: "make sure that there is guards against any of friday's
- * learned behaviours and the rules contradicting (and whether the rules need to be updated or the behaviours)"): which
+ * learned behaviors and the rules contradicting (and whether the rules need to be updated or the behaviors)"): which
  * side Friday would change, and each answer with what it does. */
 function Learned({ decision, onDone }: { decision: Decision; onDone: Done }) {
   const resolve = useCommand("conflict_resolve", { label: (o) => o.result.message ?? "Done" })

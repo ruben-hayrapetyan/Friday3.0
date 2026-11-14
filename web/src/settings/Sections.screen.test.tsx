@@ -179,7 +179,7 @@ describe("Tags/Kinds", () => {
     const chem = await waitFor(() => tagRow("CHEM 2090"))
     await user.click(within(chem).getByRole("button", { name: "Verdigris" }))
     expect((await waitForSent("area_edit")).body).toEqual({ id: 2, color: "green" })
-    await user.click(within(chem).getByRole("button", { name: "Grey" }))
+    await user.click(within(chem).getByRole("button", { name: "Gray" }))
     expect((await waitForSent("area_edit")).body).toEqual({ id: 2, color: "n" })
     await user.click(within(chem).getByRole("button", { name: "15 min" }))
     const rules = (await waitForSent("settings_set")).body as { key: string; value: { type: string; params: Record<string, unknown> }[] }

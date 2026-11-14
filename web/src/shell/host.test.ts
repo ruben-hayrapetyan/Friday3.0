@@ -39,7 +39,7 @@ describe("moving the calendar from the menus", () => {
     expect(placeAfter({ action: "previous" }, { view: 1, first: "2026-03-01" }, today)).toEqual({ view: 1, first: "2026-02-28" })
   })
 
-  it("steps the centre, so the day you were on stays in the middle (4 Nov)", () => {
+  it("steps the center, so the day you were on stays in the middle (4 Nov)", () => {
     expect(placeAfter({ action: "next" }, { view: 7, first: "2026-11-04" }, today)).toEqual({ view: 7, first: "2026-11-11" })
     expect(placeAfter({ action: "previous" }, { view: 3, first: "2026-11-04" }, today)).toEqual({ view: 3, first: "2026-11-01" })
     expect(placeAfter({ action: "previous" }, { view: 7, first: null }, today)).toEqual({ view: 7, first: "2026-10-16" })

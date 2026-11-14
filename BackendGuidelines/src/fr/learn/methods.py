@@ -7,7 +7,7 @@
   current ones, a step cap and a prior toward the hand-set values.
 - `ContrastiveDivergence`: likelihood learning from lived weeks: theta += eta (<phi>_model - phi_data), the model term from
   short Metropolis chains started at the data (CD-k) or from persistent chains (PCD), plus a prior.
-- `Combined`: a CD step, then the ranking QP centred on it.
+- `Combined`: a CD step, then the ranking QP centered on it.
 """
 from __future__ import annotations
 
@@ -152,16 +152,16 @@ class Combined(ContrastiveDivergence):
     def update(self, week, u, seed):
         g = self.gradient(week, u, seed)
         self.rms = 0.8 * self.rms + 0.2 * g * g
-        centre = np.maximum(self.theta + self.eta * g / (np.sqrt(self.rms) + 1e-9), THETA_MIN)
-        centre *= self.theta0.sum() / centre.sum()
+        center = np.maximum(self.theta + self.eta * g / (np.sqrt(self.rms) + 1e-9), THETA_MIN)
+        center *= self.theta0.sum() / center.sum()
         self.rankings += week.rankings
-        self.theta, _ = ranking_qp(centre, self.rankings, self.theta0, mu=0.1, cap=0.5)
+        self.theta, _ = ranking_qp(center, self.rankings, self.theta0, mu=0.1, cap=0.5)
         self.history.append(self.theta.copy())
 
 
 class BradleyTerry(Learner):
     """Round 2 (after E011): a likelihood over rankings instead of hard constraints. Each ranking is a noisy vote,
-    drags (revealed behaviour) count `drag_weight` times; Gaussian prior toward the hand-set weights."""
+    drags (revealed behavior) count `drag_weight` times; Gaussian prior toward the hand-set weights."""
 
     def __init__(self, drag_weight: float = 3.0, sigma: float = 1.0, cd_eta: float = 0.0, name: str = "bt",
                  auto_scale: bool = False):
@@ -176,7 +176,7 @@ class BradleyTerry(Learner):
 
         self.rankings += week.rankings
         prior = self.theta0.copy()
-        if self.cd is not None:  # the likelihood of lived weeks moves the prior's centre
+        if self.cd is not None:  # the likelihood of lived weeks moves the prior's center
             self.cd.theta = self.theta.copy()
             self.cd.update(week, u, seed)
             prior = self.cd.theta

@@ -4,7 +4,7 @@ import { CATALOG, CATEGORIES, folded, grouped, search } from "./gallery"
 const names = (list: { name: string }[]) => list.map((e) => e.name)
 
 describe("the integrations gallery's catalog", () => {
-  it("has every entry ready to show: a unique id, a name, one line, a category, an icon and colour", () => {
+  it("has every entry ready to show: a unique id, a name, one line, a category, an icon and color", () => {
     expect(new Set(CATALOG.map((e) => e.id)).size).toBe(CATALOG.length)
     for (const e of CATALOG) {
       expect(e.name.length).toBeGreaterThan(1)

@@ -1,4 +1,4 @@
-// Quick taps on − and + (9 Nov: overshooting and going back did "some weird behaviour with the time").
+// Quick taps on − and + (9 Nov: overshooting and going back did "some weird behavior with the time").
 import { describe, expect, it } from "vitest"
 import { NO_STEPS, type StepEvent, type Steps, shownOf, steps } from "./useSteps"
 

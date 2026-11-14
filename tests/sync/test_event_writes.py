@@ -224,8 +224,8 @@ def test_a_new_event_can_name_its_calendar_or_stay_only_in_friday(app: App) -> N
     assert [e["summary"] for e in google.calendars_by_id["Classes@group"]] == ["CS 1110 Lecture", "Party"]
 
 
-def test_an_event_wears_its_calendar_s_own_colour_and_a_new_one_the_calendar_it_goes_to(app: App) -> None:
-    # The Mac and Google say each calendar's colour; with none chosen in Settings, no event wore one.
+def test_an_event_wears_its_calendar_s_own_color_and_a_new_one_the_calendar_it_goes_to(app: App) -> None:
+    # The Mac and Google say each calendar's color; with none chosen in Settings, no event wore one.
     google = lecture()
     read(app, google)
     calendars = app.table("kv")
@@ -240,7 +240,7 @@ def test_an_event_wears_its_calendar_s_own_colour_and_a_new_one_the_calendar_it_
     )
     plan = app.do("plan", start="2026-10-19T00:00", end="2026-10-26T00:00")
     (party,) = [f for f in plan["fixed"] if f["title"] == "Party"]
-    assert party["calendar_color"] == "blue"  # on its way to Classes: its colour already
+    assert party["calendar_color"] == "blue"  # on its way to Classes: its color already
 
 
 def test_a_place_is_read_from_google_and_sent_with_a_new_event(tmp_path: Path) -> None:

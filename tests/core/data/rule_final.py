@@ -1,6 +1,6 @@
 """A final held-out set of rule sentences a college student might type into Friday's Rules box, written 28 Oct after
 the grammar was tuned on rule_sentences.py, rule_wordings.py and rule_heldout.py, and never used to tune it: it measures
-honestly how the reader does on new wording. Nobody tunes on it. Each is labelled with what the writer means, judged by
+honestly how the reader does on new wording. Nobody tunes on it. Each is labeled with what the writer means, judged by
 hand and never by running Friday's reader. None repeat, or are a word swap of, any of the three earlier sets.
 
 Labels follow the module docstrings of rule_sentences.py, rule_wordings.py and rule_heldout.py exactly (the same `want`

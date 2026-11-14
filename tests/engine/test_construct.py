@@ -1,4 +1,4 @@
-"""Construction honours every wall and, on small instances, finds zero lateness whenever it is possible."""
+"""Construction honors every wall and, on small instances, finds zero lateness whenever it is possible."""
 
 import numpy as np
 import pytest

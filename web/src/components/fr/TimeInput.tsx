@@ -1,6 +1,6 @@
 // A time box you type a time into the way you'd say it ("11", "1130", "11:30", "11:30p", "noon"), read as the half of
 // the day it means (lib/ampm.ts): lunch retyped as 11 is 11am, not the 11pm a 12-hour box's pm would make it. The am
-// or pm Friday reads is filled in, in grey, as you type, in every box, an empty one too (28 Oct: "the AM/PM doesn't
+// or pm Friday reads is filled in, in gray, as you type, in every box, an empty one too (28 Oct: "the AM/PM doesn't
 // autofill in all time boxes": a native time box left the half blank until it was typed); type a or p to choose the
 // other. The time is set on Enter or Tab or when you leave the box; Escape puts back what was there; the arrow keys
 // move it by the box's step. On the 24-hour clock (lib/clock.ts) it shows "14:05" and reads "9" as 09:00, with no half

@@ -15,7 +15,7 @@ describe("choice cards", () => {
       ]}
     />,
   )
-  it("is a labelled group of buttons, one per choice, with its short name", () => {
+  it("is a labeled group of buttons, one per choice, with its short name", () => {
     expect(html).toMatch(/role="group" aria-label="Hours shown"/)
     expect(html.match(/<button/g)).toHaveLength(2)
     expect(html).toContain("Waking hours")

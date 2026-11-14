@@ -1,4 +1,4 @@
-// What sits in a day column (v22): blocks painted by kind in their area's colour, fixed items, ghosts of a plan
+// What sits in a day column (v22): blocks painted by kind in their area's color, fixed items, ghosts of a plan
 // being worked out, the wind-down band, the drop preview and the now line.
 
 import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react"
@@ -34,7 +34,7 @@ function box(p: Placed<unknown>): CSSProperties {
     height,
     left: `calc(100% * ${p.column * share} + 3px)`,
     width: `calc(100% * ${share} - 6px)`,
-    // Under half an hour there's room for one line: the title, centred, its time beside it.
+    // Under half an hour there's room for one line: the title, centered, its time beside it.
     ...(p.height < 30 ? { padding: "0 6px 0 9px", fontSize: 11.5, lineHeight: `${height - 2}px` } : { padding: "4px 7px 4px 9px", fontSize: 12, lineHeight: 1.3 }),
   }
 }
@@ -181,8 +181,8 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
   const painted = it.event_kind === "shove" ? base : { ...base, bg: wash(paint, light), stripe: paint, fg: "var(--color-text)", sub: "var(--color-neutral-400)" }
   // Two kinds of skipping, told apart (31 Oct: "i don't like how the ones that i have to toggle have the same shading
   // as the ones i cancelled"). An optional event the plan gives to work (gym, climbing club) is Friday's suggestion,
-  // yours to decide: still in its colour, dotted, asking "Skip?" (27 Oct: drawn under the work that takes its time).
-  // One you said you're not going to is off: grey, dashed, struck through (30 Oct).
+  // yours to decide: still in its color, dotted, asking "Skip?" (27 Oct: drawn under the work that takes its time).
+  // One you said you're not going to is off: gray, dashed, struck through (30 Oct).
   const proposed = !!it.gives_way_to
   const cancelled = !proposed && it.left_out === "skipped"
   const skipped = proposed || cancelled

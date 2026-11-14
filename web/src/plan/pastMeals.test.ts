@@ -45,7 +45,7 @@ describe("the meals on the calendar", () => {
     expect([...eatenRoutines(found)]).toEqual([7])
   })
 
-  it("sit on the day and hour you ate, labelled, like any block", () => {
+  it("sit on the day and hour you ate, labeled, like any block", () => {
     const found = pastMeals(meals([meal({ id: 3, item_id: 7, start: "2026-11-04T19:00", end: "2026-11-04T19:40", kind: "dinner" })]), { blocks: [] }, toMin("2026-11-04T21:00"))
     const [placed] = layout(found.map((m) => m.block), "2026-11-04", { startMin: 8 * 60, endMin: 24 * 60 })
     expect(placed).toMatchObject({ top: 11 * 60, height: 40 })

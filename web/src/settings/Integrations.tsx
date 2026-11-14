@@ -88,7 +88,7 @@ function Gallery() {
   )
 }
 
-type Status = [string, string, boolean] | null // what it says, its colour, connected
+type Status = [string, string, boolean] | null // what it says, its color, connected
 
 /** Each box's status, from what the cards themselves read. */
 function useStatuses(): (e: Entry) => Status {

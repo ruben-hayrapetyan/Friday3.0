@@ -90,10 +90,10 @@ function grow(seed: number, height: number, spread: number, cards: number): Tree
   }
   limb(new THREE.Vector3(0, 0, 0), new THREE.Vector3((rnd() - 0.5) * 0.08, 1, (rnd() - 0.5) * 0.08).normalize(), height * 0.36, 0.05 * height * 0.6 + 0.08, 0)
   // the crown: cards of leaves round the branch ends, their normals pointing out from the crown's middle
-  const centre = new THREE.Vector3()
-  for (const t of tips) centre.add(t)
-  centre.divideScalar(tips.length)
-  centre.y -= 0.6
+  const center = new THREE.Vector3()
+  for (const t of tips) center.add(t)
+  center.divideScalar(tips.length)
+  center.y -= 0.6
   const cardsGeo: THREE.BufferGeometry[] = []
   const size = spread * 0.2
   for (let c = 0; c < cards; c++) {
@@ -104,7 +104,7 @@ function grow(seed: number, height: number, spread: number, cards: number): Tree
     geo.rotateY(rnd() * Math.PI * 2)
     geo.rotateZ((rnd() - 0.5) * 1.2)
     geo.translate(at.x, at.y, at.z)
-    const out = at.clone().sub(centre).normalize().lerp(up, 0.25).normalize()
+    const out = at.clone().sub(center).normalize().lerp(up, 0.25).normalize()
     const nor = geo.attributes.normal
     for (let i = 0; i < nor.count; i++) nor.setXYZ(i, out.x, out.y, out.z)
     cardsGeo.push(geo)
@@ -159,7 +159,7 @@ export function forest(plantings: Planting[]): THREE.Group {
   return group
 }
 
-/** Far woods and hills, in the haze: low, round, coloured as the season has them. */
+/** Far woods and hills, in the haze: low, round, colored as the season has them. */
 export function woods(along: [number, number]): THREE.Group {
   const group = new THREE.Group()
   const rnd = random(4242)

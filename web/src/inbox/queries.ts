@@ -24,7 +24,7 @@ export const useCalendarRepeats = () => useQuery({ queryKey: ["calendar_repeats"
 
 const NONE: Schemas["SuggestionOut"][] = []
 
-/** Everything waiting in the Inbox, in order; `answered` are suggestions dealt with here, kept (greyed) after the
+/** Everything waiting in the Inbox, in order; `answered` are suggestions dealt with here, kept (grayed) after the
  * ones still to answer. */
 export function useInboxMessages(answered: Schemas["SuggestionOut"][] = NONE): Message[] {
   const { today } = useShell()

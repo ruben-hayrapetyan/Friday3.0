@@ -1,4 +1,4 @@
--- No categories, and every event was grey (8 Nov, from users). Anyone whose list is empty gets the starter set
+-- No categories, and every event was gray (8 Nov, from users). Anyone whose list is empty gets the starter set
 -- (core/calendars.py STARTER_CATEGORIES), once: deleting them all afterwards keeps none. Kept in step with it.
 UPDATE settings SET version = version + 1, value = json_set(value, '$.categories', json('[
   {"name": "Exam", "slug": "exam", "color": "red", "pattern": "\\b(exams?|prelims?|midterms?|quiz(?:zes)?|final exams?|finals|deadline|due)\\b", "note": null},

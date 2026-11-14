@@ -3,7 +3,7 @@
 **Recommendation.** Rebuild Friday's engine as an **energy sampler over the slot grid with walls**, not as a Boltzmann machine
 with penalties and not as v2's staged CP-SAT. The state is the owner of each slot; the energy is exactly v2's rule set, computed
 incrementally by a compiled kernel that equals the shared evaluator to the integer; hard rules are **walls** (moves that would
-break one are never taken); the start plan comes from an earliest-deadline construction that honours every hard rule, a short
+break one are never taken); the start plan comes from an earliest-deadline construction that honors every hard rule, a short
 sampler repair, and a CP-SAT deadline fallback for the rare remainder. Plans are found by simulated annealing with chunk-level
 moves, one chain per idle core, with a fixed step budget. Weights are learned from rankings and drags by a Bradley-Terry
 likelihood; the four dials become hidden units that only act on explicit signals until they prove themselves; a supervisor

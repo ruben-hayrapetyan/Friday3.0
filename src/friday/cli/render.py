@@ -1,4 +1,4 @@
-"""Terminal output (DESIGN §19): plain aligned text, colour only for warnings and errors. Ids print as T42 (items),
+"""Terminal output (DESIGN §19): plain aligned text, color only for warnings and errors. Ids print as T42 (items),
 P7 (plans), C881 (commands) and T42@Tue14:00 (blocks: an id, typed back as it is, so on the 24-hour clock always).
 Times are on your clock (Settings → Appearance → Clock), asked of the server the first time one is printed."""
 

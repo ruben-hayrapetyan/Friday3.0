@@ -47,7 +47,7 @@ def prices(seen: Sequence[Seen]) -> list[list[float]]:
 
 
 def smooth(grid: np.ndarray) -> np.ndarray:
-    """Neighbouring half hours of the same day count half; the same half hour on neighbouring days a quarter."""
+    """Neighboring half hours of the same day count half; the same half hour on neighboring days a quarter."""
     out = grid.copy()
     out[:, 1:] += 0.5 * grid[:, :-1]
     out[:, :-1] += 0.5 * grid[:, 1:]

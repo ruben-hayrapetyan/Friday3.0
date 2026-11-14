@@ -66,7 +66,7 @@ export class Pixels extends Pass {
   }
 }
 
-/** The film curve and colour, then fewer shades with an ordered dither, at the pixels' own size. `clear`: over the
+/** The film curve and color, then fewer shades with an ordered dither, at the pixels' own size. `clear`: over the
  * page, nothing drawn where there's nothing (the dither would tint it). */
 export class PixelOut extends OutputPass {
   readonly low: THREE.Vector2

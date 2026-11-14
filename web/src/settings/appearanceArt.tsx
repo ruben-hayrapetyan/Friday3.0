@@ -1,5 +1,5 @@
 // The small drawings on Settings → Appearance's choice cards. Each is drawn on a 120 × 72 grid and scales with its
-// card (container units: 120 units = the card's width), in the app's own colours so it matches light and dark.
+// card (container units: 120 units = the card's width), in the app's own colors so it matches light and dark.
 
 import type { CSSProperties, ReactNode } from "react"
 import type { Clock } from "@/lib/clock"

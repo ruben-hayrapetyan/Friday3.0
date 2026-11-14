@@ -108,7 +108,7 @@ export function span(minutes: number): string {
 
 const PALETTE = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#6366f1"]
 
-/** An area's colour: its own, or a steady pick from the palette by name. */
+/** An area's color: its own, or a steady pick from the palette by name. */
 export function areaColor(area: string | null | undefined, colors: Record<string, string | null>): string {
   if (!area) return "#94a3b8"
   const own = colors[area]

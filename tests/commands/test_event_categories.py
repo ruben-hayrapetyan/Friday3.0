@@ -149,7 +149,7 @@ def test_claude_is_told_what_friday_knows_and_what_each_category_has_meant(app: 
     assert ratings["cuai subteam meeting"]["category"] == "Club meetings"  # its title, without what was told
 
 
-def test_others_room_bookings_wear_their_calendars_colour_not_a_guess(app: App) -> None:
+def test_others_room_bookings_wear_their_calendars_color_not_a_guess(app: App) -> None:
     # 31 Oct: Library Rooms' "Rohan: Olin 603" came out Social, Claude going by the friend's name.
     from friday.commands.fetching import sync
 
@@ -189,7 +189,7 @@ def test_friday_s_past_plan_can_be_left_off_the_calendar_and_the_first_name_stil
 def test_a_new_install_paints_events_with_the_starter_set(
     tmp_path: Path, title: str, category: str, color: str
 ) -> None:
-    """8 Nov, from users: "no default categories so all of their events just get added as grey"."""
+    """8 Nov, from users: "no default categories so all of their events just get added as gray"."""
     app = new_app(tmp_path)
     item = app.do("item", id=event(app, title))["item"]
     assert (item["category"], item["category_color"], item["category_by"]) == (category, color, "always")

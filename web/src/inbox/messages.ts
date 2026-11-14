@@ -31,7 +31,7 @@ export interface Sources {
   decisions: Decision[]
   days: { date: string; gaps: Gap[]; sleep: SleepAsk[] }[] // yesterday, then today
   suggestions: Suggestion[]
-  answered?: Suggestion[] // dealt with here this visit, shown greyed after the rest
+  answered?: Suggestion[] // dealt with here this visit, shown grayed after the rest
   copies: Group[]
   copySources?: Record<number, string>
   again: Item[]

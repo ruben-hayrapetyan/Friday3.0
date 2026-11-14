@@ -5,7 +5,7 @@ The scheduler and learning designs in `DESIGN.md` §10–12 and §21 come from a
 ## Rules for porting
 
 1. **Never import from `reference/`.** Copy a module into its v3 location, then adapt it. Nothing in `src/friday/` or `tests/` may import `fr`.
-2. **Bring the tests with the code.** Port the module's tests, get them green on the copy **before** changing behaviour, then make the changes below and add tests for each.
+2. **Bring the tests with the code.** Port the module's tests, get them green on the copy **before** changing behavior, then make the changes below and add tests for each.
 3. **Golden fixtures first (start of M2).** Before changing any engine code, use the research code once to write fixtures to `tests/fixtures/golden/`:
     - 40 generated instances, across sizes and adversarial families;
     - for each, 5 plans (the constructed start plan, an annealed plan, and 3 random valid plans);

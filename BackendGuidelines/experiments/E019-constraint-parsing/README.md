@@ -5,7 +5,7 @@
 and which prompt design is best? Does it ask when the text is ambiguous, report what it cannot express instead of
 approximating, and stay silent on chatter and permissions ("I don't mind working late")?
 
-**Set-up.** 101 hand-labelled cases (`gold.py`, written before any model call): sleep, avoid / prefer windows,
+**Set-up.** 101 hand-labeled cases (`gold.py`, written before any model call): sleep, avoid / prefer windows,
 commitments, limits, free time, session lengths, one sitting, pacing, finishing early, buffers, ordering, multi-constraint
 paragraphs, ambiguous texts (a question is required), unsupported requests, chatter and negations. Every third case is
 held out (33); prompts are tuned on the other 68. One fixed context (4 courses, 12 tasks, 4 events, today = Saturday

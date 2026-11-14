@@ -17,7 +17,7 @@ const DOWS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
 /** The month the calendar is in: the one the month view shows, or the one holding the day a day, three days or a week
- * are centred on (today, when it's on today). */
+ * are centered on (today, when it's on today). */
 export function followedMonth(place: CalendarPlace, today: string): string {
   return monthStart(place.first ?? today)
 }

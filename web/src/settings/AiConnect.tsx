@@ -63,7 +63,7 @@ export const CHOICES: { id: Provider; title: string; note: string; keyFrom?: str
   { id: "local", title: "On this Mac", note: "An open model, downloaded here and run by Ollama: free and private, but slow." },
 ]
 
-/** Each service's mark and colour, on its card in setup. */
+/** Each service's mark and color, on its card in setup. */
 const MARKS: Record<Provider, [string, string]> = {
   claude: ["asterisk", "#e8a07a"],
   openai: ["open-ai-logo", "var(--st-paper)"],

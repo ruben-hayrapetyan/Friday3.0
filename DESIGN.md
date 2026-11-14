@@ -37,10 +37,10 @@ A native mobile app; an in-app agent; editing through Google Calendar; multi-use
 
 | Term | Meaning |
 | --- | --- |
-| Item | Anything Friday knows about: a class, a problem set, a project, a meal, a store run. Its behaviour comes from its facets (section 6) |
+| Item | Anything Friday knows about: a class, a problem set, a project, a meal, a store run. Its behavior comes from its facets (section 6) |
 | Facet | One independent property of an item: when, amount, shape, firmness, value, relations, context, certainty |
 | Preset | A named set of facet defaults (Assignment, Class, Errand, …). You pick a preset; you never have to pick facets |
-| Area | An optional group with a colour: CS 1110, CS Club, FinCity, Health. Rules can target areas |
+| Area | An optional group with a color: CS 1110, CS Club, FinCity, Health. Rules can target areas |
 | Tag | A free-form label (`+reading`). Rules can target tags |
 | Series | A repeat rule that creates items (occurrences): every class meeting, a daily shower, gym 3 times a week |
 | Occurrence | One item created by a series |
@@ -292,7 +292,7 @@ This code will be read and edited by hand. Optimize for a reader who knows Pytho
   ```
 
 - **Files under ~400 lines.** Split by responsibility, not by layer of abstraction.
-- **Tests read as examples.** A test name says the behaviour (`test_rest_day_is_used_when_it_is_the_only_time_before_the_deadline`).
+- **Tests read as examples.** A test name says the behavior (`test_rest_day_is_used_when_it_is_the_only_time_before_the_deadline`).
 - **No dead flexibility.** No options nobody uses, and no interfaces with one implementation.
 
 ---
@@ -657,7 +657,7 @@ Inputs are frozen dataclasses built by the planner. They can be pickled, so they
 
 ## 11. Scheduler: an energy sampler with walls
 
-The scheduler holds a plan as "which item owns each slot". Every rule from section 12 is compiled into arrays, so the cost of any change to the plan can be computed incrementally and exactly. Hard rules are **walls**: a move that would break one is never taken. A plan is found in four steps: construct a start plan that honours every hard rule, repair it if it is late, fall back to CP-SAT's deadline stage if lateness remains, then anneal.
+The scheduler holds a plan as "which item owns each slot". Every rule from section 12 is compiled into arrays, so the cost of any change to the plan can be computed incrementally and exactly. Hard rules are **walls**: a move that would break one is never taken. A plan is found in four steps: construct a start plan that honors every hard rule, repair it if it is late, fall back to CP-SAT's deadline stage if lateness remains, then anneal.
 
 ### 11.1 Inputs (`engine/problem.py`)
 
@@ -682,7 +682,7 @@ The scheduler holds a plan as "which item owns each slot". Every rule from secti
 | `depends_on` | List of (key, fraction, lag_units) for dependencies on flexible items |
 | `quotas` | Week key → units, from the allocator |
 
-**Problem** = the grid, the items, the fixed occurrences in the horizon (title, kind, tags, start, end, buffers), one `Night` per planning day (bedtime, wake, margin, debt multiplier), the day caps in units, the rules, the energy map, the learned weight multipliers (section 21), and one `DayScales` per planning day: the factors the day's dials produce (section 17.6). Rules read dial effects only through `problem.scales[day]`, never the dials themselves, so the mapping from dials to behaviour lives in one place (`core/pace.py`).
+**Problem** = the grid, the items, the fixed occurrences in the horizon (title, kind, tags, start, end, buffers), one `Night` per planning day (bedtime, wake, margin, debt multiplier), the day caps in units, the rules, the energy map, the learned weight multipliers (section 21), and one `DayScales` per planning day: the factors the day's dials produce (section 17.6). Rules read dial effects only through `problem.scales[day]`, never the dials themselves, so the mapping from dials to behavior lives in one place (`core/pace.py`).
 
 ### 11.2 Pruning (by the planner)
 
@@ -735,13 +735,13 @@ W9 is what makes the deadline guarantee monotone: once the start plan has an ite
 
 **Search energy.** `E(x) = Σ_k w_k · V_k(x)`. The stage weights depend on the phase of the stage policy (11.8): `w = (10⁶, 1000, 1)` in the main phase.
 
-**Incremental deltas.** A slot changing owner updates the prices of that slot, every measure the slot appears in (with the change in hinge cost), the chunk-start indicators of the two neighbouring slots, the any-group counts and overflow. A move's Δ is the sum. **Exactness is an invariant, enforced by tests**: after any sequence of random moves of every kind, the kernel's stage values equal `evaluate()` and its violation counts equal `check()` (24.1).
+**Incremental deltas.** A slot changing owner updates the prices of that slot, every measure the slot appears in (with the change in hinge cost), the chunk-start indicators of the two neighboring slots, the any-group counts and overflow. A move's Δ is the sum. **Exactness is an invariant, enforced by tests**: after any sequence of random moves of every kind, the kernel's stage values equal `evaluate()` and its violation counts equal `check()` (24.1).
 
 ### 11.6 Start plan, repair and the deadline fallback
 
 1. **Construct** (`engine/construct.py`, under 50 ms at 150 items).
     - Order items by earliest effective deadline. A dependency source inherits the earliest deadline of its dependents, and sources are placed before the items that depend on them.
-    - Place each into the earliest free slots that honour every wall: windows, the day cap, chunk minimums and maximums (keeping legal remainders), one-sitting runs, dependency readiness. Hard-deadline items use on-time slots first.
+    - Place each into the earliest free slots that honor every wall: windows, the day cap, chunk minimums and maximums (keeping legal remainders), one-sitting runs, dependency readiness. Hard-deadline items use on-time slots first.
     - Elastic items are placed too, after hard ones, by their window's end: as long as fits under their max, at least a chunk (M16; a meal left for the sampler to grow from nothing in a narrow gap between classes was often never found). An elastic item kept from the previous plan stays as it is. Target and open items start empty; the sampler places them.
     - **Warm start:** with a previous plan, every block still allowed is kept and only missing amounts are placed.
     - If locks make construction leave violations, those locks become preferred pins (the lock checks in 15.2 do the same) and construction reruns.
@@ -1298,7 +1298,7 @@ Your settings say how Friday plans a normal day. The **dials** say how hard to p
 
 **Switching cleanly.** The first replan after a `pace` command multiplies `minimize_changes` by `pace.switch_stability` (0.2). The point of switching is to move things, so stability shouldn't hold the old plan in place. The web app always previews a switch (`preview: "full"`) before applying it. The CLI applies at once and prints the change summary and the undo id; add `--preview` to see it first. Like every command, a switch can be undone.
 
-**When a pace can't be honoured.** The deadlines stage still comes first. If hard work due soon doesn't fit the lighter days, Friday plans it anyway and reports a pace notice (section 15.3), so you see exactly which days the pace couldn't protect and why.
+**When a pace can't be honored.** The deadlines stage still comes first. If hard work due soon doesn't fit the lighter days, Friday plans it anyway and reports a pace notice (section 15.3), so you see exactly which days the pace couldn't protect and why.
 
 **Learning.** Every plan records each day's dials, so the dials of any past day can be looked up. Learning (section 21) must condition on them, or a sick week will teach Friday that you're slow.
 
@@ -1310,7 +1310,7 @@ Your settings say how Friday plans a normal day. The **dials** say how hard to p
 
 > **Since M11 the app's look and screens follow `design/friday-v22.dc.html`** (Claude Design "Friday v22"; PROGRESS
 > decisions 134–141). Where this section and the design differ, the design wins. It is desktop only for now (about
-> 1100 px); the phone layout below waits for a phone design. The behaviour described here (commands, previews,
+> 1100 px); the phone layout below waits for a phone design. The behavior described here (commands, previews,
 > undo, drag, live updates, offline reading) still holds.
 
 ### 18.1 Stack and structure
@@ -1387,12 +1387,12 @@ Logic that decides anything about the schedule stays in Python. The client owns 
 
 | Element | Looks like |
 | --- | --- |
-| Block | Area colour fill; title; area in small text; `~` before an estimated length |
+| Block | Area color fill; title; area in small text; `~` before an estimated length |
 | Preferred pin | Dashed border |
 | Locked pin | Solid border and a lock icon |
 | Tentative | Faint dashed outline, "could fit here" |
 | Ghost (provisional) | Translucent outline with a soft pulse until the solver confirms |
-| Fixed item | Neutral grey, no fill colour; repeating ones marked ↻; shoves striped |
+| Fixed item | Neutral gray, no fill color; repeating ones marked ↻; shoves striped |
 | Sleep | Core in diagonal stripes; margin lightly shaded |
 | Reserve window | Faint tint behind the column |
 | Now line | Red line across today |
@@ -1489,7 +1489,7 @@ Typing free text offers "Add: …" first, with chips. Otherwise it fuzzy-searche
 
 ### 18.11 Themes, offline, errors
 
-- Light and dark themes follow the system setting. Colours are CSS variables.
+- Light and dark themes follow the system setting. Colors are CSS variables.
 - In M8 the PWA caches the app shell and the last plan, so it opens read-only when the server is unreachable, with a banner.
 - Every failed command shows its server message; there are no silent errors.
 
@@ -1502,7 +1502,7 @@ Typing free text offers "Add: …" first, with chips. Otherwise it fuzzy-searche
 
 ## 19. CLI
 
-The CLI is generated from the registry: `friday <verb> …`, with arguments from the pydantic input. `add` takes a quick-add line as its argument. Its only setting is `server` in `~/.config/friday/cli.toml` (default `http://localhost:8765`), overridden by `FRIDAY_SERVER`. Every command takes `--json` (print the raw response). Exit codes: 0 success, 1 bad input, 2 server unreachable, 3 server failure. Ids are accepted with or without their letter. Output is plain aligned text built by `render.py` with `rich`; colour only for area dots and warnings, so it reads in any terminal.
+The CLI is generated from the registry: `friday <verb> …`, with arguments from the pydantic input. `add` takes a quick-add line as its argument. Its only setting is `server` in `~/.config/friday/cli.toml` (default `http://localhost:8765`), overridden by `FRIDAY_SERVER`. Every command takes `--json` (print the raw response). Exit codes: 0 success, 1 bad input, 2 server unreachable, 3 server failure. Ids are accepted with or without their letter. Output is plain aligned text built by `render.py` with `rich`; color only for area dots and warnings, so it reads in any terminal.
 
 **Ids:**
 - items print as `T42`;
@@ -1608,7 +1608,7 @@ The methods and defaults here come from research on simulated users (24.4). Thos
 | --- | --- | --- |
 | A plan that breaks a hard rule (a bug), or a new "never" rule from you | A wall | A forbid rule or a lock; the kernel can never produce it again |
 | A comparison you answer ("which Thursday looks better?") | Learned weights | The preference model (21.2) |
-| A drag: your version beat Friday's | Learned weights | The same model, counted 3× (drags come from behaviour, so they are the cleanest evidence) |
+| A drag: your version beat Friday's | Learned weights | The same model, counted 3× (drags come from behavior, so they are the cleanest evidence) |
 | Moves in the replan right after a pace switch | Nothing | They reflect the switch, not your taste |
 | Comparisons that contradict each other over time | Noise, or state if inference is on | The per-user test in 21.3 decides |
 | Skipped blocks, "not done", check-ins | State evidence | Used only when state inference is on (21.3) |
@@ -1697,8 +1697,8 @@ correction stay as they are).
 - **Evidence per cell**: for each planned block of deep or light work that covered the cell, whether it *happened
   as planned* (a timer session started within 15 minutes of the block's start, or the review answered done) and,
   when timed, the speed ratio actual ÷ planned.
-- **Estimates.** Happened: the cell's s of n, smoothed with the neighbouring half hours of the same day
-  (weight 0.5) and the same half hour on neighbouring days (weight 0.25), shrunk toward your overall rate r (a
+- **Estimates.** Happened: the cell's s of n, smoothed with the neighboring half hours of the same day
+  (weight 0.5) and the same half hour on neighboring days (weight 0.25), shrunk toward your overall rate r (a
   prior worth 4 blocks). Speed: the mean log ratio less your usual one, shrunk to 0 by n / (n + 5).
 - **Price.** A cell's learned price for deep work, in points an hour, is 4 × (r − P(happened) − 1.5 standard
   errors, at least 0) plus 2 × the
@@ -1775,7 +1775,7 @@ Calendar (read and publish); M10c Gmail; M10d MCP and webhooks. Each ends with i
 ### 22.3 Publishing to Google Calendar (`sync/gcal_publish.py`)
 
 - One calendar named "Friday" (created on first publish), written only by Friday. Each block of the current plan
-  inside the horizon is one event (title, area colour, a link back to the app, the block key in
+  inside the horizon is one event (title, area color, a link back to the app, the block key in
   `extendedProperties.private.friday`); tentative blocks are marked "maybe".
 - After each new plan, debounced to once every `gcal.publish_debounce_s` (60): events are created, moved or
   deleted to match, by block key. Changes made to that calendar in Google are overwritten (it is a view).
@@ -1937,7 +1937,7 @@ A hosted Friday that others sign up for is a possible later goal. **Kept now, at
     - every rule type: zero when untriggered, an exact hand-computed value, avoidance when free, and the zone boundary;
     - **kernel exactness (the most important test in the repo):** on random instances of every size class and both grid zones, apply thousands of random moves of every kind, and after each check that the kernel's stage values equal `evaluate()` and its violation counts equal `check()`; one test per rule type with only that rule switched on;
     - every wall W1–W9: no move that breaks it is ever accepted; a protected item never becomes late;
-    - construction: honours every wall; zero late on a brute-force-checked set of tiny instances where zero is possible;
+    - construction: honors every wall; zero late on a brute-force-checked set of tiny instances where zero is possible;
     - the deadline fallback model: its stage value for a given plan equals the evaluator's; constraints C1–C8 each tested;
     - sampler: the same snapshot, seed and step budget give the identical plan with 1, 2 and 8 chains' threads; cancellation stops within 50k steps;
     - `why_not` relocation differences equal the evaluator's difference between the two plans;

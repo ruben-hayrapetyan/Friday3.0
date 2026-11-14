@@ -1,6 +1,6 @@
 """The start plan (DESIGN §11.6 step 1): items in earliest-deadline order, each into the earliest free slots.
 
-Construction honours every wall: windows, the daily cap, minimum and maximum chunks (keeping legal remainders),
+Construction honors every wall: windows, the daily cap, minimum and maximum chunks (keeping legal remainders),
 one-sitting runs and dependency readiness. Hard-deadline items take on-time slots first and spill into late ones
 only when nothing else is left, so a plan with every hard item on time is a certificate that zero lateness is
 possible. Elastic, target and open items start empty; the sampler places them.

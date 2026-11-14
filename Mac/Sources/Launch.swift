@@ -96,7 +96,7 @@ struct FridayMark: View {
 }
 
 private extension Color {
-    /// This colour moved `amount` of the way to `other`.
+    /// This color moved `amount` of the way to `other`.
     func mix(_ other: Color, by amount: Double) -> Color {
         let a = NSColor(self).usingColorSpace(.sRGB) ?? .white
         let b = NSColor(other).usingColorSpace(.sRGB) ?? .white
@@ -125,7 +125,7 @@ struct LaunchView: View {
             let t = context.date.timeIntervalSince(start)
             let frame = LaunchCurve.frame(at: t, readyAt: readyAt.map { $0.timeIntervalSince(start) })
             ZStack {
-                // Friday's own page colour, so the opening runs into the app rather than a flash.
+                // Friday's own page color, so the opening runs into the app rather than a flash.
                 (scheme == .dark ? Color(red: 0x0F / 255, green: 0x11 / 255, blue: 0x13 / 255)
                                  : Color(red: 0xEC / 255, green: 0xEE / 255, blue: 0xE9 / 255))
                     .opacity(1 - frame.open)

@@ -167,7 +167,7 @@ test("calendar payload: whole days end the day after the last") {
     check(MacPayload.day(start, calendar: york) == "2026-10-22", "the day")
 }
 
-test("calendar payload: types and colours") {
+test("calendar payload: types and colors") {
     check(MacPayload.typeName(.calDAV) == "caldav" && MacPayload.typeName(.birthday) == "birthday", "types")
     check(MacPayload.typeName(.subscription) == "subscription" && MacPayload.typeName(.local) == "local", "more types")
     check(MacPayload.hex(red: 0.227, green: 0.353, blue: 0.549) == "#3a5a8c", MacPayload.hex(red: 0.227, green: 0.353, blue: 0.549))

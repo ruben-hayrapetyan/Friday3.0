@@ -47,7 +47,7 @@ class WeekEvidence:
     blocks: int
     checkin: str | None
     pace: str | None  # a pace the user picked this week (clamps the dial units), or None
-    weights: np.ndarray | None = None  # per ranking; drags (revealed behaviour) count more (E011)
+    weights: np.ndarray | None = None  # per ranking; drags (revealed behavior) count more (E011)
 
 
 @dataclass
@@ -158,7 +158,7 @@ class HiddenLearner:
             th, hs, uf, sl = unpack(x)
             self.U_free, self.skip_link = uf, sl
             nll = 0.5 * np.sum((th - 1.0) ** 2) / self.sigma_theta ** 2 + 0.5 * np.sum(uf ** 2) / self.sigma_u ** 2
-            if K and W > 1:  # theta and the average state are confounded: most weeks are ordinary, so centre the units
+            if K and W > 1:  # theta and the average state are confounded: most weeks are ordinary, so center the units
                 nll += 0.5 * self.center * W * np.sum(hs.mean(axis=0) ** 2)
             for w, ev in enumerate(self.weeks):
                 h = hs[w] if K else np.zeros(0)

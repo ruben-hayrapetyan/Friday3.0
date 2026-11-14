@@ -185,7 +185,7 @@ C = [
     ),
     (
         "window",
-        "piano practise not between 10pm and 8am, the neighbours complain",
+        "piano practise not between 10pm and 8am, the neighbors complain",
         {"kind": "window", "subject": "piano practise", "rel": "not_between", "at": "22:00", "until": "08:00"},
     ),
     (

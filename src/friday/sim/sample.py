@@ -126,7 +126,7 @@ def weekly(monday: date, key: str, title: str, days: tuple[int, ...], start: str
 
 
 def move_and_cancel(school: list[dict[str, Any]], monday: date) -> None:
-    """Next Wednesday's chemistry lecture moves to 14:00; next Friday's math lecture is cancelled."""
+    """Next Wednesday's chemistry lecture moves to 14:00; next Friday's math lecture is canceled."""
     wednesday, friday = monday + timedelta(days=9), monday + timedelta(days=11)
     moved_id = f"chem_{wednesday:%Y%m%d}"
     for i, e in enumerate(school):

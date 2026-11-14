@@ -1,11 +1,11 @@
 """A held-out set of rule sentences a college student might type into Friday's Rules box, written 28 Oct after the
 grammar was tuned on rule_sentences.py and rule_wordings.py, and never used to tune it: it measures how the reader
-does on wording it has not seen. Each is labelled with what the writer means, judged by hand and never by running
+does on wording it has not seen. Each is labeled with what the writer means, judged by hand and never by running
 Friday's reader. None repeat either earlier corpus.
 
 Labels follow rule_sentences.py's and rule_wordings.py's module docstrings exactly (the same `want` forms, the same
 conventions), and where those are silent:
-  - A misspelt word is labelled as meant ("wensdays" is wed, "homwork" is homework, "thrusdays" is thu).
+  - A misspelt word is labeled as meant ("wensdays" is wed, "homwork" is homework, "thrusdays" is thu).
   - "late at night" is night (22-02); "school work" and "anything school related" are "work".
   - "hard thinking stuff", "anything that needs concentration", "heavy focus work" are "deep work"; "brainless",
     "easy tasks", "low-energy stuff", "mindless tasks" are "light work".

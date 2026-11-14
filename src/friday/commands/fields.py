@@ -156,7 +156,7 @@ def saves(ctx: Ctx, source_id: int) -> bool:
 
 
 def calendar_colors(ctx: Ctx) -> dict[str, str]:
-    """Each calendar's own colour, as a paint, by name: Google's and the Mac's (the Mac's win, as you see them)."""
+    """Each calendar's own color, as a paint, by name: Google's and the Mac's (the Mac's win, as you see them)."""
     if "calendar_colors" not in ctx.memo:
         found: dict[str, str] = {}
         for key in ("google_calendars", "mac_calendars"):
@@ -170,8 +170,8 @@ def calendar_colors(ctx: Ctx) -> dict[str, str]:
 
 
 def own_color(ctx: Ctx, calendar: str) -> str | None:
-    """A calendar's colour when you chose none in Settings: its own, in Google or on the Mac (26 Oct: you chose none,
-    so no event wore its calendar's colour)."""
+    """A calendar's color when you chose none in Settings: its own, in Google or on the Mac (26 Oct: you chose none,
+    so no event wore its calendar's color)."""
     return calendar_colors(ctx).get(calendar)
 
 
@@ -181,7 +181,7 @@ def going_to(ctx: Ctx, item_id: int | None) -> str | None:
         return None
     if "going_to" not in ctx.memo:
         # Google's calendars and the Mac's: your Gmail calendar is written through the Mac, and until the Mac reads
-        # the event back it wore no calendar and so no colour (28 Oct: "it added in as grey").
+        # the event back it wore no calendar and so no color (28 Oct: "it added in as gray").
         names = {
             c["id"]: c.get("source_name", c["name"])
             for key in ("google_calendars", "mac_calendars")

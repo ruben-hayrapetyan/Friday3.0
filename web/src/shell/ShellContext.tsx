@@ -24,7 +24,7 @@ export interface EventDraft {
   calendar: string | null // the calendar it came from
   saveTo?: string // a new event's calendar (its id, Google's or the Mac's), "" for only Friday; Settings' "New events go to" when unset
   savesToCalendar: boolean // changes here are saved back to it
-  auto?: { color: string | null; from: string } // the colour it wears with no pigment of its own, and why
+  auto?: { color: string | null; from: string } // the color it wears with no pigment of its own, and why
   was?: { start: string; allDay: boolean; title: string } // a saved event as opened: its day ("this and later"), all day, title
 }
 

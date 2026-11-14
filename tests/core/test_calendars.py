@@ -61,7 +61,7 @@ def test_events_left_out_of_planning_say_why() -> None:
     assert left_out("CS 2110 Office Hours", "Classes", True, RULES, counted) is None
 
 
-def test_a_calendar_s_own_colour_is_matched_to_the_nearest_paint() -> None:
+def test_a_calendar_s_own_color_is_matched_to_the_nearest_paint() -> None:
     from friday.core.calendars import nearest_pigment
 
     assert [nearest_pigment(c) for c in ("#0088ff", "#ff8d28", "#cb30e0", "#a47ae2", "#9e9e9e")] == [
@@ -69,7 +69,7 @@ def test_a_calendar_s_own_colour_is_matched_to_the_nearest_paint() -> None:
     assert nearest_pigment(None) is None and nearest_pigment("blue") is None
 
 
-def test_a_calendar_s_colour_never_wears_a_paint_that_already_means_something() -> None:
+def test_a_calendar_s_color_never_wears_a_paint_that_already_means_something() -> None:
     """Schoolwork's green, meals' yellow and red for now and overdue (27 Oct: the Cornell calendar's light cyan came out
     schoolwork green, and an event on it looked like an assignment)."""
     from friday.core.calendars import SAYS_SOMETHING, nearest_pigment

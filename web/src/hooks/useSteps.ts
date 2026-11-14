@@ -1,5 +1,5 @@
 // A value you step with − and + buttons, tapping quickly (9 Nov: "when i'm clicking quickly to increase/decrease the
-// time range on something, and i overshoot and try to go back, it does some weird behaviour with the time"). Taps add
+// time range on something, and i overshoot and try to go back, it does some weird behavior with the time"). Taps add
 // up on the spot and are saved together once you pause. Before, the moment the save went out the number fell back to
 // what the server last said until its answer came, so a tap in that gap (going back after an overshoot) counted from
 // the old number; and the save's timer restarted whenever the page drew again. Now what you set stays shown until

@@ -33,9 +33,9 @@ VERBS = {
     ),
     "area_add": Verb("POST", "/api/c/area_add", commands.AreaInput, True, False, "Add an area."),
     "area_edit": Verb(
-        "POST", "/api/c/area_edit", commands.AreaEditInput, True, True, "Rename, recolour or archive an area."
+        "POST", "/api/c/area_edit", commands.AreaEditInput, True, True, "Rename, recolor or archive an area."
     ),
-    "areas": Verb("GET", "/api/q/areas", commands.Empty, False, False, "Every area with its colour."),
+    "areas": Verb("GET", "/api/q/areas", commands.Empty, False, False, "Every area with its color."),
     "ask_ai": Verb(
         "POST",
         "/api/c/ask_ai",
@@ -419,7 +419,7 @@ VERBS = {
         commands.ChromaColorsInput,
         True,
         False,
-        "The colour Chroma showed each event in, by the event: its own choice, its calendar's or its category's.",
+        "The color Chroma showed each event in, by the event: its own choice, its calendar's or its category's.",
     ),
     "import_personal": Verb(
         "POST",

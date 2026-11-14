@@ -1,5 +1,5 @@
 // The time of day in the walk (walk/World.ts), as real as we can make it (29 Oct: "make it as realistic as possible"):
-// where the sun and moon are at a given minute, the colour and strength of their light, the haze, and the sky's colour
+// where the sun and moon are at a given minute, the color and strength of their light, the haze, and the sky's color
 // toward the horizon (the Preetham daylight model, as three.js's Sky draws it, so the fog meets the sky without a seam).
 // Pure, so it can be tested; the road runs north (-z), east is +x.
 
@@ -66,7 +66,7 @@ export interface Light {
   sunColor: number
   sunLevel: number
   moonLevel: number
-  skyFill: number // the hemisphere's colours and strength: light from the whole sky and from the ground
+  skyFill: number // the hemisphere's colors and strength: light from the whole sky and from the ground
   groundFill: number
   fillLevel: number
   exposure: number
@@ -125,7 +125,7 @@ function sunIntensity(cosZenith: number): number {
   return 1000 * Math.max(0, 1 - Math.exp(-((1.6110731556870734 - z) / 1.5)))
 }
 
-/** The sky's colour (linear, before exposure) looking along `dir`, with the sun along `sun`. */
+/** The sky's color (linear, before exposure) looking along `dir`, with the sun along `sun`. */
 export function skyColor(dir: Vec3, sun: Vec3, air: Air): Vec3 {
   const sunE = sunIntensity(sun[1])
   const betaR = RAYLEIGH.map((v) => v * air.rayleigh)
@@ -152,7 +152,7 @@ export function skyColor(dir: Vec3, sun: Vec3, air: Air): Vec3 {
   return out
 }
 
-/** The colour of the haze: the sky just above the horizon, all the way round, with the night's glow. */
+/** The color of the haze: the sky just above the horizon, all the way round, with the night's glow. */
 export function hazeColor(l: Light): Vec3 {
   const sum: Vec3 = [0, 0, 0]
   const n = 8

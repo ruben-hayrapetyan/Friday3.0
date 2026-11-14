@@ -121,8 +121,8 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   useEffect(() => (setAsking(false), setWhich(false)), [draft.id])
   const day = draft.start.slice(0, 10)
   const lastDay = draft.allDay ? addDays(draft.end.slice(0, 10), -1) : day
-  // Where a new event is saved (26 Oct: they stayed only in Friday, and wore no colour): your choice here, else
-  // Settings' "New events go to". It wears that calendar's colour until a category or a colour of its own says else.
+  // Where a new event is saved (26 Oct: they stayed only in Friday, and wore no color): your choice here, else
+  // Settings' "New events go to". It wears that calendar's color until a category or a color of its own says else.
   const settings = useSettings().data as { gcal?: { new_events_to?: string | null }; categories?: { categories?: { color: string; pattern: string }[] } } | undefined
   // Google's calendars and the Mac's, each once, the way Friday reads it (lib/calendars.ts): your Gmail calendar comes
   // in through the Mac, so a new event goes there through the Mac app (27 Oct).
@@ -310,9 +310,9 @@ export function EventPane({ draft }: { draft: EventDraft }) {
         )}
       </Row>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span className="fr-eyebrow">Colour</span>
+        <span className="fr-eyebrow">Color</span>
         {/* Chroma's picker: rounded squares that wrap, Automatic first, the choice named underneath. */}
-        <div role="radiogroup" aria-label="Colour" style={{ display: "grid", gridTemplateColumns: "repeat(6, 24px)", gap: 8, padding: 3 }}>
+        <div role="radiogroup" aria-label="Color" style={{ display: "grid", gridTemplateColumns: "repeat(6, 24px)", gap: 8, padding: 3 }}>
           <button
             className="fr-plain"
             role="radio"
@@ -380,7 +380,7 @@ export function EventPane({ draft }: { draft: EventDraft }) {
   )
 }
 
-/** A labelled line of the drawer; `stack`: the label above, for a control that needs the drawer's whole width. */
+/** A labeled line of the drawer; `stack`: the label above, for a control that needs the drawer's whole width. */
 function Row({ label, children, stack }: { label: string; children: React.ReactNode; stack?: boolean }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: stack ? "minmax(0,1fr)" : "64px minmax(0,1fr)", gap: stack ? 6 : 10, alignItems: "center" }}>

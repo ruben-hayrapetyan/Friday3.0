@@ -116,7 +116,7 @@ function placed(geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: numb
   return mesh
 }
 
-/** A box `w` wide (x), `h` high, `d` deep (z), standing on y, centred on x and z; its edges rounded by `round`. */
+/** A box `w` wide (x), `h` high, `d` deep (z), standing on y, centered on x and z; its edges rounded by `round`. */
 export function block(w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, z = 0, round = 0): THREE.Mesh {
   const r = Math.min(round, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)
   const geo = r > 0 ? new RoundedBoxGeometry(w, h, d, 2, r) : new THREE.BoxGeometry(w, h, d)

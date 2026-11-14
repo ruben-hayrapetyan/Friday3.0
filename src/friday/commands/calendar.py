@@ -81,6 +81,6 @@ def dues(ctx: Ctx, first: date, last: date, hard_only: bool = False, windows: bo
 
 @query("areas")
 def areas(ctx: Ctx, inp: Empty) -> list[AreaOut]:
-    """Every area with its colour."""
+    """Every area with its color."""
     found = rows(ctx.conn, "SELECT * FROM areas WHERE user_id = ? ORDER BY name", [ctx.user_id])
     return [AreaOut(id=r["id"], name=r["name"], color=r["color"], archived=bool(r["archived"])) for r in found]

@@ -1,7 +1,7 @@
 """Executor: exact feasibility by earliest-deadline-first (ENGINE_REFERENCE section 9).
 
 Pure functions over free-time intervals and hard-deadline jobs; no solver. For one worker, splittable
-jobs and release times, EDF minimises maximum lateness, so `l_max <= 0` is an exact feasibility test.
+jobs and release times, EDF minimizes maximum lateness, so `l_max <= 0` is an exact feasibility test.
 Daily caps, minimum chunks and dependencies are ignored here, so the test is slightly optimistic.
 """
 from __future__ import annotations

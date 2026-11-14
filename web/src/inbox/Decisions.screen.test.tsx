@@ -185,7 +185,7 @@ describe("Friday's questions", () => {
     await user.click(await findRow("Which version of the day looks better?"))
     expect(await screen.findByText("Version A")).toBeTruthy()
     expect(screen.getByText("Version B")).toBeTruthy()
-    expect(screen.getByText("Work, in its area's colour")).toBeTruthy()
+    expect(screen.getByText("Work, in its area's color")).toBeTruthy()
     expect(screen.getAllByText(/moved$/)).toHaveLength(2)
     // each piece says where it is, and whether the other version has it elsewhere
     expect(document.querySelector('[title*=", fixed"]')).toBeTruthy()

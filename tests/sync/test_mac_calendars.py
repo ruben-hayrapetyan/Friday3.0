@@ -205,7 +205,7 @@ def test_a_calendar_switched_off_leaves_your_calendar_and_comes_back_when_on(app
     assert sorted(i["title"] for i in app.table("items") if i["status"] == "todo").count("Gym") == 2  # no copies
 
 
-def test_chromas_colours_come_with_their_events(app: App, tmp_path: Path) -> None:
+def test_chromas_colors_come_with_their_events(app: App, tmp_path: Path) -> None:
     colors = {
         "CHROMA-CAL:l1": "blue",  # the dentist, by its event however Chroma named its calendar
         "CHROMA-CAL:gym/RID=800000000": "red",  # one occurrence of a repeat
@@ -216,7 +216,7 @@ def test_chromas_colours_come_with_their_events(app: App, tmp_path: Path) -> Non
     gym = mac_event("gym", "home", "Gym", "2026-10-22T18:00", "2026-10-22T19:00")
     post(app, [HOME], [LECTURE, gym])
     out = app.do("import_chroma_colors", colors_path=str(tmp_path / "colors.json"))
-    assert out["message"] == "Brought in Chroma's colours for 2 events"
+    assert out["message"] == "Brought in Chroma's colors for 2 events"
     assert shown(app, "Dentist")["chroma_color"] == "blue" and shown(app, "Gym")["chroma_color"] == "green"
     with pytest.raises(FieldError, match="found no"):
         app.do("import_chroma_colors", colors_path=str(tmp_path / "gone.json"))
@@ -523,9 +523,9 @@ def test_a_new_event_for_a_mac_calendar_is_made_by_the_mac_app_and_comes_back_as
     assert moved["op"] == "save" and moved["event"].startswith("new1") and moved["location"] is None
 
 
-def test_a_new_event_for_a_mac_calendar_wears_its_colour_before_the_mac_app_makes_it(app: App) -> None:
-    # 28 Oct: "Bike Inspection" came in grey: the calendar it was going to was looked up among Google's only, and the
-    # Gmail calendar is the Mac's, so it had no calendar, and no colour, until the Mac read it back.
+def test_a_new_event_for_a_mac_calendar_wears_its_color_before_the_mac_app_makes_it(app: App) -> None:
+    # 28 Oct: "Bike Inspection" came in gray: the calendar it was going to was looked up among Google's only, and the
+    # Gmail calendar is the Mac's, so it had no calendar, and no color, until the Mac read it back.
     post(app, [GMAIL | {"color": "#0088ff"}], [])
     app.do("settings_set", key="gcal", value={"new_events_to": "gmail-cal"})
     made = app.do("add", title="Bike Inspection", when="fixed", start="2026-10-30T13:30", end="2026-10-30T14:30")

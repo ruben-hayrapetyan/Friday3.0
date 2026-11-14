@@ -1,5 +1,5 @@
-// How readable a colour is on another (3 Nov, the CS 2112 UI lecture: "low contrast text is hard to read"): WCAG's
-// contrast ratio, and the OKLab mix the theme's greys are made with (`color-mix(in oklch, text p%, page)`; for greys,
+// How readable a color is on another (3 Nov, the CS 2112 UI lecture: "low contrast text is hard to read"): WCAG's
+// contrast ratio, and the OKLab mix the theme's grays are made with (`color-mix(in oklch, text p%, page)`; for grays,
 // which have no hue, that is the same as OKLab).
 
 type Rgb = [number, number, number] // 0–1, gamma-encoded sRGB
@@ -36,7 +36,7 @@ function fromOklab([L, a, b]: Rgb): Rgb {
   return lin.map((c) => toGamma(Math.max(0, Math.min(1, c)))) as Rgb
 }
 
-/** `share` (0–100) of `a` over `b`, mixed as the theme mixes its greys. */
+/** `share` (0–100) of `a` over `b`, mixed as the theme mixes its grays. */
 export function mix(a: string, b: string, share: number): Rgb {
   const [A, B] = [oklab(rgb(a)), oklab(rgb(b))]
   return fromOklab(A.map((v, i) => (v * share) / 100 + B[i] * (1 - share / 100)) as Rgb)

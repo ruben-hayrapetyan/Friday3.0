@@ -25,7 +25,7 @@ class TieredResult:
 def tiered(c: Compiled, owner0: np.ndarray | None = None, steps: tuple[int, int] = (500_000, 1_500_000), seed: int = 0,
            wall: bool = True, t0_scale: float = 0.1, t1_scale: float = 0.003, eps: float = 0.0,
            probs: np.ndarray | None = None) -> TieredResult:
-    """Tier 1 minimises wellbeing; tier 2 minimises preferences with wellbeing capped at the tier-1 value.
+    """Tier 1 minimizes wellbeing; tier 2 minimizes preferences with wellbeing capped at the tier-1 value.
 
     The deadline stage is a wall (protected items never get late); with wall=False it is a heavy weight instead.
     """

@@ -1,4 +1,4 @@
-"""Rule sentences a student might type, each labelled with what the writer means (tests/core/data): 510 from 27 Oct,
+"""Rule sentences a student might type, each labeled with what the writer means (tests/core/data): 510 from 27 Oct,
 1,057 more for wider coverage (28 Oct: "the barebones rules parsing [should be] much more comprehensive instead of
 having to ask claude for everything"), 413 written as a held-out set, 327 more as a final one, and 750 written blind
 by three writers on 8 Nov (rule_nov8: read untouched, 362 of its 570 rules were right and 48 misread, among them free
@@ -30,7 +30,7 @@ ALL = [(name, topic, text, want) for name, c in CORPORA.items() for topic, text,
 # Kinds whose subject the reading fixes ("optional", "around"…): the label leaves it out.
 FIXED_SUBJECT = {"optional", "ahead", "around", "night_before", "meals_kept", "meals_learned", "fit_gaps",
                  "runs_while_working", "deadlines", "pace"}  # fmt: skip
-# Read as a rule though labelled otherwise, and right to be: a bedtime is the end of the day's work (rule_text's
+# Read as a rule though labeled otherwise, and right to be: a bedtime is the end of the day's work (rule_text's
 # SAID_AS), and a task named for a day is that task on that day.
 ALLOWED = {"lights out by 12:30", "in bed by 11:30 on school nights", "call mom on sundays"}
 BEDTIME = r"^(?:i'?m (?:usually )?)?(?:in bed|lights out|bed|asleep)\b"

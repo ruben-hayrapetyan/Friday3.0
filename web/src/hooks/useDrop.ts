@@ -43,8 +43,8 @@ export function placeEvent(_client: QueryClient, given: object | null, paint: Pa
   const { id, start, end } = input
   if (typeof start !== "string" || typeof end !== "string" || (id === undefined && input.when !== "fixed")) return
   const fields = Object.fromEntries(["title", "start", "end", "color", "notes", "location", "blocks_time"].filter((k) => input[k] !== undefined).map((k) => [k, input[k]]))
-  // A new event wears its category's paint or its calendar's from the moment it's made, not grey until the plan has
-  // it (28 Oct: "it added in as grey").
+  // A new event wears its category's paint or its calendar's from the moment it's made, not gray until the plan has
+  // it (28 Oct: "it added in as gray").
   const made = { ...NEW_EVENT, id: -Date.now(), ...paint, ...fields } as unknown as Item
   pending.add((plan) => {
     if (typeof id === "number") return { ...plan, fixed: plan.fixed.map((f) => (f.id === id ? { ...f, ...fields } : f)) }

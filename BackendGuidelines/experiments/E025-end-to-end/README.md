@@ -8,7 +8,7 @@ rules)? And which component carries the gain?
 **Set-up.** `src/fr/sim/life.py`. 12 simulated people on report seeds (30000+), each a pair of a preference type (easy,
 noisy, moody, missing rule, adversarial) and a duration type (calibrated, optimist, noisy, kind-biased, drifting, sparse),
 with a heavier-than-average load (1.3) and estimates for 60% of tasks. Each person holds 3-4 real habits written as text
-(sleep, no-work windows, a recurring commitment, a daily limit, a session limit), taken from E019's labelled cases. The
+(sleep, no-work windows, a recurring commitment, a daily limit, a session limit), taken from E019's labeled cases. The
 person's habits are the gold readings; Friday sees what Sonnet 5.5 parsed from the same text in E019 (cached replies;
 the user is assumed to confirm every paraphrase). 6 weeks; daily replans at 08:00; three options on Mondays.
 

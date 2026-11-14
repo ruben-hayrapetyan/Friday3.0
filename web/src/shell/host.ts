@@ -54,12 +54,12 @@ export function shiftMonth(first: string, by: number): string {
 
 /** Where the calendar goes for today, previous, next or a view; null when the request doesn't move it. */
 export function placeAfter(request: HostRequest, place: CalendarPlace, today: string): CalendarPlace | null {
-  // A day, three days or a week are centred on `first` (lib/time.ts pageStart), so they step from it.
-  const centre = place.first ?? today
-  const shown = place.view === "month" ? (place.first ?? monthStart(today)) : centre
+  // A day, three days or a week are centered on `first` (lib/time.ts pageStart), so they step from it.
+  const center = place.first ?? today
+  const shown = place.view === "month" ? (place.first ?? monthStart(today)) : center
   const step = (by: number) => ({
     view: place.view,
-    first: place.view === "month" ? shiftMonth(shown, by) : addDaysTo(centre, by * place.view),
+    first: place.view === "month" ? shiftMonth(shown, by) : addDaysTo(center, by * place.view),
   })
   switch (request.action) {
     case "today":
@@ -80,9 +80,9 @@ export function placeAfter(request: HostRequest, place: CalendarPlace, today: st
  * to the days goes around today (the audit, 12 Nov: m then w showed the week around the 1st), out of another month
  * from its first day. */
 export function switchView(place: CalendarPlace, view: View, today: string): CalendarPlace {
-  const centre = place.first ?? today
-  if (view === "month") return { view, first: monthStart(centre) }
-  const thisMonth = place.view === "month" && monthStart(centre) === monthStart(today)
+  const center = place.first ?? today
+  if (view === "month") return { view, first: monthStart(center) }
+  const thisMonth = place.view === "month" && monthStart(center) === monthStart(today)
   return { view, first: thisMonth ? null : place.first }
 }
 

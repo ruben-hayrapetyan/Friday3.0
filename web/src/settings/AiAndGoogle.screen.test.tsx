@@ -241,7 +241,7 @@ describe("Google's own connection", () => {
     expect(await navigator.clipboard.readText()).toBe("fridayd google-login --client-file ~/Downloads/client_secret.json")
   })
 
-  it("adds another account: waits for Google's page, can be cancelled, and says what to do when Google blocks it", async () => {
+  it("adds another account: waits for Google's page, can be canceled, and says what to do when Google blocks it", async () => {
     await yourOwn()
     let access: Access = connectedAccess
     undo.push(answer("google_connect_status", () => ({ json: access })))

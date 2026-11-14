@@ -1,5 +1,5 @@
 """What learning may do to what you said (29 Oct: "make sure that there is guards against any of friday's learned
-behaviours and the rules contradicting (and whether the rules need to be updated or the behaviours)").
+behaviors and the rules contradicting (and whether the rules need to be updated or the behaviors)").
 
 Learning weighs the planner's rules from how you move things (learn/preferences.py). It had taken rules you wrote
 ("Keep Fri, Sat 8pm–11:59pm lighter", Strongly; "Lunch and dinner are never skipped for work") and ones set by your

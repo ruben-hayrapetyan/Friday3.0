@@ -1,4 +1,4 @@
-// The look in effect, for every component: change it from Settings, read area colours anywhere.
+// The look in effect, for every component: change it from Settings, read area colors anywhere.
 
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { useAreas, useSettings } from "@/hooks/queries"
@@ -42,13 +42,13 @@ export function LookProvider({ children }: { children: ReactNode }) {
   const taken = useEventPaints()
   const value = useMemo<LookContext>(() => {
     const kinds = kindPaints(taken)
-    // A tag's own paint, else (work with no tag) its kind's, else the neutral grey of meals and routines.
+    // A tag's own paint, else (work with no tag) its kind's, else the neutral gray of meals and routines.
     const color = (area: string | null | undefined, preset?: string | null) => {
       const tagged = area ? hues.get(area) : undefined
       if (tagged !== undefined) return paintOf(tagged, light)
       return pigment(preset ? kinds[preset] : null, light) ?? areaHex("n", light)
     }
-    // Work with neither a tag nor a kind with a paint wears the ink Friday writes in, not grey.
+    // Work with neither a tag nor a kind with a paint wears the ink Friday writes in, not gray.
     const paint = (kind: Kind, area: string | null | undefined, preset?: string | null) =>
       area || kind === "routine" || kind === "fixed" || (preset && kinds[preset]) ? color(area, preset) : "var(--color-accent)"
     return { look, light, setLook, color, skinOf: (kind, area, x, preset) => skin(kind, paint(kind, area, preset), look, light, x) }
@@ -67,7 +67,7 @@ export function useLook(): LookContext {
   return value
 }
 
-// Chroma's paints, in the order tags are dealt them: each far from the one before, so neighbours never look alike.
+// Chroma's paints, in the order tags are dealt them: each far from the one before, so neighbors never look alike.
 // Vermilion is left out: red is kept for now and overdue.
 export const AUTO_PAINTS = ["blue", "orange", "green", "violet", "yellow", "pink", "sapgreen", "purple", "graphite"]
 // Work with no tag wears its kind's paint (soft, as an event's): everything towards finishing schoolwork is one green,
@@ -85,7 +85,7 @@ export const KIND_PAINT: Record<string, string> = {
 }
 // Where a kind goes when an event category or calendar wears its paint, nearest the look first.
 const SPARE_PAINTS = ["violet", "graphite", "purple", "pink", "orange", "blue", "sapgreen"]
-// The kinds whose paint gives way; schoolwork's green and meals' yellow are yours (COMBINED.md colours) and stay, and
+// The kinds whose paint gives way; schoolwork's green and meals' yellow are yours (COMBINED.md colors) and stay, and
 // errands' is one no event wears.
 const MOVABLE = ["Side project", "Habit", "Maybe", "Work task"]
 
@@ -104,7 +104,7 @@ export function kindPaints(taken: Set<string>): Record<string, string> {
   return paints
 }
 
-/** The pigments your events wear by category or by a calendar's chosen colour. */
+/** The pigments your events wear by category or by a calendar's chosen color. */
 function useEventPaints(): Set<string> {
   const settings = useSettings().data as { categories?: { categories?: { color?: string }[] }; calendar_look?: { colors?: Record<string, string> } } | undefined
   return useMemo(
@@ -120,9 +120,9 @@ function useEventPaints(): Set<string> {
 // Kept for older tags given a hue: the swatches now offer Chroma's paints.
 export const AUTO_HUES = [265, 60, 155, 0, 290, 200, 30, 120, 330, 230, 90, 180]
 
-type Paint = number | "n" | string // a hue, the neutral grey, or a pigment's id
+type Paint = number | "n" | string // a hue, the neutral gray, or a pigment's id
 
-/** Each tag's paint: a pigment it was given, a hue (a number, or "n" for grey), an old hex colour's hue, or the next
+/** Each tag's paint: a pigment it was given, a hue (a number, or "n" for gray), an old hex color's hue, or the next
  * of Chroma's paints in the order the tags were made. */
 function useAreaHues(): Map<string, Paint> {
   const areas = useAreas().data ?? []
@@ -137,12 +137,12 @@ export function hueOf(color: string | null | undefined, index: number): Paint {
   return AUTO_PAINTS[index % AUTO_PAINTS.length]
 }
 
-/** A paint as a colour: a pigment's, else a hue's. */
+/** A paint as a color: a pigment's, else a hue's. */
 export function paintOf(paint: Paint, light: boolean): string {
   return typeof paint === "string" && paint !== "n" ? (pigment(paint, light) ?? areaHex("n", light)) : areaHex(paint as number | "n", light)
 }
 
-/** The OKLCH hue of a hex colour. */
+/** The OKLCH hue of a hex color. */
 function hexHue(hex: string): number {
   const lin = [1, 3, 5].map((i) => {
     const c = parseInt(hex.slice(i, i + 2), 16) / 255

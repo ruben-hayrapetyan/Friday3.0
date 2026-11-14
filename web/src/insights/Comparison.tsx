@@ -1,5 +1,5 @@
 // One question about a coming day (v22 Insights): two versions that finish the same work, drawn as mini day columns
-// on one hour axis and painted as the calendar paints them: work in its area's colour, events in their pigment. What
+// on one hour axis and painted as the calendar paints them: work in its area's color, events in their pigment. What
 // the versions place differently is outlined; what they share sits back.
 
 import { useQuery } from "@tanstack/react-query"
@@ -140,7 +140,7 @@ function Key() {
   )
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "var(--color-neutral-400)" }}>
-      {row(swatch(work), "Work, in its area's colour")}
+      {row(swatch(work), "Work, in its area's color")}
       {row(swatch(event), "Classes and events, which stay put")}
       {row(swatch(work, true), "Placed differently in the other version")}
     </div>

@@ -1,4 +1,4 @@
-"""How the rule reader does on every labelled set (tests/core/test_rule_sentences.py's corpora, its comparison), by
+"""How the rule reader does on every labeled set (tests/core/test_rule_sentences.py's corpora, its comparison), by
 set and kind: `PYTHONPATH=src:. uv run python -m tests.core.data.rule_report [SET] [--misses KIND|unread|misread|all]`.
 A rule read right; misread (read as something it doesn't mean: the one thing never allowed); unread (left to the AI);
 for what isn't one rule ("multi", "item", "set:…", "new:…"), left to the AI or read anyway."""

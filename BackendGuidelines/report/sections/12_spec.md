@@ -18,7 +18,7 @@ Everything below is implemented in `src/fr/` and was measured in the experiments
 
 E(x) = sum over stages k of w_k x V_k(x), where V_k is the exact integer stage value of the shared evaluator (prices of occupied
 slots + overflow costs + hinge costs of measures). Maintained **incrementally**: a slot changing owner updates the prices,
-the measures it appears in (with hinge cost deltas), chunk-start indicators of the two neighbouring slots, any-group counts and
+the measures it appears in (with hinge cost deltas), chunk-start indicators of the two neighboring slots, any-group counts and
 overflow. Exactness is a tested invariant: after any sequence of moves the kernel's stage values equal `evaluate()` and its
 hard-violation counts equal `check()` (`tests/test_kernel.py`). Per-rule totals can be recomputed from scratch in ~50 µs
 (`rule_totals`) for explanations and learning features.
@@ -36,7 +36,7 @@ other stages, so moves can only shorten it.
 ### 12.4 Start plan, repair and overload
 
 1. **Construct** (`engines/construct.py`, < 32 ms at 150 items): items in earliest-effective-deadline order (a source inherits the
-   earliest deadline of its dependents; dependencies are placed first), each into the earliest free slots that honour windows,
+   earliest deadline of its dependents; dependencies are placed first), each into the earliest free slots that honor windows,
    the daily cap, chunk minimums and maximums (keeping legal remainders), one-sitting runs and dependency readiness; hard items
    use on-time slots first. Elastic, target and open items start empty. With a previous plan (warm start) everything still
    allowed is kept and only missing amounts are placed. If construction leaves violations caused by locks, those locks are

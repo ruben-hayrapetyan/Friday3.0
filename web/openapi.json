@@ -227,7 +227,7 @@
   },
   "/api/c/area_edit": {
    "post": {
-    "summary": "Rename, recolour or archive an area.",
+    "summary": "Rename, recolor or archive an area.",
     "operationId": "area_edit",
     "parameters": [
      {
@@ -2527,7 +2527,7 @@
   },
   "/api/c/import_chroma_colors": {
    "post": {
-    "summary": "The colour Chroma showed each event in, by the event: its own choice, its calendar's or its category's.",
+    "summary": "The color Chroma showed each event in, by the event: its own choice, its calendar's or its category's.",
     "operationId": "import_chroma_colors",
     "parameters": [
      {
@@ -10779,7 +10779,7 @@
   },
   "/api/q/areas": {
    "get": {
-    "summary": "Every area with its colour.",
+    "summary": "Every area with its color.",
     "operationId": "areas",
     "responses": {
      "200": {

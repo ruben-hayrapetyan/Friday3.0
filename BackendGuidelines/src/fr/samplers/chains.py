@@ -218,7 +218,7 @@ def run(c: Compiled, rep: Replica, prot, spec: Spec, steps: int, T0: float, T1: 
 
 def parallel_tempering(c: Compiled, owner: np.ndarray, prot, spec: Spec, temps: np.ndarray, rounds: int,
                        steps_per_round: int, seed: int, threads: int = 1, anneal_ladder: float = 1.0):
-    """Replica k runs at temps[k] (ascending). After each round neighbours try to swap with the usual
+    """Replica k runs at temps[k] (ascending). After each round neighbors try to swap with the usual
     min(1, exp((E_i - E_j)(1/T_i - 1/T_j))) rule. anneal_ladder < 1 shrinks the whole ladder geometrically per round."""
     rng = np.random.default_rng(seed)
     reps = [Replica.make(c, owner) for _ in temps]

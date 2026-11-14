@@ -1,4 +1,4 @@
-// How a block is painted (the design's `theme().skin`): by kind, in its area's colour, soft or solid, with the
+// How a block is painted (the design's `theme().skin`): by kind, in its area's color, soft or solid, with the
 // current block and the selected one ringed.
 
 import type { Look } from "./look"

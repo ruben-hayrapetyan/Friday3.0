@@ -1,4 +1,4 @@
-"""Typed constraints compile into the engine's own vocabulary, and the engine honours the hard ones."""
+"""Typed constraints compile into the engine's own vocabulary, and the engine honors the hard ones."""
 from __future__ import annotations
 
 import pytest

@@ -26,7 +26,7 @@ Friday runs on your own computer. You're responsible for your computer, for the 
 
 Friday's code is available under the PolyForm Noncommercial License 1.0.0 (the `LICENSE` file that comes with it). It comes as is: I take no responsibility for the code, for how it works, or for anything you or anyone else changes in it, builds from it or does with it. Sections 10 and 11 apply to the code as they do to the app.
 
-You may read the code, change it and share it for any noncommercial purpose, as long as anyone you share it with gets the licence too. **You may not sell Friday, or anything built from its code, offer either as a paid service, or otherwise make money from them, without a written licence from me.** This includes copies, forks and changed versions. Using Friday at work, as an app, is fine; selling or charging for Friday or its code is not.
+You may read the code, change it and share it for any noncommercial purpose, as long as anyone you share it with gets the license too. **You may not sell Friday, or anything built from its code, offer either as a paid service, or otherwise make money from them, without a written license from me.** This includes copies, forks and changed versions. Using Friday at work, as an app, is fine; selling or charging for Friday or its code is not.
 
 ## 4. Paying for Friday in the future
 
@@ -54,7 +54,7 @@ Your data lives on your computer, and keeping it safe is up to you. Friday makes
 
 ## 9. Feedback and contributions
 
-Ideas, suggestions and bug reports you send me are free for me to use in Friday, without owing you anything. Code you contribute is covered by `CONTRIBUTING.md`: it's under Friday's licence, and I may also use and license it commercially as part of Friday.
+Ideas, suggestions and bug reports you send me are free for me to use in Friday, without owing you anything. Code you contribute is covered by `CONTRIBUTING.md`: it's under Friday's license, and I may also use and license it commercially as part of Friday.
 
 ## 10. No warranty
 
@@ -68,7 +68,7 @@ As far as the law allows, I'm not liable for any indirect, incidental, special, 
 
 If you misuse Friday or break these terms (for example, by selling a copy of Friday) and someone makes a claim against me because of it, you agree to cover my reasonable costs of that claim, including lawyers' fees.
 
-## 13. Ending your licence
+## 13. Ending your license
 
 You can stop using Friday at any time by deleting it. If you break these terms, for example by selling Friday or something built from its code, I may end your right to use Friday and its code. Sections 3, 7 to 12 and 15 still apply after that.
 
@@ -78,4 +78,4 @@ These terms change only with a new version of Friday. Each time they change, Fri
 
 ## 15. Everything else
 
-These terms, with the licence, are the whole agreement between you and me about Friday. If part of them can't be enforced, the rest still applies. If I don't enforce a part, I haven't given it up.
+These terms, with the license, are the whole agreement between you and me about Friday. If part of them can't be enforced, the rest still applies. If I don't enforce a part, I haven't given it up.

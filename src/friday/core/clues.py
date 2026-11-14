@@ -110,10 +110,10 @@ class Clues:
             sure_vote = top / (top + second) >= MARGIN and evidence >= EVIDENCE
 
         near = self.nearest(clues, own, n_known)
-        neighbours = Counter(k.category for _, k in near)
+        neighbors = Counter(k.category for _, k in near)
         nearest, sure_near = None, False
         if near:
-            nearest, agreeing = neighbours.most_common(1)[0]
+            nearest, agreeing = neighbors.most_common(1)[0]
             sure_near = len(near) == 3 and agreeing == 3 and near[0][0] >= NEAR
         closest = near[0][1] if near and near[0][0] >= NEAR / 2 else None
         if closest is not None and closest.by == "you" and near[0][0] >= YOURS:

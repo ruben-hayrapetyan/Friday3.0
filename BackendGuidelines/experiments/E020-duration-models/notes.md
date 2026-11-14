@@ -62,7 +62,7 @@ became 160). `_faN` uses the estimate (times the learned ratio) until N lengths 
 
 - Even when the population defaults are far off (0.5), leaning on them in the first two weeks helps, because most
   students' estimates are biased low and the defaults pull them up. After two weeks the variants are identical.
-- **Decision:** ship `hier_fused_drift_fa3_recal`. It honours the user's request (their estimate is the prediction until
+- **Decision:** ship `hier_fused_drift_fa3_recal`. It honors the user's request (their estimate is the prediction until
   three lengths are recorded) at a cost confined to the first ~2 weeks (CRPS 0.267 vs 0.236). Plans still pad hard
   deadlines (p80) from day one, so the cold-start risk falls on reserved time, not deadlines. Switching to fuse from the
   start is a one-word change if the user prefers accuracy over "my numbers first".

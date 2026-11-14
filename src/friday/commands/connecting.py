@@ -185,7 +185,7 @@ def google_connect_cancel(ctx: Ctx, inp: Empty) -> GoogleConnectOut:
         sign_in = SIGN_INS.get(folder)
         if sign_in is not None and sign_in.state == "waiting":
             url, sign_in.cancelled = sign_in.url, True
-            sign_in.state, sign_in.message, sign_in.url = "idle", "Sign-in cancelled.", None
+            sign_in.state, sign_in.message, sign_in.url = "idle", "Sign-in canceled.", None
     if url:
         google_auth.stop(url)
     return google_connect_status(ctx, Empty())

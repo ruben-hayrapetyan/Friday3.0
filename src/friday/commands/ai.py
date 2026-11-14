@@ -166,7 +166,7 @@ def local_model_cancel(ctx: Ctx, inp: Empty) -> Changed:
 
 
 def use_local(ctx: Ctx, full: str) -> None:
-    from friday.commands.settings import settings_set  # settings imports this module's neighbours
+    from friday.commands.settings import settings_set  # settings imports this module's neighbors
 
     settings_set(ctx, SettingsSetInput(key="llm", value={"provider": "local", "model": full, "small_model": full}))
 

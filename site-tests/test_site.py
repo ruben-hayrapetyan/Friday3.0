@@ -109,7 +109,7 @@ def test_every_link_and_picture_on_a_page_is_on_the_site(site: str, page: str) -
 def test_every_picture_says_what_it_shows_or_is_marked_decoration(site: str, page: str) -> None:
     for image in parsed(site, page).images:
         alt = image.get("alt")
-        assert alt is not None, image  # alt="" is decoration (the live Friday's poster, labelled by its button)
+        assert alt is not None, image  # alt="" is decoration (the live Friday's poster, labeled by its button)
         assert alt == "" or len(alt) > 20, image
 
 
@@ -170,7 +170,7 @@ def test_sections_hide_for_their_entrance_only_when_scripts_run(site: str) -> No
     assert 'classList.add("js")' in fetch(site, "/")[1].decode()
 
 
-def test_the_fonts_are_served_from_the_site_with_their_licences(site: str) -> None:
+def test_the_fonts_are_served_from_the_site_with_their_licenses(site: str) -> None:
     css = fetch(site, "/style.css")[1].decode()
     fonts = [part.split(")")[0].strip("\"'") for part in css.split("url(")[1:]]
     assert len(fonts) == 8
@@ -180,7 +180,7 @@ def test_the_fonts_are_served_from_the_site_with_their_licences(site: str) -> No
         assert fetch(site, f"/fonts/LICENSE-{name}.txt")[1].startswith(b"Copyright"), name
 
 
-def test_no_colour_gradients_in_the_look() -> None:
+def test_no_color_gradients_in_the_look() -> None:
     css = (SITE / "style.css").read_text()
     assert "gradient(" not in css  # flat, as the app (preferences: no gradients)
 

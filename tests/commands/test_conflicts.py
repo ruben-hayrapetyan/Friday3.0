@@ -1,6 +1,6 @@
 """Where what Friday learned disagrees with what you said, a decision in the Inbox with the side Friday would change
-(29 Oct: "make sure that there is guards against any of friday's learned behaviours and the rules contradicting (and
-whether the rules need to be updated or the behaviours)"). Weekdays 23:30–07:30 (the helpers' sleep)."""
+(29 Oct: "make sure that there is guards against any of friday's learned behaviors and the rules contradicting (and
+whether the rules need to be updated or the behaviors)"). Weekdays 23:30–07:30 (the helpers' sleep)."""
 
 import json
 from pathlib import Path

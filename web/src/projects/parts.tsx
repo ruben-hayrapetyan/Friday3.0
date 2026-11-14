@@ -1,4 +1,4 @@
-// What the Projects & exams page repeats: a progress bar in a course's colour, a status tag, a section heading.
+// What the Projects & exams page repeats: a progress bar in a course's color, a status tag, a section heading.
 
 import type { ReactNode } from "react"
 import type { Schemas } from "@/api/client"
@@ -43,7 +43,7 @@ export function StatusTag({ label, tone }: { label: string; tone: Tone }) {
   )
 }
 
-/** How much is done, as a bar in the course's colour. */
+/** How much is done, as a bar in the course's color. */
 export function Bar({ pct, color, height = 6 }: { pct: number; color: string; height?: number }) {
   return (
     <div role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} style={{ height, borderRadius: height / 2, background: "color-mix(in srgb, var(--color-text) 8%, transparent)", overflow: "hidden" }}>
@@ -67,7 +67,7 @@ export function Section({ title, note, right, children }: { title: string; note?
   )
 }
 
-/** A card on the overview: paper raised off the page (a shade lighter in the dark), with the course's colour down
+/** A card on the overview: paper raised off the page (a shade lighter in the dark), with the course's color down
  * its left edge. */
 export const card = (color: string, light: boolean) =>
   ({

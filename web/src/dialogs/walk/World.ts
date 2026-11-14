@@ -856,7 +856,7 @@ export class World {
     const u = span > 0 ? Math.max(0, Math.min(1, (t - keys[i].at) / span)) : 1
     const tension = 0.75
     const slope = (a: number, b: number, c: number) => {
-      // the tangent at key b, from its neighbours, in this segment's time; none at the ends (they ease in and out)
+      // the tangent at key b, from its neighbors, in this segment's time; none at the ends (they ease in and out)
       if (a === b || c === b) return () => 0
       const dt = keys[c].at - keys[a].at
       return (k: number) => (dt > 0 ? ((rows[c][k] - rows[a][k]) / dt) * span * tension : 0)
@@ -887,7 +887,7 @@ export class World {
     let walking = false
     let follow: { pos: THREE.Vector3; look: THREE.Vector3 } | null = null
     let scripted: Pose | null = null
-    let centred = false
+    let centered = false
     if (trip) {
       const step = dt * trip.fast
       // first out of bed, or up off a seat
@@ -923,7 +923,7 @@ export class World {
           const w = trip.wipe
           const t = trip.clock - trip.rise
           walking = true
-          centred = true
+          centered = true
           this.act = null
           this.weight = 0
           if (w.exit && w.exitLength > 0.2) {
@@ -942,7 +942,7 @@ export class World {
           if (t >= EXIT) this.jump(trip)
         } else if (trip.path && trip.clock - trip.rise < trip.walk) {
           walking = true
-          centred = true
+          centered = true
           this.act = null
           this.weight = 0
           const t = trip.clock - trip.rise
@@ -1097,8 +1097,8 @@ export class World {
     this.covered = bed?.duvet ?? null
     this.signs.every(action, this.act && !this.script && !moving ? this.weight : 0, this.hero.headAt(), seconds)
     this.signs.update(seconds, dt)
-    // the camera eases after where it should be; walking, it keeps them dead centre
-    this.chase(follow, dt, centred)
+    // the camera eases after where it should be; walking, it keeps them dead center
+    this.chase(follow, dt, centered)
     this.camera.position.copy(this.cam.pos)
     this.camera.lookAt(this.view)
     this.camera.updateMatrixWorld()
@@ -1113,7 +1113,7 @@ export class World {
     this.measure(time)
   }
 
-  private chase(to: { pos: THREE.Vector3; look: THREE.Vector3 }, dt: number, centred: boolean): void {
+  private chase(to: { pos: THREE.Vector3; look: THREE.Vector3 }, dt: number, centered: boolean): void {
     const c = this.cam
     if (this.options.still || !this.ready) {
       c.pos.copy(to.pos)
@@ -1123,13 +1123,13 @@ export class World {
     }
     // on them exactly while they walk, but coming onto them (and off) over half a second, never at once (30 Oct:
     // "theres random frame cuts (eg when he starts walking)")
-    this.lockOn = centred ? Math.min(1, this.lockOn + dt / 0.5) : Math.max(0, this.lockOn - dt / 0.5)
+    this.lockOn = centered ? Math.min(1, this.lockOn + dt / 0.5) : Math.max(0, this.lockOn - dt / 0.5)
     const spring = (x: THREE.Vector3, v: THREE.Vector3, target: THREE.Vector3, w: number) => {
       const accel = target.clone().sub(x).multiplyScalar(w * w).addScaledVector(v, -2 * w)
       v.addScaledVector(accel, dt)
       x.addScaledVector(v, dt)
     }
-    spring(c.pos, c.vPos, to.pos, centred ? 5 : 4.5)
+    spring(c.pos, c.vPos, to.pos, centered ? 5 : 4.5)
     spring(c.look, c.vLook, to.look, 5.5)
     this.view.copy(c.look).lerp(to.look, ease(this.lockOn))
   }
@@ -1239,13 +1239,13 @@ function turn(from: number, to: number, k: number): number {
   return from + d * Math.min(1, k)
 }
 
-/** A camera position `t` of the way from `a` to `b`, swung round `centre` at a height and distance between theirs,
+/** A camera position `t` of the way from `a` to `b`, swung round `center` at a height and distance between theirs,
  * the way round that passes the street's side of it (toward x = 0), not the buildings'. */
-function orbit(centre: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3, t: number): THREE.Vector3 {
+function orbit(center: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3, t: number): THREE.Vector3 {
   if (t <= 0) return a.clone()
   if (t >= 1) return b.clone()
   const polar = (v: THREE.Vector3) => {
-    const o = v.clone().sub(centre)
+    const o = v.clone().sub(center)
     const flat = Math.hypot(o.x, o.z)
     return { yaw: Math.atan2(o.x, o.z), up: o.y, flat: Math.max(0.01, flat) }
   }
@@ -1254,7 +1254,7 @@ function orbit(centre: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3, t: num
   let d = (pb.yaw - pa.yaw) % (Math.PI * 2)
   if (d > Math.PI) d -= Math.PI * 2
   if (d < -Math.PI) d += Math.PI * 2
-  const road = -Math.sign(centre.x)
+  const road = -Math.sign(center.x)
   if (road && Math.abs(d) > 0.6) {
     // of the two ways round, the one whose middle is over the street
     const other = d - Math.sign(d) * Math.PI * 2
@@ -1264,5 +1264,5 @@ function orbit(centre: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3, t: num
   const yaw = pa.yaw + d * t
   const flat = pa.flat + (pb.flat - pa.flat) * t
   const up = pa.up + (pb.up - pa.up) * t
-  return new THREE.Vector3(centre.x + Math.sin(yaw) * flat, centre.y + up, centre.z + Math.cos(yaw) * flat)
+  return new THREE.Vector3(center.x + Math.sin(yaw) * flat, center.y + up, center.z + Math.cos(yaw) * flat)
 }

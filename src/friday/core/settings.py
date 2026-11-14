@@ -499,7 +499,7 @@ SETTINGS_TYPES: dict[str, Any] = {
     "server": ServerSettings,
     "updates": UpdateSettings,  # Friday's own updater (HOSTED.md H146)
     "notes": tuple[str, ...],  # what you've told Friday about yourself, read by the AI with everything it reads
-    "categories": CategorySettings,  # events coloured by their titles, and the filter (COMBINED.md 17, 59)
+    "categories": CategorySettings,  # events colored by their titles, and the filter (COMBINED.md 17, 59)
     "busy": BusySettings,  # which events count as busy when planning (COMBINED.md 28)
     "pointless_late": PointlessLate,  # work never planned after its due (COMBINED.md 50)
     "fading_late": FadingLate,  # work that matters less the longer it's overdue (3 Nov)

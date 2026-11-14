@@ -7,7 +7,7 @@
 | a plan that breaks a hard rule; a new hard rule from the user | a wall | added to the problem as a forbid/lock; the kernel's moves can never produce it again |
 | a ranking "A better than B"; a manual drag (the user's version beats Friday's) | the ranking model | Bradley-Terry likelihood over all rankings, drags x3, prior at the hand-set weights (a likelihood, not hard constraints: E011) |
 | rankings that contradict each other over time | hidden units | only if the per-user predictive test says "state" (E013); otherwise they are noise and stay in the likelihood |
-| lived weeks | the likelihood term (CD) | a small step that moves the prior's centre; never on its own (E011) |
+| lived weeks | the likelihood term (CD) | a small step that moves the prior's center; never on its own (E011) |
 | skipped blocks, "not done", check-ins | state evidence | the skip link and the check-in likelihood of the hidden units |
 | rankings no weights explain | rule proposal | cross-validated gain of each template rule (E014) |
 | work logged inside a "never" window | wall review | one question (E015) |

@@ -142,7 +142,7 @@ def test_forgetting_one_mailbox_leaves_one_whose_address_ends_the_same(app: App,
     }  # fmt: skip
 
 
-def test_a_chroma_colours_file_that_isnt_one_is_said(app: App, tmp_path: Path) -> None:
+def test_a_chroma_colors_file_that_isnt_one_is_said(app: App, tmp_path: Path) -> None:
     broken, listed = tmp_path / "colors.json", tmp_path / "list.json"
     broken.write_text("{not json")
     listed.write_text("[1, 2]")

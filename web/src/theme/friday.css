@@ -327,7 +327,7 @@ body {
   padding: 3px 8px;
 }
 
-/* A chip: an option you pick, with an optional colour swatch. */
+/* A chip: an option you pick, with an optional color swatch. */
 .fr-chip {
   display: inline-flex;
   gap: 6px;

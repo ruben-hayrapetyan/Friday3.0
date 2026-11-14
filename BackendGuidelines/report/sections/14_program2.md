@@ -18,9 +18,9 @@ walls (forbidden slots, chunk limits, earlier deadlines, the daily cap, fixed ev
 weights at three strengths. Claude Sonnet 5.5 runs through the `claude` CLI exactly as the Friday app already runs it (no
 tools, no MCP servers, no saved session), with the CLI's structured output.
 
-**Evaluation.** 101 hand-labelled texts written before any model call (sleep, windows, commitments, limits, sessions,
+**Evaluation.** 101 hand-labeled texts written before any model call (sleep, windows, commitments, limits, sessions,
 pacing, buffers, ordering, multi-constraint paragraphs, ambiguous texts that require a question, unsupported requests,
-chatter and permissions); every third held out. A case counts only if the stored constraints equal the labelled reading
+chatter and permissions); every third held out. A case counts only if the stored constraints equal the labeled reading
 (or a listed alternative) with nothing extra, a question is asked exactly when required, and unsupported requests are
 reported. Targets are compared by the tasks they select.
 
@@ -172,7 +172,7 @@ hand-set weights; a Laplace approximation gives the posterior that Thompson samp
 
 `src/fr/sim/life.py`: 12 simulated people on report seeds, each a preference type x a duration type, a heavier load
 (1.3x), estimates for 60% of tasks, and 2-4 real habits written as text (sleep, no-work windows, a recurring
-commitment, a daily limit, a session limit; E019 cases). The person's habits are the labelled readings; Friday sees what
+commitment, a daily limit, a session limit; E019 cases). The person's habits are the labeled readings; Friday sees what
 Sonnet 5.5 parsed from the same text. 6 weeks, a replan every morning, three options on Mondays. Work planned against a
 real habit is not done.
 
@@ -187,7 +187,7 @@ real habit is not done.
 
 - The shipped system is better than v3 as built for every one of the 12 people, on misses and on habit conflicts.
 - Constraints from text carry the habit result (without them ~12 h a week of planned work is lost and misses double).
-  The 5 minutes a week left come from one reading ("Friday evenings are off limits" read as from 18:00, labelled 17:00)
+  The 5 minutes a week left come from one reading ("Friday evenings are off limits" read as from 18:00, labeled 17:00)
   that the user would see in the paraphrase.
 - Options and pick learning carry the regret result (0.093 -> 0.014).
 - Duration learning is not significant end to end (10.4% vs 8.8%, +2.2 +- 2.5 points over 12 people and 6 weeks): p95
@@ -207,6 +207,6 @@ real habit is not done.
 | RQ16 constraints from text | Sonnet 5.5 + a translation guide + structured output: 99.0% of held-out texts fully right, nothing invented; the user confirms each paraphrase | E019 |
 | RQ17 the whole loop | vs v3 as built: hard misses 67.5% -> 8.8%, habit conflicts 7.8 -> 0.08 h/week | E025 |
 
-Limits: every result except E019 comes from simulated students and users whose behaviour I designed; the parsing test
+Limits: every result except E019 comes from simulated students and users whose behavior I designed; the parsing test
 has one author's texts. The app's Planner page was checked by compiling, snapshots, and a live round trip with the
 engine, not by a real term of use.

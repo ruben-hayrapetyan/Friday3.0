@@ -1,5 +1,5 @@
 // The walk's surfaces, made rather than downloaded (Friday runs offline): asphalt, concrete, brick, siding, shingles,
-// wood, plaster, grass, bark, autumn leaves. Each is a tile of real size with its colour, its bumps (a normal map, from
+// wood, plaster, grass, bark, autumn leaves. Each is a tile of real size with its color, its bumps (a normal map, from
 // a height field) and how rough it is, generated from noise once when the walk opens.
 
 import * as THREE from "three"
@@ -78,7 +78,7 @@ function texture(data: Uint8Array<ArrayBuffer>, size: number, unit: [number, num
   return t
 }
 
-/** A surface from a function giving, at each pixel (u, v from 0 to 1), its colour (0-255), height (0-1) and
+/** A surface from a function giving, at each pixel (u, v from 0 to 1), its color (0-255), height (0-1) and
  * roughness (0-1). `bump` is how steep the heights are. Rows go up the tile (v), as texture coordinates do. */
 export function surface(size: number, unit: [number, number], bump: number, at: (i: number, j: number) => [number, number, number, number, number]): Surface {
   const color = new Uint8Array(size * size * 4)
@@ -350,7 +350,7 @@ export const fabric = () =>
     })
   })
 
-/** Bark: grey-brown, furrowed upward. 1m. */
+/** Bark: gray-brown, furrowed upward. 1m. */
 export const bark = () =>
   once("bark", () => {
     const n = 128

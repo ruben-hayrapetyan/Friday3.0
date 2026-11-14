@@ -249,12 +249,12 @@ describe("a repeating block's card", () => {
 describe("an event's card", () => {
   const lecture = async (title = "MATH 1910 Lecture", n = 0) => (await nextWeek()).fixed.filter((f) => f.title === title)[n] as Item
 
-  it("says its calendar, colour and category, and that it repeats", async () => {
+  it("says its calendar, color and category, and that it repeats", async () => {
     const event = await lecture()
     await openCard(ofEvent(event))
     expect(inCard().getByText("Fixed time")).toBeTruthy()
     expect(inCard().getAllByText("Cornell Classes").length).toBeGreaterThan(0)
-    for (const fact of ["Calendar", "Colour", "Notes", "Category"]) expect(inCard().getByText(fact)).toBeTruthy()
+    for (const fact of ["Calendar", "Color", "Notes", "Category"]) expect(inCard().getByText(fact)).toBeTruthy()
     expect(await inCard().findByText(/^Repeats/)).toBeTruthy()
     expect((await inCard().findByRole("radio", { name: /^I'm going/ }, { timeout: 5000 })).getAttribute("aria-checked")).toBe("true")
   })

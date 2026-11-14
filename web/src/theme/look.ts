@@ -2,7 +2,7 @@
 // heading face. Kept in localStorage, applied as CSS variables on <html>.
 //
 // The look is personal's paper and ink (COMBINED.md 61–65, from UI/Sources/Design/Theme.swift): a cool desk with
-// pages on it, colour spent on content and never on chrome, one red kept for now and overdue. The accent is the ink
+// pages on it, color spent on content and never on chrome, one red kept for now and overdue. The accent is the ink
 // the chrome is written in; the hue picker changes that ink. v22's options stay, adapted: glow is dark-only and off.
 
 export interface Look {
@@ -40,7 +40,7 @@ export const DEFAULT_LOOK: Look = {
 const KEY = "friday-look-v8"
 
 // Paper and ink, light and dark (Theme.swift): desk, leaf, ink.
-/** The greys, as a share of the text colour over the page (3 Nov, the lecture's "low contrast text is hard to read"):
+/** The grays, as a share of the text color over the page (3 Nov, the lecture's "low contrast text is hard to read"):
  * 500 and lighter are text, at least 4.5:1 on the page and on cards in light and dark; 600 is at least 3:1, for icons,
  * borders and stripes, never words; 700 and darker are lines and washes. theme/readable.test.ts holds this. */
 export const NEUTRAL = { 100: 92, 200: 84, 300: 74, 400: 66, 500: 60, 600: 46, 700: 22, 800: 15, 900: 10 } as const
@@ -101,7 +101,7 @@ export function oklch(L: number, C: number, h: number): string {
 /** The ink of a hue: dark and quiet on paper, light on the dark page. */
 export const accentHex = (hue: number, light: boolean) => (light ? oklch(0.34, 0.075, hue) : oklch(0.76, 0.075, hue))
 
-/** An area's colour from its hue ("n" is the neutral grey): a pigment, mid-tone so it reads on paper. */
+/** An area's color from its hue ("n" is the neutral gray): a pigment, mid-tone so it reads on paper. */
 export function areaHex(hue: number | "n", light: boolean): string {
   if (hue === "n") return light ? oklch(0.66, 0.015, 150) : oklch(0.68, 0.015, 150)
   return light ? oklch(0.64, 0.12, hue) : oklch(0.76, 0.1, hue)

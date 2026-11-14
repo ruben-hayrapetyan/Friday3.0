@@ -1,4 +1,4 @@
-"""The world a simulated user lives in: one planning instance, Friday's planner, and a week of behaviour.
+"""The world a simulated user lives in: one planning instance, Friday's planner, and a week of behavior.
 
 `Universe` compiles the instance once with every rule anybody uses (the library, the user's missing rule, rules the
 supervisor proposes), so every plan has one feature vector. Friday's planner sees only the rules it knows, with its
@@ -106,7 +106,7 @@ class Universe:
         return r.final
 
     def perturb(self, owner: np.ndarray, moves: int, seed: int) -> np.ndarray:
-        """A random valid neighbour: `moves` accepted moves of a zero-energy chain (every valid move is accepted)."""
+        """A random valid neighbor: `moves` accepted moves of a zero-energy chain (every valid move is accepted)."""
         # about one proposal in ten is a valid move, so propose ten times as many
         r = anneal(self.c, owner, SAConfig(steps=moves * 10, wts=np.zeros(3), seed=seed, t0=1.0, t1=1.0),
                    protected(self.c, self.pr.owner))

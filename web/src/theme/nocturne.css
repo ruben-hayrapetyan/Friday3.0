@@ -1,5 +1,5 @@
 /* Nocturne, the design system v22 is built on (design/friday-v22.dc.html): its tokens and the component classes the
-   app uses. The colour tokens are overwritten at run time by theme/look.ts (theme, accent hue); the rest is fixed. */
+   app uses. The color tokens are overwritten at run time by theme/look.ts (theme, accent hue); the rest is fixed. */
 
 :root {
   --color-bg: #161826;

@@ -1,4 +1,4 @@
-"""Hand-labelled plain-language constraints for RQ16, written before any model was run.
+"""Hand-labeled plain-language constraints for RQ16, written before any model was run.
 
 Each case: the user's text, the constraints a careful reader would store, and what else must happen:
 `ask` = "must" (ambiguous: a question is required), "ok" (a question or one of the readings is fine), "no";

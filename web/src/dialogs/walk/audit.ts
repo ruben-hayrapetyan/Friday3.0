@@ -300,8 +300,8 @@ export class Audit {
     const out: THREE.Mesh[] = []
     for (const site of w.sites.values()) {
       if (!site.group) continue
-      const centre = site.group.position
-      const close = (p: THREE.Vector3) => Math.hypot(p.x - centre.x, p.z - centre.z) < 22
+      const center = site.group.position
+      const close = (p: THREE.Vector3) => Math.hypot(p.x - center.x, p.z - center.z) < 22
       if (!close(w.pos) && !close(w.camera.position)) continue
       let list = this.solids.get(site.group)
       if (!list) {
@@ -360,9 +360,9 @@ export class Audit {
       for (let p: THREE.Object3D | null = o; p; p = p.parent) if (p === s.group) return true
       return false
     })
-    const colour = mat?.color ? `#${mat.color.getHexString()}` : ""
+    const color = mat?.color ? `#${mat.color.getHexString()}` : ""
     const what = (o as THREE.InstancedMesh).isInstancedMesh ? "books" : mat?.map ? "a textured surface" : "something"
-    return `${what} ${colour} (${site?.place ?? "street"})`
+    return `${what} ${color} (${site?.place ?? "street"})`
   }
 
   private doubleSided(on: boolean): void {

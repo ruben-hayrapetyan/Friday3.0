@@ -1,5 +1,5 @@
 """The daily Review asks only about the gaps, by task (27 Oct: "everything that is covered in the human inputs from
-review is already just a learned behaviour"; answered "Only the gaps, by task"): a task's time that ended with no
+review is already just a learned behavior"; answered "Only the gaps, by task"): a task's time that ended with no
 timer running, no answer and the task still open. Monday 2026-10-19 in New York; blocks placed by locked pins."""
 
 from pathlib import Path

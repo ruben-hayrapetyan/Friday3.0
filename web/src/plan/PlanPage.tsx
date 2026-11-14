@@ -45,13 +45,13 @@ export function PlanPage() {
   const { today, drawer, event, drawerWidth, place, setPlace, layout, drawerOver } = useShell()
   const view: View = place.view === 7 && !layout.weekFits ? 1 : place.view // a week too narrow to read shows its day
   const first = place.first
-  // A week or three days are centred on the day picked, or today (lib/time.ts); `first` holds that centre.
-  const centre = first ?? today
-  const shown = view === "month" ? (first ?? monthStart(today)) : pageStart(centre, view)
+  // A week or three days are centered on the day picked, or today (lib/time.ts); `first` holds that center.
+  const center = first ?? today
+  const shown = view === "month" ? (first ?? monthStart(today)) : pageStart(center, view)
   // The keys and the View buttons alike keep the day you're looking at (shell/host.ts switchView)
   const setView = (v: View) => setPlace(switchView(place, v, today))
   const setFirst = (f: string | null) => setPlace({ view: place.view, first: f }) // keeps the week you chose, even while it shows a day
-  const step = (by: number) => setFirst(view === "month" ? shiftMonth(shown, by) : addDays(centre, by * view))
+  const step = (by: number) => setFirst(view === "month" ? shiftMonth(shown, by) : addDays(center, by * view))
   const nudge = useNudge()
   // Only with a block selected, or several picked, do the arrows move them, not the page. Both hooks every render:
   // `selected || usePicks()` skipped the second when a block was selected, and React, finding a hook fewer than the

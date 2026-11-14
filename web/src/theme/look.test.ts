@@ -3,8 +3,8 @@ import { accentHex, oklch } from "./look"
 import { PIGMENTS, pigment, WORK_PIGMENTS } from "@/lib/pigments"
 import { AUTO_PAINTS, hueOf, KIND_PAINT, kindPaints, paintOf, SCHOOLWORK } from "./LookProvider"
 
-describe("area colours", () => {
-  it("reads a pigment, a stored hue, the grey, an old hex colour's hue, or deals Chroma's paints by position", () => {
+describe("area colors", () => {
+  it("reads a pigment, a stored hue, the gray, an old hex color's hue, or deals Chroma's paints by position", () => {
     expect(hueOf("green", 0)).toBe("green")
     expect(paintOf("green", false)).toBe(pigment("green", false))
     expect(hueOf("265", 0)).toBe(265)

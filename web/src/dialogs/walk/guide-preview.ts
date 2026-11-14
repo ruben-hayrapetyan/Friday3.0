@@ -8,7 +8,7 @@ const guide = new Guide(canvas)
 const fit = () => guide.resize(innerWidth)
 fit()
 addEventListener("resize", fit)
-const centre = (id: string) => {
+const center = (id: string) => {
   const r = (document.getElementById(id) as HTMLElement).getBoundingClientRect()
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
 }
@@ -16,11 +16,11 @@ const nav = (document.getElementById("nav") as HTMLElement).getBoundingClientRec
 const mid = innerWidth * 0.5
 const spots: Omit<Cue, "gesture">[] & { gesture: Gesture }[] = [
   { x: mid, gesture: "wave", jump: true, cheer: true, after: "heart" },
-  { x: 124, gesture: "point", aim: centre("nav"), sweep: { top: nav.top + 20, bottom: nav.bottom - 240 } },
+  { x: 124, gesture: "point", aim: center("nav"), sweep: { top: nav.top + 20, bottom: nav.bottom - 240 } },
   { x: mid, gesture: "drag" },
   { x: mid, gesture: "timer" },
   { x: mid, gesture: "worry", sign: "sweat" },
-  { x: innerWidth - 80, gesture: "point", aim: centre("menu"), jump: true },
+  { x: innerWidth - 80, gesture: "point", aim: center("menu"), jump: true },
   { x: mid, gesture: "search" },
   { x: mid, gesture: "watch" },
   { x: mid, gesture: "write" },

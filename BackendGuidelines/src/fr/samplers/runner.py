@@ -1,6 +1,6 @@
 """Tiered optimisation with any sampler from `chains`, on a wall-clock budget.
 
-Tier 1 minimises wellbeing (deadlines are a wall), tier 2 minimises preferences with wellbeing capped at the tier-1
+Tier 1 minimizes wellbeing (deadlines are a wall), tier 2 minimizes preferences with wellbeing capped at the tier-1
 value. Temperatures are calibrated per tier from the median |energy change| of random valid moves.
 """
 from __future__ import annotations

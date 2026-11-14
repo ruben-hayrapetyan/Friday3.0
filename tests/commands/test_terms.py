@@ -1,5 +1,5 @@
 """Friday's terms (PROGRESS.md C71): everyone accepts them before Friday opens, again each time they change; only you
-can accept them; the copy on GitHub is the one in the app; the licence is PolyForm Noncommercial."""
+can accept them; the copy on GitHub is the one in the app; the license is PolyForm Noncommercial."""
 
 import json
 from pathlib import Path
@@ -95,7 +95,7 @@ def test_the_terms_say_what_you_decided() -> None:
         "your computer's internet (IP) address",
         "## 7. Not professional advice",
         "## 12. Indemnity",
-        "## 13. Ending your licence",
+        "## 13. Ending your license",
         "free for me to use in Friday",
     ):
         assert said in text, said
@@ -112,10 +112,10 @@ def test_the_terms_say_what_you_decided() -> None:
     assert "I take no responsibility for the code" in text
 
 
-def test_the_licence_is_polyform_noncommercial() -> None:
-    licence = (REPO / "LICENSE").read_text()
-    assert licence.startswith("Required Notice: Copyright 2026 Ruben Hayrapetyan")
-    assert "# PolyForm Noncommercial License 1.0.0" in licence and "Affero" not in licence
+def test_the_license_is_polyform_noncommercial() -> None:
+    license = (REPO / "LICENSE").read_text()
+    assert license.startswith("Required Notice: Copyright 2026 Ruben Hayrapetyan")
+    assert "# PolyForm Noncommercial License 1.0.0" in license and "Affero" not in license
     assert "may also use, license and sell it commercially" in (REPO / "CONTRIBUTING.md").read_text()
 
 

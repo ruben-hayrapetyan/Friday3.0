@@ -648,7 +648,7 @@ function dorm(): Built {
   student.add(block(0.26, 0.12, 0.04, M.fabric(0x6b7a52), -1.55, FLOOR + 0.18, zb + 0.75, 0.03)) // its pocket
   student.add(pile(6, 9).translateX(-0.25).translateY(FLOOR + 0.75).translateZ(zb + 0.34)) // textbooks
   const pennant = picture(0.62, 0.26, (ctx, pw, ph) => {
-    ctx.fillStyle = "#eee6d8" // the wall's own colour round the felt
+    ctx.fillStyle = "#eee6d8" // the wall's own color round the felt
     ctx.fillRect(0, 0, pw, ph)
     ctx.fillStyle = "#b3262c"
     ctx.beginPath()
@@ -1422,7 +1422,7 @@ function cafe(): Built {
   }
 }
 
-/** A chat's window, as each AI's own app looks (shapes and colours, big), or an install bar for one on this Mac. */
+/** A chat's window, as each AI's own app looks (shapes and colors, big), or an install bar for one on this Mac. */
 function drawAi(ctx: CanvasRenderingContext2D, cw: number, ch: number, ai: Extra["ai"], progress: number | null): void {
   const round = (x: number, y: number, w: number, h: number, r: number, fill: string, stroke?: string) => {
     ctx.beginPath()
@@ -1435,7 +1435,7 @@ function drawAi(ctx: CanvasRenderingContext2D, cw: number, ch: number, ai: Extra
       ctx.stroke()
     }
   }
-  const centred = (text: string, y: number, font: string, color: string) => {
+  const centered = (text: string, y: number, font: string, color: string) => {
     ctx.font = font
     ctx.fillStyle = color
     ctx.textAlign = "center"
@@ -1451,7 +1451,7 @@ function drawAi(ctx: CanvasRenderingContext2D, cw: number, ch: number, ai: Extra
   const unready = () => {
     if (!ai || ai.ready || ai.provider === "local") return // a Mac model's install bar says it
     round(cw / 2 - 150, 18, 300, 44, 22, "#f6c453")
-    centred("Not signed in yet", 49, FONT(700, 24), "#3a2a08")
+    centered("Not signed in yet", 49, FONT(700, 24), "#3a2a08")
   }
   const provider = ai?.provider ?? "none"
   if (provider === "claude") {
@@ -1479,11 +1479,11 @@ function drawAi(ctx: CanvasRenderingContext2D, cw: number, ch: number, ai: Extra
     ctx.fillText("How can I help you today?", 156, 274)
     round(cw - 106, 286, 44, 40, 10, "#d97757")
   } else if (provider === "openai") {
-    // ChatGPT: white, a grey sidebar, the question in the middle, a round box with a black send button
+    // ChatGPT: white, a gray sidebar, the question in the middle, a round box with a black send button
     ctx.fillStyle = "#ffffff"
     ctx.fillRect(0, 0, cw, ch)
     sidebar("#f4f4f4", "#dcdcdc")
-    centred("What can I help with?", 170, FONT(700, 38), "#202123")
+    centered("What can I help with?", 170, FONT(700, 38), "#202123")
     round(120, 214, cw - 160, 86, 43, "#ffffff", "#d9d9e3")
     ctx.fillStyle = "#a0a0aa"
     ctx.font = FONT(500, 24)
@@ -1508,7 +1508,7 @@ function drawAi(ctx: CanvasRenderingContext2D, cw: number, ch: number, ai: Extra
   } else if (provider === "grok") {
     ctx.fillStyle = "#0e0e10"
     ctx.fillRect(0, 0, cw, ch)
-    centred("Grok", 165, FONT(800, 50), "#f2f2f2")
+    centered("Grok", 165, FONT(800, 50), "#f2f2f2")
     round(100, 214, cw - 200, 86, 43, "#1f1f23", "#34343a")
     ctx.fillStyle = "#7a7a82"
     ctx.font = FONT(500, 24)
@@ -1570,7 +1570,7 @@ function drawAi(ctx: CanvasRenderingContext2D, cw: number, ch: number, ai: Extra
     ctx.fillStyle = "#fafafa"
     ctx.fillRect(0, 0, cw, ch)
     sidebar("#efefef", "#d8d8d8")
-    centred(ai?.name ?? "AI", 165, FONT(800, 46), "#202123")
+    centered(ai?.name ?? "AI", 165, FONT(800, 46), "#202123")
     round(120, 214, cw - 160, 86, 43, "#ffffff", "#d9d9e3")
   }
   unready()

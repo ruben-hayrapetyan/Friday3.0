@@ -82,7 +82,7 @@ export function Appearance() {
         <ChoiceCards label="Theme" value={look.theme} onPick={pick("theme")} choices={(["Dark", "Light", "Match system"] as const).map((v) => ({ value: v, label: v, art: <ThemeArt theme={v} hue={look.accentHue} /> }))} />
       </Field>
       <ClockField />
-      <Field name="Ink" note="The colour of buttons, today and highlights.">
+      <Field name="Ink" note="The color of buttons, today and highlights.">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(16, 1fr)", gap: 6 }}>
           {HUES.map((h) => (
             <button
@@ -109,7 +109,7 @@ export function Appearance() {
       <Field name="Deadlines" note="Where things due show on the calendar.">
         <ChoiceCards label="Deadlines" value={look.deadlines} onPick={pick("deadlines")} choices={[{ value: "Chips", label: "Count on top", art: <DeadlinesArt deadlines="Chips" /> }, { value: "Lanes", label: "Due row", art: <DeadlinesArt deadlines="Lanes" /> }]} />
       </Field>
-      <Field name="Calendar blocks" note="Edged and light, or filled with colour.">
+      <Field name="Calendar blocks" note="Edged and light, or filled with color.">
         <ChoiceCards
           label="Calendar blocks"
           value={look.blocks}
@@ -162,7 +162,7 @@ function ClockField() {
 
 type SkinOf = ReturnType<typeof useLook>["skinOf"]
 
-/** A block painted in a given colour (not an area's), for the previews. */
+/** A block painted in a given color (not an area's), for the previews. */
 function skinFor(kind: "planned" | "preferred" | "routine", col: string, look: Look, skinOf: SkinOf) {
   const base = skinOf(kind, null)
   if (kind === "routine") return base

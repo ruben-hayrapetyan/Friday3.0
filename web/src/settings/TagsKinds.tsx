@@ -1,4 +1,4 @@
-// Tags and kinds (v22): each tag's name, colour and hours this week, with its own buffer; kinds in priority order
+// Tags and kinds (v22): each tag's name, color and hours this week, with its own buffer; kinds in priority order
 // (who gets the time when it can't all fit), each with a buffer too, and whether short-term work comes before long.
 
 import { useQuery } from "@tanstack/react-query"
@@ -13,8 +13,8 @@ import { AUTO_PAINTS, hueOf, paintOf, useLook } from "@/theme/LookProvider"
 import { BUFFER_OPTIONS, bufferLabel, useBuffers } from "./buffers"
 import { SectionHead } from "./SettingsPage"
 
-// Chroma's paints, and the neutral grey.
-const SWATCHES: { id: string; name: string }[] = [...PIGMENTS.map((p) => ({ id: p.id, name: p.name })), { id: "n", name: "Grey" }]
+// Chroma's paints, and the neutral gray.
+const SWATCHES: { id: string; name: string }[] = [...PIGMENTS.map((p) => ({ id: p.id, name: p.name })), { id: "n", name: "Gray" }]
 
 export function TagsKinds() {
   const all = useAreas().data ?? []

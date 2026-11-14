@@ -28,6 +28,6 @@ tight, overload and stress families, so the "at the best known lateness" column 
    lateness remains** (fixed in `engines/api.run_v3`, re-run in E018b).
 3. **v2 under adversarial structure.** CP-SAT-30 found no deadline-feasible plan for any long dependency chain or many-pins
    instance (it times out and returns lateness of 37-43M points), and on 150 items it misses 67 hard items on median. These are
-   the families where construction (which honours dependencies and locks by design) is strongest.
+   the families where construction (which honors dependencies and locks by design) is strongest.
 
 No family broke validity or made v3 late where v3_nocp was not, except through the budget issue in (2).

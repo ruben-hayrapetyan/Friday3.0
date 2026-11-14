@@ -20,7 +20,7 @@ describe("the month it follows (followedMonth)", () => {
     expect(followedMonth({ view: "month", first: null }, TODAY)).toBe("2026-11-01")
   })
 
-  it("is the month of the day a day, three days or a week are centred on", () => {
+  it("is the month of the day a day, three days or a week are centered on", () => {
     expect(followedMonth({ view: 7, first: "2026-12-03" }, TODAY)).toBe("2026-12-01")
     expect(followedMonth({ view: 3, first: "2026-10-31" }, TODAY)).toBe("2026-10-01")
     expect(followedMonth({ view: 1, first: "2027-01-01" }, TODAY)).toBe("2027-01-01")

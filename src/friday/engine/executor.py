@@ -1,7 +1,7 @@
 """The executor (DESIGN §14): exact deadline feasibility by earliest-deadline-first, slack, safe swaps and `now`.
 
 Pure functions over free-time intervals and hard-deadline jobs; no solver. For one worker, splittable jobs and
-release times, EDF minimises the maximum lateness, so `l_max <= 0` is an exact feasibility test. Daily caps,
+release times, EDF minimizes the maximum lateness, so `l_max <= 0` is an exact feasibility test. Daily caps,
 minimum chunks and dependencies are ignored here, so the test is slightly optimistic; the scheduler enforces them.
 """
 
@@ -318,7 +318,7 @@ def step_aside(c: Compiled, owner: np.ndarray, i: int, near: list[int]) -> None:
     missing = int(M.need[i]) - int(M.units[: M.S][owner[: M.S] == i].sum())
     if missing <= 0:
         return
-    centre = float(np.mean(grid.start[near]))
+    center = float(np.mean(grid.start[near]))
     runs: list[list[int]] = []
     for s in range(M.S):
         if owner[s] != -1 or not M.on_time[i, s]:
@@ -329,27 +329,27 @@ def step_aside(c: Compiled, owner: np.ndarray, i: int, near: list[int]) -> None:
             runs.append([s])
 
     def gap(run: list[int]) -> float:
-        return min(abs(float(grid.start[s]) - centre) for s in run)
+        return min(abs(float(grid.start[s]) - center) for s in run)
 
     while missing > 0 and runs:
         # The nearest stretch that holds all of it, else the nearest: a busy day broke it into quarter hours.
         run = min(runs, key=lambda r: (int(M.units[r].sum()) < missing, gap(r)))
         runs.remove(run)
-        part = nearest_part(grid, run, missing, centre)
+        part = nearest_part(grid, run, missing, center)
         for s in part:
             owner[s] = i
         missing -= int(M.units[part].sum())
 
 
-def nearest_part(grid: Grid, run: list[int], units: int, centre: float) -> list[int]:
-    """The stretch of `run` holding `units` whose middle is nearest `centre`; all of it when it holds less."""
+def nearest_part(grid: Grid, run: list[int], units: int, center: float) -> list[int]:
+    """The stretch of `run` holding `units` whose middle is nearest `center`; all of it when it holds less."""
     best: tuple[float, list[int]] | None = None
     for a in range(len(run)):
         total = 0
         for b in range(a, len(run)):
             total += int(grid.units[run[b]])
             if total >= units:
-                gap = abs((float(grid.start[run[a]]) + float(grid.end[run[b]])) / 2 - centre)
+                gap = abs((float(grid.start[run[a]]) + float(grid.end[run[b]])) / 2 - center)
                 if best is None or gap < best[0]:
                     best = (gap, run[a : b + 1])
                 break

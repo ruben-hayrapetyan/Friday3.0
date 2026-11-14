@@ -81,7 +81,7 @@ describe("a corrected time", () => {
   })
 })
 
-describe("calendar pages are centred on the day (4 Nov)", () => {
+describe("calendar pages are centered on the day (4 Nov)", () => {
   it("a week shows three days either side, whatever weekday it is", () => {
     expect(dayRange(pageStart("2026-11-04", 7), 7)).toEqual(["2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07"])
     expect(pageStart("2026-11-02", 7)).toBe("2026-10-30") // a Monday sits in the middle too, not first

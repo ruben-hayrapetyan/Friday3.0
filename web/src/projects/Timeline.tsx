@@ -1,5 +1,5 @@
 // A project's timeline: a small Gantt chart, one lane per step in order, each planned session a bar in the
-// project's colour across the days up to the deadline, with today, now and the due date marked.
+// project's color across the days up to the deadline, with today, now and the due date marked.
 
 import type { Item, Schemas } from "@/api/client"
 import { H, Icon } from "@/components/fr/controls"

@@ -29,9 +29,9 @@ export function addDays(date: string, days: number): string {
   return fromMin(toMin(date) + days * 1440).slice(0, 10)
 }
 
-/** The first day of the page of `days` centred on `date`: a week shows three days either side of it, three days the
+/** The first day of the page of `days` centered on `date`: a week shows three days either side of it, three days the
  * day before and after, a day that day (4 Nov: "centered on the current day rather than showing a static week"; it
- * was Monday to Sunday, and three days in fixed threes, from 27 Oct). Pages step from their centre. */
+ * was Monday to Sunday, and three days in fixed threes, from 27 Oct). Pages step from their center. */
 export function pageStart(date: string, days: number): string {
   return addDays(date, -Math.floor(days / 2))
 }

@@ -26,7 +26,7 @@ KV_STATE = {
     "not_duplicates",  # kept in kv
     "review_again",
     "reviewed",
-    "import_chroma_colors",  # the colours, kept in kv
+    "import_chroma_colors",  # the colors, kept in kv
     "event_category",  # the categories you chose, kept in kv
     "report",  # the last 50 reports, kept in kv
     "stuck",  # the latest friction, kept in kv

@@ -1,4 +1,4 @@
-"""A second corpus of rule sentences a college student might type into Friday's Rules box, each labelled with what
+"""A second corpus of rule sentences a college student might type into Friday's Rules box, each labeled with what
 the writer means (judged by hand, never by running Friday's reader). None repeat the first corpus (rules-corpus).
 
 Each entry: (topic, text, want). `want` is one of:

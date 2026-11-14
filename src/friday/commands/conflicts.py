@@ -1,6 +1,6 @@
 """Where what Friday learned disagrees with what you said, asked in the Inbox with which side Friday would change
-(29 Oct: "make sure that there is guards against any of friday's learned behaviours and the rules contradicting (and
-whether the rules need to be updated or the behaviours)").
+(29 Oct: "make sure that there is guards against any of friday's learned behaviors and the rules contradicting (and
+whether the rules need to be updated or the behaviors)").
 
 Four kinds, each a decision with its answers, asked again only when what it's about changes:
 

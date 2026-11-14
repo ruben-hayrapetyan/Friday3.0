@@ -1,4 +1,4 @@
-// Which layer of a day column each event is drawn in (2 Nov: "have the skipped events (the ones that are greyed
+// Which layer of a day column each event is drawn in (2 Nov: "have the skipped events (the ones that are grayed
 // out) be not so in poppy... i basically can't see the stuff behind them"): drawn in this order, later on top.
 import type { Item } from "@/api/client"
 

@@ -77,7 +77,7 @@ def test_a_rating_only_guessed_from_the_title_is_asked_again_once_a_day(tmp_path
 
 
 def test_an_event_no_category_finds_gets_the_one_the_ai_names() -> None:
-    # 26 Oct: "Dinner with Sam" matched no category's words and wore no colour.
+    # 26 Oct: "Dinner with Sam" matched no category's words and wore no color.
     ai = Answering(json.dumps({"events": [
         {"title": "Dinner with Sam", "level": "likely", "reason": "a plan with a friend", "category": "Social"},
         {"title": "Bike repair", "level": "optional", "reason": "an errand", "category": "Nothing like it"},
@@ -89,7 +89,7 @@ def test_an_event_no_category_finds_gets_the_one_the_ai_names() -> None:
     assert "category" in asked["output_config"]["format"]["schema"]["properties"]["events"]["items"]["required"]
 
 
-def test_the_category_the_ai_named_colours_the_event(tmp_path: Path) -> None:
+def test_the_category_the_ai_named_colors_the_event(tmp_path: Path) -> None:
     app = new_app(tmp_path)
     app.do("settings_set", key="categories", value={"categories": [{"name": "Social", "slug": "social", "color": "pink",
                                                                     "pattern": "poker"}]})  # fmt: skip

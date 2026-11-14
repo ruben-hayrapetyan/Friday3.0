@@ -1,4 +1,4 @@
-// One exam ahead, as a card: when it is and how far off, in its course's colour; how ready you are; each piece of
+// One exam ahead, as a card: when it is and how far off, in its course's color; how ready you are; each piece of
 // prep with where it stands in the plan (tick it off, open it); a line to add more prep; and exam focus, if it's on.
 
 import { useRef, useState } from "react"
@@ -96,7 +96,7 @@ export function ExamCard({ exam, blocks }: { exam: Exam; blocks: Block[] }) {
   )
 }
 
-/** The exam's day as a little tear-off calendar page: the month in the course's colour, the day large. */
+/** The exam's day as a little tear-off calendar page: the month in the course's color, the day large. */
 function DateTile({ date, tint }: { date: string; tint: string }) {
   const day = new Date(toMin(date) * 60000)
   return (

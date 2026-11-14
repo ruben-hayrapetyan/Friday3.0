@@ -1,5 +1,5 @@
 """Bringing in the two apps Friday replaces, once (COMBINED.md 24): Todo List's open tasks and Chroma's categories,
-and the colour Chroma showed each event in.
+and the color Chroma showed each event in.
 
 The server runs on your Mac (COMBINED.md 2), so it reads their files where they are. Tasks keep their title, due
 date and list (short or long term); a reading is a Reading, an assignment an Assignment and an email a quick Errand,
@@ -101,19 +101,19 @@ def listed(path: Path, field: str, shape: type) -> Any:
 
 @command("import_chroma_colors")
 def import_chroma_colors(ctx: Ctx, inp: ChromaColorsInput) -> Changed:
-    """The colour Chroma showed each event in, by the event: its own choice, its calendar's or its category's.
+    """The color Chroma showed each event in, by the event: its own choice, its calendar's or its category's.
     Chroma's file is only read; reading it again takes in what changed there."""
     colors_file = Path(inp.colors_path or COLORS).expanduser()
     if not colors_file.exists():
         raise FieldError("colors_path", f"found no {colors_file}")
     found = chroma_colors(listed(colors_file, "colors_path", dict))  # a broken file said, not a crash (12 Nov)
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "chroma_colors"}, {"value": json.dumps(found)})
-    return Changed(message=f"Brought in Chroma's colours for {len(found)} event{'' if len(found) == 1 else 's'}")
+    return Changed(message=f"Brought in Chroma's colors for {len(found)} event{'' if len(found) == 1 else 's'}")
 
 
 def chroma_colors(stored: dict[str, str]) -> dict[str, str]:
     """Chroma's colors.json, keyed `<calendar>:<event>` (a repeat's one occurrence adds `/RID=<time>`), as pigments by
-    the event alone: a whole repeat's colour over one occurrence's, Unmarked and unknown names left out."""
+    the event alone: a whole repeat's color over one occurrence's, Unmarked and unknown names left out."""
     out: dict[str, str] = {}
     for key, color in sorted(stored.items(), key=lambda kv: "/RID=" not in kv[0]):  # whole repeats last, so they win
         if color in PIGMENTS:

@@ -24,7 +24,7 @@ E(x) = \sum_r w_r\, \varphi_r(x)
 
 The v3 idea, as discussed so far:
 
-1. **Sample plans instead of solving for them.** Treat E as an energy, p(x) ∝ exp(−E(x)/T), and find low-energy plans by annealing or parallel tempering. Hoped-for gains: faster solving (warm replans especially), anytime behaviour, diverse good plans at T > 0, and probabilities such as "PS5 lands Tuesday 70% of the time".
+1. **Sample plans instead of solving for them.** Treat E as an energy, p(x) ∝ exp(−E(x)/T), and find low-energy plans by annealing or parallel tempering. Hoped-for gains: faster solving (warm replans especially), anytime behavior, diverse good plans at T > 0, and probabilities such as "PS5 lands Tuesday 70% of the time".
 2. **Hard guarantees stay hard.** Deadlines (never late when an on-time plan exists), one thing per slot, locks and the sleep core must hold for certain. The working hypothesis is that these should be **walls**: moves that never leave the feasible set, plus the exact earliest-deadline-first check (reference §9). Very large penalty weights are expected to fail, either by freezing the search or by guaranteeing nothing. Test that hypothesis; don't assume it.
 3. **Built-in learning.** Boltzmann learning moves each weight by Δw_r ∝ ⟨φ_r⟩_model − ⟨φ_r⟩_data, where the data is the weeks the user actually lived and the model term comes from Friday's own samples. Use a prior that pulls weights toward the hand-set values.
 4. **Hidden units for state.** Hidden units h modulate rule weights:

@@ -455,7 +455,7 @@ function LateTag({ hours }: { hours: number }) {
 }
 
 /** Work with a soft deadline the plan finishes after its due, or doesn't plan at all (27 Oct: readings ran days past
- * their due and nothing said so). In the warning colour, not the late red: a soft deadline may slip. */
+ * their due and nothing said so). In the warning color, not the late red: a soft deadline may slip. */
 function SlipTag({ slip }: { slip: { hours: number; planned?: boolean } }) {
   const planned = slip.planned !== false
   return (

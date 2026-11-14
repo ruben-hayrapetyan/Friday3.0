@@ -12,7 +12,7 @@ schedules to pick from, learning from the pick, and constraints parsed from plai
 **Recommendation.** Rebuild Friday's engine as an **energy sampler over the slot grid with walls**, not as a Boltzmann machine
 with penalties and not as v2's staged CP-SAT. The state is the owner of each slot; the energy is exactly v2's rule set, computed
 incrementally by a compiled kernel that equals the shared evaluator to the integer; hard rules are **walls** (moves that would
-break one are never taken); the start plan comes from an earliest-deadline construction that honours every hard rule, a short
+break one are never taken); the start plan comes from an earliest-deadline construction that honors every hard rule, a short
 sampler repair, and a CP-SAT deadline fallback for the rare remainder. Plans are found by simulated annealing with chunk-level
 moves, one chain per idle core, with a fixed step budget. Weights are learned from rankings and drags by a Bradley-Terry
 likelihood; the four dials become hidden units that only act on explicit signals until they prove themselves; a supervisor
@@ -293,7 +293,7 @@ Each learner has its own trajectory; 3 users per type, 12 weeks; three replicate
   from the plan is local, and the scale of the weights is not identifiable from a likelihood (it is the temperature), so CD
   keeps sum(theta) fixed. "Learning from likelihood alone, without the supervisor" is safe but slow.
 - **Drags are the cleanest evidence.** v2's moves-only learner was the most robust to adversarial users (0.83) because drags
-  come from behaviour, not from answers that can be flipped; weighting drags 3x inside the likelihood keeps that benefit.
+  come from behavior, not from answers that can be flipped; weighting drags 3x inside the likelihood keeps that benefit.
 - **The answer temperature is the noise detector** (E011c): fitted per user, it sits at 0.05-0.08 for consistent users and at
   0.18-0.5 for noisy, moody, missing-feature and adversarial users. Using it to rescale the fit helped adversarial users and
   hurt moody ones, so it is used to set policies (how many questions to ask, whether contradictions are noise), not the fit.
@@ -365,7 +365,7 @@ the prompt) is a dead end for a product: no nameable state, slower, no gain.
 | a plan that breaks a hard rule; a new hard rule from the user | a wall | added to the problem as a forbid/lock; the kernel's moves can never produce it again |
 | a ranking "A better than B"; a manual drag (the user's version beats Friday's) | the ranking model | Bradley-Terry likelihood over all rankings, drags x3, prior at the hand-set weights (a likelihood, not hard constraints: E011) |
 | rankings that contradict each other over time | hidden units | only if the per-user predictive test says "state" (E013); otherwise they are noise and stay in the likelihood |
-| lived weeks | the likelihood term (CD) | a small step that moves the prior's centre; never on its own (E011) |
+| lived weeks | the likelihood term (CD) | a small step that moves the prior's center; never on its own (E011) |
 | skipped blocks, "not done", check-ins | state evidence | the skip link and the check-in likelihood of the hidden units |
 | rankings no weights explain | rule proposal | cross-validated gain of each template rule (E014) |
 | work logged inside a "never" window | wall review | one question (E015) |
@@ -520,7 +520,7 @@ Everything below is implemented in `src/fr/` and was measured in the experiments
 
 E(x) = sum over stages k of w_k x V_k(x), where V_k is the exact integer stage value of the shared evaluator (prices of occupied
 slots + overflow costs + hinge costs of measures). Maintained **incrementally**: a slot changing owner updates the prices,
-the measures it appears in (with hinge cost deltas), chunk-start indicators of the two neighbouring slots, any-group counts and
+the measures it appears in (with hinge cost deltas), chunk-start indicators of the two neighboring slots, any-group counts and
 overflow. Exactness is a tested invariant: after any sequence of moves the kernel's stage values equal `evaluate()` and its
 hard-violation counts equal `check()` (`tests/test_kernel.py`). Per-rule totals can be recomputed from scratch in ~50 µs
 (`rule_totals`) for explanations and learning features.
@@ -538,7 +538,7 @@ other stages, so moves can only shorten it.
 ### 12.4 Start plan, repair and overload
 
 1. **Construct** (`engines/construct.py`, < 32 ms at 150 items): items in earliest-effective-deadline order (a source inherits the
-   earliest deadline of its dependents; dependencies are placed first), each into the earliest free slots that honour windows,
+   earliest deadline of its dependents; dependencies are placed first), each into the earliest free slots that honor windows,
    the daily cap, chunk minimums and maximums (keeping legal remainders), one-sitting runs and dependency readiness; hard items
    use on-time slots first. Elastic, target and open items start empty. With a previous plan (warm start) everything still
    allowed is kept and only missing amounts are placed. If construction leaves violations caused by locks, those locks are
@@ -714,9 +714,9 @@ walls (forbidden slots, chunk limits, earlier deadlines, the daily cap, fixed ev
 weights at three strengths. Claude Sonnet 5.5 runs through the `claude` CLI exactly as the Friday app already runs it (no
 tools, no MCP servers, no saved session), with the CLI's structured output.
 
-**Evaluation.** 101 hand-labelled texts written before any model call (sleep, windows, commitments, limits, sessions,
+**Evaluation.** 101 hand-labeled texts written before any model call (sleep, windows, commitments, limits, sessions,
 pacing, buffers, ordering, multi-constraint paragraphs, ambiguous texts that require a question, unsupported requests,
-chatter and permissions); every third held out. A case counts only if the stored constraints equal the labelled reading
+chatter and permissions); every third held out. A case counts only if the stored constraints equal the labeled reading
 (or a listed alternative) with nothing extra, a question is asked exactly when required, and unsupported requests are
 reported. Targets are compared by the tasks they select.
 
@@ -868,7 +868,7 @@ hand-set weights; a Laplace approximation gives the posterior that Thompson samp
 
 `src/fr/sim/life.py`: 12 simulated people on report seeds, each a preference type x a duration type, a heavier load
 (1.3x), estimates for 60% of tasks, and 2-4 real habits written as text (sleep, no-work windows, a recurring
-commitment, a daily limit, a session limit; E019 cases). The person's habits are the labelled readings; Friday sees what
+commitment, a daily limit, a session limit; E019 cases). The person's habits are the labeled readings; Friday sees what
 Sonnet 5.5 parsed from the same text. 6 weeks, a replan every morning, three options on Mondays. Work planned against a
 real habit is not done.
 
@@ -883,7 +883,7 @@ real habit is not done.
 
 - The shipped system is better than v3 as built for every one of the 12 people, on misses and on habit conflicts.
 - Constraints from text carry the habit result (without them ~12 h a week of planned work is lost and misses double).
-  The 5 minutes a week left come from one reading ("Friday evenings are off limits" read as from 18:00, labelled 17:00)
+  The 5 minutes a week left come from one reading ("Friday evenings are off limits" read as from 18:00, labeled 17:00)
   that the user would see in the paraphrase.
 - Options and pick learning carry the regret result (0.093 -> 0.014).
 - Duration learning is not significant end to end (10.4% vs 8.8%, +2.2 +- 2.5 points over 12 people and 6 weeks): p95
@@ -903,7 +903,7 @@ real habit is not done.
 | RQ16 constraints from text | Sonnet 5.5 + a translation guide + structured output: 99.0% of held-out texts fully right, nothing invented; the user confirms each paraphrase | E019 |
 | RQ17 the whole loop | vs v3 as built: hard misses 67.5% -> 8.8%, habit conflicts 7.8 -> 0.08 h/week | E025 |
 
-Limits: every result except E019 comes from simulated students and users whose behaviour I designed; the parsing test
+Limits: every result except E019 comes from simulated students and users whose behavior I designed; the parsing test
 has one author's texts. The app's Planner page was checked by compiling, snapshots, and a live round trip with the
 engine, not by a real term of use.
 

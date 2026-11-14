@@ -64,7 +64,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Rename, recolour or archive an area. */
+        /** Rename, recolor or archive an area. */
         post: operations["area_edit"];
         delete?: never;
         options?: never;
@@ -608,7 +608,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** The colour Chroma showed each event in, by the event: its own choice, its calendar's or its category's. */
+        /** The color Chroma showed each event in, by the event: its own choice, its calendar's or its category's. */
         post: operations["import_chroma_colors"];
         delete?: never;
         options?: never;
@@ -2564,7 +2564,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Every area with its colour. */
+        /** Every area with its color. */
         get: operations["areas"];
         put?: never;
         post?: never;

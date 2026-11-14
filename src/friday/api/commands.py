@@ -533,7 +533,7 @@ class ImportPersonalInput(Model):
 
 
 class ChromaColorsInput(Model):
-    colors_path: str | None = None  # Chroma's colours; ~/Library/Application Support/Chroma/colors.json
+    colors_path: str | None = None  # Chroma's colors; ~/Library/Application Support/Chroma/colors.json
 
 
 class OtherWay(Model):

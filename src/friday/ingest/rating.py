@@ -2,7 +2,7 @@
 important ones to skip, as triage's fixes. The AI rates each distinct title once (required, likely or optional, with a
 few words of reason) and the answers are kept; without the AI, titles that say what they are decide, and the rest are
 "likely". Classes, labs, exams, shifts and appointments are required and never offered. Given your categories, it also
-names the one each event fits (26 Oct: an event no category's words found, "Dinner with Sam", wore no colour).
+names the one each event fits (26 Oct: an event no category's words found, "Dinner with Sam", wore no color).
 """
 
 import json

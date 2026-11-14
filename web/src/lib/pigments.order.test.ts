@@ -1,5 +1,5 @@
 // The pigments as every menu lists them (Settings → Calendars, a tag's colors, an event's paint): in the order of the
-// rainbow, gray last (13 Nov, a client: "the color order is off: cobalt violet between ultramarine and magenta, grey
+// rainbow, gray last (13 Nov, a client: "the color order is off: cobalt violet between ultramarine and magenta, gray
 // last"). Black box over the paints themselves: each one's hue, around the wheel from red.
 import { describe, expect, it } from "vitest"
 import { PIGMENTS } from "./pigments"

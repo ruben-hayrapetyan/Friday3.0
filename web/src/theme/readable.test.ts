@@ -1,5 +1,5 @@
-// Readable text (3 Nov, measured against the CS 2112 UI lecture: "low contrast text is hard to read"; the greys for
-// secondary words were 2.7:1 and 2.1:1 on the page, and text went down to 9px). Words are at least 11px; the greys
+// Readable text (3 Nov, measured against the CS 2112 UI lecture: "low contrast text is hard to read"; the grays for
+// secondary words were 2.7:1 and 2.1:1 on the page, and text went down to 9px). Words are at least 11px; the grays
 // they're written in are at least 4.5:1, on the page and on cards, in light and dark and in Setup.
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -18,7 +18,7 @@ const SETUP = { bg: "#1b1a2b", text: "#f2ead8" } // dialogs/setup.css: Setup's o
 const LOOKS = { light: PAPER.light, dark: PAPER.dark, setup: [SETUP.bg, SETUP.bg, SETUP.text] } as const
 
 describe("the contrast maths (glass box)", () => {
-  it("black on white is 21, a colour on itself is 1", () => {
+  it("black on white is 21, a color on itself is 1", () => {
     expect(contrast("#000000", "#ffffff")).toBeCloseTo(21, 5)
     expect(contrast("#777777", "#777777")).toBeCloseTo(1, 5)
   })
@@ -28,7 +28,7 @@ describe("the contrast maths (glass box)", () => {
   it("matches WCAG's own worked value for #767676 on white (4.54)", () => {
     expect(contrast("#767676", "#ffffff")).toBeCloseTo(4.54, 2)
   })
-  it("a mix's ends are its colours", () => {
+  it("a mix's ends are its colors", () => {
     expect(mix("#e8ebe7", "#0f1113", 100).map((c) => Math.round(c * 255))).toEqual(rgb("#e8ebe7").map((c) => Math.round(c * 255)))
     expect(mix("#e8ebe7", "#0f1113", 0).map((c) => Math.round(c * 255))).toEqual(rgb("#0f1113").map((c) => Math.round(c * 255)))
   })
@@ -44,13 +44,13 @@ describe("the contrast maths (glass box)", () => {
   })
 })
 
-describe("the greys (black box)", () => {
+describe("the grays (black box)", () => {
   for (const [look, [page, card, text]] of Object.entries(LOOKS)) {
-    it(`${look}: every grey for words is at least 4.5:1 on the page and on cards`, () => {
+    it(`${look}: every gray for words is at least 4.5:1 on the page and on cards`, () => {
       for (const shade of [100, 200, 300, 400, 500] as const) {
-        const grey = mix(text, page, NEUTRAL[shade])
-        expect(contrast(grey, page), `${shade} on the page`).toBeGreaterThanOrEqual(4.5)
-        expect(contrast(grey, card), `${shade} on a card`).toBeGreaterThanOrEqual(4.5)
+        const gray = mix(text, page, NEUTRAL[shade])
+        expect(contrast(gray, page), `${shade} on the page`).toBeGreaterThanOrEqual(4.5)
+        expect(contrast(gray, card), `${shade} on a card`).toBeGreaterThanOrEqual(4.5)
       }
     })
     it(`${look}: 600, for icons and borders, is at least 3:1`, () => {
@@ -58,11 +58,11 @@ describe("the greys (black box)", () => {
       expect(contrast(mix(text, page, NEUTRAL[600]), card)).toBeGreaterThanOrEqual(3)
     })
   }
-  it("the greys still step down, so there's a hierarchy", () => {
+  it("the grays still step down, so there's a hierarchy", () => {
     const shares = [100, 200, 300, 400, 500, 600, 700, 800, 900].map((n) => NEUTRAL[n as keyof typeof NEUTRAL])
     expect(shares).toEqual([...shares].sort((a, b) => b - a))
   })
-  it("Setup's own greys are the app's", () => {
+  it("Setup's own grays are the app's", () => {
     const css = sources["../dialogs/setup.css"]
     for (const shade of [200, 300, 400, 500, 600] as const) {
       expect(css).toContain(`--color-neutral-${shade}: color-mix(in oklch, ${SETUP.text} ${NEUTRAL[shade]}%, ${SETUP.bg});`)
@@ -83,7 +83,7 @@ describe("every screen (the whole app's source)", () => {
     })
     expect(small.map((s) => s.at)).toEqual([])
   })
-  it("no words are in the greys for icons and lines", () => {
+  it("no words are in the grays for icons and lines", () => {
     // `color:` (not background or border) in 600 or darker, other than on an icon
     const faint = lines.filter(({ line }) => /[^-]color: ?"var\(--color-neutral-[6-9]00\)"/.test(line) && !/<Icon|ph ph-/.test(line))
     expect(faint.map((f) => f.at)).toEqual([])

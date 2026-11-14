@@ -9,7 +9,7 @@
   var DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   var TODAY = 1; // Tuesday, in this example week
 
-  // The week before the essay: classes and the shift (events, Payne's grey), meals (ochre), work already planned.
+  // The week before the essay: classes and the shift (events, Payne's gray), meals (ochre), work already planned.
   var BASE = [
     { id: "econ-m", d: 0, s: 10, h: 1.25, t: "ECON Lecture", p: "payne", ev: 1 },
     { id: "econ-w", d: 2, s: 10, h: 1.25, t: "ECON Lecture", p: "payne", ev: 1 },

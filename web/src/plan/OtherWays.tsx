@@ -160,7 +160,7 @@ function WayCard({ way, n, onPreview, onPick }: { way: Way; n: number; onPreview
   )
 }
 
-/** The next seven days, 08:00 to midnight: each block a bar in its tag's colour. */
+/** The next seven days, 08:00 to midnight: each block a bar in its tag's color. */
 function WeekStrip({ blocks }: { blocks: Schemas["BlockOut"][] }) {
   const { today } = useShell()
   const { color } = useLook()

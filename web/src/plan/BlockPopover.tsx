@@ -1,7 +1,7 @@
 // The selected block (v22): what it is, when, why Friday put it there, its due and what's left, and what you can do
 // with it: start, finish, pin or unpin, unlock, skip one occurrence, delete (Delete or Backspace too). The timer's
 // buttons are personal's (COMBINED.md 32): large, on top, Start or Pause, and Done; Resume once some of it is done,
-// with how much, and that day's timed sittings below. A selected event shows its calendar, colour and notes, with
+// with how much, and that day's timed sittings below. A selected event shows its calendar, color and notes, with
 // Edit to open it in the drawer.
 
 import { type QueryClient, useQueryClient } from "@tanstack/react-query"
@@ -257,7 +257,7 @@ export function BlockPopover() {
         {kind === "timed" && b.item_id != null && <SittingTimes itemId={b.item_id} start={b.start} end={b.end} onDone={close} />}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {event && event.event_kind !== "shove" && (
-            <button className="btn btn-secondary" onClick={runAndClose(() => setEvent(draftOf(event)))} title="Open it in the drawer: title, day, times, colour, notes">
+            <button className="btn btn-secondary" onClick={runAndClose(() => setEvent(draftOf(event)))} title="Open it in the drawer: title, day, times, color, notes">
               <Icon name="pencil-simple" />
               Edit
             </button>
@@ -339,7 +339,7 @@ export function BlockPopover() {
   )
 }
 
-/** An event's calendar, colour and notes, as the drawer has them. */
+/** An event's calendar, color and notes, as the drawer has them. */
 /** What an event's time is for (planner/holds.py): a task you'll do in it ("A4dd" is when you write "CS A4 Design
  * Doc"), or nothing, as for any event. The task is planned there, and other work keeps off it. When a task's title is
  * clearly in the event's, Friday asks about that one; any other is a search away. */
@@ -393,7 +393,7 @@ function SittingTimes({ itemId, start, end, onDone }: { itemId: number; start: s
 
 /** One of an event's two choices (12 Nov: the buttons were "very poorly formatted": a label running off the edge,
  * the two of different heights, the chosen one only outlined): a radio card like "How new to-dos arrive", the same
- * height as its neighbour, its words from the top left, the chosen one filled with its dot. */
+ * height as its neighbor, its words from the top left, the chosen one filled with its dot. */
 function ChoiceCard({ label, note, on, onClick }: { label: string; note: string; on: boolean; onClick: () => void }) {
   return (
     <button
@@ -520,7 +520,7 @@ function HeldFor({ event, only, open = event.left_out === "skipped" || event.lef
 function EventFacts({ event, paint }: { event: Item; paint: string }) {
   const own = [event.color, event.chroma_color, event.category_color, event.calendar_color].find((c) => PIGMENTS.some((p) => p.id === c))
   const name = own ? PIGMENTS.find((p) => p.id === own)?.name : "Unmarked"
-  // Where an automatic colour came from, as the drawer says it.
+  // Where an automatic color came from, as the drawer says it.
   const from = event.color ? null : event.chroma_color ? "as in Chroma" : event.category_color ? (event.category ?? "its category") : event.calendar_color ? (event.calendar ?? "its calendar") : null
   return (
     <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", fontSize: 12 }}>
@@ -539,7 +539,7 @@ function EventFacts({ event, paint }: { event: Item; paint: string }) {
         {event.calendar ?? "Friday"}
         {event.calendar && <Icon name={event.saves_to_calendar ? "cloud-check" : "lock-simple"} size={12} />}
       </span>
-      <span style={{ color: "var(--color-neutral-500)" }}>Colour</span>
+      <span style={{ color: "var(--color-neutral-500)" }}>Color</span>
       <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
         <span style={{ width: 10, height: 10, borderRadius: 3, background: paint, flex: "none" }} />
         {name}
@@ -580,7 +580,7 @@ function CategoryRow({ event }: { event: Item }) {
         <Menu options={options} value={event.category ?? NONE} onPick={pick} label={`Category of ${event.title}`} />
         {why && <span style={{ color: "var(--color-neutral-500)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{why}</span>}
         {!event.category && event.category_hint && (
-          <button className="fr-link" onClick={() => pick(event.category_hint as string)} title="Friday's guess from events like it: not sure enough to colour it" style={{ fontSize: 12 }}>
+          <button className="fr-link" onClick={() => pick(event.category_hint as string)} title="Friday's guess from events like it: not sure enough to color it" style={{ fontSize: 12 }}>
             {event.category_hint}?
           </button>
         )}

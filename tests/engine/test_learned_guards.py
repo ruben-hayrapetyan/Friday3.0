@@ -1,5 +1,5 @@
 """What Friday learned never overrules what you said (29 Oct: "make sure that there is guards against any of friday's
-learned behaviours and the rules contradicting"). In the planner: your learned morning routine is never planned in
+learned behaviors and the rules contradicting"). In the planner: your learned morning routine is never planned in
 ("if it assumes that i have a 45 minute morning routine then how does it give me work at 8am sharp?"), and a night
 counts back from an early event you go to (Gym at 7:30 when Friday took you to be up at 8). Weekdays 23:30–07:30."""
 

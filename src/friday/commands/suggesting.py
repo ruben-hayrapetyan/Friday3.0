@@ -272,9 +272,9 @@ def suggest(
         group = batch or (f"repeat:{p.series}" if p.series and command == "add" else None)
         said = said_of_series(conn, group) if group and p.series else None
         # What you have already is set aside, not asked (commands/duplicates.py). An instance of a repeating event is
-        # checked against your events too, which only match within half an hour, so never its neighbours (29 Oct: a
+        # checked against your events too, which only match within half an hour, so never its neighbors (29 Oct: a
         # club's weekly practice from a second calendar was asked about though every Saturday was on yours); a
-        # repeating task isn't, as a task due within a day of yours counts and a daily one has neighbours a day apart.
+        # repeating task isn't, as a task due within a day of yours counts and a daily one has neighbors a day apart.
         # Only events you still have: a repeat switched off and on again brings back the times it took away.
         repeat_task = p.series and not duplicates.is_event(fields, settings)
         have = [c for c in mine() if c.held] if p.series else mine()

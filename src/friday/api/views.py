@@ -315,8 +315,8 @@ class TimeGroup(Model):
 
     name: str
     by: Literal["tag", "subject", "kind", "other"]
-    area: str | None = None  # the tag, for its colour
-    preset: str | None = None  # the kind most of it is, for its colour when it has no tag
+    area: str | None = None  # the tag, for its color
+    preset: str | None = None  # the kind most of it is, for its color when it has no tag
     planned_h: float
     actual_h: float
     items: list[TimeItem]  # the biggest first
@@ -489,7 +489,7 @@ class GoogleCalendarOut(Model):
     editable: bool = False  # changes made in Friday are saved back to it
     account: str | None = None  # the Google account it's read through, or a Mac calendar's account
     also_google: bool = False  # a Mac calendar Friday also reads from Google, under the same name
-    color: str | None = None  # the paint nearest its own colour (in Google, or on the Mac)
+    color: str | None = None  # the paint nearest its own color (in Google, or on the Mac)
 
 
 class GoogleAccountOut(Model):

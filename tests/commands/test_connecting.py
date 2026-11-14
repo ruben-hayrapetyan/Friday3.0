@@ -324,13 +324,13 @@ def test_cancel_sign_in_stops_the_wait_and_another_can_start(
     app.do("google_connect")
     page_up(app)
     status = app.do("google_connect_cancel")
-    assert (status["state"], status["message"], status["url"]) == ("idle", "Sign-in cancelled.", None)
+    assert (status["state"], status["message"], status["url"]) == ("idle", "Sign-in canceled.", None)
     assert stopped == [PAGE]
     fake.answer.set()
     thread = connecting.SIGN_INS[connecting.data_file(app.conn).parent].thread
     assert thread is not None
     thread.join(5)
-    assert app.do("google_connect_status")["message"] == "Sign-in cancelled."  # not the flow's own failure
+    assert app.do("google_connect_status")["message"] == "Sign-in canceled."  # not the flow's own failure
     monkeypatch.setattr(google_auth, "calendar", Accounts({"me@gmail.com": FakeGoogle({"me@gmail.com": []})}))
     status = signed_in(app, monkeypatch, FakeSignIn())
     assert status["state"] == "connected" and status["account"] == "me@gmail.com"

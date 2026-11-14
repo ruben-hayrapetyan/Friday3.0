@@ -4,7 +4,7 @@ rule said a new way went to the AI ("fridays: easy. saturdays: push. sundays: no
 "book club is an only-if-im-ahead thing", "dont waste small gaps, throw a quick task in there"). Here each kind is
 known by the words that only it uses, and its details (days and paces, the events named) are taken from the rest.
 `read` tries this only after the grammar can't read the sentence and the sentence isn't two rules or a rule Friday
-has no kind for; a reading here must say what was meant (every labelled corpus in tests/core/data holds it)."""
+has no kind for; a reading here must say what was meant (every labeled corpus in tests/core/data holds it)."""
 
 import re
 

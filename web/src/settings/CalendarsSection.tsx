@@ -1,6 +1,6 @@
 // Calendars (COMBINED.md 17, 19, 28, 59, 60): what counts as busy when Friday plans, the time kept free around
 // events (to get there and back), each calendar's pigment and its
-// button in the title row (under its Google account's address when there are several), and the categories that colour
+// button in the title row (under its Google account's address when there are several), and the categories that color
 // events by their titles, with the filter that hides the ones you'd rather not see (office hours).
 
 import { Fragment, useEffect, useRef, useState } from "react"
@@ -166,7 +166,7 @@ export function CalendarsSection() {
       <Field name="This Mac’s calendars" note="Choose which ones Friday reads and whether their events skip the Inbox. Switching one off removes its events until you switch it back on.">
         <Calendars mac />
       </Field>
-      <Field name="New events go to" note="Events you make in Friday are saved here too and take its colour. Each event can pick another in its drawer.">
+      <Field name="New events go to" note="Events you make in Friday are saved here too and take its color. Each event can pick another in its drawer.">
         <select
           className="input"
           value={(settings.gcal as { new_events_to?: string | null }).new_events_to ?? ""}

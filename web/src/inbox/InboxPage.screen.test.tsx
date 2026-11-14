@@ -108,7 +108,7 @@ describe("the Inbox", () => {
     await user.click(screen.getByRole("button", { name: /^Accept/ }))
     const sent = await waitForSent("suggestion_accept")
     expect(sent.body).toMatchObject({ id: 151, edits: { title: "Practice prelim 2", preset: "Exam prep", duration_min: 180 } })
-    // it stays in the list, greyed and said Accepted, and the next message opens
+    // it stays in the list, grayed and said Accepted, and the next message opens
     await waitFor(() => expect(row("PHYS 1112 practice prelim").textContent).toContain("Accepted"))
     expect(current()).not.toBe(row("PHYS 1112 practice prelim"))
     // shown at once; Friday saves it just after

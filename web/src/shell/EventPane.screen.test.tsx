@@ -1,5 +1,5 @@
 // The event drawer (COMBINED.md 12): a new event drafted from the menu or a double-click, its title, day and times,
-// all day, a repeat, where, the calendar, a colour and notes, sent as one `add`; an event opened again, saved with
+// all day, a repeat, where, the calendar, a color and notes, sent as one `add`; an event opened again, saved with
 // `edit`, a repeat asking which times, and deleting one, this one or every one.
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
@@ -50,7 +50,7 @@ describe("a new event", () => {
     expect(screen.getByText("⌘↩ saves · Esc closes")).toBeTruthy()
   })
 
-  it("is added with everything you gave it: title, day, times, where, colour and notes", async () => {
+  it("is added with everything you gave it: title, day, times, where, color and notes", async () => {
     const { user } = await openFriday("/")
     await host("newEvent")
     await screen.findByText("New event")

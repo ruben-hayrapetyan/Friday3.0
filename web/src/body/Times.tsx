@@ -1,5 +1,5 @@
 // What a meal's and a night's editors share (27 Oct: editing one was a click on small text that turned into bare time
-// boxes and unlabelled icons): a labelled time with a way to clear it, and the card it sits in, opened under the row
+// boxes and unlabeled icons): a labeled time with a way to clear it, and the card it sits in, opened under the row
 // you clicked, with Save, a way to delete and Cancel in words.
 
 import type { ReactNode } from "react"

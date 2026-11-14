@@ -49,7 +49,7 @@ hard-reload) or the old build is served. The app is desktop only, with a 1100 px
 **Settings → Repeating**
 - [ ] The Google card lists each repeating event once: "Every Mon, Wed and Fri, 12:20–13:10 · 4. School", a tag,
       a kind (fixed kinds for events, others for due work) and how many times; unticking one leaves it waiting.
-- [ ] Importing with a tag: the repeats appear under "From your calendars and feeds" with the tag's colour and their
+- [ ] Importing with a tag: the repeats appear under "From your calendars and feeds" with the tag's color and their
       times; Undo takes them back out. "Not now" hides the card until another repeating event turns up.
 - [ ] Switching an imported repeat off removes its future occurrences and keeps it in the list with its times;
       on again, they return within a minute, as one series.
@@ -102,7 +102,7 @@ hard-reload) or the old build is served. The app is desktop only, with a 1100 px
       Settings → Repeating has a trash per repeat you made; an imported one has only its switch.
 - [ ] Length in the to-do detail and the Inbox's Edit takes "5m", "45", "1h30", "1.5h"; under 15 minutes says it
       takes a 15-minute slot.
-- [ ] Insights' comparison shows the day's classes in grey in both versions.
+- [ ] Insights' comparison shows the day's classes in gray in both versions.
 - [ ] Other ways (on a busy profile, `--case grace --ready`): each slot counts its seconds with a bar and the
       first card shows before the second; past 8 s it says you can close it; closed, a toast "Two other ways … are
       ready" with See them; opened again within ten minutes the ways show at once; Stop leaves "Stopped."

@@ -1,4 +1,4 @@
-"""Calendar events as personal's Mac app saw them (COMBINED.md 17, 19, 28, 59): categories that colour an event by its
+"""Calendar events as personal's Mac app saw them (COMBINED.md 17, 19, 28, 59): categories that color an event by its
 title, a filter for the ones you'd rather not see (office hours), and which events count as busy when planning.
 
 Categories come from Chroma's `categories.json` (imported once) and are edited in Settings. An event is left out of
@@ -41,9 +41,9 @@ class CategorySettings(Model):
 
 
 # What a new install starts with, and anyone whose list was empty (8 Nov: "no default categories so all of their
-# events just get added as grey"; your choice, a starter set). The first that finds a title wins, so exams come before
+# events just get added as gray"; your choice, a starter set). The first that finds a title wins, so exams come before
 # classes ("MATH 1920 Prelim 2") and exercise before work ("work out"). Each its own soft paint, none of the ones
-# work wears (schoolwork's Verdigris, meals' Ochre) nor Payne's Grey, too near an unmarked event's slate; red only for
+# work wears (schoolwork's Verdigris, meals' Ochre) nor Payne's Gray, too near an unmarked event's slate; red only for
 # what's due. Birthdays are Social and appointments Meetings: seven paints are left, not nine.
 STARTER_CATEGORIES = (
     Category(name="Exam", slug="exam", color="red",
@@ -125,22 +125,22 @@ def is_filtered(title: str, settings: CategorySettings) -> bool:
     return category is None or category.slug not in rule.except_
 
 
-# The paints, as the website shows them on paper (web/src/lib/pigments.ts), for matching a calendar's own colour.
+# The paints, as the website shows them on paper (web/src/lib/pigments.ts), for matching a calendar's own color.
 PIGMENT_HEX = {"red": "#c2402d", "orange": "#d07758", "yellow": "#be9a1f", "green": "#34877a", "sapgreen": "#52a85b",
                "blue": "#2a6c9c", "purple": "#4a48a0", "pink": "#a63f76", "graphite": "#6e7a8c",
                "violet": "#8a4cb5"}  # fmt: skip
 
 
 # Paints that already say something: schoolwork's green and meals' yellow (web/src/theme/LookProvider.tsx KIND_PAINT),
-# and red, kept for now and overdue. A calendar's own colour is never matched to one (27 Oct: the Cornell calendar's
+# and red, kept for now and overdue. A calendar's own color is never matched to one (27 Oct: the Cornell calendar's
 # light cyan came out schoolwork green, so an event on it looked like an assignment). You can still choose one for a
 # calendar in Settings → Calendars.
 SAYS_SOMETHING = ("green", "yellow", "red")
 
 
 def nearest_pigment(color: str | None) -> str | None:
-    """The paint nearest a calendar's own colour ("#0088ff" is Cerulean), by hue, of those that don't already mean
-    something; a grey one is Payne's Grey."""
+    """The paint nearest a calendar's own color ("#0088ff" is Cerulean), by hue, of those that don't already mean
+    something; a gray one is Payne's Gray."""
     if not color or not re.fullmatch(r"#?[0-9a-fA-F]{6}", color):
         return None
     hue, sat = hue_of(color)

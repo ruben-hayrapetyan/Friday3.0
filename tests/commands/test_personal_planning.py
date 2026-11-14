@@ -1,4 +1,4 @@
-"""personal's planning behaviours in m16's engine (COMBINED.md 49–55): late tasks counted and priced by the square,
+"""personal's planning behaviors in m16's engine (COMBINED.md 49–55): late tasks counted and priced by the square,
 work pointless once late never planned after its due, exam prep due at its exam, and parts of a set in order."""
 
 from pathlib import Path

@@ -16,10 +16,10 @@ An extract of the frozen Friday v2 design: only what defines the scheduling prob
 
 | Term | Meaning |
 | --- | --- |
-| Item | Anything Friday knows about: a class, a problem set, a project, a meal, a store run. Its behaviour comes from its facets (section 4) |
+| Item | Anything Friday knows about: a class, a problem set, a project, a meal, a store run. Its behavior comes from its facets (section 4) |
 | Facet | One independent property of an item: when, amount, shape, firmness, value, relations, context, certainty |
 | Preset | A named set of facet defaults (Assignment, Class, Errand, …). You pick a preset; you never have to pick facets |
-| Area | An optional group with a colour: CS 1110, CS Club, FinCity, Health. Rules can target areas |
+| Area | An optional group with a color: CS 1110, CS Club, FinCity, Health. Rules can target areas |
 | Tag | A free-form label (`+reading`). Rules can target tags |
 | Series | A repeat rule that creates items (occurrences): every class meeting, a daily shower, gym 3 times a week |
 | Occurrence | One item created by a series |
@@ -513,7 +513,7 @@ Your settings say how Friday plans a normal day. The **dials** say how hard to p
 
 **Pace periods.** A pace applies to whole planning days for a set duration or until changed; days outside a period use the default pace. The first replan after a switch multiplies `minimize_changes` by 0.2 so the plan can actually change.
 
-**When a pace can't be honoured.** The deadlines stage still comes first. If hard work due soon doesn't fit the lighter days, Friday plans it anyway and reports which days the pace couldn't protect.
+**When a pace can't be honored.** The deadlines stage still comes first. If hard work due soon doesn't fit the lighter days, Friday plans it anyway and reports which days the pace couldn't protect.
 
 **Learning.** Every plan records each day's dials, so the dials of any past day can be looked up. Learning (section 11) must condition on them, or a sick week will teach Friday that you're slow.
 
@@ -523,7 +523,7 @@ The goal is to learn durations, energy and preferences from what you do, without
 
 - **Data:** every pin and manual move (a revealed preference), progress records (when and how long), completions.
 - **Durations:** a hierarchical log-normal model (item type → area → all), with partial pooling. Scheduling uses quantiles: p50 for flexible items, p80 for hard-deadline items. A bias multiplier comes with its uncertainty.
-- **Energy:** a Beta–Binomial "block happened as planned" estimate and a speed ratio (actual ÷ estimate) per hour-of-week cell, smoothed across neighbouring cells, plus optional one-tap check-ins. Bounded exploration avoids self-fulfilling estimates. The output is `energy_map`.
+- **Energy:** a Beta–Binomial "block happened as planned" estimate and a speed ratio (actual ÷ estimate) per hour-of-week cell, smoothed across neighboring cells, plus optional one-tap check-ins. Bounded exploration avoids self-fulfilling estimates. The output is `energy_map`.
 - **Weights:** inverse optimization. The objective is linear in the weights, so each manual move gives the inequality w · (φ(yours) − φ(Friday's)) ≤ 0. Fit with a max-margin method regularized toward the current weights, with a step cap.
 - **The learned layer:** a versioned `learned_profile`, separate from your settings, with per-module modes **off / suggest / auto within bounds**, a weekly digest of changes with their evidence, and reset. Plans record the profile version, so determinism holds.
 - **Dials are context, not evidence about you.** Every observation is tagged with its day's dials. Durations and energy are learned from default-pace days, or with the dials as a covariate. Weights are never learned from moves made in the replan right after a pace switch.
