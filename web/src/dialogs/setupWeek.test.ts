@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { Schemas } from "@/api/client"
-import { type Bit, minutes, ORDER, shift, sittings, sleepHours, weekOf } from "./setupWeek"
+import { type Bit, minutes, ORDER, shift, sittings, sleepHours, underBar, weekOf, EDGE } from "./setupWeek"
 
 type Answers = Schemas["SetupInput"]
 
@@ -120,5 +120,38 @@ describe("the week beside setup's questions", () => {
     expect(ORDER.at(-1)).toBe("ready")
     expect(shift("23:30", 60)).toBe("00:30")
     expect(shift("00:10", -15)).toBe("23:55")
+  })
+})
+
+// The day bars' "Up 6am" and "Bed 2am" under the walk's days (13 Nov: a client's early wake and late bed put them
+// half outside the box): centered on their time, they lean inward near the bar's ends, so they never leave it.
+describe("a time under the day bar", () => {
+  it("is centered on its time away from the ends", () => {
+    expect(underBar(50)).toEqual({ left: "50%", translate: "-50% 0" })
+    expect(underBar(EDGE)).toEqual({ left: `${EDGE}%`, translate: "-50% 0" })
+    expect(underBar(100 - EDGE)).toEqual({ left: `${100 - EDGE}%`, translate: "-50% 0" })
+  })
+
+  it("starts at the left edge at the bar's start and ends at the right edge at its end", () => {
+    expect(underBar(0)).toEqual({ left: "0%", translate: "0% 0" })
+    expect(underBar(100)).toEqual({ left: "100%", translate: "-100% 0" })
+  })
+
+  it("leans in smoothly between, never past the ends", () => {
+    const share = (pct: number) => -Number.parseFloat(underBar(pct).translate) / 100 // how much of the label is left of its time
+    for (let pct = 0; pct <= 100; pct += 0.5) {
+      const s = share(pct)
+      expect(s).toBeGreaterThanOrEqual(0)
+      expect(s).toBeLessThanOrEqual(1)
+      // a label as wide as EDGE*2% of the bar: its left side is at or after 0 and its right side at or before 100
+      expect(pct - s * EDGE * 2).toBeGreaterThanOrEqual(-1e-9)
+      expect(pct + (1 - s) * EDGE * 2).toBeLessThanOrEqual(100 + 1e-9)
+    }
+    expect(share(3)).toBeLessThan(share(6))
+  })
+
+  it("keeps a time outside the bar's span at its end", () => {
+    expect(underBar(-5)).toEqual(underBar(0))
+    expect(underBar(130)).toEqual(underBar(100))
   })
 })

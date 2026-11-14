@@ -5,6 +5,7 @@
    buttons). */
 
 .wk-stage {
+  font-variant-ligatures: none; /* Pixelify joins "fi" into one shape that reads as "A" ("fits" read "Ats", 13 Nov) */
   --wk-ink: #1b1a2b;
   --wk-ink-2: #262438;
   --wk-ink-3: #302e45;
@@ -19,7 +20,10 @@
   --wk-free: #f4a77f;
   --wk-lilac: #c3a2f2;
   --wk-night: #3b3f7a;
-  --wk-pixel: "Pixelify Sans", "Inter", system-ui, sans-serif;
+  /* digits in the pixel font's words come from VT323 ("Walk Digits", walkDigits.ts): Pixelify's 5 and 2 read as 8 */
+  --wk-pixel: "Walk Digits", "Pixelify Sans", "Inter", system-ui, sans-serif;
+  /* times and numbers shown on their own: VT323 outright (13 Nov, your pick of six) */
+  --wk-digits: "VT323", "JetBrains Mono", ui-monospace, monospace;
   /* the names the controls (SetupParts.tsx) and the reveal use */
   --ob-text: var(--wk-bone);
   --ob-muted: var(--wk-muted);
@@ -388,7 +392,7 @@
   border: 2px solid var(--wk-line);
 }
 .ob-tile b {
-  font: 700 30px/1 var(--wk-pixel);
+  font: 400 37px/1 var(--wk-digits);
   color: var(--tint, var(--wk-bone));
   font-variant-numeric: tabular-nums;
 }
@@ -499,8 +503,7 @@
 .ob-day-times span {
   position: absolute;
   top: 0;
-  translate: -50% 0;
-  white-space: nowrap;
+  white-space: nowrap; /* left and translate from setupWeek.ts underBar: inside the bar at either end */
 }
 .ob-answers {
   display: flex;
@@ -682,7 +685,7 @@
   border: 0;
   background: transparent;
   color: var(--wk-bone);
-  font: 700 26px/1.2 var(--wk-pixel);
+  font: 400 32px/1.1 var(--wk-digits);
   outline: none;
   box-shadow: none;
   min-height: 0;
@@ -718,7 +721,7 @@
   align-items: baseline;
 }
 .st-big {
-  font: 700 40px/1 var(--wk-pixel);
+  font: 400 49px/1 var(--wk-digits);
 }
 .st-big small {
   margin-left: 8px;

@@ -179,3 +179,15 @@ export const FOCUS: Record<string, Kind[]> = {
   brief: ["brief"],
   how: ["work", "event"],
 }
+
+/** How far from either end of a day bar (in % of its width) a time's label starts leaning in: a label centered on
+ * its time is about this wide on each side ("Bed 12:30am" under the walk's bar). */
+export const EDGE = 12
+
+/** Where a time's label sits under a day bar, at `pct` of its width: centered on the time, leaning in near either
+ * end so it never leaves the bar (13 Nov: a 6am wake and a 2am bed put "Up 6am" and "Bed 2am" half outside). */
+export function underBar(pct: number): { left: string; translate: string } {
+  const at = Math.min(Math.max(pct, 0), 100)
+  const share = at < EDGE ? (at / EDGE) * 0.5 : at > 100 - EDGE ? 0.5 + ((at - (100 - EDGE)) / EDGE) * 0.5 : 0.5
+  return { left: `${at}%`, translate: `${-share * 100}% 0` }
+}

@@ -10,7 +10,8 @@
   --gd-line: rgba(242, 234, 216, 0.14);
   --gd-gold: #f2c14e;
   --gd-gold-dark: #a77b1c;
-  --gd-pixel: "Pixelify Sans", "Inter", system-ui, sans-serif;
+  --gd-pixel: "Walk Digits", "Pixelify Sans", "Inter", system-ui, sans-serif; /* digits: VT323 (dialogs/walkDigits.ts) */
+  font-variant-ligatures: none; /* Pixelify joins "fi" into one shape that reads as "A" ("fits" read "Ats") */
   position: fixed;
   inset: 0;
   z-index: 60;

@@ -17,6 +17,7 @@ import "./setup.css"
 import "@fontsource/pixelify-sans/500.css"
 import "@fontsource/pixelify-sans/600.css"
 import "@fontsource/pixelify-sans/700.css"
+import "./walkDigits"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { type CSSProperties, type ReactNode, type RefObject, useEffect, useRef, useState } from "react"
 import { query, type Schemas } from "@/api/client"
@@ -36,7 +37,7 @@ import { Accounts, ACCOUNTS, PRIVACY, inMacApp } from "@/settings/MacAccounts"
 export { byAccount, inMacApp } from "@/settings/MacAccounts"
 import { Count, freeSpan } from "./onboard/Visuals"
 import { Choices, HourBar, Other, Source, TimeCard } from "./SetupParts"
-import { ALL_EVENING, ALL_WEEKEND, bedOf, shift, sleepHours, VIEW, wakeOf, weekOf } from "./setupWeek"
+import { ALL_EVENING, ALL_WEEKEND, bedOf, shift, sleepHours, underBar, VIEW, wakeOf, weekOf } from "./setupWeek"
 import { clockTime, STOPS } from "./walk/stops"
 import type { World } from "./walk/World"
 
@@ -624,8 +625,8 @@ function YourDays({ a }: { a: Answers }) {
               })}
             </div>
             <span className="ob-day-times">
-              <span style={{ left: `${pct(wake)}%` }}>Up {at(wake)}</span>
-              <span style={{ left: `${pct(bed)}%` }}>Bed {at(bed)}</span>
+              <span style={underBar(pct(wake))}>Up {at(wake)}</span>
+              <span style={underBar(pct(bed))}>Bed {at(bed)}</span>
             </span>
           </div>
         )

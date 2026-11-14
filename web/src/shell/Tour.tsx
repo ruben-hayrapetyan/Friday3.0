@@ -19,6 +19,7 @@ import type { Gesture, Guide } from "@/dialogs/walk/Guide"
 import { STRIP } from "@/dialogs/walk/strip"
 import { useShell } from "./ShellContext"
 import "./guide.css"
+import "@/dialogs/walkDigits"
 
 export interface Stop {
   id: string
