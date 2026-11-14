@@ -1,6 +1,6 @@
 // Search (v22, ⌘K or ⌘F): to-dos, calendar events (any year, one per series, as personal's sidebar search),
 // projects, pages and settings, and actions, filtered as you type; ↑↓ and Enter to open. With nothing matching,
-// Enter adds what you typed as a to-do (COMBINED.md 57).
+// Enter adds what you typed as a to-do.
 
 import { useAi } from "@/settings/AiConnect"
 import { useQuery } from "@tanstack/react-query"

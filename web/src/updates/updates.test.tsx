@@ -1,4 +1,4 @@
-// The updater on the page (HOSTED.md H118–H124, H144–H147). Glass box: what it says (headline, when it last looked,
+// The updater on the page. Glass box: what it says (headline, when it last looked,
 // a download's progress with its seconds) and what it tells the Mac app once an update is unpacked. Black box: a
 // version's notes drawn as the popup and "what's new" show them.
 import { renderToStaticMarkup } from "react-dom/server"

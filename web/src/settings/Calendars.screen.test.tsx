@@ -1,4 +1,4 @@
-// Settings → Calendars (COMBINED.md 17, 19, 28, 59, 60): what counts as busy, the time kept free around events, each
+// Settings → Calendars: what counts as busy, the time kept free around events, each
 // calendar planned around, just shown or hidden and its pigment, the Mac's calendars, where new events go, and the
 // categories with their filter; and the calendar lists in Integrations (Google's, read per event or as a kind; the
 // Mac's, by account). Alex reads seven Google calendars through the demo's stand-in; the Mac's calendars, which only

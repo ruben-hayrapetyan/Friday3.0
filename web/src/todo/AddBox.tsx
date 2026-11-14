@@ -98,7 +98,7 @@ export function AddBox({ onAdded, inputRef, longTerm = false, compact = false, p
       ...("due" in manual ? { due: manual.due } : {}),
       ...("duration_min" in manual ? { duration_min: manual.duration_min } : {}),
       ...(manual.repeat ? { every: manual.repeat.every, per_window: manual.repeat.perWindow } : {}),
-      ...(longTerm ? { long_term: true } : {}), // added on the Long term list, it belongs there (COMBINED.md 21)
+      ...(longTerm ? { long_term: true } : {}), // added on the Long term list, it belongs there
     }
     return ai.fields ? ({ ...ai.fields, ...fields } as CommandInput<"add">) : ({ text, ...fields } as CommandInput<"add">)
   }

@@ -1,4 +1,4 @@
-// Settings → Updates (HOSTED.md H147): the version you have, when Friday last looked, Check now, and when a
+// Settings → Updates: the version you have, when Friday last looked, Check now, and when a
 // downloaded update goes in (H146). Friday Test and a server run from the code never look, and say so (H169).
 
 import { useShell } from "@/shell/ShellContext"

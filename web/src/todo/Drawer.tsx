@@ -1,6 +1,6 @@
 // The to-do drawer beside the plan (v22): a quick add with what Friday read, the list grouped by when or tag, rows
-// you can tick off or drag onto the calendar. Its frame also holds an open event (COMBINED.md 12), and its left edge
-// drags to make it wider or narrower, kept for next time (personal's drawer, COMBINED.md 11).
+// you can tick off or drag onto the calendar. Its frame also holds an open event, and its left edge
+// drags to make it wider or narrower, kept for next time (personal's drawer).
 
 import { useWhatIf } from "@/whatif/store"
 import { type ReactNode, useEffect, useRef, useState } from "react"

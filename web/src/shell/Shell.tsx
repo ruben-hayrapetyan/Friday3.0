@@ -196,7 +196,7 @@ function useShellKeys() {
   }, [setPop, select, setDrawer, drawer])
 }
 
-/** The Mac app's menus and hotkeys (COMBINED.md 5). The calendar's actions bring you to the calendar first. */
+/** The Mac app's menus and hotkeys. The calendar's actions bring you to the calendar first. */
 function useHostActions() {
   const { today, place, setPlace, setPop, setDialog, setDrawer, drawer, setEvent, askClaude, setTour, pop, dialog, event } = useShell()
   // A menu's shortcut or a hotkey again closes what it opened, when Friday was already in front (shell/toggles.ts).

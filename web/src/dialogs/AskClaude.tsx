@@ -1,4 +1,4 @@
-// Ask Claude (personal's, COMBINED.md 20, 37): say what you want ("move my 5pm to Thursday", "prioritize assignments
+// Ask Claude (personal's): say what you want ("move my 5pm to Thursday", "prioritize assignments
 // over readings"), see what Claude would change as Friday's own commands, tick what to keep, and apply. Nothing runs
 // before Apply; applied, the changes undo together. ⌘↩ asks; Esc closes. Opened with `now` (a rule Friday couldn't
 // read, sent with ↩ from Rules), it asks at once. A proposal that adds, moves or clears time says under it whether you

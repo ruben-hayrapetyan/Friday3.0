@@ -1,7 +1,7 @@
 // The week and day grid (v22 Plan): day headers with the date, pace, a red count of the day's dues and overload, and
 // whole-day events as bars under them (3 Nov); hour lines; the meals you ate, as done blocks (4 Nov); blocks, fixed items, ghosts and the wind-down; what you
 // timed, when you did it, over the right of the column; drag to move, resize or select time. Settings → Appearance
-// chooses the hours shown and whether a day's dues are the count or a lane down its column (COMBINED.md 14, 15).
+// chooses the hours shown and whether a day's dues are the count or a lane down its column.
 
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router"

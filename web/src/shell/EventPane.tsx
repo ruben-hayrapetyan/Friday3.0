@@ -1,4 +1,4 @@
-// An event in the drawer (personal's inspector and new-event form, COMBINED.md 12): title, all day, date and times,
+// An event in the drawer (personal's inspector and new-event form): title, all day, date and times,
 // a repeat for a new one, its pigment and notes. The dashed block on the grid is the same draft, so changing the
 // times here moves it there. Return in the title saves; Escape closes. Under the times: whether you have time for a
 // new or moved event, or to go to one you marked optional (`components/Fit.tsx`), with other times when it doesn't.

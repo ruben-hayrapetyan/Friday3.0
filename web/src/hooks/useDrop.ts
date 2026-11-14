@@ -1,7 +1,7 @@
 // What a finished drag does (DESIGN §18.4): a block or a to-do row dropped on the calendar is pinned there
 // (preferred, or locked with Shift); a block dropped on the to-do pane is unpinned; a selection opens its menu.
 // Resizing a block pins it with its new length. Dropped on a whole day (a month cell, the mini month, a day's
-// header) it is due that day instead, at the time it had or 23:59 (COMBINED.md 16, as personal's Deadlines.swift).
+// header) it is due that day instead, at the time it had or 23:59 (as personal's Deadlines.swift).
 // A block picked with others (plan/picks.ts) takes them along: all move by as much, all are due that day, or all go
 // back to Friday. An event dragged gives it a new time, or a new day when let go on one; its edge, a new start or end;
 // either is saved as typing its time saves it.

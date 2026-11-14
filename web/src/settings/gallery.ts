@@ -1,4 +1,4 @@
-// The integrations gallery (PROGRESS.md C96, 10 Nov: "each integration is a box in which you can click into it and
+// The integrations gallery (10 Nov: "each integration is a box in which you can click into it and
 // then you can search the boxes by name (similar to the way that anthropic does plugins for claude)"). Your layout:
 // what you've connected on top, then each category; search across all; a box opens a panel over the gallery. This
 // file is the catalog and its search, kept plain so it's tested on its own (gallery.test.ts).

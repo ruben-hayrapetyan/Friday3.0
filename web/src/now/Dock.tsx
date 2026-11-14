@@ -1,6 +1,6 @@
 // The Now dock (v22): what you're doing right now. Timing something: the seconds ticking, how long the plan gives
-// it and what's next, with Done, Pause, Switch and more. In a planned block: Start and Done (no More time:
-// COMBINED.md 31). In a class:
+// it and what's next, with Done, Pause, Switch and more. In a planned block: Start and Done (no More time). In a
+// class:
 // the class. Free: how long, what's next, and the best things to start, one tap each. The timer is an overlay on
 // the plan, never a change to it (DESIGN §8), so Start and Pause move nothing on the calendar. With sleep tracking on
 // (Settings → Schedule), a slim row on top offers the tap that fits the hour: I'm up, Ready to work, Done with work

@@ -1,4 +1,4 @@
-// Try elsewhere and history (m16's design, COMBINED.md 66): the cheapest other place for a block with what it costs
+// Try elsewhere and history (m16's design): the cheapest other place for a block with what it costs
 // rule by rule, and a "Move there"; and what was done to the item, by whom.
 
 import { useQuery } from "@tanstack/react-query"

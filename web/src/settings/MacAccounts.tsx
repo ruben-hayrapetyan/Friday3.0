@@ -1,4 +1,4 @@
-// The calendars on this Mac (COMBINED.md 4): Friday's Mac app sends every calendar the Mac's Calendar app has, Google's
+// The calendars on this Mac: Friday's Mac app sends every calendar the Mac's Calendar app has, Google's
 // too once its account is added in System Settings. Setup's "Bring in" step and Settings → Integrations show them.
 
 import type { Schemas } from "@/api/client"

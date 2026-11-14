@@ -1,7 +1,7 @@
 // How Friday looks on this device (Settings → Appearance): theme, ink, block style, glow, panel chrome, Now bar and
 // heading face. Kept in localStorage, applied as CSS variables on <html>.
 //
-// The look is personal's paper and ink (COMBINED.md 61–65, from UI/Sources/Design/Theme.swift): a cool desk with
+// The look is personal's paper and ink (from UI/Sources/Design/Theme.swift): a cool desk with
 // pages on it, color spent on content and never on chrome, one red kept for now and overdue. The accent is the ink
 // the chrome is written in; the hue picker changes that ink. v22's options stay, adapted: glow is dark-only and off.
 
@@ -17,7 +17,7 @@ export interface Look {
   hours: "Waking" | "All day" // the day and week grid: wake to bedtime with sleep bands, or all 24 hours
   deadlines: "Chips" | "Lanes" // a day's dues as a red count in its header (plan/DueCount.tsx), or a row of them under the dates (plan/DueRow.tsx)
   todoRows: "Compact" | "Detailed" // the to-do list: personal's one-line rows, or two lines with progress bars
-  showing: string[] // calendars with title-row buttons that you switched on; off until you do (COMBINED.md 19)
+  showing: string[] // calendars with title-row buttons that you switched on; off until you do
   showFiltered: boolean // what the categories' filter matches (office hours), shown; off until you switch it on
 }
 

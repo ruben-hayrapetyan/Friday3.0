@@ -1,4 +1,4 @@
-// The sidebar's agenda (personal's, COMBINED.md 10): the chosen day's events, planned work and deadlines in one
+// The sidebar's agenda (personal's): the chosen day's events, planned work and deadlines in one
 // timeline by the clock, with today's red line between what's done and what's to come. Before the line, the work as
 // it went: what you timed, when you did it, and what was missed struck through (Friday planned it again).
 

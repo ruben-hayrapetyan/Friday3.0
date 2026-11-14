@@ -85,7 +85,7 @@ export const KIND_PAINT: Record<string, string> = {
 }
 // Where a kind goes when an event category or calendar wears its paint, nearest the look first.
 const SPARE_PAINTS = ["violet", "graphite", "purple", "pink", "orange", "blue", "sapgreen"]
-// The kinds whose paint gives way; schoolwork's green and meals' yellow are yours (COMBINED.md colors) and stay, and
+// The kinds whose paint gives way; schoolwork's green and meals' yellow are yours (colors) and stay, and
 // errands' is one no event wears.
 const MOVABLE = ["Side project", "Habit", "Maybe", "Work task"]
 

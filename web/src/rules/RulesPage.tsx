@@ -1,7 +1,7 @@
 // Rules (v22): how you like your days, in your own words. Type a rule; Friday shows how it read it (what, when,
 // which days) for you to correct, and how strongly to hold it. What Friday can't read goes to Claude when you press ↩
 // (when Claude is connected), right here: Claude's rules show under the box to tick, and ↩ again adds them. Below, every rule with a switch, its strength, how often the plan keeps it, and delete.
-// A rule the plan bends can ask what it's up against, and you say which should win (COMBINED.md 66); the answer shows
+// A rule the plan bends can ask what it's up against, and you say which should win; the answer shows
 // on both rules, and clicking it changes it. Rules that contradict each other say so, before you add one and after.
 
 import { useAi } from "@/settings/AiConnect"
@@ -298,7 +298,7 @@ function NewRule({ editing, start, onDone }: { editing: Editing; start: string; 
               <span>Friday can’t read that as a rule: say it another way. Cancel keeps the rule as it was.</span>
             </span>
           ) : !reading ? (
-            // What the grammar can't read goes to Claude (COMBINED.md 37), as rules to confirm: ↩ sends it.
+            // What the grammar can't read goes to Claude, as rules to confirm: ↩ sends it.
             <span style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 12, color: ai ? "var(--color-neutral-300)" : "var(--fr-warn)", textWrap: "pretty" }}>
               <Icon name={ai ? "sparkle" : "question"} size={13} style={{ color: ai ? "var(--color-accent-300)" : undefined, flexShrink: 0, alignSelf: "center" }} />
               {ai ? (

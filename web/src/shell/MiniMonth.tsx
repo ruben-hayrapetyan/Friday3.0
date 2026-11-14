@@ -1,4 +1,4 @@
-// The sidebar's mini month (personal's, COMBINED.md 10): each day tinted by how full it is, today underlined, the
+// The sidebar's mini month (personal's): each day tinted by how full it is, today underlined, the
 // agenda's day filled. A click shows that day in the calendar and the agenda; a task dropped on a day is due then. It
 // follows the calendar: moved to another week or month, it shows that month (the audit, 12 Nov: it stayed where it
 // opened); its own arrows look around until the calendar moves again.

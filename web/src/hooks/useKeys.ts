@@ -47,7 +47,7 @@ export interface KeyPress {
 
 export function keyAction({ key, meta, alt, busy, modal }: KeyPress): KeyAction | null {
   if (modal) return null // the audit (31 Oct): under setup, Space ran the timer and ⌘K swapped setup for search
-  if (meta && (key.toLowerCase() === "k" || key.toLowerCase() === "f")) return "palette" // one search (COMBINED.md 57)
+  if (meta && (key.toLowerCase() === "k" || key.toLowerCase() === "f")) return "palette" // one search
   if (busy || alt) return null
   if (meta) return key.toLowerCase() === "z" ? "undo" : null
   return SINGLE[key] ?? null

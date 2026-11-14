@@ -1,4 +1,4 @@
-// Friday's own updater on the page (HOSTED.md H118–H124, H144–H147): the server looks and downloads
+// Friday's own updater on the page: the server looks and downloads
 // (commands/updates.py); the page asks you, shows what's new, and tells the Mac app to swap the new version in
 // (Mac/Sources/Updater.swift), right away or when you quit, as Settings → Updates says.
 

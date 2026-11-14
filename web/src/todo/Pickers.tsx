@@ -168,8 +168,8 @@ export function dueSummary(value: string | null, today: string): string {
   return `Due ${weekday(date)} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1].slice(0, 3)}, ${clockTime(value)} (${away})`
 }
 
-/** A length typed as people say it ("45", "1h30", "an hour and a half", "2–3 hours"; personal's reader, COMBINED.md
- * 42), with a live reading under it; it settles on Enter or leaving the box. */
+/** A length typed as people say it ("45", "1h30", "an hour and a half", "2–3 hours"; personal's reader),
+ * with a live reading under it; it settles on Enter or leaving the box. */
 export function LengthInput({ value, onPick, width = 110 }: { value: number | null; onPick: (v: number | null) => void; width?: number }) {
   const [text, setText] = useState<string | null>(null)
   const typed = text === null ? null : parseLength(text)

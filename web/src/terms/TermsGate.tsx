@@ -1,4 +1,4 @@
-// Friday's terms before anything else (PROGRESS.md C71, 9 Nov: everyone accepts them, and people already using
+// Friday's terms before anything else (9 Nov: everyone accepts them, and people already using
 // Friday get "a popup on their screen" and must accept before going on). Friday stays locked on this page until you
 // press Accept; Quit closes Friday, your data untouched. When the terms change, it comes back with what changed.
 

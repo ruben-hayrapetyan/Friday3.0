@@ -1,4 +1,4 @@
-// The To-do page: personal's notebook (COMBINED.md 21, 22) with Friday's reading of each task. Short term in
+// The To-do page: personal's notebook with Friday's reading of each task. Short term in
 // sections by kind (readings, assignments, errands, the rest), each ruled and ending in its own add line that takes
 // due dates, lengths and tags as you'd say them; Long term in its own sepia ink; Due, every dated task soonest first
 // with the now line after the ones already past. A row is one line: the title, its tag, and on the right what

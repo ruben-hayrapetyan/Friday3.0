@@ -1,4 +1,4 @@
-// The Mac app's menus and hotkeys (COMBINED.md 5, Mac/Sources/HostAction.swift): each arrives as a `friday:host`
+// The Mac app's menus and hotkeys (Mac/Sources/HostAction.swift): each arrives as a `friday:host`
 // event, so the Mac app and the page share one implementation of every action. A browser never sends one.
 
 import { useEffect, useRef } from "react"

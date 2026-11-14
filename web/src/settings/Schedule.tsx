@@ -115,7 +115,7 @@ export function Schedule() {
           size="big"
         />
       </Field>
-      {/* Yours since COMBINED.md 38 but only settable by hand: a new user had no way to it (9 Nov, "what do I have that
+      {/* Yours for a long time but only settable by hand: a new user had no way to it (9 Nov, "what do I have that
           a user who just downloaded the app does not"). */}
       <Field name="Sittings" note="Whether Friday may split a task across sittings. In one go keeps each task together where it can.">
         <Seg

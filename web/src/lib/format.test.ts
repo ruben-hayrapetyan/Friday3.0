@@ -23,7 +23,7 @@ describe("when", () => {
 
 describe("typed lengths", () => {
   it("reads minutes and hours the way people type them", () => {
-    // personal's reading (COMBINED.md 42): a bare number is hours up to 8, minutes above.
+    // personal's reading: a bare number is hours up to 8, minutes above.
     const read = ["5", "45", "5m", "10 min", "45 minutes", "1h", "1h30", "1h 30m", "1.5h", "2 hrs", "1:15", "an hour and a half"].map(parseLength)
     expect(read).toEqual([300, 45, 5, 10, 45, 60, 90, 90, 90, 120, 75, 90])
   })

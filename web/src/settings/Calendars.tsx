@@ -1,7 +1,7 @@
 // Your Google calendars (M12b), alphabetized: each one read or not, its events read per event or all as one kind,
 // and trusted (straight to the plan) or through the Inbox. The list is what the last sync saw, folded under one line
 // saying how many are read; with several Google accounts, each account's calendars come under its address. The Mac's
-// calendars (COMBINED.md 4), which the Mac app sends, list the same way.
+// calendars, which the Mac app sends, list the same way.
 
 import { useQuery } from "@tanstack/react-query"
 import { Fragment, useState } from "react"

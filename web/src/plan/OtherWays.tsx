@@ -1,4 +1,4 @@
-// Other ways (personal's options, COMBINED.md 25): on demand, two more ways to plan the same work, each a card with
+// Other ways (personal's options): on demand, two more ways to plan the same work, each a card with
 // how it differs, its hours and sittings, anything late, and the next seven days at a glance. Preview lays one over
 // the calendar, dashed; Pick makes it your plan, and Friday learns from the pick. Each takes about half a minute to
 // plan, so each card shows as it comes, with its progress, and the window can close meanwhile (./finding.ts).

@@ -1,5 +1,5 @@
 // The Plan page (v22): the header (range, views, Shove, Pace, search, notifications, brief, to-do drawer) over the
-// week, three days, day or month view (COMBINED.md 13 had no three days; you asked for them).
+// week, three days, day or month view (had no three days; you asked for them).
 
 import { useAi } from "@/settings/AiConnect"
 import { useShownPlan } from "@/plan/shown"
@@ -83,8 +83,7 @@ export function PlanPage() {
   )
 }
 
-/** ↑ and ↓ move the selected block 15 minutes, pinned there, or all those picked; Enter opens its item (COMBINED.md
- * 66). */
+/** ↑ and ↓ move the selected block 15 minutes, pinned there, or all those picked; Enter opens its item. */
 function useNudge(): (by: number) => void {
   const { selected, select } = useShell()
   const client = useQueryClient()
@@ -218,7 +217,7 @@ function PlanMenu({ views }: { views?: { options: typeof VIEWS; value: View; onP
   )
 }
 
-/** personal's title-row toggles (COMBINED.md 19), in one menu: the calendars you gave a button and what the filter
+/** personal's title-row toggles, in one menu: the calendars you gave a button and what the filter
  * matches (office hours) stay off the calendar until switched on here. They change what's drawn, not what's planned. */
 function ShowMenu() {
   const settings = useSettings().data as Record<string, unknown> | undefined

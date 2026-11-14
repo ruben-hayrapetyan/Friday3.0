@@ -1,4 +1,4 @@
-// What the calendar draws (COMBINED.md 19): a calendar you hid (it has a Show button in the title row), and what the
+// What the calendar draws: a calendar you hid (it has a Show button in the title row), and what the
 // categories' filter matches (office hours), stay off the calendar until you switch them on: not drawn, not even
 // dashed, in the grid or the month. A hidden calendar is ignored everywhere else (14 Nov: a client hid calendars in
 // the walk and their invitations still reached the Inbox): the server leaves its events out of every other answer

@@ -1,4 +1,4 @@
-// Calendars (COMBINED.md 17, 19, 28, 59, 60): what counts as busy when Friday plans, the time kept free around
+// Calendars: what counts as busy when Friday plans, the time kept free around
 // events (to get there and back), each calendar's pigment and its
 // button in the title row (under its Google account's address when there are several), and the categories that color
 // events by their titles, with the filter that hides the ones you'd rather not see (office hours).

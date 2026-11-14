@@ -85,7 +85,7 @@ export function lateBy(hours: number): string {
 }
 
 /** A typed length in minutes: "5", "5m", "45 min", "1h30", "1h 30m", "1.5h", "1:30"; null when it isn't one. */
-/** A length typed in plain language, in whole minutes (personal's reader, lib/lengths.ts; COMBINED.md 42). */
+/** A length typed in plain language, in whole minutes (personal's reader, lib/lengths.ts). */
 export function parseLength(text: string): number | null {
   const minutes = readLength(text)
   return minutes === null ? null : Math.round(minutes)
@@ -124,7 +124,7 @@ export function hours(text: string): number {
   return match ? Number(match[1] ?? 0) + Number(match[2] ?? 0) / 60 : 0
 }
 
-/** A due date as personal's to-do list showed it (COMBINED.md 21): the date while it's a day or more off, a
+/** A due date as personal's to-do list showed it: the date while it's a day or more off, a
  * countdown within the day ("in 3h 12m"), and how long ago once it has passed ("2h 5m over"), in the now red. */
 export function dueLabel(due: string, nowMinute: number, today: string): { text: string; tone: "plain" | "soon" | "over" } {
   const left = toMin(due) - nowMinute

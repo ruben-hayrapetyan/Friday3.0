@@ -176,7 +176,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
   const base = skinOf(it.event_kind === "shove" ? "shove" : "fixed", it.area)
   // Painted as Chroma painted events: the pigment as a spine and an 11% wash over the page, the title in ink. Its
   // own pigment, else the one Chroma showed it in, else its category's, else its calendar's, else Chroma's
-  // Unmarked slate (COMBINED.md 17). One left out of planning sits back, dashed.
+  // Unmarked slate. One left out of planning sits back, dashed.
   const paint = eventPaint(it, light)
   const painted = it.event_kind === "shove" ? base : { ...base, bg: wash(paint, light), stripe: paint, fg: "var(--color-text)", sub: "var(--color-neutral-400)" }
   // Two kinds of skipping, told apart (31 Oct: "i don't like how the ones that i have to toggle have the same shading

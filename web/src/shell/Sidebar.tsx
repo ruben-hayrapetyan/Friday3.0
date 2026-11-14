@@ -1,5 +1,5 @@
 // The sidebar (v22): the Friday mark, Settings and the tour, the pages, personal's mini month and day agenda
-// (COMBINED.md 10). No to-do list (3 Nov: "just remove it in its entirety"): the To-do drawer shows what's due. A
+//. No to-do list (3 Nov: "just remove it in its entirety"): the To-do drawer shows what's due. A
 // block dropped here goes back to Friday ("let Friday decide"). In a narrower window it is a rail of the pages' icons;
 // in a narrow one it slides over the page from the menu button.
 import { useQuery } from "@tanstack/react-query"

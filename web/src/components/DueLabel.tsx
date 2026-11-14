@@ -1,4 +1,4 @@
-// A due date that counts down within its day and counts up, in red, once past (personal's, COMBINED.md 21). A
+// A due date that counts down within its day and counts up, in red, once past (personal's). A
 // routine's "due" is only the end of its window (lunch by 2:30pm): past it, it isn't late work, so it says it wasn't
 // recorded, quietly, rather than hours "over" in red (27 Oct: lunch and dinner were always overtime).
 

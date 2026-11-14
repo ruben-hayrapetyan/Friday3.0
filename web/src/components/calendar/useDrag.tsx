@@ -1,7 +1,7 @@
 // Drag on pointer events, no library (DESIGN §18.4). One drag at a time, shared by the calendar and the to-do pane:
 // day columns carry `data-top-min` (the minute at their top), the pane `data-drop="todo"`, and whole days (month
 // cells, the mini month, day headers) `data-drop-day` with their date: a task dropped there is due that day
-// (COMBINED.md 16).
+//.
 
 import { createContext, type ReactNode, useCallback, useContext, useRef, useState } from "react"
 import { type DragStart, dragged } from "@/lib/drag"

@@ -282,7 +282,7 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
     onClose()
   }
   const toggle = (a: string) => setChosen(chosen.includes(a) ? chosen.filter((x) => x !== a) : [...chosen, a])
-  // "I'm going": never offered again (COMBINED.md 56). Said on the row at once; the options are worked out again
+  // "I'm going": never offered again. Said on the row at once; the options are worked out again
   // behind it.
   const going = async (o: Schemas["TriageOption"]) => {
     say(o.action, "going")

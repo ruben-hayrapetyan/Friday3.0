@@ -1,4 +1,4 @@
-// Friday's questions to you, in the Inbox (PROGRESS.md C75, 9 Nov: "the weight changing questions that now pop up in
+// Friday's questions to you, in the Inbox (9 Nov: "the weight changing questions that now pop up in
 // insights should instead go to inbox. in fact anything that needs the user's attention (like questions friday asks
 // to the user) should go into inbox instead of insights"). Each is a message: what Friday learned and wants to use (a
 // new weighing of your rules, a rule, keeping a rule hard, learned lengths, the hours work slips, one kind before

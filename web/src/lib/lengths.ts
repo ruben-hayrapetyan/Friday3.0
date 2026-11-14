@@ -1,4 +1,4 @@
-// Lengths typed the way people say them (COMBINED.md 42), ported from personal's Minutes.parse
+// Lengths typed the way people say them, ported from personal's Minutes.parse
 // (UI/Sources/Planner/Lengths.swift): "90", "2h", "1h30", "1:30", "an hour and a half", "half an hour", "forty-five
 // minutes", "a couple of hours", "2-3 hours" (the middle), "about 2h or so". A number on its own is hours up to 8
 // and minutes above. Null when any word can't be read, so a typo shows rather than being guessed at.

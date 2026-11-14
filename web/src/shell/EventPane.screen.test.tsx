@@ -1,4 +1,4 @@
-// The event drawer (COMBINED.md 12): a new event drafted from the menu or a double-click, its title, day and times,
+// The event drawer: a new event drafted from the menu or a double-click, its title, day and times,
 // all day, a repeat, where, the calendar, a color and notes, sent as one `add`; an event opened again, saved with
 // `edit`, a repeat asking which times, and deleting one, this one or every one.
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"

@@ -185,7 +185,7 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
         ) : (
           <Seg options={FIRMNESS} value={item.firmness} onPick={(v) => edit({ id, firmness: v as "hard" | "soft" | "none" })} />
         )}
-        <span className="fr-kicker" title="Never planned after its due: pointless once late (COMBINED.md 50)">After it's due</span>
+        <span className="fr-kicker" title="Never planned after its due: pointless once late">After it's due</span>
         <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <Seg
             options={[

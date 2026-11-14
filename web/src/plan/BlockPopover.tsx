@@ -1,6 +1,6 @@
 // The selected block (v22): what it is, when, why Friday put it there, its due and what's left, and what you can do
 // with it: start, finish, pin or unpin, unlock, skip one occurrence, delete (Delete or Backspace too). The timer's
-// buttons are personal's (COMBINED.md 32): large, on top, Start or Pause, and Done; Resume once some of it is done,
+// buttons are personal's: large, on top, Start or Pause, and Done; Resume once some of it is done,
 // with how much, and that day's timed sittings below. A selected event shows its calendar, color and notes, with
 // Edit to open it in the drawer.
 
