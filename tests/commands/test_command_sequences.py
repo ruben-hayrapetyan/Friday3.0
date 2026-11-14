@@ -18,7 +18,7 @@ from friday.core.items import FieldError, validate
 from friday.core.rows import item_from_row
 from friday.core.time import UNIT_MIN, format_utc, parse_utc
 from friday.planner.build import build_problem
-from friday.planner.prepare import build_input
+from friday.planner.prepare import build_input, timer_hold
 from friday.planner.progress import minutes_by_item
 from friday.planner.service import replan
 from friday.planner.snapshot import take_snapshot
@@ -380,7 +380,9 @@ def inside(lo: int, hi: int, spans: list[tuple[int, int]]) -> int:
 def check_plan(app: App) -> None:
     """The saved plan's blocks from now on: only items still to do, never on a walled-off event, never over a night or
     more than what's left of an item (a quarter hour more where a half-hour slot holds the last quarter) except
-    where you locked it."""
+    where you locked it, or where the running timer holds its item (§8 rule 2: the next half hour stays the timed
+    item's however much of it is done, so it can run past its length; 13 Nov, a lunch timed and set 90% done kept
+    its half hour, which this check took for too much planned)."""
     saved = current_plan(app.conn, 1)
     if saved is None:
         return
@@ -388,6 +390,7 @@ def check_plan(app: App) -> None:
     statuses = {r[0]: (r[1], r[2]) for r in app.conn.execute("SELECT id, status, when_kind FROM items")}
     walled = walls(app.conn, app.now_utc)
     left = left_minutes(app.conn, app.now_utc)
+    held = timer_hold(take_snapshot(app.conn, app.now_utc))  # (item, from, to): the running timer's hold
     planned: dict[int, int] = {}
     for b in app.conn.execute("SELECT * FROM blocks WHERE plan_id = ?", [saved["id"]]):
         start, end = max(parse_utc(b["start_utc"]), app.now_utc), parse_utc(b["end_utc"])
@@ -408,6 +411,8 @@ def check_plan(app: App) -> None:
     for item_id, minutes in planned.items():
         if item_id in left:
             yours = inside(app.now_utc, 10**12, locked.get(item_id, []))  # locked minutes from now on
+            if held is not None and held[0] == item_id:
+                yours = max(yours, held[2] - held[1])  # the timer's hold
             assert minutes <= max(0, left[item_id], yours) + UNIT_MIN, (
                 f"T{item_id}: {minutes} min planned, {left[item_id]} left"
             )
@@ -471,5 +476,14 @@ def fresh(tmp_path_factory: pytest.TempPathFactory) -> Callable[[], App]:
 @example(actions=[("task", "Essay", 15, None, None, None), ("pin", 0, 0, 32, 7, "locked")])
 @example(actions=[("task", "Essay", 15, None, None, None), ("replan",), ("undo", 1)])
 @example(actions=[("line", "essay draft due wed 5pm ~3h"), ("pin", 0, 1, 0, None, "locked")])
+# found 13 Nov: a routine's piece timed and set 90% done kept its whole half hour planned for the 5 minutes left
+@example(
+    actions=[
+        ("task", "Essay", 15, None, None, None),
+        ("line", "lunch every day 11:30am-2pm 30-45m"),
+        ("start", 1),
+        ("progress", 1, 0.9),
+    ]
+)
 def test_random_command_sequences_keep_their_promises(fresh: Callable[[], App], actions: list[Action]) -> None:
     play(fresh(), actions)
