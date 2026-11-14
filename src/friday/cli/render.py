@@ -9,8 +9,15 @@ from typing import Any, Literal
 
 from rich.console import Console
 
-out = Console(highlight=False, soft_wrap=True)
-err = Console(stderr=True, highlight=False, soft_wrap=True)
+
+def console(stderr: bool = False) -> Console:
+    """Where `friday` prints: colored when it's a terminal, or FORCE_COLOR / TTY_COMPATIBLE=1 says so (read as it's
+    made: rich picks its colors then)."""
+    return Console(stderr=stderr, highlight=False, soft_wrap=True)
+
+
+out = console()
+err = console(stderr=True)
 
 
 def show(name: str, response: Any, as_json: bool) -> None:
