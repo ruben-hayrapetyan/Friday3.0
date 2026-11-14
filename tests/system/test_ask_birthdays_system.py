@@ -5,6 +5,7 @@ birthday is made and that Mira's is there; its Mira is refused, its Remy offered
 11:59pm as it gave it, is the whole day once applied and leaves the day's work to plan."""
 
 import json
+import time
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -47,7 +48,16 @@ def test_the_model_is_told_how_and_what_is_there_and_its_repeat_is_refused(
 ) -> None:
     friday, ollama, day = system
     out = friday.c("ask_claude", text="Club Bdays: Mira, Remy")
-    told = json.loads(ollama.state()["told"])
+    # another event's sorting chat after the ask, as happened by chance: the ask's own chat is still the one read
+    before = ollama.state()["chats"]
+    friday.c("add", title="Team dinner", when="fixed", start=f"{day}T19:00", end=f"{day}T20:00")
+    deadline = time.monotonic() + 75  # the ratings job looks once a minute (server/jobs.py)
+    while ollama.state()["chats"] == before and time.monotonic() < deadline:
+        time.sleep(0.2)
+    assert ollama.state()["chats"] > before, "a new event is sorted by the model, after the ask"
+    # the ask's own chat: the job that sorts Mira's new event into a category asks the same model, and its chat can
+    # come after this one (13 Nov: the test read that chat and failed now and then)
+    (told,) = [chat for chat in json.loads(ollama.state()["all_told"]) if any("Club Bdays" in (m or "") for m in chat)]
     assert 'next day\'s "T00:00"' in told[0] and "Club Bdays" in told[1]
     assert '"repeating"' in told[1] and "Mira's Birthday" in told[1] and f"{day}T00:00" in told[1]
     assert [a["error"] for a in out["actions"]] == ["You already have Miras birthday then, repeating", None]

@@ -135,7 +135,8 @@ class FakeOllama:
 
 def control(fake: FakeOllama) -> Callable[[str], None]:
     """For the system tests: commands on stdin ("have NAME", "gate", "release", "fail TEXT", "answer JSON", "think",
-    "answered", "state", which says what the last chat was told)."""
+    "answered", "state", which says what the last chat was told and, in `all_told`, what every chat was: a background
+    job's chat can come after the one a test made)."""
 
     def run(line: str) -> None:
         word, _, rest = line.strip().partition(" ")
@@ -157,9 +158,11 @@ def control(fake: FakeOllama) -> Callable[[str], None]:
             fake.thinking.set()
             fake.thinking = None
         elif word == "state":
-            told = [m.get("content") for m in fake.chats[-1]["messages"]] if fake.chats else []
+            every = [[m.get("content") for m in chat["messages"]] for chat in fake.chats]
+            told = every[-1] if every else []
             print(json.dumps({"models": sorted(fake.models), "pulled": fake.pulled, "deleted": fake.deleted,
-                              "chats": len(fake.chats), "told": json.dumps(told)}), flush=True)  # fmt: skip
+                              "chats": len(fake.chats), "told": json.dumps(told),
+                              "all_told": json.dumps(every)}), flush=True)  # fmt: skip
 
     return run
 
