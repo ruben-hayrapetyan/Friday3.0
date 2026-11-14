@@ -11,17 +11,19 @@ export interface Pigment {
   dark: string
 }
 
+// In the order every menu lists them: round the rainbow, the gray last (13 Nov, a client: "cobalt violet between
+// ultramarine and magenta, grey last"; pigments.order.test.ts checks each one's hue).
 export const PIGMENTS: Pigment[] = [
   { id: "red", name: "Vermilion", light: "#c2402d", dark: "#e0715f" },
   { id: "orange", name: "Burnt Sienna", light: "#d07758", dark: "#ec9c7c" },
   { id: "yellow", name: "Ochre", light: "#be9a1f", dark: "#d9b84f" },
-  { id: "green", name: "Verdigris", light: "#34877a", dark: "#5fb3a5" },
   { id: "sapgreen", name: "Permanent Green", light: "#52a85b", dark: "#80d27f" },
+  { id: "green", name: "Verdigris", light: "#34877a", dark: "#5fb3a5" },
   { id: "blue", name: "Cerulean", light: "#2a6c9c", dark: "#5f9ccb" },
   { id: "purple", name: "Ultramarine", light: "#4a48a0", dark: "#8381d6" },
-  { id: "pink", name: "Magenta", light: "#a63f76", dark: "#d27aa8" },
-  { id: "graphite", name: "Payne's Grey", light: "#6e7a8c", dark: "#9aa5b5" },
   { id: "violet", name: "Cobalt Violet", light: "#8a4cb5", dark: "#b689d8" },
+  { id: "pink", name: "Magenta", light: "#a63f76", dark: "#d27aa8" },
+  { id: "graphite", name: "Payne's Gray", light: "#6e7a8c", dark: "#9aa5b5" },
 ]
 
 // Paints only work wears, never offered for an event, so work painted with one can't be taken for an event (28 Oct:

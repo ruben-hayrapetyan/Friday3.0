@@ -16,9 +16,9 @@ Status = Literal["todo", "done", "dropped", "skipped"]
 DurationSource = Literal["you", "estimate", "preset"]
 
 # personal's pigments (UI/Sources/Calendar/EventColors.swift), by id: Vermilion, Burnt Sienna (Amber until 31 Oct),
-# Ochre, Verdigris, Permanent Green (Sap Green), Cerulean, Ultramarine, Magenta, Payne's Grey, Cobalt Violet. The web
-# app holds their colours.
-PIGMENTS = ("red", "orange", "yellow", "green", "sapgreen", "blue", "purple", "pink", "graphite", "violet")
+# Ochre, Permanent Green (Sap Green), Verdigris, Cerulean, Ultramarine, Cobalt Violet, Magenta, Payne's Gray. The web
+# app holds their colors. In the rainbow's order, gray last, as every menu lists them (13 Nov).
+PIGMENTS = ("red", "orange", "yellow", "sapgreen", "green", "blue", "purple", "violet", "pink", "graphite")
 
 DEFAULT_DAILY_CEILING_UNITS = 4  # an hour a day: at 3 h, a book or Leetcode took every free afternoon (M15)
 
