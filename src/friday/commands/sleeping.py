@@ -27,6 +27,9 @@ SHOWN_DAYS = 14
 LEARN_DAYS = 56  # the last eight weeks teach the times
 SAID = {"done": "Done with work", "bed": "Good night", "up": "Good morning", "ready": "Ready to work"}
 DONE_FROM_H = 4  # "Done with work" is offered from this many hours before your bedtime
+DONE_BY_H = 18  # and from 6pm at the latest, however late your bedtime (14 Nov: a late learned bedtime hid it)
+UP_AFTER_H = 2  # "I'm up" is offered this long after "Going to bed", whatever the hour (14 Nov)
+UP_UNTIL_H = 20  # and no longer: a forgotten tap doesn't keep it showing into the next evening
 
 
 def tracking(ctx: Ctx) -> None:
@@ -216,12 +219,25 @@ def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
 
 
 def offer(ctx: Ctx, now: datetime, nights: dict, overrides: dict, morning_hours: float) -> str | None:
-    """The tap that fits now: up in the morning until it's tapped, ready for a few hours after; in the evening done
-    with work from four hours before your bedtime (not while a timer runs), then bed once you're done, or from three
-    hours before bedtime if you never said, until the day starts."""
+    """The tap that fits now: up after a night you said you went to bed (from two hours after, whatever the hour), or
+    in the morning; ready for a few hours after; in the evening done with work from four hours before your bedtime or
+    6pm, whichever is first (not while a timer runs), then bed once you're done, until the day starts. (14 Nov: a user
+    whose learned bedtime was late never saw "Done with work", nor "Going to bed" after it; one up at 3:30pm never saw
+    "I'm up".)"""
+    # the last "Going to bed" with no "I'm up" after it, whichever nights they're counted in (a 5am bed is that
+    # day's own night, as the day starts at 4am, and its morning's up is then counted in the night before)
+    beds = [n.bed.at.replace(tzinfo=None) for n in nights.values() if n.bed is not None]
+    ups = [n.up.at.replace(tzinfo=None) for n in nights.values() if n.up is not None]
+    bed = max((b for b in beds if b <= now), default=None)
+    asleep = bed is not None and not any(u > bed for u in ups)
+    if asleep and bed is not None:
+        if now < bed + timedelta(hours=UP_AFTER_H):
+            return None  # just gone to bed
+        if now < bed + timedelta(hours=UP_UNTIL_H):
+            return "up"
     morning = nights.get(now.date() - timedelta(days=1))
     up = morning.up if morning else None
-    if up is None and ctx.day_start <= now.hour * 60 + now.minute < 15 * 60:
+    if up is None and not asleep and ctx.day_start <= now.hour * 60 + now.minute < 15 * 60:
         return "up"
     if (
         up is not None
@@ -237,7 +253,9 @@ def offer(ctx: Ctx, now: datetime, nights: dict, overrides: dict, morning_hours:
     if tonight is not None and tonight.done is not None:
         return "bed"
     working = one(ctx.conn, "SELECT 1 FROM timer WHERE user_id = ?", [ctx.user_id]) is not None
-    if not working and ctx.now_utc >= bedtime - DONE_FROM_H * 60:
+    # 6pm or later on the evening's date, or past midnight into its night
+    by_six = (now.date() == evening and now.hour * 60 + now.minute >= DONE_BY_H * 60) or now.date() > evening
+    if not working and (ctx.now_utc >= bedtime - DONE_FROM_H * 60 or by_six):
         return "done"
     return None
 

@@ -252,3 +252,33 @@ def test_learned_times_that_break_your_sleep_rule_say_so(app: App) -> None:
     out = app.do("sleep")
     assert out["suggested"] and out["against"]
     assert all("under your 8 h rule" in said for said in out["against"])
+
+
+def test_done_with_work_is_offered_by_6pm_even_after_a_late_learned_bedtime(app: App) -> None:
+    """14 Nov: a user never saw "Done with work" (so never "Going to bed") once Friday had a late bedtime: it was
+    offered only from four hours before it. Now from 6pm at the latest; earlier when bedtime puts it earlier."""
+    on(app)
+    days = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+    app.do(
+        "settings_set", key="sleep", value={d: {"wake": "10:00", "bedtime": "03:30", "margin_min": 30} for d in days}
+    )
+    app.at("2026-10-19T17:55")
+    assert app.do("sleep")["next"] != "done"
+    app.at("2026-10-19T18:00")
+    assert app.do("sleep")["next"] == "done"
+    app.do("sleep_mark", kind="done")
+    assert app.do("sleep")["next"] == "bed"  # and Going to bed right after it, whatever the hour
+
+
+def test_im_up_is_offered_after_a_night_whatever_the_hour(app: App) -> None:
+    """14 Nov: "I'm up" was offered only from 4am to 3pm, so someone up at 3:30pm after a late night never saw it.
+    Once you've said you're going to bed, it's offered until you say you're up: from two hours after the bed tap."""
+    on(app)
+    app.at("2026-10-20T05:00")
+    app.do("sleep_mark", kind="bed")  # to bed at 5am
+    app.at("2026-10-20T06:30")
+    assert app.do("sleep")["next"] is None  # just gone to bed: not "I'm up" yet
+    app.at("2026-10-20T15:30")
+    assert app.do("sleep")["next"] == "up"  # up mid-afternoon: still offered
+    app.do("sleep_mark", kind="up")
+    assert app.do("sleep")["next"] == "ready"
