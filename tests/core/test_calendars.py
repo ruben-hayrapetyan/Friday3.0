@@ -2,11 +2,13 @@
 
 from friday.core.calendars import (
     BusySettings,
+    CalendarLook,
     Category,
     CategorySettings,
     EventFilter,
     calendar_counts,
     category_of,
+    hidden_calendars,
     is_filtered,
     left_out,
 )
@@ -80,3 +82,11 @@ def test_a_calendar_s_color_never_wears_a_paint_that_already_means_something() -
     assert {nearest_pigment(c) for c in (holidays, gold)} <= {"sapgreen", "blue", "orange"}
     every = [f"#{r:02x}{g:02x}{b:02x}" for r in range(0, 256, 51) for g in range(0, 256, 51) for b in range(0, 256, 51)]
     assert not {nearest_pigment(c) for c in every} & set(SAYS_SOMETHING)
+
+
+def test_the_calendars_you_hid_are_those_given_a_show_button() -> None:
+    # 14 Nov: hidden in the walk is `calendar_look.toolbar`; the colors and the past plan say nothing of it
+    assert hidden_calendars(CalendarLook()) == frozenset()
+    look = CalendarLook(colors={"Home": "blue"}, toolbar=("Clubs", "Invites", ""), show_past_plan=False)
+    assert hidden_calendars(look) == {"Clubs", "Invites"}
+    assert "Home" not in hidden_calendars(look)

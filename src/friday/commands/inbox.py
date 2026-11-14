@@ -476,9 +476,12 @@ def set_aside_of(ctx: Ctx) -> list[SetAsideOut]:
         [ctx.user_id, since],
     )
     out = []
+    away = ctx.hidden.suggestions
     for r in found:
         if r["duplicate_of"] is None and str(r["id"]) not in twins:
             continue  # set aside by a newer reading of the same mail or feed, not as a duplicate
+        if r["id"] in away:
+            continue  # a hidden calendar's, or what it has too (planner/hidden.py)
         why = (
             "Also waiting in your inbox"
             if r["duplicate_of"] is None
@@ -506,10 +509,11 @@ def inbox(ctx: Ctx, inp: Empty) -> InboxOut:
         "coalesce(json_extract(s.input, '$.due'), json_extract(s.input, '$.start'), '9999'), s.id",
         [ctx.user_id],
     )
-    repeats = one(  # waiting to be imported in Settings → Repeating, not here
+    away = ctx.hidden.suggestions  # a hidden calendar's, or an invitation it has too: out of sight (planner/hidden.py)
+    found = [s for s in found if s["id"] not in away]
+    repeats = rows(  # waiting to be imported in Settings → Repeating, not here
         ctx.conn,
-        "SELECT COUNT(DISTINCT batch) AS n FROM suggestions WHERE user_id = ? AND status = 'pending' "
-        "AND batch LIKE 'repeat:%'",
+        "SELECT id, batch FROM suggestions WHERE user_id = ? AND status = 'pending' AND batch LIKE 'repeat:%'",
         [ctx.user_id],
     )
     set_aside = set_aside_of(ctx)
@@ -560,5 +564,5 @@ def inbox(ctx: Ctx, inp: Empty) -> InboxOut:
         suggestions=suggestions,
         sources=sources,
         llm=llm_state,
-        repeats=repeats["n"] if repeats else 0,
+        repeats=len({r["batch"] for r in repeats if r["id"] not in away}),
     )

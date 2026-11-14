@@ -294,6 +294,7 @@ class WhatIfInput(Model):
     changes: list[WhatIfChange]
     start: str  # the range the calendar shows, local
     end: str
+    with_hidden: bool = False  # the calendar's events of calendars you hid too, as `plan` gives them
 
 
 class WhatIfKeepInput(Model):
@@ -493,6 +494,8 @@ class UndoInput(Model):
 class RangeInput(Model):
     start: str | None = None  # local; now when left out
     end: str | None = None  # the scheduler horizon's end when left out
+    # with the events of calendars you hid (marked `hidden_calendar`), for the plan's Show to switch on; else without
+    with_hidden: bool = False
 
 
 class ItemsInput(Model):

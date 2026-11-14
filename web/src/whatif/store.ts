@@ -141,7 +141,7 @@ export function useTrial(today: string) {
   const end = `${addDays(today, SPAN_DAYS)}T00:00`
   const q = useQuery({
     queryKey: ["whatif", changes, start, end],
-    queryFn: () => queryBody("whatif", { changes, start, end }),
+    queryFn: () => queryBody("whatif", { changes, start, end, with_hidden: true }), // drawn as the calendar draws (plan/shown.ts)
     enabled: w.on && changes.length > 0,
     placeholderData: keepPreviousData,
     staleTime: Infinity,

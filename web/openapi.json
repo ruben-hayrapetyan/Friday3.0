@@ -12064,6 +12064,16 @@
        ],
        "title": "End"
       }
+     },
+     {
+      "name": "with_hidden",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "With Hidden"
+      }
      }
     ],
     "responses": {
@@ -19958,6 +19968,17 @@
       "type": "boolean",
       "title": "Filtered",
       "default": false
+     },
+     "hidden_calendar": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hidden Calendar"
      },
      "gives_way_to": {
       "anyOf": [
@@ -35587,6 +35608,11 @@
      "end": {
       "type": "string",
       "title": "End"
+     },
+     "with_hidden": {
+      "type": "boolean",
+      "title": "With Hidden",
+      "default": false
      }
     },
     "additionalProperties": false,

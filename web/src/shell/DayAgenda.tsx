@@ -30,7 +30,7 @@ export function DayAgenda() {
   const { color, light } = useLook()
   const day = agendaDay ?? today
   const calendar = useCalendar(day, 1).data
-  const plan = useShownPlan(`${day}T00:00`, `${addDays(day, 1)}T00:00`).data
+  const plan = useShownPlan(`${day}T00:00`, `${addDays(day, 1)}T00:00`, { quiet: true }).data
   const now = useClock()
   const entries = agendaOf(day, plan, calendar)
   const nowAt = day === today ? entries.findIndex((e) => e.sort !== "allday" && toMin(e.end ?? e.start) > now) : -1

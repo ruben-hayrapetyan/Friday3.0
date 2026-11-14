@@ -84,6 +84,14 @@ class CalendarLook(Model):
     show_past_plan: bool = Field(True, validation_alias=AliasChoices("show_past_plan", "show_missed"))
 
 
+def hidden_calendars(look: CalendarLook) -> frozenset[str]:
+    """The calendars you hid ("Hide" in Setup's walk or Settings → Calendars): the ones given a Show button in the
+    plan's header. Friday still reads them, and plans around the ones you count as busy, but their events and
+    invitations show nowhere but the plan, and there only while you switch them on under Show (14 Nov: a client hid
+    calendars in the walk, and their invitations still came into the Inbox)."""
+    return frozenset(name for name in look.toolbar if name)
+
+
 REMINDER = re.compile(r"\b(due|deadline)\b", re.IGNORECASE)
 # A meeting about a deadline is still a meeting: "Thesis deadline check-in with advisor" takes the hour (26 Oct).
 MEETING = re.compile(

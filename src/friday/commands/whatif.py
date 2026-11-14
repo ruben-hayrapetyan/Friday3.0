@@ -167,7 +167,7 @@ def trial_plan(
         write_plan(conn, after, plan, "what if", current_plan(conn, ctx.user_id))
         settings = load_settings(conn, ctx.user_id)
         trial = Ctx(conn, Writer(conn, ctx.user_id), ctx.now_utc, "you", ctx.user_id, settings)
-        return calendar(trial, RangeInput(start=inp.start, end=inp.end)), done
+        return calendar(trial, RangeInput(start=inp.start, end=inp.end, with_hidden=inp.with_hidden)), done
 
     return tried_many(ctx.conn, changes, look, now_utc=ctx.now_utc, user_id=ctx.user_id, resolve=resolver)[0]
 

@@ -33,7 +33,8 @@ from friday.commands.fields import item_out, require_item, waiting_on
 from friday.commands.registry import Ctx, query
 from friday.commands.timer import all_running, elapsed_seconds, running
 from friday.commands.timer import timer_out as timing
-from friday.core.db import one, rows
+from friday.core.calendars import calendar_counts
+from friday.core.db import rows
 from friday.core.guess import course_of, guess_preset
 from friday.core.pace import dials_on, pace_label
 from friday.core.presets import in_use
@@ -108,11 +109,12 @@ def now(ctx: Ctx, inp: Empty) -> NowOut:
     # 08:15 and nothing was on at 08:03 (M16).
     planned = [b for b in snapshot.plan_blocks if key_of(b.item_id) in state.problem.items and b.end_utc > ctx.now_utc]
     covering = next((b for b in planned if b.start_utc <= ctx.now_utc), None)
-    events = fixed_events(ctx)
+    # A hidden calendar's events are never named (planner/hidden.py); one it counts as busy still ends the free time.
+    events, walls = fixed_events(ctx)
     happening = next((e for e in events if parse_utc(e["start_utc"]) <= ctx.now_utc), None)
     current = None
     if timer is not None:
-        current = timed_now(ctx, timer, planned, events)
+        current = timed_now(ctx, timer, planned, [*events, *walls])
     elif covering is not None:
         current = block_out(ctx, covering.item_id, covering.start_utc, covering.end_utc)
     elif happening is not None:
@@ -126,6 +128,8 @@ def now(ctx: Ctx, inp: Empty) -> NowOut:
     elif event is not None:
         coming = (parse_utc(event["start_utc"]), event_out(ctx, event))
     gap = coming[0] - ctx.now_utc if current is None and coming else 0
+    if current is None and gap:
+        gap = min([gap, *(max(0, parse_utc(e["start_utc"]) - ctx.now_utc) for e in walls)])
     fits = executor.safe_items(state.problem, state.plan, state.executor, gap) if gap else []
     count = ctx.settings["executor"].swap_count
     alerts = [
@@ -154,14 +158,20 @@ def now(ctx: Ctx, inp: Empty) -> NowOut:
     )
 
 
-def fixed_events(ctx: Ctx) -> list[dict[str, Any]]:
-    """Today's classes and events still to end, that take your time."""
-    return rows(
+def fixed_events(ctx: Ctx) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Today's classes and events still to end, that take your time; and apart, those of calendars you hid that you
+    count as busy: never named, but no free time runs over them."""
+    found = rows(
         ctx.conn,
         "SELECT * FROM items WHERE user_id = ? AND when_kind = 'fixed' AND status = 'todo' AND blocks_time = 1 "
         "AND end_utc > ? AND start_utc < ? ORDER BY start_utc",
         [ctx.user_id, format_utc(ctx.now_utc), format_utc(ctx.now_utc + 1440)],
     )
+    away = ctx.hidden
+    walls = [
+        r for r in found if away.calendar(r["id"]) and calendar_counts(away.calendar(r["id"]), ctx.settings["busy"])
+    ]
+    return [r for r in found if not away.calendar(r["id"])], walls
 
 
 def event_out(ctx: Ctx, event: dict[str, Any]) -> BlockOut:
@@ -241,6 +251,8 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
             [ctx.user_id, format_utc(lo), format_utc(hi)],
         )
     ]
+    if not inp.with_hidden:  # a calendar you hid shows only in the plan, under Show (planner/hidden.py)
+        fixed = [f for f in fixed if not f.hidden_calendar]
     fixed = optional_marked(ctx, fixed, blocks)
     hours: dict[str, float] = {}
     for b in blocks:
@@ -479,7 +491,7 @@ def events(ctx: Ctx, inp: EventsInput) -> list[ItemOut]:
     for r in rows(
         ctx.conn, "SELECT * FROM items WHERE user_id = ? AND when_kind = 'fixed' AND status != 'dropped'", [ctx.user_id]
     ):
-        if text not in r["title"].lower() or r["start_utc"] is None:
+        if text not in r["title"].lower() or r["start_utc"] is None or ctx.hidden.calendar(r["id"]):
             continue
         series = f"s{r['series_id']}" if r["series_id"] is not None else f"i{r['id']}"
         was = best.get(series)
@@ -657,17 +669,20 @@ def status(ctx: Ctx, inp: Empty) -> StatusOut:
         server_pid=os.getpid(),
         server_build=os.environ.get("FRIDAY_APP_BUILD") or None,
         server_orphan=os.getppid() == 1,  # the app that started it quit without stopping it
-        suggestions=(
-            one(
-                ctx.conn,
-                # repeating calendar events wait in Settings → Repeating, not the inbox
-                "SELECT count(*) AS n FROM suggestions WHERE user_id = ? AND status = 'pending' "
-                "AND (batch IS NULL OR batch NOT LIKE 'repeat:%')",
-                [ctx.user_id],
-            )
-            or {"n": 0}
-        )["n"],
+        suggestions=waiting_count(ctx),
     )
+
+
+def waiting_count(ctx: Ctx) -> int:
+    """Suggestions waiting in the inbox: not a repeating calendar event's times (they wait in Settings → Repeating),
+    nor a hidden calendar's (planner/hidden.py)."""
+    found = rows(
+        ctx.conn,
+        "SELECT id FROM suggestions WHERE user_id = ? AND status = 'pending' "
+        "AND (batch IS NULL OR batch NOT LIKE 'repeat:%')",
+        [ctx.user_id],
+    )
+    return len([r for r in found if r["id"] not in ctx.hidden.suggestions])
 
 
 @query("settings")

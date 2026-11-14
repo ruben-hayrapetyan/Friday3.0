@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { Schemas } from "@/api/client"
-import { shown, withShown } from "./shown"
+import { hiddenOn, shown, withShown } from "./shown"
 
 const off = { toolbar: ["Library Rooms"], showing: [], showFiltered: false, showPastPlan: true }
 
@@ -67,5 +67,24 @@ describe("Friday's past plan", () => {
     } as unknown as Schemas["PlanOut"]
     expect(withShown(plan, { ...off, showPastPlan: false }).blocks.map((b) => b.key)).toEqual(["T1@2026-11-01T14:00"])
     expect(withShown(plan, off)).toBe(plan)
+  })
+})
+
+describe("a calendar you hid, as the server marks it (14 Nov: hidden in the walk, still in the Inbox)", () => {
+  it("stays off the calendar by its mark, a calendar link's too, until Show switches that calendar on", () => {
+    const feed = { calendar: null, hidden_calendar: "Canvas" } // a calendar link: no calendar of its own on the event
+    expect(shown(feed, { ...off, toolbar: ["Canvas"] })).toBe(false)
+    expect(shown(feed, { ...off, toolbar: ["Canvas"], showing: ["Canvas"] })).toBe(true)
+    expect(hiddenOn(feed, [])).toBe("Canvas") // marked, though Settings hasn't answered yet
+  })
+
+  it("follows a Hide at once by the calendar's name, before the server marks it, and nothing else", () => {
+    expect(hiddenOn({ calendar: "Library Rooms" }, ["Library Rooms"])).toBe("Library Rooms")
+    expect(hiddenOn({ calendar: "Home" }, ["Library Rooms"])).toBeNull()
+    expect(hiddenOn({}, ["Library Rooms"])).toBeNull()
+  })
+
+  it("comes back when shown again: the mark gone, the event is drawn", () => {
+    expect(shown({ calendar: "Clubs", hidden_calendar: null }, { ...off, toolbar: [] })).toBe(true)
   })
 })

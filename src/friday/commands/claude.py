@@ -22,6 +22,7 @@ from friday.core.recurrence import next_occurrence, occurrences
 from friday.core.textnorm import plain_words
 from friday.core.time import format_local, format_utc, parse_local
 from friday.ingest import llm
+from friday.planner.hidden import hidden_series
 from friday.planner.store import area_names
 
 ANYTHING = (
@@ -313,6 +314,8 @@ def context(ctx: Ctx) -> str:
         )  # fmt: skip
     ]
     until = format_utc(ctx.now_utc + int(timedelta(days=14).total_seconds() // 60))
+    away = ctx.hidden  # a calendar you hid isn't the AI's to name either (planner/hidden.py)
+    unnamed = hidden_series(ctx.conn, away)
     events = [
         {"id": r["id"], "title": r["title"], "start": ctx.local(r["start_utc"]), "end": ctx.local(r["end_utc"])}
         | ({"location": r["location"]} if r["location"] else {})
@@ -323,12 +326,17 @@ def context(ctx: Ctx) -> str:
             "AND start_utc >= ? AND start_utc < ? ORDER BY start_utc LIMIT 120",
             [ctx.user_id, format_utc(ctx.now_utc - 1440), until],
         )  # fmt: skip
+        if not away.calendar(r["id"])
     ]
     after = parse_local(now)
     repeating = []
     for r in rows(
-        ctx.conn, "SELECT template, rrule, dtstart_local FROM series WHERE user_id = ? AND active = 1", [ctx.user_id]
+        ctx.conn,
+        "SELECT id, template, rrule, dtstart_local FROM series WHERE user_id = ? AND active = 1",
+        [ctx.user_id],
     ):
+        if r["id"] in unnamed:
+            continue
         upcoming = next_occurrence(r["rrule"], parse_local(r["dtstart_local"]), after - timedelta(days=1))
         title = json.loads(r["template"]).get("title")
         if upcoming is not None and title:

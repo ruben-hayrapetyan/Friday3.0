@@ -18,8 +18,12 @@ export const useItem = (id: number | null) =>
 /** Blocks from now to the end of the planning horizon. */
 export const useHorizon = () => useQuery({ queryKey: ["plan", "horizon"], queryFn: () => query("plan", {}) })
 
+/** The plan the calendar reads (every ["plan", start, end] query asks for it alike, as they share a cache entry): with
+ * a hidden calendar's events, marked `hidden_calendar`, for the plan's Show to switch on (plan/shown.ts). */
+export const planWithHidden = (start: string, end: string) => query("plan", { start, end, with_hidden: true })
+
 export const usePlan = (start: string, end: string) =>
-  usePending(useQuery({ queryKey: ["plan", start, end], queryFn: () => query("plan", { start, end }) }))
+  usePending(useQuery({ queryKey: ["plan", start, end], queryFn: () => planWithHidden(start, end) }))
 
 export const useCalendar = (start: string, days: number) =>
   useQuery({ queryKey: ["calendar", start, days], queryFn: () => query("calendar", { start, days }) })

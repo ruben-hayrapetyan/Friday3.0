@@ -1,13 +1,16 @@
-// What the calendar draws (COMBINED.md 19): a calendar you gave a title-row button, and what the categories' filter
-// matches (office hours), stay off the calendar until you switch them on: not drawn, not even dashed, in the grid,
-// the month, the day's agenda or the mini month. An event on two of your calendars at once (the same title and
-// times) is drawn once. None of this changes what's planned. In What if with changes staged, the calendar draws the
-// plan with them (`whatif/store.ts`).
+// What the calendar draws (COMBINED.md 19): a calendar you hid (it has a Show button in the title row), and what the
+// categories' filter matches (office hours), stay off the calendar until you switch them on: not drawn, not even
+// dashed, in the grid or the month. A hidden calendar is ignored everywhere else (14 Nov: a client hid calendars in
+// the walk and their invitations still reached the Inbox): the server leaves its events out of every other answer
+// (planner/hidden.py) and marks them `hidden_calendar` in the plan, which only the calendar asks for (`with_hidden`);
+// the sidebar's day and mini month leave them out even while they're switched on (`quiet`). An event on two of your
+// calendars at once (the same title and times) is drawn once. None of this changes what's planned. In What if with
+// changes staged, the calendar draws the plan with them (`whatif/store.ts`).
 
 import { useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { query, type Schemas } from "@/api/client"
-import { useSettings } from "@/hooks/queries"
+import type { Schemas } from "@/api/client"
+import { planWithHidden, useSettings } from "@/hooks/queries"
 import { useShell } from "@/shell/ShellContext"
 import { trialView, useTrial, useWhatIf, within } from "@/whatif/store"
 import { useLook } from "@/theme/LookProvider"
@@ -20,11 +23,18 @@ export interface Showing {
   showPastPlan: boolean // Friday's plan for the past (done, missed, timed over); off, only when you worked shows
 }
 
-type Event = { calendar?: string | null; filtered?: boolean }
+type Event = { calendar?: string | null; filtered?: boolean; hidden_calendar?: string | null }
+
+/** The calendar you hid that an event is on: as the server marked it (any kind of calendar, a calendar link too),
+ * or by its calendar's name, which follows a Hide at once, before the server answers again. */
+export function hiddenOn(event: Event, toolbar: string[]): string | null {
+  return event.hidden_calendar ?? (event.calendar && toolbar.includes(event.calendar) ? event.calendar : null)
+}
 
 export function shown(event: Event, s: Showing): boolean {
   if (event.filtered && !s.showFiltered) return false
-  return !(event.calendar && s.toolbar.includes(event.calendar) && !s.showing.includes(event.calendar))
+  const hidden = hiddenOn(event, s.toolbar)
+  return !hidden || s.showing.includes(hidden)
 }
 
 export function withShown(plan: Schemas["PlanOut"], s: Showing): Schemas["PlanOut"] {
@@ -49,12 +59,14 @@ export function useShowing(): Showing {
   return { toolbar: settings?.calendar_look?.toolbar ?? [], showing: look.showing, showFiltered: look.showFiltered, showPastPlan }
 }
 
-/** The plan as the calendar draws it. */
-export function useShownPlan(start: string, end: string) {
-  const s = useShowing()
+/** The plan as the calendar draws it; `quiet`, without a hidden calendar even while it's switched on under Show (the
+ * sidebar's day and mini month: only the calendar shows it). */
+export function useShownPlan(start: string, end: string, { quiet = false } = {}) {
+  const showing = useShowing()
+  const s = quiet ? { ...showing, showing: [] } : showing
   const key = `${s.toolbar.join("|")}/${s.showing.join("|")}/${s.showFiltered}/${s.showPastPlan}`
   const select = useCallback((plan: Schemas["PlanOut"]) => withShown(plan, s), [key])
-  const fetched = useQuery({ queryKey: ["plan", start, end], queryFn: () => query("plan", { start, end }), select })
+  const fetched = useQuery({ queryKey: ["plan", start, end], queryFn: () => planWithHidden(start, end), select })
   const real = usePending(fetched)
   const w = useWhatIf()
   const trial = useTrial(useShell().today)

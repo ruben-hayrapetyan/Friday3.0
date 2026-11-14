@@ -17,6 +17,7 @@ from friday.core.rows import item_to_row
 from friday.core.textnorm import plain_words
 from friday.core.time import UNIT_MIN, format_utc
 from friday.planner.cushion import cushion
+from friday.planner.hidden import written_to
 from friday.planner.progress import remaining_minutes
 from friday.planner.store import EventLink, area_names, event_links, kv_get, load_item
 
@@ -180,19 +181,7 @@ def going_to(ctx: Ctx, item_id: int | None) -> str | None:
     if item_id is None:
         return None
     if "going_to" not in ctx.memo:
-        # Google's calendars and the Mac's: your Gmail calendar is written through the Mac, and until the Mac reads
-        # the event back it wore no calendar and so no color (28 Oct: "it added in as gray").
-        names = {
-            c["id"]: c.get("source_name", c["name"])
-            for key in ("google_calendars", "mac_calendars")
-            for c in kv_get(ctx.conn, key, [], ctx.user_id) or []
-        }
-        found = rows(
-            ctx.conn,
-            "SELECT item_id, calendar_id FROM event_writes WHERE user_id = ? AND calendar_id IS NOT NULL",
-            [ctx.user_id],
-        )
-        ctx.memo["going_to"] = {r["item_id"]: names.get(r["calendar_id"]) for r in found}
+        ctx.memo["going_to"] = written_to(ctx.conn, ctx.user_id)
     return ctx.memo["going_to"].get(item_id)
 
 
@@ -246,6 +235,7 @@ def event_facts(ctx: Ctx, item: Item) -> dict[str, Any]:
         "holds": held_task(ctx, item.id),
         "left_out": reason,
         "filtered": is_filtered(item.title, ctx.settings["categories"]),
+        "hidden_calendar": ctx.hidden.calendar(item.id),
     }
 
 

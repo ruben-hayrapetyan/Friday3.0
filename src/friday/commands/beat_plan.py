@@ -107,11 +107,13 @@ def events_around(ctx: Ctx, finish: Finish) -> list[Event]:
     lo, hi = min(w[0] for w in finish.worked), max(w[1] for w in finish.worked)
     found = rows(
         ctx.conn,
-        "SELECT title, start_utc, end_utc FROM items WHERE user_id = ? AND when_kind = 'fixed' AND blocks_time = 1 "
+        "SELECT id, title, start_utc, end_utc FROM items WHERE user_id = ? AND when_kind = 'fixed' AND blocks_time = 1 "
         "AND status IN ('todo', 'done') AND id != ? AND start_utc < ? AND end_utc > ?",
         [ctx.user_id, finish.item_id, format_utc(hi), format_utc(lo)],
     )
-    spans = [(r["title"], parse_utc(r["start_utc"]), parse_utc(r["end_utc"])) for r in found]
+    # a hidden calendar's events aren't named, nor worked through (planner/hidden.py)
+    spans = [(r["title"], parse_utc(r["start_utc"]), parse_utc(r["end_utc"])) for r in found
+             if not ctx.hidden.calendar(r["id"])]  # fmt: skip
     return [Event(t, s, e) for t, s, e in spans if e - s < LONG_EVENT_MIN]
 
 
