@@ -29,7 +29,7 @@ ALL = [(name, topic, text, want) for name, c in CORPORA.items() for topic, text,
 
 # Kinds whose subject the reading fixes ("optional", "around"…): the label leaves it out.
 FIXED_SUBJECT = {"optional", "ahead", "around", "night_before", "meals_kept", "meals_learned", "fit_gaps",
-                 "runs_while_working", "deadlines", "pace"}  # fmt: skip
+                 "runs_while_working", "deadlines", "pace", "exam_focus"}  # fmt: skip
 # Read as a rule though labeled otherwise, and right to be: a bedtime is the end of the day's work (rule_text's
 # SAID_AS), and a task named for a day is that task on that day.
 ALLOWED = {"lights out by 12:30", "in bed by 11:30 on school nights", "call mom on sundays"}

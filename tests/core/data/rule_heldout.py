@@ -1508,7 +1508,7 @@ C = [
     ("priority", "if something has to give, let it be the readings", "set:kind_order"),
     ("priority", "exam prep first, then psets, then everything else", "set:kind_order"),
     ("priority", "knock out the near-term stuff before touching long-range projects", "set:short_term_first"),
-    ("priority", "the 2 days before a final are only for that class", "set:exam_focus"),
+    ("priority", "the 2 days before a final are only for that class", {"kind": "exam_focus", "amount": 2.0}),
     ("priority", "the last 4 days before a midterm, nothing but that subject", "set:exam_focus"),
     ("sitting", "I'd rather do each task in a single block", "set:sittings"),
     ("sitting", "big essays can be split, everything else in one shot", "set:sittings"),

@@ -12,6 +12,7 @@ from friday.core.db import rows
 from friday.core.guess import EXAM, course_word
 from friday.core.items import Item
 from friday.core.rows import item_from_row
+from friday.core.settings import exam_focus_of
 from friday.core.time import UNIT_MIN, format_utc, parse_utc
 from friday.planner.progress import minutes_by_item, remaining_minutes
 from friday.planner.store import current_plan
@@ -135,7 +136,7 @@ def done_minutes(prep: Item, done: dict[int, int]) -> int:
 
 def focus_from(ctx: Ctx, exam: Item) -> str | None:
     """When exam focus starts for this exam: the rule's days before it, if the rule is on and the title is an exam's."""
-    focus = ctx.settings["exam_focus"]
+    focus = exam_focus_of(ctx.settings)
     if not focus.on or not exam.start_utc or not focus.finds(exam.title):
         return None
     return ctx.local(format_utc(parse_utc(exam.start_utc) - focus.days_before * 1440))

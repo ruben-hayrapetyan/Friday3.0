@@ -1,6 +1,6 @@
 // What the Rules page says, over Alex's sample (14 Nov): no built-in rules for work "marked" spread or clustered, and
-// spreading said as a rule for the work it names.
-import { screen, waitFor } from "@testing-library/react"
+// spreading said as a rule for the work it names; exam focus is a rule here like any other.
+import { screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { friday, openFriday, waitForSent } from "@/test/friday"
 
@@ -31,5 +31,25 @@ describe("spreading, said as a rule", () => {
     const { user } = await openFriday("/rules")
     await user.type(await screen.findByRole("textbox", { name: "New rule" }), "keep problem sets on few days")
     expect(await screen.findByText("Keep problem sets on as few days as possible")).toBeTruthy()
+  })
+})
+
+describe("exam focus, a rule", () => {
+  it("reads from your words with its days to change, and no strength to pick", async () => {
+    const { user } = await openFriday("/rules")
+    await user.type(await screen.findByRole("textbox", { name: "New rule" }), "focus on exams 5 days before")
+    expect(await screen.findByText("Focus on an exam's course 5 days before it")).toBeTruthy()
+    expect(((await screen.findByRole("spinbutton", { name: "Days before" })) as HTMLInputElement).value).toBe("5")
+    expect(screen.queryByText("Strength")).toBeNull()
+    await user.click(screen.getByRole("button", { name: "Add rule" }))
+    await waitFor(async () => expect((await friday.q<Rule[]>("rules")).find((r) => r.type === "exam_focus")?.sentence).toBe("Focus on an exam's course 5 days before it"))
+  })
+
+  it("is listed in Rules with its switch, and the pencil opens its days", async () => {
+    const { user } = await openFriday("/rules")
+    const off = await screen.findByRole("switch", { name: "Switch off Focus on an exam's course 5 days before it" })
+    const row = off.closest(".fr-rule-row") as HTMLElement
+    await user.click(within(row).getByRole("button", { name: "Edit rule" }))
+    expect(((await screen.findByRole("spinbutton", { name: "Days before" })) as HTMLInputElement).value).toBe("5")
   })
 })

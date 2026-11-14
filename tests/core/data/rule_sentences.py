@@ -14,7 +14,7 @@ Each entry: (topic, text, want). `want` is one of:
     Keys given are the ones that matter; a key left out is the Reading's default (None) except `subject`, which is
     left out for kinds whose subject is fixed (optional, ahead, around, night_before, meals_*, fit_gaps,
     runs_while_working, deadlines, pace). days rel "on" X equals rel "not_on" the other days.
-  - "set:<key>" when a setting says it (kind_order, short_term_first, exam_focus, pointless_late, sittings, busy,
+  - "set:<key>" when a setting says it (kind_order, short_term_first, pointless_late, sittings, busy,
     daily_cap, event_kinds, sleep);
   - "item" when it's a task, event or routine to add, not a rule;
   - "multi" when it's two or more rules that existing kinds or settings could each say;
@@ -1241,7 +1241,7 @@ C = [
     ("priority", "short-term list first, long-term stuff after", "set:short_term_first"),
     ("priority", "do near-term things before long-range projects", "set:short_term_first"),
     ("priority", "when an exam's coming up, drop other classes for the 2 days before", "set:exam_focus"),
-    ("priority", "3 days before a midterm, only that course", "set:exam_focus"),
+    ("priority", "3 days before a midterm, only that course", {"kind": "exam_focus", "amount": 3.0}),
     ("priority", "let other classes wait while I prep for a prelim", "set:exam_focus"),
     ("priority", "orgo is my hardest class so it comes first", "new:course priority"),
     ("priority", "CS 3110 > everything else this semester", "new:course priority"),

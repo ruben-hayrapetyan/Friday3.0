@@ -338,6 +338,12 @@ function NewRule({ editing, start, onDone }: { editing: Editing; start: string; 
               ) : reading.kind === "pace" ? (
                 // A pace for weekdays is a setting: it shows under Your week, with no strength to choose.
                 <span className="fr-kicker">{preview.effect}. It shows under Your week.</span>
+              ) : reading.kind === "exam_focus" ? (
+                // A wall, not a preference: other courses' work waits, so there's no strength to pick (14 Nov)
+                <>
+                  <span className="fr-kicker" style={{ textWrap: "pretty" }}>{preview.effect}.</span>
+                  <Fields reading={reading} overrides={overrides} onSet={set} onReset={() => setOverrides({})} />
+                </>
               ) : ["deadlines", "optional", "ahead", "around", "meals_kept", "meals_learned"].includes(reading.kind) ? (
                 <span className="fr-kicker" style={{ textWrap: "pretty" }}>{preview.effect}.</span>
               ) : ["night_before", "close", "fit_gaps", "runs_while_working", "sleep_min"].includes(reading.kind) ? (
@@ -513,6 +519,16 @@ function Fields(props: { reading: Reading; overrides: Record<string, unknown>; o
   const pin = (k: string) => k in overrides && <Icon name="push-pin" size={12} style={{ color: "var(--color-accent-300)" }} />
   const dayValue = DAY_OPTS.find((o) => JSON.stringify(o.days) === JSON.stringify(reading.days))?.value ?? null
   const rels = reading.kind === "window" ? ["before", "after", "between", { value: "not_between", label: "not between" }] : []
+  if (reading.kind === "exam_focus")
+    return (
+      <div className="fr-row" style={{ display: "grid", gridTemplateColumns: "84px minmax(0,1fr)", gap: "8px 12px", alignItems: "center", paddingTop: 8 }}>
+        <span className="fr-kicker">Days before</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <DaysBefore value={reading.amount ?? 3} onSet={(n) => onSet("amount", n)} />
+          {pin("amount")}
+        </span>
+      </div>
+    )
   return (
     <div className="fr-row" style={{ display: "grid", gridTemplateColumns: "56px minmax(0,1fr)", gap: "8px 12px", alignItems: "center", paddingTop: 8 }}>
       <span className="fr-kicker">What</span>
@@ -557,6 +573,20 @@ function Fields(props: { reading: Reading; overrides: Record<string, unknown>; o
   )
 }
 
+/** Exam focus's days, 1 to 14: what you type shows as typed, and counts once it's a whole number in range. */
+function DaysBefore({ value, onSet }: { value: number; onSet: (n: number) => void }) {
+  const [typed, setTyped] = useState(String(value))
+  useEffect(() => setTyped((was) => (Number(was) === value ? was : String(value))), [value])
+  const n = Number(typed)
+  const fits = typed !== "" && Number.isInteger(n) && n >= 1 && n <= 14
+  return (
+    <>
+      <input type="number" min={1} max={14} step={1} className="input" aria-label="Days before" value={typed} onChange={(e) => (setTyped(e.target.value), Number.isInteger(Number(e.target.value)) && Number(e.target.value) >= 1 && Number(e.target.value) <= 14 && onSet(Number(e.target.value)))} style={{ width: 90, padding: "4px 8px", fontSize: 12, minHeight: 0 }} />
+      <span className="fr-kicker" style={{ color: fits ? undefined : "var(--fr-warn)" }}>{fits ? (n === 1 ? "day" : "days") : "days: from 1 to 14"}</span>
+    </>
+  )
+}
+
 function RuleRow(props: { rule: RuleOut; locked: boolean; byName: Map<string, RuleOut>; editing: boolean; onEdit: () => void }) {
   const { rule, locked, byName, editing, onEdit } = props
   const said = (name: string) => byName.get(name)?.sentence ?? name
@@ -569,7 +599,7 @@ function RuleRow(props: { rule: RuleOut; locked: boolean; byName: Map<string, Ru
   // 14 Nov: "Violated on Tue, Thu" and a Why? that says plainly what took the time, not "Gives way" and "What to?"
   const bends = rule.enabled && rule.strength !== "Always" && (rule.violated ?? []).length > 0
   const [icon, source] = SOURCES[rule.source] ?? SOURCES.default
-  const options = rule.source === "you" ? STRENGTHS : rule.strength === "Always" ? (["Always"] as Strength[]) : (["Prefer", "Strongly"] as Strength[])
+  const options = rule.type === "exam_focus" ? (["Always"] as Strength[]) : rule.source === "you" ? STRENGTHS : rule.strength === "Always" ? (["Always"] as Strength[]) : (["Prefer", "Strongly"] as Strength[])
   return (
     <div className="fr-row fr-rule-row" data-rule={rule.name} data-editing={editing || undefined} style={{ display: "grid", gridTemplateColumns: "36px minmax(180px,1fr) auto 60px", gap: "8px 14px", alignItems: "center", padding: "12px 0", opacity: rule.enabled ? 1 : 0.5, boxShadow: editing ? "inset 3px 0 0 var(--color-accent-300)" : undefined }}>
       <Switch on={rule.enabled} onToggle={() => !locked && set({ name: rule.name, enabled: !rule.enabled })} label={`${rule.enabled ? "Switch off" : "Switch on"} ${rule.sentence}`} />

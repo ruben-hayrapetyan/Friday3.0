@@ -2,10 +2,11 @@
 // progress. A project opens to its steps and timeline (ProjectDetail); `?id=` names it, so links keep working.
 
 import { useState } from "react"
-import { useSearchParams } from "react-router"
+import { Link, useSearchParams } from "react-router"
 import type { Block } from "@/api/client"
 import { H, Icon } from "@/components/fr/controls"
-import { useExams, useHorizon, useProjects, useSettings } from "@/hooks/queries"
+import { useExams, useHorizon, useProjects } from "@/hooks/queries"
+import { useRules } from "@/rules/RulesPage"
 import { dur, when } from "@/lib/format"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
@@ -65,24 +66,25 @@ export function ProjectsPage() {
 }
 
 function Exams({ exams, blocks, onNew }: { exams: ReturnType<typeof useExams>["data"]; blocks: Block[]; onNew: () => void }) {
-  const { today, askClaude } = useShell()
-  const settings = useSettings().data as { exam_focus?: { on: boolean; days_before: number } } | undefined
+  const { today } = useShell()
+  // Exam focus is a rule (14 Nov): this points at it in Rules, where it's changed like any other
+  const focus = (useRules().data ?? []).find((r) => r.type === "exam_focus")
   const [more, setMore] = useState(false)
   if (!exams) return null
   const [soon, later] = soonAndLater(exams, today)
-  const focus = settings?.exam_focus
+  const days = Number((focus?.reading as { amount?: number } | null)?.amount ?? focus?.number?.value ?? 3)
   const right =
     exams.length > 0 &&
-    (focus?.on ? (
-      <span className="fr-kicker" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+    (focus?.enabled ? (
+      <Link to={`/rules?edit=${encodeURIComponent(focus.name)}`} className="fr-link" style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
         <Icon name="target" size={12} />
-        Exam focus is on, {focus.days_before} {focus.days_before === 1 ? "day" : "days"} before each
-      </span>
+        Exam focus: {days === 1 ? "the day" : `${days} days`} before, in Rules
+      </Link>
     ) : (
-      <button className="fr-plain fr-link" onClick={() => askClaude("I want to focus on an exam's course in the days before it", "rule")} style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+      <Link to={`/rules?${focus ? `edit=${encodeURIComponent(focus.name)}` : `text=${encodeURIComponent("Focus on an exam's course 3 days before it")}`}`} className="fr-link" style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
         <Icon name="target" size={12} />
-        Focus on each exam before it…
-      </button>
+        {focus ? "Exam focus is off, in Rules" : "Focus on each exam before it…"}
+      </Link>
     ))
   return (
     <Section title="Exams" note={soon.length ? "The next three weeks" : undefined} right={right}>

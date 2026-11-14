@@ -72,8 +72,8 @@ def test_a_rule_may_be_a_change_to_the_calendar_but_never_what_claude_may_not_do
     rule. It's proposed as the change it is; what Claude may never do stays refused there as anywhere."""
     essay = app.do("add", title="Essay", duration_min=60)["item"]["id"]
     claude = asking(monkeypatch, {"reply": "", "actions": [
-        {"sentence": "Focus on exams", "command": "settings_set",
-         "input": {"key": "exam_focus", "value": {"on": True, "days_before": 3}}},
+        {"sentence": "Focus on exams", "command": "rule_add",
+         "input": {"text": "", "overrides": {"kind": "exam_focus", "amount": 3}}},
         {"sentence": "Drop the essay", "command": "drop", "input": {"id": essay}},
         {"sentence": "Undo everything", "command": "undo", "input": {}},
         {"sentence": "Change the port", "command": "settings_set", "input": {"key": "server", "value": {}}},

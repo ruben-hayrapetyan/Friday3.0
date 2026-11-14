@@ -25,7 +25,7 @@ from friday.commands.settings import write_setting
 from friday.core.db import rows
 from friday.core.items import FieldError
 from friday.core.rule_text import Reading, days_spoken, read, read_all, sentence, spec, with_overrides, with_singulars
-from friday.core.settings import REFERENCE_RULES, minutes_of
+from friday.core.settings import EXAM_FOCUS_NAME, REFERENCE_RULES, minutes_of
 from friday.core.textnorm import identity_text, norm
 from friday.core.time import clock_times, parse_utc, planning_date, to_local
 from friday.engine.rules.prices import has_words
@@ -71,6 +71,8 @@ EFFECT = {
     "daily_load": "Friday plans less on full days",
     "finish_early": "Friday aims to finish early",
     "spread": "Friday spreads each one over the days before it's due, a share a day",
+    "exam_focus": "In those days other courses' work due after the exam waits until it's over, when there's still "
+    "time for it before its own due. Its days show on Projects & exams",
     "cluster": "Friday keeps each one's sittings on as few days as it can",
     "after_event": "Friday places it right after",
     "pace": "Every week, Friday plans less on Easy days and more on Push days",
@@ -170,6 +172,7 @@ NOT_COMPARED = {
     "deadlines",
     "meals_kept",
     "meals_learned",
+    "exam_focus",
 }  # settings, not rules: a pace replaces that day's, and deadlines are built in
 
 
@@ -242,6 +245,8 @@ def add_reading(ctx: Ctx, reading: Reading, text: str, strength: str) -> Changed
     if reading.kind == "spacing":
         return spaced_repeats(ctx, reading)
     rules = [r.model_dump() for r in ctx.settings["rules"]]
+    if reading.kind == "exam_focus":  # one exam focus: a new one takes the old one's place
+        return exam_focus_added(ctx, rules, reading, text)
     name = unique(f"you:{slug(sentence(reading))}", {r["name"] for r in rules})
     areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
     new = spec(reading, strength, name, areas, presets, ctx.settings["time"].day_start)  # type: ignore[arg-type]
@@ -250,6 +255,17 @@ def add_reading(ctx: Ctx, reading: Reading, text: str, strength: str) -> Changed
     write_setting(ctx, "rules", [*rules, new])
     keep(ctx, {**mine, name: {"reading": reading.to_dict(), "strength": strength, "text": text}})
     return Changed(message=f"Added: {sentence(reading)}" + "".join(f". Taken out of “{m}”" for m in moved))
+
+
+def exam_focus_added(ctx: Ctx, rules: list[dict[str, Any]], reading: Reading, text: str) -> Changed:
+    areas, presets = list(area_names(ctx.conn, ctx.user_id).values()), list(ctx.settings["presets"])
+    new = spec(reading, "Always", EXAM_FOCUS_NAME, areas, presets, ctx.settings["time"].day_start)
+    at = next((n for n, r in enumerate(rules) if r["type"] == "exam_focus"), len(rules))
+    mine = {k: v for k, v in readings(ctx).items() if k not in {r["name"] for r in rules if r["type"] == "exam_focus"}}
+    kept = [r for r in rules if r["type"] != "exam_focus"]
+    write_setting(ctx, "rules", kept[:at] + [new] + kept[at:])
+    keep(ctx, {**mine, EXAM_FOCUS_NAME: {"reading": reading.to_dict(), "strength": "Always", "text": text}})
+    return Changed(message=f"Added: {sentence(reading)}")
 
 
 def taken_from(
@@ -759,8 +775,8 @@ def hours(value: Any) -> Any:
 def strength_of(rule: Any, mine: dict[str, Any]) -> str:
     if rule.name in mine:
         return mine[rule.name]["strength"]
-    if rule.name in ALWAYS or rule.params.get("price") == "forbid":
-        return "Always"
+    if rule.name in ALWAYS or rule.params.get("price") == "forbid" or rule.type == "exam_focus":
+        return "Always"  # exam focus holds work back outright: it doesn't bend
     base = base_weight(rule.name)
     return "Strongly" if base is not None and rule.weight >= 3 * base > 0 else "Prefer"
 

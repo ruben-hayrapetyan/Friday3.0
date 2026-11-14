@@ -300,7 +300,7 @@ def test_a_way_is_described_by_what_it_gains_and_gives_up() -> None:
 
 
 def focused(app: App) -> None:
-    app.do("settings_set", key="exam_focus", value={"on": True, "days_before": 3})
+    app.do("rule_add", text="focus on exams 3 days before")  # a rule since 14 Nov
     app.do("add", title="MATH 2940 Prelim 2", when="fixed", start="2026-10-21T19:30", end="2026-10-21T21:00")
 
 
@@ -343,7 +343,7 @@ def test_an_exam_more_than_the_focus_days_away_holds_nothing_back(app: App) -> N
     from friday.planner.build import build_problem
     from friday.planner.prepare import build_input
 
-    app.do("settings_set", key="exam_focus", value={"on": True, "days_before": 1})
+    app.do("rule_add", text="focus on an exam's course the day before it")
     app.do("add", title="MATH 2940 Prelim 2", when="fixed", start="2026-10-23T19:30", end="2026-10-23T21:00")
     essay = app.do("add", title="HIST 1200 essay", preset="Assignment", due="2026-10-26T12:00", duration_min=60)["item"]
     problem = build_problem(build_input(take_snapshot(app.conn, app.now_utc)))

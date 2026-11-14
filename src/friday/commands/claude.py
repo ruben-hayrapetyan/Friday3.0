@@ -42,7 +42,7 @@ ANYTHING = (
 # another salsa event on saturday…" was refused as no rule).
 RULES = ANYTHING
 SETTINGS = (
-    "kind_order", "short_term_first", "exam_focus", "pointless_late", "fading_late", "sittings", "busy", "daily_cap",
+    "kind_order", "short_term_first", "pointless_late", "fading_late", "sittings", "busy", "daily_cap",
     "event_kinds",
     "pace", "sleep",
 )  # fmt: skip
@@ -90,16 +90,16 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
   never through an event or the night), sleep_min (amount: hours of sleep a night that work never cuts into, e.g. 7
   for "at least 7 hours of sleep"; days: the nights it holds, by the evening's weekday), spread (each task the
   subject names spread over the days before it's due: "spread my essays over several days"), cluster (each one's
-  sittings on as few days as can be: "keep problem sets on few days"). subject: "work", "deep work", a tag, a kind or
-  a title. A bedtime or wake time ("bed by 11") is the sleep setting, not a rule.
-- settings_set: {key, value} for these keys only: kind_order (kinds most important first, e.g. ["Assignment",
-  "Reading"] for "prioritize assignments over readings"), short_term_first (true for "prioritize short-term work over
-  long-term", meaning the to-do's Short term list over its Long term list), exam_focus ({on: true, days_before} for
-  focusing on an exam's course in the days before it), pointless_late ({kinds, titles} for work pointless once late:
-  never planned after its due), fading_late ({kinds, titles, half_life_days} for work that matters less the longer
-  it's overdue but is still worth doing: "a reading matters less the later it gets" is {kinds: ["Reading"], titles:
-  [], half_life_days: 3}), busy, daily_cap ({mon..sun: hours}), event_kinds (time kept free of work around events, to
-  get there or away: {kind: {before_min, after_min}} for the kinds "class", "meeting", "exam" and "other"; "15 minutes
+  sittings on as few days as can be: "keep problem sets on few days"), exam_focus (amount: days before each exam
+  that other courses' work due after it waits: "focus on an exam's course 5 days before it"). subject: "work", "deep
+  work", a tag, a kind or a title. A bedtime or wake time ("bed by 11") is the sleep setting, not a rule.
+- settings_set: {key, value} for these keys only: kind_order (kinds most important first, e.g. ["Assignment", "Reading"]
+  for "prioritize assignments over readings"), short_term_first (true for "prioritize short-term work over long-term",
+  meaning the to-do's Short term list over its Long term list), pointless_late ({kinds, titles} for work pointless once
+  late: never planned after its due), fading_late ({kinds, titles, half_life_days} for work that matters less the longer
+  it's overdue but is still worth doing: "a reading matters less the later it gets" is {kinds: ["Reading"], titles: [],
+  half_life_days: 3}), busy, daily_cap ({mon..sun: hours}), event_kinds (time kept free of work around events, to get
+  there or away: {kind: {before_min, after_min}} for the kinds "class", "meeting", "exam" and "other"; "15 minutes
   before and after events" sets all four to 15 and 15; only the kinds given change), sittings ({one_go: true,
   split_first: [kinds]} for "I like to do things in one go, but split problem sets first": problem sets are the kind
   "Assignment"), pace ({weekly: {mon..sun: "Easy" | "Normal" | "Push"}} for a pace on those weekdays every week: "go
