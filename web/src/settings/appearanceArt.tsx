@@ -145,20 +145,21 @@ export function DeadlinesArt({ deadlines }: { deadlines: Look["deadlines"] }) {
         <Block x={6} y={52} w={70} h={10} />
       </Fill>
     )
+  // A row of the day's tasks under its date, the hours below at full width (plan/DueRow.tsx)
   return (
     <Fill bg="var(--color-surface)">
-      <HourLines y0={30} step={12} n={4} />
+      <HourLines y0={42} step={12} n={3} />
       {head}
-      <Block x={6} y={26} w={64} h={18} />
-      <Block x={6} y={52} w={50} h={10} />
-      <Bx x={76} y={20} w={44} h={52} style={{ background: mix(due, 9, "var(--color-surface)"), borderLeft: `1px solid ${mix(due, 30)}` }}>
-        {[0, 1, 2].map((i) => (
+      <Bx x={0} y={20} w={120} h={18} style={{ background: mix(due, 6, "var(--color-surface)"), borderBottom: "1px solid var(--fr-rule)" }}>
+        {[0, 1].map((i) => (
           <span key={i}>
-            <Bx x={5} y={6 + i * 13} w={7} h={7} r={1.5} style={{ boxShadow: `inset 0 0 0 ${u(1.2)} ${due}`, background: i === 0 ? due : "transparent" }} />
-            <Line x={15} y={8 + i * 13} w={i === 1 ? 18 : 23} col={i === 0 ? "var(--color-text)" : due} p={i === 0 ? 25 : 70} />
+            <Bx x={6 + i * 56} y={6} w={6} h={6} r={1.5} style={{ boxShadow: `inset 0 0 0 ${u(1.1)} ${due}` }} />
+            <Line x={15 + i * 56} y={8} w={i ? 26 : 32} col={i ? due : "var(--color-text)"} p={i ? 70 : 25} />
           </span>
         ))}
       </Bx>
+      <Block x={6} y={44} w={108} h={16} />
+      <Block x={6} y={64} w={70} h={8} />
     </Fill>
   )
 }

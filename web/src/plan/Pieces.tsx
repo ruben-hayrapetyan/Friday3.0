@@ -23,7 +23,7 @@ const TRIED: Record<TriedLook, React.CSSProperties> = {
 
 export const PX = 0.8 // per minute: 48 px an hour, as drawn
 
-// A day column with a deadline lane (COMBINED.md 15) sets --lane to the lane's width; blocks share what's left.
+// Blocks share their day column's width (a deadline lane down the column took part of it until 13 Nov: DueRow.tsx).
 function box(p: Placed<unknown>): CSSProperties {
   const share = 1 / p.columns
   const height = Math.max(p.height * PX - 2, 10) // a quarter hour is 12px: never taller, or it covers the next one
@@ -31,8 +31,8 @@ function box(p: Placed<unknown>): CSSProperties {
     position: "absolute",
     top: p.top * PX,
     height,
-    left: `calc((100% - var(--lane, 0px)) * ${p.column * share} + 3px)`,
-    width: `calc((100% - var(--lane, 0px)) * ${share} - 6px)`,
+    left: `calc(100% * ${p.column * share} + 3px)`,
+    width: `calc(100% * ${share} - 6px)`,
     // Under half an hour there's room for one line: the title, centred, its time beside it.
     ...(p.height < 30 ? { padding: "0 6px 0 9px", fontSize: 11.5, lineHeight: `${height - 2}px` } : { padding: "4px 7px 4px 9px", fontSize: 12, lineHeight: 1.3 }),
   }

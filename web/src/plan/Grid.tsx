@@ -20,7 +20,7 @@ import { useShell } from "@/shell/ShellContext"
 import { useLook } from "@/theme/LookProvider"
 import { draftAt, draftOf } from "@/shell/EventPane"
 import { DueCount, dueBlock } from "./DueCount"
-import { DueLane } from "./DueLane"
+import { DueRow } from "./DueRow"
 import { foundHref } from "@/todo/found"
 import { useGlide } from "./glide"
 import { type TrialPlan, useWhatIf, whatIf } from "@/whatif/store"
@@ -74,7 +74,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const now = useClock()
   const { look } = useLook()
   const allDay24 = look.hours === "All day"
-  // The lanes step aside while the to-do drawer is out, as personal's did: the full list is showing.
+  // The due row under the dates (plan/DueRow.tsx) steps aside while the to-do drawer is out: the full list is showing.
   const lanes = look.deadlines === "Lanes" && !drawer
   const timed = plan.fixed.filter((f): f is Item & { start: string; end: string } => !!f.start && !!f.end)
   // A birthday or holiday spans whole days: a bar under the day headers, not a column-high block.
@@ -108,8 +108,6 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const shown = plan.blocks.filter((b) => b.state !== "timed" && b.state !== "gone" && !eaten.has(b.item_id))
   const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : fitAxis({ startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }, [...fixed, ...plan.blocks, ...sessions, ...mealBlocks], dates)
   const panel = useRef<HTMLDivElement>(null)
-  const head = useRef<HTMLDivElement>(null)
-  const headHeight = useHeight(head)
   useGlide(panel, plan, dates.join())
   // All 24 hours open at the wake time, as a paper calendar opens at the morning.
   useLayoutEffect(() => {
@@ -130,12 +128,13 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
       // What if: the week framed in the accent while it shows changes not made, as Docs frames a suggestion.
       style={{ overflowY: "auto", position: "relative", marginRight, ...(trying ? { boxShadow: "inset 0 0 0 2px color-mix(in srgb, var(--color-accent) 55%, transparent)" } : {}) }}
     >
-      <div ref={head} style={{ position: "sticky", top: 0, zIndex: 4, display: "grid", gridTemplateColumns: cols, background: "var(--color-surface)" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 4, display: "grid", gridTemplateColumns: cols, background: "var(--color-surface)" }}>
         <div />
         {dates.map((date) => (
           <DayHead key={date} date={date} day={days.get(date)} hours={plan.day_hours[date] ?? 0} isToday={date === calendar.today} dues={lanes ? [] : calendar.dues} />
         ))}
         <WholeDays events={allDay} dates={dates} />
+        {lanes && <DueRow dues={calendar.dues} dates={dates} cols={cols} />}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: cols, padding: "10px 0 150px" }}>
         <div style={{ position: "relative", height }}>
@@ -146,8 +145,6 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
           ))}
         </div>
         {dates.map((date) => {
-          const dues = lanes ? calendar.dues.filter((d) => d.due.startsWith(date)) : []
-          const lane = dues.length ? (dates.length === 1 ? "280px" : "44%") : "0px"
           // An event you're going to, under the work; one you're skipping (or that work takes), over it, at the side,
           // where it can still be clicked to go after all (30 Oct)
           const fixedBox = (p: Placed<Item & { start: string; end: string }>, aside = false) => (
@@ -202,10 +199,8 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                 backgroundImage: `repeating-linear-gradient(to bottom, color-mix(in srgb, var(--color-text) 5%, transparent) 0 1px, transparent 1px ${60 * PX}px)`,
                 backgroundPositionY: `${((60 - (axis.startMin % 60)) % 60) * PX}px`,
                 boxShadow: "inset 1px 0 0 color-mix(in srgb, var(--color-text) 5%, transparent)",
-                ["--lane" as string]: lane,
               }}
             >
-              {dues.length > 0 && <DueLane dues={dues} stickyTop={headHeight} narrow={dates.length > 1} />}
               <Nights date={date} days={days} axis={axis} />
               {layout(notGoing, date, axis).map((p) => fixedBox(p))}
               {layout(going, date, axis).map((p) => fixedBox(p))}
@@ -268,19 +263,6 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
       </div>
     </div>
   )
-}
-
-/** An element's height, kept up to date (the sticky header's, which the lanes stick below). */
-function useHeight(ref: React.RefObject<HTMLElement | null>): number {
-  const [height, setHeight] = useState(0)
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const observer = new ResizeObserver(() => setHeight(el.getBoundingClientRect().height))
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [ref])
-  return height
 }
 
 /** What you're timing, from when you started to now: drawn from the timer itself, so it shows even when the plan

@@ -99,7 +99,7 @@ export function Appearance() {
         <ChoiceCards label="Hours shown" value={look.hours} onPick={pick("hours")} choices={[{ value: "Waking", label: "Waking hours", art: <HoursArt hours="Waking" /> }, { value: "All day", label: "All 24 hours", art: <HoursArt hours="All day" /> }]} />
       </Field>
       <Field name="Deadlines" note="Where things due show on the calendar.">
-        <ChoiceCards label="Deadlines" value={look.deadlines} onPick={pick("deadlines")} choices={[{ value: "Chips", label: "Count on top", art: <DeadlinesArt deadlines="Chips" /> }, { value: "Lanes", label: "To-do lane", art: <DeadlinesArt deadlines="Lanes" /> }]} />
+        <ChoiceCards label="Deadlines" value={look.deadlines} onPick={pick("deadlines")} choices={[{ value: "Chips", label: "Count on top", art: <DeadlinesArt deadlines="Chips" /> }, { value: "Lanes", label: "Due row", art: <DeadlinesArt deadlines="Lanes" /> }]} />
       </Field>
       <Field name="Calendar blocks" note="Edged and light, or filled with colour.">
         <ChoiceCards

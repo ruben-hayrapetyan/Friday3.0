@@ -609,22 +609,34 @@ describe("the grid", () => {
     expect(screen.getAllByText(title).length).toBeGreaterThan(0)
   })
 
-  it("shows a day's deadlines as a lane down its column, ticked off there", async () => {
+  it("shows a day's deadlines in a row under its date, ticked off or opened there, a busy day folded to three", async () => {
     window.localStorage.setItem("friday-look-v8", JSON.stringify({ deadlines: "Lanes" }))
+    const day = addDays(await today(), 2)
+    for (let n = 1; n <= 5; n++) await friday.c("add", { title: `Due row task ${n}`, due: `${day}T${String(9 + n).padStart(2, "0")}:00`, duration_min: 30 })
     const { user } = await openFriday("/")
     await gridReady()
-    const lanes = await screen.findAllByLabelText("Due this day")
-    const lane = lanes[0]
-    const tick = within(lane).getAllByRole("checkbox")[0]
-    const name = tick.getAttribute("aria-label")?.replace(/^Mark | done$/g, "") ?? ""
-    await user.click(within(lane).getAllByRole("button", { name: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) }).find((b) => b !== tick) as HTMLElement)
-    expect(await screen.findByText(/^Due /)).toBeTruthy()
-    await user.click(tick)
-    const done = await waitForSent("done")
-    expect(typeof (done.body as { id: number }).id).toBe("number")
-    // the lanes step aside while the to-do drawer is out
+    const row = await screen.findByLabelText("Due under the dates")
+    const busy = await within(row).findByLabelText(`Due ${day}`)
+    // three of the five, and the rest behind "+N more", which opens them all
+    expect(within(busy).getAllByRole("checkbox").length).toBe(3)
+    const more = within(busy).getByRole("button", { name: /^\+\d+ more$/ })
+    await user.click(more)
+    const all = within(busy).getByRole("dialog", { name: `Everything due ${day}` })
+    for (let n = 1; n <= 5; n++) expect(within(all).getByText(`Due row task ${n}`)).toBeTruthy()
+    // the row gives a title the room: no "end of day" there (the list says it)
+    expect(within(busy).queryAllByText("end of day").filter((e) => !all.contains(e))).toHaveLength(0)
+    await user.keyboard("{Escape}")
+    expect(within(busy).queryByRole("dialog")).toBeNull()
+    // opened from the row, and ticked off there
+    await user.click(within(busy).getByRole("button", { name: "Due row task 1" }))
+    await waitFor(() => expect(document.querySelector("aside.fr-block-card")?.textContent).toContain("Due row task 1"))
+    await user.click(within(busy).getByRole("checkbox", { name: "Mark Due row task 1 done" }))
+    expect((await waitForSent("done")).body).toMatchObject({ id: expect.any(Number) })
+    // the hours keep their full width: no block or event is narrowed for it
+    expect(document.querySelector('[style*="--lane"]')).toBeNull()
+    // it steps aside while the to-do drawer is out
     await user.click(screen.getByRole("button", { name: "To-do list" }))
-    await waitFor(() => expect(screen.queryAllByLabelText("Due this day")).toHaveLength(0))
+    await waitFor(() => expect(screen.queryByLabelText("Due under the dates")).toBeNull())
   })
 
   it("shows all 24 hours when asked, opening at the morning", async () => {

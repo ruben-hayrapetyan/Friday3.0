@@ -15,7 +15,7 @@ export interface Look {
   chrome: "Tonal" | "Shadow" | "Flat" | "Outline"
   dockStyle: "Bar" | "Minimal"
   hours: "Waking" | "All day" // the day and week grid: wake to bedtime with sleep bands, or all 24 hours
-  deadlines: "Chips" | "Lanes" // a day's dues as a red count in its header (plan/DueCount.tsx), or a to-do lane down its column
+  deadlines: "Chips" | "Lanes" // a day's dues as a red count in its header (plan/DueCount.tsx), or a row of them under the dates (plan/DueRow.tsx)
   todoRows: "Compact" | "Detailed" // the to-do list: personal's one-line rows, or two lines with progress bars
   showing: string[] // calendars with title-row buttons that you switched on; off until you do (COMBINED.md 19)
   showFiltered: boolean // what the categories' filter matches (office hours), shown; off until you switch it on

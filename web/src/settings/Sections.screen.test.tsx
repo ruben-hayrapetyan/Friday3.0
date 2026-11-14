@@ -111,7 +111,7 @@ describe("Appearance", () => {
     }
     await user.click(within(screen.getByRole("group", { name: "Theme" })).getByRole("button", { name: "Dark" }))
     await pick("Hours shown", "All 24 hours")
-    await pick("Deadlines", "To-do lane")
+    await pick("Deadlines", "Due row")
     await pick("Calendar blocks", "Solid")
     await pick("Glow", "Today + more")
     expect(css("--g-now")).toBe("1")
