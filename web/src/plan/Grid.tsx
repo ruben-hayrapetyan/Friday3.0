@@ -15,7 +15,7 @@ import { moveBlock, retimeEvent } from "@/hooks/useDrop"
 import { useGhosts, useItems, useMeals, useNow, useStatus } from "@/hooks/queries"
 import { movedSince } from "@/lib/drag"
 import { clock, hms, weekday, when } from "@/lib/format"
-import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, type Placed, type Span, toMin } from "@/lib/time"
+import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, nowSpan, type Placed, type Span, toMin } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
 import { useLook } from "@/theme/LookProvider"
 import { draftAt, draftOf } from "@/shell/EventPane"
@@ -106,7 +106,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const navigate = useNavigate()
   const sessions = (plan.sessions ?? []).filter((s) => !eaten.has(s.item_id))
   const shown = plan.blocks.filter((b) => b.state !== "timed" && b.state !== "gone" && !eaten.has(b.item_id))
-  const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : fitAxis({ startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }, [...fixed, ...plan.blocks, ...sessions, ...mealBlocks], dates)
+  const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : fitAxis({ startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }, [...fixed, ...plan.blocks, ...sessions, ...mealBlocks, ...nowSpan(now, calendar.today, dates)], dates)
   const panel = useRef<HTMLDivElement>(null)
   useGlide(panel, plan, dates.join())
   // All 24 hours open at the wake time, as a paper calendar opens at the morning.

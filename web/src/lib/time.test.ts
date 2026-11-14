@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { addDays, ampm, dayRange, fitAxis, fromMin, hourMarks, layout, nearestAt, pageStart, toMin } from "./time"
+import { addDays, ampm, dayRange, fitAxis, fromMin, hourMarks, layout, nearestAt, nowSpan, pageStart, toMin } from "./time"
 
 const axis = { startMin: 7 * 60 + 30, endMin: 24 * 60 + 30 }
 const block = (start: string, end: string, name = "") => ({ start, end, name })
@@ -96,5 +96,28 @@ describe("calendar pages are centered on the day (4 Nov)", () => {
   it("a day is that day; the middle of every page is the day it was asked for", () => {
     expect(pageStart("2026-10-28", 1)).toBe("2026-10-28")
     for (const days of [1, 3, 7]) for (const day of ["2026-10-26", "2026-11-01", "2026-12-31"]) expect(dayRange(pageStart(day, days), days)[Math.floor(days / 2)]).toBe(day)
+  })
+})
+
+// 14 Nov: a downloaded Friday's calendar had no red now line from midnight until the wake time: the hours shown run
+// from waking to about bedtime (7:30am–11:30pm on the defaults), and the line is drawn only inside them. Today's
+// column now always takes in the present quarter hour.
+describe("the present on the calendar", () => {
+  const axis = { startMin: 7 * 60 + 30, endMin: 24 * 60 }
+  const at = (local: string) => toMin(local)
+
+  it("is taken in when today is shown: past midnight it stretches the evening, before waking it opens the morning", () => {
+    const night = fitAxis(axis, nowSpan(at("2026-11-14T01:10"), "2026-11-13", ["2026-11-13", "2026-11-14"]), ["2026-11-13", "2026-11-14"])
+    expect(night.endMin).toBeGreaterThanOrEqual(25 * 60 + 25) // 1:10am is the 13th's night: its column runs past it
+    const early = fitAxis(axis, nowSpan(at("2026-11-14T05:20"), "2026-11-14", ["2026-11-14"]), ["2026-11-14"])
+    expect(early.startMin).toBeLessThanOrEqual(5 * 60 + 20) // before waking: the day opens at 5am
+  })
+
+  it("is nothing to take in when today isn't shown", () => {
+    expect(nowSpan(at("2026-11-14T01:10"), "2026-11-13", ["2026-11-20", "2026-11-21"])).toEqual([])
+  })
+
+  it("leaves the hours as they are when the present is already inside them", () => {
+    expect(fitAxis(axis, nowSpan(at("2026-11-14T14:00"), "2026-11-14", ["2026-11-14"]), ["2026-11-14"])).toEqual(axis)
   })
 })

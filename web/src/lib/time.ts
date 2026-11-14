@@ -57,6 +57,12 @@ export interface Span {
 }
 
 
+/** The present quarter hour, for the axis to take in while today is shown (14 Nov: the red now line was missing from
+ * midnight until the wake time, outside the hours shown): an empty list when today isn't one of `dates`. */
+export function nowSpan(now: number, today: string, dates: string[]): Span[] {
+  return dates.includes(today) ? [{ start: fromMin(now), end: fromMin(now + 15) }] : []
+}
+
 /** The axis stretched, to the hour, to take in what's on these days: a 6am class opens the day at 6am rather than
  * being cut at the wake time. Something after midnight belongs to the evening before; a day stays a day long. */
 export function fitAxis(axis: Axis, things: Span[], dates: string[]): Axis {
