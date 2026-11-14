@@ -669,6 +669,21 @@ test("Siri says what's on and what's next, in 12-hour times, the day named when 
     check(SiriSays.day("2026-11-11T10:00", today: today, always: true) == " today", "today, when asked")
 }
 
+test("Siri says its times on your clock: 24-hour, with the leading zero, once you choose it in Settings → Appearance") {
+    let today = "2026-11-11"
+    let gym: [String: Any] = ["title": "Gym", "start": "2026-11-12T07:30", "end": "2026-11-12T09:00"]
+    let essay: [String: Any] = ["title": "CS essay", "start": "2026-11-11T15:00", "end": "2026-11-11T16:45"]
+    check(SiriSays.clock(["clock": "24h", "time": ["day_start": "04:00"]]) == "24h", "the settings' clock")
+    check(SiriSays.clock(["clock": "12h"]) == "12h" && SiriSays.clock([:]) == "12h" && SiriSays.clock(nil) == "12h", "12-hour unless chosen")
+    check(SiriSays.next(["current": essay, "current_source": "plan", "next": gym], today: today, clock: "24h")
+          == "Now: CS essay, until 16:45. Then Gym at 07:30 tomorrow.", "on now, then next")
+    check(SiriSays.time("2026-11-11T00:05", clock: "24h") == "00:05" && SiriSays.time("2026-11-11T12:00", clock: "24h") == "12:00", "midnight, noon")
+    let due = SiriSays.added(["result": ["item": ["title": "Essay", "when": "flexible", "due": "2099-01-02T17:00"]]], clock: "24h")
+    check(due == "Added Essay, due 17:00 on 2 Jan.", "with its due: \(due)")
+    let event = SiriSays.added(["result": ["item": ["title": "Talk", "when": "fixed", "start": "2099-01-02T09:30"]]], clock: "24h")
+    check(event == "Added Talk, 09:30 on 2 Jan.", "an event: \(event)")
+}
+
 test("Siri says what was added, or why it wasn't (C131)") {
     check(SiriSays.added(["message": "give it a title: what is it?"]) == "Friday couldn't add that: give it a title: what is it?", "refused")
     check(SiriSays.added(["result": ["item": ["title": "Read ch. 4", "when": "flexible"]]]) == "Added Read ch. 4. Friday plans it.", "a to-do")

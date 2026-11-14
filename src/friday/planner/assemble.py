@@ -9,7 +9,8 @@ from friday.core.pace import DayScales, dials_on, pace_label
 from friday.core.textnorm import course_tag
 from friday.core.time import (
     UNIT_MIN,
-    ampm,
+    clock_set,
+    clock_time,
     format_utc,
     local_midnight,
     planning_date,
@@ -102,6 +103,13 @@ def late_hours(problem: Problem, plan: Plan, over_units: dict[str, int]) -> dict
 
 
 def assemble(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
+    """The plan saved, its report's sentences on your clock: saved with it, they're written again by the replan a
+    change of clock brings."""
+    with clock_set(snapshot.settings.get("clock", "12h")):
+        return assembled(snapshot, solved)
+
+
+def assembled(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
     problem, result = solved.problem, solved.result
     blocks, other = planned_blocks(problem, result.plan)
     evaluation = result.evaluation
@@ -173,8 +181,8 @@ def notices(problem: Problem, demoted: list[str]) -> list[str]:
     """What the plan couldn't do as asked. Late work has its own line in the app (`status.late`), from late_hours."""
     tz = problem.grid.spec.timezone
     over = [
-        f"Your lock on {problem.items[k].title} ({to_local(at, tz):%a} {ampm(to_local(at, tz))}) is during {event}, "
-        f"so Friday planned it elsewhere: move the lock, or make {event} optional"
+        f"Your lock on {problem.items[k].title} ({to_local(at, tz):%a} {clock_time(to_local(at, tz))}) "
+        f"is during {event}, so Friday planned it elsewhere: move the lock, or make {event} optional"
         for k, event, at in problem.locks_over_events
         if k in problem.items
     ]
@@ -191,7 +199,7 @@ def clashes(problem: Problem, tz: str) -> list[str]:
                 break
             if b.title != a.title and not in_class_exam(a, b):
                 when = to_local(max(a.start_utc, b.start_utc), tz)
-                out.append(f"{a.title} and {b.title} overlap on {when:%a %b} {when.day} at {ampm(when)}")
+                out.append(f"{a.title} and {b.title} overlap on {when:%a %b} {when.day} at {clock_time(when)}")
     return out
 
 
@@ -220,9 +228,9 @@ def given_way(problem: Problem, blocks: list[PlannedBlock], tz: str, now: int) -
             needs = work.title if work else "work"
             eve = to_local(night[0], tz) if night else when
             said = "the time" if over else f"{eve:%A} night"
-            out.append(f"Skip {event.title} on {when:%a} at {ampm(when)}: {needs} needs {said}")
+            out.append(f"Skip {event.title} on {when:%a} at {clock_time(when)}: {needs} needs {said}")
         elif (event.title, event.start_utc) in ahead and now <= event.start_utc < now + GO_DAYS * 1440:
-            out.append(f"Go to {event.title} on {when:%a} at {ampm(when)}: you’re ahead")
+            out.append(f"Go to {event.title} on {when:%a} at {clock_time(when)}: you’re ahead")
     return out
 
 
@@ -319,7 +327,9 @@ def closer_notices(snapshot: Snapshot, blocks: list[PlannedBlock], found: list[C
         first = min(times, key=lambda c: starts[c.item_id])
         when = to_local(starts[first.item_id], tz)
         more = f"; {len(times) - 1} more of them are closer too" if len(times) > 1 else ""
-        out.append(f"{titles[first.item_id]} on {when:%a %b} {when.day} at {ampm(when)}: {closer_words(first)}{more}")
+        out.append(
+            f"{titles[first.item_id]} on {when:%a %b} {when.day} at {clock_time(when)}: {closer_words(first)}{more}"
+        )
     return out
 
 

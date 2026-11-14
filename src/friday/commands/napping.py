@@ -14,7 +14,7 @@ from friday.api.views import NapOut
 from friday.commands.registry import Ctx, command
 from friday.core.db import one, rows
 from friday.core.items import FieldError
-from friday.core.time import ampm, format_local, format_utc, parse_utc, planning_date, to_local, to_zoned
+from friday.core.time import clock_time, format_local, format_utc, parse_utc, planning_date, to_local, to_zoned
 from friday.learn.sleep import NAP_LONGEST_MIN, NAP_USUAL_MIN, Nap, usual_nap
 
 FORGOT_MIN = 3 * 60  # "I'm up" this long after lying down was a tap forgotten, not a three-hour nap
@@ -35,7 +35,7 @@ def moment_of(ctx: Ctx, local: str | None, field: str = "at") -> int:
 
 
 def said(ctx: Ctx, moment: int) -> str:
-    return ampm(to_local(moment, ctx.tz))
+    return clock_time(to_local(moment, ctx.tz))
 
 
 def napping(conn: sqlite3.Connection, user_id: int) -> dict | None:

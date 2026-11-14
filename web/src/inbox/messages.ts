@@ -7,7 +7,7 @@
 
 import type { Item, Schemas } from "@/api/client"
 import type { Ask } from "./asks"
-import { ampm, clock, dayLabel, dur, lateBy, weekday, when } from "@/lib/format"
+import { clockTime, clock, dayLabel, dur, lateBy, weekday, when } from "@/lib/format"
 import { addDays } from "@/lib/time"
 
 type Decision = Schemas["Decision"]
@@ -99,7 +99,7 @@ export function rowOf(m: Message, today: string): Row {
     case "gap":
       return { icon: "cards", title: m.gap.title, line: `${dur(m.gap.planned_min)} planned, ${spans(m.gap)}: did you do it?`, meta: dayWord(m.date, today) }
     case "sleep":
-      return { icon: "moon", title: m.ask.question, line: `A sleep tap you missed; usually ${ampm(m.ask.at.slice(11, 16))}`, meta: dayWord(m.ask.date, today) }
+      return { icon: "moon", title: m.ask.question, line: `A sleep tap you missed; usually ${clockTime(m.ask.at.slice(11, 16))}`, meta: dayWord(m.ask.date, today) }
     case "suggestion": {
       const f = m.s.input as Record<string, unknown>
       const at = (f.due ?? f.start) as string | undefined

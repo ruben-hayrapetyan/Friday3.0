@@ -1,10 +1,11 @@
 """Terminal output (DESIGN §19): plain aligned text, colour only for warnings and errors. Ids print as T42 (items),
-P7 (plans), C881 (commands) and T42@Tue14:00 (blocks)."""
+P7 (plans), C881 (commands) and T42@Tue14:00 (blocks: an id, typed back as it is, so on the 24-hour clock always).
+Times are on your clock (Settings → Appearance → Clock), asked of the server the first time one is printed."""
 
 import json
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from rich.console import Console
 
@@ -52,22 +53,55 @@ def ghost_line(name: str, response: dict[str, Any]) -> list[str]:
 
 # Times and lengths
 
+Clock = Literal["12h", "24h"]  # as the server's settings `clock` (the command line reads only friday.api, so its own)
+
+# Your clock, asked once, when the first time is printed (cli/main.py sets how): the 12-hour clock until it's known.
+ask_clock: Callable[[], Clock] = lambda: "12h"  # noqa: E731
+_clock: list[Clock] = []
+
+
+def use_clock(ask: Callable[[], Clock]) -> None:
+    """How the clock is found out; asked at most once, on the first time printed."""
+    global ask_clock
+    ask_clock = ask
+    _clock.clear()
+
+
+def your_clock() -> Clock:
+    if not _clock:
+        _clock.append(ask_clock())
+    return _clock[0]
+
 
 def moment(local: str) -> datetime:
     return datetime.fromisoformat(local)
 
 
+def at(time: datetime) -> str:
+    """A time on your clock: "2:30pm" or "14:30" (with its leading zero; midnight "00:00", or "12am")."""
+    if your_clock() == "24h":
+        return f"{time:%H:%M}"
+    return f"{(time.hour - 1) % 12 + 1}{f':{time.minute:02d}' if time.minute else ''}{'am' if time.hour < 12 else 'pm'}"
+
+
 def when(local: str | None) -> str:
-    return moment(local).strftime("%a %b %-d %H:%M") if local else ""
+    return f"{moment(local):%a %b %-d} {at(moment(local))}" if local else ""
 
 
 def span(start: str, end: str) -> str:
     a, b = moment(start), moment(end)
-    return f"{a:%a %H:%M}-{b:%H:%M}" if a.date() == b.date() else f"{a:%a %H:%M}-{b:%a %H:%M}"
+    return f"{a:%a} {at(a)}-{at(b)}" if a.date() == b.date() else f"{a:%a} {at(a)}-{b:%a} {at(b)}"
 
 
 def clock(start: str, end: str) -> str:
-    return f"{moment(start):%H:%M}-{moment(end):%H:%M}"
+    return f"{at(moment(start))}-{at(moment(end))}"
+
+
+def clocks(spans: list[tuple[str, str]]) -> list[str]:
+    """Times down a column, padded to one width so what follows them lines up ("9am-10am" over "12:30pm-1pm")."""
+    said = [clock(start, end) for start, end in spans]
+    width = max(map(len, said), default=0)
+    return [s.ljust(width) for s in said]
 
 
 def short_key(key: str) -> str:
@@ -157,12 +191,13 @@ def plan(result: dict[str, Any]) -> list[str]:
     if not entries:
         return ["No plan yet." if result["plan_id"] is None else "Nothing planned."]
     lines, day = [], None
-    for start, end, text in sorted(entries):
+    entries = sorted(entries)
+    for (start, _, text), times in zip(entries, clocks([(s, e) for s, e, _ in entries]), strict=True):
         if start[:10] != day:
             day = start[:10]
             hours = result["day_hours"].get(day)
             lines.append(f"{moment(start):%a %b %-d}" + (f"   {hours:g} h" if hours else ""))
-        lines.append(f"  {clock(start, end)}  {text}")
+        lines.append(f"  {times}  {text}")
     header = f"Plan P{result['plan_id']}" + (" (provisional)" if result.get("provisional") else "")
     return [header, *lines]
 
@@ -182,7 +217,8 @@ def now(result: dict[str, Any]) -> list[str]:
     if result["swaps"]:
         lines.append("Safe to switch to:  " + " · ".join(s["title"] for s in result["swaps"]))
     for alert in result["alerts"]:
-        lines.append(f"! Start by {moment(alert['latest_start']):%a %H:%M}:  {alert['title']} ({alert['kind']})")
+        latest = moment(alert["latest_start"])
+        lines.append(f"! Start by {latest:%a} {at(latest)}:  {alert['title']} ({alert['kind']})")
     if result["fits"] and not result["current"]:
         lines.append("Fits this gap:  " + " · ".join(f"{s['title']} ({length(s['minutes'])})" for s in result["fits"]))
     return lines
@@ -228,7 +264,8 @@ def triage(result: dict[str, Any]) -> list[str]:
 
 def review(result: dict[str, Any]) -> list[str]:
     lines = [f"Review of {result['date']}" + (" (done)" if result["reviewed"] else "")]
-    lines += [f"  {clock(b['start'], b['end'])}  {b['title']}   {short_key(b['key'])}" for b in result["blocks"]]
+    times = clocks([(b["start"], b["end"]) for b in result["blocks"]])
+    lines += [f"  {t}  {b['title']}   {short_key(b['key'])}" for t, b in zip(times, result["blocks"], strict=True)]
     lines += [f"  finished?  T{i['id']} {i['title']}  (friday done T{i['id']})" for i in result["finished"]]
     return lines
 
@@ -300,7 +337,7 @@ def projects(result: list[dict[str, Any]]) -> list[str]:
         lines.append(
             f"T{item['id']}  {titled(item)}  due {when(item['due']) or '-'}  {length(p['done_min'])} done, "
             f"{length(p['remaining_min'])} left  {STATUS[p['status']]}"
-            + (f", finishes {finish[:16]}" if finish else "")
+            + (f", finishes {when(finish)}" if finish else "")
         )
         lines += [f"  T{c['id']}  {c['title']}  {length(c['remaining_min'] or 0)} left" for c in p["children"]]
     return lines or ["No projects."]

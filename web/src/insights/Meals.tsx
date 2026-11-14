@@ -11,7 +11,7 @@ import type { Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useMeals } from "@/hooks/queries"
 import { useAsks } from "@/inbox/asks"
-import { ampm, clock, dayLabel, dur, weekday } from "@/lib/format"
+import { clockTime, clock, dayLabel, dur, weekday } from "@/lib/format"
 import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { InboxLink } from "./Learned"
@@ -76,7 +76,7 @@ function Usual({ learned, minDays }: { learned: Schemas["MealLearnedOut"][]; min
         return (
           <div key={k} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <span className="fr-h tnum" style={{ fontSize: 28 }}>
-              {main.usual_start ? ampm(main.usual_start) : "—"}
+              {main.usual_start ? clockTime(main.usual_start) : "—"}
             </span>
             <span style={{ fontSize: 12, color: "var(--color-neutral-300)" }}>
               {named(k)} on {main.group}
@@ -84,7 +84,7 @@ function Usual({ learned, minDays }: { learned: Schemas["MealLearnedOut"][]; min
             </span>
             <span style={{ fontSize: 12, color: "var(--color-neutral-500)", textWrap: "pretty" }}>
               {[main.start_spread_min != null ? (main.start_spread_min <= 20 ? "at a regular time" : `give or take ${dur(Math.round(main.start_spread_min / 2 / 5) * 5 || 5)}`) : "", skipSaid(main.skip_share)].filter(Boolean).join(", ")}
-              {other?.usual_start ? `. ${named(other.group)}: ${ampm(other.usual_start)}${other.usual_min ? `, ${dur(other.usual_min)}` : ""}` : ""}
+              {other?.usual_start ? `. ${named(other.group)}: ${clockTime(other.usual_start)}${other.usual_min ? `, ${dur(other.usual_min)}` : ""}` : ""}
             </span>
           </div>
         )
@@ -106,7 +106,7 @@ function Timeline({ days }: { days: Schemas["MealDayOut"][] }) {
         <span style={{ position: "relative", height: 14 }}>
           {TICKS.map((h) => (
             <span key={h} className="tnum" style={{ position: "absolute", left: `${((h * 60 - FROM) / SPAN) * 100}%`, transform: "translateX(-50%)" }}>
-              {ampm(`${String(h % 24).padStart(2, "0")}:00`)}
+              {clockTime(`${String(h % 24).padStart(2, "0")}:00`)}
             </span>
           ))}
         </span>
@@ -179,8 +179,8 @@ function Offers({ meals }: { meals: Schemas["MealsOut"] }) {
       {times.map((t) => (
         <span key={`time-${t.kind}`} style={row}>
           <span>
-            You usually have {t.kind} around <b style={{ fontWeight: 500 }}>{ampm(t.usual_start)}</b>
-            <span style={{ color: "var(--color-neutral-500)" }}>; it's planned {ampm(t.start)}–{ampm(t.end)}</span>
+            You usually have {t.kind} around <b style={{ fontWeight: 500 }}>{clockTime(t.usual_start)}</b>
+            <span style={{ color: "var(--color-neutral-500)" }}>; it's planned {clockTime(t.start)}–{clockTime(t.end)}</span>
           </span>
           {act(t.kind)}
         </span>
@@ -189,7 +189,7 @@ function Offers({ meals }: { meals: Schemas["MealsOut"] }) {
         <span key={`plan-${p.kind}`} style={row}>
           {p.plan ? (
             <span>
-              You have {p.kind} most days, around <b style={{ fontWeight: 500 }}>{ampm(p.usual_start ?? "08:00")}</b>
+              You have {p.kind} most days, around <b style={{ fontWeight: 500 }}>{clockTime(p.usual_start ?? "08:00")}</b>
               <span style={{ color: "var(--color-neutral-500)" }}>; Friday doesn't plan it</span>
             </span>
           ) : (

@@ -11,7 +11,7 @@ import { LOOK } from "@/components/Fit"
 import { Icon } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { runCommand } from "@/hooks/useCommand"
-import { ampm, dayLabel } from "@/lib/format"
+import { clockTime, dayLabel } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
 import { draftOf } from "@/shell/EventPane"
 import { type Change, placeholder, useTrial, useWhatIf, whatIf } from "./store"
@@ -168,7 +168,7 @@ export function WhatIfPanel() {
                 ))}
                 {(out.later_days ?? []).slice(0, 3).map((d) => (
                   <Line key={`d${d.date}`} icon="moon" ink="var(--color-neutral-400)">
-                    {dayLabel(d.date)}: work ends {d.after ? ampm(d.after) : "—"} <span style={{ color: "var(--color-neutral-500)" }}>(now {d.before ? ampm(d.before) : d.date === today ? "nothing more today" : "no work"})</span>
+                    {dayLabel(d.date)}: work ends {d.after ? clockTime(d.after) : "—"} <span style={{ color: "var(--color-neutral-500)" }}>(now {d.before ? clockTime(d.before) : d.date === today ? "nothing more today" : "no work"})</span>
                   </Line>
                 ))}
                 {(out.notices ?? []).slice(0, 3).map((t) => (
@@ -257,7 +257,7 @@ function Line({ icon, ink, children }: { icon: string; ink: string; children: Re
 function describe(c: Change): string {
   const input = c.input as Record<string, unknown>
   const named = (input.text ?? input.title) as string | undefined
-  const when = typeof input.start === "string" ? ` · ${dayLabel(input.start.slice(0, 10))} ${ampm(input.start.slice(11, 16))}` : ""
+  const when = typeof input.start === "string" ? ` · ${dayLabel(input.start.slice(0, 10))} ${clockTime(input.start.slice(11, 16))}` : ""
   const verb: Record<string, string> = { add: "Add", series_add: "Add", edit: "Change", pin: "Move a block", unpin: "Let Friday place a block", skip: "Skip an event", drop: "Delete an item", shove: "Keep a stretch free", rule_add: "Rule:", day_override: "Change a day" }
   return `${verb[c.command] ?? c.command}${named ? ` ${named}` : ""}${when}`
 }

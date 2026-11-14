@@ -3,10 +3,16 @@ from datetime import date, datetime
 import pytest
 
 from friday.core.time import (
+    CLOCK,
     GridSpec,
     ampm,
     ampm_in,
+    clock_set,
+    clock_time,
+    clock_times,
     format_utc,
+    hhmm,
+    hhmm_in,
     make_grid,
     night_utc,
     parse_utc,
@@ -151,6 +157,48 @@ def test_a_sentence_already_on_twelve_hours_reads_the_same() -> None:
     assert ampm_in("Gym between 7am and 8:30pm on weekdays") == "Gym between 7am and 8:30pm on weekdays"
     assert ampm_in("Keep Fri, Sat 8pm–11:59pm free") == "Keep Fri, Sat 8pm–11:59pm free"
     assert ampm_in("between 12:20 and 13:10") == "between 12:20pm and 1:10pm"
+
+
+@pytest.mark.parametrize(
+    ("time", "said"),
+    [("00:00", "00:00"), ("00:30", "00:30"), ("09:05", "09:05"), ("12:00", "12:00"), ("13:10", "13:10"),
+     ("23:59", "23:59"), ("2026-10-20T14:30", "14:30"), (datetime(2026, 10, 20, 7, 0), "07:00")],
+)  # fmt: skip
+def test_times_read_on_a_24_hour_clock_with_their_leading_zero(time: str | datetime, said: str) -> None:
+    assert hhmm(time) == said
+
+
+def test_a_time_for_you_is_on_your_clock_and_on_12_hours_unless_you_chose_24() -> None:
+    assert clock_time("14:05") == "2:05pm" and CLOCK.get() == "12h"
+    with clock_set("24h"):
+        assert clock_time("14:05") == "14:05" and clock_time("2026-10-20T00:00") == "00:00"
+        with clock_set("12h"):
+            assert clock_time("09:30") == "9:30am"
+        assert clock_time("09:30") == "09:30"
+    assert clock_time("09:30") == "9:30am"  # put back as it was
+
+
+def test_a_clock_set_is_put_back_when_what_ran_inside_it_fails() -> None:
+    with pytest.raises(RuntimeError), clock_set("24h"):
+        raise RuntimeError
+    assert CLOCK.get() == "12h"
+
+
+def test_sentences_on_12_hours_turn_to_24() -> None:
+    assert hhmm_in("No work after 10pm on weekdays") == "No work after 22:00 on weekdays"
+    assert hhmm_in("Keep Fri, Sat 8pm–11:59pm free") == "Keep Fri, Sat 20:00–23:59 free"
+    assert hhmm_in("between 12am and 8:30 AM") == "between 00:00 and 08:30"
+    assert hhmm_in("noon is 12pm; 1pm–3pm") == "noon is 12:00; 13:00–15:00"
+    assert (
+        hhmm_in("between 7:30 and 9, 2 amps, 3 pmol, T42@Tue14:00")
+        == "between 7:30 and 9, 2 amps, 3 pmol, T42@Tue14:00"
+    )
+
+
+def test_a_sentence_on_your_clock_however_it_was_written() -> None:
+    assert clock_times("No work after 22:00, gym 7am") == "No work after 10pm, gym 7am"
+    with clock_set("24h"):
+        assert clock_times("No work after 10pm, gym 7:15") == "No work after 22:00, gym 7:15"
 
 
 def test_a_slots_hours_and_a_minute_outside_the_grid() -> None:

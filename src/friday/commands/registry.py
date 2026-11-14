@@ -23,6 +23,7 @@ from friday.core.db import SLOW_MS, begin_write, waited
 from friday.core.items import FieldError
 from friday.core.settings import minutes_of
 from friday.core.time import (
+    clock_set,
     format_local,
     format_utc,
     local_midnight,
@@ -225,16 +226,20 @@ def dispatch(
     if preview and spec.mutates and not spec.logged:  # it can't be rolled back, so a preview would do it (audit)
         raise FieldError("preview", f"{name} can't be previewed: it isn't a change to your plan, so it can't be undone")
     settings = load_settings(conn, user_id)
-    if not spec.mutates or not spec.logged:
-        ctx = Ctx(conn, Writer(conn, user_id), now_utc, actor, user_id, settings, solver=solver)
-        return CommandResult(command_id=None, result=dump(spec.fn(ctx, inp)))
-    if idempotency_key is not None:
-        earlier = conn.execute(
-            "SELECT id, result FROM command_log WHERE user_id = ? AND idempotency_key = ?", [user_id, idempotency_key]
-        ).fetchone()
-        if earlier:
-            return CommandResult(command_id=earlier["id"], result=json.loads(earlier["result"]), repeated=True)
-    return run_in_transaction(conn, spec, inp, settings, now_utc, actor, user_id, preview, idempotency_key, provisional)
+    with clock_set(settings["clock"]):  # every sentence it writes for you is on your clock
+        if not spec.mutates or not spec.logged:
+            ctx = Ctx(conn, Writer(conn, user_id), now_utc, actor, user_id, settings, solver=solver)
+            return CommandResult(command_id=None, result=dump(spec.fn(ctx, inp)))
+        if idempotency_key is not None:
+            earlier = conn.execute(
+                "SELECT id, result FROM command_log WHERE user_id = ? AND idempotency_key = ?",
+                [user_id, idempotency_key],
+            ).fetchone()
+            if earlier:
+                return CommandResult(command_id=earlier["id"], result=json.loads(earlier["result"]), repeated=True)
+        return run_in_transaction(
+            conn, spec, inp, settings, now_utc, actor, user_id, preview, idempotency_key, provisional
+        )
 
 
 def run_in_transaction(

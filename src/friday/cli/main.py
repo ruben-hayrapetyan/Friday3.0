@@ -23,6 +23,7 @@ from pydantic.fields import FieldInfo
 from friday.api.types import Verb
 from friday.api.verbs import VERBS
 from friday.cli import render
+from friday.cli.render import Clock
 
 CONFIG = Path("~/.config/friday/cli.toml").expanduser()
 DEFAULT_SERVER = "http://localhost:8765"
@@ -64,6 +65,18 @@ def call(verb: Verb, payload: dict[str, Any], preview: bool = False) -> Any:
     if response.status_code >= 400:
         raise Failure(1, error_message(response))
     return response.json()
+
+
+def clock_setting() -> Clock:
+    """Your clock (Settings → Appearance → Clock), from the server's settings; the 12-hour clock when it can't say."""
+    try:
+        response = httpx.get(
+            server() + "/api/q/settings", params=None, headers={"x-friday-client": "cli"}, timeout=TIMEOUT
+        )
+        said = response.json().get("clock") if response.status_code == 200 else None
+    except (httpx.HTTPError, ValueError, AttributeError):
+        said = None
+    return "24h" if said == "24h" else "12h"
 
 
 def error_message(response: httpx.Response) -> str:
@@ -158,6 +171,7 @@ def make_command(name: str, verb: Verb) -> None:
         except Failure as failure:
             render.error(str(failure))
             raise typer.Exit(failure.code) from failure
+        render.use_clock(clock_setting)  # asked only if a time is printed
         render.show(name, response, as_json)
 
     handler.__signature__ = inspect.Signature(params)  # type: ignore[attr-defined]

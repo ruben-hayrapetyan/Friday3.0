@@ -49,10 +49,10 @@ def says(*args: str, code: int = 0) -> list[str]:
 
 def test_a_new_task_says_its_id_how_to_undo_it_and_where_it_probably_goes(friday: TestClient) -> None:
     assert says("add", "essay due tue 17:00 ~2h") == [
-        "Added T1  essay   2 h   due Tue Oct 20 17:00   (C4, undo: friday undo C4)",
-        "Probably Mon 09:00-11:00 (planning…)",
+        "Added T1  essay   2 h   due Tue Oct 20 5pm   (C4, undo: friday undo C4)",
+        "Probably Mon 9am-11am (planning…)",
     ]
-    assert says("add", "talk mon 13:00-14:00") == ["Added T2  talk   Mon 13:00-14:00   (C5, undo: friday undo C5)"]
+    assert says("add", "talk mon 13:00-14:00") == ["Added T2  talk   Mon 1pm-2pm   (C5, undo: friday undo C5)"]
 
 
 def test_a_repeating_task_says_its_series_and_a_preview_changes_nothing(friday: TestClient) -> None:
@@ -71,8 +71,8 @@ def test_before_the_first_plan_it_says_so_then_the_plan_reads_by_day(friday: Tes
     assert says("replan") == ["Plan P1"]
     plan = says("plan")
     assert plan[:2] == ["Plan P1", "Mon Oct 19   5 h"]
-    assert "  13:00-14:00  talk  (fixed)" in plan
-    assert "  09:00-13:00  essay   T1@Mon09:00" in plan
+    assert "  1pm-2pm  talk  (fixed)" in plan
+    assert "  9am-1pm  essay   T1@Mon09:00" in plan
 
 
 def test_an_item_lists_its_blocks_the_work_done_and_what_it_waits_for(friday: TestClient) -> None:
@@ -91,7 +91,7 @@ def test_items_lists_each_with_its_length_and_due_and_an_empty_list_says_so(frid
     assert says("items") == ["Nothing here."]
     says("add", "essay due tue 17:00 ~2h")
     says("add", "laundry ~90m")
-    assert says("items") == ["T1  essay    2 h    due Tue Oct 20 17:00", "T2  laundry  1.5 h"]
+    assert says("items") == ["T1  essay    2 h    due Tue Oct 20 5pm", "T2  laundry  1.5 h"]
     assert says("done", "T2")[0] == "T2  laundry  1.5 h    done   (C6, undo: friday undo C6)"
 
 
@@ -129,7 +129,7 @@ def test_why_gives_the_reason_and_costs_and_why_not_the_cost_of_moving(friday: T
     why = says("why", key)
     assert why[0] == key and why[-1].split() == ["total", "0.0"]
     moved = says("why-not", key, "--start", "2026-10-20T14:00")
-    assert moved[0].startswith(f"Moving {key} to Tue Oct 20 14:00 costs ")
+    assert moved[0].startswith(f"Moving {key} to Tue Oct 20 2pm costs ")
 
 
 def test_changes_lists_what_the_plan_added_and_the_commands_behind_it(friday: TestClient) -> None:
@@ -144,7 +144,7 @@ def test_the_log_says_what_undid_what_and_diagnose_lists_commands_and_plans(frid
     says("add", "essay ~2h")
     says("undo", "C4")
     log = says("log-list")
-    assert log[0].split()[:6] == ["C5", "Mon", "Oct", "19", "09:00", "cli"] and log[0].endswith("command_id=4")
+    assert log[0].split()[:6] == ["C5", "Mon", "Oct", "19", "9am", "cli"] and log[0].endswith("command_id=4")
     assert log[1].startswith("C4 ") and log[1].endswith("undone by C5") and 'text="essay ~2h"' in log[1]
     says("replan")
     assert any(" plan " in line and "P1 replan by cli" in line for line in says("diagnose"))
@@ -163,7 +163,7 @@ def test_paces_fits_rule_totals_load_and_projects(friday: TestClient) -> None:
     assert all(len(line.split()) == 2 for line in says("rule-totals"))
     assert says("load")[0].startswith("2026-10-19  ")
     project, child = says("projects")
-    assert project.startswith("T1  thesis  due Fri Oct 23 17:00  ")
+    assert project.startswith("T1  thesis  due Fri Oct 23 5pm  ")
     assert child == "  T2  outline  1 h left"
 
 
@@ -235,3 +235,27 @@ def test_the_days_review_lists_its_blocks_and_asks_about_work_that_looks_finishe
     assert review[0] == "Review of 2026-10-19"
     assert any(line.startswith("  ") and "essay   T1@Mon" in line for line in review)
     assert "  finished?  T2 reading  (friday done T2)" in review, review
+
+
+def test_the_command_line_follows_the_clock_chosen_in_settings(friday: TestClient) -> None:
+    """12-hour by default; once Settings → Appearance → Clock says 24-hour, what `friday` prints and the server's own
+    sentences are on the 24-hour clock, with their leading zero."""
+    says("add", "essay due tue 17:00 ~2h")
+    says("add", "talk mon 13:00-14:00")
+    assert says("items")[0] == "T1  essay  2 h  due Tue Oct 20 5pm"
+    assert says("settings-set", "clock", "24h")[0].startswith("Saved clock")
+    assert says("items")[0] == "T1  essay  2 h  due Tue Oct 20 17:00"
+    says("replan")
+    assert "  13:00-14:00  talk  (fixed)" in says("plan")
+    assert says("shove", "16:00-17:00 wed")[0].startswith("Cleared Wed Oct 21 16:00–17:00")
+    assert says("settings-set", "clock", "12h")[0].startswith("Saved clock")
+    assert says("items")[0] == "T1  essay  2 h  due Tue Oct 20 5pm"
+
+
+def test_a_clock_the_server_cant_say_is_the_12_hour_one(friday: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def gone(url: str, params: Any, headers: dict[str, str], timeout: Any) -> httpx.Response:
+        raise httpx.ConnectError("refused")
+
+    assert main.clock_setting() == "12h"
+    monkeypatch.setattr(httpx, "get", gone)
+    assert main.clock_setting() == "12h"

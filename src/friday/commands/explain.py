@@ -22,7 +22,7 @@ from friday.commands.rules import readings, words
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.settings import validate_value
-from friday.core.time import ampm, format_utc, parse_utc, planning_date, to_local
+from friday.core.time import clock_time, format_utc, parse_utc, planning_date, to_local
 from friday.engine.rules import RULE_TYPES, build_rules
 from friday.planner.snapshot import take_snapshot
 from friday.planner.spacing import Closer, closer_words
@@ -68,7 +68,7 @@ def sentence(ctx: Ctx, block: dict[str, Any], costs: dict[str, int]) -> str:
     if item.due_utc:
         slack = report.get("slack_minutes", {}).get(str(item.id))
         due_at = to_local(parse_utc(item.due_utc), ctx.tz)
-        due = f"Due {due_at:%a %-d %b} {ampm(due_at)}"
+        due = f"Due {due_at:%a %-d %b} {clock_time(due_at)}"
         parts.append(f"{due}; {room(slack)}" if slack is not None else due)
     start, end = block["start_utc"], block["end_utc"]
     pinned = one(

@@ -1,6 +1,7 @@
 // The API speaks local wall time ("2026-10-20T14:00"). The client never converts zones: it counts minutes on a
 // zone-free clock, which is all drawing and ordering need.
 
+import { clockSetting } from "./clock"
 import { dayStartMin } from "./dayStart"
 
 export const ROW_MIN = 15
@@ -115,17 +116,35 @@ export function layout<T extends Span>(things: T[], date: string, axis: Axis): P
   return out
 }
 
-/** A time on a 12-hour clock, from "HH:MM" or a local "YYYY-MM-DDTHH:MM": "2:30pm", "2pm", "12am". */
+/** A time on a 12-hour clock, from "HH:MM" or a local "YYYY-MM-DDTHH:MM": "2:30pm", "2pm", "12am". What's shown
+ * uses `clockTime`, which follows your clock. */
 export function ampm(time: string): string {
   const [hour, minute] = time.slice(-5).split(":").map(Number)
   return `${((hour + 11) % 12) + 1}${minute ? `:${String(minute).padStart(2, "0")}` : ""}${hour % 24 < 12 ? "am" : "pm"}`
+}
+
+/** A time on a 24-hour clock, with its leading zero: "14:05", "09:30", "00:00". */
+export function hhmm(time: string): string {
+  const [hour, minute] = time.slice(-5).split(":").map(Number)
+  return `${String(hour % 24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
+}
+
+/** A time as you read it, on your clock (lib/clock.ts): "2:30pm" or "14:30". */
+export function clockTime(time: string): string {
+  return clockSetting() === "24h" ? hhmm(time) : ampm(time)
+}
+
+/** An hour by itself, as short as it reads: "2p" or "14" (a narrow axis). */
+export function shortHour(hour: number): string {
+  const h = ((hour % 24) + 24) % 24
+  return clockSetting() === "24h" ? String(h).padStart(2, "0") : ampm(`${String(h).padStart(2, "0")}:00`).replace(/([ap])m$/, "$1")
 }
 
 /** Hour labels down the axis, as minutes from the top with their clock text. */
 export function hourMarks(axis: Axis): { top: number; label: string }[] {
   const out = []
   for (let m = Math.ceil(axis.startMin / 60) * 60; m < axis.endMin; m += 60) {
-    out.push({ top: m - axis.startMin, label: ampm(`${String((m / 60) % 24).padStart(2, "0")}:00`) })
+    out.push({ top: m - axis.startMin, label: clockTime(`${String((m / 60) % 24).padStart(2, "0")}:00`) })
   }
   return out
 }

@@ -17,7 +17,7 @@ from friday.core.db import rows
 from friday.core.items import FieldError
 from friday.core.recurrence import describe
 from friday.core.textnorm import course_tag
-from friday.core.time import ampm
+from friday.core.time import clock_time
 from friday.planner.store import area_names
 
 
@@ -60,8 +60,8 @@ def pattern(ctx: Ctx, batch: str, instances: list[dict[str, Any]]) -> str:
     if first.get("blocks_time") is False and first.get("start", "").endswith("T00:00"):
         return f"{words}, all day"
     if first.get("start") and first.get("end"):
-        return f"{words}, {ampm(first['start'])}–{ampm(first['end'])}"
-    return f"{words}, due {ampm(first['due'])}" if first.get("due") else words
+        return f"{words}, {clock_time(first['start'])}–{clock_time(first['end'])}"
+    return f"{words}, due {clock_time(first['due'])}" if first.get("due") else words
 
 
 @query("calendar_repeats")

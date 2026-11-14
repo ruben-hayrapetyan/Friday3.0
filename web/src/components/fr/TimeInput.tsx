@@ -3,12 +3,14 @@
 // or pm Friday reads is filled in, in grey, as you type, in every box, an empty one too (28 Oct: "the AM/PM doesn't
 // autofill in all time boxes": a native time box left the half blank until it was typed); type a or p to choose the
 // other. The time is set on Enter or Tab or when you leave the box; Escape puts back what was there; the arrow keys
-// move it by the box's step.
+// move it by the box's step. On the 24-hour clock (lib/clock.ts) it shows "14:05" and reads "9" as 09:00, with no half
+// to fill in.
 
 import { type CSSProperties, type KeyboardEvent, useLayoutEffect, useRef, useState } from "react"
 import { flushSync } from "react-dom"
 import { DAY_HOURS, type Expect, typedTime } from "@/lib/ampm"
-import { ampm } from "@/lib/time"
+import { clockSetting } from "@/lib/clock"
+import { clockTime } from "@/lib/time"
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 const pad = (n: number) => String(n).padStart(2, "0")
@@ -37,14 +39,15 @@ export function TimeInput(props: {
   style?: CSSProperties
 }) {
   const { value, onChange, expect, label, step, placeholder = "e.g. 9:30", className = "input", style } = props
-  const shown = TIME.test(value) ? ampm(value) : ""
+  const shown = TIME.test(value) ? clockTime(value) : ""
   const [text, setText] = useState<string | null>(null) // what's typed, while it differs from the time set
   const box = useRef<HTMLInputElement>(null)
   const [ghostAt, setGhostAt] = useState({ left: 0, font: "" })
   const editing = text !== null
   const read = editing && text.trim() ? typedTime(text, value, expect) : null
-  // The half Friday filled in, drawn just after what's typed.
-  const ghost = read?.guessed ? (Number(read.time.slice(0, 2)) < 12 ? "am" : "pm") : null
+  // The half Friday filled in, drawn just after what's typed; the 24-hour clock has none to fill in.
+  const twelve = clockSetting() === "12h"
+  const ghost = read?.guessed && twelve ? (Number(read.time.slice(0, 2)) < 12 ? "am" : "pm") : null
   useLayoutEffect(() => {
     const el = box.current
     if (!el || !ghost || text === null) return
@@ -68,7 +71,7 @@ export function TimeInput(props: {
     const unit = Math.max(1, Math.round((step ?? 300) / 60))
     const minute = Number(from.slice(0, 2)) * 60 + Number(from.slice(3, 5))
     const next = clock(by > 0 ? Math.floor(minute / unit) * unit + unit : Math.ceil(minute / unit) * unit - unit)
-    setText(ampm(next))
+    setText(clockTime(next))
   }
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -100,7 +103,7 @@ export function TimeInput(props: {
         placeholder={placeholder}
         aria-label={label}
         aria-invalid={editing && !!text.trim() && !read ? true : undefined}
-        title={editing && text.trim() && !read ? "Type a time, like 9:30, 11pm or noon" : undefined}
+        title={editing && text.trim() && !read ? (twelve ? "Type a time, like 9:30, 11pm or noon" : "Type a time, like 09:30, 23:00 or noon") : undefined}
         onFocus={(e) => e.currentTarget.select()}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={onKeyDown}

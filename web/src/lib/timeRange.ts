@@ -1,12 +1,14 @@
 // A time typed over a block's or an event's time on the calendar: "10–11:30", "2pm-3pm", "9:15am to 10am", or a
 // lone start ("3pm") that keeps the length. Times without am or pm take the one nearest what was there, as a person
-// typing "3" over a 2pm class means 3pm; an end without one comes after the start.
+// typing "3" over a 2pm class means 3pm; an end without one comes after the start. On the 24-hour clock (lib/clock.ts)
+// a time is read as typed: "3" is 03:00, as anyone used to that clock means it.
 
-import { ampm, fromMin, type Span, toMin } from "./time"
+import { clockSetting } from "./clock"
+import { clockTime, fromMin, type Span, toMin } from "./time"
 
-/** The text a time starts out as: "9:30am–10:30am". */
+/** The text a time starts out as: "9:30am–10:30am", or "09:30–10:30" on the 24-hour clock. */
 export function rangeText(span: Span): string {
-  return `${ampm(span.start)}–${ampm(span.end)}`
+  return `${clockTime(span.start)}–${clockTime(span.end)}`
 }
 
 export interface Typed {
@@ -16,7 +18,8 @@ export interface Typed {
 
 const TIME = /^(\d{1,2})(?:[:.h]?(\d{2}))?\s*(a|p)?\.?\s*(?:m\.?)?$/
 
-/** One time as typed: "3", "930", "11:30", "11.30", "2pm", "9:15 a.m.", "14:30", "noon". */
+/** One time as typed: "3", "930", "11:30", "11.30", "2pm", "9:15 a.m.", "14:30", "noon"; on the 24-hour clock, one
+ * with no am or pm is the time it says ("9" is 09:00, "12" is noon). */
 export function readTime(text: string): Typed | null {
   const t = text.trim().toLowerCase()
   if (t === "noon" || t === "midday") return { minute: 720, half: "pm" }
@@ -34,6 +37,7 @@ export function readTime(text: string): Typed | null {
     return { minute: ((hour % 12) + (pm ? 12 : 0)) * 60 + minute, half: pm ? "pm" : "am" }
   }
   if (hour > 23) return null
+  if (clockSetting() === "24h") return { minute: hour * 60 + minute, half: hour < 12 ? "am" : "pm" }
   // On the 24-hour clock ("14:30", "0:15", "07:30"), it can only be the one time.
   if (hour === 0 || hour > 12 || match[1].startsWith("0")) return { minute: hour * 60 + minute, half: hour < 12 ? "am" : "pm" }
   return { minute: (hour % 12) * 60 + minute, half: null }

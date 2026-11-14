@@ -8,8 +8,8 @@ from friday.commands.conflicts import Clash, Option
 from friday.commands.registry import Ctx
 from friday.commands.rules import added
 from friday.core.db import rows
-from friday.core.time import format_utc, parse_utc, to_local
-from friday.learn.undated import Habit, clock_said, habit, sentence
+from friday.core.time import clock_time, format_utc, parse_utc, to_local
+from friday.learn.undated import Habit, habit, sentence
 
 WINDOW_DAYS = 56  # sittings this recent are read
 SOURCES = ("timer", "review", "retro")  # work you recorded, not what a plan assumed
@@ -46,7 +46,7 @@ def offers(ctx: Ctx) -> list[Clash]:
 
 
 def offer(h: Habit) -> Clash:
-    window = f"{clock_said(h.start)} and {clock_said(h.end)}"
+    window = f"{clock_time(f'{h.start % 24:02d}:00')} and {clock_time(f'{h.end % 24:02d}:00')}"
     said = sentence(h)
     pct = round(h.share * 100)
     return Clash(

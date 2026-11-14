@@ -17,7 +17,7 @@ from friday.commands.registry import Ctx, command, query
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.rule_text import days_spoken
-from friday.core.time import ampm, format_local, format_utc, parse_utc, to_local, to_zoned
+from friday.core.time import clock_time, format_local, format_utc, parse_utc, to_local, to_zoned
 from friday.learn.sleep import WEEKDAYS, Mark, Night, changes, evening_of, learn, nights_from
 from friday.planner.build import night_times
 from friday.planner.snapshot import day_overrides
@@ -48,7 +48,7 @@ def sleep_mark(ctx: Ctx, inp: SleepMarkInput) -> Changed:
     moment = at_utc(ctx, inp.at)
     wake(ctx, moment)  # a nap left running ends
     ctx.db.insert("sleep_marks", {"kind": inp.kind, "at_utc": format_utc(moment), "created_utc": ctx.now_text})
-    return Changed(message=f"{SAID[inp.kind]}: {ampm(to_local(moment, ctx.tz))}")
+    return Changed(message=f"{SAID[inp.kind]}: {clock_time(to_local(moment, ctx.tz))}")
 
 
 @command("sleep_mark_edit", affects_plan=True)
@@ -57,7 +57,7 @@ def sleep_mark_edit(ctx: Ctx, inp: SleepMarkEditInput) -> Changed:
     found = mark_row(ctx, inp.id)
     moment = at_utc(ctx, inp.at)
     ctx.db.update("sleep_marks", {"id": inp.id}, {"at_utc": format_utc(moment)})
-    return Changed(message=f"{SAID[found['kind']]} moved to {ampm(to_local(moment, ctx.tz))}")
+    return Changed(message=f"{SAID[found['kind']]} moved to {clock_time(to_local(moment, ctx.tz))}")
 
 
 @command("sleep_mark_remove", affects_plan=True)
@@ -66,7 +66,7 @@ def sleep_mark_remove(ctx: Ctx, inp: SleepMarkRef) -> Changed:
     found = mark_row(ctx, inp.id)
     ctx.db.delete("sleep_marks", {"id": inp.id})
     return Changed(
-        message=f"Removed {SAID[found['kind']].lower()} at {ampm(to_local(parse_utc(found['at_utc']), ctx.tz))}"
+        message=f"Removed {SAID[found['kind']].lower()} at {clock_time(to_local(parse_utc(found['at_utc']), ctx.tz))}"
     )
 
 
@@ -180,7 +180,8 @@ def sleep(ctx: Ctx, inp: Empty) -> SleepOut:
         ).items():
             asleep = (minutes(wake) - minutes(bed)) % (24 * 60) - down
             against.append(
-                f"{days_spoken(tuple(days))}: bed at {ampm(bed)} and up at {ampm(wake)} leave {asleep // 60} h "
+                f"{days_spoken(tuple(days))}: bed at {clock_time(bed)} and up at {clock_time(wake)} "
+                f"leave {asleep // 60} h "
                 f"{asleep % 60:02d} m asleep{' after winding down' if down else ''}, under your {hours:g} h rule"
             )
     now = to_local(ctx.now_utc, ctx.tz)

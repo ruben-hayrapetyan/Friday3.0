@@ -25,7 +25,7 @@ import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useInbox } from "@/inbox/InboxPage"
 import { SLEEP_HOURS } from "@/lib/ampm"
-import { ampm, parseLength } from "@/lib/format"
+import { clockTime, parseLength } from "@/lib/format"
 import { AiConnect, useAi, useLocal } from "@/settings/AiConnect"
 import { CHOICES, choiceOf, fromChoice, saying } from "@/settings/calendarChoice"
 import { ConnectedAccounts } from "@/settings/GoogleAccounts"
@@ -38,7 +38,7 @@ export { byAccount, inMacApp } from "@/settings/MacAccounts"
 import { Count, freeSpan } from "./onboard/Visuals"
 import { Choices, HourBar, Other, Source, TimeCard } from "./SetupParts"
 import { ALL_EVENING, ALL_WEEKEND, bedOf, shift, sleepHours, underBar, VIEW, wakeOf, weekOf } from "./setupWeek"
-import { clockTime, STOPS } from "./walk/stops"
+import { clockFace, STOPS } from "./walk/stops"
 import type { World } from "./walk/World"
 
 export { shift }
@@ -97,11 +97,11 @@ export function storyFor(answers: Answers): string[] {
 
 /** Your answers as the end shows them, each a way back to where it was asked. */
 export function badgesOf(a: Answers): { label: string; value: string; step: string }[] {
-  const free = a.evening_free <= 0 ? "none" : a.evening_free >= ALL_EVENING ? `from ${ampm(a.evening_from)}` : `${hoursLabel(a.evening_free)} from ${ampm(a.evening_from)}`
+  const free = a.evening_free <= 0 ? "none" : a.evening_free >= ALL_EVENING ? `from ${clockTime(a.evening_from)}` : `${hoursLabel(a.evening_free)} from ${clockTime(a.evening_from)}`
   const weekend = a.weekend_free <= 0 ? "none" : a.weekend_free >= ALL_WEEKEND ? "all day" : `${hoursLabel(a.weekend_free)} a day`
   return [
-    { label: "Up", value: ampm(a.wake), step: "wake" },
-    { label: "Bed", value: ampm(a.bedtime), step: "bed" },
+    { label: "Up", value: clockTime(a.wake), step: "wake" },
+    { label: "Bed", value: clockTime(a.bedtime), step: "bed" },
     { label: "Work", value: a.most_hours > a.normal_hours ? `${hoursLabel(a.normal_hours)}, up to ${hoursLabel(a.most_hours)}` : hoursLabel(a.normal_hours), step: "work" },
     { label: "Focus", value: hoursLabel(a.focus_hours), step: "focus" },
     { label: "Done", value: daysEarly(a.finish_early_days), step: "deadline" },
@@ -151,7 +151,7 @@ function TimePick({ value, presets, label, glyph, expect, onPick }: { value: str
       <div className="st-chips" role="radiogroup" aria-label={`${label}: the usual times`}>
         {presets.map((t) => (
           <button key={t} type="button" role="radio" aria-checked={value === t} className="st-chip" onClick={() => onPick(t)}>
-            {ampm(t)}
+            {clockTime(t)}
           </button>
         ))}
       </div>
@@ -237,7 +237,7 @@ const STEPS: Record<string, Step> = {
     ),
   },
   deadline: {
-    title: () => "An essay's due Friday at 5pm. When do you want it done?",
+    title: () => `An essay's due Friday at ${clockTime("17:00")}. When do you want it done?`,
     note: () => "Exam prep always goes in the days just before the exam.",
     control: (a, set) => (
       <>
@@ -257,7 +257,7 @@ const STEPS: Record<string, Step> = {
             <span className="st-label">From</span>
             {EVENINGS.map((t) => (
               <button key={t} type="button" role="radio" aria-checked={a.evening_from === t} className="st-chip" onClick={() => set({ evening_from: t })}>
-                {ampm(t)}
+                {clockTime(t)}
               </button>
             ))}
           </div>
@@ -337,7 +337,7 @@ const STEPS: Record<string, Step> = {
 export function whereOf(id: string, a: Answers): string | null {
   const stop = STOPS[id]
   if (!stop) return null
-  return [stop.day, clockTime(stop.at(a)), id === "hello" ? null : stop.title].filter(Boolean).join(" · ")
+  return [stop.day, clockFace(stop.at(a)), id === "hello" ? null : stop.title].filter(Boolean).join(" · ")
 }
 
 const still = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
@@ -592,7 +592,7 @@ function Reveal({ a, go }: { a: Answers; go: (step: string) => void }) {
  * week drawn here before, made-up classes and work in unlabelled colours): from 6 AM to 2 AM, each stretch named. */
 function YourDays({ a }: { a: Answers }) {
   const pct = (t: number) => ((Math.min(Math.max(t, VIEW.from), VIEW.to) - VIEW.from) / (VIEW.to - VIEW.from)) * 100
-  const at = (t: number) => ampm(`${String(Math.floor(t / 60) % 24).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`)
+  const at = (t: number) => clockTime(`${String(Math.floor(t / 60) % 24).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`)
   return (
     <div className="ob-days">
       {(["Weekdays", "Weekends"] as const).map((label, row) => {

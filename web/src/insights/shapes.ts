@@ -1,7 +1,7 @@
 // What the Insights page works out before drawing: which blocks two versions of a day place differently, the span
 // the day's mini columns cover, and a suggested set of weights in words.
 
-import { ampm, toMin } from "@/lib/time"
+import { clockTime, toMin } from "@/lib/time"
 
 export interface Piece {
   item_id: number
@@ -31,12 +31,12 @@ export function spanOf(things: { start: string; end: string }[]): { lo: number; 
   return { lo, hi: Math.max(hi, lo + 120) }
 }
 
-/** The whole hours inside a span, with their 12-hour labels: "9am", "12pm". */
+/** The whole hours inside a span, with their labels on your clock: "9am", "12pm", or "09:00", "12:00". */
 export function ticks(lo: number, hi: number): { at: number; label: string }[] {
   const out = []
   for (let m = Math.ceil(lo / 60) * 60; m <= hi; m += 60) {
     const hour = (((m / 60) % 24) + 24) % 24
-    out.push({ at: m, label: ampm(`${String(hour).padStart(2, "0")}:00`) })
+    out.push({ at: m, label: clockTime(`${String(hour).padStart(2, "0")}:00`) })
   }
   return out
 }

@@ -15,7 +15,7 @@ from friday.api.commands import Changed, LateAcceptInput, LockKeepInput
 from friday.api.views import Decision, DecisionOption, LateItem
 from friday.commands.registry import Ctx, command
 from friday.core.items import FieldError
-from friday.core.time import ampm, parse_utc, to_local
+from friday.core.time import clock_time, parse_utc, to_local
 from friday.planner.store import current_plan, kv_get
 
 AGAIN_HOURS = 1.0  # an answer is asked again once the work it's about is this much later
@@ -48,7 +48,8 @@ def decisions(ctx: Ctx, report: dict, late: list[LateItem]) -> list[Decision]:
                 key=f"lock:{c['pin_id']}",
                 kind="lock",
                 title=f"Keep {c['title']} where you locked it?",
-                detail=f"Locked at {at:%a} {ampm(at)}, it makes other work {spoken(c['extra_late_hours'])} later.",
+                detail=f"Locked at {at:%a} {clock_time(at)}, "
+                f"it makes other work {spoken(c['extra_late_hours'])} later.",
                 pin_id=c["pin_id"],
                 item_id=c["item_id"],
                 start=ctx.local(c["start"]),

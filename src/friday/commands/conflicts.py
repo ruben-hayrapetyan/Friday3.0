@@ -31,7 +31,7 @@ from friday.commands.settings import write_setting
 from friday.core.db import one
 from friday.core.items import FieldError
 from friday.core.rule_text import days_spoken
-from friday.core.time import WEEKDAYS, ampm
+from friday.core.time import WEEKDAYS, clock_time
 from friday.learn import guard
 from friday.planner.store import kv_get
 
@@ -216,14 +216,17 @@ def sleep_short(ctx: Ctx) -> list[Clash]:
             Clash(
                 key=f"sleep:{','.join(days)}",
                 title=f"Your sleep times leave {asleep // 60} h {asleep % 60:02d} m asleep; your rule asks for {said}",
-                detail=f"{days_spoken(tuple(days))}: bed at {ampm(bed)}, up at {ampm(wake)}"
+                detail=f"{days_spoken(tuple(days))}: bed at {clock_time(bed)}, up at {clock_time(wake)}"
                 + (f", about {down} min winding down first" if down else "")
                 + ". The times are what Friday learned; the rule is what you wrote.",
                 update="learned",
                 about=f"{bed}-{wake}-{down}-{hours}",
                 options=(
                     Option(
-                        "bedtime", f"Go to bed at {ampm(bedtime)}", f"Your {said} asleep, after winding down.", True
+                        "bedtime",
+                        f"Go to bed at {clock_time(bedtime)}",
+                        f"Your {said} asleep, after winding down.",
+                        True,
                     ),
                     Option("rule", f"Lower the rule to {lower:g} h", "Keep these times; plan with less sleep."),
                 ),
@@ -241,7 +244,7 @@ def answer_sleep(ctx: Ctx, option: str, days: list[str], bedtime: str, name: str
         for day in days:
             sleep[day]["bedtime"] = bedtime
         write_setting(ctx, "sleep", sleep)
-        return f"Bed at {ampm(bedtime)} on {days_spoken(tuple(days))}"
+        return f"Bed at {clock_time(bedtime)} on {days_spoken(tuple(days))}"
     rules = [r.model_dump() for r in ctx.settings["rules"]]
     rule = next(r for r in rules if r["name"] == name)
     rule["params"] = {**rule["params"], "hours": lower}
@@ -273,14 +276,15 @@ def wind_down(ctx: Ctx) -> list[Clash]:
     return [
         Clash(
             key="wind_down",
-            title=f"“Wind down before bed” starts at {ampm(start)}, but you wind down from about {ampm(expected)}",
-            detail=f"Your bedtime is {ampm(bed)} and you wind down for about {down} min, as Friday learned. The rule's "
-            f"time came from an earlier bedtime.",
+            title=f"“Wind down before bed” starts at {clock_time(start)}, "
+            f"but you wind down from about {clock_time(expected)}",
+            detail=f"Your bedtime is {clock_time(bed)} and you wind down for about {down} min, as Friday learned. "
+            "The rule's time came from an earlier bedtime.",
             update="rule",
             about=f"{start}-{expected}",
             options=(
-                Option("rule", f"Start winding down at {ampm(expected)}", "Late work costs from then on.", True),
-                Option("keep", f"Keep {ampm(start)}", "Late work costs from the earlier time, as now."),
+                Option("rule", f"Start winding down at {clock_time(expected)}", "Late work costs from then on.", True),
+                Option("keep", f"Keep {clock_time(start)}", "Late work costs from the earlier time, as now."),
             ),
             apply=lambda ctx_, option, expected=expected: answer_wind(ctx_, option, expected),
         )
@@ -294,7 +298,7 @@ def answer_wind(ctx: Ctx, option: str, expected: str) -> str:
     rule = next(r for r in rules if r["type"] == "late_night")
     rule["params"] = {**rule["params"], "gradient_start": expected}
     write_setting(ctx, "rules", rules)
-    return f"Winding down from {ampm(expected)}"
+    return f"Winding down from {clock_time(expected)}"
 
 
 # Meals your rule keeps that you skip.

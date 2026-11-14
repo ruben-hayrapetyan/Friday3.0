@@ -45,7 +45,7 @@ def test_blocks_print_with_short_keys_and_lengths_read_naturally() -> None:
     assert render.short_key("T42@2026-10-20T14:00") == "T42@Tue14:00"
     assert render.short_key("T42@Tue14:00") == "T42@Tue14:00"
     assert [render.length(m) for m in (45, 60, 90, 100, None)] == ["45 min", "1 h", "1.5 h", "1:40 h", "open"]
-    assert render.span("2026-10-19T19:00", "2026-10-19T22:00") == "Mon 19:00-22:00"
+    assert render.span("2026-10-19T19:00", "2026-10-19T22:00") == "Mon 7pm-10pm"
 
 
 def test_a_command_prints_its_undo_hint() -> None:
@@ -57,5 +57,5 @@ def test_why_not_prints_the_total_and_each_rules_change() -> None:
     answer = {"key": "T4@2026-10-20T14:00", "to_start": "2026-10-21T09:00", "wall": None,
               "difference": {"late_night": 0, "minimize_changes": 400, "spread": -150}, "total": 250}  # fmt: skip
     lines = render.why_not(answer)
-    assert lines[0] == "Moving T4@Tue14:00 to Wed Oct 21 09:00 costs +2.5"
+    assert lines[0] == "Moving T4@Tue14:00 to Wed Oct 21 9am costs +2.5"
     assert [line.split() for line in lines[1:]] == [["minimize_changes", "+4.0"], ["spread", "-1.5"]]

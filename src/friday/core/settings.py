@@ -13,7 +13,7 @@ from friday.core.integrations import INTEGRATION_DEFAULTS, INTEGRATION_TYPES
 from friday.core.pace import DEFAULT_PACES, Dials
 from friday.core.presets import DEFAULT_PRESETS, Preset
 from friday.core.textnorm import TextRules
-from friday.core.time import WEEKDAYS, GridSpec
+from friday.core.time import WEEKDAYS, Clock, GridSpec
 
 HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 Weekday = Literal["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -469,6 +469,9 @@ class UpdateSettings(Model):
 
 SETTINGS_TYPES: dict[str, Any] = {
     "time": TimeSettings,
+    # the clock every time is shown on (Settings → Appearance → Clock): the app, the server's sentences, the command
+    # line and Siri; a key of its own, so a friday.toml that sets [time] leaves it yours to change in the app
+    "clock": Clock,
     "engine": EngineSettings,
     "planner": PlannerSettings,
     "executor": ExecutorSettings,
@@ -510,6 +513,7 @@ MAX_NOTES, MAX_NOTE_CHARS = 40, 300
 
 DEFAULTS: dict[str, Any] = {
     "time": TimeSettings(),
+    "clock": "12h",
     "engine": EngineSettings(),
     "planner": PlannerSettings(),
     "executor": ExecutorSettings(),

@@ -12,7 +12,7 @@ from friday.commands.series import delete_item
 from friday.core.dates import WEEKDAY_NAMES, next_weekday, parse_duration, parse_time, read_date
 from friday.core.db import one
 from friday.core.items import FieldError, Item
-from friday.core.time import ampm, format_utc, local_midnight, to_local, to_utc
+from friday.core.time import clock_time, format_utc, local_midnight, to_local, to_utc
 from friday.engine.executor import edf, subtract
 from friday.planner.build import BuildInput, build_problem
 from friday.planner.inputs import executor_input
@@ -158,10 +158,10 @@ def spoken(ctx: Ctx, start: int, end: int) -> str:
     day = "today" if a.date() == ctx.today else a.strftime("%a %b ") + str(a.day)
     if end - start >= 20 * 60:  # a whole planning day, 4am to 4am: not "4–4am" (audit, 8 Nov)
         return f"all of {day}"
-    first = ampm(a)
+    first = clock_time(a)
     if (a.hour < 12) == (b.hour < 12):
         first = first.removesuffix("am").removesuffix("pm")  # "4–5pm", not "4pm–5pm"
-    return f"{day} {first}–{ampm(b)}"
+    return f"{day} {first}–{clock_time(b)}"
 
 
 def must_dos_if_any(ctx: Ctx, snapshot: Snapshot, planning: BuildInput, spans: list[Range]) -> list[MustDo]:

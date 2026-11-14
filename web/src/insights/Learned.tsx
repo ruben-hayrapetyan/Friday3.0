@@ -10,7 +10,7 @@ import { Icon } from "@/components/fr/controls"
 import { useMeals, useSleep } from "@/hooks/queries"
 import { useAsks } from "@/inbox/asks"
 import { dur } from "@/lib/format"
-import { ampm } from "@/lib/time"
+import { clockTime } from "@/lib/time"
 
 const many = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`
 
@@ -89,7 +89,7 @@ function SoFar({ learning }: { learning?: Schemas["LearningOut"] }) {
         : learnedMeals.length
           ? learnedMeals
               .slice(0, 3)
-              .map((m) => `${m.kind[0].toUpperCase()}${m.kind.slice(1)} about ${ampm(m.usual_start as string)}${m.usual_min ? `, ${dur(m.usual_min)}` : ""}${m.group === "weekends" ? " at weekends" : ""}`)
+              .map((m) => `${m.kind[0].toUpperCase()}${m.kind.slice(1)} about ${clockTime(m.usual_start as string)}${m.usual_min ? `, ${dur(m.usual_min)}` : ""}${m.group === "weekends" ? " at weekends" : ""}`)
               .join(" · ")
           : `${mealDays} of ${meals.min_days ?? 4} days recorded`,
       to: "/insights?tab=meals",
