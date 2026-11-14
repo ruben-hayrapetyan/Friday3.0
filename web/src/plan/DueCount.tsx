@@ -42,8 +42,12 @@ export function DueCount({ dues, onPick }: { dues: Schemas["DueMarker"][]; onPic
         title={`Due: ${names}`}
       >
         <Icon name="flag" size={12} fill />
-        <span className="tnum">{dueCountLabel(dues.length)}</span>
-        <Icon name="caret-down" size={10} />
+        {/* in a month's narrow day only the flag and the number fit (friday.css .fr-month-day) */}
+        <span className="tnum">
+          {dues.length}
+          <span className="fr-due-word"> due</span>
+        </span>
+        <Icon name="caret-down" size={10} style={{ display: "var(--fr-due-caret, inline-block)" }} />
       </button>
       {open && (
         <div ref={list} role="menu" className="fr-float" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, width: "min(280px, calc(100vw - 24px))", maxHeight: "min(420px, 60vh)", overflowY: "auto", overflowX: "hidden", whiteSpace: "normal", padding: 6, display: "flex", flexDirection: "column", gap: 1 }}>

@@ -317,7 +317,7 @@ function Inline({ at, color, time }: { at: string; color: string; time?: Timing 
 function TimeLine({ color, time, children }: { color: string; time?: Timing; children: ReactNode }) {
   if (time?.typing) return <TimeField time={time} />
   return (
-    <div className="tnum" style={{ fontSize: 11, color, whiteSpace: "nowrap" }}>
+    <div className="tnum" style={{ fontSize: 11, color, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
       <span onDoubleClick={retype(time)} title={time && "Double-click to change the time"}>
         {children}
       </span>

@@ -385,7 +385,11 @@ function Card(props: { icon: string; title: string; status?: [string, string]; n
         </span>
         {props.right ?? <span />}
       </div>
-      {props.children && <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 50 }}>{props.children}</div>}
+      {props.children && (
+        <div className="fr-card-body" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {props.children}
+        </div>
+      )}
     </div>
   )
 }

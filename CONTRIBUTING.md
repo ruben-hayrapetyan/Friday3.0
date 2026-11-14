@@ -10,6 +10,12 @@ your own computer.
   "Building it yourself").
 - **Tests come with every change**: tests written from what it should do, tests of how it works inside, and, where it
   crosses the server, a test through the whole system.
+- **After a change to how something looks**, look at it at a laptop's width and a phone's, and run the layout check:
+  `cd web && npx vite build && node scripts/overflow-check.mjs` (add `--shots <folder>` for a picture of each page it
+  finds something on). It serves the lived-in sample, opens every page, panel and dialog in headless Chrome at 1440 and
+  390 wide, and lists text or boxes that run past the box they sit in (`scripts/overflow-detect.js`), exiting 1 if
+  any do. It needs Google Chrome (or `CHROME=/path/to/chrome`) and takes a few minutes, so it isn't part of
+  `scripts/check.sh`.
 - **Style** is in `DESIGN.md` §4.4: names that explain the code, short functions, comments that say why.
 
 Anyone can contribute, with nothing to sign. Friday's code is under the PolyForm Noncommercial License 1.0.0

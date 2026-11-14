@@ -173,6 +173,22 @@ describe("Google's calendars, in its box", () => {
     await user.click(within(dialog).getByRole("switch", { name: "Read Personal" }))
     expect((await waitForSent("calendar_set")).body).toEqual({ id: "personal@g", on: false, mac: false })
   })
+
+  it("is one table, the heads and every calendar's parts in its columns, each kind's menu as wide as its longest", async () => {
+    const { user } = await openFriday("/settings/integrations")
+    await user.click(await screen.findByRole("button", { name: /^Google Calendar, / }))
+    const dialog = screen.getByRole("dialog", { name: "Google Calendar" })
+    await user.click(await within(dialog).findByRole("button", { name: /^Calendars \d+ of \d+ read/ }))
+    const grids = dialog.querySelectorAll(".fr-cal-grid")
+    expect(grids).toHaveLength(1)
+    const rows = [...grids[0].querySelectorAll(":scope > .fr-cal-row")]
+    expect(rows.length).toBeGreaterThan(2) // the heads and Alex's calendars
+    for (const row of rows) for (const part of ["name", "kind", "skip", "edit"]) expect(row.querySelectorAll(`:scope > .fr-cal-${part}`)).toHaveLength(1)
+    const canvas = within(dialog).getByRole("button", { name: "How Canvas is read" })
+    const choices = [...canvas.querySelectorAll(".fr-menu-choice > span")]
+    expect(choices.length).toBeGreaterThan(2) // every kind laid in the one cell
+    expect(choices.filter((c) => c.hasAttribute("data-chosen")).map((c) => c.textContent)).toEqual(["Per event"])
+  })
 })
 
 describe("the Mac's calendars, in their box", () => {

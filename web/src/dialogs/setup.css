@@ -183,6 +183,10 @@
   scrollbar-width: thin;
   animation: wk-in 0.32s steps(5) both;
 }
+/* the card scrolls when its step is taller than the window; its parts keep their height (as .fr-scroll-column) */
+.wk-card > * {
+  flex-shrink: 0;
+}
 .wk-card[data-back] {
   animation-name: wk-in-back;
 }

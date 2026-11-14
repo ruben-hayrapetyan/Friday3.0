@@ -78,14 +78,19 @@ body {
 .fr-menu {
   position: relative;
   display: inline-block;
+  max-width: 100%;
 }
+/* As wide as its longest choice (every label is laid in the same cell, only the chosen one showing), so it neither
+   grows nor moves when you pick another, and as tall as a switch or a small button beside it (14 Nov: "the size of
+   the collapsable dropdown is too large"). */
 .fr-menu-button {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  min-width: 128px;
-  padding: 5px 10px;
+  gap: 6px;
+  max-width: 100%;
+  padding: 2px 6px 2px 8px;
+  line-height: 16px;
   border-radius: var(--radius-md);
   background: var(--color-surface);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-text) 9%, transparent);
@@ -93,6 +98,24 @@ body {
   font: inherit;
   font-size: 12px;
   cursor: pointer;
+}
+.fr-menu-choice {
+  display: grid;
+  min-width: 0;
+  text-align: left;
+}
+.fr-menu-choice > span {
+  grid-area: 1 / 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fr-menu-choice > span:not([data-chosen]) {
+  visibility: hidden;
+}
+.fr-menu-choice > span[data-label]::before {
+  content: attr(data-label);
 }
 .fr-menu-button:hover:not(:disabled) {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 45%, transparent);
@@ -171,6 +194,40 @@ body {
   /* on a phone a head's tabs can be wider than the screen (Insights' four): they scroll sideways, none cut off */
   overflow-x: auto;
   scrollbar-width: none;
+}
+/* ...whole: squeezed instead, Insights' "Trends" ran over "Sleep" and its weeks broke in two (14 Nov) */
+[data-tight] .fr-page-head .fr-seg {
+  flex-shrink: 0;
+  max-width: none;
+}
+/* Tags/Kinds: on a phone a tag's swatches, Archive and buffer go under its name, as wide as the page */
+[data-tight] .fr-tag-row {
+  grid-template-columns: 28px minmax(0, 1fr) !important;
+}
+[data-tight] .fr-tag-row > :not(:first-child) {
+  grid-column: 2 !important;
+}
+/* Advanced → Learning: a setting's menu under its name */
+[data-tight] .fr-learn-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* Insights: how long things take, the bar under the kind and its words; the hours every other one */
+[data-tight] .fr-accuracy {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 4px 12px !important;
+}
+[data-tight] .fr-accuracy > .fr-accuracy-bar {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+[data-tight] .fr-accuracy-axis > :not(.fr-accuracy-bar) {
+  display: none;
+}
+[data-tight] .fr-accuracy-axis > .fr-accuracy-bar {
+  grid-row: 1;
+}
+[data-tight] .fr-heat-hour[data-between] {
+  visibility: hidden;
 }
 [data-tight] .fr-title {
   font-size: 20px;
@@ -485,6 +542,16 @@ kbd.fr-kbd {
   gap: 16px;
   padding: 22px 24px;
 }
+/* A column that scrolls (the sidebar, search's results, a to-do's details) scrolls rather than squeezing its rows, as
+   a dialog does below. */
+.fr-scroll-column > * {
+  flex-shrink: 0;
+}
+/* A dialog taller than the window scrolls; its parts never shrink to fit it. Free to shrink, WebKit (the Mac app,
+   Safari) squeezed them shorter than their text: the Google card's last lines ran under the Gmail card (14 Nov). */
+.fr-dialog > * {
+  flex-shrink: 0;
+}
 
 /* The to-do's one-line rows: the details caret shows on hover; narrow, what Friday made of it goes under the title. */
 .fr-todo-more {
@@ -672,4 +739,93 @@ kbd.fr-kbd {
   margin-right: auto;
   font-size: 12px;
   color: var(--color-neutral-400);
+}
+
+/* The calendars table (settings/Calendars.tsx): one grid, each row a subgrid of it, so the columns line up and are as
+   wide as their widest head or control; the name takes what's left and ends in "…". In a narrow panel the name has a
+   line of its own and the controls go under the heads. */
+.fr-cal {
+  container-type: inline-size;
+}
+.fr-cal-grid {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto auto auto;
+  column-gap: 12px;
+}
+.fr-cal-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+}
+.fr-cal-span {
+  grid-column: 1 / -1;
+}
+.fr-cal-kind,
+.fr-cal-skip,
+.fr-cal-edit {
+  display: flex;
+}
+/* the kind is read whole: the heads beside it wrap ("Skip / Inbox") before it would end in "…" */
+.fr-cal-kind .fr-menu,
+.fr-cal-kind .fr-menu-button {
+  min-width: max-content;
+}
+@container (max-width: 460px) {
+  .fr-cal-grid {
+    grid-template-columns: 36px auto auto auto minmax(0, 1fr);
+    column-gap: 10px;
+  }
+  .fr-cal-row {
+    row-gap: 6px;
+  }
+  .fr-cal-row > .fr-cal-name {
+    grid-column: 2 / -1;
+  }
+  .fr-cal-row > .fr-cal-kind {
+    grid-row: 2;
+    grid-column: 2;
+  }
+  .fr-cal-row > .fr-cal-skip {
+    grid-row: 2;
+    grid-column: 3;
+  }
+  .fr-cal-row > .fr-cal-edit {
+    grid-row: 2;
+    grid-column: 4;
+  }
+  .fr-cal-head > .fr-cal-name {
+    display: none;
+  }
+  .fr-cal-head > * {
+    grid-row: 1 !important;
+  }
+}
+
+/* A settings card's body, under its title past the icon; on a phone it takes the card's whole width, as the icon's
+   column there would leave the calendars table and the Terminal command too little room. */
+.fr-card-body {
+  padding-left: 50px;
+  min-width: 0;
+}
+@media (max-width: 560px) {
+  .fr-card-body {
+    padding-left: 0;
+  }
+}
+
+/* A month's day (plan/MonthView.tsx): too narrow for a time and a title (a phone's month), a thing shows its title
+   alone, ending in "…", and the day's deadlines only their flag and number, under the date if need be. */
+.fr-month-day {
+  container-type: inline-size;
+}
+@container (max-width: 96px) {
+  .fr-month-time,
+  .fr-month-day .fr-due-word {
+    display: none;
+  }
+  .fr-month-day .fr-due-count {
+    --fr-due-caret: none;
+    padding: 0 6px 0 5px;
+  }
 }

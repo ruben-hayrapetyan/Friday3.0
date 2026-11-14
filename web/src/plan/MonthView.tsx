@@ -37,7 +37,10 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
   const weeks = days.filter((_, i) => i % 7 === 0).filter((d, w) => w < 5 || addDays(d, 0).slice(0, 7) === month)
   const dows = [...DOWS.slice(offset), ...DOWS.slice(0, offset)]
   return (
-    <div className="fr-panel" style={{ overflowY: "auto", display: "grid", gridTemplateRows: `auto repeat(${weeks.length}, minmax(132px, 1fr))`, paddingBottom: 116 }}>
+    // A week is at least 132px (its own min-height) and never shorter than its fullest day, the weeks sharing what's
+    // left of the page: a narrow day, its deadline count under its date, no longer squeezes its things to slivers
+    // (14 Nov; a 132px track's minimum held even when the month ran past the page and the day needed more).
+    <div className="fr-panel" style={{ overflowY: "auto", display: "grid", gridTemplateRows: `max-content repeat(${weeks.length}, minmax(min-content, 1fr))`, paddingBottom: 116 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))" }}>
         {dows.map((d) => (
           <div key={d} style={{ padding: "10px 12px 8px", fontSize: 12, color: "var(--color-neutral-500)" }}>
@@ -46,7 +49,7 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
         ))}
       </div>
       {weeks.map((start) => (
-        <div key={start} className="fr-row" style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))" }}>
+        <div key={start} className="fr-row" style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", minHeight: 132 }}>
           {Array.from({ length: 7 }, (_, i) => addDays(start, i)).map((date) => {
             const hrs = plan?.day_hours[date] ?? 0
             const cap = caps.get(date) ?? 8
@@ -62,7 +65,7 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
               <div
                 key={date}
                 data-drop-day={date}
-                className="fr-hover-accent"
+                className="fr-hover-accent fr-month-day"
                 onClick={() => onDay(date)}
                 style={{
                   outline: drag?.moved && drag.over === "day" && drag.day === date ? "2px solid var(--color-accent)" : undefined,
@@ -79,7 +82,7 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
                   cursor: "pointer",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 6 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: "4px 6px" }}>
                   <span
                     className="fr-h tnum"
                     style={{
@@ -108,7 +111,7 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
                   >
                     <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: it.s.stripe }} />
                     {!it.whole && (
-                      <span className="tnum" style={{ color: it.s.sub, fontSize: 11 }}>
+                      <span className="tnum fr-month-time" style={{ color: it.s.sub, fontSize: 11 }}>
                         {clock(it.start)}
                       </span>
                     )}

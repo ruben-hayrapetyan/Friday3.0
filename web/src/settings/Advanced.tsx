@@ -76,7 +76,7 @@ function Paces() {
           )}
         </div>
       ))}
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="New pace, e.g. Exam week" aria-label="New pace" style={{ width: 220, padding: "5px 8px", minHeight: 0 }} />
         <button className="btn btn-secondary" disabled={!name.trim()} onClick={async () => (await save({ name: name.trim(), ...paces.now_dials })) && setName("")} style={{ fontSize: 12 }}>
           Save the dials in use

@@ -33,6 +33,7 @@ export function Sidebar({ rail = false, onClose }: { rail?: boolean; onClose?: (
   if (rail) return <Rail />
   return (
     <aside
+      className="fr-scroll-column"
       data-drop="todo"
       style={{
         position: "relative",
@@ -125,7 +126,7 @@ function Rail() {
   const { setHelp } = useShell()
   const waiting = useInboxCount()
   return (
-    <aside data-tour="nav" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "18px 0 16px", minHeight: 0, overflowY: "auto", background: "color-mix(in srgb, var(--color-bg) 70%, transparent)" }}>
+    <aside data-tour="nav" className="fr-scroll-column" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "18px 0 16px", minHeight: 0, overflowY: "auto", background: "color-mix(in srgb, var(--color-bg) 70%, transparent)" }}>
       <span style={{ marginBottom: 14 }}>
         <Ring />
       </span>

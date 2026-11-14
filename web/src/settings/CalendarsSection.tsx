@@ -4,7 +4,7 @@
 // events by their titles, with the filter that hides the ones you'd rather not see (office hours).
 
 import { Fragment, useEffect, useRef, useState } from "react"
-import { Chip, Icon, Menu, Switch, useMenuClose } from "@/components/fr/controls"
+import { Chip, Icon, Menu, MenuChoice, Switch, useMenuClose } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useSettings } from "@/hooks/queries"
 import { whose } from "@/lib/aiName"
@@ -224,25 +224,29 @@ export function PigmentMenu({ value, onPick }: { value: string | null; onPick: (
   const escape = useMenuClose(open, setOpen, box, button)
   return (
     <span ref={box} style={{ position: "relative" }} onKeyDown={escape}>
-      <button ref={button} className="fr-menu-button" onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open} style={{ minWidth: 130 }}>
-        <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <span style={{ width: 10, height: 10, borderRadius: "50%", background: pigment(value, light) ?? "transparent", boxShadow: "inset 0 0 0 1px var(--fr-rule)" }} />
-          {PIGMENTS.find((p) => p.id === value)?.name ?? "No pigment"}
-        </span>
-        <Icon name="caret-down" size={11} />
+      <button ref={button} className="fr-menu-button" onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open}>
+        <MenuChoice options={[null, ...PIGMENTS.map((p) => p.id)].map((id) => ({ value: id ?? "", label: <Pigment id={id} light={light} gap={6} /> }))} value={value ?? ""} />
+        <Icon name="caret-down" size={12} />
       </button>
       {open && (
         <div className="fr-menu-list fr-float" role="listbox" style={{ minWidth: 170 }}>
           {[null, ...PIGMENTS.map((p) => p.id)].map((id) => (
             <button key={id ?? "none"} role="option" aria-selected={id === value} onClick={() => (onPick(id), setOpen(false), button.current?.focus())}>
-              <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={{ width: 10, height: 10, borderRadius: "50%", background: pigment(id, light) ?? "transparent", boxShadow: "inset 0 0 0 1px var(--fr-rule)" }} />
-                {PIGMENTS.find((p) => p.id === id)?.name ?? "No pigment"}
-              </span>
+              <Pigment id={id} light={light} gap={8} />
             </button>
           ))}
         </div>
       )}
+    </span>
+  )
+}
+
+/** A pigment's swatch and name. */
+function Pigment({ id, light, gap }: { id: string | null; light: boolean; gap: number }) {
+  return (
+    <span style={{ display: "flex", gap, alignItems: "center" }}>
+      <span style={{ width: 10, height: 10, flex: "none", borderRadius: "50%", background: pigment(id, light) ?? "transparent", boxShadow: "inset 0 0 0 1px var(--fr-rule)" }} />
+      {PIGMENTS.find((p) => p.id === id)?.name ?? "No pigment"}
     </span>
   )
 }

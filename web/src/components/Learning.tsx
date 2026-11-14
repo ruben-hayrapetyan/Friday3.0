@@ -91,11 +91,11 @@ export function LearningSettings() {
   const reset = useCommand("learn_reset", { label: (o) => o.result.message ?? "Reset" })
   if (!learn || !learned) return null
   const change = (key: keyof Learn, value: string) => set({ key: "learn", value: { ...learn, [key]: value } })
-  const select = "h-8 rounded-md border bg-transparent px-2 text-sm"
+  const select = "h-8 min-w-0 rounded-md border bg-transparent px-2 text-sm"
   const multipliers = Object.entries(learned.multipliers).filter(([, v]) => Math.abs(v - 1) > 0.05)
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-[12rem_1fr] items-center gap-2">
+      <div className="fr-learn-grid grid grid-cols-[12rem_minmax(0,1fr)] items-center gap-2">
         <span>Learned weights</span>
         <select className={select} value={learn.weights} onChange={(e) => change("weights", e.target.value)}>
           <option value="off">Off</option>

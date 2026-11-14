@@ -17,8 +17,6 @@ import { accountName, offline, readable, useGoogleAccess } from "./GoogleConnect
 export const useCalendars = () => useQuery({ queryKey: ["google_calendars"], queryFn: () => query("google_calendars") })
 export const useMacCalendars = () => useQuery({ queryKey: ["mac_calendars"], queryFn: () => query("mac_calendars") })
 
-const COLUMNS = "36px minmax(150px,1fr) 150px 72px 72px"
-
 export function Calendars({ mac = false }: { mac?: boolean }) {
   const google = useCalendars().data
   const onMac = useMacCalendars().data
@@ -78,51 +76,58 @@ function List({ calendars, mac }: { calendars: Listed; mac: boolean }) {
   const kinds = [{ value: "auto", label: "Per event" }, ...presets.map((p) => ({ value: p, label: p }))]
   const groups: [string | null, Listed][] = mac ? [[null, calendars]] : byAccount(calendars, order)
   return (
-    <>
-      <div className="fr-kicker" style={{ display: "grid", gridTemplateColumns: COLUMNS, gap: 12, padding: "6px 0 4px" }}>
-        <span />
-        <span>Calendar</span>
-        <span>Read events as</span>
-        <span title="Its events go straight into the plan">Skip Inbox</span>
-        <span title="Changes you make to its events in Friday are saved back to it">Edit here</span>
+    // One grid for the heads and every row (each row a subgrid), so each column is as wide as its widest control or
+    // head and the whole fits its panel; in a narrow panel a calendar's name takes a line of its own, its controls
+    // under the heads (friday.css .fr-cal; 14 Nov: "Edit here" stood past the Google card's edge).
+    <div className="fr-cal">
+      <div className="fr-cal-grid">
+        <div className="fr-kicker fr-cal-row fr-cal-head" style={{ padding: "6px 0 4px" }}>
+          <span />
+          <span className="fr-cal-name">Calendar</span>
+          <span className="fr-cal-kind">Read events as</span>
+          <span className="fr-cal-skip" title="Its events go straight into the plan">Skip Inbox</span>
+          <span className="fr-cal-edit" title="Changes you make to its events in Friday are saved back to it">Edit here</span>
+        </div>
+        {groups.map(([account, list]) => (
+          <Fragment key={account ?? "all"}>
+            {account !== null && (
+              <span className="fr-kicker fr-cal-span" style={{ padding: "12px 0 2px", fontWeight: 500, color: "var(--color-neutral-300)", overflowWrap: "anywhere" }}>
+                {accountName(account)}
+              </span>
+            )}
+            {list.map((c) => (
+              <div key={c.id} className="fr-row fr-cal-row" style={{ padding: "8px 0" }}>
+                <Switch on={c.on} onToggle={() => set({ id: c.id, on: !c.on })} label={`Read ${c.name}`} />
+                <span className="fr-cal-name" style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0, opacity: c.on ? 1 : 0.6 }}>
+                  <span title={c.name} style={{ fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {c.name}
+                    {c.primary && <span className="fr-kicker"> · primary</span>}
+                    {mac && c.account && c.account !== c.name && <span className="fr-kicker"> · {c.account}</span>}
+                  </span>
+                  <span title={c.error ?? undefined} style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: c.on && c.error ? (offline(c.error) ? "var(--fr-warn)" : "var(--fr-due)") : "var(--color-neutral-500)" }}>
+                    {!c.on ? (c.also_google ? "Not read: Friday reads it from Google" : "Not read") : (c.error ? readable(c.error) : (c.last_sync ? `Read ${when(c.last_sync, today)}` : "Reading now"))}
+                  </span>
+                </span>
+                <span className="fr-cal-kind">
+                  <Menu options={kinds} value={c.kind} onPick={(kind) => set({ id: c.id, kind })} label={`How ${c.name} is read`} disabled={!c.on} />
+                </span>
+                <span className="fr-cal-skip" style={{ opacity: c.on ? 1 : 0.4 }}>
+                  <Switch on={c.trusted} onToggle={() => c.on && set({ id: c.id, trusted: !c.trusted })} label={`${c.name} straight to the plan`} />
+                </span>
+                <span className="fr-cal-edit" style={{ opacity: c.on && c.writable ? 1 : 0.4 }} title={c.writable ? undefined : `${mac ? "The Mac" : "Google"} doesn't let you change this calendar's events`}>
+                  <Switch on={!!c.editable} onToggle={() => c.on && c.writable && set({ id: c.id, editable: !c.editable })} label={`Save changes to ${c.name}`} />
+                </span>
+              </div>
+            ))}
+          </Fragment>
+        ))}
       </div>
-      {groups.map(([account, list]) => (
-        <Fragment key={account ?? "all"}>
-          {account !== null && (
-            <span className="fr-kicker" style={{ padding: "12px 0 2px", fontWeight: 500, color: "var(--color-neutral-300)", overflowWrap: "anywhere" }}>
-              {accountName(account)}
-            </span>
-          )}
-          {list.map((c) => (
-            <div key={c.id} className="fr-row" style={{ display: "grid", gridTemplateColumns: COLUMNS, gap: 12, alignItems: "center", padding: "8px 0" }}>
-              <Switch on={c.on} onToggle={() => set({ id: c.id, on: !c.on })} label={`Read ${c.name}`} />
-              <span style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0, opacity: c.on ? 1 : 0.6 }}>
-                <span title={c.name} style={{ fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {c.name}
-                  {c.primary && <span className="fr-kicker"> · primary</span>}
-                  {mac && c.account && c.account !== c.name && <span className="fr-kicker"> · {c.account}</span>}
-                </span>
-                <span title={c.error ?? undefined} style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: c.on && c.error ? (offline(c.error) ? "var(--fr-warn)" : "var(--fr-due)") : "var(--color-neutral-500)" }}>
-                  {!c.on ? (c.also_google ? "Not read: Friday reads it from Google" : "Not read") : (c.error ? readable(c.error) : (c.last_sync ? `Read ${when(c.last_sync, today)}` : "Reading now"))}
-                </span>
-              </span>
-              <Menu options={kinds} value={c.kind} onPick={(kind) => set({ id: c.id, kind })} label={`How ${c.name} is read`} disabled={!c.on} />
-              <span style={{ opacity: c.on ? 1 : 0.4 }}>
-                <Switch on={c.trusted} onToggle={() => c.on && set({ id: c.id, trusted: !c.trusted })} label={`${c.name} straight to the plan`} />
-              </span>
-              <span style={{ opacity: c.on && c.writable ? 1 : 0.4 }} title={c.writable ? undefined : `${mac ? "The Mac" : "Google"} doesn't let you change this calendar's events`}>
-                <Switch on={!!c.editable} onToggle={() => c.on && c.writable && set({ id: c.id, editable: !c.editable })} label={`Save changes to ${c.name}`} />
-              </span>
-            </div>
-          ))}
-        </Fragment>
-      ))}
-      <span className="fr-kicker" style={{ paddingTop: 8, textWrap: "pretty" }}>
+      <span className="fr-kicker" style={{ display: "block", paddingTop: 8, textWrap: "pretty" }}>
         {mac
           ? "Calendars Friday already gets from Google, subscriptions and birthdays start off, so nothing comes in twice. “Edit here” sends your changes back to your Mac’s calendar; your notes stay in Friday. "
           : "“Edit here” sends your changes back to Google; your notes stay in Friday. "}
         “Per event” sorts each event by its title; a kind reads every event as that kind. Turning a calendar off drops its suggestions you haven’t answered.
       </span>
-    </>
+    </div>
   )
 }
