@@ -18,6 +18,28 @@ def test_a_bedtime_after_midnight_is_the_night_before() -> None:
     assert night.date == date(2026, 10, 19) and night.slept_min == 7 * 60 + 30
 
 
+def test_a_bedtime_at_or_after_the_days_4am_start_is_still_the_night_before() -> None:
+    """14 Nov: going to bed at or after 4am, when Friday's day starts, was filed as the new day's night: its morning's
+    up went to the night before, and neither night had a sleep. A bed or done tap before noon is the night before."""
+    for bed in ("2026-10-20T04:00", "2026-10-20T04:30", "2026-10-20T06:15"):
+        nights = nights_from([mark("bed", bed), mark("up", "2026-10-20T12:30")], [], DAY_START)
+        (night,) = nights.values()
+        assert night.date == date(2026, 10, 19), bed
+        assert night.bed is not None and night.up is not None and night.slept_min is not None
+
+
+def test_done_with_work_at_4am_is_that_nights(n: list[int] = [100]) -> None:  # noqa: B006
+    nights = nights_from([mark("done", "2026-10-20T04:10"), mark("bed", "2026-10-20T04:40")], [], DAY_START)
+    (night,) = nights.values()
+    assert night.date == date(2026, 10, 19) and night.done is not None and night.bed is not None
+
+
+def test_a_bedtime_in_the_afternoon_is_that_days_own(n: list[int] = [200]) -> None:  # noqa: B006
+    """A nap's not a bed tap, but a bed tap after noon is the coming night's, as before."""
+    nights = nights_from([mark("bed", "2026-10-20T23:30")], [], DAY_START)
+    assert list(nights) == [date(2026, 10, 20)]
+
+
 def test_ready_is_the_tap_else_the_first_timer_after_waking() -> None:
     up = mark("up", "2026-10-20T08:00")
     timed = nights_from([up], [datetime(2026, 10, 20, 7, 0), datetime(2026, 10, 20, 9, 15)], DAY_START)

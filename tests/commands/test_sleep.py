@@ -282,3 +282,19 @@ def test_im_up_is_offered_after_a_night_whatever_the_hour(app: App) -> None:
     assert app.do("sleep")["next"] == "up"  # up mid-afternoon: still offered
     app.do("sleep_mark", kind="up")
     assert app.do("sleep")["next"] == "ready"
+
+
+def test_done_with_work_at_4am_still_offers_going_to_bed(app: App) -> None:
+    """14 Nov: past 4am the day starts again; "Done with work" tapped then is the night before's, and "Going to bed"
+    must still follow it (not "Done with work" again, nor nothing)."""
+    on(app)
+    app.at("2026-10-20T04:10")
+    app.do("sleep_mark", kind="done")
+    app.at("2026-10-20T04:20")
+    assert app.do("sleep")["next"] == "bed"
+    app.do("sleep_mark", kind="bed")
+    app.at("2026-10-20T12:30")
+    assert app.do("sleep")["next"] == "up"
+    app.do("sleep_mark", kind="up")
+    night = next(n for n in app.do("sleep")["nights"] if n["date"] == "2026-10-19")
+    assert night["bed"] and night["up"]  # one night, from bed at 4:20am to up at 12:30pm

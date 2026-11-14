@@ -18,7 +18,7 @@ from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.rule_text import days_spoken
 from friday.core.time import clock_time, format_local, format_utc, parse_utc, to_local, to_zoned
-from friday.learn.sleep import WEEKDAYS, Mark, Night, changes, evening_of, learn, nights_from
+from friday.learn.sleep import WEEKDAYS, Mark, Night, changes, evening_of, learn, night_of, nights_from
 from friday.planner.build import night_times
 from friday.planner.snapshot import day_overrides
 from friday.planner.store import kv_get
@@ -28,6 +28,7 @@ LEARN_DAYS = 56  # the last eight weeks teach the times
 SAID = {"done": "Done with work", "bed": "Good night", "up": "Good morning", "ready": "Ready to work"}
 DONE_FROM_H = 4  # "Done with work" is offered from this many hours before your bedtime
 DONE_BY_H = 18  # and from 6pm at the latest, however late your bedtime (14 Nov: a late learned bedtime hid it)
+DONE_BED_H = 8  # "Going to bed" follows "Done with work" for this long
 UP_AFTER_H = 2  # "I'm up" is offered this long after "Going to bed", whatever the hour (14 Nov)
 UP_UNTIL_H = 20  # and no longer: a forgotten tap doesn't keep it showing into the next evening
 
@@ -235,6 +236,11 @@ def offer(ctx: Ctx, now: datetime, nights: dict, overrides: dict, morning_hours:
             return None  # just gone to bed
         if now < bed + timedelta(hours=UP_UNTIL_H):
             return "up"
+    # done with work and not yet to bed, that night (past 4am too: it's still the night before until noon)
+    current = nights.get(night_of(now, ctx.day_start))
+    done = current.done if current is not None and current.bed is None else None
+    if done is not None and now < done.at.replace(tzinfo=None) + timedelta(hours=DONE_BED_H):
+        return "bed"
     morning = nights.get(now.date() - timedelta(days=1))
     up = morning.up if morning else None
     if up is None and not asleep and ctx.day_start <= now.hour * 60 + now.minute < 15 * 60:

@@ -87,6 +87,16 @@ def evening_of(at: datetime, day_start_min: int) -> date:
     return (at - timedelta(minutes=day_start_min)).date()
 
 
+NIGHT_TAPS_UNTIL = 12 * 60  # a bed or done tap before noon is the night before's, whenever the day starts
+
+
+def night_of(at: datetime, day_start_min: int) -> date:
+    """The night a bed or done tap belongs to (14 Nov: going to bed at or after 4am, when Friday's day starts, was filed
+    as the new day's night, so its morning's up went to the night before and neither night had a sleep): before noon,
+    the night before, however late the day's start."""
+    return evening_of(at, max(day_start_min, NIGHT_TAPS_UNTIL))
+
+
 def nights_from(
     marks: Iterable[Mark], timer_starts: Iterable[datetime], day_start_min: int, timer_ends: Iterable[datetime] = ()
 ) -> dict[date, Night]:
@@ -99,9 +109,9 @@ def nights_from(
     dones: dict[date, list[Mark]] = {}
     for mark in sorted(marks, key=lambda m: m.at):
         if mark.kind == "done":
-            dones.setdefault(evening_of(mark.at, day_start_min), []).append(mark)
+            dones.setdefault(night_of(mark.at, day_start_min), []).append(mark)
         elif mark.kind == "bed":
-            beds[evening_of(mark.at, day_start_min)] = mark  # the last one: back up and to bed again
+            beds[night_of(mark.at, day_start_min)] = mark  # the last one: back up and to bed again
         elif mark.kind == "up":
             ups.setdefault(mark.at.date(), mark)
         elif mark.kind == "ready":
