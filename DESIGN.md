@@ -326,7 +326,7 @@ Every item has all eight facets. Most have defaults, so a typical item sets two 
 | --- | --- | --- | --- |
 | When | `when` | `fixed` · `window` · `anytime` | `fixed`: `start_utc`, `end_utc` exact. `window`: `release_utc` (null = now) and `due_utc` (null = no deadline). `anytime`: neither |
 | Amount | `amount` | `fixed` · `elastic` · `target` · `open` | `fixed`: `duration_units`. `elastic`: `min_units`, `ideal_units`, `max_units`. `target`: `target_units` and `cap_units` (default ⌈1.5 × target⌉) inside the window. `open`: no amount; `daily_ceiling_units` (default 12 = 3 h) caps it per day. Open items fill free time, never overflow and are never late (section 12.2, `open_value`) |
-| Shape | `shape`, `min_chunk_units`, `max_chunk_units`, `chunk_cost`, `spread` | `one_sitting` · `split`; spread `none` · `spread` · `cluster` | `split` items may have a minimum chunk (default 2 units = 30 min) and a maximum. `chunk_cost` (0 … 1, default from the preset) is the size-proportional cost of each extra chunk: with 0.1, each extra chunk of a 4-hour item costs 0.4 × the `chunk_cost` rule's weight in points. `spread` spreads work across days; `cluster` keeps it to few days |
+| Shape | `shape`, `min_chunk_units`, `max_chunk_units`, `chunk_cost` | `one_sitting` · `split` | `split` items may have a minimum chunk (default 2 units = 30 min) and a maximum. `chunk_cost` (0 … 1, default from the preset) is the size-proportional cost of each extra chunk: with 0.1, each extra chunk of a 4-hour item costs 0.4 × the `chunk_cost` rule's weight in points. Spreading work across days, or keeping it to few, is a rule that names the work (`spread`, `cluster`, 12.2), not a facet (14 Nov) |
 | Firmness | `firmness`, `importance` | `hard` · `soft` · `none`; importance 1–5 | `hard` deadlines are settled in the deadlines stage, guarded by walls (11.4) and watched by the executor. `soft` lateness is a preference. `none` means the due date is only a pacing target |
 | Value | `neglect_carry` | 0 … 1 | Targets only: the share of last window's shortfall added to this window's target (default 0.5) |
 | Relations | `parent_id`; `dependencies` table | — | Projects are trees. A dependency says B may only start once a fraction of A is done, after a lag (section 6.4) |
@@ -342,9 +342,9 @@ Presets live in settings as data: name → facet defaults. You can edit them and
 | Preset | When | Amount | Shape | Firmness | Energy | Other |
 | --- | --- | --- | --- | --- | --- | --- |
 | Assignment | window | fixed | split, min 30 min | hard | deep | importance 3 |
-| Project | window | fixed | split, min 60 min, cluster | hard | deep | pacing linear; may have children |
+| Project | window | fixed | split, min 60 min | hard | deep | pacing linear; may have children |
 | Reading | window | fixed | split, min 30 min | soft | light | |
-| Exam prep | window | fixed | split, min 60 min, spread (chunk cost 0.05) | hard | deep | usually `before:` an exam |
+| Exam prep | window | fixed | split, min 60 min (chunk cost 0.05) | hard | deep | usually `before:` an exam |
 | Class | fixed | — | — | — | — | event_kind class; usually a series |
 | Exam | fixed | — | — | — | — | event_kind exam (15 min kept free before); prep comes `before:` it |
 | Meeting | fixed | — | — | — | — | event_kind meeting |
@@ -353,7 +353,7 @@ Presets live in settings as data: name → facet defaults. You can edit them and
 | Errand | window | fixed | one sitting | none | physical | |
 | Chore | window | fixed | one sitting | none | physical | |
 | Routine | window | elastic | one sitting | none | — | e.g. meals: lunch 11:30–14:30, 20–45 min; not work, so load rules leave it out (M16) |
-| Habit | window | fixed | one sitting, spread | none | null | usually a series with a count per window |
+| Habit | window | fixed | one sitting | none | null | usually a series with a count per window |
 | Goal | window | target | split, min 30 min | none | deep | weekly series; neglect carry 0.5 |
 | Side project | anytime | open | split, min 45 min | none | deep | a book, a personal project; fills free time; daily ceiling 3 h |
 | Maybe | window | fixed | one sitting | none | null | certainty tentative |
@@ -380,7 +380,7 @@ A **series** creates items. It stores:
   linked). An imported calendar repeat is switched off instead (`series_stop`), so the calendar doesn't offer it
   again. An imported repeat's own fields (tag, kind, importance, notes) can be changed with `series_edit`; its
   times follow the calendar (M16).
-- `per_window` = 3 with a weekly rule gives three items per week sharing that week's window: "gym 3× a week". Add `spread` to keep them on different days.
+- `per_window` = 3 with a weekly rule gives three items per week sharing that week's window: "gym 3× a week". A rule ("spread gym over several days") keeps them on different days.
 - Occurrences keep the series' plain title, so rules can target it.
 - An occurrence of a flexible series whose preset says firmness `none` is `soft`: its window is when it belongs, so finishing late costs `soft_late` instead of nothing (otherwise a weekly chore could drift into the next week's).
 
@@ -673,7 +673,7 @@ The scheduler holds a plan as "which item owns each slot". Every rule from secti
 | `min`, `ideal`, `max` | Elastic: in units, minus progress (not below 0) |
 | `target`, `cap`, `progress` | Targets: units in the window, including neglect carry |
 | `release_utc`, `due_utc`, `window_is_hard` | `window_is_hard` is true for tentative, elastic and target items: they may not pass their window end |
-| `shape`, `min_chunk`, `max_chunk`, `chunk_cost`, `spread` | As in 6.1 (chunks in units) |
+| `shape`, `min_chunk`, `max_chunk`, `chunk_cost` | As in 6.1 (chunks in units) |
 | `size_hours` | Full amount in hours (for size-proportional costs) |
 | `tentative` | Excluded from `minimize_changes` and from change lists |
 | `allowed` | Sorted slot indices it may use, after pruning |
@@ -910,8 +910,8 @@ Notation: `end(s)` and `start(s)` are slot times; `imp` is importance; w is weig
 | `after_event` | preferences | price | scope | Pulls items to start right after matching fixed items (`events`: an EventScope). Reference time E per day: the end (with buffer) of the day's last match (`measure_from = last`), or of the most recent match before the slot (`any`). A slot at or after E costs `min(cap, slope × hours(start(s) − E))`; before E it costs `cap`. Days with no match: `on_days_without = ignore` (free) or `cap` |
 | `buffer` | wellbeing | measure | scope | Breathing room (M11): per slot s and buffer size b (an item's b is the largest of `minutes`, `by_area[area]` and `by_preset[preset]`), g = b × (an in-scope chunk starts at s) + units busy in the b units just before s (flexible work, plus fixed events as constants; the window follows contiguous time, across the day start); above b, slope 1/h. Nothing when b = 0 |
 | `chunk_cost` | preferences | measure | split, chunk_cost > 0 | Σ starts, above 1; slope `chunk_cost × size_hours` per extra chunk |
-| `spread` | preferences | measure | spread items | Per day: units placed, above ⌈remaining / available days⌉; slope 1/h |
-| `cluster` | preferences | measure | cluster items | Days used (`any_of` per day), above 1; slope `per_day` per extra day |
+| `spread` | preferences | measure | scope (none: nothing) | Per in-scope item and day: units placed, above ⌈remaining / available days⌉; slope 1/h. From a rule you write ("spread my essays over several days") |
+| `cluster` | preferences | measure | scope (none: nothing) | Per in-scope item, days used (`any_of` per day), above 1; slope `per_day` per extra day. From a rule you write ("keep problem sets on few days") |
 | `batch_by_day` | preferences | measure | scope, grouped `by` area or preset | Per group and day, a helper `y[g,d] ≥ x[i,s]` for every in-scope item of the group and slot of the day. Measure = Σ_d y[g,d]: each extra day a group spreads across costs the weight |
 | `target_shortfall` | preferences | measure | target | h = progress + placed in the window. `curve` lists below-hinges at fractions of T′ (target + carry; scaled by the share of the window inside the horizon when the window runs past it), slopes per hour. Decreasing slopes make the first hours count most. Hours above T′ are free |
 | `elastic_shortfall` | wellbeing (M16) | measure | elastic | Placed + progress: below `min` slope `steep`, below `ideal` slope `gentle` |
@@ -949,8 +949,6 @@ rules = [
   { type = "unscheduled",       name = "unscheduled",       weight = 0.5, params = { base = 1 } },
   { type = "chunk_cost",        name = "chunk_cost",        weight = 10 },
   { type = "buffer",            name = "buffer",            weight = 3,   params = { minutes = "0m", by_area = {}, by_preset = {} } },
-  { type = "spread",            name = "spread",            weight = 3 },
-  { type = "cluster",           name = "cluster",           weight = 3,   params = { per_day = 2 } },
   { type = "target_shortfall",  name = "target_shortfall",                params = { curve = [[0.4, 8], [1.0, 3]] } },
   { type = "elastic_shortfall", name = "elastic_shortfall",               stage = "wellbeing", params = { steep = 20, gentle = 2 } },
   { type = "open_value",        name = "open_value",                      params = { curve = [[0.5, 1], [1.0, 0.5]] } },

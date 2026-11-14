@@ -1866,7 +1866,7 @@ C = [
     (
         "new",
         "spread essay writing over at least 3 days instead of cramming",
-        "new:split each essay across at least 3 days",
+        {"kind": "spread", "subject": "essays"},
     ),
     ("new", "dont do the same subject twice in a row, i get bored", "new:alternate subjects between consecutive tasks"),
     ("new", "switch between hard and easy tasks so i dont burn out", "new:alternate hard and easy tasks"),

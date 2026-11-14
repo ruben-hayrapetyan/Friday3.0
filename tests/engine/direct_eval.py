@@ -205,6 +205,8 @@ def measure_rule_cost(p: Problem, rule: Rule, items: list[EngineItem], X: dict[s
     elif kind == "spread":
         for it in items:
             days = [d for d in range(grid.n_days) if any(s in it.allowed_set for s in grid.day_slots[d])]
+            if it.due_utc is not None and rule.p.before_due:  # the days before its due, when it has one
+                days = [d for d in days if int(grid.start[grid.day_slots[d][0]]) < it.due_utc] or days
             for d in days:
                 share = math.ceil(it.need / len(days))
                 if reach(grid.day_slots[d], [it]) > share:

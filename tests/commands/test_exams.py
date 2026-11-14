@@ -55,5 +55,5 @@ def test_an_exam_without_prep_shows_and_other_events_dont(app: App) -> None:
 def test_exam_focus_says_when_other_courses_start_waiting(app: App) -> None:
     prelim(app)
     assert app.do("exams")[0]["focus_from"] is None
-    app.do("settings_set", key="exam_focus", value={"on": True, "days_before": 2})
+    app.do("rule_add", text="focus on exams 2 days before")  # a rule since 14 Nov
     assert app.do("exams")[0]["focus_from"] == "2026-10-21T19:30"

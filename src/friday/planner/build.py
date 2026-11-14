@@ -14,7 +14,7 @@ from friday.core.guess import EXAM, same_course, subject_of, subjects
 from friday.core.items import Firmness, Item
 from friday.core.pace import DayScales
 from friday.core.quickadd import MEAL
-from friday.core.settings import SleepDay, bedtime_minutes, minutes_of
+from friday.core.settings import SleepDay, bedtime_minutes, exam_focus_of, minutes_of
 from friday.core.textnorm import identity_text, norm
 from friday.core.time import (
     UNIT_MIN,
@@ -37,7 +37,7 @@ from friday.planner.late_cutoff import set_cutoffs
 
 # Rules the build or the job loop applies itself, not the engine's priced or walled rules: time kept around events,
 # and meals Friday decides from tracking (`commands/eating.decide`).
-PLANNER_RULES = frozenset({"travel", "meal_learned", "late_cutoff"})
+PLANNER_RULES = frozenset({"travel", "meal_learned", "late_cutoff", "exam_focus"})
 # Whether a meal may leave its window is the calendar's to say, not the work's: when events leave no room in it
 # (dinner's 5:30-8:30 under a 6pm Zoom and a 7:30 lab), it may go up to MEAL_REACH_MIN outside, priced in the
 # wellbeing stage so it stays close; with room nowhere near, it isn't asked for that day. Whether work may take a
@@ -331,7 +331,7 @@ def firmness_of(item: Item, by_id: Mapping[int, Item]) -> Firmness:
 def focus_exams(fixed: Mapping[int, Item], settings: Mapping[str, Any]) -> list[tuple[int, int, str]]:
     """The exams exam focus looks at, as start, end and title: found once a build, not once a task (each task
     searched every event's title, 27 Oct)."""
-    focus = settings["exam_focus"]
+    focus = exam_focus_of(settings)
     if not focus.on:
         return []
     return [
@@ -347,7 +347,7 @@ def focused_release(
 ) -> int | None:  # fmt: skip
     """Exam focus (personal's, COMBINED.md 38): while an exam is `days_before` days off or less, another course's work
     due after it waits until the exam ends, when a day and half again its length still fit before its own due."""
-    focus = settings["exam_focus"]
+    focus = exam_focus_of(settings)
     if not focus.on or due is None or item.preset == "Exam prep":
         return release
     length = (item.duration_units or 0) * UNIT_MIN
@@ -391,7 +391,7 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
         firmness=firmness_of(item, by_id),
         amount=item.amount, release_utc=release, due_utc=due, shape=item.shape,
         min_chunk=1 if item.shape == "one_sitting" else max(1, item.min_chunk_units),
-        max_chunk=item.max_chunk_units, chunk_cost=sitting_cost(item, inp.settings), spread=item.spread,
+        max_chunk=item.max_chunk_units, chunk_cost=sitting_cost(item, inp.settings),
         tentative=tentative,
         progress=progress,
         window_is_hard=tentative or item.amount in ("elastic", "target") or expires(item, inp.settings),

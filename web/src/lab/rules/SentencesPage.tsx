@@ -18,7 +18,7 @@ const STRENGTHS = [
   { value: 3, label: "Firmly" },
 ]
 // The planner's own workings: listed last, folded.
-const MACHINERY = new Set(["quota", "energy", "soft_late", "unscheduled", "spread", "cluster", "target_shortfall", "elastic_shortfall", "open_value", "minimize_changes"])
+const MACHINERY = new Set(["quota", "energy", "soft_late", "unscheduled", "target_shortfall", "elastic_shortfall", "open_value", "minimize_changes"])
 
 export function SentencesPage() {
   const specs = useRuleSpecs()

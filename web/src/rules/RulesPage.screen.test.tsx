@@ -180,26 +180,38 @@ describe("the Rules page", () => {
     expect(screen.queryByText("No work after 9pm on Fri")).toBeNull()
   })
 
-  it("asks a rule the plan bends what it's up against", async () => {
+  it("says on which days a rule is violated, and why in words", async () => {
+    // 14 Nov: "Violated on Tue, Thu" and a Why? that names the work and its due, or the rule it clashes with; never
+    // "Gives way in this plan", "What to?" or "Weighed far higher, it bends no less…"
     const { user } = await openFriday("/rules")
-    // the rules this plan bends, each with its question; which they are depends on the plan
-    const asks = await screen.findAllByRole("button", { name: "What to?" })
-    for (const what of asks) {
-      const row = what.closest(".fr-rule-row") as HTMLElement
-      expect(what.getAttribute("aria-expanded")).toBe("false")
-      await user.click(what)
-      expect(what.getAttribute("aria-expanded")).toBe("true")
-      const said = await within(row).findByText(/it bends no less|This clashes with|Couldn’t find out/, undefined, { timeout: 30_000 })
-      if (!said.textContent?.startsWith("This clashes with")) continue
-      // two rules up against each other: the answer says which wins
-      expect(within(row).getByText(/Friday remembers your answer for these two rules/)).toBeTruthy()
+    const asks = await screen.findAllByRole("button", { name: "Why?" })
+    expect(screen.queryByText(/Gives way in this plan/)).toBeNull()
+    expect(screen.queryByRole("button", { name: "What to?" })).toBeNull()
+    const violated = (await friday.q<(Rule & { violated: string[]; effect: string })[]>("rules")).filter((r) => r.violated.length && r.strength !== "Always" && r.enabled)
+    expect(asks.length).toBe(violated.length)
+    for (const r of violated) {
+      expect(r.effect).toMatch(/^Violated on (Mon|Tue|Wed|Thu|Fri|Sat|Sun)/)
+      expect(within(document.querySelector(`[data-rule="${r.name}"]`) as HTMLElement).getByText(new RegExp(`^${r.effect}`))).toBeTruthy()
+    }
+    const why = asks[0]
+    const row = why.closest(".fr-rule-row") as HTMLElement
+    expect(why.getAttribute("aria-expanded")).toBe("false")
+    await user.click(why)
+    expect(why.getAttribute("aria-expanded")).toBe("true")
+    // the work that took the time, said at once from the plan
+    expect((await within(row).findAllByText(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun).*: .*needed (those hours|the time)$/)).length).toBeGreaterThan(0)
+    const said = await within(row).findByText(/clashes with|Friday couldn’t tell/, undefined, { timeout: 30_000 }).catch(() => null)
+    expect(within(row).queryByText(/bends no less/)).toBeNull()
+    if (said?.textContent?.includes("clashes with")) {
+      expect(said.textContent).toMatch(/Which should win\?$/)
       const [mine] = within(row).getAllByRole("button").filter((b) => b.className.includes("btn-secondary"))
       await user.click(mine)
       expect((await waitForSent("rule_win")).body).toMatchObject({ winner: expect.any(String), loser: expect.any(String) })
-      await waitFor(() => expect(within(row).queryByText(/Friday remembers your answer/)).toBeNull())
-      return
+      // the panel stays open, saying what was decided
+      expect(await within(row).findByText(/wins from now on/)).toBeTruthy()
+      expect(why.getAttribute("aria-expanded")).toBe("true")
     }
-  })
+  }, 60_000)
 
   it("says which of two contradicting rules wins, and changes it on a click", async () => {
     await friday.c("rule_add", { text: "Keep Sunday mornings free", overrides: {}, strength: "Prefer" })

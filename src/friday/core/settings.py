@@ -2,6 +2,7 @@
 
 import re
 import tomllib
+from collections.abc import Mapping
 from typing import Any, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -223,8 +224,6 @@ REFERENCE_RULES = (
     rule("chunk_cost", "chunk_cost", 10),
     # Off until you set a buffer (Settings → Schedule, or per tag and kind): 0 minutes makes no measures.
     rule("buffer", "buffer", 3, minutes="0m", by_area={}, by_preset={}),
-    rule("spread", "spread", 3),
-    rule("cluster", "cluster", 3, per_day=2),
     # One course for a stretch (8 Nov: "math for the entire time not 3 different things"), a count per switch.
     rule("same_course", "same_course", 2),
     rule("target_shortfall", "target_shortfall", curve=[[0.4, 8], [1.0, 3]]),
@@ -333,8 +332,9 @@ def _matches(pattern: str, title: str) -> bool:
 
 class ExamFocus(Model):
     """personal's exam focus (COMBINED.md 38): in the days before an exam, other courses' work that is due after it
-    waits until the exam is over, when a day and half again its length are left before its own due. Off until you ask
-    for it, in Rules ("I want to focus on an exam before it")."""
+    waits until the exam is over, when a day and half again its length are left before its own due. A rule (14 Nov:
+    "this kind of thing should always be a rule and shouldn't be stored in another way"), type `exam_focus`, whose
+    params these are; off until you add it in Rules ("focus on exams 3 days before"). `exam_focus_of` reads it."""
 
     on: bool = False
     days_before: int = Field(3, ge=1, le=14)
@@ -347,6 +347,27 @@ class ExamFocus(Model):
         if not said:
             return False
         return re.search(r"\b(" + "|".join(re.escape(w) for w in said) + r")\b", title, re.IGNORECASE) is not None
+
+
+EXAM_FOCUS_NAME = "you:exam-focus"  # one exam focus rule: a new one takes its place
+
+
+def exam_focus_of(settings: Mapping[str, Any]) -> ExamFocus:
+    """Exam focus as its rule says it: the first switched-on `exam_focus` rule, or off."""
+    for rule in settings["rules"]:
+        if rule.type == "exam_focus" and rule.enabled:
+            days = int(rule.params.get("days_before", 3))
+            words = tuple(rule.params.get("words") or ExamFocus().words)
+            return ExamFocus(on=True, days_before=min(14, max(1, days)), words=words)
+    return ExamFocus()
+
+
+def exam_focus_rule(days_before: int, words: tuple[str, ...] | None = None) -> RuleSpec:
+    """The rule a saved exam focus setting became (friday.toml's [exam_focus], before 14 Nov)."""
+    days = min(14, max(1, int(days_before)))
+    said = f"Focus on an exam's course {'the day' if days == 1 else f'{days} days'} before it"
+    return RuleSpec(type="exam_focus", name=EXAM_FOCUS_NAME, weight=0, reason=said,
+                    params={"days_before": days, "words": list(words or ExamFocus().words)})  # fmt: skip
 
 
 class PhoneAccess(Model):
@@ -503,7 +524,6 @@ SETTINGS_TYPES: dict[str, Any] = {
     "busy": BusySettings,  # which events count as busy when planning (COMBINED.md 28)
     "pointless_late": PointlessLate,  # work never planned after its due (COMBINED.md 50)
     "fading_late": FadingLate,  # work that matters less the longer it's overdue (3 Nov)
-    "exam_focus": ExamFocus,  # other courses wait while you prepare for an exam (COMBINED.md 38)
     "sittings": Sittings,  # one go, and which kinds to split first (COMBINED.md 38)
     "calendar_look": CalendarLook,  # each calendar's pigment and toolbar button (COMBINED.md 17, 19)
     **INTEGRATION_TYPES,
@@ -551,7 +571,6 @@ DEFAULTS: dict[str, Any] = {
     "busy": BusySettings(),
     "pointless_late": PointlessLate(),
     "fading_late": FadingLate(),
-    "exam_focus": ExamFocus(),
     "sittings": Sittings(),
     "calendar_look": CalendarLook(),
     **INTEGRATION_DEFAULTS,
@@ -601,10 +620,16 @@ def export_toml(values: dict[str, Any]) -> str:
 def import_toml(text: str) -> dict[str, Any]:
     """Every key from TOML, validated before anything is returned; keys left out keep their defaults."""
     document = tomllib.loads(text)
+    focus = document.pop("exam_focus", None)  # a setting until 14 Nov: now the rule it says
     unknown = set(document) - set(SETTINGS_TYPES)
     if unknown:
         raise ValueError(f"{sorted(unknown)[0]}: no such settings key")
-    return DEFAULTS | {key: validate_value(key, value) for key, value in document.items()}
+    values = DEFAULTS | {key: validate_value(key, value) for key, value in document.items()}
+    if focus is not None:
+        said = ExamFocus.model_validate(focus)
+        kept = tuple(r for r in values["rules"] if r.type != "exam_focus")
+        values["rules"] = (*kept, exam_focus_rule(said.days_before, said.words)) if said.on else kept
+    return values
 
 
 def drop_none(value: Any) -> Any:

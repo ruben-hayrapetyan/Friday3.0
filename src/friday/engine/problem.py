@@ -69,7 +69,6 @@ class EngineItem:
     min_chunk: int = 1
     max_chunk: int | None = None
     chunk_cost: float = 0.0
-    spread: Literal["none", "spread", "cluster"] = "none"
     size_hours: float = 0.0
     tentative: bool = False
     allowed: tuple[int, ...] = ()

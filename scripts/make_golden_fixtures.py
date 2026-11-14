@@ -112,7 +112,7 @@ def item_json(it):
         "ideal": it.ideal, "max": it.max, "target": it.target, "cap": it.cap, "progress": it.progress,
         "progress_by_week": {str(k): v for k, v in it.progress_by_week.items()}, "release": it.release,
         "due": it.due, "window_is_hard": it.window_is_hard, "shape": it.shape, "min_chunk": it.min_chunk,
-        "max_chunk": it.max_chunk, "chunk_cost": it.chunk_cost, "spread": it.spread, "size_hours": it.size_hours,
+        "max_chunk": it.max_chunk, "chunk_cost": it.chunk_cost, "size_hours": it.size_hours,
         "tentative": it.tentative, "allowed": ranges(it.allowed), "locked": ranges(it.locked),
         "preferred": ranges(it.preferred), "current": ranges(it.current),
         "depends_on": [{"key": d.key, "fraction": d.fraction, "lag_min": d.lag_min, "total": d.total,

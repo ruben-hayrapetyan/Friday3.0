@@ -98,6 +98,7 @@ class Writer:
 
     def revert(self, changes: list[dict[str, Any]], later_writer: "LaterCommands") -> None:
         """Undo `changes`, newest first, through this writer so the undo can itself be undone."""
+        changes = [self.as_now(c) for c in changes]
         final: dict[str, dict[str, Any]] = {}  # a command may write one row twice; its last write is what to find
         for change in changes:
             final[json.dumps([change["table"], change["key"]], sort_keys=True)] = change
@@ -123,6 +124,16 @@ class Writer:
                 self.update(table, key, {k: v for k, v in change["before"].items() if k not in key})
             else:
                 self.insert(table, {k: v for k, v in change["before"].items() if k != "user_id"})
+
+    def as_now(self, change: dict[str, Any]) -> dict[str, Any]:
+        """A change with only the columns its table has now: a column dropped since (items' `spread`, 14 Nov) isn't
+        compared or put back, so a change from before can still be undone."""
+        columns = {r["name"] for r in self.conn.execute(f"PRAGMA table_info({change['table']})")}
+        return change | {
+            side: {k: v for k, v in change[side].items() if k in columns}
+            for side in ("before", "after")
+            if isinstance(change.get(side), dict)
+        }
 
     def check_unchanged(self, change: dict[str, Any], later: "LaterCommands") -> None:
         now = self.fetch(change["table"], change["key"])

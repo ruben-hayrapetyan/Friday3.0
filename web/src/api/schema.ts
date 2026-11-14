@@ -1704,6 +1704,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/rule_edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change a rule where it stands (14 Nov: deleting one and adding it again lost its place and its history): your */
+        post: operations["rule_edit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/rule_remove": {
         parameters: {
             query?: never;
@@ -3407,6 +3424,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/rule_why": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Why this plan violates a rule, read from the plan (no planning, so at once): on each day it's broken, the work */
+        get: operations["rule_why"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/rules": {
         parameters: {
             query?: never;
@@ -3782,8 +3816,6 @@ export interface components {
             max_chunk_min?: number | null;
             /** Chunk Cost */
             chunk_cost?: number | null;
-            /** Spread */
-            spread?: ("none" | "spread" | "cluster") | null;
             /** Firmness */
             firmness?: ("hard" | "soft" | "none") | null;
             /** Importance */
@@ -5013,8 +5045,6 @@ export interface components {
             max_chunk_min?: number | null;
             /** Chunk Cost */
             chunk_cost?: number | null;
-            /** Spread */
-            spread?: ("none" | "spread" | "cluster") | null;
             /** Firmness */
             firmness?: ("hard" | "soft" | "none") | null;
             /** Importance */
@@ -8843,6 +8873,11 @@ export interface components {
              * @default
              */
             other_sentence?: string;
+            /**
+             * Said
+             * @default
+             */
+            said?: string;
         };
         /**
          * RuleConflict
@@ -8865,6 +8900,72 @@ export interface components {
              * @default false
              */
             overlap?: boolean;
+        };
+        /**
+         * RuleEditInput
+         * @description A rule changed where it stands: your words and Friday's reading of them (with your corrections), or a built-in
+         *     rule's number; and its strength.
+         */
+        RuleEditInput: {
+            /** Name */
+            name: string;
+            /** Text */
+            text?: string | null;
+            /**
+             * Overrides
+             * @default {}
+             */
+            overrides?: {
+                [key: string]: unknown;
+            };
+            /** Strength */
+            strength?: ("Prefer" | "Strongly" | "Always") | null;
+            /** Number */
+            number?: number | null;
+        };
+        /** RuleEditResult */
+        RuleEditResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
+         * RuleNumber
+         * @description A built-in rule's one number (hours of focused work in a row, days early): what it is, and its sentence with
+         *     another in its place, `{n}` where the number goes (`one` for 1), so a change shows before the server answers.
+         */
+        RuleNumber: {
+            /** Value */
+            value: number;
+            /** Unit */
+            unit: string;
+            /** Label */
+            label: string;
+            /** Low */
+            low: number;
+            /** High */
+            high: number;
+            /** Step */
+            step: number;
+            /** Said */
+            said: string;
+            /** One */
+            one: string;
         };
         /** RuleOut */
         RuleOut: {
@@ -8909,6 +9010,18 @@ export interface components {
              * @default []
              */
             contradicts?: components["schemas"]["RuleConflict"][];
+            /**
+             * Violated
+             * @default []
+             */
+            violated?: string[];
+            /** Words */
+            words?: string | null;
+            /** Reading */
+            reading?: {
+                [key: string]: unknown;
+            } | null;
+            number?: components["schemas"]["RuleNumber"] | null;
         };
         /** RuleReadOut */
         RuleReadOut: {
@@ -8932,6 +9045,16 @@ export interface components {
              * @default []
              */
             also?: components["schemas"]["RuleReadOut"][];
+            /**
+             * Starts Over
+             * @default false
+             */
+            starts_over?: boolean;
+            /**
+             * Replaces
+             * @default
+             */
+            replaces?: string;
         };
         /** RuleRef */
         RuleRef: {
@@ -8988,6 +9111,34 @@ export interface components {
             repeated?: boolean;
             /** Generation */
             generation?: number | null;
+        };
+        /** RuleWhyLine */
+        RuleWhyLine: {
+            /** Days */
+            days: string[];
+            /** Said */
+            said: string;
+            /**
+             * Items
+             * @default []
+             */
+            items?: number[];
+        };
+        /**
+         * RuleWhyOut
+         * @description Why this plan violates a rule, from the plan itself: the work placed where the rule is broken, day by day, and
+         *     what it's due by (14 Nov: the answer said plainly and concretely).
+         */
+        RuleWhyOut: {
+            /** Rule */
+            rule: string;
+            /** Sentence */
+            sentence: string;
+            /**
+             * Lines
+             * @default []
+             */
+            lines?: components["schemas"]["RuleWhyLine"][];
         };
         /**
          * RuleWinInput
@@ -9068,8 +9219,6 @@ export interface components {
             max_chunk_min?: number | null;
             /** Chunk Cost */
             chunk_cost?: number | null;
-            /** Spread */
-            spread?: ("none" | "spread" | "cluster") | null;
             /** Firmness */
             firmness?: ("hard" | "soft" | "none") | null;
             /** Importance */
@@ -9204,8 +9353,6 @@ export interface components {
             max_chunk_min?: number | null;
             /** Chunk Cost */
             chunk_cost?: number | null;
-            /** Spread */
-            spread?: ("none" | "spread" | "cluster") | null;
             /** Firmness */
             firmness?: ("hard" | "soft" | "none") | null;
             /** Importance */
@@ -15070,6 +15217,43 @@ export interface operations {
             };
         };
     };
+    rule_edit: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleEditInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleEditResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rule_remove: {
         parameters: {
             query?: {
@@ -18103,6 +18287,7 @@ export interface operations {
             query?: {
                 text?: string;
                 overrides?: string;
+                editing?: string;
             };
             header?: never;
             path?: never;
@@ -18150,6 +18335,37 @@ export interface operations {
                     "application/json": {
                         [key: string]: number;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rule_why: {
+        parameters: {
+            query: {
+                name: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleWhyOut"];
                 };
             };
             /** @description Validation Error */

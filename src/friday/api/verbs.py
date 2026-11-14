@@ -1081,6 +1081,14 @@ VERBS = {
         False,
         "What a rule the plan bends is up against: plans once more with it weighed far more (a few seconds).",
     ),
+    "rule_edit": Verb(
+        "POST",
+        "/api/c/rule_edit",
+        commands.RuleEditInput,
+        True,
+        True,
+        "Change a rule where it stands (14 Nov: deleting one and adding it again lost its place and its history): your",
+    ),
     "rule_read": Verb(
         "GET",
         "/api/q/rule_read",
@@ -1112,6 +1120,14 @@ VERBS = {
         False,
         False,
         "Cost per rule in the current plan, or on one day.",
+    ),
+    "rule_why": Verb(
+        "GET",
+        "/api/q/rule_why",
+        commands.RuleRef,
+        False,
+        False,
+        "Why this plan violates a rule: on each day, the work there and its due.",
     ),
     "rule_win": Verb(
         "POST",

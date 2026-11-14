@@ -32,7 +32,12 @@ which days), and from a Reading and a strength to one of the planner's rule type
   class`: a task that runs by itself started only where all its running time misses events and the night
   (`runs_while_working`);
 - `I want at least 7 hours of sleep per night`, `never less than 7h of sleep`, `8 hrs of sleep on school nights`: the
-  hours before each morning's wake kept for sleep (`sleep_min`); a bedtime alone (`bed by 11`) is the sleep setting.
+  hours before each morning's wake kept for sleep (`sleep_min`); a bedtime alone (`bed by 11`) is the sleep setting;
+- `spread my essays over several days`, `space out problem sets`: `spread`, each one's work a share a day over the
+  days before it's due; `keep problem sets on few days`, `don't spread essays out`: `cluster`, each one's sittings on
+  as few days as can be (14 Nov: tasks aren't marked spread or clustered; a rule names the work);
+- `focus on exams 5 days before`, `the 2 days before a final are only for that class`: `exam_focus`, other courses'
+  work due after an exam waits while you prepare for it (14 Nov: a rule, not a setting of its own).
 """
 
 import re
@@ -45,7 +50,7 @@ Strength = Literal["Prefer", "Strongly", "Always"]
 Kind = Literal[
     "window", "days", "free", "cap", "early", "after", "pace", "deadlines", "optional", "ahead", "night_before",
     "around", "close", "meals_kept", "meals_learned", "fit_gaps", "runs_while_working", "sleep_min", "spacing",
-    "late_cutoff",
+    "late_cutoff", "spread", "cluster", "exam_focus",
 ]  # fmt: skip
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 NAMES = {
@@ -736,7 +741,17 @@ def drops_something(text: str, found: Reading) -> bool:
     after 3" read as all of Friday, "saturday morning or sunday morning" as Saturday alone, "always eat dinner at 7"
     without the 7). Better the AI reads it, or you, than a confident rule that says less, or more, than you did. The
     rule's words are its first clause: what comes after a comma or "because" is why ("…, I go home for the weekend")."""
-    if found.kind in ("pace", "late_cutoff", "spacing", "sleep_min", "deadlines", "meals_learned", "close", "early"):
+    if found.kind in (
+        "pace",
+        "late_cutoff",
+        "spacing",
+        "sleep_min",
+        "deadlines",
+        "meals_learned",
+        "close",
+        "early",
+        "exam_focus",
+    ):
         return False
     t = " " + text.lower().replace("’", "'") + " "
     first = CLAUSE.split(t.strip(), maxsplit=1)[0] if CLAUSE.split(t.strip(), maxsplit=1)[0].strip() else t
@@ -865,7 +880,8 @@ def read_one(text: str) -> tuple[Reading | None, Strength]:
     nt = r"\b(?:should|must|can|could|would|wo|ca|does|did|is|are)n't\b"  # "shouldn't run during lectures"
     negated = bool(re.search(rf"\b(no|never|don't|not|avoid)\b|{nt}", t))
     t = re.sub(rf"\b(no|never|don't do|don't|do not|not|avoid)\b|{nt}", " ", t)
-    readers = (read_spacing, read_sleep, read_pace, read_meals, read_running, read_fit_gaps, read_around, read_ahead,
+    readers = (read_spacing, read_spread, read_exam_focus, read_sleep, read_pace, read_meals, read_running,
+               read_fit_gaps, read_around, read_ahead,
                read_optional, read_night_before, read_close, read_cap, read_early, read_free, read_window, read_days,
                read_after, read_deadlines)  # fmt: skip
     # Only these read a condition ("only if I'm ahead", "skip it if there's too much work"); after them, a sentence
@@ -1355,6 +1371,83 @@ def read_spacing(t: str, negated: bool) -> Reading | None:
     return Reading("spacing", subject, amount=round(float(days), 3))
 
 
+SPREAD = r"(?:spread|space|split|break|stretch)(?: (?:up|out))?"
+OVER_DAYS = (
+    r"(?:over|across|between|into|on) (?:a few|a couple of|several|many|multiple|more|different|separate|at least "
+    r"\d+|\d+\+?|two|three|four|five|six|seven)? ?(?:different |separate )?(?:days|sessions on different days|the week)"
+)
+FEW_DAYS = (
+    r"(?:as few days as (?:possible|i can|it can)|(?:as )?few(?:er)? days(?: as possible)?|(?:one|1) or (?:two|2) days"
+    r"|a day or two|the fewest days(?: possible)?)"
+)
+
+
+def read_spread(t: str, negated: bool) -> Reading | None:
+    """Work you name spread over days or kept on few (14 Nov: tasks aren't marked so; a rule says it): `spread my
+    essays over several days`, `space out problem sets` (spread); `keep problem sets on few days`, `cluster
+    readings`, `don't spread essays out` (cluster). Not about all work: spreading that is a built-in rule."""
+    found, kind = None, "spread"
+    if m := re.search(
+        rf"^ ?{SPREAD} (?:out )?(?:all |each |every )?(?:of )?(?:my |the |your )?([a-z][a-z0-9 ]*?)(?: out| up)?"
+        rf"(?: {OVER_DAYS})?(?: (?:before (?:it'?s|they'?re) due|instead of cramming|evenly))? ?$",
+        t,
+    ):
+        found = m[1]
+        said_how = re.search(OVER_DAYS, t) or re.search(rf"^ ?{SPREAD} (?:out|up)\b|\b(?:out|up) ?$", t)
+        if not said_how:
+            return None  # "split essays": into sittings, not days
+        if negated and not re.match(r"^ ?(?:spread|space|stretch)\b", t):
+            return None  # "never split up lab reports": in one sitting, not on few days
+        kind = "cluster" if negated else "spread"
+    elif m := re.search(
+        rf"^ ?(?:keep|do|put|plan|fit|squeeze|pack|cluster|bunch(?: up)?|batch) (?:all )?(?:of )?"
+        rf"(?:my |the |each |every )?([a-z][a-z0-9 ]*?) (?:on|in|into|to|within|over) {FEW_DAYS} ?$",
+        t,
+    ) or re.search(r"^ ?(?:cluster|bunch(?: up)?|clump) (?:my |the )?([a-z][a-z0-9 ]*?)(?: together| up)? ?$", t):
+        if negated:
+            return None
+        found, kind = m[1], "cluster"
+    if found is None:
+        return None
+    subject = subject_of(re.sub(r" writing$", "s", found.strip()))
+    if subject in ("work", "deep work", "light work") or re.search(JUNK_SUBJECT, subject):
+        return None  # all work evenly is a built-in rule ("Spread hard work evenly before it's due")
+    return Reading(kind, subject)  # type: ignore[arg-type]
+
+
+EXAMS = r"(?:an? |the |each |every |my |any |your )?(?:exam|test|prelim|midterm|final)(?:'?s)?"
+FOCUS_DAYS = r"(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten)"
+ONLY_THAT = (
+    r"(?:(?:are |is )?(?:only|study only|studying only) (?:for |study (?:for )?|on )?(?:that|the|its) "
+    r"(?:course|class|subject|exam)s?"
+    r"|nothing but (?:that|the|its) (?:course|class|subject)|drop (?:everything else|other (?:classes|courses|work)))"
+)
+
+
+FOCUS_ON = (
+    rf"^ ?focus (?:only )?on {EXAMS}(?: (?:course|class|subject)s?)?(?: for)?(?: the last)?"
+    rf"(?: (?:the|{FOCUS_DAYS}) (days?))?"
+    rf"(?: (?:before|ahead of|leading up to)(?: (?:it|them|{EXAMS}))?| in the days before (?:it|them))? ?$"
+)
+DAYS_ONLY_FOR = (
+    rf"^ ?(?:for )?(?:the )?(?:last )?(?:{FOCUS_DAYS} )?(days?) (?:before|leading up to) {EXAMS},? {ONLY_THAT} ?$"
+)
+
+
+def read_exam_focus(t: str, negated: bool) -> Reading | None:
+    """Exam focus (14 Nov: a rule, not a setting found only on the Projects page): in the days before an exam, other
+    courses' work due after it waits. `focus on exams 5 days before`, `focus on an exam's course 3 days before it`,
+    `the 2 days before a final are only for that class`, `the day before a midterm, drop everything else`."""
+    if negated:
+        return None
+    m = re.search(FOCUS_ON, t) or re.search(DAYS_ONLY_FOR, t)
+    if m is None:
+        return None
+    n, unit = m[1], m[2]
+    days = (WORD_HOURS.get(n) or (1 if n in ("a", "an") else int(n))) if n else 1 if unit == "day" else 3
+    return Reading("exam_focus", amount=float(days)) if 1 <= days <= 14 else None
+
+
 def read_sleep(t: str, negated: bool) -> Reading | None:
     """At least so many hours of sleep a night, on some nights or all: a floor, never a cap ("no more than 9 hours of
     sleep" isn't something Friday plans); "below" and "under" say the floor too ("don't let work cut my sleep below
@@ -1800,6 +1893,13 @@ def said(r: Reading) -> str:
         return f"Overdue {r.subject} is done {when}, never later"
     if r.kind == "spacing":
         return f"{titled(r.subject)} at least {r.amount:g} {'day' if r.amount == 1 else 'days'} apart"
+    if r.kind == "exam_focus":
+        days = int(r.amount or 3)
+        return f"Focus on an exam's course {'the day' if days == 1 else f'{days} days'} before it"
+    if r.kind == "spread":
+        return f"Spread {r.subject} over several days"
+    if r.kind == "cluster":
+        return f"Keep {r.subject} on as few days as possible"
     if r.kind == "sleep_min":
         on = f" {days_words(r.days)}" if r.days else ""
         return f"At least {r.amount:g} h of sleep a night{on}"
@@ -2041,6 +2141,17 @@ def spec(
         params = {"buffer_min": r.before_min or 0, "inside": inside}
         return {"name": name, "type": "close_to_due", "weight": WEIGHT[strength], "scope": scope or None,
                 "reason": sentence(r), "params": params}  # fmt: skip
+    if r.kind == "exam_focus":  # not a priced rule: the build holds other courses' work back (planner.build)
+        from friday.core.settings import ExamFocus
+
+        params = {"days_before": int(r.amount or 3), "words": list(ExamFocus().words)}
+        return {"name": name, "type": "exam_focus", "weight": 0.0, "scope": None, "reason": sentence(r),
+                "params": params}  # fmt: skip
+    if r.kind in ("spread", "cluster"):  # the engine's measures for the work named, per task (engine/rules/measures)
+        params = {"per_day": 2.0} if r.kind == "cluster" else {}
+        scope = scope_of(r.subject, areas, presets)
+        return {"name": name, "type": r.kind, "weight": WEIGHT[strength] * 3, "scope": scope, "reason": sentence(r),
+                "params": params}  # fmt: skip
     if r.kind == "pace":  # a setting, not a planner rule: `rule_add` writes `pace.weekly`
         return {"name": name, "type": "pace", "weight": 0.0, "scope": None, "reason": sentence(r),
                 "params": {"weekly": dict(r.paces or ())}}  # fmt: skip

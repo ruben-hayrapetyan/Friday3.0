@@ -1249,7 +1249,11 @@ C = [
     ("priority", "if there's a clash, psets beat flashcards", "set:kind_order"),
     ("priority", "when time's short, cut flashcards before problem sets", "set:kind_order"),
     ("priority", "stuff due this week before stuff due next month", "set:short_term_first"),
-    ("priority", "for the 3 days leading up to a final, only study that subject", "set:exam_focus"),
+    (
+        "priority",
+        "for the 3 days leading up to a final, only study that subject",
+        {"kind": "exam_focus", "amount": 3.0},
+    ),
     ("deadlines", "once a reading quiz closes there's no point studying for it", "set:pointless_late"),
     ("deadlines", "if the deadline passes on a discussion post, just drop it", "set:pointless_late"),
     ("sitting", "chunk big assignments across several sessions", "set:sittings"),

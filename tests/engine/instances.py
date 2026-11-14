@@ -41,6 +41,9 @@ EXTRA_RULES = [
     dict(type="pin_hold", name="pins_hold", weight=1, stage="wellbeing", params=dict(price=100)),
     dict(type="close_to_due", name="prep_buffer_kept", weight=1, scope=dict(firmness="hard"),
          params=dict(buffer_min=1440, inside="forbid")),
+    # spread and cluster reach the work a rule names (14 Nov: no task is marked so)
+    dict(type="spread", name="spread_exam_prep", weight=3, scope=dict(preset="Exam prep")),
+    dict(type="cluster", name="cluster_projects", weight=3, scope=dict(preset="Project"), params=dict(per_day=2)),
 ]  # fmt: skip
 MIXED = scales(Dials(capacity=0.8, rest=1.5, spread=2.0, growth=0.5))
 

@@ -40,9 +40,11 @@ def test_nothing_personal_is_shipped() -> None:
 
 def test_reference_rules_match_the_design() -> None:
     names = [r.name for r in DEFAULTS["rules"]]
-    # the design's 21, personal's late_tasks after late_work (COMBINED.md 49), and one course for a stretch (C64)
+    # the design's 21, personal's late_tasks after late_work (COMBINED.md 49), one course for a stretch (C64), less
+    # spread and cluster (14 Nov: a rule you write says those, for the work it names)
     assert (
-        len(names) == 23
+        len(names) == 21
+        and not {"spread", "cluster"} & set(names)
         and "same_course" in names
         and names[:2] == ["late_work", "late_tasks"]
         and names[-1] == "minimize_changes"

@@ -2,6 +2,7 @@
 
 import gzip
 import json
+import re
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -17,13 +18,22 @@ RESEARCH_DAY_ZERO = date(1970, 1, 5)
 OFFSET = 4 * 1440
 
 
-# Parameters added after the research (M14), off as the research had them: a floor under even_load's share and a
-# price on the hour after waking.
-ADDED_SINCE = {"even_load": {"floor": 0}, "late_night": {"morning": 0}}
+# Parameters added after the research (M14), off as the research had them: a floor under even_load's share, a price
+# on the hour after waking, and spreading over the days before a due rather than every day (14 Nov).
+ADDED_SINCE = {"even_load": {"floor": 0}, "late_night": {"morning": 0}, "spread": {"before_due": False}}
 
 
-def research_rules(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [r | {"params": ADDED_SINCE.get(r["type"], {}) | r.get("params", {})} for r in rules]
+def research_rules(rules: list[dict[str, Any]], items: list[dict[str, Any]] = ()) -> list[dict[str, Any]]:  # type: ignore[assignment]
+    return [marked(r, items) | {"params": ADDED_SINCE.get(r["type"], {}) | r.get("params", {})} for r in rules]
+
+
+def marked(rule: dict[str, Any], items: list[dict[str, Any]]) -> dict[str, Any]:
+    """The research's spread and cluster rules reached the tasks marked so; tasks aren't marked any more (14 Nov), so
+    the rule names them by their titles instead: the same tasks, the same costs."""
+    if rule["type"] not in ("spread", "cluster") or rule.get("scope"):
+        return rule
+    titles = sorted({i["title"] for i in items if i.get("spread") == rule["type"]})
+    return rule | {"scope": {"title_regex": [f"^{re.escape(t)}$" for t in titles] or ["(?!)"]}}
 
 
 def fixture_names() -> list[str]:
@@ -61,7 +71,7 @@ def item(raw: dict[str, Any], week_start: int) -> EngineItem:
         progress_by_week={week(int(w), week_start): u for w, u in raw["progress_by_week"].items()},
         release_utc=moment(raw["release"]), due_utc=moment(raw["due"]), window_is_hard=raw["window_is_hard"],
         shape=raw["shape"], min_chunk=raw["min_chunk"], max_chunk=raw["max_chunk"],
-        chunk_cost=raw["chunk_cost"], spread=raw["spread"], size_hours=raw["size_hours"],
+        chunk_cost=raw["chunk_cost"], size_hours=raw["size_hours"],
         tentative=raw["tentative"], allowed=tuple(slots_of(raw["allowed"])),
         locked=frozenset(slots_of(raw["locked"])), preferred=frozenset(slots_of(raw["preferred"])),
         current=frozenset(slots_of(raw["current"])),
@@ -101,7 +111,7 @@ def problem(fixture: dict[str, Any]) -> Problem:
         fixed=fixed,
         nights=nights,
         day_caps=fixture["day_caps"],
-        rules=build_rules(research_rules(fixture["rules"])),
+        rules=build_rules(research_rules(fixture["rules"], fixture["items"])),
         scales=day_scales,
         energy_map=energy_map,
         scale=fixture["scale"],

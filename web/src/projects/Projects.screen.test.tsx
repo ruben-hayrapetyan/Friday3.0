@@ -261,16 +261,31 @@ describe("exams", () => {
     await waitFor(() => expect(window.location.hash).toBe("#/"))
   })
 
-  it("offers to focus on each exam's course before it, and says so once it's on", async () => {
+  it("offers exam focus as a rule, in Rules, and points at the rule once it's on", async () => {
+    // 14 Nov: exam focus is a rule, not a setting this page held: its link opens it in Rules
     const first = await page()
-    await first.user.click(screen.getByRole("button", { name: /Focus on each exam before it/ }))
-    expect(await screen.findByRole("dialog")).toBeTruthy()
+    await first.user.click(screen.getByRole("link", { name: /Focus on each exam before it/ }))
+    await waitFor(() => expect(window.location.hash).toMatch(/^#\/rules\?text=/))
+    expect(((await screen.findByRole("textbox", { name: "New rule" })) as HTMLInputElement).value).toBe("Focus on an exam's course 3 days before it")
+    expect(await screen.findByText("Friday read this as")).toBeTruthy()
     first.unmount()
-    const settings = await friday.q<{ exam_focus: Record<string, unknown> }>("settings")
-    await friday.c("settings_set", { key: "exam_focus", value: { ...settings.exam_focus, on: true, days_before: 3 } })
-    await page()
-    expect(await screen.findByText("Exam focus is on, 3 days before each")).toBeTruthy()
+    await friday.c("rule_add", { text: "focus on exams 3 days before", overrides: {}, strength: "Always" })
+    const second = await page()
+    const link = await screen.findByRole("link", { name: "Exam focus: 3 days before, in Rules" })
+    expect(link.getAttribute("href")).toContain("/rules?edit=you%3Aexam-focus")
     expect(screen.getAllByText(/other courses' work waits until after it\./).length).toBeGreaterThan(0)
+    // changed there, like any rule: its days
+    await second.user.click(link)
+    const days = (await screen.findByRole("spinbutton", { name: "Days before" })) as HTMLInputElement
+    expect(days.value).toBe("3")
+    await second.user.clear(days)
+    await second.user.type(days, "5")
+    expect(await screen.findByText("Focus on an exam's course 5 days before it")).toBeTruthy()
+    await second.user.click(screen.getByRole("button", { name: "Save" }))
+    expect((await waitForSent("rule_edit")).body).toMatchObject({ name: "you:exam-focus", overrides: { amount: 5 } })
+    second.unmount()
+    await page()
+    expect(await screen.findByRole("link", { name: "Exam focus: 5 days before, in Rules" })).toBeTruthy()
   })
 
   it("folds exams more than three weeks off under a line that opens them", async () => {

@@ -6,6 +6,7 @@ rules are there in their words, and Friday has learned from a few answered compa
 Monday 2026-10-19 09:00 in New York, as in test_cornell.py.
 """
 
+import json
 import sqlite3
 from collections.abc import Iterator
 from typing import Any
@@ -114,3 +115,17 @@ def test_their_own_rules_are_there_in_their_words_and_friday_learned_from_answer
     assert 2 <= len(own) == len(STUDENTS[key].rules) <= 5
     learned = ask(conn, "learning")
     assert learned["comparisons"] >= 5 and learned["suggested"]
+
+
+@pytest.mark.parametrize("key", LIVED)
+def test_the_weeks_were_lived_with_the_old_spread_rules_and_today_has_none(
+    lived: dict[str, sqlite3.Connection], key: str
+) -> None:
+    # 14 Nov: tasks aren't marked spread or clustered any more; the sample's weeks are lived as they were, with the two
+    # built-in rules of then, and they're gone today, as migration 034 takes them out of saved rules
+    written = [json.loads(r[0]) for r in lived[key].execute(
+        "SELECT input FROM command_log WHERE command = 'settings_set' ORDER BY id")]  # fmt: skip
+    rules = [w["value"] for w in written if w.get("key") == "rules"]
+    assert any({"spread", "cluster"} <= {r["name"] for r in value} for value in rules)
+    assert not {"spread", "cluster"} & {r["name"] for r in ask(lived[key], "settings")["rules"]}
+    assert not {"spread", "cluster"} & {r["name"] for r in ask(lived[key], "rules")}

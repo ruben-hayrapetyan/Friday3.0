@@ -39,6 +39,11 @@ def test_a_bent_rule_names_what_it_clashes_with_and_where(heavy: App) -> None:
     assert out["other"] != "deep_run"
     assert out["days"] and all(date(2026, 10, 19) <= date.fromisoformat(d) <= date(2026, 10, 25) for d in out["days"])
     assert out["sentence"] and out["other_sentence"]
+    # said in words (14 Nov): "Thu: it clashes with “…”. Which should win?", never "it bends no less"
+    first = f"{date.fromisoformat(sorted(out['days'])[0]):%a}"
+    assert out["said"].startswith(first) and out["said"].endswith(
+        f"clashes with “{out['other_sentence']}”. Which should win?"
+    )
 
 
 def test_a_rule_the_plan_keeps_clashes_with_nothing(app: App) -> None:
