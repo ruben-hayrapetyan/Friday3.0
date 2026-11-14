@@ -526,6 +526,26 @@ test("a reminder reaches Friday with its list and its due as Friday reads it (C1
     check(!(sent["id"] as? String ?? "").isEmpty, "known by its own id")
 }
 
+test("a reminder says which list it's in by the list's id, which a rename keeps (13 Nov)") {
+    let store = EKEventStore()
+    let shopping = EKCalendar(for: .reminder, eventStore: store)
+    shopping.title = "Shopping List"
+    let r = EKReminder(eventStore: store)
+    r.title = "Milk"
+    r.calendar = shopping
+    let sent = RemindersPayload.reminder(r)
+    check(sent["list"] as? String == "Shopping List", "\(sent)")
+    check(sent["list_id"] as? String == shopping.calendarIdentifier && !shopping.calendarIdentifier.isEmpty, "\(sent)")
+    let body = RemindersPayload.body(reminders: [sent], lists: [shopping])
+    let lists = body["lists"] as? [[String: Any]] ?? []
+    check(lists.count == 1 && lists[0]["id"] as? String == shopping.calendarIdentifier, "\(body)")
+    check(lists[0]["title"] as? String == "Shopping List", "\(body)")
+    shopping.title = "Groceries"
+    check(RemindersPayload.list(shopping)["id"] as? String == lists[0]["id"] as? String, "renamed: the same list")
+    let loose = EKReminder(eventStore: store)
+    check(RemindersPayload.reminder(loose)["list_id"] as? String == "", "in no list: none")
+}
+
 test("done or opened again in Friday is made on the reminder, once, and a refusal said (C100)") {
     let r = EKReminder(eventStore: EKEventStore())
     var saved = 0

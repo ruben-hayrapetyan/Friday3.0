@@ -465,7 +465,7 @@ VERBS = {
         commands.ListsInput,
         False,
         False,
-        "The service's to-do lists, asked of it now, each with whether it's read and what it brought in.",
+        "The service's to-do lists, asked of it now, each with whether it's read and what it brought in (Apple",
     ),
     "integration_set": Verb("POST", "/api/c/integration_set", commands.ArrivalInput, True, False, "integration_set"),
     "integration_sign_in": Verb(

@@ -11364,7 +11364,7 @@
   },
   "/api/q/integration_lists": {
    "get": {
-    "summary": "The service's to-do lists, asked of it now, each with whether it's read and what it brought in.",
+    "summary": "The service's to-do lists, asked of it now, each with whether it's read and what it brought in (Apple",
     "operationId": "integration_lists",
     "parameters": [
      {
@@ -15605,6 +15605,16 @@
      "lists": {
       "type": "boolean",
       "title": "Lists",
+      "default": false
+     },
+     "off_removes": {
+      "type": "boolean",
+      "title": "Off Removes",
+      "default": false
+     },
+     "reading": {
+      "type": "boolean",
+      "title": "Reading",
       "default": false
      },
      "signs_in": {
@@ -21718,6 +21728,26 @@
     "title": "MacEvent",
     "description": "One occurrence of an event on the Mac: timed with an offset (\"2026-10-23T09:00:00-04:00\"), or whole days with\nthe end the day after the last (\"2026-10-23\" to \"2026-10-24\"), as Google gives them."
    },
+   "MacList": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "title"
+    ],
+    "title": "MacList",
+    "description": "One of your lists in Reminders: EventKit's calendarIdentifier, which stays when the list is renamed."
+   },
    "MacPlanBlock": {
     "properties": {
      "key": {
@@ -21820,6 +21850,11 @@
      "list": {
       "type": "string",
       "title": "List",
+      "default": ""
+     },
+     "list_id": {
+      "type": "string",
+      "title": "List Id",
       "default": ""
      },
      "url": {
@@ -26501,7 +26536,14 @@
      },
      "lists": {
       "items": {
-       "type": "string"
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/MacList"
+        },
+        {
+         "type": "string"
+        }
+       ]
       },
       "type": "array",
       "title": "Lists",

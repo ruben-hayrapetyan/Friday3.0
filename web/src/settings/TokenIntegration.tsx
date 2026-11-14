@@ -71,9 +71,20 @@ export function Arrivals({ value, onPick }: { value: Arrival; onPick: (value: Ar
   )
 }
 
+/** How often the connected integrations are asked again while one is being read for the first time (its spinner
+ * turns into what it read), or while a sign-in page is open (`waiting`); otherwise not. */
+export const READING_POLL_MS = 1500
+export const pollWhile = (waiting: boolean) => (q: { state: { data?: Connected[] } }) =>
+  waiting || (q.state.data ?? []).some((c) => c.reading) ? READING_POLL_MS : false
+
 /** What's connected now, by integration kind (several accounts of one service each have a row). */
 export function useIntegrations() {
-  return useQuery({ queryKey: ["integrations"], queryFn: () => query("integrations") as Promise<Connected[]> })
+  return useQuery({ queryKey: ["integrations"], queryFn: () => query("integrations") as Promise<Connected[]>, refetchInterval: pollWhile(false) })
+}
+
+/** A small turning circle, for work under way (a first read); the words beside it say what. */
+export function Spinner() {
+  return <span className="fr-spinner" data-spinner aria-hidden="true" />
 }
 
 /** Outlook (C109): the mailboxes read by Microsoft's sign-in, each with Remove, and Sign in to add one. */
@@ -106,7 +117,7 @@ export function OutlookMail({ entry }: { entry: Entry }) {
 export function TokenIntegration({ entry }: { entry: Entry }) {
   const [waiting, setWaiting] = useState(false)
   // while a sign-in page is open in the browser, asked every few seconds: the box turns connected once you're back
-  const all = useQuery({ queryKey: ["integrations"], queryFn: () => query("integrations") as Promise<Connected[]>, refetchInterval: waiting ? 3000 : false })
+  const all = useQuery({ queryKey: ["integrations"], queryFn: () => query("integrations") as Promise<Connected[]>, refetchInterval: pollWhile(waiting) })
   const mine = (all.data ?? []).filter((c) => c.kind === entry.id)
   useEffect(() => {
     if (waiting && mine.length > 0) setWaiting(false) // connected: stop asking
@@ -379,8 +390,9 @@ function MacConnect({ entry }: { entry: Entry }) {
 
 type TodoList = Schemas["TodoListOut"]
 
-/** Which of its lists Friday reads (Notion's databases, C101): a switch each; a team's says only yours come in; one
- * switched off that brought to-dos in asks, as Disconnect does, whether they stay. */
+/** Which of its lists Friday reads (Notion's databases, C101; Apple Reminders' lists): a switch each; a team's says
+ * only yours come in; one switched off that brought to-dos in asks, as Disconnect does, whether they stay. Reminders
+ * doesn't ask (your answer, 13 Nov): a list switched off leaves Friday at once, and comes back switched on again. */
 function Lists({ c }: { c: Connected }) {
   const client = useQueryClient()
   const key = ["integration_lists", c.id]
@@ -388,20 +400,25 @@ function Lists({ c }: { c: Connected }) {
   const set = useCommand("integration_list_set", { label: () => "Saved" })
   const [leaving, setLeaving] = useState<TodoList | null>(null)
   const flip = async (t: TodoList, on: boolean, keep = true) => {
-    client.setQueryData<TodoList[]>(key, (old) => old?.map((x) => (x.id === t.id ? { ...x, on } : x))) // at once
+    // at once; one that takes its to-dos out of Friday has none in your plan from then on
+    const leaves = !on && (c.off_removes || !keep)
+    client.setQueryData<TodoList[]>(key, (old) => old?.map((x) => (x.id === t.id ? { ...x, on, made: leaves ? 0 : x.made } : x)))
     setLeaving(null)
-    const out = await set({ id: c.id, list: t.id, on, keep })
+    const out = await set({ id: c.id, list: t.id, on, keep: c.off_removes ? false : keep })
     // refused: back as it was (audit, 12 Nov: the switch stayed flipped, this query isn't one a command takes back)
-    if (!out) client.setQueryData<TodoList[]>(key, (old) => old?.map((x) => (x.id === t.id ? { ...x, on: t.on } : x)))
+    if (!out) client.setQueryData<TodoList[]>(key, (old) => old?.map((x) => (x.id === t.id ? t : x)))
     return out
   }
   const lists = found.data ?? []
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <span style={{ fontWeight: 500, fontSize: 13 }}>Lists Friday reads</span>
+      {c.off_removes && <span className="fr-kicker" style={{ textWrap: "pretty" }}>A list switched off leaves Friday at once; its to-dos stay in {c.name}. Switch it on again to bring them back.</span>}
       {found.isLoading && <span className="fr-kicker">Asking {c.name} for your lists…</span>}
       {found.error && <span style={{ fontSize: 13, color: "var(--fr-warn)" }}>{String((found.error as Error).message ?? found.error)}</span>}
-      {found.data && lists.length === 0 && <span className="fr-kicker">No to-do lists yet: a database with a Done checkbox or a Status is one.</span>}
+      {found.data && lists.length === 0 && (
+        <span className="fr-kicker">{c.off_removes ? `Your lists show here once Friday's Mac app has read ${c.name}.` : "No to-do lists yet: a database with a Done checkbox or a Status is one."}</span>
+      )}
       {lists.map((t) => (
         <div key={t.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", alignItems: "center", gap: 10, padding: "6px 0" }}>
           <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
@@ -410,7 +427,7 @@ function Lists({ c }: { c: Connected }) {
               {[t.team ? "A team's list: only what's assigned to you" : null, t.made ? `${t.made} in your plan` : null].filter(Boolean).join(" · ") || (t.on ? "Read" : "Not read")}
             </span>
           </span>
-          <Switch on={t.on} label={`Read ${t.name}`} onToggle={() => (t.on && t.made > 0 ? setLeaving(t) : flip(t, !t.on))} />
+          <Switch on={t.on} label={`Read ${t.name}`} onToggle={() => (t.on && t.made > 0 && !c.off_removes ? setLeaving(t) : flip(t, !t.on))} />
         </div>
       ))}
       {leaving && (
@@ -444,9 +461,16 @@ function ConnectedRow({ c }: { c: Connected }) {
   const [leaving, setLeaving] = useState(false)
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <span style={{ fontSize: 13, color: c.last_error ? "var(--fr-warn)" : undefined }}>
-        {c.last_error ?? (c.last_sync ? `Read ${when(c.last_sync, today)}: ${c.made} open to-do${c.made === 1 ? "" : "s"} from it in your plan.` : "Connected: reading it within the minute.")}
-      </span>
+      {c.reading && !c.last_error ? (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+          <Spinner />
+          Reading {c.name} for the first time…
+        </span>
+      ) : (
+        <span style={{ fontSize: 13, color: c.last_error ? "var(--fr-warn)" : undefined }}>
+          {c.last_error ?? (c.last_sync ? `Read ${when(c.last_sync, today)}: ${c.made} open to-do${c.made === 1 ? "" : "s"} from it in your plan.` : "Connected: reading it within the minute.")}
+        </span>
+      )}
       {PRIVACY_PAGE[c.kind] && c.last_error?.includes("Privacy & Security") && (
         <a className="btn btn-secondary" href={PRIVACY_PAGE[c.kind][0]} style={{ fontSize: 12, alignSelf: "flex-start" }}>
           {PRIVACY_PAGE[c.kind][1]}

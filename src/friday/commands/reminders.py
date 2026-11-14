@@ -16,7 +16,6 @@ from friday.commands.registry import Ctx, command, query
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.integrations import sync
-from friday.planner.store import kv_set
 
 DENIED = "macOS didn't let Friday read your reminders: System Settings → Privacy & Security → Reminders → Friday"
 SAID = {  # macOS saying no, and the app not being there, by kind
@@ -44,9 +43,10 @@ def reminders_sync(ctx: Ctx, inp: RemindersSyncInput) -> Changed:
     if inp.denied or inp.missing:
         ctx.db.update("sources", {"id": source["id"]}, {"last_error": SAID[inp.kind][0 if inp.denied else 1]})
         return Changed(message=f"Waiting for {connector.name}")
-    sent = {"at": ctx.now_text, "lists": inp.lists, "reminders": [r.model_dump() for r in inp.reminders]}
+    lists = [x if isinstance(x, str) else x.model_dump() for x in inp.lists]  # Things' by title, Reminders' by id
+    sent = {"at": ctx.now_text, "lists": lists, "reminders": [r.model_dump() for r in inp.reminders]}
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": connector.kv}, {"value": json.dumps(sent)})
-    kv_set(ctx.conn, "integrations_now", True, ctx.user_id)
+    sync.read_soon(ctx.conn, ctx.user_id)
     n = len(inp.reminders)
     return Changed(message=f"Read {n} to-do{'' if n == 1 else 's'} from {connector.name}")
 

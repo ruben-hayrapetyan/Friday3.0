@@ -2904,7 +2904,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The service's to-do lists, asked of it now, each with whether it's read and what it brought in. */
+        /** The service's to-do lists, asked of it now, each with whether it's read and what it brought in (Apple */
         get: operations["integration_lists"];
         put?: never;
         post?: never;
@@ -4596,6 +4596,16 @@ export interface components {
              * @default false
              */
             lists?: boolean;
+            /**
+             * Off Removes
+             * @default false
+             */
+            off_removes?: boolean;
+            /**
+             * Reading
+             * @default false
+             */
+            reading?: boolean;
             /**
              * Signs In
              * @default false
@@ -6620,6 +6630,16 @@ export interface components {
              */
             location?: string;
         };
+        /**
+         * MacList
+         * @description One of your lists in Reminders: EventKit's calendarIdentifier, which stays when the list is renamed.
+         */
+        MacList: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+        };
         /** MacPlanBlock */
         MacPlanBlock: {
             /** Key */
@@ -6671,6 +6691,11 @@ export interface components {
              * @default
              */
             list?: string;
+            /**
+             * List Id
+             * @default
+             */
+            list_id?: string;
             /** Url */
             url?: string | null;
             /**
@@ -8242,7 +8267,7 @@ export interface components {
              * Lists
              * @default []
              */
-            lists?: string[];
+            lists?: (components["schemas"]["MacList"] | string)[];
             /**
              * Denied
              * @default false
