@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import type { Item } from "@/api/client"
+import type { Block, Item } from "@/api/client"
 import { addHint, fillFor, grouped, plural, progress } from "./groups"
 
 const item = (id: number, over: Partial<Item>): Item =>
@@ -52,5 +52,18 @@ describe("to-do groups", () => {
   it("reads progress as done of total", () => {
     expect(progress(item(1, { done_min: 120, remaining_min: 240 }))).toEqual({ pct: 33, text: "2h of 6h" })
     expect(progress(item(2, { amount: "open" })).text).toBe("Fills free time")
+  })
+})
+
+describe("a project in the to-do list", () => {
+  // 13 Nov: no blocks of its own, it went by its due, after the work its steps had planned sooner
+  it("goes where its steps are planned, though they're in another list", () => {
+    const project = item(10, { title: "CDJ Article", due: "2026-11-23T17:00" })
+    const step = item(11, { parent_id: 10, long_term: true })
+    const blocks = [{ item_id: 11, start: "2026-11-14T12:15", end: "2026-11-14T13:15", key: "", title: "" }] as Block[]
+    const [today] = grouped([project], blocks, "2026-11-14", "When", "Next up", [], [project, step]).filter((g) => g.items.length)
+    expect([today.name, today.items.map((i) => i.id)]).toEqual(["Today", [10]])
+    // without the steps to look at, it went by its due: next week, "Later"
+    expect(grouped([project], blocks, "2026-11-14", "When", "Next up").find((g) => g.items.length)?.name).toBe("Later")
   })
 })

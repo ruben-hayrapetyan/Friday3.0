@@ -7,12 +7,23 @@ import { addDays, toMin } from "./time"
 export const SECTIONS = ["Today", "This week", "Later", "Someday", "Ongoing", "Waiting on"] as const
 export type Section = (typeof SECTIONS)[number]
 
-export function nextBlocks(blocks: Block[]): Map<number, Block> {
+/** Each item's next block. With `items`, a project's is the soonest of its steps': the planner plans the steps, never
+ * the project, so it had no block of its own and its row read "not planned" while its steps were (13 Nov). */
+export function nextBlocks(blocks: Block[], items: Item[] = []): Map<number, Block> {
+  const parent = new Map(items.map((i) => [i.id, i.parent_id ?? null]))
   const out = new Map<number, Block>()
   for (const b of [...blocks].sort((x, y) => x.start.localeCompare(y.start))) {
-    if (!out.has(b.item_id)) out.set(b.item_id, b)
+    // the block's own item, then each project it's a step of (a loop can't be saved; `seen` guards all the same)
+    for (let at: number | null = b.item_id, seen = 0; at != null && seen < 32; at = parent.get(at) ?? null, seen++) {
+      if (!out.has(at)) out.set(at, b)
+    }
   }
   return out
+}
+
+/** The project an item is a step of, when it's one of `items`. */
+export function projectOf(item: Pick<Item, "parent_id">, items: Item[]): Item | undefined {
+  return item.parent_id == null ? undefined : items.find((i) => i.id === item.parent_id)
 }
 
 export function sectionOf(item: Item, next: Block | undefined, today: string): Section {
@@ -43,7 +54,7 @@ export function nextOccurrences(items: Item[], next: Map<number, Block>): { item
 export type Row = { item: Item; more: number }
 
 export function sections(items: Item[], blocks: Block[], today: string): Record<Section, Row[]> {
-  const next = nextBlocks(blocks)
+  const next = nextBlocks(blocks, items)
   const out = Object.fromEntries(SECTIONS.map((s) => [s, [] as Row[]])) as Record<Section, Row[]>
   for (const row of nextOccurrences(items, next)) out[sectionOf(row.item, next.get(row.item.id), today)].push(row)
   for (const rows of Object.values(out)) rows.sort((a, b) => order(a.item, next) - order(b.item, next) || a.item.id - b.item.id)

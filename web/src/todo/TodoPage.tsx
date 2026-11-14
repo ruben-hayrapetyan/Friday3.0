@@ -19,6 +19,7 @@ import { DueLabel } from "@/components/DueLabel"
 import { useClock } from "@/hooks/useClock"
 import { dur, lateBy, when } from "@/lib/format"
 import { nextBlocks } from "@/lib/todo"
+import { ProjectName } from "@/projects/StepOf"
 import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { pigment } from "@/lib/pigments"
@@ -95,7 +96,7 @@ export function TodoPage() {
   const status = useStatus().data
   const solving = !!status && status.plan_generation !== null && status.plan_generation < status.generation
   const always = by === "Kind" ? (list === "Short term" ? [...KINDS_FIRST.filter((k) => k !== "Exam prep"), OTHER] : [OTHER]) : by === "Tag" ? ["No tag"] : []
-  const groups = grouped(items, blocks, today, by, sort, list === "Due" ? [] : always)
+  const groups = grouped(items, blocks, today, by, sort, list === "Due" ? [] : always, all)
   const compact = look.todoRows === "Compact"
   const RowOf = compact ? CompactRow : Row
   const added = (id: number) => setFresh((was) => [...was, id])
@@ -309,7 +310,7 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging }: R
   const now = useNow().data
   const done = useCommand("done", { label: () => `${item.title}: done` })
   const reopen = useCommand("reopen", { label: () => `${item.title}: open again` })
-  const next = nextBlocks(blocks).get(item.id)
+  const next = nextBlocks(blocks, useAllItems(false).data).get(item.id) // a project's: its steps' soonest
   const isNow = now?.current?.item_id === item.id
   const alert = now?.alerts.find((a) => a.item_id === item.id)
   const late = useStatus().data?.late_items?.find((l) => l.item_id === item.id)
@@ -392,6 +393,7 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging }: R
             {item.area}
           </span>
         )}
+        <ProjectName item={item} style={{ flex: "0 0.4 auto", minWidth: 52, maxWidth: "40%", fontSize: 11.5, color: "var(--color-neutral-400)" }} />
         {by !== "Kind" && <span style={{ fontSize: 11.5, color: "var(--color-neutral-500)", flex: "none" }}>{item.preset ?? ""}</span>}
       </span>
       <span className="tnum fr-mono fr-todo-meta" style={{ display: "flex", alignItems: "center", gap: 12, paddingLeft: 12, paddingRight: 6 }}>
@@ -488,7 +490,7 @@ function Row({ item, fresh, selected, picked, onSelect, dragging }: RowProps) {
   const now = useNow().data
   const done = useCommand("done", { label: () => `${item.title}: done` })
   const reopen = useCommand("reopen", { label: () => `${item.title}: open again` })
-  const next = nextBlocks(blocks).get(item.id)
+  const next = nextBlocks(blocks, useAllItems(false).data).get(item.id) // a project's: its steps' soonest
   const isNow = now?.current?.item_id === item.id
   const alert = now?.alerts.find((a) => a.item_id === item.id)
   const late = useStatus().data?.late_items?.find((l) => l.item_id === item.id)
@@ -538,6 +540,7 @@ function Row({ item, fresh, selected, picked, onSelect, dragging }: RowProps) {
               {item.area}
             </span>
           )}
+          <ProjectName item={item} style={{ maxWidth: "100%" }} />
           {alert && !late && <StartBy alert={alert} today={today} />}
         </span>
       </div>
