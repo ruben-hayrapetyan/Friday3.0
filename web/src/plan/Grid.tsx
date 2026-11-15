@@ -15,7 +15,7 @@ import { moveBlock, retimeEvent } from "@/hooks/useDrop"
 import { useGhosts, useItems, useMeals, useNow, useStatus } from "@/hooks/queries"
 import { movedSince } from "@/lib/drag"
 import { clock, hms, weekday, when } from "@/lib/format"
-import { type Axis, addDays, fitAxis, fromMin, hourMarks, layout, nowSpan, type Placed, type Span, toMin } from "@/lib/time"
+import { type Axis, addDays, fitAxis, fromMin, hourMarks, hoursByDate, layout, nowSpan, type Placed, type Span, toMin } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
 import { useLook } from "@/theme/LookProvider"
 import { draftAt, draftOf } from "@/shell/EventPane"
@@ -26,7 +26,7 @@ import { useGlide } from "./glide"
 import { type TrialPlan, useWhatIf, whatIf } from "@/whatif/store"
 import { asBlock, BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, PX, SleepBand, type TriedLook } from "./Pieces"
 import { inARow, type Pick, pickOfBlock, pickOfEvent, picks, shifted, usePicks } from "./picks"
-import { layers } from "./layers"
+import { givesTimeToWork, layers, sideBySide } from "./layers"
 import { WholeDays } from "./WholeDays"
 import { eatenRoutines, pastMeals } from "./pastMeals"
 import { isWholeDay } from "./wholeDay"
@@ -73,6 +73,8 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const pickedKeys = new Set(picked.map((p) => p.key))
   const multi = (e?: React.MouseEvent) => !!e && (e.metaKey || e.ctrlKey || e.shiftKey)
   const now = useClock()
+  // Today's column is the calendar's date, turning at midnight; planning's day runs on to your day start (15 Nov)
+  const dated = fromMin(now).slice(0, 10)
   const { look } = useLook()
   const allDay24 = look.hours === "All day"
   // The due row under the dates (plan/DueRow.tsx) steps aside while the to-do drawer is out: the full list is showing.
@@ -107,7 +109,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const navigate = useNavigate()
   const sessions = (plan.sessions ?? []).filter((s) => !eaten.has(s.item_id))
   const shown = plan.blocks.filter((b) => b.state !== "timed" && b.state !== "gone" && !eaten.has(b.item_id))
-  const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : fitAxis({ startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }, [...fixed, ...plan.blocks, ...sessions, ...mealBlocks, ...nowSpan(now, calendar.today, dates)], dates)
+  const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : fitAxis({ startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }, [...fixed, ...plan.blocks, ...sessions, ...mealBlocks, ...nowSpan(now, dated, dates)], dates)
   const panel = useRef<HTMLDivElement>(null)
   useGlide(panel, plan, dates.join())
   // All 24 hours open at the wake time, as a paper calendar opens at the morning.
@@ -119,7 +121,9 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const planned = new Set(plan.blocks.map((b) => b.key))
   const news = ghosts.filter((g) => !planned.has(g.key))
   // The same time of day in every column: strong on today, faint on the others.
-  const nowAt = now - toMin(calendar.today) - axis.startMin
+  const nowAt = now - toMin(dated) - axis.startMin
+  // The day headers' hours by calendar date, as the columns show them: work over midnight counts on each side of it
+  const hours = hoursByDate(plan.blocks)
   const cols = `52px repeat(${dates.length}, minmax(0,1fr))`
   return (
     <div
@@ -132,7 +136,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
       <div style={{ position: "sticky", top: 0, zIndex: 4, display: "grid", gridTemplateColumns: cols, background: "var(--color-surface)" }}>
         <div />
         {dates.map((date) => (
-          <DayHead key={date} date={date} day={days.get(date)} hours={plan.day_hours[date] ?? 0} isToday={date === calendar.today} dues={lanes ? [] : calendar.dues} />
+          <DayHead key={date} date={date} day={days.get(date)} hours={hours[date] ?? 0} isToday={date === dated} dues={lanes ? [] : calendar.dues} />
         ))}
         <WholeDays events={allDay} dates={dates} />
         {lanes && <DueRow dues={calendar.dues} dates={dates} cols={cols} />}
@@ -179,6 +183,8 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
               onResize={stays(p.item) ? undefined : (e, edge) => (letGo(p.item), begin(e, grabbedEvent(p.item, edge === "top" ? "resize-top" : "resize", minuteAt(e))))}
             />
           )
+          // A dashed event, which lets work over it, beside the work rather than under it (plan/layers.ts)
+          const placed = sideBySide(going, [...shown, ...sessions, ...mealBlocks], date, axis, givesTimeToWork)
           return (
             <div
               key={date}
@@ -204,9 +210,9 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
             >
               <Nights date={date} days={days} axis={axis} />
               {layout(notGoing, date, axis).map((p) => fixedBox(p))}
-              {layout(going, date, axis).map((p) => fixedBox(p))}
+              {placed.events.map((p) => fixedBox(p))}
               {event && !event.allDay && layout([event], date, axis).map((p) => <DraftBox key="draft" p={p} title={event.title} />)}
-              {layout([...shown, ...sessions, ...mealBlocks], date, axis).map((p) =>
+              {placed.blocks.map((p) =>
                 p.item.key.startsWith("M") ? (
                   // A meal you ate: a done Lunch where you had it, opening Insights → Meals to change it.
                   <BlockBox
@@ -254,10 +260,11 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                 <GhostBox key={`g${p.item.key}`} p={p} />
               ))}
               {drag?.moved && drag.at && drag.over === "calendar" && (drag.group || drag.rows ? <GroupPreview drag={drag} list={picked} date={date} axis={axis} /> : <Preview drag={drag} date={date} axis={axis} today={today} />)}
-              {timer && date === calendar.today && nowData?.current_source === "timer" && (
-                <TimerBox title={nowData.current?.title ?? ""} top={(now - elapsed / 60 - toMin(date) - axis.startMin) * PX} seconds={elapsed} />
+              {timer && date === dated && nowData?.current_source === "timer" && (
+                // begun before midnight: drawn from the top of today's column
+                <TimerBox title={nowData.current?.title ?? ""} top={Math.max(0, now - elapsed / 60 - toMin(date) - axis.startMin) * PX} seconds={elapsed} shown={Math.min(elapsed / 60, now - toMin(date) - axis.startMin)} />
               )}
-              {nowAt >= 0 && nowAt <= axis.endMin - axis.startMin && <NowLine top={nowAt * PX} today={date === calendar.today} />}
+              {nowAt >= 0 && nowAt <= axis.endMin - axis.startMin && <NowLine top={nowAt * PX} today={date === dated} />}
             </div>
           )
         })}
@@ -268,8 +275,8 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
 
 /** What you're timing, from when you started to now: drawn from the timer itself, so it shows even when the plan
  * has no quarter hour for it (a few minutes before class). */
-function TimerBox({ title, top, seconds }: { title: string; top: number; seconds: number }) {
-  const minutes = seconds / 60
+function TimerBox({ title, top, seconds, shown }: { title: string; top: number; seconds: number; shown: number }) {
+  const minutes = shown // the minutes of it in this column
   return (
     <div
       style={{

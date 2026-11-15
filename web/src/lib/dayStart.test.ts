@@ -33,11 +33,11 @@ describe("what follows it", () => {
     expect(when("2026-10-27T04:00", "2026-10-20")).toBe("Tue 27 Oct 4am") // a week off: with its date
   })
 
-  it("the calendar puts 5am with the night before when the day starts at 6am, and never opens before 6am", () => {
+  it("the calendar opens at 12am for 5am when the day starts at 6am: the night's small hours; 6am opens at 6am", () => {
     setDayStart("06:00")
     const week = ["2026-10-26", "2026-10-27"]
-    // 5am Tuesday is Monday night: Monday's end stretches to 6am the next morning (30h), Tuesday's start stays
-    expect(fitAxis(axis, [block("2026-10-27T05:00", "2026-10-27T05:30")], week)).toEqual({ startMin: axis.startMin, endMin: 30 * 60 })
+    // 15 Nov: 5am Tuesday is under Tuesday's date, in the night's small hours, so the columns open at 12am
+    expect(fitAxis(axis, [block("2026-10-27T05:00", "2026-10-27T05:30")], week)).toEqual({ startMin: 0, endMin: axis.endMin })
     expect(fitAxis(axis, [block("2026-10-26T06:00", "2026-10-26T07:00")], week).startMin).toBe(360)
   })
 

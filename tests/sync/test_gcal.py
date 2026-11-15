@@ -30,8 +30,10 @@ def classes() -> list[dict]:
     ]
 
 
-def read(app: App, google: FakeGoogle, trusted: bool, minutes_later: int = 0) -> None:
-    app.do("settings_set", key="gcal", value={"read": ["Classes"], "trusted": ["Classes"] if trusted else []})
+def read(app: App, google: FakeGoogle, trusted: bool, minutes_later: int = 0, all_day: bool | None = False) -> None:
+    """All-day events left out unless `all_day` (None: as a new user has it, in since 15 Nov)."""
+    said = {} if all_day is None else {"include_all_day": all_day}
+    app.do("settings_set", key="gcal", value={"read": ["Classes"], "trusted": ["Classes"] if trusted else []} | said)
     sync(app.conn, app.now_utc + minutes_later, google=google)
 
 
@@ -40,10 +42,17 @@ def fixed(app: App) -> list[tuple[str, str]]:
     return [(i["title"], i["start_utc"]) for i in app.table("items") if i["status"] == "todo"]
 
 
-def test_a_trusted_calendars_events_go_in_and_declined_or_all_day_ones_dont(app: App) -> None:
-    read(app, FakeGoogle({"Classes@group": classes()}), trusted=True)
-    assert fixed(app) == [("CS 1110 Lecture", "2026-10-20T14:00Z"), ("CS 1110 Lecture", "2026-10-22T14:00Z")]
+def test_a_trusted_calendars_events_go_in_and_declined_ones_dont(app: App) -> None:
+    read(app, FakeGoogle({"Classes@group": classes()}), trusted=True, all_day=None)
+    assert fixed(app) == [("CS 1110 Lecture", "2026-10-20T14:00Z"), ("CS 1110 Lecture", "2026-10-22T14:00Z"),
+                          ("Fall break", "2026-10-26T04:00Z")]  # fmt: skip
+    assert [i["blocks_time"] for i in app.table("items") if i["title"] == "Fall break"] == [0]  # all day, never busy
     assert app.do("inbox")["suggestions"] == []
+
+
+def test_all_day_ones_left_out_when_you_say_so(app: App) -> None:
+    read(app, FakeGoogle({"Classes@group": classes()}), trusted=True, all_day=False)
+    assert "Fall break" not in {title for title, _ in fixed(app)}
 
 
 def test_a_cancelled_event_drops_the_item_it_made(app: App) -> None:

@@ -72,11 +72,12 @@ def test_each_calendar_is_read_as_its_kind_and_repeats_wait_in_repeating(app: Ap
         assert waiting[course]["kind"] == "Class" and waiting[course]["calendar"] == "4. School"
     assert waiting["MATH 1920, Lecture"]["pattern"] == "Every Mon, Wed and Fri, 11:15am–12:05pm"
     assert waiting["Gym"]["kind"] == "Event" and waiting["CHEM Reading Response"]["kind"] == "Assignment"
-    assert app.do("inbox")["repeats"] == len(waiting) == 13
+    assert waiting["Sam's Birthday"]["kind"] == "Event"  # all day, yearly: in since 15 Nov
+    assert app.do("inbox")["repeats"] == len(waiting) == 14
     kinds = {title: s["input"]["preset"] for title, s in rows(app).items()}
     assert not set(kinds) & set(waiting)
     assert kinds["CHEM Prelim 2"] == "Exam" and kinds["Prep: CHEM Prelim 2"] == "Exam prep"
-    assert kinds["Prep: MATH Quiz 2"] == "Exam prep" and "MATH Quiz 2" not in kinds
+    assert kinds["Prep: MATH Quiz 2"] == "Exam prep" and kinds["MATH Quiz 2"] == "Exam"  # all day, at the top
     assert kinds["Math HW8"] == kinds["PHYS Project Proposal (TWR)"] == "Assignment"
     assert rows(app)["PHYS 1110 Light Intensity Lab"]["input"]["due"].endswith("T23:30")  # the small model's title
     assert kinds["Startup Recruitment Expo"] == "Event" and kinds["Dentist"] == "Appointment"

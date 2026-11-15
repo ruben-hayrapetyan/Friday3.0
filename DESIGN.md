@@ -48,7 +48,7 @@ A native mobile app; an in-app agent; editing through Google Calendar; multi-use
 | Flexible item | An item Friday places (work, errands, meals within a window) |
 | Unit | 15 minutes; the unit of all durations in the engine |
 | Slot | One cell of the scheduler's grid: 15 minutes in the fine zone, 30 minutes in the coarse zone |
-| Planning day | From `day_start` (04:00) to the next day's 04:00, so 01:00 work counts as the night before |
+| Planning day | From `day_start` (04:00) to the next day's 04:00, so 01:00 work counts as the night before. The calendar draws by date: 01:00 is under the next date's column, and work over midnight is two pieces (15 Nov) |
 | Horizon | The scheduler's detailed window (default 14 planning days from now). The allocator looks further (default 12 weeks) |
 | Block | One run of consecutive slots of one item in a plan. Its key is `item_id@start` and is stable across plans |
 | Plan | All blocks from one scheduler run. One plan is current. A **provisional** plan is the executor's instant preview |
@@ -1770,10 +1770,11 @@ Calendar (read and publish); M10c Gmail; M10d MCP and webhooks. Each ends with i
   assignment feed), becomes an assignment due at its start. `VTODO`s with `DUE` become assignments.
 - **Google Calendar read** (`sync/gcal.py`): the calendars you pick are read, from yesterday to `allocator_weeks`
   ahead (a paper due in five weeks on Canvas is paced from now, M15), every `poll_min` with sync tokens into
-  fixed items marked with their calendar; events you decline are left out; all-day events are left out unless the
-  calendar is set to include them (as `blocks_time = 0`). A repeating event's rule (yearly, monthly, weekly on
-  some days) is read from the event its instances come from, and kept with them for Repeating; when it can't be
-  read, the weekdays of its instances stand in.
+  fixed items marked with their calendar; events you decline are left out; all-day events come in as
+  `blocks_time = 0`, in the all-day strip (`gcal.include_all_day`, on by default since 15 Nov, for Mac calendars
+  and calendar links too). A repeating event's rule (yearly, monthly, weekly on some days) is read from the event
+  its instances come from, and kept with them for Repeating; when it can't be read, the weekdays of its instances
+  stand in.
 - **Trusted sources** (a per-source switch, off by default): their fixed events go straight in as fixed items
   (as `actor = "sync:<source>"`, logged and undoable); anything that isn't a fixed event still goes to the inbox.
 

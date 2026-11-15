@@ -101,7 +101,8 @@ def test_without_a_key_or_answer_the_rules_sort_and_a_failure_shows_on_the_calen
 ) -> None:
     monkeypatch.setattr(llm, "client", lambda *_: None)
     read(app, {"5. Homework": HOMEWORK})
-    assert inbox(app)["CHEM Prelim 2"]["preset"] == "Exam" and "PHYS Project Proposal (TWR)" not in inbox(app)
+    assert inbox(app)["CHEM Prelim 2"]["preset"] == "Exam"
+    assert inbox(app)["PHYS Project Proposal (TWR)"]["preset"] == "Event"  # all day, no due word: a whole-day event
 
     class Down(Sorter):
         def create(self, **request: Any) -> Any:

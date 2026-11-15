@@ -8,7 +8,7 @@ import { useClock } from "@/hooks/useClock"
 import { useCalendar } from "@/hooks/queries"
 import { clock, weekday } from "@/lib/format"
 import { eventPaint } from "@/lib/pigments"
-import { addDays, toMin } from "@/lib/time"
+import { addDays, fromMin, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { draftOf } from "./EventPane"
 import { useShell } from "./ShellContext"
@@ -26,12 +26,14 @@ interface Entry {
 }
 
 export function DayAgenda() {
-  const { today, agendaDay, select, setEvent } = useShell()
+  const { agendaDay, select, setEvent } = useShell()
   const { color, light } = useLook()
+  const now = useClock()
+  // Today is the calendar's date, turning at midnight (15 Nov), as the calendar's columns are
+  const today = fromMin(now).slice(0, 10)
   const day = agendaDay ?? today
   const calendar = useCalendar(day, 1).data
   const plan = useShownPlan(`${day}T00:00`, `${addDays(day, 1)}T00:00`, { quiet: true }).data
-  const now = useClock()
   const entries = agendaOf(day, plan, calendar)
   const nowAt = day === today ? entries.findIndex((e) => e.sort !== "allday" && toMin(e.end ?? e.start) > now) : -1
   const title = day === today ? "Today" : `${weekday(day)} ${Number(day.slice(8, 10))}`

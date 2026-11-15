@@ -67,4 +67,4 @@ def test_forgetting_with_nothing_accepted_deletes_all_it_brought_in(app: App) ->
 def test_removing_without_forgetting_keeps_everything(app: App) -> None:
     source, _ = accepted_one(app)
     app.do("source_remove", id=source)
-    assert len(app.table("suggestions")) == 3 and app.table("raw_inputs")
+    assert len(app.table("suggestions")) == 4 and app.table("raw_inputs")  # the feed's Fall break too, all day

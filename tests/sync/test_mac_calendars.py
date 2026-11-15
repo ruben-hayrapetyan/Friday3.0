@@ -131,11 +131,17 @@ def test_declined_free_and_all_day_events(app: App) -> None:
     found = events(app)
     assert "Declined meeting" not in found
     assert found["Maybe drinks"]["free"] == 1
-    assert "Fall break" not in found  # whole-day events wait for `gcal.include_all_day`, as Google's do
+    assert found["Fall break"]["blocks_time"] == 0  # whole-day events come in, as Google's do, never busy (15 Nov)
+
+
+def test_whole_day_events_left_out_when_you_say_so(app: App) -> None:
+    app.do("settings_set", key="gcal", value={"include_all_day": False})
+    post(app, [HOME], [{"id": "z", "calendar": "home", "title": "Fall break", "start": "2026-10-22",
+                        "end": "2026-10-24", "all_day": True}])  # fmt: skip
+    assert "Fall break" not in events(app)
 
 
 def test_whole_day_events_when_you_count_them(app: App) -> None:
-    app.do("settings_set", key="gcal", value={"include_all_day": True})
     whole = {
         "id": "z",
         "calendar": "home",
@@ -152,7 +158,7 @@ def test_whole_day_events_when_you_count_them(app: App) -> None:
 def test_an_event_timed_over_its_whole_day_is_a_whole_day_event_and_not_busy(app: App) -> None:
     # 3 Nov: a birthday the Mac gave as 12:00 AM to 11:59 PM filled its day on the calendar and counted as busy.
     post(app, [HOME], [mac_event("b", "home", "Jasper's Birthday", "2026-10-21T00:00", "2026-10-21T23:59")])
-    item = shown(app, "Jasper's Birthday")  # in, though whole-day events from a calendar wait for `include_all_day`
+    item = shown(app, "Jasper's Birthday")  # in, as whole-day events from a calendar are
     assert item["start"] == "2026-10-21T00:00" and item["end"] == "2026-10-22T00:00"
     assert events(app)["Jasper's Birthday"]["blocks_time"] == 0
     post(app, [HOME], [mac_event("b", "home", "Jasper's Birthday", "2026-10-21T00:00", "2026-10-21T23:59")])

@@ -4,6 +4,7 @@ fitting is in `refit.py`. Everything learned is a versioned row of `learned_prof
 """
 
 import json
+from datetime import date, timedelta
 from typing import Any
 
 from friday.api.commands import (
@@ -24,7 +25,7 @@ from friday.commands.registry import Ctx, command, query
 from friday.commands.settings import write_setting
 from friday.core.db import one, rows
 from friday.core.items import FieldError
-from friday.core.time import format_utc, parse_utc
+from friday.core.time import format_utc
 from friday.estimate.durations import LEARNED_SOURCES
 from friday.learn.order import MIN_CHOICES, Choice, reordered, suggest
 from friday.learn.proposals import TEMPLATES
@@ -70,9 +71,11 @@ def questions(ctx: Ctx, inp: Empty) -> QuestionsOut:
 
 
 def fixed_on(ctx: Ctx, day: str) -> list[dict[str, Any]]:
-    """The day's classes and events, shown in both versions: a day is judged around what can't move."""
-    lo = ctx.utc(f"{day}T00:00")
-    hi = format_utc(parse_utc(lo) + 24 * 60)
+    """The day's classes and events, shown in both versions: a day is judged around what can't move. The day is your
+    planning day, from your day start to the next (15 Nov: cut at midnight, a 1am event after the day's late work
+    was left out, and one at 2am that morning was shown with the day after it)."""
+    starts = ctx.settings["time"].day_start
+    lo, hi = ctx.utc(f"{day}T{starts}"), ctx.utc(f"{date.fromisoformat(day) + timedelta(days=1)}T{starts}")
     found = rows(
         ctx.conn,
         "SELECT id, title, start_utc, end_utc FROM items WHERE user_id = ? AND when_kind = 'fixed' AND blocks_time = 1 "

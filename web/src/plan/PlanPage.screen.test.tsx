@@ -704,6 +704,29 @@ describe("the grid", () => {
     expect(await screen.findByText("Fixed time")).toBeTruthy()
   })
 
+  it("draws an event that lets work over it beside the work, not under it", async () => {
+    // 15 Nov: a client's dashed event (a "Just show it" calendar's, one marked free) was drawn under the task over it
+    const { first, tasks } = await nextWeek()
+    const task = tasks.find((t) => t.start < `${addDays(first, 6)}T00:00`) as Plan["blocks"][number]
+    const made = await friday.c<{ result: { item: { id: number } } }>("add", { title: "Club fair (free)", when: "fixed", start: task.start, end: task.end, free: true })
+    await statusWhen((s) => s.plan_generation === s.generation)
+    const plan = await friday.q<Plan>("plan", { start: `${first}T00:00`, end: `${addDays(first, 7)}T00:00` })
+    const fair = plan.fixed.find((f) => f.title === "Club fair (free)") as Plan["fixed"][number]
+    expect(fair.left_out).toBe("free")
+    const work = plan.blocks.find((b) => b.key.startsWith("T") && b.start < (fair.end as string) && b.end > (fair.start as string)) as Plan["blocks"][number]
+    expect(work).toBeTruthy()
+    await openOnNextWeek()
+    const across = (el: HTMLElement) => {
+      // box(): left calc(100% * a + 3px), width calc(100% * w - 6px): the share of the column it takes, from a to a + w
+      const [a, w] = [el.style.left, el.style.width].map((v) => Number(/100% \* ([\d.e-]+)/.exec(v)?.[1]))
+      return [a, a + w]
+    }
+    const [eventBox, blockBox] = [await findBox(`F${fair.id}`), await findBox(work.key)]
+    const [[a0, a1], [b0, b1]] = [across(eventBox), across(blockBox)]
+    expect(a1 <= b0 || b1 <= a0).toBe(true) // side by side: their boxes don't meet
+    await friday.c("drop", { id: made.result.item.id })
+  })
+
   it("draws what you're timing on today's column, from when you started", async () => {
     const { tasks } = await nextWeek()
     await friday.c("start", { id: tasks[0].item_id })

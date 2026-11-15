@@ -116,7 +116,7 @@ def test_mail_with_a_meeting_to_arrange_or_homework_without_a_date_can_be_accept
 
 def test_including_all_day_events_later_reads_the_ones_already_seen(app: App) -> None:
     google = FakeGoogle({"Personal@group": [BIRTHDAY]}, names={"Personal@group": "Personal"}, rules=RULES)
-    app.do("settings_set", key="gcal", value={"read": ["Personal"]})
+    app.do("settings_set", key="gcal", value={"read": ["Personal"], "include_all_day": False})
     sync(app.conn, app.now_utc, google=google)
     assert app.do("calendar_repeats") == []
     app.do("settings_set", key="gcal", value={"read": ["Personal"], "include_all_day": True})

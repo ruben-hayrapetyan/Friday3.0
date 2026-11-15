@@ -55,10 +55,25 @@ def test_events_are_read_as_due_work_exams_with_prep_classes_and_commitments(app
         "preset": "Exam prep",
         "due": "2026-10-22T19:30",
     }
-    assert by_title["Prep: MATH Quiz 2"]["due"] == "2026-10-19T23:59" and "MATH Quiz 2" not in by_title
+    assert by_title["Prep: MATH Quiz 2"]["due"] == "2026-10-19T23:59"
     assert by_title["MATH 1920, Discussion"]["preset"] == "Class"
     assert by_title["Startup Expo"]["preset"] == "Event"
-    assert "Fall break" not in by_title
+    # All-day ones are whole days at the top of the plan, never busy (in by default since 15 Nov): an all-day quiz too
+    whole = {"blocks_time": False, "location": None}
+    assert by_title["MATH Quiz 2"] | {} == whole | {"title": "MATH Quiz 2", "preset": "Exam",
+                                                   "start": "2026-10-20T00:00", "end": "2026-10-21T00:00"}  # fmt: skip
+    assert by_title["Fall break"] | {} == whole | {"title": "Fall break", "preset": "Event",
+                                                  "start": "2026-10-23T00:00", "end": "2026-10-25T00:00"}  # fmt: skip
+
+
+def test_all_day_events_left_out_leave_an_all_day_exam_its_prep(app: App) -> None:
+    app.do("settings_set", key="gcal", value={"read": ["School"], "include_all_day": False})
+    school = [
+        all_day("q", "MATH Quiz 2", "2026-10-20", "2026-10-21"),
+        all_day("b", "Break", "2026-10-23", "2026-10-24"),
+    ]
+    sync(app.conn, app.now_utc, google=FakeGoogle({"School@group": school}))
+    assert {t for t, _, _ in cards(app)} == {"Prep: MATH Quiz 2"}
 
 
 def test_a_calendar_that_names_a_kind_reads_every_event_as_it(app: App) -> None:
