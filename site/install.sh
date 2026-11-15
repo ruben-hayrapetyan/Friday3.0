@@ -8,8 +8,8 @@
 # ~/Applications without it).
 set -eu
 
-VERSION="0.4.2"
-SHA256="9779b6d14ad4d528bf6c7363c1644300214b2bb8b71e9f335c8890adc2eb4281"
+VERSION="0.4.3"
+SHA256="59c8265472fc422ef0da1fd98f950733110dd46c2121e46c47591261a71cf2db"
 URL="https://friday-scheduler.com/get/Friday-$VERSION.dmg"
 
 fail() {

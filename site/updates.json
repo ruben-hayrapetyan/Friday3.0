@@ -1,6 +1,27 @@
 {
-  "current": "0.4.2",
+  "current": "0.4.3",
   "versions": [
+    {
+      "version": "0.4.3",
+      "released": "2026-11-15",
+      "url": "https://friday-scheduler.com/get/Friday-0.4.3.dmg?via=update",
+      "sha256": "59c8265472fc422ef0da1fd98f950733110dd46c2121e46c47591261a71cf2db",
+      "bytes": 235537805,
+      "minimum_macos": "14.0",
+      "notes": {
+        "summary": "A new version of Friday now asks as soon as it's out, dropdowns are never cut off, and the unfinished Rules lab is gone.",
+        "new": [],
+        "changed": [
+          "Friday looks for a new version once a day and whenever you open its window, so a new release asks within a day instead of up to a month.",
+          "Later puts that version off until tomorrow; a newer version asks right away.",
+          "The Rules lab is gone. What worked from it is on the Rules page: Why?, \"Violated on\", editing a rule in place, and why two rules clash."
+        ],
+        "fixed": [
+          "A dropdown's list is never cut off by the card or column it's in, like the tag menu on Projects & exams.",
+          "Closing the update popup no longer hides newer versions too."
+        ]
+      }
+    },
     {
       "version": "0.4.2",
       "released": "2026-11-15",
