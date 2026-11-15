@@ -1,7 +1,8 @@
-// The Rules lab (/lab/rules): six prototypes of another Rules page, each on the real plan, listed and each opened.
+// The Rules lab (/lab/rules): six prototypes of another Rules page, each on the real plan, listed and each opened;
+// reached only once it's switched on in Settings → Advanced (15 Nov: its designs are unfinished).
 import { cleanup, screen, waitFor } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
-import { openFriday } from "@/test/friday"
+import { beforeAll, describe, expect, it } from "vitest"
+import { friday, openFriday } from "@/test/friday"
 
 const DIRECTIONS = [
   ["impact", "Impact"],
@@ -13,6 +14,10 @@ const DIRECTIONS = [
 ] as const
 
 describe("the Rules lab", () => {
+  beforeAll(async () => {
+    await friday.c("settings_set", { key: "rules_lab", value: true })
+  })
+
   it("lists the six directions, each a link to its prototype", async () => {
     await openFriday("/lab/rules")
     expect(await screen.findByText("Directions")).toBeTruthy()
@@ -32,5 +37,13 @@ describe("the Rules lab", () => {
   it("an address it doesn't know shows the list", async () => {
     await openFriday("/lab/rules/nowhere")
     expect(await screen.findByText("Directions")).toBeTruthy()
+  })
+
+  it("switched off, its address goes to Rules", async () => {
+    await friday.c("settings_set", { key: "rules_lab", value: false })
+    await openFriday("/lab/rules")
+    await waitFor(() => expect(window.location.hash).toBe("#/rules"))
+    expect(screen.queryByText("Directions")).toBeNull()
+    await friday.c("settings_set", { key: "rules_lab", value: true })
   })
 })

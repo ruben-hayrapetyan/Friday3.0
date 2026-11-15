@@ -11,7 +11,7 @@ import { BriefDialog, briefDue, ChangesDialog, TriageDialog, useBriefSwitch } fr
 import { useDecisionsTitle } from "@/inbox/Decisions"
 import { SetupDialog, useSetup } from "@/dialogs/Setup"
 import { useToast } from "@/components/Toasts"
-import { useNow, useStatus } from "@/hooks/queries"
+import { useNow, useSettings, useStatus } from "@/hooks/queries"
 import { runCommand, undoLast } from "@/hooks/useCommand"
 import { type Selection, useDrop } from "@/hooks/useDrop"
 import { useKeys } from "@/hooks/useKeys"
@@ -115,7 +115,7 @@ export function Shell() {
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/body" element={<BodyPage />} />
             <Route path="/rules" element={<RulesPage />} />
-            <Route path="/lab/rules/:slug?" element={<RulesLab />} />
+            <Route path="/lab/rules/:slug?" element={<LabGate />} />
             <Route path="/settings/:section?" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -253,4 +253,12 @@ function useTriageLink() {
       setParams({}, { replace: true })
     }
   }, [params, setParams, setDialog])
+}
+
+/** The Rules lab, only once it's switched on in Settings → Advanced (15 Nov: its designs are unfinished); else an old
+ * link goes to Rules. Nothing shows while the settings load, so a lab that's on isn't sent away first. */
+function LabGate() {
+  const settings = useSettings().data
+  if (!settings) return null
+  return settings.rules_lab === true ? <RulesLab /> : <Navigate to="/rules" replace />
 }
