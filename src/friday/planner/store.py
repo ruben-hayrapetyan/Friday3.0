@@ -14,7 +14,9 @@ from friday.core.settings import DEFAULTS, validate_value
 def load_settings(conn: sqlite3.Connection, user_id: int = 1) -> dict[str, Any]:
     """Every settings key: stored values over the defaults."""
     stored = rows(conn, "SELECT key, value FROM settings WHERE user_id = ?", [user_id])
-    return DEFAULTS | {r["key"]: validate_value(r["key"], json.loads(r["value"])) for r in stored}
+    settings = DEFAULTS | {r["key"]: validate_value(r["key"], json.loads(r["value"])) for r in stored}
+    # the categories read "final" by whether you're in school (core/calendars.only_a_final)
+    return settings | {"categories": settings["categories"].model_copy(update={"school": settings["school"]})}
 
 
 def settings_version(conn: sqlite3.Connection, user_id: int = 1) -> int:

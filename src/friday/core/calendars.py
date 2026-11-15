@@ -38,6 +38,10 @@ class EventFilter(Model):
 class CategorySettings(Model):
     categories: tuple[Category, ...] = ()
     filter: EventFilter | None = None
+    # whether you're in school (the `school` setting, filled in as settings load, never saved with the categories):
+    # out of school "final" alone isn't an exam (15 Nov, the user: "it should also depend on whether you marked
+    # student or not")
+    school: bool = Field(True, exclude=True)
 
 
 # What a new install starts with, and anyone whose list was empty (8 Nov: "no default categories so all of their
@@ -122,9 +126,18 @@ def category_of(title: str, settings: CategorySettings) -> Category | None:
         if not category.pattern.strip():
             continue
         found = compiled(category.pattern)
-        if found is not None and found.search(title):
+        if found is not None and found.search(title) and (settings.school or not only_a_final(found, category, title)):
             return category
     return None
+
+
+def only_a_final(found: re.Pattern[str], category: Category, title: str) -> bool:
+    """The starter Exam pattern found nothing but "final" or "finals" ("final round", "Q4 final review"): an exam to
+    someone in school ("math final"), not to anyone else, whose exams say so ("final exam", "certification exam").
+    A pattern you wrote yourself is read as written."""
+    if NOT_AN_EXAM_FINAL not in category.pattern:
+        return False
+    return all(m.group(0).lower() in ("final", "finals") for m in found.finditer(title))
 
 
 def is_filtered(title: str, settings: CategorySettings) -> bool:
