@@ -46,12 +46,12 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function open() {
+function open(today = TODAY) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <ShellProvider today={TODAY}>
+        <ShellProvider today={today}>
           <Mover />
           <MiniMonth />
         </ShellProvider>
@@ -90,5 +90,17 @@ describe("the mini month, beside the calendar", () => {
     expect(heading()).toBe("October 2026")
     act(() => move({ view: 7, first: null })) // the same place again: nothing moved
     expect(heading()).toBe("October 2026")
+  })
+})
+
+describe("today's mark", () => {
+  afterEach(() => vi.useRealTimers())
+
+  it("is the calendar's date, turning at midnight, while the planning day runs on to your day start", () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date(2026, 10, 15, 0, 30)) // 12:30am on the 15th, the 14th's planning day until its day start
+    open("2026-11-14")
+    expect(screen.getByRole("button", { name: "2026-11-15" }).getAttribute("aria-current")).toBe("date")
+    expect(screen.getByRole("button", { name: "2026-11-14" }).getAttribute("aria-current")).toBeNull()
   })
 })

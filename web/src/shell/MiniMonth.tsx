@@ -1,4 +1,4 @@
-// The sidebar's mini month (personal's): each day tinted by how full it is, today underlined, the
+// The sidebar's mini month (personal's): each day tinted by how full it is, today's date underlined, the
 // agenda's day filled. A click shows that day in the calendar and the agenda; a task dropped on a day is due then. It
 // follows the calendar: moved to another week or month, it shows that month (the audit, 12 Nov: it stayed where it
 // opened); its own arrows look around until the calendar moves again.
@@ -9,7 +9,8 @@ import { useNavigate } from "react-router"
 import { useDragging } from "@/components/calendar/useDrag"
 import { Icon } from "@/components/fr/controls"
 import { useCalendar, useSettings } from "@/hooks/queries"
-import { addDays, toMin } from "@/lib/time"
+import { useClock } from "@/hooks/useClock"
+import { addDays, fromMin, toMin } from "@/lib/time"
 import { monthStart } from "@/plan/MonthView"
 import { type CalendarPlace, useShell } from "./ShellContext"
 
@@ -51,6 +52,9 @@ export function MiniMonth() {
     return Math.min(1, ((plan?.day_hours[date] ?? 0) + fixed) / Math.max(cap + 4, 1))
   }
   const shown = agendaDay ?? today
+  // Today's mark is the calendar's date, turning at midnight (15 Nov: a client up past midnight saw the day before
+  // still marked); the planning day (`today`), which runs to your day start, stays the day the agenda opens on.
+  const dated = fromMin(useClock()).slice(0, 10)
   const open = (date: string) => {
     setAgendaDay(date)
     setPlace({ view: place.view, first: place.view === "month" ? monthStart(date) : date })
@@ -85,7 +89,7 @@ export function MiniMonth() {
         {days.map((date) => {
           const inMonth = date.slice(0, 7) === month.slice(0, 7)
           const isShown = date === shown
-          const isToday = date === today
+          const isToday = date === dated
           const target = !!drag?.moved && drag.over === "day" && drag.day === date
           const full = fullness(date)
           return (
