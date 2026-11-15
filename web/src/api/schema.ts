@@ -2427,7 +2427,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Put the update popup off until Friday next opens (H145). */
+        /** Put the newest version off until the same time tomorrow (H209); a newer one than it asks at once. */
         post: operations["update_later"];
         delete?: never;
         options?: never;

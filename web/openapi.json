@@ -10271,7 +10271,7 @@
   },
   "/api/c/update_later": {
    "post": {
-    "summary": "Put the update popup off until Friday next opens (H145).",
+    "summary": "Put the newest version off until the same time tomorrow (H209); a newer one than it asks at once.",
     "operationId": "update_later",
     "parameters": [
      {
