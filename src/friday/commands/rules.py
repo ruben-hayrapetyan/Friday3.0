@@ -556,6 +556,11 @@ def rule_remove(ctx: Ctx, inp: RuleRef) -> Changed:
     if len(rules) == len(ctx.settings["rules"]):
         raise FieldError("name", f"no rule named {inp.name}")
     write_setting(ctx, "rules", rules)
+    # Your answers about it go with it (15 Nov: a client's Rules page said "Wins over 'spread'" for a rule long gone).
+    wins = kv_get(ctx.conn, "rule_wins", [], ctx.user_id)
+    kept = [w for w in wins if inp.name not in (w["winner"], w["loser"])]
+    if len(kept) != len(wins):
+        ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "rule_wins"}, {"value": json.dumps(kept)})
     return Changed(message="Deleted")
 
 
@@ -565,8 +570,9 @@ def rules(ctx: Ctx, inp: Empty) -> list[RuleOut]:
     mine = readings(ctx)
     report = current_report(ctx)
     by_day = report.get("rule_totals_by_day", {})
-    wins = kv_get(ctx.conn, "rule_wins", [], ctx.user_id)
     said = {r.name: words(r, mine) for r in ctx.settings["rules"]}
+    # Only answers about two rules you still have (15 Nov: "Wins over 'spread'" outlived the rule it named).
+    wins = [w for w in kv_get(ctx.conn, "rule_wins", [], ctx.user_id) if w["winner"] in said and w["loser"] in said]
     against_each = contradictions([r.model_dump() for r in ctx.settings["rules"]], wins)
     days = sorted(d for d in by_day if d != "other")  # "other" is what no one day carries, not a day
     out = []

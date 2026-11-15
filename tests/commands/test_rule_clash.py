@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from friday.core.db import connect
 from friday.core.items import FieldError
 from friday.planner.learning import learnable
 from friday.planner.service import replan
@@ -128,3 +129,44 @@ def test_the_winner_is_kept_at_least_as_well_after_the_answer(heavy: App) -> Non
     heavy.conn.execute("INSERT OR REPLACE INTO kv (user_id, key, value) VALUES (1, 'next_cold', 'true')")
     replan(heavy.conn, heavy.now_utc)
     assert bent("deep_run") / WIN <= before  # weighed ×3 now, so its points are compared unweighted
+
+
+def test_a_deleted_rule_takes_its_answers_with_it(app: App) -> None:
+    """15 Nov: a client's Rules page said "Wins over 'spread'" for a rule long gone."""
+    app.do("rule_add", text="no work before 10am")
+    mine = next(r["name"] for r in app.do("rules") if r["source"] == "you")
+    app.do("rule_win", winner=mine, loser="chunk_cost")
+    app.do("rule_win", winner="deep_run", loser="daily_load")
+    app.do("rule_remove", name=mine)
+    rules = {r["name"]: r for r in app.do("rules")}
+    assert rules["chunk_cost"]["gives_way_to"] == [] and rules["deep_run"]["wins_over"] == ["daily_load"]
+    kept = json.loads(next(r["value"] for r in app.table("kv") if r["key"] == "rule_wins"))
+    assert kept == [{"winner": "deep_run", "loser": "daily_load"}]
+
+
+def test_rules_never_names_an_answer_about_a_rule_gone(app: App) -> None:
+    """Answers saved before rule_remove cleaned them (or about a rule a migration took out) are left unsaid."""
+    gone = [{"winner": "spread", "loser": "chunk_cost"}, {"winner": "deep_run", "loser": "cluster"}]
+    app.conn.execute("INSERT INTO kv (user_id, key, value) VALUES (1, 'rule_wins', ?)", [json.dumps(gone)])
+    rules = {r["name"]: r for r in app.do("rules")}
+    assert rules["chunk_cost"]["gives_way_to"] == [] and rules["deep_run"]["wins_over"] == []
+
+
+def test_migration_37_prunes_answers_about_rules_gone(tmp_path: Path) -> None:
+    from tests.commands.test_exam_prep_spread import at_version
+
+    wins = [{"winner": "spread", "loser": "chunk_cost"}, {"winner": "deep_run", "loser": "daily_load"},
+            {"winner": "you:mine", "loser": "deep_run"}]  # fmt: skip
+    saved = [{"type": "deep_run", "name": "deep_run"}, {"type": "daily_load", "name": "daily_load"},
+             {"type": "chunk_cost", "name": "chunk_cost"}, {"type": "time_preference", "name": "you:mine"}]  # fmt: skip
+    for user, rules in ((1, saved), (2, None)):  # saved rules, and the built-in ones never changed
+        path = tmp_path / f"{user}.db"
+        old = at_version(path, 36)
+        if rules is not None:
+            old.execute("INSERT INTO settings (key, value, version, updated_utc) VALUES ('rules', ?, 1, 'x')",
+                        [json.dumps(rules)])  # fmt: skip
+        old.execute("INSERT INTO kv (key, value) VALUES ('rule_wins', ?)", [json.dumps(wins)])
+        old.close()
+        conn = connect(path)
+        kept = json.loads(conn.execute("SELECT value FROM kv WHERE key = 'rule_wins'").fetchone()[0])
+        assert kept == (wins[1:] if rules else [wins[1]])
