@@ -1,6 +1,45 @@
 {
-  "current": "0.4.1",
+  "current": "0.4.2",
   "versions": [
+    {
+      "version": "0.4.2",
+      "released": "2026-11-15",
+      "url": "https://friday-scheduler.com/get/Friday-0.4.2.dmg?via=update",
+      "sha256": "9779b6d14ad4d528bf6c7363c1644300214b2bb8b71e9f335c8890adc2eb4281",
+      "bytes": 237281827,
+      "minimum_macos": "14.0",
+      "notes": {
+        "summary": "All-day events and holidays come in from your calendars, rule clashes say why, the week can be lightened in a click, and the calendar turns over at midnight.",
+        "new": [
+          "All-day events from your calendars, like holidays and your own all-day plans, show at the top of each day. One that reads like homework becomes a to-do due that day.",
+          "A rule clash says why, e.g. \"finishing Lab 9 2 days sooner splits it into 3 sittings instead of 1\". Only clashes where your answer would change the plan wait in the Inbox.",
+          "When a week or a day holds more than usual, \"Lighten that week\" offers work that can move later without being late, each tried first and undoable.",
+          "Change a project's or an exam's tag from its page or card. Its steps that had the old tag follow.",
+          "Remove a template you saved with the ✕ on its card, and saving one under a name you've used asks before replacing it.",
+          "A new exam takes any length: 45m to 3h in a click, or type one like 2h 30m."
+        ],
+        "changed": [
+          "The calendar turns over at midnight: anything after midnight shows under the next date, and a block that crosses midnight shows in both days.",
+          "An event that doesn't block your time sits beside the work planned over it, not hidden behind it.",
+          "The two rules for meals and routines say what they're set to, like \"Give meals and routines their ideal length: Lunch 45 min and Dinner 1 h\".",
+          "Load ahead says it plainly: \"16 h planned, 1 h past your usual 15 h. Nothing will be late.\"",
+          "The Minimal Now bar is a one-line pill; tap it for the full bar.",
+          "Text in a tall block wraps instead of being cut off.",
+          "A repeat says its spacing as a sentence: \"Every week, at least 5 days after the last time\".",
+          "\"Final\" marks an exam (\"math final\") for students, but not a final project, paper or round, or a name like Final Fantasy.",
+          "The Rules lab is hidden while it's unfinished; Settings → Advanced shows it again."
+        ],
+        "fixed": [
+          "The Now bar no longer covers the Inbox's Accept and Decline (or any page's last buttons) when the sleep and meal rows are up.",
+          "\"At least N days apart\" now also spaces several times in the same week.",
+          "Save as template no longer keeps steps you deleted.",
+          "Load ahead no longer says a week is over your usual hours when it isn't: meals, goals and this morning's work were counted against it.",
+          "Rules no longer says a rule wins over one you've removed.",
+          "The day comparison runs from your day start, not midnight.",
+          "The Now bar's time no longer gets cut off in a narrow window."
+        ]
+      }
+    },
     {
       "version": "0.4.1",
       "released": "2026-11-15",
