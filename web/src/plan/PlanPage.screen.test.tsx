@@ -418,6 +418,27 @@ describe("what needs you, softly", () => {
   })
 })
 
+describe("a day past its most", () => {
+  // 15 Nov: "Thursday is 1.0 h over" opened what gives when work is late, which said everything fits
+  it("says plainly what's planned against its most and whether anything will be late, and offers to lighten it", async () => {
+    const { user, client } = await openFriday("/")
+    await gridReady()
+    await waitFor(() => expect(client.isFetching()).toBe(0))
+    // the week's days told a most of none: the first day with work on it holds more
+    client.setQueriesData<Calendar>({ queryKey: ["calendar"] }, (c) => c && { ...c, days: c.days.map((d) => ({ ...d, cap_hours: 0 })) })
+    const said = /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday): [\d.]+ h planned, [\d.]+ h past your usual 0 h\. (Nothing will be late|1 thing will be late|\d+ things will be late)\.$/
+    // what needs you, in its pill: the day's note among them
+    const pill = await screen.findByRole("button", { name: /h planned, [\d.]+ h past your usual 0 h|will be late|past (its|their) due|before it's due|after it's due/ }, { timeout: 10_000 })
+    await user.click(pill)
+    await waitFor(() => expect(screen.getAllByText(said).length).toBeGreaterThan(0))
+    expect(screen.queryByText(/ is [\d.]+ h over$/)).toBeNull()
+    await user.click(await screen.findByRole("button", { name: "Lighten that day" }))
+    const dialog = within(await screen.findByRole("dialog", { name: /^Lighten (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/ }))
+    expect(await dialog.findByText(/^Each was tried on a copy of your plan|^Nothing there can move out without being late/, {}, { timeout: 30_000 })).toBeTruthy()
+    expect(dialog.queryByText(/Everything fits|Nothing is going late/)).toBeNull()
+  })
+})
+
 describe("in a narrow window", () => {
   const page = () => (window as unknown as { happyDOM: { setViewport(v: { width: number; height: number }): void } }).happyDOM
   it("shows the week as its day, and keeps the views and Today in the Plan menu", async () => {

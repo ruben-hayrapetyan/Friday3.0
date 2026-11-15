@@ -12,7 +12,7 @@ import { BodyTab } from "@/body/BodyPage"
 import { query } from "@/api/client"
 import { H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
-import { useLoad } from "@/hooks/queries"
+import { useLoad, useStatus } from "@/hooks/queries"
 import { clockTime, weekday } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
 import { BeatPlan } from "./BeatPlan"
@@ -22,6 +22,8 @@ import { WeeklyReview } from "./WeeklyReview"
 import { useSettings } from "@/hooks/queries"
 import { addDays, shortHour } from "@/lib/time"
 import { dockRoom } from "@/now/dockRoom"
+import { LightenDialog } from "@/dialogs/Dialogs"
+import { overSentence, weekLabel } from "@/lib/load"
 
 export { Section }
 
@@ -231,8 +233,9 @@ function LoadLegend() {
 }
 
 function Load() {
-  const { setDialog } = useShell()
   const weeks = useLoad(8).data ?? []
+  const late = useStatus().data?.late_items?.length ?? 0
+  const [lighten, setLighten] = useState(false)
   const top = Math.max(1, ...weeks.map((w) => Math.max(w.hours, w.capacity)))
   const over = weeks.find((w) => w.hours > w.capacity + 0.5)
   return (
@@ -270,14 +273,15 @@ function Load() {
       {over && (
         <div style={{ display: "flex", gap: 14, alignItems: "center", padding: "12px 14px", borderRadius: "var(--radius-md)", background: "color-mix(in srgb, var(--fr-mark) 9%, var(--color-bg))" }}>
           <Icon name="warning" size={18} style={{ color: "var(--fr-warn)" }} />
-          <span style={{ flex: 1, textWrap: "pretty" }}>
-            The week of {weekday(over.start)} {Number(over.start.slice(8, 10))} holds {(over.hours - over.capacity).toFixed(1)} h more than you can do.
-          </span>
-          <button className="btn btn-secondary" onClick={() => setDialog("triage")}>
-            See options
+          {/* Over your usual isn't late (15 Nov: this said a week held more than you can do, and its button opened
+              what gives when work is late, which said everything fits): it says both, and offers to lighten the week. */}
+          <span style={{ flex: 1, textWrap: "pretty" }}>{overSentence(weekLabel(over.start, weekday), over.hours, over.capacity, late)}</span>
+          <button className="btn btn-secondary" onClick={() => setLighten(true)}>
+            Lighten that week
           </button>
         </div>
       )}
+      {over && lighten && <LightenDialog start={over.start} days={7} label={weekLabel(over.start, weekday)} planned={over.hours} usual={over.capacity} late={late} onClose={() => setLighten(false)} />}
     </>
   )
 }

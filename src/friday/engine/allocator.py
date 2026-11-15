@@ -53,8 +53,16 @@ class AllocatorInput:
 class Allocation:
     units: dict[str, list[float]]  # item key → units per day
     over: dict[str, float]
-    capacity: list[int]
+    capacity: list[int]  # what fixed work may fill each day: the room less what elastic and target items claim
     quotas: dict[str, dict[int, int]]  # item key → week → units
+    # The room before those claims (the smaller of the daily cap and utilization × free time): the load ahead weighs
+    # every block against it, meals and goals too (15 Nov: a client's week read 1 h over with nothing late, their meals'
+    # and goals' blocks counted in its hours and taken off its room as well).
+    room: list[int]
+
+    def claimed(self) -> list[int]:
+        """Per day, what elastic and target items took from the room before fixed work was placed."""
+        return [r - c for r, c in zip(self.room, self.capacity, strict=True)]
 
     def day_totals(self) -> list[float]:
         """The planned load per day, shown in the weekly view."""
@@ -114,6 +122,7 @@ def claim_reserved_time(inp: AllocatorInput, caps: list[int], day_of: DayIndex) 
 
 def allocate(inp: AllocatorInput) -> Allocation:
     caps = day_capacities(inp)
+    room = list(caps)
     day_of = DayIndex(inp.days)
     claim_reserved_time(inp, caps, day_of)
     todo = [it for it in inp.items if it.amount == "fixed" and it.need > 0]
@@ -127,7 +136,7 @@ def allocate(inp: AllocatorInput) -> Allocation:
         if later == ready:
             break
         ready = later
-    return Allocation(units, over, caps, quotas(inp, todo, units))
+    return Allocation(units, over, caps, quotas(inp, todo, units), room)
 
 
 def ready_days(todo: list[EngineItem], units: dict[str, list[float]], ready: dict[str, int]) -> dict[str, int]:

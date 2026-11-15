@@ -12,19 +12,20 @@ import numpy as np
 from friday.api.types import BlockOut, ChangeOut
 from friday.core.calendars import fallback_level, rating_key
 from friday.core.items import Item
-from friday.core.time import clock_time, format_local, format_utc, parse_utc, to_local
+from friday.core.time import UNIT_MIN, clock_time, format_local, format_utc, parse_utc, to_local
+from friday.engine.allocator import Allocation, allocate
 from friday.engine.compile import compile_problem
 from friday.engine.executor import ExecutorInput, Now, NowSettings, now, safe_items
 from friday.engine.explain import WhyNot, why_not
 from friday.engine.problem import Plan, Problem
 from friday.planner.assemble import AssembledPlan, assemble
 from friday.planner.build import BuildInput, build_problem, key_of
-from friday.planner.inputs import executor_input, now_settings
+from friday.planner.inputs import allocator_input, executor_input, now_settings
 from friday.planner.learning import learnable
 from friday.planner.prepare import build_input, day_of
 from friday.planner.service import quick_late, with_pins_preferred
 from friday.planner.snapshot import Snapshot, picked
-from friday.planner.solve import solve
+from friday.planner.solve import prepared_problem, solve
 
 MAX_TRIAGE_ACTIONS = 8
 MAX_SKIPS = 4  # events offered to skip, least important first
@@ -360,6 +361,118 @@ def at_minimum(item_ids: set[int | None]) -> Change:
                 dataclasses.replace(i, ideal_units=i.min_units, max_units=i.min_units) if i.id in item_ids else i
                 for i in inp.items
             ],
+        )
+
+    return change
+
+
+MAX_LIGHTEN = 6  # options offered to lighten a week or a day, the most hours first
+LIGHTEN_SLACK_MIN = 1440  # work offered to start later is due at least a day after the days it leaves
+
+
+@dataclass
+class LightenOption:
+    action: str
+    steps: list[Step]  # applying the option runs these commands in order
+    hours_moved: float  # the hours it takes out of those days
+    side_effects: list[str]
+
+
+def lighten(snapshot: Snapshot, first: date, days: int) -> list[LightenOption]:
+    """Ways to plan less in `days` days from `first` when they hold more than your usual (15 Nov: a client's Load
+    ahead said a week held 1 h more than they could do, and its button opened what gives when work is late, which said
+    everything fits). Each is flexible work planned in those days that is due well after them (or never), started the
+    day after them instead: its hours there go to the days that follow, where the allocator has room. Each is tried
+    on a copy of your plan, and one that would make anything late, or later, isn't offered."""
+    inp, problem, allocation = prepared_problem(snapshot)
+    alloc_days = allocator_input(inp, problem).days
+    index = {d.date: n for n, d in enumerate(alloc_days)}
+    after = first + timedelta(days=days)
+    if after not in index:
+        return []  # past what the allocator plans
+    until = alloc_days[index[after]].start_utc
+    moved = hours_between(snapshot, problem, allocation, alloc_days, first, after)
+    timed = snapshot.timer[0] if snapshot.timer else None
+    pinned = {p.item_id for p in snapshot.pins}
+    candidates = [
+        i
+        for i in snapshot.items
+        if i.id in moved
+        and i.status == "todo"
+        and i.when != "fixed"
+        and i.amount == "fixed"
+        and i.id != timed
+        and i.id not in pinned
+        and (i.due_utc is None or parse_utc(i.due_utc) >= until + LIGHTEN_SLACK_MIN)
+    ]
+    candidates.sort(key=lambda i: (-moved[i.id or 0], i.id or 0))
+    _, late = quick_late(inp, with_fallback=False)
+    over = sum(allocation.over.values())
+    options = []
+    for item in candidates:
+        changed = with_release(item.id or 0, format_utc(until))(inp)
+        _, late_after = quick_late(changed, with_fallback=False)
+        problem_after = build_problem(changed)
+        allocation_after = allocate(allocator_input(changed, problem_after))
+        if sum(late_after.values()) > sum(late.values()) + 0.05 or sum(allocation_after.over.values()) > over + 0.5:
+            continue
+        units = allocation_after.units.get(key_of(item.id or 0), [])
+        effects = [landing(units, alloc_days, index[after], days)]
+        if item.due_utc is not None:
+            due = to_local(parse_utc(item.due_utc), snapshot.settings["time"].timezone)
+            effects.append(f"Still done by its due, {due:%a} {due.day}")
+        start = alloc_days[index[after]].date
+        options.append(
+            LightenOption(
+                f"Start {item.title} on {start:%a} {start.day}",
+                [("edit", {"id": item.id, "release_utc": until})],
+                round(moved[item.id or 0], 1),
+                [e for e in effects if e],
+            )
+        )
+        if len(options) == MAX_LIGHTEN:
+            break
+    return options
+
+
+def hours_between(
+    snapshot: Snapshot, problem: Problem, allocation: Allocation, alloc_days: list, first: date, after: date
+) -> dict[int, float]:
+    """Each item's hours from `first` up to `after`, as the load ahead counts them: the plan's blocks inside the
+    horizon, the allocator's forecast past it."""
+    horizon = problem.grid.slots[-1].date
+    out: dict[int, float] = {}
+    for block in snapshot.plan_blocks:
+        if first <= day_of(snapshot, block.start_utc) < after:
+            out[block.item_id] = out.get(block.item_id, 0.0) + (block.end_utc - block.start_utc) / 60
+    for key, units in allocation.units.items():
+        item_id = int(key.removeprefix("item:")) if key.startswith("item:") else None
+        for n, day in enumerate(alloc_days):
+            if item_id is not None and horizon < day.date and first <= day.date < after and units[n] > 0.01:
+                out[item_id] = out.get(item_id, 0.0) + units[n] * UNIT_MIN / 60
+    return {k: v for k, v in out.items() if v >= 0.25}
+
+
+def landing(units: list[float], alloc_days: list, start: int, days: int) -> str:
+    """Where most of the work goes instead: the week (or the day, when lightening a day) after."""
+    later = [(n, u) for n, u in enumerate(units) if n >= start and u > 0.01]
+    if not later:
+        return ""
+    groups: dict[int, float] = {}
+    for n, u in later:
+        groups[(n - start) // days] = groups.get((n - start) // days, 0.0) + u
+    best = alloc_days[start + max(groups, key=lambda g: groups[g]) * days].date
+    return (
+        f"Most of it goes to the week of {best:%a} {best.day}"
+        if days == 7
+        else f"Most of it goes to {best:%a} {best.day}"
+    )
+
+
+def with_release(item_id: int, release: str) -> Change:
+    def change(inp: BuildInput) -> BuildInput:
+        return dataclasses.replace(
+            inp, items=[dataclasses.replace(i, release_utc=release) if i.id == item_id else i for i in inp.items]
         )
 
     return change

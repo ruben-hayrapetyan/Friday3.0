@@ -707,6 +707,24 @@ class TriageOut(Model):
     options: list[TriageOption]
 
 
+class LightenInput(Model):
+    """Days that hold more than your usual: a week from its first day, or one day."""
+
+    start: Day
+    days: int = Field(7, ge=1, le=7)  # 7, a week; 1, a day
+
+
+class LightenOption(Model):
+    action: str
+    steps: list[TriageStep]  # applying the option runs these commands in order
+    hours_moved: float  # the hours it takes out of those days
+    side_effects: list[str] = []
+
+
+class LightenOut(Model):
+    options: list[LightenOption]
+
+
 class LogListInput(Model):
     limit: int = 20
     item_id: int | None = None  # only commands naming this item

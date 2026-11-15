@@ -4,6 +4,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { friday, openFriday, sent, waitForSent } from "@/test/friday"
+import { addDays } from "@/lib/time"
 
 const day = (offset: number) => {
   const d = new Date(Date.now() + offset * 86_400_000)
@@ -80,19 +81,49 @@ describe("Insights → Trends", () => {
     expect(await screen.findByText("Late on paper, on time in practice")).toBeTruthy()
   })
 
-  it("shows the load ahead against what you can do, and options when a week holds too much", { timeout: 90_000 }, async () => {
-    await friday.c("add", { title: "Enormous project", preset: "Assignment", duration_min: 60 * 60, due: `${day(5)}T23:00` })
-    // the week holds more once Friday has planned it in
+  // 15 Nov: a client's Load ahead said a week held 1 h more than they could do, and its button opened what gives when
+  // work is late, which said "Everything fits. Nothing is going late."
+  it("says plainly when a week holds more than your usual with nothing late, and offers to lighten it", { timeout: 120_000 }, async () => {
+    const { today } = await friday.q<{ today: string }>("calendar", { start: "2026-01-01", days: "1" })
+    // due Sunday, more than the rest of the week's usual room: the week holds more, and it can all be done on time
+    for (const [title, hours] of [["Big reading", 16], ["Big reading 2", 8]] as const) await friday.c("add", { title, preset: "Assignment", duration_min: hours * 60, due: `${addDays(today, 3)}T23:00` })
     type Week = { hours: number; capacity: number }
     await waitFor(async () => expect((await friday.q<Week[]>("load", { weeks: "8" })).some((w) => w.hours > w.capacity + 0.5)).toBe(true), { timeout: 60_000, interval: 1000 })
+    await waitFor(async () => expect((await friday.q<{ late_items: unknown[] }>("status")).late_items).toEqual([]))
     const { user } = await openFriday("/insights?tab=trends")
     expect(await screen.findByText("Load ahead")).toBeTruthy()
     expect(screen.getByText("Capacity")).toBeTruthy()
     expect(screen.getByText("Deadline")).toBeTruthy()
     expect((await screen.findAllByText(/^\d+ \/ \d+ h$/)).length).toBeGreaterThan(1)
-    const over = await screen.findByText(/holds [\d.]+ h more than you can do/)
-    await user.click(within(over.parentElement as HTMLElement).getByRole("button", { name: "See options" }))
-    expect(await screen.findByRole("dialog")).toBeTruthy()
+    const over = await screen.findByText(/^Mon \d+’s week: [\d.]+ h planned, [\d.]+ h past your usual [\d.]+ h\. Nothing will be late\.$/)
+    expect(screen.queryByText(/more than you can do/)).toBeNull()
+    await user.click(within(over.parentElement as HTMLElement).getByRole("button", { name: "Lighten that week" }))
+    const dialog = within(await screen.findByRole("dialog", { name: /^Lighten Mon \d+’s week$/ }))
+    // flexible work there, started the week after, each tried on a copy of the plan: never what gives when work is late
+    const options = await dialog.findAllByRole("button", { name: /^Start .+ on Mon \d+/ }, { timeout: 30_000 })
+    expect(dialog.queryByText(/Everything fits|Nothing is going late/)).toBeNull()
+    expect(dialog.getByText(/^Each was tried on a copy of your plan: none makes anything late/)).toBeTruthy()
+    await user.click(options[0])
+    expect(options[0].getAttribute("aria-pressed")).toBe("true")
+    expect(dialog.getByText(/^[\d.]+ h after these, your usual [\d.]+ h$/)).toBeTruthy()
+    await user.click(dialog.getByRole("button", { name: /^Apply/ }))
+    const edit = (await waitForSent("edit")).body as { id: number; release: string }
+    expect(edit.release).toMatch(/^\d{4}-\d{2}-\d{2}T04:00$/)
+    expect(await screen.findByRole("button", { name: "Undo" })).toBeTruthy()
+  })
+
+  it("says how many things will be late when the week holds more than can be done", { timeout: 90_000 }, async () => {
+    await friday.c("add", { title: "Enormous project", preset: "Assignment", duration_min: 60 * 60, due: `${day(5)}T23:00` })
+    type Week = { hours: number; capacity: number }
+    await waitFor(async () => expect((await friday.q<{ late_items: unknown[] }>("status")).late_items.length).toBeGreaterThan(0), { timeout: 60_000, interval: 1000 })
+    await waitFor(async () => expect((await friday.q<Week[]>("load", { weeks: "8" })).some((w) => w.hours > w.capacity + 0.5)).toBe(true), { timeout: 60_000, interval: 1000 })
+    const { user } = await openFriday("/insights?tab=trends")
+    const over = await screen.findByText(/’s week: [\d.]+ h planned, [\d.]+ h past your usual [\d.]+ h\. (1 thing|\d+ things) will be late\.$/)
+    await user.click(within(over.parentElement as HTMLElement).getByRole("button", { name: "Lighten that week" }))
+    const dialog = within(await screen.findByRole("dialog"))
+    // what's late has its own options, a tap away
+    await user.click(await dialog.findByRole("button", { name: "See what’s late" }))
+    expect(await screen.findByRole("dialog", { name: "What gives when it can't all fit" })).toBeTruthy()
   })
 })
 

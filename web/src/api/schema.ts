@@ -3016,6 +3016,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/lighten": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ways to plan less in a week (or a day) that holds more than your usual, each tried on a copy of your plan, */
+        get: operations["lighten"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/load": {
         parameters: {
             query?: never;
@@ -6390,6 +6407,25 @@ export interface components {
                     [key: string]: number;
                 };
             };
+        };
+        /** LightenOption */
+        LightenOption: {
+            /** Action */
+            action: string;
+            /** Steps */
+            steps: components["schemas"]["TriageStep"][];
+            /** Hours Moved */
+            hours_moved: number;
+            /**
+             * Side Effects
+             * @default []
+             */
+            side_effects?: string[];
+        };
+        /** LightenOut */
+        LightenOut: {
+            /** Options */
+            options: components["schemas"]["LightenOption"][];
         };
         /** ListSetInput */
         ListSetInput: {
@@ -17723,6 +17759,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LearningOut"];
+                };
+            };
+        };
+    };
+    lighten: {
+        parameters: {
+            query: {
+                start: string;
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LightenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

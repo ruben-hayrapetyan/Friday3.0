@@ -553,6 +553,14 @@ VERBS = {
         False,
         "What Friday has learned: the multipliers in use, a suggestion waiting for you, the evidence and a digest.",
     ),
+    "lighten": Verb(
+        "GET",
+        "/api/q/lighten",
+        commands.LightenInput,
+        False,
+        False,
+        "Ways to plan less in a week (or a day) that holds more than your usual, each tried on a copy of your plan,",
+    ),
     "load": Verb(
         "GET",
         "/api/q/load",

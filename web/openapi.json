@@ -11677,6 +11677,57 @@
     }
    }
   },
+  "/api/q/lighten": {
+   "get": {
+    "summary": "Ways to plan less in a week (or a day) that holds more than your usual, each tried on a copy of your plan,",
+    "operationId": "lighten",
+    "parameters": [
+     {
+      "name": "start",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Start"
+      }
+     },
+     {
+      "name": "days",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 7,
+       "minimum": 1,
+       "default": 7,
+       "title": "Days"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LightenOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/load": {
    "get": {
     "summary": "Planned hours against room, week by week: the plan inside the horizon, the allocator's forecast past it.",
@@ -21129,6 +21180,58 @@
      "digest"
     ],
     "title": "LearningOut"
+   },
+   "LightenOption": {
+    "properties": {
+     "action": {
+      "type": "string",
+      "title": "Action"
+     },
+     "steps": {
+      "items": {
+       "$ref": "#/components/schemas/TriageStep"
+      },
+      "type": "array",
+      "title": "Steps"
+     },
+     "hours_moved": {
+      "type": "number",
+      "title": "Hours Moved"
+     },
+     "side_effects": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Side Effects",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "action",
+     "steps",
+     "hours_moved"
+    ],
+    "title": "LightenOption"
+   },
+   "LightenOut": {
+    "properties": {
+     "options": {
+      "items": {
+       "$ref": "#/components/schemas/LightenOption"
+      },
+      "type": "array",
+      "title": "Options"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "options"
+    ],
+    "title": "LightenOut"
    },
    "ListSetInput": {
     "properties": {

@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from friday.core.items import FieldError
+from friday.core.time import parse_utc
 from tests.commands.helpers import App, new_app
 
 
@@ -118,3 +119,32 @@ def test_a_projects_steps_say_what_they_wait_on(app: App) -> None:
     (robot,) = [p for p in app.do("projects") if p["item"]["id"] == project]
     steps = {s["title"]: s["waiting_on"] for s in robot["children"]}
     assert steps == {"design": [], "build": [design]}
+
+
+def test_a_goals_hours_count_once_in_the_load_ahead_among_the_planned_not_off_the_room_as_well(app: App) -> None:
+    # 15 Nov: a client's week read 1 h over with nothing late: their goals' and meals' blocks counted in its hours and
+    # were taken off its room too. Each day here has 10 h of room (the daily cap, under 0.8 × free time).
+    app.do("series_add", title="guitar", preset="Goal", every="week", target_min=600)
+    app.do("replan")
+    planned, forecast = app.do("load", weeks=2)
+    assert not planned["forecast"] and forecast["forecast"]
+    assert planned["capacity"] == pytest.approx(70) and 0 < planned["hours"] <= 10
+    # past the horizon the forecast holds the goal's 10 h too, as the plan's blocks would
+    assert forecast["capacity"] == pytest.approx(70) and forecast["hours"] == pytest.approx(10, abs=0.5)
+
+
+def test_the_load_ahead_counts_the_blocks_from_when_the_plan_was_made_as_its_room(app: App) -> None:
+    # 15 Nov: the room starts when the plan is made, so this morning's blocks, kept in the plan for the review,
+    # made the week look fuller than it is
+    app.do("add", text="essay due wed 17:00 ~8h")
+    app.do("replan")
+    app.at("2026-10-19T15:00").do("replan")
+    afternoon = app.now_utc
+    blocks = app.table("blocks")
+    plan_id = max(b["plan_id"] for b in blocks)
+    ahead = [
+        (max(parse_utc(b["start_utc"]), afternoon), parse_utc(b["end_utc"])) for b in blocks if b["plan_id"] == plan_id
+    ]
+    assert any(parse_utc(b["start_utc"]) < afternoon for b in blocks if b["plan_id"] == plan_id)
+    (week,) = app.do("load", weeks=1)
+    assert week["hours"] == pytest.approx(sum(max(0, e - s) for s, e in ahead) / 60, abs=0.1)
