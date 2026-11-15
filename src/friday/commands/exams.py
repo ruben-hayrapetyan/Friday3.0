@@ -24,6 +24,28 @@ NEAR_MIN = 3 * 1440  # exam prep due within three days of an exam is for it (pla
 @query("exams")
 def exams(ctx: Ctx, inp: Empty) -> list[ExamOut]:
     """Upcoming exams, soonest first, each with its prep: what it waits on, and exam prep for its course due at it."""
+    events, work, waits = gathered(ctx)
+    prep = linked_prep(events, work, waits)
+    # An event named like an exam counts once something prepares for it; a class waiting on a reading doesn't.
+    found = [e for e in events if is_exam(e) or (EXAM.search(e.title) and prep.get(e.id or 0))]
+    done = minutes_by_item(ctx.conn, ctx.user_id)
+    left = {i: remaining_minutes(it, done.get(i, 0)) or 0 for i, it in work.items() if it.status == "todo"}
+    finish = finishes(ctx, left)
+    saved = current_plan(ctx.conn, ctx.user_id)
+    late = {int(k) for k in (json.loads(saved["report"]).get("late_hours", {}) if saved else {})}
+    return [exam_out(ctx, e, [work[i] for i in prep.get(e.id or 0, [])], done, left, finish, late) for e in found]
+
+
+def prep_of(ctx: Ctx, exam: Item) -> list[Item]:
+    """An exam's prep, as the page shows it: what it waits on, and exam prep for its course due at it."""
+    events, work, waits = gathered(ctx)
+    if all(e.id != exam.id for e in events):
+        events = sorted([*events, exam], key=lambda e: (e.start_utc or "", e.id or 0))
+    return [work[i] for i in linked_prep(events, work, waits).get(exam.id or 0, [])]
+
+
+def gathered(ctx: Ctx) -> tuple[list[Item], dict[int, Item], dict[int, list[int]]]:
+    """The events ahead, the work done or to do, and what each waits on."""
     now = format_utc(ctx.now_utc)
     until = format_utc(ctx.now_utc + AHEAD_DAYS * 1440)
     events = [  # not a hidden calendar's (planner/hidden.py)
@@ -47,15 +69,7 @@ def exams(ctx: Ctx, inp: Empty) -> list[ExamOut]:
     waits: dict[int, list[int]] = {}
     for r in rows(ctx.conn, "SELECT item_id, depends_on_id FROM dependencies WHERE user_id = ?", [ctx.user_id]):
         waits.setdefault(r["item_id"], []).append(r["depends_on_id"])
-    prep = linked_prep(events, work, waits)
-    # An event named like an exam counts once something prepares for it; a class waiting on a reading doesn't.
-    found = [e for e in events if is_exam(e) or (EXAM.search(e.title) and prep.get(e.id or 0))]
-    done = minutes_by_item(ctx.conn, ctx.user_id)
-    left = {i: remaining_minutes(it, done.get(i, 0)) or 0 for i, it in work.items() if it.status == "todo"}
-    finish = finishes(ctx, left)
-    saved = current_plan(ctx.conn, ctx.user_id)
-    late = {int(k) for k in (json.loads(saved["report"]).get("late_hours", {}) if saved else {})}
-    return [exam_out(ctx, e, [work[i] for i in prep.get(e.id or 0, [])], done, left, finish, late) for e in found]
+    return events, work, waits
 
 
 def is_exam(event: Item) -> bool:

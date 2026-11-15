@@ -248,11 +248,15 @@ export function TodoDetail({ id, onClose }: { id: number; onClose: () => void })
         {series && !series.fixed && !series.external && (
           <>
             <span className="fr-kicker" title="Counted from when you did the last one; closer only when it would be late otherwise">
-              Times apart
+              Repeats
             </span>
+            {/* said as a sentence, as in Settings → Repeating (15 Nov): "Every week, at least 5 days after the last time" */}
             <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <TimesApart row={series} />
-              <span className="fr-kicker">{series.min_gap_days ? `Each ${item.title} at least ${series.min_gap_days} days after the last one you did.` : `${item.title} can come any time in its window.`}</span>
+              <span style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                {series.pattern},{" "}
+                <TimesApart row={series} />
+              </span>
+              <span className="fr-kicker">{series.min_gap_days ? `Counted from when you did the last one; closer only if it would be late otherwise.` : `${item.title} can come any time in its window.`}</span>
             </span>
           </>
         )}

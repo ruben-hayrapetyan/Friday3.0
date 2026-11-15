@@ -12,6 +12,8 @@ import { useShell } from "@/shell/ShellContext"
 import { DuePicker } from "@/todo/Pickers"
 
 const ICONS: Record<string, string> = { Essay: "article", Presentation: "presentation-chart" }
+// Friday's own (core/settings.py DEFAULT_TEMPLATES): they stay; only the ones you saved can be removed (15 Nov)
+const BUILT_IN = ["Essay", "Presentation"]
 
 export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
   const { today } = useShell()
@@ -31,6 +33,14 @@ export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
     return () => window.removeEventListener("keydown", escape, true)
   }, [onClose])
   const apply = useCommand("template_apply", { label: () => "Project made" })
+  // Settings' templates without it, shown gone at once; the toast's Undo brings it back (15 Nov, a client)
+  const removing = useRef("")
+  const forget = useCommand("settings_set", { label: () => `Template ${removing.current} removed` })
+  const remove = (name: string) => {
+    removing.current = name
+    if (template === name) setTemplate(Object.keys(templates).find((t) => t !== name) ?? null)
+    forget({ key: "templates", value: Object.fromEntries(Object.entries(templates).filter(([t]) => t !== name)) })
+  }
   const add = useCommand("add", { label: () => "Project made" })
   // Once: a second click while the first is on its way made the project twice (audit, 12 Nov).
   const sending = useRef(false)
@@ -57,18 +67,24 @@ export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
         <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Name, e.g. History essay" style={{ fontSize: 15 }} autoFocus />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 8 }}>
           {[...Object.keys(templates), null].map((t) => (
-            <button
-              key={t ?? "blank"}
-              onClick={() => setTemplate(t)}
-              className="fr-plain"
-              style={{ display: "flex", flexDirection: "column", gap: 4, padding: 12, borderRadius: "var(--radius-md)", background: t === template ? "color-mix(in srgb, var(--color-accent) 12%, var(--color-bg))" : "var(--color-bg)", boxShadow: t === template ? "inset 0 0 0 1px var(--color-accent-500)" : "0 0 0 1px color-mix(in srgb, var(--color-text) 7%, transparent)" }}
-            >
-              <span style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 500 }}>
-                <Icon name={t ? (ICONS[t] ?? "list-numbers") : "square"} size={16} style={{ color: "var(--color-accent-300)" }} />
-                {t ?? "Blank"}
-              </span>
-              <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>{t ? templates[t].map((s) => s.title).join(", then ") : "Add your own steps"}</span>
-            </button>
+            <div key={t ?? "blank"} style={{ position: "relative", display: "flex", minWidth: 0 }}>
+              <button
+                onClick={() => setTemplate(t)}
+                className="fr-plain"
+                style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4, padding: 12, paddingRight: t && !BUILT_IN.includes(t) ? 34 : 12, borderRadius: "var(--radius-md)", background: t === template ? "color-mix(in srgb, var(--color-accent) 12%, var(--color-bg))" : "var(--color-bg)", boxShadow: t === template ? "inset 0 0 0 1px var(--color-accent-500)" : "0 0 0 1px color-mix(in srgb, var(--color-text) 7%, transparent)" }}
+              >
+                <span style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 500, overflowWrap: "anywhere" }}>
+                  <Icon name={t ? (ICONS[t] ?? "list-numbers") : "square"} size={16} style={{ color: "var(--color-accent-300)" }} />
+                  {t ?? "Blank"}
+                </span>
+                <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>{t ? templates[t].map((s) => s.title).join(", then ") : "Add your own steps"}</span>
+              </button>
+              {t && !BUILT_IN.includes(t) && (
+                <button className="fr-plain" onClick={() => remove(t)} aria-label={`Remove template ${t}`} title="Remove this template; projects made from it stay" style={{ position: "absolute", top: 8, right: 8, padding: 4, color: "var(--color-neutral-500)" }}>
+                  <Icon name="x" size={13} />
+                </button>
+              )}
+            </div>
           ))}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

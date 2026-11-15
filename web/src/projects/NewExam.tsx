@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { command, errorWords } from "@/api/client"
 import { useToast } from "@/components/Toasts"
-import { Chip, H, Icon, Seg } from "@/components/fr/controls"
+import { Chip, H, Icon } from "@/components/fr/controls"
 import { undoAll } from "@/hooks/useCommand"
 import { useAreas } from "@/hooks/queries"
 import { dur } from "@/lib/format"
@@ -15,13 +15,11 @@ import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { TimeInput } from "@/components/fr/TimeInput"
 import { EXAM_HOURS } from "@/lib/ampm"
+import { LengthInput } from "@/todo/Pickers"
 
-const LENGTHS = [
-  { value: 60, label: "1h" },
-  { value: 90, label: "1h 30m" },
-  { value: 120, label: "2h" },
-  { value: 180, label: "3h" },
-]
+// The usual lengths a click away, and a box for any other, typed as you'd say it (15 Nov, a client: a 2h 30m final
+// had no way in)
+const LENGTHS = [45, 60, 90, 120, 150, 180]
 
 export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
   const { today } = useShell()
@@ -84,9 +82,16 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
             <span className="fr-kicker">Starts</span>
             <TimeInput value={time} step={300} onChange={(t) => t && setTime(t)} label="Starts" expect={{ hours: EXAM_HOURS }} />
           </label>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: "1 1 260px", minWidth: 0 }}>
             <span className="fr-kicker">Length</span>
-            <Seg options={LENGTHS} value={length} onPick={setLength} label="Length" />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+              {LENGTHS.map((m) => (
+                <Chip key={m} on={length === m} onClick={() => setLength(m)}>
+                  {dur(m)}
+                </Chip>
+              ))}
+              <LengthInput value={length} onPick={(m) => m && setLength(m)} width={96} />
+            </div>
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

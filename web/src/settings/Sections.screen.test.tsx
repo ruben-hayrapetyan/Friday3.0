@@ -377,10 +377,15 @@ describe("Repeating", () => {
   it("keeps a habit's times apart and changes its tag", async () => {
     const { user } = await openFriday("/settings/repeating")
     await screen.findByText("Habits and routines")
-    await user.click(within(line("Laundry")).getByRole("button", { name: "Days between Laundry" }))
-    await user.click(screen.getByRole("option", { name: "At least 7 days apart" }))
+    // said as a sentence (15 Nov, a client): the repeat, then how far apart, "Every week, at least 7 days after the last time"
+    const laundry = within(line("Laundry"))
+    expect(laundry.getByRole("button", { name: "Days between Laundry" }).textContent).toBe("any gap")
+    await user.click(laundry.getByRole("button", { name: "Days between Laundry" }))
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["any gap", ...[2, 3, 5, 7, 10, 14].map((d) => `at least ${d} days after the last time`)])
+    await user.click(screen.getByRole("option", { name: "at least 7 days after the last time" }))
     expect((await waitForSent("series_spacing")).body).toEqual({ id: 13, days: 7 })
-    expect(await screen.findByText("Laundry: at least 7 days apart")).toBeTruthy()
+    expect(await screen.findByText("Laundry: at least 7 days after the last time")).toBeTruthy()
+    await waitFor(() => expect(line("Laundry").querySelector(".tnum")?.textContent).toMatch(/^Every \w+, at least 7 days after the last time ·/))
     await user.click(within(line("gym")).getByRole("button", { name: "Tag for gym" }))
     await user.click(screen.getByRole("option", { name: "MATH 1910" }))
     expect((await waitForSent("series_edit")).body).toEqual({ id: 12, area: "MATH 1910" })

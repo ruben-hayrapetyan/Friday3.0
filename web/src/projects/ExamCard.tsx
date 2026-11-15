@@ -12,7 +12,7 @@ import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { countdown, course, type Exam, type PrepState, prepState, readiness, sitting, summary } from "./exams"
-import { Bar, card, EXAM_STATUS, RULE, StatusTag, TONE } from "./parts"
+import { Bar, card, EXAM_STATUS, RULE, StatusTag, TagMenu, TONE, useTag } from "./parts"
 
 const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -25,7 +25,10 @@ export function ExamCard({ exam, blocks }: { exam: Exam; blocks: Block[] }) {
   const e = exam.item
   const start = e.start ?? `${today}T00:00`
   const end = e.end ?? start
-  const area = e.area ?? exam.prep.find((p) => p.item.area)?.item.area ?? null
+  // its own tag first, set on the card; its prep's only while it has none
+  const retag = useTag(e.id, e.title)
+  const tag = e.area
+  const area = tag ?? exam.prep.find((p) => p.item.area)?.item.area ?? null
   const tint = color(area)
   const states = exam.prep.map((p) => prepState(p, blocks, start, today))
   const pct = readiness(exam)
@@ -39,7 +42,7 @@ export function ExamCard({ exam, blocks }: { exam: Exam; blocks: Block[] }) {
       <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
           <span className="fr-eyebrow" style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{course(e) ?? "Exam"}</span>
+            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{course({ ...e, area: tag }) ?? "Exam"}</span>
             <span style={{ flex: "none", color: soon ? "var(--fr-due)" : "var(--color-neutral-500)" }}>· {away}</span>
           </span>
           <H size={21} style={{ overflowWrap: "anywhere" }}>
@@ -86,7 +89,11 @@ export function ExamCard({ exam, blocks }: { exam: Exam; blocks: Block[] }) {
           </span>
         )}
       </div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -6 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: -6 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, minWidth: 0 }}>
+          <span className="fr-swatch" style={{ background: tint }} />
+          <TagMenu title={e.title} value={tag} onPick={retag} />
+        </span>
         <button className="fr-plain fr-link" onClick={() => (setPlace({ view: 1, first: start.slice(0, 10) }), navigate("/"))} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12 }}>
           <Icon name="calendar-dots" size={13} />
           See the day

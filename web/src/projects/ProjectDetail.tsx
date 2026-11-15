@@ -5,11 +5,11 @@ import { useRef, useState } from "react"
 import type { Item } from "@/api/client"
 import { Box, Check, H, Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
-import { useHorizon } from "@/hooks/queries"
+import { useHorizon, useSettings } from "@/hooks/queries"
 import { dur, when } from "@/lib/format"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
-import { Bar, PROJECT_STATUS, type Project, projectPct, StatusTag, TONE } from "./parts"
+import { Bar, PROJECT_STATUS, type Project, projectPct, StatusTag, TagMenu, TONE, useTag } from "./parts"
 import { Timeline } from "./Timeline"
 import { dockRoom } from "@/now/dockRoom"
 
@@ -21,13 +21,20 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
   const reorder = useCommand("reorder", { label: () => "Reordered" })
   // A project you'll do again, as a template New project offers (3 Nov: `template_save` had no button)
   const saveTemplate = useCommand("template_save", { label: (o) => `${o.result.message ?? "Saved"}: New project offers it` })
+  // One of that name already saved is asked about here, not written over (15 Nov, your choice on a client's notes)
+  const templates = ((useSettings().data as Record<string, unknown> | undefined)?.templates ?? {}) as Record<string, unknown>
+  const [asked, setAsked] = useState<number | null>(null) // the project it's asking for, so another doesn't show it
+  const replacing = asked === p.item.id
+  const save = () => (setAsked(null), saveTemplate({ name: p.item.title, project_id: p.item.id }))
+  const retag = useTag(p.item.id, p.item.title)
+  const tag = p.item.area
   const [text, setText] = useState("")
   const sending = useRef(false) // ↩ twice adds the step once
   const addStep = async () => {
     if (!text.trim() || sending.current) return
     sending.current = true
     try {
-      if (await add({ text, parent_id: p.item.id, area: p.item.area })) setText("")
+      if (await add({ text, parent_id: p.item.id, area: tag })) setText("")
     } finally {
       sending.current = false
     }
@@ -51,8 +58,19 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
           Projects & exams
         </button>
         <span style={{ flex: 1 }} />
-        {steps.length > 0 && (
-          <button className="btn btn-ghost" onClick={() => saveTemplate({ name: p.item.title, project_id: p.item.id })} title="Its steps, in this order and with their share of the hours, for the next project like it" style={{ fontSize: 12.5 }}>
+        {steps.length > 0 && replacing && (
+          <span style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", fontSize: 12.5 }}>
+            <span>A template called “{p.item.title}” is saved already. Replace it?</span>
+            <button className="btn btn-ghost" onClick={save} style={{ fontSize: 12.5 }}>
+              Replace
+            </button>
+            <button className="btn btn-ghost" onClick={() => setAsked(null)} style={{ fontSize: 12.5 }}>
+              Keep it
+            </button>
+          </span>
+        )}
+        {steps.length > 0 && !replacing && (
+          <button className="btn btn-ghost" onClick={() => (Object.keys(templates).includes(p.item.title) ? setAsked(p.item.id) : save())} title="Its steps, in this order and with their share of the hours, for the next project like it" style={{ fontSize: 12.5 }}>
             <Icon name="copy-simple" size={13} />
             Save as template
           </button>
@@ -62,8 +80,8 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
       <div style={{ display: "flex", alignItems: "flex-end", gap: 20, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: "min(260px, 100%)", display: "flex", flexDirection: "column", gap: 8 }}>
           <span className="fr-eyebrow" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span className="fr-swatch" style={{ background: color(p.item.area, p.item.preset) }} />
-            {p.item.area ?? "No tag"} · {p.item.preset ?? "Project"}
+            <span className="fr-swatch" style={{ background: color(tag, p.item.preset) }} />
+            <TagMenu title={p.item.title} value={tag} onPick={retag} /> · {p.item.preset ?? "Project"}
           </span>
           <H size={layout.tight ? 28 : 36} style={{ overflowWrap: "anywhere" }}>
             {p.item.title}
@@ -80,7 +98,7 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
             </span>
             <StatusTag label={label} tone={tone} />
           </div>
-          <Bar pct={projectPct(p)} color={color(p.item.area, p.item.preset)} />
+          <Bar pct={projectPct(p)} color={color(tag, p.item.preset)} />
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column" }}>

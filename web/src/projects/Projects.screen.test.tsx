@@ -184,6 +184,61 @@ describe("projects", () => {
     await live(client, () => expect(screen.queryByText("Print handouts")).toBeNull())
   })
 
+  it("asks before saving over a template of the same name", async () => {
+    // 15 Nov, a client: saving again wrote over the one saved before without a word
+    const { user, client } = await page()
+    await user.click(await screen.findByRole("button", { name: /Rocketry design review/ }))
+    await live(client, () => expect(screen.getByRole("button", { name: /Save as template/ })).toBeTruthy())
+    sent.length = 0
+    await user.click(screen.getByRole("button", { name: /Save as template/ }))
+    expect(screen.getByText("A template called “Rocketry design review” is saved already. Replace it?")).toBeTruthy()
+    expect(sent.filter((s) => s.name === "template_save")).toHaveLength(0)
+    await user.click(screen.getByRole("button", { name: "Keep it" }))
+    expect(screen.queryByText(/Replace it\?/)).toBeNull()
+    expect(sent.filter((s) => s.name === "template_save")).toHaveLength(0)
+    await user.click(screen.getByRole("button", { name: /Save as template/ }))
+    await user.click(screen.getByRole("button", { name: "Replace" }))
+    expect((await waitForSent("template_save")).body).toEqual({ name: "Rocketry design review", project_id: (await itemNamed("Rocketry design review")).id })
+    expect(screen.queryByText(/Replace it\?/)).toBeNull()
+  })
+
+  it("removes a template you saved, with Undo; Essay and Presentation stay", async () => {
+    const { user, client } = await page()
+    await user.click(screen.getAllByRole("button", { name: "New project" })[0])
+    const dialog = await screen.findByRole("dialog")
+    await within(dialog).findByRole("button", { name: /^Rocketry design review/ })
+    expect(within(dialog).queryByRole("button", { name: "Remove template Essay" })).toBeNull()
+    expect(within(dialog).queryByRole("button", { name: "Remove template Presentation" })).toBeNull()
+    await user.click(within(dialog).getByRole("button", { name: "Remove template Rocketry design review" }))
+    expect(within(dialog).queryByRole("button", { name: /^Rocketry design review/ })).toBeNull() // gone at once
+    const removed = (await waitForSent("settings_set")).body as { key: string; value: Record<string, unknown> }
+    expect(removed.key).toBe("templates")
+    expect(Object.keys(removed.value)).toEqual(["Essay", "Presentation"])
+    await user.click(await screen.findByRole("button", { name: "Undo" }))
+    await live(client, () => expect(within(dialog).getByRole("button", { name: /^Rocketry design review/ })).toBeTruthy())
+    expect(screen.getByRole("dialog")).toBeTruthy() // still open
+  })
+
+  it("changes a project's tag on its page, and its steps that had the old one with it", async () => {
+    // 15 Nov, a client: a project's tag couldn't be changed; a step tagged otherwise keeps its own
+    const slides = await itemNamed("Slides")
+    await friday.c("edit", { id: slides.id, area: "MATH 1910" })
+    const { user, client } = await page()
+    await user.click(await screen.findByRole("button", { name: /Rocketry design review/ }))
+    const project = await itemNamed("Rocketry design review")
+    await user.click(await screen.findByRole("button", { name: "Tag for Rocketry design review" }))
+    await user.click(screen.getByRole("option", { name: "PHYS 1112" }))
+    expect(screen.getByRole("button", { name: "Tag for Rocketry design review" }).textContent).toBe("PHYS 1112") // at once
+    expect((await waitForSent("edit")).body).toEqual({ id: project.id, area: "PHYS 1112" })
+    const areas = async () => Object.fromEntries((await Promise.all(["Rocketry design review", "Research", "Slides", "Rehearse"].map(itemNamed))).map((i) => [i.title, i.area]))
+    await waitFor(async () => expect(await areas()).toEqual({ "Rocketry design review": "PHYS 1112", Research: "PHYS 1112", Slides: "MATH 1910", Rehearse: "PHYS 1112" }))
+    // one Undo puts them all back
+    await user.click((await screen.findAllByRole("button", { name: "Undo" })).at(-1) as HTMLElement)
+    await waitFor(async () => expect(await areas()).toEqual({ "Rocketry design review": "Rocketry", Research: "Rocketry", Slides: "MATH 1910", Rehearse: "Rocketry" }))
+    await live(client, () => expect(screen.getByRole("button", { name: "Tag for Rocketry design review" }).textContent).toBe("Rocketry"))
+    await friday.c("edit", { id: slides.id, area: "Rocketry" })
+  })
+
   it("makes a blank project, moves between projects, and goes back to them all", async () => {
     const { user, client } = await page()
     const dialog = await newProject(user, "Lab notebook cleanup")
@@ -259,6 +314,29 @@ describe("exams", () => {
     const phys = screen.getByRole("article", { name: /^PHYS 1112 Prelim 2/ })
     await user.click(within(phys).getByRole("button", { name: "See the day" }))
     await waitFor(() => expect(window.location.hash).toBe("#/"))
+  })
+
+  it("changes an exam's tag on its card, and its color follows its own tag over its prep's", async () => {
+    // 15 Nov, a client: an exam's tag couldn't be changed; its prep tagged otherwise keeps its own
+    const exam = (await friday.q<{ item: Item; prep: { item: Item }[] }[]>("exams")).find((e) => e.item.title === "MATH 1910 Prelim 2")!
+    const prep = exam.prep[0].item
+    await friday.c("edit", { id: prep.id, area: "Rocketry" })
+    const { user } = await page()
+    const swatch = (title: string): HTMLElement => {
+      const menu = within(screen.getByRole("article", { name: new RegExp(`^${title}`) })).getByRole("button", { name: `Tag for ${title}` })
+      return menu.closest(".fr-menu")?.parentElement?.querySelector(".fr-swatch") as HTMLElement
+    }
+    const math = () => within(screen.getByRole("article", { name: /^MATH 1910 Prelim 2/ }))
+    await user.click(math().getByRole("button", { name: "Tag for MATH 1910 Prelim 2" }))
+    await user.click(screen.getByRole("option", { name: "PHYS 1112" }))
+    expect(swatch("MATH 1910 Prelim 2").style.background).toBe(swatch("PHYS 1112 Prelim 2").style.background) // at once, its own tag's
+    expect((await waitForSent("edit")).body).toEqual({ id: exam.item.id, area: "PHYS 1112" })
+    const examArea = async () => (await friday.q<{ item: Item }[]>("exams")).find((e) => e.item.id === exam.item.id)?.item.area
+    await waitFor(async () => expect(await examArea()).toBe("PHYS 1112"))
+    expect((await itemNamed(prep.title)).area).toBe("Rocketry") // tagged otherwise: kept
+    await user.click((await screen.findAllByRole("button", { name: "Undo" })).at(-1) as HTMLElement)
+    await waitFor(async () => expect(await examArea()).toBe(exam.item.area))
+    await friday.c("edit", { id: prep.id, area: prep.area })
   })
 
   it("offers exam focus as a rule, in Rules, and points at the rule once it's on", async () => {
@@ -341,6 +419,30 @@ describe("exams", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "New exam" })).toBeNull())
     await user.click(screen.getAllByRole("button", { name: "Undo" }).at(-1) as HTMLElement)
     await waitFor(() => expect(sent.filter((s) => s.name === "undo")).toHaveLength(2), { timeout: 5000 })
+  })
+
+  it("takes an exam of any length, typed in the box beside the usual ones", async () => {
+    // 15 Nov, a client: a 2h 30m final had no way in (1h, 1h 30m, 2h or 3h only)
+    const { user } = await page()
+    await user.click(screen.getByRole("button", { name: "New exam" }))
+    const dialog = await screen.findByRole("dialog", { name: "New exam" })
+    const chips = ["45m", "1h", "1h 30m", "2h", "2h 30m", "3h"]
+    for (const c of chips) expect(within(dialog).getByRole("button", { name: c })).toBeTruthy()
+    await user.type(within(dialog).getByPlaceholderText("Name, e.g. MATH 2940 Prelim 2"), "HIST 1500 Final")
+    const box = within(dialog).getByRole("textbox", { name: "Length" })
+    await user.clear(box)
+    await user.type(box, "2h 30m")
+    expect(within(dialog).getByText("→ 2h 30m")).toBeTruthy()
+    await user.keyboard("{Enter}")
+    expect(within(dialog).getByRole("button", { name: "2h 30m" }).getAttribute("aria-pressed")).toBe("true")
+    for (let n = 0; n < 4; n++) await user.click(within(dialog).getByRole("button", { name: "Less prep" }))
+    sent.length = 0
+    await user.click(within(dialog).getByRole("button", { name: "Add exam" }))
+    const exam = (await waitForSent("add")).body as { start: string; end: string }
+    expect((Date.parse(exam.end) - Date.parse(exam.start)) / 60_000).toBe(150)
+    expect(await screen.findByText("Exam added")).toBeTruthy()
+    await user.click((await screen.findAllByRole("button", { name: "Undo" })).at(-1) as HTMLElement)
+    await waitForSent("undo")
   })
 
   it("adds an exam with no prep", async () => {

@@ -11,8 +11,9 @@ import { markedDone, mealEnded, mealSkipped, mealStarted, napEnded, napStarted, 
 import { pending } from "@/plan/pending"
 import { whatIf } from "@/whatif/store"
 
-// settings too: a look flipped on the calendar goes back when the server refuses it (audit, 8 Nov)
-const OPTIMISTIC = ["items", "item", "plan", "now", "status", "meals", "sleep", "settings", "rules"]
+// settings too: a look flipped on the calendar goes back when the server refuses it (audit, 8 Nov); projects and
+// exams, a tag picked on a project's page or an exam's card (15 Nov)
+const OPTIMISTIC = ["items", "item", "plan", "now", "status", "meals", "sleep", "settings", "rules", "projects", "exams"]
 
 // What these change in the Now bar and the timer, shown before the server answers wherever they're made from: the
 // bar, a block's card, a to-do, Space (now/instant.ts).

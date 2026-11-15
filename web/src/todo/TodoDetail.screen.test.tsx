@@ -243,7 +243,7 @@ describe("a task's detail", () => {
     const menu = await within(aside).findByRole("button", { name: "Days between Laundry" }, { timeout: 5000 })
     await user.click(menu)
     const options = within(aside).getAllByRole("option")
-    await user.click(options.find((o) => /At least/.test(o.textContent ?? "")) as HTMLElement)
+    await user.click(options.find((o) => /at least/.test(o.textContent ?? "")) as HTMLElement)
     expect((await waitForSent("series_spacing")).body).toMatchObject({ days: expect.any(Number) })
   })
 })
