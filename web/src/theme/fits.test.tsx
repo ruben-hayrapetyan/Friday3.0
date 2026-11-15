@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 import { MenuChoice } from "@/components/fr/controls"
 import { DueCount } from "@/plan/DueCount"
+import { clamped } from "@/plan/lines"
 
 // Read from disk: vitest hands CSS imports over empty.
 const root = join(__dirname, "..")
@@ -121,9 +122,12 @@ describe("a settings card's body (glass box)", () => {
 })
 
 describe("the plan's blocks and a month's days (glass box)", () => {
-  it("end a block's time line in … rather than cutting it", () => {
+  // 15 Nov (the user: "Title and details"): a tall block's time and place wrap to the lines it has; a short one still
+  // ends its one line in … (a line clamp, plan/lines.ts)
+  it("end a block's time line in … rather than cutting it, wrapping first when the block has the height", () => {
     const line = read("plan/Pieces.tsx").slice(read("plan/Pieces.tsx").indexOf("function TimeLine"))
-    expect(line.slice(0, line.indexOf("\n}\n"))).toMatch(/whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"/)
+    expect(line.slice(0, line.indexOf("\n}\n"))).toContain("...clamped(lines)")
+    expect(clamped(1)).toMatchObject({ display: "-webkit-box", WebkitLineClamp: 1, overflow: "hidden", overflowWrap: "anywhere" })
   })
 
   it("in a day too narrow for them, drop a thing's time and the word 'due', keeping the title and the count", () => {
