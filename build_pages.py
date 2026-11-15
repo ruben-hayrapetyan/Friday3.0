@@ -53,7 +53,7 @@ TERMS = (
 )
 
 
-def page(name: str, title: str, description: str, body: str) -> str:
+def page(name: str, title: str, description: str, body: str, robots: str | None = None) -> str:
     links = "\n    ".join(
         f'<a href="/{href}"{' aria-current="page"' if href == name else ""}>{label}</a>' for href, label in NAV
     )
@@ -66,7 +66,12 @@ def page(name: str, title: str, description: str, body: str) -> str:
 <meta name="color-scheme" content="light dark">
 <title>{html.escape(title)}</title>
 <meta name="description" content="{html.escape(description)}">
-<link rel="canonical" href="https://friday-scheduler.com/{name}">
+<link rel="canonical" href="https://friday-scheduler.com/{name}">{
+        f'''
+<meta name="robots" content="{html.escape(robots)}">'''
+        if robots
+        else ""
+    }
 <link rel="icon" type="image/png" sizes="48x48" href="/images/icon-48.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png">
 <link rel="apple-touch-icon" href="/images/icon.png">
@@ -174,15 +179,33 @@ def fill(body: str, record: dict, root: Path = HERE) -> str:
 
 def build(root: Path = HERE) -> list[str]:
     record = json.loads((root / "releases" / "released.json").read_text())
-    written = []
+    written: list[str] = []
+    listed: list[str] = []
     for source in sorted((root / "pages").glob("*.html")):
         head, body = source.read_text().split("---\n", 1)
         meta = dict(line.split(": ", 1) for line in head.strip().splitlines())
         body = fill(body, record, root)
-        text = body if meta.get("wrap") == "no" else page(source.name, meta["title"], meta["description"], body)
+        text = (body if meta.get("wrap") == "no" else
+                page(source.name, meta["title"], meta["description"], body, meta.get("robots")))  # fmt: skip
         (root / "site" / source.name).write_text(text)
         written.append(source.name)
-    return written
+        if "noindex" not in meta.get("robots", ""):
+            listed.append("" if source.name == "index.html" else source.name)
+    (root / "site" / "sitemap.xml").write_text(sitemap(listed))
+    (root / "site" / "robots.txt").write_text(ROBOTS)
+    return [*written, "sitemap.xml", "robots.txt"]
+
+
+# What search engines are told (15 Nov: Search Console counted a page "HTTPS not evaluated"; with no sitemap Google
+# found pages on its own, the contact form's answers among them): every page meant to be found, at its https address,
+# and where that list is. A page whose header says `robots: noindex` is left out (and says so in its head).
+ADDRESS = "https://friday-scheduler.com/"
+ROBOTS = f"User-agent: *\nAllow: /\n\nSitemap: {ADDRESS}sitemap.xml\n"
+
+
+def sitemap(names: list[str]) -> str:
+    urls = "".join(f"  <url><loc>{ADDRESS}{name}</loc></url>\n" for name in sorted(names, key=lambda n: (n != "", n)))
+    return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{urls}</urlset>\n'
 
 
 if __name__ == "__main__":

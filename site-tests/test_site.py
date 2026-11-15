@@ -397,3 +397,15 @@ def test_features_and_help_say_what_0_4_2_brings() -> None:
     assert "can move later without being late, each tried first and undoable." in features
     assert "A project you'll do again can be saved as a template (Save as template on its page)" in help_
     assert "Remove one you saved with the ✕ on its card." in help_
+
+
+def test_search_engines_get_a_sitemap_of_the_pages_meant_to_be_found() -> None:
+    """15 Nov: Search Console counted a page "HTTPS not evaluated" and the site had no sitemap, so Google found pages
+    on its own. The sitemap lists every page at its https address but the contact form's answers, which say noindex;
+    robots.txt says where it is."""
+    listed = re.findall(r"<loc>([^<]+)</loc>", (SITE / "sitemap.xml").read_text())
+    pages = ("", "contact.html", "features.html", "help.html", "privacy.html", "terms.html", "whats-new.html")
+    assert listed == [f"https://friday-scheduler.com/{name}" for name in pages]
+    assert "Sitemap: https://friday-scheduler.com/sitemap.xml" in (SITE / "robots.txt").read_text()
+    for answer in ("contact-sent.html", "contact-wait.html"):
+        assert '<meta name="robots" content="noindex">' in (SITE / answer).read_text()
