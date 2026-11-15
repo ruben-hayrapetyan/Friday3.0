@@ -378,6 +378,30 @@ describe("exams", () => {
     await waitFor(() => expect(sent.filter((s) => s.name === "undo")).toHaveLength(2), { timeout: 5000 })
   })
 
+  it("takes an exam of any length, typed in the box beside the usual ones", async () => {
+    // 15 Nov, a client: a 2h 30m final had no way in (1h, 1h 30m, 2h or 3h only)
+    const { user } = await page()
+    await user.click(screen.getByRole("button", { name: "New exam" }))
+    const dialog = await screen.findByRole("dialog", { name: "New exam" })
+    const chips = ["45m", "1h", "1h 30m", "2h", "2h 30m", "3h"]
+    for (const c of chips) expect(within(dialog).getByRole("button", { name: c })).toBeTruthy()
+    await user.type(within(dialog).getByPlaceholderText("Name, e.g. MATH 2940 Prelim 2"), "HIST 1500 Final")
+    const box = within(dialog).getByRole("textbox", { name: "Length" })
+    await user.clear(box)
+    await user.type(box, "2h 30m")
+    expect(within(dialog).getByText("→ 2h 30m")).toBeTruthy()
+    await user.keyboard("{Enter}")
+    expect(within(dialog).getByRole("button", { name: "2h 30m" }).getAttribute("aria-pressed")).toBe("true")
+    for (let n = 0; n < 4; n++) await user.click(within(dialog).getByRole("button", { name: "Less prep" }))
+    sent.length = 0
+    await user.click(within(dialog).getByRole("button", { name: "Add exam" }))
+    const exam = (await waitForSent("add")).body as { start: string; end: string }
+    expect((Date.parse(exam.end) - Date.parse(exam.start)) / 60_000).toBe(150)
+    expect(await screen.findByText("Exam added")).toBeTruthy()
+    await user.click((await screen.findAllByRole("button", { name: "Undo" })).at(-1) as HTMLElement)
+    await waitForSent("undo")
+  })
+
   it("adds an exam with no prep", async () => {
     const { user } = await page()
     await user.click(screen.getByRole("button", { name: "New exam" }))
