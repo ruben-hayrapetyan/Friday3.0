@@ -418,3 +418,9 @@ def test_privacy_says_how_often_friday_looks_for_updates() -> None:
         "Once a day, and when you open Friday's window, it asks this site for the list of Friday's versions" in privacy
     )
     assert "once a month" not in privacy
+
+
+def test_the_faq_asks_about_a_mobile_version_not_only_the_iphone() -> None:
+    """H212 (15 Nov, a client: "iphone" → "mobile", phones in general, not Apple's alone)."""
+    home = (SITE / "index.html").read_text()
+    assert "<summary>Is there a Windows, Linux or mobile version?</summary>" in home and "iPhone version" not in home
