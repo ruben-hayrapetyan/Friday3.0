@@ -17,6 +17,9 @@ STUDY = re.compile(
 PROBLEM_SET = re.compile(
     r"\b(prob\w*\s*sets?|p-?sets?|hw\s*\d*|homework|ps\s*\d+|worksheets?|exercises?)\b", re.IGNORECASE
 )
+# An all-day calendar entry that reads like something due rather than a day (15 Nov: "Strip, unless it says due"):
+# homework and problem sets as a title says them, or an assignment. An exam or quiz is read as one, with its prep.
+HANDED_IN = re.compile(rf"{PROBLEM_SET.pattern}|\bassignments?\b", re.IGNORECASE)
 WORDS = (  # the first that matches wins
     ("Exam prep", re.compile(r"\b(prelim|midterm|exam|final exam|quiz)\b", re.IGNORECASE)),
     ("Project", re.compile(r"\bproject\b", re.IGNORECASE)),

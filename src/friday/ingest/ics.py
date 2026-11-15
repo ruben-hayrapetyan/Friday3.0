@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from icalendar import Calendar
 
+from friday.core.guess import HANDED_IN
 from friday.core.time import UNIT_MIN
 
 
@@ -191,6 +192,10 @@ def classify(
     if read.kind is None and ((start is not None and start == end) or read.due.search(summary)):
         return [Proposed("add", {"title": plain, "preset": "Assignment", "due": due_at}, quotes)]
     exam = read.kind == "Exam" or (read.kind is None and read.exam.search(summary) is not None)
+    if start is None and read.kind is None and not exam and HANDED_IN.search(summary):
+        # All day and reading like work handed in ("Assignment 4", "HW 7"): a to-do due that day, as the AI sorts it;
+        # anything else all day is a day in the strip (15 Nov: "Strip, unless it says due")
+        return [Proposed("add", {"title": plain, "preset": "Assignment", "due": due_at}, quotes)]
     eve = f"{date.fromisoformat(day) - timedelta(days=1)}T23:59" if day else None  # an all-day exam's
     prep_fields = {"title": f"Prep: {named}", "preset": "Exam prep", "due": start or eve}
     prep = [Proposed("add", prep_fields, quotes)]

@@ -43,6 +43,23 @@ def test_a_google_calendars_all_day_event_comes_in_and_takes_no_time(app: App) -
     the_one(app)
 
 
+def test_an_all_day_entry_that_says_its_due_is_a_to_do_due_that_day_and_the_rest_are_days(app: App) -> None:
+    # 15 Nov: "Strip, unless it says due", as the AI would sort them when there's none to ask
+    entries = [THANKSGIVING] + [
+        {"id": eid, "summary": title, "start": {"date": "2026-11-25"}, "end": {"date": "2026-11-26"}}
+        for eid, title in (("a", "Assignment 4"), ("h", "MATH 1920 HW 7"), ("p", "Problem Set 3"), ("q", "Quiz 2"))
+    ]
+    app.do("settings_set", key="gcal", value={"read": ["School"], "trusted": ["School"]})
+    sync(app.conn, app.now_utc, google=FakeGoogle({"School@group": entries}))
+    waiting = {s["input"]["title"]: s["input"] for s in app.do("inbox")["suggestions"]}
+    for title in ("Assignment 4", "MATH 1920 HW 7", "Problem Set 3"):
+        assert waiting[title] == {"title": title, "preset": "Assignment", "due": "2026-11-25T23:59"}  # a to-do
+    assert waiting["Prep: Quiz 2"]["preset"] == "Exam prep"  # an exam as before: a whole day, with its prep
+    fixed = {i["title"] for i in app.table("items") if i["when_kind"] == "fixed"}
+    assert fixed == {"Thanksgiving", "Quiz 2"}
+    the_one(app)
+
+
 def test_a_mac_calendars_all_day_event_comes_in_and_takes_no_time(app: App) -> None:
     whole = {"id": "t", "calendar": "home", "title": "Thanksgiving", "start": "2026-11-26", "end": "2026-11-27"}
     post(app, [calendar("home", "Home")], [whole | {"all_day": True}])
