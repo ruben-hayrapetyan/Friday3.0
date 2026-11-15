@@ -26,7 +26,7 @@ import { useGlide } from "./glide"
 import { type TrialPlan, useWhatIf, whatIf } from "@/whatif/store"
 import { asBlock, BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, PX, SleepBand, type TriedLook } from "./Pieces"
 import { inARow, type Pick, pickOfBlock, pickOfEvent, picks, shifted, usePicks } from "./picks"
-import { layers } from "./layers"
+import { givesTimeToWork, layers, sideBySide } from "./layers"
 import { WholeDays } from "./WholeDays"
 import { eatenRoutines, pastMeals } from "./pastMeals"
 import { isWholeDay } from "./wholeDay"
@@ -179,6 +179,8 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
               onResize={stays(p.item) ? undefined : (e, edge) => (letGo(p.item), begin(e, grabbedEvent(p.item, edge === "top" ? "resize-top" : "resize", minuteAt(e))))}
             />
           )
+          // A dashed event, which lets work over it, beside the work rather than under it (plan/layers.ts)
+          const placed = sideBySide(going, [...shown, ...sessions, ...mealBlocks], date, axis, givesTimeToWork)
           return (
             <div
               key={date}
@@ -204,9 +206,9 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
             >
               <Nights date={date} days={days} axis={axis} />
               {layout(notGoing, date, axis).map((p) => fixedBox(p))}
-              {layout(going, date, axis).map((p) => fixedBox(p))}
+              {placed.events.map((p) => fixedBox(p))}
               {event && !event.allDay && layout([event], date, axis).map((p) => <DraftBox key="draft" p={p} title={event.title} />)}
-              {layout([...shown, ...sessions, ...mealBlocks], date, axis).map((p) =>
+              {placed.blocks.map((p) =>
                 p.item.key.startsWith("M") ? (
                   // A meal you ate: a done Lunch where you had it, opening Insights → Meals to change it.
                   <BlockBox
