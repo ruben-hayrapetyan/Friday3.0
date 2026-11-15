@@ -409,3 +409,12 @@ def test_search_engines_get_a_sitemap_of_the_pages_meant_to_be_found() -> None:
     assert "Sitemap: https://friday-scheduler.com/sitemap.xml" in (SITE / "robots.txt").read_text()
     for answer in ("contact-sent.html", "contact-wait.html"):
         assert '<meta name="robots" content="noindex">' in (SITE / answer).read_text()
+
+
+def test_privacy_says_how_often_friday_looks_for_updates() -> None:
+    """H210 (15 Nov): Friday looks once a day and when its window opens (H208), not "once a month"."""
+    privacy = " ".join((SITE / "privacy.html").read_text().split())
+    assert (
+        "Once a day, and when you open Friday's window, it asks this site for the list of Friday's versions" in privacy
+    )
+    assert "once a month" not in privacy
