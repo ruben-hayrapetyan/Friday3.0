@@ -324,8 +324,10 @@ def read_feed(
 
     def read() -> list[Found]:
         # A shift app's link names its kind (integrations/links.py: your shifts are Events); others read by their words
+        # its all-day events come in as Google's do (15 Nov: a link's holidays were always left out)
+        all_day = settings["gcal"].include_all_day
         read = event_reading(
-            settings, config.get("kind"), False, config.get("due_pattern"), config.get("class_pattern")
+            settings, config.get("kind"), all_day, config.get("due_pattern"), config.get("class_pattern")
         )
         found = ics.parse_feed(fetch(config["url"]), settings["time"].timezone, read)
         if canvas.takes_over(conn, source):  # C107: the Canvas API brings its assignments; the feed, its events

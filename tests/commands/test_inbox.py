@@ -30,17 +30,18 @@ def pending(app: App) -> dict[str, dict]:
 def test_a_feed_fills_the_inbox_and_nothing_is_planned_until_accepted(app: App) -> None:
     feed(app)
     found = pending(app)
-    assert set(found) == {"CS 1110 Lecture", "PS4", "Essay draft"} and app.do("items") == []
+    assert set(found) == {"CS 1110 Lecture", "PS4", "Essay draft", "Fall break"} and app.do("items") == []
     app.do("suggestion_accept", id=found["PS4"]["id"], edits={"duration_min": 180})
     assert [(i["title"], i["due"], i["duration_min"]) for i in app.do("items")] == [("PS4", "2026-10-22T23:59", 180)]
     app.do("suggestion_reject", id=found["Essay draft"]["id"])
-    assert set(pending(app)) == {"CS 1110 Lecture"}
+    assert set(pending(app)) == {"CS 1110 Lecture", "Fall break"}
 
 
 def test_a_trusted_feeds_events_go_straight_in_and_its_tasks_still_wait(app: App) -> None:
     feed(app, trusted=True)
     assert set(pending(app)) == {"PS4", "Essay draft"}
-    assert [r["actor"] for r in app.table("command_log") if r["command"] == "suggestion_accept"] == ["sync:Canvas"]
+    accepted = [r["actor"] for r in app.table("command_log") if r["command"] == "suggestion_accept"]
+    assert accepted == ["sync:Canvas", "sync:Canvas"]  # the lecture and Fall break, all day (15 Nov)
 
 
 def test_a_changed_event_suggests_editing_what_was_accepted(app: App) -> None:

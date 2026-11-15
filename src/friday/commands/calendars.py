@@ -137,9 +137,10 @@ def let_go(ctx: Ctx, account: str, remaining: list[str]) -> None:
 
 
 def reread_calendars(ctx: Ctx) -> None:
-    """Every calendar read again on the next sync, which is now, as when one changes kind."""
+    """Every calendar read again on the next sync, which is now, as when one changes kind. Calendar links too, as
+    all-day events are read from them the same way (15 Nov)."""
     for source in ctx.conn.execute(
-        "SELECT id FROM sources WHERE user_id = ? AND kind IN ('gcal', 'mac')", [ctx.user_id]
+        "SELECT id FROM sources WHERE user_id = ? AND kind IN ('gcal', 'mac', 'ics')", [ctx.user_id]
     ):
         forget_unanswered(ctx, source[0])
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "sync_now"}, {"value": json.dumps(ctx.now_text)})

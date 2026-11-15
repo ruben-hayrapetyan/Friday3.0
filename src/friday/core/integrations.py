@@ -107,7 +107,9 @@ class GoogleSettings(Model):
 class GcalSettings(Model):
     read: tuple[str, ...] = ()  # calendar names or ids ("primary")
     trusted: tuple[str, ...] = ()  # their events skip the inbox
-    include_all_day: bool = False
+    # All-day events (Thanksgiving, a birthday, a day off) come in, at the top of their day and never busy (15 Nov: a
+    # client's holidays and own all-day events were missing, as this was off unless you knew to turn it on).
+    include_all_day: bool = True
     publish: bool = False  # the "Friday" calendar
     publish_debounce_s: int = Field(60, ge=0)
     new_events_to: str | None = None  # a calendar's id: events you make in Friday are saved there too

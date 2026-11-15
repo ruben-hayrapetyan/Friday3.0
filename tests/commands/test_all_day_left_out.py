@@ -115,6 +115,7 @@ def test_an_input_that_made_nothing_drops_nothing(app: App) -> None:
 
 
 def test_through_the_macs_calendars(app: App) -> None:
+    app.do("settings_set", key="gcal", value={"include_all_day": False})  # on by default since 15 Nov
     home = {"id": "home", "name": "Home", "account": "iCloud", "type": "caldav", "color": "#3a5a8c"}
     since, until = "2026-10-18T00:00:00-04:00", "2026-12-14T00:00:00-05:00"
     timed = {"id": "o1", "calendar": "home", "title": "Offsite", "start": "2026-10-22T09:00:00-04:00",
