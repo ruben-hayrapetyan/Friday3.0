@@ -124,6 +124,9 @@ def test_exam_focus_with_no_words_finds_no_exams() -> None:
 
     assert ExamFocus().finds("PHYS 1112 Prelim 2")
     assert not ExamFocus().finds("Preliminary reading")
+    # 15 Nov: "finals" as the Exam category reads it, and a final project isn't an exam
+    assert ExamFocus().finds("Study for finals") and ExamFocus().finds("math final")
+    assert not ExamFocus().finds("Final project presentation") and not ExamFocus().finds("Final Fantasy movie night")
     assert not ExamFocus(words=()).finds("Dinner")
     assert not ExamFocus(words=("", "  ")).finds("Dinner")
     assert ExamFocus(words=("", "quiz")).finds("Chem quiz")

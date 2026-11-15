@@ -45,9 +45,13 @@ class CategorySettings(Model):
 # classes ("MATH 1920 Prelim 2") and exercise before work ("work out"). Each its own soft paint, none of the ones
 # work wears (schoolwork's Verdigris, meals' Ochre) nor Payne's Gray, too near an unmarked event's slate; red only for
 # what's due. Birthdays are Social and appointments Meetings: seven paints are left, not nine.
+# "Final" or "finals" is an exam ("math final"), but not a final project, paper, draft, presentation, round or review
+# (15 Nov, the user: "final, with exceptions"), nor a name, where a capitalized word follows ("Final Fantasy movie
+# night", "Final Four"; "Final Exam" is one). Exam focus reads "final" the same way (core/settings.py ExamFocus).
+NOT_AN_EXAM_FINAL = r"(?!\s+(?:(?:project|paper|draft|presentation|round|review)s?\b|(?-i:(?!Exam)[A-Z][a-z])))"
 STARTER_CATEGORIES = (
     Category(name="Exam", slug="exam", color="red",
-             pattern=r"\b(exams?|prelims?|midterms?|quiz(?:zes)?|final exams?|finals|deadline|due)\b"),
+             pattern=r"\b(exams?|prelims?|midterms?|quiz(?:zes)?|finals?" + NOT_AN_EXAM_FINAL + r"|deadline|due)\b"),
     Category(name="Travel", slug="travel", color="violet",
              pattern=r"\b(flight|fly|train|bus|drive to|travel|trip|airport|depart|departure)\b"),
     Category(name="Meeting", slug="meeting", color="blue",

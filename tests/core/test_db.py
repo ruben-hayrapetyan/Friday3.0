@@ -31,7 +31,7 @@ def add_item(conn: sqlite3.Connection, **changes: object) -> int:
 def test_schema_creates_every_table(conn: sqlite3.Connection) -> None:
     names = {r["name"] for r in rows(conn, "SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert names == TABLES
-    assert schema_version(conn) == 37
+    assert schema_version(conn) == 38
 
 
 def test_every_table_is_strict_and_has_a_user(conn: sqlite3.Connection) -> None:
@@ -43,7 +43,7 @@ def test_every_table_is_strict_and_has_a_user(conn: sqlite3.Connection) -> None:
 
 def test_reconnecting_does_not_migrate_twice(tmp_path: Path) -> None:
     connect(tmp_path / "friday.db").close()
-    assert schema_version(connect(tmp_path / "friday.db")) == 37
+    assert schema_version(connect(tmp_path / "friday.db")) == 38
 
 
 def test_wal_and_foreign_keys_are_on(conn: sqlite3.Connection) -> None:
@@ -139,7 +139,7 @@ def test_rebuilding_the_log_keeps_undone_links_on_an_existing_database(tmp_path:
     old.execute("UPDATE command_log SET undone_by = 2 WHERE id = 1")
     old.close()
     conn = connect(path)
-    assert schema_version(conn) == 37
+    assert schema_version(conn) == 38
     assert one(conn, "SELECT undone_by FROM command_log WHERE id = 1")["undone_by"] == 2
     conn.execute(
         "INSERT INTO command_log (at_utc, actor, command, input, result) VALUES ('x', 'sync:Canvas', 'add', '{}', '{}')"
@@ -228,7 +228,7 @@ def test_migration_6_rereads_waiting_events_fixes_unacceptable_suggestions_and_c
     )
     old.close()
     conn = connect(path)
-    assert schema_version(conn) == 37
+    assert schema_version(conn) == 38
     assert one(conn, "SELECT content_hash FROM raw_inputs WHERE id = 1")["content_hash"] == ""
     found = {r["id"]: (r["status"], json.loads(r["input"])) for r in rows(conn, "SELECT * FROM suggestions")}
     assert found[2] == ("pending", {"title": "Meet advisor", "preset": "Errand"})
@@ -414,6 +414,20 @@ def test_migration_27_gives_saved_rules_one_course_for_a_stretch(tmp_path: Path)
     conn = migrated_from(tmp_path, 26, {"rules": [{"type": "chunk_cost", "name": "chunk_cost", "weight": 10}]})
     rules = json.loads(one(conn, "SELECT value FROM settings WHERE key = 'rules'")["value"])
     assert [r["name"] for r in rules][:2] == ["chunk_cost", "same_course"] and rules[1]["weight"] == 2
+
+
+def test_migration_38_reads_a_final_as_an_exam_where_the_pattern_is_still_the_starter_one(tmp_path: Path) -> None:
+    from friday.core.calendars import STARTER_CATEGORIES
+
+    old = r"\b(exams?|prelims?|midterms?|quiz(?:zes)?|final exams?|finals|deadline|due)\b"
+    exam = {"name": "Exam", "slug": "exam", "color": "red", "pattern": old, "note": None}
+    club = {"name": "Clubs", "slug": "club", "color": "orange", "pattern": "club", "note": None}
+    unchanged = migrated_from(tmp_path / "a", 37, {"categories": {"categories": [club, exam], "filter": None}})
+    got = json.loads(one(unchanged, "SELECT value FROM settings WHERE key = 'categories'")["value"])["categories"]
+    assert got == [club, exam | {"pattern": STARTER_CATEGORIES[0].pattern}]
+    edited = {"categories": [exam | {"pattern": old.replace("deadline|", "")}, club], "filter": None}
+    kept = migrated_from(tmp_path / "b", 37, {"categories": edited})
+    assert json.loads(one(kept, "SELECT value FROM settings WHERE key = 'categories'")["value"]) == edited
 
 
 def test_migration_28_gives_an_empty_category_list_the_starter_set_and_keeps_yours(tmp_path: Path) -> None:
