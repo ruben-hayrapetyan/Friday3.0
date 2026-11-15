@@ -23,7 +23,7 @@ def test_only_open_cards_youre_on_come_in_with_their_board_and_due(monkeypatch: 
     fake.add("Sprint task", None, board="b2")
     found = {r.title: r for r in connector(fake).read()}
     assert set(found) == {"Draft the post", "Sprint task"}
-    assert found["Draft the post"].due == "2026-10-23T21:00:00.000Z"  # UTC, as Trello keeps it: the sync localises
+    assert found["Draft the post"].due == "2026-10-23T21:00:00.000Z"  # UTC, as Trello keeps it: the sync localizes
     assert found["Draft the post"].notes == "800 words\n\nOn Trello: Personal"
     assert found["Sprint task"].due is None and found["Sprint task"].notes == "On Trello: Team sprint"
     assert found["Sprint task"].url.startswith("https://trello.com/c/")

@@ -101,7 +101,7 @@ interface Trip {
   out: Script | null // or getting out of bed
   walk: number // seconds walking (0: staying where they are)
   glide: number // staying where they are: seconds the camera takes to its new place (longer the further it goes)
-  cruise: number // metres a second, once going
+  cruise: number // meters a second, once going
   wipe: Wipe | null // to another place: a few steps out while the iris closes, then in at the next as it opens
   fixed: boolean // stepping in after the wipe: the camera already where it'll be, on them
   from: { minutes: number; cam: { pos: THREE.Vector3; look: THREE.Vector3 }; act: Act | null }
@@ -123,14 +123,14 @@ interface Wipe {
 const EXIT = 0.95 // seconds stepping out while the iris closes
 const HOLD = 0.12 // shut
 const OPEN = 0.6 // opening
-const ENTER = 1.8 // metres walked in after the wipe
-const EXIT_PACE = 1.9 // metres a second, stepping out
+const ENTER = 1.8 // meters walked in after the wipe
+const EXIT_PACE = 1.9 // meters a second, stepping out
 const ENTER_PACE = 2.2 // and stepping in
 
 const SPEED_UP = 0.4 // seconds getting going
 const SLOW_DOWN = 0.5 // and stopping
 
-/** How far along a walk of `length` metres they are `t` seconds in: speeding up to `cruise`, steady, slowing down. */
+/** How far along a walk of `length` meters they are `t` seconds in: speeding up to `cruise`, steady, slowing down. */
 export function along(t: number, length: number, cruise: number, rolling = false): number {
   const up = rolling ? 0 : SPEED_UP // already walking (in after the wipe): no getting going
   const total = length / cruise + (up + SLOW_DOWN) / 2

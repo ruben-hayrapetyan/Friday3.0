@@ -1,4 +1,4 @@
-"""The solver worker in a real spawned process: debounce, cancelling a stale solve, restart after a crash, and a
+"""The solver worker in a real spawned process: debounce, canceling a stale solve, restart after a crash, and a
 failing solve that keeps the current plan."""
 
 import os

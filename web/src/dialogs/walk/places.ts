@@ -20,7 +20,7 @@ export const FLOOR = 0.3 // a ground floor's level, a step up from the path
 export const T = 0.3 // walls
 export const FRONT = 8 // a building's front from the middle of the street
 export const SIDEWALK: [number, number] = [5.1, 6.9] // from the middle of the street
-const STOREY = 3.1
+const STORY = 3.1
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
 
@@ -253,7 +253,7 @@ function glazing(g: THREE.Group, h: Hole, zo: number, zi: number, trim: Mat, sil
   g.add(span(a - 0.08, b + 0.08, h.y0 - 0.07, h.y0, zo - out * 0.02, zo + out * 0.13, sill))
 }
 
-/** A window on a storey we never go into: frame, dark glass that's lit some nights, sill and lintel. */
+/** A window on a story we never go into: frame, dark glass that's lit some nights, sill and lintel. */
 function blindWindow(g: THREE.Group, x: number, y0: number, y1: number, w: number, z: number, out: number, trim: Mat, sill: Mat, lit: boolean, seed: number): void {
   const glass = lit ? M.windowLit([0xffc98a, 0xffd9a8, 0xffb870][seed % 3]) : M.window()
   const pane = panel(w - 0.14, y1 - y0 - 0.14, glass, x, (y0 + y1) / 2, z + out * 0.012)
@@ -303,7 +303,7 @@ interface RoomSpec {
   seed: number
 }
 
-/** A building whose ground floor is a room you can walk into: its walls, windows, door, ceiling, the storeys above
+/** A building whose ground floor is a room you can walk into: its walls, windows, door, ceiling, the stories above
  * (with their own windows, some lit at night) and its roof. The front, the ceiling and all above go in `cut`; a low
  * front wall goes in `stub`, for when they're cut away. */
 function building(g: THREE.Group, s: RoomSpec, sockets: Socket[]): { top: number; cut: THREE.Group; stub: THREE.Group } {
@@ -346,7 +346,7 @@ function building(g: THREE.Group, s: RoomSpec, sockets: Socket[]): { top: number
   let y = wallTop
   const rnd = random(s.seed)
   for (let k = 0; k < s.above; k++) {
-    cut.add(span(-xo, xo, y, y + STOREY, back, 0, s.outer))
+    cut.add(span(-xo, xo, y, y + STORY, back, 0, s.outer))
     cut.add(span(-xo - 0.05, xo + 0.05, y - 0.12, y + 0.02, back - 0.05, 0.06, trim))
     const n = Math.max(2, Math.round((2 * xo) / 2.4))
     for (let i = 0; i < n; i++) {
@@ -354,7 +354,7 @@ function building(g: THREE.Group, s: RoomSpec, sockets: Socket[]): { top: number
       blindWindow(cut, x, y + 0.85, y + 2.4, 1.05, 0, 1, trim, sill, rnd() > 0.45, s.seed + i)
       blindWindow(cut, x, y + 0.85, y + 2.4, 1.05, back, -1, trim, sill, rnd() > 0.6, s.seed + i + 1)
     }
-    y += STOREY
+    y += STORY
   }
   if (s.roof === "gable") {
     cut.add(gable(2 * xo, -back, Math.min(3.4, -back * 0.42), s.roofMat ?? M.shingles(), s.outer, 0, y, back / 2))

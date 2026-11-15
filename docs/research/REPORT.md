@@ -94,7 +94,7 @@ tuned on.
 that instance (`experiments/refs/best_known.json`), where a later stage is only compared when the earlier ones tie the
 best; deadline-safe = valid and zero late work whenever zero is known to be possible (proven by CP-SAT or certified by any
 valid zero-late plan); churn = hours of surviving items' work moved by a replan; determinism = identical plan on rerun.
-Learning: regret (true energy of Friday's plan minus that of the plan optimised for the user's true weights and mood),
+Learning: regret (true energy of Friday's plan minus that of the plan optimized for the user's true weights and mood),
 held-out ranking accuracy, weight recovery (cosine), stability, state-inference accuracy, false attribution.
 Statistics: medians with IQR and 95% bootstrap confidence intervals; at least 10 seeds per cell for engine comparisons.
 
@@ -147,7 +147,7 @@ chain and scales down gracefully.
 | strict QUBO / Boltzmann machine | one binary unit per (item, slot) + slack bits | penalties: A for one-per-slot, B for amounts, deadline via price | E003 |
 | slot assignment (Potts) + chunk moves, penalties | the owner of every slot | penalty lambda per violation; only violation-free states are returned | E004, E004b |
 | slot assignment + chunk moves, **walls** | the owner of every slot | moves that would break a hard rule are rejected; items on time at the start are protected | E004, E005 |
-| hybrids | as above | CP-SAT deadline skeleton then walls; walls then CP-SAT large-neighbourhood polish | E004 |
+| hybrids | as above | CP-SAT deadline skeleton then walls; walls then CP-SAT large-neighborhood polish | E004 |
 
 **The strict QUBO fails, and the failure is structural (E003).** On the slice of the problem a pairwise energy can express
 (fixed-amount items with one-unit chunks and price rules only), single-flip annealing with the temperature tuned per instance
@@ -182,7 +182,7 @@ feasibility reliably, which is the QUBO finding again on the full model. Figure:
 ![Deadline guarantee](report/figures/deadline_guarantee.png)
 
 **The deadline guarantee (E005, 100 instances incl. adversarial families and stress).** Zero late work was known possible on
-72 of them. EDF-order construction honouring every hard rule reached zero on 69/72 in under 32 ms; a short sampler repair on
+72 of them. EDF-order construction honoring every hard rule reached zero on 69/72 in under 32 ms; a short sampler repair on
 the deadline stage alone fixed the other 3 (100%); the full wall sampler then never let lateness rise. CP-SAT's deadline stage
 alone (15 s, 8 workers) found zero on only 51% (0/12 long dependency chains, 2/11 many-pins). On the 5 instances where
 lateness is provably unavoidable, construction + repair was optimal on 3/5 and 1.5-3.7x the optimum on 2; CP-SAT hinted with
@@ -411,7 +411,7 @@ in 30% of non-normal weeks, and the system learns.
 
 The simulated users' utility is a weighted sum without stage order, so lexicographic planning carries a built-in regret: v3 vs
 v3_lex (0.087 vs 1.62) measures the stage policy, v3_lex vs v2 (1.62 vs 6.13, better in 78% of weeks) measures the engine under the
-same policy. Both levers favour v3; the stage policy is the larger one and is a product decision (section 1).
+same policy. Both levers favor v3; the stage policy is the larger one and is a product decision (section 1).
 
 v2's misses came from CP-SAT's deadline stage stopping at FEASIBLE within 30 s on one user's weeks (4-5 hard items late); its
 invalid plans came from the lock repair on a partially pinned one-sitting item. v3's construction + walls met every deadline
@@ -444,11 +444,11 @@ the same path ran on performance cores). In an overload week a longer fallback (
 | Hopfield-style network (greedy single-flip descent) on the same energy | No better than annealing at T = 0: 0% feasible at alpha 1, misses 4 hard items at alpha 10 | Spurious attractors of the penalty landscape | E003 |
 | Huge penalty weights on the full model (Potts state, chunk moves) | 95% deadline-safe instead of 100% | From a late start the chain explores infeasible states and its best feasible state stays late | E004, E004b |
 | Pure weighted stages, ratio 1-10 | Wellbeing worse on 85-100% of instances (4x at ratio 1) | The ratio decides the trade; a small one is not "wellbeing first" | E006 |
-| Strictly tiered annealing (wellbeing with preferences switched off, then preferences under a cap) | Preferences 3x worse than a weighted search at ratio 1000, wellbeing no better on 80% | Optimising one stage alone leaves the next in a state the cap forbids repairing | E006 |
+| Strictly tiered annealing (wellbeing with preferences switched off, then preferences under a cap) | Preferences 3x worse than a weighted search at ratio 1000, wellbeing no better on 80% | Optimizing one stage alone leaves the next in a state the cap forbids repairing | E006 |
 | A fixed moderate temperature with no annealing | Worse than annealing given time (mean rank 7.0 vs 6.1 at 8 s) and no better than zero-temperature descent | With no cooling the chain neither explores early nor settles late; from a good start, plain descent does as well | E007 |
 | Parallel tempering on a single core | Worst sampler at both budgets (beaten by single-chain SA on 25/30) | 8 replicas share one core, each gets 1/8 of the steps; replica exchange adds nothing over restarts here | E007 |
 | CP-SAT deadline skeleton for every instance | Hurt quality and missed deadlines twice | A 3 s CP-SAT stage-1 solution is often later than the 1 ms construction | E004 |
-| CP-SAT large-neighbourhood polish at a 10 s budget | Worse wellbeing than pure annealing | Each neighbourhood solve pays model build + presolve (1-2 s): too few exact moves per second | E004 |
+| CP-SAT large-neighborhood polish at a 10 s budget | Worse wellbeing than pure annealing | Each neighborhood solve pays model build + presolve (1-2 s): too few exact moves per second | E004 |
 | An RBM trained on lived weeks, no rules | Ranks plans at 0.62-0.64 vs 0.80-0.87 for the rules; samples are not schedules | An occupancy picture cannot see items, amounts or deadlines; lived weeks are Friday's plan plus a small drift | E012 |
 | Learning weights from likelihood alone (CD, PCD) | Barely moves held-out accuracy in 12 weeks | One lived week is one sample, and the departure from the plan is local; the scale of the weights is not identifiable | E011 |
 | Ranking QP with hard constraints for every ranking | Best on consistent users, worse than no learning on noisy, missing-feature and adversarial users | Slack does not stop it bending the weights to fit noise, moods and preferences no rule expresses | E011 |
@@ -484,7 +484,7 @@ Cold numba compilation takes ~66 s; a shipped engine must ship its compiled cach
 - The deadline guarantee rests on finding a zero-late start. Construction + sampler repair found one on every instance where one
   exists in this study (72/72), and the CP-SAT fallback covers the rest, but this is NP-hard in general (one-sitting items,
   minimum chunks). Keep the exact fallback and report the rare case it is used.
-- Walls make lateness monotone only for items protected at the start; items that start late are optimised, not guaranteed.
+- Walls make lateness monotone only for items protected at the start; items that start late are optimized, not guaranteed.
 - The kernel's exactness is enforced by tests against the shared evaluator; any new rule type must come with the same
   differential test or the guarantee "explanations are exact" breaks silently.
 - DST is simplified away (a planning day is always 24 h).
@@ -844,7 +844,7 @@ from the pick.
 ### 14.4 Learning from the pick (RQ15, E023)
 
 A pick is a choice among three plans: P(pick k) is a softmax of -theta . phi_k over the three (multinomial logit, with
-the same scale normalisation as the Bradley-Terry pairs of E011b), fitted as a MAP with a Gaussian prior toward the
+the same scale normalization as the Bradley-Terry pairs of E011b), fitted as a MAP with a Gaussian prior toward the
 hand-set weights; a Laplace approximation gives the posterior that Thompson sampling and the ranking use
 (`src/fr/product/picks.py`). 15 tuning users, 12 weeks, options from the shipped generator.
 
@@ -944,7 +944,7 @@ Additions to section 12, all implemented in `src/fr/product/` and exposed to the
 
 ### 15.3 Three schedules and learning from the pick
 
-- **Options** (E022): option 0 is the plan optimised for the learned weights (fixed step budget); options 1 and 2 are
+- **Options** (E022): option 0 is the plan optimized for the learned weights (fixed step budget); options 1 and 2 are
   plans for two weight vectors drawn from the posterior (Thompson), each starting from option 0 with half its steps.
   All three start from the repaired zero-late plan and share its deadline walls. The three are then **ranked**: the one
   with the highest posterior-mean pick probability (64 posterior draws) is shown first as "recommended".

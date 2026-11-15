@@ -959,7 +959,7 @@ export class Character {
     return !!this.reaction && now - this.reaction.at < REACT_FOR[this.reaction.kind]
   }
 
-  /** Each frame: `speed` while moving (metres a second), else the action `weight` of the way in, feeling `mood`;
+  /** Each frame: `speed` while moving (meters a second), else the action `weight` of the way in, feeling `mood`;
    * `before` is what they were doing at the same place, `change` of the way into the new action; `look` is where
    * you are, turned from where they face. `pose`, when a scene is moving them (into bed), is taken as it is. */
   update(dt: number, t: number, s: { speed: number; action: Action; weight: number; seat?: number; before?: Action; change?: number; mood?: Mood; look?: number; pose?: Pose; from?: Pose; into?: number }): void {

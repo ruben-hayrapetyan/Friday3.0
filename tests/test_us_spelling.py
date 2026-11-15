@@ -8,11 +8,40 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-UK = (
-    "colour colours coloured colouring recolour recolours recoloured grey greys greyed greyish centre centres centred "
-    "centring licence licences neighbour neighbours neighbouring behaviour behaviours labelled unlabelled labelling "
-    "minimise minimises minimised honour honours honoured favourite favourites"
-).split()
+# British spellings, by kind (15 Nov, the user: "make sure in every piece of text across any piece of friday software
+# ... there is no british english ONLY american english"; the first list knew only a dozen words). Words that are
+# also American (advise, exercise, promise, revise, dialogue) aren't here.
+OUR = (
+    "colour behaviour favour honour labour neighbour flavour humour rumour harbour armour vapour savour endeavour odour"
+)
+OUR += " parlour valour vigour clamour splendour saviour"
+ISE = "organis realis recognis prioritis summaris customis optimis minimis maximis apologis categoris"
+ISE += " finalis initialis normalis personalis utilis visualis synchronis authoris emphasis memoris specialis"
+ISE += " standardis criticis characteris materialis localis serialis sanitis tokenis capitalis digitis"
+ISE += " legalis mobilis neutralis rationalis stabilis symbolis harmonis jeopardis patronis penalis"
+ISE += " familiaris generalis centralis hospitalis idealis itemis randomis"
+UK = sorted(
+    {
+        w + end
+        for w in OUR.split()
+        for end in ("", "s", "ed", "ing", "ful", "ite", "ites", "able", "less", "ably", "hood")
+    }
+    | {"re" + w + end for w in OUR.split() for end in ("", "s", "ed", "ing")}
+    | {w + end for w in ISE.split() for end in ("e", "es", "ed", "ing", "er", "ers", "ation", "ations", "able")}
+    | set(
+        "centre centres centred centring metre metres litre litres theatre theatres fibre fibres calibre "
+        "sombre spectre kilometre kilometres manoeuvre manoeuvres analyse analysed analyses analysing "
+        "paralyse paralysed catalyse travelled travelling traveller travellers cancelling labelled labelling "
+        "unlabelled relabelled modelled modelling signalled signalling fuelled fuelling levelled levelling "
+        "totalled totalling counselling counsellor jewellery fulfil fulfils fulfilment enrol enrols enrolment "
+        "instalment instalments skilful wilful marvellous focussed focussing benefitted benefitting grey "
+        "greys greyed greyish programme programmes catalogue catalogues analogue licence licences defence "
+        "offence pretence practise practised practising tyre tyres cheque cheques aluminium plough mould "
+        "mouldy sceptical sceptic paediatric encyclopaedia storey storeys judgement judgements "
+        "acknowledgement acknowledgements ageing artefact artefacts whilst amongst learnt spelt dreamt "
+        "enquiry enquiries enquire kerb aeroplane draught draughts doughnut pyjamas sulphur cosy moustache".split()
+    )
+)
 FOUND = re.compile(r"(?<![A-Za-z])(" + "|".join(UK) + r")(?![A-Za-z])", re.I)
 NOT_OURS = re.compile(r"(^|/)(pnpm-lock\.yaml|uv\.lock)$|\.(woff2?|png|jpg|ico|icns|pdf|bundle)$")
 

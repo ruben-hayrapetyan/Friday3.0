@@ -127,7 +127,7 @@ def test_importing_puts_classes_in_the_plan_and_later_weeks_follow_on_their_own(
     assert len(later) > len(lectures) and len({i["series_id"] for i in later}) == 1
 
 
-def test_google_moving_or_cancelling_an_imported_class_applies_on_its_own(app: App, sample: Sample) -> None:
+def test_google_moving_or_canceling_an_imported_class_applies_on_its_own(app: App, sample: Sample) -> None:
     connect(app, sample)
     app.do("repeats_import", repeats=[{"batch": "repeat:cs"}])
     before = sum(1 for i in app.table("items") if i["title"] == "CS 1110, Lecture" and i["status"] == "todo")

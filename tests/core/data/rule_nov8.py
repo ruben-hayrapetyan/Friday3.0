@@ -185,8 +185,8 @@ C = [
     ),
     (
         "window",
-        "piano practise not between 10pm and 8am, the neighbors complain",
-        {"kind": "window", "subject": "piano practise", "rel": "not_between", "at": "22:00", "until": "08:00"},
+        "piano practice not between 10pm and 8am, the neighbors complain",
+        {"kind": "window", "subject": "piano practice", "rel": "not_between", "at": "22:00", "until": "08:00"},
     ),
     (
         "window",
@@ -1953,7 +1953,7 @@ C = [
     ("new", "no more than 8 things on my plan per day", "new:at most 8 tasks per day"),
     ("new", "dont schedule work on days i have a double shift", "new:no tasks on double shift days"),
     ("new", "if i finish early dont add more stuff, let me be done", "new:dont pull tasks forward when i finish early"),
-    ("new", "when im travelling only give me light tasks", "new:light tasks while travelling"),
+    ("new", "when im traveling only give me light tasks", "new:light tasks while traveling"),
     ("new", "at home do chores, at the office do actual work", "new:tasks matched to location"),
     ("new", "do my writing in the same 2 hour slot every day", "new:writing at a consistent daily time"),
     ("new", "only one big task per day max", "new:at most one large task per day"),

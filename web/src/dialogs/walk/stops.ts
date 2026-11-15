@@ -60,7 +60,7 @@ export const ROUTE: [Place, number][] = [
   ["end", 0],
 ]
 
-// Metres of street between places: each across the street from the last and a little further up, so getting from
+// Meters of street between places: each across the street from the last and a little further up, so getting from
 // one to the next is a few steps out of a door and over the road (30 Oct: "make it walk less").
 export const GAP = 10
 

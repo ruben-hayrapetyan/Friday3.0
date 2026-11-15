@@ -4,9 +4,9 @@
 import * as THREE from "three"
 import { random } from "./textures"
 
-const BOX = { x: 44, y: 22, z: 44 } // metres round the camera
+const BOX = { x: 44, y: 22, z: 44 } // meters round the camera
 const COUNT = 1800
-const FALL = 1.1 // metres a second, as light snow falls
+const FALL = 1.1 // meters a second, as light snow falls
 
 export class Snowfall {
   readonly points: THREE.Points

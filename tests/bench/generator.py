@@ -132,7 +132,7 @@ def q15(minutes: float, lo: int = 15, hi: int = 600) -> int:
 
 
 def fixed_week(rng: np.random.Generator, make: Maker, days: range, hours_per_week: float = 15.0) -> list[Item]:
-    """Class meetings and a few commitments totalling about `hours_per_week` of fixed time."""
+    """Class meetings and a few commitments totaling about `hours_per_week` of fixed time."""
     out = []
     starts = [("09:05", 75), ("10:10", 50), ("11:15", 75), ("13:25", 75), ("14:30", 75), ("15:35", 75)]
     patterns = [(0, 2, 4), (1, 3), (0, 2), (1, 3, 4)]

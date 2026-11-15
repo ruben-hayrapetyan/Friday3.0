@@ -19,7 +19,7 @@ def test_your_open_tasks_from_every_workspace_and_nobody_elses() -> None:
     fake.tasks[done]["completed"] = True
     found = {r.title: r for r in connector(fake).read()}
     assert set(found) == {"Write the brief", "Side thing"}
-    assert found["Write the brief"].due == "2026-10-23T21:00:00.000Z"  # due_at over due_on; the sync localises
+    assert found["Write the brief"].due == "2026-10-23T21:00:00.000Z"  # due_at over due_on; the sync localizes
     assert found["Write the brief"].notes == "For the launch\n\nIn Asana: Launch"
     assert found["Side thing"].due == "2026-10-24" and found["Side thing"].notes == ""
     assert found["Side thing"].url.startswith("https://app.asana.com/")

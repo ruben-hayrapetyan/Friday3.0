@@ -197,7 +197,7 @@ friday/
       checker.py                  # every wall violation of a plan
       compile.py                  # Problem + rules -> flat arrays for the kernel
       kernel.py                   # numba: state, incremental energy, walls, the 11 moves
-      construct.py                # earliest-deadline construction honouring every wall
+      construct.py                # earliest-deadline construction honoring every wall
       repair.py                   # deadline-stage repair with penalties
       cpsat_deadlines.py          # CP-SAT deadline fallback (11.10)
       sampler.py                  # annealing schedule, stage policy, chains, tabu finish, budgets

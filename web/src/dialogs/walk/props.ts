@@ -1,5 +1,5 @@
 // The walk's materials and building blocks (walk/World.ts): physically based materials on the surfaces of
-// walk/textures.ts, shapes measured in metres with their textures mapped at true size, and `bake`, which merges a
+// walk/textures.ts, shapes measured in meters with their textures mapped at true size, and `bake`, which merges a
 // place's still parts into a few meshes so the town draws quickly.
 
 import * as THREE from "three"
@@ -81,7 +81,7 @@ export const M = {
     }),
 }
 
-/** Texture coordinates in metres, projected from each face's direction, so a surface's pattern is its real size. */
+/** Texture coordinates in meters, projected from each face's direction, so a surface's pattern is its real size. */
 export function meterUV(geo: THREE.BufferGeometry): THREE.BufferGeometry {
   const pos = geo.attributes.position
   const nor = geo.attributes.normal

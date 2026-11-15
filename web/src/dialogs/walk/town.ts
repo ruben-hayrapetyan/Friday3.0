@@ -39,7 +39,7 @@ const SIDINGS = [0xf1ede4, 0xb9c8d6, 0xc9d3b4, 0xe8d8b0, 0xa9b0b8, 0xd9b8a8, 0x8
 const ROOFS = [0x5a5a5e, 0x7a6a62, 0x6a7a80, 0x4e4a48]
 const DOORS = [0x8a2f2a, 0x23364a, 0x2f4a3a, 0x1d1d1d, 0x6a4a2a]
 
-/** A house: two storeys of siding, a porch, a gabled roof, windows and a door, facing +z. */
+/** A house: two stories of siding, a porch, a gabled roof, windows and a door, facing +z. */
 function house(seed: number): { group: THREE.Group; w: number; d: number; door: number } {
   const rnd = random(seed)
   const g = new THREE.Group()

@@ -12,12 +12,12 @@ import { PixelOut, Pixels } from "./pixels"
 import { STRIP } from "./strip"
 
 export type Gesture = "wave" | "point" | "present" | "think" | "mail" | "stand" | GuideAction
-const TALL = 1.72 // metres, head to toe
+const TALL = 1.72 // meters, head to toe
 const PIXEL = 3 // CSS pixels to one of theirs, as in setup's town
-const RUN = 5 // metres a second at most: a run across the window takes about two seconds
-const ACCEL = 9 // metres a second, a second
+const RUN = 5 // meters a second at most: a run across the window takes about two seconds
+const ACCEL = 9 // meters a second, a second
 const HOP = 0.8 // seconds: down for it, up, and landing
-const HIGH = 0.32 // metres off the floor at the top of a hop
+const HIGH = 0.32 // meters off the floor at the top of a hop
 
 export interface Cue {
   x: number // where to stand: CSS pixels from the window's left
@@ -39,8 +39,8 @@ export class Guide {
   private camera = new THREE.PerspectiveCamera(12, 1, 1, 100)
   private hero = new Character()
   private width = 1
-  private metres = TALL / 165 // a CSS pixel, in metres at their distance
-  private x = -0.6 // metres from the middle of the window
+  private meters = TALL / 165 // a CSS pixel, in meters at their distance
+  private x = -0.6 // meters from the middle of the window
   private goal = 0
   private v = 0
   private yaw = Math.PI / 2
@@ -110,7 +110,7 @@ export class Guide {
     this.out.low.set(low[0], low[1])
     // far off with a narrow lens, so walking along the strip they barely change in perspective; the strip's height
     // at their distance is set so they come out about 165 pixels tall
-    const high = STRIP * this.metres
+    const high = STRIP * this.meters
     const away = 14
     this.camera.aspect = this.width / STRIP
     this.camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(high / 2 / away))
@@ -197,7 +197,7 @@ export class Guide {
 
   /** Where they stand on the page, for a click on them: the middle of them, in the window's CSS pixels. */
   box(): { x: number; width: number; height: number } {
-    return { x: this.at(), width: 0.7 / this.metres, height: (TALL + 0.1) / this.metres }
+    return { x: this.at(), width: 0.7 / this.meters, height: (TALL + 0.1) / this.meters }
   }
 
   /** Something done (a quest): a jump for joy and a star. */
@@ -217,7 +217,7 @@ export class Guide {
   /** Off the side of the window: the way they face, or (`right`) skipping off that way, to the weekend. */
   leave(right = false): void {
     this.leaving = right || this.x > 0 ? 1 : -1
-    this.goal = this.leaving * (this.width / 2 + 80) * this.metres
+    this.goal = this.leaving * (this.width / 2 + 80) * this.meters
     this.arrived = false
     this.skipping = right
     this.gesture = "stand"
@@ -227,7 +227,7 @@ export class Guide {
 
   /** Where they are now, in the window's CSS pixels from its left. */
   at(): number {
-    return this.x / this.metres + this.width / 2
+    return this.x / this.meters + this.width / 2
   }
 
   dispose(): void {
@@ -238,7 +238,7 @@ export class Guide {
   }
 
   private toMetres(x: number): number {
-    return (x - this.width / 2) * this.metres
+    return (x - this.width / 2) * this.meters
   }
 
   private seconds(): number {

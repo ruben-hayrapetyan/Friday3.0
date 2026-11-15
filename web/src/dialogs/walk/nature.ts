@@ -60,7 +60,7 @@ interface Tree {
   leaves: THREE.BufferGeometry
 }
 
-/** One tree, grown from `seed`: about `height` metres, its crown `spread` wide. */
+/** One tree, grown from `seed`: about `height` meters, its crown `spread` wide. */
 function grow(seed: number, height: number, spread: number, cards: number): Tree {
   const rnd = random(seed)
   const bark: THREE.BufferGeometry[] = []

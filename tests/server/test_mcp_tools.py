@@ -138,7 +138,7 @@ def rpc(number: int, method: str, params: dict[str, Any]) -> str:
 
 class Assistant:
     """Both ends of a stdio session: says each line in turn, then waits for the answer to the last before hanging up
-    (a closed stdin ends the session, cancelling what is still being answered)."""
+    (a closed stdin ends the session, canceling what is still being answered)."""
 
     def __init__(self, *lines: str) -> None:
         self.lines, self.heard = lines, io.StringIO()

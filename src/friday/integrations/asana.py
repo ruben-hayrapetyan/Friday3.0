@@ -65,7 +65,7 @@ def remote(task: dict[str, Any]) -> Remote:
     return Remote(
         external_id=str(task["gid"]),
         title=str(task.get("name") or "Untitled task").strip(),
-        due=task.get("due_at") or task.get("due_on") or None,  # a moment in UTC (the sync localises), else a day
+        due=task.get("due_at") or task.get("due_on") or None,  # a moment in UTC (the sync localizes), else a day
         notes=notes,
         url=task.get("permalink_url"),
         done=bool(task.get("completed")),
