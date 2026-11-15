@@ -350,3 +350,15 @@ describe("sleep and meals, tracked", () => {
     await waitFor(() => expect(window.location.hash).toBe("#/insights?tab=meals"))
   })
 })
+
+describe("the room it takes", () => {
+  // 15 Nov: with the sleep and meal rows up the bar stood taller than the Inbox's 80px of room, and Accept and
+  // Decline sat under it where no scroll reached them. The bar says what it covers; the Inbox's columns end below it.
+  // (happy-dom drops a padding with max() in it, so the columns' room is checked in Chrome: overflow-check.mjs)
+  it("says how much of the window it covers, and nothing once it's gone", async () => {
+    await openDock("/inbox")
+    await waitFor(() => expect(document.documentElement.style.getPropertyValue("--fr-dock")).toMatch(/^[1-9]\d*px$/))
+    cleanup()
+    expect(document.documentElement.style.getPropertyValue("--fr-dock")).toBe("0px") // gone, it covers nothing
+  })
+})

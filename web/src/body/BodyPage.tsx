@@ -9,12 +9,13 @@ import { MealsSection } from "@/insights/Meals"
 import { SleepSection } from "@/insights/Sleep"
 import { MealLog } from "./MealLog"
 import { SleepLog } from "./SleepLog"
+import { dockRoom } from "@/now/dockRoom"
 
 /** Sleep or Meals, as Insights shows it. */
 export function BodyTab({ tab }: { tab: "sleep" | "meals" }) {
   return (
     <div className="fr-panel" style={{ overflowY: "auto" }}>
-      <div className="fr-gutter" data-tour="tracking" style={{ maxWidth: 1080, padding: "12px 40px 120px", display: "flex", flexDirection: "column", gap: 28 }}>
+      <div className="fr-gutter" data-tour="tracking" style={{ maxWidth: 1080, padding: `12px 40px ${dockRoom(120)}`, display: "flex", flexDirection: "column", gap: 28 }}>
         {tab === "sleep" ? (
           <>
             <SleepSection here />

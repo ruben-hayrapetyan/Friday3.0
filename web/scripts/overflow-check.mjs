@@ -4,7 +4,8 @@
 // It serves Alex's lived-in sample (`fridayd demo --case alex --ready`, about a minute and a half to build) or uses one
 // already running (--url), drives headless Chrome over its DevTools protocol (Node's own WebSocket: nothing to
 // install), visits each page and its panels and dialogs, runs overflow-detect.js on each (text or a box past the box
-// it's in, a line cut part way, a scrolling column free to squeeze its rows, one control over another), and exits 1 if
+// it's in, a line cut part way, a scrolling column free to squeeze its rows, one control over another, a control the
+// Now dock covers at its tallest), and exits 1 if
 // anything spills or a page couldn't be reached. About four minutes in all.
 //
 //   node web/scripts/overflow-check.mjs [--url http://127.0.0.1:8791] [--shots folder] [--only text] [--widths 1440,390]
@@ -272,7 +273,21 @@ async function load(page, url) {
   throw new Error(`${url} didn't load`)
 }
 
+// In the page: the Now dock as tall as it gets with a sleep row, a meal row and another timer's row up (about 110px
+// more than the sample shows at most hours), so the room a page leaves for it is checked at its tallest.
+const TALL_DOCK = `new Promise((done) => {
+  const dock = document.querySelector("[data-tour=now]")
+  if (dock && !dock.querySelector("[data-tall-dock]")) {
+    const rows = document.createElement("div")
+    rows.setAttribute("data-tall-dock", "")
+    rows.style.height = "110px"
+    dock.prepend(rows)
+  }
+  requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 50)))
+})`
+
 async function look(page, label, findings, width) {
+  await evaluate(page, TALL_DOCK)
   const found = await evaluate(page, DETECT)
   for (const f of found) findings.push({ state: label, width, ...f })
   if (process.env.OVERFLOW_PROGRESS) console.error(`${width}px ${label}: ${found.length}`)

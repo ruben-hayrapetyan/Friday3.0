@@ -3,10 +3,11 @@
 
 import type { ReactNode } from "react"
 import { H, Icon } from "@/components/fr/controls"
+import { dockRoom } from "@/now/dockRoom"
 
 export function Pane({ icon, kicker, title, warn, children }: { icon: string; kicker: ReactNode; title: ReactNode; warn?: boolean; children: ReactNode }) {
   return (
-    <div className="fr-gutter" style={{ overflowY: "auto", minHeight: 0, padding: "24px 28px 80px" }}>
+    <div className="fr-gutter" style={{ overflowY: "auto", minHeight: 0, padding: `24px 28px ${dockRoom(80)}` }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 680 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: warn ? "var(--fr-warn)" : "var(--color-neutral-400)" }}>

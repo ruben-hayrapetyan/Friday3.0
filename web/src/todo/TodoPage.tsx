@@ -32,6 +32,7 @@ import { DuePicker, LengthInput } from "./Pickers"
 import { useDuplicates } from "@/inbox/queries"
 import { SortPicker } from "./SortPicker"
 import { TodoDetail } from "./TodoDetail"
+import { dockRoom } from "@/now/dockRoom"
 
 const DRAG = "text/x-friday-item" // tasks dragged to another section: their ids, comma-separated
 
@@ -191,7 +192,7 @@ export function TodoPage() {
       </div>
       <div className="fr-panel fr-todo-split" data-open={selected ? "" : undefined} style={{ display: "grid", gridTemplateColumns: selected ? "minmax(0,1fr) 400px" : "minmax(0,1fr)", overflow: "hidden", position: "relative" }}>
         {pickedItems.length > 0 && <BulkBar items={pickedItems} onClear={() => setPicked([])} />}
-        <div className="fr-gutter" style={{ overflowY: "auto", minHeight: 0, padding: "16px 22px 140px" }}>
+        <div className="fr-gutter" style={{ overflowY: "auto", minHeight: 0, padding: `16px 22px ${dockRoom(140)}` }}>
           <div data-tour="todo-list" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
             {(by === "When" || list === "Due") && <AddBox compact onAdded={added} longTerm={list === "Long term"} placeholder="Add a to-do…" />}
             {list === "Due" ? (

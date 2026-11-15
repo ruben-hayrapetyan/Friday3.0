@@ -19,6 +19,7 @@ import { spoken } from "@/lib/aiName"
 import { WeekPaces } from "./WeekPaces"
 import { TimeInput } from "@/components/fr/TimeInput"
 import { NOTE_EXAMPLES, useNotes } from "@/settings/AboutYou"
+import { dockRoom } from "@/now/dockRoom"
 
 type Strength = "Prefer" | "Strongly" | "Always"
 const STRENGTHS: Strength[] = ["Prefer", "Strongly", "Always"]
@@ -75,7 +76,7 @@ export function RulesPage() {
         </Link>
       </div>
       <div className="fr-panel" style={{ overflowY: "auto" }}>
-        <div className="fr-gutter" style={{ maxWidth: 1000, padding: "28px 40px 140px", display: "flex", flexDirection: "column", gap: 34 }}>
+        <div className="fr-gutter" style={{ maxWidth: 1000, padding: `28px 40px ${dockRoom(140)}`, display: "flex", flexDirection: "column", gap: 34 }}>
           <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <H size={22}>Rules and notes</H>

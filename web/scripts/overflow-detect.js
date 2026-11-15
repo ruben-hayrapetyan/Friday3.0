@@ -149,5 +149,23 @@
       if (wide > 3 && tall > 3) report("controls on top of each other", a, `${Math.round(wide)}×${Math.round(tall)}px`, ` (and ${name(b)})`)
     }
   }
+  // 4. a control the Now dock covers even with its column scrolled to the end (15 Nov: with the sleep and meal rows
+  // up, the dock covered the Inbox's Accept and Decline, and no scroll brought them out). Every scrolling column is
+  // taken to its end, where whatever is still under the dock can't be uncovered, then put back.
+  const dock = document.querySelector("[data-tour=now]")
+  if (dock && shown(dock)) {
+    const d = dock.getBoundingClientRect()
+    const scrollers = [...all].filter((el) => scrolls(css(el)) && el.scrollHeight > el.clientHeight + 1 && !el.closest("[data-tour=now]"))
+    const were = scrollers.map((el) => el.scrollTop)
+    for (const el of scrollers) el.scrollTop = el.scrollHeight
+    for (const el of controls) {
+      if (layer(el) !== document || el.closest("[data-tour=now]") || !shown(el)) continue
+      const r = showing(el)
+      const wide = Math.min(r.right, d.right) - Math.max(r.left, d.left)
+      const tall = Math.min(r.bottom, d.bottom) - Math.max(r.top, d.top)
+      if (wide > 3 && tall > 3) report("a control under the Now dock, even scrolled to the end", el, `${Math.round(tall)}px`)
+    }
+    scrollers.forEach((el, i) => (el.scrollTop = were[i]))
+  }
   return findings
 })()

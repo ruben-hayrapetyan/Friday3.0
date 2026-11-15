@@ -12,6 +12,7 @@ import { clock, weekday, when } from "@/lib/format"
 import { type Axis, dayRange, fromMin, hourMarks, layout, toMin } from "@/lib/time"
 import { useShell } from "@/shell/ShellContext"
 import { applyChanges, diffPlans, lateTotal, type Move, type PlanMap, planMap, type RuleSpec, shapeChanges, shapeOf } from "./model"
+import { dockRoom } from "@/now/dockRoom"
 
 // The preview_weights input, with rules typed as the lab builds them.
 export type PreviewBody = Omit<Schemas["PreviewWeightsInput"], "rules"> & { rules?: RuleSpec[] }
@@ -119,7 +120,7 @@ export function Page({ title, idea, children, wide }: { title: string; idea: Rea
     <>
       <LabHead title={title} />
       <div className="fr-panel" style={{ overflowY: "auto" }}>
-        <div style={{ maxWidth: wide ? 1400 : 1000, padding: "24px 40px 140px", display: "flex", flexDirection: "column", gap: 24 }}>
+        <div style={{ maxWidth: wide ? 1400 : 1000, padding: `24px 40px ${dockRoom(140)}`, display: "flex", flexDirection: "column", gap: 24 }}>
           <span style={{ color: "var(--color-neutral-400)", textWrap: "pretty", maxWidth: 760 }}>{idea}</span>
           {children}
         </div>

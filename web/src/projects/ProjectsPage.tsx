@@ -16,6 +16,7 @@ import { NewExam } from "./NewExam"
 import { NewProject } from "./NewProject"
 import { ProjectDetail } from "./ProjectDetail"
 import { Bar, card, PROJECT_STATUS, type Project, projectPct, RULE, Section, StatusTag } from "./parts"
+import { dockRoom } from "@/now/dockRoom"
 
 const GRID = (min: number) => ({ display: "grid", gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${min}px), 1fr))`, gap: 16, alignItems: "start" }) as const
 
@@ -53,7 +54,7 @@ export function ProjectsPage() {
         {current ? (
           <ProjectDetail key={current.item.id} p={current} all={projects} onPick={(id) => setParams({ id: String(id) })} onBack={() => setParams({})} />
         ) : (
-          <div className="fr-gutter" style={{ maxWidth: 1180, padding: "28px 40px 120px", display: "flex", flexDirection: "column", gap: 40, minWidth: 0 }}>
+          <div className="fr-gutter" style={{ maxWidth: 1180, padding: `28px 40px ${dockRoom(120)}`, display: "flex", flexDirection: "column", gap: 40, minWidth: 0 }}>
             <Exams exams={exams} blocks={blocks} onNew={() => setCreating("exam")} />
             <Projects projects={projects} blocks={blocks} onOpen={(id) => setParams({ id: String(id) })} onNew={() => setCreating("project")} />
           </div>

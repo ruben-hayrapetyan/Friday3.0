@@ -13,6 +13,7 @@ import { weekday, when } from "@/lib/format"
 import { addDays } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
+import { dockRoom } from "@/now/dockRoom"
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 const FEELS = ["Rough", "Heavy", "Fine", "Good", "Great"]
@@ -80,7 +81,7 @@ function Week({ week }: { week: Full }) {
   const range = month(week.start) === month(week.end) ? `${Number(week.start.slice(8, 10))}–${Number(week.end.slice(8, 10))} ${month(week.end)}` : `${Number(week.start.slice(8, 10))} ${month(week.start)} – ${Number(week.end.slice(8, 10))} ${month(week.end)}`
   return (
     <div className="fr-panel" style={{ overflowY: "auto" }}>
-      <div className="fr-gutter" style={{ maxWidth: 1040, padding: "32px 40px 150px", display: "flex", flexDirection: "column", gap: 34 }}>
+      <div className="fr-gutter" style={{ maxWidth: 1040, padding: `32px 40px ${dockRoom(150)}`, display: "flex", flexDirection: "column", gap: 34 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <H size={36}>Week of {range}</H>
           <span style={{ fontSize: 15, color: "var(--color-neutral-300)", textWrap: "pretty", maxWidth: 640 }}>

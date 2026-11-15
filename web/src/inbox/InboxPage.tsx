@@ -30,6 +30,7 @@ import { Actions, After, Pane } from "./Pane"
 import { useDuplicates, useInbox, useInboxMessages, useToReview } from "./queries"
 import { AgainPane, CopiesPane } from "./TaskPanes"
 import { updateSays } from "./updateSays"
+import { dockRoom } from "@/now/dockRoom"
 
 export { useInbox } from "./queries"
 
@@ -149,7 +150,7 @@ export function InboxPage() {
       </div>
       <div className="fr-panel" style={{ display: "grid", gridTemplateColumns: tight ? "minmax(0,1fr)" : "320px minmax(0,1fr)", overflow: "hidden" }}>
         {showList && (
-          <div role="list" aria-label="Waiting for you" data-tour="inbox" style={{ overflowY: "auto", minHeight: 0, padding: "10px 8px 40px", boxShadow: "inset -1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 2 }}>
+          <div role="list" aria-label="Waiting for you" data-tour="inbox" style={{ overflowY: "auto", minHeight: 0, padding: `10px 8px ${dockRoom(40)}`, boxShadow: "inset -1px 0 0 color-mix(in srgb, var(--color-text) 7%, transparent)", display: "flex", flexDirection: "column", gap: 2 }}>
             {list.map((m) => (
               <Row key={m.key} m={m} on={m.key === current?.key} answered={resolved.find((r) => m.kind === "suggestion" && r.s.id === m.s.id)} onClick={() => open(m.key)} />
             ))}
@@ -368,7 +369,7 @@ function Detail({ s, all, waiting, resolved, onResolved, onReopen }: DetailProps
   const shown = shownFields(fields, s.command, editing, edits)
   const actionLabel = s.command === "drop" ? "Drop it" : dup || s.command === "edit" ? "Update it" : "Accept"
   return (
-    <div className="fr-gutter" style={{ overflowY: "auto", minHeight: 0, padding: "24px 28px 60px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 28, alignItems: "start" }}>
+    <div className="fr-gutter" style={{ overflowY: "auto", minHeight: 0, padding: `24px 28px ${dockRoom(60)}`, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 28, alignItems: "start" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)" }}>

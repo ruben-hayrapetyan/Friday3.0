@@ -12,6 +12,7 @@ import { useShell } from "@/shell/ShellContext"
 import { DueCount, dueBlock } from "./DueCount"
 import { asBlock } from "./Pieces"
 import { isOnDay, isWholeDay } from "./wholeDay"
+import { dockRoom } from "@/now/dockRoom"
 
 const DOWS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const SHOWN = 3
@@ -40,7 +41,7 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
     // A week is at least 132px (its own min-height) and never shorter than its fullest day, the weeks sharing what's
     // left of the page: a narrow day, its deadline count under its date, no longer squeezes its things to slivers
     // (14 Nov; a 132px track's minimum held even when the month ran past the page and the day needed more).
-    <div className="fr-panel" style={{ overflowY: "auto", display: "grid", gridTemplateRows: `max-content repeat(${weeks.length}, minmax(min-content, 1fr))`, paddingBottom: 116 }}>
+    <div className="fr-panel" style={{ overflowY: "auto", display: "grid", gridTemplateRows: `max-content repeat(${weeks.length}, minmax(min-content, 1fr))`, paddingBottom: dockRoom(116) }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))" }}>
         {dows.map((d) => (
           <div key={d} style={{ padding: "10px 12px 8px", fontSize: 12, color: "var(--color-neutral-500)" }}>

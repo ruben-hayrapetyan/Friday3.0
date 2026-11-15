@@ -30,6 +30,7 @@ import { layers } from "./layers"
 import { WholeDays } from "./WholeDays"
 import { eatenRoutines, pastMeals } from "./pastMeals"
 import { isWholeDay } from "./wholeDay"
+import { dockRoom } from "@/now/dockRoom"
 
 interface Props {
   dates: string[]
@@ -136,7 +137,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
         <WholeDays events={allDay} dates={dates} />
         {lanes && <DueRow dues={calendar.dues} dates={dates} cols={cols} />}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: cols, padding: "10px 0 150px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: cols, padding: `10px 0 ${dockRoom(150)}` }}>
         <div style={{ position: "relative", height }}>
           {hourMarks(axis).map((m) => (
             <div key={m.top} className="tnum" style={{ position: "absolute", right: 10, top: m.top * PX, transform: "translateY(-50%)", fontSize: 11, color: "var(--color-neutral-500)" }}>

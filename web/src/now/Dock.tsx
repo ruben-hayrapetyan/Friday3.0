@@ -10,7 +10,7 @@
 // thing at once (2 Nov: "working on two things at once even if friday didn't originally plan to"), a slim row for
 // each of the others, ticking, with Done and Stop; "Do something else" offers starting one alongside.
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import type { Block, Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
@@ -26,11 +26,13 @@ import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { useBreaks } from "./breaks"
 import { mealLabel } from "@/body/mealNames"
+import { covered, DOCK_VAR } from "./dockRoom"
 
 type Menu = "time" | "more" | "swap" | null
 type Fit = { item_id: number; title: string; minutes: number }
 
 export function Dock() {
+  const box = useDockCover()
   const now = useNow().data
   const status = useStatus().data
   const timer = status?.timer ?? null
@@ -47,6 +49,7 @@ export function Dock() {
   const room = "100% - var(--fr-side) - var(--fr-drawer) - 12px" // beside the sidebar and any drawer (Shell's variables)
   return (
     <div
+      ref={box}
       className="fr-float"
       data-tour="now"
       style={{
@@ -78,6 +81,22 @@ export function Dock() {
       {work && menu === "swap" && <Swaps options={now.swaps} timing={!!timer} onClose={() => setMenu(null)} />}
     </div>
   )
+}
+
+/** Says in --fr-dock how much of the window's foot the dock covers, whenever its rows come and go or the window
+ * resizes, so the page's columns leave that much room (dockRoom); 0 once it's gone. */
+function useDockCover() {
+  const [box, setBox] = useState<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const root = document.documentElement
+    const say = () => root.style.setProperty(DOCK_VAR, `${covered(box ? box.getBoundingClientRect().top : null, window.innerHeight)}px`)
+    say()
+    const watch = box && typeof ResizeObserver !== "undefined" ? new ResizeObserver(say) : null
+    if (box) watch?.observe(box)
+    window.addEventListener("resize", say)
+    return () => (watch?.disconnect(), window.removeEventListener("resize", say), root.style.setProperty(DOCK_VAR, "0px"))
+  }, [box])
+  return setBox
 }
 
 const TAPS = {

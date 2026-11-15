@@ -5,6 +5,7 @@ import { clock, dur, weekday, when } from "@/lib/format"
 import { addDays, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
+import { dockRoom } from "@/now/dockRoom"
 
 const FULL = { Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday", Sun: "Sunday" } as Record<string, string>
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
@@ -40,7 +41,7 @@ export function DayAside({ date, calendar, plan }: { date: string; calendar: Sch
         display: "flex",
         flexDirection: "column",
         gap: 16,
-        padding: "18px 18px 120px",
+        padding: `18px 18px ${dockRoom(120)}`,
         overflowY: "auto",
         borderRadius: "var(--radius-lg) var(--radius-lg) 0 0",
         background: "var(--color-surface)",

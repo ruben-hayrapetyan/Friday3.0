@@ -11,6 +11,7 @@ import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { Bar, PROJECT_STATUS, type Project, projectPct, StatusTag, TONE } from "./parts"
 import { Timeline } from "./Timeline"
+import { dockRoom } from "@/now/dockRoom"
 
 export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Project[]; onPick: (id: number) => void; onBack: () => void }) {
   const { today, layout } = useShell()
@@ -43,7 +44,7 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
     reorder({ parent_id: p.item.id, ids })
   }
   return (
-    <div className="fr-gutter" style={{ maxWidth: 1080, padding: "18px 40px 120px", display: "flex", flexDirection: "column", gap: 24, minWidth: 0 }}>
+    <div className="fr-gutter" style={{ maxWidth: 1080, padding: `18px 40px ${dockRoom(120)}`, display: "flex", flexDirection: "column", gap: 24, minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <button className="fr-plain fr-link" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
           <Icon name="arrow-left" size={13} />
