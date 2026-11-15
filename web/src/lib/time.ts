@@ -41,11 +41,12 @@ export function dayRange(first: string, days: number): string[] {
 }
 
 export interface Axis {
-  startMin: number // minutes after local midnight; the end may pass 1440
+  startMin: number // minutes after local midnight, from 0 to 1440: a column is its own date's hours
   endMin: number
 }
 
-/** A day column's span on the minute clock. Blocks after midnight belong to the evening before. */
+/** A day column's span on the minute clock: its own date, midnight to midnight at most (15 Nov: "Split at midnight";
+ * what's after midnight was drawn at the foot of the evening before). Something over midnight is cut in two. */
 export function columnSpan(date: string, axis: Axis): [number, number] {
   const midnight = toMin(date)
   return [midnight + axis.startMin, midnight + axis.endMin]
@@ -58,31 +59,49 @@ export interface Span {
 
 
 /** The present quarter hour, for the axis to take in while today is shown (14 Nov: the red now line was missing from
- * midnight until the wake time, outside the hours shown): an empty list when today isn't one of `dates`. */
+ * midnight until the wake time, outside the hours shown): an empty list when today isn't one of `dates`. `today` is
+ * the calendar's date, which turns at midnight. */
 export function nowSpan(now: number, today: string, dates: string[]): Span[] {
   return dates.includes(today) ? [{ start: fromMin(now), end: fromMin(now + 15) }] : []
 }
 
-/** The axis stretched, to the hour, to take in what's on these days: a 6am class opens the day at 6am rather than
- * being cut at the wake time. Something after midnight belongs to the evening before; a day stays a day long. */
+/** The hours the columns show, from the usual ones, stretched to take in what's on these days, each on its own dates:
+ * a 6am class opens the day at 6am rather than being cut at the wake time, a late one keeps it open to midnight, and
+ * anything in the night's small hours (midnight to your day start, a block run over midnight too) opens it at 12am.
+ * Nothing there, and the columns open as usual (15 Nov). */
 export function fitAxis(axis: Axis, things: Span[], dates: string[]): Axis {
-  let { startMin, endMin } = axis
-  const DAY_START = dayStartMin() // before it is the night before, as the server counts days
+  let startMin = axis.startMin
+  let endMin = Math.min(axis.endMin, 1440)
+  const night = dayStartMin() // before it, the night's small hours
   const shown = new Set(dates)
   for (const t of things) {
-    const date = t.start.slice(0, 10)
-    const midnight = toMin(date)
-    const night = toMin(t.start) - midnight < DAY_START
-    const column = night ? addDays(date, -1) : date
-    if (!shown.has(column)) continue
-    const from = toMin(t.start) - toMin(column)
-    const to = toMin(t.end) - toMin(column)
-    if (to <= from) continue
-    startMin = Math.min(startMin, Math.floor(from / 60) * 60)
-    endMin = Math.max(endMin, Math.min(Math.ceil(to / 60) * 60, 1440 + DAY_START))
+    const [lo, hi] = [toMin(t.start), toMin(t.end)]
+    if (hi <= lo) continue
+    for (let date = t.start.slice(0, 10); toMin(date) < hi; date = addDays(date, 1)) {
+      if (!shown.has(date)) continue
+      const from = Math.max(lo, toMin(date)) - toMin(date)
+      const to = Math.min(hi, toMin(date) + 1440) - toMin(date)
+      if (to <= from) continue
+      startMin = Math.min(startMin, from < night ? 0 : Math.floor(from / 60) * 60)
+      endMin = Math.max(endMin, Math.ceil(to / 60) * 60)
+    }
   }
-  startMin = Math.max(startMin, DAY_START)
-  return { startMin, endMin: Math.min(endMin, startMin + 1440) }
+  return { startMin: Math.max(0, startMin), endMin: Math.min(1440, endMin) }
+}
+
+/** Hours planned on each calendar date, as the day headers count them: a block over midnight counts on each side of
+ * it (15 Nov), one that runs by itself only its first quarter hour (as the server's `day_hours`). */
+export function hoursByDate(blocks: (Span & { background?: boolean | null })[]): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const b of blocks) {
+    const lo = toMin(b.start)
+    const hi = b.background ? lo + 15 : toMin(b.end)
+    for (let date = b.start.slice(0, 10); toMin(date) < hi; date = addDays(date, 1)) {
+      const minutes = Math.min(hi, toMin(date) + 1440) - Math.max(lo, toMin(date))
+      if (minutes > 0) out[date] = (out[date] ?? 0) + minutes / 60
+    }
+  }
+  return out
 }
 
 export interface Placed<T> {
@@ -91,6 +110,8 @@ export interface Placed<T> {
   height: number
   column: number // overlapping things share the width side by side
   columns: number
+  before?: boolean // it began before this column: the rest of something over midnight, in the day before
+  after?: boolean // it runs on past this column, into the next day
 }
 
 /** Things in one day column, clipped to it, with overlap columns. */
@@ -106,7 +127,8 @@ export function layout<T extends Span>(things: T[], date: string, axis: Axis): P
   const flush = () => {
     const columns = Math.max(0, ...cluster.map((c) => c.column + 1))
     for (const c of cluster) {
-      out.push({ item: c.p.item, top: c.p.s - lo, height: c.p.e - c.p.s, column: c.column, columns })
+      const cut = { before: toMin(c.p.item.start) < lo, after: toMin(c.p.item.end) > hi }
+      out.push({ item: c.p.item, top: c.p.s - lo, height: c.p.e - c.p.s, column: c.column, columns, ...cut })
     }
     cluster = []
   }

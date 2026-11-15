@@ -48,7 +48,7 @@ A native mobile app; an in-app agent; editing through Google Calendar; multi-use
 | Flexible item | An item Friday places (work, errands, meals within a window) |
 | Unit | 15 minutes; the unit of all durations in the engine |
 | Slot | One cell of the scheduler's grid: 15 minutes in the fine zone, 30 minutes in the coarse zone |
-| Planning day | From `day_start` (04:00) to the next day's 04:00, so 01:00 work counts as the night before |
+| Planning day | From `day_start` (04:00) to the next day's 04:00, so 01:00 work counts as the night before. The calendar draws by date: 01:00 is under the next date's column, and work over midnight is two pieces (15 Nov) |
 | Horizon | The scheduler's detailed window (default 14 planning days from now). The allocator looks further (default 12 weeks) |
 | Block | One run of consecutive slots of one item in a plan. Its key is `item_id@start` and is stable across plans |
 | Plan | All blocks from one scheduler run. One plan is current. A **provisional** plan is the executor's instant preview |

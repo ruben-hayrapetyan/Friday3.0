@@ -38,11 +38,14 @@ function Mover() {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] })
+  vi.setSystemTime(new Date(2026, 10, 12, 14, 0)) // TODAY's afternoon: the mini month follows the calendar's date
   window.innerWidth = 1440
   vi.spyOn(globalThis, "fetch").mockImplementation(() => new Promise(() => {})) // nothing answers: no tints
 })
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   vi.restoreAllMocks()
 })
 

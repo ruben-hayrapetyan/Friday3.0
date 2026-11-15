@@ -153,7 +153,7 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, tod
           <Icon name="tray-arrow-down" size={10} /> in {inside}
         </div>
       )}
-      {!fixedInPlace && <Edges length={minutes(b)} onResize={onResize} />}
+      {!fixedInPlace && <Edges length={minutes(b)} onResize={onResize} p={p} />}
     </div>
   )
 }
@@ -267,7 +267,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
           {it.gives_way_to ? ` · for ${it.gives_way_to}` : cancelled ? " · not going" : it.location ? ` · ${it.location}` : ""}
         </TimeLine>
       )}
-      {onResize && !typing && <Edges length={minutes(it)} onResize={onResize} />}
+      {onResize && !typing && <Edges length={minutes(it)} onResize={onResize} p={p} />}
     </div>
   )
 }
@@ -275,7 +275,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
 /** A box's top and bottom edges, each dragged to change its time from that end (27 Oct: a block had only its bottom
  * edge, which sat just above the next block's top, so dragging that block's top stretched the one before it instead).
  * Short ones only at the bottom: two edges would cover all of a quarter hour, leaving nothing to grab to move it. */
-function Edges({ length, onResize }: { length: number; onResize: (e: React.PointerEvent, edge: "top" | "bottom") => void }) {
+function Edges({ length, onResize, p }: { length: number; onResize: (e: React.PointerEvent, edge: "top" | "bottom") => void; p: Placed<unknown> }) {
   const edge = (which: "top" | "bottom", title: string) => (
     <div
       title={title}
@@ -288,8 +288,9 @@ function Edges({ length, onResize }: { length: number; onResize: (e: React.Point
   )
   return (
     <>
-      {length >= 30 && edge("top", "Drag to change when it starts")}
-      {edge("bottom", "Drag to change when it ends")}
+      {/* a piece of something over midnight has the edge only where it really starts or ends (15 Nov) */}
+      {length >= 30 && !p.before && edge("top", "Drag to change when it starts")}
+      {!p.after && edge("bottom", "Drag to change when it ends")}
     </>
   )
 }
@@ -466,6 +467,7 @@ export function DropPreview({ p, label, locked }: { p: Placed<unknown>; label: s
 export function SleepBand({ p, core }: { p: Placed<unknown>; core: boolean }) {
   return (
     <div
+      data-night={core ? "core" : "margin"}
       style={{
         position: "absolute",
         left: 0,

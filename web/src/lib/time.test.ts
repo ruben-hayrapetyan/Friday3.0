@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { addDays, ampm, dayRange, fitAxis, fromMin, hourMarks, layout, nearestAt, nowSpan, pageStart, toMin } from "./time"
+import { addDays, ampm, dayRange, fitAxis, fromMin, hourMarks, hoursByDate, layout, nearestAt, nowSpan, pageStart, toMin } from "./time"
 
 const axis = { startMin: 7 * 60 + 30, endMin: 24 * 60 + 30 }
 const block = (start: string, end: string, name = "") => ({ start, end, name })
@@ -56,20 +56,41 @@ describe("ampm", () => {
 
 describe("fitAxis", () => {
   const week = ["2026-10-26", "2026-10-27"]
-  it("opens the day at the hour of anything before the wake time, and closes it after anything later", () => {
-    expect(fitAxis(axis, [block("2026-10-26T06:00", "2026-10-26T08:00")], week)).toEqual({ startMin: 360, endMin: axis.endMin })
+  it("opens the day at the hour of anything before the wake time, and keeps it open to midnight at most", () => {
+    expect(fitAxis(axis, [block("2026-10-26T06:00", "2026-10-26T08:00")], week)).toEqual({ startMin: 360, endMin: 1440 })
     expect(fitAxis(axis, [block("2026-10-27T06:45", "2026-10-27T07:00")], week).startMin).toBe(360)
-    expect(fitAxis(axis, [block("2026-10-27T23:30", "2026-10-28T01:10")], week).endMin).toBe(26 * 60)
   })
-  it("leaves it be for what fits, what's on other days, and past midnight's own small hours", () => {
-    expect(fitAxis(axis, [block("2026-10-26T09:00", "2026-10-26T10:00"), block("2026-10-29T05:00", "2026-10-29T06:00")], week)).toEqual(axis)
-    // 1am Tuesday is Monday night: it stretches Monday's end, never Tuesday's start back to 1am
-    expect(fitAxis(axis, [block("2026-10-27T01:00", "2026-10-27T02:00")], week)).toEqual({ startMin: axis.startMin, endMin: 26 * 60 })
-    expect(fitAxis(axis, [block("2026-10-26T05:00", "2026-10-26T05:00")], week)).toEqual(axis) // no length
+  it("opens at 12am for anything in the night's small hours, on the date it's on (15 Nov: split at midnight)", () => {
+    // 1am Tuesday is under Tuesday now, not at the foot of Monday: the columns open at 12am, and end at midnight
+    expect(fitAxis(axis, [block("2026-10-27T01:00", "2026-10-27T02:00")], week)).toEqual({ startMin: 0, endMin: 1440 })
+    // over midnight: Monday keeps the evening, Tuesday's piece opens the columns at 12am
+    expect(fitAxis(axis, [block("2026-10-26T23:30", "2026-10-27T01:10")], week)).toEqual({ startMin: 0, endMin: 1440 })
+    // the night of the last day shown, after midnight: on a date not shown, so nothing to open for
+    expect(fitAxis({ startMin: 450, endMin: 1380 }, [block("2026-10-28T01:00", "2026-10-28T02:00")], week)).toEqual({ startMin: 450, endMin: 1380 })
   })
-  it("stays a day long at most", () => {
-    const late = { startMin: 360, endMin: 28 * 60 }
-    expect(fitAxis(late, [block("2026-10-26T04:00", "2026-10-26T05:00")], week)).toEqual({ startMin: 240, endMin: 28 * 60 })
+  it("leaves it be for what fits, what's on other days, and what has no length", () => {
+    const usual = { startMin: 450, endMin: 1380 }
+    expect(fitAxis(usual, [block("2026-10-26T09:00", "2026-10-26T10:00"), block("2026-10-29T05:00", "2026-10-29T06:00")], week)).toEqual(usual)
+    expect(fitAxis(usual, [block("2026-10-26T05:00", "2026-10-26T05:00")], week)).toEqual(usual)
+  })
+  it("is a day long at most: usual hours past midnight wait for something there", () => {
+    expect(fitAxis({ startMin: 360, endMin: 28 * 60 }, [], week)).toEqual({ startMin: 360, endMin: 1440 })
+  })
+})
+
+describe("hours by date", () => {
+  it("counts work over midnight on each side of it, and what runs by itself as its first quarter hour", () => {
+    expect(hoursByDate([block("2026-10-26T23:00", "2026-10-27T01:30"), block("2026-10-27T09:00", "2026-10-27T10:00")])).toEqual({ "2026-10-26": 1, "2026-10-27": 2.5 })
+    expect(hoursByDate([{ ...block("2026-10-26T23:00", "2026-10-27T03:00"), background: true }])).toEqual({ "2026-10-26": 0.25 })
+  })
+})
+
+describe("a piece of something over midnight", () => {
+  it("says which end it was cut at", () => {
+    const day = { startMin: 0, endMin: 1440 }
+    const over = block("2026-10-26T23:00", "2026-10-27T01:00")
+    expect(layout([over], "2026-10-26", day)).toMatchObject([{ top: 1380, height: 60, before: false, after: true }])
+    expect(layout([over], "2026-10-27", day)).toMatchObject([{ top: 0, height: 60, before: true, after: false }])
   })
 })
 
@@ -106,9 +127,10 @@ describe("the present on the calendar", () => {
   const axis = { startMin: 7 * 60 + 30, endMin: 24 * 60 }
   const at = (local: string) => toMin(local)
 
-  it("is taken in when today is shown: past midnight it stretches the evening, before waking it opens the morning", () => {
-    const night = fitAxis(axis, nowSpan(at("2026-11-14T01:10"), "2026-11-13", ["2026-11-13", "2026-11-14"]), ["2026-11-13", "2026-11-14"])
-    expect(night.endMin).toBeGreaterThanOrEqual(25 * 60 + 25) // 1:10am is the 13th's night: its column runs past it
+  it("is taken in when today is shown: past midnight it opens the calendar's date at 12am, before waking the morning", () => {
+    // 15 Nov: today is the calendar's date, turning at midnight, so 1:10am on the 14th is the 14th's
+    const night = fitAxis(axis, nowSpan(at("2026-11-14T01:10"), "2026-11-14", ["2026-11-13", "2026-11-14"]), ["2026-11-13", "2026-11-14"])
+    expect(night.startMin).toBe(0)
     const early = fitAxis(axis, nowSpan(at("2026-11-14T05:20"), "2026-11-14", ["2026-11-14"]), ["2026-11-14"])
     expect(early.startMin).toBeLessThanOrEqual(5 * 60 + 20) // before waking: the day opens at 5am
   })

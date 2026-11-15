@@ -9,8 +9,8 @@ import { useNavigate } from "react-router"
 import { useDragging } from "@/components/calendar/useDrag"
 import { Icon } from "@/components/fr/controls"
 import { useCalendar, useSettings } from "@/hooks/queries"
-import { useClock } from "@/hooks/useClock"
-import { addDays, fromMin, toMin } from "@/lib/time"
+import { useDate } from "@/hooks/useClock"
+import { addDays, toMin } from "@/lib/time"
 import { monthStart } from "@/plan/MonthView"
 import { type CalendarPlace, useShell } from "./ShellContext"
 
@@ -24,10 +24,13 @@ export function followedMonth(place: CalendarPlace, today: string): string {
 }
 
 export function MiniMonth() {
-  const { today, place, setPlace, agendaDay, setAgendaDay } = useShell()
+  const { place, setPlace, agendaDay, setAgendaDay } = useShell()
+  // Today's mark is the calendar's date, turning at midnight (15 Nov: a client up past midnight saw the day before
+  // still marked), as the calendar's pages and the agenda follow it; the planning day runs on to your day start.
+  const dated = useDate()
   const navigate = useNavigate()
   const { drag } = useDragging()
-  const follows = followedMonth(place, today)
+  const follows = followedMonth(place, dated)
   const [month, setMonth] = useState(follows)
   // Any move of the calendar brings the mini month back to it, even within the month it's in; set while drawing, not
   // in an effect, so it never shows a frame behind the calendar.
@@ -51,10 +54,7 @@ export function MiniMonth() {
       .reduce((sum, f) => sum + (toMin(f.end as string) - toMin(f.start as string)) / 60, 0)
     return Math.min(1, ((plan?.day_hours[date] ?? 0) + fixed) / Math.max(cap + 4, 1))
   }
-  const shown = agendaDay ?? today
-  // Today's mark is the calendar's date, turning at midnight (15 Nov: a client up past midnight saw the day before
-  // still marked); the planning day (`today`), which runs to your day start, stays the day the agenda opens on.
-  const dated = fromMin(useClock()).slice(0, 10)
+  const shown = agendaDay ?? dated
   const open = (date: string) => {
     setAgendaDay(date)
     setPlace({ view: place.view, first: place.view === "month" ? monthStart(date) : date })

@@ -4,6 +4,7 @@
 import { useShownPlan } from "@/plan/shown"
 import { useDragging } from "@/components/calendar/useDrag"
 import { useCalendar, useSettings } from "@/hooks/queries"
+import { useDate } from "@/hooks/useClock"
 import { clock } from "@/lib/format"
 import { eventPaint, wash } from "@/lib/pigments"
 import { addDays, toMin } from "@/lib/time"
@@ -22,7 +23,8 @@ export function monthStart(date: string): string {
 }
 
 export function MonthView({ first, onDay }: { first: string; onDay: (date: string) => void }) {
-  const { today, select } = useShell()
+  const { select } = useShell()
+  const today = useDate() // the calendar's date, turning at midnight (15 Nov)
   const { skinOf, light } = useLook()
   const { drag } = useDragging()
   const settings = useSettings().data as Record<string, { week_start?: string }> | undefined

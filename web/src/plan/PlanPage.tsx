@@ -9,7 +9,7 @@ import { useOffline } from "@/api/offline"
 import { Dropdown, MenuRow } from "@/components/fr/Dropdown"
 import { Icon, Seg, Switch } from "@/components/fr/controls"
 import { useKeys } from "@/hooks/useKeys"
-import { followServer } from "@/hooks/useClock"
+import { followServer, useDate } from "@/hooks/useClock"
 import { useCalendar, usePaces, useSettings, useStatus } from "@/hooks/queries"
 import { pigment } from "@/lib/pigments"
 import { useLook } from "@/theme/LookProvider"
@@ -42,7 +42,8 @@ const VIEWS = [
 ]
 
 export function PlanPage() {
-  const { today, drawer, event, drawerWidth, place, setPlace, layout, drawerOver } = useShell()
+  const { drawer, event, drawerWidth, place, setPlace, layout, drawerOver } = useShell()
+  const today = useDate() // the calendar's pages center on its date, which turns at midnight (15 Nov)
   const view: View = place.view === 7 && !layout.weekFits ? 1 : place.view // a week too narrow to read shows its day
   const first = place.first
   // A week or three days are centered on the day picked, or today (lib/time.ts); `first` holds that center.
@@ -128,7 +129,8 @@ function Days({ first, view, drawer, aside }: { first: string; view: 1 | 3 | 7; 
 
 function Header(props: { view: View; first: string; onView: (v: View) => void; onStep: (by: number) => void; onToday: () => void }) {
   const { view, first, onView, onStep, onToday } = props
-  const { today, setDialog, drawer, setDrawer, layout } = useShell()
+  const { setDialog, drawer, setDrawer, layout } = useShell()
+  const today = useDate()
   const days = view === "month" ? 1 : view
   const views = layout.weekFits ? VIEWS : VIEWS.filter((v) => v.value !== 7)
   return (
