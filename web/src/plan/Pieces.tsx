@@ -12,6 +12,7 @@ import { rangeText, readTimeRange } from "@/lib/timeRange"
 import { useJustShoved } from "@/pops/shoved"
 import { useLook } from "@/theme/LookProvider"
 import type { Kind } from "@/theme/skin"
+import { clamped, detailLines, TITLE_LINE, titleLines } from "./lines"
 
 /** What if, as calendar apps draw tentative changes: an item a tried change makes is dashed, one it changes is
  * outlined, and one it deletes stays where it was, faded and struck through. */
@@ -84,6 +85,7 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, tod
   const kind = done ? "done" : look ? "planned" : kindOf(b)
   const s = skinOf(kind, b.area, { isCur, sel: selected }, b.preset)
   const tall = minutes(b) >= 45
+  const lines = useLines(p.height, (movedFrom ? 1 : 0) + (inside && tall && !movedFrom ? 1 : 0), tall)
   // A task that runs by itself (laundry): its first quarter hour needs you; the rest is it running, with other work on
   // top of it, so it's drawn faint and striped and isn't dragged (move it from the to-do instead).
   const running = !!b.background && !look && !done
@@ -131,16 +133,18 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, tod
       }}
     >
       {!missed && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: s.stripe }} />}
-      <div style={{ display: "flex", alignItems: "center", gap: 4, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden" }}>
-        {b.pinned === "locked" && !look && <Icon name="lock-simple" fill size={11} />}
-        {b.pinned === "preferred" && !look && <Icon name="push-pin" fill size={11} />}
-        {done && <Icon name="check" size={11} />}
-        {look === "sitting" && <Icon name="timer" size={11} />}
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{b.title}</span>
+      <div style={titleRow(tall)}>
+        {b.pinned === "locked" && !look && <Icon name="lock-simple" fill size={11} style={tall ? ICON_AT_LINE : undefined} />}
+        {b.pinned === "preferred" && !look && <Icon name="push-pin" fill size={11} style={tall ? ICON_AT_LINE : undefined} />}
+        {done && <Icon name="check" size={11} style={tall ? ICON_AT_LINE : undefined} />}
+        {look === "sitting" && <Icon name="timer" size={11} style={tall ? ICON_AT_LINE : undefined} />}
+        <span ref={lines.title} data-title-lines={tall ? lines.titleMost : undefined} style={tall ? { ...clamped(lines.titleMost), minWidth: 0 } : { overflow: "hidden", textOverflow: "ellipsis" }}>
+          {b.title}
+        </span>
         {!tall && <Inline at={b.start} color={missed ? "var(--color-neutral-500)" : s.sub} time={look ? undefined : time} />}
       </div>
       {tall && (
-        <TimeLine color={missed ? "var(--color-neutral-500)" : s.sub} time={look ? undefined : time}>
+        <TimeLine color={missed ? "var(--color-neutral-500)" : s.sub} time={look ? undefined : time} lines={lines.detailMost}>
           {missed ? "Missed · planned again" : running ? `${clock(b.start)} start · runs by itself` : `${clock(b.start)}–${clock(b.end)}`}
           {look === "sitting" ? ` · ${dur(minutes(b))}` : b.estimated && !look ? ` · ~${dur(minutes(b))}` : ""}
         </TimeLine>
@@ -198,6 +202,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
           ? { ...painted, bd: `1.5px dashed color-mix(in srgb, ${paint} 70%, transparent)` }
           : painted
   const tall = minutes(it) >= 45
+  const lines = useLines(p.height, 0, tall)
   const [typing, setTyping] = useState(false)
   const time = retime && { typing, span: it, start: () => (setTyping(true), retime.begin()), save: retime.save, stop: () => setTyping(false) }
   // Time you just shoved comes into view and glows, so you see it was taken back.
@@ -250,11 +255,13 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
           Skip?
         </span>
       )}
-      <div style={{ display: "flex", alignItems: "center", gap: 4, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden" }}>
-        {it.series_id != null && <Icon name="repeat" size={11} />}
-        {cancelled && <Icon name="skip-forward" size={11} />}
+      <div style={titleRow(tall)}>
+        {it.series_id != null && <Icon name="repeat" size={11} style={tall ? ICON_AT_LINE : undefined} />}
+        {cancelled && <Icon name="skip-forward" size={11} style={tall ? ICON_AT_LINE : undefined} />}
         <span
-          style={{ overflow: "hidden", textOverflow: "ellipsis", ...(cancelled ? { textDecoration: "line-through" } : {}) }}
+          ref={lines.title}
+          data-title-lines={tall ? lines.titleMost : undefined}
+          style={{ ...(tall ? { ...clamped(lines.titleMost), minWidth: 0 } : { overflow: "hidden", textOverflow: "ellipsis" }), ...(cancelled ? { textDecoration: "line-through" } : {}) }}
           title={it.left_out ? `${it.title} — not counted as busy (${LEFT_OUT[it.left_out] ?? it.left_out})` : undefined}
         >
           {it.event_kind === "shove" ? "Your time" : it.title}
@@ -262,7 +269,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
         {!tall && <Inline at={it.start} color={s.sub} time={time} />}
       </div>
       {tall && (
-        <TimeLine color={s.sub} time={time}>
+        <TimeLine color={s.sub} time={time} lines={lines.detailMost}>
           {clock(it.start)}–{clock(it.end)}
           {it.gives_way_to ? ` · for ${it.gives_way_to}` : cancelled ? " · not going" : it.location ? ` · ${it.location}` : ""}
         </TimeLine>
@@ -270,6 +277,33 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
       {onResize && !typing && <Edges length={minutes(it)} onResize={onResize} />}
     </div>
   )
+}
+
+/** The title's row: one line, centered, in a short box; in a tall one, its icons at the first of the lines it wraps to. */
+const titleRow = (tall: boolean): CSSProperties =>
+  tall ? { display: "flex", alignItems: "flex-start", gap: 4, fontWeight: 500, overflow: "hidden" } : { display: "flex", alignItems: "center", gap: 4, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden" }
+const ICON_AT_LINE: CSSProperties = { flex: "none", marginTop: 2 }
+
+/** A tall box's lines (lines.ts): its title to as many as fit, and its time and location to what the title leaves,
+ * measured as the title wraps (its width changes with the window's). `minutesTall`: the box's height in minutes. */
+function useLines(minutesTall: number, rows: number, tall: boolean) {
+  const title = useRef<HTMLSpanElement>(null)
+  const px = Math.max(minutesTall * PX - 2, 10) // as box() draws it
+  const most = titleLines(px, rows)
+  const [used, setUsed] = useState(1)
+  useLayoutEffect(() => {
+    const el = title.current
+    if (!tall || !el) return
+    const measure = () => {
+      const line = Number.parseFloat(getComputedStyle(el).lineHeight) || TITLE_LINE
+      setUsed(Math.max(1, Math.min(most, Math.round(el.getBoundingClientRect().height / line))))
+    }
+    measure()
+    const watch = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure)
+    watch?.observe(el)
+    return () => watch?.disconnect()
+  }, [tall, most])
+  return { title, titleMost: most, detailMost: detailLines(px, used, rows) }
 }
 
 /** A box's top and bottom edges, each dragged to change its time from that end (27 Oct: a block had only its bottom
@@ -313,11 +347,11 @@ function Inline({ at, color, time }: { at: string; color: string; time?: Timing 
   )
 }
 
-/** A taller piece's time, on its own line under the title. */
-function TimeLine({ color, time, children }: { color: string; time?: Timing; children: ReactNode }) {
+/** A taller piece's time (and location), under the title: wrapping to the `lines` its box has left. */
+function TimeLine({ color, time, lines, children }: { color: string; time?: Timing; lines: number; children: ReactNode }) {
   if (time?.typing) return <TimeField time={time} />
   return (
-    <div className="tnum" style={{ fontSize: 11, color, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+    <div className="tnum" data-lines={lines} style={{ fontSize: 11, color, ...clamped(lines) }}>
       <span onDoubleClick={retype(time)} title={time && "Double-click to change the time"}>
         {children}
       </span>

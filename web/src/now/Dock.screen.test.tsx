@@ -160,14 +160,70 @@ describe("timing something", () => {
     await friday.c("reopen", { id: a.item_id })
   })
 
-  it("draws a smaller bar in the minimal style", async () => {
+  // 15 Nov: Settings → Appearance drew Minimal as a one-line pill, and the bar was the full one, narrower
+  it("is a one-line pill in the minimal style: the dot, what's timed, Done and Pause; a tap opens the full bar", async () => {
     window.localStorage.setItem("friday-look-v8", JSON.stringify({ dockStyle: "Minimal" }))
     const [a] = await work()
     await friday.c("start", { id: a.item_id })
-    await openDock()
-    const done = await inDock().findByTitle("Stop the timer and mark it done")
-    expect(done.textContent).toBe("")
-    await friday.c("stop", {})
+    const { user } = await openDock()
+    const open = await inDock().findByRole("button", { name: `Open the Now bar: ${a.title}` }, { timeout: 20_000 })
+    expect(dock().hasAttribute("data-pill")).toBe(true)
+    expect(inDock().getByRole("button", { name: "Stop the timer and mark it done" })).toBeTruthy()
+    expect(inDock().getByRole("button", { name: "Pause the timer (Space)" })).toBeTruthy()
+    // one row: no estimate chips, no "Timing since", no Do something else or More until it's opened
+    expect(inDock().queryByRole("button", { name: "15 minutes more" })).toBeNull()
+    expect(inDock().queryByText(/^Timing since /)).toBeNull()
+    expect(inDock().queryByRole("button", { name: "Do something else" })).toBeNull()
+    await user.click(open)
+    expect(await inDock().findByRole("button", { name: "15 minutes more" })).toBeTruthy()
+    expect(inDock().getByText(/^Timing since /)).toBeTruthy()
+    expect(inDock().getByRole("button", { name: "Do something else" })).toBeTruthy()
+    expect(dock().hasAttribute("data-pill")).toBe(false)
+    // its title folds it back
+    await user.click(inDock().getByRole("button", { name: "Fold the Now bar" }))
+    expect(await inDock().findByRole("button", { name: `Open the Now bar: ${a.title}` })).toBeTruthy()
+    // opened, an action folds it back too
+    await user.click(inDock().getByRole("button", { name: `Open the Now bar: ${a.title}` }))
+    await user.click(await inDock().findByRole("button", { name: "Pause the timer (Space)" }))
+    expect((await waitForSent("stop")).body).toEqual({})
+    await waitFor(() => expect(dock().hasAttribute("data-pill")).toBe(true))
+    await waitFor(async () => expect((await friday.q<{ timer: unknown }>("status")).timer).toBeNull(), { timeout: 10_000 })
+  })
+
+  it("free in the minimal style: Start now's chips wait in the opened bar, the first a round Start on the pill", async () => {
+    window.localStorage.setItem("friday-look-v8", JSON.stringify({ dockStyle: "Minimal" }))
+    const { user, client } = await openDock()
+    await sayNow(client, (was, local) => ({
+      current: null,
+      current_source: "free",
+      gap_minutes: 95,
+      fits: [
+        { item_id: 566, title: "MATH 1910 Written HW 8", minutes: 95, price: 250, slack_hours: 40 },
+        { item_id: 569, title: "CHEM 2090 lab report 6", minutes: 95, price: 250, slack_hours: 180 },
+      ],
+      next: was.next ?? { key: "T1@x", item_id: 1, title: "Breakfast", area: null, preset: "Routine", estimated: false, start: at(local, 95), end: at(local, 125), pinned: null, tentative: false, fixed: false, cost: {}, state: null, background: false },
+    }))
+    const open = await inDock().findByRole("button", { name: /^Open the Now bar: Free until / })
+    expect(inDock().queryByText("Start now:")).toBeNull()
+    expect(inDock().queryByRole("button", { name: /^CHEM 2090 lab report 6/ })).toBeNull()
+    expect(inDock().getByRole("button", { name: "Start MATH 1910 Written HW 8" })).toBeTruthy()
+    await user.click(open)
+    expect(await inDock().findByText("Start now:")).toBeTruthy()
+    expect(inDock().getByRole("button", { name: /^CHEM 2090 lab report 6/ })).toBeTruthy()
+  })
+
+  it("marks the pill when a meal tap waits, and the opened bar has the tap", async () => {
+    window.localStorage.setItem("friday-look-v8", JSON.stringify({ dockStyle: "Minimal" }))
+    const { user, client } = await openDock()
+    await waitFor(() => expect(client.getQueryData(["meals"])).toBeTruthy())
+    await waitFor(() => expect(client.isFetching()).toBe(0))
+    client.setQueryData<Schemas["MealsOut"]>(["meals"], (m) => m && { ...m, on: true, eating: null, next: "lunch" })
+    const open = await inDock().findByRole("button", { name: /^Open the Now bar: / })
+    expect(inDock().queryByText("Lunch?")).toBeNull()
+    expect(open.querySelector(".ph-bowl-food, [class*='bowl-food']")).not.toBeNull()
+    await user.click(open)
+    expect(await inDock().findByText("Lunch?")).toBeTruthy()
+    expect(inDock().getByRole("button", { name: "Eating now" })).toBeTruthy()
   })
 })
 

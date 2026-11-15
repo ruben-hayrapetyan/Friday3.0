@@ -30,6 +30,8 @@ import { MonthView, monthStart } from "./MonthView"
 import { useWhatIf, whatIf } from "@/whatif/store"
 import { WhatIfBar } from "@/whatif/WhatIfPanel"
 import { DecisionsButton } from "@/inbox/Decisions"
+import { LightenDialog } from "@/dialogs/Dialogs"
+import { overSentence } from "@/lib/load"
 
 export type { View }
 
@@ -328,8 +330,11 @@ function Attention({ first, days }: { first: string; days: number }) {
     }))
     notes.push({ tone: "mark", icon: "clock-countdown", text, action: { label: "See options", run: () => setDialog("triage") }, list })
   }
-  const over = calendar?.days.map((d) => ({ date: d.date, by: (plan?.day_hours[d.date] ?? 0) - d.cap_hours })).find((d) => d.by > 0.05)
-  if (over) notes.push({ tone: "mark", icon: "warning", text: `${FULL_DAY[weekday(over.date)]} is ${over.by.toFixed(1)} h over`, action: { label: "See options", run: () => setDialog("triage") } })
+  // A day past its most isn't late work: said plainly, as the Load ahead says a week, with ways to lighten it (15 Nov:
+  // its "See options" opened what gives when work is late, which said everything fits).
+  const over = calendar?.days.map((d) => ({ date: d.date, planned: plan?.day_hours[d.date] ?? 0, usual: d.cap_hours })).find((d) => d.planned - d.usual > 0.05)
+  const [lighten, setLighten] = useState(false)
+  if (over) notes.push({ tone: "mark", icon: "warning", text: overSentence(FULL_DAY[weekday(over.date)], over.planned, over.usual, late.length), action: { label: "Lighten that day", run: () => setLighten(true) } })
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
   useEffect(() => {
@@ -355,6 +360,7 @@ function Attention({ first, days }: { first: string; days: number }) {
         {notes.length > 1 && <span className="tnum" style={{ color: "var(--color-neutral-400)", flex: "none" }}>{layout.tight ? notes.length : `+${notes.length - 1}`}</span>}
       </button>
       {solving && <Replanning tight={layout.tight} />}
+      {over && lighten && <LightenDialog start={over.date} days={1} label={FULL_DAY[weekday(over.date)]} planned={over.planned} usual={over.usual} late={late.length} onClose={() => setLighten(false)} />}
       {open && (
         <div className="fr-float" style={{ position: "absolute", top: "calc(100% + 6px)", left: shift, zIndex: 20, width: "min(380px, calc(100vw - 24px))", maxHeight: "60vh", overflowY: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 2 }}>
           {notes.map((n, i) => (

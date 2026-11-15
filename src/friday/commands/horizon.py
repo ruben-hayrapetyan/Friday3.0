@@ -22,7 +22,7 @@ from friday.commands.fields import item_out, require_item, waiting_on
 from friday.commands.items import add, add_dependency
 from friday.commands.registry import Ctx, command, query
 from friday.commands.settings import write_setting
-from friday.core.db import rows
+from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.rows import item_from_row
 from friday.core.time import UNIT_MIN, format_utc, parse_utc, planning_date
@@ -128,10 +128,15 @@ def load(ctx: Ctx, inp: LoadInput) -> list[WeekLoad]:
         raise FieldError("plan", "there's no plan yet; run `replan`")
     first = date.fromisoformat(report["allocation_start"])
     forecast, capacity = report["allocation_hours"], report["allocation_capacity_hours"]
+    # The blocks from when the plan was made, as the room is (15 Nov: a client's week read 1 h over with nothing
+    # late; today's blocks already behind you counted among the hours, and the room only from the plan's time).
+    made = one(ctx.conn, "SELECT created_utc FROM plans WHERE id = ?", [plan_id])
+    since = parse_utc(made["created_utc"]) if made else ctx.now_utc
     scheduled: dict[date, float] = defaultdict(float)
     for r in rows(ctx.conn, "SELECT start_utc, end_utc FROM blocks WHERE plan_id = ?", [plan_id]):
-        start = parse_utc(r["start_utc"])
-        scheduled[planning_date(start, ctx.tz, ctx.day_start)] += (parse_utc(r["end_utc"]) - start) / 60
+        start, end = max(since, parse_utc(r["start_utc"])), parse_utc(r["end_utc"])
+        if end > start:
+            scheduled[planning_date(start, ctx.tz, ctx.day_start)] += (end - start) / 60
     horizon = first + timedelta(days=ctx.settings["time"].horizon_days - 1)
     forecast = less_done_early(forecast, sum(scheduled.values()), (horizon - first).days + 1)
     week_start = ctx.settings["time"].grid_spec().week_start

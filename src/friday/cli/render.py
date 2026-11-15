@@ -269,6 +269,11 @@ def triage(result: dict[str, Any]) -> list[str]:
     return lines + table(rows)
 
 
+def lighten(result: dict[str, Any]) -> list[str]:
+    rows = [[o["action"], f"-{o['hours_moved']:g} h", "; ".join(o["side_effects"])] for o in result["options"]]
+    return table(rows) if rows else ["Nothing there can move out without being late."]
+
+
 def review(result: dict[str, Any]) -> list[str]:
     lines = [f"Review of {result['date']}" + (" (done)" if result["reviewed"] else "")]
     times = clocks([(b["start"], b["end"]) for b in result["blocks"]])
@@ -378,6 +383,7 @@ RENDERERS: dict[str, Callable[[Any], list[str]]] = {
     "changes": changes,
     "preview_weights": changes,
     "triage": triage,
+    "lighten": lighten,
     "review": review,
     "paces": paces,
     "status": status,

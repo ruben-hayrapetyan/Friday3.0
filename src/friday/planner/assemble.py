@@ -135,8 +135,13 @@ def assembled(snapshot: Snapshot, solved: Solved) -> AssembledPlan:
             "cancelled": result.cancelled,
         },
         "quotas": {id_of(k): v for k, v in solved.allocation.quotas.items()},
-        "allocation_hours": [round(units * UNIT_MIN / 60, 2) for units in solved.allocation.day_totals()],
-        "allocation_capacity_hours": [round(units * UNIT_MIN / 60, 2) for units in solved.allocation.capacity],
+        # The forecast holds meals and goals too, and the room is before they claim their part (allocator.py `room`):
+        # the load ahead counts their blocks among the planned hours, so they were counted twice against the room.
+        "allocation_hours": [
+            round((units + claimed) * UNIT_MIN / 60, 2)
+            for units, claimed in zip(solved.allocation.day_totals(), solved.allocation.claimed(), strict=True)
+        ],
+        "allocation_capacity_hours": [round(units * UNIT_MIN / 60, 2) for units in solved.allocation.room],
         "allocation_start": problem.grid.slots[0].date.isoformat(),
         "allocation_finish": allocation_finish(solved),
         "slack_minutes": {id_of(k): s.minutes for k, s in slack(solved.executor).items()},

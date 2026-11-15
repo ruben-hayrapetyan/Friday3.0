@@ -1,10 +1,14 @@
-"""Explanations and triage (DESIGN §16): why, why_not, changes, preview_weights, rule_totals, triage."""
+"""Explanations and triage (DESIGN §16): why, why_not, changes, preview_weights, rule_totals, triage, lighten."""
 
 import json
+from datetime import date
 from typing import Any
 
 from friday.api.commands import (
     BlockRef,
+    LightenInput,
+    LightenOption,
+    LightenOut,
     PreviewWeightsInput,
     RuleTotalsInput,
     TriageOption,
@@ -28,6 +32,7 @@ from friday.planner.snapshot import take_snapshot
 from friday.planner.spacing import Closer, closer_words
 from friday.planner.store import current_plan, kv_get, load_item
 from friday.planner.views import change_list, why_not_view
+from friday.planner.views import lighten as run_lighten
 from friday.planner.views import preview_weights as run_preview
 from friday.planner.views import triage as run_triage
 
@@ -214,4 +219,22 @@ def triage(ctx: Ctx, inp: Empty) -> TriageOut:
             )
             for o in options
         ],
+    )
+
+
+@query("lighten")
+def lighten(ctx: Ctx, inp: LightenInput) -> LightenOut:
+    """Ways to plan less in a week (or a day) that holds more than your usual, each tried on a copy of your plan,
+    none making anything late: flexible work there, started after it."""
+    options = run_lighten(take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id), date.fromisoformat(inp.start), inp.days)
+    return LightenOut(
+        options=[
+            LightenOption(
+                action=o.action,
+                steps=[TriageStep(command=c, input=api_input(ctx, i)) for c, i in o.steps],
+                hours_moved=o.hours_moved,
+                side_effects=o.side_effects,
+            )
+            for o in options
+        ]
     )

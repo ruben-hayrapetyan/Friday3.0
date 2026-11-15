@@ -1,4 +1,5 @@
-// The v22 dialogs: the morning brief, what gives when it can't all fit (triage), and locks that make work late.
+// The v22 dialogs: the morning brief, what gives when it can't all fit (triage), lightening a week over your usual,
+// and locks that make work late.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react"
@@ -10,6 +11,7 @@ import { useHorizon, usePaces, useSettings } from "@/hooks/queries"
 import { ChangeList } from "@/components/ChangeList"
 import { because } from "@/lib/changes"
 import { clock, dur, when } from "@/lib/format"
+import { hoursSaid, overSentence } from "@/lib/load"
 import { nextBlocks } from "@/lib/todo"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
@@ -365,6 +367,103 @@ export function TriageDialog({ onClose }: { onClose: () => void }) {
         <span className="fr-kicker" style={{ flex: 1 }}>
           Every change can be undone from the plan.
         </span>
+        <button className="btn btn-ghost" onClick={onClose}>
+          Cancel
+        </button>
+        <button className="btn btn-primary" onClick={apply} disabled={!chosen.length || applying}>
+          Apply {chosen.length > 1 ? `${chosen.length} changes` : ""}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+/** Ways to plan less in a week (or a day) that holds more than your usual (15 Nov: the Load ahead's button opened what
+ * gives when work is late, which said "Everything fits" while the week read over): flexible work there, started after
+ * it, each tried on a copy of your plan and none making anything late. Picked ones apply together, with one Undo. */
+export function LightenDialog({ start, days, label, planned, usual, late, onClose }: { start: string; days: 1 | 7; label: string; planned: number; usual: number; late: number; onClose: () => void }) {
+  const { setDialog } = useShell()
+  const ways = useQuery({ queryKey: ["lighten", start, days], queryFn: () => query("lighten", { start, days }), staleTime: 0 })
+  const client = useQueryClient()
+  const toast = useToast()
+  const [chosen, setChosen] = useState<string[]>([])
+  const [applying, setApplying] = useState(false)
+  const options = ways.data?.options ?? []
+  const picked = options.filter((o) => chosen.includes(o.action))
+  const after = planned - picked.reduce((s, o) => s + o.hours_moved, 0)
+  const toggle = (a: string) => setChosen(chosen.includes(a) ? chosen.filter((x) => x !== a) : [...chosen, a])
+  const apply = async () => {
+    if (applying) return // a second click doesn't apply them twice
+    setApplying(true)
+    const ids = await runTogether(client, toast, picked.flatMap((o) => o.steps))
+    setApplying(false)
+    if (!ids) return
+    toast({ message: chosen.join(", "), action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
+    client.invalidateQueries()
+    onClose()
+  }
+  return (
+    <Modal onClose={onClose} label={`Lighten ${label}`}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+          <H size={26} style={{ lineHeight: 1.05 }}>
+            Lighten {label}
+          </H>
+          <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>{overSentence(label, planned, usual, late)}</span>
+        </div>
+        <Close onClose={onClose} />
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div className="tnum" style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 12 }}>
+          <span style={{ color: "var(--color-neutral-300)" }}>{hoursSaid(planned)} planned now</span>
+          <span style={{ color: after <= usual + 0.05 ? "var(--color-accent-300)" : "var(--fr-warn)" }}>{picked.length ? `${hoursSaid(after)} after these, your usual ${hoursSaid(usual)}` : `Your usual ${hoursSaid(usual)}`}</span>
+        </div>
+        <div style={{ position: "relative", height: 8, borderRadius: 4, background: "color-mix(in srgb, var(--color-text) 8%, transparent)", overflow: "hidden" }}>
+          <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${Math.min(100, (after / Math.max(planned, 0.1)) * 100)}%`, background: after <= usual + 0.05 ? "var(--color-accent)" : "var(--fr-warn)" }} />
+          <div style={{ position: "absolute", top: 0, bottom: 0, left: `${Math.min(100, (usual / Math.max(planned, 0.1)) * 100)}%`, width: 2, background: "var(--color-text)" }} />
+        </div>
+      </div>
+      {ways.isLoading && <span style={{ color: "var(--color-neutral-400)" }}>Trying what could move…</span>}
+      {ways.error && <span style={{ color: "var(--fr-due)" }}>{ways.error.message}</span>}
+      {ways.data && !options.length && (
+        <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>
+          Nothing there can move out without being late: the rest is due by then, or fixed in place.
+        </span>
+      )}
+      {options.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span className="fr-kicker" style={{ paddingBottom: 2 }}>
+            Each was tried on a copy of your plan: none makes anything late. Pick one or more.
+          </span>
+          {options.map((o) => (
+            <button
+              key={o.action}
+              onClick={() => toggle(o.action)}
+              aria-pressed={chosen.includes(o.action)}
+              className="fr-plain fr-hover"
+              style={{ display: "grid", gridTemplateColumns: "18px minmax(0,1fr) auto", gap: 12, alignItems: "center", padding: 12, borderRadius: "var(--radius-md)", background: chosen.includes(o.action) ? "color-mix(in srgb, var(--color-accent) 10%, transparent)" : undefined }}
+            >
+              <Box on={chosen.includes(o.action)} />
+              <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                <span style={{ fontWeight: 500, overflowWrap: "anywhere" }}>{o.action}</span>
+                <span style={{ fontSize: 12, color: "var(--color-neutral-400)", textWrap: "pretty" }}>{o.side_effects?.join("; ") || "Nothing else changes."}</span>
+              </span>
+              <span className="tnum" style={{ fontSize: 13, fontWeight: 500, color: "var(--color-accent-300)", whiteSpace: "nowrap" }}>
+                −{hoursSaid(o.hours_moved)}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <span className="fr-kicker" style={{ flex: 1 }}>
+          Every change can be undone.
+        </span>
+        {late > 0 && (
+          <button className="btn btn-ghost" onClick={() => (onClose(), setDialog("triage"))}>
+            See what’s late
+          </button>
+        )}
         <button className="btn btn-ghost" onClick={onClose}>
           Cancel
         </button>

@@ -9,8 +9,13 @@
 // row says since when, with I'm up; More and free time offer a nap and a snack (`breaks.ts`). Timing more than one
 // thing at once (2 Nov: "working on two things at once even if friday didn't originally plan to"), a slim row for
 // each of the others, ticking, with Done and Stop; "Do something else" offers starting one alongside.
+//
+// Minimal (Settings → Appearance) is the one-line pill its card draws (15 Nov: it was the full bar, narrower): a dot,
+// what's on or what's free, and its main round actions. A tap opens the full bar, every row above; it folds back on
+// a tap of the title or once what's on changes (an action taken). A sleep or meal tap waiting, or a second timer, is a
+// small mark on the pill.
 
-import { useEffect, useState } from "react"
+import { type KeyboardEvent, useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import type { Block, Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
@@ -41,46 +46,145 @@ export function Dock() {
   const { look, color } = useLook()
   const [menu, setMenu] = useState<Menu>(null)
   const toggle = (m: Exclude<Menu, null>) => setMenu(menu === m ? null : m)
+  const sleep = useSleep().data
+  const meals = useMeals().data
+  const [opened, setOpened] = useState(false)
+  // What the bar shows: when it changes (Start, Done, Pause, a tap on the sleep or meal row, the next block), an
+  // opened Minimal bar folds back to its pill.
+  const shows = [now?.current?.key, now?.current_source, timer?.item_id, alongside.length, sleep?.next, !!sleep?.napping, meals?.next, !!meals?.eating].join("|")
+  useEffect(() => (setOpened(false), setMenu(null)), [shows])
   if (!now) return null
   const cur = now.current
   const next = now.next ? `${now.next.title} ${when(now.next.start, today)}` : "nothing else today"
-  const compact = look.dockStyle === "Minimal"
+  const minimal = look.dockStyle === "Minimal"
+  const pill = minimal && !opened
+  const fold = minimal ? () => (setOpened(false), setMenu(null)) : undefined
+  const timing = !!cur && !!timer && timer.item_id === cur.item_id
   const work = !!cur && !cur.fixed
   const room = "100% - var(--fr-side) - var(--fr-drawer) - 12px" // beside the sidebar and any drawer (Shell's variables)
+  // a tap waiting on the sleep or meal row, or another timer: a mark on the pill, so the pill is never all there is
+  const waiting = [
+    ...(sleep?.on && sleep.napping ? ["bed"] : sleep?.on && sleep.next ? [TAPS[sleep.next].icon] : []),
+    ...(meals?.on && (meals.eating || meals.next) ? [MEAL_ICON[meals.eating?.kind ?? meals.next ?? "snack"] ?? "fork-knife"] : []),
+  ]
   return (
     <div
       ref={box}
       className="fr-float"
       data-tour="now"
+      data-pill={pill ? "" : undefined}
       style={{
         position: "absolute",
         left: `calc(var(--fr-side) + (${room}) / 2)`,
         bottom: 18,
         transform: "translateX(-50%)",
-        width: `min(${compact ? 540 : 780}px, calc(${room} - 16px))`,
+        width: `min(${pill ? 440 : 780}px, calc(${room} - 16px))`,
         zIndex: 8,
-        borderRadius: compact ? 26 : "var(--radius-lg)",
+        borderRadius: pill ? 999 : "var(--radius-lg)",
         overflow: "hidden",
       }}
     >
-      {work && menu === "more" && <MoreMenu itemId={cur.item_id} onSwitch={() => setMenu("swap")} onClose={() => setMenu(null)} />}
-      <SleepTap />
-      <MealTap />
-      {alongside.map((t) => (
-        <Alongside key={t.item_id} timer={t} />
-      ))}
-      {cur && timer && timer.item_id === cur.item_id ? (
-        <Timing cur={cur} elapsed={timer.elapsed_s ?? 0} started={timer.started ?? null} next={next} dot={color(cur.area, cur.preset)} compact={compact} menu={menu} onMenu={toggle} />
-      ) : cur?.fixed ? (
-        <InEvent cur={cur} next={next} dot={color(cur.area, cur.preset)} />
-      ) : cur ? (
-        <On cur={cur} next={next} dot={color(cur.area, cur.preset)} compact={compact} menu={menu} onMenu={toggle} />
+      {pill ? (
+        <Pill now={now} cur={cur} timing={timing} elapsed={timer?.elapsed_s ?? 0} dot={cur ? color(cur.area, cur.preset) : "var(--color-neutral-500)"} today={today} marks={waiting} alongside={alongside.length} onOpen={() => setOpened(true)} />
       ) : (
-        <Free until={now.next?.start ?? null} gap={now.gap_minutes} next={now.next?.title ?? null} fits={now.fits} today={today} />
+        <>
+          {work && menu === "more" && <MoreMenu itemId={cur.item_id} onSwitch={() => setMenu("swap")} onClose={() => setMenu(null)} />}
+          <SleepTap />
+          <MealTap />
+          {alongside.map((t) => (
+            <Alongside key={t.item_id} timer={t} />
+          ))}
+          {cur && timing && timer ? (
+            <Timing cur={cur} elapsed={timer.elapsed_s ?? 0} started={timer.started ?? null} next={next} dot={color(cur.area, cur.preset)} menu={menu} onMenu={toggle} onFold={fold} />
+          ) : cur?.fixed ? (
+            <InEvent cur={cur} next={next} dot={color(cur.area, cur.preset)} onFold={fold} />
+          ) : cur ? (
+            <On cur={cur} next={next} dot={color(cur.area, cur.preset)} menu={menu} onMenu={toggle} onFold={fold} />
+          ) : (
+            <Free until={now.next?.start ?? null} gap={now.gap_minutes} next={now.next?.title ?? null} fits={now.fits} today={today} onFold={fold} />
+          )}
+          {work && menu === "swap" && <Swaps options={now.swaps} timing={!!timer} onClose={() => setMenu(null)} />}
+        </>
       )}
-      {work && menu === "swap" && <Swaps options={now.swaps} timing={!!timer} onClose={() => setMenu(null)} />}
     </div>
   )
+}
+
+/** Minimal's pill: the dot, what's on (or free), and its main round actions; the rest is a tap away. */
+function Pill({ now, cur, timing, elapsed, dot, today, marks, alongside, onOpen }: { now: Schemas["NowOut"]; cur: Block | null | undefined; timing: boolean; elapsed: number; dot: string; today: string; marks: string[]; alongside: number; onOpen: () => void }) {
+  const seconds = useElapsed(elapsed)
+  const nowMin = useClock()
+  const pause = useCommand("stop", { label: (o) => o.result.message ?? "Paused" })
+  const finish = useCommand("stop", { label: (o) => o.result.message ?? "Done" })
+  const start = useCommand("start", { label: (o) => o.result.message ?? "Timing" })
+  const done = useCommand("done", { label: () => `${cur?.title}: done` })
+  const worked = useItem(cur && !cur.fixed && !timing ? cur.item_id : null).data?.item.done_min ?? 0
+  const fit = now.fits[0]
+  const title = cur ? cur.title : now.next?.start ? `Free until ${when(now.next.start, today)}` : "Free for the rest of today"
+  const aside = timing ? hms(seconds) : cur?.fixed ? `until ${clock(cur.end)}` : cur ? `${span(toMin(cur.end) - nowMin)} left` : ""
+  const round = { width: 32, height: 32, borderRadius: "50%", boxShadow: "none", flex: "none" } as const
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 6px 5px 6px" }}>
+      <button className="fr-plain" onClick={onOpen} aria-expanded={false} aria-label={`Open the Now bar: ${title}`} title="Open the Now bar" style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8, padding: "4px 8px 4px 10px", textAlign: "left", borderRadius: 999 }}>
+        {timing ? <Pulse color={dot} /> : <span style={{ flex: "none", width: 7, height: 7, borderRadius: "50%", background: dot }} />}
+        <span className="fr-h" style={{ fontSize: 15, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
+          {title}
+        </span>
+        {aside && (
+          <span className="tnum" style={{ flex: "none", fontSize: 12, whiteSpace: "nowrap", color: timing ? "var(--color-accent-200)" : "var(--color-neutral-400)" }}>
+            {aside}
+          </span>
+        )}
+        <span style={{ flex: 1 }} />
+        {marks.map((icon) => (
+          <Icon key={icon} name={icon} size={13} style={{ flex: "none", color: "var(--color-accent-300)" }} />
+        ))}
+        {alongside > 0 && (
+          <span className="tnum" style={{ flex: "none", fontSize: 11, color: "var(--color-neutral-400)" }}>
+            +{alongside}
+          </span>
+        )}
+      </button>
+      {timing && cur ? (
+        <>
+          <button className="btn btn-icon btn-primary" onClick={() => finish({ done: true })} aria-label="Stop the timer and mark it done" title="Stop the timer and mark it done" style={round}>
+            <Icon name="check" size={15} />
+          </button>
+          <button className="btn btn-icon btn-secondary" onClick={() => pause({})} aria-label="Pause the timer (Space)" title="Pause the timer (Space)" style={{ ...round, background: "var(--fr-chip-bg)" }}>
+            <Icon name="pause" size={15} />
+          </button>
+        </>
+      ) : cur && !cur.fixed ? (
+        <>
+          <button className="btn btn-icon btn-primary" onClick={() => start({ id: cur.item_id })} aria-label={worked ? `Resume the timer: ${dur(worked)} done so far (Space)` : "Start the timer (Space)"} title={worked ? `Resume the timer: ${dur(worked)} done so far (Space)` : "Start the timer (Space)"} style={round}>
+            <Icon name="play" size={14} fill />
+          </button>
+          <button className="btn btn-icon btn-secondary" onClick={() => done({ id: cur.item_id })} aria-label="Mark it done" title="Mark it done" style={{ ...round, background: "var(--fr-chip-bg)" }}>
+            <Icon name="check" size={15} />
+          </button>
+        </>
+      ) : !cur && fit ? (
+        <button className="btn btn-icon btn-primary" onClick={() => start({ id: fit.item_id })} aria-label={`Start ${fit.title}`} title={`Start ${fit.title}, ${dur(fit.minutes)}: the plan stays as it is`} style={round}>
+          <Icon name="play" size={14} fill />
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
+/** In an opened Minimal bar, the title folds it back to the pill. */
+function foldable(onFold?: () => void) {
+  if (!onFold) return {}
+  return {
+    role: "button",
+    tabIndex: 0,
+    "aria-expanded": true,
+    "aria-label": "Fold the Now bar",
+    title: "Fold the Now bar",
+    onClick: onFold,
+    onKeyDown: (e: KeyboardEvent) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onFold()),
+    style: { cursor: "pointer" },
+  } as const
 }
 
 /** Says in --fr-dock how much of the window's foot the dock covers, whenever its rows come and go or the window
@@ -192,9 +296,9 @@ interface State {
   cur: Block
   next: string
   dot: string
-  compact: boolean
   menu: Menu
   onMenu: (m: Exclude<Menu, null>) => void
+  onFold?: () => void // an opened Minimal bar: the title folds it back to the pill
 }
 
 const row = { display: "flex", alignItems: "center", gap: 14, padding: "10px 14px 12px 18px" } as const
@@ -202,12 +306,12 @@ const column = { display: "flex", flexDirection: "column", minWidth: 0, flex: 1 
 const kicker = { display: "flex", gap: 6, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)", whiteSpace: "nowrap", overflow: "hidden" } as const
 const dim = { overflow: "hidden", textOverflow: "ellipsis", color: "var(--color-neutral-500)" } as const
 const buttons = { display: "flex", gap: 6, flex: "none" } as const
-const titleStyle = (compact: boolean) => ({ fontSize: compact ? 17 : 22, lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }) as const
+const titleStyle = { fontSize: 22, lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } as const
 const clamp = (x: number) => Math.max(0, Math.min(100, x))
 const share = (cur: Block, nowMin: number) => clamp(((nowMin - toMin(cur.start)) / Math.max(1, toMin(cur.end) - toMin(cur.start))) * 100)
 
 /** The timer running on what you're doing: the seconds, the plan's room for it, then what's next. */
-function Timing({ cur, elapsed, started, next, dot, compact, menu, onMenu }: State & { elapsed: number; started: string | null }) {
+function Timing({ cur, elapsed, started, next, dot, menu, onMenu, onFold }: State & { elapsed: number; started: string | null }) {
   const seconds = useElapsed(elapsed)
   const nowMin = useClock()
   const pause = useCommand("stop", { label: (o) => o.result.message ?? "Paused" })
@@ -218,7 +322,7 @@ function Timing({ cur, elapsed, started, next, dot, compact, menu, onMenu }: Sta
     <>
       <Bar pct={share(cur, nowMin)} live />
       <div style={row}>
-        <div style={column}>
+        <div {...foldable(onFold)} style={{ ...column, ...foldable(onFold).style }}>
           <div style={kicker}>
             <Pulse color={dot} />
             <span className="tnum">Timing since {clock(cur.start)}</span>
@@ -226,17 +330,17 @@ function Timing({ cur, elapsed, started, next, dot, compact, menu, onMenu }: Sta
               · {left > 0 ? `${span(left)} left` : "past its time"} · then {next}
             </span>
           </div>
-          <div className="fr-h" title={cur.title} style={titleStyle(compact)}>
+          <div className="fr-h" title={cur.title} style={titleStyle}>
             {cur.title}
           </div>
         </div>
-        <span className="tnum" style={{ flex: "none", fontSize: compact ? 20 : 26, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--color-accent-200)", minWidth: compact ? 56 : 84, textAlign: "right" }}>
+        <span className="tnum" style={{ flex: "none", fontSize: 26, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--color-accent-200)", minWidth: 84, textAlign: "right" }}>
           {hms(seconds)}
         </span>
         <div style={buttons}>
           <button className="btn btn-primary" onClick={() => finish({ done: true })} title="Stop the timer and mark it done" style={{ whiteSpace: "nowrap" }}>
             <Icon name="check" size={15} />
-            {!compact && "Done"}
+            Done
           </button>
           <IconButton icon="pause" label="Pause the timer (Space)" onClick={() => pause({})} />
           <IconButton icon="swap" label="Do something else" on={menu === "swap"} onClick={() => onMenu("swap")} />
@@ -295,7 +399,7 @@ export function stoppedGuess(now: number, started: number): string {
 }
 
 /** In a planned block, not timing it yet. */
-function On({ cur, next, dot, compact, menu, onMenu }: State) {
+function On({ cur, next, dot, menu, onMenu, onFold }: State) {
   const nowMin = useClock()
   const start = useCommand("start", { label: (o) => o.result.message ?? "Timing" })
   const done = useCommand("done", { label: () => `${cur.title}: done` })
@@ -304,7 +408,7 @@ function On({ cur, next, dot, compact, menu, onMenu }: State) {
     <>
       <Bar pct={share(cur, nowMin)} />
       <div style={row}>
-        <div style={column}>
+        <div {...foldable(onFold)} style={{ ...column, ...foldable(onFold).style }}>
           <div style={kicker}>
             <span style={{ flex: "none", width: 6, height: 6, borderRadius: "50%", background: dot }} />
             <span className="tnum">
@@ -312,17 +416,17 @@ function On({ cur, next, dot, compact, menu, onMenu }: State) {
             </span>
             <span style={dim}>· then {next}</span>
           </div>
-          <div className="fr-h" title={cur.title} style={titleStyle(compact)}>
+          <div className="fr-h" title={cur.title} style={titleStyle}>
             {cur.title}
           </div>
         </div>
-        <span className="tnum" style={{ flex: "none", fontSize: compact ? 16 : 20, fontWeight: 500, letterSpacing: "-0.02em", whiteSpace: "nowrap" }}>
+        <span className="tnum" style={{ flex: "none", fontSize: 20, fontWeight: 500, letterSpacing: "-0.02em", whiteSpace: "nowrap" }}>
           {span(toMin(cur.end) - nowMin)} left
         </span>
         <div style={buttons}>
           <button className="btn btn-primary" onClick={() => start({ id: cur.item_id })} title={worked ? `Resume the timer: ${dur(worked)} done so far (Space)` : "Start the timer (Space)"} style={{ whiteSpace: "nowrap" }}>
             <Icon name="play" size={14} fill />
-            {!compact && (worked ? "Resume" : "Start")}
+            {worked ? "Resume" : "Start"}
           </button>
           <IconButton icon="check" label="Mark it done" onClick={() => done({ id: cur.item_id })} />
           <IconButton icon="dots-three" label="More" on={menu === "more"} onClick={() => onMenu("more")} />
@@ -333,19 +437,19 @@ function On({ cur, next, dot, compact, menu, onMenu }: State) {
 }
 
 /** In a class or other fixed event: where you are, until when, and what's after. */
-function InEvent({ cur, next, dot }: { cur: Block; next: string; dot: string }) {
+function InEvent({ cur, next, dot, onFold }: { cur: Block; next: string; dot: string; onFold?: () => void }) {
   const nowMin = useClock()
   return (
     <>
       <Bar pct={share(cur, nowMin)} muted />
       <div style={row}>
-        <div style={column}>
+        <div {...foldable(onFold)} style={{ ...column, ...foldable(onFold).style }}>
           <div style={kicker}>
             <span style={{ flex: "none", width: 6, height: 6, borderRadius: "50%", background: dot }} />
             <span className="tnum">Now, until {clock(cur.end)}</span>
             <span style={dim}>· then {next}</span>
           </div>
-          <div className="fr-h" title={cur.title} style={titleStyle(false)}>
+          <div className="fr-h" title={cur.title} style={titleStyle}>
             {cur.title}
           </div>
         </div>
@@ -363,16 +467,17 @@ interface FreeProps {
   next: string | null
   fits: Fit[]
   today: string
+  onFold?: () => void
 }
 
 /** Nothing on: how long you're free, what's next, and what to start, one tap each. */
-function Free({ until, gap, next, fits, today }: FreeProps) {
+function Free({ until, gap, next, fits, today, onFold }: FreeProps) {
   const start = useCommand("start", { label: (o) => o.result.message ?? "Timing" })
   const breaks = useBreaks()
   const quiet = { fontSize: 12, display: "inline-flex", gap: 4, alignItems: "center" } as const
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 14px 12px 18px" }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12, minWidth: 0 }}>
+      <div {...foldable(onFold)} style={{ display: "flex", alignItems: "baseline", gap: 12, minWidth: 0, ...foldable(onFold).style }}>
         <span className="fr-h" style={{ fontSize: 22, lineHeight: 1.05, whiteSpace: "nowrap" }}>
           {until ? `Free until ${when(until, today)}` : "Free for the rest of today"}
         </span>
