@@ -78,14 +78,18 @@ function SeriesLine({ row }: { row: Row }) {
           <span style={{ fontWeight: 500 }}>{row.title}</span>
         )}
         <span className="tnum fr-kicker" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          {row.pattern} ·
-          <Menu label={`Tag for ${row.title}`} value={row.area ?? ""} onPick={(tag) => tag !== (row.area ?? "") && retag({ id: row.id, area: tag || null })} options={[{ value: "", label: "No tag" }, ...[...new Set([...tags, ...(row.area ? [row.area] : [])])].map((t) => ({ value: t, label: t }))]} />
-          {!row.fixed && !row.external && (
+          {/* its times apart said in the repeat's own sentence (15 Nov, your choice on a client's notes):
+              "Every week, at least 5 days after the last time" */}
+          {row.fixed || row.external ? (
+            row.pattern
+          ) : (
             <>
-              ·
+              {row.pattern},{" "}
               <TimesApart row={row} />
             </>
-          )}
+          )}{" "}
+          ·
+          <Menu label={`Tag for ${row.title}`} value={row.area ?? ""} onPick={(tag) => tag !== (row.area ?? "") && retag({ id: row.id, area: tag || null })} options={[{ value: "", label: "No tag" }, ...[...new Set([...tags, ...(row.area ? [row.area] : [])])].map((t) => ({ value: t, label: t }))]} />
         </span>
       </span>
       <span className="tnum" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 12 }}>
@@ -105,18 +109,21 @@ function SeriesLine({ row }: { row: Row }) {
 
 const GAPS = ["2", "3", "5", "7", "10", "14"]
 
+/** "at least 5 days after the last time", the end of a repeat's sentence ("Every week, …"); 1 day as "1 day". */
+export const afterLast = (days: string) => `at least ${days} ${days === "1" ? "day" : "days"} after the last time`
+
 /** A repeat's times kept apart, counted from when you did the last one (C50: "laundry at least 7 days apart"): here
  * and in a repeating task's detail (8 Nov: one place for everything about a repeat). */
 export function TimesApart({ row }: { row: Pick<Row, "id" | "title" | "min_gap_days"> }) {
   const picked = useRef<string>("")
-  const space = useCommand("series_spacing", { label: () => `${row.title}: ${picked.current ? `at least ${picked.current} days apart` : "times not kept apart"}` })
+  const space = useCommand("series_spacing", { label: () => `${row.title}: ${picked.current ? afterLast(picked.current) : "any gap"}` })
   const gap = row.min_gap_days ? String(row.min_gap_days) : ""
   return (
     <Menu
       label={`Days between ${row.title}`}
       value={gap}
       onPick={(days) => days !== gap && ((picked.current = days), space({ id: row.id, days: days ? Number(days) : null }))}
-      options={[{ value: "", label: "Times apart: any" }, ...GAPS.map((d) => ({ value: d, label: `At least ${d} days apart` })), ...(gap && !GAPS.includes(gap) ? [{ value: gap, label: `At least ${gap} days apart` }] : [])]}
+      options={[{ value: "", label: "any gap" }, ...[...GAPS, ...(gap && !GAPS.includes(gap) ? [gap] : [])].map((d) => ({ value: d, label: afterLast(d) }))]}
     />
   )
 }

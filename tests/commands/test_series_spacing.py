@@ -155,3 +155,41 @@ def test_a_next_time_that_starts_later_than_the_gap_keeps_its_own_start() -> Non
     done = LastDone(parse_utc("2026-11-08T22:00Z"), parse_utc("2026-11-09T01:00Z"), parse_utc("2026-11-09T01:00Z"))
     out = after_last(nxt, 7 * DAY, done)
     assert out.release_utc == "2026-11-15T23:00Z" and out.due_utc == "2026-11-16T01:00Z"
+
+
+def gym(item_id: int) -> Item:
+    """One of this week's three gym times: the week Monday to Monday, an hour each."""
+    return Item(id=item_id, title="Gym", when="window", amount="fixed", duration_units=4, series_id=9, status="todo",
+                release_utc="2026-11-16T05:00Z", due_utc="2026-11-23T05:00Z")  # fmt: skip
+
+
+def test_times_of_one_week_wait_the_gap_on_each_other() -> None:
+    """15 Nov, a client: "3 times a week" at least 2 days apart shared one due, and a wait of nothing between them."""
+    times = [gym(1), gym(2), gym(3)]
+    _, waits, _ = spaced(times, {9: 2.0}, {})
+    assert [(w.item_id, w.depends_on_id) for w in waits] == [(2, 1), (3, 2)]
+    assert [w.lag_min + 60 for w in waits] == [2 * DAY, 2 * DAY]  # 2880 minutes from one start to the next
+
+
+def test_a_week_too_short_for_the_gap_spreads_its_times_evenly() -> None:
+    times = [gym(1), gym(2), gym(3)]
+    _, waits, _ = spaced(times, {9: 5.0}, {})  # 5 days apart can't fit three in a week
+    assert [w.lag_min for w in waits] == [(7 * DAY - 3 * 60) // 2] * 2  # as far apart as the week lets them
+
+
+def gym_three_a_week_planned(app: App, days: float | None) -> list[int]:
+    from friday.planner.service import replan
+
+    series = app.do("series_add", title="Gym", every="week", per_window=3, duration_min=60, preset="Habit")["id"]
+    app.do("series_spacing", id=series, days=days)
+    replan(app.conn, app.now_utc)
+    gyms = {r["id"]: r for r in app.table("items") if r["title"] == "Gym"}
+    first_week = min(r["due_utc"] for r in gyms.values())
+    ids = {i for i, r in gyms.items() if r["due_utc"] == first_week}
+    return sorted(min(b["start_utc"] for b in app.table("blocks") if b["item_id"] == i) for i in ids)
+
+
+def test_three_gym_times_a_week_are_planned_two_days_apart(app: App) -> None:
+    starts = [parse_utc(s) for s in gym_three_a_week_planned(app, 2)]
+    assert len(starts) == 3
+    assert all(b - a >= 2 * DAY for a, b in zip(starts, starts[1:], strict=False))

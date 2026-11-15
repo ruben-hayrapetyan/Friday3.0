@@ -35,12 +35,12 @@ def spaced(
     waits: list[Dependency] = []
     for series_id, times in by_series.items():
         gap = round(gaps[series_id] * MINUTES_PER_DAY)
-        times.sort(key=lambda i: parse_utc(i.due_utc or ""))
+        times.sort(key=lambda i: (parse_utc(i.due_utc or ""), i.id))
         if (done := last.get(series_id)) is not None:
             changed[times[0].id] = after_last(times[0], gap, done)
         times = [changed.get(item.id, item) for item in times]
         for before, after in zip(times, times[1:], strict=False):
-            waits.append(Dependency(after.id, before.id, 1.0, wait(before, after, gap)))
+            waits.append(Dependency(after.id, before.id, 1.0, wait(before, after, gap, times)))
     originals = {item.id: item for times in by_series.values() for item in times}
     return [changed.get(item.id, item) for item in items], waits, originals
 
@@ -98,11 +98,27 @@ def after_last(item: Item, gap: int, done: LastDone) -> Item:
     return replace(item, release_utc=format_utc(release), due_utc=format_utc(due))
 
 
-def wait(before: Item, after: Item, gap: int) -> int:
+def wait(before: Item, after: Item, gap: int, times: list[Item] | None = None) -> int:
     """Minutes from the end of one time to the start of the next: `gap` from start to start, but no more than lets the
-    next fit before its due if the one before ends at its own."""
-    roomy = parse_utc(after.due_utc or "") - parse_utc(before.due_utc or "") - length(after)
+    next fit before its due if the one before ends at its own. Times of one window ("gym 3 times a week") share a due,
+    so that would leave no room at all and they went side by side (15 Nov: a client's "at least 2 days apart" never
+    kept a week's times apart): those spread over their window instead, no more than leaves each its own length if
+    they're evenly apart."""
+    if before.due_utc == after.due_utc:
+        roomy = window_room([t for t in times or [before, after] if t.due_utc == after.due_utc])
+    else:
+        roomy = parse_utc(after.due_utc or "") - parse_utc(before.due_utc or "") - length(after)
     return max(0, min(gap - length(before), roomy))
+
+
+def window_room(same: list[Item]) -> int:
+    """The room between times that share a window, if they're spread evenly over it: from the first one's start (its
+    window, or later if the last done time moved it) to their due, less their lengths, shared between the gaps."""
+    opens = same[0].release_utc
+    if len(same) < 2 or not opens:
+        return 0
+    span = parse_utc(same[0].due_utc or "") - parse_utc(opens)
+    return (span - sum(length(t) for t in same)) // (len(same) - 1)
 
 
 @dataclass(frozen=True)
@@ -126,7 +142,7 @@ def closer(
     for series_id, gap in gaps.items():
         times = sorted(
             (i for i in items if i.series_id == series_id and i.status == "todo" and i.due_utc and i.when != "fixed"),
-            key=lambda i: parse_utc(i.due_utc or ""),
+            key=lambda i: (parse_utc(i.due_utc or ""), i.id),
         )
         done = last.get(series_id)
         before, since_last = (done.started_utc, True) if done else (None, False)
