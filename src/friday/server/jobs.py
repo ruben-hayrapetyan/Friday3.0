@@ -12,7 +12,7 @@ after downtime. `job_runs` remembers when each job last ran.
 - `publish` (every minute): put a changed plan on the "Friday" Google calendar, debounced (`commands/google.py`).
 - `meals` (every minute, acting once a day): what's learned of the meals your rules leave to Friday, applied
   (`commands/eating.decide`).
-- `updates` (every minute, acting at launch and once a month): a downloaded Friday looks for a newer version
+- `updates` (every minute, acting at launch and once a day): a downloaded Friday looks for a newer version
   (`commands/updates.py`).
 """
 
@@ -411,7 +411,7 @@ def look_for_updates(
     backups: Path,
     user_id: int,
 ) -> None:
-    """A downloaded Friday looks for a newer version at launch and once a month (commands/updates.py);
+    """A downloaded Friday looks for a newer version at launch and once a day (commands/updates.py, H208);
     checked every minute, it reaches the site only then."""
     if updates.due(conn, now_utc, user_id):
         updates.check_due(conn, now_utc, user_id)

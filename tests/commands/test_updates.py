@@ -113,11 +113,27 @@ def test_at_launch_it_finds_every_newer_version_with_its_notes_and_asks(app: App
     assert status["popup"] is True and status["whats_new"] == []
 
 
-def test_later_puts_it_off_until_the_next_launch(app: App, site: Site) -> None:
+# H209 (15 Nov): Later put every version off until the server restarted, which could be weeks
+
+
+def test_later_puts_that_version_off_until_the_same_time_tomorrow(app: App, site: Site) -> None:
     launch(app)
     assert app.do("update_later")["popup"] is False
+    assert launch(app)["popup"] is False  # a restart doesn't bring it back early
+    app.at("2026-10-20T08:59")
     assert app.do("update_status")["popup"] is False
-    assert launch(app)["popup"] is True
+    app.at("2026-10-20T09:00")
+    assert app.do("update_status")["popup"] is True
+
+
+def test_a_newer_version_than_the_one_put_off_asks_at_once(app: App, site: Site) -> None:
+    launch(app)
+    app.do("update_later")
+    site.versions.insert(0, version("0.4.0", "Four."))
+    app.at("2026-10-19T10:00")
+    app.do("update_check")
+    done = finish(app)
+    assert done["popup"] is True and done["versions"][0]["version"] == "0.4.0"
 
 
 def test_up_to_date_shows_no_popup(app: App, site: Site, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -188,10 +204,12 @@ def test_a_new_users_first_launch_has_nothing_to_tell(app: App, site: Site, monk
     assert launch(app)["whats_new"] == []
 
 
-def test_it_looks_at_launch_then_again_after_a_month(app: App, site: Site) -> None:
+def test_it_looks_at_launch_then_again_a_day_later(app: App, site: Site) -> None:
+    # H208 (15 Nov): once a month left a new version unseen for weeks, Friday's server running all the while
     launch(app)
     assert not updates.due(app.conn, app.now_utc + 60, 1)
-    assert updates.due(app.conn, app.now_utc + updates.MONTH_MIN, 1)
+    assert not updates.due(app.conn, app.now_utc + updates.DAY_MIN - 1, 1)
+    assert updates.due(app.conn, app.now_utc + updates.DAY_MIN, 1)
 
 
 def test_an_unreachable_site_is_said_in_settings_not_raised(app: App, site: Site) -> None:
@@ -217,12 +235,12 @@ def test_a_copy_that_cant_replace_itself_says_so_before_downloading(
         shut.chmod(0o755)
 
 
-def test_a_look_a_month_later_clears_a_failed_downloads_message(app: App, site: Site) -> None:
+def test_a_look_a_day_later_clears_a_failed_downloads_message(app: App, site: Site) -> None:
     launch(app)
     site.image = b"tampered"
     app.do("update_start")
     assert finish(app)["state"] == "failed"
-    look_for_updates(app.conn, app.now_utc + updates.MONTH_MIN, {}, Hub(), None, Path("."), 1)  # the same run
+    look_for_updates(app.conn, app.now_utc + updates.DAY_MIN, {}, Hub(), None, Path("."), 1)  # the same run
     status = app.do("update_status")
     assert status["state"] == "idle" and status["message"] is None
 

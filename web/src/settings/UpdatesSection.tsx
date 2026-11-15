@@ -22,7 +22,7 @@ export function UpdatesSection() {
   const busy = status?.state === "checking" || status?.state === "downloading"
   return (
     <>
-      <SectionHead title="Updates" note="Friday looks for a new version when it opens and once a month, and asks before updating." />
+      <SectionHead title="Updates" note="Friday looks for a new version when it opens and once a day, and asks before updating." />
       <Field name="Version" note={status?.checks ? undefined : "This copy doesn't check for updates; Friday Test and copies run from code never do."}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           {status?.checks && (

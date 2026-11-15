@@ -1,12 +1,14 @@
 """Friday's own updater.
 
-The Mac app starts its server with its version and the update feed's address (FRIDAY_APP_VERSION, FRIDAY_UPDATE_FEED):
-every build but Friday Test (Mac/build.sh). It looks at launch and once a month (the `updates` job), and when you press
-Check now in Settings → Updates. A newer version shows as a popup at the next launch with every newer version's notes
-(H124, H139); Later hides it until the next launch (H145). Update downloads it in the background, checks it and unpacks
-it beside the app, then the Mac app swaps it in, right away or when you quit (H146). The first time the new version
-opens, what changed is shown once (H118). Yours looks as a downloaded copy does (H169); a server without a feed (Friday
-Test, fridayd run from the code) never looks, and Settings says so."""
+The Mac app starts its server with its version and the update feed's address (FRIDAY_APP_VERSION,
+FRIDAY_UPDATE_FEED): every build but Friday Test (Mac/build.sh). It looks at launch, once a day after (the `updates`
+job), whenever Friday's window opens, and when you press Check now in Settings → Updates (H208: it looked once a
+month, and Friday's server runs for weeks, so a new version went unseen). A newer version shows as a popup with every
+newer version's notes (H124, H139); Later puts that version off until the same time tomorrow, and a newer one than it
+asks at once (H209). Update downloads it in the background, checks it and unpacks it beside the app, then the Mac app
+swaps it in, right away or when you quit (H146). The first time the new version opens, what changed is shown once
+(H118). Yours looks as a downloaded copy does (H169); a server without a feed (Friday Test, fridayd run from the
+code) never looks, and Settings says so."""
 
 import logging
 import os
@@ -27,14 +29,13 @@ from friday.planner.store import kv_get, kv_set
 from friday.sync import updates as net
 
 log = logging.getLogger("friday.updates")
-MONTH_MIN = 30 * 24 * 60
+DAY_MIN = 24 * 60
 
 
 @dataclass
 class Run:
-    """This server run's updater: the popup put off with Later, and a check or download going on."""
+    """This server run's updater: a check or download going on."""
 
-    later: bool = False
     looked: bool = False  # the launch's look has been made
     state: Literal["idle", "checking", "downloading", "ready", "failed"] = "idle"
     progress: float = 0.0
@@ -95,10 +96,16 @@ def check(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> None:
 
 
 def due(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> bool:
-    """At launch (once each run) and once a month after (H121)."""
+    """At launch (once each run) and once a day after (H208)."""
     run = run_for(conn)
     last = kv_get(conn, "update_checked", None, user_id)
-    return bool(feed_url()) and (not run.looked or last is None or now_utc - last >= MONTH_MIN)
+    return bool(feed_url()) and (not run.looked or last is None or now_utc - last >= DAY_MIN)
+
+
+def put_off(conn: sqlite3.Connection, newest: str | None, now_utc: int, user_id: int) -> bool:
+    """Whether Later put this version off and it isn't the same time tomorrow yet (H209): a newer one asks at once."""
+    later = kv_get(conn, "update_later", None, user_id)
+    return bool(later and newest and later["version"] == newest and now_utc < later["until"])
 
 
 def check_due(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> None:
@@ -160,7 +167,9 @@ def status(ctx: Ctx) -> UpdateStatusOut:
         progress=run.progress,
         message=run.message,
         versions=[entry_out(e) for e in newer],
-        popup=bool(newer) and not run.later and run.state in ("idle", "failed"),
+        popup=bool(newer)
+        and run.state in ("idle", "failed")
+        and not put_off(ctx.conn, newer[0]["version"] if newer else None, ctx.now_utc, ctx.user_id),
         whats_new=[entry_out(e) for e in whats_new(ctx.conn, ctx.user_id)],
         restart=ctx.settings["updates"].restart,
         staged=run.staged if run.state == "ready" else None,
@@ -225,8 +234,10 @@ def update_check(ctx: Ctx, inp: Empty) -> UpdateStatusOut:
 
 @command("update_later", logged=False)
 def update_later(ctx: Ctx, inp: Empty) -> UpdateStatusOut:
-    """Put the update popup off until Friday next opens (H145)."""
-    run_for(ctx.conn).later = True
+    """Put the newest version off until the same time tomorrow (H209); a newer one than it asks at once."""
+    newest = kv_get(ctx.conn, "update_newer", [], ctx.user_id)
+    if newest:
+        kv_set(ctx.conn, "update_later", {"version": newest[0], "until": ctx.now_utc + DAY_MIN}, ctx.user_id)
     return status(ctx)
 
 

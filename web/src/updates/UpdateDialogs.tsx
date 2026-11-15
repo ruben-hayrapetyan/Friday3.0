@@ -1,4 +1,4 @@
-// The update popup at launch (H124: "a popup that shows up the next time it launches") with every newer version's
+// The update popup (H124; since 15 Nov whenever a new version is found, H208/H209) with every newer version's
 // notes, Later and Update; then the download with its seconds counting and Stop, which you can close and keep
 // working; and once the new version first opens, what changed in it, shown once (H118). Settings → Updates opens
 // the same popup (`dialog === "update"`).
@@ -7,7 +7,7 @@ import { useEffect, useState } from "react"
 import { H, Icon } from "@/components/fr/controls"
 import { Modal } from "@/dialogs/Dialogs"
 import { useShell } from "@/shell/ShellContext"
-import { headline, newest, progressLine, type UpdateStatus, type UpdateVersion, useSwapWhenReady, useUpdateAct, useUpdates } from "./updates"
+import { headline, newest, popupOpen, progressLine, type UpdateStatus, type UpdateVersion, useLookWhenOpened, useSwapWhenReady, useUpdateAct, useUpdates } from "./updates"
 
 const SECTIONS = [["new", "New"], ["changed", "Changed"], ["fixed", "Fixed"]] as const
 
@@ -78,16 +78,18 @@ export function UpdateDialogs() {
   const { dialog, setDialog } = useShell()
   const status = useUpdates().data
   const act = useUpdateAct()
-  const [closed, setClosed] = useState(false)
+  // closed for the version it showed: a newer one opens it again (H209, 15 Nov: closing hid every later version too)
+  const [closedFor, setClosedFor] = useState<string | null>(null)
   useSwapWhenReady(status)
+  useLookWhenOpened(status?.checks)
   if (!status) return null
   const asked = dialog === "update"
   const working = status.state === "downloading" || status.state === "ready"
-  const open = asked || (!closed && (status.popup || working))
+  const open = popupOpen(status, asked, closedFor)
   if (status.whats_new?.length && !open) return <WhatsNew status={status} onSeen={() => act("whats_new_seen")} />
   if (!open || !newest(status)) return null
   const close = () => {
-    setClosed(true)
+    setClosedFor(newest(status)?.version ?? null)
     if (asked) setDialog(null)
   }
   const later = () => {
@@ -116,10 +118,10 @@ export function UpdateDialogs() {
         <Progress status={status} onStop={() => act("update_stop")} onClose={close} />
       ) : (
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button className="btn btn-secondary" onClick={later} title="Ask again the next time Friday opens">
+          <button className="btn btn-secondary" onClick={later} title="Ask again tomorrow, or as soon as a newer version is out">
             Later
           </button>
-          <button className="btn btn-primary" onClick={() => (setClosed(false), act("update_start"))}>
+          <button className="btn btn-primary" onClick={() => (setClosedFor(null), act("update_start"))}>
             Update
           </button>
         </div>

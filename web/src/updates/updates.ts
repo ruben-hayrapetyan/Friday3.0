@@ -45,6 +45,40 @@ export function useUpdateAct() {
   return useCallback((name: Act) => runUpdateAct(client, toast, name), [client, toast])
 }
 
+// Whenever Friday's window opens or comes back into view, the server looks for a new version (H208, 15 Nov: "whenever
+// there is a new version, the popup shows up"; it looked once a month). Quietly: a site that can't be reached is said
+// in Settings → Updates, not in a toast. At most once in ten minutes, however often the window comes and goes.
+export const LOOK_AGAIN_MS = 10 * 60_000
+let lookedAt = -Infinity
+
+export function useLookWhenOpened(checks: boolean | undefined) {
+  const client = useQueryClient()
+  useEffect(() => {
+    if (!checks) return
+    const look = () => {
+      if (document.visibilityState !== "visible" || Date.now() - lookedAt < LOOK_AGAIN_MS) return
+      lookedAt = Date.now()
+      command("update_check", {}).then(
+        (out) => client.setQueryData(KEY, out.result),
+        () => void client.invalidateQueries({ queryKey: KEY }),
+      )
+    }
+    look()
+    document.addEventListener("visibilitychange", look)
+    return () => document.removeEventListener("visibilitychange", look)
+  }, [checks, client])
+}
+
+/** Whether the popup is up: asked for (Settings → Updates), or a newer version is offered or downloading, unless you
+ * closed it for that same version (a newer one opens it again, H209). */
+export function popupOpen(status: UpdateStatus, asked: boolean, closedFor: string | null): boolean {
+  const working = status.state === "downloading" || status.state === "ready"
+  return asked || (closedFor !== (newest(status)?.version ?? null) && (status.popup || working))
+}
+
+/** For tests: the window as if it had never looked. */
+export const forgetLooking = () => void (lookedAt = -Infinity)
+
 /** The newest version you could update to, or nothing. */
 export const newest = (status: UpdateStatus | undefined): UpdateVersion | undefined => status?.versions?.[0]
 
