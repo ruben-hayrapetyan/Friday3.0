@@ -370,3 +370,18 @@ def test_features_and_help_say_what_0_4_1_brings() -> None:
     assert "<b>Your clock:</b> times in 12-hour or 24-hour" in features
     assert "<b>What's due, under each date:</b>" in features
     assert "its to-dos leave your plan" in " ".join(help_.split()) and "come back if you switch it on" in help_
+
+
+def test_features_and_help_say_rules_change_in_place_and_done_with_work_ends_the_night() -> None:
+    """H196–H198 (14 Nov): Features says a rule changes where it stands and a broken one says when and why, and that
+    Done with work ends the night's work; Help says the pencil changes a rule and what "Violated on" and Why? mean."""
+    features, help_ = (" ".join((SITE / name).read_text().split()) for name in ("features.html", "help.html"))
+    assert (
+        "Change a rule where it stands, and when a plan can't keep one, Friday says on which days and why." in features
+    )
+    assert "<b>Done with work:</b> one tap ends your day's work, and nothing more is planned that night." in features
+    assert (
+        'The pencil beside a rule changes it and keeps its place. A rule the plan couldn\'t keep says "Violated on"'
+        in help_
+    )
+    assert "Why? says what needed those hours." in help_
