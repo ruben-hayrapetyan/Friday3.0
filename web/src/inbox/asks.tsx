@@ -2,7 +2,8 @@
 // insights should instead go to inbox. in fact anything that needs the user's attention (like questions friday asks
 // to the user) should go into inbox instead of insights"). Each is a message: what Friday learned and wants to use (a
 // new weighing of your rules, a rule, keeping a rule hard, learned lengths, the hours work slips, one kind before
-// another), which of two days you'd rather have, your meals' times and lengths, and your real bedtimes. "Not now" sets
+// another), which of two days you'd rather have, which of two clashing rules should win, your meals' times and
+// lengths, and your real bedtimes. "Not now" sets
 // one aside with what it was based on, and it's asked again once Friday has more to go on (`ask_later`). Insights
 // still shows what was learned, with a link here.
 
@@ -53,6 +54,7 @@ function useAllAsks(): Ask[] {
   const learning = useQuery({ queryKey: ["learning"], queryFn: () => query("learning") }).data
   const questions = useQuery({ queryKey: ["questions"], queryFn: () => query("questions") }).data
   const rules = useQuery({ queryKey: ["rules"], queryFn: () => query("rules") }).data
+  const clashes = useQuery({ queryKey: ["rule_clashes"], queryFn: () => query("rule_clashes") }).data
   const meals = useMeals().data
   const sleep = useSleep().data
   const apply = useCommand("learn_apply", { label: (o) => o.result.message ?? "Approved" })
@@ -64,10 +66,11 @@ function useAllAsks(): Ask[] {
   const mealTime = useCommand("meal_use_time", { label: (o) => o.result.message ?? "Saved" })
   const mealPlan = useCommand("meal_plan", { label: (o) => o.result.message ?? "Saved" })
   const setting = useCommand("settings_set", { label: () => "Your bedtimes and wake times are updated" })
+  const win = useCommand("rule_win", { label: (o) => o.result.message ?? "Saved" })
   // The commands are new functions each render (their labels are): the questions hold the latest through a ref, so
   // the list stays the same object until what's asked changes (else the Inbox, keyed on it, renders forever).
-  const latest = useRef({ apply, reject, answer, use, order, mealLength, mealTime, mealPlan, setting })
-  latest.current = { apply, reject, answer, use, order, mealLength, mealTime, mealPlan, setting }
+  const latest = useRef({ apply, reject, answer, use, order, mealLength, mealTime, mealPlan, setting, win })
+  latest.current = { apply, reject, answer, use, order, mealLength, mealTime, mealPlan, setting, win }
   const clock = clockSetting()
   return useMemo(() => {
   const { apply, reject, answer, use, order, mealLength, mealTime, mealPlan, setting } = {
@@ -81,6 +84,7 @@ function useAllAsks(): Ask[] {
     mealPlan: (i: Parameters<typeof latest.current.mealPlan>[0]) => latest.current.mealPlan(i),
     setting: (i: Parameters<typeof latest.current.setting>[0]) => latest.current.setting(i),
   }
+  const win = (i: Parameters<typeof latest.current.win>[0]) => latest.current.win(i)
   const out: Ask[] = []
   // A rule in its own words (the Rules page's sentence); one no longer there, by its name tidied.
   const said = (rule: string) => rules?.find((r) => r.name === rule)?.sentence ?? rule.replace(/^you:/, "").replaceAll(/[-_]/g, " ")
@@ -183,6 +187,7 @@ function useAllAsks(): Ask[] {
       why: "Two ways to plan the same work. One quick pick helps Friday learn what you prefer.",
     })
   }
+  if (clashes) out.push(...clashAsks(clashes, win))
   if (meals) out.push(...mealAsks(meals, { length: mealLength, time: mealTime, plan: mealPlan }))
   if (sleep?.suggested && sleep.changes?.length) {
     out.push({
@@ -199,8 +204,28 @@ function useAllAsks(): Ask[] {
     })
   }
   return out
-  }, [learning, questions, rules, meals, sleep, clock]) // a change of clock writes its times again
+  }, [learning, questions, rules, clashes, meals, sleep, clock]) // a change of clock writes its times again
 }
+
+/** Two rules that clash where your answer decides it (15 Nov: "if clashes are problematic, ask in inbox about them,
+ * else, add the because"), found overnight: why, from the plans, and which should win, each rule a button. A mild
+ * clash isn't asked: the rule's Why? on the Rules page says its because. */
+export function clashAsks(clashes: Schemas["RuleClashOut"][], win: (i: { winner: string; loser: string }) => Ran): Ask[] {
+  return clashes
+    .filter((c) => c.ask && c.other)
+    .map((c) => ({
+      key: `clash:${[c.rule, c.other].sort().join("|")}`,
+      evidence: c.because ?? "",
+      icon: "scales",
+      kicker: "Your rules",
+      title: `“${c.sentence}” clashes with “${c.other_sentence}”`,
+      why: `${c.when ? `${c.when}: ${lowerFirst(c.because ?? "")}` : c.because}. Which should win? Friday remembers your answer.`,
+      yes: { label: c.sentence ?? c.rule, run: () => win({ winner: c.rule, loser: c.other as string }) },
+      no: { label: c.other_sentence ?? (c.other as string), run: () => win({ winner: c.other as string, loser: c.rule }) },
+    }))
+}
+
+const lowerFirst = (said: string) => said.charAt(0).toLowerCase() + said.slice(1)
 
 type MealRun = { length: (i: { kind: Meal }) => Ran; time: (i: { kind: Meal }) => Ran; plan: (i: { kind: Meal; plan: boolean }) => Ran }
 

@@ -5,6 +5,8 @@ after downtime. `job_runs` remembers when each job last ran.
   durations and the energy map, back up the database, then a cold replan.
 - `tick` (every `jobs.tick_replan_min`): a warm replan if a block boundary passed since the last plan.
 - `questions` (hourly): draw the day's comparison questions for the evening review, within the budget.
+- `clashes` (nightly, from the night after Friday first runs): what each rule the plan violates is up against, and
+  why, kept for the Inbox's "Which should win?" (`commands/rules.find_clashes`).
 - `config` (every minute): apply `friday.toml` when it changed (`server/config.py`).
 - `sync` (every minute): read the sources that are due and make suggestions (`commands/fetching.py`).
 - `publish` (every minute): put a changed plan on the "Friday" Google calendar, debounced (`commands/google.py`).
@@ -31,6 +33,7 @@ from friday.commands.learned import learn_nightly
 from friday.commands.rating import rate_upcoming
 from friday.commands.refit import prepare_questions
 from friday.commands.registry import run
+from friday.commands.rules import find_clashes
 from friday.core.db import connect, one
 from friday.core.paths import config_path
 from friday.core.settings import minutes_of
@@ -94,6 +97,7 @@ def run_due(
         ("nightly", nightly_due, nightly),
         ("tick", tick_due, tick),
         ("questions", questions_due, questions),
+        ("clashes", nightly_due, clashes),
         ("config", every_minute, config),
         # before the calendars and mail: quick, and a first read of a Mac's calendars (hundreds of events) took
         # minutes, which the integrations waited behind (11 Nov, Friday Test)
@@ -349,6 +353,21 @@ def questions(
     user_id: int,
 ) -> None:
     if prepare_questions(conn, now_utc, user_id):
+        hub.publish("status.changed")
+
+
+def clashes(
+    conn: sqlite3.Connection,
+    now_utc: int,
+    settings: dict[str, Any],
+    hub: Hub,
+    supervisor: Supervisor | None,
+    backups: Path,
+    user_id: int,
+) -> None:
+    """Not at the first start (a plan made afresh for each violated rule, while you're setting up, or for every
+    sample a test serves): from the next night on."""
+    if last_run(conn, "clashes", user_id) is not None and find_clashes(conn, now_utc, user_id):
         hub.publish("status.changed")
 
 

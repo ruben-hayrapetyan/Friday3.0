@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from friday.commands.rules import find_clashes
 from friday.core.db import connect
 from friday.core.items import FieldError
 from friday.planner.learning import learnable
@@ -30,6 +31,18 @@ def heavy(app: App) -> App:
     return app
 
 
+@pytest.fixture
+def lab(app: App) -> App:
+    """Monday and Tuesday full but for hours between events, Wednesday free, and Lab 9 (3 h) due Wednesday night:
+    finishing it a day early means doing it in the hours between."""
+    for day in ("2026-10-19", "2026-10-20"):
+        for start, end in ((9, 10), (11, 12), (13, 14), (15, 16), (17, 22)):
+            app.do("add", title=f"Event {start}", when="fixed", start=f"{day}T{start:02}:00", end=f"{day}T{end:02}:00")
+    app.do("add", text="Lab 9 3h due wed 23:59")
+    replan(app.conn, app.now_utc)
+    return app
+
+
 def weight(app: App, name: str) -> float:
     return next(r.weight for r in take_snapshot(app.conn, app.now_utc).settings["rules"] if r.name == name)
 
@@ -40,10 +53,12 @@ def test_a_bent_rule_names_what_it_clashes_with_and_where(heavy: App) -> None:
     assert out["other"] != "deep_run"
     assert out["days"] and all(date(2026, 10, 19) <= date.fromisoformat(d) <= date(2026, 10, 25) for d in out["days"])
     assert out["sentence"] and out["other_sentence"]
-    # said in words (14 Nov): "Thu: it clashes with “…”. Which should win?", never "it bends no less"
+    # said in words (14 Nov): "Thu: it clashes with “…”: <why>.", never "it bends no less"; asked only when it's
+    # a clash your answer decides (15 Nov)
     first = f"{date.fromisoformat(sorted(out['days'])[0]):%a}"
-    assert out["said"].startswith(first) and out["said"].endswith(
-        f"clashes with “{out['other_sentence']}”. Which should win?"
+    assert out["said"].startswith(first) and f"clashes with “{out['other_sentence']}”: " in out["said"]
+    assert out["because"] and out["said"].endswith(
+        f"{out['because'][1:]}." + (" Which should win?" if out["ask"] else "")
     )
 
 
@@ -170,3 +185,50 @@ def test_migration_37_prunes_answers_about_rules_gone(tmp_path: Path) -> None:
         conn = connect(path)
         kept = json.loads(conn.execute("SELECT value FROM kv WHERE key = 'rule_wins'").fetchone()[0])
         assert kept == (wins[1:] if rules else [wins[1]])
+
+
+def test_a_clash_says_why_from_the_two_plans(lab: App) -> None:
+    """15 Nov (the user: "if clashes are problematic, ask in inbox about them, else, add the because"): the work whose
+    cost under the other rule went up, and what happened to it."""
+    out = lab.do("rule_clash", name="finish_early")
+    assert out["other"] == "chunk_cost" and out["days"] == ["2026-10-19"] and out["when"] == "Mon"
+    assert out["because"] == "Finishing Lab 9 2 days sooner splits it into 3 sittings instead of 1"
+    assert out["said"] == (
+        "Mon: it clashes with “Fewer, longer sessions”: finishing Lab 9 2 days sooner splits it into 3 sittings "
+        "instead of 1. Which should win?"
+    )
+
+
+def test_a_clash_your_answer_decides_is_asked_in_the_inbox_until_answered(lab: App) -> None:
+    assert lab.do("rule_clashes") == []  # nothing looked into yet: a night's job does it
+    assert find_clashes(lab.conn, lab.now_utc) == 1
+    (asked,) = lab.do("rule_clashes")
+    assert (asked["rule"], asked["other"], asked["ask"]) == ("finish_early", "chunk_cost", True)
+    assert "3 sittings instead of 1" in asked["because"]
+    lab.do("rule_win", winner="chunk_cost", loser="finish_early")
+    assert lab.do("rule_clashes") == []
+
+
+def test_a_mild_clash_says_why_and_isnt_asked(heavy: App) -> None:
+    """Finishing a problem set a day early would cost "Fewer, longer sessions" more than ten times what it gains: no
+    answer would change that, so Friday says why on the Rules page and asks nothing (a dearer trade than
+    planner/views.py ASK_MOST); keeping work to 3 hours in a row is a trade your answer decides, and is asked."""
+    out = heavy.do("rule_clash", name="finish_early")
+    assert out["other"] == "chunk_cost" and out["ask"] is False
+    assert out["because"].endswith("into 2 sittings instead of 1") and out["said"].endswith("instead of 1.")
+    assert "Which should win?" not in out["said"]
+    find_clashes(heavy.conn, heavy.now_utc)
+    asked = [c["rule"] for c in heavy.do("rule_clashes")]
+    assert "finish_early" not in asked and "deep_run" in asked
+
+
+def test_the_nightly_job_looks_into_clashes_from_the_second_night(lab: App) -> None:
+    from friday.server.events import Hub
+    from friday.server.jobs import clashes, record
+
+    settings = take_snapshot(lab.conn, lab.now_utc).settings
+    clashes(lab.conn, lab.now_utc, settings, Hub(), None, Path(), 1)  # the first start: not then
+    assert lab.do("rule_clashes") == []
+    record(lab.conn, "clashes", lab.now_utc, 1, None)
+    clashes(lab.conn, lab.now_utc, settings, Hub(), None, Path(), 1)
+    assert [c["rule"] for c in lab.do("rule_clashes")] == ["finish_early"]

@@ -4,7 +4,7 @@ logged and undoable; your sentence and reading are kept in kv `rule_readings` to
 
 import json
 import re
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import date, timedelta
 from typing import Any
 
@@ -44,7 +44,9 @@ from friday.planner.contradictions import Conflict, against, contradictions
 from friday.planner.learning import learnable
 from friday.planner.snapshot import take_snapshot
 from friday.planner.store import area_names, current_plan, kv_get
+from friday.planner.views import Clash
 from friday.planner.views import rule_clash as find_clash
+from friday.planner.views import rule_clashes as find_clashes_of
 
 DEFAULT_WEIGHT = {r.name: r.weight for r in REFERENCE_RULES}
 LEARNED_WEIGHT = 1.0  # a rule a yes to a proposal adds (`learn/proposals.py`) starts at this weight
@@ -636,16 +638,68 @@ def rule_clash(ctx: Ctx, inp: RuleRef) -> RuleClashOut:
     found = find_clash(take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id), inp.name)
     if found is None:
         return RuleClashOut(rule=inp.name, other=None, sentence=said[inp.name])
+    return clash_out(ctx, inp.name, found, said)
+
+
+def clash_out(ctx: Ctx, name: str, found: Clash, said: dict[str, str]) -> RuleClashOut:
+    """A clash in words, with its because (15 Nov: the user, "if clashes are problematic, ask in inbox about them,
+    else, add the because"): "Which should win?" only for one your answer decides."""
     other = said.get(found.other, found.other)
-    when = f"{days_and(found.days, ctx.today)}: it" if found.days else "It"
+    when = days_and(found.days, ctx.today)
+    because = found.because[:1].lower() + found.because[1:]
+    question = " Which should win?" if found.ask else ""
     return RuleClashOut(
-        rule=inp.name,
+        rule=name,
         other=found.other,
         days=found.days,
-        sentence=said[inp.name],
+        sentence=said[name],
         other_sentence=other,
-        said=f"{when} clashes with “{other}”. Which should win?",
+        said=f"{f'{when}: it' if when else 'It'} clashes with “{other}”: {because}.{question}",
+        because=found.because,
+        when=when,
+        ask=found.ask,
     )
+
+
+MOST_CLASHES = 6  # rules a night looks into, the most often violated first: each is a plan made afresh
+
+
+def find_clashes(conn: Any, now_utc: int, user_id: int = 1) -> int:
+    """What each rule your plan violates is up against, kept for the Inbox (`rule_clashes`): the server's job runs
+    this once a night, as each takes a plan made afresh (seconds to half a minute). Returns how many it found."""
+    snapshot = take_snapshot(conn, now_utc, user_id)
+    saved = current_plan(conn, user_id)
+    by_day = json.loads(saved["report"]).get("rule_totals_by_day", {}) if saved else {}
+    on = {r.name for r in snapshot.settings["rules"] if r.enabled}
+    days = {
+        n: sum(1 for d, t in by_day.items() if d != "other" and t.get(n, 0) > 0) for n in learnable(snapshot.settings)
+    }
+    names = sorted((n for n in days if days[n] and n in on), key=lambda n: -days[n])[:MOST_CLASHES]
+    found = {n: asdict(c) for n, c in find_clashes_of(snapshot, names).items() if c is not None}
+    conn.execute(
+        "INSERT INTO kv (user_id, key, value) VALUES (?, 'rule_clashes', ?) "
+        "ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value",
+        [user_id, json.dumps(found)],
+    )
+    return len(found)
+
+
+@query("rule_clashes")
+def rule_clashes(ctx: Ctx, inp: Empty) -> list[RuleClashOut]:
+    """The clashes your answer decides, for the Inbox: found overnight (`find_clashes`), while the rule is still
+    violated, both rules are still yours and on, and you haven't said which wins."""
+    mine = readings(ctx)
+    said = {r.name: words(r, mine, ctx) for r in ctx.settings["rules"]}
+    on = {r.name for r in ctx.settings["rules"] if r.enabled} & set(learnable(ctx.settings))
+    answered = [{w["winner"], w["loser"]} for w in kv_get(ctx.conn, "rule_wins", [], ctx.user_id)]
+    by_day = current_report(ctx).get("rule_totals_by_day", {})
+    out = []
+    for name, kept in (kv_get(ctx.conn, "rule_clashes", {}, ctx.user_id) or {}).items():
+        found = Clash(**kept)
+        violated = any(t.get(name, 0) > 0 for d, t in by_day.items() if d != "other")
+        if found.ask and violated and {name, found.other} <= on and {name, found.other} not in answered:
+            out.append(clash_out(ctx, name, found, said))
+    return out
 
 
 @query("rule_why")

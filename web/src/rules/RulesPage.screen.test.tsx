@@ -231,8 +231,15 @@ describe("the Rules page", () => {
     expect((await within(row).findAllByText(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun).*: .*needed (those hours|the time)$/)).length).toBeGreaterThan(0)
     const said = await within(row).findByText(/clashes with|Friday couldn’t tell/, undefined, { timeout: 30_000 }).catch(() => null)
     expect(within(row).queryByText(/bends no less/)).toBeNull()
-    if (said?.textContent?.includes("clashes with")) {
-      expect(said.textContent).toMatch(/Which should win\?$/)
+    // 15 Nov: a clash says why ("…: finishing Lab 9 2 days sooner splits it into 3 sittings instead of 1."), and asks
+    // which should win only when your answer decides it
+    const clash = await friday.q<{ ask: boolean; because: string }>("rule_clash", { name: row.dataset.rule as string })
+    if (said?.textContent?.includes("clashes with") && !clash.ask) {
+      expect(said.textContent).toMatch(/clashes with “[^”]+”: .+\.$/)
+      expect(within(row).queryAllByRole("button").filter((b) => b.className.includes("btn-secondary"))).toEqual([])
+    }
+    if (said?.textContent?.includes("clashes with") && clash.ask) {
+      expect(said.textContent).toMatch(/clashes with “[^”]+”: .+\. Which should win\?$/)
       const [mine] = within(row).getAllByRole("button").filter((b) => b.className.includes("btn-secondary"))
       await user.click(mine)
       expect((await waitForSent("rule_win")).body).toMatchObject({ winner: expect.any(String), loser: expect.any(String) })

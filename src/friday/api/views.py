@@ -687,7 +687,12 @@ class RuleClashOut(Model):
     days: list[str] = []  # ISO dates
     sentence: str = ""
     other_sentence: str = ""
-    said: str = ""  # "Thu: it clashes with “No work before 10am”. Which should win?"
+    # "Mon: it clashes with “Fewer, longer sessions”: finishing Lab 9 2 days sooner splits it into 3 sittings instead
+    # of 1. Which should win?", the question only when it's asked (`ask`)
+    said: str = ""
+    because: str = ""  # "Finishing Lab 9 2 days sooner splits it into 3 sittings instead of 1", from the two plans
+    when: str = ""  # "Mon and Tue", the days of `days`
+    ask: bool = False  # your answer decides it: the Inbox asks which should win (planner/views.py ASK_SHARE)
 
 
 class RuleWhyLine(Model):
