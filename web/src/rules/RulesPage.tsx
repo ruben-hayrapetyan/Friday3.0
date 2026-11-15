@@ -13,7 +13,7 @@ import { Box, H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { applyActions } from "@/dialogs/AskClaude"
 import { runCommand, useCommand } from "@/hooks/useCommand"
-import { useStatus } from "@/hooks/queries"
+import { useSettings, useStatus } from "@/hooks/queries"
 import { useInbox } from "@/inbox/InboxPage"
 import { spoken } from "@/lib/aiName"
 import { WeekPaces } from "./WeekPaces"
@@ -48,6 +48,7 @@ export function RulesPage() {
   const rules = useRules().data ?? []
   const byName = new Map(rules.map((r) => [r.name, r]))
   const owned = (useStatus().data?.config_keys ?? []).includes("rules")
+  const labOn = useSettings().data?.rules_lab === true
   const mine = rules.filter((r) => r.source === "you").length
   // ?edit=<name> opens that rule in the box (the Projects page's "Exam focus … in Rules"); ?text= starts a new one
   const [params, setParams] = useSearchParams()
@@ -71,9 +72,12 @@ export function RulesPage() {
           {rules.filter((r) => r.enabled).length} on, {mine} of them yours
         </span>
         <div style={{ flex: 1 }} />
-        <Link to="/lab/rules" className="fr-link fr-head-note" style={{ fontSize: 13, whiteSpace: "nowrap" }}>
-          Try new rule designs →
-        </Link>
+        {/* 15 Nov: the lab's designs are unfinished, so hidden until you switch them on (Settings → Advanced) */}
+        {labOn && (
+          <Link to="/lab/rules" className="fr-link fr-head-note" style={{ fontSize: 13, whiteSpace: "nowrap" }}>
+            Try new rule designs →
+          </Link>
+        )}
       </div>
       <div className="fr-panel" style={{ overflowY: "auto" }}>
         <div className="fr-gutter" style={{ maxWidth: 1000, padding: `28px 40px ${dockRoom(140)}`, display: "flex", flexDirection: "column", gap: 34 }}>
@@ -705,7 +709,9 @@ function Contradiction(props: { rule: Schemas["RuleOut"]; other?: Schemas["RuleO
 
 /** Why a rule is violated in this plan (14 Nov), said plainly: the work that took its time and what it's due by, read
  * from the plan at once ("Tue and Thu: CS essay (due Wed) needed those hours"); and, planned once more with the rule
- * weighed far higher (a few seconds), another rule it clashes with, and which should win. Stays open once answered. */
+ * weighed far higher (a few seconds), another rule it clashes with and why ("finishing Lab 9 2 days sooner splits it
+ * into 3 sittings instead of 1"). Which should win is asked only of a clash your answer decides (15 Nov: "if clashes
+ * are problematic, ask in inbox about them, else, add the because"); the Inbox asks it too. Stays open once answered. */
 function Why({ rule, onAnswer }: { rule: RuleOut; onAnswer: (winner: string, loser: string) => void }) {
   const why = useQuery({ queryKey: ["rule_why", rule.name], queryFn: () => query("rule_why", { name: rule.name }), staleTime: 30_000 })
   const found = useQuery({ queryKey: ["rule_clash", rule.name], queryFn: () => query("rule_clash", { name: rule.name }), staleTime: 60_000 })
@@ -735,7 +741,7 @@ function Why({ rule, onAnswer }: { rule: RuleOut; onAnswer: (winner: string, los
           </span>
           {answered ? (
             <span className="fr-kicker" style={{ marginLeft: 21 }}>{answered} Click it above to change it.</span>
-          ) : (
+          ) : clash.ask ? (
             <>
               <span style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: 21 }}>
                 <button className="btn btn-secondary" onClick={() => answer(rule.name, clash.other as string, `“${clash.sentence}” wins from now on.`)} style={{ fontSize: 12 }}>
@@ -747,7 +753,7 @@ function Why({ rule, onAnswer }: { rule: RuleOut; onAnswer: (winner: string, los
               </span>
               <span style={{ fontSize: 11, color: "var(--color-neutral-500)", marginLeft: 21 }}>Friday remembers your answer for these two rules.</span>
             </>
-          )}
+          ) : null}
         </>
       ) : !why.isLoading && !lines.length ? (
         <span className="fr-kicker">Friday couldn’t tell what took that time in this plan.</span>

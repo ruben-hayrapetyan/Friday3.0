@@ -1,7 +1,7 @@
 // Friday's questions in the Inbox (C75): counted there, set aside by "Not now" until what they're based on changes.
 import { describe, expect, it } from "vitest"
 import type { Schemas } from "@/api/client"
-import { type Ask, mealAsks, waiting } from "./asks"
+import { type Ask, clashAsks, mealAsks, waiting } from "./asks"
 import { messagesOf, rowOf, waitingCount } from "./messages"
 
 const ask = (key: string, evidence: string, more: Partial<Ask> = {}): Ask => ({ key, evidence, icon: "timer", kicker: "What Friday learned", title: `Ask ${key}`, why: "Because.", ...more })
@@ -58,5 +58,36 @@ describe("meals' questions", () => {
 
   it("leaves out a meal Friday decides itself", () => {
     expect(mealAsks({ ...meals, decided: ["lunch", "dinner"] } as Schemas["MealsOut"], run).map((a) => a.key)).toEqual(["meal-plan:breakfast"])
+  })
+})
+
+// 15 Nov (the user: "if clashes are problematic, ask in inbox about them, else, add the because")
+describe("two rules that clash (glass box: clashAsks)", () => {
+  const clash = (more: Partial<Schemas["RuleClashOut"]>): Schemas["RuleClashOut"] => ({
+    rule: "finish_early",
+    other: "chunk_cost",
+    days: ["2026-10-19"],
+    sentence: "Finish work a day before it’s due",
+    other_sentence: "Fewer, longer sessions",
+    said: "",
+    because: "Finishing Lab 9 2 days sooner splits it into 3 sittings instead of 1",
+    when: "Mon",
+    ask: true,
+    ...more,
+  })
+
+  it("asks one your answer decides, with its because and each rule a choice", async () => {
+    const sent: unknown[] = []
+    const [a, ...rest] = clashAsks([clash({})], async (i) => sent.push(i))
+    expect(rest).toEqual([])
+    expect(a).toMatchObject({ kicker: "Your rules", title: "“Finish work a day before it’s due” clashes with “Fewer, longer sessions”" })
+    expect(a.why).toBe("Mon: finishing Lab 9 2 days sooner splits it into 3 sittings instead of 1. Which should win? Friday remembers your answer.")
+    expect([a.yes?.label, a.no?.label]).toEqual(["Finish work a day before it’s due", "Fewer, longer sessions"])
+    await a.no?.run()
+    expect(sent).toEqual([{ winner: "chunk_cost", loser: "finish_early" }])
+  })
+
+  it("never asks a mild one", () => {
+    expect(clashAsks([clash({ ask: false })], async () => null)).toEqual([])
   })
 })

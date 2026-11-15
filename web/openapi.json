@@ -12385,6 +12385,28 @@
     }
    }
   },
+  "/api/q/rule_clashes": {
+   "get": {
+    "summary": "The clashes your answer decides, for the Inbox: found overnight (`find_clashes`), while the rule is still",
+    "operationId": "rule_clashes",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/RuleClashOut"
+         },
+         "type": "array",
+         "title": "Response Rule Clashes"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/rule_read": {
    "get": {
     "summary": "How a sentence reads as a rule, with any fields you set yourself; nothing is saved.",
@@ -28364,6 +28386,21 @@
       "type": "string",
       "title": "Said",
       "default": ""
+     },
+     "because": {
+      "type": "string",
+      "title": "Because",
+      "default": ""
+     },
+     "when": {
+      "type": "string",
+      "title": "When",
+      "default": ""
+     },
+     "ask": {
+      "type": "boolean",
+      "title": "Ask",
+      "default": false
      }
     },
     "additionalProperties": false,

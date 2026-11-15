@@ -4,7 +4,7 @@ logged and undoable; your sentence and reading are kept in kv `rule_readings` to
 
 import json
 import re
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import date, timedelta
 from typing import Any
 
@@ -24,16 +24,29 @@ from friday.commands.registry import Ctx, command, query
 from friday.commands.settings import write_setting
 from friday.core.db import rows
 from friday.core.items import FieldError
-from friday.core.rule_text import Reading, days_spoken, read, read_all, sentence, spec, with_overrides, with_singulars
+from friday.core.quickadd import MEAL
+from friday.core.rule_text import (
+    Reading,
+    days_spoken,
+    read,
+    read_all,
+    sentence,
+    span_said,
+    spec,
+    with_overrides,
+    with_singulars,
+)
 from friday.core.settings import EXAM_FOCUS_NAME, REFERENCE_RULES, minutes_of
 from friday.core.textnorm import identity_text, norm
-from friday.core.time import clock_times, parse_utc, planning_date, to_local
+from friday.core.time import UNIT_MIN, clock_times, parse_utc, planning_date, to_local
 from friday.engine.rules.prices import has_words
 from friday.planner.contradictions import Conflict, against, contradictions
 from friday.planner.learning import learnable
 from friday.planner.snapshot import take_snapshot
 from friday.planner.store import area_names, current_plan, kv_get
+from friday.planner.views import Clash
 from friday.planner.views import rule_clash as find_clash
+from friday.planner.views import rule_clashes as find_clashes_of
 
 DEFAULT_WEIGHT = {r.name: r.weight for r in REFERENCE_RULES}
 LEARNED_WEIGHT = 1.0  # a rule a yes to a proposal adds (`learn/proposals.py`) starts at this weight
@@ -53,15 +66,22 @@ SAID = {
     "same_course": "Stay on one course for a stretch",
     "buffer": "Breathing room between blocks",
     "target_shortfall": "Reach weekly targets",
-    "elastic_shortfall": "Give flexible items their ideal time",
-    "elastic_minimum": "Don't skip meals and routines",
     "open_value": "Side projects fill free time",
     "minimize_changes": "Keep the plan steady",
     "finish_early": "Finish work {days} before it’s due",
 }
-# Built-in rules said by their name, where their type says something else ("spread" is also a rule you write).
-SAID_BY_NAME = {"exam_prep_spread": "Exam prep is spread over the days before the exam, not crammed into one"}
-# Built-in rules that are how the planner works rather than how you like your days: shown folded, below the rest.
+# Built-in rules said by their name, where their type says something else ("spread" is also a rule you write; both
+# rules for meals and routines are elastic_shortfall, and both read "Give flexible items their ideal time", 15 Nov).
+SAID_BY_NAME = {
+    "exam_prep_spread": "Exam prep is spread over the days before the exam, not crammed into one",
+    "elastic_shortfall": "Give {what} their ideal length",
+    "elastic_minimum": "Never cut {what} below their shortest",
+}
+# Meals, routines and tasks with a range ("~1–2h") have a shortest and an ideal length: the two rules above say each
+# one's (15 Nov, the user: "whenever you're using a variable in parenthesis just say what it's currently set to").
+FLEXIBLE = {"elastic_shortfall": "ideal_units", "elastic_minimum": "min_units"}
+# Built-in rules that are how the planner works rather than how you like your days: shown folded, below the rest. By
+# name: never cutting a meal below its shortest protects you, and is listed with the rules you tune (15 Nov).
 BACKGROUND = {"quota", "energy", "soft_late", "unscheduled", "target_shortfall", "elastic_shortfall", "open_value",
               "minimize_changes"}  # fmt: skip
 EFFECT = {
@@ -152,7 +172,7 @@ def read_out(ctx: Ctx, reading: Reading, strength: str, editing: str = "") -> Ru
     if new["type"] == "skippable":
         _, moved = taken_from([r.model_dump() for r in ctx.settings["rules"]], new, dict(mine))
         effect += "".join(f". Takes it out of “{m}”" for m in moved)
-    said = {r.name: words(r, mine) for r in ctx.settings["rules"]}
+    said = {r.name: words(r, mine, ctx) for r in ctx.settings["rules"]}
     rules = [r.model_dump() for r in ctx.settings["rules"] if r.name != editing]  # an edit isn't at odds with itself
     conflicts = [conflict_out(c, said) for c in against(new, rules)] if reading.kind not in NOT_COMPARED else []
     old = next((r for r in ctx.settings["rules"] if r.name == editing), None)
@@ -556,6 +576,11 @@ def rule_remove(ctx: Ctx, inp: RuleRef) -> Changed:
     if len(rules) == len(ctx.settings["rules"]):
         raise FieldError("name", f"no rule named {inp.name}")
     write_setting(ctx, "rules", rules)
+    # Your answers about it go with it (15 Nov: a client's Rules page said "Wins over 'spread'" for a rule long gone).
+    wins = kv_get(ctx.conn, "rule_wins", [], ctx.user_id)
+    kept = [w for w in wins if inp.name not in (w["winner"], w["loser"])]
+    if len(kept) != len(wins):
+        ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "rule_wins"}, {"value": json.dumps(kept)})
     return Changed(message="Deleted")
 
 
@@ -565,8 +590,9 @@ def rules(ctx: Ctx, inp: Empty) -> list[RuleOut]:
     mine = readings(ctx)
     report = current_report(ctx)
     by_day = report.get("rule_totals_by_day", {})
-    wins = kv_get(ctx.conn, "rule_wins", [], ctx.user_id)
-    said = {r.name: words(r, mine) for r in ctx.settings["rules"]}
+    said = {r.name: words(r, mine, ctx) for r in ctx.settings["rules"]}
+    # Only answers about two rules you still have (15 Nov: "Wins over 'spread'" outlived the rule it named).
+    wins = [w for w in kv_get(ctx.conn, "rule_wins", [], ctx.user_id) if w["winner"] in said and w["loser"] in said]
     against_each = contradictions([r.model_dump() for r in ctx.settings["rules"]], wins)
     days = sorted(d for d in by_day if d != "other")  # "other" is what no one day carries, not a day
     out = []
@@ -587,7 +613,7 @@ def rules(ctx: Ctx, inp: Empty) -> list[RuleOut]:
                 effect=violated_said(bent, elsewhere, ctx.today) if by_day and r.enabled else "Off",
                 violated=bent,
                 editable=r.name not in ALWAYS,
-                background=source == "default" and (r.type in BACKGROUND or unset_buffer(r)),
+                background=source == "default" and (r.name in BACKGROUND or unset_buffer(r)),
                 wins_over=[w["loser"] for w in wins if w["winner"] == r.name],
                 gives_way_to=[w["winner"] for w in wins if w["loser"] == r.name],
                 contradicts=[conflict_out(c, said) for c in against_each.get(r.name, [])],
@@ -606,22 +632,74 @@ def rule_clash(ctx: Ctx, inp: RuleRef) -> RuleClashOut:
     if rule is None:
         raise FieldError("name", f"no rule named {inp.name}")
     mine = readings(ctx)
-    said = {r.name: words(r, mine) for r in ctx.settings["rules"]}
+    said = {r.name: words(r, mine, ctx) for r in ctx.settings["rules"]}
     if inp.name not in learnable(ctx.settings):
         return RuleClashOut(rule=inp.name, other=None, sentence=said[inp.name])
     found = find_clash(take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id), inp.name)
     if found is None:
         return RuleClashOut(rule=inp.name, other=None, sentence=said[inp.name])
+    return clash_out(ctx, inp.name, found, said)
+
+
+def clash_out(ctx: Ctx, name: str, found: Clash, said: dict[str, str]) -> RuleClashOut:
+    """A clash in words, with its because (15 Nov: the user, "if clashes are problematic, ask in inbox about them,
+    else, add the because"): "Which should win?" only for one your answer decides."""
     other = said.get(found.other, found.other)
-    when = f"{days_and(found.days, ctx.today)}: it" if found.days else "It"
+    when = days_and(found.days, ctx.today)
+    because = found.because[:1].lower() + found.because[1:]
+    question = " Which should win?" if found.ask else ""
     return RuleClashOut(
-        rule=inp.name,
+        rule=name,
         other=found.other,
         days=found.days,
-        sentence=said[inp.name],
+        sentence=said[name],
         other_sentence=other,
-        said=f"{when} clashes with “{other}”. Which should win?",
+        said=f"{f'{when}: it' if when else 'It'} clashes with “{other}”: {because}.{question}",
+        because=found.because,
+        when=when,
+        ask=found.ask,
     )
+
+
+MOST_CLASHES = 6  # rules a night looks into, the most often violated first: each is a plan made afresh
+
+
+def find_clashes(conn: Any, now_utc: int, user_id: int = 1) -> int:
+    """What each rule your plan violates is up against, kept for the Inbox (`rule_clashes`): the server's job runs
+    this once a night, as each takes a plan made afresh (seconds to half a minute). Returns how many it found."""
+    snapshot = take_snapshot(conn, now_utc, user_id)
+    saved = current_plan(conn, user_id)
+    by_day = json.loads(saved["report"]).get("rule_totals_by_day", {}) if saved else {}
+    on = {r.name for r in snapshot.settings["rules"] if r.enabled}
+    days = {
+        n: sum(1 for d, t in by_day.items() if d != "other" and t.get(n, 0) > 0) for n in learnable(snapshot.settings)
+    }
+    names = sorted((n for n in days if days[n] and n in on), key=lambda n: -days[n])[:MOST_CLASHES]
+    found = {n: asdict(c) for n, c in find_clashes_of(snapshot, names).items() if c is not None}
+    conn.execute(
+        "INSERT INTO kv (user_id, key, value) VALUES (?, 'rule_clashes', ?) "
+        "ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value",
+        [user_id, json.dumps(found)],
+    )
+    return len(found)
+
+
+@query("rule_clashes")
+def rule_clashes(ctx: Ctx, inp: Empty) -> list[RuleClashOut]:
+    """The clashes your answer decides, for the Inbox: found overnight (`find_clashes`), while the rule is still
+    violated, both rules are still yours and on, and you haven't said which wins."""
+    mine = readings(ctx)
+    said = {r.name: words(r, mine, ctx) for r in ctx.settings["rules"]}
+    on = {r.name for r in ctx.settings["rules"] if r.enabled} & set(learnable(ctx.settings))
+    answered = [{w["winner"], w["loser"]} for w in kv_get(ctx.conn, "rule_wins", [], ctx.user_id)]
+    by_day = current_report(ctx).get("rule_totals_by_day", {})
+    out = []
+    for name, kept in (kv_get(ctx.conn, "rule_clashes", {}, ctx.user_id) or {}).items():
+        found = Clash(**kept)
+        violated = any(t.get(name, 0) > 0 for d, t in by_day.items() if d != "other")
+        if found.ask and violated and {name, found.other} <= on and {name, found.other} not in answered:
+            out.append(clash_out(ctx, name, found, said))
+    return out
 
 
 @query("rule_why")
@@ -633,7 +711,7 @@ def rule_why(ctx: Ctx, inp: RuleRef) -> RuleWhyOut:
     rule = next((r for r in ctx.settings["rules"] if r.name == inp.name), None)
     if rule is None:
         raise FieldError("name", f"no rule named {inp.name}")
-    sentence_of = words(rule, readings(ctx))
+    sentence_of = words(rule, readings(ctx), ctx)
     saved = current_plan(ctx.conn, ctx.user_id)
     if saved is None:
         return RuleWhyOut(rule=inp.name, sentence=sentence_of)
@@ -733,7 +811,7 @@ def rule_win(ctx: Ctx, inp: RuleWinInput) -> Changed:
     kept.append({"winner": inp.winner, "loser": inp.loser})
     ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "rule_wins"}, {"value": json.dumps(kept)})
     mine = readings(ctx)
-    said = {r.name: words(r, mine) for r in ctx.settings["rules"]}
+    said = {r.name: words(r, mine, ctx) for r in ctx.settings["rules"]}
     return Changed(message=f"“{said[inp.winner]}” wins over “{said[inp.loser]}”")
 
 
@@ -748,14 +826,17 @@ def unset_buffer(rule: Any) -> bool:
     )
 
 
-def words(rule: Any, mine: dict[str, Any]) -> str:
-    return clock_times(written(rule, mine))  # rules saved before the 12-hour clock read the same as new ones
+def words(rule: Any, mine: dict[str, Any], ctx: Ctx | None = None) -> str:
+    """A rule in words; with `ctx`, the meals' and routines' rules name their lengths as they are now."""
+    return clock_times(written(rule, mine, ctx))  # rules saved before the 12-hour clock read the same as new ones
 
 
-def written(rule: Any, mine: dict[str, Any]) -> str:
+def written(rule: Any, mine: dict[str, Any], ctx: Ctx | None = None) -> str:
     if rule.name in mine or (rule.reason and rule.reason != rule.name):
         return rule.reason or rule.name
     said = SAID_BY_NAME.get(rule.name) or SAID.get(rule.type) or rule.name.replace("_", " ").capitalize()
+    if rule.name in FLEXIBLE:
+        return flexible_said(said, flexible_lengths(ctx, FLEXIBLE[rule.name]) if ctx else None)
     params = {k: hours(v) for k, v in rule.params.items()}
     if rule.type == "finish_early":  # "a day", "2 days"
         days = rule.params.get("days", 1)
@@ -769,6 +850,40 @@ def written(rule: Any, mine: dict[str, Any]) -> str:
         return said.format(**params)
     except KeyError:
         return said
+
+
+def flexible_lengths(ctx: Ctx, field: str) -> tuple[list[tuple[str, int]], list[tuple[str, int]]]:
+    """Each meal or routine and each task with a range still to do, with that length now (its next one's, for one that
+    repeats): (title, minutes); meals first, by the time of day they start, then other routines, then tasks by due."""
+    found = rows(
+        ctx.conn,
+        f"SELECT title, preset, series_id, {field} AS units, release_utc, due_utc FROM items WHERE user_id = ? "
+        "AND status = 'todo' AND amount = 'elastic' AND min_units IS NOT NULL AND ideal_units IS NOT NULL "
+        "AND (due_utc IS NULL OR due_utc >= ?) ORDER BY coalesce(release_utc, due_utc), id",
+        [ctx.user_id, ctx.now_text],
+    )
+    routines: dict[str, tuple[tuple[int, int], str, int]] = {}
+    tasks: dict[str, tuple[str, int]] = {}
+    for row in found:
+        key = row["title"].strip().lower()
+        if row["series_id"] is not None or row["preset"] == "Routine":
+            at = to_local(parse_utc(row["release_utc"]), ctx.tz) if row["release_utc"] else None
+            when = (0 if MEAL.search(row["title"]) else 1, at.hour * 60 + at.minute if at else 24 * 60)
+            routines.setdefault(key, (when, row["title"], row["units"]))
+        else:
+            tasks.setdefault(key, (row["title"], row["units"]))
+    ordered = sorted(routines.values(), key=lambda r: r[0])
+    return [(t, u * UNIT_MIN) for _, t, u in ordered], [(t, u * UNIT_MIN) for t, u in tasks.values()]
+
+
+def flexible_said(said: str, lengths: tuple[list[tuple[str, int]], list[tuple[str, int]]] | None) -> str:
+    """ "Give meals and routines their ideal length: Lunch 45 min and Dinner 1 h"; tasks with a range ("~1–2h") come
+    after them, and the head names them too. More than three: "… and 2 more"."""
+    routines, tasks = lengths or ([], [])
+    what = "meals, routines and tasks with a range" if tasks else "meals and routines"
+    head = said.format(what=what)
+    each = [f"{title} {span_said(minutes)}" for title, minutes in routines + tasks]
+    return f"{head}: {listed(each, 3)}" if each else head
 
 
 def hours(value: Any) -> Any:

@@ -12,7 +12,8 @@ import numpy as np
 from friday.api.types import BlockOut, ChangeOut
 from friday.core.calendars import fallback_level, rating_key
 from friday.core.items import Item
-from friday.core.time import clock_time, format_local, format_utc, parse_utc, to_local
+from friday.core.settings import minutes_of
+from friday.core.time import clock_time, format_local, format_utc, parse_utc, planning_date, to_local
 from friday.engine.compile import compile_problem
 from friday.engine.executor import ExecutorInput, Now, NowSettings, now, safe_items
 from friday.engine.explain import WhyNot, why_not
@@ -23,7 +24,7 @@ from friday.planner.inputs import executor_input, now_settings
 from friday.planner.learning import learnable
 from friday.planner.prepare import build_input, day_of
 from friday.planner.service import quick_late, with_pins_preferred
-from friday.planner.snapshot import Snapshot, picked
+from friday.planner.snapshot import WIN, Snapshot, picked
 from friday.planner.solve import solve
 
 MAX_TRIAGE_ACTIONS = 8
@@ -136,12 +137,21 @@ def signature(blocks: Iterable[Any]) -> str:
 
 CLASH_FACTOR = 20  # how much more the rule is weighed when asking what keeping it would cost
 CLASH_SHARE = 0.25  # a rival counts when it loses at least this share of what the rule gains (less is search noise)
+# 15 Nov (the user: "if clashes are problematic, ask in inbox about them, else, add the because"): a clash is asked
+# when your answer would change the plan: the rival alone pays at least all the rule gains (less, and other rules pay
+# the rest), yet less than WIN² times it (your answer weighs the winner ×WIN and the other ÷WIN, so a dearer trade
+# stays as it is whatever you say); or when keeping the rule makes work late. Else Friday says why, and doesn't ask.
+ASK_SHARE = 1.0
+ASK_MOST = WIN * WIN
+ASK_LATE_HOURS = 0.25  # keeping the rule makes work late: a quarter of an hour more past its due, or more
 
 
 @dataclass
 class Clash:
     other: str  # the rule that gives way when this one is kept
     days: list[str]  # the days (ISO dates) where they pull against each other
+    because: str = ""  # "Finishing Lab 9 a day sooner splits it into 3 sittings instead of 1", from the two plans
+    ask: bool = False  # a clash your answer decides (`ASK_SHARE`, `ASK_MOST`, `ASK_LATE_HOURS`): asked in the Inbox
 
 
 def rule_clash(snapshot: Snapshot, name: str) -> Clash | None:
@@ -149,27 +159,146 @@ def rule_clash(snapshot: Snapshot, name: str) -> Clash | None:
     more, and see, on the days it is then kept better, which other rule is bent more. Both plans are made from
     scratch with the same seed (a warm start stays where it is), so the weight is what differs. None when keeping it
     costs no other rule: deadlines bend it, or nothing would."""
+    return rule_clashes(snapshot, [name])[name]
 
-    def by_day(settings: dict[str, Any]) -> dict[str, dict[str, int]]:
+
+def rule_clashes(snapshot: Snapshot, names: Iterable[str]) -> dict[str, Clash | None]:
+    """`rule_clash` for each rule, your plan made once for them all."""
+
+    def made(settings: dict[str, Any]) -> AssembledPlan:
         changed = dataclasses.replace(snapshot, settings=settings, cold_once=True)  # both from scratch, as said
-        totals = assemble(changed, solve(changed, warm=False)).report.get("rule_totals_by_day", {})
-        return {d: t for d, t in totals.items() if d != "other"}
+        return assemble(changed, solve(changed, warm=False))
 
-    before = by_day(snapshot.settings)
-    if not any(t.get(name, 0) > 0 for t in before.values()):
-        return None
-    after = by_day(picked(snapshot.settings, {name: CLASH_FACTOR}, 0))
-    gained = [d for d, t in before.items() if t.get(name, 0) > after.get(d, {}).get(name, 0) / CLASH_FACTOR]
+    before = made(snapshot.settings)
+    out: dict[str, Clash | None] = {}
+    for name in names:
+        if not any(t.get(name, 0) > 0 for t in by_day(before).values()):
+            out[name] = None
+            continue
+        out[name] = clash_of(snapshot, name, before, made(picked(snapshot.settings, {name: CLASH_FACTOR}, 0)))
+    return out
+
+
+def by_day(plan: AssembledPlan) -> dict[str, dict[str, int]]:
+    return {d: t for d, t in plan.report.get("rule_totals_by_day", {}).items() if d != "other"}
+
+
+def clash_of(snapshot: Snapshot, name: str, before_plan: AssembledPlan, after_plan: AssembledPlan) -> Clash | None:
+    """The rule that loses most when this one is kept, across the plan: work kept to one rule on one day often goes
+    to another day, where the other rule pays (15 Nov: finishing Lab 9 sooner split it on Monday, not on its due)."""
+    before, after = by_day(before_plan), by_day(after_plan)
+    days = sorted(set(before) | set(after))
+    gained = [d for d in before if before[d].get(name, 0) > after.get(d, {}).get(name, 0) / CLASH_FACTOR]
     gain = sum(before[d].get(name, 0) - after.get(d, {}).get(name, 0) / CLASH_FACTOR for d in gained)
     lost: dict[str, float] = {}
-    for d in gained:
-        for rule in learnable(snapshot.settings):
-            if rule != name:
-                lost[rule] = lost.get(rule, 0) + after.get(d, {}).get(rule, 0) - before[d].get(rule, 0)
+    for rule in learnable(snapshot.settings):
+        if rule != name:
+            lost[rule] = sum(after.get(d, {}).get(rule, 0) - before.get(d, {}).get(rule, 0) for d in days)
     rival, cost = max(lost.items(), key=lambda kv: kv[1], default=("", 0.0))
     if cost <= 0 or cost < CLASH_SHARE * gain:
         return None
-    return Clash(rival, sorted(d for d in gained if after.get(d, {}).get(rival, 0) > before[d].get(rival, 0)))
+    where = sorted(d for d in days if after.get(d, {}).get(rival, 0) > before.get(d, {}).get(rival, 0))
+    late = late_total(after_plan) - late_total(before_plan)
+    ask = ASK_SHARE * gain <= cost < ASK_MOST * gain or late >= ASK_LATE_HOURS
+    return Clash(rival, where, because(snapshot, name, rival, before_plan, after_plan), ask)
+
+
+def late_total(plan: AssembledPlan) -> float:
+    return sum(plan.report.get("late_hours", {}).values())
+
+
+def because(snapshot: Snapshot, name: str, rival: str, before: AssembledPlan, after: AssembledPlan) -> str:
+    """Why keeping `name` costs `rival`, from the two plans: the work whose cost under the rival went up most, and
+    what happened to it ("Finishing Lab 9 a day sooner splits it into 3 sittings instead of 1")."""
+    rules = {r.name: r for r in snapshot.settings["rules"]}
+    paid: dict[int, int] = {}
+    for sign, plan in ((-1, before), (1, after)):
+        for b in plan.blocks:
+            paid[b.item_id] = paid.get(b.item_id, 0) + sign * b.cost.get(rival, 0)
+    item_id = max(paid, key=lambda i: paid[i], default=None)
+    items = {i.id: i for i in snapshot.items}
+    if item_id is None or paid[item_id] <= 0 or item_id not in items:
+        return "Keeping it means more of that rule's cost elsewhere"
+    title = items[item_id].title
+    was = sorted((b for b in before.blocks if b.item_id == item_id), key=lambda b: b.start_utc)
+    now = sorted((b for b in after.blocks if b.item_id == item_id), key=lambda b: b.start_utc)
+    lead = kept_said(rules[name].type, title, was, now, snapshot)
+    return lead + " " + cost_said(rules[rival].type, "it" if title in lead else title, was, now, snapshot)
+
+
+Blocks = list[Any]  # one item's blocks in a plan, earliest first
+
+
+def day_of_block(snapshot: Snapshot, minutes: int) -> date:
+    time = snapshot.settings["time"]
+    return planning_date(minutes, time.timezone, minutes_of(time.day_start))
+
+
+def day_said(snapshot: Snapshot, day: date) -> str:
+    today = day_of_block(snapshot, snapshot.now_utc)
+    return f"{day:%a}" if (day - today).days < 7 else f"{day:%a} {day:%b} {day.day}"
+
+
+def days_said(snapshot: Snapshot, blocks: Blocks) -> str:
+    days = sorted({day_of_block(snapshot, b.start_utc) for b in blocks})
+    names = [day_said(snapshot, d) for d in days]
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def sittings(n: int) -> str:
+    return "1 sitting" if n == 1 else f"{n} sittings"
+
+
+def kept_said(kind: str, title: str, was: Blocks, now: Blocks, snapshot: Snapshot) -> str:
+    """What keeping the rule does to that work, where the plans show it; else "Keeping it"."""
+    if kind == "finish_early" and was and now:
+        sooner = (day_of_block(snapshot, was[-1].end_utc - 1) - day_of_block(snapshot, now[-1].end_utc - 1)).days
+        if sooner > 0:
+            return f"Finishing {title} {'a day' if sooner == 1 else f'{sooner} days'} sooner"
+    if kind == "chunk_cost" and now and len(now) < len(was):
+        return f"Doing {title} in {sittings(len(now))} instead of {len(was)}"
+    if kind == "deep_run" and was and now:
+        longest, longest_was = (max(b.end_utc - b.start_utc for b in blocks) for blocks in (now, was))
+        if longest < longest_was:
+            return f"Keeping {title} to {span(longest)} at a time"
+    if kind == "late_night" and was and now and max(b.end_utc for b in now) < max(b.end_utc for b in was):
+        return (
+            f"Ending {title} by {clock_time(to_local(max(b.end_utc for b in now), snapshot.settings['time'].timezone))}"
+        )
+    return "Keeping it"
+
+
+def cost_said(kind: str, it: str, was: Blocks, now: Blocks, snapshot: Snapshot) -> str:
+    """What the other rule loses on that work: more sittings, a later finish, a longer sitting, a later night, or
+    else the days or the time it moves to."""
+    tz = snapshot.settings["time"].timezone
+    if kind == "chunk_cost" and len(now) > len(was):
+        return f"splits {it} into {len(now)} sittings instead of {len(was)}" if was else f"splits {it} into {len(now)}"
+    if kind == "finish_early" and was and now:
+        later, earlier = day_of_block(snapshot, now[-1].end_utc - 1), day_of_block(snapshot, was[-1].end_utc - 1)
+        if later > earlier:
+            return f"finishes {it} on {day_said(snapshot, later)} instead of {day_said(snapshot, earlier)}"
+    if kind == "deep_run" and was and now:
+        longest, longest_was = (max(b.end_utc - b.start_utc for b in blocks) for blocks in (now, was))
+        if longest > longest_was:
+            return f"makes a sitting of {it} {span(longest)} long instead of {span(longest_was)}"
+    if kind == "late_night" and was and now:
+        end, end_was = (clock_time(to_local(max(b.end_utc for b in blocks), tz)) for blocks in (now, was))
+        if max(b.end_utc for b in now) > max(b.end_utc for b in was):
+            return f"keeps you on {it} until {end} instead of {end_was}"
+    if not now:
+        return f"leaves {it} out of the plan"
+    if not was:
+        return f"plans {it} on {days_said(snapshot, now)}"
+    if days_said(snapshot, now) != days_said(snapshot, was):
+        return f"moves {it} to {days_said(snapshot, now)} from {days_said(snapshot, was)}"
+    first_now, first_was = clock_time(to_local(now[0].start_utc, tz)), clock_time(to_local(was[0].start_utc, tz))
+    return f"moves {it} to {first_now} from {first_was}"
+
+
+def span(minutes: int) -> str:
+    hours, rest = divmod(minutes, 60)
+    return f"{hours} h {rest} min" if hours and rest else f"{hours} h" if hours else f"{rest} min"
 
 
 Step = tuple[str, dict[str, Any]]  # a registry command and its input; times as UTC minutes under `*_utc` keys

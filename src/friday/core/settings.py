@@ -9,7 +9,14 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import tomli_w
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator, model_validator
 
-from friday.core.calendars import STARTER_CATEGORIES, BusySettings, CalendarLook, CategorySettings, check_colors
+from friday.core.calendars import (
+    NOT_AN_EXAM_FINAL,
+    STARTER_CATEGORIES,
+    BusySettings,
+    CalendarLook,
+    CategorySettings,
+    check_colors,
+)
 from friday.core.integrations import INTEGRATION_DEFAULTS, INTEGRATION_TYPES
 from friday.core.pace import DEFAULT_PACES, Dials
 from friday.core.presets import DEFAULT_PRESETS, Preset
@@ -344,12 +351,14 @@ class ExamFocus(Model):
     words: tuple[str, ...] = ("exam", "prelim", "midterm", "final")
 
     def finds(self, title: str) -> bool:
-        """Whether a title is an exam's: one of the words in it, as a word. No words (or blank ones) find nothing: an
-        empty pattern matched every event, so every event was an exam (audit, 12 Nov)."""
+        """Whether a title is an exam's: one of the words in it, as a word, or its plural ("finals", as the Exam
+        category reads it, 15 Nov), and "final" not a final project or the like (`NOT_AN_EXAM_FINAL`). No words (or
+        blank ones) find nothing: an empty pattern matched every event, so every event was an exam (audit, 12 Nov)."""
         said = [w.strip() for w in self.words if w.strip()]
         if not said:
             return False
-        return re.search(r"\b(" + "|".join(re.escape(w) for w in said) + r")\b", title, re.IGNORECASE) is not None
+        each = [re.escape(w) + ("s?" + NOT_AN_EXAM_FINAL if w.lower() in ("final", "finals") else "s?") for w in said]
+        return re.search(r"\b(" + "|".join(each) + r")\b", title, re.IGNORECASE) is not None
 
 
 EXAM_FOCUS_NAME = "you:exam-focus"  # one exam focus rule: a new one takes its place
@@ -507,6 +516,8 @@ SETTINGS_TYPES: dict[str, Any] = {
     "short_term_first": bool,  # the Short term list's work comes before anything on the Long term list
     "school": bool,  # in school (Setup asks, C97): school kinds and schoolwork shown and guessed; off, never
     "mac_plan": bool,  # the plan as a "Friday" calendar on this Mac, in iCloud, so the iPhone shows it (C113)
+    # the Rules lab's unfinished designs, linked from Rules once switched on (Settings → Advanced, 15 Nov)
+    "rules_lab": bool,
     "sleep_tracking": SleepTracking,
     "meal_tracking": MealTracking,
     "phone": PhoneAccess,  # Friday on your phone over Tailscale (C61)
@@ -554,6 +565,7 @@ DEFAULTS: dict[str, Any] = {
     "short_term_first": False,
     "school": True,  # Friday began as a student's; Setup asks anyone new (C97)
     "mac_plan": False,  # off until you switch it on in its box
+    "rules_lab": False,
     "sleep_tracking": SleepTracking(),
     "meal_tracking": MealTracking(),
     "phone": PhoneAccess(),

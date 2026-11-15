@@ -105,3 +105,16 @@ def test_an_end_written_in_utc_is_a_repeat() -> None:
 def test_starter_categories_dont_take_numbers_for_courses(title: str, category: str) -> None:
     found = category_of(title, CategorySettings(categories=STARTER_CATEGORIES))
     assert found is not None and found.name == category
+
+
+# 15 Nov, the user: "final, with exceptions": a final is an exam, a final project, paper, draft, presentation, round or
+# review isn't, nor a name ("Final Fantasy", above).
+@pytest.mark.parametrize(
+    ("title", "category"),
+    [("math final", "Exam"), ("MATH 1920 Final", "Exam"), ("Study for finals", "Exam"), ("Final: ECON 1110", "Exam"),
+     ("final project presentation", None), ("Final review session", None), ("Final draft of the essay", None),
+     ("Final round interview", "Meeting"), ("Final Four watch party", "Social")],
+)  # fmt: skip
+def test_a_final_is_an_exam_and_a_final_project_isnt(title: str, category: str | None) -> None:
+    found = category_of(title, CategorySettings(categories=STARTER_CATEGORIES))
+    assert (found.name if found else None) == category

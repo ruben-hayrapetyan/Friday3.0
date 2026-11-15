@@ -1081,6 +1081,14 @@ VERBS = {
         False,
         "What a rule the plan bends is up against: plans once more with it weighed far more (a few seconds).",
     ),
+    "rule_clashes": Verb(
+        "GET",
+        "/api/q/rule_clashes",
+        commands.Empty,
+        False,
+        False,
+        "The clashes your answer decides, for the Inbox: found overnight (`find_clashes`), while the rule is still",
+    ),
     "rule_edit": Verb(
         "POST",
         "/api/c/rule_edit",

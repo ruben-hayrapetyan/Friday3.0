@@ -13,8 +13,9 @@ const REFRESH: Record<string, string[]> = {
   // Every command sends it, and any query may read what a command changed (rules, tokens, calendars, mail…), so a
   // list kept by hand here went stale whenever a page was added.
   "items.changed": [EVERYTHING],
-  "plan.changed": ["plan", "now", "items", "item", "calendar", "status", "why", "review", "projects", "exams", "load", "triage", "brief", "week"],
-  "status.changed": ["status", "questions"],
+  "plan.changed": ["plan", "now", "items", "item", "calendar", "status", "why", "review", "projects", "exams", "load", "triage", "brief", "week", "rule_clashes"],
+  // the night's questions: comparisons, and which of two clashing rules should win (server/jobs.py)
+  "status.changed": ["status", "questions", "rule_clashes"],
   // A change's quick placement, made after it answered (server/placer.py): the calendar draws it.
   "plan.provisional": ["plan"],
   // A downloaded Friday looked for a newer version (commands/updates.py): the popup and Settings → Updates.

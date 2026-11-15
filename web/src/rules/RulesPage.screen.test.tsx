@@ -1,7 +1,7 @@
 // Rules over Alex's sample: typing a rule shows how Friday read it, to correct and weigh before adding; what Friday
 // can't read goes to the AI; every rule below has its switch, its strength and delete; rules that bend can ask what
 // they're up against, and rules that contradict say so. Your week's paces are here too.
-import { screen, waitFor, within } from "@testing-library/react"
+import { cleanup, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { friday, openFriday, waitForSent } from "@/test/friday"
 
@@ -23,7 +23,21 @@ describe("the Rules page", () => {
     expect(screen.getAllByText("Yours").length).toBe(3)
     expect(screen.getAllByText("Built in").length).toBeGreaterThan(3)
     expect(screen.getByText(/How Friday fills in the rest \(\d+\)/)).toBeTruthy()
-    expect(screen.getByRole("link", { name: /Try new rule designs/ }).getAttribute("href")).toContain("/lab/rules")
+    // 15 Nov: the lab's designs are unfinished: no link to them until they're switched on in Settings → Advanced
+    expect(screen.queryByRole("link", { name: /Try new rule designs/ })).toBeNull()
+  })
+
+  it("links to the Rules lab once it's switched on in Settings → Advanced", async () => {
+    const { user } = await openFriday("/settings/advanced")
+    const lab = await screen.findByRole("switch", { name: "Show the Rules lab (unfinished designs)" })
+    expect(lab.getAttribute("aria-checked")).toBe("false")
+    await user.click(lab)
+    expect((await waitForSent("settings_set")).body).toEqual({ key: "rules_lab", value: true })
+    await waitFor(async () => expect((await friday.q<{ rules_lab: boolean }>("settings")).rules_lab).toBe(true))
+    cleanup()
+    await openFriday("/rules")
+    expect((await screen.findByRole("link", { name: /Try new rule designs/ })).getAttribute("href")).toContain("/lab/rules")
+    await friday.c("settings_set", { key: "rules_lab", value: false })
   })
 
   it("has no row of examples under the box, and a rule typed is read as you type it", async () => {
@@ -217,8 +231,15 @@ describe("the Rules page", () => {
     expect((await within(row).findAllByText(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun).*: .*needed (those hours|the time)$/)).length).toBeGreaterThan(0)
     const said = await within(row).findByText(/clashes with|Friday couldn’t tell/, undefined, { timeout: 30_000 }).catch(() => null)
     expect(within(row).queryByText(/bends no less/)).toBeNull()
-    if (said?.textContent?.includes("clashes with")) {
-      expect(said.textContent).toMatch(/Which should win\?$/)
+    // 15 Nov: a clash says why ("…: finishing Lab 9 2 days sooner splits it into 3 sittings instead of 1."), and asks
+    // which should win only when your answer decides it
+    const clash = await friday.q<{ ask: boolean; because: string }>("rule_clash", { name: row.dataset.rule as string })
+    if (said?.textContent?.includes("clashes with") && !clash.ask) {
+      expect(said.textContent).toMatch(/clashes with “[^”]+”: .+\.$/)
+      expect(within(row).queryAllByRole("button").filter((b) => b.className.includes("btn-secondary"))).toEqual([])
+    }
+    if (said?.textContent?.includes("clashes with") && clash.ask) {
+      expect(said.textContent).toMatch(/clashes with “[^”]+”: .+\. Which should win\?$/)
       const [mine] = within(row).getAllByRole("button").filter((b) => b.className.includes("btn-secondary"))
       await user.click(mine)
       expect((await waitForSent("rule_win")).body).toMatchObject({ winner: expect.any(String), loser: expect.any(String) })
