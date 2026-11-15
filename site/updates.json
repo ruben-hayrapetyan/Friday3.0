@@ -1,6 +1,57 @@
 {
-  "current": "0.4.0",
+  "current": "0.4.1",
   "versions": [
+    {
+      "version": "0.4.1",
+      "released": "2026-11-15",
+      "url": "https://friday-scheduler.com/get/Friday-0.4.1.dmg?via=update",
+      "sha256": "90cd81b51b6ef674ea2419f61ed4c9cdf3edd0a9f0b8713cc679a01d3e24ed3c",
+      "bytes": 237569763,
+      "minimum_macos": "14.0",
+      "notes": {
+        "summary": "Edit a rule where it stands and see why one wasn't kept, stop work for the night with one tap, choose which Reminders lists Friday plans, and see what's due in a row under each date.",
+        "new": [
+          "Edit a rule instead of deleting it: the pencil opens it with your words. Saving keeps its place and history, and Undo puts it back.",
+          "A rule the plan couldn't keep says \"Violated on Tue, Thu\", and Why? says in plain words what needed those hours.",
+          "Exam focus is a rule now (\"Focus on an exam's course 5 days before it\"), listed in Rules with its switch and its days to change.",
+          "Exam prep is spread over the days before the exam by default, as a rule in Rules you can switch off or make stronger.",
+          "Apple Reminders: choose which of your lists come into Friday. A list you switch off leaves your plan at once and stays in Reminders.",
+          "A 24-hour clock, in Settings → Appearance → Clock: every page, Siri and the command line follow it.",
+          "A small spinner on an integration while Friday reads it for the first time, and reads now start within a second."
+        ],
+        "changed": [
+          "After \"Done with work\", nothing more is planned that night. What then can't be done on time waits in the Inbox.",
+          "A calendar you hid is ignored everywhere: its invitations no longer come to the Inbox.",
+          "The sleep buttons show when you need them: Done with work from 6pm, Going to bed right after it, and I'm up after any night you went to bed.",
+          "An optional early event you haven't said you're going to no longer wakes you early.",
+          "Tasks are no longer marked spread or clustered. Say it as a rule instead, like \"spread my essays over several days\".",
+          "The Rules box has no row of examples under it.",
+          "The to-do lane is a row under each day's date with what's due that day: late ones first, three and \"+N more\" for the rest. The hours below keep their full width.",
+          "The Setup walk's times are in a clearer pixel font: 6:15 no longer reads as 6:18, nor 12am as 18am.",
+          "A project's step says which project it's in, on its card and in the to-do list, and opens it.",
+          "Colors are listed in rainbow order, gray last.",
+          "Friday is written in US English: color, gray."
+        ],
+        "fixed": [
+          "Going to bed at 4am or later counts as the night before, so the morning after pairs with it.",
+          "The red line for now shows at night and before you wake, not only during your day.",
+          "Plans no longer leave a long empty gap late at night between pieces of work, and replanning can improve the plan you have.",
+          "Text stays inside its box across the app, the calendars table fits its panel, and the \"Read events as\" menus are smaller.",
+          "A project whose steps are planned is no longer said to be unplanned, and once its steps are done its own time isn't planned.",
+          "A rule's hours before or after a time run to the start of your day, not 4am.",
+          "Stopping and restarting a repeat keeps the times you removed one by one.",
+          "Removing a source and forgetting it keeps the suggestions you'd accepted from it.",
+          "Work due at midnight on a Saturday isn't planned a week late.",
+          "Meals and naps across a clock change keep their times and lengths.",
+          "Signing in to Slack, Microsoft and others no longer runs out when two parts of Friday renew it at once.",
+          "A Shortcut that adds \"Tom & Jerry\" adds all of it, & and # included.",
+          "The mini calendar follows the calendar, and the View buttons keep the day you're looking at.",
+          "The paint menu closes with Esc, and an integration's box keeps the keyboard inside it.",
+          "What if and other slower questions no longer hold up the rest of the page.",
+          "Setup's day bars keep their times inside the box, and \"fits\" no longer reads as \"Ats\"."
+        ]
+      }
+    },
     {
       "version": "0.4.0",
       "released": "2026-11-12",
@@ -108,11 +159,11 @@
       "bytes": 240150716,
       "minimum_macos": "14.0",
       "notes": {
-        "summary": "Repeats you make work as they should, any Gmail with an app password, colors for events from the start, Friday on your phone, and many fixes from a full check of the app.",
+        "summary": "Repeats you make work as they should, any Gmail with an app password, colours for events from the start, Friday on your phone, and many fixes from a full check of the app.",
         "new": [
           "Friday on your phone over Tailscale: pair it with a QR code in Settings → Phone.",
           "Read any Gmail with an app password, in Settings → Integrations → Gmail.",
-          "Events get colors from the start: Exam, Class, Meeting, Work, Exercise, Social and Travel, all yours to change.",
+          "Events get colours from the start: Exam, Class, Meeting, Work, Exercise, Social and Travel, all yours to change.",
           "The calendars on your Mac lead Settings → Integrations, and you can change one Setup answer without going through Setup again.",
           "Keep a repeating task's times apart: \"laundry at least 7 days apart\".",
           "A built-in preference to stay on one course for a stretch, and a switch for doing things in one go (Settings → Schedule).",
