@@ -7,13 +7,13 @@
 import { useAi } from "@/settings/AiConnect"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
-import { Link, useNavigate, useSearchParams } from "react-router"
+import { useNavigate, useSearchParams } from "react-router"
 import { command, type CommandInput, errorWords, type Output, query, type Schemas } from "@/api/client"
 import { Box, H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useToast } from "@/components/Toasts"
 import { applyActions } from "@/dialogs/AskClaude"
 import { runCommand, useCommand } from "@/hooks/useCommand"
-import { useSettings, useStatus } from "@/hooks/queries"
+import { useStatus } from "@/hooks/queries"
 import { useInbox } from "@/inbox/InboxPage"
 import { spoken } from "@/lib/aiName"
 import { WeekPaces } from "./WeekPaces"
@@ -48,7 +48,6 @@ export function RulesPage() {
   const rules = useRules().data ?? []
   const byName = new Map(rules.map((r) => [r.name, r]))
   const owned = (useStatus().data?.config_keys ?? []).includes("rules")
-  const labOn = useSettings().data?.rules_lab === true
   const mine = rules.filter((r) => r.source === "you").length
   // ?edit=<name> opens that rule in the box (the Projects page's "Exam focus … in Rules"); ?text= starts a new one
   const [params, setParams] = useSearchParams()
@@ -72,12 +71,6 @@ export function RulesPage() {
           {rules.filter((r) => r.enabled).length} on, {mine} of them yours
         </span>
         <div style={{ flex: 1 }} />
-        {/* 15 Nov: the lab's designs are unfinished, so hidden until you switch them on (Settings → Advanced) */}
-        {labOn && (
-          <Link to="/lab/rules" className="fr-link fr-head-note" style={{ fontSize: 13, whiteSpace: "nowrap" }}>
-            Try new rule designs →
-          </Link>
-        )}
       </div>
       <div className="fr-panel" style={{ overflowY: "auto" }}>
         <div className="fr-gutter" style={{ maxWidth: 1000, padding: `28px 40px ${dockRoom(140)}`, display: "flex", flexDirection: "column", gap: 34 }}>

@@ -1,6 +1,5 @@
 // The planning day's start the helpers share (lib/dayStart.ts), and the helpers that follow it.
 import { afterEach, describe, expect, it } from "vitest"
-import { shapeOf, planMap } from "@/lab/rules/model"
 import { dayStartClock, dayStartMin, minutesOf, setDayStart } from "./dayStart"
 import { when } from "./format"
 import { fitAxis } from "./time"
@@ -39,17 +38,5 @@ describe("what follows it", () => {
     // 15 Nov: 5am Tuesday is under Tuesday's date, in the night's small hours, so the columns open at 12am
     expect(fitAxis(axis, [block("2026-10-27T05:00", "2026-10-27T05:30")], week)).toEqual({ startMin: 0, endMin: axis.endMin })
     expect(fitAxis(axis, [block("2026-10-26T06:00", "2026-10-26T07:00")], week).startMin).toBe(360)
-  })
-
-  it("the rules lab counts 5am work in the day before when the day starts at 6am", () => {
-    // Mon 26 Oct 2026 20:00–22:00, then Tue 05:00–06:00: one planning day of 3 hours with a 6am start, two with 4am
-    const plan = planMap([
-      { item_id: 1, title: "A", start: "2026-10-26T20:00", end: "2026-10-26T22:00" },
-      { item_id: 2, title: "B", start: "2026-10-27T05:00", end: "2026-10-27T06:00" },
-    ])
-    expect(shapeOf(plan, 240).heaviestDay).toBe(2)
-    expect(shapeOf(plan, 360).heaviestDay).toBe(3)
-    setDayStart("06:00")
-    expect(shapeOf(plan).heaviestDay).toBe(3) // the default is the shared day start
   })
 })

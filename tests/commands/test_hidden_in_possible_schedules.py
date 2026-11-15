@@ -55,12 +55,12 @@ def test_what_if_gives_its_events_only_to_the_calendar_marked_for_show(app: App)
     assert marked["Rocketry meeting"]["hidden_calendar"] == "Clubs" and marked["Dentist"]["hidden_calendar"] is None
 
 
-def test_other_ways_and_the_rules_lab_name_no_event_of_it(app: App) -> None:
+def test_other_ways_and_a_rule_preview_name_no_event_of_it(app: App) -> None:
     hide(app)
     hidden = {"Rocketry meeting", "Rocketry social", "Rocketry launch", "Gym", "Career fair", "Choir"}
     way = app.do("other_way", seed=1)["way"]
     assert way is None or not {b["title"] for b in way["blocks"]} & hidden
     preview = app.do("preview_weights", weights={"late_night": 3.0})
     assert not {m["title"] for m in preview["moved"]} & hidden
-    horizon = app.do("plan")  # the Rules lab's weeks draw these as the fixed times (web/src/lab/rules/shared.tsx)
+    horizon = app.do("plan")  # what a week is drawn with: its fixed times
     assert not {f["title"] for f in horizon["fixed"]} & hidden and "Dentist" in {f["title"] for f in horizon["fixed"]}

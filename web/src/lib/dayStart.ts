@@ -1,6 +1,6 @@
 // When the planning day starts (settings time.day_start): anything before it belongs to the night before, as the
 // server counts days. Root sets it each render from your settings (useDayStart), so the pure helpers that place
-// things by day (fitAxis, when, the rules lab's shapeOf) follow it without each asking; 4am until settings load.
+// things by day (fitAxis, when) follow it without each asking; 4am until settings load.
 
 const DEFAULT = 4 * 60
 let current = DEFAULT

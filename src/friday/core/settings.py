@@ -516,8 +516,6 @@ SETTINGS_TYPES: dict[str, Any] = {
     "short_term_first": bool,  # the Short term list's work comes before anything on the Long term list
     "school": bool,  # in school (Setup asks, C97): school kinds and schoolwork shown and guessed; off, never
     "mac_plan": bool,  # the plan as a "Friday" calendar on this Mac, in iCloud, so the iPhone shows it (C113)
-    # the Rules lab's unfinished designs, linked from Rules once switched on (Settings → Advanced, 15 Nov)
-    "rules_lab": bool,
     "sleep_tracking": SleepTracking,
     "meal_tracking": MealTracking,
     "phone": PhoneAccess,  # Friday on your phone over Tailscale (C61)
@@ -565,7 +563,6 @@ DEFAULTS: dict[str, Any] = {
     "short_term_first": False,
     "school": True,  # Friday began as a student's; Setup asks anyone new (C97)
     "mac_plan": False,  # off until you switch it on in its box
-    "rules_lab": False,
     "sleep_tracking": SleepTracking(),
     "meal_tracking": MealTracking(),
     "phone": PhoneAccess(),

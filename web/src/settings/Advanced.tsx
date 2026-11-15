@@ -1,9 +1,9 @@
 // Advanced (not in v22, kept so nothing the app could do is lost): what Friday learns and how, saved paces and their
-// dials, the Rules lab's switch, plugins, and any settings key as JSON with a full preview before saving.
+// dials, plugins, and any settings key as JSON with a full preview before saving.
 
 import { useState } from "react"
 import { LearningSettings } from "@/components/Learning"
-import { H, Icon, Switch } from "@/components/fr/controls"
+import { H, Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { usePaces, useSettings, useStatus } from "@/hooks/queries"
 import { Advanced } from "@/screens/SettingsRules"
@@ -23,15 +23,12 @@ export function AdvancedSection() {
   const settings = useSettings().data
   return (
     <>
-      <SectionHead title="Advanced" note="What Friday learns, saved paces, the Rules lab, plugins, and every setting by name." />
+      <SectionHead title="Advanced" note="What Friday learns, saved paces, plugins, and every setting by name." />
       <Block title="Learning">
         <LearningSettings />
       </Block>
       <Block title="Saved paces">
         <Paces />
-      </Block>
-      <Block title="Rules lab">
-        <RulesLabSwitch on={settings?.rules_lab === true} />
       </Block>
       <Block title="Plugins">
         <Plugins allowed={!!(settings?.server as { allow_plugins?: boolean } | undefined)?.allow_plugins} />
@@ -85,20 +82,6 @@ function Paces() {
           Save the dials in use
         </button>
       </div>
-    </div>
-  )
-}
-
-/** The Rules lab's unfinished designs, off until you want them (15 Nov): on, Rules links to them. */
-function RulesLabSwitch({ on }: { on: boolean }) {
-  const save = useCommand("settings_set", { label: () => (on ? "The Rules lab is hidden" : "The Rules lab is on the Rules page") })
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-      <span style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
-        <span style={{ fontWeight: 500 }}>Show the Rules lab (unfinished designs)</span>
-        <span className="fr-kicker">Other ways to see and steer your rules, still being tried. On, the Rules page links to them.</span>
-      </span>
-      <Switch on={on} onToggle={() => save({ key: "rules_lab", value: !on })} label="Show the Rules lab (unfinished designs)" />
     </div>
   )
 }

@@ -23,21 +23,18 @@ describe("the Rules page", () => {
     expect(screen.getAllByText("Yours").length).toBe(3)
     expect(screen.getAllByText("Built in").length).toBeGreaterThan(3)
     expect(screen.getByText(/How Friday fills in the rest \(\d+\)/)).toBeTruthy()
-    // 15 Nov: the lab's designs are unfinished: no link to them until they're switched on in Settings → Advanced
-    expect(screen.queryByRole("link", { name: /Try new rule designs/ })).toBeNull()
   })
 
-  it("links to the Rules lab once it's switched on in Settings → Advanced", async () => {
-    const { user } = await openFriday("/settings/advanced")
-    const lab = await screen.findByRole("switch", { name: "Show the Rules lab (unfinished designs)" })
-    expect(lab.getAttribute("aria-checked")).toBe("false")
-    await user.click(lab)
-    expect((await waitForSent("settings_set")).body).toEqual({ key: "rules_lab", value: true })
-    await waitFor(async () => expect((await friday.q<{ rules_lab: boolean }>("settings")).rules_lab).toBe(true))
+  it("has no Rules lab: no link to one, no switch for it, and an old link to it opens Rules", async () => {
+    // 15 Nov, the user: "i don't think we need a rules lab"
+    await openFriday("/settings/advanced")
+    await screen.findByText("Every setting")
+    expect(screen.queryByText(/Rules lab/)).toBeNull()
+    expect(screen.queryByRole("switch", { name: /Rules lab/ })).toBeNull()
     cleanup()
-    await openFriday("/rules")
-    expect((await screen.findByRole("link", { name: /Try new rule designs/ })).getAttribute("href")).toContain("/lab/rules")
-    await friday.c("settings_set", { key: "rules_lab", value: false })
+    await openFriday("/lab/rules/dials")
+    await waitFor(() => expect(window.location.hash).toBe("#/rules"))
+    expect(screen.queryByRole("link", { name: /Try new rule designs/ })).toBeNull()
   })
 
   it("has no row of examples under the box, and a rule typed is read as you type it", async () => {
