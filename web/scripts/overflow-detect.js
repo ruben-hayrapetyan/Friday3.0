@@ -149,6 +149,29 @@
       if (wide > 3 && tall > 3) report("controls on top of each other", a, `${Math.round(wide)}×${Math.round(tall)}px`, ` (and ${name(b)})`)
     }
   }
+  // 5. an open dropdown cut off by what it sits in (15 Nov: the Projects page's tag menus, cut by an exam card's
+  // rounded corners and a project's column). Only what really clips it counts: for a list placed absolutely, its
+  // containing block and what clips that; for one fixed over the page, only a transformed parent (the Now bar)
+  const contains = (s) => s.transform !== "none" || s.filter !== "none" || s.perspective !== "none" || /paint|layout|strict|content/.test(s.contain)
+  for (const list of document.querySelectorAll("[role=listbox], [role=menu]")) {
+    if (!shown(list)) continue
+    const s = css(list)
+    let from = null
+    if (s.position === "fixed") {
+      for (let e = list.parentElement; e && e !== document.body; e = e.parentElement) if (contains(css(e))) { from = e; break }
+    } else if (s.position === "absolute") {
+      from = list.offsetParent
+    } else from = list.parentElement
+    const r = list.getBoundingClientRect()
+    let box = { left: r.left, right: r.right, top: r.top, bottom: r.bottom }
+    for (let e = from; e && e !== document.body && e !== document.documentElement; e = e.parentElement) {
+      if (!clips(css(e))) continue
+      const c = e.getBoundingClientRect()
+      box = { left: Math.max(box.left, c.left), right: Math.min(box.right, c.right), top: Math.max(box.top, c.top), bottom: Math.min(box.bottom, c.bottom) }
+    }
+    const lost = Math.max(r.right - box.right, box.left - r.left, r.bottom - box.bottom, box.top - r.top, 0)
+    if (lost > SLACK) report("a dropdown cut off by what it sits in", list, `${Math.round(lost)}px`)
+  }
   // 4. a control the Now dock covers even with its column scrolled to the end (15 Nov: with the sleep and meal rows
   // up, the dock covered the Inbox's Accept and Decline, and no scroll brought them out). Every scrolling column is
   // taken to its end, where whatever is still under the dock can't be uncovered, then put back.

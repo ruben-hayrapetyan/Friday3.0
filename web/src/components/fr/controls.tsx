@@ -1,7 +1,7 @@
 // The small controls v22 repeats everywhere (theme/friday.css draws them).
 
 import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from "react"
-import { useOnScreen } from "@/lib/onScreen"
+import { useMenuPlace } from "@/lib/menuPlace"
 
 /** A Phosphor icon by name, e.g. `gear-six`; `fill` for the filled set. */
 export function Icon({ name, size, fill, style }: { name: string; size?: number; fill?: boolean; style?: CSSProperties }) {
@@ -44,7 +44,8 @@ export function Menu<T extends string>(props: { options: readonly Option<T>[]; v
   const box = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
   const escape = useMenuClose(open, setOpen, box, button)
-  const list = useOnScreen<HTMLDivElement>(open) // right-aligned, on a phone it could run off the left
+  const list = useRef<HTMLDivElement>(null)
+  useMenuPlace(open, button, list) // over the page beside its button: nothing clips it, and it stays on the screen
   return (
     <div ref={box} className="fr-menu" onKeyDown={escape}>
       <button ref={button} className="fr-menu-button" aria-haspopup="listbox" aria-expanded={open} aria-label={label} disabled={disabled} onClick={() => setOpen(!open)}>

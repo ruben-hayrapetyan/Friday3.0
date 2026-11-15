@@ -52,6 +52,8 @@ const STATES = [
   { name: "projects & exams", path: "/projects" },
   { name: "exam prep", path: "/projects", each: "main button.fr-hover-text", most: 2 },
   { name: "new exam", path: "/projects", click: ["New exam"] },
+  // 15 Nov: an exam card's tag menu was cut off by the card (and a project's by its column)
+  { name: "exam tag menu", path: "/projects", click: ["Tag for"] },
   { name: "new project", path: "/projects", click: ["New project"] },
   { name: "inbox", path: "/inbox" },
   { name: "inbox messages", path: "/inbox", each: '[aria-label="Waiting for you"] [role="listitem"], [aria-label="Waiting for you"] > button', most: 12 },
