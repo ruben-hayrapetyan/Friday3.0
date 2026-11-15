@@ -385,3 +385,15 @@ def test_features_and_help_say_rules_change_in_place_and_done_with_work_ends_the
         in help_
     )
     assert "Why? says what needed those hours." in help_
+
+
+def test_features_and_help_say_what_0_4_2_brings() -> None:
+    """H202–H204 (15 Nov): Features says all-day events come in and a heavy week can be lightened; Help says a project
+    can be saved as a template and a saved one removed with its ✕."""
+    features, help_ = (" ".join((SITE / name).read_text().split()) for name in ("features.html", "help.html"))
+    assert "<b>All-day events too:</b> holidays and your own all-day plans show at the top of each day" in features
+    assert "an all-day homework entry becomes a to-do due that day." in features
+    assert "<b>Lighten a heavy week.</b> When a week holds more than usual, Friday offers work" in features
+    assert "can move later without being late, each tried first and undoable." in features
+    assert "A project you'll do again can be saved as a template (Save as template on its page)" in help_
+    assert "Remove one you saved with the ✕ on its card." in help_
