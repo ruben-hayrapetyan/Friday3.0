@@ -481,6 +481,26 @@ describe("the grid", () => {
     await waitFor(() => expect(screen.queryByText("Planned · Friday decides")).toBeNull())
   })
 
+  // 15 Nov: a client's notes: a two-hour event's location was cut to one line, "Seminar room…", in a box with room
+  it("wraps a tall event's title and its time and location to the lines its box holds", async () => {
+    const day = addDays(await today(), 1)
+    const location = "Physical Sciences Building, Seminar Room 401 (enter from the east courtyard)"
+    const { item } = (await friday.c<{ result: { item: { id: number } } }>("add", { title: "Study group for the organic chemistry prelim", when: "fixed", start: `${day}T08:00`, end: `${day}T10:00`, location })).result
+    await openFriday("/")
+    const box = await findBox(`F${item.id}`)
+    const details = box.querySelector<HTMLElement>("[data-lines]") as HTMLElement
+    expect(details.textContent).toMatch(new RegExp(`· ${location.replace(/[()]/g, "\\$&")}$`))
+    // never one cut line: it wraps, breaking a long word rather than running out, to the lines the box has left
+    expect(details.style.whiteSpace).not.toBe("nowrap")
+    expect(details.style.textOverflow).not.toBe("ellipsis")
+    expect(details.style.overflowWrap).toBe("anywhere")
+    expect(Number(details.dataset.lines)).toBeGreaterThanOrEqual(3)
+    const title = within(box).getByText("Study group for the organic chemistry prelim")
+    expect(title.style.whiteSpace).toBe("normal")
+    expect(Number(title.dataset.titleLines)).toBeGreaterThanOrEqual(3)
+    await friday.c("drop", { id: item.id })
+  })
+
   it("drafts a new event on a double-click in empty time", async () => {
     await openOnNextWeek()
     const column = document.querySelector<HTMLElement>("[data-top-min]") as HTMLElement
