@@ -304,7 +304,10 @@ interface State {
 const row = { display: "flex", alignItems: "center", gap: 14, padding: "10px 14px 12px 18px" } as const
 const column = { display: "flex", flexDirection: "column", minWidth: 0, flex: 1 } as const
 const kicker = { display: "flex", gap: 6, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)", whiteSpace: "nowrap", overflow: "hidden" } as const
-const dim = { overflow: "hidden", textOverflow: "ellipsis", color: "var(--color-neutral-500)" } as const
+const dim = { overflow: "hidden", textOverflow: "ellipsis", color: "var(--color-neutral-500)", flexShrink: 1000 } as const
+// the kicker's time: "· then …" gives way first; in a phone's width the time itself ends in … rather than being cut
+// part way (15 Nov: "Now 12:30pm–1pm" lost its last 6px at 390px)
+const kickerTime = { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" } as const
 const buttons = { display: "flex", gap: 6, flex: "none" } as const
 const titleStyle = { fontSize: 22, lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } as const
 const clamp = (x: number) => Math.max(0, Math.min(100, x))
@@ -325,7 +328,7 @@ function Timing({ cur, elapsed, started, next, dot, menu, onMenu, onFold }: Stat
         <div {...foldable(onFold)} style={{ ...column, ...foldable(onFold).style }}>
           <div style={kicker}>
             <Pulse color={dot} />
-            <span className="tnum">Timing since {clock(cur.start)}</span>
+            <span className="tnum" style={kickerTime}>Timing since {clock(cur.start)}</span>
             <span style={dim}>
               · {left > 0 ? `${span(left)} left` : "past its time"} · then {next}
             </span>
@@ -411,7 +414,7 @@ function On({ cur, next, dot, menu, onMenu, onFold }: State) {
         <div {...foldable(onFold)} style={{ ...column, ...foldable(onFold).style }}>
           <div style={kicker}>
             <span style={{ flex: "none", width: 6, height: 6, borderRadius: "50%", background: dot }} />
-            <span className="tnum">
+            <span className="tnum" style={kickerTime}>
               Now {clock(cur.start)}–{clock(cur.end)}
             </span>
             <span style={dim}>· then {next}</span>
@@ -446,7 +449,7 @@ function InEvent({ cur, next, dot, onFold }: { cur: Block; next: string; dot: st
         <div {...foldable(onFold)} style={{ ...column, ...foldable(onFold).style }}>
           <div style={kicker}>
             <span style={{ flex: "none", width: 6, height: 6, borderRadius: "50%", background: dot }} />
-            <span className="tnum">Now, until {clock(cur.end)}</span>
+            <span className="tnum" style={kickerTime}>Now, until {clock(cur.end)}</span>
             <span style={dim}>· then {next}</span>
           </div>
           <div className="fr-h" title={cur.title} style={titleStyle}>

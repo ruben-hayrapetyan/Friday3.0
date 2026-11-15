@@ -130,6 +130,20 @@ describe("the plan's blocks and a month's days (glass box)", () => {
     expect(clamped(1)).toMatchObject({ display: "-webkit-box", WebkitLineClamp: 1, overflow: "hidden", overflowWrap: "anywhere" })
   })
 
+  // 15 Nov, the layout check at 390px: "Now 12:30pm–1pm" lost its last 6px (only seen when the check ran in a block)
+  it("end the Now bar's time in … in a phone's width, after its '· then …' has given way", () => {
+    const dock = read("now/Dock.tsx")
+    expect(dock).toMatch(/const kickerTime = \{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" \}/)
+    expect(dock).toMatch(/const dim = \{[^}]*flexShrink: 1000/)
+    for (const said of ["Timing since {clock(cur.start)}", "Now, until {clock(cur.end)}"]) expect(dock).toContain(`<span className="tnum" style={kickerTime}>${said}`)
+    expect(dock).toMatch(/<span className="tnum" style=\{kickerTime\}>\s*Now \{clock\(cur.start\)\}/)
+  })
+
+  // 15 Nov: the day view's side column, scrolling once it left room for the Now bar, let its rows shrink
+  it("keep the day view's side column rows their height when it scrolls", () => {
+    expect(read("plan/DayAside.tsx")).toMatch(/<aside\s+className="fr-scroll-column"/)
+  })
+
   it("in a day too narrow for them, drop a thing's time and the word 'due', keeping the title and the count", () => {
     const month = read("plan/MonthView.tsx")
     expect(month).toContain("repeat(${weeks.length}, minmax(min-content, 1fr))") // a week never shorter than its fullest day

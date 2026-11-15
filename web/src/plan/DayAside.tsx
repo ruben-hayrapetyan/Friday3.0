@@ -31,6 +31,7 @@ export function DayAside({ date, calendar, plan }: { date: string; calendar: Sch
   const last = rows.at(-1)
   return (
     <aside
+      className="fr-scroll-column"
       style={{
         position: "absolute",
         right: 12,
