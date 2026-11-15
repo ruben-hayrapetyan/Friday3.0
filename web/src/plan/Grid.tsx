@@ -29,6 +29,7 @@ import { inARow, type Pick, pickOfBlock, pickOfEvent, picks, shifted, usePicks }
 import { givesTimeToWork, layers, sideBySide } from "./layers"
 import { WholeDays } from "./WholeDays"
 import { eatenRoutines, pastMeals } from "./pastMeals"
+import { laneBox, timerLanes } from "./timerLanes"
 import { isWholeDay } from "./wholeDay"
 import { dockRoom } from "@/now/dockRoom"
 
@@ -45,8 +46,10 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const ghosts = useGhosts().data ?? []
   const nowData = useNow().data
   const current = nowData?.current?.key
-  const timer = useStatus().data?.timer
+  const status = useStatus().data
+  const timer = status?.timer
   const elapsed = useElapsed(timer?.elapsed_s)
+  const drift = timer ? elapsed - (timer.elapsed_s ?? 0) : 0 // seconds since the server said, for those alongside too
   const open = new Set((useItems().data ?? []).map((i) => i.id))
   const moved = useMoved(plan)
   // What if: what the tried changes made, changed or deleted, and blocks' moves against your real plan.
@@ -260,10 +263,11 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                 <GhostBox key={`g${p.item.key}`} p={p} />
               ))}
               {drag?.moved && drag.at && drag.over === "calendar" && (drag.group || drag.rows ? <GroupPreview drag={drag} list={picked} date={date} axis={axis} /> : <Preview drag={drag} date={date} axis={axis} today={today} />)}
-              {timer && date === dated && nowData?.current_source === "timer" && (
-                // begun before midnight: drawn from the top of today's column
-                <TimerBox title={nowData.current?.title ?? ""} top={Math.max(0, now - elapsed / 60 - toMin(date) - axis.startMin) * PX} seconds={elapsed} shown={Math.min(elapsed / 60, now - toMin(date) - axis.startMin)} />
-              )}
+              {date === dated &&
+                timerLanes(timer && nowData?.current_source === "timer" ? { key: "main", title: nowData.current?.title ?? "", seconds: elapsed } : null, status?.alongside ?? [], drift).map((t) => (
+                  // begun before midnight: drawn from the top of today's column
+                  <TimerBox key={t.key} title={t.title} top={Math.max(0, now - t.seconds / 60 - toMin(date) - axis.startMin) * PX} seconds={t.seconds} shown={Math.min(t.seconds / 60, now - toMin(date) - axis.startMin)} lane={t.lane} lanes={t.lanes} />
+                ))}
               {nowAt >= 0 && nowAt <= axis.endMin - axis.startMin && <NowLine top={nowAt * PX} today={date === dated} />}
             </div>
           )
@@ -275,14 +279,13 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
 
 /** What you're timing, from when you started to now: drawn from the timer itself, so it shows even when the plan
  * has no quarter hour for it (a few minutes before class). */
-function TimerBox({ title, top, seconds, shown }: { title: string; top: number; seconds: number; shown: number }) {
+function TimerBox({ title, top, seconds, shown, lane, lanes }: { title: string; top: number; seconds: number; shown: number; lane: number; lanes: number }) {
   const minutes = shown // the minutes of it in this column
   return (
     <div
       style={{
         position: "absolute",
-        left: 3,
-        right: 3,
+        ...laneBox(lane, lanes),
         top,
         height: Math.max(15, minutes) * PX,
         zIndex: 1,
@@ -298,7 +301,9 @@ function TimerBox({ title, top, seconds, shown }: { title: string; top: number; 
         boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 55%, transparent)",
       }}
     >
-      ● {title} · {hms(seconds)}
+      <span data-timer-lane={lane}>
+        ● {title} · {hms(seconds)}
+      </span>
     </div>
   )
 }

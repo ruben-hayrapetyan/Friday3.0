@@ -114,6 +114,20 @@ describe("timing something", () => {
     await friday.c("stop", {})
   })
 
+  // 15 Nov, a client: "timing two tasks at once but only one is getting recorded in the calendar as im doing it"
+  it("draws both things being timed on the calendar while they run, side by side", async () => {
+    const [a, b] = await work()
+    await friday.c("start", { id: a.item_id })
+    await friday.c("start", { id: b.item_id, alongside: true })
+    await openDock("/")
+    await waitFor(() => expect(document.querySelector('[data-timer-lane="1"]')).not.toBeNull(), { timeout: 10_000 })
+    // the one started alongside becomes the main timer; the one before it goes on beside it
+    expect(document.querySelector('[data-timer-lane="0"]')?.textContent).toContain(b.title)
+    expect(document.querySelector('[data-timer-lane="1"]')?.textContent).toContain(a.title)
+    await friday.c("stop", { id: b.item_id })
+    await friday.c("stop", {})
+  })
+
   it("offers More: switch, stuck, shove, pace and the task's detail", async () => {
     const [a] = await work()
     await friday.c("start", { id: a.item_id })
