@@ -2257,7 +2257,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Save a project's children, in order, as a template; each step's share is its part of the hours. */
+        /** Save a project's children, in order, as a template; each step's share is its part of the hours. A step you */
         post: operations["template_save"];
         delete?: never;
         options?: never;

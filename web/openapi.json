@@ -9540,7 +9540,7 @@
   },
   "/api/c/template_save": {
    "post": {
-    "summary": "Save a project's children, in order, as a template; each step's share is its part of the hours.",
+    "summary": "Save a project's children, in order, as a template; each step's share is its part of the hours. A step you",
     "operationId": "template_save",
     "parameters": [
      {

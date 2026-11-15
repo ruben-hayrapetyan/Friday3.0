@@ -1403,7 +1403,7 @@ VERBS = {
         commands.TemplateSaveInput,
         True,
         False,
-        "Save a project's children, in order, as a template; each step's share is its part of the hours.",
+        "Save a project's children, in order, as a template; each step's share is its part of the hours. A step you",
     ),
     "terms": Verb(
         "GET", "/api/q/terms", commands.Empty, False, False, "Friday's terms, and whether you have yet to accept them."
