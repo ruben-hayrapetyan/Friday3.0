@@ -44,6 +44,15 @@ class TestGlassBox:
         app.do("template_save", name="Mine", project_id=project)
         assert saved(app) == ["Draft", "Outline", "Revise", "Print it"]
 
+    def test_a_deleted_step_isnt_saved(self, app: App) -> None:
+        """15 Nov, a client: Save as template kept a step deleted from the project."""
+        project, (outline, _, _) = essay(app)
+        app.do("drop", id=outline)
+        app.do("template_save", name="Mine", project_id=project)
+        assert saved(app) == ["Draft", "Revise"]
+        shares = [s["share"] for s in app.do("settings")["templates"]["Mine"]]
+        assert sum(shares) == pytest.approx(1, abs=0.01)
+
     def test_another_project_s_order_doesn_t_leak_in(self, app: App) -> None:
         first, (a, b, c) = essay(app)
         second, _ = essay(app)

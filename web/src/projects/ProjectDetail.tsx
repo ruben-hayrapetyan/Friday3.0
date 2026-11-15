@@ -5,7 +5,7 @@ import { useRef, useState } from "react"
 import type { Item } from "@/api/client"
 import { Box, Check, H, Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
-import { useHorizon } from "@/hooks/queries"
+import { useHorizon, useSettings } from "@/hooks/queries"
 import { dur, when } from "@/lib/format"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
@@ -21,6 +21,11 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
   const reorder = useCommand("reorder", { label: () => "Reordered" })
   // A project you'll do again, as a template New project offers (3 Nov: `template_save` had no button)
   const saveTemplate = useCommand("template_save", { label: (o) => `${o.result.message ?? "Saved"}: New project offers it` })
+  // One of that name already saved is asked about here, not written over (15 Nov, your choice on a client's notes)
+  const templates = ((useSettings().data as Record<string, unknown> | undefined)?.templates ?? {}) as Record<string, unknown>
+  const [asked, setAsked] = useState<number | null>(null) // the project it's asking for, so another doesn't show it
+  const replacing = asked === p.item.id
+  const save = () => (setAsked(null), saveTemplate({ name: p.item.title, project_id: p.item.id }))
   const [text, setText] = useState("")
   const sending = useRef(false) // ↩ twice adds the step once
   const addStep = async () => {
@@ -51,8 +56,19 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
           Projects & exams
         </button>
         <span style={{ flex: 1 }} />
-        {steps.length > 0 && (
-          <button className="btn btn-ghost" onClick={() => saveTemplate({ name: p.item.title, project_id: p.item.id })} title="Its steps, in this order and with their share of the hours, for the next project like it" style={{ fontSize: 12.5 }}>
+        {steps.length > 0 && replacing && (
+          <span style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", fontSize: 12.5 }}>
+            <span>A template called “{p.item.title}” is saved already. Replace it?</span>
+            <button className="btn btn-ghost" onClick={save} style={{ fontSize: 12.5 }}>
+              Replace
+            </button>
+            <button className="btn btn-ghost" onClick={() => setAsked(null)} style={{ fontSize: 12.5 }}>
+              Keep it
+            </button>
+          </span>
+        )}
+        {steps.length > 0 && !replacing && (
+          <button className="btn btn-ghost" onClick={() => (Object.keys(templates).includes(p.item.title) ? setAsked(p.item.id) : save())} title="Its steps, in this order and with their share of the hours, for the next project like it" style={{ fontSize: 12.5 }}>
             <Icon name="copy-simple" size={13} />
             Save as template
           </button>

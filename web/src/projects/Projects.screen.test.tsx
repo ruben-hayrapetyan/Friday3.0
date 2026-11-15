@@ -184,6 +184,41 @@ describe("projects", () => {
     await live(client, () => expect(screen.queryByText("Print handouts")).toBeNull())
   })
 
+  it("asks before saving over a template of the same name", async () => {
+    // 15 Nov, a client: saving again wrote over the one saved before without a word
+    const { user, client } = await page()
+    await user.click(await screen.findByRole("button", { name: /Rocketry design review/ }))
+    await live(client, () => expect(screen.getByRole("button", { name: /Save as template/ })).toBeTruthy())
+    sent.length = 0
+    await user.click(screen.getByRole("button", { name: /Save as template/ }))
+    expect(screen.getByText("A template called “Rocketry design review” is saved already. Replace it?")).toBeTruthy()
+    expect(sent.filter((s) => s.name === "template_save")).toHaveLength(0)
+    await user.click(screen.getByRole("button", { name: "Keep it" }))
+    expect(screen.queryByText(/Replace it\?/)).toBeNull()
+    expect(sent.filter((s) => s.name === "template_save")).toHaveLength(0)
+    await user.click(screen.getByRole("button", { name: /Save as template/ }))
+    await user.click(screen.getByRole("button", { name: "Replace" }))
+    expect((await waitForSent("template_save")).body).toEqual({ name: "Rocketry design review", project_id: (await itemNamed("Rocketry design review")).id })
+    expect(screen.queryByText(/Replace it\?/)).toBeNull()
+  })
+
+  it("removes a template you saved, with Undo; Essay and Presentation stay", async () => {
+    const { user, client } = await page()
+    await user.click(screen.getAllByRole("button", { name: "New project" })[0])
+    const dialog = await screen.findByRole("dialog")
+    await within(dialog).findByRole("button", { name: /^Rocketry design review/ })
+    expect(within(dialog).queryByRole("button", { name: "Remove template Essay" })).toBeNull()
+    expect(within(dialog).queryByRole("button", { name: "Remove template Presentation" })).toBeNull()
+    await user.click(within(dialog).getByRole("button", { name: "Remove template Rocketry design review" }))
+    expect(within(dialog).queryByRole("button", { name: /^Rocketry design review/ })).toBeNull() // gone at once
+    const removed = (await waitForSent("settings_set")).body as { key: string; value: Record<string, unknown> }
+    expect(removed.key).toBe("templates")
+    expect(Object.keys(removed.value)).toEqual(["Essay", "Presentation"])
+    await user.click(await screen.findByRole("button", { name: "Undo" }))
+    await live(client, () => expect(within(dialog).getByRole("button", { name: /^Rocketry design review/ })).toBeTruthy())
+    expect(screen.getByRole("dialog")).toBeTruthy() // still open
+  })
+
   it("makes a blank project, moves between projects, and goes back to them all", async () => {
     const { user, client } = await page()
     const dialog = await newProject(user, "Lab notebook cleanup")

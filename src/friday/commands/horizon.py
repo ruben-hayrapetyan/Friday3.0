@@ -211,9 +211,11 @@ def step_aims(ctx: Ctx, inp: TemplateApplyInput, shares: list[float]) -> list[di
 
 @command("template_save")
 def template_save(ctx: Ctx, inp: TemplateSaveInput) -> Changed:
-    """Save a project's children, in order, as a template; each step's share is its part of the hours."""
+    """Save a project's children, in order, as a template; each step's share is its part of the hours. A step you
+    deleted isn't one (15 Nov, a client: an Essay with its Outline deleted saved Outline, Draft, Revise)."""
     kids = [item_from_row(r) for r in rows(
-        ctx.conn, "SELECT * FROM items WHERE user_id = ? AND parent_id = ? ORDER BY id", [ctx.user_id, inp.project_id]
+        ctx.conn, "SELECT * FROM items WHERE user_id = ? AND parent_id = ? AND status != 'dropped' ORDER BY id",
+        [ctx.user_id, inp.project_id],
     )]  # fmt: skip
     # In the order the project shows them, as you put them (`reorder`); steps added since go after (3 Nov: a saved
     # template ignored the order you had dragged the steps into)
