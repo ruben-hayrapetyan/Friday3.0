@@ -52,6 +52,7 @@ from friday.core.guess import course_of, fallback_kind, guess_preset
 from friday.core.items import FieldError, Item, amount_units, validate, would_create_cycle
 from friday.core.presets import in_use
 from friday.core.quickadd import parse
+from friday.core.rows import item_from_row
 from friday.core.textnorm import identity_text, norm, plain_words
 from friday.core.time import UNIT_MIN, to_local
 from friday.estimate.durations import Estimate, bias_ratio, estimate_length, history
@@ -331,10 +332,28 @@ def edit(ctx: Ctx, inp: EditInput) -> ItemResult:
     validate(changed)
     if changed.parent_id != item.parent_id:
         check_parent(ctx, item.id, changed.parent_id)
+    steps = steps_of(ctx, item) if changed.area_id != item.area_id else []
     update_item(ctx, item, changed)
+    for step in steps:  # in this command, so one Undo puts them back with it
+        if step.area_id in (item.area_id, None):
+            update_item(ctx, step, dataclasses.replace(step, area_id=changed.area_id))
     # one time of a repeat goes where its repeat goes ("Only Friday" stays in Friday; 8 Nov it went to Google)
     queue_event_write(ctx, changed, "save", target=calendar_of(ctx, changed.series_id) if changed.series_id else None)
     return ItemResult(item=item_out(ctx, changed, minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0)))
+
+
+def steps_of(ctx: Ctx, item: Item) -> list[Item]:
+    """What takes a project's or an exam's new tag along with it: its steps, an exam's prep (15 Nov, your choice on a
+    client's notes: a project's or exam's tag changed, its steps that had the old tag or none take the new one; one
+    tagged otherwise keeps its own). Done ones too, not deleted ones."""
+    from friday.commands.exams import is_exam, prep_of  # exams imports horizon, which imports this module
+
+    kids = [item_from_row(r) for r in rows(
+        ctx.conn, "SELECT * FROM items WHERE user_id = ? AND parent_id = ? AND status IN ('todo', 'done') ORDER BY id",
+        [ctx.user_id, item.id],
+    )]  # fmt: skip
+    prep = prep_of(ctx, item) if item.when == "fixed" and is_exam(item) else []
+    return [*kids, *(p for p in prep if p.id not in {k.id for k in kids})]
 
 
 def edit_from(ctx: Ctx, item: Item, from_date: str, given: dict[str, Any]) -> ItemResult:

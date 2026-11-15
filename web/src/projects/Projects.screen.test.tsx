@@ -219,6 +219,26 @@ describe("projects", () => {
     expect(screen.getByRole("dialog")).toBeTruthy() // still open
   })
 
+  it("changes a project's tag on its page, and its steps that had the old one with it", async () => {
+    // 15 Nov, a client: a project's tag couldn't be changed; a step tagged otherwise keeps its own
+    const slides = await itemNamed("Slides")
+    await friday.c("edit", { id: slides.id, area: "MATH 1910" })
+    const { user, client } = await page()
+    await user.click(await screen.findByRole("button", { name: /Rocketry design review/ }))
+    const project = await itemNamed("Rocketry design review")
+    await user.click(await screen.findByRole("button", { name: "Tag for Rocketry design review" }))
+    await user.click(screen.getByRole("option", { name: "PHYS 1112" }))
+    expect(screen.getByRole("button", { name: "Tag for Rocketry design review" }).textContent).toBe("PHYS 1112") // at once
+    expect((await waitForSent("edit")).body).toEqual({ id: project.id, area: "PHYS 1112" })
+    const areas = async () => Object.fromEntries((await Promise.all(["Rocketry design review", "Research", "Slides", "Rehearse"].map(itemNamed))).map((i) => [i.title, i.area]))
+    await waitFor(async () => expect(await areas()).toEqual({ "Rocketry design review": "PHYS 1112", Research: "PHYS 1112", Slides: "MATH 1910", Rehearse: "PHYS 1112" }))
+    // one Undo puts them all back
+    await user.click((await screen.findAllByRole("button", { name: "Undo" })).at(-1) as HTMLElement)
+    await waitFor(async () => expect(await areas()).toEqual({ "Rocketry design review": "Rocketry", Research: "Rocketry", Slides: "MATH 1910", Rehearse: "Rocketry" }))
+    await live(client, () => expect(screen.getByRole("button", { name: "Tag for Rocketry design review" }).textContent).toBe("Rocketry"))
+    await friday.c("edit", { id: slides.id, area: "Rocketry" })
+  })
+
   it("makes a blank project, moves between projects, and goes back to them all", async () => {
     const { user, client } = await page()
     const dialog = await newProject(user, "Lab notebook cleanup")
@@ -294,6 +314,29 @@ describe("exams", () => {
     const phys = screen.getByRole("article", { name: /^PHYS 1112 Prelim 2/ })
     await user.click(within(phys).getByRole("button", { name: "See the day" }))
     await waitFor(() => expect(window.location.hash).toBe("#/"))
+  })
+
+  it("changes an exam's tag on its card, and its color follows its own tag over its prep's", async () => {
+    // 15 Nov, a client: an exam's tag couldn't be changed; its prep tagged otherwise keeps its own
+    const exam = (await friday.q<{ item: Item; prep: { item: Item }[] }[]>("exams")).find((e) => e.item.title === "MATH 1910 Prelim 2")!
+    const prep = exam.prep[0].item
+    await friday.c("edit", { id: prep.id, area: "Rocketry" })
+    const { user } = await page()
+    const swatch = (title: string): HTMLElement => {
+      const menu = within(screen.getByRole("article", { name: new RegExp(`^${title}`) })).getByRole("button", { name: `Tag for ${title}` })
+      return menu.closest(".fr-menu")?.parentElement?.querySelector(".fr-swatch") as HTMLElement
+    }
+    const math = () => within(screen.getByRole("article", { name: /^MATH 1910 Prelim 2/ }))
+    await user.click(math().getByRole("button", { name: "Tag for MATH 1910 Prelim 2" }))
+    await user.click(screen.getByRole("option", { name: "PHYS 1112" }))
+    expect(swatch("MATH 1910 Prelim 2").style.background).toBe(swatch("PHYS 1112 Prelim 2").style.background) // at once, its own tag's
+    expect((await waitForSent("edit")).body).toEqual({ id: exam.item.id, area: "PHYS 1112" })
+    const examArea = async () => (await friday.q<{ item: Item }[]>("exams")).find((e) => e.item.id === exam.item.id)?.item.area
+    await waitFor(async () => expect(await examArea()).toBe("PHYS 1112"))
+    expect((await itemNamed(prep.title)).area).toBe("Rocketry") // tagged otherwise: kept
+    await user.click((await screen.findAllByRole("button", { name: "Undo" })).at(-1) as HTMLElement)
+    await waitFor(async () => expect(await examArea()).toBe(exam.item.area))
+    await friday.c("edit", { id: prep.id, area: prep.area })
   })
 
   it("offers exam focus as a rule, in Rules, and points at the rule once it's on", async () => {
