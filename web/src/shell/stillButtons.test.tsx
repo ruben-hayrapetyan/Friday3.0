@@ -37,11 +37,22 @@ describe("− and + steppers (glass box)", () => {
     const text = readFileSync(path, "utf8")
     return [...text.matchAll(/<Icon name="minus" \/>\s*<\/button>\s*<span([^>]*)>/g)].map((m) => ({ path, span: m[1] }))
   })
-  it("are found", () => expect(steppers.length).toBeGreaterThanOrEqual(6))
+  // or a box to type the length in (16 Nov: "what if i need 100 hours, i just want to type it"), a set width too
+  const typed = sources(root).flatMap((path) => {
+    const text = readFileSync(path, "utf8")
+    return [...text.matchAll(/<Icon name="minus" \/>\s*<\/button>\s*(?:\{\/\*[^*]*\*\/\}\s*)?<LengthInput([\s\S]*?)\/>/g)].map((m) => ({ path, box: m[1] }))
+  })
+  it("are found", () => expect(steppers.length + typed.length).toBeGreaterThanOrEqual(6))
+  it("include the typed lengths of a new exam's prep and a new project", () => {
+    expect(typed.map((t) => t.path.replace(root, "")).sort()).toEqual(expect.arrayContaining(["/projects/NewExam.tsx", "/projects/NewProject.tsx"]))
+  })
   it.each(steppers.map((s) => [s.path.replace(root, ""), s.span]))("%s: its number has a fixed width", (_path, span) => {
     expect(span).toMatch(/\bwidth: \d+/)
     expect(span).not.toMatch(/minWidth/)
     expect(span).toMatch(/flex: "none"/)
+  })
+  it.each(typed.map((t) => [t.path.replace(root, ""), t.box]))("%s: its typed length has a fixed width", (_path, box) => {
+    expect(box).toMatch(/\bwidth=\{\d+\}/)
   })
 })
 

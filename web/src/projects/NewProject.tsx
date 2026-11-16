@@ -5,11 +5,10 @@ import { useEffect, useRef, useState } from "react"
 import { Chip, H, Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useAreas, useSettings } from "@/hooks/queries"
-import { dur } from "@/lib/format"
 import { addDays } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
-import { DuePicker } from "@/todo/Pickers"
+import { DuePicker, LengthInput } from "@/todo/Pickers"
 
 const ICONS: Record<string, string> = { Essay: "article", Presentation: "presentation-chart" }
 // Friday's own (core/settings.py DEFAULT_TEMPLATES): they stay; only the ones you saved can be removed (15 Nov)
@@ -25,7 +24,7 @@ export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
   const [template, setTemplate] = useState<string | null>(Object.keys(templates)[0] ?? null)
   const [area, setArea] = useState<string | null>(null)
   const [due, setDue] = useState<string | null>(`${addDays(today, 7)}T23:59`)
-  const [hours, setHours] = useState(6)
+  const [minutes, setMinutes] = useState(360) // about how long in all: typed, or an hour at a time
   // Caught before the fields see it: the due field keeps Escape to itself.
   useEffect(() => {
     const escape = (e: KeyboardEvent) => e.key === "Escape" && onClose()
@@ -51,8 +50,8 @@ export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
     setBusy(true)
     try {
       const out = template
-        ? await apply({ template, title, hours, due, area })
-        : await add({ title, preset: "Project", due, area, duration_min: hours * 60 })
+        ? await apply({ template, title, hours: minutes / 60, due, area })
+        : await add({ title, preset: "Project", due, area, duration_min: minutes })
       if (out) onClose(out.result.item?.id)
     } finally {
       sending.current = false
@@ -108,13 +107,12 @@ export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
           <span className="fr-kicker" style={{ width: 120 }}>
             About how long, in all
           </span>
-          <button className="btn btn-icon btn-secondary" onClick={() => setHours(Math.max(1, hours - 1))} aria-label="Less" style={{ width: 26, height: 26 }}>
+          <button className="btn btn-icon btn-secondary" onClick={() => setMinutes(Math.max(60, minutes - 60))} aria-label="Less" style={{ width: 26, height: 26 }}>
             <Icon name="minus" />
           </button>
-          <span className="tnum" style={{ width: 56, flex: "none", whiteSpace: "nowrap", textAlign: "center" }}>
-            {dur(hours * 60)}
-          </span>
-          <button className="btn btn-icon btn-secondary" onClick={() => setHours(hours + 1)} aria-label="More" style={{ width: 26, height: 26 }}>
+          {/* typed too: "100h" (16 Nov) */}
+          <LengthInput value={minutes} onPick={(m) => m && m >= 15 && setMinutes(m)} width={96} label="About how long, in all" placeholder="e.g. 40h" />
+          <button className="btn btn-icon btn-secondary" onClick={() => setMinutes(minutes + 60)} aria-label="More" style={{ width: 26, height: 26 }}>
             <Icon name="plus" />
           </button>
           <span className="fr-kicker">Friday splits it across the steps; change any step after.</span>

@@ -170,7 +170,7 @@ export function dueSummary(value: string | null, today: string): string {
 
 /** A length typed as people say it ("45", "1h30", "an hour and a half", "2–3 hours"; personal's reader),
  * with a live reading under it; it settles on Enter or leaving the box. */
-export function LengthInput({ value, onPick, width = 110 }: { value: number | null; onPick: (v: number | null) => void; width?: number }) {
+export function LengthInput({ value, onPick, width = 110, label = "Length", placeholder = "e.g. an hour and a half" }: { value: number | null; onPick: (v: number | null) => void; width?: number; label?: string; placeholder?: string }) {
   const [text, setText] = useState<string | null>(null)
   const typed = text === null ? null : parseLength(text)
   const settle = () => {
@@ -182,8 +182,8 @@ export function LengthInput({ value, onPick, width = 110 }: { value: number | nu
       <input
         className="input tnum"
         value={text ?? (value == null ? "" : dur(value))}
-        placeholder="e.g. an hour and a half"
-        aria-label="Length"
+        placeholder={placeholder}
+        aria-label={label}
         aria-invalid={text !== null && text.trim() !== "" && typed === null}
         onChange={(e) => setText(e.target.value)}
         onBlur={settle}

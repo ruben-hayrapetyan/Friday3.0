@@ -30,7 +30,7 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
   const [time, setTime] = useState("09:00")
   const [length, setLength] = useState(90)
   const [area, setArea] = useState<string | null>(null)
-  const [prep, setPrep] = useState(4)
+  const [prep, setPrep] = useState(240) // minutes; typed or a step of an hour at a time
   useEffect(() => {
     const escape = (e: KeyboardEvent) => e.key === "Escape" && onClose()
     window.addEventListener("keydown", escape, true)
@@ -53,7 +53,7 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
       if (made.command_id !== null) ids.push(made.command_id)
       const id = made.result.item?.id
       if (id && prep) {
-        const prepped = await command("add", { title: `Prep: ${title}`, preset: "Exam prep", due: start, duration_min: prep * 60, area, before: [id] })
+        const prepped = await command("add", { title: `Prep: ${title}`, preset: "Exam prep", due: start, duration_min: prep, area, before: [id] })
         if (prepped.command_id !== null) ids.push(prepped.command_id)
       }
       toast({ message: prep ? "Exam and its prep added" : "Exam added", action: { label: "Undo", run: () => undoAll(client, toast, ids) } })
@@ -111,13 +111,12 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
           <span className="fr-kicker" style={{ width: 120 }}>
             Prep it needs
           </span>
-          <button className="btn btn-icon btn-secondary" onClick={() => setPrep(Math.max(0, prep - 1))} aria-label="Less prep" style={{ width: 26, height: 26 }}>
+          <button className="btn btn-icon btn-secondary" onClick={() => setPrep(Math.max(0, prep - 60))} aria-label="Less prep" style={{ width: 26, height: 26 }}>
             <Icon name="minus" />
           </button>
-          <span className="tnum" style={{ width: 56, flex: "none", whiteSpace: "nowrap", textAlign: "center" }}>
-            {prep ? dur(prep * 60) : "None"}
-          </span>
-          <button className="btn btn-icon btn-secondary" onClick={() => setPrep(prep + 1)} aria-label="More prep" style={{ width: 26, height: 26 }}>
+          {/* typed too, as a length is anywhere else (16 Nov: "what if i need 100 hours, i just want to type it") */}
+          <LengthInput value={prep || null} onPick={(m) => setPrep(m ?? 0)} width={96} label="Prep it needs" placeholder="None" />
+          <button className="btn btn-icon btn-secondary" onClick={() => setPrep(prep + 60)} aria-label="More prep" style={{ width: 26, height: 26 }}>
             <Icon name="plus" />
           </button>
           <span className="fr-kicker" style={{ flexBasis: "100%" }}>
