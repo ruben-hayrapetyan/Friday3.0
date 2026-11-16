@@ -8,7 +8,16 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-NOTES = ("PROGRESS.md", "HOSTED.md", "COMBINED.md", "CLAUDE.md", "PROMPT.md", "claude_design.md", "preferences.md")
+NOTES = (
+    "PROGRESS.md",
+    "HOSTED.md",
+    "COMBINED.md",
+    "CLAUDE.md",
+    "PROMPT.md",
+    "claude_design.md",
+    "preferences.md",
+    "UI-PRINCIPLES.md",
+)
 NAMED = re.compile("|".join(re.escape(n) for n in NOTES))
 KEPT_OUT = ("docs/qa.md", "REUSE.md", "design/", ".ckignore", "BackendGuidelines/", "UI/", *NOTES)
 
