@@ -39,6 +39,7 @@ from friday.commands import (  # noqa: F401
     pins,
     planning,
     progress,
+    project_options,
     queries,
     rating,
     reminders,

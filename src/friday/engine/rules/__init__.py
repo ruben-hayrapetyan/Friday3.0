@@ -94,6 +94,8 @@ class Scope:
     # An area's name or words in the title, either (audit, 8 Nov: "no math after 9pm" reached only the Math area once
     # there was one, not "math homework" filed elsewhere).
     subject: Any = None
+    # One project and every step under it, by the project's id (a project's own rules: "finish it 3 days early").
+    project: Any = None
 
     def matches(self, item: "EngineItem", problem: "Problem") -> bool:
         skipped = as_list(self.except_preset)
@@ -113,6 +115,9 @@ class Scope:
                 return False
         tags = as_list(self.tags)
         if tags is not None and not any(t in item.tags for t in tags):
+            return False
+        projects = as_list(self.project)
+        if projects is not None and (item.project is None or str(item.project) not in {str(p) for p in projects}):
             return False
         titles = as_list(self.title)
         if titles is not None and not any(within(item.norm_title, t) for t in normalized_titles(titles, problem)):

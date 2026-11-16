@@ -22,6 +22,7 @@ export interface Step {
   title: string
   done: boolean
   minutes: number
+  due: string | null // its own due, if it has one: a milestone on its project's bar
 }
 
 /** One row of the deadline shelf: a project with its steps, an exam with its prep, or one big to-do. */
@@ -38,6 +39,7 @@ export interface Row {
   steps: Step[] // a project's steps, or an exam's prep, in order
   status: "on_track" | "late" | "unplanned" | "done" | "ready" | "no_prep"
   next: string | null // its next planned session's start
+  notes: string // a project's notes (its Notes field)
 }
 
 export const STATUS: Record<Row["status"], string> = {
@@ -55,7 +57,7 @@ export function nextOf(blocks: Pick<Block, "item_id" | "start" | "end">[], ids: 
   return blocks.filter((b) => ids.includes(b.item_id) && toMin(b.end) > from).map((b) => b.start).sort()[0] ?? null
 }
 
-const stepOf = (i: Item): Step => ({ id: i.id, title: i.title, done: i.status === "done", minutes: i.duration_min ?? i.remaining_min ?? 0 })
+const stepOf = (i: Item): Step => ({ id: i.id, title: i.title, done: i.status === "done", minutes: i.duration_min ?? i.remaining_min ?? 0, due: i.due ?? null })
 
 /** Every deadline as a row, soonest first: projects, exams with their prep, and big to-dos that aren't in either. */
 export function deadlineRows(projects: Project[], exams: Exam[], items: Item[], blocks: Pick<Block, "item_id" | "start" | "end">[], now: string): Row[] {
@@ -76,6 +78,7 @@ export function deadlineRows(projects: Project[], exams: Exam[], items: Item[], 
         steps: steps.map(stepOf),
         status: p.status,
         next: nextOf(blocks, [p.item.id, ...p.children.map((c) => c.id)], now),
+        notes: p.item.notes ?? "",
       }
     }),
     ...exams.map((e): Row => ({
@@ -91,6 +94,7 @@ export function deadlineRows(projects: Project[], exams: Exam[], items: Item[], 
       steps: e.prep.map((x) => stepOf(x.item)),
       status: e.status,
       next: nextOf(blocks, e.prep.map((x) => x.item.id), now),
+      notes: "",
     })),
     ...items
       .filter((i) => !taken.has(i.id) && i.parent_id == null && i.status === "todo" && i.due && BIG.has(i.preset ?? "") && (i.remaining_min ?? 0) >= BIG_MIN)
@@ -109,6 +113,7 @@ export function deadlineRows(projects: Project[], exams: Exam[], items: Item[], 
           steps: [],
           status: next ? "on_track" : "unplanned",
           next,
+          notes: "",
         }
       }),
   ]
@@ -184,3 +189,24 @@ export function rhythmWords(hours: number, days: number): string {
   if (!days) return "Whenever it fits"
   return `${days} ${days === 1 ? "day" : "days"} a week, about ${dur(Math.round((hours * 60) / days))} each`
 }
+
+/** A project's milestones: its steps with a due of their own, before the project's, soonest first. */
+export const milestones = (r: Pick<Row, "steps" | "due">) => r.steps.filter((s) => s.due && (!r.due || s.due < r.due)).sort((a, b) => (a.due ?? "").localeCompare(b.due ?? ""))
+
+/** Notes as a few lines to glance at: the first `most` with words in them. */
+export const noteLines = (notes: string, most = 5) => notes.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, most)
+
+/** Where a project aims to be done: its due less the days early it aims for (a local time, as dues are). */
+export function aimFor(due: string, days: number): string {
+  return addDays(due.slice(0, 10), -days) + due.slice(10)
+}
+
+export const EARLY_DAYS = [0, 1, 2, 3, 5, 7]
+
+/** A project's pace through its work, and what each does with its hours. */
+export const PACES = [
+  { value: "kind", label: "Not set", desc: "Friday leaves the work until nearer its due, as it does for steps" },
+  { value: "front", label: "Front-load it", desc: "most of it in the first weeks, done well before its due" },
+  { value: "linear", label: "Evenly", desc: "about the same each week, up to its due" },
+  { value: "back", label: "Toward the end", desc: "a little now, most of it in the last weeks" },
+] as const

@@ -1517,6 +1517,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/project_set": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set a project's pace through its work ("kind" for its kind's), or how many days early to finish it (0: none). */
+        post: operations["project_set"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/project_unarchive": {
         parameters: {
             query?: never;
@@ -3435,6 +3452,23 @@ export interface paths {
         put?: never;
         /** A warm run with changed weights, rules switched off or a whole rules list tried instead; saves nothing. */
         post: operations["preview_weights"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/project_options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Each project's own options that are set: its pace through the work and how many days early it aims to finish. */
+        get: operations["project_options"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -8504,6 +8538,15 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /** ProjectOptionsOut */
+        ProjectOptionsOut: {
+            /** Id */
+            id: number;
+            /** Pacing */
+            pacing: string | null;
+            /** Early Days */
+            early_days: number;
+        };
         /** ProjectOut */
         ProjectOut: {
             item: components["schemas"]["ItemOut"];
@@ -8525,6 +8568,36 @@ export interface components {
         ProjectRef: {
             /** Id */
             id: number;
+        };
+        /** ProjectSetInput */
+        ProjectSetInput: {
+            /** Id */
+            id: number;
+            /** Pacing */
+            pacing?: ("front" | "linear" | "back" | "kind") | null;
+            /** Early Days */
+            early_days?: number | null;
+        };
+        /** ProjectSetResult */
+        ProjectSetResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** ProjectUnarchiveResult */
         ProjectUnarchiveResult: {
@@ -15244,6 +15317,43 @@ export interface operations {
             };
         };
     };
+    project_set: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectSetInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectSetResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     project_unarchive: {
         parameters: {
             query?: {
@@ -18853,6 +18963,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOptionsOut"][];
                 };
             };
         };

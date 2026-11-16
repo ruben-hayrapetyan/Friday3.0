@@ -23,6 +23,7 @@ import { Finished } from "./Finished"
 import { deadlineRows, type Project, type Row } from "./model"
 import { NewOngoing } from "./NewOngoing"
 import { OngoingDetail, OngoingShelf, useOngoing } from "./Ongoing"
+import { earlyDays, ProjectOptions, useProjectOptions } from "./ProjectOptions"
 
 export function ProjectsV2Page() {
   const { today, layout } = useShell()
@@ -33,6 +34,7 @@ export function ProjectsV2Page() {
   const items = useItems().data ?? []
   const blocks = useHorizon().data?.blocks ?? []
   const ongoing = useOngoing().data ?? []
+  const early = earlyDays(useProjectOptions().data ?? [])
   const [params, setParams] = useSearchParams()
   const [creating, setCreating] = useState<"project" | "exam" | "ongoing" | null>(null)
   const rows = deadlineRows(projects, exams, items, blocks, now)
@@ -76,6 +78,7 @@ export function ProjectsV2Page() {
           <Opened>
             <ArchiveBar p={project} onArchived={back} />
             <ProjectDetail key={project.item.id} p={project} all={projects} onPick={(id) => setParams({ id: String(id) })} onBack={back} />
+            <ProjectOptions key={`o${project.item.id}`} p={project} />
           </Opened>
         ) : exam ? (
           <Opened>
@@ -91,7 +94,7 @@ export function ProjectsV2Page() {
           </Opened>
         ) : (
           <div className="fr-gutter" style={{ maxWidth: 1180, padding: `28px 40px ${dockRoom(120)}`, display: "flex", flexDirection: "column", gap: 36, minWidth: 0 }}>
-            <Deadlines rows={rows} today={today} opened={null} onOpen={open} />
+            <Deadlines rows={rows} today={today} opened={null} early={early} onOpen={open} />
             <OngoingShelf ongoing={ongoing} today={today} opened={null} onOpen={(id) => setParams({ ongoing: String(id) })} />
             <Finished today={today} />
           </div>
@@ -111,7 +114,7 @@ function Opened({ children }: { children: React.ReactNode }) {
 function BackLink({ onBack }: { onBack: () => void }) {
   return (
     <button className="fr-plain fr-link" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, alignSelf: "flex-start" }}>
-      <Icon name="arrow-left" size={13} /> All projects & exams
+      <Icon name="arrow-left" size={13} /> Projects & exams
     </button>
   )
 }

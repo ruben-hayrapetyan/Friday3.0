@@ -983,6 +983,22 @@ VERBS = {
         True,
         "Delete a finished project: it and its steps are dropped and leave Finished; the time you put in stays in your",
     ),
+    "project_options": Verb(
+        "GET",
+        "/api/q/project_options",
+        commands.Empty,
+        False,
+        False,
+        "Each project's own options that are set: its pace through the work and how many days early it aims to finish.",
+    ),
+    "project_set": Verb(
+        "POST",
+        "/api/c/project_set",
+        commands.ProjectSetInput,
+        True,
+        True,
+        "Set a project's pace through its work (\"kind\" for its kind's), or how many days early to finish it (0: none).",
+    ),
     "project_unarchive": Verb(
         "POST",
         "/api/c/project_unarchive",

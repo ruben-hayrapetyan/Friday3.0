@@ -27,6 +27,7 @@ KV_STATE = {
     "ongoing_delete",
     "project_archive",  # the steps archiving put away, kept in kv
     "project_unarchive",
+    "project_set",  # a project's pace, kept in kv
     "phone_forget",  # paired phones are kept in kv
     "not_duplicates",  # kept in kv
     "review_again",
@@ -505,6 +506,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "project_archive": lambda app: {"id": poster(app)},
     "project_unarchive": lambda app: {"id": poster(app, archived=True)},
     "project_delete": lambda app: {"id": poster(app, archived=True)},
+    "project_set": lambda app: {"id": poster(app), "pacing": "front", "early_days": 2},
     "series_spacing": lambda app: {"id": gym(app)["series_id"], "days": 3},
     "series_delete": lambda app: {"id": gym(app)["series_id"]},
     "report": lambda app: {"where": "plan", "message": "the calendar went blank"},

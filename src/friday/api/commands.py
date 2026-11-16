@@ -1265,3 +1265,9 @@ class OngoingSetInput(Model):
 
 class ProjectRef(Model):
     id: int  # the project's item id
+
+
+class ProjectSetInput(Model):
+    id: int  # the project's item id
+    pacing: Literal["front", "linear", "back", "kind"] | None = None  # "kind": as its kind is paced
+    early_days: float | None = Field(None, ge=0, le=30)  # aim to finish this many days before its due; 0 for none

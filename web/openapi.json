@@ -6436,6 +6436,77 @@
     }
    }
   },
+  "/api/c/project_set": {
+   "post": {
+    "summary": "Set a project's pace through its work (\"kind\" for its kind's), or how many days early to finish it (0: none).",
+    "operationId": "project_set",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ProjectSetInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProjectSetResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/project_unarchive": {
    "post": {
     "summary": "Open an archived or finished project again, with the steps archiving dropped.",
@@ -12708,6 +12779,28 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/project_options": {
+   "get": {
+    "summary": "Each project's own options that are set: its pace through the work and how many days early it aims to finish.",
+    "operationId": "project_options",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ProjectOptionsOut"
+         },
+         "type": "array",
+         "title": "Response Project Options"
         }
        }
       }
@@ -27464,6 +27557,37 @@
     ],
     "title": "ProjectDeleteResult"
    },
+   "ProjectOptionsOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "pacing": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pacing"
+     },
+     "early_days": {
+      "type": "number",
+      "title": "Early Days"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "pacing",
+     "early_days"
+    ],
+    "title": "ProjectOptionsOut"
+   },
    "ProjectOut": {
     "properties": {
      "item": {
@@ -27531,6 +27655,120 @@
      "id"
     ],
     "title": "ProjectRef"
+   },
+   "ProjectSetInput": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "pacing": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "front",
+         "linear",
+         "back",
+         "kind"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pacing"
+     },
+     "early_days": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 30.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Early Days"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id"
+    ],
+    "title": "ProjectSetInput"
+   },
+   "ProjectSetResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "ProjectSetResult"
    },
    "ProjectUnarchiveResult": {
     "properties": {

@@ -211,6 +211,7 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
         progress_today_units={k: v // UNIT_MIN for k, v in on_today.items()},
         carried_units={k: v // UNIT_MIN for k, v in snapshot.carried.items()},
         priorities=snapshot.priorities,
+        project_pacing=snapshot.project_pacing,
         current=current,
         day_scales=day_scales(snapshot),
         minimize_changes_scale=stability,

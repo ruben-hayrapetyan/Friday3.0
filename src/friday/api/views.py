@@ -1016,3 +1016,9 @@ class FinishedProject(Model):
     steps: int
     estimate_min: int
     actual_min: int
+
+
+class ProjectOptionsOut(Model):
+    id: int  # the project's item id
+    pacing: str | None  # front, linear or back; None: its kind's
+    early_days: float  # aims to finish this many days early (a rule of yours); 0: no such rule

@@ -18,7 +18,7 @@ from friday.core.time import UNIT_MIN
 from friday.planner.progress import minutes_by_item
 from friday.planner.store import area_names, kv_get
 
-ARCHIVED = "archived_projects"  # kv, by project id: {"steps": the open steps archiving dropped}
+ARCHIVED = "archived_projects"  # kv, by project id: {"steps": the open steps archiving dropped, "rules": its own}
 # Every step under a project, however deep.
 DESCENDANTS = (
     "WITH RECURSIVE tree(id) AS (SELECT id FROM items WHERE parent_id = ? "
@@ -26,6 +26,18 @@ DESCENDANTS = (
     "SELECT i.* FROM items i JOIN tree t ON i.id = t.id"
 )
 FINISHED_SHOWN = 30
+
+
+def put_rules_away(ctx: Ctx, project_id: int) -> list[dict]:
+    from friday.commands.project_options import put_rules_away as away  # it needs require_project from here
+
+    return away(ctx, project_id)
+
+
+def bring_rules_back(ctx: Ctx, kept: list[dict]) -> None:
+    from friday.commands.project_options import bring_rules_back as back
+
+    back(ctx, kept)
 
 
 def archived(ctx: Ctx) -> dict[str, dict]:
@@ -61,7 +73,7 @@ def project_archive(ctx: Ctx, inp: ProjectRef) -> Changed:
         set_status(ctx, step, "dropped")
     set_status(ctx, inp.id, "done", ctx.now_text)
     kept = archived(ctx)
-    kept[str(inp.id)] = {"steps": open_steps}
+    kept[str(inp.id)] = {"steps": open_steps, "rules": put_rules_away(ctx, inp.id)}
     save(ctx, kept)
     return Changed(message=f"{title} archived")
 
@@ -71,7 +83,9 @@ def project_unarchive(ctx: Ctx, inp: ProjectRef) -> Changed:
     """Open an archived or finished project again, with the steps archiving dropped."""
     title = require_project(ctx, inp.id)
     kept = archived(ctx)
-    steps = kept.pop(str(inp.id), {"steps": []})["steps"]
+    was = kept.pop(str(inp.id), {"steps": []})
+    steps = was["steps"]
+    bring_rules_back(ctx, was.get("rules", []))
     set_status(ctx, inp.id, "todo")
     for step in steps:
         if rows(ctx.conn, "SELECT 1 FROM items WHERE id = ? AND status = 'dropped'", [step]):
@@ -90,6 +104,7 @@ def project_delete(ctx: Ctx, inp: ProjectRef) -> Changed:
     for step in steps:
         set_status(ctx, step, "dropped")
     set_status(ctx, inp.id, "dropped")
+    put_rules_away(ctx, inp.id)  # deleted, its own rules go with it (Undo brings both back)
     kept = archived(ctx)
     if kept.pop(str(inp.id), None) is not None:
         save(ctx, kept)

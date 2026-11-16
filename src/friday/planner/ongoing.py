@@ -14,6 +14,8 @@ from friday.planner.progress import minutes_by_item
 from friday.planner.store import kv_get
 
 ONGOING = "ongoing_projects"  # kv, by repeat id: {"rhythm_days", "priority", "paused_until"}
+PROJECT_OPTIONS = "project_options"  # kv, by project id: {"pacing"} (commands/project_options.py)
+PACINGS = ("front", "linear", "back")
 
 
 def ongoing_options(conn: sqlite3.Connection, user_id: int = 1) -> dict[str, dict[str, Any]]:
@@ -51,3 +53,9 @@ def priorities(conn: sqlite3.Connection, user_id: int = 1) -> dict[int, float]:
     """Each ongoing project's priority as its weight, by repeat id (the middle priority, 1.0, left out)."""
     out = {int(k): priority_weight(v.get("priority")) for k, v in ongoing_options(conn, user_id).items()}
     return {k: v for k, v in out.items() if v != 1.0}
+
+
+def project_pacing(conn: sqlite3.Connection, user_id: int = 1) -> dict[int, str]:
+    """Each project's own pace through its work, by project id: those set on the project (its kind's otherwise)."""
+    found = kv_get(conn, PROJECT_OPTIONS, {}, user_id) or {}
+    return {int(k): v["pacing"] for k, v in found.items() if v.get("pacing") in PACINGS}
