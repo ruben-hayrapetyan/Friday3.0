@@ -40,6 +40,11 @@ export function ProjectsPage() {
         </span>
         <div style={{ flex: 1 }} />
         <span data-tour="projects-new" style={{ display: "flex", gap: "inherit", flex: "none" }}>
+          {/* a new layout of this page, tried beside it (projects-v2) */}
+          <Link to="/projects-v2" className="btn btn-ghost" title="Try a new layout of this page: deadlines on six weeks, ongoing projects, finished ones" style={{ whiteSpace: "nowrap", flex: "none" }}>
+            <Icon name="rows" />
+            {!icons && "Try the new layout"}
+          </Link>
           <button className="btn btn-secondary" onClick={() => setCreating("exam")} aria-label="New exam" title="New exam" style={{ whiteSpace: "nowrap", flex: "none" }}>
             <Icon name="exam" />
             {!icons && "New exam"}

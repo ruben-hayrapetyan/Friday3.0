@@ -37,8 +37,8 @@ class Model(NamedTuple):
     insert_units: np.ndarray  # [I] units a new chunk gets from the insert move
     min_chunk: np.ndarray  # [I]
     max_chunk: np.ndarray  # [I] −1 is no maximum
-    ceiling_day0: np.ndarray  # [I] open: today's ceiling, after today's progress
-    ceiling: np.ndarray  # [I] open: other days' ceiling
+    ceiling_day0: np.ndarray  # [I] open, or a target with a rhythm: today's ceiling, after today's progress
+    ceiling: np.ndarray  # [I] open, or a target with a rhythm: other days' ceiling (0 for a target without)
     first_slot: np.ndarray  # [I] first allowed slot
     last_slot: np.ndarray  # [I] last allowed slot
     allowed: np.ndarray  # [I, S+1] bool (W2)
@@ -159,8 +159,10 @@ def item_arrays(problem: Problem, keys: tuple[str, ...]) -> tuple[np.ndarray, ..
         insert_units[i] = first_chunk_units(it)
         min_chunk[i] = it.min_chunk
         max_chunk[i] = -1 if it.max_chunk is None else it.max_chunk
-        ceiling_day0[i] = it.daily_ceiling - it.progress_today
-        ceiling[i] = it.daily_ceiling
+        # open: its units a day; target: its rhythm's most a day, 0 for none (the kernel then counts nothing)
+        most = it.daily_ceiling if it.amount == "open" else (it.day_most or 0) if it.amount == "target" else 0
+        ceiling_day0[i] = max(0, most - it.progress_today) if most else 0
+        ceiling[i] = most
         allowed[i, list(it.allowed)] = True
         locked[i, list(it.locked)] = True
         if it.allowed:
@@ -185,7 +187,9 @@ def first_chunk_units(it) -> int:  # noqa: ANN001
     if it.amount == "target":
         # A new sitting pays its chunk cost at once and its shortfall back an hour at a time: opened at the
         # minimum it was uphill, so a weekly goal stayed at one sitting with the week half empty (M15).
-        return max(it.min_chunk, min(it.target, 8))
+        # Never past its longest piece or its most a day (an ongoing project's rhythm), or it's placed nowhere.
+        most = min(it.target, 8, *(n for n in (it.max_chunk, it.day_most) if n))
+        return max(it.min_chunk, most)
     return it.min_chunk
 
 

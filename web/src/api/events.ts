@@ -13,7 +13,7 @@ const REFRESH: Record<string, string[]> = {
   // Every command sends it, and any query may read what a command changed (rules, tokens, calendars, mail…), so a
   // list kept by hand here went stale whenever a page was added.
   "items.changed": [EVERYTHING],
-  "plan.changed": ["plan", "now", "items", "item", "calendar", "status", "why", "review", "projects", "exams", "load", "triage", "brief", "week", "rule_clashes"],
+  "plan.changed": ["plan", "now", "items", "item", "calendar", "status", "why", "review", "projects", "exams", "ongoing_projects", "projects_finished", "load", "triage", "brief", "week", "rule_clashes"],
   // the night's questions: comparisons, and which of two clashing rules should win (server/jobs.py)
   "status.changed": ["status", "questions", "rule_clashes"],
   // A change's quick placement, made after it answered (server/placer.py): the calendar draws it.
@@ -26,7 +26,7 @@ const REFRESH: Record<string, string[]> = {
 // announce): the to-dos and what's read from them, not settings, rules, terms, meals or sleep. Any other command
 // still refreshes everything; the plan's own queries come with plan.changed once it's planned again (12 Nov: a click
 // had the page read some 35 things at once, and the next click waited behind them).
-const WORK = ["items", "item", "status", "now", "calendar", "review", "week_review", "projects", "exams", "inbox", "to_review", "duplicates", "questions", "asks_later", "insights", "load", "triage", "brief", "why", "why_not", "rule_totals", "series_list", "log_list", "events", "changes"]
+const WORK = ["items", "item", "status", "now", "calendar", "review", "week_review", "projects", "exams", "ongoing_projects", "projects_finished", "inbox", "to_review", "duplicates", "questions", "asks_later", "insights", "load", "triage", "brief", "why", "why_not", "rule_totals", "series_list", "log_list", "events", "changes"]
 const BY_COMMAND: Record<string, string[]> = Object.fromEntries([
   ...["suggestion_accept", "suggestion_reject", "suggestion_restore", "batch_accept", "add", "edit", "done", "reopen", "drop", "start", "stop", "pin", "unpin", "skip", "settle", "depend", "undepend", "event_hold", "event_keep", "event_choice", "reorder", "progress", "log", "stuck", "sitting_edit", "sitting_delete", "review_task"].map((c) => [c, WORK]),
   ...["meal_start", "meal_end", "meal_skip", "meal_log", "meal_edit", "meal_remove"].map((c) => [c, [...WORK, "meals"]]),

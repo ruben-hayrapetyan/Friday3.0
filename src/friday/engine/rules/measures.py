@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 import numpy as np
 
+from friday.core.pace import budget_factor
 from friday.engine.pwl import Hinge, Lin, Measure, curve_from_pairs, lin_sum
 from friday.engine.rules import Clock, Rule, Units, in_hour_window, matching_weekdays, rule_type
 
@@ -311,8 +312,9 @@ def window_share_and_growth(problem: Any, item: Any) -> tuple[float, float, floa
         full = item.due_utc - (item.release_utc if item.release_utc is not None else grid.now)
     share = 1.0 if not full or full <= 0 else max(0.0, min(1.0, (end - release) / full))
     days = {grid.slots[s].day for s in item.allowed} or {0}
-    amount = float(np.mean([problem.scales[d].target_amount for d in days]))
-    weight = float(np.mean([problem.scales[d].target_weight for d in days]))
+    # an ongoing project's priority takes more or less of the pace (budget_factor; weight 1 is the pace as it is)
+    amount = float(np.mean([budget_factor(problem.scales[d].target_amount, item.priority) for d in days]))
+    weight = float(np.mean([budget_factor(problem.scales[d].target_weight, item.priority) for d in days]))
     return share, amount, weight
 
 

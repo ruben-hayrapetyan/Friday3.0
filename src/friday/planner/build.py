@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 from friday.core.guess import EXAM, same_course, subject_of, subjects
 from friday.core.items import Firmness, Item
-from friday.core.pace import DayScales
+from friday.core.pace import DayScales, budget_factor
 from friday.core.quickadd import MEAL
 from friday.core.settings import SleepDay, bedtime_minutes, exam_focus_of, minutes_of
 from friday.core.textnorm import identity_text, norm
@@ -97,6 +97,8 @@ class BuildInput:
     areas: Mapping[int, str] = field(default_factory=dict)
     progress_units: Mapping[int, int] = field(default_factory=dict)  # item id → units done in its window
     progress_today_units: Mapping[int, int] = field(default_factory=dict)
+    carried_units: Mapping[int, int] = field(default_factory=dict)  # item id → an ongoing project's carry-over
+    priorities: Mapping[int, float] = field(default_factory=dict)  # repeat id → an ongoing project's priority weight
     current: Mapping[int, Sequence[tuple[int, int]]] = field(default_factory=dict)  # item id → (start, end) blocks
     day_scales: Sequence[DayScales] | None = None
     debt_hours: Mapping[date, float] = field(default_factory=dict)
@@ -514,8 +516,17 @@ def with_amount(engine_item: EngineItem, item: Item, inp: BuildInput) -> EngineI
         engine_item.max = max(engine_item.ideal, (item.max_units or 0) - progress)
         engine_item.size_hours = (item.ideal_units or 0) * UNIT_MIN / 60
     elif item.amount == "target":
-        engine_item.target = item.target_units or 0
-        engine_item.cap = item.cap_units or math.ceil(1.5 * engine_item.target)
+        carried = inp.carried_units.get(item.id, 0)  # an ongoing project's short last week (planner/ongoing.py)
+        engine_item.target = (item.target_units or 0) + carried
+        engine_item.cap = (item.cap_units or math.ceil(1.5 * (item.target_units or 0))) + carried
+        if item.series_id is not None:
+            engine_item.priority = inp.priorities.get(item.series_id, 1.0)
+        if engine_item.priority > 1:  # room for a high priority's share of the biggest push (growth 3)
+            pushed = math.ceil(engine_item.target * budget_factor(3.0, engine_item.priority))
+            engine_item.cap = max(engine_item.cap, pushed)
+        if item.daily_ceiling_units:  # an ongoing project's rhythm: at most so much a day
+            engine_item.day_most = item.daily_ceiling_units
+            engine_item.progress_today = inp.progress_today_units.get(item.id, 0)
         engine_item.size_hours = engine_item.target * UNIT_MIN / 60
     else:
         engine_item.daily_ceiling = item.daily_ceiling_units or 12

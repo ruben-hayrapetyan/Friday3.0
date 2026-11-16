@@ -22,6 +22,11 @@ from tests.commands.helpers import MONDAY_9, TZ, App, new_app
 DERIVED = {"command_log", "kv", "plans", "blocks", "users", "sqlite_sequence"}
 KV_STATE = {
     "sleep_skip",
+    "ongoing_add",  # an ongoing project's options are kept in kv
+    "ongoing_set",
+    "ongoing_delete",
+    "project_archive",  # the steps archiving put away, kept in kv
+    "project_unarchive",
     "phone_forget",  # paired phones are kept in kv
     "not_duplicates",  # kept in kv
     "review_again",
@@ -105,6 +110,21 @@ def breakfasts(app: App) -> dict[str, Any]:
 
 def gym(app: App) -> dict[str, Any]:
     return app.do("add", text="gym every mon,wed ~1h")
+
+
+def guitar(app: App) -> int:
+    """An ongoing project, three hours a week (commands/ongoing.py)."""
+    return app.do("ongoing_add", title="Guitar", hours_per_week=3)["id"]
+
+
+def poster(app: App, archived: bool = False) -> int:
+    """A project with two steps, archived or not (commands/archive.py)."""
+    project = app.do("add", title="Poster", preset="Project", due="2026-10-30T17:00", duration_min=240)["item"]["id"]
+    for step in ("Design", "Print"):
+        app.do("add", title=step, parent_id=project, duration_min=60)
+    if archived:
+        app.do("project_archive", id=project)
+    return project
 
 
 def planned(app: App) -> int:
@@ -479,6 +499,12 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     },
     "series_edit": lambda app: {"id": gym(app)["series_id"], "from_date": "2026-10-26", "duration_min": 90},
     "series_stop": lambda app: {"id": gym(app)["series_id"]},
+    "ongoing_add": lambda app: {"title": "Spanish", "hours_per_week": 2.5},
+    "ongoing_set": lambda app: {"id": guitar(app), "hours_per_week": 4, "rhythm_days": 2, "priority": 5, "carry": 1},
+    "ongoing_delete": lambda app: {"id": guitar(app)},
+    "project_archive": lambda app: {"id": poster(app)},
+    "project_unarchive": lambda app: {"id": poster(app, archived=True)},
+    "project_delete": lambda app: {"id": poster(app, archived=True)},
     "series_spacing": lambda app: {"id": gym(app)["series_id"], "days": 3},
     "series_delete": lambda app: {"id": gym(app)["series_id"]},
     "report": lambda app: {"where": "plan", "message": "the calendar went blank"},

@@ -94,12 +94,18 @@ class DeadlineModel:
                 self.add_most(item, placed, item.max)
             elif item.amount == "target":
                 self.m.add(placed <= item.cap)
+                if item.day_most:  # a rhythm: at most so much a day
+                    self.add_per_day(item, item.day_most)
             else:
-                for d in range(self.g.n_days):
-                    ceiling = item.daily_ceiling - (item.progress_today if d == 0 else 0)
-                    slots = [s for s in self.g.day_slots[d] if s in item.allowed_set]
-                    if slots:
-                        self.m.add(self.placed(item, slots) <= max(0, ceiling))
+                self.add_per_day(item, item.daily_ceiling)
+
+    def add_per_day(self, item: EngineItem, most: int) -> None:
+        """At most `most` units on each day, today's less what's done today (W4)."""
+        for d in range(self.g.n_days):
+            ceiling = most - (item.progress_today if d == 0 else 0)
+            slots = [s for s in self.g.day_slots[d] if s in item.allowed_set]
+            if slots:
+                self.m.add(self.placed(item, slots) <= max(0, ceiling))
 
     def add_most(self, item: EngineItem, placed: Any, most: int) -> None:
         """At most `most` units, and one more only when a 30-minute slot holds the last 15 minutes (W4)."""

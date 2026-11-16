@@ -559,7 +559,11 @@ def skip(ctx: Ctx, inp: ItemRef) -> ItemResult:
 
 @command("materialize", affects_plan=True)
 def materialize_all(ctx: Ctx, inp: Empty) -> Changed:
-    """Create every active series' missing occurrences (the nightly job runs this)."""
+    """Create every active series' missing occurrences (the nightly job runs this), first starting again the ongoing
+    projects whose pause has run out."""
+    from friday.commands.ongoing import resume_paused  # ongoing projects are made of repeats, so it imports this
+
+    resume_paused(ctx)
     made = sum(
         materialize_series(ctx, r["id"])
         for r in rows(

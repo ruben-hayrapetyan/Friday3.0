@@ -1,4 +1,10 @@
-"""The Metropolis chain over the kernel (DESIGN §11.8): propose, check walls, accept or undo."""
+"""The Metropolis chain over the kernel (DESIGN §11.8): propose, check walls, accept or undo.
+
+Numba keeps this file's compiled code until this file changes, and it builds in the kernel's `item_violations`: a
+change to that check in kernel.py needs a change here too, or the cached chain keeps the old one (16 Nov: a target's
+most a day, an ongoing project's rhythm, was counted by the kernel but not by a chain compiled before it, and plans
+broke the wall). Kernel wall checks as of: open items and rhythm targets count units a day.
+"""
 
 import numpy as np
 

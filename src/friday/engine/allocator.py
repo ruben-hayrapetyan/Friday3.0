@@ -15,7 +15,7 @@ from datetime import date
 
 from ortools.linear_solver import pywraplp
 
-from friday.core.pace import DayScales
+from friday.core.pace import DayScales, budget_factor
 from friday.engine.problem import EngineItem
 from friday.engine.rules import Rule, matching_weekdays
 from friday.engine.rules.measures import Reserve
@@ -116,7 +116,7 @@ def claim_reserved_time(inp: AllocatorInput, caps: list[int], day_of: DayIndex) 
         elif item.amount == "target" and item.due_utc is not None:
             last = min(days, day_of(item.due_utc - 1) + 1)
             for d in range(first, last):
-                share = item.target / (last - first) * inp.days[d].scales.target_amount
+                share = item.target / (last - first) * budget_factor(inp.days[d].scales.target_amount, item.priority)
                 caps[d] = max(0, caps[d] - round(share))
 
 

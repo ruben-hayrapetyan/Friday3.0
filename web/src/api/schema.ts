@@ -1016,7 +1016,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create every active series' missing occurrences (the nightly job runs this). */
+        /** Create every active series' missing occurrences (the nightly job runs this), first starting again the ongoing */
         post: operations["materialize"];
         delete?: never;
         options?: never;
@@ -1279,6 +1279,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/ongoing_add": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start an ongoing project with hours a week, from this week (the rest of this week counts pro rata). */
+        post: operations["ongoing_add"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/ongoing_delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Delete an ongoing project: its weeks to come go; the hours you put in stay in your history. */
+        post: operations["ongoing_delete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/ongoing_set": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change an ongoing project: its name, hours a week, carry-over, rhythm, priority or pause. */
+        post: operations["ongoing_set"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/other_way_pick": {
         parameters: {
             query?: never;
@@ -1426,6 +1477,57 @@ export interface paths {
         put?: never;
         /** Set progress as a share of the amount ("about half done"). */
         post: operations["progress"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/project_archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive a project: it's done, its steps still open are dropped, and it moves to Finished. */
+        post: operations["project_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/project_delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Delete a finished project: it and its steps are dropped and leave Finished; the time you put in stays in your */
+        post: operations["project_delete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/project_unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open an archived or finished project again, with the steps archiving dropped. */
+        post: operations["project_unarchive"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3203,6 +3305,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/ongoing_projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Each ongoing project: this week's hours (with what carried in), done and still planned, and the weeks before. */
+        get: operations["ongoing_projects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/other_way": {
         parameters: {
             query?: never;
@@ -3331,6 +3450,23 @@ export interface paths {
         };
         /** Open projects with their descendants, rolled-up progress, planned finish and whether they're on track. */
         get: operations["projects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/projects_finished": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Finished projects, newest first: what each took against its steps' lengths. */
+        get: operations["projects_finished"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5416,6 +5552,26 @@ export interface components {
             item: components["schemas"]["ItemOut"];
             /** Planned Finish */
             planned_finish: string | null;
+        };
+        /**
+         * FinishedProject
+         * @description An archived project: what it took against what its steps were planned to take.
+         */
+        FinishedProject: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Area */
+            area: string | null;
+            /** Finished */
+            finished: string | null;
+            /** Steps */
+            steps: number;
+            /** Estimate Min */
+            estimate_min: number;
+            /** Actual Min */
+            actual_min: number;
         };
         /**
          * FitInput
@@ -7704,6 +7860,148 @@ export interface components {
             /** Wanted */
             wanted: number;
         };
+        /** OngoingAddInput */
+        OngoingAddInput: {
+            /** Title */
+            title: string;
+            /** Hours Per Week */
+            hours_per_week: number;
+            /** Area */
+            area?: string | null;
+            /**
+             * Carry
+             * @default 0.5
+             */
+            carry?: number;
+        };
+        /** OngoingAddResult */
+        OngoingAddResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["SeriesOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** OngoingDeleteResult */
+        OngoingDeleteResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
+         * OngoingOut
+         * @description An ongoing project: hours a week with no deadline, its week now and the weeks before.
+         */
+        OngoingOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Area */
+            area: string | null;
+            /** Active */
+            active: boolean;
+            /** Hours Per Week */
+            hours_per_week: number;
+            /** Carry */
+            carry: number;
+            week: components["schemas"]["OngoingWeek"] | null;
+            /** Past */
+            past: components["schemas"]["OngoingWeek"][];
+            /** Touched */
+            touched: string[];
+            /** Rhythm Days */
+            rhythm_days: number | null;
+            /** Priority */
+            priority: number;
+            /** Aim Min */
+            aim_min: number;
+            /** Paused Until */
+            paused_until: string | null;
+        };
+        /** OngoingSetInput */
+        OngoingSetInput: {
+            /** Id */
+            id: number;
+            /** Title */
+            title?: string | null;
+            /** Hours Per Week */
+            hours_per_week?: number | null;
+            /** Carry */
+            carry?: number | null;
+            /** Rhythm Days */
+            rhythm_days?: number | null;
+            /** Priority */
+            priority?: number | null;
+            /** Paused Until */
+            paused_until?: string | null;
+        };
+        /** OngoingSetResult */
+        OngoingSetResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["SeriesOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** OngoingWeek */
+        OngoingWeek: {
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
+            /** Target Min */
+            target_min: number;
+            /** Carried Min */
+            carried_min: number;
+            /** Done Min */
+            done_min: number;
+            /** Planned Min */
+            planned_min: number;
+            /** Item Id */
+            item_id: number;
+        };
         /** OrderOut */
         OrderOut: {
             /** First */
@@ -8164,6 +8462,48 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /** ProjectArchiveResult */
+        ProjectArchiveResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** ProjectDeleteResult */
+        ProjectDeleteResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
         /** ProjectOut */
         ProjectOut: {
             item: components["schemas"]["ItemOut"];
@@ -8180,6 +8520,32 @@ export interface components {
              * @enum {string}
              */
             status: "done" | "on_track" | "late" | "unplanned";
+        };
+        /** ProjectRef */
+        ProjectRef: {
+            /** Id */
+            id: number;
+        };
+        /** ProjectUnarchiveResult */
+        ProjectUnarchiveResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /**
          * ProposalAnswerInput
@@ -14360,6 +14726,117 @@ export interface operations {
             };
         };
     };
+    ongoing_add: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OngoingAddInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OngoingAddResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ongoing_delete: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeriesRef"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OngoingDeleteResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ongoing_set: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OngoingSetInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OngoingSetResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     other_way_pick: {
         parameters: {
             query?: {
@@ -14680,6 +15157,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProgressResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_archive: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectRef"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectArchiveResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_delete: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectRef"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectDeleteResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_unarchive: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectRef"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectUnarchiveResult"];
                 };
             };
             /** @description Validation Error */
@@ -18061,6 +18649,26 @@ export interface operations {
             };
         };
     };
+    ongoing_projects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OngoingOut"][];
+                };
+            };
+        };
+    };
     other_way: {
         parameters: {
             query: {
@@ -18265,6 +18873,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectOut"][];
+                };
+            };
+        };
+    };
+    projects_finished: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinishedProject"][];
                 };
             };
         };

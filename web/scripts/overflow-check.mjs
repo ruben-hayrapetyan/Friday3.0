@@ -55,6 +55,9 @@ const STATES = [
   // 15 Nov: an exam card's tag menu was cut off by the card (and a project's by its column)
   { name: "exam tag menu", path: "/projects", click: ["Tag for"] },
   { name: "new project", path: "/projects", click: ["New project"] },
+  { name: "projects & exams, new layout", path: "/projects-v2" },
+  { name: "new layout's rows", path: "/projects-v2", each: 'section[aria-label="With a deadline"] [role="button"]', most: 3 },
+  { name: "new ongoing project", path: "/projects-v2", click: ["New ongoing project|New ongoing"] },
   { name: "inbox", path: "/inbox" },
   { name: "inbox messages", path: "/inbox", each: '[aria-label="Waiting for you"] [role="listitem"], [aria-label="Waiting for you"] > button', most: 12 },
   { name: "insights", path: "/insights" },

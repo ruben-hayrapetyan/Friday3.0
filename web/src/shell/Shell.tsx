@@ -26,6 +26,7 @@ import { InboxPage } from "@/inbox/InboxPage"
 import { InsightsPage } from "@/insights/InsightsPage"
 import { BodyPage } from "@/body/BodyPage"
 import { ProjectsPage } from "@/projects/ProjectsPage"
+import { ProjectsV2Page } from "@/projects-v2/ProjectsV2Page"
 import { RulesPage } from "@/rules/RulesPage"
 import { SettingsPage } from "@/settings/SettingsPage"
 import { Search } from "@/search/Search"
@@ -104,6 +105,7 @@ export function Shell() {
             <Route path="/" element={<PlanPage />} />
             <Route path="/todo" element={<TodoPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/projects-v2" element={<ProjectsV2Page />} />
             <Route path="/exams" element={<Navigate to="/projects" replace />} />
             {/* Review, Your day and Check your tasks are messages in the Inbox now (29 Oct): old links and the Mac
                 app's menu still get there */}
