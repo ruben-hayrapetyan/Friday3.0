@@ -5,7 +5,7 @@
 import { configure, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import type { Item } from "@/api/client"
-import { friday, openFriday, waitForSent } from "@/test/friday"
+import { friday, openFriday, sent, waitForSent } from "@/test/friday"
 
 configure({ asyncUtilTimeout: 8000 })
 
@@ -29,6 +29,32 @@ async function live(f: F, check: () => unknown) {
 }
 
 const shelf = (name: string) => screen.getByRole("region", { name })
+type User = F["user"]
+
+/** A setting's row: opened by its value, a choice picked by its words (projects-v2/Rows.tsx). */
+async function choose(user: User, scope: HTMLElement, label: string, choice: string | RegExp) {
+  await user.click(within(scope).getByRole("button", { name: new RegExp(`^${label}: `) }))
+  await user.click(within(within(scope).getByRole("radiogroup", { name: label })).getByRole("radio", { name: choice }))
+}
+
+/** A length in a setting's row: the row opened, an amount picked or one typed and Enter (Ongoing.tsx LengthPicks). */
+async function setRowLength(user: User, scope: HTMLElement, label: string, choice: { pick: string } | { type: string }) {
+  await user.click(within(scope).getByRole("button", { name: new RegExp(`^${label}: `) }))
+  const group = within(scope).getByRole("group", { name: label })
+  if ("pick" in choice) await user.click(within(group).getByRole("button", { name: choice.pick }))
+  else await user.type(within(group).getByRole("textbox", { name: `${label}, typed` }), `${choice.type}{Enter}`)
+  await waitFor(() => expect(within(scope).queryByRole("group", { name: label })).toBeNull())
+}
+
+/** A length field (todo/Pickers LengthField): opened, then an amount picked or one typed and Enter. */
+async function setLength(user: User, scope: HTMLElement, label: string, choice: { pick: string } | { type: string }) {
+  const field = within(scope).getByRole("button", { name: new RegExp(`^${label}: `) })
+  await user.click(field)
+  const picker = (await screen.findAllByRole("dialog", { name: label })).at(-1) as HTMLElement
+  if ("pick" in choice) await user.click(within(picker).getByRole("button", { name: choice.pick }))
+  else await user.type(within(picker).getByRole("textbox", { name: `${label}, typed` }), `${choice.type}{Enter}`)
+  await waitFor(() => expect(field.getAttribute("aria-expanded")).toBe("false"))
+}
 const rowNamed = (title: RegExp) => within(shelf("With a deadline")).getByRole("button", { name: title })
 
 describe("the new Projects & exams page", () => {
@@ -56,13 +82,50 @@ describe("the new Projects & exams page", () => {
     await friday.c("reopen", { id: next.id }) // the other tests see it as it was
   })
 
-  it("opens an exam in place, with its address, and goes back", async () => {
+  it("opens an exam in a side panel with its address, the shelves still there, and closes it", async () => {
     const f = await page()
     const [exam] = await friday.q<{ item: Item }[]>("exams")
     await f.user.click(await within(shelf("With a deadline")).findByRole("button", { name: new RegExp(`^${exam.item.title}, `) }))
     await waitFor(() => expect(window.location.hash).toBe(`#/projects-v2?exam=${exam.item.id}`))
-    await f.user.click(await screen.findByRole("button", { name: /^Projects & exams$/ }))
+    const panel = await screen.findByRole("complementary", { name: exam.item.title })
+    expect(shelf("With a deadline")).toBeTruthy() // still in view beside it
+    await f.user.click(within(panel).getByRole("button", { name: "Close" }))
     await waitFor(() => expect(window.location.hash).toBe("#/projects-v2"))
+  })
+
+  it("changes an exam's prep in its panel: renamed, its length and by when, ticked, deleted, and more added", async () => {
+    const f = await page()
+    const exams = await friday.q<{ item: Item; prep: { item: Item }[] }[]>("exams")
+    const exam = exams.find((e) => e.prep.length > 0) as { item: Item; prep: { item: Item }[] }
+    const prep = exam.prep[0].item
+    await f.user.click(await within(shelf("With a deadline")).findByRole("button", { name: new RegExp(`^${exam.item.title}, `) }))
+    const panel = await screen.findByRole("complementary", { name: exam.item.title })
+    const row = within(panel).getByRole("listitem", { name: prep.title })
+    await f.user.click(within(row).getByRole("button", { name: prep.title }))
+    const box = within(row).getByRole("textbox", { name: `Rename ${prep.title}` })
+    await f.user.clear(box)
+    await f.user.type(box, "Review sheet{Enter}")
+    expect((await waitForSent("edit")).body).toEqual({ id: prep.id, title: "Review sheet" })
+    sent.length = 0
+    const renamed = await within(panel).findByRole("listitem", { name: "Review sheet" }) // at once
+    await setLength(f.user, renamed, "Length of Review sheet", { type: "7.5 hours" })
+    expect((await waitForSent("edit")).body).toEqual({ id: prep.id, duration_min: 450 })
+    expect(within(renamed).getByRole("button", { name: /^When Review sheet is due: by / })).toBeTruthy()
+    await f.user.click(within(renamed).getByRole("checkbox", { name: "Mark done" }))
+    expect((await waitForSent("done")).body).toEqual({ id: prep.id })
+    await f.user.click(within(renamed).getByRole("checkbox", { name: "Mark not done" }))
+    expect((await waitForSent("reopen")).body).toEqual({ id: prep.id })
+    await f.user.click(within(panel).getByRole("button", { name: /Add prep/ }))
+    await f.user.type(within(panel).getByRole("textbox", { name: "New prep" }), "Practice exam 3")
+    await setLength(f.user, panel, "How long the new prep takes", { pick: "3h" })
+    await f.user.click(within(panel).getByRole("button", { name: "Add" }))
+    expect((await waitForSent("add")).body).toMatchObject({ title: "Practice exam 3", preset: "Exam prep", duration_min: 180, due: exam.item.start, before: [exam.item.id] })
+    expect(await within(panel).findByRole("listitem", { name: "Practice exam 3" })).toBeTruthy() // at once
+    await f.user.click(within(renamed).getByRole("button", { name: "Delete Review sheet" }))
+    expect((await waitForSent("drop")).body).toEqual({ id: prep.id })
+    await waitFor(() => expect(within(panel).queryByRole("listitem", { name: "Review sheet" })).toBeNull())
+    await friday.c("reopen", { id: prep.id }) // the other tests see it as it was
+    await friday.c("edit", { id: prep.id, title: prep.title, duration_min: prep.duration_min })
   })
 
   it("makes an ongoing project, opens it, and says each option's value", async () => {
@@ -70,20 +133,29 @@ describe("the new Projects & exams page", () => {
     await f.user.click(screen.getByRole("button", { name: "New ongoing project" }))
     const dialog = await screen.findByRole("dialog", { name: "New ongoing project" })
     await f.user.type(within(dialog).getByRole("textbox", { name: "Name" }), "Guitar practice")
-    await f.user.click(within(dialog).getByRole("button", { name: "More time a week" }))
-    expect((within(dialog).getByRole("textbox", { name: "Hours a week" }) as HTMLInputElement).value).toBe("4h")
+    await setLength(f.user, dialog, "Hours a week", { pick: "2h" })
+    await setLength(f.user, dialog, "Hours a week", { type: "4h" })
+    expect(within(dialog).getByRole("button", { name: "Hours a week: 4h a week" })).toBeTruthy()
     await f.user.click(within(dialog).getByRole("button", { name: "Create ongoing project" }))
     expect((await waitForSent("ongoing_add")).body).toEqual({ title: "Guitar practice", hours_per_week: 4, area: null })
     await waitFor(() => expect(window.location.hash).toMatch(/^#\/projects-v2\?ongoing=\d+$/))
-    expect(await screen.findByText("Guitar practice")).toBeTruthy()
-    expect(screen.getByText("Whenever it fits")).toBeTruthy()
-    await f.user.click(within(screen.getByRole("group", { name: "Days a week" })).getByRole("button", { name: "2" }))
-    expect(await screen.findByText("2 days a week, about 2h each")).toBeTruthy() // at once, before the server answers
+    const panel = await screen.findByRole("complementary", { name: "Guitar practice" })
+    expect(within(panel).getByRole("button", { name: "Days a week: Whenever it fits" })).toBeTruthy()
+    await choose(f.user, panel, "Days a week", /^2 days a week/)
+    expect(await within(panel).findByRole("button", { name: "Days a week: 2 days a week, about 2h each" })).toBeTruthy() // at once
     expect((await waitForSent("ongoing_set")).body).toMatchObject({ rhythm_days: 2 })
-    expect(screen.getByText("Half: half of what's missed comes into next week")).toBeTruthy()
-    await f.user.click(within(screen.getByRole("group", { name: "Priority" })).getByRole("button", { name: "High" }))
+    expect(within(panel).getByRole("button", { name: "A short week: Half: half of what's missed comes into next week" })).toBeTruthy()
+    sent.length = 0
+    await choose(f.user, panel, "Priority", /^High\b/)
     expect((await waitForSent("ongoing_set")).body).toMatchObject({ priority: 4 })
-    await live(f, () => expect(screen.getByText(/^High: /)).toBeTruthy())
+    expect(within(panel).getByRole("button", { name: "Priority: High" })).toBeTruthy()
+    sent.length = 0
+    await setRowLength(f.user, panel, "Hours a week", { pick: "5h" })
+    expect((await waitForSent("ongoing_set")).body).toMatchObject({ hours_per_week: 5 })
+    sent.length = 0
+    await setRowLength(f.user, panel, "Hours a week", { type: "4h" }) // and typed
+    expect((await waitForSent("ongoing_set")).body).toMatchObject({ hours_per_week: 4 })
+    await live(f, () => expect(within(panel).getByRole("button", { name: "Hours a week: 4 h a week" })).toBeTruthy())
   })
 
   it("takes an ongoing project's hours a week typed", async () => {
@@ -91,9 +163,7 @@ describe("the new Projects & exams page", () => {
     await f.user.click(screen.getByRole("button", { name: "New ongoing project" }))
     const dialog = await screen.findByRole("dialog", { name: "New ongoing project" })
     await f.user.type(within(dialog).getByRole("textbox", { name: "Name" }), "Thesis reading")
-    const hours = within(dialog).getByRole("textbox", { name: "Hours a week" })
-    await f.user.clear(hours)
-    await f.user.type(hours, "12.5 hours{Enter}")
+    await setLength(f.user, dialog, "Hours a week", { type: "12.5 hours" })
     await f.user.click(within(dialog).getByRole("button", { name: "Create ongoing project" }))
     expect((await waitForSent("ongoing_add")).body).toEqual({ title: "Thesis reading", hours_per_week: 12.5, area: null })
     await f.user.click(await screen.findByRole("button", { name: /Delete/ }))
@@ -107,12 +177,14 @@ describe("the new Projects & exams page", () => {
     expect(within(card).getByRole("img", { name: /Worked on 0 of the last 56 days/ })).toBeTruthy()
     expect(within(card).getByText(/of 4h this week/)).toBeTruthy()
     await f.user.click(card)
-    await f.user.click(await screen.findByRole("button", { name: /^In two weeks/ }))
+    const panel = await screen.findByRole("complementary", { name: "Guitar practice" })
+    expect(within(panel).getByRole("button", { name: "Paused: No" })).toBeTruthy()
+    await choose(f.user, panel, "Paused", /^For two weeks/)
     expect((await waitForSent("ongoing_set")).body).toMatchObject({ paused_until: expect.stringMatching(/^\d{4}-\d\d-\d\d$/) })
-    expect(await screen.findByText(/^Paused until /)).toBeTruthy()
-    await f.user.click(screen.getByRole("button", { name: /Resume/ }))
+    expect(await within(panel).findByRole("button", { name: /^Paused: Until (Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d+/ })).toBeTruthy()
+    await choose(f.user, panel, "Paused", /^No\b/)
     expect((await waitForSent("ongoing_set")).body).toMatchObject({ paused_until: "" })
-    expect(await screen.findByRole("button", { name: /^Pause$/ })).toBeTruthy()
+    expect(await within(panel).findByRole("button", { name: "Paused: No" })).toBeTruthy()
   })
 
   it("deletes an ongoing project after saying what goes and what stays", async () => {
@@ -170,16 +242,20 @@ describe("the new Projects & exams page", () => {
     await f.user.click(row)
     const options = await screen.findByRole("region", { name: "Notes and options" })
     expect((within(options).getByRole("textbox", { name: "Notes" }) as HTMLTextAreaElement).value).toBe("Ask Dr. Park about the error bars\nUse the second data set")
-    expect(within(options).getByText("No: it can take until its due")).toBeTruthy()
-    await f.user.click(within(within(options).getByRole("group", { name: "Days early" })).getByRole("button", { name: "3 days" }))
-    expect(await within(options).findByText(/^3 days early: done by (Mon|Tue|Wed|Thu|Fri|Sat|Sun) 15, a rule you'll find in Rules$/)).toBeTruthy() // at once
+    expect(within(options).getByRole("button", { name: "Finish early: No: it can take until its due" })).toBeTruthy()
+    await choose(f.user, options, "Finish early", /^3 days early/)
+    expect(await within(options).findByRole("button", { name: /^Finish early: 3 days early, by (Mon|Tue|Wed|Thu|Fri|Sat|Sun) 15$/ })).toBeTruthy() // at once
+    expect(within(options).getByText("A rule you'll find in Rules")).toBeTruthy()
     expect((await waitForSent("project_set")).body).toEqual({ id, early_days: 3 })
-    expect(within(options).getByText(/^Not set: Friday leaves the work until nearer its due/)).toBeTruthy()
-    await f.user.click(within(within(options).getByRole("group", { name: "Pace" })).getByRole("button", { name: "Front-load it" }))
-    expect(await within(options).findByText(/^Front-load it: most of it in the first weeks/)).toBeTruthy()
+    expect(within(options).getByRole("button", { name: "Pace: Not set" })).toBeTruthy()
+    sent.length = 0
+    await choose(f.user, options, "Pace", /^Front-load it/)
+    expect(await within(options).findByRole("button", { name: "Pace: Front-load it" })).toBeTruthy()
     expect((await waitForSent("project_set")).body).toEqual({ id, pacing: "front" })
-    const rules = await friday.q<{ name: string; sentence: string }[]>("rules")
-    expect(rules.find((r) => r.name === `you:project:${id}:early`)?.sentence).toBe("Finish Lab report 3 days early")
+    await waitFor(async () => {
+      const rules = await friday.q<{ name: string; sentence: string }[]>("rules")
+      expect(rules.find((r) => r.name === `you:project:${id}:early`)?.sentence).toBe("Finish Lab report 3 days early")
+    })
     await f.user.click(screen.getByRole("button", { name: /^Projects & exams$/ }))
     await live(f, () => expect(rowNamed(/^Lab report, /).querySelector("[data-aim]")).toBeTruthy())
   })

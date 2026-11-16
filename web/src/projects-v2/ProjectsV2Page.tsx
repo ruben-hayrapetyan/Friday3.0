@@ -1,8 +1,8 @@
 // A new Projects & exams page, tried beside the current one (/projects-v2): shelves and timelines. Three shelves:
 // everything with a deadline on six weeks across (projects, exams and big to-dos, soonest first), ongoing projects
 // with hours a week, and what's finished.
-// Things open as they do elsewhere in Friday: a project, an exam or an ongoing project in place, with its address
-// (?id=, ?exam=, ?ongoing=) so Back and links work; a big to-do on the To-do page, as the drawer opens one.
+// A project opens as its own page (?id=); an exam or an ongoing project in a side panel over the right, the shelves
+// still in view (?exam=, ?ongoing=); a big to-do on the To-do page, as the drawer opens one. Addresses keep links working.
 
 import { useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
@@ -13,17 +13,18 @@ import { useCommand } from "@/hooks/useCommand"
 import { useClock } from "@/hooks/useClock"
 import { fromMin } from "@/lib/time"
 import { dockRoom } from "@/now/dockRoom"
-import { ExamCard } from "@/projects/ExamCard"
 import { NewExam } from "@/projects/NewExam"
 import { NewProject } from "@/projects/NewProject"
 import { ProjectDetail } from "@/projects/ProjectDetail"
 import { useShell } from "@/shell/ShellContext"
 import { Deadlines } from "./Deadlines"
+import { ExamPanel } from "./ExamPanel"
 import { Finished } from "./Finished"
 import { deadlineRows, type Project, type Row } from "./model"
 import { NewOngoing } from "./NewOngoing"
 import { OngoingDetail, OngoingShelf, useOngoing } from "./Ongoing"
 import { earlyDays, ProjectOptions, useProjectOptions } from "./ProjectOptions"
+import { SidePanel } from "./Rows"
 
 export function ProjectsV2Page() {
   const { today, layout } = useShell()
@@ -73,7 +74,8 @@ export function ProjectsV2Page() {
           </button>
         </span>
       </div>
-      <div className="fr-panel" style={{ overflowY: "auto", overflowX: "hidden" }}>
+      <div className="fr-panel" style={{ position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div style={{ overflowY: "auto", overflowX: "hidden", minHeight: 0, flex: 1 }}>
         {project ? (
           <ProjectDetail
             key={project.item.id}
@@ -88,42 +90,30 @@ export function ProjectsV2Page() {
               </>
             }
           />
-        ) : exam ? (
-          <Opened>
-            <BackLink onBack={back} />
-            <div style={{ maxWidth: 640 }}>
-              <ExamCard exam={exam} blocks={blocks} />
-            </div>
-          </Opened>
-        ) : steady ? (
-          <Opened>
-            <BackLink onBack={back} />
-            <OngoingDetail key={steady.id} o={steady} today={today} onDeleted={back} />
-          </Opened>
         ) : (
           <div className="fr-gutter" style={{ maxWidth: 1180, padding: `28px 40px ${dockRoom(120)}`, display: "flex", flexDirection: "column", gap: 36, minWidth: 0 }}>
-            <Deadlines rows={rows} today={today} opened={null} early={early} onOpen={open} />
-            <OngoingShelf ongoing={ongoing} today={today} opened={null} onOpen={(id) => setParams({ ongoing: String(id) })} />
+            <Deadlines rows={rows} today={today} opened={exam ? { kind: "exam", id: exam.item.id } : null} early={early} onOpen={open} />
+            <OngoingShelf ongoing={ongoing} today={today} opened={steady?.id ?? null} onOpen={(id) => setParams({ ongoing: String(id) })} />
             <Finished today={today} />
           </div>
+        )}
+        </div>
+        {/* an exam or an ongoing project slides in over the right, the shelves still in view (16 Nov) */}
+        {!project && exam && (
+          <SidePanel key={`e${exam.item.id}`} label={exam.item.title} onClose={back}>
+            <ExamPanel exam={exam} />
+          </SidePanel>
+        )}
+        {!project && steady && (
+          <SidePanel key={`o${steady.id}`} label={steady.title} onClose={back}>
+            <OngoingDetail o={steady} today={today} onDeleted={back} />
+          </SidePanel>
         )}
       </div>
       {creating === "project" && <NewProject onClose={(id) => (setCreating(null), id && setParams({ id: String(id) }))} />}
       {creating === "exam" && <NewExam onClose={() => setCreating(null)} />}
       {creating === "ongoing" && <NewOngoing onClose={(id) => (setCreating(null), id && setParams({ ongoing: String(id) }))} />}
     </>
-  )
-}
-
-function Opened({ children }: { children: React.ReactNode }) {
-  return <div style={{ padding: `20px 40px ${dockRoom(120)}`, display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>{children}</div>
-}
-
-function BackLink({ onBack }: { onBack: () => void }) {
-  return (
-    <button className="fr-plain fr-link" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, alignSelf: "flex-start" }}>
-      <Icon name="arrow-left" size={13} /> Projects & exams
-    </button>
   )
 }
 

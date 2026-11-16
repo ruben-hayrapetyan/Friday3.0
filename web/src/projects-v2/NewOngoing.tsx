@@ -2,11 +2,11 @@
 // Rhythm, carry-over, priority and pause are on its own page once it's made.
 
 import { useRef, useState } from "react"
-import { Chip, H, Icon } from "@/components/fr/controls"
+import { Chip, H } from "@/components/fr/controls"
 import { useAreas } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
 import { useLook } from "@/theme/LookProvider"
-import { LengthInput } from "@/todo/Pickers"
+import { LengthField } from "@/todo/Pickers"
 
 export function NewOngoing({ onClose }: { onClose: (id?: number) => void }) {
   const { color } = useLook()
@@ -29,7 +29,6 @@ export function NewOngoing({ onClose }: { onClose: (id?: number) => void }) {
       setBusy(false)
     }
   }
-  const step = hours < 2 ? 0.5 : 1
   return (
     <div className="fr-scrim">
       <div onClick={() => onClose()} style={{ position: "absolute", inset: 0 }} />
@@ -56,14 +55,7 @@ export function NewOngoing({ onClose }: { onClose: (id?: number) => void }) {
           <span className="fr-kicker" style={{ width: 120 }}>
             Hours a week
           </span>
-          <button className="btn btn-icon btn-secondary" onClick={() => setHours(Math.max(0.5, hours - step))} aria-label="Less time a week" style={{ width: 26, height: 26 }}>
-            <Icon name="minus" />
-          </button>
-          {/* typed too, as every length is (16 Nov: "i just want to type it") */}
-          <LengthInput value={Math.round(hours * 60)} onPick={(m) => m && m >= 15 && setHours(Math.min(60, m / 60))} width={96} label="Hours a week" placeholder="e.g. 3h" />
-          <button className="btn btn-icon btn-secondary" onClick={() => setHours(Math.min(60, hours + step))} aria-label="More time a week" style={{ width: 26, height: 26 }}>
-            <Icon name="plus" />
-          </button>
+          <LengthField value={Math.round(hours * 60)} onPick={(m) => m && setHours(Math.min(60, m / 60))} label="Hours a week" unit=" a week" amounts={[60, 120, 180, 300, 480, 600]} />
           <span className="fr-kicker">From this week; this week's rest counts as part of a week.</span>
         </div>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
