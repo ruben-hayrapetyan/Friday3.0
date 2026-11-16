@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { highlight } from "./InboxPage"
+import { highlight } from "./SourceText"
 
 describe("source highlighting", () => {
   it("marks this suggestion's quotes strongly and the others' lightly, without overlaps", () => {
