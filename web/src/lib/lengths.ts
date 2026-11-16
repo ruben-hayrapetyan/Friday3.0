@@ -15,6 +15,8 @@ const FILLERS = new Set([
   "the", "just", "under", "over", "at", "most", "least", "max", "tops", "only", "-",
 ]) // prettier-ignore
 
+export const MOST_HOURS = 1000
+
 export function parseLength(raw: string): number | null {
   let text = ` ${raw.toLowerCase()} `
   const replace = (pattern: RegExp, template: string) => (text = text.replace(pattern, template))
@@ -85,7 +87,9 @@ export function parseLength(raw: string): number | null {
     else return null
   }
   if (first !== null) total = total > 0 ? (first + total) / 2 : first
-  return total > 0 && total <= 100 * 60 ? total : null
+  // Up to 1,000 hours: a project or an exam's prep can need more than 100 (16 Nov: "what if i need 100 hours"), and a
+  // typed 101 hours wasn't read at all.
+  return total > 0 && total <= MOST_HOURS * 60 ? total : null
 }
 
 /** 135 → "2h 15m"; 45 → "45m". */

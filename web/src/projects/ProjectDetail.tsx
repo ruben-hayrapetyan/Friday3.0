@@ -7,7 +7,7 @@ import { Box, Check, H, Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useHorizon, useSettings } from "@/hooks/queries"
 import { dur, when } from "@/lib/format"
-import { LengthInput } from "@/todo/Pickers"
+import { LengthField } from "@/todo/Pickers"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { Bar, PROJECT_STATUS, type Project, projectPct, StatusTag, TagMenu, TONE, useTag } from "./parts"
@@ -199,13 +199,7 @@ function Step({ step, steps, first, last, next, onMove }: { step: Item; steps: I
       </span>
       {!layout.tight && waitsOn}
       <span className="tnum" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, fontSize: 12 }}>
-        <button className="fr-plain" onClick={() => edit({ id: step.id, duration_min: Math.max(15, length - 15) })} aria-label="Shorter" style={{ padding: "0 2px", color: "var(--color-neutral-400)" }}>
-          −
-        </button>
-        <LengthInput value={length} onPick={(m) => m && m >= 15 && m !== length && edit({ id: step.id, duration_min: m })} width={64} label={`Length of ${step.title}`} placeholder="1h" />
-        <button className="fr-plain" onClick={() => edit({ id: step.id, duration_min: length + 15 })} aria-label="Longer" style={{ padding: "0 2px", color: "var(--color-neutral-400)" }}>
-          +
-        </button>
+        <LengthField value={length} onPick={(m) => m && m !== length && edit({ id: step.id, duration_min: m })} label={`Length of ${step.title}`} amounts={[15, 30, 60, 120, 240, 480]} />
       </span>
       {!layout.tight && (
         <span className="tnum" style={{ textAlign: "right", fontSize: 12, color: "var(--color-neutral-300)" }}>

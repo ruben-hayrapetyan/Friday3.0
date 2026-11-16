@@ -1,12 +1,13 @@
 // The field pickers the add box and the item detail share (v22): a list of options, a due date (typed the way you'd
 // say it, with quick picks), a length, and a repeat.
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { query } from "@/api/client"
-import { Chip, Icon, Seg } from "@/components/fr/controls"
+import { Chip, Icon, Seg, useMenuClose } from "@/components/fr/controls"
 import { useClock } from "@/hooks/useClock"
 import { useSteps } from "@/hooks/useSteps"
 import { clockTime, dur, parseLength, weekday } from "@/lib/format"
+import { useMenuPlace } from "@/lib/menuPlace"
 import { addDays, fromMin, toMin } from "@/lib/time"
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
@@ -187,7 +188,10 @@ export function LengthInput({ value, onPick, width = 110, label = "Length", plac
         aria-invalid={text !== null && text.trim() !== "" && typed === null}
         onChange={(e) => setText(e.target.value)}
         onBlur={settle}
-        onKeyDown={(e) => e.key === "Enter" && settle()}
+        // a plain Enter that settles it goes no further: in a length field it had gone on to the field's own button,
+        // which the focus had just come back to, and opened the list again (16 Nov). Shift-Enter still goes on: in the
+        // add line it adds the to-do.
+        onKeyDown={(e) => e.key === "Enter" && (e.shiftKey || e.preventDefault(), settle())}
         style={{ width, padding: "4px 8px", minHeight: 0 }}
       />
       {text !== null && text.trim() !== "" && (
@@ -411,4 +415,50 @@ export function repeatLabel(r: Repeat): string {
   if (!r.every) return "Once"
   if (r.perWindow) return `${r.perWindow}× a week`
   return repeatSummary(r).replace(/\.$/, "").replace(". Friday picks the days", "")
+}
+
+export const COMMON_LENGTHS = [60, 120, 240, 360, 600, 1200]
+
+/** A length as a value that opens a picker, as Friday's other dropdowns do: common amounts, and a box to type any
+ * amount ("100h", "an hour and a half"). One click picks; typing and Enter picks what it read. (16 Nov: lengths were
+ * − and + only, then a bare box between them, "super unintuitive": "what if i need 100 hours, i just want to type it".)
+ * `none` names the empty choice where there is one ("None": no prep). */
+export function LengthField(props: { value: number | null; onPick: (minutes: number | null) => void; label: string; amounts?: number[]; none?: string; unit?: string }) {
+  const { value, onPick, label, amounts = COMMON_LENGTHS, none, unit = "" } = props
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  const button = useRef<HTMLButtonElement>(null)
+  const list = useRef<HTMLDivElement>(null)
+  const escape = useMenuClose(open, setOpen, box, button)
+  useMenuPlace(open, button, list) // over the page beside its button: nothing clips it
+  const shown = value ? `${dur(value)}${unit}` : (none ?? "Not set")
+  const pick = (m: number | null) => (onPick(m), setOpen(false), button.current?.focus())
+  return (
+    <div ref={box} className="fr-menu" onKeyDown={escape}>
+      <button ref={button} className="fr-menu-button tnum" aria-haspopup="dialog" aria-expanded={open} aria-label={`${label}: ${shown}`} onClick={() => setOpen(!open)}>
+        <span>{shown}</span>
+        <Icon name="caret-down" size={12} />
+      </button>
+      {open && (
+        <div ref={list} className="fr-float" role="dialog" aria-label={label} style={{ position: "absolute", zIndex: 40, top: "calc(100% + 4px)", right: 0, width: "min(280px, calc(100vw - 24px))", padding: 10, display: "flex", flexDirection: "column", gap: 10, borderRadius: "var(--radius-md)" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {none && (
+              <Chip on={!value} onClick={() => pick(null)}>
+                {none}
+              </Chip>
+            )}
+            {amounts.map((m) => (
+              <Chip key={m} on={value === m} onClick={() => pick(m)}>
+                {dur(m)}
+              </Chip>
+            ))}
+          </div>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "var(--color-neutral-300)" }}>
+            <span style={{ paddingTop: 5, flex: "none" }}>Or type</span>
+            <LengthInput value={null} onPick={(m) => m && m >= 15 && pick(m)} width={150} label={`${label}, typed`} placeholder="e.g. 100h, 1.5 hours" />
+          </label>
+        </div>
+      )}
+    </div>
+  )
 }

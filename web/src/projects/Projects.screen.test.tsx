@@ -47,6 +47,16 @@ const step = (title: string) => {
   return rows[0] as HTMLElement
 }
 
+/** A length field (todo/Pickers LengthField): opened, then a common amount picked, or one typed and Enter. */
+async function setLength(user: User, scope: HTMLElement, label: string, choice: { pick: string } | { type: string }) {
+  const field = within(scope).getByRole("button", { name: new RegExp(`^${label}: `) })
+  await user.click(field)
+  const picker = (await screen.findAllByRole("dialog", { name: label })).at(-1) as HTMLElement
+  if ("pick" in choice) await user.click(within(picker).getByRole("button", { name: choice.pick }))
+  else await user.type(within(picker).getByRole("textbox", { name: `${label}, typed` }), `${choice.type}{Enter}`)
+  await waitFor(() => expect(field.getAttribute("aria-expanded")).toBe("false")) // a choice closes it
+}
+
 async function newProject(user: User, name: string) {
   await user.click(screen.getAllByRole("button", { name: "New project" })[0])
   const dialog = await screen.findByRole("dialog")
@@ -84,10 +94,8 @@ describe("projects", () => {
     await user.click(within(dialog).getByRole("button", { name: /Presentation/ }))
     await user.click(within(dialog).getByRole("button", { name: "Rocketry" }))
     await user.click(within(dialog).getByRole("button", { name: "Tomorrow" }))
-    await user.click(within(dialog).getByRole("button", { name: "More" }))
-    await user.click(within(dialog).getByRole("button", { name: "More" }))
-    await user.click(within(dialog).getByRole("button", { name: "Less" }))
-    expect((within(dialog).getByRole("textbox", { name: "About how long, in all" }) as HTMLInputElement).value).toBe("7h")
+    await setLength(user, dialog, "About how long, in all", { type: "7h" })
+    expect(within(dialog).getByRole("button", { name: "About how long, in all: 7h" })).toBeTruthy()
     await user.click(within(dialog).getByRole("button", { name: "Create project" }))
     const made = await waitForSent("template_apply")
     expect(made.body).toEqual({ template: "Presentation", title: "Rocketry design review", hours: 7, due: `${day(1)}T23:59`, area: "Rocketry" })
@@ -121,17 +129,12 @@ describe("projects", () => {
     await user.click(within(step("Research")).getByRole("button", { name: "Move down" }))
     await waitForSent("reorder")
     const research = await itemNamed("Research")
-    await user.click(within(step("Research")).getByRole("button", { name: "Longer" }))
-    expect((await waitForSent("edit")).body).toEqual({ id: research.id, duration_min: (research.duration_min ?? 60) + 15 })
-    await live(client, async () => expect((await itemNamed("Research")).duration_min).toBe((research.duration_min ?? 60) + 15))
+    // a step's length: a common amount picked, or any typed (16 Nov: not a quarter hour at a time)
+    await setLength(user, step("Research"), "Length of Research", { pick: "2h" })
+    expect((await waitForSent("edit")).body).toEqual({ id: research.id, duration_min: 120 })
+    await live(client, async () => expect((await itemNamed("Research")).duration_min).toBe(120))
     sent.length = 0
-    await user.click(within(step("Research")).getByRole("button", { name: "Shorter" }))
-    expect((await waitForSent("edit")).body).toMatchObject({ id: research.id })
-    // or typed: a step's length isn't only a quarter hour at a time (16 Nov)
-    sent.length = 0
-    const length = within(step("Research")).getByRole("textbox", { name: "Length of Research" })
-    await user.clear(length)
-    await user.type(length, "12h{Enter}")
+    await setLength(user, step("Research"), "Length of Research", { type: "12h" })
     expect((await waitForSent("edit")).body).toEqual({ id: research.id, duration_min: 720 })
   })
 
@@ -252,9 +255,7 @@ describe("projects", () => {
     await user.click(within(dialog).getByRole("button", { name: /Blank/ }))
     await user.click(within(dialog).getByRole("button", { name: "No due date" }))
     // how long, typed (16 Nov: "what if i need 100 hours, i just want to type it")
-    const total = within(dialog).getByRole("textbox", { name: "About how long, in all" })
-    await user.clear(total)
-    await user.type(total, "40 hours{Enter}")
+    await setLength(user, dialog, "About how long, in all", { type: "40 hours" })
     await user.click(within(dialog).getByRole("button", { name: "Create project" }))
     expect((await waitForSent("add")).body).toEqual({ title: "Lab notebook cleanup", preset: "Project", due: null, area: null, duration_min: 2400 })
     await live(client, () => expect(screen.getByText(/0 of 0 steps done/)).toBeTruthy())
@@ -416,10 +417,8 @@ describe("exams", () => {
     await user.click(within(dialog).getByRole("button", { name: "Rocketry" }))
     await user.click(within(dialog).getByRole("button", { name: "No tag" }))
     await user.click(within(dialog).getByRole("button", { name: "ENGL 1170" }))
-    await user.click(within(dialog).getByRole("button", { name: "More prep" }))
-    await user.click(within(dialog).getByRole("button", { name: "Less prep" }))
-    await user.click(within(dialog).getByRole("button", { name: "Less prep" }))
-    expect((within(dialog).getByRole("textbox", { name: "Prep it needs" }) as HTMLInputElement).value).toBe("3h")
+    await setLength(user, dialog, "Prep it needs", { type: "3h" })
+    expect(within(dialog).getByRole("button", { name: "Prep it needs: 3h" })).toBeTruthy()
     await user.click(add)
     await waitFor(() => expect(sent.filter((s) => s.name === "add")).toHaveLength(2), { timeout: 5000 })
     const [exam, prep] = sent.filter((s) => s.name === "add").map((s) => s.body as Record<string, unknown>)
@@ -445,7 +444,7 @@ describe("exams", () => {
     expect(within(dialog).getByText("→ 2h 30m")).toBeTruthy()
     await user.keyboard("{Enter}")
     expect(within(dialog).getByRole("button", { name: "2h 30m" }).getAttribute("aria-pressed")).toBe("true")
-    for (let n = 0; n < 4; n++) await user.click(within(dialog).getByRole("button", { name: "Less prep" }))
+    await setLength(user, dialog, "Prep it needs", { pick: "None" })
     sent.length = 0
     await user.click(within(dialog).getByRole("button", { name: "Add exam" }))
     const exam = (await waitForSent("add")).body as { start: string; end: string }
@@ -461,13 +460,8 @@ describe("exams", () => {
     await user.click(screen.getByRole("button", { name: "New exam" }))
     const dialog = await screen.findByRole("dialog", { name: "New exam" })
     await user.type(within(dialog).getByPlaceholderText("Name, e.g. MATH 2940 Prelim 2"), "CHEM 2090 Final")
-    const prep = within(dialog).getByRole("textbox", { name: "Prep it needs" })
-    await user.clear(prep)
-    await user.type(prep, "100 hours")
-    expect(within(dialog).getByText("→ 100h")).toBeTruthy()
-    await user.keyboard("{Enter}")
-    await user.click(within(dialog).getByRole("button", { name: "More prep" })) // and − and + go on from what was typed
-    expect((prep as HTMLInputElement).value).toBe("101h")
+    await setLength(user, dialog, "Prep it needs", { type: "101 hours" })
+    expect(within(dialog).getByRole("button", { name: "Prep it needs: 101h" })).toBeTruthy()
     sent.length = 0
     await user.click(within(dialog).getByRole("button", { name: "Add exam" }))
     await waitFor(() => expect(sent.filter((s) => s.name === "add")).toHaveLength(2), { timeout: 5000 })
@@ -481,9 +475,8 @@ describe("exams", () => {
     await user.click(screen.getByRole("button", { name: "New exam" }))
     const dialog = await screen.findByRole("dialog", { name: "New exam" })
     await user.type(within(dialog).getByPlaceholderText("Name, e.g. MATH 2940 Prelim 2"), "Rocketry safety quiz")
-    for (let n = 0; n < 4; n++) await user.click(within(dialog).getByRole("button", { name: "Less prep" }))
-    const none = within(dialog).getByRole("textbox", { name: "Prep it needs" }) as HTMLInputElement
-    expect([none.value, none.placeholder]).toEqual(["", "None"])
+    await setLength(user, dialog, "Prep it needs", { pick: "None" })
+    expect(within(dialog).getByRole("button", { name: "Prep it needs: None" })).toBeTruthy()
     // a double click adds it once (audit, 12 Nov: it made two)
     await user.dblClick(within(dialog).getByRole("button", { name: "Add exam" }))
     expect(await screen.findByText("Exam added")).toBeTruthy()

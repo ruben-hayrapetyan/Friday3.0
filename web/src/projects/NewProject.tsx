@@ -8,7 +8,7 @@ import { useAreas, useSettings } from "@/hooks/queries"
 import { addDays } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
-import { DuePicker, LengthInput } from "@/todo/Pickers"
+import { DuePicker, LengthField } from "@/todo/Pickers"
 
 const ICONS: Record<string, string> = { Essay: "article", Presentation: "presentation-chart" }
 // Friday's own (core/settings.py DEFAULT_TEMPLATES): they stay; only the ones you saved can be removed (15 Nov)
@@ -107,14 +107,8 @@ export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
           <span className="fr-kicker" style={{ width: 120 }}>
             About how long, in all
           </span>
-          <button className="btn btn-icon btn-secondary" onClick={() => setMinutes(Math.max(60, minutes - 60))} aria-label="Less" style={{ width: 26, height: 26 }}>
-            <Icon name="minus" />
-          </button>
-          {/* typed too: "100h" (16 Nov) */}
-          <LengthInput value={minutes} onPick={(m) => m && m >= 15 && setMinutes(m)} width={96} label="About how long, in all" placeholder="e.g. 40h" />
-          <button className="btn btn-icon btn-secondary" onClick={() => setMinutes(minutes + 60)} aria-label="More" style={{ width: 26, height: 26 }}>
-            <Icon name="plus" />
-          </button>
+          {/* a value that opens common amounts and a box to type any (16 Nov) */}
+          <LengthField value={minutes} onPick={(m) => m && setMinutes(m)} label="About how long, in all" amounts={[120, 360, 600, 1200, 2400, 6000]} />
           <span className="fr-kicker">Friday splits it across the steps; change any step after.</span>
         </div>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>

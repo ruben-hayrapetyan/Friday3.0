@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef, useState } from "react"
 import { command, errorWords } from "@/api/client"
 import { useToast } from "@/components/Toasts"
-import { Chip, H, Icon } from "@/components/fr/controls"
+import { Chip, H } from "@/components/fr/controls"
 import { undoAll } from "@/hooks/useCommand"
 import { useAreas } from "@/hooks/queries"
 import { dur } from "@/lib/format"
@@ -15,7 +15,7 @@ import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { TimeInput } from "@/components/fr/TimeInput"
 import { EXAM_HOURS } from "@/lib/ampm"
-import { LengthInput } from "@/todo/Pickers"
+import { LengthField, LengthInput } from "@/todo/Pickers"
 
 // The usual lengths a click away, and a box for any other, typed as you'd say it (15 Nov, a client: a 2h 30m final
 // had no way in)
@@ -111,14 +111,8 @@ export function NewExam({ onClose }: { onClose: (made?: boolean) => void }) {
           <span className="fr-kicker" style={{ width: 120 }}>
             Prep it needs
           </span>
-          <button className="btn btn-icon btn-secondary" onClick={() => setPrep(Math.max(0, prep - 60))} aria-label="Less prep" style={{ width: 26, height: 26 }}>
-            <Icon name="minus" />
-          </button>
-          {/* typed too, as a length is anywhere else (16 Nov: "what if i need 100 hours, i just want to type it") */}
-          <LengthInput value={prep || null} onPick={(m) => setPrep(m ?? 0)} width={96} label="Prep it needs" placeholder="None" />
-          <button className="btn btn-icon btn-secondary" onClick={() => setPrep(prep + 60)} aria-label="More prep" style={{ width: 26, height: 26 }}>
-            <Icon name="plus" />
-          </button>
+          {/* a value that opens common amounts and a box to type any (16 Nov: "what if i need 100 hours, i just want to type it") */}
+          <LengthField value={prep || null} onPick={(m) => setPrep(m ?? 0)} label="Prep it needs" none="None" amounts={[60, 120, 240, 360, 600, 1200]} />
           <span className="fr-kicker" style={{ flexBasis: "100%" }}>
             Friday plans it in the days before, never after. Add study guides or practice exams on the card after.
           </span>
