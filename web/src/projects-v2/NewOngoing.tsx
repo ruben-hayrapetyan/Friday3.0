@@ -6,7 +6,7 @@ import { Chip, H, Icon } from "@/components/fr/controls"
 import { useAreas } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
 import { useLook } from "@/theme/LookProvider"
-import { hoursText } from "./model"
+import { LengthInput } from "@/todo/Pickers"
 
 export function NewOngoing({ onClose }: { onClose: (id?: number) => void }) {
   const { color } = useLook()
@@ -56,13 +56,12 @@ export function NewOngoing({ onClose }: { onClose: (id?: number) => void }) {
           <span className="fr-kicker" style={{ width: 120 }}>
             Hours a week
           </span>
-          <button className="btn btn-icon btn-secondary" onClick={() => setHours(Math.max(0.5, hours - step))} aria-label="Fewer hours" style={{ width: 26, height: 26 }}>
+          <button className="btn btn-icon btn-secondary" onClick={() => setHours(Math.max(0.5, hours - step))} aria-label="Less time a week" style={{ width: 26, height: 26 }}>
             <Icon name="minus" />
           </button>
-          <span className="tnum" style={{ width: 56, flex: "none", whiteSpace: "nowrap", textAlign: "center" }}>
-            {hoursText(hours)}
-          </span>
-          <button className="btn btn-icon btn-secondary" onClick={() => setHours(Math.min(60, hours + step))} aria-label="More hours" style={{ width: 26, height: 26 }}>
+          {/* typed too, as every length is (16 Nov: "i just want to type it") */}
+          <LengthInput value={Math.round(hours * 60)} onPick={(m) => m && m >= 15 && setHours(Math.min(60, m / 60))} width={96} label="Hours a week" placeholder="e.g. 3h" />
+          <button className="btn btn-icon btn-secondary" onClick={() => setHours(Math.min(60, hours + step))} aria-label="More time a week" style={{ width: 26, height: 26 }}>
             <Icon name="plus" />
           </button>
           <span className="fr-kicker">From this week; this week's rest counts as part of a week.</span>

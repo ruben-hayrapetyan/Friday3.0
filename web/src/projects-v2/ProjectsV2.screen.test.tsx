@@ -70,8 +70,8 @@ describe("the new Projects & exams page", () => {
     await f.user.click(screen.getByRole("button", { name: "New ongoing project" }))
     const dialog = await screen.findByRole("dialog", { name: "New ongoing project" })
     await f.user.type(within(dialog).getByRole("textbox", { name: "Name" }), "Guitar practice")
-    await f.user.click(within(dialog).getByRole("button", { name: "More hours" }))
-    expect(within(dialog).getByText("4 h")).toBeTruthy()
+    await f.user.click(within(dialog).getByRole("button", { name: "More time a week" }))
+    expect((within(dialog).getByRole("textbox", { name: "Hours a week" }) as HTMLInputElement).value).toBe("4h")
     await f.user.click(within(dialog).getByRole("button", { name: "Create ongoing project" }))
     expect((await waitForSent("ongoing_add")).body).toEqual({ title: "Guitar practice", hours_per_week: 4, area: null })
     await waitFor(() => expect(window.location.hash).toMatch(/^#\/projects-v2\?ongoing=\d+$/))
@@ -84,6 +84,21 @@ describe("the new Projects & exams page", () => {
     await f.user.click(within(screen.getByRole("group", { name: "Priority" })).getByRole("button", { name: "High" }))
     expect((await waitForSent("ongoing_set")).body).toMatchObject({ priority: 4 })
     await live(f, () => expect(screen.getByText(/^High: /)).toBeTruthy())
+  })
+
+  it("takes an ongoing project's hours a week typed", async () => {
+    const f = await page()
+    await f.user.click(screen.getByRole("button", { name: "New ongoing project" }))
+    const dialog = await screen.findByRole("dialog", { name: "New ongoing project" })
+    await f.user.type(within(dialog).getByRole("textbox", { name: "Name" }), "Thesis reading")
+    const hours = within(dialog).getByRole("textbox", { name: "Hours a week" })
+    await f.user.clear(hours)
+    await f.user.type(hours, "12.5 hours{Enter}")
+    await f.user.click(within(dialog).getByRole("button", { name: "Create ongoing project" }))
+    expect((await waitForSent("ongoing_add")).body).toEqual({ title: "Thesis reading", hours_per_week: 12.5, area: null })
+    await f.user.click(await screen.findByRole("button", { name: /Delete/ }))
+    await f.user.click(screen.getByRole("button", { name: "Delete it" })) // the next tests see only Guitar practice
+    await waitForSent("ongoing_delete")
   })
 
   it("shows the ongoing project on its shelf, pauses it until a date, and resumes it", async () => {
