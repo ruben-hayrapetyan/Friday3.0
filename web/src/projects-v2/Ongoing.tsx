@@ -89,7 +89,7 @@ export function OngoingShelf({ ongoing, today, opened, onOpen }: { ongoing: Ongo
           )
         })}
       </div>
-      {!ongoing.length && <span className="fr-kicker">No ongoing projects. Add one from the box above with hours a week, like “Guitar 3h a week”.</span>}
+      {!ongoing.length && <span className="fr-kicker">No ongoing projects. New ongoing adds one: hours a week for something with no deadline, like an instrument.</span>}
     </section>
   )
 }

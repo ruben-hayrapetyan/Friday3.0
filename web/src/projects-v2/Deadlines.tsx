@@ -41,7 +41,7 @@ export function Deadlines({ rows, today, opened, early, onOpen }: { rows: Row[];
       {rows.map((r) => (
         <DeadlineRow key={`${r.kind}${r.id}`} r={r} today={today} early={r.kind === "project" ? (early[r.id] ?? 0) : 0} lit={opened?.kind === r.kind && opened.id === r.id} onOpen={() => onOpen(r)} />
       ))}
-      {!rows.length && <span className="fr-kicker">Nothing with a deadline. Add a project from the box above, like “Essay due fri ~6h”.</span>}
+      {!rows.length && <span className="fr-kicker">Nothing with a deadline. Add one with New project or New exam.</span>}
     </section>
   )
 }

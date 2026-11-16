@@ -75,11 +75,19 @@ export function ProjectsV2Page() {
       </div>
       <div className="fr-panel" style={{ overflowY: "auto", overflowX: "hidden" }}>
         {project ? (
-          <Opened>
-            <ArchiveBar p={project} onArchived={back} />
-            <ProjectDetail key={project.item.id} p={project} all={projects} onPick={(id) => setParams({ id: String(id) })} onBack={back} />
-            <ProjectOptions key={`o${project.item.id}`} p={project} />
-          </Opened>
+          <ProjectDetail
+            key={project.item.id}
+            p={project}
+            all={projects}
+            onPick={(id) => setParams({ id: String(id) })}
+            onBack={back}
+            after={
+              <>
+                <ProjectOptions key={`o${project.item.id}`} p={project} />
+                <ArchiveBar p={project} onArchived={back} />
+              </>
+            }
+          />
         ) : exam ? (
           <Opened>
             <BackLink onBack={back} />
@@ -128,7 +136,7 @@ function ArchiveBar({ p, onArchived }: { p: Project; onArchived: () => void }) {
     optimistic: (c, input) => c.setQueryData<Project[]>(["projects"], (list) => list?.filter((x) => x.item.id !== input.id)),
   })
   return (
-    <span style={{ display: "flex", justifyContent: "flex-end" }}>
+    <span style={{ display: "flex" }}>
       <button
         className="btn btn-ghost"
         onClick={() => (onArchived(), archive({ id: p.item.id }).then(() => client.invalidateQueries({ queryKey: ["projects_finished"] })))}

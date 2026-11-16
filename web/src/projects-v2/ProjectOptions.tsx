@@ -44,7 +44,7 @@ export function ProjectOptions({ p }: { p: Project }) {
   const pace = PACES.find((x) => x.value === pacing) ?? PACES[0]
   const aim = due && early ? aimFor(due, early) : null
   return (
-    <section aria-label="Notes and options" style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 760, paddingTop: 12 }}>
+    <section aria-label="Notes and options" style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 760 }}>
       <H size={20}>Notes and options</H>
       <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <span style={{ fontWeight: 500, fontSize: 13 }}>Notes</span>
