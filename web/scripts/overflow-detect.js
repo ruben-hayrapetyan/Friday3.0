@@ -169,6 +169,8 @@
       const c = e.getBoundingClientRect()
       box = { left: Math.max(box.left, c.left), right: Math.min(box.right, c.right), top: Math.max(box.top, c.top), bottom: Math.min(box.bottom, c.bottom) }
     }
+    // and the window itself (16 Nov, IMG 4240: a fixed list as wide as the window, its left edge off the screen)
+    box = { left: Math.max(box.left, 0), right: Math.min(box.right, innerWidth), top: Math.max(box.top, 0), bottom: Math.min(box.bottom, innerHeight) }
     const lost = Math.max(r.right - box.right, box.left - r.left, r.bottom - box.bottom, box.top - r.top, 0)
     if (lost > SLACK) report("a dropdown cut off by what it sits in", list, `${Math.round(lost)}px`)
   }

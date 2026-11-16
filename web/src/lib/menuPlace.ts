@@ -26,7 +26,9 @@ export function placeList(button: { top: number; bottom: number; left: number; r
 }
 
 /** While `open`, the list is fixed over the page beside its button. A transformed parent (the Now bar) makes "fixed"
- * count from itself, not the window: where it lands is measured and the difference taken off. */
+ * count from itself, not the window: where it lands is measured and the difference taken off. "At least as wide as
+ * its button" is said in pixels: the stylesheet's `min-width: 100%`, fixed, meant the whole window (16 Nov, IMG 4240:
+ * an event's Category list ran across the bottom of the screen, its left edge cut off). */
 export function useMenuPlace(open: boolean, button: RefObject<HTMLElement | null>, list: RefObject<HTMLElement | null>) {
   useLayoutEffect(() => {
     const el = list.current
@@ -34,7 +36,7 @@ export function useMenuPlace(open: boolean, button: RefObject<HTMLElement | null
     if (!open || !el || !at) return
     const place = () => {
       const b = at.getBoundingClientRect()
-      Object.assign(el.style, { position: "fixed", right: "auto", bottom: "auto", top: "0px", left: "0px", maxHeight: "" })
+      Object.assign(el.style, { position: "fixed", right: "auto", bottom: "auto", top: "0px", left: "0px", maxHeight: "", minWidth: `${b.width}px` })
       const origin = el.getBoundingClientRect() // where (0, 0) lands: the window's corner, or a transformed parent's
       const spot = placeList(b, el.offsetWidth, el.scrollHeight, window.innerWidth, window.innerHeight)
       Object.assign(el.style, { top: `${spot.top - origin.top}px`, left: `${spot.left - origin.left}px`, maxHeight: `${Math.min(280, spot.maxHeight)}px` })

@@ -177,11 +177,21 @@ def pace_line(ctx: Ctx) -> str | None:
     """The pace when it isn't the default, or that a period ended yesterday."""
     now_pace = paces(ctx, Empty())
     if now_pace.now_label != now_pace.default:
-        return f"{now_pace.now_label} pace" + (f" until {now_pace.period_end}" if now_pace.period_end else "")
+        back = f" until {back_on(date.fromisoformat(now_pace.period_end), ctx.today)}" if now_pace.period_end else ""
+        return f"{now_pace.now_label} pace{back}"
     yesterday = ctx.today - timedelta(days=1)
     if any(p.end_date == yesterday for p in pace_periods(ctx.conn, ctx.user_id)):
         return f"Back to {now_pace.default} today"
     return None
+
+
+def back_on(last: date, today: date) -> str:
+    """The day a pace period gives way, in words: the day after its last (16 Nov: "Easy today" read "until 2026-11-16",
+    today, where it lasts until tomorrow)."""
+    back = last + timedelta(days=1)
+    if back == today + timedelta(days=1):
+        return "tomorrow"
+    return f"{back:%A}" if (back - today).days < 7 else f"{back:%a %b} {back.day}"
 
 
 @query("week_review")

@@ -28,6 +28,7 @@ import { DecisionPane } from "./Decisions"
 import { type Message, nextAfter, rowOf, shownFields, waitingCount } from "./messages"
 import { Actions, After, Pane } from "./Pane"
 import { useDuplicates, useInbox, useInboxMessages, useToReview } from "./queries"
+import { SourceText } from "./SourceText"
 import { AgainPane, CopiesPane } from "./TaskPanes"
 import { updateSays } from "./updateSays"
 import { dockRoom } from "@/now/dockRoom"
@@ -548,63 +549,4 @@ function EditField({ k, value, presets, areas, onChange }: { k: string; value: u
   if (k === "every") return null
   if (["due", "start", "end", "release"].includes(k)) return <DateTimeInput value={value == null ? null : String(value)} onChange={onChange} time={k === "due" ? "23:59" : "09:00"} label={k} />
   return <input className="input" value={String(value ?? "")} onChange={(e) => onChange(e.target.value || null)} style={{ maxWidth: 280, padding: "4px 8px", minHeight: 0 }} />
-}
-
-/** The text it was read from, this suggestion's quotes highlighted and other suggestions' shaded. */
-function SourceText({ s, all }: { s: Suggestion; all: Suggestion[] }) {
-  if (!s.source_text) return null
-  const mine = Object.values(s.quotes)
-  const theirs = all.filter((o) => o.id !== s.id && o.source_text === s.source_text).flatMap((o) => Object.values(o.quotes))
-  const segments = highlight(s.source_text, mine, theirs)
-  const [subject, ...rest] = s.origin.split("\n")
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 520 }}>
-      <span className="fr-kicker">From the source</span>
-      <div className="fr-well" style={{ display: "flex", flexDirection: "column", gap: 12, padding: "16px 18px", borderRadius: "var(--radius-lg)" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingBottom: 10, boxShadow: "inset 0 -1px 0 color-mix(in srgb, var(--color-text) 7%, transparent)" }}>
-          <span style={{ fontWeight: 500 }}>{subject || "Document"}</span>
-          <span className="fr-kicker">{rest.join(" ") || s.source}</span>
-        </div>
-        <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.6, color: "var(--color-neutral-300)", maxHeight: 520, overflowY: "auto" }}>
-          {segments.map((g, i) => (
-            <span
-              key={i}
-              style={{
-                background: g.kind === "mine" ? "color-mix(in srgb, var(--color-accent) 28%, transparent)" : g.kind === "theirs" ? "color-mix(in srgb, var(--color-text) 8%, transparent)" : undefined,
-                color: g.kind === "mine" ? "var(--color-text)" : undefined,
-                borderRadius: 3,
-                padding: g.kind ? "0 2px" : undefined,
-              }}
-            >
-              {g.text}
-            </span>
-          ))}
-        </div>
-      </div>
-      <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>Highlighted text is what Friday read. Other items from this source are shaded lightly.</span>
-    </div>
-  )
-}
-
-export function highlight(text: string, mine: string[], theirs: string[]): { text: string; kind: "mine" | "theirs" | null }[] {
-  const marks: { at: number; end: number; kind: "mine" | "theirs" }[] = []
-  for (const [quotes, kind] of [
-    [mine, "mine"],
-    [theirs, "theirs"],
-  ] as const) {
-    for (const q of quotes) {
-      const at = q ? text.indexOf(q) : -1
-      if (at >= 0 && !marks.some((m) => at < m.end && at + q.length > m.at)) marks.push({ at, end: at + q.length, kind })
-    }
-  }
-  marks.sort((a, b) => a.at - b.at)
-  const out: { text: string; kind: "mine" | "theirs" | null }[] = []
-  let pos = 0
-  for (const m of marks) {
-    if (m.at > pos) out.push({ text: text.slice(pos, m.at), kind: null })
-    out.push({ text: text.slice(m.at, m.end), kind: m.kind })
-    pos = m.end
-  }
-  if (pos < text.length) out.push({ text: text.slice(pos), kind: null })
-  return out
 }
