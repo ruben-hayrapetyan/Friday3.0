@@ -92,3 +92,28 @@ def test_the_brief_says_a_pace_set_for_a_while_and_then_that_it_is_over(app: App
 def test_a_week_with_no_plan_yet_planned_nothing(app: App) -> None:
     week = app.do("week_review")
     assert (week["start"], week["areas"], week["groups"]) == ("2026-10-19", [], [])
+
+
+def test_a_pace_for_today_lasts_until_tomorrow_not_until_today(app: App) -> None:
+    """16 Nov (IMG 6716/6717): "Easy today" read "Easy pace until 2026-11-16", the day it was set."""
+    app.do("pace", name="Easy", for_days=1)
+    assert app.do("brief")["pace"] == "Easy pace until tomorrow"
+
+
+def test_a_pace_set_for_days_names_the_day_it_gives_way(app: App) -> None:
+    app.do("pace", name="Easy", for_days=3)  # Mon, Tue, Wed
+    assert app.do("brief")["pace"] == "Easy pace until Thursday"
+    app.do("pace", name="Push", for_days=10)  # through Wed 28 Oct
+    assert app.do("brief")["pace"] == "Push pace until Thu Oct 29"
+
+
+def test_back_on_is_the_day_after_the_last_in_words() -> None:
+    from datetime import date
+
+    from friday.commands.reviews import back_on
+
+    today = date(2026, 11, 16)  # a Monday
+    assert back_on(today, today) == "tomorrow"
+    assert back_on(date(2026, 11, 22), today) == "Mon Nov 23"  # until Sunday: back next Monday, not "Monday" (today)
+    assert back_on(date(2026, 11, 21), today) == "Sunday"
+    assert back_on(date(2026, 11, 30), today) == "Tue Dec 1"
