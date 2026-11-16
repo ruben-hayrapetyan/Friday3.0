@@ -23,4 +23,12 @@ describe("lengths read the way people say them", () => {
   it("labels a length in hours and minutes", () => {
     expect([lengthLabel(135), lengthLabel(45), lengthLabel(120)]).toEqual(["2h 15m", "45m", "2h"])
   })
+
+  it("reads lengths past 100 hours, up to 1,000 (16 Nov: a typed 101 hours wasn't read)", () => {
+    expect(parseLength("100 hours")).toBe(6000)
+    expect(parseLength("101 hours")).toBe(6060)
+    expect(parseLength("250h")).toBe(15000)
+    expect(parseLength("1000 hours")).toBe(60000)
+    expect(parseLength("1001 hours")).toBeNull()
+  })
 })
