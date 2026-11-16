@@ -28,14 +28,16 @@ export function freePort(): Promise<number> {
 /** `fridayd demo` over `folder` on `port`; resolves once it answers. */
 /** The hour of the screen tests' Thursday. */
 export const SCREEN_HOUR = 14
+// The Thursday the screen tests were written for: Alex's homework, prelims and Inbox are that week's (HW 8, Prelim 2).
+export const SCREEN_DAY = "2026-11-12"
 
-/** How many minutes from now the screen tests' Friday runs: to 2pm on Thursday of this planning week (its days start at
- * 4am). Alex's sample is planned from its Monday, so on a Friday the week's Thursday event was already over (13 Nov),
- * and late in the evening the Inbox's late work read differently than at 2pm: one weekday and hour, every run. */
+/** How many minutes from now the screen tests' Friday runs: to 2pm on Thursday 12 November 2026, on this machine's
+ * clock. Alex's sample is lived up to its "now", so its tasks are that week's whatever week the tests run in: run as
+ * this week's Thursday, a new week brought new homework (HW 9 for HW 8) and on Monday 16 Nov every test naming last
+ * week's failed. One weekday and hour too: late in the evening the Inbox's late work read differently (13 Nov). */
 export function shiftToThursday(now = new Date()): number {
-  const planning = new Date(now.getTime() - 4 * 3_600_000)
-  const weekday = planning.getDay() === 0 ? 7 : planning.getDay() // Monday 1 … Sunday 7
-  const thursday = new Date(planning.getFullYear(), planning.getMonth(), planning.getDate() + (4 - weekday), SCREEN_HOUR, 0)
+  const [y, m, d] = SCREEN_DAY.split("-").map(Number)
+  const thursday = new Date(y, m - 1, d, SCREEN_HOUR, 0)
   return Math.round((thursday.getTime() - now.getTime()) / 60_000)
 }
 
