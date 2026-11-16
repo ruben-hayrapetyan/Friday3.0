@@ -144,6 +144,11 @@ describe("the plan's blocks and a month's days (glass box)", () => {
     expect(read("plan/DayAside.tsx")).toMatch(/<aside\s+className="fr-scroll-column"/)
   })
 
+  // 16 Nov, the layout check with a busier Inbox: its list scrolled and let every message shrink
+  it("keep the Inbox's messages their height when the list scrolls", () => {
+    expect(read("inbox/InboxPage.tsx")).toMatch(/role="list" aria-label="Waiting for you"[^>]*className="fr-scroll-column"/)
+  })
+
   it("in a day too narrow for them, drop a thing's time and the word 'due', keeping the title and the count", () => {
     const month = read("plan/MonthView.tsx")
     expect(month).toContain("repeat(${weeks.length}, minmax(min-content, 1fr))") // a week never shorter than its fullest day
