@@ -7,6 +7,7 @@ import { Box, Check, H, Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useHorizon, useSettings } from "@/hooks/queries"
 import { dur, when } from "@/lib/format"
+import { LengthInput } from "@/todo/Pickers"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { Bar, PROJECT_STATUS, type Project, projectPct, StatusTag, TagMenu, TONE, useTag } from "./parts"
@@ -201,7 +202,7 @@ function Step({ step, steps, first, last, next, onMove }: { step: Item; steps: I
         <button className="fr-plain" onClick={() => edit({ id: step.id, duration_min: Math.max(15, length - 15) })} aria-label="Shorter" style={{ padding: "0 2px", color: "var(--color-neutral-400)" }}>
           −
         </button>
-        {dur(length)}
+        <LengthInput value={length} onPick={(m) => m && m >= 15 && m !== length && edit({ id: step.id, duration_min: m })} width={64} label={`Length of ${step.title}`} placeholder="1h" />
         <button className="fr-plain" onClick={() => edit({ id: step.id, duration_min: length + 15 })} aria-label="Longer" style={{ padding: "0 2px", color: "var(--color-neutral-400)" }}>
           +
         </button>

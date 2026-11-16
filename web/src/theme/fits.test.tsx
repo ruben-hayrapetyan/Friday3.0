@@ -144,6 +144,15 @@ describe("the plan's blocks and a month's days (glass box)", () => {
     expect(read("plan/DayAside.tsx")).toMatch(/<aside\s+className="fr-scroll-column"/)
   })
 
+  // 16 Nov, the layout check at 390px: the header's notice pill shrank to 6px under the Show button
+  it("keep the plan header's notice pill whole in a phone's width", () => {
+    const page = read("plan/PlanPage.tsx")
+    expect(page).toMatch(/<span ref=\{box\} style=\{\{[^}]*flex: layout\.tight \? "none" : "0 1 auto"/)
+    // and the room for it: the pill's sides and the date's least width, a few pixels each, in a phone's width
+    expect(page).toContain('...(layout.tight ? { padding: "4px 6px" } : {})')
+    expect(page).toContain("minWidth: layout.tight ? 40 : 48")
+  })
+
   // 16 Nov, the layout check with a busier Inbox: its list scrolled and let every message shrink
   it("keep the Inbox's messages their height when the list scrolls", () => {
     expect(read("inbox/InboxPage.tsx")).toMatch(/role="list" aria-label="Waiting for you"[^>]*className="fr-scroll-column"/)

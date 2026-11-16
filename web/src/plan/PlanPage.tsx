@@ -146,7 +146,7 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
           <Icon name="caret-right" />
         </button>
       </div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 48, flex: "0 1 auto", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: layout.tight ? 40 : 48, flex: "0 1 auto", overflow: "hidden" }}>
         <span className="fr-h" style={{ fontSize: layout.tight ? 18 : 24, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {rangeTitle(first, view, layout.main < 900, layout.tight)}
         </span>
@@ -355,8 +355,10 @@ function Attention({ first, days }: { first: string; days: number }) {
   const color = lead.tone === "now" ? "var(--fr-due)" : lead.tone === "mark" ? "var(--fr-warn)" : "var(--color-neutral-300)"
   const bg = lead.tone === "now" ? "color-mix(in srgb, var(--fr-now) 14%, transparent)" : lead.tone === "mark" ? "color-mix(in srgb, var(--fr-mark) 16%, transparent)" : "color-mix(in srgb, var(--color-text) 6%, transparent)"
   return (
-    <span ref={box} style={{ position: "relative", minWidth: 0, flex: "0 1 auto", display: "flex", alignItems: "center", gap: 6 }}>
-      <button className="fr-pill" data-tour="attention" onClick={() => setOpen(!open)} aria-expanded={open} title={notes.map((n) => n.text).join("\n")} style={{ background: bg, color, cursor: "pointer", minWidth: 0, maxWidth: "100%" }}>
+    // In a phone's width it's an icon and a count: it keeps them whole, and the title gives way (16 Nov: squeezed to 6px,
+    // the pill sat under Show)
+    <span ref={box} style={{ position: "relative", minWidth: 0, flex: layout.tight ? "none" : "0 1 auto", display: "flex", alignItems: "center", gap: 6 }}>
+      <button className="fr-pill" data-tour="attention" onClick={() => setOpen(!open)} aria-expanded={open} title={notes.map((n) => n.text).join("\n")} style={{ background: bg, color, cursor: "pointer", minWidth: 0, maxWidth: "100%", ...(layout.tight ? { padding: "4px 6px" } : {}) }}>
         <Icon name={lead.icon} size={13} />
         {!layout.tight && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.text}</span>}
         {notes.length > 1 && <span className="tnum" style={{ color: "var(--color-neutral-400)", flex: "none" }}>{layout.tight ? notes.length : `+${notes.length - 1}`}</span>}
