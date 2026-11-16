@@ -1,5 +1,5 @@
 // The to-do drawer beside the plan: opened from the plan's title row, its quick add with what Friday read, the list by
-// due, when or tag (sorted as asked), a row ticked off or opened on the To-do page, several picked to change together,
+// due, when or tag (sorted as asked), a row ticked off, renamed by double-clicking its name, or opened on the To-do page, several picked to change together,
 // its left edge dragged wider, and the ways out.
 import { configure, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
@@ -75,6 +75,38 @@ describe("the to-do drawer", () => {
     await user.click(await rowIn(aside, "MATH 1910 Written HW 8"))
     await waitFor(() => expect(window.location.hash).toMatch(/^#\/todo\?item=\d+$/))
     expect(await screen.findByText("Planned sessions")).toBeTruthy()
+  })
+
+  it("renames a task by double-clicking its name, as the To-do page does", async () => {
+    const { user, aside } = await drawer()
+    const row = await rowIn(aside, "MATH 1910 Written HW 8")
+    const name = within(row).getByText((_, el) => el?.tagName === "SPAN" && (el.textContent ?? "").trim() === "MATH 1910 Written HW 8")
+    await user.dblClick(name)
+    const box = within(aside).getByRole("textbox", { name: "Name" }) as HTMLInputElement
+    expect(box.value).toBe("MATH 1910 Written HW 8")
+    expect(window.location.hash).not.toMatch(/todo\?item=/) // the double-click didn't open it too
+    await user.clear(box)
+    await user.type(box, "MATH 1910 HW 8{Enter}")
+    const { body } = await waitForSent("edit")
+    expect(body).toEqual({ id: expect.any(Number), title: "MATH 1910 HW 8" })
+    expect(within(aside).queryByRole("textbox", { name: "Name" })).toBeNull()
+    await friday.c("edit", { id: (body as { id: number }).id, title: "MATH 1910 Written HW 8" }) // the other tests use it
+  })
+
+  it("leaves the name as it was on Escape", async () => {
+    const { user, aside } = await drawer()
+    const row = await rowIn(aside, "MATH 1910 Written HW 8")
+    await user.dblClick(within(row).getByText((_, el) => el?.tagName === "SPAN" && (el.textContent ?? "").trim() === "MATH 1910 Written HW 8"))
+    await user.type(within(aside).getByRole("textbox", { name: "Name" }), " changed{Escape}")
+    expect(within(aside).queryByRole("textbox", { name: "Name" })).toBeNull()
+    expect(within(row).getByText((_, el) => el?.tagName === "SPAN" && (el.textContent ?? "").trim() === "MATH 1910 Written HW 8")).toBeTruthy()
+  })
+
+  it("still opens a task with one click on its name", async () => {
+    const { user, aside } = await drawer()
+    const row = await rowIn(aside, "MATH 1910 Written HW 8")
+    await user.click(within(row).getByText((_, el) => el?.tagName === "SPAN" && (el.textContent ?? "").trim() === "MATH 1910 Written HW 8"))
+    await waitFor(() => expect(window.location.hash).toMatch(/^#\/todo\?item=\d+$/))
   })
 
   it("opens a task with the keyboard too", async () => {

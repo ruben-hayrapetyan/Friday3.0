@@ -1,5 +1,5 @@
 // The to-do drawer beside the plan (v22): a quick add with what Friday read, the list grouped by when or tag, rows
-// you can tick off or drag onto the calendar. Its frame also holds an open event, and its left edge
+// you can tick off, rename by double-clicking the name (as on the To-do page), or drag onto the calendar. Its frame also holds an open event, and its left edge
 // drags to make it wider or narrower, kept for next time (personal's drawer).
 
 import { useWhatIf } from "@/whatif/store"
@@ -197,6 +197,9 @@ export function QuickLine({ placeholder = "Add a to-do" }: { placeholder?: strin
 }
 
 const lengthOf = (item: Item) => item.remaining_min ?? item.duration_min ?? 60
+// A click on the name waits this long for a second one (a double-click renames) before opening the task; the row
+// lights at once, so the click shows. A click anywhere else on the row opens it right away.
+export const RENAME_WAIT_MS = 250
 
 function Row(props: { item: Item; late?: Late; overdueBy?: string; picked: boolean; together: Item[] | null; onClick: (e: React.MouseEvent | React.KeyboardEvent) => void }) {
   const { item, late, overdueBy: overdueText, picked, together, onClick } = props
@@ -205,6 +208,33 @@ function Row(props: { item: Item; late?: Late; overdueBy?: string; picked: boole
   const { begin } = useDragging()
   const blocks = useHorizon().data?.blocks ?? []
   const done = useCommand("done", { label: () => `${item.title}: done` })
+  const edit = useCommand("edit", { label: () => "Renamed" })
+  const [naming, setNaming] = useState(false)
+  const [title, setTitle] = useState(item.title)
+  const [pressed, setPressed] = useState(false)
+  const waiting = useRef<number | null>(null)
+  useEffect(() => () => void (waiting.current !== null && window.clearTimeout(waiting.current)), [])
+  const rename = () => {
+    const named = title.trim()
+    if (named && named !== item.title) edit({ id: item.id, title: named })
+    setNaming(false)
+  }
+  // The name: one click opens it once a double-click can't be coming; a double-click renames it in place.
+  const clickName = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return // picking several: the row's own click
+    e.stopPropagation()
+    if (e.detail > 1 || waiting.current !== null) return
+    setPressed(true)
+    waiting.current = window.setTimeout(() => ((waiting.current = null), setPressed(false), onClick(e)), RENAME_WAIT_MS)
+  }
+  const startNaming = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (waiting.current !== null) window.clearTimeout(waiting.current)
+    waiting.current = null
+    setPressed(false)
+    setTitle(item.title)
+    setNaming(true)
+  }
   const next = nextBlocks(blocks, useItems().data).get(item.id) // a project's: its steps' soonest
   const project = useProjectOf(item) // a step says whose (13 Nov)
   const length = lengthOf(item)
@@ -215,9 +245,10 @@ function Row(props: { item: Item; late?: Late; overdueBy?: string; picked: boole
     <div
       role="button"
       tabIndex={0}
-      onClick={onClick}
+      onClick={(e) => !naming && onClick(e)}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && (e.preventDefault(), onClick(e))}
-      onPointerDown={(e) => begin(e, { kind: "row", start: 0, end: rows ? rows.reduce((sum, r) => sum + r.length, 0) : length, grab: 0, itemId: item.id, blockKey: null, title: rows ? `${rows.length} to-dos` : item.title, rows })}
+      title={`${item.title}: click to open it, double-click the name to rename`}
+      onPointerDown={(e) => !naming && begin(e, { kind: "row", start: 0, end: rows ? rows.reduce((sum, r) => sum + r.length, 0) : length, grab: 0, itemId: item.id, blockKey: null, title: rows ? `${rows.length} to-dos` : item.title, rows })}
       className="fr-hover"
       style={{
         display: "grid",
@@ -228,15 +259,33 @@ function Row(props: { item: Item; late?: Late; overdueBy?: string; picked: boole
         borderRadius: "var(--radius-md)",
         cursor: "pointer",
         touchAction: "none",
-        ...(picked ? { background: "color-mix(in srgb, var(--color-accent) 22%, transparent)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 55%, transparent)" } : {}),
+        ...(picked || pressed ? { background: "color-mix(in srgb, var(--color-accent) 22%, transparent)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 55%, transparent)" } : {}),
       }}
     >
       <Check small done={false} onToggle={() => done({ id: item.id })} />
       <span style={{ alignSelf: "stretch", borderRadius: 2, background: color(item.area, item.preset) }} />
       <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: item.long_term ? "var(--fr-aged)" : undefined, fontWeight: overdueText ? 600 : undefined }}>
-          {item.pointless_late && <ExpiresMark />} {item.title}
-        </span>
+        {naming ? (
+          <input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onBlur={rename}
+            onKeyDown={(e) => {
+              e.stopPropagation()
+              if (e.key === "Enter") rename()
+              if (e.key === "Escape") (setTitle(item.title), setNaming(false))
+            }}
+            aria-label="Name"
+            style={{ minWidth: 0, font: "inherit", color: "var(--color-text)", background: "transparent", border: 0, outline: 0, boxShadow: "inset 0 -1.5px 0 var(--color-accent)", padding: 0 }}
+          />
+        ) : (
+          <span onClick={clickName} onDoubleClick={startNaming} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: item.long_term ? "var(--fr-aged)" : undefined, fontWeight: overdueText ? 600 : undefined }}>
+            {item.pointless_late && <ExpiresMark />} {item.title}
+          </span>
+        )}
         <span className="tnum" style={{ fontSize: 11, color: overdue ? "var(--fr-due)" : "var(--color-neutral-500)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {overdueText ? `${overdueText} · ` : ""}
           {project ? `${project.project.title} · ` : ""}
