@@ -32,7 +32,7 @@ const shots = option("--shots")
 const widths = (option("--widths") ?? "1440,390").split(",").map(Number)
 
 // What to look at: a page, and what to press there first. `each` opens every match of a selector in turn (pressing
-// Escape between); `keys` are pressed as a person would; `click` is a button's name (its words or aria-label), and one
+// Escape between), pressing `after` in each; `keys` are pressed as a person would; `click` is a button's name (its words or aria-label), and one
 // ending in "?" is pressed only if it's there.
 const SETTINGS = ["appearance", "calendars", "tags", "schedule", "repeating", "integrations", "phone", "tokens", "shortcuts", "updates", "advanced"]
 const STATES = [
@@ -41,6 +41,8 @@ const STATES = [
   { name: "plan week", path: "/", keys: ["w"] },
   { name: "plan month", path: "/", keys: ["m"] },
   { name: "plan block card", path: "/", keys: ["w"], each: "[data-block-key]", most: 3 },
+  // 16 Nov (IMG 4240): an event's Category list ran across the whole window, its left edge cut off
+  { name: "event category menu", path: "/", keys: ["w"], each: '[data-block-key^="F"]', most: 2, after: "Category of" },
   { name: "plan to-do drawer", path: "/", click: ["To-do list"] },
   { name: "plan menu", path: "/", click: ["Plan…"] },
   { name: "what if", path: "/", click: ["Plan…", "What if"] },
@@ -342,7 +344,12 @@ async function visit(page, base, state, width, findings) {
     if (label === null) break
     await evaluate(page, SETTLE)
     if (state.open) await evaluate(page, `document.querySelectorAll('[role=dialog] [aria-expanded="false"]:not([aria-haspopup])').forEach((b) => b.click())`).then(() => evaluate(page, SETTLE))
+    if (state.after) {
+      if (!(await until(page, CLICK(state.after)))) throw new Error(`no "${state.after}" to press in ${label}`)
+      await evaluate(page, SETTLE)
+    }
     await look(page, `${state.name}: ${label}`, findings, width)
+    if (state.after) await press(page, "Escape") // the open list first, then the card
     await press(page, "Escape")
     await evaluate(page, SETTLE)
   }
