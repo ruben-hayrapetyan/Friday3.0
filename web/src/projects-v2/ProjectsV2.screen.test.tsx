@@ -155,7 +155,7 @@ describe("the new Projects & exams page", () => {
     sent.length = 0
     await setRowLength(f.user, panel, "Hours a week", { type: "4h" }) // and typed
     expect((await waitForSent("ongoing_set")).body).toMatchObject({ hours_per_week: 4 })
-    await live(f, () => expect(within(panel).getByRole("button", { name: "Hours a week: 4 h a week" })).toBeTruthy())
+    await live(f, () => expect(within(panel).getByRole("button", { name: "Hours a week: 4h a week" })).toBeTruthy())
   })
 
   it("takes an ongoing project's hours a week typed", async () => {

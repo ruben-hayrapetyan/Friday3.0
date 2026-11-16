@@ -182,7 +182,8 @@ export const CARRIES = [
 
 export const PRIORITIES = ["Lowest", "Low", "Normal", "High", "Highest"]
 
-export const hoursText = (h: number) => `${Number(h.toFixed(2))} h`
+/** Hours as Friday writes every length: "3h", "2h 30m". */
+export const hoursText = (h: number) => dur(Math.round(h * 60))
 
 /** "N days a week, about 1 h each", or whenever it fits, from its hours and rhythm. */
 export function rhythmWords(hours: number, days: number): string {
