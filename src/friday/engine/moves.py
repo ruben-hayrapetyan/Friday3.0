@@ -297,6 +297,9 @@ def merge(M, st, protected, i, a, b, touched):
     return 0
 
 
+SHRUNK_FLOOR = 4  # units: a new sitting that doesn't fit whole shrinks to an hour at the least
+
+
 @kernel
 def insert_chunk(M, st, protected, touched):
     """Open a new chunk of a random item with room: its first-chunk units at a random free place, or where that many
@@ -311,11 +314,13 @@ def insert_chunk(M, st, protected, touched):
         return 0
     t = np.random.randint(M.first_slot[i], M.last_slot[i] + 1)
     e = fits(M, st, protected, i, t, M.insert_units[i], 1, 0, 1, 0)
-    if not M.one_sitting[i]:
+    if not M.one_sitting[i] and st.placed[i] == 0:  # only to open an item with nothing yet: once it has a sitting,
+        # growing it does the rest (shrinking every insert left a 10-hour week 9¾ planned)
         # a half hour less at a time: past the first week slots are half hours, and an odd quarter left over
         # couldn't be placed (a 10-hour week came out 9¾)
+        # and never under an hour (SHRUNK_FLOOR): a half hour of longer work is a scrap (on Linux, Jordan's Aplia quiz)
         u = M.insert_units[i] - 2
-        while e < 0 and u >= M.min_chunk[i]:
+        while e < 0 and u >= max(M.min_chunk[i], SHRUNK_FLOOR):
             e = fits(M, st, protected, i, t, u, 1, 0, 1, 0)
             u -= 2
     if e < 0 and M.one_sitting[i] and M.amount_kind[i] == 0:

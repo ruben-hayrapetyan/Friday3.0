@@ -379,6 +379,9 @@ def pacing_of(item: Item, top: int | None, inp: BuildInput, by_id: Mapping[int, 
     return kind.pacing if kind and name != "Project" else "none"
 
 
+SOON_SITTING = 4  # units: an hour, the least sitting of work planned early only because there's time
+
+
 def as_soon_as_there_is_time(engine_item: EngineItem, item: Item, settings: Mapping[str, Any], now: int) -> bool:
     """Work that goes in the first free time (`soon`; 17 Nov, the user: "for the projects and things along those
     lines, friday should use all time"): a deadline's work with no pace of its own, a project's or due more than a
@@ -517,7 +520,13 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
     engine_item.soon = as_soon_as_there_is_time(engine_item, item, inp.settings, grid.now)
     if item.preset == "Routine" and item.amount == "elastic" and MEAL.search(item.title) and release and due:
         engine_item.meal_window = (release, due)  # how far it may reach is settled once events are known: meal_room
-    return with_amount(engine_item, item, inp)
+    out = with_amount(engine_item, item, inp)
+    if out is not None and out.soon and item.shape != "one_sitting" and out.need > 0:
+        # pulled early only because there's time, it comes in sittings of an hour at least (shorter work in one), not
+        # the half hour left between two events (17 Nov: on Linux, Jordan's hour-long Aplia quiz due in three weeks got
+        # 30 minutes in a gap on Monday, a scrap). After with_amount: its need is known only then
+        out.min_chunk = max(out.min_chunk, min(SOON_SITTING, out.need))
+    return out
 
 
 def meal_room(items: Mapping[str, EngineItem], fixed: list[FixedOcc], grid: Grid) -> None:

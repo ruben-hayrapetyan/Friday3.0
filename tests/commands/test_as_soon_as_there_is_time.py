@@ -110,3 +110,21 @@ def test_exam_prep_kept_close_to_its_exam_stays_there(app: App) -> None:
     replan(app.conn, app.now_utc)
     assert hours(app, [prep]) == 2
     assert all(start >= to_utc(parse_local("2026-10-22T12:00"), TZ) for _, start, _ in planned(app, [prep]))
+
+
+def test_work_pulled_early_comes_in_sittings_of_an_hour_or_whole(app: App) -> None:
+    # 17 Nov, Linux only: Jordan's hour-long Aplia quiz, due in three weeks, got 30 minutes in a gap on Monday, a scrap.
+    # Pulled early only because there's time, a sitting is an hour at least, or the whole of shorter work.
+    from friday.planner.build import build_problem
+    from friday.planner.prepare import build_input
+    from friday.planner.snapshot import take_snapshot
+
+    quiz = app.do("add", title="Aplia quiz 9", preset="Assignment", duration_min=60, due="2026-11-08T23:59")["item"]["id"]
+    short = app.do("add", title="Reading response", preset="Assignment", duration_min=45, due="2026-11-08T23:59")["item"]["id"]
+    big = app.do("add", title="Lab report", preset="Assignment", duration_min=240, due="2026-11-08T23:59")["item"]["id"]
+    items = build_problem(build_input(take_snapshot(app.conn, app.now_utc))).items
+    by_id = {int(k.split(":")[1]): v for k, v in items.items() if k.startswith("item:")}
+    assert all(by_id[i].soon for i in (quiz, short, big))
+    assert by_id[quiz].min_chunk == 4  # an hour: one sitting
+    assert by_id[short].min_chunk == 3  # all 45 minutes at once
+    assert by_id[big].min_chunk >= 4  # an hour at least
