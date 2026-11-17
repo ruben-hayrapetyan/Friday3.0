@@ -57,6 +57,9 @@ describe("Insights → Trends", () => {
     expect(screen.getByText(/You get the most done on/)).toBeTruthy()
     for (const d of ["Mon", "Sun"]) expect(screen.getAllByText(d).length).toBeGreaterThan(0)
     expect(document.querySelector('[title^="Sat 3pm"]')).toBeTruthy()
+    // an hour's cell says its weeks (16 Nov: "Mon 11pm, 357 min" was three Mondays added up, read as one hour)
+    expect(document.querySelector('[title^="Sat 3pm"]')?.getAttribute("title")).toMatch(/^Sat 3pm: (nothing|\d+[hm].*) in the last 4 weeks$/)
+    expect(screen.getByText("Time worked in each hour, the last 4 weeks together")).toBeTruthy()
   })
 
   it("says what Friday learned so far, and how many questions about it wait in the Inbox", async () => {
