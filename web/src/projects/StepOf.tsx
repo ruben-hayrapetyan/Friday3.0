@@ -40,6 +40,22 @@ export function StepOf({ item, onOpen }: { item: Pick<Item, "parent_id"> | null 
   )
 }
 
+/** Over a project's steps in a list, its name, opening the project: the project isn't a row of its own (17 Nov,
+ * proposal (h): "you never directly work on the project"). */
+export function StepsHeading({ step }: { step: Pick<Item, "parent_id"> }) {
+  const found = useProjectOf(step)
+  const navigate = useNavigate()
+  if (!found) return null
+  const { project } = found
+  return (
+    <button className="fr-plain fr-hover-text" onClick={() => navigate(`/projects?id=${project.id}`)} title={`Open ${project.title}: its steps, its timeline, when it's due`} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 8px 2px", fontSize: 12, fontWeight: 500, color: "var(--color-neutral-300)", textAlign: "left" }}>
+      <Icon name="tree-structure" size={12} style={{ flex: "none" }} />
+      <span style={{ overflowWrap: "anywhere" }}>{project.title}</span>
+      <Icon name="caret-right" size={11} style={{ flex: "none", opacity: 0.6 }} />
+    </button>
+  )
+}
+
 /** The project's name in a list's row, quiet: the row itself opens the step. */
 export function ProjectName({ item, style }: { item: Pick<Item, "parent_id">; style?: React.CSSProperties }) {
   const found = useProjectOf(item)

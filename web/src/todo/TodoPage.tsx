@@ -18,8 +18,8 @@ import { useHorizon, useNow, useStatus } from "@/hooks/queries"
 import { DueLabel } from "@/components/DueLabel"
 import { useClock } from "@/hooks/useClock"
 import { dur, lateBy, when } from "@/lib/format"
-import { nextBlocks } from "@/lib/todo"
-import { ProjectName } from "@/projects/StepOf"
+import { nextBlocks, withoutStepProjects } from "@/lib/todo"
+import { ProjectName, StepsHeading } from "@/projects/StepOf"
 import { toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
 import { pigment } from "@/lib/pigments"
@@ -92,7 +92,8 @@ export function TodoPage() {
   const found = params.get("found") === "1"
   const list: List = (LISTS as readonly string[]).includes(params.get("list") ?? "") ? (params.get("list") as List) : "Short term"
   const all = (useAllItems(showDone).data ?? []).filter((i) => showDone || i.status === "todo")
-  const items = list === "Due" ? all.filter(isDueWork) : all.filter((i) => i.long_term === (list === "Long term"))
+  const listed = withoutStepProjects(all) // a project made of steps isn't a to-do: its steps are (proposal (h))
+  const items = list === "Due" ? listed.filter(isDueWork) : listed.filter((i) => i.long_term === (list === "Long term"))
   const blocks = useHorizon().data?.blocks ?? []
   const status = useStatus().data
   const solving = !!status && status.plan_generation !== null && status.plan_generation < status.generation
@@ -215,8 +216,11 @@ export function TodoPage() {
                     style={{ display: "flex", flexDirection: "column", borderRadius: 6, outline: over === g.name ? "1.5px dashed var(--color-accent)" : undefined, outlineOffset: 4 }}
                   >
                     <SectionRule name={by === "Kind" && g.name !== "Done" ? plural(g.name) : g.name} items={g.items} />
-                    {g.items.map((i) => (
-                      <RowOf key={i.id} item={i} by={by} fresh={fresh.includes(i.id)} selected={i.id === selected} picked={picked.includes(i.id)} onSelect={(e) => choose(i.id, e)} dragging={draggedIds(i.id, picked)} />
+                    {g.items.map((i, n) => (
+                      <div key={i.id} style={{ display: "contents" }}>
+                        {i.parent_id != null && g.items[n - 1]?.parent_id !== i.parent_id && <StepsHeading step={i} />}
+                        <RowOf item={i} by={by} fresh={fresh.includes(i.id)} selected={i.id === selected} picked={picked.includes(i.id)} onSelect={(e) => choose(i.id, e)} dragging={draggedIds(i.id, picked)} />
+                      </div>
                     ))}
                     {fill && <AddBox compact onAdded={added} longTerm={list === "Long term"} fill={fill} placeholder={addHint(by, g.name)} />}
                   </section>

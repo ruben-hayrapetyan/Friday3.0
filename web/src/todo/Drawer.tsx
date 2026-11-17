@@ -15,8 +15,8 @@ import { useHorizon, useItems, useStatus } from "@/hooks/queries"
 import { useClock } from "@/hooks/useClock"
 import { type DueGroup, type Late, dueGroups, lateWarning, overdueBy } from "@/lib/dueSoon"
 import { dur, when } from "@/lib/format"
-import { nextBlocks } from "@/lib/todo"
-import { useProjectOf } from "@/projects/StepOf"
+import { nextBlocks, withoutStepProjects } from "@/lib/todo"
+import { StepsHeading, useProjectOf } from "@/projects/StepOf"
 import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { Dropdown } from "@/components/fr/Dropdown"
@@ -67,7 +67,7 @@ export function Drawer() {
   const [by, setByState] = useState<View>(() => (VIEWS as readonly string[]).includes(localStorage.getItem(VIEW_KEY) ?? "") ? (localStorage.getItem(VIEW_KEY) as View) : "Due")
   const setBy = (v: View) => (setByState(v), localStorage.setItem(VIEW_KEY, v))
   const [sort, setSort] = useState<SortBy>("Next up")
-  const items = useItems().data ?? []
+  const items = withoutStepProjects(useItems().data ?? []) // a project made of steps isn't a to-do (proposal (h))
   const blocks = useHorizon().data?.blocks ?? []
   const status = useStatus().data
   const now = useClock()
@@ -137,8 +137,11 @@ export function Drawer() {
                 {g.items.length}
               </span>
             </div>
-            {g.items.map((i) => (
-              <Row key={i.id} item={i} late={g.late?.get(i.id)} overdueBy={g.overdue && i.due ? overdueBy(i.due, now) : undefined} picked={picked.includes(i.id)} together={picked.includes(i.id) && pickedItems.length > 1 ? pickedItems : null} onClick={(e) => choose(i.id, e)} />
+            {g.items.map((i, n) => (
+              <div key={i.id} style={{ display: "contents" }}>
+                {by !== "Due" && i.parent_id != null && g.items[n - 1]?.parent_id !== i.parent_id && <StepsHeading step={i} />}
+                <Row item={i} late={g.late?.get(i.id)} overdueBy={g.overdue && i.due ? overdueBy(i.due, now) : undefined} picked={picked.includes(i.id)} together={picked.includes(i.id) && pickedItems.length > 1 ? pickedItems : null} onClick={(e) => choose(i.id, e)} />
+              </div>
             ))}
           </div>
         ))}

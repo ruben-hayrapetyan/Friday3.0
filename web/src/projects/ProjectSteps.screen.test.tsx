@@ -94,13 +94,17 @@ describe("a step's card", () => {
 })
 
 describe("the To-do list", () => {
-  it("gives the project its steps' next time, names each step's project, and the detail opens it", async () => {
+  it("lists the steps under the project's name, not the project as a to-do, and the detail opens it", async () => {
+    // 17 Nov, proposal (h): a project made of steps isn't worked on directly, so it isn't a row; its steps are
     cleanup()
     const { user } = await openFriday("/todo")
     const row = (title: string) => screen.findByTitle(`${title}: click for everything about it, double-click the title to rename`, {}, { timeout: 10_000 })
-    // the project's row read "—", not on the plan, though its steps were planned
-    await waitFor(async () => expect(within(await row(PROJECT)).getByTitle("Next planned")).toBeTruthy())
     for (const [title] of STEPS) await waitFor(async () => expect(within(await row(title)).getByTitle(`A step of ${PROJECT}`)).toBeTruthy())
+    expect(screen.queryByTitle(`${PROJECT}: click for everything about it, double-click the title to rename`)).toBeNull()
+    const heading = screen.getAllByTitle(new RegExp(`^Open ${PROJECT}:`))[0]
+    await user.click(heading)
+    await waitFor(() => expect(window.location.hash).toBe(`#/projects?id=${project}`))
+    await openFriday("/todo")
     await user.click(await row("Draft the article"))
     const detail = (await screen.findByRole("button", { name: `Step of ${PROJECT}` })).closest("aside") as HTMLElement
     expect(within(detail).getByText(/, with its project$/)).toBeTruthy()
@@ -118,7 +122,8 @@ describe("the To-do list", () => {
     // a row by its title (its title's line ends with it; a step's second line names the project first)
     const rowOf = async (title: string) =>
       (await within(aside).findAllByText((_, el) => el?.tagName === "SPAN" && (el.textContent ?? "").trim() === title && !!el.closest('[role="button"]'), {}, { timeout: 10_000 }))[0].closest('[role="button"]') as HTMLElement
-    await waitFor(async () => expect((await rowOf(PROJECT)).textContent).not.toMatch(/not planned/))
     expect((await rowOf("Draft the article")).textContent).toMatch(`${PROJECT} · `)
+    expect(within(aside).getAllByTitle(new RegExp(`^Open ${PROJECT}:`)).length).toBeGreaterThan(0) // its name over its steps
+    expect(within(aside).queryAllByText((_, el) => el?.tagName === "SPAN" && (el.textContent ?? "").trim() === PROJECT && !!el.closest('[role="button"][title*="click"]'))).toHaveLength(0)
   })
 })

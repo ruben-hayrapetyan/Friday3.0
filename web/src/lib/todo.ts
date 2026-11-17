@@ -66,3 +66,22 @@ function order(item: Item, next: Map<number, Block>): number {
   const at = next.get(item.id)?.start ?? item.due
   return at ? toMin(at) : Number.POSITIVE_INFINITY
 }
+
+/** Less the projects made of steps (17 Nov, proposal (h)): their steps are the work, never the project itself, so it
+ * isn't a to-do; one with no open steps is. `all` is every item, so a project's steps count wherever they're listed. */
+export function withoutStepProjects<T extends { id: number; parent_id?: number | null; status?: string }>(items: T[], all: T[] = items): T[] {
+  const parents = new Set(all.filter((i) => i.status === "todo" && i.parent_id != null).map((i) => i.parent_id))
+  return items.filter((i) => !parents.has(i.id))
+}
+
+/** One project's steps next to each other, where its first one falls, so they read under its heading. */
+export function stepsTogether<T extends { id: number; parent_id?: number | null }>(items: T[]): T[] {
+  const out: T[] = []
+  const placed = new Set<number>()
+  for (const item of items) {
+    if (placed.has(item.id)) continue
+    const mates = item.parent_id != null ? items.filter((i) => i.parent_id === item.parent_id) : [item]
+    for (const mate of mates) (out.push(mate), placed.add(mate.id))
+  }
+  return out
+}

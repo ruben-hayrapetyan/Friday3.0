@@ -4,7 +4,7 @@
 
 import type { Block, Item } from "@/api/client"
 import { dur } from "@/lib/format"
-import { nextBlocks, nextOccurrences, SECTIONS, sectionOf } from "@/lib/todo"
+import { nextBlocks, nextOccurrences, SECTIONS, sectionOf, stepsTogether } from "@/lib/todo"
 import { toMin } from "@/lib/time"
 
 export type GroupBy = "When" | "Tag" | "Kind"
@@ -41,7 +41,7 @@ export function grouped(items: Item[], blocks: Block[], today: string, by: Group
       : names.sort((a, b) => rank(a) - rank(b) || (by === "Kind" ? KINDS_FIRST.indexOf(a) - KINDS_FIRST.indexOf(b) : 0) || a.localeCompare(b))
   return order
     .filter((name) => groups.has(name) || always.includes(name))
-    .map((name) => ({ name, items: [...(groups.get(name) ?? [])].sort(sorter(sort, next)) }))
+    .map((name) => ({ name, items: stepsTogether([...(groups.get(name) ?? [])].sort(sorter(sort, next))) }))
 }
 
 function sorter(sort: SortBy, next: Map<number, Block>): (a: Item, b: Item) => number {
