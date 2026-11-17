@@ -112,9 +112,9 @@ def test_exam_prep_kept_close_to_its_exam_stays_there(app: App) -> None:
     assert all(start >= to_utc(parse_local("2026-10-22T12:00"), TZ) for _, start, _ in planned(app, [prep]))
 
 
-def test_work_pulled_early_comes_in_sittings_of_an_hour_or_whole(app: App) -> None:
+def test_short_work_pulled_early_comes_in_one_sitting(app: App) -> None:
     # 17 Nov, Linux only: Jordan's hour-long Aplia quiz, due in three weeks, got 30 minutes in a gap on Monday, a scrap.
-    # Pulled early only because there's time, a sitting is an hour at least, or the whole of shorter work.
+    # An hour or less pulled early only because there's time goes in one sitting; longer work keeps its own least.
     from friday.planner.build import build_problem
     from friday.planner.prepare import build_input
     from friday.planner.snapshot import take_snapshot
@@ -127,4 +127,4 @@ def test_work_pulled_early_comes_in_sittings_of_an_hour_or_whole(app: App) -> No
     assert all(by_id[i].soon for i in (quiz, short, big))
     assert by_id[quiz].min_chunk == 4  # an hour: one sitting
     assert by_id[short].min_chunk == 3  # all 45 minutes at once
-    assert by_id[big].min_chunk >= 4  # an hour at least
+    assert by_id[big].min_chunk < 4  # longer work keeps its own least sitting (an hour's least lost a thesis 19 hours)

@@ -379,7 +379,7 @@ def pacing_of(item: Item, top: int | None, inp: BuildInput, by_id: Mapping[int, 
     return kind.pacing if kind and name != "Project" else "none"
 
 
-SOON_SITTING = 4  # units: an hour, the least sitting of work planned early only because there's time
+SOON_SITTING = 4  # units: work of an hour or less pulled early only because there's time goes in one sitting
 
 
 def as_soon_as_there_is_time(engine_item: EngineItem, item: Item, settings: Mapping[str, Any], now: int) -> bool:
@@ -521,11 +521,12 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
     if item.preset == "Routine" and item.amount == "elastic" and MEAL.search(item.title) and release and due:
         engine_item.meal_window = (release, due)  # how far it may reach is settled once events are known: meal_room
     out = with_amount(engine_item, item, inp)
-    if out is not None and out.soon and item.shape != "one_sitting" and out.need > 0:
-        # pulled early only because there's time, it comes in sittings of an hour at least (shorter work in one), not
-        # the half hour left between two events (17 Nov: on Linux, Jordan's hour-long Aplia quiz due in three weeks got
-        # 30 minutes in a gap on Monday, a scrap). After with_amount: its need is known only then
-        out.min_chunk = max(out.min_chunk, min(SOON_SITTING, out.need))
+    if out is not None and out.soon and item.shape != "one_sitting" and 0 < out.need <= SOON_SITTING:
+        # an hour or less pulled early only because there's time goes in one sitting, not the half hour left between
+        # two events (17 Nov: on Linux, Jordan's hour-long Aplia quiz due in three weeks got 30 minutes in a gap on
+        # Monday, a scrap). Longer work keeps its own least sitting: an hour's least for a thesis's steps left 19 of its
+        # 40 hours unplanned. After with_amount: its need is known only then
+        out.min_chunk = max(out.min_chunk, out.need)
     return out
 
 
