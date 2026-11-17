@@ -16,3 +16,12 @@ export function timerLanes(main: Timed | null, alongside: { item_id: number | nu
 export function laneBox(lane: number, lanes: number): { left: string; width: string } {
   return { left: `calc(${(lane * 100) / lanes}% + 3px)`, width: `calc(${100 / lanes}% - 6px)` }
 }
+
+/** Where a timed stretch from `seconds` ago to `now` (minutes) falls in a day's column from `from` to `to` (minutes):
+ * its top and length there, or null when none of it does. A timer begun before midnight shows in both days (17 Nov:
+ * "when tasks roll over to the next day it doesn't show progress from the previous day"). */
+export function spanIn(now: number, seconds: number, from: number, to: number): { top: number; minutes: number } | null {
+  const start = Math.max(now - seconds / 60, from)
+  const end = Math.min(now, to)
+  return end > start ? { top: start - from, minutes: end - start } : null
+}

@@ -29,7 +29,7 @@ import { inARow, type Pick, pickOfBlock, pickOfEvent, picks, shifted, usePicks }
 import { givesTimeToWork, layers, sideBySide } from "./layers"
 import { WholeDays } from "./WholeDays"
 import { eatenRoutines, pastMeals } from "./pastMeals"
-import { laneBox, timerLanes } from "./timerLanes"
+import { laneBox, spanIn, timerLanes } from "./timerLanes"
 import { isWholeDay } from "./wholeDay"
 import { dockRoom } from "@/now/dockRoom"
 
@@ -263,11 +263,11 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                 <GhostBox key={`g${p.item.key}`} p={p} />
               ))}
               {drag?.moved && drag.at && drag.over === "calendar" && (drag.group || drag.rows ? <GroupPreview drag={drag} list={picked} date={date} axis={axis} /> : <Preview drag={drag} date={date} axis={axis} today={today} />)}
-              {date === dated &&
-                timerLanes(timer && nowData?.current_source === "timer" ? { key: "main", title: nowData.current?.title ?? "", seconds: elapsed } : null, status?.alongside ?? [], drift).map((t) => (
-                  // begun before midnight: drawn from the top of today's column
-                  <TimerBox key={t.key} title={t.title} top={Math.max(0, now - t.seconds / 60 - toMin(date) - axis.startMin) * PX} seconds={t.seconds} shown={Math.min(t.seconds / 60, now - toMin(date) - axis.startMin)} lane={t.lane} lanes={t.lanes} />
-                ))}
+              {timerLanes(timer && nowData?.current_source === "timer" ? { key: "main", title: nowData.current?.title ?? "", seconds: elapsed } : null, status?.alongside ?? [], drift).map((t) => {
+                // in every day it spans: begun before midnight, yesterday's column shows its part too
+                const at = spanIn(now, t.seconds, toMin(date) + axis.startMin, toMin(date) + axis.endMin)
+                return at && <TimerBox key={t.key} title={t.title} top={at.top * PX} seconds={t.seconds} shown={at.minutes} lane={t.lane} lanes={t.lanes} />
+              })}
               {nowAt >= 0 && nowAt <= axis.endMin - axis.startMin && <NowLine top={nowAt * PX} today={date === dated} />}
             </div>
           )

@@ -736,6 +736,22 @@ describe("the grid", () => {
     await friday.c("stop", {})
   })
 
+  it("draws a timer that ran past midnight in both days' columns", async () => {
+    // 17 Nov, the user: "when tasks roll over to the next day it doesn't show progress from the previous day" (timed
+    // since 9:43pm, at 12:18am the evening before showed nothing of it)
+    const { tasks } = await nextWeek()
+    await friday.c("start", { id: tasks[0].item_id })
+    const { user, client } = await openFriday("/")
+    await gridReady()
+    await user.keyboard("w")
+    const label = new RegExp(`^● ${tasks[0].title} · \\d`)
+    expect(await screen.findByText(label, {}, { timeout: 10_000 })).toBeTruthy()
+    // as if begun 16 hours ago, at 10pm the day before: the server's clock can't be put back, so the page is told
+    client.setQueryData<{ timer: { elapsed_s: number } }>(["status"], (s) => s && { ...s, timer: { ...s.timer, elapsed_s: 16 * 3600 } })
+    await waitFor(() => expect(screen.getAllByText(label)).toHaveLength(2))
+    await friday.c("stop", {})
+  })
+
   it("draws the past as it went: sittings you timed and work counted done", async () => {
     const look = (await friday.q<{ calendar_look: Record<string, unknown> }>("settings")).calendar_look
     if (look.show_past_plan === false) await friday.c("settings_set", { key: "calendar_look", value: { ...look, show_past_plan: true } })
