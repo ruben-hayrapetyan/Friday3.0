@@ -18,13 +18,20 @@ export async function openFriday(route = "/") {
   return { ...view, client, user }
 }
 
-/** Waits for the commands the app sends: the last one named `name`. */
+// Each send is answered once: a second change to the same thing is sent only once the first is answered
+// (useCommand's lanes), so the last one named `name` may still be the one an earlier wait returned.
+const returned = new WeakSet<object>()
+
+/** Waits for the commands the app sends: the last one named `name` that no earlier wait returned. */
 export async function waitForSent(name: string, timeout = 5000) {
   const { sent } = await import("./setup")
   const until = Date.now() + timeout
   while (Date.now() < until) {
     const found = [...sent].reverse().find((s) => s.name === name)
-    if (found) return found
+    if (found && !returned.has(found)) {
+      returned.add(found)
+      return found
+    }
     await new Promise((r) => setTimeout(r, 50))
   }
   throw new Error(`no ${name} was sent; sent: ${sent.map((s) => s.name).join(", ") || "nothing"}`)

@@ -60,21 +60,27 @@ def accuracy(kind: str, ratios: list[float]) -> KindAccuracy:
 
 
 def heatmap(ctx: Ctx, since: str) -> list[list[int]]:
-    """Minutes of recorded work in each weekday's hours, in local time."""
-    grid = [[0] * (LAST_HOUR - FIRST_HOUR + 1) for _ in range(7)]
+    """Minutes of recorded work in each weekday's hours, in local time, added up over the weeks shown. Each real hour
+    holds at most 60 (16 Nov: three timers running at once made one hour 3h, "Mon 11pm, 357 min"), and a session counts
+    the minutes it recorded, spread over its span (a review's "30 minutes" between 10:45 and 11:45 is 30, not 60)."""
+    hours: dict[tuple[int, int, int], float] = defaultdict(float)  # (local date ordinal, weekday, hour) -> minutes
     for r in rows(
         ctx.conn,
-        "SELECT p.start_utc, p.end_utc FROM progress p JOIN items i ON i.id = p.item_id WHERE p.user_id = ? "
+        "SELECT p.start_utc, p.end_utc, p.minutes FROM progress p JOIN items i ON i.id = p.item_id WHERE p.user_id = ? "
         f"AND p.start_utc >= ? AND p.end_utc IS NOT NULL AND coalesce(i.preset, '') NOT IN {NOT_WORK}",
         [ctx.user_id, since],
     ):
         at, end = parse_utc(r["start_utc"]), parse_utc(r["end_utc"])
+        share = min(1.0, r["minutes"] / (end - at)) if r["minutes"] is not None and end > at else 1.0
         while at < end:
             local = to_local(at, ctx.tz)
             step = min(end - at, 60 - local.minute)
             if FIRST_HOUR <= local.hour <= LAST_HOUR:
-                grid[local.weekday()][local.hour - FIRST_HOUR] += step
+                hours[(local.toordinal(), local.weekday(), local.hour)] += step * share
             at += step
+    grid = [[0] * (LAST_HOUR - FIRST_HOUR + 1) for _ in range(7)]
+    for (_, weekday, hour), minutes in hours.items():
+        grid[weekday][hour - FIRST_HOUR] += round(min(60.0, minutes))
     return grid
 
 

@@ -13,7 +13,7 @@ import { query } from "@/api/client"
 import { H, Icon, Seg, Switch } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useLoad, useStatus } from "@/hooks/queries"
-import { clockTime, weekday } from "@/lib/format"
+import { clockTime, dur, weekday } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
 import { BeatPlan } from "./BeatPlan"
 import { Learned } from "./Learned"
@@ -93,8 +93,8 @@ export function InsightsPage() {
             <Section title="How long things really take" note="Actual time compared with the estimate, by kind">
               <Accuracy kinds={data.by_kind} />
             </Section>
-            <Section title="When you get things done" note="Minutes worked, by hour" right={<Legend />}>
-              <Heat heat={data.heat} />
+            <Section title="When you get things done" note={`Time worked in each hour, the last ${data.weeks} weeks together`} right={<Legend />}>
+              <Heat heat={data.heat} weeks={data.weeks} />
               <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>{data.best_hours ?? "Not enough recorded work yet to see a pattern."}</span>
             </Section>
             <Section title="What Friday learned" note="Suggestions from how you actually work. Nothing changes until you approve.">
@@ -185,7 +185,7 @@ function Legend() {
   )
 }
 
-function Heat({ heat }: { heat: number[][] }) {
+function Heat({ heat, weeks }: { heat: number[][]; weeks: number }) {
   const top = Math.max(1, ...heat.flat())
   return (
     <div style={{ display: "grid", gridTemplateColumns: "40px repeat(16, minmax(0,1fr))", gap: 3, alignItems: "center" }}>
@@ -196,20 +196,21 @@ function Heat({ heat }: { heat: number[][] }) {
         </span>
       ))}
       {heat.map((row, d) => (
-        <Row key={DAYS[d]} day={DAYS[d]} row={row} top={top} />
+        <Row key={DAYS[d]} day={DAYS[d]} row={row} top={top} weeks={weeks} />
       ))}
     </div>
   )
 }
 
-function Row({ day, row, top }: { day: string; row: number[]; top: number }) {
+/** An hour's cell says its weeks (16 Nov: "Mon 11pm, 357 min" was three Mondays added up, read as one hour). */
+function Row({ day, row, top, weeks }: { day: string; row: number[]; top: number; weeks: number }) {
   return (
     <>
       <span style={{ fontSize: 11, color: "var(--color-neutral-400)" }}>{day}</span>
       {row.map((m, h) => (
         <span
           key={h}
-          title={`${day} ${clockTime(`${HOURS[h]}:00`)}, ${m} min`}
+          title={`${day} ${clockTime(`${HOURS[h]}:00`)}: ${m ? dur(m) : "nothing"} in the last ${weeks} weeks`}
           style={{ height: 22, borderRadius: 4, background: m ? `color-mix(in srgb, var(--color-accent) ${Math.round(8 + (m / top) * 92)}%, transparent)` : "color-mix(in srgb, var(--color-text) 4%, transparent)" }}
         />
       ))}
