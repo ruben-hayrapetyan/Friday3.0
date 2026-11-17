@@ -1069,8 +1069,8 @@ VERBS = {
         "/api/c/reorder",
         commands.ReorderInput,
         True,
-        False,
-        "Put a project's steps in this order (it shows them so; the plan follows their dependencies).",
+        True,
+        "Put a project's steps in this order: it shows them so, and the plan does them so (planner in_listed_order).",
     ),
     "repeat": Verb(
         "POST",

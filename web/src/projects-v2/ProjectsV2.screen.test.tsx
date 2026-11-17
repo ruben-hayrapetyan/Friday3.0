@@ -314,6 +314,20 @@ describe("the Projects & exams page", () => {
     await friday.c("drop", { id: made.result.item.id })
   })
 
+  it("says a step planned past the plan's days is planned later, not that it isn't planned", async () => {
+    // 17 Nov: "open subtasks say not planned even with ample time"; a client: "Some steps aren't planned yet: give
+    // them a length" though every step had one
+    const made = await friday.c<{ result: { item: Item } }>("add", { title: "Term paper", preset: "Project", due: "2026-12-30T17:00" })
+    const id = made.result.item.id
+    for (const title of ["Sources", "Outline", "Draft", "Revise"]) await friday.c("add", { title, preset: "Assignment", duration_min: 480, parent_id: id })
+    await waitFor(async () => expect(Object.keys((await friday.q<{ item: Item; step_finish: Record<string, string> }[]>("projects")).find((p) => p.item.id === id)?.step_finish ?? {}).length).toBeGreaterThan(0), { timeout: 20_000 })
+    await openFriday(`/projects?id=${id}`)
+    expect(await screen.findAllByText(/^Later, by /, {}, { timeout: 10_000 })).not.toHaveLength(0)
+    expect(screen.queryByText(/^not planned$|^No room before its due$/)).toBeNull()
+    expect(screen.queryByText(/give them a length/)).toBeNull()
+    await friday.c("drop", { id })
+  })
+
   it("sets a project's due date and how firm it is on its page, not through its tasks", async () => {
     // 16 Nov: "the only way to add a due date to a project is through tasks which i find highly problematic"
     const made = await friday.c<{ result: { item: Item } }>("add", { title: "Club poster", preset: "Project", duration_min: 240 })

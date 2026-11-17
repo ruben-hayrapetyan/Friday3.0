@@ -251,6 +251,7 @@ class ProjectOut(Model):
     remaining_min: int
     planned_finish: str | None  # the last planned work: a block's end, or a date when the allocator plans it
     status: Literal["done", "on_track", "late", "unplanned"]
+    step_finish: dict[str, str] = {}  # each open step's planned finish, by id: a date when planned past the plan's days
 
 
 class ExamPrepOut(Model):

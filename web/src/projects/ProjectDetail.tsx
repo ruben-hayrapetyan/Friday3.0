@@ -114,7 +114,7 @@ export function ProjectDetail({ p, all, onPick, onBack, top, after }: { p: Proje
           <span />
         </div>
         {steps.map((s, i) => (
-          <Step key={s.id} step={s} steps={steps} first={i === 0} last={i === steps.length - 1} next={blocks.find((b) => b.item_id === s.id)?.start ?? null} onMove={(by) => move(i, by)} />
+          <Step key={s.id} step={s} steps={steps} first={i === 0} last={i === steps.length - 1} next={blocks.find((b) => b.item_id === s.id)?.start ?? null} later={p.step_finish?.[String(s.id)] ?? null} onMove={(by) => move(i, by)} />
         ))}
         <div className="fr-row" style={{ display: "flex", gap: 8, alignItems: "center", padding: "10px 0" }}>
           <Icon name="plus" style={{ color: "var(--color-neutral-500)", marginLeft: 40 }} />
@@ -138,7 +138,7 @@ export function ProjectDetail({ p, all, onPick, onBack, top, after }: { p: Proje
 // under the name.
 const cols = (tight: boolean) => (tight ? "22px 18px minmax(0,1fr) auto 28px" : "22px 18px minmax(0,1fr) 170px 96px 124px 28px")
 
-function Step({ step, steps, first, last, next, onMove }: { step: Item; steps: Item[]; first: boolean; last: boolean; next: string | null; onMove: (by: number) => void }) {
+function Step({ step, steps, first, last, next, later, onMove }: { step: Item; steps: Item[]; first: boolean; last: boolean; next: string | null; later: string | null; onMove: (by: number) => void }) {
   const { today, layout } = useShell()
   const [open, setOpen] = useState(false)
   const done = useCommand("done", { label: () => `${step.title}: done` })
@@ -164,7 +164,9 @@ function Step({ step, steps, first, last, next, onMove }: { step: Item; steps: I
     return false
   }
   const length = step.duration_min ?? 60
-  const planned = isDone ? "Done" : next ? when(next, today) : "not planned"
+  // planned past the plan's two weeks, nearer its due, isn't "not planned" (17 Nov: "open subtasks say not planned
+  // even with ample time")
+  const planned = isDone ? "Done" : next ? when(next, today) : later ? `Later, by ${when(later, today)}` : "No room before its due"
   const waitsOn = (
     <button onClick={() => setOpen(!open)} className="fr-plain" title={names.join(", ") || "Nothing"} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: "var(--radius-md)", background: "var(--color-bg)", boxShadow: open ? "inset 0 0 0 1px var(--color-accent-500)" : "0 0 0 1px color-mix(in srgb, var(--color-text) 7%, transparent)", color: names.length ? "var(--color-text)" : "var(--color-neutral-500)", fontSize: 12, minWidth: 0, ...(layout.tight ? { padding: 0, background: "none", boxShadow: "none", maxWidth: "100%" } : {}) }}>
       <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{layout.tight ? `Waits on ${names.join(", ") || "nothing"}` : names.join(", ") || "Nothing"}</span>

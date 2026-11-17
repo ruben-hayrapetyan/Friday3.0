@@ -1628,7 +1628,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Put a project's steps in this order (it shows them so; the plan follows their dependencies). */
+        /** Put a project's steps in this order: it shows them so, and the plan does them so (planner in_listed_order). */
         post: operations["reorder"];
         delete?: never;
         options?: never;
@@ -8570,6 +8570,13 @@ export interface components {
              * @enum {string}
              */
             status: "done" | "on_track" | "late" | "unplanned";
+            /**
+             * Step Finish
+             * @default {}
+             */
+            step_finish?: {
+                [key: string]: string;
+            };
         };
         /** ProjectRef */
         ProjectRef: {

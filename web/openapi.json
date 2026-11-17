@@ -6871,7 +6871,7 @@
   },
   "/api/c/reorder": {
    "post": {
-    "summary": "Put a project's steps in this order (it shows them so; the plan follows their dependencies).",
+    "summary": "Put a project's steps in this order: it shows them so, and the plan does them so (planner in_listed_order).",
     "operationId": "reorder",
     "parameters": [
      {
@@ -27644,6 +27644,14 @@
        "unplanned"
       ],
       "title": "Status"
+     },
+     "step_finish": {
+      "additionalProperties": {
+       "type": "string"
+      },
+      "type": "object",
+      "title": "Step Finish",
+      "default": {}
      }
     },
     "additionalProperties": false,

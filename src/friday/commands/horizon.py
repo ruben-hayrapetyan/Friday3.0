@@ -117,6 +117,7 @@ def project_out(ctx: Ctx, project: ItemOut, tree: list[ItemOut], finish: dict[in
         remaining_min=sum(c.remaining_min or 0 for c in open_leaves),
         planned_finish=max(planned) if planned and len(planned) == len(open_leaves) else None,
         status=status,  # type: ignore[arg-type]
+        step_finish={str(c.id): finish[c.id] for c in open_leaves if c.id in finish and c.id != project.id},
     )
 
 
@@ -239,9 +240,9 @@ def template_save(ctx: Ctx, inp: TemplateSaveInput) -> Changed:
     return Changed(message=f"Saved template {inp.name} ({len(steps)} steps)")
 
 
-@command("reorder")
+@command("reorder", affects_plan=True)
 def reorder(ctx: Ctx, inp: ReorderInput) -> Changed:
-    """Put a project's steps in this order (it shows them so; the plan follows their dependencies)."""
+    """Put a project's steps in this order: it shows them so, and the plan does them so (planner in_listed_order)."""
     require_item(ctx, inp.parent_id)
     order = kv_get(ctx.conn, "project_order", {}, ctx.user_id) or {}
     order[str(inp.parent_id)] = inp.ids
