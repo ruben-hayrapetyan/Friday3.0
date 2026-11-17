@@ -91,7 +91,8 @@ export function ProjectDetail({ p, all, onPick, top, after }: { p: Project; all:
           </H>
           <span className="tnum" style={{ color: "var(--color-neutral-300)" }}>
             {p.item.due && !top ? `Due ${when(p.item.due, today)} · ` : ""}
-            {doneSteps} of {steps.length} steps done · {dur(total)} in all
+            {/* no steps: worked on as a whole, a to-do of its own (17 Nov, proposal (h)) */}
+            {steps.length ? `${doneSteps} of ${steps.length} steps done · ${dur(total)} in all` : `Worked on as a whole · ${dur(total)} · Add steps to split it up`}
           </span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, width: layout.tight ? "100%" : 240 }}>
