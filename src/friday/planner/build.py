@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 from friday.core.guess import EXAM, same_course, subject_of, subjects
 from friday.core.items import Firmness, Item
-from friday.core.pace import DayScales
+from friday.core.pace import DayScales, budget_factor
 from friday.core.quickadd import MEAL
 from friday.core.settings import SleepDay, bedtime_minutes, exam_focus_of, minutes_of
 from friday.core.textnorm import identity_text, norm
@@ -97,6 +97,9 @@ class BuildInput:
     areas: Mapping[int, str] = field(default_factory=dict)
     progress_units: Mapping[int, int] = field(default_factory=dict)  # item id → units done in its window
     progress_today_units: Mapping[int, int] = field(default_factory=dict)
+    carried_units: Mapping[int, int] = field(default_factory=dict)  # item id → an ongoing project's carry-over
+    priorities: Mapping[int, float] = field(default_factory=dict)  # repeat id → an ongoing project's priority weight
+    project_pacing: Mapping[int, str] = field(default_factory=dict)  # project id → its own pace through the work
     current: Mapping[int, Sequence[tuple[int, int]]] = field(default_factory=dict)  # item id → (start, end) blocks
     day_scales: Sequence[DayScales] | None = None
     debt_hours: Mapping[date, float] = field(default_factory=dict)
@@ -387,6 +390,16 @@ def exam_due(item: Item, due: int | None, fixed: Mapping[int, Item], now: int) -
     return max(near) if near else due
 
 
+def top_project(item: Item, by_id: Mapping[int, Item]) -> int | None:
+    """The project an item is part of, at the top (an item under nothing is its own); None for one with no id."""
+    seen: set[int] = set()
+    at = item
+    while at.parent_id is not None and at.parent_id in by_id and at.parent_id not in seen:
+        seen.add(at.parent_id)
+        at = by_id[at.parent_id]
+    return at.id
+
+
 def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, Item],
                    fixed: Mapping[int, Item], exams: list[tuple[int, int, str]]) -> EngineItem | None:  # fmt: skip
     release, due = window(item, inp, by_id, fixed, grid.now, exams)
@@ -394,6 +407,7 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
     preset = inp.settings["presets"].get(item.preset) if item.preset else None
     created = parse_utc(item.created_utc) if item.created_utc else None
     tentative = item.certainty == "tentative"
+    top = top_project(item, by_id)
     engine_item = EngineItem(
         key=key_of(item.id), title=item.title, norm_title=identity_text(norm(item.title, inp.settings["text"].rules())),
         area=inp.areas.get(item.area_id) if item.area_id is not None else None, tags=tuple(item.tags),
@@ -407,7 +421,9 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
         tentative=tentative,
         progress=progress,
         window_is_hard=tentative or item.amount in ("elastic", "target") or expires(item, inp.settings),
-        pacing=preset.pacing if preset else "none", pacing_start_utc=release if release is not None else created,
+        pacing=inp.project_pacing.get(top, preset.pacing if preset else "none") if top is not None
+        else preset.pacing if preset else "none",
+        pacing_start_utc=release if release is not None else created, project=top,
         travel_before=math.ceil((item.buffer_before_min or 0) / UNIT_MIN),
         travel_after=math.ceil((item.buffer_after_min or 0) / UNIT_MIN),
     )  # fmt: skip
@@ -514,8 +530,17 @@ def with_amount(engine_item: EngineItem, item: Item, inp: BuildInput) -> EngineI
         engine_item.max = max(engine_item.ideal, (item.max_units or 0) - progress)
         engine_item.size_hours = (item.ideal_units or 0) * UNIT_MIN / 60
     elif item.amount == "target":
-        engine_item.target = item.target_units or 0
-        engine_item.cap = item.cap_units or math.ceil(1.5 * engine_item.target)
+        carried = inp.carried_units.get(item.id, 0)  # an ongoing project's short last week (planner/ongoing.py)
+        engine_item.target = (item.target_units or 0) + carried
+        engine_item.cap = (item.cap_units or math.ceil(1.5 * (item.target_units or 0))) + carried
+        if item.series_id is not None:
+            engine_item.priority = inp.priorities.get(item.series_id, 1.0)
+        if engine_item.priority > 1:  # room for a high priority's share of the biggest push (growth 3)
+            pushed = math.ceil(engine_item.target * budget_factor(3.0, engine_item.priority))
+            engine_item.cap = max(engine_item.cap, pushed)
+        if item.daily_ceiling_units:  # an ongoing project's rhythm: at most so much a day
+            engine_item.day_most = item.daily_ceiling_units
+            engine_item.progress_today = inp.progress_today_units.get(item.id, 0)
         engine_item.size_hours = engine_item.target * UNIT_MIN / 60
     else:
         engine_item.daily_ceiling = item.daily_ceiling_units or 12

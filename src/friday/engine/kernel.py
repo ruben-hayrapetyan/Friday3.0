@@ -15,6 +15,10 @@ State, all arrays mutated in place:
 
 This is flat array code for speed: the one place functions run long. Every move is built from `set_owner`
 calls, which keep all totals exact, and a move that breaks a wall is undone by the chain.
+
+Numba caches each file's compiled code by that file's own stamp, and code calling these functions builds them in:
+changing `item_violations` (or anything moves.py or chain.py call) means changing those files too, so their cached
+code is compiled again (chain.py says what the wall checks are as of its last change).
 """
 
 from typing import NamedTuple
@@ -256,7 +260,8 @@ def init_state(M, st, owner):
 
 @kernel
 def item_violations(M, st, i):
-    """W2–W4, W6–W8 for item i. W1 holds by construction, W5 is per day, W9 is checked by the chain."""
+    """W2–W4, W6–W8 for item i (W4, units a day: open items, and targets with a rhythm). W1 holds by
+    construction, W5 is per day, W9 is checked by the chain."""
     owner = st.owner
     count = 0
     placed = 0
@@ -265,6 +270,7 @@ def item_violations(M, st, i):
     has_coarse = False
     in_chunk = False
     kind = M.amount_kind[i]
+    per_day = kind == 3 or (kind == 2 and M.ceiling[i] > 0)  # open, or a target with a rhythm (most a day)
     units_today = 0
     current_day = -1
     first_unlocked = -1
@@ -282,7 +288,7 @@ def item_violations(M, st, i):
                 chunk_units = u
             if first_unlocked < 0 and not M.locked[i, s]:
                 first_unlocked = s
-            if kind == 3:
+            if per_day:
                 d = M.day[s]
                 if d != current_day:
                     if current_day >= 0:
@@ -300,7 +306,7 @@ def item_violations(M, st, i):
                 if M.max_chunk[i] >= 0 and chunk_units > M.max_chunk[i]:
                     count += 1
             in_chunk = False
-    if kind == 3 and current_day >= 0:
+    if per_day and current_day >= 0:
         limit = M.ceiling_day0[i] if current_day == 0 else M.ceiling[i]
         if units_today > limit:
             count += 1

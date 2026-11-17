@@ -52,6 +52,9 @@ class EngineItem:
     firmness: Literal["hard", "soft", "none"] = "none"
     amount: Amount = "fixed"
     daily_ceiling: int = 12  # open: units per day; today's progress is `progress_today`
+    day_most: int | None = None  # target: at most this many units a day (an ongoing project's rhythm); None, no limit
+    priority: float = 1.0  # target: an ongoing project's priority weight, how much of a pace it takes (budget_factor)
+    project: int | None = None  # the top project it's part of (its own id for a project), for rules about one project
     progress_today: int = 0
     need: int = 0  # fixed: remaining units
     min: int = 0  # elastic, minus progress

@@ -49,6 +49,25 @@ def scales(dials: Dials) -> DayScales:
     )
 
 
+PRIORITIES = {1: 0.4, 2: 0.7, 3: 1.0, 4: 1.3, 5: 1.6}  # an ongoing project's priority: how much of a pace it takes
+
+
+def priority_weight(priority: int | None) -> float:
+    """An ongoing project's priority (1 lowest to 5 highest) as its weight; 3, or none, is the pace as it is."""
+    return PRIORITIES.get(priority or 3, 1.0)
+
+
+def budget_factor(scale: float, weight: float) -> float:
+    """A weekly budget's share of a pace: the pace's push (a scale over 1) times the priority's weight, or its cut (a
+    scale under 1) divided by it, so a high priority takes more of a push and gives up less on an easy week. Weight 1
+    is the pace as it is."""
+    if weight == 1:
+        return scale
+    if scale >= 1:
+        return 1 + (scale - 1) * weight
+    return max(0.0, 1 - (1 - scale) / weight)
+
+
 DEFAULT_PACES = {
     "Normal": Dials(),
     "Easy": Dials(capacity=0.6, rest=2.0, spread=3.0, growth=0.0),

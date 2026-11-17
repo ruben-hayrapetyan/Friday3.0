@@ -2,6 +2,7 @@
 
 from friday.commands import (  # noqa: F401
     ai,
+    archive,
     asks,
     beat_plan,
     calendar,
@@ -32,11 +33,13 @@ from friday.commands import (  # noqa: F401
     mail,
     mail_app,
     napping,
+    ongoing,
     optional_events,
     phones,
     pins,
     planning,
     progress,
+    project_options,
     queries,
     rating,
     reminders,

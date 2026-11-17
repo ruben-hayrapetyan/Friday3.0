@@ -48,6 +48,7 @@ from friday.engine.explain import Block
 from friday.engine.rules.prices import has_words
 from friday.planner.assemble import PlannedBlock
 from friday.planner.build import id_of, key_of
+from friday.planner.ongoing import ongoing_options
 from friday.planner.progress import minutes_by_item, remaining_minutes
 from friday.planner.service import ahead
 from friday.planner.snapshot import pace_periods, take_snapshot, with_steps
@@ -610,10 +611,12 @@ def slipping(ctx: Ctx, saved: dict | None, late: set[int]) -> list[LateItem]:
     horizon_end = ctx.now_utc + ctx.settings["time"].horizon_days * 1440
     done = minutes_by_item(ctx.conn, ctx.user_id)
     projects = with_steps(ctx.conn, ctx.user_id)
+    ongoing = ongoing_options(ctx.conn, ctx.user_id)
     out = []
     for r in rows(
         ctx.conn,
-        "SELECT i.id, i.title, COALESCE(i.due_utc, p.due_utc) AS due_utc, i.preset, MAX(b.end_utc) AS last "
+        "SELECT i.id, i.title, COALESCE(i.due_utc, p.due_utc) AS due_utc, i.preset, i.series_id, "
+        "MAX(b.end_utc) AS last "
         "FROM items i LEFT JOIN items p ON p.id = i.parent_id "
         "LEFT JOIN blocks b ON b.item_id = i.id AND b.plan_id = ? "
         "WHERE i.user_id = ? AND i.status = 'todo' AND i.when_kind != 'fixed' "
@@ -623,6 +626,8 @@ def slipping(ctx: Ctx, saved: dict | None, late: set[int]) -> list[LateItem]:
     ):
         if r["id"] in late or r["id"] in projects or r["preset"] in NOT_SLIPPING:
             continue
+        if r["series_id"] is not None and str(r["series_id"]) in ongoing:
+            continue  # an ongoing project's week isn't a deadline: what it falls short by carries into the next
         due = parse_utc(r["due_utc"])
         if r["last"] is not None and parse_utc(r["last"]) > due:
             hours = round((parse_utc(r["last"]) - due) / 60, 1)

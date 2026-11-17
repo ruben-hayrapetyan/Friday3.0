@@ -14,7 +14,7 @@ import { Bar, PROJECT_STATUS, type Project, projectPct, StatusTag, TagMenu, TONE
 import { Timeline } from "./Timeline"
 import { dockRoom } from "@/now/dockRoom"
 
-export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Project[]; onPick: (id: number) => void; onBack: () => void }) {
+export function ProjectDetail({ p, all, onPick, onBack, after }: { p: Project; all: Project[]; onPick: (id: number) => void; onBack: () => void; after?: React.ReactNode }) {
   const { today, layout } = useShell()
   const { color } = useLook()
   const blocks = useHorizon().data?.blocks ?? []
@@ -128,6 +128,7 @@ export function ProjectDetail({ p, all, onPick, onBack }: { p: Project; all: Pro
         </div>
       </div>
       <Timeline p={p} steps={steps} tone={TONE[tone]} />
+      {after /* what a page adds under it (the new layout: notes and options) */}
     </div>
   )
 }

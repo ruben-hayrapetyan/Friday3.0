@@ -1244,3 +1244,30 @@ class ReminderWrittenInput(Model):
     id: int
     ok: bool
     error: str | None = None
+
+
+class OngoingAddInput(Model):
+    title: str = Field(min_length=1)
+    hours_per_week: float = Field(gt=0, le=60)
+    area: str | None = None
+    carry: float = Field(0.5, ge=0, le=1)  # how much of a short week comes into the next: none, half, all
+
+
+class OngoingSetInput(Model):
+    id: int  # the repeat's id
+    title: str | None = None
+    hours_per_week: float | None = Field(None, gt=0, le=60)
+    carry: float | None = Field(None, ge=0, le=1)
+    rhythm_days: int | None = Field(None, ge=0, le=7)  # days a week to touch it; 0, whenever it fits
+    priority: int | None = Field(None, ge=1, le=5)  # 1 lowest to 5 highest; 3 is the pace as it is
+    paused_until: str | None = None  # a date to pause it until; "resume" until you resume it; "" resumes now
+
+
+class ProjectRef(Model):
+    id: int  # the project's item id
+
+
+class ProjectSetInput(Model):
+    id: int  # the project's item id
+    pacing: Literal["front", "linear", "back", "kind"] | None = None  # "kind": as its kind is paced
+    early_days: float | None = Field(None, ge=0, le=30)  # aim to finish this many days before its due; 0 for none

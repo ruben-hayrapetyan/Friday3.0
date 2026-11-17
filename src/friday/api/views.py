@@ -976,3 +976,50 @@ class BeatPlanOut(Model):
     counts: dict[str, int]  # way → finishes that used it
     said: list[str]
     asking: list[str]  # the Inbox questions open now
+
+
+class OngoingWeek(Model):
+    start: str  # local, the week's first moment
+    end: str
+    target_min: int  # its hours a week, with what carried in
+    carried_min: int
+    done_min: int
+    planned_min: int  # still planned from now, this week only
+    item_id: int  # the week's own item, to start or time
+
+
+class OngoingOut(Model):
+    """An ongoing project: hours a week with no deadline, its week now and the weeks before."""
+
+    id: int  # the repeat's id
+    title: str
+    area: str | None
+    active: bool  # false while paused
+    hours_per_week: float
+    carry: float  # 0, 0.5 or 1: how much of a short week comes into the next
+    week: OngoingWeek | None  # this week, while it isn't paused
+    past: list[OngoingWeek]  # up to six weeks before, oldest first
+    touched: list[str]  # the local dates with work on it, the last eight weeks
+    rhythm_days: int | None  # days a week to touch it; None, whenever it fits
+    priority: int  # 1 lowest to 5 highest
+    aim_min: int  # this week's hours a week as your pace and its priority make them
+    paused_until: str | None  # a local date it's paused until
+    as_before: bool = False  # a weekly goal made outside the shelf: it plans as it always has until a setting changes
+
+
+class FinishedProject(Model):
+    """An archived project: what it took against what its steps were planned to take."""
+
+    id: int
+    title: str
+    area: str | None
+    finished: str | None  # local, when it was archived
+    steps: int
+    estimate_min: int
+    actual_min: int
+
+
+class ProjectOptionsOut(Model):
+    id: int  # the project's item id
+    pacing: str | None  # front, linear or back; None: its kind's
+    early_days: float  # aims to finish this many days early (a rule of yours); 0: no such rule

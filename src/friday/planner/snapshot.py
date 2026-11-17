@@ -25,6 +25,7 @@ from friday.learn.sleep import NAP_USUAL_MIN, Mark, evening_of, learn, nights_fr
 from friday.learn.state import loadings
 from friday.planner.cushion import SHARES, cushion, cushioned, shortened
 from friday.planner.hidden import hidden_of
+from friday.planner.ongoing import carried_minutes, priorities, project_pacing
 from friday.planner.progress import progress_rows, recorded_minutes
 from friday.planner.store import (
     area_names,
@@ -102,6 +103,11 @@ class Snapshot:
     # Repeats whose times are kept apart (planner/spacing.py): days between, and the last done time's start, end, due.
     series_gaps: dict[int, float] = field(default_factory=dict)
     series_last: dict[int, tuple[int, int, int | None]] = field(default_factory=dict)
+    # Ongoing projects (planner/ongoing.py): a short week's minutes carried into this one, by item; priority weights,
+    # by repeat.
+    carried: dict[int, int] = field(default_factory=dict)
+    priorities: dict[int, float] = field(default_factory=dict)
+    project_pacing: dict[int, str] = field(default_factory=dict)  # a project's own pace (commands/project_options.py)
 
 
 def series_spacing(conn: sqlite3.Connection, user_id: int) -> dict[str, Any]:
@@ -200,6 +206,9 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         going=frozenset(kv_get(conn, "events_kept", [], user_id)),
         hidden=frozenset(hidden_of(conn, settings, user_id).events),
         **series_spacing(conn, user_id),
+        carried=carried_minutes(conn, now_utc, user_id),
+        priorities=priorities(conn, user_id),
+        project_pacing=project_pacing(conn, user_id),
         **learned(conn, now_utc, settings, user_id),
         log_since_plan=log_since(conn, json.loads(plan["report"]).get("last_command_id", 0) if plan else 0, user_id),
         last_command_id=int(

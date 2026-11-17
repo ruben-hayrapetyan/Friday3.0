@@ -112,9 +112,10 @@ def amount_violations(problem: Problem, solution: Solution, item: EngineItem) ->
         out.append(Violation("over_max", key, f"{placed} > {item.max}"))
     if item.amount == "target" and placed > item.cap:
         out.append(Violation("over_cap", key, f"{placed} > {item.cap}"))
-    if item.amount == "open":
+    most = item.daily_ceiling if item.amount == "open" else item.day_most if item.amount == "target" else None
+    if most is not None:  # open, or a target with a rhythm: units a day
         for d in range(grid.n_days):
-            ceiling = item.daily_ceiling - (item.progress_today if d == 0 else 0)
+            ceiling = most - (item.progress_today if d == 0 else 0)
             got = sum(int(grid.units[s]) for s in slots if grid.slots[s].day == d)
             if got > ceiling:
                 out.append(Violation("over_ceiling", key, f"day {d}: {got} > {ceiling}"))
