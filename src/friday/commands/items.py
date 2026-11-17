@@ -33,6 +33,7 @@ from friday.commands.fields import (
     to_item_values,
     update_item,
 )
+from friday.commands.project_steps import keep_rest, last_step_finished, project_reopened_by
 from friday.commands.registry import Ctx, command
 from friday.commands.series import (
     TIME_KEYS,
@@ -98,6 +99,8 @@ def add(ctx: Ctx, inp: AddInput) -> AddOutput:
     item = due_is_a_deadline(new_item(ctx, values), values)
     check_parent(ctx, None, item.parent_id)
     item_id = insert_item(ctx, item)
+    if item.parent_id is not None:
+        keep_rest(ctx, item.parent_id)  # a new step takes from the project's "More on" step
     if inp.calendar == "" and item.when == "fixed":  # kept only in Friday, even after a default calendar is chosen
         mine = kv_get(ctx.conn, "friday_only_events", [], ctx.user_id) or []
         ctx.db.upsert(
@@ -343,6 +346,9 @@ def edit(ctx: Ctx, inp: EditInput) -> ItemResult:
             update_item(ctx, step, dataclasses.replace(step, area_id=changed.area_id))
     # one time of a repeat goes where its repeat goes ("Only Friday" stays in Friday; 8 Nov it went to Google)
     queue_event_write(ctx, changed, "save", target=calendar_of(ctx, changed.series_id) if changed.series_id else None)
+    if "duration_units" in values or changed.parent_id != item.parent_id:  # a length or a project changed: its rest
+        for project in {item.parent_id, changed.parent_id, item.id} - {None}:
+            keep_rest(ctx, project)  # type: ignore[arg-type]
     return ItemResult(item=item_out(ctx, changed, minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0)))
 
 
@@ -415,6 +421,8 @@ def drop(ctx: Ctx, inp: ItemRef) -> ItemResult:
         stop_timer(ctx, item_id=inp.id)
     dropped = set_status(ctx, inp.id, "dropped")
     queue_event_write(ctx, dropped, "delete")
+    if dropped.parent_id is not None:
+        keep_rest(ctx, dropped.parent_id)  # a step gone: what's left of the project's length is "More on" it
     return ItemResult(item=item_out(ctx, dropped))
 
 
@@ -427,6 +435,8 @@ def reopen(ctx: Ctx, inp: ItemRef) -> ItemResult:
     opened = set_status(ctx, inp.id, "todo")
     put_back(ctx, inp.id)  # dropped, and gone from its calendar: back there too
     back_to_its_app(ctx, inp.id, "reopen")
+    if (project := project_reopened_by(ctx, inp.id)) is not None:
+        reopen(ctx, ItemRef(id=project))  # a step to do again: its project isn't done
     return ItemResult(item=item_out(ctx, opened, done))
 
 
@@ -462,6 +472,8 @@ def done(ctx: Ctx, inp: DoneInput) -> ItemResult:
     )
     finished = set_status(ctx, inp.id, "done", ctx.now_text)
     back_to_its_app(ctx, inp.id, "done")
+    if (project := last_step_finished(ctx, inp.id)) is not None:
+        done(ctx, DoneInput(id=project))  # its last step: the project is done too, undone with it (proposal (h))
     return ItemResult(item=item_out(ctx, finished, minutes_by_item(ctx.conn, ctx.user_id).get(inp.id, 0)))
 
 

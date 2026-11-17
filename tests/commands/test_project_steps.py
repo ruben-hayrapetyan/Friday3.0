@@ -76,7 +76,9 @@ def test_a_project_whose_steps_are_all_done_isnt_planned_as_work_of_its_own(app:
         app.do("done", id=ids[step])
     app.do("replan")
     assert project_blocks(app, ids["project"]) == []  # it planned the project's own 6h15 on Wednesday
-    assert app.do("projects")[0]["status"] == "done"
+    # its last step done, the project is done too (17 Nov, proposal (h)): off the open projects
+    assert app.conn.execute("SELECT status FROM items WHERE id = ?", [ids["project"]]).fetchone()[0] == "done"
+    assert app.do("projects") == []
     assert named(app) == set()
 
 
@@ -110,7 +112,8 @@ def test_with_steps_counts_steps_done_or_open_but_not_deleted(app: App) -> None:
 
 def test_the_snapshot_leaves_out_a_project_with_nothing_left_in_it_nested_or_not(app: App) -> None:
     ids = article(app)
-    inner = app.do("add", title="Figures", parent_id=ids["project"], duration_min=60)["item"]["id"]
+    # no length of its own: given one beyond its step's, the rest would be a "More on Figures" step to do (proposal (h))
+    inner = app.do("add", title="Figures", parent_id=ids["project"], preset="Project")["item"]["id"]
     chart = app.do("add", title="Chart", parent_id=inner, duration_min=30)["item"]["id"]
     settings = load_settings(app.conn, 1)
 
