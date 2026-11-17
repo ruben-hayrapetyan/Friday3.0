@@ -7,7 +7,7 @@ import type { QueryClient } from "@tanstack/react-query"
 import { describe, expect, it } from "vitest"
 import type { Schemas } from "@/api/client"
 import { addDays } from "@/lib/time"
-import { friday, openFriday, waitForSent } from "@/test/friday"
+import { friday, openFriday, sent, waitForSent } from "@/test/friday"
 
 type Now = Schemas["NowOut"]
 type Block = Schemas["BlockOut"]
@@ -334,13 +334,37 @@ describe("sleep and meals, tracked", () => {
     await waitFor(async () => expect((await friday.q<Schemas["MealsOut"]>("meals")).eating).toBeNull())
   })
 
-  it("pauses the timer first for a nap from More", async () => {
-    const [a] = await work()
+  it("asks, for a nap while timing, whether to stop timing it: stopped, kept, or no nap after all", async () => {
+    // 16 Nov: "when you are starting a nap, if you are still in the middle of recording a task, ask whether to stop
+    // that task or not" (it stopped the timer by itself, and only the one started last)
+    await setting("sleep_tracking", { on: true })
+    await setting("meal_tracking", { on: true }) // the snack after it, below
+    const [a, b] = await work()
     await friday.c("start", { id: a.item_id })
-    const { user } = await openDock()
-    await user.click(await inDock().findByRole("button", { name: "More" }))
-    await user.click(await inDock().findByRole("button", { name: /^Nap/ }))
-    expect((await waitForSent("stop")).body).toEqual({})
+    await friday.c("start", { id: b.item_id, alongside: true })
+    const napFromMore = async () => {
+      const { user } = await openDock()
+      await user.click(await inDock().findByRole("button", { name: "More" }))
+      await user.click(await inDock().findByRole("button", { name: /^Nap/ }, { timeout: 8000 }))
+      const asked = await screen.findByRole("dialog", { name: "Taking a nap" })
+      expect(within(asked).getByText(new RegExp(`You're timing ${a.title} and ${b.title}\\. Stop timing them while you nap\\?`))).toBeTruthy()
+      return { user, asked }
+    }
+    const first = await napFromMore()
+    expect(sent.some((c) => c.name === "stop" || c.name === "nap_start")).toBe(false) // nothing until you answer
+    await first.user.click(within(first.asked).getByRole("button", { name: "Cancel" }))
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Taking a nap" })).toBeNull())
+    await new Promise((r) => setTimeout(r, 300))
+    expect(sent.some((c) => c.name === "stop" || c.name === "nap_start")).toBe(false) // called off: nothing sent
+    const kept = await napFromMore()
+    await kept.user.click(within(kept.asked).getByRole("button", { name: "Nap, keep timing" }))
+    expect(await waitForSent("nap_start")).toBeTruthy()
+    expect(sent.some((c) => c.name === "stop")).toBe(false)
+    await nappedNone()
+    await waitFor(async () => expect((await friday.q<Schemas["SleepOut"]>("sleep")).napping).toBeNull())
+    const stopped = await napFromMore()
+    await stopped.user.click(within(stopped.asked).getByRole("button", { name: "Stop timing and nap" }))
+    await waitFor(() => expect(sent.filter((c) => c.name === "stop").map((c) => c.body)).toEqual([{ id: a.item_id }, { id: b.item_id }]))
     expect(await waitForSent("nap_start")).toBeTruthy()
     await nappedNone()
     await friday.c("start", { id: a.item_id })

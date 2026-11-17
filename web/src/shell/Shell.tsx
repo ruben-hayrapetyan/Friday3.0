@@ -26,6 +26,7 @@ import { InboxPage } from "@/inbox/InboxPage"
 import { InsightsPage } from "@/insights/InsightsPage"
 import { BodyPage } from "@/body/BodyPage"
 import { ProjectsV2Page } from "@/projects-v2/ProjectsV2Page"
+import { NapAsk } from "@/now/NapAsk"
 import { RulesPage } from "@/rules/RulesPage"
 import { SettingsPage } from "@/settings/SettingsPage"
 import { Search } from "@/search/Search"
@@ -138,6 +139,7 @@ export function Shell() {
           )
         )}
         {!location.pathname.startsWith("/settings") && !(drawerOver && (drawer || event || trying) && location.pathname === "/") && <Dock />}
+        <NapAsk />
         <BlockPopover />
         {location.pathname === "/" && <WayBanner />}
         {pop && <div onClick={() => setPop(null)} style={{ position: "absolute", inset: 0, zIndex: 9 }} />}
