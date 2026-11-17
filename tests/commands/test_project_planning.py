@@ -71,6 +71,8 @@ def test_free_steps_are_planned_beside_a_chain_not_left_for_last(app: App) -> No
     chain(app, linked)
     free = [app.do("add", title=t, preset="Assignment", duration_min=45, parent_id=app.do("projects")[0]["item"]["id"])
             ["item"]["id"] for t in ("Book lab room", "Email TA", "Find citations")]  # fmt: skip
+    for step in free:  # a step that waits on nothing is "any time" now: the order is the chain (17 Nov)
+        app.do("step_any_time", id=step, any_time=True)
     replan(app.conn, app.now_utc)
     found = blocks(app)
     assert all(found.get(i) for i in free), "a step that waits on nothing is planned"
@@ -159,3 +161,67 @@ def test_a_step_planned_past_the_plans_days_says_when(app: App) -> None:
     assert later, "some of it is planned past the plan's two weeks"
     assert all(shown["step_finish"].get(str(i), "") > "2026-11-01" for i in later)
     assert shown["status"] == "on_track"
+
+
+# 17 Nov, your choice: a project's order is its chain. Each step waits for the one above it ("↓ then"); one made "Any
+# time" goes alongside; the old "waits on" between a project's own steps gives way to the order.
+
+
+def starts(app: App, ids: list[int]) -> list[int]:
+    found = blocks(app)
+    return [found[i][0][0] for i in ids]
+
+
+def test_each_step_waits_for_the_one_above_it(app: App) -> None:
+    _, ids = project(app, "2026-10-30T17:00", [("Research", 120), ("Outline", 60), ("Draft", 180)])
+    replan(app.conn, app.now_utc)
+    found = blocks(app)
+    for before, after in zip(ids, ids[1:], strict=False):
+        assert found[after][0][0] >= found[before][-1][1]
+
+
+def test_a_step_made_any_time_can_go_before_the_one_above(app: App) -> None:
+    made, (research, slides, cite) = project(
+        app, "2026-10-23T17:00", [("Research", 480), ("Slides", 240), ("Citations", 60)]
+    )
+    app.do("step_any_time", id=cite, any_time=True)
+    replan(app.conn, app.now_utc)
+    found = blocks(app)
+    assert found[cite][0][0] < found[slides][0][0], "any time: not held behind Slides"
+    assert found[slides][0][0] >= found[research][-1][1], "Slides still after Research"
+    [shown] = app.do("projects")
+    assert shown["any_time"] == [cite]
+    app.do("step_any_time", id=cite, any_time=False)
+    replan(app.conn, app.now_utc)
+    assert blocks(app)[cite][0][0] >= blocks(app)[slides][-1][1]
+
+
+def test_reordering_changes_what_waits_on_what(app: App) -> None:
+    made, (a, b, c) = project(app, "2026-10-30T17:00", [("A", 120), ("B", 120), ("C", 120)])
+    app.do("reorder", parent_id=made, ids=[c, a, b])
+    replan(app.conn, app.now_utc)
+    found = blocks(app)
+    assert found[c][-1][1] <= found[a][0][0] and found[a][-1][1] <= found[b][0][0]
+
+
+def test_an_old_wait_against_the_order_gives_way_to_it(app: App) -> None:
+    # Research was made to wait on Draft, listed after it: with the order a chain, that was a loop
+    _, (research, draft) = project(app, "2026-10-30T17:00", [("Research", 120), ("Draft", 120)])
+    app.do("depend", item_id=research, depends_on_id=draft)
+    replan(app.conn, app.now_utc)
+    found = blocks(app)
+    assert found[draft][0][0] >= found[research][-1][1]
+
+
+def test_only_a_projects_step_can_be_any_time(app: App) -> None:
+    alone = app.do("add", title="Laundry", duration_min=30)["item"]["id"]
+    with pytest.raises(Exception, match="only a project's step"):
+        app.do("step_any_time", id=alone, any_time=True)
+
+
+def test_a_more_on_step_is_any_time(app: App) -> None:
+    made = app.do("add", title="Thesis", preset="Project", due="2026-10-30T17:00", duration_min=600)["item"]["id"]
+    app.do("add", title="Read", preset="Assignment", duration_min=120, parent_id=made)
+    [shown] = app.do("projects")
+    rest = [c["id"] for c in shown["children"] if c["title"] == "More on Thesis"]
+    assert shown["any_time"] == rest

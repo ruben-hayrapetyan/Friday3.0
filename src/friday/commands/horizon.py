@@ -12,6 +12,7 @@ from friday.api.commands import (
     ItemResult,
     LoadInput,
     ReorderInput,
+    StepAnyTimeInput,
     TemplateApplyInput,
     TemplateSaveInput,
 )
@@ -119,7 +120,27 @@ def project_out(ctx: Ctx, project: ItemOut, tree: list[ItemOut], finish: dict[in
         planned_finish=max(planned) if planned and len(planned) == len(open_leaves) else None,
         status=status,  # type: ignore[arg-type]
         step_finish={str(c.id): finish[c.id] for c in open_leaves if c.id in finish and c.id != project.id},
+        any_time=sorted(c.id for c in tree if c.id in any_time_steps(ctx)),
     )
+
+
+def any_time_steps(ctx: Ctx) -> set[int]:
+    """Steps that don't wait for the one above: yours ("Any time"), and every "More on" step."""
+    rest = kv_get(ctx.conn, "project_rest", {}, ctx.user_id) or {}
+    return set(kv_get(ctx.conn, "steps_any_time", [], ctx.user_id) or []) | {v for v in rest.values() if v}
+
+
+@command("step_any_time", affects_plan=True)
+def step_any_time(ctx: Ctx, inp: StepAnyTimeInput) -> Changed:
+    """A project's step done any time, alongside the others, or after the step above it as steps are (17 Nov, your
+    choice: a project's order is its chain, "↓ then" between steps, a step made "any time" leaves it)."""
+    step = require_item(ctx, inp.id)
+    if step.parent_id is None:
+        raise FieldError("id", "only a project's step waits for the one above it")
+    mine = set(kv_get(ctx.conn, "steps_any_time", [], ctx.user_id) or [])
+    mine = mine | {inp.id} if inp.any_time else mine - {inp.id}
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "steps_any_time"}, {"value": json.dumps(sorted(mine))})
+    return Changed(message="Any time" if inp.any_time else "After the step above")
 
 
 @query("load")

@@ -5,7 +5,7 @@
 import { useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { Item } from "@/api/client"
-import { Box, Check, H, Icon, Menu } from "@/components/fr/controls"
+import { Check, H, Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { useHorizon, useSettings } from "@/hooks/queries"
 import { dur, when } from "@/lib/format"
@@ -124,13 +124,15 @@ export function ProjectDetail({ p, all, onPick, top, after }: { p: Project; all:
           <span />
           <span />
           <span>Step</span>
-          {!layout.tight && <span>Waits on</span>}
           <span style={{ textAlign: "right" }}>Length</span>
           {!layout.tight && <span style={{ textAlign: "right" }}>Planned</span>}
           <span />
         </div>
         {steps.map((s, i) => (
-          <Step key={s.id} step={s} steps={steps} first={i === 0} last={i === steps.length - 1} next={blocks.find((b) => b.item_id === s.id)?.start ?? null} later={p.step_finish?.[String(s.id)] ?? null} onMove={(by) => move(i, by)} />
+          <div key={s.id} style={{ display: "contents" }}>
+            {i > 0 && <Then step={s} above={steps[i - 1]} project={p} />}
+            <Step step={s} first={i === 0} last={i === steps.length - 1} next={blocks.find((b) => b.item_id === s.id)?.start ?? null} later={p.step_finish?.[String(s.id)] ?? null} onMove={(by) => move(i, by)} />
+          </div>
         ))}
         <div className="fr-row" style={{ display: "flex", gap: 8, alignItems: "center", padding: "10px 0" }}>
           <Icon name="plus" style={{ color: "var(--color-neutral-500)", marginLeft: 40 }} />
@@ -152,43 +154,44 @@ export function ProjectDetail({ p, all, onPick, top, after }: { p: Project; all:
 
 // The steps' columns; a narrow window keeps the name and length, with when it's planned and what it waits on
 // under the name.
-const cols = (tight: boolean) => (tight ? "22px 18px minmax(0,1fr) auto 28px" : "22px 18px minmax(0,1fr) 170px 96px 124px 28px")
+const cols = (tight: boolean) => (tight ? "22px 18px minmax(0,1fr) auto 28px" : "22px 18px minmax(0,1fr) 96px 124px 28px")
 
-function Step({ step, steps, first, last, next, later, onMove }: { step: Item; steps: Item[]; first: boolean; last: boolean; next: string | null; later: string | null; onMove: (by: number) => void }) {
+/** Between a step and the one above it: "then", it waits for that one, as steps do; or "any time", alongside the rest.
+ * A click switches it, at once (17 Nov, your choice: a project's order is its chain, no "Waits on" of its own). */
+function Then({ step, above, project }: { step: Item; above: Item; project: Project }) {
+  const anyTime = (project.any_time ?? []).includes(step.id)
+  const set = useCommand("step_any_time", {
+    label: (o) => `${step.title}: ${o.result.message === "Any time" ? "any time" : `after ${above.title}`}`,
+    optimistic: (client, input) =>
+      client.setQueryData<Project[]>(["projects"], (list) =>
+        list?.map((x) => (x.item.id !== project.item.id ? x : { ...x, any_time: input.any_time ? [...(x.any_time ?? []).filter((id) => id !== input.id), input.id] : (x.any_time ?? []).filter((id) => id !== input.id) })),
+      ),
+  })
+  return (
+    <button
+      className="fr-plain fr-hover-text"
+      onClick={() => set({ id: step.id, any_time: !anyTime })}
+      aria-label={anyTime ? `${step.title}: any time. Make it wait for ${above.title}` : `${step.title}: after ${above.title}. Make it any time`}
+      title={anyTime ? `Any time: it doesn't wait for ${above.title}. Click to make it wait` : `Then: it starts once ${above.title} is done. Click to do it any time`}
+      style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 0 0 46px", height: 18, fontSize: 11, color: anyTime ? "var(--color-neutral-500)" : "var(--color-neutral-400)", alignSelf: "flex-start" }}
+    >
+      <Icon name={anyTime ? "arrows-split" : "arrow-down"} size={11} />
+      {anyTime ? "any time" : "then"}
+    </button>
+  )
+}
+
+function Step({ step, first, last, next, later, onMove }: { step: Item; first: boolean; last: boolean; next: string | null; later: string | null; onMove: (by: number) => void }) {
   const { today, layout } = useShell()
-  const [open, setOpen] = useState(false)
   const done = useCommand("done", { label: () => `${step.title}: done` })
   const reopen = useCommand("reopen", { label: () => "Open again" })
   const edit = useCommand("edit", { label: () => "Saved" })
   const drop = useCommand("drop", { label: () => "Deleted" })
-  const depend = useCommand("depend", { label: () => "Now waits on it" })
-  const undepend = useCommand("undepend", { label: () => "No longer waits" })
   const isDone = step.status === "done"
-  const waits = step.waiting_on ?? []
-  const names = waits.map((id) => steps.find((s) => s.id === id)?.title).filter(Boolean)
-  // Waiting on something that (through its own waits) waits on this one would make a loop.
-  const loops = (target: number): boolean => {
-    const seen = new Set<number>()
-    const stack = [target]
-    while (stack.length) {
-      const at = stack.pop() as number
-      if (at === step.id) return true
-      if (seen.has(at)) continue
-      seen.add(at)
-      stack.push(...(steps.find((s) => s.id === at)?.waiting_on ?? []))
-    }
-    return false
-  }
   const length = step.duration_min ?? 60
   // planned past the plan's two weeks, nearer its due, isn't "not planned" (17 Nov: "open subtasks say not planned
   // even with ample time")
   const planned = isDone ? "Done" : next ? when(next, today) : later ? `Later, by ${when(later, today)}` : "No room before its due"
-  const waitsOn = (
-    <button onClick={() => setOpen(!open)} className="fr-plain" title={names.join(", ") || "Nothing"} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: "var(--radius-md)", background: "var(--color-bg)", boxShadow: open ? "inset 0 0 0 1px var(--color-accent-500)" : "0 0 0 1px color-mix(in srgb, var(--color-text) 7%, transparent)", color: names.length ? "var(--color-text)" : "var(--color-neutral-500)", fontSize: 12, minWidth: 0, ...(layout.tight ? { padding: 0, background: "none", boxShadow: "none", maxWidth: "100%" } : {}) }}>
-      <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{layout.tight ? `Waits on ${names.join(", ") || "nothing"}` : names.join(", ") || "Nothing"}</span>
-      <Icon name="caret-down" size={10} style={{ opacity: 0.6 }} />
-    </button>
-  )
   return (
     <div className="fr-row" style={{ display: "grid", gridTemplateColumns: cols(layout.tight), gap: 12, alignItems: "center", padding: "10px 0", opacity: isDone ? 0.55 : 1 }}>
       <span style={{ display: "flex", flexDirection: "column" }}>
@@ -202,21 +205,14 @@ function Step({ step, steps, first, last, next, later, onMove }: { step: Item; s
       <Check done={isDone} onToggle={() => (isDone ? reopen({ id: step.id }) : done({ id: step.id }))} />
       <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
         <span style={{ fontWeight: 500, textDecoration: isDone ? "line-through" : undefined, overflowWrap: "anywhere" }}>{step.title}</span>
-        {names.length > 0 && !isDone && (
-          <span style={{ fontSize: 12, color: "var(--fr-warn)" }}>
-            <Icon name="hourglass-medium" size={11} /> Waiting on {names.join(", ")}
-          </span>
-        )}
         {layout.tight && (
           <span style={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 10, rowGap: 2, paddingTop: 2, minWidth: 0 }}>
             <span className="tnum" style={{ flex: "none", fontSize: 12, color: "var(--color-neutral-400)" }}>
               {planned}
             </span>
-            {waitsOn}
           </span>
         )}
       </span>
-      {!layout.tight && waitsOn}
       <span className="tnum" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, fontSize: 12 }}>
         <LengthField value={length} onPick={(m) => m && m !== length && edit({ id: step.id, duration_min: m })} label={`Length of ${step.title}`} amounts={[15, 30, 60, 120, 240, 480]} />
       </span>
@@ -228,29 +224,6 @@ function Step({ step, steps, first, last, next, later, onMove }: { step: Item; s
       <button className="btn btn-icon btn-ghost" onClick={() => drop({ id: step.id })} aria-label="Delete step" title="Delete step" style={{ width: 28, height: 28, color: "var(--color-neutral-500)" }}>
         <Icon name="trash" />
       </button>
-      {open && (
-        <div style={{ gridColumn: "3 / -1", display: "flex", flexDirection: "column", gap: 2, padding: "8px 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg)" }}>
-          <span style={{ fontSize: 11, color: "var(--color-neutral-500)", paddingBottom: 4 }}>{step.title} waits on</span>
-          {steps
-            .filter((s) => s.id !== step.id)
-            .map((s) => {
-              const on = waits.includes(s.id)
-              const cyc = !on && loops(s.id)
-              return (
-                <button key={s.id} disabled={cyc} onClick={() => (on ? undepend({ item_id: step.id, depends_on_id: s.id }) : depend({ item_id: step.id, depends_on_id: s.id }))} className="fr-plain fr-hover-soft" style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 4px", fontSize: 12, opacity: cyc ? 0.4 : 1 }}>
-                  <Box on={on} />
-                  {s.title}
-                  {cyc && <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>would loop</span>}
-                </button>
-              )
-            })}
-          <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4 }}>
-            <button className="btn btn-ghost" onClick={() => setOpen(false)} style={{ fontSize: 12, padding: "3px 10px" }}>
-              Done
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

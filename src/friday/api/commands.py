@@ -641,6 +641,11 @@ class ReorderInput(Model):
     ids: list[int]  # the steps, first to last
 
 
+class StepAnyTimeInput(Model):
+    id: int  # a project's step
+    any_time: bool  # True: it doesn't wait for the step above it; False: it does, as steps do
+
+
 class InsightsInput(Model):
     weeks: int = Field(4, ge=1, le=52)
 

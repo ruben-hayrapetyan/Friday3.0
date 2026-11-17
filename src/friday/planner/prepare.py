@@ -213,6 +213,7 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
         priorities=snapshot.priorities,
         project_pacing=snapshot.project_pacing,
         project_order=snapshot.project_order,
+        any_time=snapshot.any_time,
         current=current,
         day_scales=day_scales(snapshot),
         minimize_changes_scale=stability,

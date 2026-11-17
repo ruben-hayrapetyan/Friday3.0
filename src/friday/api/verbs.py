@@ -1426,6 +1426,14 @@ VERBS = {
         False,
         "The plan generation, the current plan, the timer and whether Friday is set up.",
     ),
+    "step_any_time": Verb(
+        "POST",
+        "/api/c/step_any_time",
+        commands.StepAnyTimeInput,
+        True,
+        True,
+        "A project's step done any time, alongside the others, or after the step above it as steps are (17 Nov, your",
+    ),
     "stop": Verb(
         "POST",
         "/api/c/stop",

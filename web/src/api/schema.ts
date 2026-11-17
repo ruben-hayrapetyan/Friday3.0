@@ -2248,6 +2248,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/step_any_time": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A project's step done any time, alongside the others, or after the step above it as steps are (17 Nov, your */
+        post: operations["step_any_time"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/stop": {
         parameters: {
             query?: never;
@@ -8577,6 +8594,11 @@ export interface components {
             step_finish?: {
                 [key: string]: string;
             };
+            /**
+             * Any Time
+             * @default []
+             */
+            any_time?: number[];
         };
         /** ProjectRef */
         ProjectRef: {
@@ -10897,6 +10919,34 @@ export interface components {
              * @default []
              */
             slipping?: components["schemas"]["LateItem"][];
+        };
+        /** StepAnyTimeInput */
+        StepAnyTimeInput: {
+            /** Id */
+            id: number;
+            /** Any Time */
+            any_time: boolean;
+        };
+        /** StepAnyTimeResult */
+        StepAnyTimeResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
         };
         /** StopInput */
         StopInput: {
@@ -16909,6 +16959,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StartResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    step_any_time: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepAnyTimeInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepAnyTimeResult"];
                 };
             };
             /** @description Validation Error */

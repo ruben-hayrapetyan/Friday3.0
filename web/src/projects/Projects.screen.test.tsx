@@ -155,34 +155,24 @@ describe("projects", () => {
     await live(client, () => expect(screen.getByText(/0 of 4 steps done/)).toBeTruthy())
   })
 
-  it("makes a step wait on another from its list of the other steps", async () => {
-    // a Presentation's steps each wait on the one before: Rehearse on Slides, Slides on Research
+  it("chains the steps in their order, \"then\" between each, and makes one \"any time\" with a click", async () => {
+    // 17 Nov, your choice: a project's order is its chain; no "Waits on" of its own
     const { user, client } = await page()
     await user.click(await screen.findByRole("button", { name: /Rocketry design review/ }))
-    await live(client, () => expect(within(step("Rehearse")).getByText(/Waiting on Slides/)).toBeTruthy())
-    const [rehearse, research] = [await itemNamed("Rehearse"), await itemNamed("Research")]
-    await user.click(within(step("Rehearse")).getByTitle("Slides"))
-    expect(screen.getByText("Rehearse waits on")).toBeTruthy()
-    expect(within(step("Rehearse")).queryByRole("button", { name: "Rehearse" })).toBeNull()
-    await user.click(within(step("Rehearse")).getByRole("button", { name: "Research" }))
-    expect((await waitForSent("depend")).body).toEqual({ item_id: rehearse.id, depends_on_id: research.id })
-    await user.click(within(step("Rehearse")).getByRole("button", { name: "Done" }))
-    expect(screen.queryByText("Rehearse waits on")).toBeNull()
-  })
-
-  it("shows what a step waits on, won't let it loop, and lets it go", async () => {
-    const { user, client } = await page()
-    await user.click(await screen.findByRole("button", { name: /Rocketry design review/ }))
-    await live(client, () => expect(within(step("Rehearse")).getByText(/Waiting on .*Slides/)).toBeTruthy())
-    // Slides can't wait on Rehearse: Rehearse already waits on it
-    await user.click(within(step("Slides")).getByTitle("Research"))
-    const loop = within(step("Slides")).getByRole("button", { name: /Rehearse/ })
-    expect(loop.textContent).toContain("would loop")
-    await user.click(within(step("Slides")).getByRole("button", { name: "Done" }))
-    // and Rehearse lets Slides go
-    await user.click(within(step("Rehearse")).getByTitle(/Slides/))
-    await user.click(within(step("Rehearse")).getAllByRole("button", { name: "Slides" }).at(-1) as HTMLElement)
-    expect((await waitForSent("undepend")).body).toEqual({ item_id: (await itemNamed("Rehearse")).id, depends_on_id: (await itemNamed("Slides")).id })
+    await live(client, () => expect(step("Rehearse")).toBeTruthy())
+    expect(screen.queryByText("Waits on")).toBeNull()
+    const rehearse = await itemNamed("Rehearse")
+    const link = screen.getByRole("button", { name: /^Rehearse: after .+\. Make it any time$/ })
+    const above = /^Rehearse: after (.+)\. Make it any time$/.exec(link.getAttribute("aria-label") ?? "")?.[1] as string
+    expect(link.textContent).toBe("then")
+    await user.click(link)
+    // at once, before the server answers
+    expect(screen.getByRole("button", { name: `Rehearse: any time. Make it wait for ${above}` }).textContent).toBe("any time")
+    expect((await waitForSent("step_any_time")).body).toEqual({ id: rehearse.id, any_time: true })
+    await waitFor(async () => expect((await friday.q<{ item: { id: number }; any_time: number[] }[]>("projects")).find((x) => x.item.id === rehearse.parent_id)?.any_time).toContain(rehearse.id))
+    await user.click(screen.getByRole("button", { name: `Rehearse: any time. Make it wait for ${above}` }))
+    expect((await waitForSent("step_any_time")).body).toEqual({ id: rehearse.id, any_time: false })
+    expect(await screen.findByRole("button", { name: `Rehearse: after ${above}. Make it any time` })).toBeTruthy()
   })
 
   it("saves a project as a template and deletes a step", async () => {

@@ -101,6 +101,7 @@ class BuildInput:
     priorities: Mapping[int, float] = field(default_factory=dict)  # repeat id → an ongoing project's priority weight
     project_pacing: Mapping[int, str] = field(default_factory=dict)  # project id → its own pace through the work
     project_order: Mapping[int, Sequence[int]] = field(default_factory=dict)  # project id → its steps as listed
+    any_time: frozenset[int] = frozenset()  # steps that don't wait for the one above them
     current: Mapping[int, Sequence[tuple[int, int]]] = field(default_factory=dict)  # item id → (start, end) blocks
     day_scales: Sequence[DayScales] | None = None
     debt_hours: Mapping[date, float] = field(default_factory=dict)
@@ -263,7 +264,7 @@ def flexible_items(inp: BuildInput, grid: Grid, fixed: Mapping[int, Item]) -> di
     for engine_item in out.values():
         engine_item.course = subject_of(engine_item.title, known)
     dependencies = [
-        *inp.dependencies,
+        *(d for d in inp.dependencies if not same_project(d, by_id)),  # a project's own steps wait in their order
         *parts_in_order(inp, out),
         *in_listed_order(inp, out),
         *long_after_short(inp, out),
@@ -318,22 +319,30 @@ def parts_in_order(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[Dep
 
 
 def in_listed_order(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[Dependency]:
-    """A project's steps one after the other, in the order they're listed (17 Nov: "the order in which it plans
-    subtasks is plain wrong": nothing read the order you gave them). Left alone when you said yourself what waits on
-    what among them: then only your waits hold, and the steps that wait on nothing go alongside."""
-    tied = {d.item_id for d in inp.dependencies} | {d.depends_on_id for d in inp.dependencies}
+    """A project's steps one after the other, in the order they're listed, each waiting for the one above it unless
+    you made it "Any time" (17 Nov: "the order in which it plans subtasks is plain wrong"; then, your choice, the order
+    is the chain: "it doesn't make sense to have an ordering where things don't wait on each other in that order").
+    Waits you'd set between a project's own steps before are its order's now; "More on" is any time."""
     steps: dict[int, list[Item]] = {}
     for item in inp.items:
         if item.parent_id is not None and key_of(item.id or 0) in items:
             steps.setdefault(item.parent_id, []).append(item)
     out = []
     for parent, kids in steps.items():
-        if any(k.id in tied for k in kids):
-            continue
         given = list(inp.project_order.get(parent, ()))
         kids.sort(key=lambda k: (given.index(k.id) if k.id in given else len(given), k.id or 0))
-        out += [Dependency(after.id, before.id) for before, after in zip(kids, kids[1:], strict=False)]  # type: ignore[arg-type]
+        out += [
+            Dependency(after.id, before.id)  # type: ignore[arg-type]
+            for before, after in zip(kids, kids[1:], strict=False)
+            if after.id not in inp.any_time
+        ]
     return out
+
+
+def same_project(dep: Dependency, by_id: Mapping[int, Item]) -> bool:
+    """A wait between two steps of one project: its order says that now."""
+    a, b = by_id.get(dep.item_id), by_id.get(dep.depends_on_id)
+    return a is not None and b is not None and a.parent_id is not None and a.parent_id == b.parent_id
 
 
 def pacing_of(item: Item, top: int | None, inp: BuildInput, by_id: Mapping[int, Item], preset: Any) -> str:

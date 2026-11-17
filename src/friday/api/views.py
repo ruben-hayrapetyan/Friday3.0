@@ -252,6 +252,7 @@ class ProjectOut(Model):
     planned_finish: str | None  # the last planned work: a block's end, or a date when the allocator plans it
     status: Literal["done", "on_track", "late", "unplanned"]
     step_finish: dict[str, str] = {}  # each open step's planned finish, by id: a date when planned past the plan's days
+    any_time: list[int] = []  # its steps that don't wait for the one above (the rest do: the order is the chain)
 
 
 class ExamPrepOut(Model):

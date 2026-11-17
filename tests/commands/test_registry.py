@@ -22,6 +22,7 @@ from tests.commands.helpers import MONDAY_9, TZ, App, new_app
 DERIVED = {"command_log", "kv", "plans", "blocks", "users", "sqlite_sequence"}
 KV_STATE = {
     "sleep_skip",
+    "step_any_time",  # a project's steps done any time are kept in kv
     "ongoing_add",  # an ongoing project's options are kept in kv
     "ongoing_set",
     "ongoing_delete",
@@ -534,6 +535,7 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "sync_now": lambda app: {},
     "week_note": lambda app: {"week": "2026-10-19", "feel": "Busy"},
     "reorder": lambda app: {"parent_id": essay(app), "ids": []},
+    "step_any_time": lambda app: {"id": app.do("add", text="outline ~1h", parent_id=essay(app))["item"]["id"], "any_time": True},
     "rule_add": lambda app: {"text": "lunch before 1pm"},
     "event_optional": lambda app: {"title": "Gym", "mode": "optional"},
     "phone_set": lambda app: {"on": True},
