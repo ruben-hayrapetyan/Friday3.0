@@ -79,9 +79,18 @@ describe("Insights → Trends", () => {
     expect(await screen.findByRole("list", { name: "Waiting for you" })).toBeTruthy()
   })
 
-  it("says how often late-looking work was finished on time anyway", async () => {
+  it("says how often late-looking work was finished on time anyway", { timeout: 60_000 }, async () => {
+    // the sample's own plans may have shown nothing late: ten hours due in three, which the plan shows late, done on time
+    const soon = new Date(Date.now() + 3 * 3_600_000)
+    const at = `${soon.getFullYear()}-${String(soon.getMonth() + 1).padStart(2, "0")}-${String(soon.getDate()).padStart(2, "0")}T${String(soon.getHours()).padStart(2, "0")}:00`
+    const made = await friday.c<{ result: { item: { id: number } } }>("add", { title: "Crammed lab writeup", preset: "Assignment", due: at, duration_min: 600, firmness: "hard" })
+    const id = made.result.item.id
+    type Status = { late_items: { item_id: number }[] }
+    await waitFor(async () => expect((await friday.q<Status>("status")).late_items.map((l) => l.item_id)).toContain(id), { timeout: 30_000, interval: 500 })
+    await friday.c("done", { id })
     await openFriday("/insights?tab=trends")
     expect(await screen.findByText("Late on paper, on time in practice")).toBeTruthy()
+    expect(screen.getByText(/^[1-9]\d* of \d+ things your plans showed late you finished on time \(\d+%\)\.$/)).toBeTruthy()
   })
 
   // 15 Nov: a client's Load ahead said a week held 1 h more than they could do, and its button opened what gives when
@@ -177,9 +186,10 @@ describe("Insights → This week", () => {
     const other = week.carried.find((c) => c !== later && !/^(Breakfast|Lunch|Dinner|gym)$/.test(c.title))
     const { user } = await openFriday("/insights?tab=week")
     await screen.findByText(/^Week of /, {}, { timeout: 15_000 })
-    const rowOf = (title: string) => screen.getAllByText(title).map((t) => t.closest(".fr-row")).find((r) => r && within(r as HTMLElement).queryByRole("button", { name: "Next week" })) as HTMLElement
-    if (later) await user.click(within(rowOf(later.title)).getByRole("button", { name: "Next week" }))
-    if (other) await user.click(within(rowOf(other.title)).getByRole("button", { name: "Drop" }))
+    // carried work's row, with its choices (work due before next Monday has no Next week)
+    const rowOf = (title: string, choice: string) => screen.getAllByText(title).map((t) => t.closest(".fr-row")).find((r) => r && within(r as HTMLElement).queryByRole("button", { name: choice })) as HTMLElement
+    if (later) await user.click(within(rowOf(later.title, "Next week")).getByRole("button", { name: "Next week" }))
+    if (other) await user.click(within(rowOf(other.title, "Drop")).getByRole("button", { name: "Drop" }))
     const changes = Number(!!later) + Number(!!other)
     expect(screen.getByText(new RegExp(`^${changes} changes to carried work`))).toBeTruthy()
     await user.click(await screen.findByRole("button", { name: /^Easy/ }))

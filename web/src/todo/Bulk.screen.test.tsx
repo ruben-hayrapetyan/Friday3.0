@@ -13,6 +13,9 @@ const TIP = ": click for everything about it, double-click the title to rename"
 const row = (title: string) => screen.findByTitle(`${title}${TIP}`, {}, { timeout: 10_000 })
 const items = () => friday.q<Item[]>("items", { status: "all" })
 const itemNamed = async (title: string) => (await items()).find((i) => i.title === title) as Item
+/** The next MATH 1910 Written HW: open, soonest due. Which ones the sample's three weeks finish early moves with the planner. */
+const nextHomework = async () =>
+  (await items()).filter((i) => i.status === "todo" && /^MATH 1910 Written HW \d+$/.test(i.title)).sort((a, b) => (a.due ?? "").localeCompare(b.due ?? "") || a.id - b.id)[0].title
 type User = Awaited<ReturnType<typeof openFriday>>["user"]
 
 /** Picks the tasks titled so: a click on the first, ⌘-click on the rest. */
@@ -76,6 +79,8 @@ describe("the bar for several tasks", () => {
   })
 
   it("gives each a little more or less time, or all of them one length", async () => {
+    // how much the sample did depends on the day it's lived to: none of either, so each row shows its whole length
+    for (const title of ["CHEM 2090 lab report 6", "MATH 1910 Written HW 11"]) await friday.c("progress", { id: (await itemNamed(title)).id, share: 0 })
     const { user } = await openFriday("/todo")
     const bar = await pick(user, ["CHEM 2090 lab report 6", "MATH 1910 Written HW 11"])
     await user.click(within(bar).getByRole("button", { name: "Estimate" }))
@@ -103,7 +108,7 @@ describe("the bar for several tasks", () => {
 
   it("tags them, or takes the tag off", async () => {
     const { user } = await openFriday("/todo")
-    const bar = await pick(user, ["MATH 1910 Written HW 8", "CHEM 2090 lab report 6"])
+    const bar = await pick(user, [await nextHomework(), "CHEM 2090 lab report 6"])
     await user.click(within(bar).getByRole("button", { name: "Tag" }))
     await user.click(within(bar).getByRole("button", { name: "Rocketry" }))
     for (const b of await sentEach("edit", 2)) expect(b.area).toBe("Rocketry")
@@ -117,7 +122,7 @@ describe("the bar for several tasks", () => {
 
   it("makes them another kind", async () => {
     const { user } = await openFriday("/todo")
-    const bar = await pick(user, ["MATH 1910 Written HW 8", "CHEM 2090 lab report 6"])
+    const bar = await pick(user, [await nextHomework(), "CHEM 2090 lab report 6"])
     await user.click(within(bar).getByRole("button", { name: "Kind" }))
     await user.click(within(bar).getByRole("button", { name: "Errand" }))
     for (const b of await sentEach("edit", 2)) expect(b.preset).toBe("Errand")
@@ -125,8 +130,12 @@ describe("the bar for several tasks", () => {
   })
 
   it("sets the rest of a task's detail for all of them, each choice lit when they share it", async () => {
+    // how much the sample did depends on the day it's lived to: none of the homework, some of the essay
+    const hw = await nextHomework()
+    await friday.c("progress", { id: (await itemNamed(hw)).id, share: 0 })
+    await friday.c("progress", { id: (await itemNamed("FWS essay draft")).id, share: 0.3125 })
     const { user } = await openFriday("/todo")
-    const bar = await pick(user, ["MATH 1910 Written HW 8", "FWS essay draft"])
+    const bar = await pick(user, [hw, "FWS essay draft"])
     const more = async () => {
       sent.length = 0
       await user.click(within(bar).getByRole("button", { name: "More" }))
@@ -175,7 +184,7 @@ describe("the bar for several tasks", () => {
 
   it("closes an open menu with Escape and keeps what's picked", async () => {
     const { user } = await openFriday("/todo")
-    const bar = await pick(user, ["MATH 1910 Written HW 8", "CHEM 2090 lab report 6"])
+    const bar = await pick(user, [await nextHomework(), "CHEM 2090 lab report 6"])
     await user.click(within(bar).getByRole("button", { name: "Kind" }))
     expect(within(bar).getByRole("button", { name: "Kind" }).getAttribute("aria-expanded")).toBe("true")
     await user.keyboard("{Escape}")

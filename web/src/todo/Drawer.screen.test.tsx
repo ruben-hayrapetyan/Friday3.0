@@ -22,6 +22,26 @@ async function drawer() {
 const rowIn = async (aside: HTMLElement, title: string) =>
   (await within(aside).findAllByText((_, el) => el?.tagName === "SPAN" && (el.textContent ?? "").trim().endsWith(` ${title}`.trimStart()) && !!el.closest('[role="button"]'), {}, { timeout: 10_000 }))[0].closest('[role="button"]') as HTMLElement
 
+/** A day as the API writes it, `days` from today: "2026-11-13". */
+const ymd = (days: number) => {
+  const d = new Date(Date.now() + days * 86_400_000)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+/** A task the drawer's Due view lists: the soonest open assignment due in the next seven days. Named from the
+ *  server, as which ones the sample's three weeks finish early moves with the planner. */
+const dueThisWeek = async () => {
+  const now = `${ymd(0)}T${new Date().toTimeString().slice(0, 5)}`
+  const due = (await friday.q<Item[]>("items", { status: "all" }))
+    .filter((i) => i.status === "todo" && i.preset === "Assignment" && !!i.due && i.due >= now && i.due < `${ymd(7)}T00:00`)
+    .sort((a, b) => (a.due as string).localeCompare(b.due as string) || a.id - b.id)
+  expect(due.length).toBeGreaterThan(0)
+  return due[0].title
+}
+
+/** The span holding just a row's name. */
+const nameIn = (row: HTMLElement, title: string) => within(row).getByText((_, el) => el?.tagName === "SPAN" && (el.textContent ?? "").trim() === title)
+
 const view = (aside: HTMLElement, name: string) => within(aside).getByRole("button", { name })
 
 describe("the to-do drawer", () => {
@@ -29,7 +49,7 @@ describe("the to-do drawer", () => {
     const { user, aside } = await drawer()
     expect(within(aside).getByText("To-do")).toBeTruthy()
     expect(view(aside, "Due").getAttribute("aria-pressed")).toBe("true")
-    expect(await rowIn(aside, "MATH 1910 Written HW 8")).toBeTruthy()
+    expect(await rowIn(aside, await dueThisWeek())).toBeTruthy()
     await user.click(within(aside).getByRole("button", { name: "Close" }))
     await waitFor(() => expect(screen.queryByPlaceholderText("Add a to-do")).toBeNull())
   })
@@ -73,49 +93,51 @@ describe("the to-do drawer", () => {
 
   it("opens a task on the To-do page with a click, or Enter", async () => {
     const { user, aside } = await drawer()
-    await user.click(await rowIn(aside, "MATH 1910 Written HW 8"))
+    await user.click(await rowIn(aside, await dueThisWeek()))
     await waitFor(() => expect(window.location.hash).toMatch(/^#\/todo\?item=\d+$/))
     expect(await screen.findByText("Planned sessions")).toBeTruthy()
   })
 
   it("renames a task by double-clicking its name, as the To-do page does", async () => {
+    const task = await dueThisWeek()
+    const renamed = `${task} (renamed)`
     const { user, aside } = await drawer()
-    const row = await rowIn(aside, "MATH 1910 Written HW 8")
-    const name = within(row).getByText((_, el) => el?.tagName === "SPAN" && (el.textContent ?? "").trim() === "MATH 1910 Written HW 8")
-    await user.dblClick(name)
+    const row = await rowIn(aside, task)
+    await user.dblClick(nameIn(row, task))
     const box = within(aside).getByRole("textbox", { name: "Name" }) as HTMLInputElement
-    expect(box.value).toBe("MATH 1910 Written HW 8")
+    expect(box.value).toBe(task)
     expect(window.location.hash).not.toMatch(/todo\?item=/) // the double-click didn't open it too
     await user.clear(box)
-    await user.type(box, "MATH 1910 HW 8{Enter}")
+    await user.type(box, `${renamed}{Enter}`)
     const { body } = await waitForSent("edit")
-    expect(body).toEqual({ id: expect.any(Number), title: "MATH 1910 HW 8" })
+    expect(body).toEqual({ id: expect.any(Number), title: renamed })
     expect(within(aside).queryByRole("textbox", { name: "Name" })).toBeNull()
     const id = (body as { id: number }).id
     // the rename saved before it's put back: sent at once, the two could land in either order and leave it renamed
-    await waitFor(async () => expect((await friday.q<Item[]>("items")).find((i) => i.id === id)?.title).toBe("MATH 1910 HW 8"))
-    await friday.c("edit", { id, title: "MATH 1910 Written HW 8" }) // the other tests use it
+    await waitFor(async () => expect((await friday.q<Item[]>("items")).find((i) => i.id === id)?.title).toBe(renamed))
+    await friday.c("edit", { id, title: task }) // the other tests use it
   })
 
   it("leaves the name as it was on Escape", async () => {
+    const task = await dueThisWeek()
     const { user, aside } = await drawer()
-    const row = await rowIn(aside, "MATH 1910 Written HW 8")
-    await user.dblClick(within(row).getByText((_, el) => el?.tagName === "SPAN" && (el.textContent ?? "").trim() === "MATH 1910 Written HW 8"))
+    const row = await rowIn(aside, task)
+    await user.dblClick(nameIn(row, task))
     await user.type(within(aside).getByRole("textbox", { name: "Name" }), " changed{Escape}")
     expect(within(aside).queryByRole("textbox", { name: "Name" })).toBeNull()
-    expect(within(row).getByText((_, el) => el?.tagName === "SPAN" && (el.textContent ?? "").trim() === "MATH 1910 Written HW 8")).toBeTruthy()
+    expect(nameIn(row, task)).toBeTruthy()
   })
 
   it("still opens a task with one click on its name", async () => {
+    const task = await dueThisWeek()
     const { user, aside } = await drawer()
-    const row = await rowIn(aside, "MATH 1910 Written HW 8")
-    await user.click(within(row).getByText((_, el) => el?.tagName === "SPAN" && (el.textContent ?? "").trim() === "MATH 1910 Written HW 8"))
+    await user.click(nameIn(await rowIn(aside, task), task))
     await waitFor(() => expect(window.location.hash).toMatch(/^#\/todo\?item=\d+$/))
   })
 
   it("opens a task with the keyboard too", async () => {
     const { user, aside } = await drawer()
-    ;(await rowIn(aside, "MATH 1910 Written HW 8")).focus()
+    ;(await rowIn(aside, await dueThisWeek())).focus()
     await user.keyboard("{Enter}")
     await waitFor(() => expect(window.location.hash).toMatch(/^#\/todo\?item=\d+$/))
   })
@@ -123,11 +145,12 @@ describe("the to-do drawer", () => {
   it("picks several with ⌘-click and Shift-click, changes them from its bar of icons, and Escape lets go", async () => {
     const tomorrow = new Date(Date.now() + 86_400_000)
     const day = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`
+    const task = await dueThisWeek()
     await friday.c("add", { title: "Rocket poster", due: `${day}T17:00`, duration_min: 60 })
     const { user, aside } = await drawer()
     await user.keyboard("{Meta>}")
     await user.click(await rowIn(aside, "Rocket poster"))
-    await user.click(await rowIn(aside, "MATH 1910 Written HW 8"))
+    await user.click(await rowIn(aside, task))
     await user.keyboard("{/Meta}")
     const bar = await screen.findByRole("toolbar", { name: "2 tasks picked" })
     expect(within(bar).getByText(/Drag them onto the calendar or a day · Esc to clear/)).toBeTruthy()

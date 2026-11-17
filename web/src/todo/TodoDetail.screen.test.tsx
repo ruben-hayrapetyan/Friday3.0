@@ -23,6 +23,8 @@ async function detailOf(title: string) {
 
 describe("a task's detail", () => {
   it("shows the task, what's left and its planned sessions, and Close puts it away", async () => {
+    // how much the sample did depends on the day it's lived to: none of it, so all 4h are left
+    await friday.c("progress", { id: (await itemNamed("CHEM 2090 lab report 6")).id, share: 0 })
     const { user, aside } = await detailOf("CHEM 2090 lab report 6")
     expect(within(aside).getByText("CHEM 2090 lab report 6")).toBeTruthy()
     expect(within(aside).getByText("4h to do")).toBeTruthy()

@@ -15,6 +15,14 @@ const TIP = ": click for everything about it, double-click the title to rename"
 const row = (title: string) => screen.findByTitle(`${title}${TIP}`, {}, { timeout: 10_000 })
 const items = () => friday.q<Item[]>("items", { status: "all" })
 const itemNamed = async (title: string) => (await items()).find((i) => i.title === title) as Item
+/** The open MATH 1910 Written HWs, soonest due first: which ones the sample's three weeks finish early moves with the planner. */
+const openHomework = async () =>
+  (await items())
+    .filter((i) => i.status === "todo" && /^MATH 1910 Written HW \d+$/.test(i.title))
+    .sort((a, b) => (a.due ?? "").localeCompare(b.due ?? "") || a.id - b.id)
+    .map((i) => i.title)
+/** The next homework: open, in Short term, on the Due list. */
+const nextHomework = async () => (await openHomework())[0]
 const list = (name: string) => within(screen.getByRole("group", { name: "List" })).getByRole("button", { name })
 
 async function viewOptions(user: Awaited<ReturnType<typeof openFriday>>["user"]) {
@@ -41,7 +49,7 @@ function dataTransfer() {
 describe("the To-do page", () => {
   it("opens on Short term, its sections by kind each with an add line, and says how much is open", async () => {
     await openFriday("/todo")
-    await row("MATH 1910 Written HW 8")
+    await row(await nextHomework())
     expect(list("Short term").getAttribute("aria-pressed")).toBe("true")
     for (const section of ["Readings", "Assignments", "Exam prep", "Errands", "Other"]) expect(screen.getByText(section)).toBeTruthy()
     expect(screen.getByText(/^\d+ open, .* left$/)).toBeTruthy()
@@ -127,8 +135,9 @@ describe("the To-do page", () => {
   })
 
   it("picks several with ⌘-click and Shift-click, ⌘A picks all, and Escape lets go", async () => {
+    const [hw, nextHw] = await openHomework()
     const { user } = await openFriday("/todo")
-    await user.click(await row("MATH 1910 Written HW 8"))
+    await user.click(await row(hw))
     await user.keyboard("{Meta>}")
     await user.click(await row("CHEM 2090 lab report 6"))
     await user.keyboard("{/Meta}")
@@ -139,7 +148,7 @@ describe("the To-do page", () => {
     await user.keyboard("{/Meta}")
     expect(await screen.findByRole("toolbar", { name: "1 task picked" })).toBeTruthy()
     await user.keyboard("{Shift>}")
-    await user.click(await row("MATH 1910 Written HW 9"))
+    await user.click(await row(nextHw))
     await user.keyboard("{/Shift}")
     const toolbar = await screen.findByRole("toolbar", { name: /tasks picked/ })
     expect(Number(/(\d+) tasks/.exec(toolbar.getAttribute("aria-label") ?? "")?.[1])).toBeGreaterThanOrEqual(2)
@@ -151,7 +160,7 @@ describe("the To-do page", () => {
     await user.click(screen.getByRole("button", { name: "Clear the picked tasks" }))
     expect(screen.queryByRole("toolbar")).toBeNull()
     // A plain click goes back to one task's detail.
-    await user.click(await row("MATH 1910 Written HW 8"))
+    await user.click(await row(hw))
     expect(await screen.findByText("Planned sessions")).toBeTruthy()
   })
 
@@ -190,7 +199,7 @@ describe("the To-do page", () => {
 
   it("groups by when, with one add line at the top, and by tag, with an add line for each tag", async () => {
     const { user } = await openFriday("/todo")
-    await row("MATH 1910 Written HW 8")
+    await row(await nextHomework())
     await viewOptions(user)
     await user.click(screen.getByRole("button", { name: "By when" }))
     expect(window.localStorage.getItem("friday-todo-group")).toBe("When")
@@ -205,7 +214,7 @@ describe("the To-do page", () => {
 
   it("gives a task a tag when it's dragged onto that tag's section", async () => {
     const { user } = await openFriday("/todo")
-    await row("MATH 1910 Written HW 8")
+    await row(await nextHomework())
     await viewOptions(user)
     await user.click(screen.getByRole("button", { name: "By tag" }))
     const dt = dataTransfer()
@@ -218,7 +227,7 @@ describe("the To-do page", () => {
 
   it("sorts by title, by length and by due, kept for next time", async () => {
     const { user } = await openFriday("/todo")
-    await row("MATH 1910 Written HW 8")
+    await row(await nextHomework())
     await viewOptions(user)
     const titlesIn = (section: string) =>
       [...(screen.getByText(section).closest("section") as HTMLElement).querySelectorAll("[data-todo-row]")].map((r) => (r.getAttribute("title") ?? "").replace(TIP, ""))
@@ -228,19 +237,25 @@ describe("the To-do page", () => {
     expect(byTitle).toEqual([...byTitle].sort((a, b) => a.localeCompare(b)))
     expect(window.localStorage.getItem("friday-todo-sort")).toBe("Title")
     await user.click(screen.getByRole("radio", { name: /Length/ }))
-    expect(titlesIn("Assignments")[0]).toBe("CHEM 2090 lab report 6")
+    // the most left first (what's left of each depends on the day the sample is lived to)
+    const left = new Map((await items()).filter((i) => i.status === "todo").map((i) => [i.title, i.remaining_min ?? i.duration_min ?? 0]))
+    const byLength = titlesIn("Assignments")
+    const lengths = byLength.map((t) => left.get(t) ?? 0)
+    expect(lengths).toEqual([...lengths].sort((a, b) => b - a))
+    expect(new Set(lengths).size).toBeGreaterThan(1)
     await user.click(screen.getByRole("radio", { name: /Due date/ }))
-    expect(titlesIn("Assignments")[0]).not.toBe("CHEM 2090 lab report 6")
+    expect(titlesIn("Assignments")[0]).not.toBe(byLength[0])
   })
 
   it("draws two-line rows with progress when asked, which also tick off and open", async () => {
     // how much the sample did depends on the day it's lived to: set to 1h 15m of its 4h
     await friday.c("progress", { id: (await itemNamed("FWS essay draft")).id, share: 0.3125 })
+    const hw = await nextHomework()
     const { user } = await openFriday("/todo")
-    await row("MATH 1910 Written HW 8")
+    await row(hw)
     await viewOptions(user)
     await user.click(screen.getByRole("button", { name: "Two lines" }))
-    await waitFor(() => expect(screen.queryByTitle(`MATH 1910 Written HW 8${TIP}`)).toBeNull())
+    await waitFor(() => expect(screen.queryByTitle(`${hw}${TIP}`)).toBeNull())
     expect(screen.getAllByText(/^\dh( \d+m)? to do$/).length).toBeGreaterThan(0)
     // its row (the Now dock may show it too, when it's what's on)
     const essay = screen.getAllByText("FWS essay draft").map((t) => t.closest("[data-todo-row]")).find(Boolean) as HTMLElement
@@ -256,12 +271,12 @@ describe("the To-do page", () => {
     expect((await waitForSent("done")).body).toEqual({ id: Number(laundry.getAttribute("data-todo-row")) })
     await user.click(screen.getByRole("button", { name: "View options" }))
     await user.click(screen.getByRole("button", { name: "One line" }))
-    await row("MATH 1910 Written HW 8")
+    await row(hw)
   })
 
   it("shows what's done when asked, in its own section, and opens one again", async () => {
     const { user } = await openFriday("/todo")
-    await row("MATH 1910 Written HW 8")
+    await row(await nextHomework())
     await viewOptions(user)
     await user.click(screen.getByRole("button", { name: "Show done" }))
     const reopen = (await screen.findAllByRole("checkbox", { name: "Mark not done" }))[0]
@@ -276,23 +291,24 @@ describe("the To-do page", () => {
 
   it("names the done section Done", async () => {
     const { user } = await openFriday("/todo")
-    await row("MATH 1910 Written HW 8")
+    await row(await nextHomework())
     await viewOptions(user)
     await user.click(screen.getByRole("button", { name: "Show done" }))
     expect(await screen.findByText("Done", { selector: ".fr-mono" })).toBeTruthy()
   })
 
   it("lists Long term apart, and an empty one says so", async () => {
+    const hw = await nextHomework()
     const { user } = await openFriday("/todo")
-    await row("MATH 1910 Written HW 8")
+    await row(hw)
     await user.click(list("Long term"))
     expect(window.location.hash).toContain("list=Long")
-    expect(screen.queryByTitle(`MATH 1910 Written HW 8${TIP}`)).toBeNull()
+    expect(screen.queryByTitle(`${hw}${TIP}`)).toBeNull()
     await viewOptions(user)
     await user.click(screen.getByRole("button", { name: "By when" }))
     expect(await screen.findByText(/Nothing left\. Add something above/)).toBeTruthy()
     await user.click(list("Short term"))
-    await row("MATH 1910 Written HW 8")
+    await row(hw)
   })
 
   it("lists every dated piece of work in Due, soonest first, with the now line after the ones past", async () => {
@@ -319,14 +335,14 @@ describe("the To-do page", () => {
     expect(await screen.findByText("Planned sessions")).toBeTruthy()
     expect(window.location.hash).toContain("list=Due")
     await user.keyboard("{Meta>}")
-    await user.click(await row("MATH 1910 Written HW 8"))
+    await user.click(await row(await nextHomework()))
     await user.keyboard("{/Meta}")
     expect(await screen.findByRole("toolbar", { name: "2 tasks picked" })).toBeTruthy()
   })
 
   it("adds a to-do on the Due list's own add line", async () => {
     const { user } = await openFriday("/todo?list=Due")
-    await row("MATH 1910 Written HW 8") // the list read first: an add before it loads is read over by that first answer
+    await row(await nextHomework()) // the list read first: an add before it loads is read over by that first answer
     const line = screen.getByLabelText("Add a to-do…")
     await user.type(line, "pick up poster due tomorrow{Enter}")
     const sent = await waitForSent("add")
@@ -369,7 +385,8 @@ describe("the To-do page", () => {
   }, 40_000)
 
   it("points to the Inbox when a task is there more than once", async () => {
-    await friday.c("add", { title: "MATH 1910 Written HW 8", preset: "Assignment", area: "MATH 1910", due: (await itemNamed("MATH 1910 Written HW 8")).due })
+    const hw = await itemNamed(await nextHomework())
+    await friday.c("add", { title: hw.title, preset: "Assignment", area: "MATH 1910", due: hw.due })
     const { user } = await openFriday("/todo")
     const copies = await screen.findByRole("link", { name: /with copies · In your Inbox/ }, { timeout: 10_000 })
     await user.click(copies)
