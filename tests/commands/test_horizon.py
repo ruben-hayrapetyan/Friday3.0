@@ -91,8 +91,9 @@ def test_a_project_whose_steps_are_all_done_is_done(app: App) -> None:
     project = app.do("template_apply", template="Essay", title="History essay", hours=3, due="2026-11-20T17:00")["item"]
     for kid in [i for i in app.do("items") if i["parent_id"] == project["id"]]:
         app.do("done", id=kid["id"])
-    (found,) = app.do("projects")
-    assert (found["item"]["id"], found["status"]) == (project["id"], "done")
+    # done with its last step (17 Nov, proposal (h)), it leaves the open projects
+    assert app.conn.execute("SELECT status FROM items WHERE id = ?", [project["id"]]).fetchone()[0] == "done"
+    assert app.do("projects") == []
 
 
 def test_the_load_ahead_needs_a_plan(app: App) -> None:

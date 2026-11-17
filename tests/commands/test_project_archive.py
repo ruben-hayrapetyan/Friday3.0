@@ -18,7 +18,8 @@ def app(tmp_path: Path) -> App:
 
 
 def essay(app: App) -> tuple[int, dict[str, int]]:
-    project = app.do("add", title="Essay", preset="Project", due="2026-11-20T17:00", duration_min=300)["item"]["id"]
+    # no length of its own beyond its steps': one would be a "More on" step (proposal (h))
+    project = app.do("add", title="Essay", preset="Project", due="2026-11-20T17:00")["item"]["id"]
     steps = {
         name: app.do("add", title=name, parent_id=project, duration_min=minutes)["item"]["id"]
         for name, minutes in (("Outline", 60), ("Draft", 180), ("Revise", 60))

@@ -20,6 +20,7 @@ from friday.api.views import ProjectOut, WeekLoad
 from friday.commands.calendar import dues
 from friday.commands.fields import item_out, require_item, waiting_on
 from friday.commands.items import add, add_dependency
+from friday.commands.project_steps import REST
 from friday.commands.registry import Ctx, command, query
 from friday.commands.settings import write_setting
 from friday.core.db import one, rows
@@ -228,6 +229,8 @@ def template_save(ctx: Ctx, inp: TemplateSaveInput) -> Changed:
     order = (kv_get(ctx.conn, "project_order", {}, ctx.user_id) or {}).get(str(inp.project_id), [])
     rank = {item_id: n for n, item_id in enumerate(order)}
     kids.sort(key=lambda k: (rank.get(k.id, len(rank)), k.id))
+    made_by_friday = set((kv_get(ctx.conn, REST, {}, ctx.user_id) or {}).values())
+    kids = [k for k in kids if k.id not in made_by_friday]  # its "More on" step is Friday's, not one of yours
     if not kids:
         raise FieldError("project_id", f"T{inp.project_id} has no items inside it")
     units = [k.duration_units or 1 for k in kids]
