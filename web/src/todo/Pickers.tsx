@@ -147,8 +147,10 @@ export function DuePicker(props: {
         aria-label="Due"
         style={{ padding: "6px 10px", minHeight: 0, fontSize: 13 }}
       />
-      <span className="tnum" style={{ fontSize: 12, color: text.trim() && !readable && !reading ? "var(--fr-due)" : "var(--color-neutral-400)" }}>
-        {!text.trim() ? (value ? `Now: ${dueSummary(value, today)}` : "No due date yet.") : reading ? "Reading…" : readable ? `→ ${dueSummary(due ?? null, today)} · Enter to set` : "Can’t read that. Try “fri 5pm” or “oct 30”."}
+      {/* what's set, in words (17 Nov: "Now: Due …" in mono under an empty box was "VERY confusing": it read as the
+          time now, not the due chosen) */}
+      <span data-due-reading style={{ fontSize: 12, color: text.trim() && !readable && !reading ? "var(--fr-due)" : "var(--color-neutral-400)" }}>
+        {!text.trim() ? (value ? dueSummary(value, today) : "No due date yet.") : reading ? "Reading…" : readable ? `→ ${dueSummary(due ?? null, today)} · Enter to set` : "Can’t read that. Try “fri 5pm” or “oct 30”."}
       </span>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {quick.map(([label, v]) => (

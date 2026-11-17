@@ -49,7 +49,7 @@ describe("a task's detail", () => {
   it("moves the due with a quick pick, keeping its time of day", async () => {
     const { user, aside, item } = await detailOf("MATH 1910 Written HW 11")
     await user.click(within(aside).getByRole("button", { name: /^Fri 4 Dec|11:59pm/ }))
-    expect(within(aside).getByText(/^Now: Due/)).toBeTruthy()
+    expect(within(aside).getByText(/^Due \w{3} \d+ \w{3}, .* \((today|tomorrow|in \d+ days)\)$/)).toBeTruthy()
     await user.click(within(aside).getByRole("button", { name: "In a week" }))
     const sent = await waitForSent("edit")
     expect(sent.body).toEqual({ id: item.id, due: expect.stringMatching(/T23:59$/) })

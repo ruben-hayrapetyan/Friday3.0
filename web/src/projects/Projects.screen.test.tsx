@@ -88,6 +88,13 @@ describe("projects", () => {
     await user.click(within(dialog).getByRole("button", { name: /Presentation/ }))
     await user.click(within(dialog).getByRole("button", { name: "Rocketry" }))
     await user.click(within(dialog).getByRole("button", { name: "Tomorrow" }))
+    // the due chosen, said as a plain sentence: not "Now: …" (read as the time now) nor in the mono of figures (17 Nov)
+    const reading = within(dialog).getByText(/^Due \w{3} \d+ \w{3}, 11:59pm \(tomorrow\)$/)
+    expect(reading.className).not.toMatch(/tnum|fr-mono/)
+    // "About how long, in all" over its field, as Tag and Due, not squeezed beside it onto two lines
+    const label = within(dialog).getByText("About how long, in all")
+    expect((label.parentElement as HTMLElement).style.flexDirection).toBe("column")
+    expect(label.style.width).toBe("")
     await setLength(user, dialog, "About how long, in all", { type: "7h" })
     expect(within(dialog).getByRole("button", { name: "About how long, in all: 7h" })).toBeTruthy()
     await user.click(within(dialog).getByRole("button", { name: "Create project" }))
