@@ -6438,7 +6438,7 @@
   },
   "/api/c/project_set": {
    "post": {
-    "summary": "Set a project's pace through its work (\"kind\" for its kind's), or how many days early to finish it (0: none).",
+    "summary": "Set a project's pace through its work (\"kind\": its kind's) or how many days early to finish it (0: none).",
     "operationId": "project_set",
     "parameters": [
      {

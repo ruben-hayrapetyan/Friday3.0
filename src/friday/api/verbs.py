@@ -997,7 +997,7 @@ VERBS = {
         commands.ProjectSetInput,
         True,
         True,
-        "Set a project's pace through its work (\"kind\" for its kind's), or how many days early to finish it (0: none).",
+        "Set a project's pace through its work (\"kind\": its kind's) or how many days early to finish it (0: none).",
     ),
     "project_unarchive": Verb(
         "POST",

@@ -33,7 +33,7 @@ def options(ctx: Ctx) -> dict[str, dict]:
 
 @command("project_set", affects_plan=True)
 def project_set(ctx: Ctx, inp: ProjectSetInput) -> Changed:
-    """Set a project's pace through its work ("kind" for its kind's), or how many days early to finish it (0: none)."""
+    """Set a project's pace through its work ("kind": its kind's) or how many days early to finish it (0: none)."""
     title = require_project(ctx, inp.id)
     said = []
     if inp.pacing is not None:

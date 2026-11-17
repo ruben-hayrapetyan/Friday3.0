@@ -1526,7 +1526,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Set a project's pace through its work ("kind" for its kind's), or how many days early to finish it (0: none). */
+        /** Set a project's pace through its work ("kind": its kind's) or how many days early to finish it (0: none). */
         post: operations["project_set"];
         delete?: never;
         options?: never;
