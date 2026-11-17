@@ -28,6 +28,7 @@ from friday.core.items import FieldError
 from friday.core.time import format_utc
 from friday.ingest import llm
 from friday.ingest.rating import guessed, rate
+from friday.planner.snapshot import EVENTS_GOING
 from friday.planner.store import kv_get, kv_set, load_settings
 
 AHEAD_DAYS = 14
@@ -199,6 +200,10 @@ def event_choice(ctx: Ctx, inp: EventChoiceInput) -> Changed:
         holds = {str(k): v for k, v in (kv_get(ctx.conn, "event_holds", {}, ctx.user_id) or {}).items()}
         if holds.pop(str(event.id), None) is not None:
             ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": "event_holds"}, {"value": json.dumps(holds)})
+    going = [e for e in kv_get(ctx.conn, EVENTS_GOING, [], ctx.user_id) or [] if e != event.id]
+    if inp.choice == "going" and event.free:
+        going.append(event.id)  # marked free in its calendar: going makes it take your time, in Friday only
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": EVENTS_GOING}, {"value": json.dumps(sorted(going))})
     blocks = inp.choice == "going"
     if event.blocks_time != blocks:
         edit(ctx, EditInput(id=event.id, blocks_time=blocks))  # as Edit would: its calendar told, one time alone
