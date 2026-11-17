@@ -10,6 +10,7 @@ import { type Toast, useToast } from "@/components/Toasts"
 import { markedDone, mealEnded, mealSkipped, mealStarted, napEnded, napStarted, sleepMarked, timerStarted, timerStopped } from "@/now/instant"
 import { pending } from "@/plan/pending"
 import { whatIf } from "@/whatif/store"
+import { expectPlan } from "@/lib/replan"
 
 // settings too: a look flipped on the calendar goes back when the server refuses it (audit, 8 Nov); projects and
 // exams, a tag picked on a project's page or an exam's card (15 Nov); ongoing and finished projects (projects-v2)
@@ -123,6 +124,7 @@ export async function runCommand<N extends CommandName>(
     // serves it), so it isn't drawn again as ghosts.
     const { command_id: id, generation } = out as { command_id: number | null; generation?: number | null }
     pending.settle(drawn, generation ?? 0)
+    expectPlan(generation) // "Replanning…" until a plan has it (shell/ReplanStatus)
     const message = label ? label(out) : sentence(name)
     if (id !== null) {
       lastCommands = [id]

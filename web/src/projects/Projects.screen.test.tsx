@@ -86,7 +86,7 @@ describe("projects", () => {
     const dialog = await newProject(user, "Rocketry design review")
     expect(within(dialog).getByText("Outline, then Draft, then Revise")).toBeTruthy()
     await user.click(within(dialog).getByRole("button", { name: /Presentation/ }))
-    await user.click(within(dialog).getByRole("button", { name: "Rocketry" }))
+    await user.click(await within(dialog).findByRole("button", { name: "Rocketry" }, { timeout: 10_000 })) // the tags load after the dialog opens
     await user.click(within(dialog).getByRole("button", { name: "Tomorrow" }))
     // the due chosen, said as a plain sentence: not "Now: …" (read as the time now) nor in the mono of figures (17 Nov)
     const reading = within(dialog).getByText(/^Due \w{3} \d+ \w{3}, 11:59pm \(tomorrow\)$/)
@@ -311,7 +311,7 @@ describe("exams", () => {
     await user.clear(within(dialog).getByRole("textbox", { name: "Starts" }))
     await user.keyboard("2pm")
     await user.click(within(dialog).getByRole("button", { name: "2h" }))
-    await user.click(within(dialog).getByRole("button", { name: "Rocketry" }))
+    await user.click(await within(dialog).findByRole("button", { name: "Rocketry" }, { timeout: 10_000 })) // the tags load after the dialog opens
     await user.click(within(dialog).getByRole("button", { name: "No tag" }))
     await user.click(within(dialog).getByRole("button", { name: "ENGL 1170" }))
     await setLength(user, dialog, "Prep it needs", { type: "3h" })

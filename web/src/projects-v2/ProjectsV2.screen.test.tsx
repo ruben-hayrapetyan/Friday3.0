@@ -442,6 +442,9 @@ describe("the Projects & exams page", () => {
     // its explanation a sentence, a capital first (a client's note)
     expect(within(options).getByText(/^Most of it in the first weeks, done well before its due/)).toBeTruthy()
     expect((await waitForSent("project_set")).body).toEqual({ id, pacing: "front" })
+    // Friday says it's replanning for the change, over the popup, then that the plan is updated (17 Nov)
+    await waitFor(() => expect(document.querySelector("[data-replan]")?.textContent).toMatch(/^(Replanning…|Plan updated)$/), { timeout: 10_000 })
+    await waitFor(() => expect(document.querySelector("[data-replan]")?.textContent).toBe("Plan updated"), { timeout: 20_000 })
     await waitFor(async () => {
       const rules = await friday.q<{ name: string; sentence: string }[]>("rules")
       expect(rules.find((r) => r.name === `you:project:${id}:early`)?.sentence).toBe("Finish Lab report 3 days early")
