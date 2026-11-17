@@ -167,7 +167,8 @@ export function dueSummary(value: string | null, today: string): string {
   if (!value) return "No due date. Friday fits it in where it costs least."
   const date = value.slice(0, 10)
   const days = Math.round((toMin(date) - toMin(today)) / 1440)
-  const away = days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`
+  // a past due says how long ago (17 Nov: an overdue assignment read "(in -1 days)")
+  const away = days === 0 ? "today" : days === 1 ? "tomorrow" : days === -1 ? "yesterday" : days < 0 ? `${-days} days ago` : `in ${days} days`
   return `Due ${weekday(date)} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1].slice(0, 3)}, ${clockTime(value)} (${away})`
 }
 
