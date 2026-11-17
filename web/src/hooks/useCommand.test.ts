@@ -2,7 +2,7 @@ import { QueryClient } from "@tanstack/react-query"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { Item } from "@/api/client"
 import type { Toast } from "@/components/Toasts"
-import { runCommand, runTogether, undoAll, undoLast } from "./useCommand"
+import { clearLanes, inTurn, laneOf, runCommand, runTogether, undoAll, undoLast } from "./useCommand"
 
 const items = [{ id: 1, title: "PS5" }, { id: 2, title: "laundry" }] as Item[]
 const withoutItem = (client: QueryClient, input: { id: number }) =>
@@ -19,7 +19,7 @@ function setup() {
   return { client, toasts, toast: (t: Toast) => toasts.push(t) }
 }
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => (vi.unstubAllGlobals(), clearLanes()))
 
 describe("a command", () => {
   it("shows its change at once and offers undo; its quick placement comes with the plan, not as ghosts", async () => {
@@ -150,5 +150,77 @@ describe("a setting changed", () => {
     await vi.waitFor(() => {
       for (const key of ["settings", "paces", "areas", "series_list", "google_calendars", "mac_calendars", "documents", "calendar_repeats"]) expect(client.getQueryState([key])?.isInvalidated, key).toBe(true)
     })
+  })
+})
+
+describe("changes made quickly, one after another", () => {
+  // 16 Nov: an ongoing project's hours set to 5h, then 4h, were sent at once and saved as 5h when the first finished last
+  function held() {
+    const answers: ((r: Response) => void)[] = []
+    const fetch = vi.fn(() => new Promise<Response>((answer) => answers.push(answer)))
+    vi.stubGlobal("fetch", fetch)
+    const reply = (i: number) => answers[i](new Response(JSON.stringify({ command_id: i + 1, result: {} }), { status: 200 }))
+    return { fetch, reply, bodies: () => fetch.mock.calls.map((c) => JSON.parse(String((c as unknown as [string, RequestInit])[1].body))) }
+  }
+
+  it("to the same thing go to the server in the order made, each once the one before is answered", async () => {
+    const { client, toast } = setup()
+    const { fetch, reply, bodies } = held()
+    const first = runCommand(client, toast, "edit", { id: 1, duration_min: 300 })
+    const second = runCommand(client, toast, "edit", { id: 1, duration_min: 240 })
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    await new Promise((r) => setTimeout(r, 20))
+    expect(fetch).toHaveBeenCalledTimes(1) // the second waits for the first's answer
+    reply(0)
+    await first
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    expect(bodies().map((b) => b.duration_min)).toEqual([300, 240])
+    reply(1)
+    await second
+  })
+
+  it("to the same thing still go when the one before is refused", async () => {
+    const { client, toast } = setup()
+    const answers: ((r: Response) => void)[] = []
+    const fetch = vi.fn(() => new Promise<Response>((answer) => answers.push(answer)))
+    vi.stubGlobal("fetch", fetch)
+    const first = runCommand(client, toast, "edit", { id: 1, duration_min: 300 })
+    const second = runCommand(client, toast, "edit", { id: 1, duration_min: 240 })
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    answers[0](new Response(JSON.stringify({ field: "id", message: "No" }), { status: 422 }))
+    expect(await first).toBeUndefined()
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    answers[1](new Response(JSON.stringify({ command_id: 2, result: {} }), { status: 200 }))
+    expect(await second).toBeTruthy()
+  })
+
+  it("to different things go at once", async () => {
+    const { client, toast } = setup()
+    const { fetch, reply } = held()
+    const one = runCommand(client, toast, "edit", { id: 1, duration_min: 300 })
+    const two = runCommand(client, toast, "edit", { id: 2, duration_min: 240 })
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    reply(0)
+    reply(1)
+    await Promise.all([one, two])
+  })
+
+  it("wait for an earlier one that never answers only so long", async () => {
+    vi.useFakeTimers()
+    try {
+      void inTurn("id 9", () => new Promise(() => {})) // a server that stopped answering
+      const next = inTurn("id 9", async () => "sent")
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(await next).toBe("sent")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("are lined up by what they change: an id, a setting's key, a block", () => {
+    expect(laneOf({ id: 4, hours_per_week: 5 })).toBe("id 4")
+    expect(laneOf({ key: "time", value: {} })).toBe("key time")
+    expect(laneOf({ block_key: "T1@2026-10-19T10:00" })).toBe("block T1@2026-10-19T10:00")
+    expect(laneOf({ title: "New" })).toBeNull()
   })
 })

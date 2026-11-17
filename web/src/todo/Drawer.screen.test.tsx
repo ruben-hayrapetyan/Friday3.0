@@ -3,6 +3,7 @@
 // its left edge dragged wider, and the ways out.
 import { configure, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
+import type { Item } from "@/api/client"
 import { friday, openFriday, waitForSent } from "@/test/friday"
 
 // A real server, replanning after each change: a moment longer than the default second to answer.
@@ -90,7 +91,10 @@ describe("the to-do drawer", () => {
     const { body } = await waitForSent("edit")
     expect(body).toEqual({ id: expect.any(Number), title: "MATH 1910 HW 8" })
     expect(within(aside).queryByRole("textbox", { name: "Name" })).toBeNull()
-    await friday.c("edit", { id: (body as { id: number }).id, title: "MATH 1910 Written HW 8" }) // the other tests use it
+    const id = (body as { id: number }).id
+    // the rename saved before it's put back: sent at once, the two could land in either order and leave it renamed
+    await waitFor(async () => expect((await friday.q<Item[]>("items")).find((i) => i.id === id)?.title).toBe("MATH 1910 HW 8"))
+    await friday.c("edit", { id, title: "MATH 1910 Written HW 8" }) // the other tests use it
   })
 
   it("leaves the name as it was on Escape", async () => {

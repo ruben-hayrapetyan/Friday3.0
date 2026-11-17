@@ -50,6 +50,38 @@ function settingSet(client: QueryClient, input: { key?: string; value?: unknown 
 
 const isObject = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x)
 
+// Changes to one thing reach the server in the order you made them; changes to different things go at once (16 Nov:
+// an ongoing project's hours set to 5h, then 4h, were both sent at once and saved as 5h when the first finished last).
+const lanes = new Map<string, Promise<unknown>>()
+
+/** For tests: no change waiting in any lane. */
+export function clearLanes(): void {
+  lanes.clear()
+}
+
+/** What a command changes, as far as order goes: its id, its setting's key or its block; none, no waiting. */
+export function laneOf(input: unknown): string | null {
+  if (!isObject(input)) return null
+  if (typeof input.id === "number") return `id ${input.id}`
+  if (typeof input.key === "string") return `key ${input.key}`
+  if (typeof input.block_key === "string") return `block ${input.block_key}`
+  return null
+}
+
+// A change answered by nothing (a server that stopped answering) holds the next only this long, not for ever.
+const WAIT_MS = 10_000
+
+/** `send`, once every earlier change in its lane has been answered (or refused), or after WAIT_MS. */
+export function inTurn<T>(lane: string | null, send: () => Promise<T>): Promise<T> {
+  if (lane === null) return send()
+  const before = lanes.get(lane)
+  const mine = before ? Promise.race([before, new Promise((wait) => setTimeout(wait, WAIT_MS))]).then(send) : send() // nothing ahead: sent now
+  const settled = mine.catch(() => undefined)
+  lanes.set(lane, settled)
+  void settled.then(() => lanes.get(lane) === settled && lanes.delete(lane))
+  return mine
+}
+
 // The newest change this page made, for ⌘Z: one command, or several made as one (a change to many to-dos).
 let lastCommands: number[] = []
 
@@ -86,7 +118,7 @@ export async function runCommand<N extends CommandName>(
     if (optimistic) drawn = pending.collect(() => optimistic(client, input))
   }
   try {
-    const out = await command(name, input)
+    const out = await inTurn(laneOf(input), () => command(name, input))
     // The quick placement made after a change is the plan the calendar reads until the replan lands (the plan query
     // serves it), so it isn't drawn again as ghosts.
     const { command_id: id, generation } = out as { command_id: number | null; generation?: number | null }

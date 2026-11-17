@@ -283,15 +283,16 @@ describe("an event's card", () => {
     await user.clear(find)
     await user.type(find, "CHEM")
     // the event comes back worked through meanwhile and the card redraws: the pick is made on the list as it is then
+    let held: Awaited<ReturnType<typeof waitForSent>> | null = null
     await waitFor(
       async () => {
         const task = inCard().queryAllByRole("button").find((b) => /^CHEM 2090 lab report/.test(b.textContent ?? ""))
         if (!sent.some((c) => c.name === "event_hold") && task) await user.click(task)
-        await waitForSent("event_hold", 300)
+        held ??= await waitForSent("event_hold", 300) // each send is read once
       },
       { timeout: 10_000 },
     )
-    expect((await waitForSent("event_hold")).body).toMatchObject({ id: event.id, task_id: expect.any(Number) })
+    expect(held?.body).toMatchObject({ id: event.id, task_id: expect.any(Number) })
     expect(inCard().getByText(/^Time for CHEM 2090 lab report/)).toBeTruthy()
     await user.click(inCard().getByRole("button", { name: "Change" }))
     await user.click(inCard().getByRole("button", { name: "Cancel" }))
