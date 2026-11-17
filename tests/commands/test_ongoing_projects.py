@@ -318,3 +318,21 @@ def test_an_ongoing_project_takes_a_tag_new_or_known_and_lets_it_go(app: App) ->
     assert app.conn.execute("SELECT COUNT(*) FROM areas WHERE name LIKE 'music'").fetchone()[0] == 1
     app.do("ongoing_set", id=series, area="")
     assert app.do("ongoing_projects")[0]["area"] is None
+
+
+# 17 Nov: Guitar, 3 hours a week, planned nothing in a week with hours free between events
+
+
+def test_a_week_with_only_short_gaps_still_gets_its_hours(app: App) -> None:
+    # Every day is an hour on, an hour off from 9am to 10pm, with a late event on weekend nights: no two-hour run is
+    # free anywhere. A weekly goal's new sitting opened only at two hours (compile.first_chunk_units), so it was opened
+    # nowhere and the week got nothing; now it opens as long as the gap allows, down to its shortest piece.
+    for hour in range(9, 22, 2):
+        app.do("add", title=f"Class {hour}", when="fixed", start=f"2026-11-09T{hour:02d}:00",
+               end=f"2026-11-09T{hour + 1:02d}:00", every="day")  # fmt: skip
+    app.do("add", title="Band", when="fixed", start="2026-11-14T23:00", end="2026-11-15T00:30", every="week")
+    app.do("add", title="Band", when="fixed", start="2026-11-15T23:00", end="2026-11-16T00:30", every="week")
+    series = guitar(app, hours=3)
+    replan(app.conn, app.now_utc)
+    days = planned_by_day(app, weeks(app, series)[0]["id"])
+    assert sum(days.values()) >= 60, days

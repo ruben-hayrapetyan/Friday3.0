@@ -299,15 +299,23 @@ def merge(M, st, protected, i, a, b, touched):
 
 @kernel
 def insert_chunk(M, st, protected, touched):
-    """Open a new chunk of a random item with room: its first-chunk units at a random free place.
+    """Open a new chunk of a random item with room: its first-chunk units at a random free place, or where that many
+    don't fit, as many as do there down to its minimum chunk (not one sitting: that is whole or nothing).
 
-    Essential for elastic, target and open items, which start empty.
+    Essential for elastic, target and open items, which start empty. A weekly goal opens at two hours: with the gaps
+    between events shorter, and the longer runs late in the evening where they cost wellbeing, it was never opened at
+    all, and an ongoing project got no time in a week with hours free (17 Nov: Guitar, 3 h a week, planned nothing).
     """
     i = np.random.randint(0, M.I)
     if st.placed[i] >= M.amount_cap[i] or M.last_slot[i] <= M.first_slot[i]:
         return 0
     t = np.random.randint(M.first_slot[i], M.last_slot[i] + 1)
     e = fits(M, st, protected, i, t, M.insert_units[i], 1, 0, 1, 0)
+    if not M.one_sitting[i]:
+        u = M.insert_units[i] - 1
+        while e < 0 and u >= M.min_chunk[i]:
+            e = fits(M, st, protected, i, t, u, 1, 0, 1, 0)
+            u -= 1
     if e < 0:
         return 0
     fill_range(M, st, i, t, e)
