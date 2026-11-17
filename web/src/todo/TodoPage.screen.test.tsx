@@ -4,6 +4,8 @@
 import { configure, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import type { Item } from "@/api/client"
+import { dur } from "@/lib/format"
+import { addDays } from "@/lib/time"
 import { friday, openFriday, waitForSent } from "@/test/friday"
 
 // A real server, replanning after each change: a moment longer than the default second to answer.
@@ -21,15 +23,18 @@ const openHomework = async () =>
     .filter((i) => i.status === "todo" && /^MATH 1910 Written HW \d+$/.test(i.title))
     .sort((a, b) => (a.due ?? "").localeCompare(b.due ?? "") || a.id - b.id)
     .map((i) => i.title)
-/** The next homework: open, in Short term, on the Due list. */
-const nextHomework = async () => (await openHomework())[0]
+/** The next homework: open, in Short term, on the Due list; the next assignment if every Written HW is done. */
+const nextHomework = async () => (await openHomework())[0] ?? (await openAssignments())[0]
 /** The open assignments in Short term, soonest due first, each its own title: for a test that needs a few of them. */
-const openAssignments = async () => {
+const openWork = async () => {
   const open = (await items()).filter((i) => i.status === "todo" && i.preset === "Assignment" && !i.long_term)
-  return open
-    .filter((i) => open.filter((o) => o.title === i.title).length === 1)
-    .sort((a, b) => (a.due ?? "~").localeCompare(b.due ?? "~") || a.id - b.id)
-    .map((i) => i.title)
+  return open.filter((i) => open.filter((o) => o.title === i.title).length === 1).sort((a, b) => (a.due ?? "~").localeCompare(b.due ?? "~") || a.id - b.id)
+}
+const openAssignments = async () => (await openWork()).map((i) => i.title)
+/** A day as the API writes it, `days` from today on the page's clock (the server's): "2026-11-13". */
+const ymd = (days: number) => {
+  const d = new Date(Date.now() + days * 86_400_000)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 const list = (name: string) => within(screen.getByRole("group", { name: "List" })).getByRole("button", { name })
 
@@ -68,16 +73,17 @@ describe("the To-do page", () => {
   })
 
   it("ticks a task done from its row and opens it again with Undo", async () => {
+    const title = await nextHomework()
+    const { id } = await itemNamed(title)
     const { user } = await openFriday("/todo")
-    const hw = await row("MATH 1910 Written HW 9")
+    const hw = await row(title)
     await user.click(within(hw).getByRole("checkbox", { name: "Mark done" }))
     const sent = await waitForSent("done")
-    const id = (await itemNamed("MATH 1910 Written HW 9")).id
     expect(sent.body).toEqual({ id })
-    await waitFor(async () => expect((await itemNamed("MATH 1910 Written HW 9")).status).toBe("done"))
+    await waitFor(async () => expect((await itemNamed(title)).status).toBe("done"))
     await user.click(await screen.findByRole("button", { name: "Undo" }))
     await waitForSent("undo")
-    await waitFor(async () => expect((await itemNamed("MATH 1910 Written HW 9")).status).toBe("todo"), { timeout: 5000 })
+    await waitFor(async () => expect((await itemNamed(title)).status).toBe("todo"), { timeout: 5000 })
   })
 
   it("renames a task by double-clicking its title, and Escape keeps the old one", async () => {
@@ -103,8 +109,8 @@ describe("the To-do page", () => {
   })
 
   it("changes a task's due in its row, typed the way you'd say it", async () => {
-    const title = await nextHomework()
-    const { id, due: was } = await itemNamed(title)
+    // one not due tomorrow already, so "tomorrow" changes it (17 Nov: the next homework was due tomorrow)
+    const { id, title, due: was } = (await openWork()).find((i) => i.due && !i.due.startsWith(ymd(1))) as Item
     const { user } = await openFriday("/todo")
     const hw = await row(title)
     await user.click(within(hw).getByTitle("Due. Click to change"))
@@ -113,15 +119,17 @@ describe("the To-do page", () => {
     expect(await screen.findByText(/Enter to set/)).toBeTruthy()
     await user.keyboard("{Enter}")
     const sent = await waitForSent("edit")
-    expect(sent.body).toMatchObject({ id, due: expect.stringMatching(/T23:59$/) })
+    expect(sent.body).toMatchObject({ id, due: `${ymd(1)}T23:59` })
     expect(screen.queryByRole("textbox", { name: "Due" })).toBeNull()
-    await waitFor(async () => expect((await itemNamed(title)).due).not.toBe(was))
+    await waitFor(async () => expect((await itemNamed(title)).due).toBe(`${ymd(1)}T23:59`))
     await friday.c("edit", { id, due: was }) // its own due again, for the tests after
   })
 
   it("changes how long a task takes in its row, and Done closes the editor", async () => {
+    // one with nothing done yet, whose row says how long it takes ("2h to do"), not how far along it is
+    const { id, title, duration_min: was } = (await openWork()).find((i) => !i.done_min && i.duration_min !== 90) as Item
     const { user } = await openFriday("/todo")
-    const hw = await row("MATH 1910 Written HW 11")
+    const hw = await row(title)
     await user.click(within(hw).getByTitle(/to do\. Click to change$/))
     expect(screen.getByText("How long it takes in all")).toBeTruthy()
     const length = screen.getByRole("textbox", { name: "Length" })
@@ -130,37 +138,40 @@ describe("the To-do page", () => {
     expect(screen.getByText("→ 1h 30m")).toBeTruthy()
     await user.keyboard("{Enter}")
     const sent = await waitForSent("edit")
-    expect(sent.body).toMatchObject({ duration_min: 90 })
+    expect(sent.body).toMatchObject({ id, duration_min: 90 })
     expect(screen.queryByRole("textbox", { name: "Length" })).toBeNull()
     // The due editor closes on Done, without changing anything.
-    await user.click(within(await row("MATH 1910 Written HW 11")).getByTitle("Due. Click to change"))
+    await user.click(within(await row(title)).getByTitle("Due. Click to change"))
     await user.click(screen.getByRole("button", { name: "Done" }))
     expect(screen.queryByRole("textbox", { name: "Due" })).toBeNull()
+    await waitFor(async () => expect((await itemNamed(title)).duration_min).toBe(90))
+    await friday.c("edit", { id, duration_min: was }) // its own length again, for the tests after
   })
 
   it("opens a task's detail beside the list with a click, or Enter, and closes it with a second click", async () => {
+    const [task] = await openWork()
     const { user } = await openFriday("/todo")
-    await user.click(await row("CHEM 2090 lab report 6"))
+    await user.click(await row(task.title))
     expect(await screen.findByText("Planned sessions")).toBeTruthy()
-    expect(window.location.hash).toMatch(/item=\d+/)
-    await user.click(await row("CHEM 2090 lab report 6"))
+    expect(window.location.hash).toContain(`item=${task.id}`)
+    await user.click(await row(task.title))
     await waitFor(() => expect(screen.queryByText("Planned sessions")).toBeNull())
-    ;(await row("CHEM 2090 lab report 6")).focus()
+    ;(await row(task.title)).focus()
     await user.keyboard("{Enter}")
     expect(await screen.findByText("Planned sessions")).toBeTruthy()
   })
 
   it("picks several with ⌘-click and Shift-click, ⌘A picks all, and Escape lets go", async () => {
-    const [hw, nextHw] = await openHomework()
+    const [hw, nextHw, other] = await openAssignments()
     const { user } = await openFriday("/todo")
     await user.click(await row(hw))
     await user.keyboard("{Meta>}")
-    await user.click(await row("CHEM 2090 lab report 6"))
+    await user.click(await row(other))
     await user.keyboard("{/Meta}")
     expect(await screen.findByRole("toolbar", { name: "2 tasks picked" })).toBeTruthy()
     // ⌘-click a picked one again lets it go.
     await user.keyboard("{Meta>}")
-    await user.click(await row("CHEM 2090 lab report 6"))
+    await user.click(await row(other))
     await user.keyboard("{/Meta}")
     expect(await screen.findByRole("toolbar", { name: "1 task picked" })).toBeTruthy()
     await user.keyboard("{Shift>}")
@@ -181,8 +192,9 @@ describe("the To-do page", () => {
   })
 
   it("makes a task another kind when it's dragged onto that section", async () => {
+    const { id, title } = (await openWork()).at(-1) as Item
     await openFriday("/todo")
-    const hw = await row("PHYS 1112 Mastering Physics 12")
+    const hw = await row(title)
     const dt = dataTransfer()
     fireEvent.dragStart(hw, { dataTransfer: dt })
     const errands = screen.getByText("Errands").closest("section") as HTMLElement
@@ -191,9 +203,9 @@ describe("the To-do page", () => {
     fireEvent.dragOver(errands, { dataTransfer: dt })
     fireEvent.drop(errands, { dataTransfer: dt })
     const sent = await waitForSent("edit")
-    const { id } = await itemNamed("PHYS 1112 Mastering Physics 12")
     expect(sent.body).toEqual({ id, preset: "Errand" })
-    await waitFor(async () => expect((await itemNamed("PHYS 1112 Mastering Physics 12")).preset).toBe("Errand"))
+    await waitFor(async () => expect((await itemNamed(title)).preset).toBe("Errand"))
+    await friday.c("edit", { id, preset: "Assignment" }) // an assignment again, for the tests after
   })
 
   it("moves every picked task when one of them is dragged, said once with one Undo", async () => {
@@ -266,8 +278,10 @@ describe("the To-do page", () => {
   })
 
   it("draws two-line rows with progress when asked, which also tick off and open", async () => {
-    // how much the sample did depends on the day it's lived to: set to 1h 15m of its 4h
-    await friday.c("progress", { id: (await itemNamed("FWS essay draft")).id, share: 0.3125 })
+    // how much the sample did depends on the day it's lived to: the longest open assignment, set to a quarter done
+    const long = (await openWork()).filter((i) => i.duration_min).sort((a, b) => (b.duration_min ?? 0) - (a.duration_min ?? 0))[0]
+    const length = long.duration_min as number
+    await friday.c("progress", { id: long.id, share: 0.25 })
     const hw = await nextHomework()
     const { user } = await openFriday("/todo")
     await row(hw)
@@ -275,9 +289,14 @@ describe("the To-do page", () => {
     await user.click(screen.getByRole("button", { name: "Two lines" }))
     await waitFor(() => expect(screen.queryByTitle(`${hw}${TIP}`)).toBeNull())
     expect(screen.getAllByText(/^\dh( \d+m)? to do$/).length).toBeGreaterThan(0)
-    // its row (the Now dock may show it too, when it's what's on)
-    const essay = screen.getAllByText("FWS essay draft").map((t) => t.closest("[data-todo-row]")).find(Boolean) as HTMLElement
-    expect(within(essay).getByText("1h 15m of 4h")).toBeTruthy()
+    // its row (the Now dock and the calendar may show its title too)
+    const essay = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>(`[data-todo-row="${long.id}"]`)
+      expect(found).not.toBeNull()
+      return found as HTMLElement
+    })
+    expect(within(essay).getByText(long.title)).toBeTruthy()
+    expect(within(essay).getByText(`${dur(length / 4)} of ${dur(length)}`)).toBeTruthy()
     await user.click(essay)
     expect(await screen.findByText("Planned sessions")).toBeTruthy()
     // Enter on a two-line row opens it too (and a second time puts it away).
@@ -330,9 +349,10 @@ describe("the To-do page", () => {
   })
 
   it("lists every dated piece of work in Due, soonest first, with the now line after the ones past", async () => {
-    const yesterday = new Date(Date.now() - 86_400_000)
-    const ymd = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`
-    await friday.c("add", { title: "Overdue worksheet", preset: "Assignment", due: `${ymd}T12:00`, duration_min: 30 })
+    // due before anything else still open (17 Nov: the sample left a Laundry of the week before open), and past
+    const earliest = (await items()).filter((i) => i.status === "todo" && i.due).map((i) => i.due as string).sort()[0]
+    const day = [ymd(-1), addDays(earliest.slice(0, 10), -1)].sort()[0]
+    await friday.c("add", { title: "Overdue worksheet", preset: "Assignment", due: `${day}T12:00`, duration_min: 30 })
     const { user } = await openFriday("/todo?list=Due")
     await row("Overdue worksheet")
     expect(list("Due").getAttribute("aria-pressed")).toBe("true")

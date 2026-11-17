@@ -85,10 +85,14 @@ describe("the to-do drawer", () => {
   })
 
   it("ticks a task done from its row", async () => {
+    const title = await dueThisWeek()
+    const { id } = (await friday.q<Item[]>("items", { status: "all" })).find((i) => i.title === title && i.status === "todo") as Item
     const { user, aside } = await drawer()
-    const hw = await rowIn(aside, "PHYS 1112 Mastering Physics 9")
+    const hw = await rowIn(aside, title)
     await user.click(within(hw).getByRole("checkbox", { name: "Mark done" }))
-    expect((await waitForSent("done")).body).toMatchObject({ id: expect.any(Number) })
+    expect((await waitForSent("done")).body).toEqual({ id })
+    await waitFor(async () => expect((await friday.q<Item[]>("items", { status: "all" })).find((i) => i.id === id)?.status).toBe("done"))
+    await friday.c("reopen", { id }) // open again, for the tests after
   })
 
   it("opens a task on the To-do page with a click, or Enter", async () => {

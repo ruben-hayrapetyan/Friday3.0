@@ -4,6 +4,7 @@
 import { configure, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import type { Item } from "@/api/client"
+import { dur } from "@/lib/format"
 import { friday, openFriday, sent, waitForSent } from "@/test/friday"
 
 // A real server, replanning after each change: a moment longer than the default second to answer.
@@ -20,6 +21,39 @@ async function openAssignments(fresh = false) {
   return open.filter((i) => open.filter((o) => o.title === i.title).length === 1).sort((a, b) => (a.due ?? "~").localeCompare(b.due ?? "~") || a.id - b.id)
 }
 
+/** A day as the API writes it, `days` from today on the page's clock (the server's): "2026-11-13". */
+const ymd = (days: number) => {
+  const d = new Date(Date.now() + days * 86_400_000)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+let spares = 0
+/** The `n`th of the open assignments above, soonest due first; when the sample has finished all but a few, spares
+ * are added through the API, so no test here waits on which homework the simulation happened to leave open. */
+async function assignment(n: number): Promise<Item> {
+  let open = await openAssignments()
+  if (open.length > n) return open[n]
+  for (let k = open.length; k <= n; k++) await friday.c("add", { title: `Spare problem set ${++spares}`, preset: "Assignment", area: "MATH 1910", due: `${ymd(4 + spares)}T23:59`, duration_min: 120 })
+  open = await openAssignments()
+  return open[n]
+}
+
+/** An open assignment with a session planned from now on, by its title. */
+async function plannedAssignment(): Promise<string> {
+  const { now, today } = await friday.q<{ now: string; today: string }>("calendar", { start: "2026-01-01", days: "1" })
+  let id: number | undefined
+  await waitFor(
+    async () => {
+      const plan = await friday.q<{ blocks: { item_id: number; key: string; preset?: string | null; start: string }[] }>("plan", { start: `${today}T00:00`, end: `${ymd(14)}T00:00` })
+      const open = new Set((await openAssignments()).map((i) => i.id))
+      id = plan.blocks.find((b) => b.key.startsWith("T") && b.start >= now && open.has(b.item_id))?.item_id
+      expect(id).toBeTruthy()
+    },
+    { timeout: 30_000, interval: 500 },
+  )
+  return (await items()).find((i) => i.id === id)?.title as string
+}
+
 /** The To-do page with task `title` open beside the list. */
 async function detailOf(title: string) {
   const item = await itemNamed(title)
@@ -31,12 +65,13 @@ async function detailOf(title: string) {
 
 describe("a task's detail", () => {
   it("shows the task, what's left and its planned sessions, and Close puts it away", async () => {
-    // how much the sample did depends on the day it's lived to: none of it, so all 4h are left
-    await friday.c("progress", { id: (await itemNamed("CHEM 2090 lab report 6")).id, share: 0 })
-    const { user, aside } = await detailOf("CHEM 2090 lab report 6")
-    expect(within(aside).getByText("CHEM 2090 lab report 6")).toBeTruthy()
-    expect(within(aside).getByText("4h to do")).toBeTruthy()
-    expect(within(aside).getByText("4h left")).toBeTruthy()
+    // how much the sample did depends on the day it's lived to: none of it, so all of it is left
+    const task = await assignment(0)
+    await friday.c("progress", { id: task.id, share: 0 })
+    const { user, aside } = await detailOf(task.title)
+    expect(within(aside).getByText(task.title)).toBeTruthy()
+    expect(within(aside).getByText(`${dur(task.duration_min as number)} to do`)).toBeTruthy()
+    expect(within(aside).getByText(`${dur(task.duration_min as number)} left`)).toBeTruthy()
     expect(within(aside).getByRole("slider", { name: "How much is done" }).getAttribute("aria-valuenow")).toBe("0")
     await user.click(within(aside).getByRole("button", { name: "Close" }))
     await waitFor(() => expect(screen.queryByText("Planned sessions")).toBeNull())
@@ -44,6 +79,7 @@ describe("a task's detail", () => {
   })
 
   it("changes the tag and the kind from their pickers", async () => {
+    await assignment(1)
     const [task] = (await openAssignments()).filter((i) => i.area !== "Rocketry").slice(-1)
     const { user, aside, item } = await detailOf(task.title)
     await user.click(within(aside).getByRole("button", { name: task.area as string }))
@@ -57,18 +93,25 @@ describe("a task's detail", () => {
   })
 
   it("moves the due with a quick pick, keeping its time of day", async () => {
-    const { user, aside, item } = await detailOf("MATH 1910 Written HW 11")
-    await user.click(within(aside).getByRole("button", { name: /^Fri 4 Dec|11:59pm/ }))
+    // one due at the end of a day still to come (one gone by says "(in -1 days)": see dueSummary)
+    await assignment(2)
+    const task = (await openAssignments()).find((i) => i.due?.endsWith("T23:59") && i.due >= `${ymd(0)}T23:59`) as Item
+    const { user, aside, item } = await detailOf(task.title)
+    await user.click(within(aside).getByRole("button", { name: /11:59pm/ }))
     expect(within(aside).getByText(/^Due \w{3} \d+ \w{3}, .* \((today|tomorrow|in \d+ days)\)$/)).toBeTruthy()
     await user.click(within(aside).getByRole("button", { name: "In a week" }))
     const sent = await waitForSent("edit")
     expect(sent.body).toEqual({ id: item.id, due: expect.stringMatching(/T23:59$/) })
     await user.click(within(aside).getByRole("button", { name: "No due date" }))
     expect((await waitForSent("edit")).body).toEqual({ id: item.id, due: null })
+    await waitFor(async () => expect((await items()).find((i) => i.id === item.id)?.due).toBeNull())
+    await friday.c("edit", { id: item.id, due: task.due }) // its own due again, for the tests after
   })
 
   it("sets how firm the deadline is, whether it's pointless late, and whether it runs by itself", async () => {
-    const { user, aside, item } = await detailOf("PHYS 1112 Mastering Physics 11")
+    // an assignment of its own, with a hard deadline: this one ends up soft, pointless late and running by itself
+    const made = await friday.c<{ result: { item: Item } }>("add", { title: "Firm worksheet", preset: "Assignment", area: "PHYS 1112", due: `${ymd(6)}T08:00`, duration_min: 60, firmness: "hard" })
+    const { user, aside, item } = await detailOf(made.result.item.title)
     await user.click(within(aside).getByRole("button", { name: "Soft" }))
     expect((await waitForSent("edit")).body).toEqual({ id: item.id, firmness: "soft" })
     expect(within(aside).getByText(/Planned late if it can't be on time\.|later it's done/)).toBeTruthy()
@@ -81,10 +124,15 @@ describe("a task's detail", () => {
     await user.click(within(aside).getByRole("switch", { name: "Runs by itself" }))
     expect((await waitForSent("edit")).body).toEqual({ id: item.id, background: true })
     expect(await within(aside).findByText(/Friday holds 15 minutes to start it/)).toBeTruthy()
+    await friday.c("drop", { id: item.id })
   })
 
   it("says exam prep is pointless late by default", async () => {
-    const { aside } = await detailOf("Prep: MATH 1910 Prelim 2")
+    // the sample's open exam prep, or some of its own if all of it is done
+    const prep =
+      (await items()).find((i) => i.status === "todo" && i.preset === "Exam prep" && i.expires === null) ??
+      (await friday.c<{ result: { item: Item } }>("add", { title: "Prep: practice quiz", preset: "Exam prep", due: `${ymd(5)}T19:00`, duration_min: 60 })).result.item
+    const { aside } = await detailOf(prep.title)
     expect(within(aside).getByText(/As for all exam prep\. Never planned after it's due\./)).toBeTruthy()
     expect(within(aside).getByRole("button", { name: "⏳ Pointless" }).getAttribute("aria-pressed")).toBe("true")
   })
@@ -110,7 +158,8 @@ describe("a task's detail", () => {
   })
 
   it("keeps time free around it to get there and back", async () => {
-    const { user, aside, item } = await detailOf("MATH 1910 Written HW 9")
+    const task = await assignment(0)
+    const { user, aside, item } = await detailOf(task.title)
     expect(within(aside).getByText("Work can sit right up against it.")).toBeTruthy()
     await user.click(within(aside).getByRole("button", { name: "15 min" }))
     expect((await waitForSent("edit")).body).toEqual({ id: item.id, buffer_before_min: 15, buffer_after_min: 15 })
@@ -120,22 +169,26 @@ describe("a task's detail", () => {
   })
 
   it("says how much is done with the keyboard, and Start over counts none of it", async () => {
-    // how much the sample did depends on the day it's lived to: set to 1h 15m of its 4h
-    await friday.c("progress", { id: (await itemNamed("FWS essay draft")).id, share: 0.3125 })
-    const { user, aside, item } = await detailOf("FWS essay draft")
+    // how long it is and how much the sample did depend on the day it's lived to: set to 1h 15m of 4h
+    const task = await assignment(1)
+    await friday.c("edit", { id: task.id, duration_min: 240 })
+    await friday.c("progress", { id: task.id, share: 0.3125 })
+    sent.length = 0 // those were the test's, not the page's
+    const { user, aside, item } = await detailOf(task.title)
     expect(within(aside).getByText("1h 15m of 4h")).toBeTruthy()
     expect(within(aside).getByText("2h 45m left · 1h 15m done")).toBeTruthy()
     expect(within(aside).getByRole("button", { name: /Resume/ })).toBeTruthy()
     const slider = within(aside).getByRole("slider", { name: "How much is done" })
     slider.focus()
     await user.keyboard("{ArrowLeft}")
-    const sent = await waitForSent("progress")
-    expect(sent.body).toEqual({ id: item.id, share: 0.25 })
+    const moved = await waitForSent("progress")
+    expect(moved.body).toEqual({ id: item.id, share: 0.25 })
     await user.keyboard("{ArrowRight}")
     expect((await waitForSent("progress")).body).toMatchObject({ id: item.id })
     await user.keyboard("{Home}")
     expect((await waitForSent("progress")).body).toEqual({ id: item.id, share: 0 })
     await user.keyboard("x") // not a key it takes
+    await friday.c("edit", { id: item.id, duration_min: task.duration_min }) // its own length again
   })
 
   it("says how much is done with a click along the bar", async () => {
@@ -150,14 +203,16 @@ describe("a task's detail", () => {
   })
 
   it("starts the task over from its detail", async () => {
-    await friday.c("progress", { id: (await itemNamed("FWS essay draft")).id, share: 0.5 })
-    const { user, aside, item } = await detailOf("FWS essay draft")
+    const task = await assignment(1)
+    await friday.c("progress", { id: task.id, share: 0.5 })
+    sent.length = 0 // that was the test's, not the page's
+    const { user, aside, item } = await detailOf(task.title)
     await user.click(await within(aside).findByRole("button", { name: "Start over" }))
     expect((await waitForSent("progress")).body).toEqual({ id: item.id, share: 0 })
   })
 
   it("logs time worked without the timer, and Cancel closes it", async () => {
-    const { user, aside, item } = await detailOf("PHYS 1112 Mastering Physics 12")
+    const { user, aside, item } = await detailOf((await assignment(2)).title)
     await user.click(within(aside).getByRole("button", { name: "Log time" }))
     let group = within(aside).getByRole("group", { name: "Time you worked" })
     await user.click(within(group).getByRole("button", { name: "Cancel" }))
@@ -174,7 +229,7 @@ describe("a task's detail", () => {
   })
 
   it("logs the times typed, saved with Enter", async () => {
-    const { user, aside, item } = await detailOf("PHYS 1112 Mastering Physics 12")
+    const { user, aside, item } = await detailOf((await assignment(2)).title)
     await user.click(within(aside).getByRole("button", { name: "Log time" }))
     const group = within(aside).getByRole("group", { name: "Time you worked" })
     await user.clear(within(group).getByRole("textbox", { name: "Started" }))
@@ -187,7 +242,7 @@ describe("a task's detail", () => {
   })
 
   it("logs it once with Enter on Log it, and Enter on Cancel logs nothing", async () => {
-    const { user, aside } = await detailOf("PHYS 1112 Mastering Physics 11")
+    const { user, aside } = await detailOf((await assignment(3)).title)
     await user.click(within(aside).getByRole("button", { name: "Log time" }))
     let group = within(aside).getByRole("group", { name: "Time you worked" })
     within(group).getByRole("button", { name: "Cancel" }).focus()
@@ -203,9 +258,12 @@ describe("a task's detail", () => {
   })
 
   it("starts the timer on it, then times another alongside", async () => {
-    // two with nothing done yet, neither what's on now
+    // two with nothing done yet (their detail says Start now, not Resume), neither what's on now
+    await assignment(2)
     const now = await friday.q<{ current: { item_id: number } | null }>("now")
-    const [a, b] = (await openAssignments(true)).filter((i) => i.id !== now.current?.item_id)
+    const [a, b] = (await openAssignments()).filter((i) => i.id !== now.current?.item_id)
+    for (const i of [a, b]) if (i.done_min) await friday.c("progress", { id: i.id, share: 0 })
+    sent.length = 0 // those were the test's, not the page's
     const first = await detailOf(a.title)
     await first.user.click(within(first.aside).getByRole("button", { name: /Start now/ }))
     expect((await waitForSent("start")).body).toEqual({ id: first.item.id })
@@ -218,7 +276,7 @@ describe("a task's detail", () => {
   })
 
   it("marks it done and opens it again", async () => {
-    const { user, aside, item } = await detailOf("PHYS 1112 Mastering Physics 10")
+    const { user, aside, item } = await detailOf((await assignment(0)).title)
     await user.click(within(aside).getByRole("button", { name: "Mark done" }))
     expect((await waitForSent("done")).body).toEqual({ id: item.id })
     await user.click(await within(aside).findByRole("button", { name: "Open again" }, { timeout: 5000 }))
@@ -226,13 +284,13 @@ describe("a task's detail", () => {
   })
 
   it("shows a planned session on the plan", async () => {
-    const { user, aside } = await detailOf("CHEM 2090 lab report 6")
+    const { user, aside } = await detailOf(await plannedAssignment())
     await user.click(within(aside).getByRole("button", { name: "See on plan" }))
     await waitFor(() => expect(window.location.hash).toBe("#/"))
   })
 
   it("opens a session's own day on the plan from its line", async () => {
-    const { user, aside } = await detailOf("CHEM 2090 lab report 6")
+    const { user, aside } = await detailOf(await plannedAssignment())
     const session = within(aside).getAllByRole("button").find((b) => /Planned · Friday decides|Pinned|Locked|Tentative/.test(b.textContent ?? ""))
     expect(session).toBeTruthy()
     await user.click(session as HTMLElement)
@@ -240,7 +298,7 @@ describe("a task's detail", () => {
   })
 
   it("deletes a task that doesn't repeat at once", async () => {
-    const { user, aside, item } = await detailOf("MATH 1910 Written HW 9")
+    const { user, aside, item } = await detailOf((await assignment(0)).title)
     await user.click(within(aside).getByRole("button", { name: "Delete" }))
     expect((await waitForSent("drop")).body).toEqual({ id: item.id })
     await waitFor(() => expect(screen.queryByText("Planned sessions")).toBeNull())

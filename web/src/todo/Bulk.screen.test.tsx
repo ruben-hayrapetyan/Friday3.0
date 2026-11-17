@@ -13,17 +13,27 @@ const TIP = ": click for everything about it, double-click the title to rename"
 const row = (title: string) => screen.findByTitle(`${title}${TIP}`, {}, { timeout: 10_000 })
 const items = () => friday.q<Item[]>("items", { status: "all" })
 const itemNamed = async (title: string) => (await items()).find((i) => i.title === title) as Item
-/** The next MATH 1910 Written HW: open, soonest due. Which ones the sample's three weeks finish early moves with the planner. */
-const nextHomework = async () =>
-  (await items()).filter((i) => i.status === "todo" && /^MATH 1910 Written HW \d+$/.test(i.title)).sort((a, b) => (a.due ?? "").localeCompare(b.due ?? "") || a.id - b.id)[0].title
 /** The open assignments in Short term, soonest due first, each its own title: which are still open moves with the
  * planner too (17 Nov: with work going in as soon as there's time, Alex finished HW 10 and WebWork 10 and 11 early). */
 const openAssignments = async () => {
-  const open = (await items()).filter((i) => i.status === "todo" && i.preset === "Assignment" && !i.long_term)
-  return open
-    .filter((i) => open.filter((o) => o.title === i.title).length === 1)
-    .sort((a, b) => (a.due ?? "~").localeCompare(b.due ?? "~") || a.id - b.id)
-    .map((i) => i.title)
+  const list = async () => {
+    const open = (await items()).filter((i) => i.status === "todo" && i.preset === "Assignment" && !i.long_term)
+    return open
+      .filter((i) => open.filter((o) => o.title === i.title).length === 1)
+      .sort((a, b) => (a.due ?? "~").localeCompare(b.due ?? "~") || a.id - b.id)
+      .map((i) => i.title)
+  }
+  // a few spares through the API when the sample has finished all but one or two, each due on a day of its own
+  const open = await list()
+  if (open.length >= 4) return open
+  for (let k = open.length; k < 4; k++) await friday.c("add", { title: `Spare problem set ${++spares}`, preset: "Assignment", area: "MATH 1910", due: `${ymd(4 + spares)}T23:59`, duration_min: 120, firmness: "hard" })
+  return list()
+}
+let spares = 0
+/** A day as the API writes it, `days` from today on the page's clock (the server's): "2026-11-13". */
+const ymd = (days: number) => {
+  const d = new Date(Date.now() + days * 86_400_000)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 type User = Awaited<ReturnType<typeof openFriday>>["user"]
 
@@ -61,16 +71,18 @@ describe("the bar for several tasks", () => {
   })
 
   it("opens done ones again together", async () => {
-    await friday.c("done", { id: (await itemNamed("PHYS 1112 Mastering Physics 11")).id })
-    await friday.c("done", { id: (await itemNamed("PHYS 1112 Mastering Physics 12")).id })
+    const [a, b] = (await openAssignments()).slice(-2)
+    for (const t of [a, b]) await friday.c("done", { id: (await itemNamed(t)).id })
+    sent.length = 0 // those were the test's, not the page's
     const { user } = await openFriday("/todo")
     await user.click(screen.getByRole("button", { name: "View options" }))
     await user.click(screen.getByRole("button", { name: "Show done" }))
     await user.click(screen.getByRole("button", { name: "View options" }))
-    const bar = await pick(user, ["PHYS 1112 Mastering Physics 11", "PHYS 1112 Mastering Physics 12"])
+    const bar = await pick(user, [a, b])
     await user.click(within(bar).getByRole("button", { name: "Open again" }))
-    expect(await sentEach("reopen", 2)).toHaveLength(2)
+    expect((await sentEach("reopen", 2)).map((x) => x.id).sort()).toEqual([(await itemNamed(a)).id, (await itemNamed(b)).id].sort())
     expect(await said("Opened 2 tasks again. ⌘Z undoes it")).toBeTruthy()
+    await waitFor(async () => expect([(await itemNamed(a)).status, (await itemNamed(b)).status]).toEqual(["todo", "todo"]))
   })
 
   it("moves their due, or takes it off", async () => {
@@ -95,10 +107,16 @@ describe("the bar for several tasks", () => {
   })
 
   it("gives each a little more or less time, or all of them one length", async () => {
-    // how much the sample did depends on the day it's lived to: none of either, so each row shows its whole length
-    for (const title of ["CHEM 2090 lab report 6", "MATH 1910 Written HW 11"]) await friday.c("progress", { id: (await itemNamed(title)).id, share: 0 })
+    // two open assignments made 4h and 2h, none of either done, so each row shows its whole length: which are open,
+    // how long and how far along depends on the day the sample is lived to
+    const [long, short] = (await Promise.all((await openAssignments()).slice(0, 2).map(itemNamed))).map((i, n) => ({ ...i, to: n ? 120 : 240 }))
+    for (const t of [long, short]) {
+      await friday.c("edit", { id: t.id, duration_min: t.to })
+      await friday.c("progress", { id: t.id, share: 0 })
+    }
+    sent.length = 0 // those were the test's, not the page's
     const { user } = await openFriday("/todo")
-    const bar = await pick(user, ["CHEM 2090 lab report 6", "MATH 1910 Written HW 11"])
+    const bar = await pick(user, [long.title, short.title])
     await user.click(within(bar).getByRole("button", { name: "Estimate" }))
     expect(within(bar).getByText("Each its own")).toBeTruthy()
     await user.click(within(bar).getByRole("button", { name: "+30m" }))
@@ -106,25 +124,28 @@ describe("the bar for several tasks", () => {
     expect(more.map((b) => b.duration_min).sort()).toEqual([150, 270])
     expect(await said("Gave 2 tasks 30m more. ⌘Z undoes it")).toBeTruthy()
     // The list read again before the next nudge, which starts from what it shows.
-    await within(await row("CHEM 2090 lab report 6")).findByText("4h 30m", {}, { timeout: 8000 })
-    await within(await row("MATH 1910 Written HW 11")).findByText("2h 30m", {}, { timeout: 8000 })
+    await within(await row(long.title)).findByText("4h 30m", {}, { timeout: 8000 })
+    await within(await row(short.title)).findByText("2h 30m", {}, { timeout: 8000 })
     sent.length = 0
     await user.click(within(bar).getByRole("button", { name: "Estimate" }))
     await user.click(within(bar).getByRole("button", { name: "−15m" }))
     expect((await sentEach("edit", 2)).map((b) => b.duration_min).sort()).toEqual([135, 255])
     expect(await said("Took 2 tasks 15m off. ⌘Z undoes it")).toBeTruthy()
-    await within(await row("CHEM 2090 lab report 6")).findByText("4h 15m", {}, { timeout: 8000 })
-    await within(await row("MATH 1910 Written HW 11")).findByText("2h 15m", {}, { timeout: 8000 })
+    await within(await row(long.title)).findByText("4h 15m", {}, { timeout: 8000 })
+    await within(await row(short.title)).findByText("2h 15m", {}, { timeout: 8000 })
     sent.length = 0
     await user.click(within(bar).getByRole("button", { name: "Estimate" }))
     await user.click(within(bar).getByRole("button", { name: "1h" }))
     expect((await sentEach("edit", 2)).map((b) => b.duration_min)).toEqual([60, 60])
     expect(await said("2 tasks expected to take 1h. ⌘Z undoes it")).toBeTruthy()
+    await waitFor(async () => expect([(await itemNamed(long.title)).duration_min, (await itemNamed(short.title)).duration_min]).toEqual([60, 60]))
+    for (const t of [long, short]) await friday.c("edit", { id: t.id, duration_min: t.duration_min }) // their own lengths again
   })
 
   it("tags them, or takes the tag off", async () => {
+    const [a, b] = await openAssignments()
     const { user } = await openFriday("/todo")
-    const bar = await pick(user, [await nextHomework(), "CHEM 2090 lab report 6"])
+    const bar = await pick(user, [a, b])
     await user.click(within(bar).getByRole("button", { name: "Tag" }))
     await user.click(within(bar).getByRole("button", { name: "Rocketry" }))
     for (const b of await sentEach("edit", 2)) expect(b.area).toBe("Rocketry")
@@ -137,21 +158,25 @@ describe("the bar for several tasks", () => {
   })
 
   it("makes them another kind", async () => {
+    const [a, b] = await openAssignments()
     const { user } = await openFriday("/todo")
-    const bar = await pick(user, [await nextHomework(), "CHEM 2090 lab report 6"])
+    const bar = await pick(user, [a, b])
     await user.click(within(bar).getByRole("button", { name: "Kind" }))
     await user.click(within(bar).getByRole("button", { name: "Errand" }))
-    for (const b of await sentEach("edit", 2)) expect(b.preset).toBe("Errand")
+    for (const x of await sentEach("edit", 2)) expect(x.preset).toBe("Errand")
     expect(await said("Made 2 tasks Errand. ⌘Z undoes it")).toBeTruthy()
+    await waitFor(async () => expect([(await itemNamed(a)).preset, (await itemNamed(b)).preset]).toEqual(["Errand", "Errand"]))
+    for (const t of [a, b]) await friday.c("edit", { id: (await itemNamed(t)).id, preset: "Assignment" }) // assignments again, for the tests after
   })
 
   it("sets the rest of a task's detail for all of them, each choice lit when they share it", async () => {
-    // how much the sample did depends on the day it's lived to: none of the homework, some of the essay
-    const hw = await nextHomework()
+    // two with hard deadlines; how much the sample did depends on the day it's lived to: none of one, some of the other
+    const hard = (await Promise.all((await openAssignments()).map(itemNamed))).filter((i) => i.firmness === "hard")
+    const [hw, begun] = hard.map((i) => i.title)
     await friday.c("progress", { id: (await itemNamed(hw)).id, share: 0 })
-    await friday.c("progress", { id: (await itemNamed("FWS essay draft")).id, share: 0.3125 })
+    await friday.c("progress", { id: (await itemNamed(begun)).id, share: 0.3125 })
     const { user } = await openFriday("/todo")
-    const bar = await pick(user, [hw, "FWS essay draft"])
+    const bar = await pick(user, [hw, begun])
     const more = async () => {
       sent.length = 0
       await user.click(within(bar).getByRole("button", { name: "More" }))
@@ -194,13 +219,14 @@ describe("the bar for several tasks", () => {
     expect(within(bar).getByText("1 task with work done: count none of it, and Friday plans all of it again.")).toBeTruthy()
     await user.click(within(bar).getByRole("button", { name: "Start over" }))
     const over = await sentEach("progress", 1)
-    expect(over).toEqual([{ id: (await itemNamed("FWS essay draft")).id, share: 0 }])
+    expect(over).toEqual([{ id: (await itemNamed(begun)).id, share: 0 }])
     expect(await said("Started 1 task over. ⌘Z undoes it")).toBeTruthy()
   })
 
   it("closes an open menu with Escape and keeps what's picked", async () => {
+    const [a, b] = await openAssignments()
     const { user } = await openFriday("/todo")
-    const bar = await pick(user, [await nextHomework(), "CHEM 2090 lab report 6"])
+    const bar = await pick(user, [a, b])
     await user.click(within(bar).getByRole("button", { name: "Kind" }))
     expect(within(bar).getByRole("button", { name: "Kind" }).getAttribute("aria-expanded")).toBe("true")
     await user.keyboard("{Escape}")

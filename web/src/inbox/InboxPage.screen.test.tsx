@@ -167,23 +167,40 @@ describe("the Inbox", () => {
   })
 
   it("keeps what you have already aside, and asks about it after all on Add anyway", async () => {
+    // what's set aside, and why, as the server says: the sample's mail brings a task it has already, open ("You have
+    // …") or done ("Done: …") by the day it's lived to (17 Nov: PHYS 1112 Mastering Physics 9 was done)
+    const { set_aside } = await friday.q<{ set_aside: { id: number; title: string; why: string }[] }>("inbox")
+    expect(set_aside.length).toBeGreaterThan(0)
     const { user } = await openInbox()
-    const aside = await screen.findByRole("button", { name: /Set aside: 1 you have already/ })
+    const aside = await screen.findByRole("button", { name: `Set aside: ${set_aside.length} you have already` })
     expect(aside.getAttribute("aria-expanded")).toBe("false")
     await user.click(aside)
-    expect(screen.getByText("You have PHYS 1112 Mastering Physics 9")).toBeTruthy()
-    await user.click(screen.getByRole("button", { name: "Add anyway" }))
-    expect((await waitForSent("suggestion_restore")).body).toEqual({ id: 138 })
-    await waitFor(async () => expect((await friday.q<Inbox>("inbox")).suggestions.some((s) => s.id === 138)).toBe(true))
+    for (const s of set_aside) {
+      expect(screen.getAllByTitle(s.title).length).toBeGreaterThan(0)
+      expect(screen.getByText(s.why)).toBeTruthy()
+    }
+    expect(set_aside[0].why).toMatch(/^(You have|Done:) /)
+    await user.click(screen.getAllByRole("button", { name: "Add anyway" })[0])
+    expect((await waitForSent("suggestion_restore")).body).toEqual({ id: set_aside[0].id })
+    await waitFor(async () => expect((await friday.q<Inbox>("inbox")).suggestions.some((s) => s.id === set_aside[0].id)).toBe(true))
   })
 
   it("accepts a suggestion with a", async () => {
+    // one still waiting (the one asked about after all, above); one set aside brought back if none is
+    const inbox = await friday.q<Inbox>("inbox")
+    let suggestions = inbox.suggestions
+    if (!suggestions.length && inbox.set_aside.length) {
+      await friday.c("suggestion_restore", { id: inbox.set_aside[0].id })
+      suggestions = (await friday.q<Inbox>("inbox")).suggestions
+    }
+    const waiting = suggestions[0]
+    const title = String(waiting.input.title).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     const { user } = await openInbox()
-    // the suggestion, not the planned time of the task it's a copy of
-    await user.click(await findRow(/^PHYS 1112 Mastering Physics 9(?!.*did you do it)/))
+    // the suggestion, not the planned time of a task by the same name
+    await user.click(await findRow(new RegExp(`^${title}(?!.*did you do it)`)))
     await screen.findByRole("button", { name: /Accept|Update it/ })
     await user.keyboard("a")
-    expect((await waitForSent("suggestion_accept")).body).toMatchObject({ id: 138, edits: {} })
+    expect((await waitForSent("suggestion_accept")).body).toMatchObject({ id: waiting.id, edits: {} })
   })
 })
 
