@@ -1,7 +1,7 @@
-// Black box: the new Projects & exams page (/projects-v2) over Alex's sample, a real server behind it. Its way in from
-// the current page; the deadline shelf (exams and projects as rows on six weeks, the next step ticked in place, a row
-// opened as Friday opens it); an ongoing project made, opened, its options each saying their value, paused and
-// resumed, deleted; a project archived to Finished, opened again, and deleted there.
+// Black box: the Projects & exams page (/projects; /projects-v2 until 0.5.0) over Alex's sample, a real server behind
+// it. Its way in from the sidebar and its old address; the deadline shelf (exams and projects as rows on six weeks,
+// the next step ticked in place, a row opened as Friday opens it); an ongoing project made, opened, its options each
+// saying their value, paused and resumed, deleted; a project archived to Finished, opened again, and deleted there.
 import { configure, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import type { Item } from "@/api/client"
@@ -11,7 +11,7 @@ configure({ asyncUtilTimeout: 8000 })
 
 type F = Awaited<ReturnType<typeof openFriday>>
 
-async function page(route = "/projects-v2") {
+async function page(route = "/projects") {
   const f = await openFriday(route)
   await screen.findByText(/\d+ with a deadline/, {}, { timeout: 10_000 })
   return f
@@ -57,14 +57,18 @@ async function setLength(user: User, scope: HTMLElement, label: string, choice: 
 }
 const rowNamed = (title: RegExp) => within(shelf("With a deadline")).getByRole("button", { name: title })
 
-describe("the new Projects & exams page", () => {
-  it("is found from the current page", async () => {
-    const f = await openFriday("/projects")
-    await f.user.click(await screen.findByRole("link", { name: /Try the new layout/ }))
-    await waitFor(() => expect(window.location.hash).toBe("#/projects-v2"))
-    expect(await screen.findByText(/\d+ with a deadline/)).toBeTruthy()
-    await f.user.click(screen.getByRole("link", { name: /Current page/ }))
+describe("the Projects & exams page", () => {
+  it("is the Projects & exams page, from the sidebar; its old address, with what it opened, still gets there", async () => {
+    const f = await openFriday("/")
+    await f.user.click(await screen.findByRole("link", { name: /Projects & exams/ }))
     await waitFor(() => expect(window.location.hash).toBe("#/projects"))
+    expect(await screen.findByText(/\d+ with a deadline/)).toBeTruthy()
+    expect(screen.queryByRole("link", { name: /Try the new layout|Current page/ })).toBeNull()
+    f.unmount()
+    const exam = (await friday.q<{ item: Item }[]>("exams"))[0]
+    await openFriday(`/projects-v2?exam=${exam.item.id}`) // a link made before 0.5.0
+    await waitFor(() => expect(window.location.hash).toBe(`#/projects?exam=${exam.item.id}`))
+    expect(await screen.findByRole("complementary", { name: exam.item.title })).toBeTruthy()
   })
 
   it("shows the exams as rows on six weeks, flagged at the exam, with their next prep to tick", async () => {
@@ -88,11 +92,11 @@ describe("the new Projects & exams page", () => {
     const f = await page()
     const [exam] = await friday.q<{ item: Item }[]>("exams")
     await f.user.click(await within(shelf("With a deadline")).findByRole("button", { name: new RegExp(`^${exam.item.title}, `) }))
-    await waitFor(() => expect(window.location.hash).toBe(`#/projects-v2?exam=${exam.item.id}`))
+    await waitFor(() => expect(window.location.hash).toBe(`#/projects?exam=${exam.item.id}`))
     const panel = await screen.findByRole("complementary", { name: exam.item.title })
     expect(shelf("With a deadline")).toBeTruthy() // still in view beside it
     await f.user.click(within(panel).getByRole("button", { name: "Close" }))
-    await waitFor(() => expect(window.location.hash).toBe("#/projects-v2"))
+    await waitFor(() => expect(window.location.hash).toBe("#/projects"))
   })
 
   it("changes an exam's prep in its panel: renamed, its length and by when, ticked, deleted, and more added", async () => {
@@ -132,6 +136,57 @@ describe("the new Projects & exams page", () => {
     await friday.c("edit", { id: prep.id, title: prep.title, duration_min: prep.duration_min })
   })
 
+  // What the old exam cards did, in the exam's panel (0.5.0 replaced them; every way in kept)
+  async function examPanel(title = "PHYS 1112 Prelim 2") {
+    const f = await page()
+    await f.user.click(await within(shelf("With a deadline")).findByRole("button", { name: new RegExp(`^${title}, `) }))
+    return { ...f, panel: await screen.findByRole("complementary", { name: title }) }
+  }
+
+  it("opens a piece of an exam's prep on the To-do page", async () => {
+    const { user, panel } = await examPanel()
+    const [prep] = within(within(panel).getByRole("region", { name: "Its prep" })).getAllByRole("listitem")
+    await user.click(within(prep).getByRole("button", { name: /^Open .* on To-do$/ }))
+    await waitFor(() => expect(window.location.hash).toMatch(/^#\/todo\?item=\d+$/))
+  })
+
+  it("shows an exam's day on the calendar", async () => {
+    const { user, panel } = await examPanel()
+    await user.click(within(panel).getByRole("button", { name: "See the day on the calendar" }))
+    await waitFor(() => expect(window.location.hash).toBe("#/"))
+  })
+
+  it("changes an exam's tag in its panel, its prep tagged otherwise keeping its own", async () => {
+    // 15 Nov, a client: an exam's tag couldn't be changed; its prep tagged otherwise keeps its own
+    const exam = (await friday.q<{ item: Item; prep: { item: Item }[] }[]>("exams")).find((e) => e.item.title === "MATH 1910 Prelim 2")!
+    const prep = exam.prep[0].item
+    await friday.c("edit", { id: prep.id, area: "Rocketry" })
+    const { user, panel } = await examPanel("MATH 1910 Prelim 2")
+    await choose(user, panel, "Tag", "PHYS 1112")
+    expect(within(panel).getByRole("button", { name: /^Tag: PHYS 1112/ })).toBeTruthy() // at once
+    expect((await waitForSent("edit")).body).toEqual({ id: exam.item.id, area: "PHYS 1112" })
+    const now = async () => (await friday.q<{ item: Item; prep: { item: Item }[] }[]>("exams")).find((e) => e.item.id === exam.item.id)!
+    await waitFor(async () => expect((await now()).item.area).toBe("PHYS 1112"))
+    expect((await now()).prep.find((x) => x.item.id === prep.id)?.item.area).toBe("Rocketry") // tagged otherwise: kept
+    await friday.c("edit", { id: exam.item.id, area: exam.item.area })
+    await friday.c("edit", { id: prep.id, area: prep.area })
+  })
+
+  it("says whether exam focus is on, and opens it as a rule in Rules", async () => {
+    // 14 Nov: exam focus is a rule, not a setting this page holds
+    const first = await examPanel()
+    expect(within(first.panel).getByText("Off: other courses go on as usual")).toBeTruthy()
+    await first.user.click(within(first.panel).getByRole("link", { name: "Change it in Rules" }))
+    await waitFor(() => expect(window.location.hash).toMatch(/^#\/rules\?text=/))
+    expect(((await screen.findByRole("textbox", { name: "New rule" })) as HTMLInputElement).value).toBe("Focus on an exam's course 3 days before it")
+    first.unmount()
+    await friday.c("rule_add", { text: "focus on exams 3 days before", overrides: {}, strength: "Always" })
+    const second = await examPanel()
+    expect(await within(second.panel).findByText("3 days before, other courses wait")).toBeTruthy()
+    expect(within(second.panel).getByRole("link", { name: "Change it in Rules" }).getAttribute("href")).toContain("/rules?edit=you%3Aexam-focus")
+    await friday.c("rule_remove", { name: "you:exam-focus" })
+  })
+
   it("makes an ongoing project, opens it, and says each option's value", async () => {
     const f = await page()
     await f.user.click(screen.getByRole("button", { name: "New ongoing project" }))
@@ -142,7 +197,7 @@ describe("the new Projects & exams page", () => {
     expect(within(dialog).getByRole("button", { name: "Hours a week: 4h a week" })).toBeTruthy()
     await f.user.click(within(dialog).getByRole("button", { name: "Create ongoing project" }))
     expect((await waitForSent("ongoing_add")).body).toEqual({ title: "Guitar practice", hours_per_week: 4, area: null })
-    await waitFor(() => expect(window.location.hash).toMatch(/^#\/projects-v2\?ongoing=\d+$/))
+    await waitFor(() => expect(window.location.hash).toMatch(/^#\/projects\?ongoing=\d+$/))
     const panel = await screen.findByRole("complementary", { name: "Guitar practice" })
     expect(within(panel).getByRole("button", { name: "Days a week: Whenever it fits" })).toBeTruthy()
     await choose(f.user, panel, "Days a week", /^2 days a week/)
@@ -198,7 +253,7 @@ describe("the new Projects & exams page", () => {
     expect(screen.getByText(/the hours you put in stay in your history/)).toBeTruthy()
     await f.user.click(screen.getByRole("button", { name: "Delete it" }))
     expect((await waitForSent("ongoing_delete")).body).toEqual({ id: expect.any(Number) })
-    await waitFor(() => expect(window.location.hash).toBe("#/projects-v2"))
+    await waitFor(() => expect(window.location.hash).toBe("#/projects"))
     await live(f, () => expect(within(shelf("Ongoing")).queryByRole("button", { name: "Guitar practice" })).toBeNull())
   })
 
@@ -223,10 +278,10 @@ describe("the new Projects & exams page", () => {
     await friday.c("add", { title: "Print the poster", parent_id: id, duration_min: 60 })
     const f = await page()
     await f.user.click(await waitFor(() => rowNamed(/^Poster, /)))
-    await waitFor(() => expect(window.location.hash).toBe(`#/projects-v2?id=${id}`))
+    await waitFor(() => expect(window.location.hash).toBe(`#/projects?id=${id}`))
     await f.user.click(await screen.findByRole("button", { name: /Archive/ }))
     expect((await waitForSent("project_archive")).body).toEqual({ id })
-    await waitFor(() => expect(window.location.hash).toBe("#/projects-v2")) // back on the shelves at once
+    await waitFor(() => expect(window.location.hash).toBe("#/projects")) // back on the shelves at once
     expect(within(shelf("With a deadline")).queryByRole("button", { name: /^Poster, / })).toBeNull()
     await live(f, () => expect(shelf("Finished")).toBeTruthy())
     await f.user.click(within(shelf("Finished")).getByRole("button", { name: /Finished/ }))

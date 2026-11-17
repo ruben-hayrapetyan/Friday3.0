@@ -23,7 +23,7 @@ beforeAll(async () => {
 
 async function page(route = "/projects") {
   const f = await openFriday(route)
-  await screen.findByText(/\d+ exams? ahead/, {}, { timeout: 10_000 })
+  await screen.findByText(/\d+ with a deadline/, {}, { timeout: 10_000 })
   return f
 }
 
@@ -65,12 +65,6 @@ async function newProject(user: User, name: string) {
 }
 
 describe("projects", () => {
-  it("has none yet, and says what a project is", async () => {
-    await page()
-    expect(screen.getByText("0 projects open", { exact: false })).toBeTruthy()
-    expect(screen.getByText(/No projects yet\. A project is something with steps/)).toBeTruthy()
-  })
-
   it("closes the new project dialog with Escape, Cancel or a click outside", async () => {
     const { user } = await page()
     await user.click(screen.getAllByRole("button", { name: "New project" })[0])
@@ -265,128 +259,15 @@ describe("projects", () => {
     expect(await screen.findByText(/of 3 steps done/)).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Projects & exams" }))
     await waitFor(() => expect(window.location.hash).not.toContain("id="))
-    expect(screen.getByText(/2 projects open/)).toBeTruthy()
-    const card = screen.getByRole("button", { name: /Rocketry design review/ })
-    expect(within(card).getByText(/of 3 steps/)).toBeTruthy()
-    expect(within(card).getByText("Next")).toBeTruthy()
-    expect(within(card).getByText(/^Due /)).toBeTruthy()
-    // The dashed card at the end makes another.
-    await user.click(screen.getAllByRole("button", { name: "New project" }).at(-1) as HTMLElement)
+    // both on the deadline shelf (one with no due among them), and New project makes another
+    const shelf = screen.getByRole("region", { name: "With a deadline" })
+    for (const name of [/^Rocketry design review, /, /^Lab notebook cleanup, /]) expect(within(shelf).getByRole("button", { name })).toBeTruthy()
+    await user.click(screen.getByRole("button", { name: "New project" }))
     expect(await screen.findByRole("dialog")).toBeTruthy()
   })
 })
 
 describe("exams", () => {
-  it("shows the prelims ahead, each with its prep and how ready you are", async () => {
-    await page()
-    expect(screen.getByText(/2 exams ahead/)).toBeTruthy()
-    const phys = screen.getByRole("article", { name: /^PHYS 1112 Prelim 2/ })
-    expect(within(phys).getByText("Prep: PHYS 1112 Prelim 2")).toBeTruthy()
-    expect(within(phys).getByRole("progressbar")).toBeTruthy()
-    expect(within(phys).getByRole("textbox", { name: "Add prep for PHYS 1112 Prelim 2" })).toBeTruthy()
-  })
-
-  it("adds prep to an exam, due when it starts", async () => {
-    const { user } = await page()
-    const exam = (await friday.q<{ item: Item }[]>("exams")).find((e) => e.item.title === "PHYS 1112 Prelim 2")?.item as Item
-    const phys = screen.getByRole("article", { name: /^PHYS 1112 Prelim 2/ })
-    const line = within(phys).getByRole("textbox", { name: "Add prep for PHYS 1112 Prelim 2" })
-    await user.type(line, "practice prelim ~2h")
-    await user.click(within(phys).getByRole("button", { name: "Add" }))
-    expect((await waitForSent("add")).body).toEqual({ text: "practice prelim ~2h", preset: "Exam prep", due: exam.start, area: "PHYS 1112", before: [exam.id] })
-    await waitFor(() => expect((line as HTMLInputElement).value).toBe(""))
-    sent.length = 0
-    await user.type(line, "formula sheet ~30m{Enter}{Enter}")
-    expect((await waitForSent("add")).body).toMatchObject({ text: "formula sheet ~30m" })
-    await waitFor(() => expect((line as HTMLInputElement).value).toBe(""))
-    expect(sent.filter((s) => s.name === "add")).toHaveLength(1)
-  })
-
-  it("ticks prep done and opens it again", async () => {
-    const { user, client } = await page()
-    const phys = screen.getByRole("article", { name: /^PHYS 1112 Prelim 2/ })
-    const prep = within(phys).getByText("Prep: PHYS 1112 Prelim 2").closest(".fr-row") as HTMLElement
-    await user.click(within(prep).getByRole("checkbox", { name: "Mark done" }))
-    expect((await waitForSent("done")).body).toEqual({ id: (await itemNamed("Prep: PHYS 1112 Prelim 2")).id })
-    await live(client, () => expect(within(screen.getByRole("article", { name: /^PHYS 1112 Prelim 2/ })).getAllByRole("checkbox", { name: "Mark not done" }).length).toBeGreaterThan(0))
-    await user.click(within(screen.getByRole("article", { name: /^PHYS 1112 Prelim 2/ })).getAllByRole("checkbox", { name: "Mark not done" })[0])
-    expect((await waitForSent("reopen")).body).toEqual({ id: (await itemNamed("Prep: PHYS 1112 Prelim 2")).id })
-  })
-
-  it("opens a piece of prep on the To-do page", async () => {
-    const { user } = await page()
-    const phys = screen.getByRole("article", { name: /^PHYS 1112 Prelim 2/ })
-    await user.click(within(phys).getAllByTitle("Open")[0])
-    await waitFor(() => expect(window.location.hash).toMatch(/^#\/todo\?item=\d+$/))
-  })
-
-  it("shows the exam's day on the plan", async () => {
-    const { user } = await page()
-    const phys = screen.getByRole("article", { name: /^PHYS 1112 Prelim 2/ })
-    await user.click(within(phys).getByRole("button", { name: "See the day" }))
-    await waitFor(() => expect(window.location.hash).toBe("#/"))
-  })
-
-  it("changes an exam's tag on its card, and its color follows its own tag over its prep's", async () => {
-    // 15 Nov, a client: an exam's tag couldn't be changed; its prep tagged otherwise keeps its own
-    const exam = (await friday.q<{ item: Item; prep: { item: Item }[] }[]>("exams")).find((e) => e.item.title === "MATH 1910 Prelim 2")!
-    const prep = exam.prep[0].item
-    await friday.c("edit", { id: prep.id, area: "Rocketry" })
-    const { user } = await page()
-    const swatch = (title: string): HTMLElement => {
-      const menu = within(screen.getByRole("article", { name: new RegExp(`^${title}`) })).getByRole("button", { name: `Tag for ${title}` })
-      return menu.closest(".fr-menu")?.parentElement?.querySelector(".fr-swatch") as HTMLElement
-    }
-    const math = () => within(screen.getByRole("article", { name: /^MATH 1910 Prelim 2/ }))
-    await user.click(math().getByRole("button", { name: "Tag for MATH 1910 Prelim 2" }))
-    await user.click(screen.getByRole("option", { name: "PHYS 1112" }))
-    expect(swatch("MATH 1910 Prelim 2").style.background).toBe(swatch("PHYS 1112 Prelim 2").style.background) // at once, its own tag's
-    expect((await waitForSent("edit")).body).toEqual({ id: exam.item.id, area: "PHYS 1112" })
-    const examArea = async () => (await friday.q<{ item: Item }[]>("exams")).find((e) => e.item.id === exam.item.id)?.item.area
-    await waitFor(async () => expect(await examArea()).toBe("PHYS 1112"))
-    expect((await itemNamed(prep.title)).area).toBe("Rocketry") // tagged otherwise: kept
-    await user.click((await screen.findAllByRole("button", { name: "Undo" })).at(-1) as HTMLElement)
-    await waitFor(async () => expect(await examArea()).toBe(exam.item.area))
-    await friday.c("edit", { id: prep.id, area: prep.area })
-  })
-
-  it("offers exam focus as a rule, in Rules, and points at the rule once it's on", async () => {
-    // 14 Nov: exam focus is a rule, not a setting this page held: its link opens it in Rules
-    const first = await page()
-    await first.user.click(screen.getByRole("link", { name: /Focus on each exam before it/ }))
-    await waitFor(() => expect(window.location.hash).toMatch(/^#\/rules\?text=/))
-    expect(((await screen.findByRole("textbox", { name: "New rule" })) as HTMLInputElement).value).toBe("Focus on an exam's course 3 days before it")
-    expect(await screen.findByText("Friday read this as")).toBeTruthy()
-    first.unmount()
-    await friday.c("rule_add", { text: "focus on exams 3 days before", overrides: {}, strength: "Always" })
-    const second = await page()
-    const link = await screen.findByRole("link", { name: "Exam focus: 3 days before, in Rules" })
-    expect(link.getAttribute("href")).toContain("/rules?edit=you%3Aexam-focus")
-    expect(screen.getAllByText(/other courses' work waits until after it\./).length).toBeGreaterThan(0)
-    // changed there, like any rule: its days
-    await second.user.click(link)
-    const days = (await screen.findByRole("spinbutton", { name: "Days before" })) as HTMLInputElement
-    expect(days.value).toBe("3")
-    await second.user.clear(days)
-    await second.user.type(days, "5")
-    expect(await screen.findByText("Focus on an exam's course 5 days before it")).toBeTruthy()
-    await second.user.click(screen.getByRole("button", { name: "Save" }))
-    expect((await waitForSent("rule_edit")).body).toMatchObject({ name: "you:exam-focus", overrides: { amount: 5 } })
-    second.unmount()
-    await page()
-    expect(await screen.findByRole("link", { name: "Exam focus: 5 days before, in Rules" })).toBeTruthy()
-  })
-
-  it("folds exams more than three weeks off under a line that opens them", async () => {
-    await friday.c("add", { title: "CHEM 2090 Final", preset: "Exam", start: `${day(35)}T09:00`, end: `${day(35)}T11:30`, area: "CHEM 2090" })
-    const { user } = await page()
-    const more = await screen.findByRole("button", { name: /1 more later this term: CHEM 2090 Final/ }, { timeout: 5000 })
-    expect(screen.queryByRole("article", { name: /^CHEM 2090 Final/ })).toBeNull()
-    await user.click(more)
-    expect(screen.getByRole("article", { name: /^CHEM 2090 Final/ })).toBeTruthy()
-    expect(screen.getByRole("button", { name: /Later this term/ })).toBeTruthy()
-  })
-
   it("closes the new exam dialog with Escape, Cancel or a click outside", async () => {
     const { user } = await page()
     await user.click(screen.getByRole("button", { name: "New exam" }))
@@ -484,11 +365,4 @@ describe("exams", () => {
     expect(sent.filter((s) => s.name === "add")).toHaveLength(1)
   })
 
-  it("says there are none ahead once they're gone, and offers to add one", async () => {
-    for (const e of await friday.q<{ item: Item }[]>("exams")) await friday.c("drop", { id: e.item.id })
-    const { user } = await page()
-    expect(await screen.findByText(/No exams ahead\. They come in from your class calendar/)).toBeTruthy()
-    await user.click(screen.getAllByRole("button", { name: "New exam" }).at(-1) as HTMLElement)
-    expect(await screen.findByRole("dialog", { name: "New exam" })).toBeTruthy()
-  })
 })

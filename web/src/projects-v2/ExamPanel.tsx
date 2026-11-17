@@ -93,8 +93,9 @@ export function ExamPanel({ exam }: { exam: Exam }) {
   )
 }
 
-/** One prep: tick it, its name (a click renames it), how long, by when, and delete. */
+/** One prep: tick it, its name (a click renames it), how long, by when, open it on To-do, and delete. */
 function PrepRow({ prep, examStart, today }: { prep: Item; examStart: string; today: string }) {
+  const navigate = useNavigate()
   const done = useCommand("done", { label: () => `${prep.title}: done`, optimistic: (c) => changedPrep(c, prep.id, { status: "done" }) })
   const reopen = useCommand("reopen", { label: () => `${prep.title}: open again`, optimistic: (c) => changedPrep(c, prep.id, { status: "todo" }) })
   const edit = useCommand("edit", { label: () => "Saved", optimistic: (c, input) => changedPrep(c, prep.id, { ...(input.title ? { title: input.title } : {}), ...(input.duration_min ? { duration_min: input.duration_min } : {}), ...(input.due !== undefined ? { due: input.due ?? null } : {}) }) })
@@ -105,7 +106,7 @@ function PrepRow({ prep, examStart, today }: { prep: Item; examStart: string; to
   const rename = () => (title.trim() && title.trim() !== prep.title && edit({ id: prep.id, title: title.trim() }), setNaming(false))
   const by = !prep.due || prep.due >= examStart ? "by the exam" : `by ${when(prep.due, today)}`
   return (
-    <div role="listitem" aria-label={prep.title} style={{ display: "grid", gridTemplateColumns: "20px minmax(0,1fr) auto auto 28px", gap: 8, alignItems: "center", padding: "4px 0", opacity: isDone ? 0.6 : 1 }}>
+    <div role="listitem" aria-label={prep.title} style={{ display: "grid", gridTemplateColumns: "20px minmax(0,1fr) auto auto 28px 28px", gap: 8, alignItems: "center", padding: "4px 0", opacity: isDone ? 0.6 : 1 }}>
       <Check small done={isDone} onToggle={() => (isDone ? reopen({ id: prep.id }) : done({ id: prep.id }))} />
       {naming ? (
         <input
@@ -127,6 +128,10 @@ function PrepRow({ prep, examStart, today }: { prep: Item; examStart: string; to
       <DropField label={`When ${prep.title} is due`} value={by}>
         {(close) => <DuePicker value={prep.due ?? examStart} today={today} onPick={(v) => (edit({ id: prep.id, due: v && v > examStart ? examStart : v }), close())} autoFocus={false} />}
       </DropField>
+      {/* its notes and planned sessions, as the old exam cards opened it (0.5.0 kept every way in) */}
+      <button className="btn btn-icon btn-ghost" onClick={() => navigate(`/todo?item=${prep.id}`)} aria-label={`Open ${prep.title} on To-do`} title="Open it on the To-do page: its notes and planned sessions" style={{ width: 28, height: 28, color: "var(--color-neutral-400)" }}>
+        <Icon name="arrow-square-out" size={14} />
+      </button>
       <button className="btn btn-icon btn-ghost" onClick={() => drop({ id: prep.id })} aria-label={`Delete ${prep.title}`} title="Delete it (Undo brings it back)" style={{ width: 28, height: 28, color: "var(--color-neutral-400)" }}>
         <Icon name="trash" size={14} />
       </button>

@@ -1,4 +1,4 @@
-// A new Projects & exams page, tried beside the current one (/projects-v2): shelves and timelines. Three shelves:
+// The Projects & exams page (0.5.0; tried beside the old one at /projects-v2 until then): shelves and timelines. Three shelves:
 // everything with a deadline on six weeks across (projects, exams and big to-dos, soonest first), ongoing projects
 // with hours a week, and what's finished.
 // A project opens as its own page (?id=); an exam or an ongoing project in a side panel over the right, the shelves
@@ -6,7 +6,7 @@
 
 import { useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
-import { Link, useNavigate, useSearchParams } from "react-router"
+import { useNavigate, useSearchParams } from "react-router"
 import { Icon } from "@/components/fr/controls"
 import { useExams, useHorizon, useItems, useProjects } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
@@ -56,10 +56,6 @@ export function ProjectsV2Page() {
         </span>
         <div style={{ flex: 1 }} />
         <span style={{ display: "flex", gap: "inherit", flex: "none" }}>
-          <Link to="/projects" className="btn btn-ghost" title="The Projects & exams page as it is now" style={{ whiteSpace: "nowrap" }}>
-            <Icon name="arrow-left" />
-            {!icons && "Current page"}
-          </Link>
           <button className="btn btn-secondary" onClick={() => setCreating("exam")} aria-label="New exam" title="New exam" style={{ whiteSpace: "nowrap" }}>
             <Icon name="exam" />
             {!icons && "New exam"}
