@@ -16,6 +16,15 @@ const itemNamed = async (title: string) => (await items()).find((i) => i.title =
 /** The next MATH 1910 Written HW: open, soonest due. Which ones the sample's three weeks finish early moves with the planner. */
 const nextHomework = async () =>
   (await items()).filter((i) => i.status === "todo" && /^MATH 1910 Written HW \d+$/.test(i.title)).sort((a, b) => (a.due ?? "").localeCompare(b.due ?? "") || a.id - b.id)[0].title
+/** The open assignments in Short term, soonest due first, each its own title: which are still open moves with the
+ * planner too (17 Nov: with work going in as soon as there's time, Alex finished HW 10 and WebWork 10 and 11 early). */
+const openAssignments = async () => {
+  const open = (await items()).filter((i) => i.status === "todo" && i.preset === "Assignment" && !i.long_term)
+  return open
+    .filter((i) => open.filter((o) => o.title === i.title).length === 1)
+    .sort((a, b) => (a.due ?? "~").localeCompare(b.due ?? "~") || a.id - b.id)
+    .map((i) => i.title)
+}
 type User = Awaited<ReturnType<typeof openFriday>>["user"]
 
 /** Picks the tasks titled so: a click on the first, ⌘-click on the rest. */
@@ -38,16 +47,17 @@ async function sentEach(name: string, n: number) {
 
 describe("the bar for several tasks", () => {
   it("marks them done together, and one Undo opens them all again", async () => {
+    const [a, b] = await openAssignments()
     const { user } = await openFriday("/todo")
-    const bar = await pick(user, ["MATH 1910 Written HW 9", "MATH 1910 Written HW 10"])
+    const bar = await pick(user, [a, b])
     await user.click(within(bar).getByRole("button", { name: "Done" }))
     const bodies = await sentEach("done", 2)
-    expect(bodies.map((b) => b.id).sort()).toEqual([(await itemNamed("MATH 1910 Written HW 9")).id, (await itemNamed("MATH 1910 Written HW 10")).id].sort())
+    expect(bodies.map((x) => x.id).sort()).toEqual([(await itemNamed(a)).id, (await itemNamed(b)).id].sort())
     expect(await said("Marked 2 tasks done. ⌘Z undoes it")).toBeTruthy()
     expect(screen.queryByRole("toolbar")).toBeNull()
     await user.click(screen.getAllByRole("button", { name: "Undo" }).at(-1) as HTMLElement)
     await sentEach("undo", 2)
-    await waitFor(async () => expect((await itemNamed("MATH 1910 Written HW 9")).status).toBe("todo"), { timeout: 5000 })
+    await waitFor(async () => expect([(await itemNamed(a)).status, (await itemNamed(b)).status]).toEqual(["todo", "todo"]), { timeout: 5000 })
   })
 
   it("opens done ones again together", async () => {
@@ -64,8 +74,12 @@ describe("the bar for several tasks", () => {
   })
 
   it("moves their due, or takes it off", async () => {
+    // two due on different days
+    const open = await Promise.all((await openAssignments()).map(itemNamed))
+    const a = open[0]
+    const b = open.find((i) => i.due?.slice(0, 10) !== a.due?.slice(0, 10)) as Item
     const { user } = await openFriday("/todo")
-    const bar = await pick(user, ["MATH 1910 WebWork 10", "MATH 1910 WebWork 11"])
+    const bar = await pick(user, [a.title, b.title])
     await user.click(within(bar).getByRole("button", { name: "Due" }))
     // They differ, so no due is lit.
     await user.click(within(bar).getByRole("button", { name: "Tomorrow" }))
@@ -76,6 +90,8 @@ describe("the bar for several tasks", () => {
     await user.click(within(screen.getByRole("toolbar")).getByRole("button", { name: "Due" }))
     await user.click(within(screen.getByRole("toolbar")).getByRole("button", { name: "No due date" }))
     expect(await said("Took the due off 2 tasks. ⌘Z undoes it")).toBeTruthy()
+    await waitFor(async () => expect([(await itemNamed(a.title)).due, (await itemNamed(b.title)).due]).toEqual([null, null]))
+    for (const i of [a, b]) await friday.c("edit", { id: i.id, due: i.due }) // their own dues again, for the tests after
   })
 
   it("gives each a little more or less time, or all of them one length", async () => {
@@ -194,26 +210,29 @@ describe("the bar for several tasks", () => {
   })
 
   it("moves them to Long term and back", async () => {
+    const [a, b] = (await openAssignments()).slice(-2)
     const { user } = await openFriday("/todo")
-    const bar = await pick(user, ["MATH 1910 Written HW 11", "MATH 1910 WebWork 11"])
+    const bar = await pick(user, [a, b])
     await user.click(within(bar).getByRole("button", { name: "To Long term" }))
     for (const b of await sentEach("edit", 2)) expect(b.long_term).toBe(true)
     expect(await said("Moved 2 tasks to Long term. ⌘Z undoes it")).toBeTruthy()
     expect(screen.queryByRole("toolbar")).toBeNull()
     sent.length = 0
     await user.click(within(screen.getByRole("group", { name: "List" })).getByRole("button", { name: "Long term" }))
-    const back = await pick(user, ["MATH 1910 Written HW 11", "MATH 1910 WebWork 11"])
+    const back = await pick(user, [a, b])
     await user.click(within(back).getByRole("button", { name: "To Short term" }))
     for (const b of await sentEach("edit", 2)) expect(b.long_term).toBe(false)
     expect(await said("Moved 2 tasks to Short term. ⌘Z undoes it")).toBeTruthy()
   })
 
   it("deletes them together", async () => {
+    const [a, b] = await openAssignments()
     const { user } = await openFriday("/todo")
-    const bar = await pick(user, ["MATH 1910 Written HW 9", "MATH 1910 Written HW 10"])
+    const bar = await pick(user, [a, b])
     await user.click(within(bar).getByRole("button", { name: "Delete" }))
-    expect(await sentEach("drop", 2)).toHaveLength(2)
+    expect((await sentEach("drop", 2)).map((x) => x.id).sort()).toEqual([(await itemNamed(a)).id, (await itemNamed(b)).id].sort())
     expect(await said("Deleted 2 tasks. ⌘Z undoes it")).toBeTruthy()
-    await waitFor(() => expect(screen.queryByTitle(`MATH 1910 Written HW 9${TIP}`)).toBeNull())
+    await waitFor(() => expect(screen.queryByTitle(`${a}${TIP}`)).toBeNull())
+    expect(screen.queryByTitle(`${b}${TIP}`)).toBeNull()
   })
 })

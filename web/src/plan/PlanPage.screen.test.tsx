@@ -3,7 +3,7 @@
 // several). The real clock runs, so a test looks a week ahead for blocks still to come, and asserts what's there and
 // what was sent, never a date.
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import type { Schemas } from "@/api/client"
 import { addDays, pageStart } from "@/lib/time"
 import { rangeTitle } from "./PlanPage"
@@ -17,12 +17,41 @@ const pressed = () => within(view()).getAllByRole("button").find((b) => b.getAtt
 const backToToday = () => screen.getByTitle("Back to today")
 const today = async () => (await friday.q<Calendar>("calendar", { start: "2026-01-01", days: "1" })).today
 
-/** The plan a week on, once Friday has finished replanning: every block there is still to come. */
+/** Work this file added for the week on, taken away again after its tests. */
+const added: number[] = []
+// made and planned before the tests, not in the first that asks: replanning for it took longer than a test's 30
+// seconds while the other screen files ran too
+beforeAll(() => nextWeek(), 120_000)
+afterAll(async () => {
+  for (const id of added.splice(0)) await friday.c("drop", { id })
+})
+
+/** The plan a week on, once Friday has finished replanning: every block there is still to come. With work going in as
+ * soon as there's time, the sample's assignments may all be planned before then (17 Nov: none were, some runs), so a
+ * week on gets three of its own, each released on a day of that week, once. */
 async function nextWeek() {
-  await statusWhen((s) => s.plan_generation === s.generation)
   const first = addDays(await today(), 4)
-  const plan = await friday.q<Plan>("plan", { start: `${first}T00:00`, end: `${addDays(first, 7)}T00:00` })
-  return { first, plan, tasks: plan.blocks.filter((b) => b.key.startsWith("T") && !b.state && b.preset === "Assignment") }
+  const read = async () => {
+    await statusWhen((s) => s.plan_generation === s.generation)
+    const plan = await friday.q<Plan>("plan", { start: `${first}T00:00`, end: `${addDays(first, 7)}T00:00` })
+    return { first, plan, tasks: plan.blocks.filter((b) => b.key.startsWith("T") && !b.state && b.preset === "Assignment") }
+  }
+  const week = await read()
+  const items = new Set(week.tasks.map((b) => b.item_id)).size
+  if (items >= 3 || added.length) return week
+  for (let n = 0; n < 3 - items; n++) {
+    const made = await friday.c<{ result: { item: { id: number } } }>("add", { title: `Week-on problem set ${n + 1}`, preset: "Assignment", release: `${addDays(first, n)}T00:00`, due: `${addDays(first, n + 1)}T23:59`, duration_min: 90 })
+    added.push(made.result.item.id)
+  }
+  let again = week
+  await waitFor(
+    async () => {
+      again = await read()
+      expect(added.filter((id) => !again.tasks.some((b) => b.item_id === id))).toEqual([]) // each planned there
+    },
+    { timeout: 60_000, interval: 500 },
+  )
+  return again
 }
 
 /** The box of a block or event on the calendar, by its key. */
@@ -633,9 +662,13 @@ describe("the grid", () => {
   })
 
   it("opens a day's deadlines from its header, each in the card", async () => {
+    // a deadline this week, however many of the sample's are done by now (17 Nov: with work going in as soon as
+    // there's time, this week's were all done)
+    const day = addDays(await today(), 1)
+    const made = await friday.c<{ result: { item: { id: number } } }>("add", { title: "Header deadline worksheet", preset: "Assignment", due: `${day}T17:00`, duration_min: 30 })
     const { user } = await openFriday("/")
     await gridReady()
-    const count = (await screen.findAllByRole("button", { name: /^\d+ due: / }))[0]
+    const count = await screen.findByRole("button", { name: /^\d+ due: .*Header deadline worksheet/ })
     await user.click(count)
     expect(count.getAttribute("aria-expanded")).toBe("true")
     await user.keyboard("{Escape}")
@@ -648,6 +681,7 @@ describe("the grid", () => {
     expect(screen.queryByRole("menu")).toBeNull()
     expect(await screen.findByText(/^Due /)).toBeTruthy()
     expect(screen.getAllByText(title).length).toBeGreaterThan(0)
+    await friday.c("drop", { id: made.result.item.id })
   })
 
   it("shows a day's deadlines in a row under its date, ticked off or opened there, a busy day folded to three", async () => {

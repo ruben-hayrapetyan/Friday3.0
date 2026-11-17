@@ -23,6 +23,14 @@ const openHomework = async () =>
     .map((i) => i.title)
 /** The next homework: open, in Short term, on the Due list. */
 const nextHomework = async () => (await openHomework())[0]
+/** The open assignments in Short term, soonest due first, each its own title: for a test that needs a few of them. */
+const openAssignments = async () => {
+  const open = (await items()).filter((i) => i.status === "todo" && i.preset === "Assignment" && !i.long_term)
+  return open
+    .filter((i) => open.filter((o) => o.title === i.title).length === 1)
+    .sort((a, b) => (a.due ?? "~").localeCompare(b.due ?? "~") || a.id - b.id)
+    .map((i) => i.title)
+}
 const list = (name: string) => within(screen.getByRole("group", { name: "List" })).getByRole("button", { name })
 
 async function viewOptions(user: Awaited<ReturnType<typeof openFriday>>["user"]) {
@@ -73,34 +81,42 @@ describe("the To-do page", () => {
   })
 
   it("renames a task by double-clicking its title, and Escape keeps the old one", async () => {
+    const title = await nextHomework()
+    const { id } = await itemNamed(title)
+    const renamed = `${title}, renamed`
     const { user } = await openFriday("/todo")
-    const hw = await row("MATH 1910 WebWork 10")
-    await user.dblClick(within(hw).getByText("MATH 1910 WebWork 10"))
+    const hw = await row(title)
+    await user.dblClick(within(hw).getByText(title))
     const field = screen.getByRole("textbox", { name: "Title" })
     await user.clear(field)
     await user.type(field, "Scratch{Escape}")
     expect(screen.queryByRole("textbox", { name: "Title" })).toBeNull()
-    await user.dblClick(within(await row("MATH 1910 WebWork 10")).getByText("MATH 1910 WebWork 10"))
+    await user.dblClick(within(await row(title)).getByText(title))
     const again = screen.getByRole("textbox", { name: "Title" })
     await user.clear(again)
-    await user.type(again, "MATH 1910 WebWork ten{Enter}")
+    await user.type(again, `${renamed}{Enter}`)
     const sent = await waitForSent("edit")
-    expect(sent.body).toMatchObject({ title: "MATH 1910 WebWork ten" })
-    await row("MATH 1910 WebWork ten")
+    expect(sent.body).toMatchObject({ id, title: renamed })
+    await row(renamed)
+    await waitFor(async () => expect((await items()).find((i) => i.id === id)?.title).toBe(renamed))
+    await friday.c("edit", { id, title }) // its own name again, for the tests after
   })
 
   it("changes a task's due in its row, typed the way you'd say it", async () => {
+    const title = await nextHomework()
+    const { id, due: was } = await itemNamed(title)
     const { user } = await openFriday("/todo")
-    const hw = await row("MATH 1910 Written HW 10")
+    const hw = await row(title)
     await user.click(within(hw).getByTitle("Due. Click to change"))
     const due = screen.getByRole("textbox", { name: "Due" })
     await user.type(due, "tomorrow")
     expect(await screen.findByText(/Enter to set/)).toBeTruthy()
     await user.keyboard("{Enter}")
     const sent = await waitForSent("edit")
-    const { id } = await itemNamed("MATH 1910 Written HW 10")
     expect(sent.body).toMatchObject({ id, due: expect.stringMatching(/T23:59$/) })
     expect(screen.queryByRole("textbox", { name: "Due" })).toBeNull()
+    await waitFor(async () => expect((await itemNamed(title)).due).not.toBe(was))
+    await friday.c("edit", { id, due: was }) // its own due again, for the tests after
   })
 
   it("changes how long a task takes in its row, and Done closes the editor", async () => {
@@ -181,20 +197,22 @@ describe("the To-do page", () => {
   })
 
   it("moves every picked task when one of them is dragged, said once with one Undo", async () => {
+    // two assignments due last, away from the ones the other tests here name
+    const [first, second] = (await openAssignments()).slice(-2)
     const { user } = await openFriday("/todo")
-    await user.click(await row("PHYS 1112 Mastering Physics 11"))
+    await user.click(await row(first))
     await user.keyboard("{Meta>}")
-    await user.click(await row("MATH 1910 WebWork 11"))
+    await user.click(await row(second))
     await user.keyboard("{/Meta}")
     await screen.findByRole("toolbar", { name: "2 tasks picked" })
     const dt = dataTransfer()
-    fireEvent.dragStart(await row("MATH 1910 WebWork 11"), { dataTransfer: dt })
-    expect(dt.data["text/x-friday-item"].split(",")).toHaveLength(2)
+    fireEvent.dragStart(await row(second), { dataTransfer: dt })
+    expect(dt.data["text/x-friday-item"].split(",").map(Number).sort()).toEqual([(await itemNamed(first)).id, (await itemNamed(second)).id].sort())
     fireEvent.drop(screen.getByText("Other").closest("section") as HTMLElement, { dataTransfer: dt })
     expect(await screen.findByText("Moved 2 tasks to Other. ⌘Z undoes it")).toBeTruthy()
-    await waitFor(async () => expect((await itemNamed("MATH 1910 WebWork 11")).preset).toBeNull())
+    await waitFor(async () => expect([(await itemNamed(first)).preset, (await itemNamed(second)).preset]).toEqual([null, null]))
     await user.click(screen.getAllByRole("button", { name: "Undo" }).at(-1) as HTMLElement)
-    await waitFor(async () => expect((await itemNamed("MATH 1910 WebWork 11")).preset).toBe("Assignment"))
+    await waitFor(async () => expect([(await itemNamed(first)).preset, (await itemNamed(second)).preset]).toEqual(["Assignment", "Assignment"]))
   })
 
   it("groups by when, with one add line at the top, and by tag, with an add line for each tag", async () => {

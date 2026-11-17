@@ -18,12 +18,22 @@ const inDock = () => within(dock())
 const calendar = () => friday.q<Schemas["CalendarOut"]>("calendar", { start: "2026-01-01", days: "1" })
 const at = (local: string, minutes: number) => new Date(Date.parse(`${local}:00Z`) + minutes * 60_000).toISOString().slice(0, 16)
 
-/** Two of Alex's assignments a week on, to time. */
+/** Alex's assignments planned from tomorrow on, to time, soonest first. From tomorrow, not a week on: with work going
+ * in as soon as there's time, most of it is planned within the next few days (17 Nov). */
 async function work(): Promise<Block[]> {
-  const first = addDays((await calendar()).today, 4)
-  const plan = await friday.q<Schemas["PlanOut"]>("plan", { start: `${first}T00:00`, end: `${addDays(first, 7)}T00:00` })
-  const seen = new Set<number>()
-  return plan.blocks.filter((b) => b.preset === "Assignment" && !seen.has(b.item_id) && seen.add(b.item_id))
+  const first = addDays((await calendar()).today, 1)
+  const planned = async () => {
+    const plan = await friday.q<Schemas["PlanOut"]>("plan", { start: `${first}T00:00`, end: `${addDays(first, 14)}T00:00` })
+    const seen = new Set<number>()
+    return plan.blocks.filter((b) => b.preset === "Assignment" && !seen.has(b.item_id) && seen.add(b.item_id))
+  }
+  const found = await planned()
+  if (found.length >= 2) return found
+  // the sample has finished nearly all of it: two of its own, due in a few days, planned once Friday has replanned
+  for (const n of [1, 2]) await friday.c("add", { title: `Problem set to time ${n}`, preset: "Assignment", release: `${first}T00:00`, due: `${addDays(first, 3)}T23:59`, duration_min: 90 })
+  let more = found
+  await waitFor(async () => expect((more = await planned()).length).toBeGreaterThanOrEqual(2), { timeout: 60_000, interval: 500 })
+  return more
 }
 
 /** The bar, once it shows. */

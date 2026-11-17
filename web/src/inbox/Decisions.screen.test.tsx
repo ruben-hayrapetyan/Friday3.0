@@ -169,10 +169,29 @@ describe("sleep and what Friday learned from it", () => {
 
 describe("Friday's questions", () => {
   it("shows a new weighing of the rules, each rule on its line, and approves it", async () => {
-    const { user } = await openInbox()
+    const { user, client } = await openInbox()
+    // Which rules move, and which way, depends on the days the sample's three weeks compared: some runs move only one
+    // way (17 Nov: chunk cost alone, counting more). A rule the weighing leaves alone is told to the page as moving the
+    // other way too, so both sides show; what's approved is still the server's own version.
+    type Change = { rule: string; from: number; to: number }
+    type Learning = { suggested: { version: number; changes: Change[] } | null }
+    await waitFor(() => expect(client.getQueryData<Learning>(["learning"])?.suggested).toBeTruthy(), { timeout: 10_000 })
+    await waitFor(() => expect(client.isFetching()).toBe(0))
+    const rules = await friday.q<{ name: string; sentence: string }[]>("rules")
+    const server = (client.getQueryData<Learning>(["learning"])?.suggested as NonNullable<Learning["suggested"]>).changes
+    const spare = rules.filter((r) => !server.some((c) => c.rule === r.name))
+    const changes = [...server]
+    if (!changes.some((c) => c.to > c.from)) changes.push({ rule: spare[0].name, from: 1, to: 1.4 })
+    if (!changes.some((c) => c.to < c.from)) changes.push({ rule: spare[1].name, from: 1, to: 0.7 })
+    client.setQueryData<Learning>(["learning"], (was) => was && { ...was, suggested: was.suggested && { ...was.suggested, changes } })
     await user.click(await findRow("Weigh your rules the way you plan"))
-    expect(await screen.findByText(/Counts more · \d/)).toBeTruthy()
-    expect(screen.getByText(/Counts less · \d/)).toBeTruthy()
+    const more = changes.filter((c) => c.to > c.from).length
+    const less = changes.filter((c) => c.to < c.from).length
+    expect(await screen.findByText(`Counts more · ${more}`)).toBeTruthy()
+    expect(screen.getByText(`Counts less · ${less}`)).toBeTruthy()
+    // each rule on its line, in its own words (the biggest four of each side show before "Show all")
+    const said = (rule: string) => rules.find((r) => r.name === rule)?.sentence ?? rule.replace(/^you:/, "").replaceAll(/[-_]/g, " ")
+    if (more <= 4 && less <= 4) for (const c of changes) expect(screen.getByText(said(c.rule))).toBeTruthy()
     // which rules move depends on the days the sample was lived to: each says from how many days
     expect(screen.getAllByText(/days? you compared/).length).toBeGreaterThan(1)
     await user.click(screen.getByRole("button", { name: "Approve" }))

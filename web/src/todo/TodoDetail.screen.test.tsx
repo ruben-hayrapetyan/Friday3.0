@@ -12,6 +12,14 @@ configure({ asyncUtilTimeout: 5000 })
 const items = () => friday.q<Item[]>("items", { status: "all" })
 const itemNamed = async (title: string) => (await items()).find((i) => i.title === title && i.status === "todo") as Item
 
+/** Open assignments in Short term with a tag, soonest due first, each its own title: which the sample's three weeks
+ * finish early moves with the planner (17 Nov: with work going in as soon as there's time, HW 10 and WebWork 10 and
+ * 11 were done). `fresh`: none of it done yet, so its detail says Start now rather than Resume. */
+async function openAssignments(fresh = false) {
+  const open = (await items()).filter((i) => i.status === "todo" && i.preset === "Assignment" && !i.long_term && i.area && (!fresh || !i.done_min))
+  return open.filter((i) => open.filter((o) => o.title === i.title).length === 1).sort((a, b) => (a.due ?? "~").localeCompare(b.due ?? "~") || a.id - b.id)
+}
+
 /** The To-do page with task `title` open beside the list. */
 async function detailOf(title: string) {
   const item = await itemNamed(title)
@@ -36,14 +44,16 @@ describe("a task's detail", () => {
   })
 
   it("changes the tag and the kind from their pickers", async () => {
-    const { user, aside, item } = await detailOf("MATH 1910 Written HW 10")
-    await user.click(within(aside).getByRole("button", { name: "MATH 1910" }))
+    const [task] = (await openAssignments()).filter((i) => i.area !== "Rocketry").slice(-1)
+    const { user, aside, item } = await detailOf(task.title)
+    await user.click(within(aside).getByRole("button", { name: task.area as string }))
     await user.click(within(aside).getByRole("button", { name: "Rocketry" }))
     expect((await waitForSent("edit")).body).toEqual({ id: item.id, area: "Rocketry" })
     await user.click(await within(aside).findByRole("button", { name: "Assignment" }))
     await user.click(within(aside).getByRole("button", { name: "Errand" }))
     expect((await waitForSent("edit")).body).toEqual({ id: item.id, preset: "Errand" })
-    await waitFor(async () => expect((await itemNamed("MATH 1910 Written HW 10")).preset).toBe("Errand"))
+    await waitFor(async () => expect(await itemNamed(task.title)).toMatchObject({ area: "Rocketry", preset: "Errand" }))
+    await friday.c("edit", { id: item.id, area: task.area, preset: task.preset }) // as it was, for the tests after
   })
 
   it("moves the due with a quick pick, keeping its time of day", async () => {
@@ -80,17 +90,23 @@ describe("a task's detail", () => {
   })
 
   it("steps the estimate up and down, saved once the presses stop, or sets it from the picker", async () => {
-    const { user, aside, item } = await detailOf("MATH 1910 WebWork 11")
+    // an hour and a half to start from, whatever its own estimate is
+    const [task] = (await openAssignments()).slice(-1)
+    await friday.c("edit", { id: task.id, duration_min: 90 })
+    sent.length = 0 // that edit was the test's, not the page's
+    const { user, aside, item } = await detailOf(task.title)
     await user.click(within(aside).getByRole("button", { name: "More: 1h 45m" }))
     await user.click(within(aside).getByRole("button", { name: "More: 2h" }))
-    const sent = await waitForSent("edit")
-    expect(sent.body).toEqual({ id: item.id, duration_min: 120 })
+    const saved = await waitForSent("edit")
+    expect(saved.body).toEqual({ id: item.id, duration_min: 120 })
     await waitFor(() => expect(within(aside).getByRole("button", { name: "Less: 1h 45m" })).toBeTruthy(), { timeout: 5000 })
     await user.click(within(aside).getByRole("button", { name: "Less: 1h 45m" }))
-    await waitFor(async () => expect((await itemNamed("MATH 1910 WebWork 11")).duration_min).toBe(105), { timeout: 5000 })
+    await waitFor(async () => expect((await itemNamed(task.title)).duration_min).toBe(105), { timeout: 5000 })
     await user.click(within(aside).getByRole("button", { name: "Set" }))
     await user.click(within(aside).getByRole("button", { name: "3h" }))
     expect((await waitForSent("edit")).body).toEqual({ id: item.id, duration_min: 180 })
+    await waitFor(async () => expect((await itemNamed(task.title)).duration_min).toBe(180))
+    await friday.c("edit", { id: item.id, duration_min: task.duration_min }) // its own estimate again
   })
 
   it("keeps time free around it to get there and back", async () => {
@@ -187,12 +203,15 @@ describe("a task's detail", () => {
   })
 
   it("starts the timer on it, then times another alongside", async () => {
-    const first = await detailOf("MATH 1910 WebWork 10")
+    // two with nothing done yet, neither what's on now
+    const now = await friday.q<{ current: { item_id: number } | null }>("now")
+    const [a, b] = (await openAssignments(true)).filter((i) => i.id !== now.current?.item_id)
+    const first = await detailOf(a.title)
     await first.user.click(within(first.aside).getByRole("button", { name: /Start now/ }))
     expect((await waitForSent("start")).body).toEqual({ id: first.item.id })
     await waitFor(() => expect(within(first.aside).queryByRole("button", { name: /Start now/ })).toBeNull(), { timeout: 5000 })
     first.unmount()
-    const second = await detailOf("MATH 1910 Written HW 10")
+    const second = await detailOf(b.title)
     await second.user.click(await within(second.aside).findByRole("button", { name: /Start alongside/ }, { timeout: 5000 }))
     expect((await waitForSent("start")).body).toEqual({ id: second.item.id, alongside: true })
     await friday.c("stop", {})

@@ -264,12 +264,22 @@ describe("copies of a task", () => {
 
   it("keeps one of each when several tasks have copies", async () => {
     for (const title of ["Pick up a parcel", "Pick up a parcel"]) await friday.c("add", { title, preset: "Errand", duration_min: 30 })
+    // Buy stamps and the parcel, and any others there are by now (17 Nov: the suggestion accepted above is a second
+    // PHYS 1112 Mastering Physics 9, a copy now that the sample's own is still open)
+    const { groups } = await friday.q<{ groups: { key: string; items: { id: number }[] }[] }>("duplicates")
+    expect(groups.map((g) => g.key)).toEqual(expect.arrayContaining(["buy stamps", "pick up parcel"]))
     const { user } = await openInbox()
     await user.click(await findRow("Buy stamps"))
-    const all = await screen.findByRole("button", { name: /Keep one of each \(2\)/ })
+    const all = await screen.findByRole("button", { name: `Keep one of each (${groups.length})` })
     await user.click(all)
     const sent = await waitForSent("duplicates_merge")
-    expect((sent.body as { groups: unknown[] }).groups).toHaveLength(2)
+    const merged = (sent.body as { groups: { keep: number; drop: number[] }[] }).groups
+    expect(merged).toHaveLength(groups.length)
+    // one of each kept, the rest of each dropped
+    for (const g of groups) {
+      const one = merged.find((m) => g.items.some((i) => i.id === m.keep)) as { keep: number; drop: number[] }
+      expect([one.keep, ...one.drop].sort()).toEqual(g.items.map((i) => i.id).sort())
+    }
     await waitFor(async () => expect((await friday.q<{ groups: unknown[] }>("duplicates")).groups).toHaveLength(0))
   })
 })
