@@ -1,6 +1,38 @@
 {
-  "current": "0.4.3",
+  "current": "0.5.0",
   "versions": [
+    {
+      "version": "0.5.0",
+      "released": "2026-11-16",
+      "sha256": "f8ba60bac7573027362fe413bb879376ab373507697943a99d8b53ae88741581",
+      "bytes": 235218476,
+      "commit": "f73f946e3b7b8016b13f2e013fdfe52f9513ff09",
+      "notes": {
+        "summary": "A new Projects & exams page with ongoing projects, choices for events marked free, and lengths you can type.",
+        "new": [
+          "Projects & exams is a new page: every deadline (projects, exams and big assignments) as a row across the next six weeks, your ongoing projects, and what you've finished. Everything you had before is on it.",
+          "Ongoing projects: hours a week with no deadline, like guitar or a side project. Choose how many days a week, its priority, a pause, and whether a short week carries into the next. Weekly goals you already had are listed there and plan as they always have until you change a setting.",
+          "A project can be archived when it's done, keep notes, finish a few days early, set its pace through the work (front-loaded, even or toward the end), and have milestones.",
+          "An exam opens beside the page, its prep a list you edit: rename, length, by when, tick, delete, or add more.",
+          "Events marked free in your calendar have the same choices as busy ones: I'm going, Work through it and Skip it. Work through it is chosen until you pick."
+        ],
+        "changed": [
+          "A length (an exam's prep, a project or step, hours a week) offers common amounts and a box to type any, up to 1,000 hours.",
+          "Double-click a task's name in the To-do drawer to rename it.",
+          "Everything you're timing shows on the calendar while it runs, side by side.",
+          "Starting a nap while something is being timed asks whether to stop timing it.",
+          "The Now bar shows an event that takes your time before a free one that began earlier.",
+          "A pace set for a while says the day it ends in words: \"Easy pace until tomorrow\".",
+          "In the Inbox, the email a suggestion came from opens at the words Friday read."
+        ],
+        "fixed": [
+          "Insights' hours map counts an hour once however many timers ran in it, and says it covers the weeks shown.",
+          "Two quick changes to the same thing are saved in the order you made them.",
+          "A dropdown's list is as wide as its button, not the whole window.",
+          "The Inbox's messages keep their height in a long list, and the plan's notice keeps its count on a phone."
+        ]
+      }
+    },
     {
       "version": "0.4.3",
       "released": "2026-11-15",
