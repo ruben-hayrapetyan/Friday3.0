@@ -1,5 +1,5 @@
 // New ongoing project, as New project asks: a name, a tag, and hours a week (− and +, as New project's length).
-// Rhythm, carry-over, priority and pause are on its own page once it's made.
+// Rhythm, carry-over, priority and pause are in its popup once it's made.
 
 import { useRef, useState } from "react"
 import { Chip, H } from "@/components/fr/controls"

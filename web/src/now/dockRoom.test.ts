@@ -14,12 +14,17 @@ describe("the room a page leaves for the Now bar", () => {
 
 describe("every page's scrolling column under the Now bar", () => {
   // 15 Nov: each had a fixed foot (40–150px) the bar outgrew with its sleep and meal rows up
-  const pages = ["inbox/InboxPage.tsx", "inbox/Pane.tsx", "todo/TodoPage.tsx", "todo/TodoDetail.tsx", "projects-v2/ProjectsV2Page.tsx", "projects/ProjectDetail.tsx", "insights/InsightsPage.tsx", "insights/WeeklyReview.tsx", "body/BodyPage.tsx", "rules/RulesPage.tsx", "plan/Grid.tsx", "plan/DayAside.tsx", "plan/MonthView.tsx"]
+  const pages = ["inbox/InboxPage.tsx", "inbox/Pane.tsx", "todo/TodoPage.tsx", "todo/TodoDetail.tsx", "projects-v2/ProjectsV2Page.tsx", "insights/InsightsPage.tsx", "insights/WeeklyReview.tsx", "body/BodyPage.tsx", "rules/RulesPage.tsx", "plan/Grid.tsx", "plan/DayAside.tsx", "plan/MonthView.tsx"]
   const sources = import.meta.glob("../**/*.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>
   it.each(pages)("%s leaves the bar's room at its foot", (page) => {
     const source = sources[`../${page}`]
     expect(source).toBeDefined()
     expect(source).toContain("dockRoom(")
     expect(source).not.toMatch(/padding: "\d+px \d+px (1\d\d|[4-9]0)px"|paddingBottom: (1\d\d|[4-9]0)\b/)
+  })
+  // 17 Nov: a project opens in the Projects page's popup, not a page of its own; the popup stands above the bar
+  // (projects-v2/popup.test.ts), so the project leaves it no room
+  it("leaves out what shows only in a popup over the bar", () => {
+    expect(sources["../projects-v2/ProjectsV2Page.tsx"]).toMatch(/<Popup[^>]*size="project">\s*<ProjectDetail/)
   })
 })

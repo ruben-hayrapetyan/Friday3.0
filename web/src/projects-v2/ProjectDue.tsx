@@ -1,4 +1,4 @@
-// A project's due date and how firm it is, set on the project itself, at the top of its page (16 Nov: "the only way to
+// A project's due date and how firm it is, set on the project itself, at the top of its popup (16 Nov: "the only way to
 // add a due date to a project is through tasks which i find highly problematic"). Rows as To-do details has them: the
 // value in words, a click opens the choices; a change shows at once.
 

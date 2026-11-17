@@ -1,7 +1,9 @@
 // One project (v22): its steps in order (move them, tick them, set what each waits on and how long it takes), and a
-// timeline of when each is planned against the due date. A way back to Projects & exams, and to the other projects.
+// timeline of when each is planned against the due date, and a way to the other projects. Shown in the Projects page's
+// popup (17 Nov): the popup has its close at the top right, so there's no way back of its own.
 
 import { useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import type { Item } from "@/api/client"
 import { Box, Check, H, Icon, Menu } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
@@ -12,9 +14,9 @@ import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { Bar, PROJECT_STATUS, type Project, projectPct, StatusTag, TagMenu, TONE, useTag } from "./parts"
 import { Timeline } from "./Timeline"
-import { dockRoom } from "@/now/dockRoom"
+import { usePopupStrip } from "@/projects-v2/Rows"
 
-export function ProjectDetail({ p, all, onPick, onBack, top, after }: { p: Project; all: Project[]; onPick: (id: number) => void; onBack: () => void; top?: React.ReactNode; after?: React.ReactNode }) {
+export function ProjectDetail({ p, all, onPick, top, after }: { p: Project; all: Project[]; onPick: (id: number) => void; top?: React.ReactNode; after?: React.ReactNode }) {
   const { today, layout } = useShell()
   const { color } = useLook()
   const blocks = useHorizon().data?.blocks ?? []
@@ -51,40 +53,40 @@ export function ProjectDetail({ p, all, onPick, onBack, top, after }: { p: Proje
     ;[ids[i], ids[j]] = [ids[j], ids[i]]
     reorder({ parent_id: p.item.id, ids })
   }
-  return (
-    <div className="fr-gutter" style={{ maxWidth: 1080, padding: `18px 40px ${dockRoom(120)}`, display: "flex", flexDirection: "column", gap: 24, minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <button className="fr-plain fr-link" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-          <Icon name="arrow-left" size={13} />
-          Projects & exams
-        </button>
-        <span style={{ flex: 1 }} />
-        {steps.length > 0 && replacing && (
-          <span style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", fontSize: 12.5 }}>
-            <span>A template called “{p.item.title}” is saved already. Replace it?</span>
-            <button className="btn btn-ghost" onClick={save} style={{ fontSize: 12.5 }}>
-              Replace
-            </button>
-            <button className="btn btn-ghost" onClick={() => setAsked(null)} style={{ fontSize: 12.5 }}>
-              Keep it
-            </button>
-          </span>
-        )}
-        {steps.length > 0 && !replacing && (
-          <button className="btn btn-ghost" onClick={() => (Object.keys(templates).includes(p.item.title) ? setAsked(p.item.id) : save())} title="Its steps, in this order and with their share of the hours, for the next project like it" style={{ fontSize: 12.5 }}>
-            <Icon name="copy-simple" size={13} />
-            Save as template
+  const strip = usePopupStrip()
+  const tools = (
+    <>
+      {steps.length > 0 && replacing && (
+        <span style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", fontSize: 12.5 }}>
+          <span>A template called “{p.item.title}” is saved already. Replace it?</span>
+          <button className="btn btn-ghost" onClick={save} style={{ fontSize: 12.5 }}>
+            Replace
           </button>
-        )}
-        {all.length > 1 && <Menu label="Project" value={String(p.item.id)} onPick={(v) => onPick(Number(v))} options={all.map((o) => ({ value: String(o.item.id), label: o.item.title }))} />}
-      </div>
+          <button className="btn btn-ghost" onClick={() => setAsked(null)} style={{ fontSize: 12.5 }}>
+            Keep it
+          </button>
+        </span>
+      )}
+      {steps.length > 0 && !replacing && (
+        <button className="btn btn-ghost" onClick={() => (Object.keys(templates).includes(p.item.title) ? setAsked(p.item.id) : save())} aria-label="Save as template" title="Its steps, in this order and with their share of the hours, for the next project like it" style={{ fontSize: 12.5 }}>
+          <Icon name="copy-simple" size={13} />
+          {!layout.tight && "Save as template" /* a narrow window: its icon, as the page's header buttons are */}
+        </button>
+      )}
+      {all.length > 1 && <Menu label="Project" value={String(p.item.id)} onPick={(v) => onPick(Number(v))} options={all.map((o) => ({ value: String(o.item.id), label: o.item.title }))} />}
+    </>
+  )
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24, minWidth: 0 }}>
+      {/* its tools on the popup's top strip, beside its close (✕); in a row of their own anywhere else */}
+      {strip ? createPortal(tools, strip) : (steps.length > 0 || all.length > 1) && <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }}>{tools}</div>}
       <div style={{ display: "flex", alignItems: "flex-end", gap: 20, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: "min(260px, 100%)", display: "flex", flexDirection: "column", gap: 8 }}>
           <span className="fr-eyebrow" style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span className="fr-swatch" style={{ background: color(tag, p.item.preset) }} />
             <TagMenu title={p.item.title} value={tag} onPick={retag} /> · {p.item.preset ?? "Project"}
           </span>
-          <H size={layout.tight ? 28 : 36} style={{ overflowWrap: "anywhere" }}>
+          <H size={layout.tight ? 28 : 32} style={{ overflowWrap: "anywhere" }}>
             {p.item.title}
           </H>
           <span className="tnum" style={{ color: "var(--color-neutral-300)" }}>

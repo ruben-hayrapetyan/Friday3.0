@@ -1,6 +1,7 @@
 // Black box: the Projects & exams page (/projects; /projects-v2 until 0.5.0) over Alex's sample, a real server behind
 // it. Its way in from the sidebar and its old address; the deadline shelf (exams and projects as rows on six weeks,
-// the next step ticked in place, a row opened as Friday opens it); an ongoing project made, opened, its options each
+// the next step ticked in place); a project, an exam and an ongoing project each opened in a popup in the middle of the
+// screen, with its address, closed by Escape, its ✕ and Back; an ongoing project made, opened, its options each
 // saying their value, paused and resumed, deleted; a project archived to Finished, opened again, and deleted there.
 import { configure, screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
@@ -68,7 +69,7 @@ describe("the Projects & exams page", () => {
     const exam = (await friday.q<{ item: Item }[]>("exams"))[0]
     await openFriday(`/projects-v2?exam=${exam.item.id}`) // a link made before 0.5.0
     await waitFor(() => expect(window.location.hash).toBe(`#/projects?exam=${exam.item.id}`))
-    expect(await screen.findByRole("complementary", { name: exam.item.title })).toBeTruthy()
+    expect(await screen.findByRole("dialog", { name: exam.item.title })).toBeTruthy()
   })
 
   it("shows the exams as rows on six weeks, flagged at the exam, with their next prep to tick", async () => {
@@ -88,24 +89,89 @@ describe("the Projects & exams page", () => {
     await friday.c("reopen", { id: next.id }) // the other tests see it as it was
   })
 
-  it("opens an exam in a side panel with its address, the shelves still there, and closes it", async () => {
-    const f = await page()
-    const [exam] = await friday.q<{ item: Item }[]>("exams")
-    await f.user.click(await within(shelf("With a deadline")).findByRole("button", { name: new RegExp(`^${exam.item.title}, `) }))
-    await waitFor(() => expect(window.location.hash).toBe(`#/projects?exam=${exam.item.id}`))
-    const panel = await screen.findByRole("complementary", { name: exam.item.title })
-    expect(shelf("With a deadline")).toBeTruthy() // still in view beside it
-    await f.user.click(within(panel).getByRole("button", { name: "Close" }))
+  // 17 Nov: "i think everything should be a center popup rather than a sidebar or its own page"
+  /** The popup open over the shelves: a dialog named for what it shows, in the middle of the dimmed page. */
+  async function popup(name: string) {
+    const dialog = await screen.findByRole("dialog", { name })
+    expect(dialog.getAttribute("aria-modal")).toBe("true")
+    expect(dialog.parentElement?.classList.contains("fr-scrim")).toBe(true) // over the whole page, dimmed
+    expect(screen.queryByRole("complementary", { name })).toBeNull() // not a side panel
+    expect(shelf("With a deadline")).toBeTruthy() // the shelves still there behind it, not a page in their place
+    expect(within(dialog).queryByRole("button", { name: /^Projects & exams$/ })).toBeNull() // no page back-link
+    return dialog
+  }
+  const gone = async (name: string) => {
     await waitFor(() => expect(window.location.hash).toBe("#/projects"))
+    await waitFor(() => expect(screen.queryByRole("dialog", { name })).toBeNull())
+  }
+
+  it("opens a project, an exam and an ongoing project in a popup with its address; Escape, its ✕ and Back close it", async () => {
+    const made = await friday.c<{ result: { item: Item } }>("add", { title: "Bridge model", preset: "Project", due: "2026-12-29T17:00", duration_min: 240 })
+    const id = made.result.item.id
+    await friday.c("add", { title: "Glue the trusses", parent_id: id, duration_min: 60 })
+    const steady = await friday.c<{ result: { id: number } }>("ongoing_add", { title: "Piano", hours_per_week: 3, area: null })
+    const [exam] = await friday.q<{ item: Item }[]>("exams")
+    const f = await page()
+    const opens = [
+      { name: "Bridge model", address: `#/projects?id=${id}`, open: async () => f.user.click(await waitFor(() => rowNamed(/^Bridge model, /))) },
+      { name: exam.item.title, address: `#/projects?exam=${exam.item.id}`, open: async () => f.user.click(await waitFor(() => rowNamed(new RegExp(`^${exam.item.title}, `)))) },
+      { name: "Piano", address: `#/projects?ongoing=${steady.result.id}`, open: async () => f.user.click(await within(shelf("Ongoing")).findByRole("button", { name: "Piano" })) },
+    ]
+    for (const o of opens) {
+      await o.open()
+      await waitFor(() => expect(window.location.hash).toBe(o.address))
+      await popup(o.name)
+      await f.user.keyboard("{Escape}")
+      await gone(o.name)
+      await o.open()
+      await f.user.click(within(await popup(o.name)).getByRole("button", { name: "Close" }))
+      await gone(o.name)
+      await o.open()
+      await waitFor(() => expect(window.location.hash).toBe(o.address))
+      await popup(o.name)
+      window.history.back()
+      await gone(o.name)
+    }
+    // a project's steps and timeline in it, as on its page before
+    await opens[0].open()
+    const dialog = await popup("Bridge model")
+    expect(within(dialog).getAllByText("Glue the trusses")).toHaveLength(2) // its step row, and its lane on the timeline
+    expect(within(dialog).getByText("Timeline")).toBeTruthy()
+    // its tools on the popup's top strip beside the ✕, not scrolling away with its steps
+    const close = within(dialog).getByRole("button", { name: "Close" })
+    const save = within(dialog).getByRole("button", { name: "Save as template" })
+    expect(save.closest(".fr-scroll-column")).toBeNull()
+    expect(close.parentElement?.contains(save)).toBe(true)
+    // a dropdown open in it: Escape closes that first, the popup staying, whether the focus is on it or not
+    for (const away of [false, true]) {
+      await f.user.click(within(dialog).getByRole("button", { name: /^Length of Glue the trusses: / }))
+      expect(await screen.findByRole("dialog", { name: "Length of Glue the trusses" })).toBeTruthy()
+      if (away) (document.activeElement as HTMLElement).blur()
+      await f.user.keyboard("{Escape}")
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Length of Glue the trusses" })).toBeNull())
+      expect(screen.getByRole("dialog", { name: "Bridge model" })).toBeTruthy()
+      expect(window.location.hash).toBe(`#/projects?id=${id}`)
+    }
+    // a click on the dimmed page closes it
+    await f.user.click(dialog.previousElementSibling as HTMLElement)
+    await gone("Bridge model")
+    await friday.c("drop", { id })
+    await friday.c("ongoing_delete", { id: steady.result.id })
   })
 
-  it("changes an exam's prep in its panel: renamed, its length and by when, ticked, deleted, and more added", async () => {
+  it("opens a link to one straight into its popup, over the shelves", async () => {
+    const [exam] = await friday.q<{ item: Item }[]>("exams")
+    await page(`/projects?exam=${exam.item.id}`)
+    await popup(exam.item.title)
+  })
+
+  it("changes an exam's prep in its popup: renamed, its length and by when, ticked, deleted, and more added", async () => {
     const f = await page()
     const exams = await friday.q<{ item: Item; prep: { item: Item }[] }[]>("exams")
     const exam = exams.find((e) => e.prep.length > 0) as { item: Item; prep: { item: Item }[] }
     const prep = exam.prep[0].item
     await f.user.click(await within(shelf("With a deadline")).findByRole("button", { name: new RegExp(`^${exam.item.title}, `) }))
-    const panel = await screen.findByRole("complementary", { name: exam.item.title })
+    const panel = await screen.findByRole("dialog", { name: exam.item.title })
     const row = within(panel).getByRole("listitem", { name: prep.title })
     await f.user.click(within(row).getByRole("button", { name: prep.title }))
     const box = within(row).getByRole("textbox", { name: `Rename ${prep.title}` })
@@ -136,11 +202,11 @@ describe("the Projects & exams page", () => {
     await friday.c("edit", { id: prep.id, title: prep.title, duration_min: prep.duration_min })
   })
 
-  // What the old exam cards did, in the exam's panel (0.5.0 replaced them; every way in kept)
+  // What the old exam cards did, in the exam's popup (0.5.0 replaced them; every way in kept)
   async function examPanel(title = "PHYS 1112 Prelim 2") {
     const f = await page()
     await f.user.click(await within(shelf("With a deadline")).findByRole("button", { name: new RegExp(`^${title}, `) }))
-    return { ...f, panel: await screen.findByRole("complementary", { name: title }) }
+    return { ...f, panel: await screen.findByRole("dialog", { name: title }) }
   }
 
   it("opens a piece of an exam's prep on the To-do page", async () => {
@@ -156,7 +222,7 @@ describe("the Projects & exams page", () => {
     await waitFor(() => expect(window.location.hash).toBe("#/"))
   })
 
-  it("changes an exam's tag in its panel, its prep tagged otherwise keeping its own", async () => {
+  it("changes an exam's tag in its popup, its prep tagged otherwise keeping its own", async () => {
     // 15 Nov, a client: an exam's tag couldn't be changed; its prep tagged otherwise keeps its own
     const exam = (await friday.q<{ item: Item; prep: { item: Item }[] }[]>("exams")).find((e) => e.item.title === "MATH 1910 Prelim 2")!
     const prep = exam.prep[0].item
@@ -198,7 +264,7 @@ describe("the Projects & exams page", () => {
     await f.user.click(within(dialog).getByRole("button", { name: "Create ongoing project" }))
     expect((await waitForSent("ongoing_add")).body).toEqual({ title: "Guitar practice", hours_per_week: 4, area: null })
     await waitFor(() => expect(window.location.hash).toMatch(/^#\/projects\?ongoing=\d+$/))
-    const panel = await screen.findByRole("complementary", { name: "Guitar practice" })
+    const panel = await screen.findByRole("dialog", { name: "Guitar practice" })
     expect(within(panel).getByRole("button", { name: "Days a week: Whenever it fits" })).toBeTruthy()
     // a tag, typed new (a client: "can't add a tag on projects of type ongoing")
     await f.user.click(within(panel).getByRole("button", { name: /^Tag: No tag/ }))
@@ -242,7 +308,7 @@ describe("the Projects & exams page", () => {
     expect(within(card).getByRole("img", { name: /Worked on 0 of the last 56 days/ })).toBeTruthy()
     expect(within(card).getByText(/of 4h this week/)).toBeTruthy()
     await f.user.click(card)
-    const panel = await screen.findByRole("complementary", { name: "Guitar practice" })
+    const panel = await screen.findByRole("dialog", { name: "Guitar practice" })
     expect(within(panel).getByRole("button", { name: "Paused: No" })).toBeTruthy()
     await choose(f.user, panel, "Paused", /^For two weeks/)
     expect((await waitForSent("ongoing_set")).body).toMatchObject({ paused_until: expect.stringMatching(/^\d{4}-\d\d-\d\d$/) })
@@ -267,7 +333,7 @@ describe("the Projects & exams page", () => {
     const made = await friday.c<{ result: { id: number } }>("series_add", { title: "Spanish", preset: "Goal", amount: "target", target_min: 120, every: "week" })
     const f = await page()
     await f.user.click(await within(shelf("Ongoing")).findByRole("button", { name: "Spanish" }))
-    const panel = await screen.findByRole("complementary", { name: "Spanish" })
+    const panel = await screen.findByRole("dialog", { name: "Spanish" })
     expect(within(panel).getByText(/its weeks plan as they always have/)).toBeTruthy()
     expect(within(panel).getByRole("button", { name: /^A short week: Each week starts fresh for now/ })).toBeTruthy()
     await choose(f.user, panel, "Paused", /^Until I resume it/)
@@ -374,7 +440,7 @@ describe("the Projects & exams page", () => {
       const rules = await friday.q<{ name: string; sentence: string }[]>("rules")
       expect(rules.find((r) => r.name === `you:project:${id}:early`)?.sentence).toBe("Finish Lab report 3 days early")
     })
-    await f.user.click(screen.getByRole("button", { name: /^Projects & exams$/ }))
+    await f.user.click(within(screen.getByRole("dialog", { name: "Lab report" })).getByRole("button", { name: "Close" }))
     await live(f, () => expect(rowNamed(/^Lab report, /).querySelector("[data-aim]")).toBeTruthy())
   })
 })

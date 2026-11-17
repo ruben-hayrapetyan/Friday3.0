@@ -1,4 +1,4 @@
-// An exam, in the side panel (16 Nov, the user: the exam's fields and adding its prep were unintuitive): when it is and
+// An exam, in the Projects page's popup (16 Nov, the user: the exam's fields and adding its prep were unintuitive): when it is and
 // how ready you are; its prep as a list you change in place (tick it, rename it, how long, by when, delete it) with
 // + Add prep for another; then its tag and exam focus as rows. Every change shows at once.
 
@@ -48,7 +48,7 @@ export function ExamPanel({ exam }: { exam: Exam }) {
   const total = exam.done_min + exam.remaining_min
   return (
     <>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingRight: 36 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <span className="fr-eyebrow" style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ width: 10, height: 10, borderRadius: 3, background: tint }} />
           {course({ ...e, area }) ?? "Exam"} · {countdown(start, end, now, today)}

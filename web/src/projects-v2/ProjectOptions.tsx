@@ -1,4 +1,4 @@
-// A project's options, under its page: how many days early it aims to finish (a rule of yours about it, in Rules), and its pace through the work. Each says
+// A project's options, under its steps in its popup: how many days early it aims to finish (a rule of yours about it, in Rules), and its pace through the work. Each says
 // what it's set to now; a change shows at once. No notes here (16 Nov: "it is unclear what Notes is for"; you chose to
 // remove them from projects).
 

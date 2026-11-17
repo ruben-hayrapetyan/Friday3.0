@@ -31,8 +31,9 @@ const only = option("--only")
 const shots = option("--shots")
 const widths = (option("--widths") ?? "1440,390").split(",").map(Number)
 
-// What to look at: a page, and what to press there first. `each` opens every match of a selector in turn (pressing
-// Escape between), pressing `after` in each; `keys` are pressed as a person would; `click` is a button's name (its words or aria-label), and one
+// What to look at: a page (or, given the server's address, a function finding one), and what to press there first.
+// `open` presses every folded row's button (in the page's column, or in the one a selector names); `each` opens every
+// match of a selector in turn (pressing Escape between, or its own button again with `keep`), pressing `after` in each; `keys` are pressed as a person would; `click` is a button's name (its words or aria-label), and one
 // ending in "?" is pressed only if it's there.
 const SETTINGS = ["appearance", "calendars", "tags", "schedule", "repeating", "integrations", "phone", "tokens", "shortcuts", "updates", "advanced"]
 const STATES = [
@@ -56,6 +57,20 @@ const STATES = [
   { name: "new project", path: "/projects", click: ["New project"] },
   { name: "deadline rows", path: "/projects", each: 'section[aria-label="With a deadline"] [role="button"]', most: 3 },
   { name: "new ongoing project", path: "/projects", click: ["New ongoing project|New ongoing"] },
+  // 17 Nov: a project, an exam and an ongoing project open in a popup in the middle of the screen; each looked at
+  // as it opens, with its rows open, and with its dropdowns open over it
+  { name: "project popup", path: (base) => opened(base, "project") },
+  { name: "project popup rows", path: (base) => opened(base, "project"), open: "[role=dialog]" },
+  { name: "project popup step length", path: (base) => opened(base, "project"), click: ["Length of Research"] },
+  { name: "project popup project menu", path: (base) => opened(base, "project"), click: ["Project"] },
+  { name: "project popup tag menu", path: (base) => opened(base, "project"), click: ["Tag for Rocketry design review"] },
+  { name: "project popup waits on", path: (base) => opened(base, "project"), click: ["Nothing|Waits on nothing"] },
+  { name: "exam popup", path: (base) => opened(base, "exam") },
+  { name: "exam popup rows", path: (base) => opened(base, "exam"), open: "[role=dialog]", click: ["Add prep"] },
+  { name: "exam popup prep due", path: (base) => opened(base, "exam"), each: '[role=dialog] [role=listitem] [aria-label^="When "]', most: 1 },
+  { name: "exam popup prep length", path: (base) => opened(base, "exam"), each: '[role=dialog] [role=listitem] [aria-label^="Length of "]', most: 1 },
+  { name: "ongoing popup", path: (base) => opened(base, "ongoing") },
+  { name: "ongoing popup rows", path: (base) => opened(base, "ongoing"), each: '[role=dialog] [aria-expanded="false"]:not([aria-haspopup])', most: 6, keep: true },
   { name: "inbox", path: "/inbox" },
   { name: "inbox messages", path: "/inbox", each: '[aria-label="Waiting for you"] [role="listitem"], [aria-label="Waiting for you"] > button', most: 12 },
   { name: "insights", path: "/insights" },
@@ -80,6 +95,26 @@ const STATES = [
 // A newer Friday to update to, as Settings → Updates would show one (a Friday run from its code never looks).
 const NOTES = (v) => ({ version: v, released: "2026-11-10", summary: `Friday ${v} plans around your shifts and reads your school's calendar feeds.`, new: ["Shifts from When I Work, Deputy and Homebase, planned around like classes"], changed: ["Settings open where you left them"], fixed: ["Sync now after the Mac wakes from sleep"] })
 const UPDATE = { checks: true, have: "0.3.3", last_checked: new Date().toISOString(), state: "idle", progress: 0, message: null, versions: [NOTES("0.4.0"), NOTES("0.3.4")], popup: false, whats_new: [], restart: "now", staged: null }
+
+// What the popups show: Alex's sample has exams but no projects or ongoing projects, so one of each is made once,
+// with long names and a step of every kind, and its address given.
+const made = {}
+async function opened(base, kind) {
+  const q = async (name) => (await fetch(`${base}/api/q/${name}`)).json()
+  const c = async (name, body) => (await fetch(`${base}/api/c/${name}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })).json()
+  if (kind === "exam") return `/projects?exam=${(await q("exams"))[0].item.id}`
+  if (!made[kind]) {
+    if (kind === "project") {
+      const due = new Date(Date.now() + 20 * 86_400_000).toISOString().slice(0, 10)
+      const id = (await c("add", { title: "Rocketry design review", preset: "Project", due: `${due}T17:00`, duration_min: 600, area: "Rocketry" })).result.item.id
+      for (const [title, minutes] of [["Research", 120], ["Draft the slides on the recovery system and the parachute deployment altitude", 240], ["Rehearse", 60], ["Print handouts", 30]]) await c("add", { title, parent_id: id, duration_min: minutes })
+      await c("add", { title: "Lab notebook cleanup", preset: "Project", duration_min: 240 }) // another, for its Project menu
+      made[kind] = `/projects?id=${id}`
+    } else made[kind] = `/projects?ongoing=${(await c("ongoing_add", { title: "Guitar practice", hours_per_week: 4, area: null })).result.id}`
+    await wait(1500) // planned
+  }
+  return made[kind]
+}
 
 function freePort() {
   return new Promise((done, fail) => {
@@ -324,8 +359,9 @@ async function visit(page, base, state, width, findings) {
       await evaluate(page, SETTLE)
     }
   }
-  await go(page, base, state.path)
-  if (state.open) await evaluate(page, `document.querySelectorAll('.fr-gutter [aria-expanded="false"]:not([aria-haspopup])').forEach((b) => b.click())`).then(() => evaluate(page, SETTLE))
+  await go(page, base, typeof state.path === "function" ? await state.path(base) : state.path)
+  const scope = typeof state.open === "string" ? state.open : ".fr-gutter"
+  if (state.open) await evaluate(page, `document.querySelectorAll(${JSON.stringify(`${scope} [aria-expanded="false"]:not([aria-haspopup])`)}).forEach((b) => b.click())`).then(() => evaluate(page, SETTLE))
   await steps()
   if (!state.each) {
     await look(page, state.name, findings, width)
@@ -348,6 +384,12 @@ async function visit(page, base, state, width, findings) {
       await evaluate(page, SETTLE)
     }
     await look(page, `${state.name}: ${label}`, findings, width)
+    if (state.keep) {
+      // a row of a popup: closed again by its own button, the popup staying open
+      await evaluate(page, `(() => { const el = document.querySelectorAll('[aria-expanded="true"]:not([aria-haspopup])'); el.forEach((b) => b.click()) })()`)
+      await evaluate(page, SETTLE)
+      continue
+    }
     if (state.after) await press(page, "Escape") // the open list first, then the card
     await press(page, "Escape")
     await evaluate(page, SETTLE)
