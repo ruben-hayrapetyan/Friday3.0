@@ -301,3 +301,20 @@ def test_an_ongoing_projects_week_isnt_called_slipping_but_a_plain_goals_still_i
     slipping = {s["title"] for s in app.do("status")["slipping"]}
     assert "Guitar" not in slipping
     assert "Read" in slipping
+
+
+# A client: "can't add a tag on projects of type ongoing"
+
+
+def test_an_ongoing_project_takes_a_tag_new_or_known_and_lets_it_go(app: App) -> None:
+    series = guitar(app)
+    app.do("ongoing_set", id=series, area="Music")  # new: made
+    [shown] = app.do("ongoing_projects")
+    assert shown["area"] == "Music"
+    assert {r["area_id"] for r in weeks(app, series) if r["status"] == "todo"} == {
+        app.conn.execute("SELECT id FROM areas WHERE name = 'Music'").fetchone()[0]
+    }  # this week's too, not only weeks to come
+    app.do("ongoing_set", id=series, area="music")  # the same tag, however it's typed
+    assert app.conn.execute("SELECT COUNT(*) FROM areas WHERE name LIKE 'music'").fetchone()[0] == 1
+    app.do("ongoing_set", id=series, area="")
+    assert app.do("ongoing_projects")[0]["area"] is None

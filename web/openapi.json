@@ -5572,7 +5572,7 @@
   },
   "/api/c/ongoing_set": {
    "post": {
-    "summary": "Change an ongoing project: its name, hours a week, carry-over, rhythm, priority or pause.",
+    "summary": "Change an ongoing project: its name, tag, hours a week, carry-over, rhythm, priority or pause.",
     "operationId": "ongoing_set",
     "parameters": [
      {
@@ -25856,6 +25856,17 @@
        }
       ],
       "title": "Title"
+     },
+     "area": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Area"
      },
      "hours_per_week": {
       "anyOf": [

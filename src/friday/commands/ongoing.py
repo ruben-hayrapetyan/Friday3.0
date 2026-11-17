@@ -12,6 +12,7 @@ from datetime import date, timedelta
 from friday.api.commands import Changed, OngoingAddInput, OngoingSetInput, SeriesAddInput, SeriesOut, SeriesRef
 from friday.api.types import Empty
 from friday.api.views import OngoingOut, OngoingWeek
+from friday.commands.fields import area_id
 from friday.commands.registry import Ctx, command, query
 from friday.commands.series import load_series, series_add, series_delete, series_out, series_resume, series_stop
 from friday.core.db import rows
@@ -89,7 +90,7 @@ def require_ongoing(ctx: Ctx, series_id: int) -> tuple[dict, dict, dict]:
 
 @command("ongoing_set", affects_plan=True)
 def ongoing_set(ctx: Ctx, inp: OngoingSetInput) -> SeriesOut:
-    """Change an ongoing project: its name, hours a week, carry-over, rhythm, priority or pause."""
+    """Change an ongoing project: its name, tag, hours a week, carry-over, rhythm, priority or pause."""
     _, template, options = require_ongoing(ctx, inp.id)
     mine = dict(options[str(inp.id)])
     change: dict[str, object] = {}
@@ -97,6 +98,8 @@ def ongoing_set(ctx: Ctx, inp: OngoingSetInput) -> SeriesOut:
         if not inp.title.strip():
             raise FieldError("title", "an ongoing project needs a name")
         change["title"] = inp.title.strip()
+    if inp.area is not None:  # its tag (a client: "can't add a tag on projects of type ongoing")
+        change["area_id"] = area_id(ctx, inp.area.strip()) if inp.area.strip() else None
     if inp.hours_per_week is not None:
         units = max(1, round(inp.hours_per_week * 60 / UNIT_MIN))
         change |= {"target_units": units, "cap_units": math.ceil(1.5 * units)}

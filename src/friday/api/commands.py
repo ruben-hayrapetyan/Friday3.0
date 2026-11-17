@@ -1256,6 +1256,7 @@ class OngoingAddInput(Model):
 class OngoingSetInput(Model):
     id: int  # the repeat's id
     title: str | None = None
+    area: str | None = None  # its tag, made when new; "" for none
     hours_per_week: float | None = Field(None, gt=0, le=60)
     carry: float | None = Field(None, ge=0, le=1)
     rhythm_days: int | None = Field(None, ge=0, le=7)  # days a week to touch it; 0, whenever it fits

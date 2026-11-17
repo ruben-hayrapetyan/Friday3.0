@@ -837,7 +837,7 @@ VERBS = {
         commands.OngoingSetInput,
         True,
         True,
-        "Change an ongoing project: its name, hours a week, carry-over, rhythm, priority or pause.",
+        "Change an ongoing project: its name, tag, hours a week, carry-over, rhythm, priority or pause.",
     ),
     "other_way": Verb(
         "GET",

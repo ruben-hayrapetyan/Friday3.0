@@ -1322,7 +1322,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Change an ongoing project: its name, hours a week, carry-over, rhythm, priority or pause. */
+        /** Change an ongoing project: its name, tag, hours a week, carry-over, rhythm, priority or pause. */
         post: operations["ongoing_set"];
         delete?: never;
         options?: never;
@@ -7992,6 +7992,8 @@ export interface components {
             id: number;
             /** Title */
             title?: string | null;
+            /** Area */
+            area?: string | null;
             /** Hours Per Week */
             hours_per_week?: number | null;
             /** Carry */

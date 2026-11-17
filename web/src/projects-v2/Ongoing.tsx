@@ -6,6 +6,7 @@ import { type QueryClient, useQuery } from "@tanstack/react-query"
 import { useState } from "react"
 import { query } from "@/api/client"
 import { Chip, H, Icon } from "@/components/fr/controls"
+import { useAreas } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
 import { dur, weekday } from "@/lib/format"
 import { addDays } from "@/lib/time"
@@ -101,7 +102,9 @@ export function OngoingDetail({ o, today, onDeleted }: { o: Ongoing; today: stri
   const { color } = useLook()
   const set = useCommand("ongoing_set", { label: () => `${o.title}: saved; Friday plans its weeks again`, optimistic: (client, input) => changedOngoing(client, input.id, shown(input)) })
   const remove = useCommand("ongoing_delete", { label: (out) => out.result.message, optimistic: (client) => client.setQueryData<Ongoing[]>(ONGOING_KEY, (list) => list?.filter((x) => x.id !== o.id)) })
-  const [open, setOpen] = useState<"hours" | "days" | "priority" | "pause" | "carry" | null>(null)
+  const [open, setOpen] = useState<"tag" | "hours" | "days" | "priority" | "pause" | "carry" | null>(null)
+  const tags = (useAreas().data ?? []).filter((a) => !a.archived).map((a) => a.name)
+  const [newTag, setNewTag] = useState("")
   const toggle = (k: typeof open) => setOpen(open === k ? null : k)
   const [sure, setSure] = useState(false)
   const [until, setUntil] = useState("")
@@ -149,6 +152,14 @@ export function OngoingDetail({ o, today, onDeleted }: { o: Ongoing; today: stri
         <span className="fr-kicker">{pausedWords === "No" ? "Its first week starts soon." : `Paused ${pausedWords.toLowerCase()}: no time is planned for it.`}</span>
       )}
       <Rows>
+        {/* a client: "can't add a tag on projects of type ongoing" */}
+        <SettingRow label="Tag" value={o.area ?? "No tag"} open={open === "tag"} onToggle={() => toggle("tag")} note="Its color, and what it counts toward">
+          <Choices label="Tag" value={o.area ?? null} onPick={pick((t: string | null) => t !== (o.area ?? null) && set({ id: o.id, area: t ?? "" }))} options={[{ value: null as string | null, label: "No tag" }, ...[...new Set([...tags, ...(o.area ? [o.area] : [])])].map((t) => ({ value: t as string | null, label: t }))]} />
+          <label style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 8px", fontSize: 12, color: "var(--color-neutral-300)" }}>
+            Or a new one
+            <input className="input" value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => e.key === "Enter" && newTag.trim() && (set({ id: o.id, area: newTag.trim() }), setNewTag(""), setOpen(null))} placeholder="A tag's name, then Enter" aria-label="A new tag" style={{ padding: "2px 6px", minHeight: 0, fontSize: 12, width: 180 }} />
+          </label>
+        </SettingRow>
         <SettingRow label="Hours a week" value={`${hoursText(o.hours_per_week)} a week`} open={open === "hours"} onToggle={() => toggle("hours")} note={aim ? `${dur(o.aim_min)} this week at your pace` : undefined}>
           <LengthPicks value={Math.round(o.hours_per_week * 60)} amounts={[60, 120, 180, 300, 480, 600]} label="Hours a week" onPick={pick((m: number) => m !== Math.round(o.hours_per_week * 60) && set({ id: o.id, hours_per_week: m / 60 }))} />
         </SettingRow>
@@ -261,8 +272,9 @@ export function LengthPicks({ value, amounts, label, onPick }: { value: number; 
 }
 
 /** What a change looks like on screen before the server answers. */
-function shown(input: { hours_per_week?: number | null; carry?: number | null; rhythm_days?: number | null; priority?: number | null; paused_until?: string | null }): Partial<Ongoing> {
+function shown(input: { area?: string | null; hours_per_week?: number | null; carry?: number | null; rhythm_days?: number | null; priority?: number | null; paused_until?: string | null }): Partial<Ongoing> {
   const out: Partial<Ongoing> = {}
+  if (input.area != null) out.area = input.area || null
   if (input.hours_per_week != null) out.hours_per_week = input.hours_per_week
   if (input.carry != null) out.carry = input.carry
   if (input.rhythm_days != null) out.rhythm_days = input.rhythm_days || null
