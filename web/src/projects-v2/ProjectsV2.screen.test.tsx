@@ -107,13 +107,15 @@ describe("the new Projects & exams page", () => {
     await f.user.type(box, "Review sheet{Enter}")
     expect((await waitForSent("edit")).body).toEqual({ id: prep.id, title: "Review sheet" })
     sent.length = 0
-    const renamed = await within(panel).findByRole("listitem", { name: "Review sheet" }) // at once
-    await setLength(f.user, renamed, "Length of Review sheet", { type: "7.5 hours" })
+    expect(await within(panel).findByRole("listitem", { name: "Review sheet" })).toBeTruthy() // at once
+    // the row as it is now: the panel draws it again as the server's answers come in
+    const renamed = () => within(panel).getByRole("listitem", { name: "Review sheet" })
+    await setLength(f.user, renamed(), "Length of Review sheet", { type: "7.5 hours" })
     expect((await waitForSent("edit")).body).toEqual({ id: prep.id, duration_min: 450 })
-    expect(within(renamed).getByRole("button", { name: /^When Review sheet is due: by / })).toBeTruthy()
-    await f.user.click(within(renamed).getByRole("checkbox", { name: "Mark done" }))
+    expect(within(renamed()).getByRole("button", { name: /^When Review sheet is due: by / })).toBeTruthy()
+    await f.user.click(within(renamed()).getByRole("checkbox", { name: "Mark done" }))
     expect((await waitForSent("done")).body).toEqual({ id: prep.id })
-    await f.user.click(within(renamed).getByRole("checkbox", { name: "Mark not done" }))
+    await f.user.click(within(renamed()).getByRole("checkbox", { name: "Mark not done" }))
     expect((await waitForSent("reopen")).body).toEqual({ id: prep.id })
     await f.user.click(within(panel).getByRole("button", { name: /Add prep/ }))
     await f.user.type(within(panel).getByRole("textbox", { name: "New prep" }), "Practice exam 3")
@@ -121,7 +123,7 @@ describe("the new Projects & exams page", () => {
     await f.user.click(within(panel).getByRole("button", { name: "Add" }))
     expect((await waitForSent("add")).body).toMatchObject({ title: "Practice exam 3", preset: "Exam prep", duration_min: 180, due: exam.item.start, before: [exam.item.id] })
     expect(await within(panel).findByRole("listitem", { name: "Practice exam 3" })).toBeTruthy() // at once
-    await f.user.click(within(renamed).getByRole("button", { name: "Delete Review sheet" }))
+    await f.user.click(within(renamed()).getByRole("button", { name: "Delete Review sheet" }))
     expect((await waitForSent("drop")).body).toEqual({ id: prep.id })
     await waitFor(() => expect(within(panel).queryByRole("listitem", { name: "Review sheet" })).toBeNull())
     await friday.c("reopen", { id: prep.id }) // the other tests see it as it was
