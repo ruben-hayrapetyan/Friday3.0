@@ -25,6 +25,7 @@ import { foundHref } from "@/todo/found"
 import { useGlide } from "./glide"
 import { type TrialPlan, useWhatIf, whatIf } from "@/whatif/store"
 import { asBlock, BlockBox, DraftBox, DropPreview, FixedBox, GhostBox, NowLine, PX, SleepBand, type TriedLook } from "./Pieces"
+import { type Over, roomAbove } from "./lines"
 import { inARow, type Pick, pickOfBlock, pickOfEvent, picks, shifted, usePicks } from "./picks"
 import { givesTimeToWork, layers, sideBySide } from "./layers"
 import { WholeDays } from "./WholeDays"
@@ -155,9 +156,10 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
         {dates.map((date) => {
           // An event you're going to, under the work; one you're skipping (or that work takes), over it, at the side,
           // where it can still be clicked to go after all (30 Oct)
-          const fixedBox = (p: Placed<Item & { start: string; end: string }>, aside = false) => (
+          const fixedBox = (p: Placed<Item & { start: string; end: string }>, aside = false, over: Over[] = []) => (
             <FixedBox
               aside={aside}
+              room={aside ? undefined : roomAbove(p, over)}
               key={`f${p.item.id}`}
               p={p}
               tried={lookOf(p.item.id)}
@@ -188,6 +190,15 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
           )
           // A dashed event, which lets work over it, beside the work rather than under it (plan/layers.ts)
           const placed = sideBySide(going, [...shown, ...sessions, ...mealBlocks], date, axis, givesTimeToWork)
+          // what's drawn over an event: its words stop above them (lines.roomAbove)
+          const timers = timerLanes(timer && nowData?.current_source === "timer" ? { key: "main", title: nowData.current?.title ?? "", seconds: elapsed } : null, status?.alongside ?? [], drift)
+          const coverings: Over[] = [
+            ...placed.blocks.map((b) => ({ top: b.top, from: b.column / b.columns, to: (b.column + 1) / b.columns })),
+            ...timers.flatMap((t) => {
+              const at = spanIn(now, t.seconds, toMin(date) + axis.startMin, toMin(date) + axis.endMin)
+              return at ? [{ top: at.top, from: t.lane / t.lanes, to: (t.lane + 1) / t.lanes }] : []
+            }),
+          ]
           return (
             <div
               key={date}
@@ -213,7 +224,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
             >
               <Nights date={date} days={days} axis={axis} />
               {layout(notGoing, date, axis).map((p) => fixedBox(p))}
-              {placed.events.map((p) => fixedBox(p))}
+              {placed.events.map((p) => fixedBox(p, false, coverings))}
               {event && !event.allDay && layout([event], date, axis).map((p) => <DraftBox key="draft" p={p} title={event.title} />)}
               {placed.blocks.map((p) =>
                 p.item.key.startsWith("M") ? (

@@ -164,6 +164,7 @@ export function BlockBox({ p, isCur, selected, done, look, movedFrom, tried, tod
 
 interface FixedProps {
   p: Placed<Item & { start: string; end: string }>
+  room?: number // minutes clear before something is drawn over it (lines.roomAbove): its words fit there
   onOpen: (e?: React.MouseEvent) => void
   picked?: boolean // one of several picked on the calendar
   onEdit?: () => void // a double-click on it, away from its time
@@ -174,7 +175,7 @@ interface FixedProps {
   aside?: boolean // one you're skipping: a tab at the side of its time, over the work that takes it
 }
 
-export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, onGrab, aside }: FixedProps) {
+export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, onGrab, aside, room }: FixedProps) {
   const it = p.item
   const { skinOf, light } = useLook()
   const base = skinOf(it.event_kind === "shove" ? "shove" : "fixed", it.area)
@@ -202,7 +203,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
           ? { ...painted, bd: `1.5px dashed color-mix(in srgb, ${paint} 70%, transparent)` }
           : painted
   const tall = minutes(it) >= 45
-  const lines = useLines(p.height, 0, tall)
+  const lines = useLines(Math.min(p.height, room ?? p.height), 0, tall)
   const [typing, setTyping] = useState(false)
   const time = retime && { typing, span: it, start: () => (setTyping(true), retime.begin()), save: retime.save, stop: () => setTyping(false) }
   // Time you just shoved comes into view and glows, so you see it was taken back.

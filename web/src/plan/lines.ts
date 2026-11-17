@@ -24,3 +24,19 @@ export function detailLines(px: number, titleUsed: number, rows = 0): number {
 export function clamped(lines: number): CSSProperties {
   return { display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: lines, overflow: "hidden", overflowWrap: "anywhere", whiteSpace: "normal" }
 }
+
+/** Something drawn over a box: its top (minutes from the column's top) and its share of the width, from 0 to 1. */
+export interface Over {
+  top: number
+  from: number
+  to: number
+}
+
+/** Minutes of a box clear before the first thing drawn over it (a meal you ate, a running timer), so its title, time
+ * and location fit there rather than run under it (17 Nov, a client: a lab's long location wrapped under "Snack" and a
+ * timer). The whole box when nothing covers it; never less than its first 15 minutes. */
+export function roomAbove(box: { top: number; height: number; column: number; columns: number }, over: Over[]): number {
+  const [from, to] = [box.column / box.columns, (box.column + 1) / box.columns]
+  const tops = over.filter((o) => o.from < to && o.to > from && o.top > box.top && o.top < box.top + box.height).map((o) => o.top)
+  return tops.length ? Math.max(15, Math.min(...tops) - box.top) : box.height
+}
