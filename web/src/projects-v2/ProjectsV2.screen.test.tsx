@@ -238,18 +238,24 @@ describe("the Projects & exams page", () => {
     await friday.c("edit", { id: prep.id, area: prep.area })
   })
 
-  it("says whether exam focus is on, and opens it as a rule in Rules", async () => {
-    // 14 Nov: exam focus is a rule, not a setting this page holds
+  it("says in plain words what happens before an exam, and sets it right there for every exam", async () => {
+    // 17 Nov: "what does exam focus even mean, its very confusing": a row saying what you'd see, set in place
+    const rules = () => friday.q<{ name: string; type: string; enabled: boolean }[]>("rules")
     const first = await examPanel()
-    expect(within(first.panel).getByText("Off: other courses go on as usual")).toBeTruthy()
-    await first.user.click(within(first.panel).getByRole("link", { name: "Change it in Rules" }))
-    await waitFor(() => expect(window.location.hash).toMatch(/^#\/rules\?text=/))
-    expect(((await screen.findByRole("textbox", { name: "New rule" })) as HTMLInputElement).value).toBe("Focus on an exam's course 3 days before it")
+    expect(within(first.panel).queryByText(/Exam focus/)).toBeNull()
+    const row = within(first.panel).getByRole("button", { name: "Before an exam: Other classes' work goes on as usual" })
+    expect(within(first.panel).getByText(/^For all your exams\. Work for other classes due after the exam waits/)).toBeTruthy()
+    await first.user.click(row)
+    await first.user.click(within(first.panel).getByRole("radio", { name: /^3 days before/ }))
+    const added = await waitForSent("rule_add")
+    expect(added.body).toMatchObject({ text: "Focus on an exam's course 3 days before it", strength: "Always" })
+    expect(await within(first.panel).findByRole("button", { name: "Before an exam: Only its class's work, 3 days before" }, { timeout: 10_000 })).toBeTruthy()
+    expect((await rules()).find((r) => r.type === "exam_focus")?.enabled).toBe(true)
+    await first.user.click(within(first.panel).getByRole("button", { name: /^Before an exam:/ }))
+    await first.user.click(within(first.panel).getByRole("radio", { name: /^Off/ }))
+    expect((await waitForSent("rule_set")).body).toEqual({ name: "you:exam-focus", enabled: false })
+    expect(await within(first.panel).findByRole("button", { name: "Before an exam: Other classes' work goes on as usual" }, { timeout: 10_000 })).toBeTruthy()
     first.unmount()
-    await friday.c("rule_add", { text: "focus on exams 3 days before", overrides: {}, strength: "Always" })
-    const second = await examPanel()
-    expect(await within(second.panel).findByText("3 days before, other courses wait")).toBeTruthy()
-    expect(within(second.panel).getByRole("link", { name: "Change it in Rules" }).getAttribute("href")).toContain("/rules?edit=you%3Aexam-focus")
     await friday.c("rule_remove", { name: "you:exam-focus" })
   })
 

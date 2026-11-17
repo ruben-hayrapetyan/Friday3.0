@@ -4,7 +4,7 @@
 
 import { type QueryClient } from "@tanstack/react-query"
 import { useState } from "react"
-import { Link, useNavigate } from "react-router"
+import { useNavigate } from "react-router"
 import type { Item } from "@/api/client"
 import { Check, H, Icon } from "@/components/fr/controls"
 import { useAreas, useHorizon } from "@/hooks/queries"
@@ -27,6 +27,9 @@ function changedPrep(client: QueryClient, prepId: number, change: Partial<Item> 
   )
 }
 
+const FOCUS = [0, 1, 2, 3, 5, 7] // days before an exam its class has to itself; 0 is off
+const daysWord = (d: number) => (d === 1 ? "the day" : `${d} days`)
+
 export function ExamPanel({ exam }: { exam: Exam }) {
   const { today, setPlace } = useShell()
   const { color } = useLook()
@@ -40,11 +43,20 @@ export function ExamPanel({ exam }: { exam: Exam }) {
   const tint = color(area)
   const states = exam.prep.map((p) => prepState(p, blocks, start, today))
   const line = summary(exam, states, today)
-  const [open, setOpen] = useState<"tag" | null>(null)
+  const [open, setOpen] = useState<"tag" | "focus" | null>(null)
   const retag = useTag(e.id, e.title)
   const areas = (useAreas().data ?? []).filter((a) => !a.archived).map((a) => a.name)
   const focus = (useRules().data ?? []).find((r) => r.type === "exam_focus")
   const focusDays = Number((focus?.reading as { amount?: number } | null)?.amount ?? focus?.number?.value ?? 3)
+  const focusOn = !!focus?.enabled
+  const addRule = useCommand("rule_add", { label: () => "Saved for every exam" })
+  const setRule = useCommand("rule_set", { label: () => "Off for every exam" })
+  // a number of days: the rule in those words (a new one takes the old one's place); none: switched off, kept in Rules
+  const pickFocus = (days: number) => {
+    if (days === (focusOn ? focusDays : 0)) return
+    if (!days) return focus && setRule({ name: focus.name, enabled: false })
+    addRule({ text: `Focus on an exam's course ${days === 1 ? "the day" : `${days} days`} before it`, overrides: {}, strength: "Always" })
+  }
   const total = exam.done_min + exam.remaining_min
   return (
     <>
@@ -77,13 +89,11 @@ export function ExamPanel({ exam }: { exam: Exam }) {
         <SettingRow label="Tag" value={e.area ?? "No tag"} open={open === "tag"} onToggle={() => setOpen(open === "tag" ? null : "tag")} note="Its course: its color, and the prep added from here">
           <Choices label="Tag" value={e.area ?? null} onPick={(t: string | null) => (t !== (e.area ?? null) && retag(t), setOpen(null))} options={[{ value: null as string | null, label: "No tag" }, ...areas.map((a) => ({ value: a as string | null, label: a }))]} />
         </SettingRow>
-        <span className="fr-kicker">Exam focus</span>
-        <span style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
-          <span>{focus?.enabled ? `${focusDays === 1 ? "The day" : `${focusDays} days`} before, other courses wait` : "Off: other courses go on as usual"}</span>
-          <Link to={focus ? `/rules?edit=${encodeURIComponent(focus.name)}` : `/rules?text=${encodeURIComponent("Focus on an exam's course 3 days before it")}`} className="fr-link" style={{ alignSelf: "flex-start" }}>
-            Change it in Rules
-          </Link>
-        </span>
+        {/* what "exam focus" does, said as what you'd see, and set here (17 Nov: "what does exam focus even mean, its
+            very confusing"); it's one rule for every exam, still in Rules too */}
+        <SettingRow label="Before an exam" value={focusOn ? `Only its class's work, ${daysWord(focusDays)} before` : "Other classes' work goes on as usual"} open={open === "focus"} onToggle={() => setOpen(open === "focus" ? null : "focus")} note="For all your exams. Work for other classes due after the exam waits until it's over">
+          <Choices label="Before an exam" value={focusOn ? focusDays : 0} onPick={(d: number) => (pickFocus(d), setOpen(null))} options={FOCUS.map((d) => ({ value: d, label: d ? `${daysWord(d)} before`.replace(/^t/, "T") : "Off", desc: d ? "Only the exam's class is planned then" : "Other classes go on as usual" }))} />
+        </SettingRow>
       </Rows>
       <button className="fr-plain fr-link" onClick={() => (setPlace({ view: 1, first: start.slice(0, 10) }), navigate("/"))} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, alignSelf: "flex-start" }}>
         <Icon name="calendar-dots" size={13} />
