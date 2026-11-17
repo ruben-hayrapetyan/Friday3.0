@@ -31,8 +31,7 @@ def before_050(conn: sqlite3.Connection) -> dict[str, int]:
     essay = ask(conn, "template_apply", template="Essay", title="History essay", hours=6)["item"]["id"]
     talk = ask(conn, "template_apply", template="Presentation", title="Club talk", hours=3)["item"]["id"]
     for step in [c["id"] for p in ask(conn, "projects") if p["item"]["id"] == talk for c in p["children"]]:
-        ask(conn, "done", id=step)
-    ask(conn, "done", id=talk)
+        ask(conn, "done", id=step)  # its last step done finishes the talk too (17 Nov, proposal (h))
     exam = ask(conn, "add", title="Stats midterm", preset="Exam", start="2026-10-29T10:00", end="2026-10-29T11:30")
     ask(conn, "add", title="Practice midterm", preset="Exam prep", duration_min=120, due="2026-10-29T10:00",
         before=[exam["item"]["id"]])  # fmt: skip

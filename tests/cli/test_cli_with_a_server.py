@@ -162,9 +162,10 @@ def test_paces_fits_rule_totals_load_and_projects(friday: TestClient) -> None:
     assert ["T2", "outline", "1", "h"] in [line.split() for line in says("fits", "--minutes", "60")]
     assert all(len(line.split()) == 2 for line in says("rule-totals"))
     assert says("load")[0].startswith("2026-10-19  ")
-    project, child = says("projects")
+    project, child, rest = says("projects")  # the 3 h you gave it beyond its step: a step of its own (proposal (h))
     assert project.startswith("T1  thesis  due Fri Oct 23 5pm  ")
     assert child == "  T2  outline  1 h left"
+    assert rest == "  T3  More on thesis  3 h left"
 
 
 def test_a_timer_shows_in_the_status(friday: TestClient) -> None:
