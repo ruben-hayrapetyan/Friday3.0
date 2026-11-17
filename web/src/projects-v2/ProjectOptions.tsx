@@ -15,6 +15,10 @@ type Options = Schemas["ProjectOptionsOut"]
 export const OPTIONS_KEY = ["project_options"] as const
 export const useProjectOptions = () => useQuery({ queryKey: OPTIONS_KEY, queryFn: () => query("project_options") })
 
+/** A description as a sentence: its first letter a capital (a client: "the text explanation at the bottom needs a capital at
+ * the start of the sentence"). */
+export const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+
 /** Each project's days early, by id, for the bars' dotted lines. */
 export const earlyDays = (all: Options[]) => Object.fromEntries(all.map((o) => [o.id, o.early_days]))
 
@@ -54,8 +58,8 @@ export function ProjectOptions({ p }: { p: Project }) {
             })}
           />
         </SettingRow>
-        <SettingRow label="Pace" value={pace.label} open={open === "pace"} onToggle={() => setOpen(open === "pace" ? null : "pace")} note={`${pace.desc}${total ? ` (${dur(total)} in all)` : ""}. Shows on projects due more than two weeks off.`}>
-          <Choices label="Pace" value={pacing} onPick={(v: string) => (v !== pacing && set({ id: p.item.id, pacing: v as "front" | "linear" | "back" | "kind" }), setOpen(null))} options={PACES.map((x) => ({ value: x.value as string, label: x.label, desc: x.desc[0].toUpperCase() + x.desc.slice(1) }))} />
+        <SettingRow label="Pace" value={pace.label} open={open === "pace"} onToggle={() => setOpen(open === "pace" ? null : "pace")} note={`${sentence(pace.desc)}${total ? ` (${dur(total)} in all)` : ""}. Shows on projects due more than two weeks off.`}>
+          <Choices label="Pace" value={pacing} onPick={(v: string) => (v !== pacing && set({ id: p.item.id, pacing: v as "front" | "linear" | "back" | "kind" }), setOpen(null))} options={PACES.map((x) => ({ value: x.value as string, label: x.label, desc: sentence(x.desc) }))} />
         </SettingRow>
       </Rows>
     </section>

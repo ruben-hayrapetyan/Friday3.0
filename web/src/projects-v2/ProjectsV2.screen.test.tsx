@@ -200,6 +200,12 @@ describe("the Projects & exams page", () => {
     await waitFor(() => expect(window.location.hash).toMatch(/^#\/projects\?ongoing=\d+$/))
     const panel = await screen.findByRole("complementary", { name: "Guitar practice" })
     expect(within(panel).getByRole("button", { name: "Days a week: Whenever it fits" })).toBeTruthy()
+    // a tag, typed new (a client: "can't add a tag on projects of type ongoing")
+    await f.user.click(within(panel).getByRole("button", { name: /^Tag: No tag/ }))
+    await f.user.type(within(panel).getByRole("textbox", { name: "A new tag" }), "Music{Enter}")
+    expect((await waitForSent("ongoing_set")).body).toEqual({ id: expect.any(Number), area: "Music" })
+    expect(await within(panel).findByRole("button", { name: /^Tag: Music/ })).toBeTruthy() // at once
+    sent.length = 0
     await choose(f.user, panel, "Days a week", /^2 days a week/)
     expect(await within(panel).findByRole("button", { name: "Days a week: 2 days a week, about 2h each" })).toBeTruthy() // at once
     expect((await waitForSent("ongoing_set")).body).toMatchObject({ rhythm_days: 2 })
@@ -347,6 +353,8 @@ describe("the Projects & exams page", () => {
     sent.length = 0
     await choose(f.user, options, "Pace", /^Front-load it/)
     expect(await within(options).findByRole("button", { name: "Pace: Front-load it" })).toBeTruthy()
+    // its explanation a sentence, a capital first (a client's note)
+    expect(within(options).getByText(/^Most of it in the first weeks, done well before its due/)).toBeTruthy()
     expect((await waitForSent("project_set")).body).toEqual({ id, pacing: "front" })
     await waitFor(async () => {
       const rules = await friday.q<{ name: string; sentence: string }[]>("rules")
