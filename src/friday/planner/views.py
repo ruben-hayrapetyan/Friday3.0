@@ -145,6 +145,10 @@ CLASH_SHARE = 0.25  # a rival counts when it loses at least this share of what t
 ASK_SHARE = 1.0
 ASK_MOST = WIN * WIN
 ASK_LATE_HOURS = 0.25  # keeping the rule makes work late: a quarter of an hour more past its due, or more
+# 17 Nov (your screenshot, your choice): weighed 20 times over, "Spread hard work evenly" kept your work 5% more even,
+# and the plan made from scratch for it happened to put CUAI HW at 1:30am: a "clash" with sleep that was the search's
+# own noise. A rule clashes only when keeping it gains at least this share of what it costs in your plan.
+MIN_GAIN_SHARE = 0.10
 
 
 @dataclass
@@ -189,8 +193,9 @@ def clash_of(snapshot: Snapshot, name: str, before_plan: AssembledPlan, after_pl
     to another day, where the other rule pays (15 Nov: finishing Lab 9 sooner split it on Monday, not on its due)."""
     before, after = by_day(before_plan), by_day(after_plan)
     days = sorted(set(before) | set(after))
-    gained = [d for d in before if before[d].get(name, 0) > after.get(d, {}).get(name, 0) / CLASH_FACTOR]
-    gain = sum(before[d].get(name, 0) - after.get(d, {}).get(name, 0) / CLASH_FACTOR for d in gained)
+    gain = gain_of(before, after, name)
+    if gain < MIN_GAIN_SHARE * sum(t.get(name, 0) for t in before.values()):
+        return None  # kept no better than the search's noise: nothing to trade
     lost: dict[str, float] = {}
     for rule in learnable(snapshot.settings):
         if rule != name:
@@ -202,6 +207,12 @@ def clash_of(snapshot: Snapshot, name: str, before_plan: AssembledPlan, after_pl
     late = late_total(after_plan) - late_total(before_plan)
     ask = ASK_SHARE * gain <= cost < ASK_MOST * gain or late >= ASK_LATE_HOURS
     return Clash(rival, where, because(snapshot, name, rival, before_plan, after_plan), ask)
+
+
+def gain_of(before: dict[str, dict[str, int]], after: dict[str, dict[str, int]], name: str) -> float:
+    """How much less a rule costs, by day, once it's weighed CLASH_FACTOR times over: what keeping it gains."""
+    later = lambda d: after.get(d, {}).get(name, 0) / CLASH_FACTOR  # noqa: E731
+    return sum(t.get(name, 0) - later(d) for d, t in before.items() if t.get(name, 0) > later(d))
 
 
 def late_total(plan: AssembledPlan) -> float:
@@ -266,7 +277,20 @@ def kept_said(kind: str, title: str, was: Blocks, now: Blocks, snapshot: Snapsho
         return (
             f"Ending {title} by {clock_time(to_local(max(b.end_utc for b in now), snapshot.settings['time'].timezone))}"
         )
-    return "Keeping it"
+    return KEPT.get(kind, "Keeping it")
+
+
+# What keeping a rule does, for the kinds whose plans don't say it in numbers (17 Nov: "Keeping it moves CUAI HW to
+# 1:30am" didn't say why): the card names both sides, what the rule gains and what the other pays.
+KEPT = {
+    "even_load": "Spreading your work more evenly",
+    "spread": "Spreading each task over more days",
+    "energy": "Putting hard work at your sharpest hours",
+    "cluster": "Keeping each task's sittings on fewer days",
+    "same_course": "Keeping one course's work together",
+    "window": "Keeping work in the hours you set",
+    "close_to_due": "Doing prep closer to its exam",
+}
 
 
 def cost_said(kind: str, it: str, was: Blocks, now: Blocks, snapshot: Snapshot) -> str:
@@ -287,6 +311,9 @@ def cost_said(kind: str, it: str, was: Blocks, now: Blocks, snapshot: Snapshot) 
         end, end_was = (clock_time(to_local(max(b.end_utc for b in blocks), tz)) for blocks in (now, was))
         if max(b.end_utc for b in now) > max(b.end_utc for b in was):
             return f"keeps you on {it} until {end} instead of {end_was}"
+    if kind == "sleep_min" and now and was:
+        moved = cost_said("", it, was, now, snapshot)
+        return f"{moved}, into your sleep" if moved.startswith(("moves", "plans")) else moved
     if not now:
         return f"leaves {it} out of the plan"
     if not was:
