@@ -193,3 +193,15 @@ def test_three_gym_times_a_week_are_planned_two_days_apart(app: App) -> None:
     starts = [parse_utc(s) for s in gym_three_a_week_planned(app, 2)]
     assert len(starts) == 3
     assert all(b - a >= 2 * DAY for a, b in zip(starts, starts[1:], strict=False))
+
+
+def test_a_spacing_that_cant_be_kept_plans_closer_and_says_so(tmp_path: Path) -> None:
+    # 17 Nov: with waits kept behind their sources in the allocator, a daily repeat asked to be 3 days apart left its LP
+    # "abnormal" and the replan failed (the whole-system test waited for a notice that never came)
+    app = new_app(tmp_path, horizon_days=14)
+    series = app.do("series_add", title="Stretch", every="day", duration_min=60, start_date="2026-10-20")
+    app.do("series_spacing", id=series["id"], days=3)
+    app.do("replan")
+    status = app.do("status")
+    assert any("closer than the 3 days you asked" in n for n in status["notices"])
+    assert not [k for k in status["late"] if "Stretch" in k]

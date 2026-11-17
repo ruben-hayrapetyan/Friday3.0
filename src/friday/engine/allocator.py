@@ -252,8 +252,8 @@ class AllocatorLP:
         needs = {it.key: it.need for it in self.todo}
         for item in self.todo:
             for dep in item.depends_on:
-                if dep.key not in needs or dep.required == 0 or needs[dep.key] <= 0:
-                    continue
+                if dep.key not in needs or dep.required == 0 or needs[dep.key] <= 0 or dep.lag_min > 0:
+                    continue  # a wait with a lag (spacing) is held by its ready day instead
                 for d in range(self.A):
                     mine, theirs = self.days_of(item.key, before=d + 1), self.days_of(dep.key, before=d + 1)
                     if mine:
