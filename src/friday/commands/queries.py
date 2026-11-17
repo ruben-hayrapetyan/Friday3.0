@@ -29,7 +29,7 @@ from friday.api.views import (
     Swap,
 )
 from friday.commands.decisions import decisions
-from friday.commands.fields import item_out, require_item, waiting_on
+from friday.commands.fields import event_facts, item_out, require_item, waiting_on
 from friday.commands.registry import Ctx, query
 from friday.commands.timer import all_running, elapsed_seconds, running
 from friday.commands.timer import timer_out as timing
@@ -112,7 +112,11 @@ def now(ctx: Ctx, inp: Empty) -> NowOut:
     covering = next((b for b in planned if b.start_utc <= ctx.now_utc), None)
     # A hidden calendar's events are never named (planner/hidden.py); one it counts as busy still ends the free time.
     events, walls = fixed_events(ctx)
-    happening = next((e for e in events if parse_utc(e["start_utc"]) <= ctx.now_utc), None)
+    # One that takes your time comes first, even begun later (16 Nov, a client's note: a free event begun earlier
+    # showed over a busy one); one you're working through (marked free) shows only when nothing else is on, and
+    # doesn't end your free time.
+    taking = [e for e in events if takes_time(ctx, e)]
+    happening = first_begun(taking, ctx.now_utc) or first_begun(events, ctx.now_utc)
     current = None
     if timer is not None:
         current = timed_now(ctx, timer, planned, [*events, *walls])
@@ -122,7 +126,7 @@ def now(ctx: Ctx, inp: Empty) -> NowOut:
         current = event_out(ctx, happening)
     after = parse_utc(ctx.utc(current.end)) if current else ctx.now_utc
     block = min((b for b in planned if b.start_utc >= after), key=lambda b: b.start_utc, default=None)
-    event = next((e for e in events if parse_utc(e["start_utc"]) >= after), None)
+    event = next((e for e in taking if parse_utc(e["start_utc"]) >= after), None)
     coming = None  # the next thing, work or class: "free until 15:45" had walked past a 13:25 discussion
     if block is not None and (event is None or block.start_utc < parse_utc(event["start_utc"])):
         coming = (block.start_utc, block_out(ctx, block.item_id, block.start_utc, block.end_utc))
@@ -157,6 +161,15 @@ def now(ctx: Ctx, inp: Empty) -> NowOut:
         ][:count],
         gap_minutes=gap,
     )
+
+
+def first_begun(events: list[dict[str, Any]], now_utc: int) -> dict[str, Any] | None:
+    return next((e for e in events if parse_utc(e["start_utc"]) <= now_utc), None)
+
+
+def takes_time(ctx: Ctx, event: dict[str, Any]) -> bool:
+    """Whether an event keeps work off its time: busy, or marked free and you said you're going (event_facts)."""
+    return event_facts(ctx, item_from_row(event))["left_out"] is None
 
 
 def fixed_events(ctx: Ctx) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:

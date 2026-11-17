@@ -354,6 +354,21 @@ describe("an event's card", () => {
     expect((await waitForSent("event_hold")).body).toEqual({ id: event.id })
   })
 
+  it("offers a free event the three choices, worked through until you choose, and no separate button for a task", async () => {
+    // 16 Nov, a client's note: events marked free in their calendar had only "Use this time for a task"
+    const day = addDays(await today(), 5)
+    await friday.c("add", { title: "Open studio hours", when: "fixed", start: `${day}T13:00`, end: `${day}T14:00`, free: true })
+    const event = (await nextWeek()).fixed.find((f) => f.title === "Open studio hours") as Item
+    const { user } = await openCard(ofEvent(event))
+    expect((await inCard().findByRole("radio", { name: /^Work through it/ }, { timeout: 5000 })).getAttribute("aria-checked")).toBe("true")
+    expect(inCard().getByRole("radio", { name: /^I'm going/ }).getAttribute("aria-checked")).toBe("false")
+    expect(inCard().queryByRole("button", { name: /Use this time for a task/ })).toBeNull()
+    expect(inCard().getByRole("button", { name: "Pick a to-do" })).toBeTruthy() // what that button did, under Work through it
+    await user.click(inCard().getByRole("radio", { name: /^I'm going/ }))
+    expect((await waitForSent("event_choice")).body).toEqual({ id: event.id, choice: "going" })
+    expect(inCard().getByRole("radio", { name: /^I'm going/ }).getAttribute("aria-checked")).toBe("true") // at once
+  })
+
   it("makes an event of your own repeat, and opens it in the drawer to edit", async () => {
     const day = addDays(await today(), 5)
     await friday.c("add", { title: "Coffee with Priya", when: "fixed", start: `${day}T15:00`, end: `${day}T15:45` })

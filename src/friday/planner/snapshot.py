@@ -5,6 +5,7 @@ Replans are reproducible from a saved snapshot: nothing after this point reads t
 
 import json
 import sqlite3
+from collections.abc import Container
 from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 from statistics import median
@@ -270,8 +271,9 @@ def snapshot_items(conn: sqlite3.Connection, now_utc: int, settings: dict[str, A
         [user_id, format_utc(now_utc - 1440), format_utc(now_utc + days * 1440)],
     )
     items = {}
+    going = set(kv_get(conn, EVENTS_GOING, [], user_id) or [])
     for r in found:
-        item = busy_as_you_count(item_from_row(r), settings, calendars)
+        item = busy_as_you_count(item_from_row(r), settings, calendars, going)
         area = areas.get(item.area_id) if item.area_id is not None else None
         factor = cushion(conn, area, item.preset, now_utc, settings, user_id, memo) if item.when != "fixed" else 1.0
         items[r["id"]] = shortened(cushioned(item, factor), shares.get(item.preset or "") if factor <= 1 else None)
@@ -314,12 +316,19 @@ def event_holds(conn: sqlite3.Connection, user_id: int) -> dict[int, int]:
     return {int(e): int(t) for e, t in (kv_get(conn, "event_holds", {}, user_id) or {}).items()}
 
 
-def busy_as_you_count(item: Item, settings: dict[str, Any], calendars: dict[int, str]) -> Item:
+EVENTS_GOING = "events_going"  # kv: the events marked free in their calendar that you said you're going to
+
+
+def busy_as_you_count(
+    item: Item, settings: dict[str, Any], calendars: dict[int, str], going: Container[int] = ()
+) -> Item:
     """An event left out of planning (a due reminder, marked free, filtered, a calendar of room bookings)
-    is kept in the snapshot but blocks no time."""
+    is kept in the snapshot but blocks no time; one marked free that you said you're going to blocks it."""
     if item.when != "fixed" or not item.blocks_time:
         return item
     reason = left_out(item.title, calendars.get(item.id or 0), item.free, settings["categories"], settings["busy"])
+    if reason == "free" and item.id in going:
+        return item
     return replace(item, blocks_time=False) if reason else item
 
 

@@ -167,9 +167,7 @@ export function BlockPopover() {
             <Icon name="x" />
           </button>
         </div>
-        {event && event.event_kind !== "shove" && (!event.left_out || event.left_out === "skipped" || event.left_out === "through") && (
-          <EventChoice event={event} flags={optionalFlags(client, event.id)} />
-        )}
+        {event && event.event_kind !== "shove" && (!event.left_out || CHOOSABLE.has(event.left_out)) && <EventChoice event={event} flags={optionalFlags(client, event.id)} />}
         {flexible && item?.status === "done" && (
           // Finished: nothing to start; it says so, and can be opened again.
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -220,7 +218,7 @@ export function BlockPopover() {
           </div>
         )}
         {event && <EventFacts event={event} paint={dot} />}
-        {event && event.event_kind !== "shove" && event.left_out && event.left_out !== "skipped" && event.left_out !== "through" && <HeldFor event={event} />}
+        {event && event.event_kind !== "shove" && event.left_out && !CHOOSABLE.has(event.left_out) && <HeldFor event={event} />}
         {item && !event && (
           <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", fontSize: 12 }}>
             <span style={{ color: "var(--color-neutral-500)" }}>Due</span>
@@ -591,6 +589,10 @@ function CategoryRow({ event }: { event: Item }) {
 
 type Flags = Pick<Item, "optional" | "going" | "gives_way_to">
 
+// The events whose card offers the three choices: those that take your time, those you skipped or work through, and
+// those marked free in their calendar (16 Nov, a client's note: free events had none, only "Use this time for a task").
+const CHOOSABLE = new Set(["skipped", "through", "free"])
+
 /** What the plan says of an optional event (gym, climbing club): the calendar's plan has it (plan query). */
 function optionalFlags(client: QueryClient, id: number): Flags | null {
   for (const [, plan] of client.getQueriesData<Schemas["PlanOut"]>({ queryKey: ["plan"] })) {
@@ -613,7 +615,8 @@ function EventChoice({ event, flags }: { event: Item; flags: Flags | null }) {
   const optional = !!flags?.optional
   const going = optional ? !!flags?.going : true
   const proposed = !going ? (flags?.gives_way_to ?? event.gives_way_to ?? null) : null
-  const was: Choice | null = event.left_out === "skipped" ? "skip" : event.left_out === "through" || event.holds ? "through" : optional && !going ? null : "going"
+  // marked free in its calendar: worked through until you choose
+  const was: Choice | null = event.left_out === "skipped" ? "skip" : event.left_out === "through" || event.left_out === "free" || event.holds ? "through" : optional && !going ? null : "going"
   const now = said ?? was
   const pick = (choice: Choice) => {
     if (choice === now) return
@@ -651,7 +654,7 @@ function EventChoice({ event, flags }: { event: Item; flags: Flags | null }) {
       {now === "going" && !said && <HeldFor event={event} only="likely" />}
       {/* open: its time is work's (worked through), so a to-do has it first and any work the rest; an event you
           said is a to-do's time keeps the rest of it free of other work, and Free it lets it go */}
-      {now === "through" && <HeldFor event={event} only="work" open={said === "through" || event.left_out === "through"} />}
+      {now === "through" && <HeldFor event={event} only="work" open={said === "through" || event.left_out === "through" || event.left_out === "free"} />}
     </div>
   )
 }
