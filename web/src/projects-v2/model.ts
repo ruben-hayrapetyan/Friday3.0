@@ -177,7 +177,8 @@ export const EARLY_DAYS = [0, 1, 2, 3, 5, 7]
 
 /** A project's pace through its work, and what each does with its hours. */
 export const PACES = [
-  { value: "kind", label: "Not set", desc: "about the same each week up to its due, as Friday paces any project" },
+  // what an unset pace does since 17 Nov ("by default, friday should use all time that it can")
+  { value: "kind", label: "As soon as there's time", desc: "in your earliest free time, up to each day's limit" },
   { value: "front", label: "Front-load it", desc: "most of it in the first weeks, done well before its due" },
   { value: "linear", label: "Evenly", desc: "about the same each week, up to its due" },
   { value: "back", label: "Toward the end", desc: "a little now, most of it in the last weeks" },
