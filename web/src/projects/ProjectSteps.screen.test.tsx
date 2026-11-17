@@ -99,9 +99,11 @@ describe("the To-do list", () => {
     cleanup()
     const { user } = await openFriday("/todo")
     const row = (title: string) => screen.findByTitle(`${title}: click for everything about it, double-click the title to rename`, {}, { timeout: 10_000 })
-    for (const [title] of STEPS) await waitFor(async () => expect(within(await row(title)).getByTitle(`A step of ${PROJECT}`)).toBeTruthy())
+    for (const [title] of STEPS) await row(title)
     expect(screen.queryByTitle(`${PROJECT}: click for everything about it, double-click the title to rename`)).toBeNull()
-    const heading = screen.getAllByTitle(new RegExp(`^Open ${PROJECT}:`))[0]
+    const heading = (await screen.findAllByTitle(new RegExp(`^Open ${PROJECT}:`), {}, { timeout: 10_000 }))[0]
+    // under its heading a step doesn't say its project's name again (it cut a phone's row short)
+    for (const [title] of STEPS) expect(within(await row(title)).queryByTitle(`A step of ${PROJECT}`)).toBeNull()
     await user.click(heading)
     await waitFor(() => expect(window.location.hash).toBe(`#/projects?id=${project}`))
     await openFriday("/todo")

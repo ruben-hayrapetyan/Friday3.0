@@ -219,7 +219,7 @@ export function TodoPage() {
                     {g.items.map((i, n) => (
                       <div key={i.id} style={{ display: "contents" }}>
                         {i.parent_id != null && g.items[n - 1]?.parent_id !== i.parent_id && <StepsHeading step={i} />}
-                        <RowOf item={i} by={by} fresh={fresh.includes(i.id)} selected={i.id === selected} picked={picked.includes(i.id)} onSelect={(e) => choose(i.id, e)} dragging={draggedIds(i.id, picked)} />
+                        <RowOf item={i} by={by} headed={i.parent_id != null} fresh={fresh.includes(i.id)} selected={i.id === selected} picked={picked.includes(i.id)} onSelect={(e) => choose(i.id, e)} dragging={draggedIds(i.id, picked)} />
                       </div>
                     ))}
                     {fill && <AddBox compact onAdded={added} longTerm={list === "Long term"} fill={fill} placeholder={addHint(by, g.name)} />}
@@ -279,6 +279,7 @@ interface RowProps {
   picked: boolean // one of several picked to change together
   onSelect: (e: React.MouseEvent | React.KeyboardEvent) => void
   dragging?: number[] // what a drag from it carries onto another section: it, or all picked with it
+  headed?: boolean // a step under its project's heading: its project's name isn't said again (17 Nov, proposal (h))
 }
 
 /** A row's drag onto another section: the tasks it carries, and their picture. */
@@ -308,7 +309,7 @@ function SectionRule({ name, items }: { name: string; items: Item[] }) {
 }
 
 /** One line, as personal's notebook drew a task, with what Friday made of it on the right. */
-function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging }: RowProps) {
+function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging, headed }: RowProps) {
   const { today } = useShell()
   const { color } = useLook()
   const blocks = useHorizon().data?.blocks ?? []
@@ -398,7 +399,7 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging }: R
             {item.area}
           </span>
         )}
-        <ProjectName item={item} style={{ flex: "0 0.4 auto", minWidth: 52, maxWidth: "40%", fontSize: 11.5, color: "var(--color-neutral-400)" }} />
+        {!headed && <ProjectName item={item} style={{ flex: "0 0.4 auto", minWidth: 52, maxWidth: "40%", fontSize: 11.5, color: "var(--color-neutral-400)" }} />}
         {by !== "Kind" && <span style={{ fontSize: 11.5, color: "var(--color-neutral-500)", flex: "none" }}>{item.preset ?? ""}</span>}
       </span>
       <span className="tnum fr-mono fr-todo-meta" style={{ display: "flex", alignItems: "center", gap: 12, paddingLeft: 12, paddingRight: 6 }}>
@@ -488,7 +489,7 @@ function Pie({ share }: { share: number }) {
 }
 
 /** The two-line row (v22), for those who like progress bars: View options → Rows → Detailed. */
-function Row({ item, fresh, selected, picked, onSelect, dragging }: RowProps) {
+function Row({ item, fresh, selected, picked, onSelect, dragging, headed }: RowProps) {
   const { today } = useShell()
   const { color } = useLook()
   const blocks = useHorizon().data?.blocks ?? []
@@ -545,7 +546,7 @@ function Row({ item, fresh, selected, picked, onSelect, dragging }: RowProps) {
               {item.area}
             </span>
           )}
-          <ProjectName item={item} style={{ maxWidth: "100%" }} />
+          {!headed && <ProjectName item={item} style={{ maxWidth: "100%" }} />}
           {alert && !late && <StartBy alert={alert} today={today} />}
         </span>
       </div>
