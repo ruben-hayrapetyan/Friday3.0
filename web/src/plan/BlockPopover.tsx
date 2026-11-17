@@ -17,7 +17,7 @@ import { whose } from "@/lib/aiName"
 import { spanOn } from "@/lib/ampm"
 import { likelyTask, ranked } from "@/lib/holds"
 import { clock, dur, sittings, weekday, when } from "@/lib/format"
-import { eventPaint, PIGMENTS } from "@/lib/pigments"
+import { eventPaint, PIGMENTS, pigment, UNMARKED } from "@/lib/pigments"
 import { useAi } from "@/settings/AiConnect"
 import { useLook } from "@/theme/LookProvider"
 import { draftOf, useSeriesPattern } from "@/shell/EventPane"
@@ -516,10 +516,20 @@ function HeldFor({ event, only, open = event.left_out === "skipped" || event.lef
 }
 
 function EventFacts({ event, paint }: { event: Item; paint: string }) {
-  const own = [event.color, event.chroma_color, event.category_color, event.calendar_color].find((c) => PIGMENTS.some((p) => p.id === c))
+  const { light } = useLook()
+  const [colors, setColors] = useState(false)
+  const [chosen, setChosen] = useState<string | null | undefined>(undefined) // shown at once, before the plan has it
+  const recolor = useCommand("edit", { label: () => `${event.title}: color saved` })
+  const color = chosen === undefined ? event.color : chosen
+  // Time you shoved is yours: no category, calendar, color or notes of its own (17 Nov, a client's notes: "shoved
+  // time blocks - purpose of color is …? it is not editable"), so it says what it is instead
+  if (event.event_kind === "shove") {
+    return <span style={{ fontSize: 12, color: "var(--color-neutral-300)" }}>Time you took back from the plan: Friday plans no work here. Give it back to let work in again.</span>
+  }
+  const own = [color, event.chroma_color, event.category_color, event.calendar_color].find((c) => PIGMENTS.some((p) => p.id === c))
   const name = own ? PIGMENTS.find((p) => p.id === own)?.name : "Unmarked"
   // Where an automatic color came from, as the drawer says it.
-  const from = event.color ? null : event.chroma_color ? "as in Chroma" : event.category_color ? (event.category ?? "its category") : event.calendar_color ? (event.calendar ?? "its calendar") : null
+  const from = color ? null : event.chroma_color ? "as in Chroma" : event.category_color ? (event.category ?? "its category") : event.calendar_color ? (event.calendar ?? "its calendar") : null
   return (
     <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", fontSize: 12 }}>
       {event.location && (
@@ -538,16 +548,33 @@ function EventFacts({ event, paint }: { event: Item; paint: string }) {
         {event.calendar && <Icon name={event.saves_to_calendar ? "cloud-check" : "lock-simple"} size={12} />}
       </span>
       <span style={{ color: "var(--color-neutral-500)" }}>Color</span>
-      <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-        <span style={{ width: 10, height: 10, borderRadius: 3, background: paint, flex: "none" }} />
-        {name}
-        {from && <span style={{ color: "var(--color-neutral-500)" }}>{from}</span>}
+      {/* how it's painted on the calendar, changed here (17 Nov, a client: "it is not editable") */}
+      <span style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+        <button className="fr-plain fr-hover-text" onClick={() => setColors(!colors)} aria-expanded={colors} aria-label={`Color: ${name}${from ? `, ${from}` : ""}`} title="Its color on your calendar: click to change it" style={{ display: "flex", gap: 6, alignItems: "center", alignSelf: "flex-start" }}>
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: chosen !== undefined ? (pigment(chosen, light) ?? paint) : paint, flex: "none" }} />
+          {name}
+          {from && <span style={{ color: "var(--color-neutral-500)" }}>{from}</span>}
+          <Icon name="caret-down" size={10} style={{ opacity: 0.6 }} />
+        </button>
+        {colors && (
+          <span role="radiogroup" aria-label="Color" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <button className="fr-plain" role="radio" aria-checked={!color} aria-label="Automatic" title="Automatic: as its category or calendar says" onClick={() => (setChosen(null), recolor({ id: event.id, color: null }))} style={{ ...SWATCH, background: UNMARKED, boxShadow: ringed(!color), display: "grid", placeItems: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>
+              A
+            </button>
+            {PIGMENTS.map((p) => (
+              <button key={p.id} className="fr-plain" role="radio" aria-checked={color === p.id} aria-label={p.name} title={p.name} onClick={() => (setChosen(p.id), recolor({ id: event.id, color: p.id }))} style={{ ...SWATCH, background: pigment(p.id, light) ?? undefined, boxShadow: ringed(color === p.id) }} />
+            ))}
+          </span>
+        )}
       </span>
       <span style={{ color: "var(--color-neutral-500)" }}>Notes</span>
       <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 120, overflowY: "auto", color: event.notes ? undefined : "var(--color-neutral-500)" }}>{event.notes || "—"}</span>
     </div>
   )
 }
+
+const SWATCH: React.CSSProperties = { width: 18, height: 18, borderRadius: 5, flex: "none" }
+const ringed = (on: boolean) => (on ? "0 0 0 2px var(--color-bg), 0 0 0 3.5px var(--color-text)" : "inset 0 0 0 1px color-mix(in srgb, var(--color-text) 15%, transparent)")
 
 const AUTO = "__auto"
 const NONE = "__none"

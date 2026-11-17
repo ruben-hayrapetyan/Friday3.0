@@ -66,7 +66,7 @@ async function openCard(at: { key: string; start: string } | Block) {
 
 /** The card, once its item's detail has come (its facts show). */
 async function detailed() {
-  await waitFor(() => expect(card()?.textContent).toMatch(/Deadline|Calendar/), { timeout: 10_000 })
+  await waitFor(() => expect(card()?.textContent).toMatch(/Deadline|Calendar|Time you took back/), { timeout: 10_000 }) // a shoved card says what it is
 }
 
 /** An event's card key and time. */
@@ -259,6 +259,19 @@ describe("an event's card", () => {
     expect((await inCard().findByRole("radio", { name: /^I'm going/ }, { timeout: 5000 })).getAttribute("aria-checked")).toBe("true")
   })
 
+  it("changes its color from the card, and back to automatic", async () => {
+    // 17 Nov, a client's notes: the Color row "is not editable"
+    const event = await lecture("MATH 1910 Lecture", 1)
+    const { user } = await openCard(ofEvent(event))
+    await user.click(await inCard().findByRole("button", { name: /^Color: / }))
+    await user.click(inCard().getByRole("radio", { name: "Ochre" }))
+    expect(inCard().getByRole("radio", { name: "Ochre" }).getAttribute("aria-checked")).toBe("true") // at once
+    expect(inCard().getByRole("button", { name: /^Color: Ochre/ })).toBeTruthy()
+    expect((await waitForSent("edit")).body).toEqual({ id: event.id, color: "yellow" })
+    await user.click(inCard().getByRole("radio", { name: "Automatic" }))
+    expect((await waitForSent("edit")).body).toEqual({ id: event.id, color: null })
+  })
+
   it("changes its category from the card", async () => {
     const event = await lecture()
     const { user } = await openCard(ofEvent(event))
@@ -392,6 +405,9 @@ describe("an event's card", () => {
     const id = shoved.result.created[0]
     const { user } = await openCard({ key: `F${id}`, start: `${day}T21:00` })
     expect(box(`F${id}`)?.textContent).toMatch(/^Your time/)
+    // what it is, in words: no category, calendar, color or notes of its own (17 Nov, a client's notes)
+    expect(await inCard().findByText(/^Time you took back from the plan: Friday plans no work here/)).toBeTruthy()
+    for (const fact of ["Category", "Calendar", "Color", "Notes"]) expect(inCard().queryByText(fact)).toBeNull()
     await user.click(await inCard().findByRole("button", { name: /Give it back/ }))
     expect((await waitForSent("unshove")).body).toEqual({ id })
   })
