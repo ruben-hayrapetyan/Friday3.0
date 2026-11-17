@@ -1,5 +1,5 @@
 // The new Projects & exams page's data, as plain functions (tested on their own in model.test.ts): every deadline as
-// one kind of row, projects, exams and big to-dos alike, placed on six weeks across; ongoing projects with their
+// one kind of row, projects and exams alike, placed on six weeks across; ongoing projects with their
 // weeks; and the words the shelves use.
 
 import type { Block, Item, Schemas } from "@/api/client"
@@ -12,10 +12,6 @@ export type Ongoing = Schemas["OngoingOut"]
 export type Finished = Schemas["FinishedProject"]
 
 export const WEEKS = 6
-// An assignment with this much left is a project in all but name: it gets a row (two-hour ones stay to-dos). Not the
-// Project kind: the projects query has every open one, and one just archived would come back here until it's done.
-export const BIG_MIN = 240
-const BIG = new Set(["Assignment"])
 
 export interface Step {
   id: number
@@ -25,9 +21,10 @@ export interface Step {
   due: string | null // its own due, if it has one: a milestone on its project's bar
 }
 
-/** One row of the deadline shelf: a project with its steps, an exam with its prep, or one big to-do. */
+/** One row of the deadline shelf: a project with its steps, or an exam with its prep. Assignments stay on To-do, however
+ * big (16 Nov: "it classifies most of my open assignments under projects which is NOT supposed to be the case"). */
 export interface Row {
-  kind: "project" | "exam" | "item"
+  kind: "project" | "exam"
   id: number
   title: string
   area: string | null
@@ -39,7 +36,6 @@ export interface Row {
   steps: Step[] // a project's steps, or an exam's prep, in order
   status: "on_track" | "late" | "unplanned" | "done" | "ready" | "no_prep"
   next: string | null // its next planned session's start
-  notes: string // a project's notes (its Notes field)
 }
 
 export const STATUS: Record<Row["status"], string> = {
@@ -60,8 +56,7 @@ export function nextOf(blocks: Pick<Block, "item_id" | "start" | "end">[], ids: 
 const stepOf = (i: Item): Step => ({ id: i.id, title: i.title, done: i.status === "done", minutes: i.duration_min ?? i.remaining_min ?? 0, due: i.due ?? null })
 
 /** Every deadline as a row, soonest first: projects, exams with their prep, and big to-dos that aren't in either. */
-export function deadlineRows(projects: Project[], exams: Exam[], items: Item[], blocks: Pick<Block, "item_id" | "start" | "end">[], now: string): Row[] {
-  const taken = new Set([...projects.flatMap((p) => [p.item.id, ...p.children.map((c) => c.id)]), ...exams.flatMap((e) => [e.item.id, ...e.prep.map((x) => x.item.id)])])
+export function deadlineRows(projects: Project[], exams: Exam[], blocks: Pick<Block, "item_id" | "start" | "end">[], now: string): Row[] {
   const rows: Row[] = [
     ...projects.map((p): Row => {
       const steps = p.children.filter((c) => c.parent_id === p.item.id)
@@ -78,7 +73,6 @@ export function deadlineRows(projects: Project[], exams: Exam[], items: Item[], 
         steps: steps.map(stepOf),
         status: p.status,
         next: nextOf(blocks, [p.item.id, ...p.children.map((c) => c.id)], now),
-        notes: p.item.notes ?? "",
       }
     }),
     ...exams.map((e): Row => ({
@@ -94,28 +88,7 @@ export function deadlineRows(projects: Project[], exams: Exam[], items: Item[], 
       steps: e.prep.map((x) => stepOf(x.item)),
       status: e.status,
       next: nextOf(blocks, e.prep.map((x) => x.item.id), now),
-      notes: "",
     })),
-    ...items
-      .filter((i) => !taken.has(i.id) && i.parent_id == null && i.status === "todo" && i.due && BIG.has(i.preset ?? "") && (i.remaining_min ?? 0) >= BIG_MIN)
-      .map((i): Row => {
-        const next = nextOf(blocks, [i.id], now)
-        return {
-          kind: "item",
-          id: i.id,
-          title: i.title,
-          area: i.area ?? null,
-          preset: i.preset ?? null,
-          due: i.due ?? null,
-          hard: i.firmness === "hard",
-          doneMin: i.done_min ?? 0,
-          totalMin: (i.done_min ?? 0) + (i.remaining_min ?? 0),
-          steps: [],
-          status: next ? "on_track" : "unplanned",
-          next,
-          notes: "",
-        }
-      }),
   ]
   return rows.sort((a, b) => (a.due ?? "9").localeCompare(b.due ?? "9") || a.id - b.id)
 }
@@ -194,8 +167,6 @@ export function rhythmWords(hours: number, days: number): string {
 /** A project's milestones: its steps with a due of their own, before the project's, soonest first. */
 export const milestones = (r: Pick<Row, "steps" | "due">) => r.steps.filter((s) => s.due && (!r.due || s.due < r.due)).sort((a, b) => (a.due ?? "").localeCompare(b.due ?? ""))
 
-/** Notes as a few lines to glance at: the first `most` with words in them. */
-export const noteLines = (notes: string, most = 5) => notes.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, most)
 
 /** Where a project aims to be done: its due less the days early it aims for (a local time, as dues are). */
 export function aimFor(due: string, days: number): string {

@@ -88,7 +88,8 @@ describe("a step's card", () => {
     expect(within(card).getByText("Hard deadline")).toBeTruthy()
     await user.click(link)
     await waitFor(() => expect(window.location.hash).toBe(`#/projects?id=${project}`))
-    expect(await screen.findByText(/^Due .* · 0 of 3 steps done/)).toBeTruthy()
+    expect(await screen.findByText(/^0 of 3 steps done/)).toBeTruthy()
+    expect(screen.getByRole("button", { name: /^Due: (?!No due date)/ })).toBeTruthy() // its due, in its row
   })
 })
 

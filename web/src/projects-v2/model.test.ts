@@ -1,7 +1,7 @@
 // Glass box: the new Projects & exams page's rows and words (model.ts).
 import { describe, expect, it } from "vitest"
 import type { Item } from "@/api/client"
-import { againstPlan, aimFor, at, behindRhythm, deadlineRows, gridDays, milestones, nextOf, noteLines, rhythmWords, share, sinceTouched, touchedWords, weekStarts, type Exam, type Project } from "./model"
+import { againstPlan, aimFor, at, behindRhythm, deadlineRows, gridDays, milestones, nextOf, rhythmWords, share, sinceTouched, touchedWords, weekStarts, type Exam, type Project } from "./model"
 
 const NOW = "2026-11-16T09:00"
 const TODAY = "2026-11-16"
@@ -34,22 +34,14 @@ describe("deadline rows", () => {
     { item_id: 3, start: "2026-11-16T07:00", end: "2026-11-16T08:00" }, // already over
     { item_id: 20, start: "2026-11-17T10:00", end: "2026-11-17T12:00" },
   ]
-  const big = item({ id: 20, title: "Lab report", preset: "Assignment", due: "2026-11-19T23:59", remaining_min: 300 })
-  const small = item({ id: 21, title: "Reading", preset: "Assignment", due: "2026-11-18T23:59", remaining_min: 90 })
-  const step = item({ id: 3, title: "Draft", parent_id: 1, due: "2026-11-25T17:00", preset: "Assignment", remaining_min: 600 })
-  const rows = deadlineRows([essay], [midterm], [big, small, step], blocks, NOW)
+  const rows = deadlineRows([essay], [midterm], blocks, NOW)
 
-  it("puts projects, exams and big to-dos in one list, soonest first", () => {
+  it("puts projects and exams in one list, soonest first, and nothing else", () => {
+    // 16 Nov: "it classifies most of my open assignments under projects which is NOT supposed to be the case"
     expect(rows.map((r) => [r.kind, r.title])).toEqual([
-      ["item", "Lab report"],
       ["exam", "CS 2112 Prelim"],
       ["project", "Essay"],
     ])
-  })
-
-  it("leaves out a small assignment, and a step that's part of a project", () => {
-    expect(rows.map((r) => r.id)).not.toContain(21)
-    expect(rows.filter((r) => r.id === 3)).toEqual([])
   })
 
   it("gives a project its direct steps and its next session from now", () => {
@@ -67,15 +59,6 @@ describe("deadline rows", () => {
     expect([row.due, row.steps[0].title, row.status, row.hard]).toEqual(["2026-11-20T19:30", "Review sheet", "unplanned", true])
   })
 
-  it("never makes a project a to-do row, as one just archived would be", () => {
-    const archived = item({ id: 30, title: "Poster", preset: "Project", due: "2026-11-30T17:00", remaining_min: 240 })
-    expect(deadlineRows([], [], [archived], [], NOW)).toEqual([])
-  })
-
-  it("calls a big to-do planned when it has a session ahead", () => {
-    expect(rows[0].status).toBe("on_track")
-    expect(deadlineRows([], [], [big], [], NOW)[0].status).toBe("unplanned")
-  })
 })
 
 describe("the six weeks", () => {
@@ -149,7 +132,7 @@ describe("finished projects", () => {
   })
 })
 
-describe("a project's notes, milestones and aim", () => {
+describe("a project's milestones and aim", () => {
   it("makes its milestones of the steps due before it, soonest first", () => {
     const steps = [
       { id: 1, title: "Draft", done: false, minutes: 60, due: "2026-11-24T17:00" },
@@ -160,20 +143,14 @@ describe("a project's notes, milestones and aim", () => {
     expect(milestones({ steps, due: "2026-11-27T17:00" }).map((m) => m.title)).toEqual(["Outline", "Draft"])
   })
 
-  it("shows a few of the notes' lines with words", () => {
-    expect(noteLines("Sources:\n\n  - Smith 2019  \n- Lee\n", 2)).toEqual(["Sources:", "- Smith 2019"])
-    expect(noteLines("")).toEqual([])
-  })
-
   it("aims for its due less the days early, at the same time of day", () => {
     expect(aimFor("2026-11-27T17:00", 3)).toBe("2026-11-24T17:00")
     expect(aimFor("2026-12-02T09:00", 5)).toBe("2026-11-27T09:00")
   })
 
-  it("carries a project's notes and its steps' dues into its row", () => {
-    const withNotes: Project = { ...essay, item: { ...essay.item, notes: "Ask about sources" }, children: [{ ...essay.children[1], due: "2026-11-22T12:00" }] }
-    const [row] = deadlineRows([withNotes], [], [], [], NOW)
-    expect(row.notes).toBe("Ask about sources")
+  it("carries its steps' dues into its row", () => {
+    const withDue: Project = { ...essay, children: [{ ...essay.children[1], due: "2026-11-22T12:00" }] }
+    const [row] = deadlineRows([withDue], [], [], NOW)
     expect(row.steps[0].due).toBe("2026-11-22T12:00")
   })
 })

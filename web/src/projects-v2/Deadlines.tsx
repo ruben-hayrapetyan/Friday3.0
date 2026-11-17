@@ -1,4 +1,4 @@
-// The deadline shelf: projects, exams and big to-dos as rows on six weeks across. Each row's bar runs from today to
+// The deadline shelf: projects and exams as rows on six weeks across. Each row's bar runs from today to
 // its due (an exam's start), filled as far as it's done, with its next step or prep to tick in place.
 
 import { useState } from "react"
@@ -6,7 +6,7 @@ import { Check, H, Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { weekday } from "@/lib/format"
 import { useLook } from "@/theme/LookProvider"
-import { aimFor, at, left, milestones, noteLines, type Row, share, STATUS, weekStarts, WEEKS } from "./model"
+import { aimFor, at, left, milestones, type Row, share, STATUS, weekStarts, WEEKS } from "./model"
 
 const TONE: Record<Row["status"], string> = {
   on_track: "var(--color-accent-300)",
@@ -74,7 +74,6 @@ function DeadlineRow({ r, today, early, lit, onOpen }: { r: Row; today: string; 
           <span style={{ display: "flex", gap: 6, alignItems: "center", minWidth: 0 }}>
             {r.kind === "exam" && <Icon name="exam" size={12} style={{ color: "var(--color-neutral-400)", flex: "none" }} />}
             <span style={{ fontWeight: 600, fontSize: 13.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.title}</span>
-            <NoteMark notes={r.notes} />
           </span>
           {step ? (
             <span style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12, color: "var(--color-neutral-400)", minWidth: 0 }}>
@@ -116,31 +115,3 @@ function DeadlineRow({ r, today, early, lit, onOpen }: { r: Row; today: string; 
   )
 }
 
-/** A mark beside a project's name when its notes have words: the first lines show on hover or focus. */
-function NoteMark({ notes }: { notes: string }) {
-  const [open, setOpen] = useState(false)
-  const lines = noteLines(notes)
-  if (!lines.length) return null
-  return (
-    <span
-      tabIndex={0}
-      role="note"
-      aria-label={`Notes: ${lines.join(" ")}`}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
-      onClick={(e) => e.stopPropagation()}
-      style={{ position: "relative", display: "inline-flex", color: "var(--color-neutral-400)", flex: "none" }}
-    >
-      <Icon name="note-pencil" size={12} />
-      {open && (
-        <span className="fr-float" style={{ position: "absolute", left: 18, top: -6, zIndex: 20, width: "min(260px, 70vw)", padding: "8px 10px", borderRadius: "var(--radius-md)", display: "flex", flexDirection: "column", gap: 3, fontSize: 12, fontWeight: 400, color: "var(--color-text)", whiteSpace: "normal", overflowWrap: "anywhere" }}>
-          {lines.map((l, i) => (
-            <span key={i}>{l}</span>
-          ))}
-        </span>
-      )}
-    </span>
-  )
-}

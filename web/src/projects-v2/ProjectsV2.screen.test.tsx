@@ -296,26 +296,48 @@ describe("the Projects & exams page", () => {
     expect((await waitForSent("project_delete")).body).toEqual({ id })
   })
 
-  it("opens a big to-do on the To-do page, as the drawer does", async () => {
+  it("leaves an assignment off, however big: it's on To-do", async () => {
+    // 16 Nov: "it classifies most of my open assignments under projects which is NOT supposed to be the case"
     const made = await friday.c<{ result: { item: Item } }>("add", { title: "Research paper", preset: "Assignment", due: "2026-12-28T23:59", duration_min: 360 })
     const f = await page()
-    await live(f, () => expect(rowNamed(/^Research paper, /)).toBeTruthy())
-    await f.user.click(rowNamed(/^Research paper, /))
-    await waitFor(() => expect(window.location.hash).toBe(`#/todo?item=${made.result.item.id}`))
+    await f.client.refetchQueries() // everything the page reads, read again with it in
+    await new Promise((r) => setTimeout(r, 1500))
+    expect(within(shelf("With a deadline")).queryByRole("button", { name: /^Research paper, / })).toBeNull()
+    const [projects, exams] = await Promise.all([friday.q<unknown[]>("projects"), friday.q<unknown[]>("exams")])
+    expect(screen.getByText(new RegExp(`^${projects.length + exams.length} with a deadline`))).toBeTruthy() // projects and exams only
+    await friday.c("drop", { id: made.result.item.id })
   })
 
-  it("shows a project's notes beside its name, its milestones on its bar, and sets how early it finishes and its pace", async () => {
+  it("sets a project's due date and how firm it is on its page, not through its tasks", async () => {
+    // 16 Nov: "the only way to add a due date to a project is through tasks which i find highly problematic"
+    const made = await friday.c<{ result: { item: Item } }>("add", { title: "Club poster", preset: "Project", duration_min: 240 })
+    const id = made.result.item.id
+    const f = await openFriday(`/projects?id=${id}`)
+    const due = await screen.findByRole("region", { name: "When it's due" })
+    expect(within(due).getByRole("button", { name: "Due: No due date" })).toBeTruthy()
+    expect(within(due).queryByRole("button", { name: /^How firm: / })).toBeNull() // only once it has a due
+    await f.user.click(within(due).getByRole("button", { name: "Due: No due date" }))
+    await f.user.click(within(due).getByRole("button", { name: "In a week" }))
+    expect((await waitForSent("edit")).body).toEqual({ id, due: expect.stringMatching(/^\d{4}-\d\d-\d\dT\d\d:\d\d$/) })
+    expect(await within(due).findByRole("button", { name: /^Due: (?!No due date)/ })).toBeTruthy() // at once
+    await choose(f.user, due, "How firm", /^Hard/)
+    expect((await waitForSent("edit")).body).toEqual({ id, firmness: "hard" })
+    expect(await within(due).findByRole("button", { name: "How firm: Hard: it has to be done by then" })).toBeTruthy()
+    await friday.c("drop", { id })
+  })
+
+  it("shows a project's milestones on its bar, no notes, and sets how early it finishes and its pace", async () => {
     const made = await friday.c<{ result: { item: Item } }>("add", { title: "Lab report", preset: "Project", due: "2026-12-18T17:00", duration_min: 600, notes: "Ask Dr. Park about the error bars\nUse the second data set" })
     const id = made.result.item.id
     await friday.c("add", { title: "Analysis", parent_id: id, duration_min: 240, due: "2026-12-08T17:00" })
     const f = await page()
     const row = await waitFor(() => rowNamed(/^Lab report, /))
-    expect(within(row).getByRole("note", { name: /Notes: Ask Dr. Park about the error bars Use the second data set/ })).toBeTruthy()
+    expect(within(row).queryByRole("note")).toBeNull() // 16 Nov: projects have no notes (you chose to remove them)
     expect(row.querySelector("[data-milestone]")?.getAttribute("title")).toMatch(/^Analysis, due (Mon|Tue|Wed|Thu|Fri|Sat|Sun) 8$/)
     expect(row.querySelector("[data-aim]")).toBeNull()
     await f.user.click(row)
-    const options = await screen.findByRole("region", { name: "Notes and options" })
-    expect((within(options).getByRole("textbox", { name: "Notes" }) as HTMLTextAreaElement).value).toBe("Ask Dr. Park about the error bars\nUse the second data set")
+    const options = await screen.findByRole("region", { name: "Options" })
+    expect(screen.queryByRole("textbox", { name: "Notes" })).toBeNull()
     expect(within(options).getByRole("button", { name: "Finish early: No: it can take until its due" })).toBeTruthy()
     await choose(f.user, options, "Finish early", /^3 days early/)
     expect(await within(options).findByRole("button", { name: /^Finish early: 3 days early, by (Mon|Tue|Wed|Thu|Fri|Sat|Sun) 15$/ })).toBeTruthy() // at once

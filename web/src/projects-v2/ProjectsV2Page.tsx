@@ -1,14 +1,14 @@
 // The Projects & exams page (0.5.0; tried beside the old one at /projects-v2 until then): shelves and timelines. Three shelves:
-// everything with a deadline on six weeks across (projects, exams and big to-dos, soonest first), ongoing projects
+// everything with a deadline on six weeks across (projects and exams, soonest first; assignments stay on To-do), ongoing projects
 // with hours a week, and what's finished.
 // A project opens as its own page (?id=); an exam or an ongoing project in a side panel over the right, the shelves
-// still in view (?exam=, ?ongoing=); a big to-do on the To-do page, as the drawer opens one. Addresses keep links working.
+// still in view (?exam=, ?ongoing=). Addresses keep links working.
 
 import { useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
-import { useNavigate, useSearchParams } from "react-router"
+import { useSearchParams } from "react-router"
 import { Icon } from "@/components/fr/controls"
-import { useExams, useHorizon, useItems, useProjects } from "@/hooks/queries"
+import { useExams, useHorizon, useProjects } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
 import { useClock } from "@/hooks/useClock"
 import { fromMin } from "@/lib/time"
@@ -23,27 +23,26 @@ import { Finished } from "./Finished"
 import { deadlineRows, type Project, type Row } from "./model"
 import { NewOngoing } from "./NewOngoing"
 import { OngoingDetail, OngoingShelf, useOngoing } from "./Ongoing"
+import { ProjectDue } from "./ProjectDue"
 import { earlyDays, ProjectOptions, useProjectOptions } from "./ProjectOptions"
 import { SidePanel } from "./Rows"
 
 export function ProjectsV2Page() {
   const { today, layout } = useShell()
-  const navigate = useNavigate()
   const now = fromMin(useClock()) // the server's local time, as the calendar keeps it
   const projects = useProjects().data ?? []
   const exams = useExams().data ?? []
-  const items = useItems().data ?? []
   const blocks = useHorizon().data?.blocks ?? []
   const ongoing = useOngoing().data ?? []
   const early = earlyDays(useProjectOptions().data ?? [])
   const [params, setParams] = useSearchParams()
   const [creating, setCreating] = useState<"project" | "exam" | "ongoing" | null>(null)
-  const rows = deadlineRows(projects, exams, items, blocks, now)
+  const rows = deadlineRows(projects, exams, blocks, now)
   const project = projects.find((p) => p.item.id === Number(params.get("id"))) ?? null
   const exam = exams.find((e) => e.item.id === Number(params.get("exam"))) ?? null
   const steady = ongoing.find((o) => o.id === Number(params.get("ongoing"))) ?? null
   const back = () => setParams({})
-  const open = (r: Row) => (r.kind === "item" ? navigate(`/todo?item=${r.id}`) : setParams(r.kind === "exam" ? { exam: String(r.id) } : { id: String(r.id) }))
+  const open = (r: Row) => setParams(r.kind === "exam" ? { exam: String(r.id) } : { id: String(r.id) })
   const behind = rows.filter((r) => r.status === "late").length
   const note = [`${rows.length} with a deadline`, `${ongoing.length} ongoing`, behind && `${behind} behind`].filter(Boolean).join(" · ")
   const icons = layout.tight // a narrow window: the buttons as icons
@@ -79,6 +78,7 @@ export function ProjectsV2Page() {
             all={projects}
             onPick={(id) => setParams({ id: String(id) })}
             onBack={back}
+            top={<ProjectDue key={`d${project.item.id}`} p={project} />}
             after={
               <>
                 <ProjectOptions key={`o${project.item.id}`} p={project} />

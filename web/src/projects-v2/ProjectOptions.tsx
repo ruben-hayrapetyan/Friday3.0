@@ -1,6 +1,6 @@
-// A project's notes and options, under its page on the new layout: its Notes (the same text as in its To-do details),
-// how many days early it aims to finish (a rule of yours about it, in Rules), and its pace through the work. Each says
-// what it's set to now; a change shows at once.
+// A project's options, under its page: how many days early it aims to finish (a rule of yours about it, in Rules), and its pace through the work. Each says
+// what it's set to now; a change shows at once. No notes here (16 Nov: "it is unclear what Notes is for"; you chose to
+// remove them from projects).
 
 import { type QueryClient, useQuery } from "@tanstack/react-query"
 import { useState } from "react"
@@ -34,25 +34,14 @@ export function ProjectOptions({ p }: { p: Project }) {
     optimistic: (client, input) =>
       changed(client, input.id, { ...(input.pacing != null ? { pacing: input.pacing === "kind" ? null : input.pacing } : {}), ...(input.early_days != null ? { early_days: input.early_days } : {}) }),
   })
-  const edit = useCommand("edit", {
-    label: () => "Notes saved",
-    optimistic: (client, input) => client.setQueryData<Project[]>(["projects"], (list) => list?.map((x) => (x.item.id === input.id ? { ...x, item: { ...x.item, notes: input.notes ?? "" } } : x))),
-  })
-  const [notes, setNotes] = useState(p.item.notes ?? "")
   const [open, setOpen] = useState<"early" | "pace" | null>(null)
-  const saveNotes = () => notes !== (p.item.notes ?? "") && edit({ id: p.item.id, notes })
   const due = p.item.due
   const total = p.done_min + p.remaining_min
   const pace = PACES.find((x) => x.value === pacing) ?? PACES[0]
   const aim = due && early ? aimFor(due, early) : null
   return (
-    <section aria-label="Notes and options" style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 760 }}>
-      <H size={20}>Notes and options</H>
-      <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span style={{ fontWeight: 500, fontSize: 13 }}>Notes</span>
-        <textarea className="input" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={saveNotes} rows={4} placeholder="Anything to keep with it: sources, what the teacher said, ideas" aria-label="Notes" style={{ resize: "vertical", font: "inherit", fontSize: 13 }} />
-        <span className="fr-kicker">The same notes as in its To-do details; the first lines show beside its name on the shelf.</span>
-      </label>
+    <section aria-label="Options" style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 760 }}>
+      <H size={20}>Options</H>
       <Rows>
         <SettingRow label="Finish early" value={aim ? `${early} ${early === 1 ? "day" : "days"} early, by ${weekday(aim.slice(0, 10))} ${Number(aim.slice(8, 10))}` : due ? "No: it can take until its due" : "It has no due date"} open={open === "early"} onToggle={() => setOpen(open === "early" ? null : "early")} note={aim ? "A rule you'll find in Rules" : undefined}>
           <Choices

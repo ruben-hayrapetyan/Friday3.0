@@ -14,7 +14,7 @@ import { Bar, PROJECT_STATUS, type Project, projectPct, StatusTag, TagMenu, TONE
 import { Timeline } from "./Timeline"
 import { dockRoom } from "@/now/dockRoom"
 
-export function ProjectDetail({ p, all, onPick, onBack, after }: { p: Project; all: Project[]; onPick: (id: number) => void; onBack: () => void; after?: React.ReactNode }) {
+export function ProjectDetail({ p, all, onPick, onBack, top, after }: { p: Project; all: Project[]; onPick: (id: number) => void; onBack: () => void; top?: React.ReactNode; after?: React.ReactNode }) {
   const { today, layout } = useShell()
   const { color } = useLook()
   const blocks = useHorizon().data?.blocks ?? []
@@ -88,7 +88,7 @@ export function ProjectDetail({ p, all, onPick, onBack, after }: { p: Project; a
             {p.item.title}
           </H>
           <span className="tnum" style={{ color: "var(--color-neutral-300)" }}>
-            {p.item.due ? `Due ${when(p.item.due, today)} · ` : ""}
+            {p.item.due && !top ? `Due ${when(p.item.due, today)} · ` : ""}
             {doneSteps} of {steps.length} steps done · {dur(total)} in all
           </span>
         </div>
@@ -102,6 +102,7 @@ export function ProjectDetail({ p, all, onPick, onBack, after }: { p: Project; a
           <Bar pct={projectPct(p)} color={color(tag, p.item.preset)} />
         </div>
       </div>
+      {top /* what a page adds over its steps (the Projects page: its due and how firm) */}
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ display: "grid", gridTemplateColumns: cols(layout.tight), gap: 12, padding: "0 0 6px", fontSize: 11, color: "var(--color-neutral-500)" }}>
           <span />

@@ -94,7 +94,8 @@ describe("projects", () => {
     const made = await waitForSent("template_apply")
     expect(made.body).toEqual({ template: "Presentation", title: "Rocketry design review", hours: 7, due: `${day(1)}T23:59`, area: "Rocketry" })
     await waitFor(() => expect(window.location.hash).toMatch(/id=\d+/))
-    await live(client, () => expect(screen.getByText(/^Due .* · 0 of 3 steps done · .* in all$/)).toBeTruthy())
+    await live(client, () => expect(screen.getByText(/^0 of 3 steps done · .* in all$/)).toBeTruthy())
+    expect(screen.getByRole("button", { name: /^Due: (?!No due date)/ })).toBeTruthy() // its due, in its row
     for (const s of ["Research", "Slides", "Rehearse"]) expect(step(s)).toBeTruthy()
     expect(screen.getByText("Timeline")).toBeTruthy()
     expect(screen.getByText("When each step is planned, up to the deadline")).toBeTruthy()
