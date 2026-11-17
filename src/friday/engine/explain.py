@@ -4,6 +4,7 @@ Every number here can be recomputed from a plan: block costs sum to the evaluato
 relocation's difference equals the evaluator's difference between the two plans.
 """
 
+from collections import Counter
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -127,7 +128,12 @@ def why_not(c: Compiled, owner: np.ndarray, slot: int, new_start: int | None = N
     here, _ = chunk_around(c.m, st, slot)
     tries = [relocation(c, owner, slot, t) for t in range(c.m.first_slot[i], c.m.last_slot[i] + 1) if t != here]
     valid = [t for t in tries if t.valid and t.start is not None]
-    return min(valid, key=lambda t: (t.total, t.start)) if valid else WhyNot(False, ["No other place fits"])
+    if valid:
+        return min(valid, key=lambda t: (t.total, t.start))
+    # Nowhere: say what stood in the way most often, not only that nothing fit (17 Nov, a client's screenshot: "No
+    # other place fits" beside a free afternoon, and nothing to say which rule ruled it out)
+    reasons = Counter(w for t in tries for w in t.walls)
+    return WhyNot(False, [w for w, _ in reasons.most_common(2)] or ["No other place fits"])
 
 
 def relocation(c: Compiled, owner: np.ndarray, slot: int, new_start: int) -> WhyNot:

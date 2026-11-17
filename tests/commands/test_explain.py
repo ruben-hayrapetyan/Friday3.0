@@ -82,3 +82,13 @@ def test_changes_still_answer_after_an_add_the_plan_placed_is_taken_back(app: Ap
     titles = [b["title"] for b in out["added"]] + [b["title"] for b in out["removed"]]
     assert "essay" in titles
     assert "lab" not in titles  # taken back: not named as if it were still there
+
+
+def test_why_not_with_nowhere_else_says_what_rules_the_rest_out(app: App) -> None:
+    # 17 Nov, a client: "Nowhere else it can go (No other place fits)" beside a free afternoon said nothing of why
+    app.do("add", title="Meeting", when="fixed", start="2026-10-19T09:15", end="2026-10-19T09:30")
+    app.do("add", title="Print it", preset="Assignment", duration_min=15, due="2026-10-19T09:30", firmness="hard")
+    app.do("replan")
+    key = next(b["key"] for b in app.do("plan")["blocks"] if b["title"] == "Print it")
+    answer = app.do("why_not", key=key)
+    assert answer["wall"] and answer["wall"] != "No other place fits"
