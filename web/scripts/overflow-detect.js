@@ -192,5 +192,22 @@
     }
     scrollers.forEach((el, i) => (el.scrollTop = were[i]))
   }
+  // 6. an empty box's hint cut off by the box (17 Nov: an ongoing project's hours box showed "e.g. 12h, 2.5 ho"): the
+  // hint's width in the box's own font, against the room inside its padding
+  // (measured in a span set in the box's font, not a canvas: a canvas reads no "ui-monospace" and measured another font)
+  const ruler = document.createElement("span")
+  ruler.style.cssText = "position:absolute;visibility:hidden;white-space:pre;left:-9999px;top:0"
+  document.body.append(ruler)
+  for (const el of document.querySelectorAll("input[placeholder]")) {
+    if (el.value || !el.placeholder || el.getClientRects().length === 0 || el.type === "hidden") continue
+    const s = getComputedStyle(el)
+    if (s.visibility === "hidden" || s.display === "none") continue
+    Object.assign(ruler.style, { fontFamily: s.fontFamily, fontSize: s.fontSize, fontWeight: s.fontWeight, fontStyle: s.fontStyle, letterSpacing: s.letterSpacing })
+    ruler.textContent = el.placeholder
+    const room = el.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight)
+    const hint = ruler.getBoundingClientRect().width
+    if (hint - room > SLACK) report("a box's hint cut off", el, `${Math.round(hint - room)}px`, ` ("${el.placeholder}")`)
+  }
+  ruler.remove()
   return findings
 })()

@@ -521,7 +521,7 @@ function MailFilters() {
             The AI reads mail with these words, from these senders, or from a person asking for something by a date. Bulk mail only when its subject has one of the words.
           </span>
           <ListField label="Words" value={gmail.keywords} locked={owned.includes("gmail")} onSave={(keywords) => save({ key: "gmail", value: { ...gmail, keywords } })} />
-          <ListField label="Always read mail from" placeholder="e.g. cornell.edu" value={gmail.sender_domains} locked={owned.includes("gmail")} onSave={(sender_domains) => save({ key: "gmail", value: { ...gmail, sender_domains } })} />
+          <ListField label="Always read mail from" placeholder="cornell.edu" value={gmail.sender_domains} locked={owned.includes("gmail")} onSave={(sender_domains) => save({ key: "gmail", value: { ...gmail, sender_domains } })} />
           <MailLog />
           <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--color-neutral-500)" }}>
             <span>{last ? `Last read ${when(last, today)}` : "Not read yet"}</span>
@@ -676,7 +676,7 @@ export function AddFeed({ trusted = false }: { trusted?: boolean }) {
   const [url, setUrl] = useState("")
   return (
     <div style={{ display: "flex", gap: 6 }}>
-      <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste a calendar link" aria-label="Calendar link" style={{ flex: 1, maxWidth: 380, padding: "5px 8px", minHeight: 0 }} />
+      <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Calendar link" aria-label="Calendar link" style={{ flex: 1, maxWidth: 380, padding: "5px 8px", minHeight: 0 }} />
       <button className="btn btn-secondary" disabled={!/^(https?|webcal):\/\//i.test(url.trim()) || busy} onClick={() => once(async () => (await add({ kind: "ics", name: freeName(feedName(url), links.map((s) => s.name)), url: feedUrl(url), trusted })) && setUrl(""))} style={{ fontSize: 12 }}>
         Add feed
       </button>

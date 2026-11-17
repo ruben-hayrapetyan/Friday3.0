@@ -347,7 +347,7 @@ function ScriptConnect({ entry }: { entry: Entry }) {
           value={link}
           onChange={(e) => setLink(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
-          placeholder="https://script.google.com/macros/s/…/exec"
+          placeholder="https://script.google.com/…"
           style={{ flex: 1, minWidth: 0, padding: "5px 8px", minHeight: 0, fontSize: 13 }}
         />
         <button className="btn btn-primary" onClick={submit} disabled={!good || busy} style={{ fontSize: 12 }}>

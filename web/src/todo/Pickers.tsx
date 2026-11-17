@@ -171,6 +171,12 @@ export function dueSummary(value: string | null, today: string): string {
   return `Due ${weekday(date)} ${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1].slice(0, 3)}, ${clockTime(value)} (${away})`
 }
 
+/** A length box at least as wide as its hint, so the hint is never cut off (17 Nov: "e.g. 12h, 2.5 ho…" in an
+ * ongoing project's hours). The box is mono, so a character is 1ch; the rest is its padding and border. */
+export function boxWidth(width: number, placeholder: string): string {
+  return `max(${width}px, calc(${placeholder.length + 3}ch + 18px))` // two to spare: a fallback mono runs wider
+}
+
 /** A length typed as people say it ("45", "1h30", "an hour and a half", "2–3 hours"; personal's reader),
  * with a live reading under it; it settles on Enter or leaving the box. */
 export function LengthInput({ value, onPick, width = 110, label = "Length", placeholder = "e.g. an hour and a half" }: { value: number | null; onPick: (v: number | null) => void; width?: number; label?: string; placeholder?: string }) {
@@ -181,7 +187,7 @@ export function LengthInput({ value, onPick, width = 110, label = "Length", plac
     setText(null)
   }
   return (
-    <span style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>
+    <span style={{ display: "inline-flex", flexDirection: "column", gap: 2, flex: "none", maxWidth: "100%" }}>
       <input
         className="input tnum"
         value={text ?? (value == null ? "" : dur(value))}
@@ -194,7 +200,7 @@ export function LengthInput({ value, onPick, width = 110, label = "Length", plac
         // which the focus had just come back to, and opened the list again (16 Nov). Shift-Enter still goes on: in the
         // add line it adds the to-do.
         onKeyDown={(e) => e.key === "Enter" && (e.shiftKey || e.preventDefault(), settle())}
-        style={{ width, padding: "4px 8px", minHeight: 0 }}
+        style={{ width: boxWidth(width, placeholder), padding: "4px 8px", minHeight: 0 }}
       />
       {text !== null && text.trim() !== "" && (
         <span className="tnum" style={{ fontSize: 11, color: typed === null ? "var(--fr-due)" : "var(--color-neutral-500)" }}>

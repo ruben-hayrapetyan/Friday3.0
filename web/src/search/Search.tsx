@@ -49,7 +49,7 @@ const PAGES: [string, string, string][] = [
 ]
 
 export function Search() {
-  const { today, setDialog, setPop, setPlace, place, setEvent, setAgendaDay, askClaude, setTour } = useShell()
+  const { today, setDialog, setPop, setPlace, place, setEvent, setAgendaDay, askClaude, setTour, layout } = useShell()
   const ai = useAi()
   const navigate = useNavigate()
   const { color } = useLook()
@@ -151,7 +151,7 @@ export function Search() {
             value={q}
             onChange={(e) => (setQ(e.target.value), setAt(0), setMoved(false))}
             onKeyDown={key}
-            placeholder="Search to-dos, events, projects, settings…"
+            placeholder={layout.tight ? "Search everything…" : "Search to-dos, events, projects, settings…"}
             aria-label="Search"
             style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontSize: 16 }}
           />

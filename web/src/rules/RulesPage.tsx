@@ -20,6 +20,7 @@ import { WeekPaces } from "./WeekPaces"
 import { TimeInput } from "@/components/fr/TimeInput"
 import { NOTE_EXAMPLES, useNotes } from "@/settings/AboutYou"
 import { dockRoom } from "@/now/dockRoom"
+import { useShell } from "@/shell/ShellContext"
 
 type Strength = "Prefer" | "Strongly" | "Always"
 const STRENGTHS: Strength[] = ["Prefer", "Strongly", "Always"]
@@ -141,6 +142,7 @@ type ClaudeReading = { busy: boolean; error?: string; answer?: Schemas["AskClaud
 type Editing = { rule: RuleOut; opened: number } | null
 
 function NewRule({ editing, start, onDone }: { editing: Editing; start: string; onDone: () => void }) {
+  const { layout } = useShell() // a phone's box a line of its own
   const navigate = useNavigate()
   const client = useQueryClient()
   const toast = useToast()
@@ -262,9 +264,10 @@ function NewRule({ editing, start, onDone }: { editing: Editing; start: string; 
           </span>
         </span>
       )}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      {/* a phone: the box a line of its own, its buttons under it (17 Nov: beside them, its example was cut off) */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: layout.tight ? "wrap" : undefined, justifyContent: "flex-end" }}>
         <Icon name={yours ? "pencil-simple" : "plus"} size={18} style={{ color: "var(--color-accent-300)" }} />
-        <input ref={input} value={text} onChange={(e) => (setText(e.target.value), setOverrides({}), setStrength(yours ? chosen : null), setClaude(null))} onKeyDown={(e) => (e.key === "Enter" ? submit() : e.key === "Escape" && yours ? cancel() : undefined)} placeholder="I prefer eating lunch before 1pm" aria-label={yours ? "Rule" : "New rule"} style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontSize: 16 }} />
+        <input ref={input} value={text} onChange={(e) => (setText(e.target.value), setOverrides({}), setStrength(yours ? chosen : null), setClaude(null))} onKeyDown={(e) => (e.key === "Enter" ? submit() : e.key === "Escape" && yours ? cancel() : undefined)} placeholder="I prefer eating lunch before 1pm" aria-label={yours ? "Rule" : "New rule"} style={{ flex: layout.tight ? "1 1 calc(100% - 28px)" : 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "var(--color-text)", font: "inherit", fontSize: 16 }} />
         {yours ? (
           <button className="btn btn-secondary" onClick={cancel}>
             Cancel

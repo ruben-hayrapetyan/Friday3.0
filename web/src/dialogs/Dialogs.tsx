@@ -150,11 +150,12 @@ export function BriefDialog({ onClose }: { onClose: () => void }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span className="fr-kicker">Fixed today</span>
           {brief && fixedToday(brief.fixed).map(({ item: f, time }) => (
-            <div key={f.id} className="fr-row" style={{ display: "grid", gridTemplateColumns: "64px minmax(0,1fr)", gap: 10, padding: "6px 0" }}>
+            <div key={f.id} className="fr-row" style={{ display: "grid", gridTemplateColumns: "minmax(64px, max-content) minmax(0,1fr)", gap: 10, padding: "6px 0" }}>
+              {/* a time wider than its column pushed the title past the row on a phone (17 Nov) */}
               <span className="tnum" style={{ color: "var(--color-neutral-300)", whiteSpace: "nowrap" }}>
                 {time}
               </span>
-              <span>{f.title}</span>
+              <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{f.title}</span>
             </div>
           ))}
           {brief && !brief.fixed.length && <span style={{ color: "var(--color-neutral-500)" }}>Nothing fixed.</span>}
