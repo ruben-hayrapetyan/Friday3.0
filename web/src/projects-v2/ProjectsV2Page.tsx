@@ -1,8 +1,9 @@
 // The Projects & exams page (0.5.0; tried beside the old one at /projects-v2 until then): shelves and timelines. Three shelves:
 // everything with a deadline on six weeks across (projects and exams, soonest first; assignments stay on To-do), ongoing projects
 // with hours a week, and what's finished.
-// A project opens as its own page (?id=); an exam or an ongoing project in a side panel over the right, the shelves
-// still in view (?exam=, ?ongoing=). Addresses keep links working.
+// A project (?id=), an exam (?exam=) or an ongoing project (?ongoing=) opens in a popup in the middle of the screen,
+// the shelves dimmed behind it (17 Nov: "i think everything should be a center popup rather than a sidebar or its own
+// page"). Addresses keep links and Back working: closing it takes the address off.
 
 import { useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
@@ -25,7 +26,7 @@ import { NewOngoing } from "./NewOngoing"
 import { OngoingDetail, OngoingShelf, useOngoing } from "./Ongoing"
 import { ProjectDue } from "./ProjectDue"
 import { earlyDays, ProjectOptions, useProjectOptions } from "./ProjectOptions"
-import { SidePanel } from "./Rows"
+import { Popup } from "./Rows"
 
 export function ProjectsV2Page() {
   const { today, layout } = useShell()
@@ -71,13 +72,21 @@ export function ProjectsV2Page() {
       </div>
       <div className="fr-panel" style={{ position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <div style={{ overflowY: "auto", overflowX: "hidden", minHeight: 0, flex: 1 }}>
-        {project ? (
+          <div className="fr-gutter" style={{ maxWidth: 1180, padding: `28px 40px ${dockRoom(120)}`, display: "flex", flexDirection: "column", gap: 36, minWidth: 0 }}>
+            <Deadlines rows={rows} today={today} opened={project ? { kind: "project", id: project.item.id } : exam ? { kind: "exam", id: exam.item.id } : null} early={early} onOpen={open} />
+            <OngoingShelf ongoing={ongoing} today={today} opened={steady?.id ?? null} onOpen={(id) => setParams({ ongoing: String(id) })} />
+            <Finished today={today} />
+          </div>
+        </div>
+      </div>
+      {/* one popup over the shelves: another project picked in it swaps what it shows, the popup staying put */}
+      {project ? (
+        <Popup label={project.item.title} onClose={back} size="project">
           <ProjectDetail
             key={project.item.id}
             p={project}
             all={projects}
             onPick={(id) => setParams({ id: String(id) })}
-            onBack={back}
             top={<ProjectDue key={`d${project.item.id}`} p={project} />}
             after={
               <>
@@ -86,26 +95,18 @@ export function ProjectsV2Page() {
               </>
             }
           />
-        ) : (
-          <div className="fr-gutter" style={{ maxWidth: 1180, padding: `28px 40px ${dockRoom(120)}`, display: "flex", flexDirection: "column", gap: 36, minWidth: 0 }}>
-            <Deadlines rows={rows} today={today} opened={exam ? { kind: "exam", id: exam.item.id } : null} early={early} onOpen={open} />
-            <OngoingShelf ongoing={ongoing} today={today} opened={steady?.id ?? null} onOpen={(id) => setParams({ ongoing: String(id) })} />
-            <Finished today={today} />
-          </div>
-        )}
-        </div>
-        {/* an exam or an ongoing project slides in over the right, the shelves still in view (16 Nov) */}
-        {!project && exam && (
-          <SidePanel key={`e${exam.item.id}`} label={exam.item.title} onClose={back}>
-            <ExamPanel exam={exam} />
-          </SidePanel>
-        )}
-        {!project && steady && (
-          <SidePanel key={`o${steady.id}`} label={steady.title} onClose={back}>
-            <OngoingDetail o={steady} today={today} onDeleted={back} />
-          </SidePanel>
-        )}
-      </div>
+        </Popup>
+      ) : exam ? (
+        <Popup label={exam.item.title} onClose={back}>
+          <ExamPanel key={`e${exam.item.id}`} exam={exam} />
+        </Popup>
+      ) : (
+        steady && (
+          <Popup label={steady.title} onClose={back}>
+            <OngoingDetail key={`o${steady.id}`} o={steady} today={today} onDeleted={back} />
+          </Popup>
+        )
+      )}
       {creating === "project" && <NewProject onClose={(id) => (setCreating(null), id && setParams({ id: String(id) }))} />}
       {creating === "exam" && <NewExam onClose={() => setCreating(null)} />}
       {creating === "ongoing" && <NewOngoing onClose={(id) => (setCreating(null), id && setParams({ ongoing: String(id) }))} />}
@@ -113,7 +114,7 @@ export function ProjectsV2Page() {
   )
 }
 
-/** Archive, over a project's page: it's done, its open steps put away, and it moves to Finished (Undo, or Open again
+/** Archive, in a project's popup: it's done, its open steps put away, and it moves to Finished (Undo, or Open again
  * there, brings it back). */
 function ArchiveBar({ p, onArchived }: { p: Project; onArchived: () => void }) {
   const client = useQueryClient()

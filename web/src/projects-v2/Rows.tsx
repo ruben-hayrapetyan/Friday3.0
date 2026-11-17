@@ -1,32 +1,64 @@
 // The new layout's editing, as To-do details does it (16 Nov, the user: inline buttons and boxes were "super
-// unintuitive"): a side panel over the page's right, and in it rows, each a setting's name, its value in words, and a
-// click that opens a short list of choices, each saying what it does.
+// unintuitive"): rows, each a setting's name, its value in words, and a click that opens a short list of choices,
+// each saying what it does. What the Projects page opens (a project, an exam, an ongoing project) opens in a popup in
+// the middle of the screen, over the shelves (17 Nov: "i think everything should be a center popup rather than a
+// sidebar or its own page").
 
-import { type ReactNode, useEffect, useRef, useState } from "react"
+import { createContext, type ReactNode, useContext, useRef, useState } from "react"
 import { Icon, useMenuClose } from "@/components/fr/controls"
+import { useDialogKeys } from "@/dialogs/Dialogs"
 import { useMenuPlace } from "@/lib/menuPlace"
-import { dockRoom } from "@/now/dockRoom"
+import { useShell } from "@/shell/ShellContext"
 
-/** A panel over the page's right side, the list still in view on the left; ✕ or Escape closes it. */
-export function SidePanel({ label, onClose, children }: { label: string; onClose: () => void; children: ReactNode }) {
-  const box = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && !e.defaultPrevented && onClose()
-    window.addEventListener("keydown", esc)
-    return () => window.removeEventListener("keydown", esc)
-  }, [onClose])
+/** How big a popup gets: `width` across, and about `tall` high, for where its top sits. */
+export const POPUP = { project: { width: 1000, tall: 860 }, panel: { width: 640, tall: 720 } } as const
+
+/** A dropdown of the popup's (a length, a date, a menu) is open: Escape closes that first, not the popup. */
+export const menuOpenIn = (box: HTMLElement | null) => !!box?.querySelector(".fr-menu [aria-expanded='true']")
+
+/** Where a popup's top sits: where one `tall` high would sit centered, never nearer the top than `least`. It grows
+ * down from there, so opening a row in it never moves what's above (a button doesn't move under the pointer). */
+export const popupTop = (tall: number, least: number) => `max(${least}px, calc((100vh - ${tall}px) / 2))`
+
+const Strip = createContext<HTMLElement | null>(null)
+/** The popup's top strip, beside its ✕, for what it shows to put its own tools in (a project's Save as template and
+ * its Project menu); null outside a popup. */
+export const usePopupStrip = () => useContext(Strip)
+
+/** A popup in the middle of the screen, over the page dimmed behind it, above the Now bar; ✕, Escape or a click on
+ * the dimmed page closes it. It scrolls inside itself; on a phone it takes nearly the whole screen. What it shows can
+ * change (another project picked in it) without it closing. */
+export function Popup({ label, onClose, size = "panel", children }: { label: string; onClose: () => void; size?: keyof typeof POPUP; children: ReactNode }) {
+  const { layout } = useShell()
+  const box = useDialogKeys(() => !menuOpenIn(box.current) && onClose())
+  const { width, tall } = POPUP[size]
+  const phone = layout.tight
+  const [strip, setStrip] = useState<HTMLElement | null>(null)
   return (
-    <aside
-      ref={box}
-      aria-label={label}
-      className="fr-float fr-scroll-column"
-      style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: "min(480px, 100%)", zIndex: 6, overflowY: "auto", borderRadius: 0, padding: `20px 22px ${dockRoom(140)}`, display: "flex", flexDirection: "column", gap: 18, boxShadow: "-16px 0 40px color-mix(in srgb, #000 30%, transparent)" }}
-    >
-      <button className="btn btn-icon btn-ghost" onClick={onClose} aria-label="Close" title="Close (Esc)" style={{ position: "absolute", top: 14, right: 14, width: 28, height: 28, color: "var(--color-neutral-400)" }}>
-        <Icon name="x" />
-      </button>
-      {children}
-    </aside>
+    <div className="fr-scrim" data-popup={size} style={{ alignItems: "flex-start", padding: phone ? 8 : `${popupTop(tall, 24)} 24px 24px` }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0 }} />
+      <div
+        ref={box}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        className="fr-float"
+        style={{ position: "relative", width: `min(${width}px, 100%)`, height: phone ? "100%" : undefined, maxHeight: "100%", display: "flex", flexDirection: "column", outline: "none", overflow: "hidden" }}
+      >
+        {/* its close on a strip at the top, with what it shows's own tools: what scrolls passes under the strip, never
+            under the ✕ */}
+        <div style={{ flex: "none", minHeight: phone ? 44 : 50, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, padding: phone ? "6px 8px 6px 14px" : "8px 14px 8px 26px" }}>
+          <div ref={setStrip} style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, flexWrap: "wrap" }} />
+          <button className="btn btn-icon btn-ghost" onClick={onClose} aria-label="Close" title="Close (Esc)" style={{ width: 28, height: 28, flex: "none", color: "var(--color-neutral-400)" }}>
+            <Icon name="x" />
+          </button>
+        </div>
+        <div className="fr-scroll-column" style={{ overflowY: "auto", minHeight: 0, flex: "1 1 auto", padding: phone ? "0 14px 20px" : "0 26px 26px", display: "flex", flexDirection: "column", gap: 18 }}>
+          <Strip.Provider value={strip}>{children}</Strip.Provider>
+        </div>
+      </div>
+    </div>
   )
 }
 

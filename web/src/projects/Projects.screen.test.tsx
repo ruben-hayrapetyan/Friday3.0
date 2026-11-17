@@ -223,7 +223,7 @@ describe("projects", () => {
     expect(screen.getByRole("dialog")).toBeTruthy() // still open
   })
 
-  it("changes a project's tag on its page, and its steps that had the old one with it", async () => {
+  it("changes a project's tag in its popup, and its steps that had the old one with it", async () => {
     // 15 Nov, a client: a project's tag couldn't be changed; a step tagged otherwise keeps its own
     const slides = await itemNamed("Slides")
     await friday.c("edit", { id: slides.id, area: "MATH 1910" })
@@ -243,7 +243,7 @@ describe("projects", () => {
     await friday.c("edit", { id: slides.id, area: "Rocketry" })
   })
 
-  it("makes a blank project, moves between projects, and goes back to them all", async () => {
+  it("makes a blank project, moves between projects in its popup, and closes it to see them all", async () => {
     const { user, client } = await page()
     const dialog = await newProject(user, "Lab notebook cleanup")
     expect(within(dialog).getByText("Add your own steps")).toBeTruthy()
@@ -255,11 +255,16 @@ describe("projects", () => {
     expect((await waitForSent("add")).body).toEqual({ title: "Lab notebook cleanup", preset: "Project", due: null, area: null, duration_min: 2400 })
     await live(client, () => expect(screen.getByText(/0 of 0 steps done/)).toBeTruthy())
     expect(screen.queryByRole("button", { name: /Save as template/ })).toBeNull()
+    const first = screen.getByRole("dialog", { name: "Lab notebook cleanup" })
     await user.click(screen.getByRole("button", { name: "Project" }))
     await user.click(screen.getByRole("option", { name: "Rocketry design review" }))
     expect(await screen.findByText(/of 3 steps done/)).toBeTruthy()
-    await user.click(screen.getByRole("button", { name: "Projects & exams" }))
+    // picking another swaps what the popup shows, the same popup (17 Nov: projects open in a popup)
+    expect(screen.getByRole("dialog", { name: "Rocketry design review" })).toBe(first)
+    expect(screen.queryByRole("button", { name: /^Projects & exams$/ })).toBeNull() // no page back-link: the popup's ✕
+    await user.click(within(first).getByRole("button", { name: "Close" }))
     await waitFor(() => expect(window.location.hash).not.toContain("id="))
+    expect(screen.queryByRole("dialog", { name: "Rocketry design review" })).toBeNull()
     // both on the deadline shelf (one with no due among them), and New project makes another
     const shelf = screen.getByRole("region", { name: "With a deadline" })
     for (const name of [/^Rocketry design review, /, /^Lab notebook cleanup, /]) expect(within(shelf).getByRole("button", { name })).toBeTruthy()

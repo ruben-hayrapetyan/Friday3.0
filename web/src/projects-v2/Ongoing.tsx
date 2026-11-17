@@ -97,7 +97,7 @@ export function OngoingShelf({ ongoing, today, opened, onOpen }: { ongoing: Ongo
   )
 }
 
-/** One ongoing project, in the side panel: this week, week by week, and its settings as rows. */
+/** One ongoing project, in the Projects page's popup: this week, week by week, and its settings as rows. */
 export function OngoingDetail({ o, today, onDeleted }: { o: Ongoing; today: string; onDeleted: () => void }) {
   const { color } = useLook()
   const set = useCommand("ongoing_set", { label: () => `${o.title}: saved; Friday plans its weeks again`, optimistic: (client, input) => changedOngoing(client, input.id, shown(input)) })
@@ -121,7 +121,7 @@ export function OngoingDetail({ o, today, onDeleted }: { o: Ongoing; today: stri
   const pick = <T,>(then: (v: T) => void) => (v: T) => (then(v), setOpen(null))
   return (
     <>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingRight: 36 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <span className="fr-eyebrow" style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ width: 10, height: 10, borderRadius: 3, background: tint }} />
           {o.area ?? "No tag"} · ongoing
