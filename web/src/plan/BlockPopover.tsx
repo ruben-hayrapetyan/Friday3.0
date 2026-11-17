@@ -558,7 +558,7 @@ function EventFacts({ event, paint }: { event: Item; paint: string }) {
         </button>
         {colors && (
           <span role="radiogroup" aria-label="Color" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            <button className="fr-plain" role="radio" aria-checked={!color} aria-label="Automatic" title="Automatic: as its category or calendar says" onClick={() => (setChosen(null), recolor({ id: event.id, color: null }))} style={{ ...SWATCH, background: UNMARKED, boxShadow: ringed(!color), display: "grid", placeItems: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>
+            <button className="fr-plain" role="radio" aria-checked={!color} aria-label="Automatic" title="Automatic: as its category or calendar says" onClick={() => (setChosen(null), recolor({ id: event.id, color: null }))} style={{ ...SWATCH, background: UNMARKED, boxShadow: ringed(!color), display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700, color: "#fff" }}>
               A
             </button>
             {PIGMENTS.map((p) => (
