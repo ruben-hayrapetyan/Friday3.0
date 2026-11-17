@@ -79,6 +79,8 @@ describe("the new Projects & exams page", () => {
     await f.user.click(within(row).getByRole("checkbox", { name: "Mark done" }))
     expect((await waitForSent("done")).body).toEqual({ id: next.id })
     await waitFor(() => expect(within(row).queryByText(next.title)).toBeNull()) // gone at once, before the server
+    // done saved before it's reopened: sent at once, the two could land in either order and leave it done
+    await waitFor(async () => expect((await friday.q<{ prep: { item: Item }[] }[]>("exams")).flatMap((e) => e.prep).find((p) => p.item.id === next.id)?.item.status).toBe("done"))
     await friday.c("reopen", { id: next.id }) // the other tests see it as it was
   })
 
