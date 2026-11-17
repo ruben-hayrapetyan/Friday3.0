@@ -151,8 +151,10 @@ def morning(life: Life, day: date) -> None:
     project = student.project
     if project and day == max(life.monday + timedelta(days=project.made), life.first):
         due = f"{life.monday + timedelta(days=project.due)}T23:59"
-        life.do("template_apply", template=project.template, title=project.title, hours=project.hours, due=due,
-                area=project.area)  # fmt: skip
+        made = life.do("template_apply", template=project.template, title=project.title, hours=project.hours,
+                       due=due, area=project.area)["item"]["id"]  # fmt: skip
+        if project.pacing:
+            life.do("project_set", id=made, pacing=project.pacing)
     if day.weekday() == 4:  # Friday: the next habit is skipped
         habits = [i for i in life.do("items") if i["preset"] == "Habit" and i["series_id"]]
         if habits:

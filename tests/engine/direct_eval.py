@@ -55,6 +55,14 @@ def price_function(p: Problem, rule: Rule, item: EngineItem) -> Callable[[int], 
             return min(rule.p.days, max(0.0, (end - (item.due_utc - rule.p.days * 1440)) / 1440))
 
         return early
+    if kind == "soon":
+        early = max((r.p.days for r in p.rules if r.type == "finish_early" and r.applies(item)), default=0.0)
+        aim = item.due_utc - math.ceil(early * 1440)
+        unplaced = max(0, max(grid.horizon_end, aim) - grid.now) / 1440
+        return lambda s: (
+            rule.p.per_day
+            * (unplaced if s == grid.S else min(rule.p.days, max(0, int(grid.start[s]) - grid.now) / 1440))
+        )
     if kind == "unscheduled":
         return lambda s: rule.p.base * importance if s == grid.S else 0.0
     if kind == "late_tasks":
@@ -347,6 +355,36 @@ def measure_rule_cost(p: Problem, rule: Rule, items: list[EngineItem], X: dict[s
                                 here * b + sum(int(U[w]) for w in window if mine(w)),
                             )
                         )
+    elif kind == "pacing":
+        # Each project's work placed by each day's end before its due, against F(t) of what's left (F: ((t − start) /
+        # (aim − start))^k from now to its due less its Finish early days), behind and ahead
+        exponent = {"linear": 1.0, "front": 0.7, "back": 1.5}
+        early_rules = [r for r in p.rules if r.type == "finish_early"]
+        groups: dict = {}
+        for it in items:
+            groups.setdefault((it.project, it.pacing), []).append(it)
+        for (_, curve), members in sorted(groups.items(), key=lambda g: g[0]):
+            total = sum(m.need for m in members)
+            if total <= 0:
+                continue
+            starts = [grid.now if m.pacing_start_utc is None else m.pacing_start_utc for m in members]
+            start = max(grid.now, min(starts))
+            due = max(m.due_utc for m in members)
+            early = max((r.p.days for r in early_rules for m in members if r.applies(m)), default=0.0)
+            aim = due - math.ceil(early * 1440)
+            reached, value = False, 0
+            for day in range(grid.n_days):
+                slots = grid.day_slots[day]
+                if not slots or int(grid.end[slots[-1]]) >= due:
+                    continue
+                end = int(grid.end[slots[-1]])
+                reached = reached or any(s in m.allowed_set for m in members for s in slots)
+                value += sum(units_in(U, X, m, slots) for m in members)
+                if not reached:
+                    continue
+                share = 1.0 if aim <= start else min(1.0, max(0.0, (end - start) / (aim - start))) ** exponent[curve]
+                hinges.append(("below", share * total, rule.p.behind, "units", 1.0, value))
+                hinges.append(("above", share * total, rule.p.ahead, "units", 1.0, value))
     else:
         raise KeyError(f"no direct evaluator for rule type {kind}")
     return hinge_cost(p, rule, hinges)

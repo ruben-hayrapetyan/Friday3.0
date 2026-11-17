@@ -49,6 +49,13 @@ MEAL_WINDOW = {"type": "meal_window", "name": "meal_window", "weight": 1.0, "sta
 # A pin holds: its time given up costs in the deadlines stage, beside lateness and far below it, so nothing but work
 # that would be late moves it (27 Oct). In wellbeing, a heavy Tuesday still took two hours of a pinned evening.
 PIN_HOLD = {"type": "pin_hold", "name": "pin_hold", "weight": 1.0, "stage": "deadlines", "params": {"price": 100.0}}
+# A project's pace you set, felt day by day (17 Nov: "i did it and i saw no change"): a preference, so it shapes a plan
+# where there's room and never makes work late or a night later (`pacing`, engine/rules/measures.py). Twice the
+# strength of a rule's default, as a Finish early set on a project is.
+PROJECT_PACE = {"type": "pacing", "name": "project_pace", "weight": 2.0, "stage": "preferences"}
+# Work with no pace of its own, as soon as there's time (17 Nov, the user: "by default, friday should use all time
+# that it can"; `soon`, engine/rules/prices.py): a preference, after lateness and wellbeing, before nothing you said.
+SOON = {"type": "soon", "name": "soon", "weight": 1.0, "stage": "preferences"}
 
 
 def steady(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -67,6 +74,8 @@ def steady(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+# What splitting a weekly target costs is counted on two hours, an assignment's length, not the week's hours.
+TARGET_SITTING_UNITS = 8
 LONG_TERM_SCALE = 0.25  # how much Long term work counts when short-term work comes first
 
 
@@ -170,7 +179,10 @@ def build_problem(inp: BuildInput) -> Problem:
     rules = [
         rule.model_dump(exclude={"enabled"}) for rule in settings["rules"] if rule.type in RULE_TYPES and rule.enabled
     ]
-    problem.rules = build_rules(steady(rules) + [MEAL_WINDOW, PIN_HOLD] + travel_kept(rules))
+    built = [MEAL_WINDOW, PIN_HOLD, *travel_kept(rules), *project_pace(inp, items)]
+    if any(item.soon for item in items.values()):
+        built.append(SOON)
+    problem.rules = build_rules(steady(rules) + built)
     for rule in problem.rules:
         rule.prepare(problem)
     set_cutoffs(problem, settings["rules"], settings["time"].timezone)
@@ -178,6 +190,15 @@ def build_problem(inp: BuildInput) -> Problem:
     if demote_unusable_locks(problem):
         prune(problem)
     return problem
+
+
+def project_pace(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[dict[str, Any]]:
+    """The pace set on each project, held day by day by the scheduler (`pacing`); a project with none set is planned
+    as soon as there's time (`soon`)."""
+    projects = sorted({item.project for item in items.values() if item.project in inp.project_pacing})
+    if not projects:
+        return []
+    return [{**PROJECT_PACE, "scope": {"project": [str(p) for p in projects]}}]
 
 
 def travel_kept(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -346,14 +367,34 @@ def same_project(dep: Dependency, by_id: Mapping[int, Item]) -> bool:
 
 
 def pacing_of(item: Item, top: int | None, inp: BuildInput, by_id: Mapping[int, Item], preset: Any) -> str:
-    """How an item is paced through the weeks to its due: its project's own pace when one is set; a step otherwise as
-    its project's kind is (a Project evenly), not as its own kind (17 Nov, a client: with no pace set, a project's
-    steps were left to its last days, "friday doesn't account for how long the project will take")."""
+    """How an item is paced through the weeks to its due: its project's own pace when one is set. A project with none
+    set ("Not set") isn't paced: it's planned as soon as there's time (`soon`; 17 Nov, the user: "by default, friday
+    should use all time that it can"), not evenly as its kind once had it (17 Nov, a client, before that: with no pace
+    a project's steps were left to its last days). Other work as its kind is paced (a step as its project's kind)."""
     if top is not None and top in inp.project_pacing:
         return inp.project_pacing[top]
     head = by_id.get(top) if top is not None and top != item.id else None
-    kind = inp.settings["presets"].get(head.preset) if head is not None and head.preset else preset
-    return kind.pacing if kind else "none"
+    name = head.preset if head is not None and head.preset else item.preset
+    kind = inp.settings["presets"].get(name) if name else None
+    return kind.pacing if kind and name != "Project" else "none"
+
+
+def as_soon_as_there_is_time(engine_item: EngineItem, item: Item, settings: Mapping[str, Any], now: int) -> bool:
+    """Work that goes in the first free time (`soon`; 17 Nov, the user: "for the projects and things along those
+    lines, friday should use all time"): a deadline's work with no pace of its own, a project's or due more than a
+    week off. Not work due within the week, which is planned before its due as it always was (all of it pulled to
+    the first hours, a 3-hour lab due Wednesday was cut into the hours between Monday's classes); not a repeat's (its
+    window is its rhythm: a week's groceries pulled into the plan's first days went unplanned); not exam prep (kept
+    for the days before its exam), work pointless once late (it waits for nothing, but is often kept near its due on
+    purpose: quiz prep), work with no deadline, nor a maybe."""
+    due = engine_item.due_utc
+    in_project = item.parent_id is not None or item.preset == "Project"
+    return (
+        engine_item.amount == "fixed" and due is not None and engine_item.pacing == "none"
+        and (in_project or due - now > SHORT_TERM_DAYS * 1440) and item.series_id is None
+        and engine_item.firmness != "none" and not engine_item.tentative and item.preset != "Exam prep"
+        and not expires(item, settings)
+    )  # fmt: skip
 
 
 def natural(title: str) -> list[tuple[int, int, str]]:
@@ -473,6 +514,7 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
         travel_before=math.ceil((item.buffer_before_min or 0) / UNIT_MIN),
         travel_after=math.ceil((item.buffer_after_min or 0) / UNIT_MIN),
     )  # fmt: skip
+    engine_item.soon = as_soon_as_there_is_time(engine_item, item, inp.settings, grid.now)
     if item.preset == "Routine" and item.amount == "elastic" and MEAL.search(item.title) and release and due:
         engine_item.meal_window = (release, due)  # how far it may reach is settled once events are known: meal_room
     return with_amount(engine_item, item, inp)
@@ -587,7 +629,9 @@ def with_amount(engine_item: EngineItem, item: Item, inp: BuildInput) -> EngineI
         if item.daily_ceiling_units:  # an ongoing project's rhythm: at most so much a day
             engine_item.day_most = item.daily_ceiling_units
             engine_item.progress_today = inp.progress_today_units.get(item.id, 0)
-        engine_item.size_hours = engine_item.target * UNIT_MIN / 60
+        # Splitting costs as for one sitting, not the week's hours: a week's 10 hours made each sitting cost what three
+        # hours of it were worth, and only 6 of them were planned (17 Nov: "friday should use all time")
+        engine_item.size_hours = min(engine_item.target, TARGET_SITTING_UNITS) * UNIT_MIN / 60
     else:
         engine_item.daily_ceiling = item.daily_ceiling_units or 12
         engine_item.progress_today = inp.progress_today_units.get(item.id, 0)

@@ -2,6 +2,7 @@
 
 import math
 from collections.abc import Iterator
+from dataclasses import dataclass
 from typing import Any, Literal
 
 import numpy as np
@@ -9,6 +10,7 @@ import numpy as np
 from friday.core.pace import budget_factor
 from friday.engine.pwl import Hinge, Lin, Measure, curve_from_pairs, lin_sum
 from friday.engine.rules import Clock, Rule, Units, in_hour_window, matching_weekdays, rule_type
+from friday.engine.rules.prices import aim_of
 
 ONE_HOUR_UNITS = 4
 
@@ -145,6 +147,12 @@ class EvenLoad(Rule):
         # which no chunk cost could undo (a preference, a stage below). 3 hours is one long sitting, as deep_run has.
         floor: Units = 12
 
+    def applies_also(self, item):
+        # Not work planned as soon as there's time (17 Nov, the user: "by default, friday should use all time that it
+        # can"): spread evenly, a 10-hour project took 3 hours a day; a pace you set spreads it, and heavy days are
+        # wellbeing's (daily_load)
+        return not item.soon
+
     def measures(self, ctx):
         grid, problem = ctx.grid, ctx.problem
         items = [i for i in self.scoped_items() if i.due_utc is not None and i.due_utc <= grid.horizon_end]
@@ -218,6 +226,76 @@ def spread_days(grid: Any, item: Any, before_due: bool = True) -> list[int]:
         return days
     before = [d for d in days if int(grid.start[grid.day_slots[d][0]]) < item.due_utc]
     return before or days
+
+
+PACING_EXPONENT = {"linear": 1.0, "front": 0.7, "back": 1.5}
+
+
+def pacing_fraction(curve: str, start: int, due: int, t: int) -> float:
+    """The share of an item that should be done by t: ((t − r) / (D − r))^k, clipped to [0, 1]."""
+    if due <= start:
+        return 1.0
+    return min(1.0, max(0.0, (t - start) / (due - start))) ** PACING_EXPONENT[curve]
+
+
+@dataclass(frozen=True)
+class PaceLine:
+    keys: tuple[str, ...]  # the project's paced work
+    line: tuple[tuple[int, float], ...]  # (planning day, units of it placed by that day's end on its pace)
+
+
+@rule_type("pacing")
+class Pacing(Rule):
+    """A project's pace through its work, day by day (17 Nov: "when changing the pace of a project … i saw no change":
+    the pace was held only by the allocator at each week's end, and work due inside the plan's two weeks went where the
+    scheduler put it, the same for every pace). At the end of each planning day before the project's due, its work
+    placed so far is held to its pacing line, F(t) of what's left, F as the allocator's from now (or its start, when
+    later) to the last due (or as many days before it as it aims to finish early): each hour behind the line costs
+    `behind`, each hour ahead `ahead`. Front-loaded then plans most of it in the first days, toward the end most in the
+    last, evenly a share a day. From now, not from when the project began: one begun weeks ago with little done was
+    behind every line, and every pace crammed it into the first day alike. The planner builds it for projects
+    (planner/build.py), in the preferences stage: it shapes a plan where there's room, never makes work late, and gives
+    way to wellbeing (late nights, heavy days). Steps keep their order: the line counts all of them together."""
+
+    applies_to = {"fixed"}
+
+    class Params(Rule.Params):
+        behind: float = 1.0
+        ahead: float = 1.0
+
+    def applies_also(self, item):
+        return item.pacing in PACING_EXPONENT and item.due_utc is not None and item.project is not None
+
+    def prepare(self, problem):
+        super().prepare(problem)
+        # Read here, before the allocator caps work due past the horizon at its quotas: the line is all that's left.
+        grid = problem.grid
+        groups: dict[tuple[int, str], list[Any]] = {}
+        for item in self.scoped_items():
+            groups.setdefault((item.project, item.pacing), []).append(item)
+        ends = [(d, int(grid.end[slots[-1]])) for d, slots in enumerate(grid.day_slots) if slots]
+        self.lines: list[PaceLine] = []
+        for (_, curve), members in sorted(groups.items(), key=lambda g: (g[0][0], g[0][1])):
+            total = sum(i.need for i in members)
+            start = max(grid.now, min(grid.now if i.pacing_start_utc is None else i.pacing_start_utc for i in members))
+            due = max(i.due_utc for i in members)
+            aim = min(aim_of(self.problem.rules, i) + due - i.due_utc for i in members)
+            line = tuple((d, pacing_fraction(curve, start, aim, t) * total) for d, t in ends if t < due)
+            if line and total > 0:
+                self.lines.append(PaceLine(tuple(i.key for i in members), line))
+
+    def measures(self, ctx):
+        grid = ctx.grid
+        for pace in self.lines:
+            so_far, counted = Lin(), 0
+            for d, units in pace.line:
+                for day in range(counted, d + 1):
+                    so_far += lin_sum(ctx.placed_in(key, grid.day_slots[day]) for key in pace.keys)
+                counted = d + 1
+                if so_far.is_const():
+                    continue
+                curve = (Hinge("below", units, self.p.behind), Hinge("above", units, self.p.ahead))
+                yield Measure(f"{self.name}:{pace.keys[0]}@d{d}", Lin(dict(so_far.terms)), "units", curve)
 
 
 @rule_type("cluster")

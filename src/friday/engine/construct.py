@@ -12,7 +12,7 @@ import numpy as np
 
 from friday.engine.compile import Compiled, Model, compile_problem
 from friday.engine.kernel import init_state, item_violations, new_state, total_violations
-from friday.engine.problem import Problem
+from friday.engine.problem import EngineItem, Problem
 from friday.engine.prune import demote_locks
 
 NO_DUE = 10.0**15
@@ -143,7 +143,26 @@ def placement_order(c: Compiled) -> list[int]:
     # A meal's minimum first (personal pinned lunch): placed after the work, it found its window taken
     # by work due days later, and the anneal rarely moved both to give it back.
     meal = [M.amount_kind[i] == 1 and problem.items[c.keys[i]].min > 0 for i in range(M.I)]
-    return sorted(range(M.I), key=lambda i: (0 if meal[i] else 1, 0 if hard[i] else 1, effective[i], -importance[i], i))
+    # Work due a week or more off that goes in as soon as there's time comes after the rest, soft-due work too, and
+    # what's due after the plan's days and held to no quota after that (17 Nov: placed among the hard work, it took the
+    # three hours a soft-due grading needed that week, and the search never gave them back)
+    grid = problem.grid
+    later = [far(problem.items[k], grid.now, grid.horizon_end) for k in c.keys]
+    return sorted(
+        range(M.I),
+        key=lambda i: (0 if meal[i] else 1, later[i], 0 if hard[i] else 1, effective[i], -importance[i], i),
+    )
+
+
+FAR_DAYS = 7  # as the planner's SHORT_TERM_DAYS: work due later is what goes in as soon as there's time
+
+
+def far(item: EngineItem, now: int, horizon_end: int) -> int:
+    """0: placed in deadline order; 1: work due a week or more off, as soon as there's time; 2: that, due after the
+    horizon with no quota to meet (it may take time now but needn't)."""
+    if not item.soon or item.due_utc is None or item.due_utc - now <= FAR_DAYS * 1440:
+        return 0
+    return 2 if item.due_utc > horizon_end and not item.quotas else 1
 
 
 def fewest_late_order(c: Compiled) -> list[int]:
