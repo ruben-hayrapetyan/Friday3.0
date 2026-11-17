@@ -10,7 +10,7 @@ from friday.api.types import Empty
 from friday.api.views import ProjectOptionsOut
 from friday.commands.archive import require_project
 from friday.commands.registry import Ctx, command, query
-from friday.commands.settings import write_setting
+from friday.commands.settings import loosen_next_replan, write_setting
 from friday.core.items import FieldError
 from friday.core.time import parse_utc
 from friday.planner.ongoing import PACINGS, PROJECT_OPTIONS
@@ -42,6 +42,9 @@ def project_set(ctx: Ctx, inp: ProjectSetInput) -> Changed:
         mine["pacing"] = inp.pacing if inp.pacing in PACINGS else None
         saved[str(inp.id)] = mine
         ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": PROJECT_OPTIONS}, {"value": json.dumps(saved)})
+        # A different plan was asked for, as with a rule: the next replan doesn't hold today's (17 Nov: "i did it and
+        # i saw no change", every block held where it was, in wellbeing, above any pace)
+        loosen_next_replan(ctx, 0.0)
         said.append(PACE_WORDS.get(inp.pacing, "as its kind is paced"))
     if inp.early_days is not None:
         due = ctx.conn.execute("SELECT due_utc FROM items WHERE id = ?", [inp.id]).fetchone()[0]

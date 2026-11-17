@@ -44,6 +44,9 @@ EXTRA_RULES = [
     # spread and cluster reach the work a rule names (14 Nov: no task is marked so)
     dict(type="spread", name="spread_exam_prep", weight=3, scope=dict(preset="Exam prep")),
     dict(type="cluster", name="cluster_projects", weight=3, scope=dict(preset="Project"), params=dict(per_day=2)),
+    # a project's pace, held each day (the planner builds it for paced projects; single_rule paces the work)
+    dict(type="pacing", name="pace_kept", weight=2, params=dict(behind=1.5, ahead=0.5)),
+    dict(type="soon", name="first_free_time", weight=1, params=dict(per_day=3)),
 ]  # fmt: skip
 MIXED = scales(Dials(capacity=0.8, rest=1.5, spread=2.0, growth=0.5))
 
@@ -118,7 +121,11 @@ def single_rule(rule_type: str, seed: int = 0) -> Problem:
         spec = next(r for r in reference_rules() if r["type"] == rule_type)
     sc = with_rules(reference_instance(30, 10 + seed, timezone=NEW_YORK, monday=DST_FINE_MONDAY), [spec])
     sc.day_scales = [MIXED] * 3 + [scales(Dials())] * 11
-    p = sc.build(current=current_plan(sc, seed) if rule_type == "minimize_changes" else None)
+    paces = {}
+    if rule_type == "pacing":  # every task with a due paced, front-loaded, evenly or toward the end in turn
+        dated = [i for i in sc.items if i.when != "fixed" and i.amount == "fixed" and i.due_utc and i.id is not None]
+        paces = {i.id: ("front", "linear", "back")[n % 3] for n, i in enumerate(dated)}
+    p = sc.build(current=current_plan(sc, seed) if rule_type == "minimize_changes" else None, project_pacing=paces)
     if rule_type == "travel_kept":  # a quarter hour to get to each routine and back, as lunch has
         for item in p.items.values():
             if item.amount == "elastic":

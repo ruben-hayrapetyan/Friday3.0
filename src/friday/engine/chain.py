@@ -3,7 +3,8 @@
 Numba keeps this file's compiled code until this file changes, and it builds in the kernel's `item_violations`: a
 change to that check in kernel.py needs a change here too, or the cached chain keeps the old one (16 Nov: a target's
 most a day, an ongoing project's rhythm, was counted by the kernel but not by a chain compiled before it, and plans
-broke the wall). Kernel wall checks as of: open items and rhythm targets count units a day.
+broke the wall). Kernel wall checks as of: open items and rhythm targets count units a day. Moves as of: a one-sitting
+item is inserted a unit over when only a coarse slot fits it (17 Nov).
 """
 
 import numpy as np

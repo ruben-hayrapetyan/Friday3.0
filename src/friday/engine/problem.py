@@ -83,6 +83,8 @@ class EngineItem:
     quotas: dict[int, int] = field(default_factory=dict)  # week → units, from the allocator
     pacing: Literal["linear", "front", "back", "none"] = "none"
     pacing_start_utc: int | None = None  # where the pacing line starts: the release, else creation, else now
+    # Not paced (no pace set, not work that waits for its due): as soon as there's time (`soon`, planner/build.py)
+    soon: bool = False
     travel_before: int = 0  # units kept clear of other work before each chunk: getting to lunch
     travel_after: int = 0  # and after it: getting back to somewhere you can work
     runs_units: int = 0  # it runs by itself this long after its first quarter hour (laundry), units

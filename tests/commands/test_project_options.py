@@ -145,11 +145,12 @@ def test_a_project_finishing_early_ends_its_work_days_before_its_due(tmp_path: P
 
 
 def test_front_loaded_work_puts_more_in_the_coming_weeks_than_work_left_toward_the_end(tmp_path: Path) -> None:
-    # A project due in six weeks: its pace decides how much of it the next two weeks hold (weekly quotas). Not set, its
-    # steps go evenly, as a Project does (17 Nov, a client: left for later, "'no pace' breaks everything");
-    # front-loaded puts the most of it first; toward the end, least.
+    # A project due in six weeks: its pace decides how much of it the next two weeks hold (weekly quotas). Not set, all
+    # of it as soon as there's time (17 Nov, the user: "by default, friday should use all time that it can"; before
+    # that, evenly, and before that left for later: a client, "'no pace' breaks everything"); front-loaded puts the
+    # most of it first, evenly less, toward the end least.
     planned = {}
-    for pace in ("kind", "front", "back"):
+    for pace in ("kind", "front", "linear", "back"):
         (tmp_path / pace).mkdir()
         app = new_app(tmp_path / pace, now=MONDAY, horizon_days=14)
         project, steps = essay(app, due="2026-12-21T17:00")
@@ -158,4 +159,5 @@ def test_front_loaded_work_puts_more_in_the_coming_weeks_than_work_left_toward_t
         replan(app.conn, app.now_utc)
         planned[pace] = blocks_of(app, steps)
     hours = {pace: sum(end - start for start, end in found) / 60 for pace, found in planned.items()}
-    assert hours["front"] > hours["kind"] > hours["back"]
+    assert hours["kind"] == 13
+    assert hours["front"] > hours["linear"] > hours["back"], hours

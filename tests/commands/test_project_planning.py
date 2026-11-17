@@ -150,8 +150,10 @@ def test_finishing_early_is_kept_when_there_is_room(app: App) -> None:
 
 
 def test_a_step_planned_past_the_plans_days_says_when(app: App) -> None:
-    # "open subtasks say not planned even with ample time": planned nearer the due, past the plan's two weeks
-    _, ids = project(app, "2026-11-30T17:00", [("Research", 240), ("Draft", 240), ("Revise", 240), ("Present", 240)])
+    # "open subtasks say not planned even with ample time": planned nearer the due, past the plan's two weeks (paced
+    # evenly: with no pace set it's all done in the first days, 17 Nov)
+    made, ids = project(app, "2026-11-30T17:00", [("Research", 240), ("Draft", 240), ("Revise", 240), ("Present", 240)])
+    app.do("project_set", id=made, pacing="linear")
     replan(app.conn, app.now_utc)
     [shown] = app.do("projects")
     found = blocks(app)

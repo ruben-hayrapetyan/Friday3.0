@@ -311,6 +311,61 @@ class FinishEarly(Rule):
         return min(lead, max(0.0, (end - (item.due_utc - lead * MINUTES_PER_DAY)) / MINUTES_PER_DAY))
 
 
+SOON_WEEK_DAYS = 7  # due this many days off or more, work counts once; sooner, more (`soon_urgency`)
+SOON_MOST = 4.0
+
+
+def aim_of(rules: list[Rule], item: Any) -> int:
+    """When work aims to be done: its due, less the most days a Finish early rule that reaches it says."""
+    days = max((r.p.days for r in rules if r.type == "finish_early" and r.problem is not None and r.applies(item)),
+               default=0.0)  # fmt: skip
+    return item.due_utc - math.ceil(days * MINUTES_PER_DAY)
+
+
+def soon_urgency(due_utc: int, now_utc: int) -> float:
+    """How much a day's delay counts in the allocator's tie-break for work due this far off: once from a week out, up
+    to four times when due within two days, so of two things both wanted as soon as there's time, what's due first
+    takes the first days."""
+    days = max(1e-3, (due_utc - now_utc) / MINUTES_PER_DAY)
+    return min(SOON_MOST, max(1.0, SOON_WEEK_DAYS / days))
+
+
+@rule_type("soon")
+class Soon(Rule):
+    """As soon as there's time (17 Nov, the user: "by default, friday should use all time that it can"): work with a
+    due and no pace of its own costs `per_day` an hour for each day after now it's placed (up to `days`), so it fills
+    the first free time, up to what each day takes (wellbeing: heavy days, late nights and evenings kept free come
+    first), rather than leaning toward its due. The same for all of it, so which goes first is lateness's and Finish
+    early's to say; and gently, so it doesn't cut a lab into three hours between classes to do it two days sooner (17
+    Nov: four times as much for work due within two days did). Built by the planner for the work it marks `soon`
+    (planner/build.py), in the preferences stage: a pace you set, a rule placing work near its due (close_to_due) and
+    lateness all come before it. Left unplanned, it costs as if done when it aims to be."""
+
+    applies_to = {"fixed"}
+
+    class Params(Rule.Params):
+        per_day: float = 0.5
+        # Over the first this many days only: past them, a day later costs nothing more (17 Nov: pulled from a week
+        # off, an hour of quizzes due in a fortnight was cut into half hours for the gaps between classes)
+        days: float = 3.0
+
+    def prepare(self, problem):
+        super().prepare(problem)
+        self.close = [r for r in problem.rules if r.type == "close_to_due" and r.problem is not None]
+
+    def applies_also(self, item):
+        return item.soon and item.due_utc is not None and not any(r.applies(item) for r in self.close)
+
+    def price(self, item, s):
+        grid = self.problem.grid
+        aim = aim_of(self.problem.rules, item)
+        # unplanned, as if done when it aims to be, at the plan's end at the soonest: costing only what the last
+        # day did, work due weeks off wasn't worth a sitting's cost on the plan's last days
+        if s == grid.S:
+            return self.p.per_day * max(0, max(grid.horizon_end, aim) - grid.now) / MINUTES_PER_DAY
+        return self.p.per_day * min(self.p.days, max(0, int(grid.start[s]) - grid.now) / MINUTES_PER_DAY)
+
+
 @rule_type("close_to_due")
 class CloseToDue(Rule):
     """`Exam prep as close to the exam as possible`: an hour of it costs `per_day` for each day it ends before its due

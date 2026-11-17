@@ -308,6 +308,10 @@ def insert_chunk(M, st, protected, touched):
         return 0
     t = np.random.randint(M.first_slot[i], M.last_slot[i] + 1)
     e = fits(M, st, protected, i, t, M.insert_units[i], 1, 0, 1, 0)
+    if e < 0 and M.one_sitting[i] and M.amount_kind[i] == 0:
+        # An odd quarter hour past the first week fills a half-hour slot, as construct places it and the walls allow
+        # (17 Nov: a 45-minute errand taken off week two could never be put back, and was left unplanned)
+        e = fits(M, st, protected, i, t, M.insert_units[i] + 1, 1, 0, 1, 0)
     if e < 0:
         return 0
     fill_range(M, st, i, t, e)
