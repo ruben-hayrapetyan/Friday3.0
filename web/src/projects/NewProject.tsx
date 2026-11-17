@@ -10,9 +10,9 @@ import { useLook } from "@/theme/LookProvider"
 import { useShell } from "@/shell/ShellContext"
 import { DuePicker, LengthField } from "@/todo/Pickers"
 
-const ICONS: Record<string, string> = { Essay: "article", Presentation: "presentation-chart" }
+const ICONS: Record<string, string> = { Essay: "article", Presentation: "presentation-chart", Report: "file-text", Event: "calendar-check" }
 // Friday's own (core/settings.py DEFAULT_TEMPLATES): they stay; only the ones you saved can be removed (15 Nov)
-const BUILT_IN = ["Essay", "Presentation"]
+const BUILT_IN = ["Essay", "Presentation", "Report", "Event"] // a student's, and out of school work's (17 Nov)
 
 export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
   const { today } = useShell()
@@ -103,13 +103,14 @@ export function NewProject({ onClose }: { onClose: (id?: number) => void }) {
           <span className="fr-kicker">Due</span>
           <DuePicker value={due} today={today} onPick={setDue} autoFocus={false} />
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span className="fr-kicker" style={{ width: 120 }}>
-            About how long, in all
-          </span>
-          {/* a value that opens common amounts and a box to type any (16 Nov) */}
-          <LengthField value={minutes} onPick={(m) => m && setMinutes(m)} label="About how long, in all" amounts={[120, 360, 600, 1200, 2400, 6000]} />
-          <span className="fr-kicker">Friday splits it across the steps; change any step after.</span>
+        {/* its label over it, as Tag's and Due's (17 Nov: a narrow column broke it over two lines) */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <span className="fr-kicker">About how long, in all</span>
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+            {/* a value that opens common amounts and a box to type any (16 Nov) */}
+            <LengthField value={minutes} onPick={(m) => m && setMinutes(m)} label="About how long, in all" amounts={[120, 360, 600, 1200, 2400, 6000]} />
+            <span className="fr-kicker">Friday splits it across the steps; change any step after.</span>
+          </div>
         </div>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button className="btn btn-ghost" onClick={() => onClose()}>

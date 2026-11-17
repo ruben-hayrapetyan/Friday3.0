@@ -188,7 +188,7 @@ def template_apply(ctx: Ctx, inp: TemplateApplyInput) -> ItemResult:
         minutes = max(UNIT_MIN, math.ceil(inp.hours * 60 * step.share / total / UNIT_MIN) * UNIT_MIN)
         fields = {
             "title": step.title,
-            "preset": step.preset or "Assignment",
+            "preset": step.preset or ("Assignment" if ctx.settings["school"] else "Work task"),  # never a school kind out of school
             "duration_min": minutes,
             "parent_id": parent.id,
         }

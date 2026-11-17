@@ -274,6 +274,17 @@ DEFAULT_TEMPLATES = {
                      TemplateStep(title="Rehearse", share=0.2)),
 }  # fmt: skip
 
+# Out of school (Setup asks), a project's templates are work's, as its kinds are (17 Nov: "students should not get the
+# same options as non-students"); yours once you save or delete one (core.settings DEFAULTS has the student's)
+WORK_TEMPLATES = {
+    "Report": (TemplateStep(title="Research", share=0.3), TemplateStep(title="Draft", share=0.45),
+               TemplateStep(title="Review", share=0.25)),
+    "Presentation": (TemplateStep(title="Prepare", share=0.4), TemplateStep(title="Slides", share=0.4),
+                     TemplateStep(title="Rehearse", share=0.2)),
+    "Event": (TemplateStep(title="Plan", share=0.3), TemplateStep(title="Book", share=0.25),
+              TemplateStep(title="Invite", share=0.2), TemplateStep(title="Final checks", share=0.25)),
+}  # fmt: skip
+
 
 class PaceSettings(Model):
     default: str = "Normal"

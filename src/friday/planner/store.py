@@ -8,13 +8,15 @@ from typing import Any
 from friday.core.db import one, rows
 from friday.core.items import Item
 from friday.core.rows import item_from_row
-from friday.core.settings import DEFAULTS, validate_value
+from friday.core.settings import DEFAULTS, WORK_TEMPLATES, validate_value
 
 
 def load_settings(conn: sqlite3.Connection, user_id: int = 1) -> dict[str, Any]:
     """Every settings key: stored values over the defaults."""
     stored = rows(conn, "SELECT key, value FROM settings WHERE user_id = ?", [user_id])
     settings = DEFAULTS | {r["key"]: validate_value(r["key"], json.loads(r["value"])) for r in stored}
+    if not settings["school"] and "templates" not in {r["key"] for r in stored}:
+        settings = settings | {"templates": WORK_TEMPLATES}  # out of school, work's templates, not an essay's
     # the categories read "final" by whether you're in school (core/calendars.only_a_final)
     return settings | {"categories": settings["categories"].model_copy(update={"school": settings["school"]})}
 
