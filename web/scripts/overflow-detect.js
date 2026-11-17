@@ -125,7 +125,9 @@
   // 3. one control drawn over another (14 Nov: a calendar's kind menu, too wide for its column, covered its Skip Inbox
   // switch): buttons, switches, links and fields in the same layer (not one in a popover over the other) whose boxes
   // cross by more than a sliver both ways
-  const layer = (el) => el.closest("[role=dialog], [role=menu], [role=listbox], .fr-float") ?? document
+  // (an Undo toast floats over the page for a few seconds, a layer of its own, as a popover is: 17 Nov, one over a row
+  // under a popup's dimmed page)
+  const layer = (el) => el.closest("[role=dialog], [role=menu], [role=listbox], .fr-float, .fr-toasts") ?? document
   // the part of a control that shows: what scrolled out of its list is under nothing
   const showing = (el) => {
     const r = el.getBoundingClientRect()

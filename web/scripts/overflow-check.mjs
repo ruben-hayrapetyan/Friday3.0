@@ -64,7 +64,7 @@ const STATES = [
   { name: "project popup step length", path: (base) => opened(base, "project"), click: ["Length of Research"] },
   { name: "project popup project menu", path: (base) => opened(base, "project"), click: ["Project"] },
   { name: "project popup tag menu", path: (base) => opened(base, "project"), click: ["Tag for Rocketry design review"] },
-  { name: "project popup any time", path: (base) => opened(base, "project"), click: ["then"] },
+  { name: "project popup any time", path: (base) => opened(base, "project"), click: ["Rehearse: after|Rehearse: any time"] }, // the 1440 run made it any time: either way
   { name: "exam popup", path: (base) => opened(base, "exam") },
   { name: "exam popup rows", path: (base) => opened(base, "exam"), open: "[role=dialog]", click: ["Add prep"] },
   { name: "exam popup prep due", path: (base) => opened(base, "exam"), each: '[role=dialog] [role=listitem] [aria-label^="When "]', most: 1 },
