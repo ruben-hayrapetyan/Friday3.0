@@ -1424,13 +1424,20 @@ ONLY_THAT = (
 )
 
 
+# "starting 5 days before", "from 5 days before" (17 Nov, a client: "maybe I need to rephrase it to 'starting 5 days
+# before'?"; read nowhere, it went to the AI, and a rule finishing exam prep 5 days early clashed in its place)
+FOCUS_FROM = r"(?: (?:starting|beginning|from))?"
 FOCUS_ON = (
-    rf"^ ?focus (?:only )?on {EXAMS}(?: (?:course|class|subject)s?)?(?: for)?(?: the last)?"
+    rf"^ ?focus (?:only )?on {EXAMS}(?: (?:course|class|subject)s?)?(?: for)?(?: the last)?{FOCUS_FROM}"
     rf"(?: (?:the|{FOCUS_DAYS}) (days?))?"
     rf"(?: (?:before|ahead of|leading up to)(?: (?:it|them|{EXAMS}))?| in the days before (?:it|them))? ?$"
 )
 DAYS_ONLY_FOR = (
     rf"^ ?(?:for )?(?:the )?(?:last )?(?:{FOCUS_DAYS} )?(days?) (?:before|leading up to) {EXAMS},? {ONLY_THAT} ?$"
+)
+# "starting 2 days before a final, study only for that class"
+FROM_DAYS_FOCUS = (
+    rf"^ ?(?:starting|beginning|from) (?:{FOCUS_DAYS} )?(days?) (?:before|ahead of) {EXAMS},? {ONLY_THAT} ?$"
 )
 
 
@@ -1440,7 +1447,7 @@ def read_exam_focus(t: str, negated: bool) -> Reading | None:
     `the 2 days before a final are only for that class`, `the day before a midterm, drop everything else`."""
     if negated:
         return None
-    m = re.search(FOCUS_ON, t) or re.search(DAYS_ONLY_FOR, t)
+    m = re.search(FOCUS_ON, t) or re.search(DAYS_ONLY_FOR, t) or re.search(FROM_DAYS_FOCUS, t)
     if m is None:
         return None
     n, unit = m[1], m[2]

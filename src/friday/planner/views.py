@@ -294,7 +294,17 @@ def cost_said(kind: str, it: str, was: Blocks, now: Blocks, snapshot: Snapshot) 
     if days_said(snapshot, now) != days_said(snapshot, was):
         return f"moves {it} to {days_said(snapshot, now)} from {days_said(snapshot, was)}"
     first_now, first_was = clock_time(to_local(now[0].start_utc, tz)), clock_time(to_local(was[0].start_utc, tz))
-    return f"moves {it} to {first_now} from {first_was}"
+    if first_now != first_was:
+        return f"moves {it} to {first_now} from {first_was}"
+    # the same first start, the rest changed: said as its times (17 Nov, a client's Inbox: "moves Prep: CHEM 2090
+    # Prelim 3 to 10:15am from 10:15am")
+    return f"plans {it} {times_said(now, tz)} instead of {times_said(was, tz)}"
+
+
+def times_said(blocks: Blocks, tz: str) -> str:
+    """ "10:15am–12:15pm", "10:15am–11:15am and 2pm–3pm": a day's sittings by their times, in your clock."""
+    spans = [f"{clock_time(to_local(b.start_utc, tz))}–{clock_time(to_local(b.end_utc, tz))}" for b in blocks]
+    return spans[0] if len(spans) == 1 else ", ".join(spans[:-1]) + " and " + spans[-1]
 
 
 def span(minutes: int) -> str:

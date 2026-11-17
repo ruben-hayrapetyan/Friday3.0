@@ -82,7 +82,8 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
 - rule_add: {text, overrides: {kind, subject, rel, at, until, days, amount, event, events, before_min}, strength:
   "Prefer" | "Strongly" | "Always"}. kind: window (a time of day: rel before/after/between/not_between with
   at/until), days (days: ["mon".."sun"], rel on/not_on), free (keep a window free: at/until, days), cap (amount: hours
-  a day), early (amount: days early), after (event: title words), close (work as close to its due as possible:
+  a day), early (amount: days early: the work all done that many days before its due, "finish essays 2 days
+  early"; never for focusing on or starting something some days before), after (event: title words), close (work as close to its due as possible:
   subject "exam prep" for studying for an exam, quiz or interview, events: [words in that prep's title, e.g. "math
   quiz"] or none for all prep, before_min: a buffer kept clear before it, e.g. 1440 for a day), meals_kept (events:
   the meals work never takes, of "breakfast", "lunch", "dinner"), meals_learned (events: the meals Friday plans or
@@ -92,7 +93,8 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
   for "at least 7 hours of sleep"; days: the nights it holds, by the evening's weekday), spread (each task the
   subject names spread over the days before it's due: "spread my essays over several days"), cluster (each one's
   sittings on as few days as can be: "keep problem sets on few days"), exam_focus (amount: days before each exam
-  that other courses' work due after it waits: "focus on an exam's course 5 days before it"). subject: "work", "deep
+  that other courses' work due after it waits: "focus on an exam's course 5 days before it", "focus on exams
+  starting 5 days before", "the 2 days before a final are only for that class"; not early). subject: "work", "deep
   work", a tag, a kind or a title. A bedtime or wake time ("bed by 11") is the sleep setting, not a rule.
 - settings_set: {key, value} for these keys only: kind_order (kinds most important first, e.g. ["Assignment", "Reading"]
   for "prioritize assignments over readings"), short_term_first (true for "prioritize short-term work over long-term",
