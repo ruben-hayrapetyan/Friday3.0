@@ -21,7 +21,20 @@ export function ProjectDetail({ p, all, onPick, top, after }: { p: Project; all:
   const { color } = useLook()
   const blocks = useHorizon().data?.blocks ?? []
   const add = useCommand("add", { label: () => "Step added" })
-  const reorder = useCommand("reorder", { label: () => "Reordered" })
+  // the steps move at once, the server's answer after (17 Nov: "make the reordering instant")
+  const reorder = useCommand("reorder", {
+    label: () => "Reordered",
+    optimistic: (client, input) =>
+      client.setQueryData<Project[]>(["projects"], (list) =>
+        list?.map((x) => {
+          if (x.item.id !== input.parent_id) return x
+          const at = new Map(input.ids.map((id, n) => [id, n]))
+          const placed = x.children.filter((c) => at.has(c.id)).sort((a, b) => (at.get(a.id) as number) - (at.get(b.id) as number))
+          let n = 0
+          return { ...x, children: x.children.map((c) => (at.has(c.id) ? placed[n++] : c)) }
+        }),
+      ),
+  })
   // A project you'll do again, as a template New project offers (3 Nov: `template_save` had no button)
   const saveTemplate = useCommand("template_save", { label: (o) => `${o.result.message ?? "Saved"}: New project offers it` })
   // One of that name already saved is asked about here, not written over (15 Nov, your choice on a client's notes)

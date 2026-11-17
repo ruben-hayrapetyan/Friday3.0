@@ -119,6 +119,8 @@ describe("projects", () => {
     await waitFor(() => expect((screen.getByRole("textbox", { name: "Add a step" }) as HTMLInputElement).value).toBe(""))
     expect(sent.filter((s) => s.name === "add")).toHaveLength(1)
     await user.click(within(step("Print handouts")).getByRole("button", { name: "Move up" }))
+    // moved at once, before the server answers (17 Nov: "make the reordering instant")
+    expect(step("Print handouts").compareDocumentPosition(step("Rehearse")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     const order = await waitForSent("reorder")
     expect(order.body).toMatchObject({ parent_id: parent.id })
     expect((order.body as { ids: number[] }).ids.at(-2)).toBe((await itemNamed("Print handouts")).id)
