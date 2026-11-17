@@ -155,7 +155,11 @@ describe("a planned block's card", () => {
   })
 
   it("plans it loosely when it might not happen, and as usual again", async () => {
-    const block = await blockOf(assignment, 2)
+    // one due within the week: work that might not happen is planned nearer its due, so one due weeks off leaves the
+    // plan's two weeks once it's tentative (as before 17 Nov; the sample's own block 2 now is such work)
+    const by = `${addDays(await today(), 5)}T23:59`
+    const soon = new Set((await friday.q<{ id: number; due: string | null }[]>("items")).filter((i) => i.due && i.due <= by).map((i) => i.id))
+    const block = await blockOf((b) => assignment(b) && soon.has(b.item_id))
     const { user } = await openCard(block)
     await user.click(await inCard().findByRole("button", { name: "Might not happen" }))
     expect((await waitForSent("edit")).body).toEqual({ id: block.item_id, certainty: "tentative" })
