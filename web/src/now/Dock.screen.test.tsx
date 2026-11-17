@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest"
 import type { Schemas } from "@/api/client"
 import { addDays } from "@/lib/time"
 import { friday, openFriday, sent, waitForSent } from "@/test/friday"
+import { RING } from "./Dock"
 
 type Now = Schemas["NowOut"]
 type Block = Schemas["BlockOut"]
@@ -65,6 +66,10 @@ describe("timing something", () => {
     const { user } = await openDock()
     expect(await inDock().findByText(a.title)).toBeTruthy()
     expect(inDock().getByText(/^Timing since /)).toBeTruthy()
+    // the timing dot's ring isn't cut off by the edge of the line it's in (16 Nov, a screenshot)
+    const dot = dock()?.querySelector("[data-pulse]") as HTMLElement
+    expect(dot.style.margin).toBe(`${RING}px`)
+    expect(dot.style.boxShadow).toContain(`0 0 0 ${RING}px`)
     expect(inDock().getByText(/then /)).toBeTruthy()
     await user.click(inDock().getByRole("button", { name: "Pause the timer (Space)" }))
     expect((await waitForSent("stop")).body).toEqual({})

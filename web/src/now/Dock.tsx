@@ -549,8 +549,12 @@ function Bar({ pct, live, muted }: { pct: number; live?: boolean; muted?: boolea
   )
 }
 
+// Its ring is RING px past the dot; the line it sits in hides what's outside it, so the dot keeps that much room around
+// it (16 Nov, a screenshot: the ring's left side was cut off at the line's edge).
+export const RING = 3
+
 function Pulse({ color }: { color: string }) {
-  return <span style={{ flex: "none", width: 8, height: 8, borderRadius: "50%", background: color, boxShadow: `0 0 0 3px color-mix(in srgb, ${color} 30%, transparent)` }} />
+  return <span data-pulse style={{ flex: "none", width: 8, height: 8, margin: RING, borderRadius: "50%", background: color, boxShadow: `0 0 0 ${RING}px color-mix(in srgb, ${color} 30%, transparent)` }} />
 }
 
 function IconButton({ icon, label, on, small, onClick }: { icon: string; label: string; on?: boolean; small?: boolean; onClick: () => void }) {
