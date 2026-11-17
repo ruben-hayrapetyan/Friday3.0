@@ -212,6 +212,7 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
         carried_units={k: v // UNIT_MIN for k, v in snapshot.carried.items()},
         priorities=snapshot.priorities,
         project_pacing=snapshot.project_pacing,
+        project_order=snapshot.project_order,
         current=current,
         day_scales=day_scales(snapshot),
         minimize_changes_scale=stability,

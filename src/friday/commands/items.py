@@ -76,6 +76,10 @@ def add(ctx: Ctx, inp: AddInput) -> AddOutput:
     if not str(given.get("title") or "").strip():  # nothing said at all was a crash, not a word (audit, 8 Nov)
         raise FieldError("title", "give it a title: what is it?")
     given = exact_length(ctx, with_guesses(ctx, given))
+    if given.get("parent_id") is not None and inp.preset is None and given.get("preset") == "Project":
+        # A step whose words say "project" ("Email project partner") is a step, not a project of its own with a
+        # project's ten hours (17 Nov, the sweep); a sub-project is one you make a Project yourself.
+        given.pop("preset")
     after, before = repeat.pop("after", []) + inp.after, repeat.pop("before", []) + inp.before
     if inp.every:  # the picker's repeat over one typed in the text ("Run every tue" with Every day chosen)
         repeat["every"] = inp.every

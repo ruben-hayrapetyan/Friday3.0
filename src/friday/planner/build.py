@@ -100,6 +100,7 @@ class BuildInput:
     carried_units: Mapping[int, int] = field(default_factory=dict)  # item id → an ongoing project's carry-over
     priorities: Mapping[int, float] = field(default_factory=dict)  # repeat id → an ongoing project's priority weight
     project_pacing: Mapping[int, str] = field(default_factory=dict)  # project id → its own pace through the work
+    project_order: Mapping[int, Sequence[int]] = field(default_factory=dict)  # project id → its steps as listed
     current: Mapping[int, Sequence[tuple[int, int]]] = field(default_factory=dict)  # item id → (start, end) blocks
     day_scales: Sequence[DayScales] | None = None
     debt_hours: Mapping[date, float] = field(default_factory=dict)
@@ -261,7 +262,12 @@ def flexible_items(inp: BuildInput, grid: Grid, fixed: Mapping[int, Item]) -> di
     known = subjects(i.title for i in out.values())  # one course for a stretch (same_course), as Insights reads them
     for engine_item in out.values():
         engine_item.course = subject_of(engine_item.title, known)
-    dependencies = [*inp.dependencies, *parts_in_order(inp, out), *long_after_short(inp, out)]
+    dependencies = [
+        *inp.dependencies,
+        *parts_in_order(inp, out),
+        *in_listed_order(inp, out),
+        *long_after_short(inp, out),
+    ]
     for engine_item in out.values():
         engine_item.depends_on = dependency_specs(id_of(engine_item.key), dependencies, out)
     return out
@@ -297,6 +303,8 @@ def parts_in_order(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[Dep
             continue
         if item.series_id is not None or engine_item.firmness == "none":
             continue  # a repeat's occurrences (meals) and work with no deadline aren't parts of a set
+        if item.parent_id is not None:
+            continue  # a project's steps go in the order they're listed (in_listed_order), never by title (17 Nov)
         stem = " ".join(re.findall(r"[a-z0-9]+", item.title.lower())[:2])
         day = planning_date(engine_item.due_utc, time.timezone, minutes_of(time.day_start))  # your day, not UTC's
         groups.setdefault((stem, item.preset, day), []).append(item)
@@ -307,6 +315,36 @@ def parts_in_order(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[Dep
         ordered = sorted(members, key=lambda i: (natural(i.title), i.id))
         out += [Dependency(after.id, before.id) for before, after in zip(ordered, ordered[1:], strict=False)]  # type: ignore[arg-type]
     return out
+
+
+def in_listed_order(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[Dependency]:
+    """A project's steps one after the other, in the order they're listed (17 Nov: "the order in which it plans
+    subtasks is plain wrong": nothing read the order you gave them). Left alone when you said yourself what waits on
+    what among them: then only your waits hold, and the steps that wait on nothing go alongside."""
+    tied = {d.item_id for d in inp.dependencies} | {d.depends_on_id for d in inp.dependencies}
+    steps: dict[int, list[Item]] = {}
+    for item in inp.items:
+        if item.parent_id is not None and key_of(item.id or 0) in items:
+            steps.setdefault(item.parent_id, []).append(item)
+    out = []
+    for parent, kids in steps.items():
+        if any(k.id in tied for k in kids):
+            continue
+        given = list(inp.project_order.get(parent, ()))
+        kids.sort(key=lambda k: (given.index(k.id) if k.id in given else len(given), k.id or 0))
+        out += [Dependency(after.id, before.id) for before, after in zip(kids, kids[1:], strict=False)]  # type: ignore[arg-type]
+    return out
+
+
+def pacing_of(item: Item, top: int | None, inp: BuildInput, by_id: Mapping[int, Item], preset: Any) -> str:
+    """How an item is paced through the weeks to its due: its project's own pace when one is set; a step otherwise as
+    its project's kind is (a Project evenly), not as its own kind (17 Nov, a client: with no pace set, a project's
+    steps were left to its last days, "friday doesn't account for how long the project will take")."""
+    if top is not None and top in inp.project_pacing:
+        return inp.project_pacing[top]
+    head = by_id.get(top) if top is not None and top != item.id else None
+    kind = inp.settings["presets"].get(head.preset) if head is not None and head.preset else preset
+    return kind.pacing if kind else "none"
 
 
 def natural(title: str) -> list[tuple[int, int, str]]:
@@ -421,8 +459,7 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
         tentative=tentative,
         progress=progress,
         window_is_hard=tentative or item.amount in ("elastic", "target") or expires(item, inp.settings),
-        pacing=inp.project_pacing.get(top, preset.pacing if preset else "none") if top is not None
-        else preset.pacing if preset else "none",
+        pacing=pacing_of(item, top, inp, by_id, preset),
         pacing_start_utc=release if release is not None else created, project=top,
         travel_before=math.ceil((item.buffer_before_min or 0) / UNIT_MIN),
         travel_after=math.ceil((item.buffer_after_min or 0) / UNIT_MIN),

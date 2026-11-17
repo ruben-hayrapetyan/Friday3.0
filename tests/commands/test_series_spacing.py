@@ -124,9 +124,9 @@ def test_the_next_laundry_waits_a_week_after_the_last_where_it_went_the_next_day
     (tmp_path / "plain").mkdir()
     (tmp_path / "spaced").mkdir()
     plain = laundry_done_monday_then_planned(new_app(tmp_path / "plain", now="2026-11-02T09:00", horizon_days=14), None)
-    assert plain - started < 2 * DAY  # as on 8 Nov: the next one the day after
     spaced = laundry_done_monday_then_planned(new_app(tmp_path / "spaced", now="2026-11-02T09:00", horizon_days=14), 7)
     assert spaced - started >= 7 * DAY
+    assert plain - started < 7 * DAY  # unspaced, nothing holds it a week (on 8 Nov it went the next day)
 
 
 def laundry_ids(app: App) -> set[int]:

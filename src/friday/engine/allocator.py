@@ -23,6 +23,7 @@ from friday.engine.rules.measures import Reserve
 PACING_EXPONENT = {"linear": 1.0, "front": 0.7, "back": 1.5}
 POINTS_PER_UNIT = 25  # the engine's 100 points per hour, over four 15-minute units
 OVERFLOW_POINTS = 100_000  # per unit left unallocated: worse than any placement
+DEPTH_LEAN = 0.01  # how much later, per link of a chain of waits, an item leans in the tie-break
 TOLERANCE = 1e-6
 
 
@@ -139,18 +140,36 @@ def allocate(inp: AllocatorInput) -> Allocation:
     return Allocation(units, over, caps, quotas(inp, todo, units), room)
 
 
+def chain_depths(todo: list[EngineItem]) -> dict[str, int]:
+    """How many links each item is down its chain of waits (0: it waits on nothing here)."""
+    keys = {it.key: it for it in todo}
+    depth: dict[str, int] = {}
+
+    def of(key: str, seen: frozenset[str]) -> int:
+        if key not in depth:
+            sources = [d.key for d in keys[key].depends_on if d.key in keys and d.key not in seen]
+            depth[key] = 1 + max((of(s, seen | {key}) for s in sources), default=-1)
+        return depth[key]
+
+    for key in keys:
+        of(key, frozenset())
+    return depth
+
+
 def ready_days(todo: list[EngineItem], units: dict[str, list[float]], ready: dict[str, int]) -> dict[str, int]:
-    """For each dependent item, the first day after its sources are far enough along (plus the lag)."""
+    """For each item that waits with a lag ("a day after"), the first day after its sources are far enough along,
+    plus the lag. Waits without one aren't held to days here (17 Nov: a day for each link of a chain of short steps
+    stretched it past its due): keep_behind_sources keeps them behind, and the scheduler after."""
     out = dict(ready)
     for item in todo:
         for dep in item.depends_on:
-            if dep.key not in units or dep.required == 0:
-                continue
+            if dep.key not in units or dep.required == 0 or dep.lag_min == 0:
+                continue  # without a lag, keep_behind_sources holds the order and the scheduler the rest (17 Nov)
             done, day = 0.0, len(units[dep.key])
             for d, amount in enumerate(units[dep.key]):
                 done += amount
                 if done >= dep.required - TOLERANCE:
-                    day = d + 1
+                    day = d + 1  # the source may end late in its day: the lag counts from the next
                     break
             day += math.ceil(dep.lag_min / 1440)
             out[item.key] = max(out.get(item.key, 0), day)
@@ -168,7 +187,9 @@ def effective_due_days(todo: list[EngineItem], day_of: DayIndex, caps: list[int]
                 own = due[item.key]
                 if dep.key not in due or own is None:
                     continue
-                needed = own - math.ceil(dep.lag_min / 1440) - math.ceil(item.need / typical_cap)
+                # whole days the dependent needs after it: a dependent can start the day its source ends, so a
+                # short step costs its source no day of its own (17 Nov: a chain of 45-minute steps "due" a week early)
+                needed = own - math.ceil(dep.lag_min / 1440) - math.floor(item.need / typical_cap)
                 current = due[dep.key]
                 if current is None or needed < current:
                     due[dep.key] = needed
@@ -200,16 +221,44 @@ class AllocatorLP:
         self.inp, self.caps, self.day_of, self.todo = inp, caps, day_of, todo
         self.A = len(caps)
         self.lp = pywraplp.Solver.CreateSolver("GLOP")
-        self.effective_due = effective_due_days(todo, day_of, caps)
+        self.effective_due = self.aimed_for(effective_due_days(todo, day_of, caps))
         self.day_prices = self.whole_day_prices()
         self.y: dict[tuple[str, int], pywraplp.Variable] = {}
         self.over: dict[str, pywraplp.Variable] = {}
         for item in todo:
             self.add_item(item, ready.get(item.key, 0))
+        self.keep_behind_sources()
         for d in range(self.A):
             today = [v for (_, dd), v in self.y.items() if dd == d]
             if today:
                 self.lp.Add(self.lp.Sum(today) <= caps[d])
+
+    def aimed_for(self, due: dict[str, int | None]) -> dict[str, int | None]:
+        """Work you aim to finish some days early (a project's Finish early) aims for that day here, so the days are
+        laid out to meet it when there's room; its due still bounds the hard lateness (17 Nov, the sweep: 3 hours
+        planned after the aim with Monday left empty: only the scheduler's small price knew of it)."""
+        early = [r for r in self.inp.rules if getattr(r, "type", None) == "finish_early"]  # those built are on
+        out = dict(due)
+        for item in self.todo:
+            days = max((r.p.days for r in early if r.applies(item)), default=0)
+            if days and out.get(item.key) is not None:
+                out[item.key] = max(0, int(out[item.key]) - math.ceil(days))  # type: ignore[arg-type]
+        return out
+
+    def keep_behind_sources(self) -> None:
+        """A dependent is never further along, as a share of its work, than what it waits on, day by day. The ready
+        days only ever move later, so without this a source first placed on its due day pinned its dependents after
+        the due, with weeks of room before it (17 Nov: a chain due after a busy weekend came out late)."""
+        needs = {it.key: it.need for it in self.todo}
+        for item in self.todo:
+            for dep in item.depends_on:
+                if dep.key not in needs or dep.required == 0 or needs[dep.key] <= 0:
+                    continue
+                for d in range(self.A):
+                    mine, theirs = self.days_of(item.key, before=d + 1), self.days_of(dep.key, before=d + 1)
+                    if mine:
+                        self.lp.Add(self.lp.Sum(mine) * needs[dep.key] <= self.lp.Sum(theirs) * item.need if theirs else
+                                    self.lp.Sum(mine) <= 0)  # fmt: skip
 
     def whole_day_prices(self) -> dict[str, list[float]]:
         """Per item, the summed points per unit on each day from rules with a whole-day price (inf = forbidden)."""
@@ -255,6 +304,7 @@ class AllocatorLP:
         """Stage 2: pacing deficits, soft lateness, whole-day prices, overflow and the tie-break."""
         points = self.inp.pacing_weight * POINTS_PER_UNIT
         terms = dict.fromkeys(self.pacing(), points)
+        depth = chain_depths(self.todo)
         for item in self.todo:
             due_day = self.effective_due[item.key]
             terms[self.over[item.key]] = OVERFLOW_POINTS
@@ -265,24 +315,35 @@ class AllocatorLP:
                 price = self.day_prices[item.key][d]
                 if due_day is not None and d > due_day:
                     price += POINTS_PER_UNIT * item.importance * (d - due_day)
-                terms[v] = price + (-d if due_day is not None else d)  # as late as the due date and pacing allow
+                # as late as the due date and pacing allow; what waits on more, a little later still, so what waits on
+                # nothing (a free step, a chain's first) fills a pace first (17 Nov: free steps were left for last)
+                terms[v] = price + (-d * (1 + DEPTH_LEAN * depth[item.key]) if due_day is not None else d)
         return terms
 
     def pacing(self) -> list[pywraplp.Variable]:
-        """Units behind each item's pacing line at every seventh day boundary."""
-        deficits = []
+        """Units behind each pacing line at every seventh day boundary: a project's steps on one line together, from
+        the first's start to the last due, so steps that wait follow it with the rest (17 Nov: a line per step left a
+        chain's later steps nothing to follow); other items on their own."""
+        groups: dict[object, list[EngineItem]] = {}
         for item in self.todo:
-            if item.pacing == "none" or item.due_utc is None:
-                continue
-            total = item.need + item.progress
-            start = item.pacing_start_utc if item.pacing_start_utc is not None else self.inp.now_utc
+            if item.pacing != "none" and item.due_utc is not None:
+                groups.setdefault(
+                    ("project", item.project, item.pacing) if item.project is not None else item.key, []
+                ).append(item)
+        deficits = []
+        for members in groups.values():
+            total = sum(it.need + it.progress for it in members)
+            done = sum(it.progress for it in members)
+            starts = [it.pacing_start_utc if it.pacing_start_utc is not None else self.inp.now_utc for it in members]
+            due = max(it.due_utc for it in members if it.due_utc is not None)
             for b in range(7, self.A + 1, 7):
                 t = self.inp.days[b].start_utc if b < self.A else self.inp.days[-1].end_utc
-                behind = pacing_fraction(item.pacing, start, item.due_utc, t) * total - item.progress
+                behind = pacing_fraction(members[0].pacing, min(starts), due, t) * total - done
                 if behind <= 0:
                     continue
                 deficit = self.lp.NumVar(0, total, "")
-                self.lp.Add(deficit >= behind - self.lp.Sum(self.days_of(item.key, before=b)))
+                placed = [v for it in members for v in self.days_of(it.key, before=b)]
+                self.lp.Add(deficit >= behind - self.lp.Sum(placed))
                 deficits.append(deficit)
         return deficits
 

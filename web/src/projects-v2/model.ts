@@ -177,7 +177,7 @@ export const EARLY_DAYS = [0, 1, 2, 3, 5, 7]
 
 /** A project's pace through its work, and what each does with its hours. */
 export const PACES = [
-  { value: "kind", label: "Not set", desc: "Friday leaves the work until nearer its due, as it does for steps" },
+  { value: "kind", label: "Not set", desc: "about the same each week up to its due, as Friday paces any project" },
   { value: "front", label: "Front-load it", desc: "most of it in the first weeks, done well before its due" },
   { value: "linear", label: "Evenly", desc: "about the same each week, up to its due" },
   { value: "back", label: "Toward the end", desc: "a little now, most of it in the last weeks" },

@@ -108,6 +108,7 @@ class Snapshot:
     carried: dict[int, int] = field(default_factory=dict)
     priorities: dict[int, float] = field(default_factory=dict)
     project_pacing: dict[int, str] = field(default_factory=dict)  # a project's own pace (commands/project_options.py)
+    project_order: dict[int, list[int]] = field(default_factory=dict)  # a project's steps as listed (`reorder`)
 
 
 def series_spacing(conn: sqlite3.Connection, user_id: int) -> dict[str, Any]:
@@ -209,6 +210,7 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         carried=carried_minutes(conn, now_utc, user_id),
         priorities=priorities(conn, user_id),
         project_pacing=project_pacing(conn, user_id),
+        project_order={int(k): list(v) for k, v in (kv_get(conn, "project_order", {}, user_id) or {}).items()},
         **learned(conn, now_utc, settings, user_id),
         log_since_plan=log_since(conn, json.loads(plan["report"]).get("last_command_id", 0) if plan else 0, user_id),
         last_command_id=int(

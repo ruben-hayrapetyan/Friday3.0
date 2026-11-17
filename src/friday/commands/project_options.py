@@ -62,7 +62,7 @@ def set_early(ctx: Ctx, project_id: int, title: str, days: float) -> None:
             {
                 "type": "finish_early",
                 "name": name,
-                "weight": 1.0,  # Prefer, as a rule you add is to start; Rules makes it stronger
+                "weight": 3.0,  # Strongly: set on the project (17 Nov: at Prefer, other prices beat it with room)
                 "stage": None,
                 "scope": {"project": [str(project_id)]},
                 "params": {"days": days},

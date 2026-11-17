@@ -145,8 +145,9 @@ def test_a_project_finishing_early_ends_its_work_days_before_its_due(tmp_path: P
 
 
 def test_front_loaded_work_puts_more_in_the_coming_weeks_than_work_left_toward_the_end(tmp_path: Path) -> None:
-    # A project due in six weeks: its pace decides how much of it the next two weeks hold (weekly quotas). Its kind's
-    # (a Project's) leaves it all for later; front-loaded puts the most of it first; toward the end, less.
+    # A project due in six weeks: its pace decides how much of it the next two weeks hold (weekly quotas). Not set, its
+    # steps go evenly, as a Project does (17 Nov, a client: left for later, "'no pace' breaks everything");
+    # front-loaded puts the most of it first; toward the end, least.
     planned = {}
     for pace in ("kind", "front", "back"):
         (tmp_path / pace).mkdir()
@@ -157,4 +158,4 @@ def test_front_loaded_work_puts_more_in_the_coming_weeks_than_work_left_toward_t
         replan(app.conn, app.now_utc)
         planned[pace] = blocks_of(app, steps)
     hours = {pace: sum(end - start for start, end in found) / 60 for pace, found in planned.items()}
-    assert hours["front"] > hours["back"] > hours["kind"]
+    assert hours["front"] > hours["kind"] > hours["back"]
