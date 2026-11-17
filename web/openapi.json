@@ -25813,6 +25813,11 @@
        }
       ],
       "title": "Paused Until"
+     },
+     "as_before": {
+      "type": "boolean",
+      "title": "As Before",
+      "default": false
      }
     },
     "additionalProperties": false,

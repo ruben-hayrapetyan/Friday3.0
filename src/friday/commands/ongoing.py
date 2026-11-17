@@ -17,6 +17,7 @@ from friday.commands.series import load_series, series_add, series_delete, serie
 from friday.core.db import rows
 from friday.core.items import FieldError
 from friday.core.pace import budget_factor, dials_on, priority_weight
+from friday.core.recurrence import rule_parts
 from friday.core.time import UNIT_MIN, format_utc, parse_utc
 from friday.planner.ongoing import ONGOING, carried_minutes, ongoing_options
 from friday.planner.progress import minutes_by_item
@@ -50,16 +51,37 @@ def ongoing_add(ctx: Ctx, inp: OngoingAddInput) -> SeriesOut:
         ),
     )
     options = ongoing_options(ctx.conn, ctx.user_id)
-    options[str(made.id)] = {"rhythm_days": None, "priority": 3, "paused_until": None}
+    options[str(made.id)] = dict(NEW_OPTIONS)
     save_options(ctx, options)
     return made
 
 
+NEW_OPTIONS = {"rhythm_days": None, "priority": 3, "paused_until": None}
+
+
+def weekly_goal(series: dict) -> bool:
+    """A repeat that's a target amount each week: what an ongoing project is, however it was made."""
+    rule = rule_parts(series["rrule"])
+    return json.loads(series["template"]).get("amount") == "target" and rule.get("FREQ") == "WEEKLY" \
+        and rule.get("INTERVAL", "1") == "1"  # fmt: skip
+
+
+def goals_as_before(ctx: Ctx, options: dict[str, dict]) -> set[int]:
+    """Weekly goals made outside the shelf (before 0.5.0, or as a repeating Goal elsewhere): listed on the shelf so
+    they can be found, planned as they always were (no carry-over or priority) until a setting changes (16 Nov: "Show
+    them, plan unchanged")."""
+    found = rows(ctx.conn, "SELECT * FROM series WHERE user_id = ? AND active = 1", [ctx.user_id])
+    return {s["id"] for s in found if str(s["id"]) not in options and weekly_goal(s)}
+
+
 def require_ongoing(ctx: Ctx, series_id: int) -> tuple[dict, dict, dict]:
-    """The repeat, its template, and every ongoing project's options; a repeat that isn't one is refused."""
+    """The repeat, its template, and every ongoing project's options; a weekly goal made elsewhere becomes one here (a
+    setting changed on the shelf); any other repeat is refused."""
     found = load_series(ctx, series_id)
     options = ongoing_options(ctx.conn, ctx.user_id)
     template = json.loads(found["template"])
+    if str(series_id) not in options and series_id in goals_as_before(ctx, options):
+        options[str(series_id)] = dict(NEW_OPTIONS)
     if str(series_id) not in options or template.get("amount") != "target":
         raise FieldError("id", "that repeat isn't an ongoing project")
     return found, template, options
@@ -106,10 +128,14 @@ def sittings(template: dict, days: int | None) -> dict:
 
 
 def pause(ctx: Ctx, series_id: int, until: str, mine: dict) -> None:
-    """Pause until a date (its weeks go meanwhile), or "" to resume now."""
+    """Pause until a date (its weeks go meanwhile) or until you resume it ("resume"), or "" to resume now."""
     if not until:
         mine["paused_until"] = None
         series_resume(ctx, SeriesRef(id=series_id))
+        return
+    if until == "resume":  # until you resume it
+        mine["paused_until"] = None
+        series_stop(ctx, SeriesRef(id=series_id))
         return
     try:
         day = date.fromisoformat(until)
@@ -154,7 +180,8 @@ def ongoing_delete(ctx: Ctx, inp: SeriesRef) -> Changed:
 def ongoing_projects(ctx: Ctx, inp: Empty) -> list[OngoingOut]:
     """Each ongoing project: this week's hours (with what carried in), done and still planned, and the weeks before."""
     options = ongoing_options(ctx.conn, ctx.user_id)
-    if not options:
+    made_elsewhere = goals_as_before(ctx, options)
+    if not options and not made_elsewhere:
         return []
     done = minutes_by_item(ctx.conn, ctx.user_id)
     carried = carried_minutes(ctx.conn, ctx.now_utc, ctx.user_id)
@@ -169,7 +196,7 @@ def ongoing_projects(ctx: Ctx, inp: Empty) -> list[OngoingOut]:
     ).growth
     out = []
     for s in rows(ctx.conn, "SELECT * FROM series WHERE user_id = ? ORDER BY id", [ctx.user_id]):
-        mine = options.get(str(s["id"]))
+        mine = options.get(str(s["id"])) or (dict(NEW_OPTIONS) if s["id"] in made_elsewhere else None)
         template = json.loads(s["template"])
         if mine is None or template.get("amount") != "target":
             continue
@@ -211,6 +238,7 @@ def ongoing_projects(ctx: Ctx, inp: Empty) -> list[OngoingOut]:
                 priority=priority,
                 aim_min=round(hours * 60 * budget_factor(growth, priority_weight(priority))),
                 paused_until=mine.get("paused_until"),
+                as_before=s["id"] in made_elsewhere,
             )
         )
     return out

@@ -1260,7 +1260,7 @@ class OngoingSetInput(Model):
     carry: float | None = Field(None, ge=0, le=1)
     rhythm_days: int | None = Field(None, ge=0, le=7)  # days a week to touch it; 0, whenever it fits
     priority: int | None = Field(None, ge=1, le=5)  # 1 lowest to 5 highest; 3 is the pace as it is
-    paused_until: str | None = None  # a date to pause it until; "" resumes now
+    paused_until: str | None = None  # a date to pause it until; "resume" until you resume it; "" resumes now
 
 
 class ProjectRef(Model):

@@ -198,6 +198,21 @@ describe("the new Projects & exams page", () => {
     await live(f, () => expect(within(shelf("Ongoing")).queryByRole("button", { name: "Guitar practice" })).toBeNull())
   })
 
+  it("lists a weekly goal made before ongoing projects, planned as before until a setting changes", async () => {
+    const made = await friday.c<{ result: { id: number } }>("series_add", { title: "Spanish", preset: "Goal", amount: "target", target_min: 120, every: "week" })
+    const f = await page()
+    await f.user.click(await within(shelf("Ongoing")).findByRole("button", { name: "Spanish" }))
+    const panel = await screen.findByRole("complementary", { name: "Spanish" })
+    expect(within(panel).getByText(/its weeks plan as they always have/)).toBeTruthy()
+    expect(within(panel).getByRole("button", { name: /^A short week: Each week starts fresh for now/ })).toBeTruthy()
+    await choose(f.user, panel, "Paused", /^Until I resume it/)
+    expect((await waitForSent("ongoing_set")).body).toEqual({ id: made.result.id, paused_until: "resume" })
+    expect(within(panel).queryByText(/its weeks plan as they always have/)).toBeNull() // an ongoing project at once
+    expect(await within(panel).findByRole("button", { name: "Paused: Until you resume it" })).toBeTruthy()
+    await live(f, () => expect(within(shelf("Ongoing")).getByRole("button", { name: "Spanish" })).toBeTruthy()) // still there
+    await friday.c("ongoing_delete", { id: made.result.id }) // the next tests see only their own
+  })
+
   it("archives a project to Finished, opens it again, and deletes it there", async () => {
     const made = await friday.c<{ result: { item: Item } }>("add", { title: "Poster", preset: "Project", due: "2026-12-30T17:00", duration_min: 240 })
     const id = made.result.item.id

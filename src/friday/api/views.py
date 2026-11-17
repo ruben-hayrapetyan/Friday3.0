@@ -1004,6 +1004,7 @@ class OngoingOut(Model):
     priority: int  # 1 lowest to 5 highest
     aim_min: int  # this week's hours a week as your pace and its priority make them
     paused_until: str | None  # a local date it's paused until
+    as_before: bool = False  # a weekly goal made outside the shelf: it plans as it always has until a setting changes
 
 
 class FinishedProject(Model):

@@ -7980,6 +7980,11 @@ export interface components {
             aim_min: number;
             /** Paused Until */
             paused_until: string | null;
+            /**
+             * As Before
+             * @default false
+             */
+            as_before?: boolean;
         };
         /** OngoingSetInput */
         OngoingSetInput: {

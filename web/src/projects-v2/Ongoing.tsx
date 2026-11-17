@@ -100,7 +100,6 @@ export function OngoingShelf({ ongoing, today, opened, onOpen }: { ongoing: Ongo
 export function OngoingDetail({ o, today, onDeleted }: { o: Ongoing; today: string; onDeleted: () => void }) {
   const { color } = useLook()
   const set = useCommand("ongoing_set", { label: () => `${o.title}: saved; Friday plans its weeks again`, optimistic: (client, input) => changedOngoing(client, input.id, shown(input)) })
-  const stop = useCommand("series_stop", { label: () => `${o.title} paused`, optimistic: (client) => changedOngoing(client, o.id, { active: false, week: null }) })
   const remove = useCommand("ongoing_delete", { label: (out) => out.result.message, optimistic: (client) => client.setQueryData<Ongoing[]>(ONGOING_KEY, (list) => list?.filter((x) => x.id !== o.id)) })
   const [open, setOpen] = useState<"hours" | "days" | "priority" | "pause" | "carry" | null>(null)
   const toggle = (k: typeof open) => setOpen(open === k ? null : k)
@@ -127,6 +126,11 @@ export function OngoingDetail({ o, today, onDeleted }: { o: Ongoing; today: stri
         <H size={26} style={{ overflowWrap: "anywhere" }}>
           {o.title}
         </H>
+        {o.as_before && (
+          <span className="fr-kicker" style={{ textWrap: "pretty" }}>
+            A weekly goal from before ongoing projects: its weeks plan as they always have. Change a setting below and it plans as an ongoing project, its priority counting and a short week carrying over as that row says.
+          </span>
+        )}
       </div>
       {w ? (
         <div className="fr-well" style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px 14px" }}>
@@ -174,7 +178,7 @@ export function OngoingDetail({ o, today, onDeleted }: { o: Ongoing; today: stri
           <Choices
             label="Paused"
             value={o.paused_until ? "date" : o.active ? "no" : "resume"}
-            onPick={pick((v: string) => (v === "no" ? (!o.active || o.paused_until) && set({ id: o.id, paused_until: "" }) : v === "resume" ? o.active && stop({ id: o.id }) : v !== "date" && set({ id: o.id, paused_until: v })))}
+            onPick={pick((v: string) => (v === "no" ? (!o.active || o.paused_until) && set({ id: o.id, paused_until: "" }) : v === "resume" ? o.active && set({ id: o.id, paused_until: "resume" }) : v !== "date" && set({ id: o.id, paused_until: v })))}
             options={[
               { value: "no", label: "No", desc: "Friday plans its hours every week" },
               { value: "resume", label: "Until I resume it", desc: "No time planned until you set this back to No" },
@@ -189,7 +193,7 @@ export function OngoingDetail({ o, today, onDeleted }: { o: Ongoing; today: stri
             <input type="date" className="input" min={tomorrow} value={until} onChange={(e) => (setUntil(e.target.value), e.target.value >= tomorrow && (set({ id: o.id, paused_until: e.target.value }), setOpen(null)))} aria-label="Paused until a date" style={{ padding: "2px 6px", minHeight: 0, fontSize: 12, width: 140 }} />
           </label>
         </SettingRow>
-        <SettingRow label="A short week" value={`${carry.label}: ${carry.desc}`} open={open === "carry"} onToggle={() => toggle("carry")}>
+        <SettingRow label="A short week" value={o.as_before ? `Each week starts fresh for now; once you change a setting here, ${carry.desc}` : `${carry.label}: ${carry.desc}`} open={open === "carry"} onToggle={() => toggle("carry")}>
           <Choices
             label="A short week"
             value={carry.value as number}
@@ -264,6 +268,7 @@ function shown(input: { hours_per_week?: number | null; carry?: number | null; r
   if (input.rhythm_days != null) out.rhythm_days = input.rhythm_days || null
   if (input.priority != null) out.priority = input.priority
   if (input.paused_until === "") Object.assign(out, { active: true, paused_until: null })
+  else if (input.paused_until === "resume") Object.assign(out, { active: false, paused_until: null, week: null })
   else if (input.paused_until) Object.assign(out, { active: false, paused_until: input.paused_until, week: null })
-  return out
+  return { ...out, as_before: false } // a setting changed: an ongoing project from now on
 }

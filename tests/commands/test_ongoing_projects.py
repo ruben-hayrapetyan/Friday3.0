@@ -165,11 +165,76 @@ def test_deleted_its_weeks_to_come_go_and_the_hours_stay(app: App) -> None:
     assert sum(r["minutes"] for r in app.table("progress")) == 60
 
 
-def test_a_repeat_that_isnt_an_ongoing_project_is_refused(app: App) -> None:
-    plain = app.do("series_add", title="Read", preset="Goal", amount="target", target_min=120, every="week")["id"]
-    with pytest.raises(FieldError, match="isn't an ongoing project"):
-        app.do("ongoing_set", id=plain, hours_per_week=3)
-    assert app.do("ongoing_projects") == []  # a Goal made the old way isn't on the shelf
+def test_a_repeat_that_isnt_a_weekly_goal_is_refused(app: App) -> None:
+    daily = app.do("series_add", title="Stretch", preset="Habit", every="day")["id"]
+    monthly = app.do("series_add", title="Budget", preset="Goal", amount="target", target_min=120, every="month")["id"]
+    for other in (daily, monthly):
+        with pytest.raises(FieldError, match="isn't an ongoing project"):
+            app.do("ongoing_set", id=other, hours_per_week=3)
+    assert app.do("ongoing_projects") == []
+
+
+# A weekly goal made before 0.5.0 (or as a repeating Goal elsewhere): on the shelf, planned as before (16 Nov: "Show
+# them, plan unchanged")
+
+
+def old_goal(app: App) -> int:
+    return app.do("series_add", title="Read", preset="Goal", amount="target", target_min=120, every="week")["id"]
+
+
+def test_a_weekly_goal_made_the_old_way_is_on_the_shelf_marked_as_before(app: App) -> None:
+    plain = old_goal(app)
+    [shown] = app.do("ongoing_projects")
+    assert (shown["id"], shown["title"], shown["hours_per_week"], shown["as_before"]) == (plain, "Read", 2, True)
+    assert shown["active"] and shown["week"] is not None and shown["priority"] == 3
+
+
+def current_blocks(app: App) -> list[tuple[int, str, str]]:
+    plan_id = max(b["plan_id"] for b in app.table("blocks"))
+    return sorted((b["item_id"], b["start_utc"], b["end_utc"]) for b in app.table("blocks") if b["plan_id"] == plan_id)
+
+
+def test_listing_it_changes_nothing_the_planner_reads(app: App) -> None:
+    plain = old_goal(app)
+    replan(app.conn, app.now_utc)
+    before = current_blocks(app)
+    assert any(item in {r["id"] for r in weeks(app, plain)} for item, _, _ in before)  # its week is planned
+    app.do("ongoing_projects")
+    assert kv_get(app.conn, ONGOING, {}) in ({}, None)  # a query writes nothing
+    assert plain not in priorities(app.conn) and carried_minutes(app.conn, app.now_utc) == {}
+    replan(app.conn, app.now_utc)
+    assert current_blocks(app) == before
+
+
+def test_a_setting_changed_on_the_shelf_makes_it_an_ongoing_project(app: App) -> None:
+    plain = old_goal(app)
+    app.do("ongoing_set", id=plain, priority=4)
+    [shown] = app.do("ongoing_projects")
+    assert (shown["as_before"], shown["priority"]) == (False, 4)
+    assert kv_get(app.conn, ONGOING, {})[str(plain)]["priority"] == 4
+    assert priorities(app.conn) == {plain: priority_weight(4)}
+
+
+def test_paused_until_resumed_it_stays_on_the_shelf(app: App) -> None:
+    plain = old_goal(app)
+    app.do("ongoing_set", id=plain, paused_until="resume")
+    [shown] = app.do("ongoing_projects")
+    assert (shown["active"], shown["paused_until"], shown["week"], shown["as_before"]) == (False, None, None, False)
+    app.do("ongoing_set", id=plain, paused_until="")
+    assert app.do("ongoing_projects")[0]["active"]
+
+
+def test_an_old_goal_stopped_before_isnt_brought_back(app: App) -> None:
+    plain = old_goal(app)
+    app.do("series_stop", id=plain)
+    assert app.do("ongoing_projects") == []
+
+
+def test_an_old_goal_can_be_deleted_from_the_shelf(app: App) -> None:
+    plain = old_goal(app)
+    app.do("ongoing_delete", id=plain)
+    assert app.do("ongoing_projects") == []
+    assert not any(r["series_id"] == plain and r["status"] == "todo" for r in app.table("items"))
 
 
 def test_the_shelf_shows_the_weeks_before_and_the_days_touched(app: App) -> None:
