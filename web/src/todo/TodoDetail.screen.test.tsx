@@ -44,6 +44,10 @@ async function plannedAssignment(): Promise<string> {
   let id: number | undefined
   await waitFor(
     async () => {
+      // the plan Friday has saved, not the quick placement it shows while replanning after an earlier test's change:
+      // a task's detail lists the saved plan's sessions (17 Nov: one picked mid-replan had none there yet)
+      const s = await friday.q<{ generation: number; plan_generation: number | null }>("status")
+      expect(s.plan_generation).toBe(s.generation)
       const plan = await friday.q<{ blocks: { item_id: number; key: string; preset?: string | null; start: string }[] }>("plan", { start: `${today}T00:00`, end: `${ymd(14)}T00:00` })
       const open = new Set((await openAssignments()).map((i) => i.id))
       id = plan.blocks.find((b) => b.key.startsWith("T") && b.start >= now && open.has(b.item_id))?.item_id
@@ -285,13 +289,21 @@ describe("a task's detail", () => {
 
   it("shows a planned session on the plan", async () => {
     const { user, aside } = await detailOf(await plannedAssignment())
-    await user.click(within(aside).getByRole("button", { name: "See on plan" }))
+    await user.click(await within(aside).findByRole("button", { name: "See on plan" }, { timeout: 10_000 }))
     await waitFor(() => expect(window.location.hash).toBe("#/"))
   })
 
   it("opens a session's own day on the plan from its line", async () => {
     const { user, aside } = await detailOf(await plannedAssignment())
-    const session = within(aside).getAllByRole("button").find((b) => /Planned · Friday decides|Pinned|Locked|Tentative/.test(b.textContent ?? ""))
+    const line = /Planned · Friday decides|Pinned|Locked|Tentative/
+    const session = await waitFor(
+      () => {
+        const found = within(aside).getAllByRole("button").find((b) => line.test(b.textContent ?? ""))
+        if (!found) throw new Error("no session line yet")
+        return found
+      },
+      { timeout: 10_000 },
+    )
     expect(session).toBeTruthy()
     await user.click(session as HTMLElement)
     await waitFor(() => expect(window.location.hash).toBe("#/"))
