@@ -189,7 +189,8 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
   // yours to decide: still in its color, dotted, asking "Skip?" (27 Oct: drawn under the work that takes its time).
   // One you said you're not going to is off: gray, dashed, struck through (30 Oct).
   const proposed = !!it.gives_way_to
-  const cancelled = !proposed && it.left_out === "skipped"
+  const cancelled = !proposed && (it.left_out === "skipped" || it.left_out === "paused")
+  const paused = it.left_out === "paused" // a break pauses it: off, as one you're not going to is (core/vacations.py)
   const skipped = proposed || cancelled
   // An event whose time is for a task holds the task's block: drawn as a frame round it, dashed (planner/holds.py).
   const holds = !!it.holds
@@ -243,6 +244,8 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
       title={
         it.gives_way_to
           ? `Friday would skip ${it.title}: ${it.gives_way_to} needs the time. Click to go anyway, or to skip it.`
+          : paused
+            ? `${it.title} is paused for your break: its time is free. Break settings choose what pauses.`
           : skipped
             ? `Not going to ${it.title}: Friday can plan work over it. Click to go after all.`
           : holds
@@ -258,7 +261,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
       )}
       <div style={titleRow(tall)}>
         {it.series_id != null && <Icon name="repeat" size={11} style={tall ? ICON_AT_LINE : undefined} />}
-        {cancelled && <Icon name="skip-forward" size={11} style={tall ? ICON_AT_LINE : undefined} />}
+        {cancelled && <Icon name={paused ? "pause" : "skip-forward"} size={11} style={tall ? ICON_AT_LINE : undefined} />}
         <span
           ref={lines.title}
           data-title-lines={tall ? lines.titleMost : undefined}
@@ -272,7 +275,7 @@ export function FixedBox({ p, onOpen, onEdit, retime, tried, picked, onResize, o
       {tall && (
         <TimeLine color={s.sub} time={time} lines={lines.detailMost}>
           {clock(it.start)}–{clock(it.end)}
-          {it.gives_way_to ? ` · for ${it.gives_way_to}` : cancelled ? " · not going" : it.location ? ` · ${it.location}` : ""}
+          {it.gives_way_to ? ` · for ${it.gives_way_to}` : paused ? " · paused for the break" : cancelled ? " · not going" : it.location ? ` · ${it.location}` : ""}
         </TimeLine>
       )}
       {onResize && !typing && <Edges length={minutes(it)} onResize={onResize} p={p} />}
@@ -427,6 +430,7 @@ export const LEFT_OUT: Record<string, string> = {
   filtered: "the filter's office hours",
   skipped: "you're not going",
   through: "you're working through it",
+  paused: "a break pauses it",
 }
 
 export function GhostBox({ p }: { p: Placed<Block> }) {

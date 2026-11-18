@@ -107,6 +107,9 @@ export function areaHex(hue: number | "n", light: boolean): string {
   return light ? oklch(0.64, 0.12, hue) : oklch(0.76, 0.1, hue)
 }
 
+/** A break's ink (breaks/): readable as text on the page and on cards, and washed for its band and days. */
+export const BREAK = { light: "#2c6a61", dark: "#86c7bd" }
+
 const set = (name: string, value: string) => document.documentElement.style.setProperty(name, value)
 
 export function applyLook(look: Look): void {
@@ -132,6 +135,7 @@ export function applyLook(look: Look): void {
   set("--fr-knob", light ? surface : bg)
   set("--fr-fresh", light ? "#1d3557" : "#8aaedc") // personal's iron-gall navy: short term
   set("--fr-aged", light ? "#7c4a32" : "#cc9270") // and its sepia: long term
+  set("--fr-break", light ? BREAK.light : BREAK.dark) // a break's days (breaks/): a soft teal, never a status
   set("--fr-hairline", `color-mix(in srgb, ${text} 7%, transparent)`)
   set("--fr-rule", `color-mix(in srgb, ${text} 12%, transparent)`)
   const root = document.documentElement.style

@@ -47,9 +47,11 @@ import { nowMin } from "@/hooks/useClock"
 import { Sidebar } from "./Sidebar"
 import { closes, type Opener, wasInFront } from "./toggles"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
+import { BreakDay } from "@/breaks/BreakDay"
+import { BreakDialog } from "@/breaks/BreakDialog"
 
 export function Shell() {
-  const { today, pop, setPop, dialog, setDialog, drawer, event, layout, drawerOver, drawerWidth, navOpen, setNavOpen, tour, help, setupStep } = useShell()
+  const { today, pop, setPop, dialog, setDialog, drawer, event, layout, drawerOver, drawerWidth, navOpen, setNavOpen, tour, help, setupStep, breakDay, breakEdit, setBreakEdit } = useShell()
   const client = useQueryClient()
   const toast = useToast()
   const shove = async (range: string) => {
@@ -81,7 +83,7 @@ export function Shell() {
   const narrow = layout.mode === "narrow"
   const w = useWhatIf()
   const trying = w.on && w.panel // What if's changes, in the drawer's place (whatif/WhatIfPanel.tsx)
-  const drawerSpace = (drawer || event || trying) && location.pathname === "/" && !drawerOver ? drawerWidth + 12 : 0
+  const drawerSpace = (drawer || event || breakDay || trying) && location.pathname === "/" && !drawerOver ? drawerWidth + 12 : 0
   const vars = { "--fr-side": `${layout.side}px`, "--fr-drawer": `${drawerSpace}px`, "--fr-head-inset": narrow ? "56px" : "12px" } as React.CSSProperties
   return (
     <DragProvider onDrop={onDrop}>
@@ -129,6 +131,8 @@ export function Shell() {
           <DrawerFrame>
             <EventPane draft={event} />
           </DrawerFrame>
+        ) : breakDay && location.pathname === "/" ? (
+          <BreakDay date={breakDay} />
         ) : drawer && location.pathname === "/" ? (
           <Drawer />
         ) : (
@@ -139,7 +143,7 @@ export function Shell() {
             </DrawerFrame>
           )
         )}
-        {!location.pathname.startsWith("/settings") && !(drawerOver && (drawer || event || trying) && location.pathname === "/") && <Dock />}
+        {!location.pathname.startsWith("/settings") && !(drawerOver && (drawer || event || breakDay || trying) && location.pathname === "/") && <Dock />}
         <NapAsk />
         <ReplanStatus />
         <BlockPopover />
@@ -158,6 +162,7 @@ export function Shell() {
       {/* one answer alone, unless Setup was never done (12 Nov: picked before Setup's state had loaded, the whole walk
           opened instead, and stayed) */}
       {dialog === "setup" && <SetupDialog only={setupDone === false ? null : setupStep} onClose={() => setDialog(null)} />}
+      {breakEdit && <BreakDialog edit={breakEdit} onClose={() => setBreakEdit(null)} />}
       <UpdateDialogs />
       {tour && dialog !== "setup" && <Tour />}
       {help && !tour && <HelpOverlay />}

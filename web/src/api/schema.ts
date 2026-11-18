@@ -2829,6 +2829,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/break_choices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What a break can pause: every calendar, tag and repeating event (events made here are on "Friday"). */
+        get: operations["break_choices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/brief": {
         parameters: {
             query?: never;
@@ -4606,6 +4623,18 @@ export interface components {
             background?: boolean;
         };
         /**
+         * BreakChoicesOut
+         * @description What a break can pause, for its chooser: every calendar, tag and repeating event.
+         */
+        BreakChoicesOut: {
+            /** Calendars */
+            calendars: components["schemas"]["CalendarChoice"][];
+            /** Tags */
+            tags: string[];
+            /** Series */
+            series: components["schemas"]["SeriesChoice"][];
+        };
+        /**
          * BriefOut
          * @description The morning brief (DESIGN §20.4), as data and as plain text.
          */
@@ -4624,6 +4653,13 @@ export interface components {
             summary: string;
             /** Text */
             text: string;
+        };
+        /** CalendarChoice */
+        CalendarChoice: {
+            /** Name */
+            name: string;
+            /** Repeats */
+            repeats: number;
         };
         /** CalendarDay */
         CalendarDay: {
@@ -9971,6 +10007,17 @@ export interface components {
             /** Generation */
             generation?: number | null;
         };
+        /** SeriesChoice */
+        SeriesChoice: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Calendar */
+            calendar: string;
+            /** Every */
+            every: string;
+        };
         /** SeriesDeleteResult */
         SeriesDeleteResult: {
             /** Command Id */
@@ -11976,6 +12023,21 @@ export interface components {
             days: number;
             /** Per Day */
             per_day: number;
+            /**
+             * Keep Sleep
+             * @default false
+             */
+            keep_sleep?: boolean;
+            /**
+             * Things
+             * @default 0
+             */
+            things?: number;
+            /**
+             * Ticked
+             * @default 0
+             */
+            ticked?: number;
         };
         /** VacationDayOut */
         VacationDayOut: {
@@ -12098,10 +12160,10 @@ export interface components {
             item_id: number;
             /** Title */
             title: string;
-            /** Tags */
-            tags: string[];
-            /** Color */
-            color: string | null;
+            /** Area */
+            area: string | null;
+            /** Preset */
+            preset: string | null;
             /** Ticked */
             ticked: boolean;
             /** Done */
@@ -18545,6 +18607,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BeatPlanOut"];
+                };
+            };
+        };
+    };
+    break_choices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BreakChoicesOut"];
                 };
             };
         };

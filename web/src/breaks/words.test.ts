@@ -1,0 +1,57 @@
+// Breaks' words and switches (glass box): what a break says it pauses, and how a calendar or a repeat is switched.
+import { describe, expect, it } from "vitest"
+import { contrast, mix } from "@/theme/contrast"
+import { BREAK, PAPER } from "@/theme/look"
+import { allCalendars, EVERYTHING, flipCalendar, flipSeries, inView, listed, modeWords, pauses, pauseWords, rangeWords } from "./words"
+
+describe("a break in words", () => {
+  it("says its days and how much work", () => {
+    expect(rangeWords("2026-12-21", "2026-12-27")).toBe("Mon, Dec 21 – Sun, Dec 27")
+    expect(rangeWords("2026-12-21", "2026-12-21")).toBe("Mon, Dec 21")
+    expect(modeWords("light", 3)).toBe("Light, about 3 things a day")
+    expect(modeWords("light", 1)).toBe("Light, about 1 thing a day")
+    expect(modeWords("off", 3)).toBe("Off: nothing to do")
+  })
+  it("says what it pauses as a value, however many calendars", () => {
+    expect(pauseWords(EVERYTHING)).toBe("Every repeating event")
+    expect(pauseWords({ ...EVERYTHING, calendars: ["Family"] })).toBe("Every repeating event except Family")
+    expect(pauseWords({ ...EVERYTHING, calendars: ["Family", "Trips", "Kids"], tags: ["Work"] })).toBe("Every repeating event except 3 calendars; tasks tagged Work wait")
+    const twenty = { calendars: Array.from({ length: 20 }, (_, n) => ({ name: `Cal ${n}`, repeats: 1 })), tags: [], series: [] }
+    expect(pauseWords({ ...EVERYTHING, repeating: "only", calendars: ["Cal 1", "Cal 2"] }, twenty)).toBe("Repeating events on 2 of 20 calendars")
+    expect(listed(["Work", "Home", "Gym", "Book club"])).toBe("Work, Home and 2 more")
+    expect(listed(["Work", "Home"])).toBe("Work and Home")
+  })
+})
+
+describe("switching what pauses", () => {
+  it("a calendar's repeats follow it; a repeat switched goes against it, and back", () => {
+    const keepFamily = flipCalendar(EVERYTHING, "Family")
+    expect(pauses(keepFamily, 1, "Family")).toBe(false)
+    expect(pauses(keepFamily, 2, "Work")).toBe(true)
+    const keepStandup = flipSeries(keepFamily, 2, "Work")
+    expect(pauses(keepStandup, 2, "Work")).toBe(false)
+    expect(pauses(flipSeries(keepStandup, 2, "Work"), 2, "Work")).toBe(true)
+  })
+  it("pause all and keep all clear the exceptions", () => {
+    const some = flipSeries(flipCalendar(EVERYTHING, "Family"), 4, "Work")
+    expect(pauses(allCalendars(some, true), 4, "Work")).toBe(true)
+    expect(pauses(allCalendars(some, false), 1, "Family")).toBe(false)
+  })
+})
+
+describe("on the calendar", () => {
+  const week = ["2026-12-19", "2026-12-20", "2026-12-21", "2026-12-22", "2026-12-23", "2026-12-24", "2026-12-25"]
+  it("a break's band covers its days in the week shown, clipped at the edges", () => {
+    expect(inView("2026-12-21", "2026-12-27", week)).toEqual({ from: 2, to: 6, clippedStart: false, clippedEnd: true })
+    expect(inView("2026-12-10", "2026-12-20", week)).toEqual({ from: 0, to: 1, clippedStart: true, clippedEnd: false })
+    expect(inView("2027-01-01", "2027-01-02", week)).toBeNull()
+  })
+  it("its color reads as text on the page and on cards, light and dark", () => {
+    for (const [look, ink] of [["light", BREAK.light], ["dark", BREAK.dark]] as const) {
+      const [bg, surface] = PAPER[look]
+      expect(contrast(ink, bg)).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(ink, surface)).toBeGreaterThanOrEqual(4.5)
+      expect(mix(ink, bg, 50).length).toBe(3)
+    }
+  })
+})

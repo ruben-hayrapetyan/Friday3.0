@@ -13,7 +13,8 @@ export type Layers<T> = {
 
 export function layers<T extends Event>(events: T[]): Layers<T> {
   const proposed = events.filter((e) => !!e.gives_way_to)
-  const notGoing = events.filter((e) => !e.gives_way_to && e.left_out === "skipped")
+  // one a break pauses sits behind too (core/vacations.py)
+  const notGoing = events.filter((e) => !e.gives_way_to && (e.left_out === "skipped" || e.left_out === "paused"))
   const going = events.filter((e) => !proposed.includes(e) && !notGoing.includes(e))
   return { notGoing, going, proposed }
 }
@@ -22,7 +23,7 @@ export function layers<T extends Event>(events: T[]): Layers<T> {
  * calendar's, one marked free, one you're working through). Not one you said you're not going to, which sits behind,
  * nor one holding a task's time, whose blocks are drawn inside it (planner/holds.py). */
 export function givesTimeToWork(e: Pick<Item, "left_out" | "holds" | "gives_way_to">): boolean {
-  return !!e.left_out && e.left_out !== "skipped" && !e.holds && !e.gives_way_to
+  return !!e.left_out && e.left_out !== "skipped" && e.left_out !== "paused" && !e.holds && !e.gives_way_to
 }
 
 /** A day column's events and blocks, each placed. An event that lets work over it is laid out with the work, side by

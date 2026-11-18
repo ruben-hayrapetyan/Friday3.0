@@ -213,6 +213,9 @@ class VacationDay(Model):
     day_n: int
     days: int
     per_day: int
+    keep_sleep: bool = False  # the night is drawn as usual only when the break keeps your sleep schedule
+    things: int = 0  # on the day's list
+    ticked: int = 0  # ticked off it
 
 
 class CalendarDay(Model):
@@ -1045,8 +1048,8 @@ class VacationThing(Model):
 
     item_id: int
     title: str
-    tags: list[str]
-    color: str | None
+    area: str | None  # its tag, as To-do details names it
+    preset: str | None  # its kind
     ticked: bool  # ticked off this day's list
     done: bool  # the task is finished
     timed_min: int  # what you timed of it that day
@@ -1056,3 +1059,23 @@ class VacationDayOut(Model):
     date: str
     vacation: VacationDay | None
     items: list[VacationThing]
+
+
+class CalendarChoice(Model):
+    name: str
+    repeats: int  # its repeating events
+
+
+class SeriesChoice(Model):
+    id: int
+    title: str
+    calendar: str  # its calendar's name, or "Friday" for one made here
+    every: str  # when it repeats, in words
+
+
+class BreakChoicesOut(Model):
+    """What a break can pause, for its chooser: every calendar, tag and repeating event."""
+
+    calendars: list[CalendarChoice]
+    tags: list[str]
+    series: list[SeriesChoice]

@@ -102,6 +102,7 @@ class TestEvents:
         shift = event_on(app, "Shift", WED)
         plan = app.do("plan", start=f"{WED}T04:00", end=f"{WED}T23:59")
         assert shift in plan["paused"]
+        assert next(f for f in plan["fixed"] if f["id"] == shift)["left_out"] == "paused"  # drawn paused
         assert minutes_on(app, WED, essay) == 120  # the day the shift took is free to use
 
     def test_it_is_not_paused_outside_the_break(self, app: App) -> None:
@@ -152,9 +153,12 @@ class TestWork:
         (row,) = day["items"]
         assert row["item_id"] == essay and row["title"] == "essay" and row["ticked"] is False
         assert "start" not in row and "end" not in row
+        days = {d["date"]: d for d in app.do("calendar", start=WED, days=1)["days"]}
+        assert (days[WED]["vacation"]["things"], days[WED]["vacation"]["ticked"]) == (1, 0)
 
     def test_a_paused_tag_waits_until_after_the_break(self, app: App) -> None:
-        work = task(app, "slides", 120, f"{FRI}T23:00", release=f"{WED}T04:00", tags=["Work"])
+        app.do("area_add", name="Work")  # a task's tag, as To-do details names it
+        work = task(app, "slides", 120, f"{FRI}T23:00", release=f"{WED}T04:00", area="Work")
         reading = task(app, "reading", 120, f"{FRI}T23:00", release=f"{WED}T04:00")
         add_break(app, pause={"repeating": "all", "tags": ["Work"]})
         assert all(minutes_on(app, d, work) == 0 for d in (WED, THU, FRI))  # only break days were open to it
@@ -275,3 +279,15 @@ class TestLearning:
         october.at("2026-10-12T09:00")
         estimate = october.do("add", text="lab report 4 #CS")["item"]["estimate"]
         assert estimate is None or estimate.get("method") != "similar"
+
+
+class TestChoices:
+    def test_the_chooser_offers_repeats_with_their_calendar_and_every_tag(self, app: App) -> None:
+        weekly(app, "Seminar", "2026-10-19", "mon,wed")
+        app.do("add", title="Flight", when="fixed", start=f"{THU}T13:00", end=f"{THU}T16:00")
+        app.do("area_add", name="Work")
+        found = app.do("break_choices")
+        assert [s["title"] for s in found["series"]] == ["Seminar"]  # a one-off isn't a repeat
+        assert found["series"][0]["calendar"] == "Friday" and found["series"][0]["every"]
+        assert {"name": "Friday", "repeats": 1} in found["calendars"]
+        assert "Work" in found["tags"]

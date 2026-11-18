@@ -28,6 +28,8 @@ import { useItem, useMeals, useNow, useSleep, useStatus } from "@/hooks/queries"
 import { clock, dur, hms, span, when } from "@/lib/format"
 import { fromMin, toMin } from "@/lib/time"
 import { useLook } from "@/theme/LookProvider"
+import { useBreakDay } from "@/breaks/BreakDay"
+import { things } from "@/breaks/words"
 import { useShell } from "@/shell/ShellContext"
 import { useBreaks } from "./breaks"
 import { mealLabel } from "@/body/mealNames"
@@ -89,6 +91,7 @@ export function Dock() {
       ) : (
         <>
           {work && menu === "more" && <MoreMenu itemId={cur.item_id} onSwitch={() => setMenu("swap")} onClose={() => setMenu(null)} />}
+          <BreakTap />
           <SleepTap />
           <MealTap />
           {alongside.map((t) => (
@@ -212,6 +215,30 @@ const TAPS = {
 
 /** Tracked sleep's one tap, when there's one to make; Friday learns your nights, mornings and evenings from them.
  * Napping, the nap and I'm up instead. */
+/** On a break (breaks/): today's list in a line, opening it beside the calendar. */
+function BreakTap() {
+  const { today, setBreakDay, breakDay } = useShell()
+  const navigate = useNavigate()
+  const day = useBreakDay(today).data
+  const v = day?.vacation
+  if (!day || !v) return null
+  const left = day.items.filter((t) => !t.ticked).length
+  const said = v.mode === "off" || !day.items.length ? "nothing to do today" : left ? `${things(left)} to do today` : "today's list is done"
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 14px 6px 18px", boxShadow: "inset 0 -1px 0 var(--fr-hairline)", fontSize: 12, color: "var(--color-neutral-400)" }}>
+      <Icon name="umbrella" size={14} style={{ color: "var(--fr-break)" }} />
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ color: "var(--color-text)" }}>{v.name}</span> · {said}
+      </span>
+      {day.items.length > 0 && (
+        <button className="btn btn-secondary fr-press" onClick={() => (navigate("/"), setBreakDay(breakDay === today ? null : today))} style={{ fontSize: 12, padding: "2px 10px" }}>
+          Today's list
+        </button>
+      )}
+    </div>
+  )
+}
+
 function SleepTap() {
   const sleep = useSleep().data
   const mark = useCommand("sleep_mark", { label: (o) => o.result.message ?? "Saved" })

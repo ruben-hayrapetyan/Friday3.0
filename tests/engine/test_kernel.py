@@ -68,7 +68,8 @@ def test_random_moves_stay_exact_on_dst_dial_and_theta_variants(name: str) -> No
 def test_random_moves_stay_exact_with_each_rule_alone(rule_type: str) -> None:
     p = single_rule(rule_type)
     c, st = compiled_random(p, 2, 0.3)
-    assert c.m.M > 0 or any(r.has_price for r in p.rules)
+    # it fires: measures, a price, or slots it takes away (a break's days)
+    assert c.m.M > 0 or any(r.has_price for r in p.rules) or any(r.has_forbid and r.scoped_items() for r in p.rules)
     FIRED[:] += random_moves(c, st, 1000, 2, check_every=100)
 
 

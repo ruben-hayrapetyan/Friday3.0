@@ -189,10 +189,11 @@ def build_problem(inp: BuildInput) -> Problem:
 
 
 def break_rules(inp: BuildInput) -> list[dict[str, Any]]:
-    """Tasks of a tag a break pauses wait for its end: none on its days (core/vacations.py)."""
+    """Tasks of a tag a break pauses wait for its end: none on its days (core/vacations.py). A tag is what the app calls
+    an area (To-do details' "Tag")."""
     return [
         {"type": "break_days", "name": f"break_days:{'+'.join(tags)}", "weight": 1.0, "stage": "deadlines",
-         "scope": {"tags": list(tags)}, "reason": "a break pauses these", "params": {"dates": list(dates)}}
+         "scope": {"area": list(tags)}, "reason": "a break pauses these", "params": {"dates": list(dates)}}
         for tags, dates in inp.paused_tags.items()
     ]  # fmt: skip
 

@@ -171,7 +171,8 @@ def run(
     if spec is not None and spec.mutates and spec.logged and ms - wait > SLOW_MS:
         log.warning("%s by %s held the database for %.0f ms (other writes waited)", name, actor, ms - wait)
     if spec is not None and spec.mutates and spec.logged:
-        given = payload.model_dump(exclude_none=True) if isinstance(payload, BaseModel) else payload or {}
+        # as text: an input with dates in it (a break's days) was dumped as dates, and the log line raised (18 Nov)
+        given = payload.model_dump(mode="json", exclude_none=True) if isinstance(payload, BaseModel) else payload or {}
         said = f"C{out.command_id}" if out.command_id is not None else "preview" if preview else "repeat"
         behind = f" (waited {wait:.0f} ms)" if wait >= 50 else ""
         log.info("%s by %s: %s, %.0f ms%s, %s", name, actor, said, ms, behind, json.dumps(given)[:120])

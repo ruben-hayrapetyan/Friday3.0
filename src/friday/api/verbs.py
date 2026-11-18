@@ -84,6 +84,14 @@ VERBS = {
         False,
         "Work your plans showed late that you finished on time: how, and what Friday would change.",
     ),
+    "break_choices": Verb(
+        "GET",
+        "/api/q/break_choices",
+        commands.Empty,
+        False,
+        False,
+        'What a break can pause: every calendar, tag and repeating event (events made here are on "Friday").',
+    ),
     "brief": Verb(
         "GET",
         "/api/q/brief",

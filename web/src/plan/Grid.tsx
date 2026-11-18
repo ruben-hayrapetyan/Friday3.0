@@ -29,6 +29,7 @@ import { type Over, roomAbove } from "./lines"
 import { inARow, type Pick, pickOfBlock, pickOfEvent, picks, shifted, usePicks } from "./picks"
 import { givesTimeToWork, layers, sideBySide } from "./layers"
 import { WholeDays } from "./WholeDays"
+import { BreakRow } from "@/breaks/BreakRow"
 import { eatenRoutines, pastMeals } from "./pastMeals"
 import { laneBox, spanIn, timerLanes } from "./timerLanes"
 import { isWholeDay } from "./wholeDay"
@@ -112,7 +113,9 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
   const mealBlocks = meals.map((m) => m.block)
   const navigate = useNavigate()
   const sessions = (plan.sessions ?? []).filter((s) => !eaten.has(s.item_id))
-  const shown = plan.blocks.filter((b) => b.state !== "timed" && b.state !== "gone" && !eaten.has(b.item_id))
+  // A break day has a list, not times (breaks/BreakDay.tsx): its planned blocks aren't drawn; what you timed is.
+  const onBreak = new Map(calendar.days.filter((d) => d.vacation).map((d) => [d.date, d.vacation as NonNullable<(typeof d)["vacation"]>]))
+  const shown = plan.blocks.filter((b) => b.state !== "timed" && b.state !== "gone" && !eaten.has(b.item_id) && !onBreak.has(b.start.slice(0, 10)))
   const axis: Axis = allDay24 ? { startMin: 0, endMin: 1440 } : fitAxis({ startMin: calendar.axis_start_min, endMin: calendar.axis_end_min }, [...fixed, ...plan.blocks, ...sessions, ...mealBlocks, ...nowSpan(now, dated, dates)], dates)
   const panel = useRef<HTMLDivElement>(null)
   useGlide(panel, plan, dates.join())
@@ -143,6 +146,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
           <DayHead key={date} date={date} day={days.get(date)} hours={hours[date] ?? 0} isToday={date === dated} dues={lanes ? [] : calendar.dues} />
         ))}
         <WholeDays events={allDay} dates={dates} />
+        <BreakRow days={calendar.days} dates={dates} />
         {lanes && <DueRow dues={calendar.dues} dates={dates} cols={cols} />}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: cols, padding: `10px 0 ${dockRoom(150)}` }}>
@@ -213,6 +217,7 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                 const at = Math.floor(minuteAtMouse(e) / 15) * 15
                 setEvent(draftAt(fromMin(at)))
               }}
+              className={onBreak.has(date) ? "fr-break-day" : undefined}
               style={{
                 position: "relative",
                 height,
@@ -222,7 +227,8 @@ export function Grid({ dates, calendar, plan, marginRight }: Props) {
                 boxShadow: "inset 1px 0 0 color-mix(in srgb, var(--color-text) 5%, transparent)",
               }}
             >
-              <Nights date={date} days={days} axis={axis} />
+              {/* a break's nights aren't planned, unless it keeps your sleep schedule */}
+              {(!onBreak.has(date) || onBreak.get(date)?.keep_sleep) && <Nights date={date} days={days} axis={axis} />}
               {layout(notGoing, date, axis).map((p) => fixedBox(p))}
               {placed.events.map((p) => fixedBox(p, false, coverings))}
               {event && !event.allDay && layout([event], date, axis).map((p) => <DraftBox key="draft" p={p} title={event.title} />)}

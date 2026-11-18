@@ -401,7 +401,15 @@ def connected_notion(app: App) -> int:
     return int(cursor.lastrowid or 0)
 
 
+def a_break(app: App) -> int:
+    return app.do("vacation_add", name="Fall break", start="2026-10-19", end="2026-10-21")["vacation"]["id"]
+
+
 SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
+    "vacation_add": lambda app: {"name": "Fall break", "start": "2026-10-21", "end": "2026-10-23", "mode": "off"},
+    "vacation_edit": lambda app: {"id": a_break(app), "mode": "off", "pause": {"repeating": "only", "tags": ["CS"]}},
+    "vacation_delete": lambda app: {"id": a_break(app)},
+    "vacation_tick": lambda app: (a_break(app), {"date": "2026-10-19", "item_id": essay(app), "ticked": True})[1],
     "import_personal": import_sample,
     "import_chroma_colors": chroma_sample,
     "duplicates_merge": lambda app: {

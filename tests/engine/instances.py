@@ -113,9 +113,15 @@ VARIANTS = ["ref20", "ref60", "dst-fine", "dst-coarse", "dst-spring", "easy", "p
             *ADVERSARIAL, "tiny0", "tiny1", "tiny2"]  # fmt: skip
 
 
+# Rules the planner makes and no instance has, tried alone: a break that pauses all work on two days of the DST week
+# (core/vacations.py builds it for a tag; unscoped here, so every task waits).
+ALONE_RULES = [dict(type="break_days", name="break_days", weight=1, stage="deadlines",
+                    params=dict(dates=["2026-10-28", "2026-10-29"]))]  # fmt: skip
+
+
 def single_rule(rule_type: str, seed: int = 0) -> Problem:
     """A DST-crossing week with only one rule switched on, with what that rule needs to fire."""
-    spec = next((r for r in EXTRA_RULES if r["type"] == rule_type), None)
+    spec = next((r for r in [*EXTRA_RULES, *ALONE_RULES] if r["type"] == rule_type), None)
     if spec is None:
         spec = next(r for r in reference_rules() if r["type"] == rule_type)
     sc = with_rules(reference_instance(30, 10 + seed, timezone=NEW_YORK, monday=DST_FINE_MONDAY), [spec])

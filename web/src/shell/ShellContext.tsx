@@ -28,6 +28,9 @@ export interface EventDraft {
   was?: { start: string; allDay: boolean; title: string } // a saved event as opened: its day ("this and later"), all day, title
 }
 
+/** A break open in its popup (breaks/BreakDialog.tsx): one of yours by id, or a new one, maybe with its days. */
+export type BreakEdit = { id: number } | { id?: undefined; start?: string; end?: string }
+
 /** What the calendar shows: the view, and its first day (null follows today). The sidebar's mini month moves it. */
 export interface CalendarPlace {
   view: View
@@ -64,6 +67,10 @@ interface Shell {
   setTour: (on: boolean) => void
   help: boolean // the ?'s labels on the page (HelpOverlay.tsx)
   setHelp: (on: boolean) => void
+  breakDay: string | null // a break day whose list is open beside the calendar (breaks/BreakDay.tsx)
+  setBreakDay: (date: string | null) => void
+  breakEdit: BreakEdit | null // a break open in its popup
+  setBreakEdit: (edit: BreakEdit | null) => void
   setupStep: string | null // Setup opened at one question, to change that answer alone (8 Nov); null for all of it
   openSetup: (step?: string) => void
 }
@@ -114,6 +121,8 @@ export function ShellProvider({ today, children }: { today: string; children: Re
   const [tour, setTour] = useState(false)
   const [help, setHelp] = useState(false)
   const [setupStep, setSetupStep] = useState<string | null>(null)
+  const [breakDay, setBreakDay] = useState<string | null>(null)
+  const [breakEdit, setBreakEdit] = useState<BreakEdit | null>(null)
   const openSetup = useCallback((step?: string) => {
     setSetupStep(step ?? null)
     showDialog("setup")
@@ -125,8 +134,8 @@ export function ShellProvider({ today, children }: { today: string; children: Re
   }, [])
   const over = drawerOver(layout, drawerWidth)
   const value = useMemo(
-    () => ({ today, pop, setPop, selected, select, drawer, setDrawer, dialog, setDialog, place, setPlace, agendaDay, setAgendaDay, event, setEvent, drawerWidth, setDrawerWidth, way, setWay, ask, askClaude, layout, drawerOver: over, navOpen, setNavOpen, tour, setTour, help, setHelp, setupStep, openSetup }),
-    [today, pop, selected, drawer, dialog, place, agendaDay, event, drawerWidth, setDrawerWidth, way, ask, askClaude, layout, over, navOpen, tour, help, setupStep, openSetup],
+    () => ({ today, pop, setPop, selected, select, drawer, setDrawer, dialog, setDialog, place, setPlace, agendaDay, setAgendaDay, event, setEvent, drawerWidth, setDrawerWidth, way, setWay, ask, askClaude, layout, drawerOver: over, navOpen, setNavOpen, tour, setTour, help, setHelp, setupStep, openSetup, breakDay, setBreakDay, breakEdit, setBreakEdit }),
+    [today, pop, selected, drawer, dialog, place, agendaDay, event, drawerWidth, setDrawerWidth, way, ask, askClaude, layout, over, navOpen, tour, help, setupStep, openSetup, breakDay, breakEdit],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

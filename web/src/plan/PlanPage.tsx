@@ -44,7 +44,7 @@ const VIEWS = [
 ]
 
 export function PlanPage() {
-  const { drawer, event, drawerWidth, place, setPlace, layout, drawerOver } = useShell()
+  const { drawer, event, drawerWidth, place, setPlace, layout, drawerOver, breakDay } = useShell()
   const today = useDate() // the calendar's pages center on its date, which turns at midnight (15 Nov)
   const view: View = place.view === 7 && !layout.weekFits ? 1 : place.view // a week too narrow to read shows its day
   const first = place.first
@@ -81,7 +81,7 @@ export function PlanPage() {
   return (
     <>
       <Header view={view} first={shown} onView={setView} onStep={step} onToday={() => setFirst(null)} />
-      {view === "month" ? <MonthView first={shown} onDay={(d) => setPlace({ view: 1, first: d })} /> : <Days first={shown} view={view} drawer={(drawer || !!event || (whatIfOn && whatIfPanel)) && !drawerOver ? drawerWidth : 0} aside={layout.dayAside} />}
+      {view === "month" ? <MonthView first={shown} onDay={(d) => setPlace({ view: 1, first: d })} /> : <Days first={shown} view={view} drawer={(drawer || !!event || !!breakDay || (whatIfOn && whatIfPanel)) && !drawerOver ? drawerWidth : 0} aside={layout.dayAside} />}
     </>
   )
 }
@@ -212,7 +212,7 @@ function PlanMenu({ views }: { views?: { options: typeof VIEWS; value: View; onP
           <MenuRow icon="sparkle" label={`Ask ${ai.name}`} note="Say what you want changed" onClick={() => (close(), askClaude())} />
           <MenuRow icon="shuffle" label="Other ways" note="Two more ways to plan the same work" onClick={() => (close(), setDialog("ways"))} />
           <MenuRow icon="hand-palm" label="Shove" note="Take back a stretch of time" onClick={() => (close(), setPop(pop === "shove" ? null : "shove"))} />
-          <MenuRow icon="gauge" label="Pace" note={paces ? paceLabel(paces) : "Push harder or ease off"} onClick={() => (close(), setPop(pop === "pace" ? null : "pace"))} />
+          <MenuRow icon="gauge" label="Pace" note={paces ? `${paceLabel(paces)} · or take a break` : "Push harder, ease off, or take a break"} onClick={() => (close(), setPop(pop === "pace" ? null : "pace"))} />
           <MenuRow icon="sun-horizon" label="Morning brief" note="Today at a glance" onClick={() => (close(), setDialog("brief"))} />
           <MenuRow icon="clock-counter-clockwise" label="What changed" note="What the last replan moved, and why" onClick={() => (close(), setDialog("changes"))} />
         </>

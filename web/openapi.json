@@ -11758,6 +11758,24 @@
     }
    }
   },
+  "/api/q/break_choices": {
+   "get": {
+    "summary": "What a break can pause: every calendar, tag and repeating event (events made here are on \"Friday\").",
+    "operationId": "break_choices",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BreakChoicesOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/brief": {
    "get": {
     "summary": "Today's big rocks, fixed items, alerts and pace, with a one-line summary, as data and plain text.",
@@ -15833,6 +15851,40 @@
     ],
     "title": "BlockOut"
    },
+   "BreakChoicesOut": {
+    "properties": {
+     "calendars": {
+      "items": {
+       "$ref": "#/components/schemas/CalendarChoice"
+      },
+      "type": "array",
+      "title": "Calendars"
+     },
+     "tags": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Tags"
+     },
+     "series": {
+      "items": {
+       "$ref": "#/components/schemas/SeriesChoice"
+      },
+      "type": "array",
+      "title": "Series"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "calendars",
+     "tags",
+     "series"
+    ],
+    "title": "BreakChoicesOut",
+    "description": "What a break can pause, for its chooser: every calendar, tag and repeating event."
+   },
    "BriefOut": {
     "properties": {
      "rocks": {
@@ -15899,6 +15951,25 @@
     ],
     "title": "BriefOut",
     "description": "The morning brief (DESIGN \u00a720.4), as data and as plain text."
+   },
+   "CalendarChoice": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "repeats": {
+      "type": "integer",
+      "title": "Repeats"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "name",
+     "repeats"
+    ],
+    "title": "CalendarChoice"
    },
    "CalendarDay": {
     "properties": {
@@ -31847,6 +31918,35 @@
     ],
     "title": "SeriesAddResult"
    },
+   "SeriesChoice": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "calendar": {
+      "type": "string",
+      "title": "Calendar"
+     },
+     "every": {
+      "type": "string",
+      "title": "Every"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "title",
+     "calendar",
+     "every"
+    ],
+    "title": "SeriesChoice"
+   },
    "SeriesDeleteResult": {
     "properties": {
      "command_id": {
@@ -37910,6 +38010,21 @@
      "per_day": {
       "type": "integer",
       "title": "Per Day"
+     },
+     "keep_sleep": {
+      "type": "boolean",
+      "title": "Keep Sleep",
+      "default": false
+     },
+     "things": {
+      "type": "integer",
+      "title": "Things",
+      "default": 0
+     },
+     "ticked": {
+      "type": "integer",
+      "title": "Ticked",
+      "default": 0
      }
     },
     "additionalProperties": false,
@@ -38321,14 +38436,7 @@
       "type": "string",
       "title": "Title"
      },
-     "tags": {
-      "items": {
-       "type": "string"
-      },
-      "type": "array",
-      "title": "Tags"
-     },
-     "color": {
+     "area": {
       "anyOf": [
        {
         "type": "string"
@@ -38337,7 +38445,18 @@
         "type": "null"
        }
       ],
-      "title": "Color"
+      "title": "Area"
+     },
+     "preset": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preset"
      },
      "ticked": {
       "type": "boolean",
@@ -38357,8 +38476,8 @@
     "required": [
      "item_id",
      "title",
-     "tags",
-     "color",
+     "area",
+     "preset",
      "ticked",
      "done",
      "timed_min"

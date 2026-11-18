@@ -644,6 +644,72 @@ kbd.fr-kbd {
 .fr-whole-day:hover {
   filter: brightness(1.15);
 }
+/* A break (breaks/BreakRow.tsx): its band, washed in its teal with its spine, and one line a day for that day's list,
+   a fixed height however long the list is. */
+.fr-break-band {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--fr-break) 16%, transparent);
+  border-left: 3px solid var(--fr-break);
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+.fr-break-band .ph {
+  color: var(--fr-break);
+}
+.fr-break-band-note {
+  color: var(--color-neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.fr-break-band:hover,
+.fr-break-line:hover {
+  background: color-mix(in srgb, var(--fr-break) 24%, transparent);
+}
+.fr-break-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 11.5px;
+  color: var(--color-text);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fr-break) 45%, transparent);
+  cursor: pointer;
+}
+.fr-break-line[data-quiet] {
+  color: var(--color-neutral-400);
+  box-shadow: none;
+}
+.fr-break-line[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1.5px var(--fr-break);
+}
+.fr-break-bar {
+  flex: 1 1 14px;
+  min-width: 10px;
+  height: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
+  overflow: hidden;
+}
+.fr-break-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--fr-break);
+}
+.fr-break-day {
+  background-color: color-mix(in srgb, var(--fr-break) 5%, transparent);
+}
 .fr-whole-more {
   justify-self: start;
   margin: 0 6px;

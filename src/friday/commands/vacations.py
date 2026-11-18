@@ -18,7 +18,7 @@ from friday.api.commands import (
     VacationTickInput,
 )
 from friday.api.types import Empty, Model
-from friday.api.views import VacationDay, VacationDayOut, VacationThing
+from friday.api.views import BreakChoicesOut, CalendarChoice, SeriesChoice, VacationDay, VacationDayOut, VacationThing
 from friday.commands.registry import Ctx, command, query
 from friday.core import vacations as breaks
 from friday.core.db import one, rows
@@ -26,7 +26,7 @@ from friday.core.items import FieldError
 from friday.core.rows import item_from_row
 from friday.core.settings import minutes_of
 from friday.core.time import format_utc, parse_utc, planning_day_start_utc
-from friday.planner.store import current_plan
+from friday.planner.store import area_names, current_plan
 
 DEFAULT_NAME = "Break"
 
@@ -126,8 +126,16 @@ def day_bounds(ctx: Ctx, day: date) -> tuple[int, int]:
             planning_day_start_utc(day + timedelta(days=1), ctx.tz, day_start))  # fmt: skip
 
 
-def vacation_day_of(v: breaks.Vacation, day: date) -> VacationDay:
-    return VacationDay(id=v.id, name=v.name, mode=v.mode, day_n=v.day_n(day), days=v.days, per_day=v.per_day)  # type: ignore[arg-type]
+def vacation_day_of(v: breaks.Vacation, day: date, ctx: Ctx | None = None) -> VacationDay:
+    """The break a day is on; with `ctx`, how many things its list has and how many are ticked off."""
+    counted = {}
+    if ctx is not None:
+        things = vacation_things(ctx, day)
+        counted = {"things": len(things), "ticked": sum(t.ticked for t in things)}
+    return VacationDay(
+        id=v.id, name=v.name, mode=v.mode, day_n=v.day_n(day), days=v.days, per_day=v.per_day,  # type: ignore[arg-type]
+        keep_sleep=v.keep_sleep, **counted,
+    )  # fmt: skip  # type: ignore[arg-type]
 
 
 def planned_minutes(ctx: Ctx, day: date) -> dict[int, tuple[int, int]]:
@@ -168,6 +176,16 @@ def vacation_day(ctx: Ctx, inp: VacationDayInput) -> VacationDayOut:
     v = breaks.on(inp.date, all_of(ctx))
     if v is None:
         return VacationDayOut(date=inp.date.isoformat(), vacation=None, items=[])
+    things = vacation_things(ctx, inp.date)
+    day = vacation_day_of(v, inp.date).model_copy(
+        update={"things": len(things), "ticked": sum(t.ticked for t in things)}
+    )
+    return VacationDayOut(date=inp.date.isoformat(), vacation=day, items=things)
+
+
+def vacation_things(ctx: Ctx, day: date) -> list[VacationThing]:
+    """A break day's list, in the order planned, ticked ones kept."""
+    inp = VacationDayInput(date=day)
     planned = planned_minutes(ctx, inp.date)
     ticks = {r["item_id"]: r for r in rows(ctx.conn, "SELECT * FROM vacation_ticks WHERE user_id = ? AND date = ?",
                                            [ctx.user_id, inp.date.isoformat()])}  # fmt: skip
@@ -175,16 +193,17 @@ def vacation_day(ctx: Ctx, inp: VacationDayInput) -> VacationDayOut:
     ids = sorted(set(planned) | set(ticks), key=lambda i: (i not in planned, planned.get(i, (0, 0))[1], i))
     found = {r["id"]: r for r in rows(ctx.conn, f"SELECT * FROM items WHERE id IN ({', '.join('?' * len(ids))})", ids)}
     things = []
+    areas = area_names(ctx.conn, ctx.user_id)
     for item_id in ids:
         row = found.get(item_id)
         if row is None or row["status"] == "dropped" or (item_id not in ticks and row["status"] != "todo"):
             continue
         item = item_from_row(row)
         things.append(
-            VacationThing(item_id=item_id, title=item.title, tags=list(item.tags), color=item.color,
+            VacationThing(item_id=item_id, title=item.title, area=areas.get(item.area_id or 0), preset=item.preset,
                           ticked=item_id in ticks, done=row["status"] == "done", timed_min=timed.get(item_id, 0))
         )  # fmt: skip
-    return VacationDayOut(date=inp.date.isoformat(), vacation=vacation_day_of(v, inp.date), items=things)
+    return things
 
 
 @command("vacation_tick", affects_plan=True)
@@ -252,3 +271,45 @@ def paused_events(ctx: Ctx, fixed: list[Any]) -> list[int]:
     items = tuple(item_from_row(r) for r in fixed)
     _, paused = breaks.on_break(items, found, ctx.settings, break_calendars(ctx.conn, ctx.user_id))
     return sorted(paused)
+
+
+@query("break_choices")
+def break_choices(ctx: Ctx, inp: Empty) -> BreakChoicesOut:
+    """What a break can pause: every calendar, tag and repeating event (events made here are on "Friday").
+
+    For a chooser that stays usable with twenty calendars (18 Nov)."""
+    from friday.core.recurrence import describe
+    from friday.planner.hidden import CALENDAR_KINDS
+    from friday.planner.snapshot import break_calendars
+
+    calendars = break_calendars(ctx.conn, ctx.user_id)
+    series = []
+    for r in rows(
+        ctx.conn,
+        "SELECT s.id, s.rrule, s.template, (SELECT min(i.id) FROM items i WHERE i.series_id = s.id "
+        "AND i.when_kind = 'fixed') AS one FROM series s WHERE s.user_id = ? AND s.active = 1",
+        [ctx.user_id],
+    ):
+        if r["one"] is None:
+            continue  # a repeating task, not an event
+        title = str(json.loads(r["template"]).get("title") or "Event")
+        calendar = calendars.get(r["one"]) or breaks.FRIDAY_CALENDAR
+        series.append(SeriesChoice(id=r["id"], title=title, calendar=calendar, every=describe(r["rrule"])))
+    series.sort(key=lambda s: (s.calendar.lower(), s.title.lower()))
+    names = [
+        r["name"]
+        for r in rows(
+            ctx.conn,
+            f"SELECT DISTINCT name FROM sources WHERE user_id = ? AND kind IN ({', '.join('?' * len(CALENDAR_KINDS))})",
+            [ctx.user_id, *CALENDAR_KINDS],
+        )
+    ]
+    counts: dict[str, int] = {}
+    for s in series:
+        counts[s.calendar] = counts.get(s.calendar, 0) + 1
+    every = sorted(set(names) | set(counts), key=str.lower)
+    shown = "SELECT name FROM areas WHERE user_id = ? AND archived = 0 ORDER BY name"
+    tags = [r["name"] for r in rows(ctx.conn, shown, [ctx.user_id])]
+    return BreakChoicesOut(
+        calendars=[CalendarChoice(name=n, repeats=counts.get(n, 0)) for n in every], tags=tags, series=series
+    )

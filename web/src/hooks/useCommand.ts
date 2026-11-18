@@ -14,7 +14,7 @@ import { expectPlan } from "@/lib/replan"
 
 // settings too: a look flipped on the calendar goes back when the server refuses it (audit, 8 Nov); projects and
 // exams, a tag picked on a project's page or an exam's card (15 Nov); ongoing and finished projects (projects-v2)
-const OPTIMISTIC = ["items", "item", "plan", "now", "status", "meals", "sleep", "settings", "rules", "projects", "exams", "ongoing_projects", "projects_finished", "project_options"]
+const OPTIMISTIC = ["items", "item", "plan", "now", "status", "meals", "sleep", "settings", "rules", "projects", "exams", "ongoing_projects", "projects_finished", "project_options", "calendar", "vacations", "vacation_day"]
 
 // What these change in the Now bar and the timer, shown before the server answers wherever they're made from: the
 // bar, a block's card, a to-do, Space (now/instant.ts).

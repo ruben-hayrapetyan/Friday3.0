@@ -264,6 +264,9 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
         [ctx.user_id, format_utc(lo), format_utc(hi)],
     )
     fixed = [item_out(ctx, item_from_row(r)) for r in fixed_rows]
+    paused = paused_events(ctx, fixed_rows)
+    if paused:  # a break pauses it: it doesn't count as busy, and says why (core/vacations.py)
+        fixed = [f.model_copy(update={"left_out": "paused"}) if f.id in paused else f for f in fixed]
     if not inp.with_hidden:  # a calendar you hid shows only in the plan, under Show (planner/hidden.py)
         fixed = [f for f in fixed if not f.hidden_calendar]
     fixed = optional_marked(ctx, fixed, blocks)
@@ -282,7 +285,7 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
         provisional=coming is not None,
         generation=generation(ctx.conn, ctx.user_id) if coming is not None else saved["generation"] if saved else 0,
         sessions=sittings(ctx, lo, hi),
-        paused=paused_events(ctx, fixed_rows),
+        paused=paused,
     )
 
 

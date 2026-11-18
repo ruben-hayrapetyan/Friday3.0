@@ -25,7 +25,7 @@ const HINTS: Record<string, string> = {
 }
 
 export function PacePop() {
-  const { today, setPop } = useShell()
+  const { today, setPop, setBreakEdit } = useShell()
   const paces = usePaces().data
   const [name, setName] = useState<string | null>(null)
   const [duration, setDuration] = useState(1)
@@ -93,6 +93,15 @@ export function PacePop() {
         <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>Every week</span>
         <WeekPaces compact />
       </div>
+      {/* More than easing off: days away, with a list instead of times (breaks/, 18 Nov) */}
+      <button className="fr-plain fr-hover fr-row" onClick={() => (setPop(null), setBreakEdit({}))} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 4px 2px", textAlign: "left", cursor: "pointer" }}>
+        <Icon name="umbrella" size={16} style={{ color: "var(--fr-break)" }} />
+        <span style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+          <span style={{ fontWeight: 500 }}>Take a break</span>
+          <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>Days off or light: repeats pause, and each day is a short list</span>
+        </span>
+        <Icon name="caret-right" size={12} style={{ color: "var(--color-neutral-500)" }} />
+      </button>
       <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
         <button className="btn btn-ghost" onClick={() => setPop(null)}>
           Cancel

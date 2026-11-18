@@ -46,7 +46,7 @@ def calendar(ctx: Ctx, inp: CalendarInput) -> CalendarOut:
                 bedtime=at(day, bedtime),
                 core=at(day, bedtime + evening.margin_min),
                 wake=at(day + timedelta(1), minutes_of(morning.wake)),
-                vacation=vacation_day_of(v, day) if (v := breaks.on(day, found)) else None,
+                vacation=vacation_day_of(v, day, ctx) if (v := breaks.on(day, found)) else None,
             )
         )
     start, end = min(wakes), max(bedtimes)

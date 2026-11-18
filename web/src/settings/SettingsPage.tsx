@@ -17,6 +17,7 @@ import { Phone } from "./Phone"
 import { Repeating } from "./Repeating"
 import { Schedule } from "./Schedule"
 import { Shortcuts } from "./Shortcuts"
+import { BreaksSection } from "./BreaksSection"
 import { TagsKinds } from "./TagsKinds"
 import { UpdatesSection } from "./UpdatesSection"
 
@@ -26,6 +27,7 @@ const SECTIONS = [
   { id: "tags", label: "Tags/Kinds", icon: "tag", page: TagsKinds },
   { id: "schedule", label: "Schedule", icon: "clock", page: Schedule },
   { id: "repeating", label: "Repeating", icon: "repeat", page: Repeating },
+  { id: "breaks", label: "Breaks", icon: "umbrella", page: BreaksSection },
   { id: "integrations", label: "Integrations", icon: "plugs", page: Integrations },
   { id: "phone", label: "Phone", icon: "device-mobile", page: Phone },
   { id: "tokens", label: "Tokens", icon: "key", page: Tokens },
