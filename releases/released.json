@@ -1,6 +1,28 @@
 {
-  "current": "0.5.1",
+  "current": "0.5.2",
   "versions": [
+    {
+      "version": "0.5.2",
+      "released": "2026-11-18",
+      "sha256": "be123ae1f7865771967b8aa6a5658c8f5f8d85de3c741c8805738a3c826f554b",
+      "bytes": 241267643,
+      "commit": "769699a5694a286da5663aea472ffa8d923681f9",
+      "notes": {
+        "summary": "Try elsewhere finds the free time again, and a security fix in the tools Friday is built with.",
+        "new": [],
+        "changed": [
+          "When Try elsewhere finds nowhere else, it says what rules out the free times, in words."
+        ],
+        "fixed": [
+          "Try elsewhere could say \"No other place fits\" beside plainly free time, when a lock Friday couldn't keep that week had become a preference.",
+          "Try elsewhere said a step that another step waits for \"waits for\" that step; it now says the other one waits for it.",
+          "Try elsewhere on what you're doing right now said \"Nowhere else is better\". It now offers a place for the rest of it, or says it's under way or being timed and what to do.",
+          "A meal with nowhere else to go said \"Past its due\". It now says its time and what's around it, like \"Lunch goes between 11:30am and 2:30pm, around CHEM 2090 Lecture\".",
+          "Try elsewhere could name an event from a calendar you hid; it now says \"an event on a calendar you hid\".",
+          "A security issue (CVE-2026-112366) in a pattern-matching library used while Friday is built is patched. It was never part of the app itself."
+        ]
+      }
+    },
     {
       "version": "0.5.1",
       "released": "2026-11-17",
