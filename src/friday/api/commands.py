@@ -679,9 +679,11 @@ class WhyNotInput(Model):
 class WhyNotOut(Model):
     key: str
     to_start: str | None
+    to_end: str | None = None  # where the moved block would end: what's left of one under way is shorter
     wall: str | None
     difference: dict[str, int]
     total: int
+    note: str | None = None  # instead of an answer: the block is under way with nothing left to move, or being timed
 
 
 class PreviewWeightsInput(Model):

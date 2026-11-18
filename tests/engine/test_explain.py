@@ -1,6 +1,8 @@
 """Explanations are exact: block costs add up to the evaluator's totals, why-not equals the evaluator's
 difference, and a forbidden alternative names its wall."""
 
+import dataclasses
+
 import numpy as np
 import pytest
 
@@ -141,3 +143,28 @@ def test_what_waits_on_a_block_is_named_as_waiting_for_it() -> None:
     assert why_not(c, owner, 0, 4).walls == ["Final waits for it"]
     # With nowhere else, what ruled out the free place, not the times taken that the calendar shows anyway
     assert why_not(c, owner, 0).walls == ["Final waits for it"]
+
+
+def lunch_after_a_meeting():  # noqa: ANN201
+    """Lunch, half an hour between 10am and noon, and a meeting until 11:30: it fits only at 11:30."""
+    meeting = item("commitment", 9, title="Standup", start_utc=MON10, end_utc=MON10 + 90)
+    lunch = item("routine", 1, title="Lunch", min_units=2, ideal_units=2, max_units=2, release_utc=MON10,
+                 due_utc=MON10 + 120)  # fmt: skip
+    p = problem([meeting, lunch], ["elastic_shortfall"], slots=8)
+    start = prepare_start(p)
+    return p, start.c, start.owner
+
+
+def test_a_meal_with_nowhere_else_names_its_time_and_whats_around_it() -> None:
+    # 17 Nov: "Nowhere else it can go (Past its due)" for a lunch: its last quarter hour tried would run past its time
+    p, c, owner = lunch_after_a_meeting()
+    assert c.plan_from_owner(owner)["item:1"] == (6, 7)
+    answer = why_not(c, owner, 6)
+    assert not answer.valid and answer.window == (MON10, MON10 + 120) and answer.walls == ["Standup"]
+
+
+def test_an_event_on_a_hidden_calendar_is_never_named() -> None:
+    p, c, owner = lunch_after_a_meeting()
+    p.fixed[:] = [dataclasses.replace(f, hidden=True) for f in p.fixed]
+    assert why_not(c, owner, 6).walls == ["an event on a calendar you hid"]
+    assert why_not(c, owner, 6, 0).walls == ["Busy: an event on a calendar you hid"]

@@ -18,6 +18,8 @@ from friday.engine.allocator import Allocation, allocate
 from friday.engine.compile import compile_problem
 from friday.engine.executor import ExecutorInput, Now, NowSettings, now, safe_items
 from friday.engine.explain import WhyNot, why_not
+from friday.engine.kernel import init_state, new_state
+from friday.engine.moves import chunk_around
 from friday.engine.problem import Plan, Problem
 from friday.engine.prune import demote_locks
 from friday.planner.assemble import AssembledPlan, assemble
@@ -67,10 +69,15 @@ def fits_view(snapshot: Snapshot, minutes: int | None) -> tuple[Current, list]:
     return state, found[: settings.swap_count * 3]
 
 
+class UnderWay(ValueError):
+    """The block has begun and the plan holds nothing of it ahead: it counts as being done."""
+
+
 def why_not_view(
-    snapshot: Snapshot, item_id: int, start_utc: int, new_start_utc: int | None
-) -> tuple[WhyNot, int | None]:
-    """The relocation answer, and where the block was tried, in UTC minutes."""
+    snapshot: Snapshot, item_id: int, start_utc: int, new_start_utc: int | None, end_utc: int | None = None
+) -> tuple[WhyNot, int | None, int | None]:
+    """The relocation answer, and where the block was tried, from and until, in UTC minutes. `end_utc`: where the
+    block ends; one under way (begun before now) is what's left of it ahead, as the plan holds it."""
     state = current(snapshot)
     # A lock the plan doesn't keep is one the planner couldn't keep and made a preferred pin (engine/construct.py):
     # as such here too, so its time is free as it is in the plan.
@@ -80,14 +87,31 @@ def why_not_view(
     c = compile_problem(state.problem)
     owner = c.owner_from_plan(state.plan)
     grid = state.problem.grid
+    key = key_of(item_id)
     slot = grid.slot_at(start_utc)
-    if slot < 0 or owner[slot] < 0 or c.keys[owner[slot]] != key_of(item_id):
+    if start_utc < grid.now and end_utc is not None:
+        # Under way: the plan begins at the next quarter hour, so the block's start isn't in it (17 Nov: Try elsewhere
+        # on the block you were in said "Nowhere else is better" over a refused query)
+        ahead = [s for s in grid.slots_in(grid.now, end_utc) if owner[s] >= 0 and c.keys[owner[s]] == key]
+        if not ahead:
+            raise UnderWay(f"T{item_id} is under way with nothing of it left ahead")
+        slot = ahead[0]
+    if slot < 0 or owner[slot] < 0 or c.keys[owner[slot]] != key:
         raise ValueError(f"T{item_id} has no block at that time in the current plan")
     target = grid.slot_at(new_start_utc) if new_start_utc is not None else None
     if target is not None and target < 0:
         raise ValueError("that start is outside the planning horizon")
     answer = why_not(c, owner, slot, target)
-    return answer, int(grid.start[answer.start]) if answer.start is not None else None
+    if answer.start is None:
+        return answer, None, None
+    st = new_state(c.m)
+    init_state(c.m, st, owner)
+    a, b = chunk_around(c.m, st, slot)
+    units, e = int(c.m.units[a : b + 1].sum()), answer.start
+    while units > int(c.m.units[e]) and e + 1 < grid.S:
+        units -= int(c.m.units[e])
+        e += 1
+    return answer, int(grid.start[answer.start]), int(grid.end[e])
 
 
 def preview_weights(

@@ -13,7 +13,7 @@ from friday.engine.checker import Violation, check
 from friday.engine.compile import Compiled
 from friday.engine.kernel import init_state, new_state, protected_items, rule_totals
 from friday.engine.moves import add_dependents, chunk_around, relocate
-from friday.engine.problem import Plan, Problem, Solution
+from friday.engine.problem import EngineItem, FixedOcc, Plan, Problem, Solution
 from friday.engine.pwl import Measure, measure_cost
 from friday.engine.rules import BuildContext, price_row
 
@@ -110,6 +110,9 @@ class WhyNot:
     delta: dict[str, int] = field(default_factory=dict)  # per rule: alternative − plan (> 0: costs more)
     start: int | None = None  # where the block was tried
     fits: bool = False  # the block fit there (free, allowed); only walls of the plan as a whole could rule it out
+    # With nowhere else for something kept to its own time of day (a meal, a routine): that time, from (None: it has
+    # begun) until, in UTC minutes; `walls` then name what's around it there.
+    window: tuple[int | None, int] | None = None
 
     @property
     def total(self) -> int:
@@ -137,9 +140,34 @@ def why_not(c: Compiled, owner: np.ndarray, slot: int, new_start: int | None = N
     # Nowhere: say what stood in the way most often, not only that nothing fit (17 Nov, a client's screenshot: "No
     # other place fits" beside a free afternoon, and nothing to say which rule ruled it out). What ruled out the places
     # that were free comes first: sleep, events and the time past its due are on the calendar to see already.
+    item = c.problem.items[c.keys[i]]
+    if own_time(item):
+        # Lunch kept to 11:30am-2:30pm with a lecture over the rest of it: that, not the "Past its due" of the last
+        # quarter hours tried, whose half hour would run past 2:30 (17 Nov)
+        lo, hi = int(item.release_utc), int(item.due_utc)  # type: ignore[arg-type]
+        return WhyNot(False, around(c, owner, i, lo, hi), window=(lo if lo >= c.problem.grid.now else None, hi))
     free = [t for t in tries if t.fits]
     reasons = Counter(w for t in free or tries for w in t.walls)
     return WhyNot(False, [w for w, _ in reasons.most_common(2)] or ["No other place fits"])
+
+
+def own_time(item: EngineItem) -> bool:
+    """Kept to its own time of day (a meal, a routine): an elastic item whose window is within a day."""
+    lo, hi = item.release_utc, item.due_utc
+    return item.amount == "elastic" and lo is not None and hi is not None and hi - lo <= 1440
+
+
+def around(c: Compiled, owner: np.ndarray, i: int, lo: int, hi: int) -> list[str]:
+    """What fills the rest of an item's own time, in time order: events, and other work there."""
+    problem, grid = c.problem, c.problem.grid
+    out: list[str] = []
+    for s in grid.slots_in(max(lo, grid.now), hi):
+        start, end = int(grid.start[s]), int(grid.end[s])
+        names = [event_name(f) for f in problem.fixed if f.blocks_time and f.start_utc < end and f.end_utc > start]
+        if owner[s] >= 0 and owner[s] != i:
+            names.append(problem.items[c.keys[owner[s]]].title)
+        out += [n for n in names if n not in out]
+    return out
 
 
 def protected_keys(c: Compiled, owner: np.ndarray) -> list[str]:
@@ -221,7 +249,7 @@ def slot_reason(c: Compiled, i: int, s: int) -> str:
         return "Sleep"
     if problem.blocked[s]:
         busy = [f for f in problem.fixed if f.blocks_time and f.blocked_lo < grid.end[s] and f.blocked_hi > start]
-        return f"Busy: {busy[0].title}" if busy else "Busy"
+        return f"Busy: {event_name(busy[0])}" if busy else "Busy"
     owner_key = problem.lock_owner.get(s)
     if owner_key is not None:
         return f"Locked: {problem.items[owner_key].title}"
@@ -229,6 +257,11 @@ def slot_reason(c: Compiled, i: int, s: int) -> str:
         if rule.has_forbid and rule.applies(item) and rule.forbids(item, s):
             return rule.reason
     return "Not allowed there"
+
+
+def event_name(f: FixedOcc) -> str:
+    """An event as the plan's words name it: never the title of one on a calendar you hid (planner/hidden.py)."""
+    return "an event on a calendar you hid" if f.hidden else "time you cleared" if f.kind == "shove" else f.title
 
 
 def wall_reason(c: Compiled, violation: Violation, moved: str) -> str:

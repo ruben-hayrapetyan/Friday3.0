@@ -12057,6 +12057,8 @@ export interface components {
             key: string;
             /** To Start */
             to_start: string | null;
+            /** To End */
+            to_end?: string | null;
             /** Wall */
             wall: string | null;
             /** Difference */
@@ -12065,6 +12067,8 @@ export interface components {
             };
             /** Total */
             total: number;
+            /** Note */
+            note?: string | null;
         };
         /** WhyOut */
         WhyOut: {

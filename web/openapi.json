@@ -38048,6 +38048,17 @@
       ],
       "title": "To Start"
      },
+     "to_end": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "To End"
+     },
      "wall": {
       "anyOf": [
        {
@@ -38069,6 +38080,17 @@
      "total": {
       "type": "integer",
       "title": "Total"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
      }
     },
     "additionalProperties": false,

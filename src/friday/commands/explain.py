@@ -23,6 +23,7 @@ from friday.commands.fields import require_item
 from friday.commands.progress import parse_block_key
 from friday.commands.registry import Ctx, query
 from friday.commands.rules import readings, words
+from friday.commands.timer import running
 from friday.core.db import one, rows
 from friday.core.items import FieldError
 from friday.core.settings import validate_value
@@ -31,7 +32,7 @@ from friday.engine.rules import RULE_TYPES, build_rules
 from friday.planner.snapshot import take_snapshot
 from friday.planner.spacing import Closer, closer_words
 from friday.planner.store import current_plan, kv_get, load_item
-from friday.planner.views import change_list, why_not_view
+from friday.planner.views import UnderWay, change_list, why_not_view
 from friday.planner.views import lighten as run_lighten
 from friday.planner.views import preview_weights as run_preview
 from friday.planner.views import triage as run_triage
@@ -45,12 +46,15 @@ def saved_report(ctx: Ctx) -> dict[str, Any]:
 
 
 def find_block(ctx: Ctx, key: str) -> dict[str, Any]:
+    """The saved block a key names: the one starting there, or holding that time. The calendar cuts a block under way
+    at now into what's gone and the rest (`plan`), and the rest's key is a time inside the saved block."""
     item_id, start = parse_block_key(ctx, key)
     saved = current_plan(ctx.conn, ctx.user_id)
     found = one(
         ctx.conn,
-        "SELECT * FROM blocks WHERE plan_id = ? AND item_id = ? AND start_utc = ?",
-        [saved["id"] if saved else -1, item_id, format_utc(start)],
+        "SELECT * FROM blocks WHERE plan_id = ? AND item_id = ? AND start_utc <= ? AND end_utc > ? "
+        "ORDER BY start_utc DESC LIMIT 1",
+        [saved["id"] if saved else -1, item_id, format_utc(start), format_utc(start)],
     )
     if found is None:
         raise FieldError("key", f"no block {key} in the current plan")
@@ -127,21 +131,50 @@ def shaping(ctx: Ctx, start: int) -> str | None:
 
 @query("why_not")
 def why_not(ctx: Ctx, inp: WhyNotInput) -> WhyNotOut:
-    """What moving a block (to `start`, or to the cheapest valid place) would cost, or the wall in the way."""
+    """What moving a block (to `start`, or to the cheapest valid place) would cost, or the wall in the way.
+
+    A block under way is what's left of it ahead; with nothing left, while you time it or once its time has gone by,
+    `note` says so and what to do."""
     item_id, start = parse_block_key(ctx, inp.key)
-    find_block(ctx, inp.key)
+    block = find_block(ctx, inp.key)
+    end = parse_utc(block["end_utc"])
     target = parse_utc(ctx.utc(inp.start, "start")) if inp.start else None
+    nothing = WhyNotOut(key=inp.key, to_start=None, wall=None, difference={}, total=0)
+    if end <= ctx.now_utc:
+        return nothing.model_copy(update={"note": GONE_BY})
+    if start < ctx.now_utc and running(ctx, item_id) is not None:
+        return nothing.model_copy(update={"note": TIMING})
     try:
-        answer, tried = why_not_view(take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id), item_id, start, target)
+        answer, tried, until = why_not_view(
+            take_snapshot(ctx.conn, ctx.now_utc, ctx.user_id), item_id, start, target, end
+        )
+    except UnderWay:
+        return nothing.model_copy(update={"note": UNDER_WAY})
     except ValueError as error:
         raise FieldError("start", str(error)) from error
+    walls = answer.walls
+    if answer.window is not None:  # kept to its own time of day: that time, and what's around it there
+        lo, hi = (clock_time(to_local(t, ctx.tz)) if t is not None else None for t in answer.window)
+        title = require_item(ctx, item_id).title
+        said = f"{title} goes between {lo} and {hi}" if lo else f"{title} goes by {hi}"
+        walls = [said + (f", around {and_list(walls)}" if walls else "")]
     return WhyNotOut(
         key=inp.key,
         to_start=ctx.local(format_utc(tried)) if tried is not None else None,
-        wall="; ".join(answer.walls) or None,
+        to_end=ctx.local(format_utc(until)) if until is not None else None,
+        wall="; ".join(walls) or None,
         difference=answer.delta,
         total=answer.total,
     )
+
+
+GONE_BY = "Its time has gone by, so there's nothing of it to move."
+UNDER_WAY = "It's under way, so there's nothing of it left to move. Not doing it now? Drag it to a later time."
+TIMING = "You're timing it now. Stop the timer, and what's left of it can go elsewhere."
+
+
+def and_list(names: list[str]) -> str:
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
 
 
 def change_out(ctx: Ctx, report: dict[str, Any], before: dict[str, int] | None = None) -> ChangeOut:

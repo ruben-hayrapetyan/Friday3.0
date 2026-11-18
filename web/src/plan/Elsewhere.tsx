@@ -3,7 +3,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
-import { type Block, query } from "@/api/client"
+import { type Block, query, type Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { moveBlock } from "@/hooks/useDrop"
@@ -17,6 +17,20 @@ const SAID: Record<string, string> = {
   unpin: "Unpinned", start: "Started the timer", stop: "Stopped the timer", progress: "Progress", skip: "Skipped", stuck: "Stuck",
   depend: "Tied to another to-do", undepend: "Untied", suggestion_accept: "Accepted from the Inbox",
 } // prettier-ignore
+
+type Found = Schemas["WhyNotOut"]
+
+/** With nowhere to offer: the block under way or being timed, said with what to do (17 Nov: Try elsewhere on the
+ * block you were in read "Nowhere else is better" over a refused query), else what keeps it where it is. */
+export function nowhere(found: Found | undefined): string {
+  if (found?.note) return found.note
+  return found?.wall ? `Nowhere else it can go (${found.wall}).` : "Nowhere else is better."
+}
+
+/** Where the block moved would end: what's left of one under way is shorter than the block, so the server says. */
+export function movedEnd(found: Found, length: number): string {
+  return found.to_end ?? fromMin(toMin(found.to_start as string) + length)
+}
 
 export function Elsewhere({ block, onMoved }: { block: Block; onMoved: () => void }) {
   const { today } = useShell()
@@ -46,7 +60,7 @@ export function Elsewhere({ block, onMoved }: { block: Block; onMoved: () => voi
         (where.isLoading ? (
           <span className="fr-kicker">Looking for the cheapest other place…</span>
         ) : !found?.to_start ? (
-          <span className="fr-kicker">{found?.wall ? `Nowhere else it can go (${found.wall}).` : "Nowhere else is better."}</span>
+          <span className="fr-kicker">{nowhere(found)}</span>
         ) : (
           <div className="fr-well" style={{ padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
             <span>
@@ -67,7 +81,7 @@ export function Elsewhere({ block, onMoved }: { block: Block; onMoved: () => voi
               className="btn btn-secondary"
               onClick={() => {
                 const start = found.to_start as string
-                pin({ id: block.item_id, start, end: fromMin(toMin(start) + length), kind: "preferred", from_start: block.start, from_end: block.end })
+                pin({ id: block.item_id, start, end: movedEnd(found, length), kind: "preferred", from_start: block.start, from_end: block.end })
                 onMoved()
               }}
               style={{ alignSelf: "flex-start" }}

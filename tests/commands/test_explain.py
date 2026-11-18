@@ -1,11 +1,13 @@
 """Explanations of the plan (DESIGN §16): the `why` sentence (room to spare, pins, the event a block follows, a
 day's pace), `why_not` refusals, and the cost per rule in the plan or on one day."""
 
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
 
 from friday.core.items import FieldError
+from friday.core.time import parse_local
 from tests.commands.helpers import App, new_app
 
 
@@ -115,3 +117,56 @@ def test_try_elsewhere_offers_free_time_when_the_plan_dropped_a_lock(app: App) -
     # and the half hour the lock no longer holds is free, as it is in the plan (was "Locked: laundry")
     there = app.do("why_not", key=key, start="2026-10-19T13:15")
     assert there["to_start"] == "2026-10-19T13:15" and there["wall"] is None
+
+
+def block_under_way(app: App, minutes: int, into: int) -> dict:
+    """An essay's block, with the clock `into` minutes past its start."""
+    app.do("add", title="essay", duration_min=minutes, due="2026-10-20T17:00", firmness="hard")
+    app.do("replan")
+    block = next(b for b in app.do("plan")["blocks"] if b["title"] == "essay")
+    app.at(f"2026-10-19T{int(block['start'][11:13]):02d}:{int(block['start'][14:16]) + into:02d}")
+    return block
+
+
+def test_try_elsewhere_on_the_block_under_way_offers_a_place_for_the_rest_of_it(app: App) -> None:
+    # 17 Nov: on the block you were in, Try elsewhere was refused ("has no block at that time") and the card said
+    # "Nowhere else is better"; the calendar cuts the block at now, and the rest's key was refused too
+    block = block_under_way(app, 60, 20)  # 9:00-10:00 at 9:20: the plan holds 9:30-10:00 of it
+    pieces = [b["key"] for b in app.do("plan")["blocks"] if b["title"] == "essay"]
+    assert pieces == ["T1@2026-10-19T09:00", "T1@2026-10-19T09:15"]
+    for key in pieces:
+        answer = app.do("why_not", key=key)
+        assert answer["to_start"] is not None and answer["note"] is None
+        assert parse_local(answer["to_end"]) - parse_local(answer["to_start"]) == timedelta(minutes=30)
+        assert app.do("why", key=key)["sentence"]  # the card's why too
+    assert block["key"] == pieces[0]
+
+
+def test_try_elsewhere_on_a_block_with_nothing_left_being_timed_or_gone_by_says_so(app: App) -> None:
+    block = block_under_way(app, 15, 5)
+    assert app.do("why_not", key=block["key"]) == {
+        "key": block["key"], "to_start": None, "to_end": None, "wall": None, "difference": {}, "total": 0,
+        "note": "It's under way, so there's nothing of it left to move. Not doing it now? Drag it to a later time.",
+    }  # fmt: skip
+    app.do("start", id=block["item_id"])
+    assert app.do("why_not", key=block["key"])["note"] == (
+        "You're timing it now. Stop the timer, and what's left of it can go elsewhere."
+    )
+    app.at("2026-10-19T09:30")  # a past block's card has Try elsewhere too
+    assert app.do("why_not", key=block["key"])["note"] == "Its time has gone by, so there's nothing of it to move."
+
+
+def test_a_meal_with_nowhere_else_says_its_time_and_whats_around_it(app: App) -> None:
+    # 17 Nov: "Nowhere else it can go (Past its due)" for a lunch: its half hour tried at 2:15 ran past its time
+    app.do("settings_set", key="event_kinds", value={"other": {"before_min": 0, "after_min": 0}})
+    app.do("series_add", title="Lunch", preset="Routine", every="day", release_offset_min=450, due_offset_min=630,
+           min_min=15, ideal_min=30, max_min=30)  # fmt: skip
+    app.do("add", title="CHEM 2090 Lecture", when="fixed", start="2026-10-19T11:30", end="2026-10-19T14:00")
+    app.do("replan")
+    key = next(b["key"] for b in app.do("plan")["blocks"] if b["title"] == "Lunch" and "10-19" in b["start"])
+    assert key == "T1@2026-10-19T14:00"
+    assert app.do("why_not", key=key)["wall"] == "Lunch goes between 11:30am and 2:30pm, around CHEM 2090 Lecture"
+    app.do("settings_set", key="clock", value="24h")
+    assert app.do("why_not", key=key)["wall"] == "Lunch goes between 11:30 and 14:30, around CHEM 2090 Lecture"
+    app.at("2026-10-19T12:00")  # begun: by when it goes
+    assert app.do("why_not", key=key)["wall"] == "Lunch goes by 14:30, around CHEM 2090 Lecture"
