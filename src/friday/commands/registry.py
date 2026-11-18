@@ -10,7 +10,7 @@ import logging
 import sqlite3
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any, Literal, get_type_hints
 
@@ -35,9 +35,8 @@ from friday.core.time import (
     to_utc,
 )
 from friday.planner.hidden import Hidden, hidden_of
-from friday.planner.service import plan_snapshot
 from friday.planner.service import provisional as placement
-from friday.planner.snapshot import BlockRow, Snapshot, read_snapshot
+from friday.planner.snapshot import Snapshot, read_snapshot
 from friday.planner.store import generation, load_item, load_settings
 from friday.planner.views import change_list
 
@@ -400,17 +399,11 @@ def full_preview(ctx: "Ctx", before: Snapshot, snapshot: Snapshot) -> ChangeOut:
     Tue 1 Dec. The solve was compared with the saved plan however old: one made before the day turned over had a
     horizon a day shorter, and work leaning as late as its pacing allows spread into the new day. A pace that changes
     nothing said the same, so the preview showed the day passing as the pace's doing."""
-    from friday.commands.whatif import without  # noqa: PLC0415 (what if is a command module, made with this registry)
+    from friday.commands.whatif import planned_from, without  # noqa: PLC0415 (a command module, made with this registry)
 
     conn = ctx.conn
     was = without(ctx, before)
-    # Blocks begun before now stay: they're what counts as done (prepare.py `progress_minutes`); dropped, yesterday's
-    # practice was "added" again, hours late.
-    begun = tuple(b for b in snapshot.plan_blocks if b.start_utc < snapshot.now_utc)
-    ahead = tuple(
-        BlockRow(b.item_id, b.start_utc, b.end_utc, b.tentative) for b in was.blocks if b.start_utc >= snapshot.now_utc
-    )
-    plan = plan_snapshot(replace(snapshot, plan_blocks=begun + ahead), warm=True)
+    plan = planned_from(was, snapshot)  # blocks begun before now kept: dropped, yesterday's practice came back late
     rule_totals = was.report.get("rule_totals", {})
     titles = {item.id: item.title for item in snapshot.items}
 

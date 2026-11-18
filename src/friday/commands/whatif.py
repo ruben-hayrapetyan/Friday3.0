@@ -95,10 +95,7 @@ def whatif(ctx: Ctx, inp: WhatIfInput) -> WhatIfOut:
         if LATEST.get(who) != mine:
             raise FieldError("changes", "a newer try replaced this one")
         was = without(ctx, before)
-        # Started from the plan without them, so what moves is what the changes move: two plans made apart on a full
-        # week wandered apart on their own (one dinner "moved" 49 blocks and slid overdue readings by days).
-        started = tuple(BlockRow(b.item_id, b.start_utc, b.end_utc, b.tentative) for b in was.blocks)
-        plan = plan_snapshot(replace(after, plan_blocks=started), warm=True)
+        plan = planned_from(was, after)
     shown, again = trial_plan(ctx, changes, after, plan, inp)
     if [t.created for t in again] != [t.created for t in done]:  # something was added meanwhile: ids moved on
         raise FieldError("changes", "your plan changed while Friday tried this; try again")
@@ -137,6 +134,21 @@ def without(ctx: Ctx, before: Snapshot) -> AssembledPlan:
     BEFORE.clear()  # one at a time: an older generation is no use again
     BEFORE[key] = (ctx.now_utc, plan)
     return plan
+
+
+def planned_from(was: AssembledPlan, after: Snapshot) -> AssembledPlan:
+    """`after` planned starting from `was`, the plan without the changes, so what moves is what the changes move: two
+    plans made apart on a full week wandered apart on their own (one dinner "moved" 49 blocks and slid overdue
+    readings by days). What if and a command's full preview (`registry.full_preview`) both plan this way.
+
+    Blocks begun before now stay as they were: they're what counts as done (prepare.py `progress_minutes`). `was`
+    holds none (a plan begins at now), and with them gone a lab writeup worked 8:30–10:30 was planned again at 3pm:
+    a call added for 9pm "made Wednesday's work end later", 12pm to 5pm (19 Nov)."""
+    begun = tuple(b for b in after.plan_blocks if b.start_utc < after.now_utc)
+    ahead = tuple(
+        BlockRow(b.item_id, b.start_utc, b.end_utc, b.tentative) for b in was.blocks if b.start_utc >= after.now_utc
+    )
+    return plan_snapshot(replace(after, plan_blocks=begun + ahead), warm=True)
 
 
 def as_assembled(ctx: Ctx, saved: dict[str, Any]) -> AssembledPlan:
