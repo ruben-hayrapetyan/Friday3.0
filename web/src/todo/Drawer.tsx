@@ -206,6 +206,7 @@ export const RENAME_WAIT_MS = 250
 
 function Row(props: { item: Item; late?: Late; overdueBy?: string; picked: boolean; together: Item[] | null; onClick: (e: React.MouseEvent | React.KeyboardEvent) => void }) {
   const { item, late, overdueBy: overdueText, picked, together, onClick } = props
+  const warning = lateWarning(late)
   const { today } = useShell()
   const { color } = useLook()
   const { begin } = useDragging()
@@ -250,7 +251,7 @@ function Row(props: { item: Item; late?: Late; overdueBy?: string; picked: boole
       tabIndex={0}
       onClick={(e) => !naming && onClick(e)}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && (e.preventDefault(), onClick(e))}
-      title={`${item.title}: click to open it, double-click the name to rename`}
+      title={`${item.title}: click to open it, double-click the name to rename${warning ? `. ${warning}` : ""}`}
       onPointerDown={(e) => !naming && begin(e, { kind: "row", start: 0, end: rows ? rows.reduce((sum, r) => sum + r.length, 0) : length, grab: 0, itemId: item.id, blockKey: null, title: rows ? `${rows.length} to-dos` : item.title, rows })}
       className="fr-hover"
       style={{
@@ -299,8 +300,10 @@ function Row(props: { item: Item; late?: Late; overdueBy?: string; picked: boole
               <DueLabel due={item.due} prefix="due " routine={item.preset === "Routine"} />
             </>
           )}
-          {lateWarning(late) && <span style={{ color: "var(--fr-warn)" }}> · {lateWarning(late)}</span>}
         </span>
+        {/* a line of its own, wrapping, never cut (18 Nov, a client: "Friday has i…" at the end of the line above,
+            "can't view the full text anywhere") */}
+        {warning && <span style={{ fontSize: 11, color: "var(--fr-warn)", overflowWrap: "anywhere" }}>{warning}</span>}
       </span>
       <span className="tnum" style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>
         {item.remaining_min ? dur(item.remaining_min) : ""}

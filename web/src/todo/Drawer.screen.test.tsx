@@ -84,6 +84,27 @@ describe("the to-do drawer", () => {
     expect(within(aside).queryByRole("button", { name: "Title" })).toBeNull()
   })
 
+  it("shows an overdue task's warning whole, on a line of its own and in its tooltip", async () => {
+    // 18 Nov, a client's notes: "edit article draft · 9h overdue · 10:15 · Friday has i…", the yellow warning cut off
+    // at the end of the row's second line, "and can't view the full text anywhere"
+    const due = new Date(Date.now() - 9 * 3_600_000)
+    const at = `${ymd(0)}T${String(due.getHours()).padStart(2, "0")}:${String(due.getMinutes()).padStart(2, "0")}`
+    const title = "edit article draft, the overdue one with a long warning"
+    const made = await friday.c<{ result: { item: { id: number } } }>("add", { title, preset: "Assignment", due: at, duration_min: 41, firmness: "hard" })
+    const id = made.result.item.id
+    await waitFor(async () => {
+      const s = await friday.q<{ late_items: { item_id: number }[]; slipping: { item_id: number }[] }>("status")
+      expect([...s.late_items, ...s.slipping].map((l) => l.item_id)).toContain(id)
+    }, { timeout: 30_000, interval: 500 })
+    const { aside } = await drawer()
+    const row = await rowIn(aside, title)
+    const warning = await within(row).findByText(/^Friday has (it .+ late|no time for it)$/, {}, { timeout: 10_000 })
+    // never inside a line cut short with an ellipsis
+    for (let el: HTMLElement | null = warning; el && el !== row; el = el.parentElement) expect(el.style.textOverflow).not.toBe("ellipsis")
+    expect(row.getAttribute("title")).toContain(warning.textContent as string)
+    await friday.c("drop", { id })
+  })
+
   it("ticks a task done from its row", async () => {
     const title = await dueThisWeek()
     const { id } = (await friday.q<Item[]>("items", { status: "all" })).find((i) => i.title === title && i.status === "todo") as Item
