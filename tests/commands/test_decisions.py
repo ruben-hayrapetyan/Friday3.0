@@ -70,7 +70,7 @@ def test_the_plan_keeps_a_lock_that_makes_work_late_and_asks(app: App) -> None:
     lock = asked(app, "lock")
     assert [(d["key"], d["pin_id"], d["start"]) for d in lock] == [(f"lock:{pin}", pin, "2026-10-19T10:00")]
     # The essay is one sitting: kept out of 9am–12pm, it waits for the morning after.
-    assert lock[0]["detail"].startswith("Locked at Mon 10am, it makes other work 22h")
+    assert lock[0]["detail"].startswith("Locked at Mon 10am, it makes essay finish 22h")
 
 
 def test_keeping_a_lock_stops_the_question_and_keeps_the_lock(app: App) -> None:

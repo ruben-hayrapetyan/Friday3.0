@@ -4672,6 +4672,10 @@ export interface components {
             late_hours?: {
                 [key: string]: number;
             };
+            /** Late Hours Before */
+            late_hours_before?: {
+                [key: string]: number;
+            } | null;
         };
         /**
          * Changed

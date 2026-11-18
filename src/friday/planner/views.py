@@ -674,8 +674,15 @@ def with_release(item_id: int, release: str) -> Change:
     return change
 
 
-def change_list(report: dict[str, Any], before: dict[str, int], tz: str, title: Callable[[int], str]) -> ChangeOut:
-    """A plan report's change list in local time, with titles."""
+def change_list(
+    report: dict[str, Any],
+    before: dict[str, int],
+    tz: str,
+    title: Callable[[int], str],
+    late_before: dict[Any, float] | None = None,
+) -> ChangeOut:
+    """A plan report's change list in local time, with titles; `late_before`, a preview's lateness without the
+    change, so it can say only what the change makes later."""
     changes = report.get("changes", {})
 
     def local(stored: str) -> str:
@@ -712,4 +719,5 @@ def change_list(report: dict[str, Any], before: dict[str, int], tz: str, title: 
         rule_totals_after=report.get("rule_totals", {}),
         notices=report.get("notices", []) + report.get("pace_notices", []),
         late_hours={title(int(k)): v for k, v in report.get("late_hours", {}).items()},
+        late_hours_before=None if late_before is None else {title(int(k)): v for k, v in late_before.items()},
     )

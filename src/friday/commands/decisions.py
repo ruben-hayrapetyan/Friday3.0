@@ -16,6 +16,7 @@ from friday.api.views import Decision, DecisionOption, LateItem
 from friday.commands.registry import Ctx, command
 from friday.core.items import FieldError
 from friday.core.time import clock_time, parse_utc, to_local
+from friday.planner.service import ASK_FROM_HOURS
 from friday.planner.store import current_plan, kv_get
 
 AGAIN_HOURS = 1.0  # an answer is asked again once the work it's about is this much later
@@ -48,8 +49,7 @@ def decisions(ctx: Ctx, report: dict, late: list[LateItem]) -> list[Decision]:
                 key=f"lock:{c['pin_id']}",
                 kind="lock",
                 title=f"Keep {c['title']} where you locked it?",
-                detail=f"Locked at {at:%a} {clock_time(at)}, "
-                f"it makes other work {spoken(c['extra_late_hours'])} later.",
+                detail=f"Locked at {at:%a} {clock_time(at)}, {lock_cost(c)}",
                 pin_id=c["pin_id"],
                 item_id=c["item_id"],
                 start=ctx.local(c["start"]),
@@ -79,6 +79,24 @@ def answered(answers: dict, key: int, hours: float) -> bool:
     """Whether an answer about `key` still stands: given, and the work it's about isn't an hour later since."""
     was = answers.get(str(key))
     return was is not None and hours < was + AGAIN_HOURS
+
+
+def lock_cost(conflict: dict) -> str:
+    """What a lock makes later, by name: "it makes essay finish 3h later and lab 20 min later." (18 Nov: "it makes
+    other work 164h 15m later" was hours summed over several things, read as Friday planning 164 hours ahead.) And,
+    when letting it move would make it later itself, by how much."""
+    later = conflict.get("later")
+    if not later:  # a plan saved before the work was named
+        return f"it makes other work {spoken(conflict['extra_late_hours'])} later."
+    first = f"{later[0]['title']} finish {spoken(later[0]['hours'])} later"
+    if len(later) == 2:
+        first += f" and {later[1]['title']} {spoken(later[1]['hours'])} later"
+    elif len(later) > 2:
+        first += f", and {len(later) - 1} other things later too"
+    said = f"it makes {first}."
+    if conflict.get("itself_hours", 0) >= ASK_FROM_HOURS:
+        said += f" Let go, it would finish {spoken(conflict['itself_hours'])} later itself."
+    return said
 
 
 def spoken(hours: float) -> str:

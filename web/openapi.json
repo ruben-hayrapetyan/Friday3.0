@@ -15938,6 +15938,20 @@
       "type": "object",
       "title": "Late Hours",
       "default": {}
+     },
+     "late_hours_before": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "number"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Late Hours Before"
      }
     },
     "additionalProperties": false,
