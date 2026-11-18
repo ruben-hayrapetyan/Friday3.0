@@ -1,0 +1,19 @@
+diff --git a/lib/parse.js b/lib/parse.js
+index 29207512c60183b4bb9bf5112be3b9b5f4a9a9fd..2fdf1d0ec00bddcebcbaf2defd585bc0ba110de0 100644
+--- a/lib/parse.js
++++ b/lib/parse.js
+@@ -296,6 +296,14 @@ const analyzeRepeatedExtglob = (body, options) => {
+ 
+   const branches = splitTopLevel(body).map(branch => branch.trim());
+ 
++  // Friday's patch (CVE-2026-112366, GHSA-fc5q-39xc-vjpf, until picomatch releases a fix): a bare `*` or `?` inside a
++  // repeated extglob, `+(*)` or `+(*a)`, nests an unbounded quantifier in another and backtracks exponentially; one
++  // branch skipped the check below. Such a body is matched literally, as the other risky ones are. `*(` and `?(`,
++  // nested extglobs, are left to the analysis below.
++  if (branches.some(branch => /(?:^|[^\\])[*?](?!\()/.test(branch))) {
++    return { risky: true };
++  }
++
+   if (branches.length > 1) {
+     if (
+       branches.some(branch => branch === '') ||
