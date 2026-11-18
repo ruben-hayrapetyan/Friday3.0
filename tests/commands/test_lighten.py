@@ -39,11 +39,12 @@ def test_flexible_work_in_the_week_is_offered_to_start_after_it_and_applying_it_
 
 
 def test_a_day_is_lightened_to_the_days_after_it(app: App) -> None:
-    # Monday holds 3 h of the essay, due Sunday: it can start Tuesday and still be done in time. The lab report and
-    # the side project, due a week and more on, planned Monday as soon as there's time (17 Nov), can too
+    # Monday holds 6 h of the essay, due Sunday, and the lab report's 2: as much as a day takes, all work in as soon
+    # as there's time, what's due first first (17 Nov; it held 3 h of the essay while only work due a week off went in
+    # early). Each can start Tuesday and still be done in time; the side project, due last, isn't on Monday
     options = {o["action"]: o for o in app.do("lighten", start="2026-10-19", days=1)["options"]}
     essay = options["Start Essay on Tue 20"]
-    assert essay["hours_moved"] == 3
+    assert essay["hours_moved"] == 6
     assert set(options) <= {"Start Essay on Tue 20", "Start Lab report on Tue 20", "Start Side project on Tue 20"}
     goes, due = essay["side_effects"]
     assert goes.startswith("Most of it goes to ") and due == "Still done by its due, Sun 25"

@@ -209,17 +209,37 @@ def test_a_clash_your_answer_decides_is_asked_in_the_inbox_until_answered(lab: A
     assert lab.do("rule_clashes") == []
 
 
-def test_a_mild_clash_says_why_and_isnt_asked(heavy: App) -> None:
+@pytest.fixture
+def tuesday_gaps(app: App) -> App:
+    """Monday taken, Tuesday free only 9–11 and 1–3, Wednesday free: a 3-hour problem set due Thursday at 9am is done
+    Wednesday morning in one sitting, and a day sooner only in Tuesday's two. (In `heavy` work went in as soon as
+    there's time from Monday (17 Nov), up to each day's most, so Sunday's work was all a full week left: finishing it a
+    day early gained nothing a split could buy.)"""
+    for start, end in (("2026-10-19T09:00", "2026-10-19T23:00"), ("2026-10-20T07:00", "2026-10-20T09:00"),
+                       ("2026-10-20T11:00", "2026-10-20T13:00"), ("2026-10-20T15:00", "2026-10-20T23:30")):  # fmt: skip
+        app.do("add", title="Shift", when="fixed", start=start, end=end, preset="Event")
+    app.do("add", text="problem set ~3h due thu 9:00")
+    replan(app.conn, app.now_utc)
+    return app
+
+
+def test_a_mild_clash_says_why_and_isnt_asked(tuesday_gaps: App, tmp_path: Path) -> None:
     """Finishing a problem set a day early would cost "Fewer, longer sessions" more than ten times what it gains: no
     answer would change that, so Friday says why on the Rules page and asks nothing (a dearer trade than
     planner/views.py ASK_MOST); keeping work to 3 hours in a row is a trade your answer decides, and is asked."""
-    out = heavy.do("rule_clash", name="finish_early")
+    out = tuesday_gaps.do("rule_clash", name="finish_early")
     assert out["other"] == "chunk_cost" and out["ask"] is False
     assert out["because"].endswith("into 2 sittings instead of 1") and out["said"].endswith("instead of 1.")
     assert "Which should win?" not in out["said"]
+    find_clashes(tuesday_gaps.conn, tuesday_gaps.now_utc)
+    assert "finish_early" not in [c["rule"] for c in tuesday_gaps.do("rule_clashes")]
+    (tmp_path / "heavy").mkdir()
+    heavy = new_app(tmp_path / "heavy")
+    for n in range(12):
+        heavy.do("add", text=f"problem set {n} ~5h due sun 23:59")
+    replan(heavy.conn, heavy.now_utc)
     find_clashes(heavy.conn, heavy.now_utc)
-    asked = [c["rule"] for c in heavy.do("rule_clashes")]
-    assert "finish_early" not in asked and "deep_run" in asked
+    assert "deep_run" in [c["rule"] for c in heavy.do("rule_clashes")]
 
 
 def test_the_nightly_job_looks_into_clashes_from_the_second_night(lab: App) -> None:

@@ -37,12 +37,13 @@ def test_keeping_the_must_dos_locks_their_time_and_clears_the_gaps(app: App) -> 
     assert asked["created"] == [] and [m["item_id"] for m in asked["must_do"]] == [essay]
     assert asked["message"] == "Clearing that would make these later: essay (+4 h)"
     out = app.do("shove", range="09:00-17:00", decision="keep_must_dos")
-    assert out["message"] == "Cleared today 12–12:15pm; today 1:15–5pm" and out["day"] == "2026-10-19"
+    # the essay planned 9:00–11:30 and 11:45–1:15 (17 Nov, work in as soon as there's time; it was 9–12 and 12:15–1:15)
+    assert out["message"] == "Cleared today 11:30–11:45am; today 1:15–5pm" and out["day"] == "2026-10-19"
     assert len(out["created"]) == 2
     locks = [(p["item_id"], p["start_utc"], p["end_utc"], p["kind"]) for p in app.table("pins")]
     assert locks == [
-        (essay, "2026-10-19T13:00Z", "2026-10-19T16:00Z", "locked"),
-        (essay, "2026-10-19T16:15Z", "2026-10-19T17:15Z", "locked"),
+        (essay, "2026-10-19T13:00Z", "2026-10-19T15:30Z", "locked"),
+        (essay, "2026-10-19T15:45Z", "2026-10-19T17:15Z", "locked"),
     ]
 
 

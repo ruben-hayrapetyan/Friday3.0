@@ -112,19 +112,114 @@ def test_exam_prep_kept_close_to_its_exam_stays_there(app: App) -> None:
     assert all(start >= to_utc(parse_local("2026-10-22T12:00"), TZ) for _, start, _ in planned(app, [prep]))
 
 
-def test_short_work_pulled_early_comes_in_one_sitting(app: App) -> None:
+def test_short_work_comes_in_one_sitting_but_never_past_the_sittings_you_set(app: App) -> None:
     # 17 Nov, Linux only: Jordan's hour-long Aplia quiz, due in three weeks, got 30 minutes in a gap on Monday, a scrap.
-    # An hour or less pulled early only because there's time goes in one sitting; longer work keeps its own least.
-    from friday.planner.build import build_problem
+    # An hour or less wanted as soon as there's time goes in one sitting when an hour is free for it; a least or
+    # longest sitting set on the item itself stays as you set it, and longer work keeps its own least (an hour's least
+    # for a thesis's steps left 19 of its 40 hours unplanned). A split of it costs as a long sitting's does.
+    from friday.planner.build import SOON_SITTING_HOURS, build_problem
     from friday.planner.prepare import build_input
     from friday.planner.snapshot import take_snapshot
 
-    quiz = app.do("add", title="Aplia quiz 9", preset="Assignment", duration_min=60, due="2026-11-08T23:59")["item"]["id"]
-    short = app.do("add", title="Reading response", preset="Assignment", duration_min=45, due="2026-11-08T23:59")["item"]["id"]
-    big = app.do("add", title="Lab report", preset="Assignment", duration_min=240, due="2026-11-08T23:59")["item"]["id"]
+    def add(title: str, minutes: int, **chunks: int) -> int:
+        due = "2026-11-08T23:59"
+        return app.do("add", title=title, preset="Assignment", duration_min=minutes, due=due, **chunks)["item"]["id"]
+
+    quiz, short, big = add("Aplia quiz 9", 60), add("Reading response", 45), add("Lab report", 240)
+    own_least = add("Aplia quiz 10", 60, min_chunk_min=45)
+    own_most = add("Aplia quiz 11", 60, max_chunk_min=45)
     items = build_problem(build_input(take_snapshot(app.conn, app.now_utc))).items
     by_id = {int(k.split(":")[1]): v for k, v in items.items() if k.startswith("item:")}
-    assert all(by_id[i].soon for i in (quiz, short, big))
-    assert by_id[quiz].min_chunk == 4  # an hour: one sitting
-    assert by_id[short].min_chunk == 3  # all 45 minutes at once
-    assert by_id[big].min_chunk < 4  # longer work keeps its own least sitting (an hour's least lost a thesis 19 hours)
+    assert all(by_id[i].soon for i in (quiz, short, big, own_least, own_most))
+    assert [by_id[i].min_chunk for i in (quiz, short, big)] == [4, 3, 2]  # an hour, 45 minutes, the kind's half hour
+    assert (by_id[own_least].min_chunk, by_id[own_most].min_chunk, by_id[own_most].max_chunk) == (3, 2, 3)
+    assert [by_id[i].size_hours for i in (quiz, short, big)] == [SOON_SITTING_HOURS, SOON_SITTING_HOURS, 4]
+
+
+# What's due first goes first (17 Nov, the user's choice: "as soon as there's time" for all deadline work, in due
+# order): work due this week goes in the earliest good time too, before work due later, and the rest fills in after it.
+
+
+def event(app: App, title: str, start: str, end: str) -> None:
+    app.do("add", title=title, when="fixed", start=start, end=end, preset="Event")
+
+
+def sittings(app: App, item_id: int) -> list[tuple[int, int]]:
+    """Back-to-back blocks of the item as one sitting: (start, end), UTC minutes."""
+    out: list[tuple[int, int]] = []
+    for _, start, end in sorted(planned(app, [item_id]), key=lambda b: b[1]):
+        if out and out[-1][1] == start:
+            out[-1] = (out[-1][0], end)
+        else:
+            out.append((start, end))
+    return out
+
+
+def local(when: str) -> int:
+    return to_utc(parse_local(when), TZ)
+
+
+def test_work_due_sooner_is_planned_no_later_than_work_due_later_and_both_early(app: App) -> None:
+    # Monday has three hours, 9 to noon; Tuesday is free. A lab report due in three weeks and a problem set due
+    # Wednesday, 3 hours each: with only work due a week off pulled early, the lab report took Monday morning and the
+    # problem set waited (17 Nov: Mastering Physics 11, due in three weeks, planned tonight, number 9, due in six
+    # days, the day before its due)
+    event(app, "Shift", "2026-10-19T12:00", "2026-10-19T23:00")
+    later = app.do("add", title="Lab report", preset="Assignment", due="2026-11-09T17:00", duration_min=180)
+    sooner = app.do("add", title="Problem set", preset="Assignment", due="2026-10-21T23:59", duration_min=180)
+    replan(app.conn, app.now_utc)
+    first, second = sittings(app, sooner["item"]["id"]), sittings(app, later["item"]["id"])
+    assert hours(app, [sooner["item"]["id"]]) == 3 and hours(app, [later["item"]["id"]]) == 3
+    assert first[0][0] <= second[0][0]
+    assert first[-1][1] <= local("2026-10-19T12:00")  # Monday's three hours
+    assert second[-1][1] <= TUESDAY_NIGHT  # and the lab report as soon as there's time after it
+
+
+def test_a_lab_due_wednesday_is_not_cut_into_the_gaps_between_mondays_classes(app: App) -> None:
+    # Early isn't shredded: Monday is classes with 45 minutes between them, then a club until 23:00; Tuesday has the
+    # afternoon free. The lab goes in one real sitting on Tuesday, not in Monday's gaps (17 Nov: four times the price
+    # for work due within two days cut a 3-hour lab due Wednesday into the gaps between Monday's classes)
+    for start, end in (("09:00", "10:00"), ("10:45", "11:45"), ("12:30", "13:30"), ("14:15", "15:15"),
+                       ("16:00", "17:00"), ("17:45", "18:45")):  # fmt: skip
+        event(app, "Class", f"2026-10-19T{start}", f"2026-10-19T{end}")
+    event(app, "Club", "2026-10-19T19:00", "2026-10-19T23:00")
+    event(app, "Shift", "2026-10-20T08:00", "2026-10-20T13:00")
+    lab = app.do("add", title="Physics lab", preset="Assignment", due="2026-10-21T23:59", duration_min=180)
+    app.do("add", title="Essay", preset="Assignment", due="2026-11-09T17:00", duration_min=240)
+    replan(app.conn, app.now_utc)
+    found = sittings(app, lab["item"]["id"])
+    assert sum(end - start for start, end in found) == 180
+    assert all(end - start >= 60 for start, end in found), found
+    assert found[-1][1] <= local("2026-10-21T23:59")
+
+
+def test_an_hours_work_due_this_week_is_one_sitting_when_an_hour_is_free(app: App) -> None:
+    # Monday to Friday are shifts with half hours between them, but for one free hour on Thursday, 12:00–13:00; the
+    # weekend is free. An hour's quiz due Friday and an hour's quiz due in three weeks: the one due Friday takes the
+    # hour, whole, and the other goes in one sitting after it (17 Nov: Jordan's Aplia quiz 7 came out 30 + 30 minutes,
+    # the good time taken by work due weeks off)
+    for day in ("19", "20", "21", "23"):
+        for start, end in (("08:00", "11:30"), ("12:00", "15:30"), ("16:00", "19:30"), ("20:00", "23:30")):
+            event(app, "Shift", f"2026-10-{day}T{start}", f"2026-10-{day}T{end}")
+    event(app, "Shift", "2026-10-22T08:00", "2026-10-22T12:00")
+    event(app, "Shift", "2026-10-22T13:00", "2026-10-22T23:30")
+    quiz = app.do("add", title="Aplia quiz 7", preset="Assignment", due="2026-10-23T23:59", duration_min=60)
+    later = app.do("add", title="Aplia quiz 9", preset="Assignment", due="2026-11-08T23:59", duration_min=60)
+    replan(app.conn, app.now_utc)
+    assert sittings(app, quiz["item"]["id"]) == [(local("2026-10-22T12:00"), local("2026-10-22T13:00"))]
+    # and the one due in three weeks whole too, after it, not in the week's half hours (on Linux it was)
+    ((after, until),) = sittings(app, later["item"]["id"])
+    assert until - after == 60 and after >= local("2026-10-22T13:00")
+
+
+def test_an_hours_work_with_only_half_hours_free_before_its_due_is_still_done_in_time(app: App) -> None:
+    # Only half hours free before its due: in one sitting it couldn't be done in time at all, so it keeps its kind's
+    # least sitting and is done in two, on time
+    for day in ("19", "20"):
+        for start, end in (("08:00", "11:30"), ("12:00", "15:30"), ("16:00", "19:30"), ("20:00", "23:30")):
+            event(app, "Shift", f"2026-10-{day}T{start}", f"2026-10-{day}T{end}")
+    quiz = app.do("add", title="Aplia quiz 7", preset="Assignment", due="2026-10-20T23:59", duration_min=60)
+    replan(app.conn, app.now_utc)
+    found = sittings(app, quiz["item"]["id"])
+    assert sum(end - start for start, end in found) == 60 and found[-1][1] <= local("2026-10-20T23:59")
+    assert app.do("changes")["late_hours"] == {}

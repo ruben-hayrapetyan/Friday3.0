@@ -70,6 +70,7 @@ class EngineItem:
     cutoff_utc: int | None = None  # never planned at or after: late work's last chance ("done before sunday")
     shape: Literal["one_sitting", "split"] = "split"
     min_chunk: int = 1
+    own_least: bool = False  # a least sitting set on the item itself, not its kind's: the planner never raises it
     max_chunk: int | None = None
     chunk_cost: float = 0.0
     size_hours: float = 0.0

@@ -187,6 +187,7 @@ def build_problem(inp: BuildInput) -> Problem:
         rule.prepare(problem)
     set_cutoffs(problem, settings["rules"], settings["time"].timezone)
     prune(problem)
+    one_sitting_when_it_fits(problem)
     if demote_unusable_locks(problem):
         prune(problem)
     return problem
@@ -379,24 +380,51 @@ def pacing_of(item: Item, top: int | None, inp: BuildInput, by_id: Mapping[int, 
     return kind.pacing if kind and name != "Project" else "none"
 
 
-SOON_SITTING = 4  # units: work of an hour or less pulled early only because there's time goes in one sitting
+# What splitting work wanted as soon as there's time costs is counted on at least a long sitting (3 hours), however
+# short the work: counted on its own length, an hour's quiz in two early half hours paid a third of what the first free
+# time paid it (17 Nov: Jordan's Aplia quiz 7 came out 30 + 30 minutes; on Linux one due in three weeks did)
+SOON_SITTING_HOURS = 3.0
+SOON_SITTING = 4  # units: work of an hour or less wanted as soon as there's time goes in one sitting when it fits
 
 
-def as_soon_as_there_is_time(engine_item: EngineItem, item: Item, settings: Mapping[str, Any], now: int) -> bool:
+def one_sitting_when_it_fits(problem: Problem) -> None:
+    """Work of an hour or less wanted as soon as there's time goes in one sitting when an hour is free for it before
+    its due, not in the half hours between events (17 Nov: Jordan's hour-long Aplia quiz came out 30 + 30 minutes, due
+    this week, and on Linux due in three weeks: in the first free time, the plan's good hours went to work due later
+    or longer, whose sittings cost more to split, and the quiz took what was left). Never past what you set: a least
+    sitting set on the item itself (`own_least`) and a longest one below it stay, and so does work held where you put
+    it (locks). With no hour free before its due, its kind's least sitting stays, so a day of short gaps still gets
+    it done in them. After prune: the free time it may use is known only then."""
+    grid = problem.grid
+    for item in problem.items.values():
+        if not (item.soon and item.shape == "split" and 0 < item.need <= SOON_SITTING) or item.locked:
+            continue
+        if item.own_least or (item.max_chunk is not None and item.max_chunk < item.need):
+            continue
+        run = longest = 0
+        for n, s in enumerate(item.allowed):
+            if item.due_utc is not None and int(grid.end[s]) > item.due_utc:
+                break
+            joined = n > 0 and item.allowed[n - 1] == s - 1 and int(grid.end[s - 1]) == int(grid.start[s])
+            run = (run if joined else 0) + int(grid.units[s])
+            longest = max(longest, run)
+        if longest >= item.need:
+            item.min_chunk = max(item.min_chunk, item.need)
+
+
+def as_soon_as_there_is_time(engine_item: EngineItem, item: Item, settings: Mapping[str, Any]) -> bool:
     """Work that goes in the first free time (`soon`; 17 Nov, the user: "for the projects and things along those
-    lines, friday should use all time"): a deadline's work with no pace of its own, a project's or due more than a
-    week off. Not work due within the week, which is planned before its due as it always was (all of it pulled to
-    the first hours, a 3-hour lab due Wednesday was cut into the hours between Monday's classes); not a repeat's (its
-    window is its rhythm: a week's groceries pulled into the plan's first days went unplanned); not exam prep (kept
-    for the days before its exam), work pointless once late (it waits for nothing, but is often kept near its due on
-    purpose: quiz prep), work with no deadline, nor a maybe."""
-    due = engine_item.due_utc
-    in_project = item.parent_id is not None or item.preset == "Project"
+    lines, friday should use all time"): a deadline's work with no pace of its own, due this week or weeks off, what's
+    due soonest first (17 Nov, the user's choice: "as soon as there's time" for all deadline work in due order; with
+    only work due more than a week off pulled early, Mastering Physics 11, due in three weeks, was planned tonight and
+    Mastering Physics 9, due in six days, the day before its due). Not a repeat's (its window is its rhythm: a week's
+    groceries pulled into the plan's first days went unplanned); not exam prep (kept for the days before its exam),
+    work pointless once late (it waits for nothing, but is often kept near its due on purpose: quiz prep), work with
+    no deadline, nor a maybe."""
     return (
-        engine_item.amount == "fixed" and due is not None and engine_item.pacing == "none"
-        and (in_project or due - now > SHORT_TERM_DAYS * 1440) and item.series_id is None
-        and engine_item.firmness != "none" and not engine_item.tentative and item.preset != "Exam prep"
-        and not expires(item, settings)
+        engine_item.amount == "fixed" and engine_item.due_utc is not None and engine_item.pacing == "none"
+        and item.series_id is None and engine_item.firmness != "none" and not engine_item.tentative
+        and item.preset != "Exam prep" and not expires(item, settings)
     )  # fmt: skip
 
 
@@ -508,6 +536,7 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
         firmness=firmness_of(item, by_id),
         amount=item.amount, release_utc=release, due_utc=due, shape=item.shape,
         min_chunk=1 if item.shape == "one_sitting" else max(1, item.min_chunk_units),
+        own_least=item.min_chunk_units != kind_least(preset),
         max_chunk=item.max_chunk_units, chunk_cost=sitting_cost(item, inp.settings),
         tentative=tentative,
         progress=progress,
@@ -517,17 +546,22 @@ def to_engine_item(item: Item, inp: BuildInput, grid: Grid, by_id: Mapping[int, 
         travel_before=math.ceil((item.buffer_before_min or 0) / UNIT_MIN),
         travel_after=math.ceil((item.buffer_after_min or 0) / UNIT_MIN),
     )  # fmt: skip
-    engine_item.soon = as_soon_as_there_is_time(engine_item, item, inp.settings, grid.now)
+    engine_item.soon = as_soon_as_there_is_time(engine_item, item, inp.settings)
     if item.preset == "Routine" and item.amount == "elastic" and MEAL.search(item.title) and release and due:
         engine_item.meal_window = (release, due)  # how far it may reach is settled once events are known: meal_room
     out = with_amount(engine_item, item, inp)
-    if out is not None and out.soon and item.shape != "one_sitting" and 0 < out.need <= SOON_SITTING:
-        # an hour or less pulled early only because there's time goes in one sitting, not the half hour left between
-        # two events (17 Nov: on Linux, Jordan's hour-long Aplia quiz due in three weeks got 30 minutes in a gap on
-        # Monday, a scrap). Longer work keeps its own least sitting: an hour's least for a thesis's steps left 19 of its
-        # 40 hours unplanned. After with_amount: its need is known only then
-        out.min_chunk = max(out.min_chunk, out.need)
+    if out is not None and out.soon and out.shape == "split":
+        # A sitting priced, not a wall: the least and longest sittings you set stay (an hour's least for all work of an
+        # hour or less overrode them, and was taken back, 17 Nov), and work with only short gaps before its due is
+        # still done in them. After with_amount: its length is known only then
+        out.size_hours = max(out.size_hours, SOON_SITTING_HOURS)
     return out
+
+
+def kind_least(preset: Any) -> int:
+    """The least sitting an item of this kind has unless you set its own."""
+    least = preset.min_chunk_units if preset is not None else None
+    return least if least is not None else Item.min_chunk_units
 
 
 def meal_room(items: Mapping[str, EngineItem], fixed: list[FixedOcc], grid: Grid) -> None:

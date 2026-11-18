@@ -149,8 +149,9 @@ class EvenLoad(Rule):
 
     def applies_also(self, item):
         # Not work planned as soon as there's time (17 Nov, the user: "by default, friday should use all time that it
-        # can"): spread evenly, a 10-hour project took 3 hours a day; a pace you set spreads it, and heavy days are
-        # wellbeing's (daily_load)
+        # can"), which is all deadline work with no pace of its own (planner/build.py): spread evenly, a 10-hour project
+        # took 3 hours a day; a pace you set spreads it, and heavy days are wellbeing's (daily_load). What it still
+        # evens out: exam prep, work pointless once late, a paced project's work
         return not item.soon
 
     def measures(self, ctx):

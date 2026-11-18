@@ -158,8 +158,10 @@ def test_after_done_with_work_nothing_more_is_planned_that_night(app: App) -> No
     reading = app.do("add", text="reading ~2h due fri 5pm")["item"]["id"]
     urgent = app.do("add", title="Quiz corrections", duration_min=45, due="2026-10-19T23:00")["item"]["id"]
     app.do("replan")
+    # the night, until you wake at 7:30: the reading, due Friday, now goes in as soon as there's time, Tuesday morning
+    # (17 Nov), which isn't that night
     tonight = lambda: [  # noqa: E731
-        b for b in app.do("plan", start="2026-10-19T20:00", end="2026-10-20T10:00")["blocks"] if not b.get("fixed")
+        b for b in app.do("plan", start="2026-10-19T20:00", end="2026-10-20T07:30")["blocks"] if not b.get("fixed")
     ]
     assert any(b["item_id"] == urgent for b in tonight())  # before the tap: due tonight, so planned tonight
     app.do("sleep_mark", kind="done")

@@ -311,8 +311,7 @@ class FinishEarly(Rule):
         return min(lead, max(0.0, (end - (item.due_utc - lead * MINUTES_PER_DAY)) / MINUTES_PER_DAY))
 
 
-SOON_WEEK_DAYS = 7  # due this many days off or more, work counts once; sooner, more (`soon_urgency`)
-SOON_MOST = 4.0
+SOON_WEEK_DAYS = 7  # how far off a due halves `due_order`
 
 
 def aim_of(rules: list[Rule], item: Any) -> int:
@@ -322,12 +321,20 @@ def aim_of(rules: list[Rule], item: Any) -> int:
     return item.due_utc - math.ceil(days * MINUTES_PER_DAY)
 
 
+def due_order(due_utc: int, now_utc: int) -> float:
+    """How near work's due is, in (0, 1]: 1 due now, ½ a week off, ¼ three weeks off, falling all the way, so that
+    of any two pieces of work wanted as soon as there's time, the one due first leans to the first time a little more
+    (the allocator's tie-break and the `soon` price). One order, by due, for everything: work due this week and work
+    due in weeks alike (17 Nov: with only work due a week or more off pulled early, Mastering Physics 11, due in three
+    weeks, was planned tonight and Mastering Physics 9, due in six days, the day before its due)."""
+    days = max(0.0, (due_utc - now_utc) / MINUTES_PER_DAY)
+    return SOON_WEEK_DAYS / (SOON_WEEK_DAYS + days)
+
+
 def soon_urgency(due_utc: int, now_utc: int) -> float:
-    """How much a day's delay counts in the allocator's tie-break for work due this far off: once from a week out, up
-    to four times when due within two days, so of two things both wanted as soon as there's time, what's due first
-    takes the first days."""
-    days = max(1e-3, (due_utc - now_utc) / MINUTES_PER_DAY)
-    return min(SOON_MOST, max(1.0, SOON_WEEK_DAYS / days))
+    """How much a day's delay counts in the allocator's tie-break for work wanted as soon as there's time: up to four
+    times when due now, 2.5 a week off, nearer once the further off it is, so what's due first takes the first days."""
+    return 1.0 + 3.0 * due_order(due_utc, now_utc)
 
 
 @rule_type("soon")
@@ -335,19 +342,33 @@ class Soon(Rule):
     """As soon as there's time (17 Nov, the user: "by default, friday should use all time that it can"): work with a
     due and no pace of its own costs `per_day` an hour for each day after now it's placed (up to `days`), so it fills
     the first free time, up to what each day takes (wellbeing: heavy days, late nights and evenings kept free come
-    first), rather than leaning toward its due. The same for all of it, so which goes first is lateness's and Finish
-    early's to say; and gently, so it doesn't cut a lab into three hours between classes to do it two days sooner (17
-    Nov: four times as much for work due within two days did). Built by the planner for the work it marks `soon`
-    (planner/build.py), in the preferences stage: a pace you set, a rule placing work near its due (close_to_due) and
-    lateness all come before it. Left unplanned, it costs as if done when it aims to be."""
+    first), rather than leaning toward its due. What's due first goes first: of that price, `order` is paid only as
+    near as its due is (`due_order`), and past the first days that part is paid still, so of two pieces of work the
+    one due sooner takes the earlier time and the rest fills in after it (17 Nov, the user's choice: "as soon as
+    there's time" in due order; the same price for all of it, Mastering Physics 11, due in three weeks, took tonight
+    and number 9, due in six days, waited until the day before). Gently, so early never means shredded: a day sooner
+    is worth less than a sitting's cost, and a lab isn't cut into the hours between classes to be done a day or two
+    sooner (17 Nov: four times as much for work due within two days cut a 3-hour lab due Wednesday into Monday's
+    gaps). Built by the planner for the work it marks `soon` (planner/build.py), in the preferences stage: a pace you
+    set, a rule placing work near its due (close_to_due) and lateness all come before it. Left unplanned, it costs as
+    if done when it aims to be."""
 
     applies_to = {"fixed"}
 
     class Params(Rule.Params):
-        per_day: float = 0.5
-        # Over the first this many days only: past them, a day later costs nothing more (17 Nov: pulled from a week
-        # off, an hour of quizzes due in a fortnight was cut into half hours for the gaps between classes)
+        # A quarter point an hour a day: over the first days a whole sitting's earliness (0.75 an hour) is worth less
+        # than splitting it costs (an assignment's sittings, 1 an hour of its length), so early never buys a split
+        # (17 Nov: at half a point, with work due this week pulled early too, Jordan's and Maya's weeks kept half hours
+        # cut off 3-hour sittings)
+        per_day: float = 0.25
+        # Left unplanned it costs this a day from now to when it aims to be done: whether it's planned at all isn't
+        # when, and at a quarter point a 40-hour thesis left 8 of its hours out of the load ahead
+        unplanned_per_day: float = 0.5
+        # Over the first this many days only: past them, a day later costs only the part `order` keeps for work due
+        # sooner (17 Nov: pulled from a week off, an hour of quizzes due in a fortnight was cut into half hours for the
+        # gaps between classes)
         days: float = 3.0
+        order: float = 0.5  # the share of `per_day` paid as near as its due is
 
     def prepare(self, problem):
         super().prepare(problem)
@@ -358,12 +379,18 @@ class Soon(Rule):
 
     def price(self, item, s):
         grid = self.problem.grid
-        aim = aim_of(self.problem.rules, item)
+        near = self.p.order * due_order(item.due_utc, grid.now)
         # unplanned, as if done when it aims to be, at the plan's end at the soonest: costing only what the last
         # day did, work due weeks off wasn't worth a sitting's cost on the plan's last days
         if s == grid.S:
-            return self.p.per_day * max(0, max(grid.horizon_end, aim) - grid.now) / MINUTES_PER_DAY
-        return self.p.per_day * min(self.p.days, max(0, int(grid.start[s]) - grid.now) / MINUTES_PER_DAY)
+            left = max(0, max(grid.horizon_end, aim_of(self.problem.rules, item)) - grid.now) / MINUTES_PER_DAY
+            return self.p.unplanned_per_day * (1 + near) * left
+        days = max(0, int(grid.start[s]) - grid.now) / MINUTES_PER_DAY
+        # Over the first days the work due first pays the whole price a day and later work less (never more than the
+        # same price for all: a day or two sooner bought with a split cut Maya's 3-hour proposal into 2½ hours and a
+        # half hour); past them, still a little, the nearer its due the more
+        lean = 1 - self.p.order + near
+        return self.p.per_day * (lean * min(self.p.days, days) + near * max(0.0, days - self.p.days))
 
 
 @rule_type("close_to_due")
