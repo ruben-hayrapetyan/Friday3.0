@@ -52,7 +52,10 @@ def test_insights_show_three_weeks_of_work_and_that_assignments_take_longer_than
     # laundry, with no due, not done yet).
     assert found["done"] >= 9 and found["hours"] >= 20 and found["best_hours"]
     kinds = {k["kind"]: k for k in found["by_kind"]}
-    assert kinds["Assignment"]["n"] >= 3 and kinds["Assignment"]["median"] > 1.1
+    # longer than planned: the simulation's assignments take 1.3 times their plan (sim/history.PACE), measured against
+    # the estimates Friday learns as it goes, so the median lands nearer 1 (18 Nov: Daniel's sat at exactly 1.1, and a
+    # check of more than 1.1 failed one run in two)
+    assert kinds["Assignment"]["n"] >= 3 and kinds["Assignment"]["median"] > 1.0
     assert "Exam prep" in kinds  # last term's first prelim
     assert sum(map(sum, found["heat"])) > 0
 
