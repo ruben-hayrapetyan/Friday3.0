@@ -347,3 +347,65 @@ class TestSuggested:
         app.do("add", title="Vacation", when="fixed", start=f"{WED}T00:00", end="2026-10-24T00:00")
         add_break(app)
         assert self.suggested(app) == []
+
+
+class TestEdges:
+    def test_moving_a_break_onto_another_is_refused(self, app: App) -> None:
+        add_break(app)
+        later = app.do("vacation_add", name="Trip", start="2026-10-26", end="2026-10-28")["vacation"]
+        with pytest.raises(Exception, match="Fall break"):
+            app.do("vacation_edit", id=later["id"], start=THU)
+
+    def test_a_break_can_follow_your_defaults_again(self, app: App) -> None:
+        made = add_break(app, per_day=5, plan_meals=True)
+        app.do("vacation_edit", id=made["id"], defaults=["per_day", "plan_meals"])
+        (v,) = app.do("vacations")["vacations"]
+        assert (v["per_day"], v["plan_meals"], v["own"]) == (3, False, [])
+
+    def test_a_blank_name_is_a_break(self, app: App) -> None:
+        made = add_break(app)
+        app.do("vacation_edit", id=made["id"], name="   ")
+        assert app.do("vacations")["vacations"][0]["name"] == "Break"
+
+    def test_how_many_a_day_is_one_to_twenty(self, app: App) -> None:
+        for bad in (0, 21):
+            with pytest.raises(Exception, match="per_day"):
+                app.do("vacation_add", start=WED, end=FRI, per_day=bad)
+
+    def test_an_event_after_midnight_belongs_to_the_break_day_before(self, app: App) -> None:
+        """The day starts at 4am: a repeat at 1am Saturday is Friday's, the break's last day."""
+        app.do("add", title="Late shift", when="fixed", start="2026-10-17T01:00", end="2026-10-17T03:00", every="sat")
+        add_break(app)
+        shift = next(
+            i["id"] for i in app.table("items") if i["title"] == "Late shift" and i["start_utc"] >= "2026-10-24"
+        )
+        plan = app.do("plan", start=f"{FRI}T04:00", end="2026-10-24T04:00")
+        assert shift in plan["paused"]
+
+    def test_a_long_break_plans_and_stops_at_its_end(self, app: App) -> None:
+        """A summer-long break: its days reach past the planner's, and work after it is planned as usual."""
+        app.do("vacation_add", name="Summer", start=WED, end="2027-01-31", mode="off")
+        essay = task(app, "essay", 120, "2027-02-05T17:00")
+        assert app.do("calendar", start="2027-01-31", days=2)["days"][1]["vacation"] is None
+        replan(app.conn, app.now_utc)
+        assert (
+            minutes_on(app, WED, essay) == 0 and app.do("vacation_day", date="2026-12-01")["vacation"]["mode"] == "off"
+        )
+
+    def test_ticks_on_a_deleted_break_leave_its_day_without_a_list(self, app: App) -> None:
+        rent = task(app, "Pay rent", 15, f"{WED}T23:00", release=f"{WED}T04:00")
+        made = add_break(app)
+        app.at(f"{WED}T10:00")
+        replan(app.conn, app.now_utc)
+        app.do("vacation_tick", date=WED, item_id=rent, ticked=True)
+        app.do("vacation_delete", id=made["id"])
+        assert app.do("vacation_day", date=WED) == {"date": WED, "vacation": None, "items": []}
+        assert next(i for i in app.table("items") if i["id"] == rent)["status"] == "done"  # what you did stays done
+
+    def test_nothing_is_suggested_before_friday_knows_your_timezone(self, tmp_path: Path) -> None:
+        from friday.core.db import connect
+        from friday.core.vacations import suggest
+        from friday.planner.store import load_settings
+
+        conn = connect(tmp_path / "bare.db")
+        assert suggest(conn, 1, load_settings(conn, 1), __import__("datetime").date(2026, 10, 19)) == []

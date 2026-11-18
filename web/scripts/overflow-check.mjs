@@ -35,7 +35,7 @@ const widths = (option("--widths") ?? "1440,390").split(",").map(Number)
 // `open` presses every folded row's button (in the page's column, or in the one a selector names); `each` opens every
 // match of a selector in turn (pressing Escape between, or its own button again with `keep`), pressing `after` in each; `keys` are pressed as a person would; `click` is a button's name (its words or aria-label), and one
 // ending in "?" is pressed only if it's there.
-const SETTINGS = ["appearance", "calendars", "tags", "schedule", "repeating", "integrations", "phone", "tokens", "shortcuts", "updates", "advanced"]
+const SETTINGS = ["appearance", "calendars", "tags", "schedule", "repeating", "breaks", "integrations", "phone", "tokens", "shortcuts", "updates", "advanced"]
 const STATES = [
   { name: "plan day", path: "/", keys: ["d"] },
   { name: "plan 3 days", path: "/", keys: ["3"] },
@@ -79,6 +79,14 @@ const STATES = [
   { name: "rules why", path: "/rules", click: ["Why?"] },
   { name: "rule box", path: "/rules", click: ["New rule|Add a rule|Add rule"] },
   { name: "brief", path: "/", click: ["Plan…", "Morning brief"] },
+  // Breaks (breaks/): a break this week with a long name, its band, its days' lines, a day's list, its popup and the
+  // chooser of what pauses; Take a break from Pace; and a suggested one in the Inbox.
+  { name: "plan break week", path: (base) => onBreak(base), keys: ["w"] },
+  { name: "break day list", path: (base) => onBreak(base), keys: ["w"], each: ".fr-break-line", most: 2 },
+  { name: "break popup", path: (base) => onBreak(base), keys: ["w"], each: ".fr-break-band", most: 1 },
+  { name: "break popup pauses", path: (base) => onBreak(base), keys: ["w"], each: ".fr-break-band", most: 1, after: "Every repeating event" },
+  { name: "take a break", path: "/", click: ["Plan…", "Pace", "Take a break"] },
+  { name: "inbox suggested break", path: async (base) => (await onBreak(base), "/inbox") },
   { name: "what changed", path: "/", click: ["Plan…", "What changed"] },
   { name: "other ways", path: "/", click: ["Plan…", "Other ways"] },
   { name: "shove", path: "/", click: ["Plan…", "Shove"] },
@@ -114,6 +122,21 @@ async function opened(base, kind) {
     await wait(1500) // planned
   }
   return made[kind]
+}
+
+// A break from tomorrow for five days with a long name, and an all-day "Spring break" a few weeks on that the Inbox
+// suggests as one; made once.
+let breakMade = false
+async function onBreak(base) {
+  if (!breakMade) {
+    const c = async (name, body) => (await fetch(`${base}/api/c/${name}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })).json()
+    const day = (n) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10)
+    await c("vacation_add", { name: "Thanksgiving break at my grandparents' house in Vermont", start: day(1), end: day(5) })
+    await c("add", { title: "Spring break", when: "fixed", start: `${day(20)}T00:00`, end: `${day(27)}T00:00` })
+    breakMade = true
+    await wait(1500) // planned
+  }
+  return "/"
 }
 
 function freePort() {
