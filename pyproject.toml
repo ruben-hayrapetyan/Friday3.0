@@ -30,7 +30,12 @@ friday = "friday.cli.main:main"
 fridayd = "friday.server.main:main"
 
 [dependency-groups]
-dev = ["pytest", "hypothesis", "ruff"]
+dev = [
+    "pytest",
+    "hypothesis",
+    "ruff",
+    "pytest-xdist>=3.8.0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -43,6 +48,8 @@ packages = ["src/friday"]
 testpaths = ["tests"]
 # Tests import from src/ directly, not through the editable install, whose .pth file macOS can mark hidden.
 pythonpath = ["src", "."]
+# One process by default. On the debian server the suite runs split, `-n 5 --dist loadfile` (17 Nov: "use 5 cores on
+# debian"), each test file on one worker so its shared fixtures stay together (pytest-xdist, a dev dependency).
 addopts = "-q"
 # OR-Tools' SWIG wrappers (pywraplp, used by the allocator) warn on import under Python 3.12.
 # Starlette's TestClient asks for `httpx2`; plain httpx works and is the one DESIGN §4.2 lists.
