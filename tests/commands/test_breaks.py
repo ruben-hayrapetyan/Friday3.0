@@ -173,7 +173,6 @@ class TestWork:
         app.do("vacation_edit", id=made["id"], plan_meals=True)
         assert minutes_on(app, WED, lunch) > 0
 
-
     def test_a_break_added_mid_day_lists_no_meal_planned_that_morning(self, app: App) -> None:
         """Found in the demo, 18 Nov: a break added at 4pm listed that day's Breakfast and Lunch, kept as blocks begun
         before now from the plan made before the break."""
@@ -334,7 +333,8 @@ class TestSuggested:
 
     def test_weekdays_where_your_repeats_stop_are_suggested(self, app: App) -> None:
         app.do("add", title="Lecture", when="fixed", start="2026-10-19T10:00", end="2026-10-19T11:00",
-               every="rrule:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", exceptions=[{"date": d, "skip": True} for d in ("2026-10-28", "2026-10-29", "2026-10-30")])  # fmt: skip
+               every="rrule:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+               exceptions=[{"date": d, "skip": True} for d in ("2026-10-28", "2026-10-29", "2026-10-30")])  # fmt: skip
         (one,) = self.suggested(app)
         assert (one["start"], one["end"]) == ("2026-10-28", "2026-10-30")
 
