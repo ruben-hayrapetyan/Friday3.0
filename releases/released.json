@@ -1,6 +1,51 @@
 {
-  "current": "0.5.0",
+  "current": "0.5.1",
   "versions": [
+    {
+      "version": "0.5.1",
+      "released": "2026-11-17",
+      "sha256": "2befae8f46822ba38de02c76a43e734c03ad23f33e86ca77167f22b9a643b798",
+      "bytes": 248189609,
+      "commit": "a8b3344ae0ba9ff26373c1488ea3bf5a9bf25d77",
+      "notes": {
+        "summary": "Projects open in a popup and list their steps on To-do, steps run in the order you give them, and work isn't left unplanned when there's time.",
+        "new": [
+          "A project, an exam or an ongoing project opens in a popup in the middle of the screen. Escape, the ✕ or a click outside closes it.",
+          "A project with steps shows on To-do as a heading over its steps, not as a to-do of its own; click the heading to open the project. A project with no steps is still a to-do, worked on as a whole.",
+          "Ticking a project's last step finishes the project too, and one Undo puts both back.",
+          "If you gave a project more time than its steps add up to, the rest is a step of its own, \"More on <project>\", kept up to date as you change the steps. Delete it and it stays gone.",
+          "A project's steps run in the order you list them, each after the one above it. Click \"then\" between two steps to make one \"any time\" instead. Reordering moves them at once.",
+          "A project's due date and how firm it is are set at the top of the project.",
+          "An exam's popup says what happens before an exam, \"Only its class's work, 3 days before\", and you can change it right there for all your exams.",
+          "Every page says \"Replanning…\" while Friday plans a change, then \"Plan updated\".",
+          "An event's color can be changed on its card.",
+          "If you're not in school, New project offers a report, a presentation and an event to plan."
+        ],
+        "changed": [
+          "A project's pace (front-loaded, evenly or toward the end) now visibly changes when its work is planned.",
+          "A step planned past the next two weeks says when (\"Later, by Wed 9 Dec\") instead of \"not planned\".",
+          "Projects & exams lists only projects and exams; big assignments stay on To-do.",
+          "An ongoing project can have a tag.",
+          "\"Focus on exams starting 5 days before\" and similar wording are understood as exam focus.",
+          "A due date you pick is said as a sentence, \"Due Tue 24 Nov, 11:59pm (in 7 days)\".",
+          "Try elsewhere, when nothing else fits, says what rules the other times out.",
+          "Time you shoved says what it is on its card."
+        ],
+        "fixed": [
+          "Work could be left unplanned, even with free time, when that time came only in short gaps (an ongoing project could get no time at all that week).",
+          "A daily repeat set to be spaced several days apart stopped Friday from planning.",
+          "A timer started before midnight shows on the previous day too.",
+          "Steps that all had lengths were told to \"give them a length\".",
+          "Steps with similar names were made to wait on each other.",
+          "A rule clash in the Inbox could say work moves \"to 10:15am from 10:15am\".",
+          "An event's location could run under a meal or a timer drawn over it.",
+          "Hints in typing boxes were cut off in a few places, and a Morning brief line on a phone.",
+          "The Now bar's timing dot was cut off on its left.",
+          "An overdue due date said \"in -1 days\"; it says \"yesterday\" or \"3 days ago\".",
+          "A rule clash could be reported when keeping the rule gained almost nothing."
+        ]
+      }
+    },
     {
       "version": "0.5.0",
       "released": "2026-11-16",
