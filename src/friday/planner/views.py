@@ -19,6 +19,7 @@ from friday.engine.compile import compile_problem
 from friday.engine.executor import ExecutorInput, Now, NowSettings, now, safe_items
 from friday.engine.explain import WhyNot, why_not
 from friday.engine.problem import Plan, Problem
+from friday.engine.prune import demote_locks
 from friday.planner.assemble import AssembledPlan, assemble
 from friday.planner.build import BuildInput, build_problem, key_of
 from friday.planner.inputs import allocator_input, executor_input, now_settings
@@ -71,6 +72,11 @@ def why_not_view(
 ) -> tuple[WhyNot, int | None]:
     """The relocation answer, and where the block was tried, in UTC minutes."""
     state = current(snapshot)
+    # A lock the plan doesn't keep is one the planner couldn't keep and made a preferred pin (engine/construct.py):
+    # as such here too, so its time is free as it is in the plan.
+    unkept = [k for k, item in state.problem.items.items() if item.locked - set(state.plan.get(k, ()))]
+    if unkept:
+        demote_locks(state.problem, unkept)
     c = compile_problem(state.problem)
     owner = c.owner_from_plan(state.plan)
     grid = state.problem.grid

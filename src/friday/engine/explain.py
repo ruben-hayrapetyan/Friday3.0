@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from friday.engine.checker import check
+from friday.engine.checker import Violation, check
 from friday.engine.compile import Compiled
 from friday.engine.kernel import init_state, new_state, protected_items, rule_totals
 from friday.engine.moves import add_dependents, chunk_around, relocate
@@ -109,6 +109,7 @@ class WhyNot:
     walls: list[str] = field(default_factory=list)  # why the alternative was never an option
     delta: dict[str, int] = field(default_factory=dict)  # per rule: alternative − plan (> 0: costs more)
     start: int | None = None  # where the block was tried
+    fits: bool = False  # the block fit there (free, allowed); only walls of the plan as a whole could rule it out
 
     @property
     def total(self) -> int:
@@ -120,23 +121,33 @@ class WhyNot:
 
 def why_not(c: Compiled, owner: np.ndarray, slot: int, new_start: int | None = None) -> WhyNot:
     """Move the chunk holding `slot` to `new_start`, or to its cheapest other valid place, in a scratch copy."""
+    already = check(c.problem, c.plan_from_owner(owner), protected_keys(c, owner))
     if new_start is not None:
-        return relocation(c, owner, slot, new_start)
+        return relocation(c, owner, slot, new_start, already)
     i = int(owner[slot])
     st = new_state(c.m)
     init_state(c.m, st, owner)
     here, _ = chunk_around(c.m, st, slot)
-    tries = [relocation(c, owner, slot, t) for t in range(c.m.first_slot[i], c.m.last_slot[i] + 1) if t != here]
+    tries = [
+        relocation(c, owner, slot, t, already) for t in range(c.m.first_slot[i], c.m.last_slot[i] + 1) if t != here
+    ]
     valid = [t for t in tries if t.valid and t.start is not None]
     if valid:
         return min(valid, key=lambda t: (t.total, t.start))
     # Nowhere: say what stood in the way most often, not only that nothing fit (17 Nov, a client's screenshot: "No
-    # other place fits" beside a free afternoon, and nothing to say which rule ruled it out)
-    reasons = Counter(w for t in tries for w in t.walls)
+    # other place fits" beside a free afternoon, and nothing to say which rule ruled it out). What ruled out the places
+    # that were free comes first: sleep, events and the time past its due are on the calendar to see already.
+    free = [t for t in tries if t.fits]
+    reasons = Counter(w for t in free or tries for w in t.walls)
     return WhyNot(False, [w for w, _ in reasons.most_common(2)] or ["No other place fits"])
 
 
-def relocation(c: Compiled, owner: np.ndarray, slot: int, new_start: int) -> WhyNot:
+def protected_keys(c: Compiled, owner: np.ndarray) -> list[str]:
+    return [c.keys[k] for k in np.flatnonzero(protected_items(c.m, owner))]
+
+
+def relocation(c: Compiled, owner: np.ndarray, slot: int, new_start: int, already: list[Violation]) -> WhyNot:
+    """`already`: the walls the plan breaks as it is (`check` of it), which the move isn't to blame for."""
     M = c.m
     st = new_state(M)
     init_state(M, st, owner)
@@ -151,11 +162,28 @@ def relocation(c: Compiled, owner: np.ndarray, slot: int, new_start: int) -> Why
         return WhyNot(False, blocked_reasons(c, owner, i, a, b, new_start), {}, new_start)
     add_dependents(M, touched, 1)
     moved = c.plan_from_owner(st.owner)
-    protected_keys = [c.keys[k] for k in np.flatnonzero(protected)]
-    walls = [wall_reason(c, v) for v in check(c.problem, moved, protected_keys)]
+    broken = new_walls(already, check(c.problem, moved, [c.keys[k] for k in np.flatnonzero(protected)]))
+    walls = [wall_reason(c, v, c.keys[i]) for v in broken]
     before, after = per_rule(c, owner), per_rule(c, st.owner)
     delta = {name: after[name] - before[name] for name in before}
-    return WhyNot(not walls, sorted(set(walls)), delta, new_start)
+    return WhyNot(not walls, sorted(set(walls)), delta, new_start, fits=True)
+
+
+def new_walls(already: list[Violation], moved: list[Violation]) -> list[Violation]:
+    """The walls a move breaks: the moved plan's, less those the plan broke before it. The plan was made from the
+    problem as the planner had it, which can differ a little from the one rebuilt to answer (a lock it couldn't keep
+    and made a preferred pin, time gone by since): a wall broken there already broke at every other place too, and
+    Try elsewhere said "No other place fits" beside a free afternoon (17 Nov, a client's screenshot). A day already
+    over its cap stays a wall only for a move that puts more on it."""
+    had = set(already)
+    over = {v.key: day_used(v) for v in already if v.code == "day_cap"}
+    return [
+        v for v in moved if v not in had and not (v.code == "day_cap" and v.key in over and day_used(v) <= over[v.key])
+    ]
+
+
+def day_used(v: Violation) -> int:
+    return int(v.detail.split(" > ")[0])  # a day_cap violation's detail: "used > cap"
 
 
 def blocked_reasons(c: Compiled, owner: np.ndarray, i: int, a: int, b: int, new_start: int) -> list[str]:
@@ -203,9 +231,15 @@ def slot_reason(c: Compiled, i: int, s: int) -> str:
     return "Not allowed there"
 
 
-def wall_reason(c: Compiled, violation) -> str:  # noqa: ANN001
+def wall_reason(c: Compiled, violation: Violation, moved: str) -> str:
+    """A wall the move of `moved` breaks, in words."""
     problem = c.problem
+    item = problem.items.get(violation.key)
+    title = item.title if item else "another item"
     words = {
+        "W1": "Two things at once",
+        "W2": "Not allowed there",
+        "W3": f"The lock on {title}",
         "W4": "More than its amount",
         "W5": "Over the daily cap",
         "W6": "It must be done in one sitting",
@@ -213,7 +247,8 @@ def wall_reason(c: Compiled, violation) -> str:  # noqa: ANN001
         "W9": "Past its due",
     }
     if violation.wall == "W8":
-        item = problem.items.get(violation.key)
+        if violation.key != moved:  # what waits on the block would then start before it
+            return f"{title} waits for it"
         sources = [problem.items[d.key].title for d in item.depends_on if d.key in problem.items] if item else []
         return f"Waits for {sources[0]}" if sources else "Waits for another item"
     return words.get(violation.wall, violation.wall)

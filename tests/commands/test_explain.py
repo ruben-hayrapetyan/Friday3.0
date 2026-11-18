@@ -92,3 +92,26 @@ def test_why_not_with_nowhere_else_says_what_rules_the_rest_out(app: App) -> Non
     key = next(b["key"] for b in app.do("plan")["blocks"] if b["title"] == "Print it")
     answer = app.do("why_not", key=key)
     assert answer["wall"] and answer["wall"] != "No other place fits"
+
+
+def test_try_elsewhere_offers_free_time_when_the_plan_dropped_a_lock(app: App) -> None:
+    # 17 Nov, a client: "Nowhere else it can go (No other place fits)" for a 15-minute task, beside a free afternoon.
+    # A lock the planner couldn't keep (an hour's laundry in one sitting, locked for the half hour before a meeting)
+    # became a preferred pin for the plan; Try elsewhere asked with the lock in force, so the plan broke it as it was
+    # and every other time "didn't fit".
+    app.do("settings_set", key="event_kinds", value={"other": {"before_min": 0, "after_min": 0}})
+    app.do("add", title="Lunch", when="fixed", start="2026-10-19T12:00", end="2026-10-19T13:00")
+    app.do("add", title="Meeting", when="fixed", start="2026-10-19T13:45", end="2026-10-19T14:00")
+    laundry = app.do("add", title="laundry", duration_min=60, shape="one_sitting")["item"]["id"]
+    app.do("add", title="print lab 10 instructions", preset="Assignment", duration_min=15, due="2026-10-19T23:59",
+           firmness="hard")  # fmt: skip
+    app.do("replan")
+    app.do("pin", id=laundry, start="2026-10-19T13:15", end="2026-10-19T13:45", kind="locked")
+    app.do("replan")
+    assert "A lock on laundry couldn't be kept and became a preferred pin" in app.do("status")["notices"]
+    key = next(b["key"] for b in app.do("plan")["blocks"] if b["title"] == "print lab 10 instructions")
+    answer = app.do("why_not", key=key)
+    assert answer["to_start"] is not None and answer["wall"] is None
+    # and the half hour the lock no longer holds is free, as it is in the plan (was "Locked: laundry")
+    there = app.do("why_not", key=key, start="2026-10-19T13:15")
+    assert there["to_start"] == "2026-10-19T13:15" and there["wall"] is None
