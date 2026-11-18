@@ -1,6 +1,26 @@
 {
-  "current": "0.5.2",
+  "current": "0.5.3",
   "versions": [
+    {
+      "version": "0.5.3",
+      "released": "2026-11-18",
+      "url": "https://friday-scheduler.com/get/Friday-0.5.3.dmg?via=update",
+      "sha256": "abc09a762f217747b8f8b838e5876beea06ac6035d41e756c245e1aefaa61652",
+      "bytes": 240861225,
+      "minimum_macos": "14.0",
+      "notes": {
+        "summary": "Clearer warnings and previews: a pace's preview shows what it really changes, and a lock's question names the work it makes late.",
+        "new": [],
+        "changed": [
+          "A lock's question in the Inbox names the work it makes late and by how much (\"it makes lab writeup finish 3h later\"), and asks only when the plan really has that work late."
+        ],
+        "fixed": [
+          "Previewing a pace, such as Push for today, could show work moving later that the pace had nothing to do with. It now compares with the plan as it is now and names only work that would get later.",
+          "A lock's question could claim it made other work many hours later (\"164h 15m\") by adding up rough estimates, including the locked task itself.",
+          "An overdue task's yellow warning in the to-do drawer was cut off. It now has a line of its own and shows in full."
+        ]
+      }
+    },
     {
       "version": "0.5.2",
       "released": "2026-11-18",

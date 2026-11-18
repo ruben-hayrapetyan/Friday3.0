@@ -29,10 +29,18 @@
 <h1>What's new</h1>
 <p>Every version of Friday, newest first: what's new, and what changed.</p>
 
+<div class="version" id="0.5.3">
+  <h2>Friday 0.5.3</h2>
+  <p class="when">18 November 2026 · <a href="/get/Friday-0.5.3.dmg" download data-download>Download</a></p>
+  <p class="other" data-download-other hidden></p>
+<p class="summary">Clearer warnings and previews: a pace&#x27;s preview shows what it really changes, and a lock&#x27;s question names the work it makes late.</p>
+<h3>Changed</h3><ul><li>A lock&#x27;s question in the Inbox names the work it makes late and by how much (&quot;it makes lab writeup finish 3h later&quot;), and asks only when the plan really has that work late.</li></ul>
+<h3>Fixed</h3><ul><li>Previewing a pace, such as Push for today, could show work moving later that the pace had nothing to do with. It now compares with the plan as it is now and names only work that would get later.</li><li>A lock&#x27;s question could claim it made other work many hours later (&quot;164h 15m&quot;) by adding up rough estimates, including the locked task itself.</li><li>An overdue task&#x27;s yellow warning in the to-do drawer was cut off. It now has a line of its own and shows in full.</li></ul>
+</div>
+
 <div class="version" id="0.5.2">
   <h2>Friday 0.5.2</h2>
-  <p class="when">18 November 2026 · <a href="/get/Friday-0.5.2.dmg" download data-download>Download</a></p>
-  <p class="other" data-download-other hidden></p>
+  <p class="when">18 November 2026</p>
 <p class="summary">Try elsewhere finds the free time again, and a security fix in the tools Friday is built with.</p>
 <h3>Changed</h3><ul><li>When Try elsewhere finds nowhere else, it says what rules out the free times, in words.</li></ul>
 <h3>Fixed</h3><ul><li>Try elsewhere could say &quot;No other place fits&quot; beside plainly free time, when a lock Friday couldn&#x27;t keep that week had become a preference.</li><li>Try elsewhere said a step that another step waits for &quot;waits for&quot; that step; it now says the other one waits for it.</li><li>Try elsewhere on what you&#x27;re doing right now said &quot;Nowhere else is better&quot;. It now offers a place for the rest of it, or says it&#x27;s under way or being timed and what to do.</li><li>A meal with nowhere else to go said &quot;Past its due&quot;. It now says its time and what&#x27;s around it, like &quot;Lunch goes between 11:30am and 2:30pm, around CHEM 2090 Lecture&quot;.</li><li>Try elsewhere could name an event from a calendar you hid; it now says &quot;an event on a calendar you hid&quot;.</li><li>A security issue (CVE-2026-112366) in a pattern-matching library used while Friday is built is patched. It was never part of the app itself.</li></ul>
