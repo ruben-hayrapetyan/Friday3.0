@@ -6,6 +6,8 @@ from friday.api.commands import AreaOut, CalendarInput
 from friday.api.types import Empty
 from friday.api.views import CalendarDay, CalendarOut, DueMarker
 from friday.commands.registry import Ctx, query
+from friday.commands.vacations import vacation_day_of
+from friday.core import vacations as breaks
 from friday.core.db import rows
 from friday.core.items import FieldError
 from friday.core.pace import dials_on, pace_label
@@ -29,6 +31,7 @@ def calendar(ctx: Ctx, inp: CalendarInput) -> CalendarOut:
     periods = list(pace_periods(ctx.conn, ctx.user_id))
     paces, default = ctx.settings["paces"], ctx.settings["pace"].default
     days, wakes, bedtimes = [], [], []
+    found = breaks.load(ctx.conn, ctx.user_id, ctx.settings["breaks"])
     for day in dates:
         evening, morning = sleep_on(ctx.settings, overrides, day), sleep_on(ctx.settings, overrides, day + timedelta(1))
         bedtime = bedtime_min(ctx, evening.bedtime)
@@ -43,6 +46,7 @@ def calendar(ctx: Ctx, inp: CalendarInput) -> CalendarOut:
                 bedtime=at(day, bedtime),
                 core=at(day, bedtime + evening.margin_min),
                 wake=at(day + timedelta(1), minutes_of(morning.wake)),
+                vacation=vacation_day_of(v, day) if (v := breaks.on(day, found)) else None,
             )
         )
     start, end = min(wakes), max(bedtimes)

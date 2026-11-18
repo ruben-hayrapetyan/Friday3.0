@@ -190,6 +190,25 @@ class TimePreference(Rule):
         return math.inf if self.p.price == FORBID else float(self.p.price)
 
 
+@rule_type("break_days")
+class BreakDays(Rule):
+    """A break pauses tasks of these tags (core/vacations.py): none of their work on its days. Made by the planner
+    from your breaks, never written by you."""
+
+    class Params(Rule.Params):
+        dates: list[str] = []
+
+    def prepare(self, problem):
+        super().prepare(problem)
+        self.days = {date.fromisoformat(d) for d in self.p.dates}
+
+    def forbids(self, item, s):
+        return s < self.problem.grid.S and self.problem.grid.slots[s].date in self.days
+
+    def day_price(self, day):
+        return math.inf if day in self.days else 0.0
+
+
 def titled(problem: Any, titles: list[str]) -> Any:
     """The events whose title has one of these in it ("gym" finds "Gym" and "Gym with Sam"), as `scope` reads titles."""
     wanted = [identity_text(norm(t, problem.text)) for t in titles if t.strip()]

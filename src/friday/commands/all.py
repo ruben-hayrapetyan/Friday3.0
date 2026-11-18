@@ -55,6 +55,7 @@ from friday.commands import (  # noqa: F401
     tokens,
     undo,
     updates,
+    vacations,
     ways,
     whatif,
 )

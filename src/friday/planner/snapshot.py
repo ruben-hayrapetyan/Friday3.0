@@ -13,6 +13,7 @@ from typing import Any
 
 import numpy as np
 
+from friday.core import vacations as breaks
 from friday.core.calendars import left_out
 from friday.core.db import one, rows
 from friday.core.items import Item
@@ -24,7 +25,7 @@ from friday.learn import guard
 from friday.learn.sleep import NAP_USUAL_MIN, Mark, evening_of, learn, nights_from, usual_nap
 from friday.learn.state import loadings
 from friday.planner.cushion import SHARES, cushion, cushioned, shortened
-from friday.planner.hidden import hidden_of
+from friday.planner.hidden import event_calendars, hidden_of, with_their_repeats
 from friday.planner.ongoing import carried_minutes, priorities, project_pacing
 from friday.planner.progress import progress_rows, recorded_minutes
 from friday.planner.store import (
@@ -110,6 +111,8 @@ class Snapshot:
     project_pacing: dict[int, str] = field(default_factory=dict)  # a project's own pace (commands/project_options.py)
     project_order: dict[int, list[int]] = field(default_factory=dict)  # a project's steps as listed (`reorder`)
     any_time: frozenset[int] = frozenset()  # steps that don't wait for the one above (`step_any_time`, "More on")
+    vacations: tuple[breaks.Vacation, ...] = ()  # your breaks (core/vacations.py)
+    paused: frozenset[int] = frozenset()  # events a break pauses: kept, blocking no time, drawn paused
 
 
 def series_spacing(conn: sqlite3.Connection, user_id: int) -> dict[str, Any]:
@@ -176,6 +179,8 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         now_utc,
         frozenset(kv_get(conn, "event_holds_loose", [], user_id) or []),
     )
+    vacations = breaks.load(conn, user_id, settings["breaks"])
+    items, paused = breaks.on_break(items, vacations, settings, break_calendars(conn, user_id) if vacations else {})
     timed = timers(conn, user_id)
     return Snapshot(
         user_id=user_id,
@@ -215,6 +220,8 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
         any_time=frozenset(kv_get(conn, "steps_any_time", [], user_id) or [])
         | frozenset(v for v in (kv_get(conn, "project_rest", {}, user_id) or {}).values() if v),
         **learned(conn, now_utc, settings, user_id),
+        vacations=vacations,
+        paused=paused,
         log_since_plan=log_since(conn, json.loads(plan["report"]).get("last_command_id", 0) if plan else 0, user_id),
         last_command_id=int(
             conn.execute("SELECT coalesce(max(id), 0) FROM command_log WHERE user_id = ?", [user_id]).fetchone()[0]
@@ -223,6 +230,11 @@ def read_snapshot(conn: sqlite3.Connection, now_utc: int, user_id: int) -> Snaps
 
 
 LEARN_DAYS = 56
+
+
+def break_calendars(conn: sqlite3.Connection, user_id: int) -> dict[int, str]:
+    """Each event's calendar, every time of a repeat on it included: what a break's pause reads."""
+    return with_their_repeats(conn, event_calendars(conn, user_id))
 
 
 def sleep_facts(conn: sqlite3.Connection, now_utc: int, settings: dict[str, Any], user_id: int) -> SleepFacts | None:

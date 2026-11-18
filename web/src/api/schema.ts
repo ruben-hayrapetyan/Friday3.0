@@ -2605,6 +2605,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/vacation_add": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a break: its days, Off or Light, and what it pauses (your defaults, unless it says otherwise). */
+        post: operations["vacation_add"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/vacation_delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Delete a break: its days are planned as usual again. What you ticked stays done. */
+        post: operations["vacation_delete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/vacation_edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change a break; what's named in `defaults` follows your defaults again. */
+        post: operations["vacation_edit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/vacation_tick": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tick a thing off a break day's list, or untick it. Ticked, a thing whose work is all on that day is done; a */
+        post: operations["vacation_tick"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/week_note": {
         parameters: {
             query?: never;
@@ -3883,6 +3951,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/q/vacation_day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A break day's list: what to get done that day to stay on track, by name, in the order planned, with what you */
+        get: operations["vacation_day"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/q/vacations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your breaks, first first. */
+        get: operations["vacations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/q/week_review": {
         parameters: {
             query?: never;
@@ -4537,6 +4639,7 @@ export interface components {
             core: string;
             /** Wake */
             wake: string;
+            vacation?: components["schemas"]["VacationDay"] | null;
         };
         /** CalendarOut */
         CalendarOut: {
@@ -8322,6 +8425,38 @@ export interface components {
             /** Warnings */
             warnings: string[];
         };
+        /**
+         * PauseIn
+         * @description What a break pauses (core/settings.py `Pause`).
+         */
+        PauseIn: {
+            /**
+             * Repeating
+             * @default all
+             * @enum {string}
+             */
+            repeating?: "all" | "only";
+            /**
+             * Calendars
+             * @default []
+             */
+            calendars?: string[];
+            /**
+             * Series Kept
+             * @default []
+             */
+            series_kept?: number[];
+            /**
+             * Series Paused
+             * @default []
+             */
+            series_paused?: number[];
+            /**
+             * Tags
+             * @default []
+             */
+            tags?: string[];
+        };
         /** PhoneForgetResult */
         PhoneForgetResult: {
             /** Command Id */
@@ -8476,6 +8611,11 @@ export interface components {
              * @default []
              */
             sessions?: components["schemas"]["BlockOut"][];
+            /**
+             * Paused
+             * @default []
+             */
+            paused?: number[];
         };
         /** PreviewWeightsInput */
         PreviewWeightsInput: {
@@ -11763,6 +11903,252 @@ export interface components {
              * @default []
              */
             fixed?: string[];
+        };
+        /**
+         * VacationAddInput
+         * @description A break: its days, Off or Light, and anything it sets for itself (else your defaults, Settings → Breaks).
+         */
+        VacationAddInput: {
+            /** Name */
+            name?: string | null;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /**
+             * Mode
+             * @default light
+             * @enum {string}
+             */
+            mode?: "off" | "light";
+            /** Per Day */
+            per_day?: number | null;
+            pause?: components["schemas"]["PauseIn"] | null;
+            /** Plan Meals */
+            plan_meals?: boolean | null;
+            /** Keep Sleep */
+            keep_sleep?: boolean | null;
+        };
+        /** VacationAddResult */
+        VacationAddResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["VacationResult"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
+         * VacationDay
+         * @description The break a day is on: its name, Off or Light, and which of its days this is.
+         */
+        VacationDay: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "off" | "light";
+            /** Day N */
+            day_n: number;
+            /** Days */
+            days: number;
+            /** Per Day */
+            per_day: number;
+        };
+        /** VacationDayOut */
+        VacationDayOut: {
+            /** Date */
+            date: string;
+            vacation: components["schemas"]["VacationDay"] | null;
+            /** Items */
+            items: components["schemas"]["VacationThing"][];
+        };
+        /** VacationDeleteResult */
+        VacationDeleteResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
+         * VacationEditInput
+         * @description What changes; `defaults` names what goes back to following your defaults (per_day, pause, plan_meals,
+         *     keep_sleep).
+         */
+        VacationEditInput: {
+            /** Id */
+            id: number;
+            /** Name */
+            name?: string | null;
+            /** Start */
+            start?: string | null;
+            /** End */
+            end?: string | null;
+            /** Mode */
+            mode?: ("off" | "light") | null;
+            /** Per Day */
+            per_day?: number | null;
+            pause?: components["schemas"]["PauseIn"] | null;
+            /** Plan Meals */
+            plan_meals?: boolean | null;
+            /** Keep Sleep */
+            keep_sleep?: boolean | null;
+            /**
+             * Defaults
+             * @default []
+             */
+            defaults?: ("per_day" | "pause" | "plan_meals" | "keep_sleep")[];
+        };
+        /** VacationEditResult */
+        VacationEditResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["VacationResult"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** VacationOut */
+        VacationOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
+            /** Days */
+            days: number;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "off" | "light";
+            /** Per Day */
+            per_day: number;
+            pause: components["schemas"]["PauseIn"];
+            /** Plan Meals */
+            plan_meals: boolean;
+            /** Keep Sleep */
+            keep_sleep: boolean;
+            /** Own */
+            own: string[];
+        };
+        /** VacationResult */
+        VacationResult: {
+            vacation: components["schemas"]["VacationOut"];
+            /** Message */
+            message: string;
+        };
+        /**
+         * VacationThing
+         * @description One thing on a break day's list: a task by name, no times (18 Nov: "make it about tasks").
+         */
+        VacationThing: {
+            /** Item Id */
+            item_id: number;
+            /** Title */
+            title: string;
+            /** Tags */
+            tags: string[];
+            /** Color */
+            color: string | null;
+            /** Ticked */
+            ticked: boolean;
+            /** Done */
+            done: boolean;
+            /** Timed Min */
+            timed_min: number;
+        };
+        /** VacationTickInput */
+        VacationTickInput: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Item Id */
+            item_id: number;
+            /**
+             * Ticked
+             * @default true
+             */
+            ticked?: boolean;
+        };
+        /** VacationTickResult */
+        VacationTickResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** VacationsOut */
+        VacationsOut: {
+            /** Vacations */
+            vacations: components["schemas"]["VacationOut"][];
         };
         /** ValidationError */
         ValidationError: {
@@ -17757,6 +18143,154 @@ export interface operations {
             };
         };
     };
+    vacation_add: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VacationAddInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VacationAddResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vacation_delete: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemRef"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VacationDeleteResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vacation_edit: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VacationEditInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VacationEditResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vacation_tick: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VacationTickInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VacationTickResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     week_note: {
         parameters: {
             query?: {
@@ -19637,6 +20171,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UpdateStatusOut"];
+                };
+            };
+        };
+    };
+    vacation_day: {
+        parameters: {
+            query: {
+                date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VacationDayOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vacations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VacationsOut"];
                 };
             };
         };

@@ -33,6 +33,7 @@ from friday.commands.fields import event_facts, item_out, require_item, waiting_
 from friday.commands.registry import Ctx, query
 from friday.commands.timer import all_running, elapsed_seconds, running
 from friday.commands.timer import timer_out as timing
+from friday.commands.vacations import paused_events
 from friday.core.calendars import calendar_counts
 from friday.core.db import rows
 from friday.core.guess import course_of, guess_preset
@@ -256,15 +257,13 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
         blocks = sorted(blocks + placed_ahead(ctx, coming, max(lo, ctx.now_utc), hi, going), key=lambda b: b.start)
     blocks = coalesced(past_states(ctx, blocks))  # pieces join only with pieces that went the same way
     blocks = later_start_only(ctx, blocks)
-    fixed = [
-        item_out(ctx, item_from_row(r))
-        for r in rows(
-            ctx.conn,
-            "SELECT * FROM items WHERE user_id = ? AND when_kind = 'fixed' AND status = 'todo' "
-            "AND end_utc > ? AND start_utc < ? ORDER BY start_utc",
-            [ctx.user_id, format_utc(lo), format_utc(hi)],
-        )
-    ]
+    fixed_rows = rows(
+        ctx.conn,
+        "SELECT * FROM items WHERE user_id = ? AND when_kind = 'fixed' AND status = 'todo' "
+        "AND end_utc > ? AND start_utc < ? ORDER BY start_utc",
+        [ctx.user_id, format_utc(lo), format_utc(hi)],
+    )
+    fixed = [item_out(ctx, item_from_row(r)) for r in fixed_rows]
     if not inp.with_hidden:  # a calendar you hid shows only in the plan, under Show (planner/hidden.py)
         fixed = [f for f in fixed if not f.hidden_calendar]
     fixed = optional_marked(ctx, fixed, blocks)
@@ -283,6 +282,7 @@ def plan(ctx: Ctx, inp: RangeInput) -> PlanOut:
         provisional=coming is not None,
         generation=generation(ctx.conn, ctx.user_id) if coming is not None else saved["generation"] if saved else 0,
         sessions=sittings(ctx, lo, hi),
+        paused=paused_events(ctx, fixed_rows),
     )
 
 

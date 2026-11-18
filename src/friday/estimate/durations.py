@@ -6,6 +6,7 @@ stands. The bias check compares your typed estimates with actual times, per area
 
 import math
 import sqlite3
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from statistics import median
 from typing import Any
@@ -15,6 +16,7 @@ from friday.core.db import rows
 from friday.core.settings import EstimateSettings
 from friday.core.textnorm import TextRules, norm, similarity, type_text
 from friday.core.time import UNIT_MIN, format_utc
+from friday.core.vacations import on_a_break
 
 LEARNED_SOURCES = ("timer", "review", "retro")
 
@@ -27,16 +29,27 @@ class Estimate:
 
 
 def history(
-    conn: sqlite3.Connection, area: str | None, preset: str | None, now_utc: int, window_days: int, user_id: int = 1
+    conn: sqlite3.Connection,
+    area: str | None,
+    preset: str | None,
+    now_utc: int,
+    window_days: int,
+    user_id: int = 1,
+    settings: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
+    """Your finished work of this area (else kind) in the window, newest first; with `settings`, none from a break."""
     since = format_utc(now_utc - window_days * 1440)
     column, value = ("area", area) if area is not None else ("preset", preset)
-    return rows(
+    found = rows(
         conn,
         f"SELECT * FROM completions WHERE user_id = ? AND {column} IS ? AND completed_utc >= ? "
         f"AND actual_source IN ({', '.join('?' * len(LEARNED_SOURCES))}) ORDER BY completed_utc DESC",
         [user_id, value, since, *LEARNED_SOURCES],
     )
+    if settings is None:
+        return found
+    on_break = on_a_break(conn, user_id, settings)  # a break's lengths say nothing of yours (core/vacations.py)
+    return [r for r in found if not on_break(r["completed_utc"])]
 
 
 def estimate_length(

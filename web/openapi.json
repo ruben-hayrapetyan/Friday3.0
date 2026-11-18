@@ -11071,6 +11071,290 @@
     }
    }
   },
+  "/api/c/vacation_add": {
+   "post": {
+    "summary": "Add a break: its days, Off or Light, and what it pauses (your defaults, unless it says otherwise).",
+    "operationId": "vacation_add",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/VacationAddInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VacationAddResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/vacation_delete": {
+   "post": {
+    "summary": "Delete a break: its days are planned as usual again. What you ticked stays done.",
+    "operationId": "vacation_delete",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ItemRef"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VacationDeleteResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/vacation_edit": {
+   "post": {
+    "summary": "Change a break; what's named in `defaults` follows your defaults again.",
+    "operationId": "vacation_edit",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/VacationEditInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VacationEditResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/c/vacation_tick": {
+   "post": {
+    "summary": "Tick a thing off a break day's list, or untick it. Ticked, a thing whose work is all on that day is done; a",
+    "operationId": "vacation_tick",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/VacationTickInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VacationTickResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/week_note": {
    "post": {
     "summary": "How the week felt and anything to remember, kept with the week.",
@@ -13542,6 +13826,64 @@
     }
    }
   },
+  "/api/q/vacation_day": {
+   "get": {
+    "summary": "A break day's list: what to get done that day to stay on track, by name, in the order planned, with what you",
+    "operationId": "vacation_day",
+    "parameters": [
+     {
+      "name": "date",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "date",
+       "title": "Date"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VacationDayOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/q/vacations": {
+   "get": {
+    "summary": "Your breaks, first first.",
+    "operationId": "vacations",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VacationsOut"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/q/week_review": {
    "get": {
     "summary": "The week holding a date (this week when left out): planned against actual by area, deadlines hit and moves",
@@ -15590,6 +15932,16 @@
      "wake": {
       "type": "string",
       "title": "Wake"
+     },
+     "vacation": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/VacationDay"
+       },
+       {
+        "type": "null"
+       }
+      ]
      }
     },
     "additionalProperties": false,
@@ -26912,6 +27264,55 @@
     ],
     "title": "ParseOutput"
    },
+   "PauseIn": {
+    "properties": {
+     "repeating": {
+      "type": "string",
+      "enum": [
+       "all",
+       "only"
+      ],
+      "title": "Repeating",
+      "default": "all"
+     },
+     "calendars": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Calendars",
+      "default": []
+     },
+     "series_kept": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Series Kept",
+      "default": []
+     },
+     "series_paused": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Series Paused",
+      "default": []
+     },
+     "tags": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Tags",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "PauseIn",
+    "description": "What a break pauses (core/settings.py `Pause`)."
+   },
    "PhoneForgetResult": {
     "properties": {
      "command_id": {
@@ -27378,6 +27779,14 @@
       },
       "type": "array",
       "title": "Sessions",
+      "default": []
+     },
+     "paused": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "title": "Paused",
       "default": []
      }
     },
@@ -37313,6 +37722,761 @@
     ],
     "title": "UpdateVersionOut",
     "description": "A version of Friday and its notes: a sentence, then New, Changed and Fixed."
+   },
+   "VacationAddInput": {
+    "properties": {
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 80
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "start": {
+      "type": "string",
+      "format": "date",
+      "title": "Start"
+     },
+     "end": {
+      "type": "string",
+      "format": "date",
+      "title": "End"
+     },
+     "mode": {
+      "type": "string",
+      "enum": [
+       "off",
+       "light"
+      ],
+      "title": "Mode",
+      "default": "light"
+     },
+     "per_day": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 20.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Per Day"
+     },
+     "pause": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PauseIn"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "plan_meals": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plan Meals"
+     },
+     "keep_sleep": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Keep Sleep"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "start",
+     "end"
+    ],
+    "title": "VacationAddInput",
+    "description": "A break: its days, Off or Light, and anything it sets for itself (else your defaults, Settings \u2192 Breaks)."
+   },
+   "VacationAddResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/VacationResult"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "VacationAddResult"
+   },
+   "VacationDay": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "mode": {
+      "type": "string",
+      "enum": [
+       "off",
+       "light"
+      ],
+      "title": "Mode"
+     },
+     "day_n": {
+      "type": "integer",
+      "title": "Day N"
+     },
+     "days": {
+      "type": "integer",
+      "title": "Days"
+     },
+     "per_day": {
+      "type": "integer",
+      "title": "Per Day"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "mode",
+     "day_n",
+     "days",
+     "per_day"
+    ],
+    "title": "VacationDay",
+    "description": "The break a day is on: its name, Off or Light, and which of its days this is."
+   },
+   "VacationDayOut": {
+    "properties": {
+     "date": {
+      "type": "string",
+      "title": "Date"
+     },
+     "vacation": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/VacationDay"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/VacationThing"
+      },
+      "type": "array",
+      "title": "Items"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "date",
+     "vacation",
+     "items"
+    ],
+    "title": "VacationDayOut"
+   },
+   "VacationDeleteResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "VacationDeleteResult"
+   },
+   "VacationEditInput": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 80
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Start"
+     },
+     "end": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End"
+     },
+     "mode": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "off",
+         "light"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mode"
+     },
+     "per_day": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 20.0,
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Per Day"
+     },
+     "pause": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PauseIn"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "plan_meals": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plan Meals"
+     },
+     "keep_sleep": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Keep Sleep"
+     },
+     "defaults": {
+      "items": {
+       "type": "string",
+       "enum": [
+        "per_day",
+        "pause",
+        "plan_meals",
+        "keep_sleep"
+       ]
+      },
+      "type": "array",
+      "title": "Defaults",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id"
+    ],
+    "title": "VacationEditInput",
+    "description": "What changes; `defaults` names what goes back to following your defaults (per_day, pause, plan_meals,\nkeep_sleep)."
+   },
+   "VacationEditResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/VacationResult"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "VacationEditResult"
+   },
+   "VacationOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "start": {
+      "type": "string",
+      "title": "Start"
+     },
+     "end": {
+      "type": "string",
+      "title": "End"
+     },
+     "days": {
+      "type": "integer",
+      "title": "Days"
+     },
+     "mode": {
+      "type": "string",
+      "enum": [
+       "off",
+       "light"
+      ],
+      "title": "Mode"
+     },
+     "per_day": {
+      "type": "integer",
+      "title": "Per Day"
+     },
+     "pause": {
+      "$ref": "#/components/schemas/PauseIn"
+     },
+     "plan_meals": {
+      "type": "boolean",
+      "title": "Plan Meals"
+     },
+     "keep_sleep": {
+      "type": "boolean",
+      "title": "Keep Sleep"
+     },
+     "own": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Own"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "start",
+     "end",
+     "days",
+     "mode",
+     "per_day",
+     "pause",
+     "plan_meals",
+     "keep_sleep",
+     "own"
+    ],
+    "title": "VacationOut"
+   },
+   "VacationResult": {
+    "properties": {
+     "vacation": {
+      "$ref": "#/components/schemas/VacationOut"
+     },
+     "message": {
+      "type": "string",
+      "title": "Message"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "vacation",
+     "message"
+    ],
+    "title": "VacationResult"
+   },
+   "VacationThing": {
+    "properties": {
+     "item_id": {
+      "type": "integer",
+      "title": "Item Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "tags": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Tags"
+     },
+     "color": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Color"
+     },
+     "ticked": {
+      "type": "boolean",
+      "title": "Ticked"
+     },
+     "done": {
+      "type": "boolean",
+      "title": "Done"
+     },
+     "timed_min": {
+      "type": "integer",
+      "title": "Timed Min"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "item_id",
+     "title",
+     "tags",
+     "color",
+     "ticked",
+     "done",
+     "timed_min"
+    ],
+    "title": "VacationThing",
+    "description": "One thing on a break day's list: a task by name, no times (18 Nov: \"make it about tasks\")."
+   },
+   "VacationTickInput": {
+    "properties": {
+     "date": {
+      "type": "string",
+      "format": "date",
+      "title": "Date"
+     },
+     "item_id": {
+      "type": "integer",
+      "title": "Item Id"
+     },
+     "ticked": {
+      "type": "boolean",
+      "title": "Ticked",
+      "default": true
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "date",
+     "item_id"
+    ],
+    "title": "VacationTickInput"
+   },
+   "VacationTickResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "VacationTickResult"
+   },
+   "VacationsOut": {
+    "properties": {
+     "vacations": {
+      "items": {
+       "$ref": "#/components/schemas/VacationOut"
+      },
+      "type": "array",
+      "title": "Vacations"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "vacations"
+    ],
+    "title": "VacationsOut"
    },
    "ValidationError": {
     "properties": {

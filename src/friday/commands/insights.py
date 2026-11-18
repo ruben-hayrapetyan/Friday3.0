@@ -8,6 +8,7 @@ from friday.api.views import InsightsOut, KindAccuracy
 from friday.commands.registry import Ctx, query
 from friday.core.db import rows
 from friday.core.time import clock_time, format_utc, parse_utc, to_local
+from friday.core.vacations import on_a_break
 from friday.estimate.durations import LEARNED_SOURCES
 
 FIRST_HOUR, LAST_HOUR = 8, 23  # the heatmap's columns
@@ -22,12 +23,17 @@ NOT_WORK = "('Routine', 'Habit')"
 def insights(ctx: Ctx, inp: InsightsInput) -> InsightsOut:
     """The last few weeks: things finished, hours worked, estimates against actual time by kind, and when you work."""
     since = format_utc(ctx.now_utc - inp.weeks * 7 * 1440)
-    done = rows(
-        ctx.conn,
-        "SELECT * FROM completions WHERE user_id = ? AND completed_utc >= ? "
-        f"AND coalesce(preset, '') NOT IN {NOT_WORK}",
-        [ctx.user_id, since],
-    )
+    on_break = on_a_break(ctx.conn, ctx.user_id, ctx.settings)  # break days don't count (core/vacations.py)
+    done = [
+        r
+        for r in rows(
+            ctx.conn,
+            "SELECT * FROM completions WHERE user_id = ? AND completed_utc >= ? "
+            f"AND coalesce(preset, '') NOT IN {NOT_WORK}",
+            [ctx.user_id, since],
+        )
+        if not on_break(r["completed_utc"])
+    ]
     ratios: dict[str, list[float]] = defaultdict(list)
     timed = [r for r in done if r["actual_source"] in LEARNED_SOURCES]  # not the plan's lengths assumed (audit, 8 Nov)
     for r in timed:
@@ -64,12 +70,15 @@ def heatmap(ctx: Ctx, since: str) -> list[list[int]]:
     holds at most 60 (16 Nov: three timers running at once made one hour 3h, "Mon 11pm, 357 min"), and a session counts
     the minutes it recorded, spread over its span (a review's "30 minutes" between 10:45 and 11:45 is 30, not 60)."""
     hours: dict[tuple[int, int, int], float] = defaultdict(float)  # (local date ordinal, weekday, hour) -> minutes
+    on_break = on_a_break(ctx.conn, ctx.user_id, ctx.settings)
     for r in rows(
         ctx.conn,
         "SELECT p.start_utc, p.end_utc, p.minutes FROM progress p JOIN items i ON i.id = p.item_id WHERE p.user_id = ? "
         f"AND p.start_utc >= ? AND p.end_utc IS NOT NULL AND coalesce(i.preset, '') NOT IN {NOT_WORK}",
         [ctx.user_id, since],
     ):
+        if on_break(r["start_utc"]):
+            continue
         at, end = parse_utc(r["start_utc"]), parse_utc(r["end_utc"])
         share = min(1.0, r["minutes"] / (end - at)) if r["minutes"] is not None and end > at else 1.0
         while at < end:

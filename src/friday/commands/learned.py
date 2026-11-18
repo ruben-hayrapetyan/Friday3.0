@@ -17,6 +17,7 @@ from friday.core.db import one, rows
 from friday.core.pace import Dials, dials_on
 from friday.core.textnorm import similarity, type_text
 from friday.core.time import format_utc, parse_utc, planning_date, to_local
+from friday.core.vacations import break_dates
 from friday.estimate.durations import LEARNED_SOURCES, estimate_length
 from friday.learn.durations import Done, abs_log_error, fit
 from friday.learn.energy import Seen, prices
@@ -52,8 +53,10 @@ def default_pace_days(conn: sqlite3.Connection, settings: dict[str, Any], user_i
     usual = settings["paces"].get(default, Dials())
     paces = settings["paces"] | {default: usual}
 
+    on_break = break_dates(conn, user_id)  # a break teaches nothing either (core/vacations.py)
+
     def is_default(day: date) -> bool:
-        return dials_on(day, periods, paces, default, settings["pace"].weekly) == usual
+        return day not in on_break and dials_on(day, periods, paces, default, settings["pace"].weekly) == usual
 
     return is_default
 

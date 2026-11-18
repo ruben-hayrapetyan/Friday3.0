@@ -124,6 +124,7 @@ class BuildInput:
     going: frozenset[int] = frozenset()  # optional events you said you'd go to this time: they hold their time
     hidden: frozenset[int] = frozenset()  # events of calendars you hid (planner/hidden.py): not named in the notes
     away: tuple[str, int, int] | None = None  # a nap or a snack now: no work from start to end (`prepare.away_hold`)
+    paused_tags: Mapping[tuple[str, ...], Sequence[str]] = field(default_factory=dict)  # a break's tags: their days
 
 
 def key_of(item_id: int) -> str:
@@ -176,7 +177,8 @@ def build_problem(inp: BuildInput) -> Problem:
     rules = [
         rule.model_dump(exclude={"enabled"}) for rule in settings["rules"] if rule.type in RULE_TYPES and rule.enabled
     ]
-    problem.rules = build_rules(steady(rules) + [MEAL_WINDOW, PIN_HOLD, *travel_kept(rules), *project_pace(inp, items)])
+    problem.rules = build_rules(steady(rules) + [MEAL_WINDOW, PIN_HOLD, *travel_kept(rules), *project_pace(inp, items),
+                                 *break_rules(inp)])
     for rule in problem.rules:
         rule.prepare(problem)
     set_cutoffs(problem, settings["rules"], settings["time"].timezone)
@@ -184,6 +186,15 @@ def build_problem(inp: BuildInput) -> Problem:
     if demote_unusable_locks(problem):
         prune(problem)
     return problem
+
+
+def break_rules(inp: BuildInput) -> list[dict[str, Any]]:
+    """Tasks of a tag a break pauses wait for its end: none on its days (core/vacations.py)."""
+    return [
+        {"type": "break_days", "name": f"break_days:{'+'.join(tags)}", "weight": 1.0, "stage": "deadlines",
+         "scope": {"tags": list(tags)}, "reason": "a break pauses these", "params": {"dates": list(dates)}}
+        for tags, dates in inp.paused_tags.items()
+    ]  # fmt: skip
 
 
 def project_pace(inp: BuildInput, items: Mapping[str, EngineItem]) -> list[dict[str, Any]]:

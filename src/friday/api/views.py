@@ -14,6 +14,7 @@ class PlanOut(Model):
     provisional: bool = False
     generation: int = 0  # the changes the blocks have seen: a change whose `generation` is this or less is in them
     sessions: list[BlockOut] = []  # what you timed in the range, when you did it (keys S<id>@<start>)
+    paused: list[int] = []  # events a break pauses: drawn paused, their time free
 
 
 class ItemDetail(Model):
@@ -203,6 +204,17 @@ class StatsOut(Model):
     estimate_ratio: float | None
 
 
+class VacationDay(Model):
+    """The break a day is on: its name, Off or Light, and which of its days this is."""
+
+    id: int
+    name: str
+    mode: Literal["off", "light"]
+    day_n: int
+    days: int
+    per_day: int
+
+
 class CalendarDay(Model):
     date: str
     cap_hours: float
@@ -210,6 +222,7 @@ class CalendarDay(Model):
     bedtime: str  # local; sleep's margin runs from here to `core`
     core: str  # the core night, from here to `wake`
     wake: str  # the next morning
+    vacation: VacationDay | None = None  # the break it's on
 
 
 class DueMarker(Model):
@@ -1025,3 +1038,21 @@ class ProjectOptionsOut(Model):
     id: int  # the project's item id
     pacing: str | None  # front, linear or back; None: its kind's
     early_days: float  # aims to finish this many days early (a rule of yours); 0: no such rule
+
+
+class VacationThing(Model):
+    """One thing on a break day's list: a task by name, no times (18 Nov: "make it about tasks")."""
+
+    item_id: int
+    title: str
+    tags: list[str]
+    color: str | None
+    ticked: bool  # ticked off this day's list
+    done: bool  # the task is finished
+    timed_min: int  # what you timed of it that day
+
+
+class VacationDayOut(Model):
+    date: str
+    vacation: VacationDay | None
+    items: list[VacationThing]

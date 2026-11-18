@@ -2,11 +2,13 @@
 
 import dataclasses
 from datetime import date, timedelta
+from typing import Any
 
+from friday.core import vacations as breaks
 from friday.core.pace import dials_on, scales
 from friday.core.settings import minutes_of
 from friday.core.time import UNIT_MIN, format_utc, parse_utc, planning_date
-from friday.planner.build import BuildInput, Dependency, Pin, night_times
+from friday.planner.build import BuildInput, Dependency, Pin, cap_hours_on, night_times
 from friday.planner.cushion import past_shortened
 from friday.planner.progress import recorded_minutes, remaining_minutes
 from friday.planner.snapshot import BlockRow, Snapshot
@@ -185,6 +187,29 @@ def debt_hours(snapshot: Snapshot) -> dict[date, float]:
     return {day: hours for day, hours in owed.items() if hours > 0}
 
 
+def break_days(snapshot: Snapshot) -> tuple[date, date]:
+    """The planner's own days, today to the allocator's last: what a break reaches into."""
+    time = snapshot.settings["time"]
+    today = planning_date(snapshot.now_utc, time.timezone, minutes_of(time.day_start))
+    return today, today + timedelta(days=time.allocator_weeks * 7 + 1)
+
+
+def break_caps(snapshot: Snapshot) -> dict[date, dict[str, Any]]:
+    """Your day overrides, with each break day's most work (core/vacations.py: none Off, about N things Light)."""
+    if not snapshot.vacations:
+        return dict(snapshot.day_overrides)
+    first, last = break_days(snapshot)
+
+    def usual(day: date) -> float:
+        return cap_hours_on(snapshot.settings, snapshot.day_overrides, day)
+    return breaks.with_caps(snapshot.day_overrides, snapshot.vacations, usual, first, last)
+
+
+def break_tags(snapshot: Snapshot) -> dict[tuple[str, ...], list[str]]:
+    """Tags a break pauses, and its days: their tasks wait (the `break_days` rule)."""
+    return breaks.paused_tags(snapshot.vacations, *break_days(snapshot)) if snapshot.vacations else {}
+
+
 def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
     done, on_today = progress_minutes(snapshot)
     pins = [Pin(p.item_id, p.start_utc, p.end_utc, p.kind, p.id) for p in snapshot.pins]  # type: ignore[arg-type]
@@ -219,7 +244,8 @@ def build_input(snapshot: Snapshot, end_utc: int | None = None) -> BuildInput:
         minimize_changes_scale=stability,
         hold=timer_hold(snapshot),
         away=away_hold(snapshot),
-        day_overrides=snapshot.day_overrides,
+        day_overrides=break_caps(snapshot),
+        paused_tags=break_tags(snapshot),
         end_utc=end_utc,
         multipliers=snapshot.multipliers,
         debt_hours=debt_hours(snapshot),

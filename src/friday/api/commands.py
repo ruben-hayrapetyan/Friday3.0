@@ -1279,3 +1279,75 @@ class ProjectSetInput(Model):
     id: int  # the project's item id
     pacing: Literal["front", "linear", "back", "kind"] | None = None  # "kind": as its kind is paced
     early_days: float | None = Field(None, ge=0, le=30)  # aim to finish this many days before its due; 0 for none
+
+
+class PauseIn(Model):
+    """What a break pauses (core/settings.py `Pause`)."""
+
+    repeating: Literal["all", "only"] = "all"
+    calendars: list[str] = []
+    series_kept: list[int] = []
+    series_paused: list[int] = []
+    tags: list[str] = []
+
+
+class VacationAddInput(Model):
+    """A break: its days, Off or Light, and anything it sets for itself (else your defaults, Settings → Breaks)."""
+
+    name: str | None = Field(None, max_length=80)
+    start: calendar_date
+    end: calendar_date
+    mode: Literal["off", "light"] = "light"
+    per_day: int | None = Field(None, ge=1, le=20)
+    pause: PauseIn | None = None
+    plan_meals: bool | None = None
+    keep_sleep: bool | None = None
+
+
+class VacationEditInput(Model):
+    """What changes; `defaults` names what goes back to following your defaults (per_day, pause, plan_meals,
+    keep_sleep)."""
+
+    id: int
+    name: str | None = Field(None, max_length=80)
+    start: calendar_date | None = None
+    end: calendar_date | None = None
+    mode: Literal["off", "light"] | None = None
+    per_day: int | None = Field(None, ge=1, le=20)
+    pause: PauseIn | None = None
+    plan_meals: bool | None = None
+    keep_sleep: bool | None = None
+    defaults: list[Literal["per_day", "pause", "plan_meals", "keep_sleep"]] = []
+
+
+class VacationOut(Model):
+    id: int
+    name: str
+    start: str
+    end: str
+    days: int
+    mode: Literal["off", "light"]
+    per_day: int
+    pause: PauseIn
+    plan_meals: bool
+    keep_sleep: bool
+    own: list[str]  # what this break set itself; the rest follows your defaults
+
+
+class VacationResult(Model):
+    vacation: VacationOut
+    message: str
+
+
+class VacationsOut(Model):
+    vacations: list[VacationOut]
+
+
+class VacationTickInput(Model):
+    date: calendar_date
+    item_id: int
+    ticked: bool = True
+
+
+class VacationDayInput(Model):
+    date: calendar_date

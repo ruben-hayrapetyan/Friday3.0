@@ -14,6 +14,7 @@ from friday.core.bias import bias_ratio
 from friday.core.db import rows
 from friday.core.items import Item
 from friday.core.time import format_utc
+from friday.core.vacations import on_a_break
 
 LEARNED_SOURCES = ("timer", "review", "retro")
 SHARES = "length_shares"  # kv: kind → the share of its length it's planned at
@@ -35,7 +36,8 @@ def cushion(conn: sqlite3.Connection, area: str | None, preset: str | None, now_
                 f"AND actual_source IN ({', '.join('?' * len(LEARNED_SOURCES))}) ORDER BY completed_utc DESC",
                 [user_id, value, since, *LEARNED_SOURCES],
             )
-            ratio = bias_ratio(past, estimate)
+            on_break = on_a_break(conn, user_id, settings)  # break days run as they like (core/vacations.py)
+            ratio = bias_ratio([r for r in past if not on_break(r["completed_utc"])], estimate)
         memo[key] = min(ratio, estimate.cushion_cap) if ratio is not None and ratio > 1 else 1.0
     return memo[key]
 

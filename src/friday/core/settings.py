@@ -511,6 +511,29 @@ class UpdateSettings(Model):
     restart: Literal["now", "quit"] = "now"
 
 
+class Pause(Model):
+    """What a break pauses (18 Nov: "every repeating event pauses by default, and a setting configures it"; "say
+    somebody has 20 calendars connected"). Only repeating events pause: one-off events stay. `repeating` "all":
+    every repeat pauses except those on `calendars`; "only": just the repeats on `calendars`. A repeat named in
+    `series_kept` or `series_paused` goes its own way whatever its calendar. Tasks with one of `tags` wait until the
+    break is over."""
+
+    repeating: Literal["all", "only"] = "all"
+    calendars: list[str] = []
+    series_kept: list[int] = []
+    series_paused: list[int] = []
+    tags: list[str] = []
+
+
+class BreakSettings(Model):
+    """Your defaults for every break (Settings → Breaks); a break can say otherwise for itself."""
+
+    per_day: int = Field(3, ge=1, le=20)  # Light: about this many things a day
+    pause: Pause = Pause()
+    plan_meals: bool = False  # 18 Nov: "don't plan meals and sleep as usual during break on default"
+    keep_sleep: bool = False
+
+
 SETTINGS_TYPES: dict[str, Any] = {
     "time": TimeSettings,
     # the clock every time is shown on (Settings → Appearance → Clock): the app, the server's sentences, the command
@@ -549,6 +572,7 @@ SETTINGS_TYPES: dict[str, Any] = {
     "fading_late": FadingLate,  # work that matters less the longer it's overdue (3 Nov)
     "sittings": Sittings,  # one go, and which kinds to split first
     "calendar_look": CalendarLook,  # each calendar's pigment and toolbar button
+    "breaks": BreakSettings,  # your defaults for a break (vacation days)
     **INTEGRATION_TYPES,
 }
 ADAPTERS = {key: TypeAdapter(kind) for key, kind in SETTINGS_TYPES.items()}
@@ -596,6 +620,7 @@ DEFAULTS: dict[str, Any] = {
     "fading_late": FadingLate(),
     "sittings": Sittings(),
     "calendar_look": CalendarLook(),
+    "breaks": BreakSettings(),
     **INTEGRATION_DEFAULTS,
 }
 

@@ -229,7 +229,7 @@ def estimated_length(ctx: Ctx, values: dict[str, Any], given: dict[str, Any], wa
         return {}
     settings = ctx.settings["estimate"]
     area = area_names(ctx.conn, ctx.user_id).get(values.get("area_id")) if values.get("area_id") else None
-    past = history(ctx.conn, area, values.get("preset"), ctx.now_utc, settings.window_days, ctx.user_id)
+    past = history(ctx.conn, area, values.get("preset"), ctx.now_utc, settings.window_days, ctx.user_id, ctx.settings)
     estimate = learned_estimate(ctx, values, area) or estimate_length(
         values.get("title", ""), area, past, settings, ctx.settings["text"].rules()
     )
@@ -269,7 +269,7 @@ def guessed_minutes(ctx: Ctx, fields: dict[str, Any]) -> int | None:
     wanted = "".join(plain_words(str(given.get("area") or "")))
     area = next((n for n in area_names(ctx.conn, ctx.user_id).values() if "".join(plain_words(n)) == wanted), None)
     settings = ctx.settings["estimate"]
-    past = history(ctx.conn, area, preset, ctx.now_utc, settings.window_days, ctx.user_id)
+    past = history(ctx.conn, area, preset, ctx.now_utc, settings.window_days, ctx.user_id, ctx.settings)
     title = str(given.get("title") or "")
     estimate = learned_estimate(ctx, {"title": title, "preset": preset}, area) or estimate_length(
         title, area, past, settings, ctx.settings["text"].rules()
