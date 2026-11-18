@@ -1,8 +1,8 @@
 """The allocator (DESIGN §13): how much of each item happens on which day over the coming weeks, and weekly quotas.
 
 A linear program at day resolution, solved in two stages: lateness first, then pacing, whole-day prices and a
-tie-break. Ties go as late as each paced item's pacing line and due date allow; work with no pace of its own
-(`soon`) and items with no due date go as early as possible. Dependencies are handled outside the LP: a dependent
+tie-break. Ties go as late as each item's pacing line and due date allow, so distant work isn't front-loaded into
+this week; items with no due date go as early as possible. Dependencies are handled outside the LP: a dependent
 item's first day moves to the day its source is far enough along, and the LP is solved again until nothing moves.
 GLOP's simplex is single-threaded and deterministic, so the same input gives the same allocation.
 """
@@ -16,11 +16,9 @@ from datetime import date
 from ortools.linear_solver import pywraplp
 
 from friday.core.pace import DayScales, budget_factor
-from friday.core.time import WEEKDAYS
 from friday.engine.problem import EngineItem
 from friday.engine.rules import Rule, matching_weekdays
 from friday.engine.rules.measures import Reserve, pacing_fraction
-from friday.engine.rules.prices import soon_urgency
 
 POINTS_PER_UNIT = 25  # the engine's 100 points per hour, over four 15-minute units
 OVERFLOW_POINTS = 100_000  # per unit left unallocated: worse than any placement
@@ -61,8 +59,6 @@ class Allocation:
     # every block against it, meals and goals too (15 Nov: a client's week read 1 h over with nothing late, their meals'
     # and goals' blocks counted in its hours and taken off its room as well).
     room: list[int]
-    # Work the allocator can't finish by its due (some of it on later days or left over): its quotas stay a must.
-    tight: frozenset[str] = frozenset()
 
     def claimed(self) -> list[int]:
         """Per day, what elastic and target items took from the room before fixed work was placed."""
@@ -128,29 +124,12 @@ def allocate(inp: AllocatorInput) -> Allocation:
     over: dict[str, float] = {}
     # A ready day only ever moves later, so this settles; each round can delay at most one more chain link.
     for _ in range(len(todo) + 1):
-        units, over = AllocatorLP(
-            inp, caps, day_of, todo, ready, [r - c for r, c in zip(room, caps, strict=True)]
-        ).solve()
+        units, over = AllocatorLP(inp, caps, day_of, todo, ready).solve()
         later = ready_days(todo, units, ready)
         if later == ready:
             break
         ready = later
-    return Allocation(units, over, caps, quotas(inp, todo, units), room, tight(todo, units, over, day_of))
-
-
-def tight(
-    todo: list[EngineItem], units: dict[str, list[float]], over: dict[str, float], day_of: DayIndex
-) -> frozenset[str]:
-    """Items with work allocated after their due day, or left over."""
-    out = set()
-    for item in todo:
-        if over.get(item.key, 0.0) > TOLERANCE:
-            out.add(item.key)
-        elif item.due_utc is not None:
-            due = day_due(day_of, item.due_utc)
-            if any(amount > TOLERANCE for amount in units[item.key][max(0, due + 1) :]):
-                out.add(item.key)
-    return frozenset(out)
+    return Allocation(units, over, caps, quotas(inp, todo, units), room)
 
 
 def chain_depths(todo: list[EngineItem]) -> dict[str, int]:
@@ -230,9 +209,8 @@ def quotas(inp: AllocatorInput, todo: list[EngineItem], units: dict[str, list[fl
 
 class AllocatorLP:
     def __init__(self, inp: AllocatorInput, caps: list[int], day_of: DayIndex, todo: list[EngineItem],
-                 ready: dict[str, int], claimed: list[int] | None = None):  # fmt: skip
+                 ready: dict[str, int]):  # fmt: skip
         self.inp, self.caps, self.day_of, self.todo = inp, caps, day_of, todo
-        self.claimed = claimed if claimed is not None else [0] * len(caps)  # what goals and meals took, by day
         self.A = len(caps)
         self.lp = pywraplp.Solver.CreateSolver("GLOP")
         self.effective_due = self.aimed_for(effective_due_days(todo, day_of, caps))
@@ -318,7 +296,6 @@ class AllocatorLP:
         """Stage 2: pacing deficits, soft lateness, whole-day prices, overflow and the tie-break."""
         points = self.inp.pacing_weight * POINTS_PER_UNIT
         terms = dict.fromkeys(self.pacing(), points)
-        terms |= self.heavy_days()
         depth = chain_depths(self.todo)
         for item in self.todo:
             due_day = self.effective_due[item.key]
@@ -331,36 +308,9 @@ class AllocatorLP:
                 if due_day is not None and d > due_day:
                     price += POINTS_PER_UNIT * item.importance * (d - due_day)
                 # as late as the due date and pacing allow; what waits on more, a little later still, so what waits on
-                # nothing (a free step, a chain's first) fills a pace first (17 Nov: free steps were left for last).
-                # Work with no pace of its own as early as there's room, what's due first first (`soon`, 17 Nov: "by
-                # default, friday should use all time that it can"); work with no due early too.
-                lean = 1 + DEPTH_LEAN * depth[item.key]
-                if item.soon and item.due_utc is not None:
-                    terms[v] = price + d * soon_urgency(item.due_utc, self.inp.now_utc) * lean
-                else:
-                    terms[v] = price + (-d * lean if due_day is not None else d)
+                # nothing (a free step, a chain's first) fills a pace first (17 Nov: free steps were left for last)
+                terms[v] = price + (-d * (1 + DEPTH_LEAN * depth[item.key]) if due_day is not None else d)
         return terms
-
-    def heavy_days(self) -> dict[pywraplp.Variable, float]:
-        """Units past a day's most (a daily_load rule's threshold, less what goals and meals claim), at that rule's
-        price: work there as soon as it can be (`soon`) filled each day to the cap, and the scheduler, holding days
-        to the threshold, left the rest of what the allocator gave the plan's days unplanned and uncounted (17 Nov:
-        a 40-hour thesis read 31 hours in the load ahead)."""
-        loads = [r for r in self.inp.rules if r.type == "daily_load"]
-        out: dict[pywraplp.Variable, float] = {}
-        for d, day in enumerate(self.inp.days):
-            on = [r for r in loads if not r.p.days or WEEKDAYS[day.date.weekday()] in r.p.days]
-            today = [v for (_, dd), v in self.y.items() if dd == d]
-            if not on or not today:
-                continue
-            rule = min(on, key=lambda r: r.p.threshold)
-            most = round(rule.p.threshold * day.scales.daily_load_threshold) - self.claimed[d]
-            if sum(v.ub() for v in today) <= most:
-                continue
-            excess = self.lp.NumVar(0, self.lp.infinity(), "")
-            self.lp.Add(excess >= self.lp.Sum(today) - most)
-            out[excess] = rule.effective_weight * POINTS_PER_UNIT
-        return out
 
     def pacing(self) -> list[pywraplp.Variable]:
         """Units behind each pacing line at every seventh day boundary: a project's steps on one line together, from
@@ -425,9 +375,3 @@ def apply_quotas(
             # What's locked stays: a timer started on next week's paper is work now (its lock had been dropped).
             locked = int(sum(units[s] for s in item.locked)) if units is not None else 0
             item.need = min(item.need, max(room, locked))
-            if item.soon and item.key not in allocation.tight:
-                # As soon as there's time, its quotas are what it may take, not what it must: held to them (the quota
-                # rule, beside lateness), a week packed with far-off work skipped meals and left readings late, as
-                # the allocator's days don't know them (17 Nov). Its own price (`soon`) fills the time there is.
-                # Work that can't all be done by its due is held to them still: its lateness is at stake.
-                item.quotas = {}

@@ -35,9 +35,8 @@ def test_the_reading_after_a_quarter_hour_gap_late_at_night_moves_up_to_meet_the
 
 def test_pieces_close_up_one_after_another() -> None:
     p = evening(rules=(), more=[item("chore", 3, duration_units=1, due_utc=at(1, "09:00"))])
-    # the problem set whole: an hour's work due goes in one sitting when an hour is free for it (17 Nov)
-    _, after = closed(p, plan(item_1=(0, 1, 2, 3), item_2=(5, 6), item_3=(7,)))
-    assert after == plan(item_1=(0, 1, 2, 3), item_2=(4, 5), item_3=(6,))
+    _, after = closed(p, plan(item_1=(0, 1), item_2=(3, 4), item_3=(6,)))
+    assert after == plan(item_1=(0, 1), item_2=(2, 3), item_3=(4,))
 
 
 def test_a_break_you_set_between_blocks_keeps_the_gap() -> None:

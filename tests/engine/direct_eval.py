@@ -55,22 +55,6 @@ def price_function(p: Problem, rule: Rule, item: EngineItem) -> Callable[[int], 
             return min(rule.p.days, max(0.0, (end - (item.due_utc - rule.p.days * 1440)) / 1440))
 
         return early
-    if kind == "soon":
-        early = max((r.p.days for r in p.rules if r.type == "finish_early" and r.applies(item)), default=0.0)
-        aim = item.due_utc - math.ceil(early * 1440)
-        unplaced = max(0, max(grid.horizon_end, aim) - grid.now) / 1440
-        # what's due first goes first: `order` of the price is paid as near as its due is, 7 / (7 + days to it),
-        # over the first `days` and, that part alone, after them
-        near = rule.p.order * 7 / (7 + max(0.0, (item.due_utc - grid.now) / 1440))
-
-        def first_free(s: int) -> float:
-            if s == grid.S:
-                return rule.p.unplanned_per_day * (1 + near) * unplaced
-            days = max(0, int(grid.start[s]) - grid.now) / 1440
-            first = (1 - rule.p.order + near) * min(rule.p.days, days)
-            return rule.p.per_day * (first + near * max(0.0, days - rule.p.days))
-
-        return first_free
     if kind == "unscheduled":
         return lambda s: rule.p.base * importance if s == grid.S else 0.0
     if kind == "late_tasks":

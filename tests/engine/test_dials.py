@@ -24,8 +24,7 @@ def test_growth_zero_switches_open_value_off_for_that_day_only() -> None:
 
 
 def test_spread_zero_switches_even_load_off_for_that_day_only() -> None:
-    # exam prep: an assignment goes in as soon as there's time (17 Nov), and even_load leaves that alone
-    work = [item("exam_prep", 1, duration_units=8, due_utc=at(1, "20:00"), min_chunk_units=1, expires=False)]
+    work = [item("assignment", 1, duration_units=8, due_utc=at(1, "20:00"), min_chunk_units=1)]
     even = [dict(type="even_load", name="even_load", params=dict(floor=0))]
     p = problem(work, ["none"], even, slots=None, days=2, scales=two_days(spread=0.0))
     monday = tuple(p.grid.day_slots[0][:8])

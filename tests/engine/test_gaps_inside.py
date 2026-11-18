@@ -54,10 +54,9 @@ def test_a_piece_with_no_empty_time_before_it_isn_t_slid() -> None:
 
 def test_a_slide_lands_right_after_the_work_before_it_and_keeps_its_length() -> None:
     c = two()
-    # the problem set whole: an hour's work due goes in one sitting when an hour is free for it (17 Nov)
-    owner = c.owner_from_plan(plan(item_1=(0, 1, 2, 3), item_2=(6, 7)))
-    trial = slid_back(c, owner, c.problem.items["item:2"], 1, 6, 7)
-    assert trial is not None and c.plan_from_owner(trial) == plan(item_1=(0, 1, 2, 3), item_2=(4, 5))
+    owner = c.owner_from_plan(plan(item_1=(0, 1), item_2=(5, 6)))
+    trial = slid_back(c, owner, c.problem.items["item:2"], 1, 5, 6)
+    assert trial is not None and c.plan_from_owner(trial) == plan(item_1=(0, 1), item_2=(2, 3))
 
 
 def test_meals_and_work_with_travel_aren_t_slid() -> None:

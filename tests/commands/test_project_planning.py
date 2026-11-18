@@ -152,10 +152,8 @@ def test_finishing_early_is_kept_when_there_is_room(app: App) -> None:
 
 
 def test_a_step_planned_past_the_plans_days_says_when(app: App) -> None:
-    # "open subtasks say not planned even with ample time": planned nearer the due, past the plan's two weeks (paced
-    # evenly: with no pace set it's all done in the first days, 17 Nov)
-    made, ids = project(app, "2026-11-30T17:00", [("Research", 240), ("Draft", 240), ("Revise", 240), ("Present", 240)])
-    app.do("project_set", id=made, pacing="linear")
+    # "open subtasks say not planned even with ample time": planned nearer the due, past the plan's two weeks
+    _, ids = project(app, "2026-11-30T17:00", [("Research", 240), ("Draft", 240), ("Revise", 240), ("Present", 240)])
     replan(app.conn, app.now_utc)
     [shown] = app.do("projects")
     found = blocks(app)
@@ -189,7 +187,7 @@ def test_a_step_made_any_time_can_go_before_the_one_above(app: App) -> None:
     app.do("step_any_time", id=cite, any_time=True)
     replan(app.conn, app.now_utc)
     found = blocks(app)
-    assert found[cite][0][0] < found[slides][-1][1], "any time: not held behind Slides (a chained step starts after)"
+    assert found[cite][0][0] < found[slides][0][0], "any time: not held behind Slides"
     assert found[slides][0][0] >= found[research][-1][1], "Slides still after Research"
     [shown] = app.do("projects")
     assert shown["any_time"] == [cite]

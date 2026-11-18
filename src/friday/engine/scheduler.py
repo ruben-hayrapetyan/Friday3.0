@@ -154,7 +154,6 @@ def schedule(
     if keep and (kept := better_kept(c, owner)) is not None:  # warm or the nightly cold one: yours stands
         owner, protected = kept, []
     owner = dated_first(c, owner, cancel)
-    owner = whole_again(c, owner, cancel)
     owner = closed_gaps(c, owner, cancel)
     result = verified(c, owner, protected, fallback, start.demoted, seconds, config, steps)
     result.cancelled = bool(cancel[0])
@@ -346,53 +345,6 @@ def dated_first(c: Compiled, owner: np.ndarray, cancel: np.ndarray | None = None
             values = stage_values(c, trial)
             if values < best:
                 owner, best = trial, values
-    return owner
-
-
-WHOLE_UNITS = 4  # a sitting shorter than an hour (or than all of the work, when less) is short
-
-
-def whole_again(c: Compiled, owner: np.ndarray, cancel: np.ndarray | None = None) -> np.ndarray:
-    """Work wanted as soon as there's time left with a sitting short of an hour, put in one sitting where that's better
-    in the stages' order and no wall breaks: of every free run it may use, the best. The annealer moves a piece at a
-    time, and two pieces become one only where one can go right beside the other, so an hour's quiz kept 45 minutes on
-    Saturday and 30 the week after with whole free hours between (17 Nov: Jordan's Aplia quiz 8, Maya's reading
-    response 7). Locked, pinned and timed work stays where it is."""
-    problem, M, units = c.problem, c.m, c.problem.grid.units
-    best = stage_values(c, owner)
-    for i, key in enumerate(c.keys):
-        item = problem.items[key]
-        if not item.soon or M.amount_kind[i] != 0 or M.one_sitting[i] or item.locked or item.preferred or item.held:
-            continue
-        mine = np.flatnonzero(owner == i)
-        need = int(M.need[i])
-        if len(mine) < 2 or (M.max_chunk[i] >= 0 and need > M.max_chunk[i]):
-            continue
-        breaks = np.flatnonzero(np.diff(mine) != 1) + 1
-        pieces = np.split(mine, breaks)
-        if len(pieces) < 2 or all(int(units[p].sum()) >= min(need, WHOLE_UNITS) for p in pieces):
-            continue
-        cleared = owner.copy()
-        cleared[mine] = -1
-        allowed = np.flatnonzero(M.allowed[i, : M.S] & (cleared[: M.S] == -1))
-        for n, s in enumerate(allowed):
-            if cancel is not None and cancel[0]:
-                return owner
-            run, got = [int(s)], int(units[s])
-            m = n
-            while got < need and m + 1 < len(allowed) and allowed[m + 1] == allowed[m] + 1:
-                m += 1
-                run.append(int(allowed[m]))
-                got += int(units[allowed[m]])
-            if got < need:
-                continue
-            trial = cleared.copy()
-            trial[run] = i
-            if not valid(c, trial):
-                continue
-            values = stage_values(c, trial)
-            if values < best:
-                owner, best = trial, values  # only this item moved: the rest of `cleared` stands
     return owner
 
 

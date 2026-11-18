@@ -154,9 +154,7 @@ NOT_10_TO_11 = [dict(type="time_preference", name="window", params=dict(start="1
 
 
 def hard(units: int, due: int):  # noqa: ANN201
-    # Hard work even_load evens out: exam prep. An assignment due goes in as soon as there's time, what's due first
-    # first (17 Nov), and even_load leaves that alone. Not pointless once late, as an assignment isn't
-    return item("exam_prep", 1, duration_units=units, due_utc=due, min_chunk_units=1, expires=False)
+    return item("assignment", 1, duration_units=units, due_utc=due, min_chunk_units=1)
 
 
 def test_even_load_is_zero_when_shared_evenly() -> None:

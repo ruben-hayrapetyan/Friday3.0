@@ -64,9 +64,7 @@ def test_the_meal_step_s_repair_counts_meals_far_below_any_lateness() -> None:
 def test_chains_take_the_starts_in_turn_and_one_start_is_all_of_them() -> None:
     c = lunch_week()
     a = owners(c, item_1=[8, 9], item_2=list(range(0, 8)))
-    # the work from the first slot in both: work goes in as soon as there's time (17 Nov), so a start with room before
-    # it was a start the finish moved up
-    b = owners(c, item_1=[10, 11], item_2=list(range(0, 8)))
+    b = owners(c, item_1=[10, 11], item_2=list(range(2, 10)))
     guard = np.zeros(c.m.I, dtype=bool)
     config = fast(chains=4).sampler
     shared = anneal(c, [a, b], [guard, guard], config, steps=0, warm=True, warm_t0=0.0)

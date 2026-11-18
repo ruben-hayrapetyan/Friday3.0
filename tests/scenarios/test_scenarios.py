@@ -13,7 +13,7 @@ from friday.engine.construct import prepare_start
 from friday.engine.evaluate import evaluate
 from friday.engine.explain import block_costs, blocks_of
 from friday.engine.sampler import tolerated
-from friday.planner.build import Dependency, Pin, build_problem, id_of
+from friday.planner.build import Dependency, Pin, id_of
 from friday.planner.inputs import allocator_input
 from tests.bench.generator import Scenario, bench_settings, overload, reference_instance, reference_rules
 from tests.engine.configs import fast
@@ -232,26 +232,20 @@ def test_19_lunch_fits_its_window_on_a_busy_day() -> None:
 
 
 def test_20_a_far_project_gets_about_a_linear_share_this_week_and_next() -> None:
-    """30 h due in six weeks, a light fortnight, paced evenly: the allocator's quotas ask for about 5 h a week, and the
-    scheduler places that much rather than pulling the whole project forward. With no pace set it is pulled forward:
-    all of it in the fortnight's first days, as soon as there's time (17 Nov, the user: "by default, friday should use
-    all time that it can")."""
+    """30 h due in six weeks, a light fortnight: the allocator's quotas ask for about 5 h a week, and the scheduler
+    places that much rather than pulling the whole project forward."""
     classes = [item("class", 10 + d, start_utc=at(d, "10:00"), end_utc=at(d, "12:00")) for d in (MON, WED, FRI)]
     project = item("project", 1, duration_units=120, due_utc=at(41, "17:00"))
     rules = reference_rules(["late_work", "quota", "unscheduled"])
     sc = Scenario("20", [*classes, project], at(MON, "10:00"), bench_settings(horizon_days=14, rules=rules))
-    for pacing in ({1: "linear"}, {}):
-        p = build_problem(sc.build_input(project_pacing=pacing))
-        allocation = allocate(allocator_input(sc.build_input(project_pacing=pacing), p))
-        apply_quotas(p.items.values(), allocation, p.grid.horizon_end)
-        plan = run(p, fast(steps=60_000)).plan
-        weeks = {w: sum(int(p.grid.units[s]) for s in plan["item:1"] if s in set(slots)) / 4
-                 for w, slots in p.grid.week_slots.items()}  # fmt: skip
-        if pacing:
-            assert set(p.items["item:1"].quotas) == set(p.grid.week_slots)
-            assert all(4 <= placed <= 6.5 for placed in weeks.values()), weeks
-        else:
-            assert sum(weeks.values()) == 30 and weeks[min(weeks)] == 30, weeks
+    p = sc.build()
+    allocation = allocate(allocator_input(sc.build_input(), p))
+    apply_quotas(p.items.values(), allocation, p.grid.horizon_end)
+    assert set(p.items["item:1"].quotas) == set(p.grid.week_slots)
+    plan = run(p, fast(steps=60_000)).plan
+    for week, slots in p.grid.week_slots.items():
+        placed = sum(int(p.grid.units[s]) for s in plan["item:1"] if s in set(slots)) / 4
+        assert 4 <= placed <= 6.5, (week, placed)
 
 
 def test_23_the_same_snapshot_planned_with_different_thread_counts_is_identical() -> None:

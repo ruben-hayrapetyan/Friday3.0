@@ -147,13 +147,6 @@ class EvenLoad(Rule):
         # which no chunk cost could undo (a preference, a stage below). 3 hours is one long sitting, as deep_run has.
         floor: Units = 12
 
-    def applies_also(self, item):
-        # Not work planned as soon as there's time (17 Nov, the user: "by default, friday should use all time that it
-        # can"), which is all deadline work with no pace of its own (planner/build.py): spread evenly, a 10-hour project
-        # took 3 hours a day; a pace you set spreads it, and heavy days are wellbeing's (daily_load). What it still
-        # evens out: exam prep, work pointless once late, a paced project's work
-        return not item.soon
-
     def measures(self, ctx):
         grid, problem = ctx.grid, ctx.problem
         items = [i for i in self.scoped_items() if i.due_utc is not None and i.due_utc <= grid.horizon_end]

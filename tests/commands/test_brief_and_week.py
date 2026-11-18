@@ -58,8 +58,7 @@ def test_the_weekly_review_lists_finished_carried_and_coming_and_keeps_a_note(ap
     app.do("week_note", week="2026-10-19", feel="Busy", notes="Start essays earlier")
     week = app.do("week_review")
     assert [f["title"] for f in week["finished"]] == ["PS1"]
-    # the next essay, due in eight days, is planned this week as soon as there's time (17 Nov): carried too
-    assert [c["title"] for c in week["carried"]] == ["essay", "next essay"]
+    assert [c["title"] for c in week["carried"]] == ["essay"]
     assert [c["title"] for c in week["coming"]] == ["next essay"]
     assert week["note"] == {"feel": "Busy", "notes": "Start essays earlier"}
 

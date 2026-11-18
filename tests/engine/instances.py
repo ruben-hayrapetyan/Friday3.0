@@ -46,7 +46,6 @@ EXTRA_RULES = [
     dict(type="cluster", name="cluster_projects", weight=3, scope=dict(preset="Project"), params=dict(per_day=2)),
     # a project's pace, held each day (the planner builds it for paced projects; single_rule paces the work)
     dict(type="pacing", name="pace_kept", weight=2, params=dict(behind=1.5, ahead=0.5)),
-    dict(type="soon", name="first_free_time", weight=1, params=dict(per_day=3)),
 ]  # fmt: skip
 MIXED = scales(Dials(capacity=0.8, rest=1.5, spread=2.0, growth=0.5))
 

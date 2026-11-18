@@ -1,7 +1,7 @@
 """A project's pace changes how it's planned (17 Nov, the user: "when changing the pace of a project, the user can see a
 change in the actual way that it plans because i did it and i saw no change"). Front-loaded plans most of a project in
 its first days, toward the end most in its last, evenly in between; never late for it, and its steps still in order.
-With no pace set, as soon as there's time (test_as_soon_as_there_is_time.py).
+With no pace set, evenly, as a Project's kind is, by the allocator's weekly quotas (test_project_options.py).
 
 Whole system, through the commands and the planner, from Monday 19 Oct 2026 9am with two weeks planned."""
 

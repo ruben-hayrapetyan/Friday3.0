@@ -54,9 +54,6 @@ def test_a_review_names_a_block_by_its_item_and_start(app: App) -> None:
 def test_a_review_of_a_closed_day_replaces_what_was_assumed_and_adds_what_happened(app: App) -> None:
     essay = placed(app, "essay due wed ~4h", "09:00", "10:00")
     reading = app.do("add", title="Reading", duration_min=60)["item"]["id"]
-    # the rest of Monday taken: work goes in as soon as there's time (17 Nov), and the essay's other hours and the
-    # reading went in Monday too, assumed done with the block placed
-    app.do("add", title="Shift", when="fixed", start="2026-10-19T10:00", end="2026-10-19T23:00", preset="Event")
     replan(app.conn, app.now_utc)
     app.at("2026-10-20T12:00").do("close_day")
     assert [(p["item_id"], p["source"]) for p in app.table("progress")] == [(essay, "assumed")]

@@ -104,8 +104,7 @@ def test_w8_dependency_needs_its_source_first() -> None:
 
 
 def test_w8_dependency_fraction_and_lag() -> None:
-    # no due: an hour's assignment due goes in one sitting when an hour is free for it (17 Nov), and A comes in two
-    a = item("assignment", 1, duration_units=4)
+    a = item("assignment", 1, duration_units=4, due_utc=MON10 + 480)
     b = item("assignment", 2, duration_units=1, due_utc=MON10 + 480, min_chunk_units=1)
     p = problem([a, b], deps=[Dependency(2, 1, 0.5, 15)], slots=12)  # half of A (2 units) done by 10:30, +15 min
     a_plan = (0, 1, 6, 7)

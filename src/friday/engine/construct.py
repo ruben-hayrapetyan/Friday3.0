@@ -12,7 +12,7 @@ import numpy as np
 
 from friday.engine.compile import Compiled, Model, compile_problem
 from friday.engine.kernel import init_state, item_violations, new_state, total_violations
-from friday.engine.problem import EngineItem, Problem
+from friday.engine.problem import Problem
 from friday.engine.prune import demote_locks
 
 NO_DUE = 10.0**15
@@ -74,40 +74,21 @@ def construct(
     if only is not None:
         pending = [i for i in pending if c.keys[i] in only]
     done: set[int] = set()
-    least = start_sittings(c)
     for _ in range(4 * M.I + 10):
         if not pending:
             break
         for i in list(pending):
             if not sources_settled(M, placed, i, done, pending):
                 continue
-            place(M, owner, day_units, placed, i, int(least[i]))
+            place(M, owner, day_units, placed, i)
             done.add(i)
             pending.remove(i)
             break
         else:
             for i in list(pending):  # cyclic or blocked: place the rest in order anyway
-                place(M, owner, day_units, placed, i, int(least[i]))
+                place(M, owner, day_units, placed, i)
                 pending.remove(i)
     return owner
-
-
-START_SITTING = 4  # units: work wanted as soon as there's time starts in sittings of an hour, or whole when shorter
-
-
-def start_sittings(c: Compiled) -> np.ndarray:
-    """Per item, the least sitting the start plan first looks for: an hour (or all of it, when less) for work wanted
-    as soon as there's time, none for the rest. Into the earliest free slots in any legal piece, such work took every
-    half hour between classes first, and the search, with the first free time priced, rarely found its way to whole
-    sittings again (17 Nov: Jordan's 12-hour A5 kept a half hour on Thursday morning). Only where it looks first: with
-    no such sitting free in time, the pieces its own least allows."""
-    M, problem = c.m, c.problem
-    out = np.zeros(M.I, dtype=np.int64)
-    for i, key in enumerate(c.keys):
-        item = problem.items[key]
-        if item.soon and M.amount_kind[i] == 0 and not M.one_sitting[i]:
-            out[i] = min(int(M.need[i]), START_SITTING)
-    return out
 
 
 def keep_base(M: Model, base: np.ndarray, owner: np.ndarray, day_units: np.ndarray, placed: np.ndarray) -> None:
@@ -162,28 +143,7 @@ def placement_order(c: Compiled) -> list[int]:
     # A meal's minimum first (personal pinned lunch): placed after the work, it found its window taken
     # by work due days later, and the anneal rarely moved both to give it back.
     meal = [M.amount_kind[i] == 1 and problem.items[c.keys[i]].min > 0 for i in range(M.I)]
-    # Work due a week or more off comes after the work due within it, soft-due work too, and what's due after the
-    # plan's days and held to no quota after that (17 Nov: placed among the hard work, it took the three hours a
-    # soft-due grading needed that week, and the search never gave them back): each into the earliest free time, what's
-    # due first first, as the `soon` price then keeps it
-    grid = problem.grid
-    later = [far(problem.items[k], grid.now, grid.horizon_end) for k in c.keys]
-    return sorted(
-        range(M.I),
-        key=lambda i: (0 if meal[i] else 1, later[i], 0 if hard[i] else 1, effective[i], -importance[i], i),
-    )
-
-
-FAR_DAYS = 7  # as the planner's SHORT_TERM_DAYS: work due within it is placed first
-
-
-def far(item: EngineItem, now: int, horizon_end: int) -> int:
-    """0: placed first, in deadline order (work due within the week, and work not wanted as soon as there's time);
-    1: work wanted as soon as there's time due a week or more off; 2: that, due after the horizon with no quota to
-    meet (it may take time now but needn't)."""
-    if not item.soon or item.due_utc is None or item.due_utc - now <= FAR_DAYS * 1440:
-        return 0
-    return 2 if item.due_utc > horizon_end and not item.quotas else 1
+    return sorted(range(M.I), key=lambda i: (0 if meal[i] else 1, 0 if hard[i] else 1, effective[i], -importance[i], i))
 
 
 def fewest_late_order(c: Compiled) -> list[int]:
@@ -242,7 +202,7 @@ def candidate_slots(M: Model, i: int, on_time_only: bool) -> list[int]:
     return [s for s in range(M.first_slot[i], M.last_slot[i] + 1) if ok[s]]
 
 
-def place(M: Model, owner: np.ndarray, day_units: np.ndarray, placed: np.ndarray, i: int, least: int = 0) -> None:
+def place(M: Model, owner: np.ndarray, day_units: np.ndarray, placed: np.ndarray, i: int) -> None:
     remaining = int(M.need[i] - placed[i])
     if remaining <= 0:
         return
@@ -252,14 +212,12 @@ def place(M: Model, owner: np.ndarray, day_units: np.ndarray, placed: np.ndarray
     ready = ready_conditions(M, owner, i)
     if ready is None:
         return
-    # in real sittings first (`least`), then in any legal piece; on time first when it has a hard due
-    sittings = (least, 0) if least > M.min_chunk[i] else (0,)
-    for on_time_only, sitting in [(t, u) for t in ((True, False) if M.hard_due[i] else (False,)) for u in sittings]:
+    for on_time_only in (True, False) if M.hard_due[i] else (False,):
         candidates = [
             s for s in candidate_slots(M, i, on_time_only)
             if owner[s] == -1 and all(M.dep_lag[d, s] >= ready_at for d, ready_at in ready)
         ]  # fmt: skip
-        remaining -= take(M, owner, day_units, placed, i, candidates, remaining, sitting)
+        remaining -= take(M, owner, day_units, placed, i, candidates, remaining)
         if remaining <= 0:
             return
 
@@ -282,14 +240,14 @@ def extend_locked(M: Model, owner: np.ndarray, day_units: np.ndarray, placed: np
 
 
 def take(M: Model, owner: np.ndarray, day_units: np.ndarray, placed: np.ndarray, i: int, candidates: list[int],
-         remaining: int, least: int = 0) -> int:  # fmt: skip
+         remaining: int) -> int:  # fmt: skip
     """Write up to `remaining` units of item i into the candidate slots; returns the units written."""
     if M.one_sitting[i]:
         return take_one_sitting(M, owner, day_units, placed, i, candidates, remaining)
     taken, run = 0, []
     for s in [*candidates, -1]:
         if run and s != run[-1] + 1:
-            taken += fill_run(M, owner, day_units, placed, i, run, remaining - taken, least)
+            taken += fill_run(M, owner, day_units, placed, i, run, remaining - taken)
             run = []
             if remaining - taken <= 0:
                 break
@@ -338,10 +296,9 @@ def prefix_holding(M: Model, run: list[int], units: int) -> list[int]:
 
 
 def fill_run(M: Model, owner: np.ndarray, day_units: np.ndarray, placed: np.ndarray, i: int, run: list[int],
-             remaining: int, least: int = 0) -> int:  # fmt: skip
-    """Fill a run of consecutive free slots with chunks of legal size (and at least `least` units), one planning day
-    at a time."""
-    smallest, largest = max(int(M.min_chunk[i]), least), int(M.max_chunk[i])
+             remaining: int) -> int:  # fmt: skip
+    """Fill a run of consecutive free slots with chunks of legal size, one planning day at a time."""
+    smallest, largest = int(M.min_chunk[i]), int(M.max_chunk[i])
     pieces, current = [], []
     for t in run:
         if current and M.day[t] != M.day[current[-1]]:

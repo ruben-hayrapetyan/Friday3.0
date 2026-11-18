@@ -46,8 +46,11 @@ def test_insights_show_three_weeks_of_work_and_that_assignments_take_longer_than
     lived: dict[str, sqlite3.Connection], key: str
 ) -> None:
     found = ask(lived[key], "insights")
-    # Work only: meals and habits aren't counted, so three weeks is a dozen-odd things, not fifty.
-    assert found["done"] >= 10 and found["hours"] >= 20 and found["best_hours"]
+    # Work only: meals and habits aren't counted, so three weeks is about ten things, not fifty. The simulated student
+    # rolls one die per block, so a change in how work is planned moves the count a little (17 Nov, a one-sitting
+    # errand insertable into week two's half-hour slots: Jordan's 12 went to 9, Aplia quiz 6 half done and the
+    # laundry, with no due, not done yet).
+    assert found["done"] >= 9 and found["hours"] >= 20 and found["best_hours"]
     kinds = {k["kind"]: k for k in found["by_kind"]}
     assert kinds["Assignment"]["n"] >= 3 and kinds["Assignment"]["median"] > 1.1
     assert "Exam prep" in kinds  # last term's first prelim

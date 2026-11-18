@@ -117,9 +117,6 @@ class Project:
     made: int
     area: str | None = None
     waits_on: tuple[str, str] | None = None  # (step, the item it waits on)
-    # Its pace, set on the project: evenly, as projects went by default when these weeks were written; None, not set
-    # (as soon as there's time, from 17 Nov), and done in its first days, before what a step waits on had arrived
-    pacing: str | None = "linear"
 
 
 @dataclass(frozen=True)

@@ -392,8 +392,6 @@ describe("the Projects & exams page", () => {
     const made = await friday.c<{ result: { item: Item } }>("add", { title: "Term paper", preset: "Project", due: "2026-12-30T17:00" })
     const id = made.result.item.id
     for (const title of ["Sources", "Outline", "Draft", "Revise"]) await friday.c("add", { title, preset: "Assignment", duration_min: 480, parent_id: id })
-    // paced evenly: with no pace it all goes in the plan's days, as soon as there's time (17 Nov)
-    await friday.c("project_set", { id, pacing: "linear" })
     await waitFor(async () => expect(Object.keys((await friday.q<{ item: Item; step_finish: Record<string, string> }[]>("projects")).find((p) => p.item.id === id)?.step_finish ?? {}).length).toBeGreaterThan(0), { timeout: 20_000 })
     await openFriday(`/projects?id=${id}`)
     expect(await screen.findAllByText(/^Later, by /, {}, { timeout: 10_000 })).not.toHaveLength(0)
@@ -437,7 +435,7 @@ describe("the Projects & exams page", () => {
     expect(await within(options).findByRole("button", { name: /^Finish early: 3 days early, by (Mon|Tue|Wed|Thu|Fri|Sat|Sun) 15$/ })).toBeTruthy() // at once
     expect(within(options).getByText("A rule you'll find in Rules")).toBeTruthy()
     expect((await waitForSent("project_set")).body).toEqual({ id, early_days: 3 })
-    expect(within(options).getByRole("button", { name: "Pace: As soon as there's time" })).toBeTruthy()
+    expect(within(options).getByRole("button", { name: "Pace: Not set" })).toBeTruthy()
     sent.length = 0
     await choose(f.user, options, "Pace", /^Front-load it/)
     expect(await within(options).findByRole("button", { name: "Pace: Front-load it" })).toBeTruthy()

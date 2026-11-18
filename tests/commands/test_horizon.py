@@ -44,9 +44,7 @@ def test_a_project_rolls_up_its_children_and_is_on_track_once_planned(app: App) 
 
 
 def test_a_project_past_the_horizon_finishes_by_the_allocator(app: App) -> None:
-    # paced evenly (with no pace set, 40 hours fit in the plan's week from 17 Nov: as soon as there's time)
-    made = app.do("template_apply", template="Essay", title="Thesis", hours=40, due="2026-12-18T17:00")["item"]["id"]
-    app.do("project_set", id=made, pacing="linear")
+    app.do("template_apply", template="Essay", title="Thesis", hours=40, due="2026-12-18T17:00")
     app.do("replan")
     project = app.do("projects")[0]
     assert project["status"] == "on_track" and project["planned_finish"] > "2026-10-26"

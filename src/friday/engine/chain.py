@@ -4,8 +4,9 @@ Numba keeps this file's compiled code until this file changes, and it builds in 
 change to that check in kernel.py needs a change here too, or the cached chain keeps the old one (16 Nov: a target's
 most a day, an ongoing project's rhythm, was counted by the kernel but not by a chain compiled before it, and plans
 broke the wall). Kernel wall checks as of: open items and rhythm targets count units a day. The same holds for the
-moves it builds in from moves.py; moves as of: an insert that doesn't fit whole opens as much as fits, a half hour less at a time down to its least, and a one-sitting
-item is inserted a unit over when only a coarse slot fits it (17 Nov).
+moves it builds in from moves.py; moves as of: an insert that doesn't fit whole opens as much as fits, a half hour
+less at a time down to its least, and a one-sitting item is inserted a unit over when only a coarse slot fits it (17
+Nov).
 """
 
 import numpy as np

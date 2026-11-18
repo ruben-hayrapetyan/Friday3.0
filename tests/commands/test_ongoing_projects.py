@@ -336,3 +336,13 @@ def test_a_week_with_only_short_gaps_still_gets_its_hours(app: App) -> None:
     replan(app.conn, app.now_utc)
     days = planned_by_day(app, weeks(app, series)[0]["id"])
     assert sum(days.values()) >= 60, days
+
+
+def test_an_ongoing_projects_hours_are_all_planned_each_week(tmp_path: Path) -> None:
+    # 10 hours a week came out 6 this week: each sitting cost what splitting the whole week's hours does (17 Nov; a
+    # sitting's split now costs as for two hours, build.TARGET_SITTING_UNITS). On an empty calendar from Monday 19 Oct.
+    app = new_app(tmp_path, horizon_days=14)
+    series = guitar(app, hours=10)
+    replan(app.conn, app.now_utc)
+    for week in weeks(app, series)[:2]:
+        assert sum(planned_by_day(app, week["id"]).values()) >= 600, week["occurrence_date"]
