@@ -5,13 +5,20 @@ import { when } from "./format"
 
 type Changes = Schemas["ChangeOut"]
 
+// A finish this much later past its due counts as the change's doing (whatif.py NOISE_H)
+const LATER_H = 0.25
+
+/** "3 items change · essay 2 h late". A preview (late_hours_before given) names only what the change makes later:
+ *  18 Nov, Push for today said "edit article draft 11.02 h late", an overdue draft late before and after. */
 export function summary(changes: Changes): string {
   const all = [...(changes.added ?? []), ...(changes.removed ?? []), ...(changes.moved ?? [])]
   const ids = new Set(all.map((c) => Number(c.item_id)))
   const late = Object.entries(changes.late_hours ?? {})
+  const before = changes.late_hours_before
+  const later = before ? late.filter(([title, h]) => h - (before[title] ?? 0) >= LATER_H) : late
   const parts = [
     ids.size ? `${ids.size} ${ids.size === 1 ? "item" : "items"} change` : "Nothing moves",
-    late.length ? late.map(([title, h]) => `${title} ${h} h late`).join(", ") : "all deadlines met",
+    later.length ? later.map(([title, h]) => `${title} ${h} h late`).join(", ") : late.length ? "nothing new is late" : "all deadlines met",
   ]
   return parts.join(" · ")
 }

@@ -4,6 +4,7 @@
 import json
 
 from friday.api.commands import Empty, ReplanOutput, ResolveInput
+from friday.commands.decisions import lock_cost
 from friday.commands.registry import Ctx, command
 from friday.core.db import one, rows
 from friday.core.items import FieldError
@@ -24,7 +25,7 @@ def replan(ctx: Ctx, inp: Empty) -> ReplanOutput:
         return ReplanOutput(plan_id=None, status="skipped", message="A newer plan was already saved")
     saved = one(ctx.conn, "SELECT status, report FROM plans WHERE id = ?", [plan_id])
     conflicts = json.loads(saved["report"]).get("conflicts", []) if saved else []
-    named = "; ".join(f"locked {c['title']} makes work {c['extra_late_hours']:g} h late" for c in conflicts)
+    named = "; ".join(f"locked {c['title']}: {lock_cost(c).removesuffix('.')}" for c in conflicts)
     asked = f" (to decide in the Inbox: {named})" if named else ""
     return ReplanOutput(
         plan_id=plan_id, status=saved["status"] if saved else "current", message=f"Plan P{plan_id}{asked}"

@@ -61,7 +61,7 @@ def test_a_decision_and_a_refusal_say_their_times_on_your_clock(app: App) -> Non
     app.do("replan")
     clock(app, "24h")
     lock = [d for d in app.do("status")["decisions"] if d["kind"] == "lock"]
-    assert lock[0]["detail"].startswith("Locked at Mon 10:00, it makes other work")
+    assert lock[0]["detail"].startswith("Locked at Mon 10:00, it makes essay finish")
     app.do("start", id=chore)
     app.at("2026-10-19T09:30")
     with pytest.raises(FieldError, match="must be after you started, at 09:00"):

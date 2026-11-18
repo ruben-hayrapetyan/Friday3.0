@@ -142,6 +142,8 @@ class ChangeOut(Model):
     rule_totals_after: dict[str, int] = {}
     notices: list[str] = []
     late_hours: dict[str, float] = {}  # hard work finishing after its due, by title
+    # a full preview: the same without the change, so what it makes later shows apart from what was late already
+    late_hours_before: dict[str, float] | None = None
 
 
 class CommandResult(Model):

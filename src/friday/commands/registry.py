@@ -10,7 +10,7 @@ import logging
 import sqlite3
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 from typing import Any, Literal, get_type_hints
 
@@ -37,8 +37,8 @@ from friday.core.time import (
 from friday.planner.hidden import Hidden, hidden_of
 from friday.planner.service import plan_snapshot
 from friday.planner.service import provisional as placement
-from friday.planner.snapshot import Snapshot, read_snapshot
-from friday.planner.store import current_plan, generation, load_item, load_settings
+from friday.planner.snapshot import BlockRow, Snapshot, read_snapshot
+from friday.planner.store import generation, load_item, load_settings
 from friday.planner.views import change_list
 
 
@@ -274,6 +274,7 @@ def run_in_transaction(
         if earlier:
             conn.execute("ROLLBACK")
             return CommandResult(command_id=earlier["id"], result=json.loads(earlier["result"]), repeated=True)
+        before = read_snapshot(conn, now_utc, user_id) if preview == "full" else None  # what it's compared with
         command_id = log_start(conn, spec, inp, now_utc, actor, user_id, None if preview else idempotency_key)
         ctx = Ctx(conn, Writer(conn, user_id), now_utc, actor, user_id, settings, command_id)
         result = dump(spec.fn(ctx, inp))
@@ -289,7 +290,7 @@ def run_in_transaction(
         if preview:
             snapshot = read_snapshot(conn, now_utc, user_id) if preview == "full" else None
             conn.execute("ROLLBACK")
-            changes = full_preview(conn, snapshot, ctx.tz) if snapshot else None
+            changes = full_preview(ctx, before, snapshot) if before and snapshot else None
             return CommandResult(command_id=None, result=result, provisional=ghosts, preview=True, changes=changes)
         conn.execute(
             "UPDATE command_log SET result = ?, undo = ? WHERE id = ?",
@@ -390,11 +391,27 @@ def tried_many[T, S](
         conn.execute("ROLLBACK")
 
 
-def full_preview(conn: sqlite3.Connection, snapshot: Snapshot, tz: str) -> ChangeOut:
-    """Solve a snapshot taken before the rollback, outside the transaction so the solve holds no write lock."""
-    plan = plan_snapshot(snapshot, warm=True)
-    saved = current_plan(conn, snapshot.user_id)
-    before = json.loads(saved["report"]).get("rule_totals", {}) if saved else {}
+def full_preview(ctx: "Ctx", before: Snapshot, snapshot: Snapshot) -> ChangeOut:
+    """Solve a snapshot taken before the rollback, outside the transaction so the solve holds no write lock, and say
+    what it changes against the plan as it would be now without the command: your saved plan while it is fresh,
+    else the week planned now as a replan would (What if's `without`), the change's solve starting from it.
+
+    18 Nov (a client's notes): Push for today "moved" add scripts from Sun 17:00 to Mon 19:30 and DLI reading into
+    Tue 1 Dec. The solve was compared with the saved plan however old: one made before the day turned over had a
+    horizon a day shorter, and work leaning as late as its pacing allows spread into the new day. A pace that changes
+    nothing said the same, so the preview showed the day passing as the pace's doing."""
+    from friday.commands.whatif import without  # noqa: PLC0415 (what if is a command module, made with this registry)
+
+    conn = ctx.conn
+    was = without(ctx, before)
+    # Blocks begun before now stay: they're what counts as done (prepare.py `progress_minutes`); dropped, yesterday's
+    # practice was "added" again, hours late.
+    begun = tuple(b for b in snapshot.plan_blocks if b.start_utc < snapshot.now_utc)
+    ahead = tuple(
+        BlockRow(b.item_id, b.start_utc, b.end_utc, b.tentative) for b in was.blocks if b.start_utc >= snapshot.now_utc
+    )
+    plan = plan_snapshot(replace(snapshot, plan_blocks=begun + ahead), warm=True)
+    rule_totals = was.report.get("rule_totals", {})
     titles = {item.id: item.title for item in snapshot.items}
 
     def title(item_id: int) -> str:
@@ -402,7 +419,7 @@ def full_preview(conn: sqlite3.Connection, snapshot: Snapshot, tz: str) -> Chang
         found = titles.get(item_id) or load_item(conn, item_id, snapshot.user_id)
         return found if isinstance(found, str) else found.title if found else f"T{item_id}"
 
-    return change_list(plan.report, before, tz, title)
+    return change_list(plan.report, rule_totals, ctx.tz, title, was.report.get("late_hours", {}))
 
 
 def log_start(

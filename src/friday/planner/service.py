@@ -248,22 +248,33 @@ def with_pins_preferred(pin_ids: set[int] | None) -> Callable[[BuildInput], Buil
 
 
 def lock_conflicts(snapshot: Snapshot, plan: AssembledPlan) -> list[dict]:
-    """Locked pins that make hard work a quarter hour late or more (§15.3 step 4), each with how much later. Only
-    checked when something is late at all."""
-    locked = [p for p in snapshot.pins if p.kind == "locked"]
-    if not locked or plan.stage_values["deadlines"] == 0:
+    """Locked pins that make other hard work a quarter hour late or more (§15.3 step 4), each with the work it makes
+    later and by how much. The lateness with the lock is the plan's own; without it, the quick estimate's.
+
+    18 Nov (a client's notes): an overdue draft locked at 10:15 was "making other work 164h 15m later" while the plan
+    had nothing late but the draft. Both sides were quick estimates, whose construction left work late that the solve
+    then placed on time, and the hours were summed over every item, the locked one too: an estimate's misses said as
+    the lock's cost. Now only work the plan really has late can be made sooner, and the locked item getting later
+    itself, once let go, is taken off what it would save."""
+    locked = [p for p in snapshot.pins if p.kind == "locked" and p.end_utc > snapshot.now_utc]
+    late = {int(k): float(v) for k, v in plan.report.get("late_hours", {}).items()}
+    if not any(k != p.item_id for p in locked for k in late):  # nothing late but what's locked: no lock costs it
         return []
     inp = build_input(snapshot)
-    points, hours = quick_late(inp, with_fallback=False)
+    points, _ = quick_late(inp, with_fallback=False)
     freed_points, _ = quick_late(with_pins_preferred(None)(inp), with_fallback=False)
     if points - freed_points <= snapshot.settings["planner"].lock_conflict_tolerance:
         return []
     titles = {i.id: i.title for i in snapshot.items}
     out = []
     for pin in locked[:MAX_PIN_CHECKS]:
-        _, without = quick_late(with_pins_preferred({pin.id})(inp), with_fallback=False)
-        saved = sum(hours.values()) - sum(without.values())
-        if saved >= ASK_FROM_HOURS:
+        _, freed = quick_late(with_pins_preferred({pin.id})(inp), with_fallback=False)
+        sooner = {k: v - freed.get(k, 0.0) for k, v in late.items() if k != pin.item_id}
+        later = sum(v - late.get(k, 0.0) for k, v in freed.items() if k != pin.item_id and v > late.get(k, 0.0))
+        itself = max(0.0, freed.get(pin.item_id, 0.0) - late.get(pin.item_id, 0.0))
+        made = sorted(((k, h) for k, h in sooner.items() if h >= ASK_FROM_HOURS), key=lambda kv: (-kv[1], kv[0]))
+        saved = sum(h for _, h in made)
+        if made and saved - later - itself >= ASK_FROM_HOURS:
             out.append(
                 {
                     "pin_id": pin.id,
@@ -271,6 +282,8 @@ def lock_conflicts(snapshot: Snapshot, plan: AssembledPlan) -> list[dict]:
                     "title": titles.get(pin.item_id, ""),
                     "start": format_utc(pin.start_utc),
                     "extra_late_hours": round(saved, 2),
+                    "later": [{"title": titles.get(k, ""), "hours": round(h, 2)} for k, h in made],
+                    "itself_hours": round(itself, 2),
                 }
             )
     return out
