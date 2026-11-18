@@ -648,17 +648,19 @@ kbd.fr-kbd {
    a fixed height however long the list is. */
 .fr-break-band {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 0 6px;
   min-width: 0;
-  height: 22px;
-  padding: 0 8px;
+  min-height: 22px;
+  padding: 3px 8px;
   font-size: 12px;
+  line-height: 16px;
   color: var(--color-text);
+  text-align: left;
   background: color-mix(in srgb, var(--fr-break) 16%, transparent);
   border-left: 3px solid var(--fr-break);
-  white-space: nowrap;
-  overflow: hidden;
+  overflow-wrap: anywhere; /* a long name wraps, never cut (UI-PRINCIPLES) */
   cursor: pointer;
 }
 .fr-break-band .ph {
@@ -666,8 +668,6 @@ kbd.fr-kbd {
 }
 .fr-break-band-note {
   color: var(--color-neutral-400);
-  overflow: hidden;
-  text-overflow: ellipsis;
   min-width: 0;
 }
 .fr-break-band:hover,

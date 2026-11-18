@@ -83,7 +83,7 @@ export function BreakDialog({ edit, onClose }: { edit: BreakEdit; onClose: () =>
         value={isNew ? draft.name : undefined}
         defaultValue={isNew ? undefined : v.name}
         key={isNew ? "new" : `name${v.id}`}
-        placeholder="Name it: Winter break, Vacation, Family visit"
+        placeholder="Name this break"
         aria-label="Name"
         onChange={(e) => isNew && setDraft({ ...draft, name: e.target.value })}
         onBlur={(e) => !isNew && e.target.value.trim() && e.target.value.trim() !== v.name && set({ name: e.target.value.trim() })}

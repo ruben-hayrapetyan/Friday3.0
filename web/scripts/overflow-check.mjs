@@ -81,10 +81,10 @@ const STATES = [
   { name: "brief", path: "/", click: ["Plan…", "Morning brief"] },
   // Breaks (breaks/): a break this week with a long name, its band, its days' lines, a day's list, its popup and the
   // chooser of what pauses; Take a break from Pace; and a suggested one in the Inbox.
-  { name: "plan break week", path: (base) => onBreak(base), keys: ["w"] },
-  { name: "break day list", path: (base) => onBreak(base), keys: ["w"], each: ".fr-break-line", most: 2 },
-  { name: "break popup", path: (base) => onBreak(base), keys: ["w"], each: ".fr-break-band", most: 1 },
-  { name: "break popup pauses", path: (base) => onBreak(base), keys: ["w"], each: ".fr-break-band", most: 1, after: "Every repeating event" },
+  { name: "plan break week", path: (base) => onBreak(base), keys: ["3"] },
+  { name: "break day list", path: (base) => onBreak(base), keys: ["3"], each: ".fr-break-line", most: 2 },
+  { name: "break popup", path: (base) => onBreak(base), keys: ["3"], each: ".fr-break-band", most: 1 },
+  { name: "break popup pauses", path: (base) => onBreak(base), keys: ["3"], each: ".fr-break-band", most: 1, after: "Every repeating event" },
   { name: "take a break", path: "/", click: ["Plan…", "Pace", "Take a break"] },
   { name: "inbox suggested break", path: async (base) => (await onBreak(base), "/inbox") },
   { name: "what changed", path: "/", click: ["Plan…", "What changed"] },

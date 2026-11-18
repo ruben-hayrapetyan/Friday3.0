@@ -78,7 +78,7 @@ function NowRule() {
 export function agendaOf(day: string, plan: Schemas["PlanOut"] | undefined, calendar: Schemas["CalendarOut"] | undefined): Entry[] {
   const out: Entry[] = []
   // A break day has a list, not times (breaks/): its paused events and planned work aren't the day's; what you timed is
-  const onBreak = !!calendar?.days.find((d) => d.date === day)?.vacation
+  const onBreak = !!calendar?.days?.find((d) => d.date === day)?.vacation
   for (const f of plan?.fixed ?? []) {
     if (!f.start || !f.end || f.event_kind === "shove" || (onBreak && f.left_out === "paused")) continue
     const allDay = f.start.endsWith("T00:00") && f.end.endsWith("T00:00") && f.end > f.start

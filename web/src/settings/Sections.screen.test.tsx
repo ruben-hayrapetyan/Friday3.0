@@ -39,7 +39,7 @@ describe("the settings page", () => {
     const { user } = await openFriday("/settings/shortcuts")
     const nav = screen.getByText("Appearance").closest("nav")!
     const sections = within(nav).getAllByRole("link").map((a) => a.textContent)
-    expect(sections).toEqual(["Appearance", "Calendars", "Tags/Kinds", "Schedule", "Repeating", "Integrations", "Phone", "Tokens", "Shortcuts", "Updates", "Advanced"])
+    expect(sections).toEqual(["Appearance", "Calendars", "Tags/Kinds", "Schedule", "Repeating", "Breaks", "Integrations", "Phone", "Tokens", "Shortcuts", "Updates", "Advanced"])
     expect(screen.getByText("Changes apply right away")).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Back to plan" }))
     await waitFor(() => expect(window.location.hash).toBe("#/"))
