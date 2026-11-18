@@ -409,6 +409,10 @@ SAMPLES: dict[str, Callable[[App], dict[str, Any]]] = {
     "vacation_add": lambda app: {"name": "Fall break", "start": "2026-10-21", "end": "2026-10-23", "mode": "off"},
     "vacation_edit": lambda app: {"id": a_break(app), "mode": "off", "pause": {"repeating": "only", "tags": ["CS"]}},
     "vacation_delete": lambda app: {"id": a_break(app)},
+    "break_suggestion": lambda app: (
+        app.do("add", title="Vacation", when="fixed", start="2026-10-21T00:00", end="2026-10-23T00:00"),
+        {"key": "break:2026-10-21:2026-10-22", "take": True},
+    )[1],
     "vacation_tick": lambda app: (a_break(app), {"date": "2026-10-19", "item_id": essay(app), "ticked": True})[1],
     "import_personal": import_sample,
     "import_chroma_colors": chroma_sample,

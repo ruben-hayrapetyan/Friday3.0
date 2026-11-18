@@ -56,6 +56,9 @@ def decisions(ctx: Ctx, report: dict, late: list[LateItem]) -> list[Decision]:
                 hours=c["extra_late_hours"],
             )
         )
+    from friday.commands.vacations import break_decisions  # noqa: PLC0415 (vacations reads the plan's days)
+
+    out.extend(break_decisions(ctx))
     from friday.commands.conflicts import clashes  # noqa: PLC0415 (conflicts reads the rules, which read the plan)
 
     for c in clashes(ctx):

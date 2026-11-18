@@ -29,7 +29,7 @@ export interface EventDraft {
 }
 
 /** A break open in its popup (breaks/BreakDialog.tsx): one of yours by id, or a new one, maybe with its days. */
-export type BreakEdit = { id: number } | { id?: undefined; start?: string; end?: string }
+export type BreakEdit = { id: number } | { id?: undefined; start?: string; end?: string; name?: string }
 
 /** What the calendar shows: the view, and its first day (null follows today). The sidebar's mini month moves it. */
 export interface CalendarPlace {

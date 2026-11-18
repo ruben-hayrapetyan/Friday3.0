@@ -103,12 +103,14 @@ class Decision(Model):
     symbol"): a lock that makes work late (`resolve`), or work that will be late (the options, or `late_accept`)."""
 
     key: str  # "lock:-1509", "late", "learned:sleep:mon,tue"
-    kind: Literal["lock", "late", "learned"]
+    kind: Literal["lock", "late", "learned", "break"]
     title: str
     detail: str
     pin_id: int | None = None  # a lock: the pin (an event's hold is the event's id, negative)
     item_id: int | None = None  # a lock: what it holds
-    start: str | None = None  # a lock: when, local
+    start: str | None = None  # a lock: when, local; a break: its first day
+    end: str | None = None  # a break: its last day
+    name: str | None = None  # a break: what it would be called
     hours: float = 0  # how much later the work it's about is
     items: list["LateItem"] = []  # late work: what will be late
     # learned: what Friday learned against a rule of yours (commands/conflicts.py), its answers, and which side

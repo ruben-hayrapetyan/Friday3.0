@@ -580,6 +580,77 @@
     }
    }
   },
+  "/api/c/break_suggestion": {
+   "post": {
+    "summary": "Take a suggested break (it's added, with your defaults) or say it isn't one (not asked again).",
+    "operationId": "break_suggestion",
+    "parameters": [
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "false",
+        "true",
+        "full"
+       ],
+       "type": "string",
+       "default": "false",
+       "title": "Preview"
+      }
+     },
+     {
+      "name": "idempotency-key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Idempotency-Key"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BreakSuggestionInput"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BreakSuggestionResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/c/calendar_set": {
    "post": {
     "summary": "Read a Google calendar (or, with `mac`, one of the Mac's) or stop, as one kind or per event, trusted or",
@@ -15885,6 +15956,96 @@
     "title": "BreakChoicesOut",
     "description": "What a break can pause, for its chooser: every calendar, tag and repeating event."
    },
+   "BreakSuggestionInput": {
+    "properties": {
+     "key": {
+      "type": "string",
+      "title": "Key"
+     },
+     "take": {
+      "type": "boolean",
+      "title": "Take",
+      "default": true
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "key"
+    ],
+    "title": "BreakSuggestionInput",
+    "description": "A suggested break (an Inbox decision, `break:<first>:<last>`): taken, it's added; not, it isn't asked again."
+   },
+   "BreakSuggestionResult": {
+    "properties": {
+     "command_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Command Id"
+     },
+     "result": {
+      "$ref": "#/components/schemas/Changed"
+     },
+     "provisional": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/BlockOut"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provisional"
+     },
+     "changes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ChangeOut"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preview": {
+      "type": "boolean",
+      "title": "Preview",
+      "default": false
+     },
+     "repeated": {
+      "type": "boolean",
+      "title": "Repeated",
+      "default": false
+     },
+     "generation": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Generation"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "command_id",
+     "result"
+    ],
+    "title": "BreakSuggestionResult"
+   },
    "BriefOut": {
     "properties": {
      "rocks": {
@@ -17088,7 +17249,8 @@
       "enum": [
        "lock",
        "late",
-       "learned"
+       "learned",
+       "break"
       ],
       "title": "Kind"
      },
@@ -17132,6 +17294,28 @@
        }
       ],
       "title": "Start"
+     },
+     "end": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
      },
      "hours": {
       "type": "number",

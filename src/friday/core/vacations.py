@@ -8,17 +8,18 @@ names naps and snacks in the code (`web/src/now/breaks.ts`, `snapshot.away`).
 """
 
 import json
+import re
 import sqlite3
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 from typing import Any
 
 from friday.core.db import rows
 from friday.core.items import Item
 from friday.core.quickadd import MEAL
 from friday.core.settings import BreakSettings, Pause, minutes_of
-from friday.core.time import parse_utc, planning_date
+from friday.core.time import format_utc, parse_utc, planning_date, planning_day_start_utc, to_local
 
 # What one thing on a Light day's list is sized at, inside: never shown (18 Nov: tasks, not time).
 LIGHT_MIN_PER_THING = 45
@@ -202,3 +203,96 @@ def on_a_break(conn: sqlite3.Connection, user_id: int, settings: Mapping[str, An
     if tz is None:
         return lambda _moment: False
     return lambda moment: moment is not None and planning_date(parse_utc(moment), tz, day_start) in dates
+
+
+# Suggested breaks (18 Nov: "breaks can both be added and suggested"). Words an all-day event uses for time away.
+AWAY = re.compile(
+    r"\b(vacation|holidays?|break|recess|out of (the )?office|ooo|pto|time off|days? off|leave|away|trip|travel)\b",
+    re.IGNORECASE,
+)
+LOOK_AHEAD_DAYS = 56  # how far ahead a break is suggested
+USUAL_SHARE = 0.6  # a weekday has repeats "usually" when this share of its weeks has some
+DECLINED = "breaks_declined"  # kv: the suggestions you said aren't breaks
+
+
+@dataclass(frozen=True)
+class Suggested:
+    key: str
+    name: str
+    start: str
+    end: str
+    why: str
+
+
+def suggest(
+    conn: sqlite3.Connection, user_id: int, settings: Mapping[str, Any], today: date, declined: Iterable[str] = ()
+) -> list[Suggested]:
+    """Breaks Friday would suggest: an all-day event that says you're away ("Vacation", "Out of office", "Spring
+    break"), or weekdays ahead where your repeating events stop while they go on before and after. None on days
+    already on a break, nor one you said isn't a break."""
+    tz, day_start = settings["time"].timezone, minutes_of(settings["time"].day_start)
+    if tz is None:
+        return []
+    taken = break_dates(conn, user_id)
+    skip = set(declined)
+    last = today + timedelta(days=LOOK_AHEAD_DAYS)
+    out: list[Suggested] = []
+
+    def keep(name: str, first: date, end: date, why: str) -> None:
+        first = max(first, today)
+        if end < first or any(first + timedelta(days=n) in taken for n in range((end - first).days + 1)):
+            return
+        key = f"break:{first.isoformat()}:{end.isoformat()}"
+        if key not in skip and all(s.key != key for s in out):
+            out.append(Suggested(key, name, first.isoformat(), end.isoformat(), why))
+
+    found = rows(
+        conn,
+        "SELECT id, title, start_utc, end_utc, series_id FROM items WHERE user_id = ? AND when_kind = 'fixed' "
+        "AND status IN ('todo', 'done') AND end_utc > ? AND start_utc < ?",  # not a time skipped or dropped
+        [user_id, format_utc(planning_day_start_utc(today - timedelta(days=28), tz, day_start)),
+         format_utc(planning_day_start_utc(last, tz, day_start))],
+    )  # fmt: skip
+    repeats: dict[date, int] = {}
+    for r in found:
+        start, end = to_local(parse_utc(r["start_utc"]), tz), to_local(parse_utc(r["end_utc"]), tz)
+        whole_days = start.time() == end.time() == time(0) and end > start
+        if whole_days and r["series_id"] is None and AWAY.search(r["title"] or ""):
+            keep(
+                r["title"].strip(),
+                start.date(),
+                end.date() - timedelta(days=1),
+                f"Your calendar says “{r['title'].strip()}”",
+            )
+        elif r["series_id"] is not None and not whole_days:
+            day = planning_date(parse_utc(r["start_utc"]), tz, day_start)
+            repeats[day] = repeats.get(day, 0) + 1
+    for first, end in quiet_runs(repeats, today, last):
+        keep("Break", first, end, "Your repeating events stop on these days")
+    return sorted(out, key=lambda s: s.start)
+
+
+def quiet_runs(repeats: Mapping[date, int], today: date, last: date) -> list[tuple[date, date]]:
+    """Runs ahead of two or more of your usual repeat days with none, between days that have them: a break the
+    calendar shows without naming it (Thanksgiving: Wednesday to Friday without class)."""
+    if not repeats:
+        return []
+    first_seen, last_seen = min(repeats), max(repeats)
+    weeks: dict[int, list[bool]] = {}
+    day = first_seen
+    while day <= last_seen:
+        weeks.setdefault(day.weekday(), []).append(repeats.get(day, 0) > 0)
+        day += timedelta(days=1)
+    usual = {wd for wd, seen in weeks.items() if len(seen) >= 2 and sum(seen) / len(seen) >= USUAL_SHARE}
+    out: list[tuple[date, date]] = []
+    run: list[date] = []
+    day = max(today, first_seen + timedelta(days=1))
+    while day <= min(last, last_seen):
+        if day.weekday() in usual and not repeats.get(day):
+            run.append(day)
+        elif day.weekday() in usual:  # a usual day with its repeats: the run ends
+            if len(run) >= 2:
+                out.append((run[0], run[-1]))
+            run = []
+        day += timedelta(days=1)
+    return out

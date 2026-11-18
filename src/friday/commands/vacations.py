@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from friday.api.commands import (
+    BreakSuggestionInput,
     Changed,
     DoneInput,
     ItemRef,
@@ -18,7 +19,15 @@ from friday.api.commands import (
     VacationTickInput,
 )
 from friday.api.types import Empty, Model
-from friday.api.views import BreakChoicesOut, CalendarChoice, SeriesChoice, VacationDay, VacationDayOut, VacationThing
+from friday.api.views import (
+    BreakChoicesOut,
+    CalendarChoice,
+    Decision,
+    SeriesChoice,
+    VacationDay,
+    VacationDayOut,
+    VacationThing,
+)
 from friday.commands.registry import Ctx, command, query
 from friday.core import vacations as breaks
 from friday.core.db import one, rows
@@ -26,7 +35,7 @@ from friday.core.items import FieldError
 from friday.core.rows import item_from_row
 from friday.core.settings import minutes_of
 from friday.core.time import format_utc, parse_utc, planning_day_start_utc
-from friday.planner.store import area_names, current_plan
+from friday.planner.store import area_names, current_plan, kv_get
 
 DEFAULT_NAME = "Break"
 
@@ -317,3 +326,33 @@ def break_choices(ctx: Ctx, inp: Empty) -> BreakChoicesOut:
     return BreakChoicesOut(
         calendars=[CalendarChoice(name=n, repeats=counts.get(n, 0)) for n in every], tags=tags, series=series
     )
+
+
+def suggested(ctx: Ctx) -> list[breaks.Suggested]:
+    declined = kv_get(ctx.conn, breaks.DECLINED, [], ctx.user_id) or []
+    return breaks.suggest(ctx.conn, ctx.user_id, ctx.settings, ctx.today, declined)
+
+
+def break_decisions(ctx: Ctx) -> list[Decision]:
+    """Each suggested break, as a decision in the Inbox: yours to take or not; nothing waits on it."""
+    return [
+        Decision(key=s.key, kind="break", title=f"{s.name}, {said(date.fromisoformat(s.start))} – "
+                 f"{said(date.fromisoformat(s.end))}: a break?",
+                 detail=f"{s.why}. As a break, those days pause your repeating events and list a few things to do "
+                 "instead of times.", start=s.start, end=s.end, name=s.name)
+        for s in suggested(ctx)
+    ]  # fmt: skip
+
+
+@command("break_suggestion", affects_plan=True)
+def break_suggestion(ctx: Ctx, inp: BreakSuggestionInput) -> Changed:
+    """Take a suggested break (it's added, with your defaults) or say it isn't one (not asked again)."""
+    found = next((s for s in suggested(ctx) if s.key == inp.key), None)
+    if found is None:
+        raise FieldError("key", "that break isn't suggested any more")
+    if inp.take:
+        made = vacation_add(ctx, VacationAddInput(name=found.name[:80], start=found.start, end=found.end))
+        return Changed(message=made.message)
+    declined = kv_get(ctx.conn, breaks.DECLINED, [], ctx.user_id) or []
+    ctx.db.upsert("kv", {"user_id": ctx.user_id, "key": breaks.DECLINED}, {"value": json.dumps([*declined, inp.key])})
+    return Changed(message="Not a break: Friday won't ask about it again")

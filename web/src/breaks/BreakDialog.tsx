@@ -45,7 +45,7 @@ export function BreakDialog({ edit, onClose }: { edit: BreakEdit; onClose: () =>
   const start = edit.id === undefined ? (edit.start ?? today) : undefined
   // A new break's own state until it's added: from your defaults, a week from the day it was opened on.
   const [draft, setDraft] = useState<Vacation>(() => ({
-    id: 0, name: "", start: start ?? today, end: edit.id === undefined ? (edit.end ?? addWeek(start ?? today)) : today, days: 7, mode: "light",
+    id: 0, name: edit.id === undefined ? (edit.name ?? "") : "", start: start ?? today, end: edit.id === undefined ? (edit.end ?? addWeek(start ?? today)) : today, days: 7, mode: "light",
     per_day: defaults.per_day, pause: defaults.pause, plan_meals: defaults.plan_meals, keep_sleep: defaults.keep_sleep, own: [],
   }))
   const v = edit.id === undefined ? draft : saved

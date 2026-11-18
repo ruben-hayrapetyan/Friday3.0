@@ -140,6 +140,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/break_suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take a suggested break (it's added, with your defaults) or say it isn't one (not asked again). */
+        post: operations["break_suggestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/calendar_set": {
         parameters: {
             query?: never;
@@ -4635,6 +4652,40 @@ export interface components {
             series: components["schemas"]["SeriesChoice"][];
         };
         /**
+         * BreakSuggestionInput
+         * @description A suggested break (an Inbox decision, `break:<first>:<last>`): taken, it's added; not, it isn't asked again.
+         */
+        BreakSuggestionInput: {
+            /** Key */
+            key: string;
+            /**
+             * Take
+             * @default true
+             */
+            take?: boolean;
+        };
+        /** BreakSuggestionResult */
+        BreakSuggestionResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["Changed"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /**
          * BriefOut
          * @description The morning brief (DESIGN §20.4), as data and as plain text.
          */
@@ -5073,7 +5124,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "lock" | "late" | "learned";
+            kind: "lock" | "late" | "learned" | "break";
             /** Title */
             title: string;
             /** Detail */
@@ -5084,6 +5135,10 @@ export interface components {
             item_id?: number | null;
             /** Start */
             start?: string | null;
+            /** End */
+            end?: string | null;
+            /** Name */
+            name?: string | null;
             /**
              * Hours
              * @default 0
@@ -12827,6 +12882,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BatchAcceptResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    break_suggestion: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BreakSuggestionInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BreakSuggestionResult"];
                 };
             };
             /** @description Validation Error */

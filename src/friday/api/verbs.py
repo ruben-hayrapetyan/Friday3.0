@@ -92,6 +92,14 @@ VERBS = {
         False,
         'What a break can pause: every calendar, tag and repeating event (events made here are on "Friday").',
     ),
+    "break_suggestion": Verb(
+        "POST",
+        "/api/c/break_suggestion",
+        commands.BreakSuggestionInput,
+        True,
+        True,
+        "Take a suggested break (it's added, with your defaults) or say it isn't one (not asked again).",
+    ),
     "brief": Verb(
         "GET",
         "/api/q/brief",

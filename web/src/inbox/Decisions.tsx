@@ -52,14 +52,14 @@ export function useDecisionsTitle() {
   }, [n])
 }
 
-const KICKER: Record<string, string> = { late: "Will be late", lock: "A lock makes work late", learned: "What Friday learned, against a rule of yours" }
-const ICON: Record<string, string> = { late: "clock-countdown", lock: "lock-simple", learned: "scales" }
+const KICKER: Record<string, string> = { late: "Will be late", lock: "A lock makes work late", learned: "What Friday learned, against a rule of yours", break: "A break, from your calendar" }
+const ICON: Record<string, string> = { late: "clock-countdown", lock: "lock-simple", learned: "scales", break: "umbrella" }
 
 /** A decision opened: what it is, and its answers; `onDone` the moment you answer. */
 export function DecisionPane({ decision, onDone }: { decision: Decision; onDone: Done }) {
   return (
     <Pane icon={ICON[decision.kind] ?? "hand-pointing"} kicker={`To decide · ${KICKER[decision.kind] ?? "Only you can say"}`} title={decision.title} warn>
-      {decision.kind === "lock" ? <Lock decision={decision} onDone={onDone} /> : decision.kind === "learned" ? <Learned decision={decision} onDone={onDone} /> : <Late decision={decision} onDone={onDone} />}
+      {decision.kind === "lock" ? <Lock decision={decision} onDone={onDone} /> : decision.kind === "learned" ? <Learned decision={decision} onDone={onDone} /> : decision.kind === "break" ? <Break decision={decision} onDone={onDone} /> : <Late decision={decision} onDone={onDone} />}
     </Pane>
   )
 }
@@ -77,6 +77,28 @@ function Lock({ decision, onDone }: { decision: Decision; onDone: Done }) {
         </button>
         <button className="btn btn-secondary" onClick={() => onDone(keep({ pin_ids: [pin] }))}>
           Keep it
+        </button>
+      </Actions>
+    </>
+  )
+}
+
+/** A break Friday saw coming (breaks/): take it as it is, look at it first, or say it isn't one. */
+function Break({ decision, onDone }: { decision: Decision; onDone: Done }) {
+  const { setBreakEdit } = useShell()
+  const answer = useCommand("break_suggestion", { label: (o) => o.result.message ?? "Done" })
+  return (
+    <>
+      <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>{decision.detail}</span>
+      <Actions>
+        <button className="btn btn-primary" onClick={() => onDone(answer({ key: decision.key, take: true }))}>
+          Make it a break
+        </button>
+        <button className="btn btn-secondary" onClick={() => setBreakEdit({ start: decision.start ?? undefined, end: decision.end ?? undefined, name: decision.name ?? undefined })}>
+          Change it first
+        </button>
+        <button className="btn btn-ghost" onClick={() => onDone(answer({ key: decision.key, take: false }))}>
+          Not a break
         </button>
       </Actions>
     </>

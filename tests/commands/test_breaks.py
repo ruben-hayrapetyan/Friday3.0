@@ -304,3 +304,46 @@ class TestChoices:
         assert found["series"][0]["calendar"] == "Friday" and found["series"][0]["every"]
         assert {"name": "Friday", "repeats": 1} in found["calendars"]
         assert "Work" in found["tags"]
+
+
+class TestSuggested:
+    """Breaks are suggested too (18 Nov: "breaks can both be added and suggested"): from an all-day event that says
+    you're away, or from weekdays where your repeating events stop. A decision in the Inbox; yours to take or not."""
+
+    def suggested(self, app: App) -> list[dict]:
+        return [d for d in app.do("status")["decisions"] if d["kind"] == "break"]
+
+    def test_an_all_day_vacation_event_is_suggested_and_taken(self, app: App) -> None:
+        app.do("add", title="Vacation 🌴", when="fixed", start=f"{WED}T00:00", end="2026-10-24T00:00")
+        (one,) = self.suggested(app)
+        assert (one["start"], one["end"], one["name"]) == (WED, FRI, "Vacation 🌴") and "Vacation" in one["title"]
+        app.do("break_suggestion", key=one["key"], take=True)
+        (made,) = app.do("vacations")["vacations"]
+        assert (made["start"], made["end"], made["name"]) == (WED, FRI, "Vacation 🌴")
+        assert self.suggested(app) == []
+
+    def test_one_declined_isnt_asked_again(self, app: App) -> None:
+        app.do("add", title="Out of office", when="fixed", start=f"{THU}T00:00", end="2026-10-23T00:00")
+        (one,) = self.suggested(app)
+        app.do("break_suggestion", key=one["key"], take=False)
+        assert self.suggested(app) == [] and app.do("vacations")["vacations"] == []
+
+    def test_a_birthday_isnt_a_break(self, app: App) -> None:
+        app.do("add", title="Remy's Birthday", when="fixed", start=f"{WED}T00:00", end=f"{THU}T00:00")
+        assert self.suggested(app) == []
+
+    def test_weekdays_where_your_repeats_stop_are_suggested(self, app: App) -> None:
+        app.do("add", title="Lecture", when="fixed", start="2026-10-19T10:00", end="2026-10-19T11:00",
+               every="rrule:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", exceptions=[{"date": d, "skip": True} for d in ("2026-10-28", "2026-10-29", "2026-10-30")])  # fmt: skip
+        (one,) = self.suggested(app)
+        assert (one["start"], one["end"]) == ("2026-10-28", "2026-10-30")
+
+    def test_a_usual_week_suggests_nothing(self, app: App) -> None:
+        app.do("add", title="Lecture", when="fixed", start="2026-10-19T10:00", end="2026-10-19T11:00",
+               every="rrule:FREQ=WEEKLY;BYDAY=MO,WE,FR")  # fmt: skip
+        assert self.suggested(app) == []
+
+    def test_days_already_on_a_break_arent_suggested(self, app: App) -> None:
+        app.do("add", title="Vacation", when="fixed", start=f"{WED}T00:00", end="2026-10-24T00:00")
+        add_break(app)
+        assert self.suggested(app) == []

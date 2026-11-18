@@ -1349,5 +1349,12 @@ class VacationTickInput(Model):
     ticked: bool = True
 
 
+class BreakSuggestionInput(Model):
+    """A suggested break (an Inbox decision, `break:<first>:<last>`): taken, it's added; not, it isn't asked again."""
+
+    key: str
+    take: bool = True
+
+
 class VacationDayInput(Model):
     date: calendar_date
