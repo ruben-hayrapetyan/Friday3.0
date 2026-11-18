@@ -38,6 +38,12 @@ import { covered, DOCK_VAR } from "./dockRoom"
 type Menu = "time" | "more" | "swap" | null
 type Fit = { item_id: number; title: string; minutes: number }
 
+/** Whether the bar's main row shows: on a break day there are no planned times (breaks/), so only what you're timing
+ * or an event you're in has one; the break's own row says the rest. */
+export function nowRow({ onBreak, timing, inEvent }: { onBreak: boolean; timing: boolean; inEvent: boolean }): boolean {
+  return !onBreak || timing || inEvent
+}
+
 export function Dock() {
   const box = useDockCover()
   const now = useNow().data
@@ -48,6 +54,8 @@ export function Dock() {
   const { look, color } = useLook()
   const [menu, setMenu] = useState<Menu>(null)
   const toggle = (m: Exclude<Menu, null>) => setMenu(menu === m ? null : m)
+  const { today: planningDay } = useShell()
+  const onBreak = !!useBreakDay(planningDay).data?.vacation
   const sleep = useSleep().data
   const meals = useMeals().data
   const [opened, setOpened] = useState(false)
@@ -97,7 +105,7 @@ export function Dock() {
           {alongside.map((t) => (
             <Alongside key={t.item_id} timer={t} />
           ))}
-          {cur && timing && timer ? (
+          {!nowRow({ onBreak, timing: !!timer, inEvent: !!cur?.fixed }) ? null : cur && timing && timer ? (
             <Timing cur={cur} elapsed={timer.elapsed_s ?? 0} started={timer.started ?? null} next={next} dot={color(cur.area, cur.preset)} menu={menu} onMenu={toggle} onFold={fold} />
           ) : cur?.fixed ? (
             <InEvent cur={cur} next={next} dot={color(cur.area, cur.preset)} onFold={fold} />

@@ -45,7 +45,7 @@ export function BreakDay({ date }: { date: string }) {
   return (
     <DrawerFrame>
       <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 32 }}>
-        <span className="fr-kicker" style={{ color: "var(--fr-break)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span className="fr-kicker" style={{ color: "var(--fr-break)", flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
           {v ? `${v.name} · day ${v.day_n} of ${v.days}` : "Not on a break"}
         </span>
         {v && (

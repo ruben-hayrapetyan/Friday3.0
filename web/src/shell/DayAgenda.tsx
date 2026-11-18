@@ -77,13 +77,15 @@ function NowRule() {
 /** The day's events, planned work and deadlines, by the clock; all-day events first. */
 export function agendaOf(day: string, plan: Schemas["PlanOut"] | undefined, calendar: Schemas["CalendarOut"] | undefined): Entry[] {
   const out: Entry[] = []
+  // A break day has a list, not times (breaks/): its paused events and planned work aren't the day's; what you timed is
+  const onBreak = !!calendar?.days.find((d) => d.date === day)?.vacation
   for (const f of plan?.fixed ?? []) {
-    if (!f.start || !f.end || f.event_kind === "shove") continue
+    if (!f.start || !f.end || f.event_kind === "shove" || (onBreak && f.left_out === "paused")) continue
     const allDay = f.start.endsWith("T00:00") && f.end.endsWith("T00:00") && f.end > f.start
     if (allDay ? !(f.start.slice(0, 10) <= day && day < f.end.slice(0, 10)) : !f.start.startsWith(day)) continue
     out.push({ key: `F${f.id}`, start: f.start, end: f.end, title: f.title, sort: allDay ? "allday" : "event", area: f.area, block: fixedBlock(f as Item & { start: string; end: string }), event: f })
   }
-  const work = [...(plan?.blocks ?? []).filter((b) => b.state !== "timed" && b.state !== "gone"), ...(plan?.sessions ?? [])]
+  const work = [...(plan?.blocks ?? []).filter((b) => b.state !== "timed" && b.state !== "gone" && !onBreak), ...(plan?.sessions ?? [])]
   for (const b of work) {
     if (b.start.startsWith(day)) out.push({ key: b.key, start: b.start, end: b.end, title: b.title, sort: "work", area: b.area, block: b, missed: b.state === "missed" })
   }

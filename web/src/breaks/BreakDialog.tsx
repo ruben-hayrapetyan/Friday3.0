@@ -213,7 +213,7 @@ const addWeek = (date: string) => {
 /** A row's value, as To-do details shows one: words in a well, opening its choices. */
 export function Value({ onClick, icon, children }: { onClick: () => void; icon: string; children: ReactNode }) {
   return (
-    <button onClick={onClick} className="fr-plain fr-well tnum" style={{ justifySelf: "start", display: "inline-flex", gap: 6, alignItems: "center", padding: "4px 10px", borderRadius: "var(--radius-sm)", fontSize: 12.5, textAlign: "left", maxWidth: "100%", cursor: "pointer" }}>
+    <button onClick={onClick} className="fr-plain fr-well tnum" style={{ justifySelf: "start", alignSelf: "flex-start", display: "inline-flex", gap: 6, alignItems: "center", padding: "4px 10px", borderRadius: "var(--radius-sm)", fontSize: 12.5, textAlign: "left", maxWidth: "100%", cursor: "pointer" }}>
       <Icon name={icon} size={12} style={{ flex: "none" }} />
       <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{children}</span>
       <Icon name="caret-down" size={10} style={{ opacity: 0.6, flex: "none" }} />
@@ -263,9 +263,14 @@ function Toggle({ on, label, onToggle, children }: { on: boolean; label: string;
   )
 }
 
+/** Work due during a break: not meals, routines or habits, which are part of the day (as Insights counts work). */
+export function dueInside<T extends { due?: string | null; preset?: string | null; when?: string | null }>(items: T[], start: string, end: string): T[] {
+  return items.filter((i) => !!i.due && i.due.slice(0, 10) >= start && i.due.slice(0, 10) <= end && i.preset !== "Routine" && i.preset !== "Habit" && i.when !== "fixed")
+}
+
 /** What's due during a break, and what happens to it. */
 function DueInside({ start, end, mode }: { start: string; end: string; mode: string }) {
-  const due = (useItems().data ?? []).filter((i) => i.due && i.due.slice(0, 10) >= start && i.due.slice(0, 10) <= end)
+  const due = dueInside(useItems().data ?? [], start, end)
   if (!due.length) return <span style={{ fontSize: 12.5, color: "var(--color-neutral-400)" }}>Nothing due</span>
   const names = due.slice(0, 3).map((i) => i.title)
   const more = due.length > 3 ? ` and ${due.length - 3} more` : ""

@@ -55,3 +55,16 @@ describe("on the calendar", () => {
     }
   })
 })
+
+describe("what's due during a break", () => {
+  it("is work, not meals, routines, habits or events (found in the demo: 19 things, Breakfast, Lunch, Dinner…)", async () => {
+    const { dueInside } = await import("./BreakDialog")
+    const items = [
+      { title: "Lunch", due: "2026-11-19T14:30", preset: "Routine", when: "window" },
+      { title: "Run", due: "2026-11-19T20:00", preset: "Habit", when: "window" },
+      { title: "Lab report", due: "2026-11-20T17:00", preset: "Assignment", when: "window" },
+      { title: "Essay", due: "2026-11-25T17:00", preset: "Assignment", when: "window" },
+    ]
+    expect(dueInside(items, "2026-11-18", "2026-11-22").map((i) => i.title)).toEqual(["Lab report"])
+  })
+})

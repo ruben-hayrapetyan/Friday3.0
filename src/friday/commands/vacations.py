@@ -184,7 +184,9 @@ def vacation_day(ctx: Ctx, inp: VacationDayInput) -> VacationDayOut:
 
 
 def vacation_things(ctx: Ctx, day: date) -> list[VacationThing]:
-    """A break day's list, in the order planned, ticked ones kept."""
+    """A break day's list, in the order planned, ticked ones kept. A meal is never on it unless the break plans meals:
+    one planned before the break was added (a break added mid-day) stays in the plan as begun, not as a thing to do."""
+    v = breaks.on(day, all_of(ctx))
     inp = VacationDayInput(date=day)
     planned = planned_minutes(ctx, inp.date)
     ticks = {r["item_id"]: r for r in rows(ctx.conn, "SELECT * FROM vacation_ticks WHERE user_id = ? AND date = ?",
@@ -199,6 +201,8 @@ def vacation_things(ctx: Ctx, day: date) -> list[VacationThing]:
         if row is None or row["status"] == "dropped" or (item_id not in ticks and row["status"] != "todo"):
             continue
         item = item_from_row(row)
+        if breaks.is_meal(item) and not (v and v.plan_meals) and item_id not in ticks:
+            continue
         things.append(
             VacationThing(item_id=item_id, title=item.title, area=areas.get(item.area_id or 0), preset=item.preset,
                           ticked=item_id in ticks, done=row["status"] == "done", timed_min=timed.get(item_id, 0))

@@ -174,6 +174,19 @@ class TestWork:
         assert minutes_on(app, WED, lunch) > 0
 
 
+    def test_a_break_added_mid_day_lists_no_meal_planned_that_morning(self, app: App) -> None:
+        """Found in the demo, 18 Nov: a break added at 4pm listed that day's Breakfast and Lunch, kept as blocks begun
+        before now from the plan made before the break."""
+        app.do("series_add", title="Lunch", preset="Routine", every="day", release_offset_min=450, due_offset_min=630,
+               min_min=15, ideal_min=30, max_min=30)  # fmt: skip
+        app.at(f"{WED}T08:00")
+        replan(app.conn, app.now_utc)  # Wednesday's lunch planned, before any break
+        app.at(f"{WED}T16:00")
+        add_break(app)
+        replan(app.conn, app.now_utc)
+        assert [t["title"] for t in app.do("vacation_day", date=WED)["items"]] == []
+
+
 class TestTicking:
     def test_ticking_a_small_thing_finishes_it_and_unticking_opens_it_again(self, app: App) -> None:
         rent = task(app, "Pay rent", 15, f"{WED}T23:00", release=f"{WED}T04:00")
