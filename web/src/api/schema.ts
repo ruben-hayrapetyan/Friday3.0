@@ -2622,6 +2622,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/c/update_test_join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Become a test user with the code you were given (H224): kept, and checked with the site now; from then on */
+        post: operations["update_test_join"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/c/update_test_leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop being a test user: the code is forgotten, you keep the version you have, and from now on you're offered */
+        post: operations["update_test_leave"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/c/vacation_add": {
         parameters: {
             query?: never;
@@ -11514,6 +11548,23 @@ export interface components {
             /** Needed */
             needed: boolean;
         };
+        /** TestUserJoinInput */
+        TestUserJoinInput: {
+            /** Code */
+            code: string;
+        };
+        /**
+         * TestUserOut
+         * @description This Friday as a test user (H224): the code typed in Settings → Updates, and what the site said of it.
+         */
+        TestUserOut: {
+            /** Code */
+            code: string;
+            /** Name */
+            name?: string | null;
+            /** Known */
+            known?: boolean | null;
+        };
         /**
          * TimeGroup
          * @description Where the week's time went, one row: a tag, a course read from the titles, or a kind (meals, errands).
@@ -11957,9 +12008,52 @@ export interface components {
             restart?: "now" | "quit";
             /** Staged */
             staged?: string | null;
+            test_user?: components["schemas"]["TestUserOut"] | null;
         };
         /** UpdateStopResult */
         UpdateStopResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["UpdateStatusOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** UpdateTestJoinResult */
+        UpdateTestJoinResult: {
+            /** Command Id */
+            command_id: number | null;
+            result: components["schemas"]["UpdateStatusOut"];
+            /** Provisional */
+            provisional?: components["schemas"]["BlockOut"][] | null;
+            changes?: components["schemas"]["ChangeOut"] | null;
+            /**
+             * Preview
+             * @default false
+             */
+            preview?: boolean;
+            /**
+             * Repeated
+             * @default false
+             */
+            repeated?: boolean;
+            /** Generation */
+            generation?: number | null;
+        };
+        /** UpdateTestLeaveResult */
+        UpdateTestLeaveResult: {
             /** Command Id */
             command_id: number | null;
             result: components["schemas"]["UpdateStatusOut"];
@@ -12005,6 +12099,11 @@ export interface components {
              * @default []
              */
             fixed?: string[];
+            /**
+             * Test
+             * @default false
+             */
+            test?: boolean;
         };
         /**
          * VacationAddInput
@@ -18284,6 +18383,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UpdateStopResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_test_join: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestUserJoinInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateTestJoinResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_test_leave: {
+        parameters: {
+            query?: {
+                preview?: "false" | "true" | "full";
+            };
+            header?: {
+                "idempotency-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Empty"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateTestLeaveResult"];
                 };
             };
             /** @description Validation Error */

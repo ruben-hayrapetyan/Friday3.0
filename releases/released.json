@@ -1,6 +1,27 @@
 {
-  "current": "0.5.3",
+  "current": "0.5.4",
   "versions": [
+    {
+      "version": "0.5.4",
+      "released": "2026-11-19",
+      "sha256": "e6747d43ef993d2a3f0977f557d6ad0737a7265eda3ae6e9089e4d1cff929189",
+      "bytes": 239751884,
+      "commit": "660c23fe994a40d13a694b6b2e098c063056195b",
+      "notes": {
+        "summary": "Get new versions early as a test user, and What if no longer plans again what you've already started today.",
+        "new": [
+          "Test users: if you were given a code, type it in Settings → Updates to get new versions before everyone else. Friday says whose code it is, and Stop being a test user keeps the version you have."
+        ],
+        "changed": [
+          "The update popup says when a version is for test users, before everyone."
+        ],
+        "fixed": [
+          "What if planned again work you had already started or finished that morning, and a call added for tonight could \"make Wednesday's work end later\". It now keeps everything begun before now as it is.",
+          "Settings → Updates said \"Looked just now\" every time when Friday's time zone was ahead of the Mac's. It now says when Friday really last looked.",
+          "After you chose Leave it late, Friday could ask about the same work again every time you added something. Your answer now stands for a day, whatever you add, and after that it asks only if the work has become an hour later."
+        ]
+      }
+    },
     {
       "version": "0.5.3",
       "released": "2026-11-18",

@@ -1617,6 +1617,22 @@ VERBS = {
         False,
         "Stop a download that's going on; nothing is changed.",
     ),
+    "update_test_join": Verb(
+        "POST",
+        "/api/c/update_test_join",
+        commands.TestUserJoinInput,
+        True,
+        False,
+        "Become a test user with the code you were given (H224): kept, and checked with the site now; from then on",
+    ),
+    "update_test_leave": Verb(
+        "POST",
+        "/api/c/update_test_leave",
+        commands.Empty,
+        True,
+        False,
+        "Stop being a test user: the code is forgotten, you keep the version you have, and from now on you're offered",
+    ),
     "vacation_add": Verb(
         "POST",
         "/api/c/vacation_add",

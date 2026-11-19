@@ -102,7 +102,10 @@ export function UpdateDialogs() {
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
           <H size={24}>{working ? headline(status) : `Friday ${newest(status)?.version} is ready`}</H>
-          <span style={{ fontSize: 13, color: "var(--color-neutral-400)" }}>You have {status.have}</span>
+          <span style={{ fontSize: 13, color: "var(--color-neutral-400)" }}>
+            You have {status.have}
+            {newest(status)?.test ? " · for test users, before everyone" : ""}
+          </span>
         </div>
         <button className="btn btn-icon btn-ghost" onClick={later} aria-label="Close" style={{ width: 28, height: 28 }}>
           <Icon name="x" />

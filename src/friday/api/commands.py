@@ -431,6 +431,10 @@ class SettingsSetInput(Model):
     value: Any
 
 
+class TestUserJoinInput(Model):
+    code: str  # as typed: K7QF-29XM, k7qf29xm and "k7qf 29xm" are the same code
+
+
 class PaceInput(Model):
     name: str | None = None  # a saved pace; dials alone mean custom, starting from the dials in effect
     capacity: float | None = None

@@ -699,6 +699,9 @@ def test_unlogged_commands_are_only_those_with_no_undo_or_a_secret_result() -> N
         "update_start",
         "update_stop",
         "whats_new_seen",
+        # test users (H224): a code joined or left; Stop being a test user's toast has its own Undo (it joins again)
+        "update_test_join",
+        "update_test_leave",
     } == UNLOGGED
 
 

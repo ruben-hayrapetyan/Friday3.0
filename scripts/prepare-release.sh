@@ -4,7 +4,7 @@
 # client, C77), signs it with your Developer ID, makes the disk image, has Apple notarize it and staples the ticket
 # to it (C88), and uploads it with its draft notes to the laptop. There it waits in
 # the admin hub for you to edit and approve the notes and press
-# Release. Nothing is released here.
+# Release to test users or Release to everyone (H224–H227). Nothing is released here.
 #
 #   scripts/prepare-release.sh VERSION NOTES.json
 #

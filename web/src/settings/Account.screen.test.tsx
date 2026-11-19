@@ -200,6 +200,61 @@ describe("Updates", () => {
     expect(screen.queryByText("It goes in when you quit Friday, and opens the next time you do.")).toBeNull()
   })
 
+  // Test users (H224): a code typed in Settings → Updates, shown at once, then whose code the site says it is
+  it("joins as a test user with a code, saying it's checking before the server answers, then whose it is", async () => {
+    let status: Status = idle()
+    let answerJoin: () => void = () => {}
+    undo.push(answer("update_status", () => ({ json: status })))
+    const inner = window.fetch
+    const held = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input)
+      if (!url.endsWith("/api/c/update_test_join")) return inner(input, init)
+      sent.push({ name: "update_test_join", body: JSON.parse(String(init?.body)) })
+      await new Promise<void>((r) => (answerJoin = r))
+      status = { ...idle(), test_user: { code: "K7QF-29XM", name: "Ana", known: true }, versions: [{ ...version("0.4.0"), test: true }] }
+      return new Response(JSON.stringify({ command_id: null, result: status }), { headers: { "content-type": "application/json" } })
+    }) as typeof fetch
+    window.fetch = held
+    globalThis.fetch = held
+    undo.push(() => ((window.fetch = inner), (globalThis.fetch = inner)))
+    const { user } = await openFriday("/settings/updates")
+    const box = await screen.findByRole("textbox", { name: "Test user code" })
+    const join = screen.getByRole("button", { name: "Join" }) as HTMLButtonElement
+    expect(join.disabled).toBe(true)
+    await user.type(box, "k7qf 29xm")
+    await user.click(join)
+    expect(await screen.findByText("Checking your code…")).toBeTruthy() // the server hasn't answered yet
+    expect(screen.getByText("Code K7QF-29XM")).toBeTruthy()
+    expect((await waitForSent("update_test_join")).body).toEqual({ code: "K7QF-29XM" })
+    answerJoin()
+    expect(await screen.findByText("You're a test user, as Ana")).toBeTruthy()
+    expect(screen.getByText("Friday 0.4.0 is out")).toBeTruthy()
+    await user.click(screen.getByRole("button", { name: "See what's new" }))
+    expect(within(await screen.findByRole("dialog")).getByText("You have 0.3.3 · for test users, before everyone")).toBeTruthy()
+  })
+
+  it("says when the site doesn't know the code, and stopping being a test user can be undone", async () => {
+    let status: Status = { ...idle(), test_user: { code: "K7QF-29XM", name: null, known: false } }
+    undo.push(answer("update_status", () => ({ json: status })))
+    undo.push(answer("update_test_leave", () => ((status = idle()), { json: { command_id: null, result: status } })))
+    undo.push(answer("update_test_join", () => ((status = { ...idle(), state: "checking", test_user: { code: "K7QF-29XM", name: null, known: null } }), { json: { command_id: null, result: status } })))
+    const { user } = await openFriday("/settings/updates")
+    expect(await screen.findByText("Friday's site doesn't know this code")).toBeTruthy()
+    expect(screen.getByText(/they may have removed it/)).toBeTruthy()
+    await user.click(screen.getByRole("button", { name: "Stop being a test user" }))
+    expect(await screen.findByText("You're no longer a test user. You keep the version you have.")).toBeTruthy()
+    expect(screen.getByRole("textbox", { name: "Test user code" })).toBeTruthy()
+    await user.click(screen.getByRole("button", { name: "Undo" }))
+    expect((await waitForSent("update_test_join")).body).toEqual({ code: "K7QF-29XM" })
+    expect(await screen.findByText("Code K7QF-29XM")).toBeTruthy()
+  })
+
+  it("isn't offered where Friday doesn't look for updates", async () => {
+    await openFriday("/settings/updates")
+    expect(await screen.findByText("This Friday doesn't look for updates")).toBeTruthy()
+    expect(screen.queryByRole("textbox", { name: "Test user code" })).toBeNull()
+  })
+
   it("tells the Mac app to swap a ready update in", async () => {
     const post = vi.fn()
     Object.assign(window, { webkit: { messageHandlers: { friday: { postMessage: post } } } })

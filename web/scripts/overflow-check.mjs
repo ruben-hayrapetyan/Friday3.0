@@ -94,6 +94,12 @@ const STATES = [
   { name: "ask", path: "/", click: ["Plan…", "Ask "] },
   { name: "triage", path: "/?triage" },
   { name: "update popup", path: "/settings/updates", answer: () => ({ update_status: UPDATE }), click: ["See what's new"] },
+  // 18 Nov: test users (H224): the code box, a long name the site knows the code by, a code it doesn't know, and the
+  // popup offering a version for test users
+  { name: "updates test user box", path: "/settings/updates", answer: () => ({ update_status: UPDATE }) },
+  { name: "updates test user", path: "/settings/updates", answer: () => ({ update_status: TESTER({ name: "Alexandria Montgomery-Okonkwo", known: true }) }) },
+  { name: "updates test code unknown", path: "/settings/updates", answer: () => ({ update_status: TESTER({ name: null, known: false }) }) },
+  { name: "update popup test users", path: "/settings/updates", answer: () => ({ update_status: TESTER({ name: "Ana", known: true }) }), click: ["See what's new"] },
   { name: "terms changed", path: "/", answer: async (base) => ({ terms: { ...(await (await fetch(`${base}/api/q/terms`)).json()), accepted: "2026-01-01", needed: true, changes: ["Section 3 says plainly what Friday's code comes with", "The section on which law applies is gone"] } }) },
   { name: "setup walk", path: "/settings/integrations", click: ["Change a Setup answer", "All of Setup"], then: Array(16).fill("Start walking|Next stop|Continue") },
   ...SETTINGS.map((s) => ({ name: `settings ${s}`, path: `/settings/${s}`, open: true })),
@@ -103,6 +109,7 @@ const STATES = [
 // A newer Friday to update to, as Settings → Updates would show one (a Friday run from its code never looks).
 const NOTES = (v) => ({ version: v, released: "2026-11-10", summary: `Friday ${v} plans around your shifts and reads your school's calendar feeds.`, new: ["Shifts from When I Work, Deputy and Homebase, planned around like classes"], changed: ["Settings open where you left them"], fixed: ["Sync now after the Mac wakes from sleep"] })
 const UPDATE = { checks: true, have: "0.3.3", last_checked: new Date().toISOString(), state: "idle", progress: 0, message: null, versions: [NOTES("0.4.0"), NOTES("0.3.4")], popup: false, whats_new: [], restart: "now", staged: null }
+const TESTER = (said) => ({ ...UPDATE, versions: [{ ...NOTES("0.4.1"), test: true }, NOTES("0.4.0")], test_user: { code: "K7QF-29XM", ...said } })
 
 // What the popups show: Alex's sample has exams but no projects or ongoing projects, so one of each is made once,
 // with long names and a step of every kind, and its address given.

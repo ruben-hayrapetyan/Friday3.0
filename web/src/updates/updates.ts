@@ -10,7 +10,8 @@ import { inMacApp } from "@/dialogs/Setup"
 
 export type UpdateStatus = Schemas["UpdateStatusOut"]
 export type UpdateVersion = Schemas["UpdateVersionOut"]
-type Act = "update_check" | "update_later" | "update_start" | "update_stop" | "whats_new_seen"
+export type TestUser = Schemas["TestUserOut"]
+type Act = "update_check" | "update_later" | "update_start" | "update_stop" | "whats_new_seen" | "update_test_join" | "update_test_leave"
 
 const KEY = ["updates"] as const
 const BUSY = new Set(["checking", "downloading"])
@@ -27,9 +28,12 @@ export function useUpdates() {
 /** One of the updater's commands; its answer is the new state, shown at once. A refusal ("this Friday is built from
  * its code here", Friday not where it can be replaced) is said in a toast, and the state read again (audit, 12 Nov:
  * it went nowhere, and Update did nothing you could see). Undefined then. */
-export async function runUpdateAct(client: QueryClient, toast: (t: Toast) => void, name: Act): Promise<UpdateStatus | undefined> {
+export async function runUpdateAct(client: QueryClient, toast: (t: Toast) => void, name: Act, input: Record<string, unknown> = {}): Promise<UpdateStatus | undefined> {
+  const shown = client.getQueryData<UpdateStatus>(KEY)
+  const before = shown && optimistic(shown, name, input)
+  if (before) client.setQueryData(KEY, before)
   try {
-    const out = await command(name, {})
+    const out = await command(name, input as never)
     client.setQueryData(KEY, out.result)
     return out.result
   } catch (error) {
@@ -42,7 +46,28 @@ export async function runUpdateAct(client: QueryClient, toast: (t: Toast) => voi
 export function useUpdateAct() {
   const client = useQueryClient()
   const toast = useToast()
-  return useCallback((name: Act) => runUpdateAct(client, toast, name), [client, toast])
+  return useCallback((name: Act, input?: Record<string, unknown>) => runUpdateAct(client, toast, name, input), [client, toast])
+}
+
+/** A code as Friday keeps it, from however it was typed ("k7qf 29xm" is K7QF-29XM), or null if it isn't eight letters
+ * and digits (H224). */
+export function testCode(typed: string): string | null {
+  const bare = typed.toUpperCase().replace(/[\s-]/g, "")
+  return /^[A-Z0-9]{8}$/.test(bare) ? `${bare.slice(0, 4)}-${bare.slice(4)}` : null
+}
+
+/** What joining or leaving shows before the server answers (UI-PRINCIPLES 2: every click shows its result at once). */
+function optimistic(status: UpdateStatus, name: Act, input: Record<string, unknown>): UpdateStatus | null {
+  if (name === "update_test_leave") return { ...status, test_user: null, versions: (status.versions ?? []).filter((v) => !v.test) }
+  const code = name === "update_test_join" ? testCode(String(input.code ?? "")) : null
+  return code ? { ...status, state: "checking", test_user: { code, name: null, known: null } } : null
+}
+
+/** "You're a test user, as Ana", "Checking your code…", or that the site doesn't know it. */
+export function testUserLine(user: TestUser, state: UpdateStatus["state"]): string {
+  if (user.known) return user.name ? `You're a test user, as ${user.name}` : "You're a test user"
+  if (user.known === false) return "Friday's site doesn't know this code"
+  return state === "checking" ? "Checking your code…" : "Your code is checked the next time Friday looks"
 }
 
 // Whenever Friday's window opens or comes back into view, the server looks for a new version (H208, 15 Nov: "whenever
@@ -97,6 +122,8 @@ export function lookedAgo(at: string | null | undefined, now: Date): string {
   if (!at) return "Hasn't looked yet"
   const then = new Date(at)
   const minutes = Math.round((now.getTime() - then.getTime()) / 60_000)
+  // later than now by more than a minute: the clocks disagree, so the time itself, never "just now" (19 Nov)
+  if (minutes < -1) return `Looked at ${then.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase()}`
   if (minutes < 1) return "Looked just now"
   if (minutes < 60) return `Looked ${minutes} minute${minutes === 1 ? "" : "s"} ago`
   const hours = Math.round(minutes / 60)

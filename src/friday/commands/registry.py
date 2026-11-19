@@ -189,6 +189,7 @@ YOURS_ONLY = frozenset({
     "gmail_app_set", "google_connect", "google_connect_cancel", "google_remove", "google_client_save",
     "local_model_use", "local_model_cancel", "update_start", "update_stop", "import_personal", "terms_accept",
     "integration_connect", "integration_disconnect", "mail_app_set", "mail_app_forget",
+    "update_test_join", "update_test_leave",  # which versions this Friday is offered (H224): yours to choose
 })  # fmt: skip
 YOURS_ONLY_SETTINGS = frozenset({"phone", "llm", "webhooks", "google", "gcal", "gmail", "server", "updates", "notify"})
 
