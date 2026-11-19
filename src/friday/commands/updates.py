@@ -32,7 +32,7 @@ from friday.commands.connecting import data_file
 from friday.commands.registry import Ctx, command, query
 from friday.core.db import connect, transaction
 from friday.core.items import FieldError
-from friday.core.time import to_local
+from friday.core.time import to_zoned
 from friday.planner.store import kv_get, kv_set
 from friday.sync import updates as net
 
@@ -188,7 +188,8 @@ def status(ctx: Ctx) -> UpdateStatusOut:
     return UpdateStatusOut(
         checks=bool(feed_url() and mine),
         have=mine,
-        last_checked=to_local(checked, ctx.tz).isoformat(timespec="minutes") if checked is not None else None,
+        # with its zone (19 Nov: without it, a Mac in another zone than Friday's read it hours off: "just now" always)
+        last_checked=to_zoned(checked, ctx.tz).isoformat(timespec="minutes") if checked is not None else None,
         state=run.state,
         progress=run.progress,
         message=run.message,

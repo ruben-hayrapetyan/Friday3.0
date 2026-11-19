@@ -107,7 +107,7 @@ def test_a_build_without_the_feed_never_looks_and_says_so(
 
 def test_at_launch_it_finds_every_newer_version_with_its_notes_and_asks(app: App, site: Site) -> None:
     status = launch(app)
-    assert status["checks"] and status["have"] == "0.1.0" and status["last_checked"] == "2026-10-19T09:00"
+    assert status["checks"] and status["have"] == "0.1.0" and status["last_checked"] == "2026-10-19T09:00-04:00"
     assert [v["version"] for v in status["versions"]] == ["0.3.0", "0.2.0"]
     assert status["versions"][0]["summary"] == "Three." and status["versions"][1]["fixed"] == ["Fixed in 0.2.0"]
     assert status["popup"] is True and status["whats_new"] == []
@@ -258,3 +258,18 @@ def test_up_to_date_there_is_nothing_to_download(app: App, site: Site, monkeypat
     launch(app)
     with pytest.raises(FieldError, match="there's no newer version to download"):
         app.do("update_start")
+
+
+# 19 Nov, a user: "checked just now" every time they opened Settings → Updates. The time was sent as Friday's clock
+# without its zone, and the page read it in the Mac's own: with Friday's zone ahead of the Mac's, the last look was
+# hours in the future, which reads as "just now".
+
+
+def test_when_it_last_looked_says_its_zone_so_any_clock_reads_the_same_moment(app: App, site: Site) -> None:
+    from datetime import datetime, timedelta
+
+    app.do("settings_set", key="time", value={"timezone": "Asia/Tokyo", "horizon_days": 7})
+    said = launch(app)["last_checked"]
+    looked = datetime.fromisoformat(said)
+    assert looked.utcoffset() == timedelta(hours=9)  # Tokyo's clock, saying so
+    assert said == "2026-10-19T22:00+09:00"  # Monday 9:00 in New York is 22:00 in Tokyo: the same moment

@@ -543,7 +543,7 @@ class UpdateStatusOut(Model):
 
     checks: bool  # looks for updates: every Mac build but Friday Test (H169)
     have: str | None  # the version running
-    last_checked: str | None = None  # local time
+    last_checked: str | None = None  # Friday's clock with its zone: 2026-11-19T13:40+09:00
     state: Literal["idle", "checking", "downloading", "ready", "failed"]
     progress: float = 0.0  # while downloading, 0 to 1
     message: str | None = None  # why it failed, or that it stopped, in a sentence

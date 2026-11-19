@@ -122,6 +122,8 @@ export function lookedAgo(at: string | null | undefined, now: Date): string {
   if (!at) return "Hasn't looked yet"
   const then = new Date(at)
   const minutes = Math.round((now.getTime() - then.getTime()) / 60_000)
+  // later than now by more than a minute: the clocks disagree, so the time itself, never "just now" (19 Nov)
+  if (minutes < -1) return `Looked at ${then.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase()}`
   if (minutes < 1) return "Looked just now"
   if (minutes < 60) return `Looked ${minutes} minute${minutes === 1 ? "" : "s"} ago`
   const hours = Math.round(minutes / 60)

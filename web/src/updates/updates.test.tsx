@@ -20,6 +20,14 @@ describe("what Settings → Updates and the popup say", () => {
     expect(headline(status({ checks: false }))).toBe("This Friday doesn't look for updates")
   })
 
+  // 19 Nov, a user: "checked just now" every time; the time came without its zone and read as hours ahead
+  it("reads a time with its zone as that moment, and never calls a later one just now", () => {
+    const now = new Date("2026-11-19T04:45:00Z")
+    expect(lookedAgo("2026-11-19T13:40+09:00", now)).toBe("Looked 5 minutes ago") // Tokyo's clock: 4:40 UTC
+    expect(lookedAgo("2026-11-19T20:40+09:00", now)).not.toBe("Looked just now") // hours after now: clocks disagree
+    expect(lookedAgo("2026-11-19T04:45:30Z", now)).toBe("Looked just now") // seconds apart is just now
+  })
+
   it("says when it last looked as people say it", () => {
     const now = new Date("2026-11-07T12:00:00")
     expect(lookedAgo(null, now)).toBe("Hasn't looked yet")
