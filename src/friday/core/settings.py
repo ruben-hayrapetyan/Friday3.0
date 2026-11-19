@@ -385,6 +385,17 @@ def exam_focus_of(settings: Mapping[str, Any]) -> ExamFocus:
     return ExamFocus()
 
 
+def exam_focus_days(settings: Mapping[str, Any], exam_id: int | None, title: str) -> int | None:
+    """How many days before an exam its course has to itself, or None: the exam's own (its popup, 19 Nov, a user's
+    notes: "an argument for each exam focus time to be different - you wouldn't study as much for a quiz compared to a
+    prelim"), else the rule's when it's on and the title is an exam's. Someone without exams has neither."""
+    own = (settings.get("exam_focus_each") or {}).get(str(exam_id)) if exam_id is not None else None
+    if own is not None:
+        return min(14, max(0, int(own))) or None
+    focus = exam_focus_of(settings)
+    return focus.days_before if focus.on and focus.finds(title) else None
+
+
 def exam_focus_rule(days_before: int, words: tuple[str, ...] | None = None) -> RuleSpec:
     """The rule a saved exam focus setting became (friday.toml's [exam_focus], before 14 Nov)."""
     days = min(14, max(1, int(days_before)))
@@ -549,6 +560,8 @@ SETTINGS_TYPES: dict[str, Any] = {
     "fading_late": FadingLate,  # work that matters less the longer it's overdue (3 Nov)
     "sittings": Sittings,  # one go, and which kinds to split first
     "calendar_look": CalendarLook,  # each calendar's pigment and toolbar button
+    # an exam's own days of focus before it, by its id, 0 for none; an exam not here follows the rule (19 Nov)
+    "exam_focus_each": dict[str, int],
     **INTEGRATION_TYPES,
 }
 ADAPTERS = {key: TypeAdapter(kind) for key, kind in SETTINGS_TYPES.items()}
@@ -596,6 +609,7 @@ DEFAULTS: dict[str, Any] = {
     "fading_late": FadingLate(),
     "sittings": Sittings(),
     "calendar_look": CalendarLook(),
+    "exam_focus_each": {},
     **INTEGRATION_DEFAULTS,
 }
 

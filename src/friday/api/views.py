@@ -274,7 +274,9 @@ class ExamOut(Model):
     remaining_min: int
     planned_finish: str | None  # when the last prep is planned to end, once all of it is planned
     status: Literal["no_prep", "ready", "on_track", "late", "unplanned"]
-    focus_from: str | None  # when exam focus starts for it (other courses wait), if that rule is on
+    focus_from: str | None  # when exam focus starts for it (other courses wait): its own days, else the rule's
+    focus_days: int | None = None  # its days of focus: its own (0 for none), else the rule's, else None (19 Nov)
+    focus_own: bool = False  # it has days of its own, not the rule's
 
 
 class WeekLoad(Model):

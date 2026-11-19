@@ -5,7 +5,7 @@ import { screen, waitFor, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { friday, openFriday, waitForSent } from "@/test/friday"
 
-type Decision = { key: string; kind: string; items?: { item_id: number }[] }
+type Decision = { key: string; kind: string; items?: { item_id: number; waiting?: { id: number; title: string }[] }[] }
 const decisions = async () => ((await friday.q("status")) as { decisions: Decision[] }).decisions
 const day = (offset: number) => {
   const d = new Date(Date.now() + offset * 86_400_000)

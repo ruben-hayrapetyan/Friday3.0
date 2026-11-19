@@ -18968,6 +18968,22 @@
        }
       ],
       "title": "Focus From"
+     },
+     "focus_days": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Focus Days"
+     },
+     "focus_own": {
+      "type": "boolean",
+      "title": "Focus Own",
+      "default": false
      }
     },
     "additionalProperties": false,

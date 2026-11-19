@@ -5635,6 +5635,13 @@ export interface components {
             status: "no_prep" | "ready" | "on_track" | "late" | "unplanned";
             /** Focus From */
             focus_from: string | null;
+            /** Focus Days */
+            focus_days?: number | null;
+            /**
+             * Focus Own
+             * @default false
+             */
+            focus_own?: boolean;
         };
         /** ExamPrepOut */
         ExamPrepOut: {

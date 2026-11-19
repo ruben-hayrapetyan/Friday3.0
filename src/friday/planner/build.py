@@ -14,7 +14,7 @@ from friday.core.guess import EXAM, same_course, subject_of, subjects
 from friday.core.items import Firmness, Item
 from friday.core.pace import DayScales, budget_factor
 from friday.core.quickadd import MEAL
-from friday.core.settings import SleepDay, bedtime_minutes, exam_focus_of, minutes_of
+from friday.core.settings import SleepDay, bedtime_minutes, exam_focus_days, minutes_of
 from friday.core.textnorm import identity_text, norm
 from friday.core.time import (
     UNIT_MIN,
@@ -377,7 +377,7 @@ def natural(title: str) -> list[tuple[int, int, str]]:
 
 
 def window(item: Item, inp: BuildInput, by_id: Mapping[int, Item], fixed: Mapping[int, Item],
-           now: int, exams: list[tuple[int, int, str]]) -> tuple[int | None, int | None]:  # fmt: skip
+           now: int, exams: list[tuple[int, int, str, int]]) -> tuple[int | None, int | None]:  # fmt: skip
     """Release and due, with a parent's due inherited and dependencies on fixed items folded in (§6.4)."""
     release = parse_utc(item.release_utc) if item.release_utc else None
     due = parse_utc(item.due_utc) if item.due_utc else None
@@ -405,31 +405,30 @@ def firmness_of(item: Item, by_id: Mapping[int, Item]) -> Firmness:
     return item.firmness
 
 
-def focus_exams(fixed: Mapping[int, Item], settings: Mapping[str, Any]) -> list[tuple[int, int, str]]:
-    """The exams exam focus looks at, as start, end and title: found once a build, not once a task (each task
-    searched every event's title, 27 Oct)."""
-    focus = exam_focus_of(settings)
-    if not focus.on:
-        return []
-    return [
-        (parse_utc(exam.start_utc), parse_utc(exam.end_utc), exam.title)
-        for exam in fixed.values()
-        if exam.start_utc and exam.end_utc and exam.status == "todo" and focus.finds(exam.title)
-    ]
+def focus_exams(fixed: Mapping[int, Item], settings: Mapping[str, Any]) -> list[tuple[int, int, str, int]]:
+    """The exams exam focus looks at, as start, end, title and its days of focus (its own, else the rule's): found
+    once a build, not once a task (each task searched every event's title, 27 Oct)."""
+    out = []
+    for exam in fixed.values():
+        if not (exam.start_utc and exam.end_utc and exam.status == "todo"):
+            continue
+        days = exam_focus_days(settings, exam.id, exam.title)
+        if days:
+            out.append((parse_utc(exam.start_utc), parse_utc(exam.end_utc), exam.title, days))
+    return out
 
 
 def focused_release(
-    item: Item, release: int | None, due: int | None, exams: list[tuple[int, int, str]], settings: Mapping[str, Any],
-    now: int,
+    item: Item, release: int | None, due: int | None, exams: list[tuple[int, int, str, int]],
+    settings: Mapping[str, Any], now: int,
 ) -> int | None:  # fmt: skip
-    """Exam focus (personal's): while an exam is `days_before` days off or less, another course's work
-    due after it waits until the exam ends, when a day and half again its length still fit before its own due."""
-    focus = exam_focus_of(settings)
-    if not focus.on or due is None or item.preset == "Exam prep":
+    """Exam focus (personal's): while an exam is its days of focus off or less, another course's work due after it
+    waits until the exam ends, when a day and half again its length still fit before its own due."""
+    if not exams or due is None or item.preset == "Exam prep":
         return release
     length = (item.duration_units or 0) * UNIT_MIN
-    for start, end, title in exams:
-        focusing = start - focus.days_before * 1440 <= now < start
+    for start, end, title, days in exams:
+        focusing = start - days * 1440 <= now < start
         room_after = due - end >= 1440 + 1.5 * length
         if focusing and not same_course(item.title, title) and due > end and room_after:
             release = max(release if release is not None else now, end)
