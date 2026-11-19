@@ -455,3 +455,38 @@ class TestPassedBlocks:
         assert not [p for p in app.table("progress") if p["item_id"] == essay]
         assert app.do("review", date=WED)["blocks"] == []
         assert app.do("item", id=essay)["item"]["remaining_min"] == 120
+
+
+class TestWithOtherSettings:
+    """A break holds whatever else is set (18 Nov: "test on various settings")."""
+
+    def work(self, app: App) -> None:
+        for n in range(6):
+            task(app, f"reading {n}", 60, f"{FRI}T23:00", release=f"{WED}T04:00")
+
+    @pytest.mark.parametrize("pace", ["Push", "Easy"])
+    def test_a_pace_doesnt_stretch_a_light_day(self, app: App, pace: str) -> None:
+        self.work(app)
+        app.do("pace", name=pace, for_days=14)
+        add_break(app, per_day=2)
+        for day in (WED, THU, FRI):
+            assert minutes_on(app, day) <= 2 * 45, (pace, day)
+
+    def test_tracked_meals_and_sleep_dont_bring_meals_back(self, app: App) -> None:
+        app.do("settings_set", key="meal_tracking", value={"on": True})
+        app.do("settings_set", key="sleep_tracking", value={"on": True})
+        app.do("series_add", title="Dinner", preset="Routine", every="day", release_offset_min=13 * 60,
+               due_offset_min=16 * 60, min_min=20, ideal_min=40, max_min=60)  # fmt: skip
+        dinner = event_on(app, "Dinner", WED)
+        self.work(app)
+        add_break(app)
+        assert minutes_on(app, WED, dinner) == 0
+        assert all(t["title"] != "Dinner" for t in app.do("vacation_day", date=WED)["items"])
+
+    def test_a_daily_limit_lower_than_light_wins(self, app: App) -> None:
+        self.work(app)
+        app.do(
+            "settings_set", key="daily_cap", value=dict.fromkeys(("mon", "tue", "wed", "thu", "fri", "sat", "sun"), 1.0)
+        )
+        add_break(app, per_day=6)
+        assert all(minutes_on(app, day) <= 60 for day in (WED, THU, FRI))
