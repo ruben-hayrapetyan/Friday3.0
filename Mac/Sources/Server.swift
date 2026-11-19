@@ -12,7 +12,13 @@ final class Server: ObservableObject {
     }
 
     static let shared = Server()
-    nonisolated static let port = TestUser.current?.port ?? 8765  // Friday Test: its own (TestUser)
+    /// Where the server listens: Friday Test's own (TestUser); yours 8765, or the port Friday moved to when another app
+    /// had that one (PortChoice, 19 Nov).
+    nonisolated static var port: Int {
+        if let user = TestUser.current { return user.port }
+        let saved = UserDefaults.standard.integer(forKey: PortChoice.defaultsKey)
+        return saved > 0 ? saved : PortChoice.standard
+    }
     nonisolated static var base: URL { URL(string: "http://127.0.0.1:\(port)/")! }
 
     @Published private(set) var state: State = .looking
@@ -20,6 +26,7 @@ final class Server: ObservableObject {
     private var process: Process?
     private var log = ""
     private var restarts: [Date] = []
+    private var heldBy: String?  // what held the port when Friday last had to move or couldn't start: "Anki"
 
     /// Where `fridayd` may be: what you chose in Settings, then the usual places.
     nonisolated static func candidates(chosen: String?, home: URL) -> [URL] {
@@ -142,6 +149,7 @@ final class Server: ObservableObject {
             state = .failed("Friday's server, fridayd, wasn't found. Choose it in Settings → Mac app.")
             return
         }
+        if attempt == 0, await makeRoom() { return await setUp() }  // a Friday that answered after all
         state = .starting
         let started: Process
         if let running = process, running.isRunning {
@@ -150,7 +158,8 @@ final class Server: ObservableObject {
             started = running
         } else {
             started = Process()
-            Self.prepare(started, launcher, ["serve"])
+            // on the port chosen here: yours, or the one moved to (Friday Test adds its own in TestUser.launch)
+            Self.prepare(started, launcher, TestUser.current == nil ? ["serve", "--port", String(Self.port)] : ["serve"])
             started.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser  // not wherever the app was opened from
             let pipe = Pipe()
             started.standardOutput = pipe
@@ -183,7 +192,8 @@ final class Server: ObservableObject {
                     log = ""
                     return await ensureRunning(attempt: attempt + 1)
                 }
-                state = .failed(Self.startupWords(started: true, log: log))
+                if log.contains("already in use") { heldBy = PortChoice.listening(on: Self.port).first.map(PortChoice.name) }
+                state = .failed(Self.startupWords(started: true, log: log, heldBy: heldBy))
                 return
             }
             try? await Task.sleep(for: .milliseconds(500))
@@ -232,11 +242,14 @@ final class Server: ObservableObject {
 
     /// Why the server stopped while starting, in words with what to do (8 Nov: "make all errors and warnings very
     /// user friendly so that they can debug it on the spot"), then what it said, for anyone who wants the detail.
-    nonisolated static func startupWords(started: Bool, log: String) -> String {
+    nonisolated static func startupWords(started: Bool, log: String, heldBy: String? = nil) -> String {
         let said = log.lowercased()
         let detail = log.trimmingCharacters(in: .whitespacesAndNewlines)
         let what: String
-        if said.contains("already in use") {
+        if said.contains("already in use"), let heldBy, heldBy != "Another app" {
+            what = "\(heldBy) is using Friday's port, and no other port was free. Quit \(heldBy), then press Try again; "
+                + "if that doesn't free it, restart your Mac."
+        } else if said.contains("already in use") {
             what = "Another app is using Friday's port. Quit any other copy of Friday (or Friday Test), then press Try "
                 + "again; if that doesn't free it, restart your Mac."
         } else if said.contains("database is locked") {
@@ -258,6 +271,42 @@ final class Server: ObservableObject {
     /// A server that isn't set up yet gets your time zone and personal's sleep times. Waited for off the main thread
     /// (the window kept drawing), and a setup that didn't take says so with Try again, rather than opening onto a
     /// Friday with no user.
+    /// The port taken by something that doesn't answer as Friday (19 Nov, a client's screenshot: "Another app is using
+    /// Friday's port"). Asked a few seconds more first: a busy Friday answers, and is used (true). A Friday server that
+    /// still doesn't is stopped, so a fresh one starts on the same port; another app (Anki's AnkiConnect listens on
+    /// 8765 too) keeps it, and Friday moves to the next free port, kept for next time and told to the `friday` command.
+    /// Friday Test never moves: its port is its own, picked free.
+    private func makeRoom() async -> Bool {
+        guard !TestUser.isFree(Self.port) else { return false }
+        let holders = PortChoice.listening(on: Self.port)
+        guard !holders.isEmpty else { return false }  // let go of already: the start waits for it as before
+        for _ in 0 ..< 3 {
+            if await Self.status() != nil { return true }
+            try? await Task.sleep(for: .seconds(2))
+        }
+        if let stuck = holders.first(where: { PortChoice.isFriday(arguments: PortChoice.arguments(of: $0.pid)) }) {
+            let port = Self.port
+            PortChoice.stop(stuck.pid) { TestUser.isFree(port) }
+            if TestUser.isFree(port) { return false }
+        }
+        guard TestUser.current == nil else { return false }
+        let moved = PortChoice.next(after: Self.port, isFree: TestUser.isFree)
+        guard moved != Self.port else { return false }
+        heldBy = holders.first.map(PortChoice.name)
+        UserDefaults.standard.set(moved, forKey: PortChoice.defaultsKey)
+        PortChoice.tellCommand(port: moved)
+        return false
+    }
+
+    /// The server's own setting for its port, as the app runs it: the AI's connection (`fridayd mcp`) and pairing your
+    /// phone read it there.
+    private func tellServerItsPort() async {
+        guard TestUser.current == nil, let settings = await Self.get("api/q/settings") as? [String: Any],
+              var server = settings["server"] as? [String: Any], server["port"] as? Int != Self.port else { return }
+        server["port"] = Self.port
+        await Self.post("settings_set", ["key": "server", "value": server])
+    }
+
     private func setUp() async {
         if let status = await Self.status(), status["ready"] as? Bool == false, let launcher {
             let init_ = Process()
@@ -279,6 +328,7 @@ final class Server: ObservableObject {
         }
         slow = false
         state = .ready
+        await tellServerItsPort()
     }
 
     /// `fridayd` with `subcommand`, run as `launcher` says: as it is for you; for Friday Test, in its user's folder
