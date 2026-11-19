@@ -94,7 +94,8 @@ Commands you may use, with their inputs (times are local "YYYY-MM-DDTHH:MM"):
   subject names spread over the days before it's due: "spread my essays over several days"), cluster (each one's
   sittings on as few days as can be: "keep problem sets on few days"), exam_focus (amount: days before each exam
   that other courses' work due after it waits: "focus on an exam's course 5 days before it", "focus on exams
-  starting 5 days before", "the 2 days before a final are only for that class"; not early). subject: "work", "deep
+  starting 5 days before", "the 2 days before a final are only for that class"; 0 for the exam's own day until it
+  starts: "on the day of a prelim, study for it until it starts"; not early). subject: "work", "deep
   work", a tag, a kind or a title. A bedtime or wake time ("bed by 11") is the sleep setting, not a rule.
 - settings_set: {key, value} for these keys only: kind_order (kinds most important first, e.g. ["Assignment", "Reading"]
   for "prioritize assignments over readings"), short_term_first (true for "prioritize short-term work over long-term",

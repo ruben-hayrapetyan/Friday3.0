@@ -183,7 +183,12 @@ def read_out(ctx: Ctx, reading: Reading, strength: str, editing: str = "") -> Ru
         effect=effect,
         conflicts=conflicts,
         starts_over=old is not None and not same_kind(old.model_dump(), mine.get(old.name), new, reading),
-        replaces=said[old.name] if old is not None else "",
+        # there's one exam focus: a new one says which it takes the place of (19 Nov: it replaced one unsaid)
+        replaces=said[old.name]
+        if old is not None
+        else next(
+            (said[r.name] for r in ctx.settings["rules"] if reading.kind == "exam_focus" and r.type == "exam_focus"), ""
+        ),
     )
 
 
@@ -286,8 +291,11 @@ def exam_focus_added(ctx: Ctx, rules: list[dict[str, Any]], reading: Reading, te
     at = next((n for n, r in enumerate(rules) if r["type"] == "exam_focus"), len(rules))
     mine = {k: v for k, v in readings(ctx).items() if k not in {r["name"] for r in rules if r["type"] == "exam_focus"}}
     kept = [r for r in rules if r["type"] != "exam_focus"]
+    was = next((r.get("reason") or "" for r in rules if r["type"] == "exam_focus"), "")
     write_setting(ctx, "rules", kept[:at] + [new] + kept[at:])
     keep(ctx, {**mine, EXAM_FOCUS_NAME: {"reading": reading.to_dict(), "strength": "Always", "text": text}})
+    if was and was != sentence(reading):  # say what it took the place of (19 Nov: "Added" while a 5-day rule went)
+        return Changed(message=f"Replaced “{was}” with: {sentence(reading)}")
     return Changed(message=f"Added: {sentence(reading)}")
 
 

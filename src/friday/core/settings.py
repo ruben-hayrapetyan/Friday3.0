@@ -358,7 +358,7 @@ class ExamFocus(Model):
     params these are; off until you add it in Rules ("focus on exams 3 days before"). `exam_focus_of` reads it."""
 
     on: bool = False
-    days_before: int = Field(3, ge=1, le=14)
+    days_before: int = Field(3, ge=0, le=14)  # 0: the exam's own day, until it starts (19 Nov)
     words: tuple[str, ...] = ("exam", "prelim", "midterm", "final")
 
     def finds(self, title: str) -> bool:
@@ -381,7 +381,7 @@ def exam_focus_of(settings: Mapping[str, Any]) -> ExamFocus:
         if rule.type == "exam_focus" and rule.enabled:
             days = int(rule.params.get("days_before", 3))
             words = tuple(rule.params.get("words") or ExamFocus().words)
-            return ExamFocus(on=True, days_before=min(14, max(1, days)), words=words)
+            return ExamFocus(on=True, days_before=min(14, max(0, days)), words=words)
     return ExamFocus()
 
 
@@ -389,17 +389,30 @@ def exam_focus_days(settings: Mapping[str, Any], exam_id: int | None, title: str
     """How many days before an exam its course has to itself, or None: the exam's own (its popup, 19 Nov, a user's
     notes: "an argument for each exam focus time to be different - you wouldn't study as much for a quiz compared to a
     prelim"), else the rule's when it's on and the title is an exam's. Someone without exams has neither."""
-    own = (settings.get("exam_focus_each") or {}).get(str(exam_id)) if exam_id is not None else None
-    if own is not None:
-        return min(14, max(0, int(own))) or None
+    each = settings.get("exam_focus_each") or {}
+    if exam_id is not None and str(exam_id) in each:
+        own = each[str(exam_id)]
+        return None if own is None else min(14, max(0, int(own)))  # null: none for this exam; 0: its own day
     focus = exam_focus_of(settings)
     return focus.days_before if focus.on and focus.finds(title) else None
 
 
+def exam_focus_start(start_utc: int, days: int, settings: Mapping[str, Any]) -> int:
+    """When an exam's focus begins: `days` days before it, or with 0 its own day's start (your day starts at 4am,
+    say), so "on the day of a prelim, until it" has a morning to work with."""
+    if days:
+        return start_utc - days * 1440
+    from friday.core.time import planning_date, planning_day_start_utc  # noqa: PLC0415 (time reads settings' types)
+
+    tz, day_start = settings["time"].timezone, minutes_of(settings["time"].day_start)
+    return planning_day_start_utc(planning_date(start_utc, tz, day_start), tz, day_start)
+
+
 def exam_focus_rule(days_before: int, words: tuple[str, ...] | None = None) -> RuleSpec:
     """The rule a saved exam focus setting became (friday.toml's [exam_focus], before 14 Nov)."""
-    days = min(14, max(1, int(days_before)))
-    said = f"Focus on an exam's course {'the day' if days == 1 else f'{days} days'} before it"
+    days = min(14, max(0, int(days_before)))
+    said = ("Focus on an exam's course on its day, until it starts" if days == 0 else
+            f"Focus on an exam's course {'the day' if days == 1 else f'{days} days'} before it")  # fmt: skip
     return RuleSpec(type="exam_focus", name=EXAM_FOCUS_NAME, weight=0, reason=said,
                     params={"days_before": days, "words": list(words or ExamFocus().words)})  # fmt: skip
 
@@ -595,8 +608,8 @@ SETTINGS_TYPES: dict[str, Any] = {
     "sittings": Sittings,  # one go, and which kinds to split first
     "calendar_look": CalendarLook,  # each calendar's pigment and toolbar button
     "breaks": BreakSettings,  # your defaults for a break (vacation days)
-    # an exam's own days of focus before it, by its id, 0 for none; an exam not here follows the rule (19 Nov)
-    "exam_focus_each": dict[str, int],
+    # an exam's own days of focus before it, by its id: 0 its own day, null none; one not here follows the rule (19 Nov)
+    "exam_focus_each": dict[str, int | None],
     **INTEGRATION_TYPES,
 }
 ADAPTERS = {key: TypeAdapter(kind) for key, kind in SETTINGS_TYPES.items()}
