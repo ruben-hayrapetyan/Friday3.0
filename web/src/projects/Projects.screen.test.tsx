@@ -236,10 +236,10 @@ describe("projects", () => {
     expect(screen.getByRole("button", { name: "Tag for Rocketry design review" }).textContent).toBe("PHYS 1112") // at once
     expect((await waitForSent("edit")).body).toEqual({ id: project.id, area: "PHYS 1112" })
     const areas = async () => Object.fromEntries((await Promise.all(["Rocketry design review", "Research", "Slides", "Rehearse"].map(itemNamed))).map((i) => [i.title, i.area]))
-    await waitFor(async () => expect(await areas()).toEqual({ "Rocketry design review": "PHYS 1112", Research: "PHYS 1112", Slides: "MATH 1910", Rehearse: "PHYS 1112" }))
+    await waitFor(async () => expect(await areas()).toEqual({ "Rocketry design review": "PHYS 1112", Research: "PHYS 1112", Slides: "MATH 1910", Rehearse: "PHYS 1112" }), { timeout: 15_000 })
     // one Undo puts them all back
     await user.click((await screen.findAllByRole("button", { name: "Undo" })).at(-1) as HTMLElement)
-    await waitFor(async () => expect(await areas()).toEqual({ "Rocketry design review": "Rocketry", Research: "Rocketry", Slides: "MATH 1910", Rehearse: "Rocketry" }))
+    await waitFor(async () => expect(await areas()).toEqual({ "Rocketry design review": "Rocketry", Research: "Rocketry", Slides: "MATH 1910", Rehearse: "Rocketry" }), { timeout: 15_000 }) // a replan under a full run's load can take seconds (failed so in 0.6.1's gate, 19 Nov)
     await live(client, () => expect(screen.getByRole("button", { name: "Tag for Rocketry design review" }).textContent).toBe("Rocketry"))
     await friday.c("edit", { id: slides.id, area: "Rocketry" })
   })
