@@ -439,7 +439,16 @@ describe("sleep and meals, tracked", () => {
     await eatenNone()
     await sayNow(client, () => ({ current: null, current_source: "free", next: null, gap_minutes: 0, fits: [] }))
     await meal({ next: null, again: "dinner" })
-    await user.click(await inDock().findByRole("button", { name: /^Another dinner/ }))
+    // set again until it shows: the refresh "Eating now" started can land after it and put the server's meals back
+    // (failed so under a full run's load in 0.6.1's gate, 19 Nov; alone it always passed)
+    const another = await waitFor(
+      () => {
+        client.setQueryData<Schemas["MealsOut"]>(["meals"], (m) => m && { ...m, on: true, eating: null, next: null, again: "dinner" })
+        return inDock().getByRole("button", { name: /^Another dinner/ })
+      },
+      { timeout: 15_000 },
+    )
+    await user.click(another)
     expect((await waitForSent("meal_start")).body).toEqual({ kind: "dinner" })
   })
 
