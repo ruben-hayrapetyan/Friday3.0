@@ -528,10 +528,21 @@ class Pause(Model):
 class BreakSettings(Model):
     """Your defaults for every break (Settings → Breaks); a break can say otherwise for itself."""
 
-    per_day: int = Field(3, ge=1, le=20)  # Light: about this many things a day
+    work_min: int = Field(120, ge=15, le=1440)  # Light: about this much work a day (19 Nov: time, not things)
     pause: Pause = Pause()
     plan_meals: bool = False  # 18 Nov: "don't plan meals and sleep as usual during break on default"
     keep_sleep: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def things_were_time(cls, data: Any) -> Any:
+        """A default saved before 19 Nov as "about N things a day" (a kept Friday Test user) reads as N x 45 min."""
+        if isinstance(data, dict) and "per_day" in data:
+            things = data["per_day"]
+            data = {k: v for k, v in data.items() if k != "per_day"}
+            if "work_min" not in data and isinstance(things, int):
+                data["work_min"] = things * 45
+        return data
 
 
 SETTINGS_TYPES: dict[str, Any] = {

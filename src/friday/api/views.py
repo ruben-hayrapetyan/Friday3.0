@@ -214,7 +214,7 @@ class VacationDay(Model):
     mode: Literal["off", "light"]
     day_n: int
     days: int
-    per_day: int
+    work_min: int  # Light: about this much work a day
     keep_sleep: bool = False  # the night is drawn as usual only when the break keeps your sleep schedule
     things: int = 0  # on the day's list
     ticked: int = 0  # ticked off it

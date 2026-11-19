@@ -5,6 +5,7 @@
 import type { Schemas } from "@/api/client"
 import { Icon } from "@/components/fr/controls"
 import { useShell } from "@/shell/ShellContext"
+import { dur } from "@/lib/format"
 import { inView, rangeWords, things } from "./words"
 
 type Day = Schemas["CalendarDay"]
@@ -68,7 +69,7 @@ export function BreakRow({ days, dates }: { days: Day[]; dates: string[] }) {
             {clippedStart && <span aria-hidden>‹ </span>}
             <Icon name="umbrella" size={12} style={{ flex: "none" }} />
             <span style={{ fontWeight: 600 }}>{vacation.name}</span>
-            <span className="fr-break-band-note">{vacation.mode === "off" ? "Off" : `Light · about ${things(vacation.per_day)} a day`}</span>
+            <span className="fr-break-band-note">{vacation.mode === "off" ? "Off" : `Light · about ${dur(vacation.work_min)} a day`}</span>
             {clippedEnd && <span aria-hidden> ›</span>}
           </button>
         )

@@ -17,7 +17,7 @@ const day = (vacation: unknown) => ({ dues: [], days: [{ date: DAY, vacation }] 
 
 describe("a break day's agenda", () => {
   it("keeps one-off events and what you timed; paused events and planned times go", () => {
-    const titles = agendaOf(DAY, plan, day({ id: 1, name: "Thanksgiving break", mode: "light", day_n: 1, days: 5, per_day: 3 })).map((e) => e.title)
+    const titles = agendaOf(DAY, plan, day({ id: 1, name: "Thanksgiving break", mode: "light", day_n: 1, days: 5, work_min: 120 })).map((e) => e.title)
     expect(titles).toEqual(["Advising appointment", "Reading, timed"])
   })
   it("a day off a break shows everything, as before", () => {

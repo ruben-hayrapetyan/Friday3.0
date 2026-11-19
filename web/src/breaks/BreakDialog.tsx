@@ -6,25 +6,25 @@
 import { type QueryClient, useQuery } from "@tanstack/react-query"
 import { type ReactNode, useState } from "react"
 import { query, type Schemas } from "@/api/client"
-import { Chip, Icon, Switch } from "@/components/fr/controls"
+import { Icon, Switch } from "@/components/fr/controls"
 import { Modal } from "@/dialogs/Dialogs"
 import { useItems, useSettings } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
 import type { BreakEdit } from "@/shell/ShellContext"
 import { useShell } from "@/shell/ShellContext"
+import { LengthField } from "@/todo/Pickers"
 import { PauseChooser, useBreakChoices } from "./PauseChooser"
-import { daysIn, EVERYTHING, full, modeWords, nextDay, type Pause, pauseWords, rangeWords, things, type Vacation } from "./words"
+import { daysIn, EVERYTHING, full, modeWords, nextDay, type Pause, pauseWords, rangeWords, things, type Vacation, WORK_AMOUNTS } from "./words"
 
 /** Your defaults for a break (Settings → Breaks; core/settings.py `BreakSettings`). */
-export type Defaults = { per_day: number; pause: Pause; plan_meals: boolean; keep_sleep: boolean }
-type Row = "dates" | "mode" | "per_day" | "pause" | null
-const PER_DAY = [1, 2, 3, 4, 5, 6]
+export type Defaults = { work_min: number; pause: Pause; plan_meals: boolean; keep_sleep: boolean }
+type Row = "dates" | "mode" | "pause" | null
 
 export const useVacations = () => useQuery({ queryKey: ["vacations"], queryFn: () => query("vacations") })
 
 export function useBreakDefaults(): Defaults {
   const saved = (useSettings().data as Record<string, unknown> | undefined)?.breaks as Defaults | undefined
-  return saved ? { ...saved, pause: full(saved.pause) } : { per_day: 3, pause: EVERYTHING, plan_meals: false, keep_sleep: false }
+  return saved ? { ...saved, pause: full(saved.pause) } : { work_min: 120, pause: EVERYTHING, plan_meals: false, keep_sleep: false }
 }
 
 /** A change to a break shows at once in the list of breaks (the server's answer follows). */
@@ -46,7 +46,7 @@ export function BreakDialog({ edit, onClose }: { edit: BreakEdit; onClose: () =>
   // A new break's own state until it's added: from your defaults, a week from the day it was opened on.
   const [draft, setDraft] = useState<Vacation>(() => ({
     id: 0, name: edit.id === undefined ? (edit.name ?? "") : "", start: start ?? today, end: edit.id === undefined ? (edit.end ?? addWeek(start ?? today)) : today, days: 7, mode: "light",
-    per_day: defaults.per_day, pause: defaults.pause, plan_meals: defaults.plan_meals, keep_sleep: defaults.keep_sleep, own: [],
+    work_min: defaults.work_min, pause: defaults.pause, plan_meals: defaults.plan_meals, keep_sleep: defaults.keep_sleep, own: [],
   }))
   const v = edit.id === undefined ? draft : saved
   const [open, setOpen] = useState<Row>(null)
@@ -64,7 +64,7 @@ export function BreakDialog({ edit, onClose }: { edit: BreakEdit; onClose: () =>
   const toggle = (row: Row) => setOpen(open === row ? null : row)
   const create = async () => {
     const name = v.name.trim() || "Break"
-    const out = await add({ name, start: v.start, end: v.end, mode: v.mode, per_day: v.per_day, pause: full(v.pause), plan_meals: v.plan_meals, keep_sleep: v.keep_sleep })
+    const out = await add({ name, start: v.start, end: v.end, mode: v.mode, work_min: v.work_min, pause: full(v.pause), plan_meals: v.plan_meals, keep_sleep: v.keep_sleep })
     if (out) onClose()
   }
   const badDays = v.end < v.start
@@ -112,7 +112,7 @@ export function BreakDialog({ edit, onClose }: { edit: BreakEdit; onClose: () =>
         )}
         <span className="fr-kicker">Work</span>
         <Value onClick={() => toggle("mode")} icon="sun-horizon">
-          {modeWords(v.mode, v.per_day)}
+          {modeWords(v.mode, v.work_min)}
         </Value>
         {open === "mode" && (
           <Panel>
@@ -129,37 +129,11 @@ export function BreakDialog({ edit, onClose }: { edit: BreakEdit; onClose: () =>
         {v.mode === "light" && (
           <>
             <span className="fr-kicker">A day</span>
-            <Value onClick={() => toggle("per_day")} icon="list-checks">
-              About {things(v.per_day)}
-            </Value>
-            {open === "per_day" && (
-              <Panel>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                  {PER_DAY.map((n) => (
-                    <Chip key={n} on={v.per_day === n} onClick={() => (set({ per_day: n }), setOpen(null))}>
-                      {n}
-                    </Chip>
-                  ))}
-                  <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12, color: "var(--color-neutral-300)", marginLeft: 6 }}>
-                    Or type
-                    <input
-                      className="input tnum"
-                      inputMode="numeric"
-                      aria-label="Things a day, typed"
-                      placeholder="e.g. 8"
-                      style={{ width: 70 }}
-                      onKeyDown={(e) => {
-                        const n = Number((e.target as HTMLInputElement).value)
-                        if (e.key === "Enter" && Number.isInteger(n) && n >= 1 && n <= 20) (set({ per_day: n }), setOpen(null))
-                      }}
-                    />
-                  </label>
-                </div>
-                <span className="fr-kicker" style={{ display: "block", marginTop: 8 }}>
-                  Friday sizes each day so it stays on track; you see things to do, never minutes.
-                </span>
-              </Panel>
-            )}
+            {/* 19 Nov: time a day, not a number of things; the day's list still names tasks, never minutes */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <LengthField value={v.work_min} onPick={(m) => m && set({ work_min: m })} label="Work a day" amounts={WORK_AMOUNTS} unit=" a day" />
+              <span className="fr-kicker">of work; its list shows tasks by name, not minutes</span>
+            </div>
           </>
         )}
         <span className="fr-kicker">Pauses</span>

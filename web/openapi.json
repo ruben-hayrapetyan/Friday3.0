@@ -38395,18 +38395,18 @@
       "title": "Mode",
       "default": "light"
      },
-     "per_day": {
+     "work_min": {
       "anyOf": [
        {
         "type": "integer",
-        "maximum": 20.0,
-        "minimum": 1.0
+        "maximum": 1440.0,
+        "minimum": 15.0
        },
        {
         "type": "null"
        }
       ],
-      "title": "Per Day"
+      "title": "Work Min"
      },
      "pause": {
       "anyOf": [
@@ -38546,9 +38546,9 @@
       "type": "integer",
       "title": "Days"
      },
-     "per_day": {
+     "work_min": {
       "type": "integer",
-      "title": "Per Day"
+      "title": "Work Min"
      },
      "keep_sleep": {
       "type": "boolean",
@@ -38574,7 +38574,7 @@
      "mode",
      "day_n",
      "days",
-     "per_day"
+     "work_min"
     ],
     "title": "VacationDay",
     "description": "The break a day is on: its name, Off or Light, and which of its days this is."
@@ -38739,18 +38739,18 @@
       ],
       "title": "Mode"
      },
-     "per_day": {
+     "work_min": {
       "anyOf": [
        {
         "type": "integer",
-        "maximum": 20.0,
-        "minimum": 1.0
+        "maximum": 1440.0,
+        "minimum": 15.0
        },
        {
         "type": "null"
        }
       ],
-      "title": "Per Day"
+      "title": "Work Min"
      },
      "pause": {
       "anyOf": [
@@ -38788,7 +38788,7 @@
       "items": {
        "type": "string",
        "enum": [
-        "per_day",
+        "work_min",
         "pause",
         "plan_meals",
         "keep_sleep"
@@ -38805,7 +38805,7 @@
      "id"
     ],
     "title": "VacationEditInput",
-    "description": "What changes; `defaults` names what goes back to following your defaults (per_day, pause, plan_meals,\nkeep_sleep)."
+    "description": "What changes; `defaults` names what goes back to following your defaults (work_min, pause, plan_meals,\nkeep_sleep)."
    },
    "VacationEditResult": {
     "properties": {
@@ -38907,9 +38907,9 @@
       ],
       "title": "Mode"
      },
-     "per_day": {
+     "work_min": {
       "type": "integer",
-      "title": "Per Day"
+      "title": "Work Min"
      },
      "pause": {
       "$ref": "#/components/schemas/PauseIn"
@@ -38939,7 +38939,7 @@
      "end",
      "days",
      "mode",
-     "per_day",
+     "work_min",
      "pause",
      "plan_meals",
      "keep_sleep",

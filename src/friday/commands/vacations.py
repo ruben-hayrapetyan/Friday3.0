@@ -47,7 +47,7 @@ def said(day: date) -> str:
 def vacation_out(v: breaks.Vacation) -> VacationOut:
     return VacationOut(
         id=v.id, name=v.name, start=v.start, end=v.end, days=v.days, mode=v.mode,  # type: ignore[arg-type]
-        per_day=v.per_day, pause=PauseIn.model_validate(v.pause.model_dump()), plan_meals=v.plan_meals,
+        work_min=v.work_min, pause=PauseIn.model_validate(v.pause.model_dump()), plan_meals=v.plan_meals,
         keep_sleep=v.keep_sleep, own=sorted(v.own),
     )  # fmt: skip
 
@@ -74,8 +74,8 @@ def check_days(ctx: Ctx, start: date, end: date, other_than: int | None = None) 
 def own_values(inp: Model) -> dict[str, Any]:
     """What a break sets for itself, as stored (None: follows your default)."""
     out: dict[str, Any] = {}
-    if getattr(inp, "per_day", None) is not None:
-        out["per_day"] = inp.per_day  # type: ignore[attr-defined]
+    if getattr(inp, "work_min", None) is not None:
+        out["work_min"] = inp.work_min  # type: ignore[attr-defined]
     if getattr(inp, "pause", None) is not None:
         out["pause"] = json.dumps(inp.pause.model_dump())  # type: ignore[attr-defined]
     for key in ("plan_meals", "keep_sleep"):
@@ -142,7 +142,7 @@ def vacation_day_of(v: breaks.Vacation, day: date, ctx: Ctx | None = None) -> Va
         things = vacation_things(ctx, day)
         counted = {"things": len(things), "ticked": sum(t.ticked for t in things)}
     return VacationDay(
-        id=v.id, name=v.name, mode=v.mode, day_n=v.day_n(day), days=v.days, per_day=v.per_day,  # type: ignore[arg-type]
+        id=v.id, name=v.name, mode=v.mode, day_n=v.day_n(day), days=v.days, work_min=v.work_min,  # type: ignore[arg-type]
         keep_sleep=v.keep_sleep, **counted,
     )  # fmt: skip  # type: ignore[arg-type]
 

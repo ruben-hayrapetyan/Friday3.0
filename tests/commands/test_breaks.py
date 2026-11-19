@@ -57,7 +57,7 @@ class TestAddingOne:
         made = add_break(app)
         (listed,) = app.do("vacations")["vacations"]
         assert listed["id"] == made["id"] and listed["name"] == "Fall break"
-        assert (listed["start"], listed["end"], listed["mode"], listed["per_day"]) == (WED, FRI, "light", 3)
+        assert (listed["start"], listed["end"], listed["mode"], listed["work_min"]) == (WED, FRI, "light", 120)
         assert listed["plan_meals"] is False and listed["keep_sleep"] is False
         assert listed["pause"]["repeating"] == "all"
 
@@ -138,11 +138,29 @@ class TestWork:
         assert all(minutes_on(app, d) == 0 for d in (WED, THU, FRI))
         assert sum(minutes_on(app, d, report) for d in ("2026-10-19", "2026-10-20")) == 180
 
-    def test_light_keeps_a_day_to_about_n_things(self, app: App) -> None:
+    def test_light_keeps_a_day_to_about_its_time(self, app: App) -> None:
         for n in range(6):
             task(app, f"reading {n}", 60, f"{FRI}T23:00", release=f"{WED}T04:00")  # more than the days hold
-        add_break(app, per_day=2)
-        assert 0 < minutes_on(app, WED) <= 2 * 45
+        add_break(app, work_min=90)
+        assert 0 < minutes_on(app, WED) <= 90
+
+    # 19 Nov: "the number of time that you spend total working shouldn't depend on the number of events that you
+    # choose to do (and the number of time that you should spend working should also be customizeable)"
+    @pytest.mark.parametrize(("pieces", "length"), [(8, 30), (2, 150)])
+    def test_a_light_days_time_doesnt_depend_on_how_many_things(self, app: App, pieces: int, length: int) -> None:
+        for n in range(pieces):
+            task(app, f"reading {n}", length, f"{FRI}T23:00", release=f"{WED}T04:00")
+        add_break(app, work_min=120)
+        for day in (WED, THU):
+            assert 90 <= minutes_on(app, day) <= 120, (pieces, day)  # about two hours, many short things or few long
+
+    def test_the_time_a_light_day_holds_is_yours_to_set(self, app: App) -> None:
+        for n in range(6):
+            task(app, f"reading {n}", 60, f"{FRI}T23:00", release=f"{WED}T04:00")
+        app.do("settings_set", key="breaks", value={"work_min": 60})
+        add_break(app)
+        assert 0 < minutes_on(app, WED) <= 60
+        assert app.do("vacations")["vacations"][0]["work_min"] == 60
 
     def test_the_day_lists_things_by_name_without_times(self, app: App) -> None:
         essay = task(app, "essay", 60, f"{WED}T23:00", release=f"{WED}T04:00")
@@ -237,13 +255,20 @@ class TestInside:
         assert pauses(Pause(repeating="only", series_paused=[9]), series_id=9, calendar="Gym")
         assert not pauses(Pause(series_kept=[4]), series_id=4, calendar="Work")
 
-    def test_a_light_day_is_sized_by_things(self) -> None:
-        from friday.core.vacations import LIGHT_MIN_PER_THING, Vacation, day_cap_hours
+    def test_a_light_day_is_sized_by_its_time(self) -> None:
+        from friday.core.vacations import Vacation, day_cap_hours
 
-        light = Vacation(1, "b", WED, FRI, "light", 3)
-        assert day_cap_hours(light, usual=8.0) == 3 * LIGHT_MIN_PER_THING / 60
+        light = Vacation(1, "b", WED, FRI, "light", 150)
+        assert day_cap_hours(light, usual=8.0) == 2.5
         assert day_cap_hours(light, usual=1.0) == 1.0  # never more than your own cap
-        assert day_cap_hours(Vacation(1, "b", WED, FRI, "off", 3), usual=8.0) == 0.0
+        assert day_cap_hours(Vacation(1, "b", WED, FRI, "off", 150), usual=8.0) == 0.0
+
+    def test_a_default_saved_as_things_a_day_reads_as_time(self) -> None:
+        """A Friday Test user kept from before 19 Nov saved "about 4 things a day": read as 4 x 45 min."""
+        from friday.core.settings import BreakSettings
+
+        assert BreakSettings.model_validate({"per_day": 4}).work_min == 180
+        assert BreakSettings().work_min == 120
 
 
 class TestLearning:
@@ -357,20 +382,20 @@ class TestEdges:
             app.do("vacation_edit", id=later["id"], start=THU)
 
     def test_a_break_can_follow_your_defaults_again(self, app: App) -> None:
-        made = add_break(app, per_day=5, plan_meals=True)
-        app.do("vacation_edit", id=made["id"], defaults=["per_day", "plan_meals"])
+        made = add_break(app, work_min=300, plan_meals=True)
+        app.do("vacation_edit", id=made["id"], defaults=["work_min", "plan_meals"])
         (v,) = app.do("vacations")["vacations"]
-        assert (v["per_day"], v["plan_meals"], v["own"]) == (3, False, [])
+        assert (v["work_min"], v["plan_meals"], v["own"]) == (120, False, [])
 
     def test_a_blank_name_is_a_break(self, app: App) -> None:
         made = add_break(app)
         app.do("vacation_edit", id=made["id"], name="   ")
         assert app.do("vacations")["vacations"][0]["name"] == "Break"
 
-    def test_how_many_a_day_is_one_to_twenty(self, app: App) -> None:
-        for bad in (0, 21):
-            with pytest.raises(Exception, match="per_day"):
-                app.do("vacation_add", start=WED, end=FRI, per_day=bad)
+    def test_a_light_days_time_is_a_quarter_hour_to_a_day(self, app: App) -> None:
+        for bad in (10, 1441):
+            with pytest.raises(Exception, match="work_min"):
+                app.do("vacation_add", start=WED, end=FRI, work_min=bad)
 
     def test_an_event_after_midnight_belongs_to_the_break_day_before(self, app: App) -> None:
         """The day starts at 4am: a repeat at 1am Saturday is Friday's, the break's last day."""
@@ -468,9 +493,9 @@ class TestWithOtherSettings:
     def test_a_pace_doesnt_stretch_a_light_day(self, app: App, pace: str) -> None:
         self.work(app)
         app.do("pace", name=pace, for_days=14)
-        add_break(app, per_day=2)
+        add_break(app, work_min=90)
         for day in (WED, THU, FRI):
-            assert minutes_on(app, day) <= 2 * 45, (pace, day)
+            assert minutes_on(app, day) <= 90, (pace, day)
 
     def test_tracked_meals_and_sleep_dont_bring_meals_back(self, app: App) -> None:
         app.do("settings_set", key="meal_tracking", value={"on": True})
@@ -488,7 +513,7 @@ class TestWithOtherSettings:
         app.do(
             "settings_set", key="daily_cap", value=dict.fromkeys(("mon", "tue", "wed", "thu", "fri", "sat", "sun"), 1.0)
         )
-        add_break(app, per_day=6)
+        add_break(app, work_min=360)
         assert all(minutes_on(app, day) <= 60 for day in (WED, THU, FRI))
 
 

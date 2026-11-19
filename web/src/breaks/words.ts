@@ -1,7 +1,7 @@
 // How a break says itself (core/vacations.py): its days, how much work, and what it pauses, in words.
 
 import type { Schemas } from "@/api/client"
-import { weekday } from "@/lib/format"
+import { dur, weekday } from "@/lib/format"
 import { addDays, toMin } from "@/lib/time"
 
 const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -33,10 +33,13 @@ export function daysIn(start: string, end: string): number {
 
 export const things = (n: number) => `${n} thing${n === 1 ? "" : "s"}`
 
-/** "Light, about 3 things a day", "Off: nothing to do" */
-export function modeWords(mode: string, perDay: number): string {
-  return mode === "off" ? "Off: nothing to do" : `Light, about ${things(perDay)} a day`
+/** "Light, about 2h of work a day", "Off: nothing to do" (19 Nov: a Light day is time a day, not things) */
+export function modeWords(mode: string, workMin: number): string {
+  return mode === "off" ? "Off: nothing to do" : `Light, about ${dur(workMin)} of work a day`
 }
+
+/** The amounts a Light day's time offers, besides a box to type any (UI-PRINCIPLES: a length is a value). */
+export const WORK_AMOUNTS = [60, 90, 120, 180, 240]
 
 /** What a break pauses, said as a value (UI-PRINCIPLES: say the value, not a name for it). */
 export function pauseWords(pause: Pause, choices?: Choices): string {

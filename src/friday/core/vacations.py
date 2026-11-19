@@ -1,10 +1,10 @@
 """Breaks (vacation days, 18 Nov): a run of days off or light.
 
 On a break day repeating events pause (one-off events stay), meals aren't planned unless you say so, tasks of a paused
-tag wait, and the day is sized by things rather than hours: Off, nothing (work due inside is done before it starts);
-Light, about `per_day` things, each counted at LIGHT_MIN_PER_THING when the planner sizes the day. The day shows a list
-of what to get done, not times (web: the day's line under the break's band). Stored as `vacations`: "breaks" already
-names naps and snacks in the code (`web/src/now/breaks.ts`, `snapshot.away`).
+tag wait. Off: nothing (work due inside is done before it starts). Light: about `work_min` of work a day, yours to
+set (19 Nov: "the number of time that you spend total working shouldn't depend on the number of events"); the day
+shows a list of what to get done by name, not times (web: the day's line under the break's band). Stored as
+`vacations`: "breaks" already names naps and snacks in the code (`web/src/now/breaks.ts`, `snapshot.away`).
 """
 
 import json
@@ -21,10 +21,8 @@ from friday.core.quickadd import MEAL
 from friday.core.settings import BreakSettings, Pause, minutes_of
 from friday.core.time import format_utc, parse_utc, planning_date, planning_day_start_utc, to_local
 
-# What one thing on a Light day's list is sized at, inside: never shown (18 Nov: tasks, not time).
-LIGHT_MIN_PER_THING = 45
 FRIDAY_CALENDAR = "Friday"  # what the pause chooser calls events made here, on no calendar of yours
-OWN = ("per_day", "pause", "plan_meals", "keep_sleep")  # what a break may set for itself, else your defaults
+OWN = ("work_min", "pause", "plan_meals", "keep_sleep")  # what a break may set for itself, else your defaults
 
 
 @dataclass(frozen=True)
@@ -34,7 +32,7 @@ class Vacation:
     start: str  # ISO date, the first day
     end: str  # ISO date, the last day (inclusive)
     mode: str  # "off" or "light"
-    per_day: int = 3
+    work_min: int = 120  # Light: about this much work a day
     pause: Pause = Pause()
     plan_meals: bool = False
     keep_sleep: bool = False
@@ -70,7 +68,7 @@ def from_row(row: Mapping[str, Any], defaults: BreakSettings) -> Vacation:
         start=row["start_date"],
         end=row["end_date"],
         mode=row["mode"],
-        per_day=row["per_day"] if row["per_day"] is not None else defaults.per_day,
+        work_min=row["work_min"] if row["work_min"] is not None else defaults.work_min,
         pause=Pause.model_validate(json.loads(row["pause"])) if row["pause"] is not None else defaults.pause,
         plan_meals=bool(row["plan_meals"]) if row["plan_meals"] is not None else defaults.plan_meals,
         keep_sleep=bool(row["keep_sleep"]) if row["keep_sleep"] is not None else defaults.keep_sleep,
@@ -103,11 +101,11 @@ def pauses(pause: Pause, *, series_id: int | None, calendar: str | None) -> bool
 
 
 def day_cap_hours(vacation: Vacation, usual: float) -> float:
-    """A break day's most work, inside: none when Off; about `per_day` things when Light, and never more than your own
-    cap that day."""
+    """A break day's most work: none when Off; about the break's time when Light, and never more than your own cap that
+    day."""
     if vacation.mode == "off":
         return 0.0
-    return min(usual, vacation.per_day * LIGHT_MIN_PER_THING / 60)
+    return min(usual, vacation.work_min / 60)
 
 
 def item_day(item: Item, tz: str, day_start: int) -> date | None:

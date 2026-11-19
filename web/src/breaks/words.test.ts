@@ -8,9 +8,10 @@ describe("a break in words", () => {
   it("says its days and how much work", () => {
     expect(rangeWords("2026-12-21", "2026-12-27")).toBe("Mon, Dec 21 – Sun, Dec 27")
     expect(rangeWords("2026-12-21", "2026-12-21")).toBe("Mon, Dec 21")
-    expect(modeWords("light", 3)).toBe("Light, about 3 things a day")
-    expect(modeWords("light", 1)).toBe("Light, about 1 thing a day")
-    expect(modeWords("off", 3)).toBe("Off: nothing to do")
+    // 19 Nov: a Light day is time a day, not a number of things ("shouldn't depend on the number of events")
+    expect(modeWords("light", 120)).toBe("Light, about 2h of work a day")
+    expect(modeWords("light", 90)).toBe("Light, about 1h 30m of work a day")
+    expect(modeWords("off", 120)).toBe("Off: nothing to do")
   })
   it("says what it pauses as a value, however many calendars", () => {
     expect(pauseWords(EVERYTHING)).toBe("Every repeating event")

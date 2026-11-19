@@ -1,13 +1,14 @@
 // Settings → Breaks (18 Nov): your breaks, each opening its popup, and what a new one starts with: how many things a
 // day when Light, what pauses, meals and sleep. A break can say otherwise for itself.
 
-import { Chip, Icon, Switch } from "@/components/fr/controls"
+import { Icon, Switch } from "@/components/fr/controls"
 import { useSettings } from "@/hooks/queries"
 import { useCommand } from "@/hooks/useCommand"
 import { useShell } from "@/shell/ShellContext"
 import { type Defaults, PauseValue, useBreakDefaults, useVacations } from "@/breaks/BreakDialog"
 import { PauseChooser } from "@/breaks/PauseChooser"
-import { modeWords, rangeWords, things } from "@/breaks/words"
+import { modeWords, rangeWords, WORK_AMOUNTS } from "@/breaks/words"
+import { LengthField } from "@/todo/Pickers"
 import { useState } from "react"
 import { Field, SectionHead } from "./SettingsPage"
 
@@ -42,7 +43,7 @@ export function BreaksSection() {
             <span style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
               <span style={{ fontWeight: 500, overflowWrap: "anywhere" }}>{v.name}</span>
               <span className="tnum" style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>
-                {rangeWords(v.start, v.end)} · {modeWords(v.mode, v.per_day)}
+                {rangeWords(v.start, v.end)} · {modeWords(v.mode, v.work_min)}
                 {v.end < today ? " · over" : ""}
               </span>
             </span>
@@ -50,14 +51,8 @@ export function BreaksSection() {
           </button>
         ))}
       </Field>
-      <Field name="A light day" note="About how many things a Light break day lists. Friday sizes each day so you stay on track.">
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {[1, 2, 3, 4, 5, 6].map((n) => (
-            <Chip key={n} on={defaults.per_day === n} onClick={() => set({ per_day: n })}>
-              {things(n)}
-            </Chip>
-          ))}
-        </div>
+      <Field name="A light day" note="About how much work a Light break day holds, however many things that is. Its list names tasks, not minutes.">
+        <LengthField value={defaults.work_min} onPick={(m) => m && set({ work_min: m })} label="Work on a light day" amounts={WORK_AMOUNTS} unit=" a day" />
       </Field>
       <Field name="What pauses" note="Only repeating events pause; one-off events stay. With many calendars, search for one.">
         <PauseValue pause={defaults.pause} onClick={() => setChoosing(!choosing)} />

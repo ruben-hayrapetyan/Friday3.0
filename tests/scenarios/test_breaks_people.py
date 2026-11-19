@@ -25,7 +25,7 @@ from friday.core.items import FieldError
 from friday.core.rows import item_from_row
 from friday.core.settings import Pause
 from friday.core.time import parse_local, parse_utc, planning_date, to_utc
-from friday.core.vacations import LIGHT_MIN_PER_THING, is_meal, pauses
+from friday.core.vacations import is_meal, pauses
 from friday.planner.service import replan
 from friday.planner.snapshot import break_calendars
 from friday.sim.cornell import ZONE
@@ -93,9 +93,9 @@ def variants(p: Person) -> dict[str, dict[str, Any]]:
     return {
         "light": {"start": WED.isoformat(), "end": FRI.isoformat()},
         "off": {"start": WED.isoformat(), "end": FRI.isoformat(), "mode": "off"},
-        "picky": {"start": WED.isoformat(), "end": FRI.isoformat(), "per_day": 1, "plan_meals": True,
+        "picky": {"start": WED.isoformat(), "end": FRI.isoformat(), "work_min": 45, "plan_meals": True,
                   "keep_sleep": True, "pause": {"repeating": "only", "calendars": [busiest], "tags": tags}},
-        "busy today": {"start": MONDAY.isoformat(), "end": "2026-10-20", "per_day": 6},
+        "busy today": {"start": MONDAY.isoformat(), "end": "2026-10-20", "work_min": 270},
     }  # fmt: skip
 
 
@@ -135,9 +135,9 @@ def check_break(p: Person, made: dict[str, Any]) -> list[str]:
         if row["preset"] not in ("Routine", "Habit"):
             per_day[d] = per_day.get(d, 0) + end - start
     for d, minutes in per_day.items():
-        most = made["per_day"] * LIGHT_MIN_PER_THING
+        most = made["work_min"]
         if minutes > most + 15:  # a quarter hour's rounding
-            out.append(f"{minutes} min of work on {d}, more than about {made['per_day']} things ({most} min)")
+            out.append(f"{minutes} min of work on {d}, more than the break's about {most} min a day")
     for n in range((last - first).days + 1):
         d = first + timedelta(days=n)
         day = p.do("vacation_day", date=d.isoformat())

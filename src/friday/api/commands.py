@@ -1302,14 +1302,14 @@ class VacationAddInput(Model):
     start: calendar_date
     end: calendar_date
     mode: Literal["off", "light"] = "light"
-    per_day: int | None = Field(None, ge=1, le=20)
+    work_min: int | None = Field(None, ge=15, le=1440)  # Light: about this much work a day
     pause: PauseIn | None = None
     plan_meals: bool | None = None
     keep_sleep: bool | None = None
 
 
 class VacationEditInput(Model):
-    """What changes; `defaults` names what goes back to following your defaults (per_day, pause, plan_meals,
+    """What changes; `defaults` names what goes back to following your defaults (work_min, pause, plan_meals,
     keep_sleep)."""
 
     id: int
@@ -1317,11 +1317,11 @@ class VacationEditInput(Model):
     start: calendar_date | None = None
     end: calendar_date | None = None
     mode: Literal["off", "light"] | None = None
-    per_day: int | None = Field(None, ge=1, le=20)
+    work_min: int | None = Field(None, ge=15, le=1440)
     pause: PauseIn | None = None
     plan_meals: bool | None = None
     keep_sleep: bool | None = None
-    defaults: list[Literal["per_day", "pause", "plan_meals", "keep_sleep"]] = []
+    defaults: list[Literal["work_min", "pause", "plan_meals", "keep_sleep"]] = []
 
 
 class VacationOut(Model):
@@ -1331,7 +1331,7 @@ class VacationOut(Model):
     end: str
     days: int
     mode: Literal["off", "light"]
-    per_day: int
+    work_min: int  # Light: about this much work a day
     pause: PauseIn
     plan_meals: bool
     keep_sleep: bool

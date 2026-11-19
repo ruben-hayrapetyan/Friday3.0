@@ -12128,8 +12128,8 @@ export interface components {
              * @enum {string}
              */
             mode?: "off" | "light";
-            /** Per Day */
-            per_day?: number | null;
+            /** Work Min */
+            work_min?: number | null;
             pause?: components["schemas"]["PauseIn"] | null;
             /** Plan Meals */
             plan_meals?: boolean | null;
@@ -12175,8 +12175,8 @@ export interface components {
             day_n: number;
             /** Days */
             days: number;
-            /** Per Day */
-            per_day: number;
+            /** Work Min */
+            work_min: number;
             /**
              * Keep Sleep
              * @default false
@@ -12224,7 +12224,7 @@ export interface components {
         };
         /**
          * VacationEditInput
-         * @description What changes; `defaults` names what goes back to following your defaults (per_day, pause, plan_meals,
+         * @description What changes; `defaults` names what goes back to following your defaults (work_min, pause, plan_meals,
          *     keep_sleep).
          */
         VacationEditInput: {
@@ -12238,8 +12238,8 @@ export interface components {
             end?: string | null;
             /** Mode */
             mode?: ("off" | "light") | null;
-            /** Per Day */
-            per_day?: number | null;
+            /** Work Min */
+            work_min?: number | null;
             pause?: components["schemas"]["PauseIn"] | null;
             /** Plan Meals */
             plan_meals?: boolean | null;
@@ -12249,7 +12249,7 @@ export interface components {
              * Defaults
              * @default []
              */
-            defaults?: ("per_day" | "pause" | "plan_meals" | "keep_sleep")[];
+            defaults?: ("work_min" | "pause" | "plan_meals" | "keep_sleep")[];
         };
         /** VacationEditResult */
         VacationEditResult: {
@@ -12289,8 +12289,8 @@ export interface components {
              * @enum {string}
              */
             mode: "off" | "light";
-            /** Per Day */
-            per_day: number;
+            /** Work Min */
+            work_min: number;
             pause: components["schemas"]["PauseIn"];
             /** Plan Meals */
             plan_meals: boolean;
