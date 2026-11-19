@@ -130,8 +130,12 @@ let breakMade = false
 async function onBreak(base) {
   if (!breakMade) {
     const c = async (name, body) => (await fetch(`${base}/api/c/${name}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })).json()
-    const day = (n) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10)
-    await c("vacation_add", { name: "Thanksgiving break at my grandparents' house in Vermont", start: day(1), end: day(5) })
+    // local dates: in the evening, UTC's is already tomorrow, and the break fell past the 3-day view
+    const day = (n) => {
+      const d = new Date(Date.now() + n * 86_400_000)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    }
+    await c("vacation_add", { name: "Thanksgiving break at my grandparents' house in Vermont", start: day(0), end: day(4) })
     await c("add", { title: "Spring break", when: "fixed", start: `${day(20)}T00:00`, end: `${day(27)}T00:00` })
     breakMade = true
     await wait(1500) // planned

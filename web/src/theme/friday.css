@@ -707,6 +707,16 @@ kbd.fr-kbd {
   height: 100%;
   background: var(--fr-break);
 }
+.fr-month-break {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--fr-break) 16%, transparent);
+  box-shadow: inset 3px 0 0 var(--fr-break);
+  overflow-wrap: anywhere;
+}
 .fr-break-day,
 .fr-month-day[data-break] {
   background-color: color-mix(in srgb, var(--fr-break) 5%, transparent);

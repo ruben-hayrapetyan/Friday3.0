@@ -111,9 +111,9 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
                   <div style={{ height: "100%", width: `${Math.min(100, (hrs / cap) * 100)}%`, borderRadius: 1, background: hrs > cap ? "var(--fr-warn)" : "var(--color-neutral-400)" }} />
                 </div>
                 {away && (
-                  <span className="fr-break-line" data-quiet={away.mode === "off" || !away.things || undefined} style={{ cursor: "inherit", boxShadow: "none", padding: "0 6px", background: "color-mix(in srgb, var(--fr-break) 16%, transparent)" }} title={`${away.name}: open the day to see its list`}>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{away.name}</span>
-                    <span className="tnum" style={{ flex: "none", marginLeft: "auto" }}>{lineWords(away)}</span>
+                  // wraps in a narrow day rather than cut (UI-PRINCIPLES): the break's name and what's left
+                  <span className="fr-month-break" title={`${away.name}: open the day to see its list`}>
+                    {away.name} · {lineWords(away).toLowerCase()}
                   </span>
                 )}
                 {items.slice(0, SHOWN).map((it) => (
