@@ -1,6 +1,32 @@
 {
-  "current": "0.5.4",
+  "current": "0.5.5",
   "versions": [
+    {
+      "version": "0.5.5",
+      "released": "2026-11-19",
+      "sha256": "ec2917fe91e5c7cb3e7d6f34ea5fe5c2cc268d3b41ce09d5faa8b4cedc73ea91",
+      "bytes": 237121761,
+      "commit": "e24fd95e52fab3474f4d7eec4590abd05b66ea73",
+      "notes": {
+        "summary": "Friday starts even when another app uses its port, exam focus is set for each exam, and fewer, better-timed questions.",
+        "new": [
+          "Exam focus is set for each exam in its popup: how many days before it only its class's work is planned, or on the exam's own day until it starts. An exam without its own follows your rule in Rules."
+        ],
+        "changed": [
+          "A project's steps say on each step which one it comes after (\"after Outline\"), or \"doesn't wait\".",
+          "Friday looks for a new version when it opens, once a day, and when you come back to it after six hours or more, rather than every ten minutes.",
+          "A sleep tap you missed is asked about only once it's two hours past its usual time.",
+          "Adding an exam focus rule says which one it takes the place of, and Rules shows your own words under a rule Friday reads otherwise."
+        ],
+        "fixed": [
+          "When another app (Anki, for one) used Friday's port, Friday couldn't start. It now moves to a free port, and stops a copy of its own server that stopped answering.",
+          "An exam's late prep was offered a later due, which can't help once the exam is over. It's now offered events to skip instead, including ones you said you're going to.",
+          "Steps waiting for one with no room before its due said \"No room before its due\" themselves. They now say what they wait for, and the Inbox asks about them with it.",
+          "\"On the day of a prelim, study until it starts\" was read as the day before.",
+          "When you're usually ready to work ignored the morning routine Friday had learned."
+        ]
+      }
+    },
     {
       "version": "0.5.4",
       "released": "2026-11-19",
