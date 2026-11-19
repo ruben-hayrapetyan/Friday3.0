@@ -41,9 +41,9 @@ from friday.core.pace import dials_on, pace_label
 from friday.core.presets import in_use
 from friday.core.quickadd import parse
 from friday.core.rows import item_from_row
-from friday.core.settings import to_json
+from friday.core.settings import minutes_of, to_json
 from friday.core.textnorm import identity_text, norm
-from friday.core.time import UNIT_MIN, format_utc, local_midnight, parse_utc, to_local, to_utc
+from friday.core.time import UNIT_MIN, format_utc, local_midnight, parse_utc, planning_date, to_local, to_utc
 from friday.engine import executor
 from friday.engine.explain import Block
 from friday.engine.rules.prices import has_words
@@ -101,6 +101,15 @@ def swap_out(ctx: Ctx, swap: executor.Swap) -> Swap:
     )
 
 
+def breaks_on(snapshot: Any) -> Any:
+    """Whether a moment (UTC minutes) is on one of the snapshot's breaks."""
+    if not snapshot.vacations:
+        return lambda _at: False
+    time = snapshot.settings["time"]
+    day_start = minutes_of(time.day_start)
+    return lambda at: any(v.covers(planning_date(at, time.timezone, day_start)) for v in snapshot.vacations)
+
+
 @query("now")
 def now(ctx: Ctx, inp: Empty) -> NowOut:
     """What's on now, what's next, what else is safe to do, and deadlines needing attention."""
@@ -109,7 +118,14 @@ def now(ctx: Ctx, inp: Empty) -> NowOut:
     timer = running(ctx)
     # Real times, not the grid's: the grid starts at the next quarter hour, so a block begun at 08:00 "started" at
     # 08:15 and nothing was on at 08:03 (M16).
-    planned = [b for b in snapshot.plan_blocks if key_of(b.item_id) in state.problem.items and b.end_utc > ctx.now_utc]
+    # A break day is a list, not times (core/vacations.py): its planned blocks aren't "on now" or "next" (18 Nov,
+    # Siri said a break day in times); what you time, and events, still are.
+    away = breaks_on(snapshot)
+    planned = [
+        b
+        for b in snapshot.plan_blocks
+        if key_of(b.item_id) in state.problem.items and b.end_utc > ctx.now_utc and not away(b.start_utc)
+    ]
     covering = next((b for b in planned if b.start_utc <= ctx.now_utc), None)
     # A hidden calendar's events are never named (planner/hidden.py); one it counts as busy still ends the free time.
     events, walls = fixed_events(ctx)

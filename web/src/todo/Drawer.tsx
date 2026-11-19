@@ -24,6 +24,7 @@ import { BulkBar, menuOpen, pickWith } from "./Bulk"
 import { grouped, type SortBy } from "./groups"
 import { SortPicker } from "./SortPicker"
 import { ExpiresMark } from "./TodoPage"
+import { usePlannedWhen } from "@/breaks/usePlannedWhen"
 
 /** The drawer's frame: over the calendar's right side, below the title row, resized by its left edge. */
 export function DrawerFrame({ children, todo }: { children: ReactNode; todo?: boolean }) {
@@ -240,6 +241,7 @@ function Row(props: { item: Item; late?: Late; overdueBy?: string; picked: boole
     setNaming(true)
   }
   const next = nextBlocks(blocks, useItems().data).get(item.id) // a project's: its steps' soonest
+  const plannedWhen = usePlannedWhen()
   const project = useProjectOf(item) // a step says whose (13 Nov)
   const length = lengthOf(item)
   const overdue = !!item.due && item.due < `${today}T00:00`
@@ -293,7 +295,7 @@ function Row(props: { item: Item; late?: Late; overdueBy?: string; picked: boole
         <span className="tnum" style={{ fontSize: 11, color: overdue ? "var(--fr-due)" : "var(--color-neutral-500)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {overdueText ? `${overdueText} · ` : ""}
           {project ? `${project.project.title} · ` : ""}
-          {next ? when(next.start, today) : "not planned"}
+          {next ? plannedWhen(next.start, today) : "not planned"}
           {item.due && !overdueText && (
             <>
               {" · "}

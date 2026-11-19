@@ -19,6 +19,7 @@ import { draftOf } from "@/shell/EventPane"
 import { useShell } from "@/shell/ShellContext"
 import { useBreaks } from "@/now/breaks"
 import { useAllItems } from "@/todo/TodoPage"
+import { usePlannedWhen } from "@/breaks/usePlannedWhen"
 
 interface Hit {
   key: string
@@ -60,6 +61,7 @@ export function Search() {
   const items = useAllItems(false).data ?? [] // open tasks only (3 Nov)
   const projects = useProjects().data ?? []
   const next = nextBlocks(useHorizon().data?.blocks ?? [])
+  const plannedWhen = usePlannedWhen()
   const text = q.trim()
   const events = useQuery({ queryKey: ["events", text], queryFn: () => query("events", { text, limit: 8 }), enabled: text.length > 1 }).data ?? []
   const add = useAdd()
@@ -74,7 +76,7 @@ export function Search() {
         key: `i${i.id}`,
         label: i.title,
         swatch: color(i.area, i.preset),
-        meta: next.get(i.id) ? when(next.get(i.id)!.start, today) : i.due ? `due ${when(i.due, today)}` : "",
+        meta: next.get(i.id) ? plannedWhen(next.get(i.id)!.start, today) : i.due ? `due ${when(i.due, today)}` : "",
         run: go(() => navigate(`/todo?item=${i.id}`)),
       }))
     const eventHits: Hit[] = text.length > 1

@@ -106,3 +106,18 @@ export function inView(start: string, end: string, dates: string[]): { from: num
 
 /** The day after a date, for a new break's end. */
 export const nextDay = (date: string) => addDays(date, 1)
+
+/** What a calendar cell or list shows of a day (breaks/): on a break day only events that stay, no planned work and
+ * nothing a break paused; any other day, everything. */
+export function keptOnBreakDay(onBreak: boolean, thing: { event: boolean; left_out?: string | null }): boolean {
+  if (!onBreak) return true
+  return thing.event && thing.left_out !== "paused"
+}
+
+/** When planned work is, said as a row says it: on a break day the day's list, not a time ("today's list", "Fri's
+ * list"); any other day by `when`. */
+export function plannedWords(start: string, today: string, breaks: { start: string; end: string }[], when: (at: string) => string): string {
+  const day = start.slice(0, 10)
+  if (!breaks.some((b) => b.start <= day && day <= b.end)) return when(start)
+  return day === today ? "today's list" : `${weekday(day)}'s list`
+}

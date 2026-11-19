@@ -7,11 +7,13 @@ made in another that's still there) and what was published last.
 
 import json
 import sqlite3
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from friday.core.db import rows
 from friday.core.time import format_utc, parse_utc
+from friday.core.vacations import on_a_break
 from friday.planner.prepare import block_key
 from friday.planner.store import current_plan, kv_get, load_settings
 from friday.sync import gcal, google_auth
@@ -39,7 +41,10 @@ def publish_plan(
     calendar = gcal.own_calendar(service, state.get("calendar"), settings["time"].timezone)
     until = now_utc + settings["time"].horizon_days * 24 * 60
     gcal.publish(
-        service, calendar, blocks(conn, saved["id"], now_utc, until, settings["notify"].app_url), gcal.rfc3339(now_utc)
+        service,
+        calendar,
+        blocks(conn, saved["id"], now_utc, until, settings["notify"].app_url, on_a_break(conn, user_id, settings)),
+        gcal.rfc3339(now_utc),
     )
     state = {"calendar": calendar, "account": account, "plan": saved["id"], "at": format_utc(now_utc)}
     conn.execute(
@@ -50,7 +55,16 @@ def publish_plan(
     return True
 
 
-def blocks(conn: sqlite3.Connection, plan_id: int, now_utc: int, until: int, app_url: str | None) -> list[gcal.Block]:
+def blocks(
+    conn: sqlite3.Connection,
+    plan_id: int,
+    now_utc: int,
+    until: int,
+    app_url: str | None,
+    on_break: Callable[[str], bool] = lambda _start: False,
+) -> list[gcal.Block]:
+    """The plan's blocks for a calendar of it (Google's "Friday", the Mac's), but none on a break day: those days are a
+    list, not times (core/vacations.py; 18 Nov, they went back onto the phone as times)."""
     found = rows(
         conn,
         "SELECT b.item_id, b.start_utc, b.end_utc, b.tentative, i.title FROM blocks b JOIN items i ON i.id = b.item_id "
@@ -67,4 +81,5 @@ def blocks(conn: sqlite3.Connection, plan_id: int, now_utc: int, until: int, app
             link=f"{app_url.rstrip('/')}/#/" if app_url else None,
         )
         for r in found
+        if not on_break(r["start_utc"])
     ]

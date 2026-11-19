@@ -14,6 +14,8 @@ import { DueCount, dueBlock } from "./DueCount"
 import { asBlock } from "./Pieces"
 import { isOnDay, isWholeDay } from "./wholeDay"
 import { dockRoom } from "@/now/dockRoom"
+import { lineWords } from "@/breaks/BreakRow"
+import { keptOnBreakDay } from "@/breaks/words"
 
 const DOWS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const SHOWN = 3
@@ -36,6 +38,7 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
   const calendar = useCalendar(gridStart, 42).data
   const plan = useShownPlan(`${gridStart}T00:00`, `${addDays(gridStart, 42)}T00:00`).data
   const caps = new Map(calendar?.days.map((d) => [d.date, d.cap_hours]))
+  const breaks = new Map((calendar?.days ?? []).filter((d) => d.vacation).map((d) => [d.date, d.vacation as NonNullable<(typeof d)["vacation"]>]))
   const month = first.slice(0, 7)
   const weeks = days.filter((_, i) => i % 7 === 0).filter((d, w) => w < 5 || addDays(d, 0).slice(0, 7) === month)
   const dows = [...DOWS.slice(offset), ...DOWS.slice(0, offset)]
@@ -56,10 +59,11 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
           {Array.from({ length: 7 }, (_, i) => addDays(start, i)).map((date) => {
             const hrs = plan?.day_hours[date] ?? 0
             const cap = caps.get(date) ?? 8
+            const away = breaks.get(date) // a break day: its list, not times (breaks/)
             const items = [
-              ...(plan?.blocks ?? []).filter((b) => b.start.startsWith(date)).map((b) => ({ key: b.key, start: b.start, whole: false, title: b.title, s: skinOf(b.pinned === "locked" ? "locked" : "planned", b.area, undefined, b.preset), event: null })),
+              ...(plan?.blocks ?? []).filter((b) => b.start.startsWith(date) && keptOnBreakDay(!!away, { event: false })).map((b) => ({ key: b.key, start: b.start, whole: false, title: b.title, s: skinOf(b.pinned === "locked" ? "locked" : "planned", b.area, undefined, b.preset), event: null })),
               // a whole-day event on every day it covers, first and without a time (3 Nov stress test: "12am Study abroad")
-              ...(plan?.fixed ?? []).filter((f) => isOnDay(f, date)).map((f) => ({ key: `F${f.id}`, start: isWholeDay(f) ? `${date}T00:00` : (f.start as string), whole: isWholeDay(f), title: f.title, s: { ...skinOf("fixed", f.area), bg: wash(eventPaint(f, light), light), stripe: eventPaint(f, light), fg: "var(--color-text)" }, event: asBlock({ ...f, start: f.start as string, end: f.end ?? (f.start as string) }) })),
+              ...(plan?.fixed ?? []).filter((f) => isOnDay(f, date) && keptOnBreakDay(!!away, { event: true, left_out: f.left_out })).map((f) => ({ key: `F${f.id}`, start: isWholeDay(f) ? `${date}T00:00` : (f.start as string), whole: isWholeDay(f), title: f.title, s: { ...skinOf("fixed", f.area), bg: wash(eventPaint(f, light), light), stripe: eventPaint(f, light), fg: "var(--color-text)" }, event: asBlock({ ...f, start: f.start as string, end: f.end ?? (f.start as string) }) })),
             ].sort((a, b) => Number(b.whole) - Number(a.whole) || a.start.localeCompare(b.start))
             const dues = (calendar?.dues ?? []).filter((d) => d.due.startsWith(date))
             const inMonth = date.slice(0, 7) === month
@@ -68,7 +72,7 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
               <div
                 key={date}
                 data-drop-day={date}
-                className="fr-hover-accent fr-month-day"
+                className={`fr-hover-accent fr-month-day${away ? " fr-break-day" : ""}`}
                 onClick={() => onDay(date)}
                 style={{
                   outline: drag?.moved && drag.over === "day" && drag.day === date ? "2px solid var(--color-accent)" : undefined,
@@ -105,6 +109,12 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
                 <div style={{ height: 2, borderRadius: 1, background: "color-mix(in srgb, var(--color-text) 8%, transparent)" }}>
                   <div style={{ height: "100%", width: `${Math.min(100, (hrs / cap) * 100)}%`, borderRadius: 1, background: hrs > cap ? "var(--fr-warn)" : "var(--color-neutral-400)" }} />
                 </div>
+                {away && (
+                  <span className="fr-break-line" data-quiet={away.mode === "off" || !away.things || undefined} style={{ cursor: "inherit", boxShadow: "none", padding: "0 6px", background: "color-mix(in srgb, var(--fr-break) 16%, transparent)" }} title={`${away.name}: open the day to see its list`}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{away.name}</span>
+                    <span className="tnum" style={{ flex: "none", marginLeft: "auto" }}>{lineWords(away)}</span>
+                  </span>
+                )}
                 {items.slice(0, SHOWN).map((it) => (
                   <div
                     key={it.key}

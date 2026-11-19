@@ -9,6 +9,7 @@ from friday.api.commands import MacPlanBlock, MacPlanOut
 from friday.api.types import Empty
 from friday.commands.google import blocks
 from friday.commands.registry import Ctx, query
+from friday.core.vacations import on_a_break
 from friday.planner.store import current_plan
 
 
@@ -21,7 +22,7 @@ def mac_plan(ctx: Ctx, inp: Empty) -> MacPlanOut:
     if saved is None:
         return MacPlanOut(wanted=True)
     until = ctx.now_utc + ctx.settings["time"].horizon_days * 24 * 60
-    found = blocks(ctx.conn, saved["id"], ctx.now_utc, until, None)
+    found = blocks(ctx.conn, saved["id"], ctx.now_utc, until, None, on_a_break(ctx.conn, ctx.user_id, ctx.settings))
     return MacPlanOut(
         wanted=True,
         plan=saved["id"],

@@ -409,3 +409,30 @@ class TestEdges:
 
         conn = connect(tmp_path / "bare.db")
         assert suggest(conn, 1, load_settings(conn, 1), __import__("datetime").date(2026, 10, 19)) == []
+
+
+class TestExports:
+    def test_the_plan_on_your_phone_has_no_times_on_a_break(self, app: App) -> None:
+        """Found in the review, 18 Nov: the "Friday" calendar on the iPhone (and Google's) is the plan's blocks, so a
+        break day's list went back onto the phone as times."""
+        essay = task(app, "essay", 60, f"{WED}T23:00", release=f"{WED}T04:00")
+        reading = task(app, "reading", 60, "2026-10-20T23:00")
+        app.do("settings_set", key="mac_plan", value=True)
+        add_break(app)
+        replan(app.conn, app.now_utc)
+        exported = {int(b["key"].split("@")[0].removeprefix("T")) for b in app.do("mac_plan")["blocks"]}
+        assert reading in exported and essay not in exported
+
+    def test_whats_on_now_names_no_planned_time_on_a_break(self, app: App) -> None:
+        """Found in the review, 18 Nov: Siri's "what's on now" (and the Now bar) read the plan's blocks, so a break
+        day was said in times ("essay until 11"). What you time, and events, still are."""
+        essay = task(app, "essay", 120, f"{WED}T23:00", release=f"{WED}T04:00")
+        add_break(app)
+        app.at(f"{WED}T07:00")
+        replan(app.conn, app.now_utc)
+        for hour in range(8, 22):
+            now = app.at(f"{WED}T{hour:02d}:00").do("now")
+            for said in (now["current"], now["next"]):
+                assert not said or said["item_id"] != essay or said["start"][:10] != WED, (hour, said)
+        app.at(f"{WED}T10:00").do("start", id=essay)
+        assert app.do("now")["current"]["item_id"] == essay  # what you time is on

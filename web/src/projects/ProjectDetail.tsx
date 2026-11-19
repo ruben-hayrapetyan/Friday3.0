@@ -15,6 +15,7 @@ import { useShell } from "@/shell/ShellContext"
 import { Bar, PROJECT_STATUS, type Project, projectPct, StatusTag, TagMenu, TONE, useTag } from "./parts"
 import { Timeline } from "./Timeline"
 import { usePopupStrip } from "@/projects-v2/Rows"
+import { usePlannedWhen } from "@/breaks/usePlannedWhen"
 
 export function ProjectDetail({ p, all, onPick, top, after }: { p: Project; all: Project[]; onPick: (id: number) => void; top?: React.ReactNode; after?: React.ReactNode }) {
   const { today, layout } = useShell()
@@ -183,6 +184,7 @@ function Then({ step, above, project }: { step: Item; above: Item; project: Proj
 
 function Step({ step, first, last, next, later, onMove }: { step: Item; first: boolean; last: boolean; next: string | null; later: string | null; onMove: (by: number) => void }) {
   const { today, layout } = useShell()
+  const plannedWhen = usePlannedWhen()
   const done = useCommand("done", { label: () => `${step.title}: done` })
   const reopen = useCommand("reopen", { label: () => "Open again" })
   const edit = useCommand("edit", { label: () => "Saved" })
@@ -191,7 +193,7 @@ function Step({ step, first, last, next, later, onMove }: { step: Item; first: b
   const length = step.duration_min ?? 60
   // planned past the plan's two weeks, nearer its due, isn't "not planned" (17 Nov: "open subtasks say not planned
   // even with ample time")
-  const planned = isDone ? "Done" : next ? when(next, today) : later ? `Later, by ${when(later, today)}` : "No room before its due"
+  const planned = isDone ? "Done" : next ? plannedWhen(next, today) : later ? `Later, by ${when(later, today)}` : "No room before its due"
   return (
     <div className="fr-row" style={{ display: "grid", gridTemplateColumns: cols(layout.tight), gap: 12, alignItems: "center", padding: "10px 0", opacity: isDone ? 0.55 : 1 }}>
       <span style={{ display: "flex", flexDirection: "column" }}>

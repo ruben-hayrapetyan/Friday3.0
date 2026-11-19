@@ -68,3 +68,24 @@ describe("what's due during a break", () => {
     expect(dueInside(items, "2026-11-18", "2026-11-22").map((i) => i.title)).toEqual(["Lab report"])
   })
 })
+
+describe("a break day in the month (found in the review, 18 Nov: it drew planned times and paused classes)", () => {
+  it("keeps events that stay and drops planned work and paused events", async () => {
+    const { keptOnBreakDay } = await import("./words")
+    expect(keptOnBreakDay(true, { event: true, left_out: "paused" })).toBe(false)
+    expect(keptOnBreakDay(true, { event: true, left_out: null })).toBe(true)
+    expect(keptOnBreakDay(true, { event: false })).toBe(false)
+    expect(keptOnBreakDay(false, { event: false })).toBe(true)
+  })
+})
+
+describe("when a task is planned, said on a break (found in the review: rows said \"Wed 2pm\" on a day with no times)", () => {
+  it("names the day's list, not a time; any other day as before", async () => {
+    const { plannedWords } = await import("./words")
+    const ranges = [{ start: "2026-11-18", end: "2026-11-22" }]
+    const when = (at: string) => `at ${at.slice(11)}`
+    expect(plannedWords("2026-11-18T14:00", "2026-11-18", ranges, when)).toBe("today's list")
+    expect(plannedWords("2026-11-20T09:00", "2026-11-18", ranges, when)).toBe("Fri's list")
+    expect(plannedWords("2026-11-23T09:00", "2026-11-18", ranges, when)).toBe("at 09:00")
+  })
+})

@@ -33,6 +33,7 @@ import { useDuplicates } from "@/inbox/queries"
 import { SortPicker } from "./SortPicker"
 import { TodoDetail } from "./TodoDetail"
 import { dockRoom } from "@/now/dockRoom"
+import { usePlannedWhen } from "@/breaks/usePlannedWhen"
 
 const DRAG = "text/x-friday-item" // tasks dragged to another section: their ids, comma-separated
 
@@ -317,6 +318,7 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging, hea
   const done = useCommand("done", { label: () => `${item.title}: done` })
   const reopen = useCommand("reopen", { label: () => `${item.title}: open again` })
   const next = nextBlocks(blocks, useAllItems(false).data).get(item.id) // a project's: its steps' soonest
+  const plannedWhen = usePlannedWhen()
   const isNow = now?.current?.item_id === item.id
   const alert = now?.alerts.find((a) => a.item_id === item.id)
   const late = useStatus().data?.late_items?.find((l) => l.item_id === item.id)
@@ -411,7 +413,7 @@ function CompactRow({ item, by, fresh, selected, picked, onSelect, dragging, hea
           {left > 0 && !isDone ? dur(left) : "·"}
         </span>
         <span style={{ ...meta, minWidth: 84, textAlign: "right" }} title={next ? "Next planned" : "Not on the plan yet"}>
-          {isNow ? <span className="fr-tag accent">Now</span> : next ? when(next.start, today) : isDone ? "done" : "—"}
+          {isNow ? <span className="fr-tag accent">Now</span> : next ? plannedWhen(next.start, today) : isDone ? "done" : "—"}
         </span>
         <span className="fr-hover" onClick={inline("due")} style={{ ...cell, minWidth: 104 }} title={item.due ? "Due. Click to change" : "Click to set a due date"}>
           {item.due ? <DueLabel due={item.due} prefix="due " routine={item.preset === "Routine"} /> : <span className="fr-todo-more">+ due</span>}
@@ -497,6 +499,7 @@ function Row({ item, fresh, selected, picked, onSelect, dragging, headed }: RowP
   const done = useCommand("done", { label: () => `${item.title}: done` })
   const reopen = useCommand("reopen", { label: () => `${item.title}: open again` })
   const next = nextBlocks(blocks, useAllItems(false).data).get(item.id) // a project's: its steps' soonest
+  const plannedWhen = usePlannedWhen()
   const isNow = now?.current?.item_id === item.id
   const alert = now?.alerts.find((a) => a.item_id === item.id)
   const late = useStatus().data?.late_items?.find((l) => l.item_id === item.id)
@@ -564,7 +567,7 @@ function Row({ item, fresh, selected, picked, onSelect, dragging, headed }: RowP
             Now
           </span>
         ) : (
-          <span style={{ color: "var(--color-neutral-300)" }}>{next ? when(next.start, today) : isDone ? "Done" : "not planned"}</span>
+          <span style={{ color: "var(--color-neutral-300)" }}>{next ? plannedWhen(next.start, today) : isDone ? "Done" : "not planned"}</span>
         )}
         <span style={{ color: soon ? "var(--fr-due)" : "var(--color-neutral-500)" }}>{item.due ? <DueLabel due={item.due} routine={item.preset === "Routine"} /> : "No due date"}</span>
         {late && !isDone && <LateTag hours={late.hours} />}
