@@ -49,6 +49,7 @@ import { closes, type Opener, wasInFront } from "./toggles"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { BreakDay } from "@/breaks/BreakDay"
 import { BreakDialog } from "@/breaks/BreakDialog"
+import { SpanOffer } from "@/breaks/daySpan"
 
 export function Shell() {
   const { today, pop, setPop, dialog, setDialog, drawer, event, layout, drawerOver, drawerWidth, navOpen, setNavOpen, tour, help, setupStep, breakDay, breakEdit, setBreakEdit } = useShell()
@@ -163,6 +164,7 @@ export function Shell() {
           opened instead, and stayed) */}
       {dialog === "setup" && <SetupDialog only={setupDone === false ? null : setupStep} onClose={() => setDialog(null)} />}
       {breakEdit && <BreakDialog edit={breakEdit} onClose={() => setBreakEdit(null)} />}
+      <SpanOffer />
       <UpdateDialogs />
       {tour && dialog !== "setup" && <Tour />}
       {help && !tour && <HelpOverlay />}

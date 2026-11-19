@@ -29,7 +29,7 @@ describe("the header (black box)", () => {
   })
   it("shows ten controls while What if is off, one fewer than before", () => {
     // what's drawn: buttons, menus, the view switch and the lateness note; the What if bar draws nothing while off
-    const controls = header.match(/<(button|IconButton|Seg|ShowMenu|PlanMenu|DecisionsButton|Attention)\b/g) ?? []
+    const controls = header.match(/<(button|IconButton|Seg|ShowMenu|PlanMenu|BreaksButton|Attention)\b/g) ?? []
     expect(controls.length).toBe(10)
   })
 })

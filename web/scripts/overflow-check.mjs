@@ -46,6 +46,8 @@ const STATES = [
   { name: "event category menu", path: "/", keys: ["w"], each: '[data-block-key^="F"]', most: 2, after: "Category of" },
   { name: "plan to-do drawer", path: "/", click: ["To-do list"] },
   { name: "plan menu", path: "/", click: ["Plan…"] },
+  // 19 Nov: the Breaks button where the Inbox tray was, and its panel; the header at every width (`--widths`)
+  { name: "plan breaks panel", path: "/", click: ["Breaks|Plan…"] }, // the narrowest: Breaks is the Plan menu's first row
   { name: "what if", path: "/", click: ["Plan…", "What if"] },
   { name: "search", path: "/", keys: ["Meta+k"] },
   { name: "what's on this page", path: "/", click: ["Menu?", "What's on this page"] },

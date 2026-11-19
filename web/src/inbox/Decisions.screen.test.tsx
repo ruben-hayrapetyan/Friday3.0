@@ -259,12 +259,19 @@ describe("Friday's questions", () => {
 })
 
 describe("the count of what waits", () => {
-  it("shows on the plan as a tray that opens the Inbox, and in the window's title", async () => {
+  // 19 Nov: the plan's tray became the Breaks button ("instead of the yellow inbox in the top right corner can we
+  // make that a 'breaks' clickable square"); the count stays beside the sidebar's Inbox and in the window's title
+  it("shows beside the sidebar's Inbox and in the window's title, not as a tray on the plan", async () => {
     const { user } = await openFriday("/")
-    const tray = await screen.findByRole("button", { name: /^\d+ things? waiting in your Inbox$/ }, { timeout: 15_000 })
-    const n = Number(tray.getAttribute("aria-label")?.match(/\d+/)?.[0])
-    await waitFor(() => expect(document.title).toMatch(new RegExp(`^\\(${n}\\) `)))
-    await user.click(tray)
+    const sidebar = within((await screen.findAllByRole("complementary"))[0])
+    const inbox = sidebar.getByRole("link", { name: /^Inbox/ })
+    await waitFor(() => {
+      const n = inbox.textContent?.match(/\d+/)?.[0] // as more comes in, both follow: the same count
+      expect(n).toBeTruthy()
+      expect(document.title.startsWith(`(${n})`)).toBe(true)
+    }, { timeout: 15_000 })
+    expect(screen.queryByRole("button", { name: /waiting in your Inbox$/ })).toBeNull()
+    await user.click(inbox)
     expect(await screen.findByRole("list", { name: "Waiting for you" })).toBeTruthy()
   })
 })

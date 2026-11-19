@@ -13,6 +13,7 @@ import { useDate } from "@/hooks/useClock"
 import { addDays, toMin } from "@/lib/time"
 import { monthStart } from "@/plan/MonthView"
 import { type CalendarPlace, useShell } from "./ShellContext"
+import { inSpan, spanDay, useSpan } from "@/breaks/daySpan"
 
 const DOWS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
@@ -30,6 +31,7 @@ export function MiniMonth() {
   const dated = useDate()
   const navigate = useNavigate()
   const { drag } = useDragging()
+  const span = useSpan() // days dragged across, to make a break (breaks/daySpan)
   const follows = followedMonth(place, dated)
   const [month, setMonth] = useState(follows)
   // Any move of the calendar brings the mini month back to it, even within the month it's in; set while drawing, not
@@ -96,6 +98,8 @@ export function MiniMonth() {
             <button
               key={date}
               data-drop-day={date}
+              {...spanDay(date)}
+              data-spanned={inSpan(span, date) ? "" : undefined}
               onClick={() => open(date)}
               className="fr-plain tnum"
               aria-label={date}
@@ -111,7 +115,7 @@ export function MiniMonth() {
                   : full > 0.02
                     ? `color-mix(in srgb, var(--color-text) ${Math.round(3 + 15 * full)}%, transparent)`
                     : undefined,
-                boxShadow: target ? "inset 0 0 0 2px var(--color-accent)" : undefined,
+                boxShadow: target ? "inset 0 0 0 2px var(--color-accent)" : inSpan(span, date) ? "inset 0 0 0 2px var(--fr-break)" : undefined,
                 textDecoration: isToday ? "underline" : undefined,
                 textDecorationColor: "var(--fr-now)",
                 textDecorationThickness: 2,

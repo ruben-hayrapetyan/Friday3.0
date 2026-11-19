@@ -49,7 +49,7 @@ export function BreakDialog({ edit, onClose }: { edit: BreakEdit; onClose: () =>
     work_min: defaults.work_min, pause: defaults.pause, plan_meals: defaults.plan_meals, keep_sleep: defaults.keep_sleep, own: [],
   }))
   const v = edit.id === undefined ? draft : saved
-  const [open, setOpen] = useState<Row>(null)
+  const [open, setOpen] = useState<Row>(edit.id === undefined && edit.pickDays ? "dates" : null)
   const change = useCommand("vacation_edit", { optimistic: editedNow, label: (o) => o.result.message })
   const add = useCommand("vacation_add", { label: (o) => o.result.message })
   const remove = useCommand("vacation_delete", { label: (o) => o.result.message })

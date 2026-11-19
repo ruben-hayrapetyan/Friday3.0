@@ -29,7 +29,7 @@ import { picks, usePicks } from "./picks"
 import { MonthView, monthStart } from "./MonthView"
 import { useWhatIf, whatIf } from "@/whatif/store"
 import { WhatIfBar } from "@/whatif/WhatIfPanel"
-import { DecisionsButton } from "@/inbox/Decisions"
+import { BreaksButton } from "@/breaks/BreaksButton"
 import { LightenDialog } from "@/dialogs/Dialogs"
 import { overSentence } from "@/lib/load"
 
@@ -150,7 +150,7 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
         <span className="fr-h" style={{ fontSize: layout.tight ? 18 : 24, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {rangeTitle(first, view, layout.main < 900, layout.tight)}
         </span>
-        {!layout.tight && (
+        {layout.main >= BREAKS_WORD_MIN && ( // narrower, "back to today" is in the Plan menu (19 Nov: 700px cut it)
           <button className="fr-plain fr-hover-text" style={{ color: "var(--color-neutral-500)", whiteSpace: "nowrap" }} onClick={onToday} title="Back to today">
             {subTitle(first, days, today, view)}
           </button>
@@ -165,9 +165,9 @@ function Header(props: { view: View; first: string; onView: (v: View) => void; o
       )}
       <WhatIfBar tight={layout.tight} />
       <ShowMenu />
-      <PlanMenu views={layout.tight ? { options: views, value: view, onPick: onView, onToday } : undefined} />
-      <IconButton tour="search" icon="magnifying-glass" label="Search (⌘K)" onClick={() => setDialog("search")} />
-      <DecisionsButton />
+      <PlanMenu views={layout.tight ? { options: views, value: view, onPick: onView, onToday } : undefined} breaks={layout.main < BREAKS_BUTTON_MIN} search={layout.main < SEARCH_BUTTON_MIN} today={!layout.tight && layout.main < BREAKS_WORD_MIN ? onToday : undefined} />
+      {layout.main >= SEARCH_BUTTON_MIN && <IconButton tour="search" icon="magnifying-glass" label="Search (⌘K)" onClick={() => setDialog("search")} />}
+      {layout.main >= BREAKS_BUTTON_MIN && <BreaksButton square={layout.main < BREAKS_WORD_MIN} />}
       <button
         className="btn btn-icon btn-secondary"
         data-tour="drawer"
@@ -192,20 +192,44 @@ function IconButton({ icon, label, onClick, tour }: { icon: string; label: strin
 
 /** Everything that changes the plan, in one menu: What if, Ask your AI, other ways, shove, pace, the brief and what
  * changed. Seven at most (3 Nov, the CS 2112 UI lecture's rule of seven; plan/menus.test.ts holds it). */
-function PlanMenu({ views }: { views?: { options: typeof VIEWS; value: View; onPick: (v: View) => void; onToday: () => void } }) {
-  const { pop, setPop, setDialog, askClaude } = useShell()
+// Below this width the title row has no room for the Breaks button: it's the Plan menu's first row instead, as the views
+// are in a narrow window (19 Nov: "make sure that all of the buttons at the top collapse nicely")
+const BREAKS_BUTTON_MIN = 380
+// and below this one it's a square the size of the Inbox's tray it replaced, so the row fits as it did, whatever the
+// lateness note beside it says (19 Nov: the word made a phone's To-do button run off the edge, and a 700px row cut
+// "This month")
+const BREAKS_WORD_MIN = 760
+// and the smallest phones (320px) have no room for Search's button either, with the lateness note showing
+const SEARCH_BUTTON_MIN = 360
+
+function PlanMenu(props: { views?: { options: typeof VIEWS; value: View; onPick: (v: View) => void; onToday: () => void }; breaks?: boolean; search?: boolean; today?: () => void }) {
+  const { views, breaks, search, today } = props
+  const { pop, setPop, setDialog, askClaude, setBreakEdit } = useShell()
   const ai = useAi()
   const paces = usePaces().data
   return (
     <Dropdown tour="plan-menu" icon="sparkle" label="Plan">
       {(close) => (
         <>
-          {views && ( // in a narrow window the view and today live here, so the title row keeps the date
-            <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 8px 8px" }}>
-              <Seg options={views.options} value={views.value} onPick={(v) => (close(), views.onPick(v))} label="View" />
-              <button className="btn btn-ghost" onClick={() => (close(), views.onToday())} style={{ fontSize: 12 }}>
-                Today
-              </button>
+          {(views || today || search || breaks) && ( // in a narrow window what the title row has no room for lives here, in
+            // one line above the menu's seven rows: the view and today, and on a phone Search and Breaks (19 Nov)
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", padding: "6px 8px 8px" }}>
+              {views && <Seg options={views.options} value={views.value} onPick={(v) => (close(), views.onPick(v))} label="View" />}
+              {(views || today) && (
+                <button className="btn btn-ghost" onClick={() => (close(), (views?.onToday ?? today)?.())} style={{ fontSize: 12 }}>
+                  Today
+                </button>
+              )}
+              {search && (
+                <button className="btn btn-ghost" onClick={() => (close(), setDialog("search"))} style={{ fontSize: 12 }}>
+                  Search
+                </button>
+              )}
+              {breaks && (
+                <button className="btn btn-ghost" onClick={() => (close(), setBreakEdit({ pickDays: true }))} style={{ fontSize: 12 }}>
+                  Breaks…
+                </button>
+              )}
             </div>
           )}
           <MenuRow icon="flask" label="What if" note="Try changes and see what they cost, kept only if you say" onClick={() => (close(), whatIf.start())} />

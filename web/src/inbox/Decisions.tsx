@@ -7,7 +7,6 @@
 import { useEffect } from "react"
 import { useNavigate } from "react-router"
 import type { Schemas } from "@/api/client"
-import { Icon } from "@/components/fr/controls"
 import { useCommand } from "@/hooks/useCommand"
 import { lateBy, when } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
@@ -19,27 +18,12 @@ export { useDecisions } from "./queries"
 type Decision = Schemas["Decision"]
 type Done = (sent?: Promise<unknown>) => void
 
-const waiting = (n: number) => (n === 1 ? "1 thing waiting in your Inbox" : `${n} things waiting in your Inbox`)
-
 /** The count on a warm dot: what waits for you. */
 export function DecisionCount({ n, style }: { n: number; style?: React.CSSProperties }) {
   return (
     <span className="tnum" aria-hidden style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: "var(--fr-warn)", color: "var(--fr-ink)", fontSize: 11, fontWeight: 600, lineHeight: "16px", textAlign: "center", ...style }}>
       {n}
     </span>
-  )
-}
-
-/** The calendar's title row: a tray with the count, to the Inbox. Nothing when nothing waits. */
-export function DecisionsButton() {
-  const n = useInboxCount()
-  const navigate = useNavigate()
-  if (!n) return null
-  return (
-    <button className="btn btn-icon btn-ghost" onClick={() => navigate("/inbox")} aria-label={waiting(n)} title={waiting(n)} style={{ flex: "none", position: "relative", color: "var(--fr-warn)" }}>
-      <Icon name="tray" size={17} />
-      <DecisionCount n={n} style={{ position: "absolute", top: 1, right: 0 }} />
-    </button>
   )
 }
 

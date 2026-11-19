@@ -34,6 +34,7 @@ import { eatenRoutines, pastMeals } from "./pastMeals"
 import { laneBox, spanIn, timerLanes } from "./timerLanes"
 import { isWholeDay } from "./wholeDay"
 import { dockRoom } from "@/now/dockRoom"
+import { inSpan, spanDay, useSpan } from "@/breaks/daySpan"
 
 interface Props {
   dates: string[]
@@ -336,13 +337,14 @@ function DayHead(props: {
   const { select } = useShell()
   const { drag } = useDragging()
   const target = !!drag?.moved && drag.over === "day" && drag.day === date
+  const spanned = inSpan(useSpan(), date) // dragged across, to make a break (breaks/daySpan)
   const over = day ? hours - day.cap_hours : 0
   const mine = dues.filter((d) => d.due.startsWith(date))
   const line = { flex: "none", maxWidth: "100%", minWidth: 0, alignSelf: "flex-start" } as const
   const big = { fontSize: 28, lineHeight: 0.95 }
   return (
     // The header is the day's all-day row: a task dropped here is due that day.
-    <div data-drop-day={date} style={{ padding: "12px 10px 10px", display: "flex", flexDirection: "column", gap: 6, position: "relative", minWidth: 0, background: target ? "color-mix(in srgb, var(--color-accent) 12%, transparent)" : undefined }}>
+    <div data-drop-day={date} {...spanDay(date)} data-spanned={spanned ? "" : undefined} style={{ padding: "12px 10px 10px", display: "flex", flexDirection: "column", gap: 6, position: "relative", minWidth: 0, userSelect: "none", background: target ? "color-mix(in srgb, var(--color-accent) 12%, transparent)" : spanned ? "color-mix(in srgb, var(--fr-break) 26%, transparent)" : undefined }}>
       {/* the date's line wraps rather than run into the next day (3 Nov: "formatting issues with the hour going into
           the next day"); no hours count here any more, its overload is said below */}
       <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "4px 8px", minWidth: 0, whiteSpace: "nowrap" }}>

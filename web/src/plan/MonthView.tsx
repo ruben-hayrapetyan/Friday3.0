@@ -16,6 +16,7 @@ import { isOnDay, isWholeDay } from "./wholeDay"
 import { dockRoom } from "@/now/dockRoom"
 import { lineWords } from "@/breaks/BreakRow"
 import { keptOnBreakDay } from "@/breaks/words"
+import { inSpan, spanDay, useSpan } from "@/breaks/daySpan"
 
 const DOWS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const SHOWN = 3
@@ -29,6 +30,7 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
   const today = useDate() // the calendar's date, turning at midnight (15 Nov)
   const { skinOf, light } = useLook()
   const { drag } = useDragging()
+  const span = useSpan() // days dragged across, to make a break (breaks/daySpan)
   const settings = useSettings().data as Record<string, { week_start?: string }> | undefined
   const weekStart = settings?.time?.week_start ?? "mon"
   const offset = DOWS.findIndex((d) => d.toLowerCase() === weekStart)
@@ -72,11 +74,15 @@ export function MonthView({ first, onDay }: { first: string; onDay: (date: strin
               <div
                 key={date}
                 data-drop-day={date}
+                {...spanDay(date)}
+                data-spanned={inSpan(span, date) ? "" : undefined}
                 className="fr-hover-accent fr-month-day"
                 data-break={away ? "" : undefined}
                 onClick={() => onDay(date)}
                 style={{
-                  outline: drag?.moved && drag.over === "day" && drag.day === date ? "2px solid var(--color-accent)" : undefined,
+                  outline: drag?.moved && drag.over === "day" && drag.day === date ? "2px solid var(--color-accent)" : inSpan(span, date) ? "2px solid var(--fr-break)" : undefined,
+                  background: inSpan(span, date) ? "color-mix(in srgb, var(--fr-break) 18%, transparent)" : undefined,
+                  userSelect: "none",
                   outlineOffset: -2,
                   padding: "8px 8px 10px",
                   display: "flex",
