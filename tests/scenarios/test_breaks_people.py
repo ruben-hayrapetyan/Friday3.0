@@ -208,13 +208,15 @@ def tick_and_delete(p: Person, made: dict[str, Any]) -> list[str]:
 
 
 def due_inside_off(p: Person) -> list[str]:
-    """Work due during an Off break is planned before it, or said to be late."""
+    """Work due during an Off break is planned before it, or said to be late (late, or slipping: planned past its due).
+    A due with no firmness (a chore's) is a wish, never said late, here as on any day."""
     out: list[str] = []
-    late = {i["item_id"] for i in p.do("status")["late_items"]}
+    status = p.do("status")
+    late = {i["item_id"] for i in [*status["late_items"], *status["slipping"]]}
     start = to_utc(parse_local(f"{WED}T04:00"), TZ)
     blocks = p.blocks()
     for item_id, row in p.items().items():
-        if row["status"] != "todo" or row["when_kind"] == "fixed" or not row["due_utc"]:
+        if row["status"] != "todo" or row["when_kind"] == "fixed" or not row["due_utc"] or row["firmness"] == "none":
             continue
         due = day_of(parse_utc(row["due_utc"]))
         if not WED <= due <= FRI or is_meal(item_from_row(row)) or row["preset"] in ("Routine", "Habit"):
@@ -225,7 +227,7 @@ def due_inside_off(p: Person) -> list[str]:
 
 
 def test_a_break_refuses_what_it_should(first_evenings: Path, tmp_path: Path) -> None:
-    p = person_with(first_evenings, "alex", tmp_path)
+    p = person_with(first_evenings, "ben", tmp_path)
     p.do("vacation_add", name="One", start=WED.isoformat(), end=FRI.isoformat())
     for bad in ({"start": "2026-10-22", "end": "2026-10-25"}, {"start": FRI.isoformat(), "end": WED.isoformat()}):
         with pytest.raises(FieldError):
