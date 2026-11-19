@@ -31,6 +31,10 @@ DONE_BY_H = 18  # and from 6pm at the latest, however late your bedtime (14 Nov:
 DONE_BED_H = 8  # "Going to bed" follows "Done with work" for this long
 UP_AFTER_H = 2  # "I'm up" is offered this long after "Going to bed", whatever the hour (14 Nov)
 UP_UNTIL_H = 20  # and no longer: a forgotten tap doesn't keep it showing into the next evening
+# A tap is asked about once it's this long past its usual time and still not made (19 Nov: "those messages should
+# only come up once the user has not marked it outside of their expected time ... if i hadn't clicked 'ready to
+# work' in 2 hours, it should ask")
+ASK_AFTER_H = 2
 
 
 def tracking(ctx: Ctx) -> None:
@@ -92,11 +96,14 @@ ASKED = {
 
 def missing(ctx: Ctx, day) -> list[SleepAsk]:
     """The taps a reviewed day is missing: that morning's up and ready, and its night's done with work and bedtime
-    once the night is over; not ones you skipped. Each starts from your usual time."""
+    once the night is over; not ones you skipped, and none until it's ASK_AFTER_H past its usual time (ready's from
+    when you got up, after your usual routine). Each starts from your usual time."""
     if not ctx.settings["sleep_tracking"].on or ctx.settings["sleep"] is None or day > ctx.today:
         return []
     overrides = day_overrides(ctx.conn, ctx.user_id)
-    nights = recorded(ctx, (ctx.today - day).days + 3)
+    # as many nights as the sleep page learns from (19 Nov: three days never learned your routine, so ready was always
+    # asked for an hour after you got up, whatever your routine was)
+    nights = recorded(ctx, max((ctx.today - day).days + 3, LEARN_DAYS))
     skipped = set(kv_get(ctx.conn, "sleep_skipped", [], ctx.user_id))
     last_night, tonight = nights.get(day - timedelta(days=1)), nights.get(day)
     _, wake, _ = night_times(ctx.settings, overrides, day - timedelta(days=1), ctx.tz, ctx.day_start)
@@ -117,10 +124,13 @@ def missing(ctx: Ctx, day) -> list[SleepAsk]:
         "done": bool(tonight and tonight.done_at) or over,
         "bed": bool(tonight and tonight.bed) or over,
     }
+    now = to_local(ctx.now_utc, ctx.tz)
     return [
         SleepAsk(kind=kind, date=day.isoformat(), at=format_local(usual[kind]), question=ASKED[kind])  # type: ignore[arg-type]
         for kind in ("up", "ready", "done", "bed")
-        if not has[kind] and f"{day.isoformat()}:{kind}" not in skipped
+        if not has[kind]
+        and f"{day.isoformat()}:{kind}" not in skipped
+        and now >= usual[kind].replace(tzinfo=None) + timedelta(hours=ASK_AFTER_H)  # a tap's time keeps its zone
     ]
 
 

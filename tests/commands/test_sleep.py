@@ -136,7 +136,44 @@ def test_the_review_asks_for_the_taps_you_forgot_and_a_skip_stops_it(app: App) -
     app.do("sleep_mark", kind="up", at="2026-10-18T09:40")
     app.do("sleep_skip", date="2026-10-18", kind="ready")
     assert [a["kind"] for a in app.do("review", date="2026-10-18")["sleep"]] == ["done", "bed"]
+    app.at("2026-10-19T11:00")
     assert [a["kind"] for a in app.do("review")["sleep"]] == ["up", "ready"]  # today: tonight isn't over
+
+
+# 19 Nov: "i keep getting a 'when were you ready to work' 'when did you go to bed'... in my inbox and i think those
+# messages should only come up once the user has not marked it outside of their expected time. so say my morning
+# routine was usually 20 mins. if i hadn't clicked 'ready to work' in 2 hours, it should ask (and remember this is
+# only if you are tracking it)". A tap is asked about once it's two hours past its usual time and still not made.
+
+
+def today_asked(app: App, at: str) -> list[str]:
+    return [a["kind"] for a in app.at(at).do("review")["sleep"]]
+
+
+def test_a_tap_isnt_asked_about_before_its_two_hours_past_its_usual_time(app: App) -> None:
+    on(app)  # Monday: up usually at 7:30, ready an hour later (no routine learned yet)
+    assert today_asked(app, "2026-10-19T07:00") == []
+    assert today_asked(app, "2026-10-19T09:29") == []  # up is late, not yet two hours late
+    assert today_asked(app, "2026-10-19T09:30") == ["up"]
+    assert today_asked(app, "2026-10-19T10:30") == ["up", "ready"]
+
+
+def test_ready_is_asked_two_hours_after_your_usual_routine_from_when_you_got_up(app: App) -> None:
+    on(app)
+    for day in ("2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16"):  # five weekdays
+        app.at(f"{day}T07:30").do("sleep_mark", kind="up")
+        app.at(f"{day}T08:00").do("sleep_mark", kind="ready")  # a half-hour routine, learned
+    app.at("2026-10-19T08:00").do("sleep_mark", kind="up")
+    assert today_asked(app, "2026-10-19T10:29") == []
+    assert today_asked(app, "2026-10-19T10:30") == ["ready"]  # up at 8, usually ready half an hour later, two hours on
+    app.do("sleep_mark", kind="ready", at="2026-10-19T08:35")
+    assert today_asked(app, "2026-10-19T10:40") == []
+
+
+def test_last_nights_taps_are_asked_once_their_time_is_two_hours_gone(app: App) -> None:
+    on(app)
+    asked = [a["kind"] for a in app.at("2026-10-19T09:00").do("review", date="2026-10-18")["sleep"]]
+    assert asked == ["up", "ready", "done", "bed"]  # yesterday's are all long past
 
 
 def test_done_with_work_is_not_offered_while_a_timer_runs(app: App) -> None:
