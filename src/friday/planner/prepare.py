@@ -59,6 +59,7 @@ def assumed_blocks(snapshot: Snapshot) -> list[BlockRow]:
             or block.tentative
             or day > today(snapshot)
             or day in snapshot.reviewed_dates
+            or breaks.on(day, snapshot.vacations) is not None  # a break day's list, not times: never assumed done
         ):
             continue
         # A running block counts up to where the new plan begins, the next quarter hour, so no minutes fall between.

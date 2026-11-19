@@ -436,3 +436,22 @@ class TestExports:
                 assert not said or said["item_id"] != essay or said["start"][:10] != WED, (hour, said)
         app.at(f"{WED}T10:00").do("start", id=essay)
         assert app.do("now")["current"]["item_id"] == essay  # what you time is on
+
+
+class TestPassedBlocks:
+    """Found in the review, 18 Nov: by default a planned block that passes untimed counts as done (`assume_unreviewed`),
+    and the Inbox's review asks about it. A break day's blocks aren't times you were given: a thing on its list is done
+    when you tick it or time it, never because a block passed; the review doesn't ask about them."""
+
+    def test_a_break_days_work_isnt_counted_done_because_its_time_passed(self, app: App) -> None:
+        essay = task(app, "essay", 120, f"{WED}T23:00", release=f"{WED}T04:00")  # Wednesday's, all of it
+        add_break(app)
+        app.at(f"{WED}T07:00")
+        replan(app.conn, app.now_utc)
+        assert minutes_on(app, WED, essay) > 0
+        app.at(f"{THU}T21:00")
+        replan(app.conn, app.now_utc)
+        app.do("close_day", date=WED)
+        assert not [p for p in app.table("progress") if p["item_id"] == essay]
+        assert app.do("review", date=WED)["blocks"] == []
+        assert app.do("item", id=essay)["item"]["remaining_min"] == 120

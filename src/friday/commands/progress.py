@@ -31,6 +31,8 @@ from friday.commands.timer import MAX_AT_ONCE, all_running, running, started_tex
 from friday.core.db import one, rows
 from friday.core.items import FieldError, Item
 from friday.core.time import UNIT_MIN, format_utc, local_midnight, parse_local, parse_utc, planning_date, to_utc
+from friday.core.vacations import load as load_breaks
+from friday.core.vacations import on as on_break
 from friday.learn.order import KEPT
 from friday.planner.prepare import block_key
 from friday.planner.progress import minutes_by_item
@@ -229,8 +231,8 @@ def day_blocks(ctx: Ctx, day: date) -> list[dict[str, Any]]:
     mostly under other things you timed, which didn't happen (5 Nov: "CS A4 Complete" was asked about while its
     timer ran)."""
     plan = current_plan(ctx.conn, ctx.user_id)
-    if plan is None:
-        return []
+    if plan is None or on_break(day, load_breaks(ctx.conn, ctx.user_id, ctx.settings["breaks"])):
+        return []  # a break day is a list, not times: its blocks are never asked about or assumed done
     lo, hi = day_bounds(ctx, day)
     found = rows(
         ctx.conn,
