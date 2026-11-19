@@ -51,9 +51,38 @@ function move(e: PointerEvent) {
   if (day && day !== state.span.to) set({ span: { ...state.span, to: day } })
 }
 
-function up(e: PointerEvent) {
+// While days are dragged across, no text is selected (19 Nov, you, of 0.6.0: "when you select days for a break, it
+// also selects all of the text on the page"; Safari's engine, the Mac app's, starts a selection over the page from a
+// press it can't select in): none starts, and one begun is let go of.
+const noSelecting = (e: Event) => e.preventDefault()
+
+function holdSelection(on: boolean) {
+  if (on) {
+    window.getSelection?.()?.removeAllRanges()
+    document.addEventListener("selectstart", noSelecting, true)
+  } else {
+    document.removeEventListener("selectstart", noSelecting, true)
+  }
+  document.documentElement.classList.toggle("fr-spanning", on)
+}
+
+function stopFollowing() {
   document.removeEventListener("pointermove", move)
   document.removeEventListener("pointerup", up)
+  document.removeEventListener("pointercancel", cancel)
+  window.removeEventListener("blur", cancel)
+  holdSelection(false)
+}
+
+/** A drag that ends without letting go on a day (a touch the system took back, the window left mid-drag): nothing
+ * offered, and the page selects again. */
+function cancel() {
+  stopFollowing()
+  set({ active: false, span: null })
+}
+
+function up(e: PointerEvent) {
+  stopFollowing()
   if (!state.active || !state.span) return
   const day = dayAt(e.clientX, e.clientY) ?? state.span.to
   const span = ordered({ from: state.span.from, to: day })
@@ -70,8 +99,15 @@ export function spanDay(date: string) {
     onPointerDown: (e: React.PointerEvent) => {
       if ((e.button ?? 0) > 0 || (e.target as HTMLElement).closest("[data-no-span]")) return // the main button or a touch
       set({ active: true, span: { from: date, to: date }, offer: null })
+      holdSelection(true)
       document.addEventListener("pointermove", move)
       document.addEventListener("pointerup", up)
+      document.addEventListener("pointercancel", cancel)
+      window.addEventListener("blur", cancel)
+    },
+    // the press itself starts no selection (a click still comes: it opens the day, as before)
+    onMouseDown: (e: React.MouseEvent) => {
+      if (e.button === 0 && !(e.target as HTMLElement).closest("[data-no-span]")) e.preventDefault()
     },
     onClickCapture: (e: React.MouseEvent) => {
       if (swallowClick) (e.stopPropagation(), e.preventDefault(), (swallowClick = false))
@@ -111,4 +147,4 @@ export function SpanOffer() {
 }
 
 /** For tests: no drag going on, nothing offered. */
-export const forgetSpan = () => set({ active: false, span: null, offer: null })
+export const forgetSpan = () => (stopFollowing(), set({ active: false, span: null, offer: null }))

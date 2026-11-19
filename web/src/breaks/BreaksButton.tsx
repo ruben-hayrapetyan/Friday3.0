@@ -33,7 +33,9 @@ export function BreaksButton({ square }: { square?: boolean }) {
         aria-label={coming.length ? `Breaks, ${said}` : "Breaks"}
         title={coming.length ? `Breaks: ${said}` : "Breaks: days off or light days"}
         onClick={() => setOpen(!open)}
-        style={square ? { position: "relative" } : { gap: 6, padding: "0 11px" }}
+        // as tall as Show and Plan beside it: their button, nothing of its size overridden (19 Nov, you, of 0.6.0:
+        // "the breaks button is significantly skinnier than anything else on the top bar"; its padding made it 16px)
+        style={square ? { position: "relative" } : { gap: 6 }}
       >
         {square ? <Icon name={BREAK_ICON} size={16} /> : "Breaks"}
         {coming.length > 0 && !square && ( // the square says it in its label and its panel

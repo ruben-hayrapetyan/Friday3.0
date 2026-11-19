@@ -906,3 +906,10 @@ kbd.fr-kbd {
     padding: 0 6px 0 5px;
   }
 }
+
+/* Days being dragged across to make a break: nothing on the page selects (breaks/daySpan.tsx, 19 Nov) */
+.fr-spanning,
+.fr-spanning * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
