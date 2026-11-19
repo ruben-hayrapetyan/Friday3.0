@@ -14,7 +14,7 @@ hour later; your choice "A day, then only if later"). It's kept until the work i
 import json
 
 from friday.api.commands import Changed, LateAcceptInput, LockKeepInput
-from friday.api.views import Decision, DecisionOption, LateItem
+from friday.api.views import Decision, DecisionOption, LateItem, WaitingStep
 from friday.commands.registry import Ctx, command
 from friday.core.items import FieldError
 from friday.core.time import clock_time, parse_utc, to_local
@@ -30,6 +30,17 @@ def decisions(ctx: Ctx, report: dict, late: list[LateItem]) -> list[Decision]:
     learned disagrees with what you said (commands/conflicts.py)."""
     out = []
     accepted = kv_get(ctx.conn, "late_accepted", {}, ctx.user_id) or {}
+    # A step waiting for one that has no room is asked about with it, not apart (19 Nov: "keep them waiting, both ask
+    # in inbox and also say why"); leaving that one late leaves them waiting, and stands a day as any late work does.
+    from friday.commands.horizon import waiting_behind  # noqa: PLC0415 (horizon reads the plan, as this does)
+
+    behind = waiting_behind(ctx)
+    waits = {step for found in behind.values() for step, _ in found}
+    late = [
+        i.model_copy(update={"waiting": [WaitingStep(id=s, title=t) for s, t in behind.get(i.item_id, [])]})
+        for i in late
+        if i.item_id not in waits
+    ]
     asked = [i for i in late if not answered(accepted, i.item_id, i.hours, ctx.now_utc)]
     if asked:
         out.append(

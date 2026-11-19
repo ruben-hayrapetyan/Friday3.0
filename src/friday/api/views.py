@@ -170,12 +170,18 @@ class EffectOut(Model):
     later: list[EffectLate] = []  # work that would finish later for it
 
 
+class WaitingStep(Model):
+    id: int
+    title: str
+
+
 class LateItem(Model):
     item_id: int
     title: str
     due: str | None  # local
     hours: float  # how late the plan finishes it (0 when it isn't planned)
     planned: bool = True  # False: no time for it in the plan at all
+    waiting: list[WaitingStep] = []  # steps of its project that wait for it, unplanned while it has no room (19 Nov)
 
 
 class KindAccuracy(Model):
@@ -253,6 +259,7 @@ class ProjectOut(Model):
     status: Literal["done", "on_track", "late", "unplanned"]
     step_finish: dict[str, str] = {}  # each open step's planned finish, by id: a date when planned past the plan's days
     any_time: list[int] = []  # its steps that don't wait for the one above (the rest do: the order is the chain)
+    waits_for: dict[str, int] = {}  # a step waiting for one that has no room before its due: that step's id (19 Nov)
 
 
 class ExamPrepOut(Model):

@@ -19,7 +19,7 @@ from friday.api.commands import (
 from friday.api.types import Empty, ItemOut
 from friday.api.views import ProjectOut, WeekLoad
 from friday.commands.calendar import dues
-from friday.commands.fields import item_out, require_item, waiting_on
+from friday.commands.fields import item_out, pointless_late, require_item, waiting_on
 from friday.commands.items import add, add_dependency
 from friday.commands.project_steps import REST
 from friday.commands.registry import Ctx, command, query
@@ -75,6 +75,7 @@ def projects(ctx: Ctx, inp: Empty) -> list[ProjectOut]:
     left = {i: remaining_minutes(it, done.get(i, 0)) or 0 for i, it in items.items() if it.when != "fixed"}
     finish = finishes(ctx, left)
     waiting = waiting_on(ctx)
+    behind = {step: root for root, found in waiting_behind(ctx).items() for step, _ in found}
     out = []
     for item in items.values():
         is_project = children.get(item.id or 0) or item.preset == "Project"
@@ -85,7 +86,8 @@ def projects(ctx: Ctx, inp: Empty) -> list[ProjectOut]:
             item_out(ctx, items[i], done.get(i, 0)).model_copy(update={"waiting_on": waiting.get(i, [])})
             for i in descendants(children, item.id or 0)
         ]
-        out.append(project_out(ctx, item_out(ctx, item, done.get(item.id or 0, 0)), tree, finish))
+        made = project_out(ctx, item_out(ctx, item, done.get(item.id or 0, 0)), tree, finish)
+        out.append(made.model_copy(update={"waits_for": {str(c.id): behind[c.id] for c in tree if c.id in behind}}))
     return sorted(out, key=lambda p: (p.item.due or "9999", p.item.id))
 
 
@@ -122,6 +124,43 @@ def project_out(ctx: Ctx, project: ItemOut, tree: list[ItemOut], finish: dict[in
         step_finish={str(c.id): finish[c.id] for c in open_leaves if c.id in finish and c.id != project.id},
         any_time=sorted(c.id for c in tree if c.id in any_time_steps(ctx)),
     )
+
+
+def waiting_behind(ctx: Ctx) -> dict[int, list[tuple[int, str]]]:
+    """Steps waiting for one that has no room before its due, by that step: (id, title), in their project's order.
+    A step has no room when it's open with work left, isn't in the plan, and is pointless once late (it expires at its
+    due, as an exam's prep does), so it never will be; the steps after it wait for it in turn until one doesn't wait
+    (19 Nov, a user's notes: "'no room before it's due' - other tasks in the project are dependent on it"; your
+    answer: "keep them waiting, both ask in inbox and also say why")."""
+    plan_id, _ = saved_plan(ctx)
+    planned = {r["item_id"] for r in rows(ctx.conn, "SELECT DISTINCT item_id FROM blocks WHERE plan_id = ?", [plan_id])}
+    found = rows(
+        ctx.conn,
+        "SELECT * FROM items WHERE user_id = ? AND status = 'todo' AND parent_id IS NOT NULL AND when_kind != 'fixed'",
+        [ctx.user_id],
+    )
+    kids: dict[int, list] = defaultdict(list)
+    for r in found:
+        kids[r["parent_id"]].append(item_from_row(r))
+    order = kv_get(ctx.conn, "project_order", {}, ctx.user_id) or {}
+    free, done = any_time_steps(ctx), minutes_by_item(ctx.conn, ctx.user_id)
+    out: dict[int, list[tuple[int, str]]] = {}
+    for parent, steps in kids.items():
+        given = order.get(str(parent), [])
+        steps.sort(key=lambda i: (given.index(i.id) if i.id in given else len(given), i.id or 0))
+        root: int | None = None
+        for step in steps:
+            if step.id in free:
+                root = None  # it doesn't wait for the one above
+            if root is not None and step.id not in planned:
+                out[root].append((step.id or 0, step.title))
+                continue
+            root = None
+            left = remaining_minutes(step, done.get(step.id or 0, 0)) or 0
+            if left > 0 and step.id not in planned and pointless_late(step, ctx.settings):
+                root = step.id or 0
+                out.setdefault(root, [])
+    return {k: v for k, v in out.items() if v}
 
 
 def any_time_steps(ctx: Ctx) -> set[int]:
@@ -209,7 +248,8 @@ def template_apply(ctx: Ctx, inp: TemplateApplyInput) -> ItemResult:
         minutes = max(UNIT_MIN, math.ceil(inp.hours * 60 * step.share / total / UNIT_MIN) * UNIT_MIN)
         fields = {
             "title": step.title,
-            "preset": step.preset or ("Assignment" if ctx.settings["school"] else "Work task"),  # never a school kind out of school
+            "preset": step.preset
+            or ("Assignment" if ctx.settings["school"] else "Work task"),  # never a school kind out of school
             "duration_min": minutes,
             "parent_id": parent.id,
         }

@@ -120,6 +120,32 @@ describe("what only you can decide", () => {
   })
 })
 
+// 19 Nov, a user's notes: "'no room before it's due' - other tasks in the project are dependent on it"; your answer:
+// "keep them waiting, both ask in inbox and also say why", asked as late work is
+describe("steps waiting for one that has no room", () => {
+  it("names them under it, and lets them go on without it", { timeout: 90_000 }, async () => {
+    type Made = { result: { item: { id: number } } }
+    const made = (await friday.c<Made>("add", { title: "Thesis", preset: "Project", due: `${day(10)}T17:00` })).result
+    const add = async (title: string, minutes: number, more: Record<string, unknown> = {}) =>
+      (await friday.c<Made>("add", { title, preset: "Assignment", duration_min: minutes, parent_id: made.item.id, ...more })).result.item.id
+    await add("Gather sources", 60)
+    const cram = await add("Cram the whole thing", 120, { due: `${day(-1)}T23:00`, expires: true }) // its due gone: no room, never late
+    await friday.c("step_any_time", { id: cram, any_time: true })
+    const write = await add("Write it up", 120)
+    await waitFor(async () => {
+      const late = (await decisions()).find((d) => d.kind === "late")
+      expect(late?.items?.find((i) => i.item_id === cram)?.waiting?.map((w) => w.title)).toEqual(["Write it up"])
+    }, { timeout: 60_000, interval: 500 })
+    const { user } = await openInbox()
+    await user.click(await findRow(/will be late/))
+    expect(await screen.findByText("Write it up waits for it: it has no room before its due, so it isn't planned.")).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Drop Cram the whole thing" })).toBeTruthy()
+    await user.click(screen.getByRole("button", { name: "Let it go on without it" }))
+    expect((await waitForSent("step_any_time")).body).toEqual({ id: write, any_time: true })
+    await friday.c("drop", { id: made.item.id })
+  })
+})
+
 describe("sleep and what Friday learned from it", () => {
   it("asks whether to follow what Friday learned when it disagrees with a rule", { timeout: 60_000 }, async () => {
     await friday.c("settings_set", { key: "sleep_tracking", value: { on: true, min_nights: 4, morning_hours: 4 } })

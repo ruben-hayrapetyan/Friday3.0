@@ -6496,6 +6496,11 @@ export interface components {
              * @default true
              */
             planned?: boolean;
+            /**
+             * Waiting
+             * @default []
+             */
+            waiting?: components["schemas"]["WaitingStep"][];
         };
         /** LearnApplyResult */
         LearnApplyResult: {
@@ -8637,6 +8642,13 @@ export interface components {
              * @default []
              */
             any_time?: number[];
+            /**
+             * Waits For
+             * @default {}
+             */
+            waits_for?: {
+                [key: string]: number;
+            };
         };
         /** ProjectRef */
         ProjectRef: {
@@ -11880,6 +11892,13 @@ export interface components {
         VersionInput: {
             /** Version */
             version: number;
+        };
+        /** WaitingStep */
+        WaitingStep: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
         };
         /** WeekItem */
         WeekItem: {

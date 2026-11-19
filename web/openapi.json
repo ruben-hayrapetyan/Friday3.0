@@ -21523,6 +21523,14 @@
       "type": "boolean",
       "title": "Planned",
       "default": true
+     },
+     "waiting": {
+      "items": {
+       "$ref": "#/components/schemas/WaitingStep"
+      },
+      "type": "array",
+      "title": "Waiting",
+      "default": []
      }
     },
     "additionalProperties": false,
@@ -27894,6 +27902,14 @@
       "type": "array",
       "title": "Any Time",
       "default": []
+     },
+     "waits_for": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Waits For",
+      "default": {}
      }
     },
     "additionalProperties": false,
@@ -37722,6 +37738,25 @@
      "version"
     ],
     "title": "VersionInput"
+   },
+   "WaitingStep": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "title": {
+      "type": "string",
+      "title": "Title"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "id",
+     "title"
+    ],
+    "title": "WaitingStep"
    },
    "WeekItem": {
     "properties": {
