@@ -204,8 +204,13 @@ def on_a_break(conn: sqlite3.Connection, user_id: int, settings: Mapping[str, An
 
 
 # Suggested breaks (18 Nov: "breaks can both be added and suggested"). Words an all-day event uses for time away.
+# An all-day event that says you're away: for students and for people at work (19 Nov: "be highly general. breaks do
+# not only apply to schoolchildren but also to working adult").
 AWAY = re.compile(
-    r"\b(vacation|holidays?|break|recess|out of (the )?office|ooo|pto|time off|days? off|leave|away|trip|travel)\b",
+    r"\b(vacation|vacay|holidays?|break|recess|out of (the )?office|ooo|pto|time off|days? off|off work|off sick"
+    r"|leave|away|trip|travel(l?ing)?|staycation|honeymoon|sabbatical|furlough|shutdown|long weekend"
+    r"|no (school|classes|class)|class(es)? cancell?ed|closed|reading (days?|period|week)|study (days?|week)"
+    r"|half[- ]term|thanksgiving|christmas|xmas|new year'?s|personal day|comp day|wellness day|mental health day)\b",
     re.IGNORECASE,
 )
 LOOK_AHEAD_DAYS = 56  # how far ahead a break is suggested
@@ -252,22 +257,35 @@ def suggest(
          format_utc(planning_day_start_utc(last, tz, day_start))],
     )  # fmt: skip
     repeats: dict[date, int] = {}
+    away: list[tuple[date, date, str]] = []
     for r in found:
         start, end = to_local(parse_utc(r["start_utc"]), tz), to_local(parse_utc(r["end_utc"]), tz)
         whole_days = start.time() == end.time() == time(0) and end > start
-        if whole_days and r["series_id"] is None and AWAY.search(r["title"] or ""):
-            keep(
-                r["title"].strip(),
-                start.date(),
-                end.date() - timedelta(days=1),
-                f"Your calendar says “{r['title'].strip()}”",
-            )
+        if whole_days and AWAY.search(r["title"] or ""):  # one-off or repeating (a daily "Winter break")
+            away.append((start.date(), end.date() - timedelta(days=1), r["title"].strip()))
         elif r["series_id"] is not None and not whole_days:
             day = planning_date(parse_utc(r["start_utc"]), tz, day_start)
             repeats[day] = repeats.get(day, 0) + 1
+    for first, end, title, count in back_to_back(away):
+        keep(title, first, end, f"Your calendar says “{title}”" + (f" on {count} days" if count > 1 else ""))
     for first, end in quiet_runs(repeats, today, last):
         keep("Break", first, end, "Your repeating events stop on these days")
     return sorted(out, key=lambda s: s.start)
+
+
+def back_to_back(away: Iterable[tuple[date, date, str]]) -> list[tuple[date, date, str, int]]:
+    """Away days as breaks: events on days in a row, or with only a weekend between, are one break (19 Nov: a break
+    often comes as an all-day event each day); named as the first. (first, last, name, how many events)."""
+    out: list[tuple[date, date, str, int]] = []
+    for first, end, title in sorted(away):
+        if out:
+            was_first, was_end, name, count = out[-1]
+            between = [was_end + timedelta(days=n) for n in range(1, (first - was_end).days)]
+            if first <= was_end + timedelta(days=1) or all(d.weekday() >= 5 for d in between):
+                out[-1] = (was_first, max(was_end, end), name, count + 1)
+                continue
+        out.append((first, end, title, 1))
+    return out
 
 
 def quiet_runs(repeats: Mapping[date, int], today: date, last: date) -> list[tuple[date, date]]:

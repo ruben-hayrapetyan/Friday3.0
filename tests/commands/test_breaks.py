@@ -356,6 +356,46 @@ class TestSuggested:
         app.do("add", title="Remy's Birthday", when="fixed", start=f"{WED}T00:00", end=f"{THU}T00:00")
         assert self.suggested(app) == []
 
+    # 19 Nov: breaks often come as many all-day events, one a day; "do the more words but be highly general. breaks do
+    # not only apply to schoolchildren but also to working adult".
+
+    def test_back_to_back_all_day_days_are_one_break(self, app: App) -> None:
+        from datetime import date, timedelta
+
+        for day in ("2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-11-02"):  # Mon-Fri, Mon
+            nxt = (date.fromisoformat(day) + timedelta(days=1)).isoformat()
+            app.do("add", title="Spring Break", when="fixed", start=f"{day}T00:00", end=f"{nxt}T00:00")
+        (one,) = self.suggested(app)  # the weekend between doesn't split it
+        assert (one["start"], one["end"], one["name"]) == ("2026-10-26", "2026-11-02", "Spring Break")
+
+    def test_a_repeating_all_day_event_is_one_break(self, app: App) -> None:
+        app.do("add", title="Winter break", when="fixed", start="2026-10-26T00:00", end="2026-10-27T00:00",
+               every="rrule:FREQ=DAILY;COUNT=5")  # fmt: skip
+        (one,) = self.suggested(app)
+        assert (one["start"], one["end"]) == ("2026-10-26", "2026-10-30")
+
+    def test_days_a_week_apart_are_two_breaks(self, app: App) -> None:
+        for day, nxt in (("2026-10-26", "2026-10-27"), ("2026-11-04", "2026-11-05")):
+            app.do("add", title="Day off", when="fixed", start=f"{day}T00:00", end=f"{nxt}T00:00")
+        assert [(d["start"], d["end"]) for d in self.suggested(app)] == [
+            ("2026-10-26", "2026-10-26"), ("2026-11-04", "2026-11-04")]  # fmt: skip
+
+    @pytest.mark.parametrize("title", [
+        "No classes", "Classes canceled", "School closed", "Reading days", "Thanksgiving", "Fall Break", "Half term",
+        "Annual leave", "Parental leave", "Bank holiday", "Public holiday", "Company holiday", "Office closed",
+        "Winter shutdown", "Sabbatical", "Personal day", "Floating holiday", "Comp day", "Staycation", "Honeymoon",
+        "OOO - Lisbon", "PTO", "Off work", "Long weekend", "Christmas Eve", "New Year's Day", "Furlough",
+    ])  # fmt: skip
+    def test_many_ways_of_saying_youre_away_for_students_and_workers(self, app: App, title: str) -> None:
+        app.do("add", title=title, when="fixed", start=f"{WED}T00:00", end=f"{THU}T00:00")
+        assert [d["name"] for d in self.suggested(app)] == [title]
+
+    @pytest.mark.parametrize("title", ["Remy's Birthday", "Team offsite planning", "Payday", "Leaves raked?",
+                                       "Breakfast with Sam", "Office hours", "Closing dinner"])  # fmt: skip
+    def test_ordinary_all_day_events_arent_breaks(self, app: App, title: str) -> None:
+        app.do("add", title=title, when="fixed", start=f"{WED}T00:00", end=f"{THU}T00:00")
+        assert self.suggested(app) == []
+
     def test_weekdays_where_your_repeats_stop_are_suggested(self, app: App) -> None:
         app.do("add", title="Lecture", when="fixed", start="2026-10-19T10:00", end="2026-10-19T11:00",
                every="rrule:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
