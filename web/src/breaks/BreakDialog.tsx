@@ -14,7 +14,7 @@ import type { BreakEdit } from "@/shell/ShellContext"
 import { useShell } from "@/shell/ShellContext"
 import { LengthField } from "@/todo/Pickers"
 import { PauseChooser, useBreakChoices } from "./PauseChooser"
-import { daysIn, EVERYTHING, full, modeWords, nextDay, type Pause, pauseWords, rangeWords, things, type Vacation, WORK_AMOUNTS } from "./words"
+import { BREAK_ICON, daysIn, EVERYTHING, full, modeWords, nextDay, type Pause, pauseWords, rangeWords, things, type Vacation, WORK_AMOUNTS } from "./words"
 
 /** Your defaults for a break (Settings → Breaks; core/settings.py `BreakSettings`). */
 export type Defaults = { work_min: number; pause: Pause; plan_meals: boolean; keep_sleep: boolean }
@@ -72,7 +72,7 @@ export function BreakDialog({ edit, onClose }: { edit: BreakEdit; onClose: () =>
     <Modal onClose={onClose} top width={620} label={isNew ? "Add a break" : v.name}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span className="fr-kicker" style={{ flex: 1, color: "var(--fr-break)" }}>
-          <Icon name="umbrella" size={12} /> {isNew ? "A new break" : "Break"}
+          <Icon name={BREAK_ICON} size={12} /> {isNew ? "A new break" : "Break"}
         </span>
         <button className="btn btn-icon btn-ghost" onClick={onClose} aria-label="Close" style={{ width: 28, height: 28, color: "var(--color-neutral-400)" }}>
           <Icon name="x" />

@@ -38,6 +38,10 @@ export function modeWords(mode: string, workMin: number): string {
   return mode === "off" ? "Off: nothing to do" : `Light, about ${dur(workMin)} of work a day`
 }
 
+/** A break's icon everywhere it shows: a calendar with an x, days off (19 Nov: "im confused on why there is an
+ * umbrella"; the same everywhere, your answer "yes"). */
+export const BREAK_ICON = "calendar-x"
+
 /** The amounts a Light day's time offers, besides a box to type any (UI-PRINCIPLES: a length is a value). */
 export const WORK_AMOUNTS = [60, 90, 120, 180, 240]
 

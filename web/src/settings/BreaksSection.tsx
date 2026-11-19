@@ -7,7 +7,7 @@ import { useCommand } from "@/hooks/useCommand"
 import { useShell } from "@/shell/ShellContext"
 import { type Defaults, PauseValue, useBreakDefaults, useVacations } from "@/breaks/BreakDialog"
 import { PauseChooser } from "@/breaks/PauseChooser"
-import { modeWords, rangeWords, WORK_AMOUNTS } from "@/breaks/words"
+import { BREAK_ICON, modeWords, rangeWords, WORK_AMOUNTS } from "@/breaks/words"
 import { LengthField } from "@/todo/Pickers"
 import { useState } from "react"
 import { Field, SectionHead } from "./SettingsPage"
@@ -39,7 +39,7 @@ export function BreaksSection() {
       <Field name="Your breaks" note={coming.length ? "Click one to change it." : "None coming up. Friday suggests one in the Inbox when your calendar shows time away."}>
         {[...coming, ...past].map((v) => (
           <button key={v.id} className="fr-plain fr-hover" onClick={() => setBreakEdit({ id: v.id })} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: "var(--radius-md)", textAlign: "left", cursor: "pointer", opacity: v.end < today ? 0.7 : 1 }}>
-            <Icon name="umbrella" size={14} style={{ color: "var(--fr-break)", flex: "none" }} />
+            <Icon name={BREAK_ICON} size={14} style={{ color: "var(--fr-break)", flex: "none" }} />
             <span style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
               <span style={{ fontWeight: 500, overflowWrap: "anywhere" }}>{v.name}</span>
               <span className="tnum" style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>

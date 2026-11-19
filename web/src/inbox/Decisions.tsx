@@ -12,6 +12,7 @@ import { lateBy, when } from "@/lib/format"
 import { useShell } from "@/shell/ShellContext"
 import { Actions, After, Pane } from "./Pane"
 import { useInboxCount } from "./queries"
+import { BREAK_ICON } from "@/breaks/words"
 
 export { useDecisions } from "./queries"
 
@@ -37,7 +38,7 @@ export function useDecisionsTitle() {
 }
 
 const KICKER: Record<string, string> = { late: "Will be late", lock: "A lock makes work late", learned: "What Friday learned, against a rule of yours", break: "A break, from your calendar" }
-const ICON: Record<string, string> = { late: "clock-countdown", lock: "lock-simple", learned: "scales", break: "umbrella" }
+const ICON: Record<string, string> = { late: "clock-countdown", lock: "lock-simple", learned: "scales", break: BREAK_ICON }
 
 /** A decision opened: what it is, and its answers; `onDone` the moment you answer. */
 export function DecisionPane({ decision, onDone }: { decision: Decision; onDone: Done }) {

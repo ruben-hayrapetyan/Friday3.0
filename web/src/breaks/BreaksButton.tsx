@@ -8,7 +8,7 @@ import { Icon, useMenuClose } from "@/components/fr/controls"
 import { useMenuPlace } from "@/lib/menuPlace"
 import { useShell } from "@/shell/ShellContext"
 import { useVacations } from "./BreakDialog"
-import { modeWords, rangeWords } from "./words"
+import { BREAK_ICON, modeWords, rangeWords } from "./words"
 
 /** `square`: where the title row is short of room, an icon-sized button (a calendar with an x: days off), its name in
  * its label and tooltip, as the tray it replaced was. */
@@ -35,7 +35,7 @@ export function BreaksButton({ square }: { square?: boolean }) {
         onClick={() => setOpen(!open)}
         style={square ? { position: "relative" } : { gap: 6, padding: "0 11px" }}
       >
-        {square ? <Icon name="calendar-x" size={16} /> : "Breaks"}
+        {square ? <Icon name={BREAK_ICON} size={16} /> : "Breaks"}
         {coming.length > 0 && !square && ( // the square says it in its label and its panel
           <span className="tnum" aria-hidden style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: "var(--fr-break)", color: "var(--fr-ink)", fontSize: 11, fontWeight: 600, lineHeight: "16px" }}>
             {coming.length}

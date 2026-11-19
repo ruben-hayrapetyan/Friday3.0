@@ -20,6 +20,7 @@ import { Shortcuts } from "./Shortcuts"
 import { BreaksSection } from "./BreaksSection"
 import { TagsKinds } from "./TagsKinds"
 import { UpdatesSection } from "./UpdatesSection"
+import { BREAK_ICON } from "@/breaks/words"
 
 const SECTIONS = [
   { id: "appearance", label: "Appearance", icon: "paint-brush", page: Appearance },
@@ -27,7 +28,7 @@ const SECTIONS = [
   { id: "tags", label: "Tags/Kinds", icon: "tag", page: TagsKinds },
   { id: "schedule", label: "Schedule", icon: "clock", page: Schedule },
   { id: "repeating", label: "Repeating", icon: "repeat", page: Repeating },
-  { id: "breaks", label: "Breaks", icon: "umbrella", page: BreaksSection },
+  { id: "breaks", label: "Breaks", icon: BREAK_ICON, page: BreaksSection },
   { id: "integrations", label: "Integrations", icon: "plugs", page: Integrations },
   { id: "phone", label: "Phone", icon: "device-mobile", page: Phone },
   { id: "tokens", label: "Tokens", icon: "key", page: Tokens },

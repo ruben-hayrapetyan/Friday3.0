@@ -10,6 +10,7 @@ import { usePreview } from "@/hooks/usePreview"
 import { lines, summary } from "@/lib/changes"
 import { WeekPaces } from "@/rules/WeekPaces"
 import { useShell } from "@/shell/ShellContext"
+import { BREAK_ICON } from "@/breaks/words"
 
 type For = Pick<Schemas["PaceInput"], "for_days" | "until">
 const DURATIONS: [string, For][] = [
@@ -95,7 +96,7 @@ export function PacePop() {
       </div>
       {/* More than easing off: days away, with a list instead of times (breaks/, 18 Nov) */}
       <button className="fr-plain fr-hover fr-row" onClick={() => (setPop(null), setBreakEdit({}))} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 4px 2px", textAlign: "left", cursor: "pointer" }}>
-        <Icon name="umbrella" size={16} style={{ color: "var(--fr-break)" }} />
+        <Icon name={BREAK_ICON} size={16} style={{ color: "var(--fr-break)" }} />
         <span style={{ display: "flex", flexDirection: "column", flex: 1 }}>
           <span style={{ fontWeight: 500 }}>Take a break</span>
           <span style={{ fontSize: 12, color: "var(--color-neutral-400)" }}>Days off or light: repeats pause, and each day is a short list</span>
