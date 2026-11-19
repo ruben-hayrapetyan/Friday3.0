@@ -90,21 +90,45 @@ function Break({ decision, onDone }: { decision: Decision; onDone: Done }) {
   )
 }
 
+/** "Step 3", "Step 3 and Step 4", "Step 3, Step 4 and 2 more". */
+const listed = (names: string[]) => (names.length <= 2 ? names.join(" and ") : `${names[0]}, ${names[1]} and ${names.length - 2} more`)
+
 function Late({ decision, onDone }: { decision: Decision; onDone: Done }) {
   const { today, setDialog } = useShell()
   const navigate = useNavigate()
   const leave = useCommand("late_accept", { label: (o) => o.result.message ?? "Left late" })
+  const goOn = useCommand("step_any_time", { label: () => "They go on without it" })
+  const drop = useCommand("drop", { label: () => "Dropped" })
   const items = decision.items ?? []
   return (
     <>
       <div style={{ display: "flex", flexDirection: "column" }}>
         {items.map((i) => (
-          <button key={i.item_id} className="fr-plain fr-hover fr-row" onClick={() => navigate(`/todo?item=${i.item_id}`)} style={{ display: "flex", gap: 10, alignItems: "baseline", textAlign: "left", padding: "8px 2px" }}>
-            <span style={{ flex: 1, minWidth: 0, fontWeight: 500 }}>{i.title}</span>
-            <span className="tnum" style={{ fontSize: 12, color: "var(--color-neutral-400)", whiteSpace: "nowrap" }}>
-              {i.due ? `due ${when(i.due, today)}, ` : ""}about {lateBy(i.hours)} late
-            </span>
-          </button>
+          <div key={i.item_id} style={{ display: "flex", flexDirection: "column" }}>
+            <button className="fr-plain fr-hover fr-row" onClick={() => navigate(`/todo?item=${i.item_id}`)} style={{ display: "flex", gap: 10, alignItems: "baseline", textAlign: "left", padding: "8px 2px" }}>
+              <span style={{ flex: 1, minWidth: 0, fontWeight: 500 }}>{i.title}</span>
+              <span className="tnum" style={{ fontSize: 12, color: "var(--color-neutral-400)", whiteSpace: "nowrap" }}>
+                {i.due ? `due ${when(i.due, today)}, ` : ""}about {lateBy(i.hours)} late
+              </span>
+            </button>
+            {/* steps waiting for it while it has no room (19 Nov: "keep them waiting, both ask in inbox and also say
+                why"): named, with letting them go on without it, or dropping it */}
+            {(i.waiting?.length ?? 0) > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "0 2px 8px" }}>
+                <span style={{ fontSize: 13, color: "var(--color-neutral-300)", textWrap: "pretty" }}>
+                  {listed(i.waiting!.map((w) => w.title))} {i.waiting!.length === 1 ? "waits" : "wait"} for it: it has no room before its due, so {i.waiting!.length === 1 ? "it isn't" : "they aren't"} planned.
+                </span>
+                <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button className="btn btn-secondary" onClick={() => goOn({ id: i.waiting![0].id, any_time: true })} style={{ fontSize: 12 }}>
+                    Let {i.waiting!.length === 1 ? "it" : "them"} go on without it
+                  </button>
+                  <button className="btn btn-ghost" onClick={() => drop({ id: i.item_id })} style={{ fontSize: 12 }}>
+                    Drop {i.title}
+                  </button>
+                </span>
+              </div>
+            )}
+          </div>
         ))}
       </div>
       <span style={{ color: "var(--color-neutral-300)", textWrap: "pretty" }}>{decision.detail}</span>

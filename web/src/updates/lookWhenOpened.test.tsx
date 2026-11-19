@@ -24,13 +24,27 @@ describe("the window looks for a new version when it opens", () => {
   beforeEach(() => (sent.length = 0, forgetLooking(), vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-15T12:00:00") })))
   afterEach(() => vi.useRealTimers())
 
-  it("looks as it opens, and again when it comes back into view ten minutes on, not sooner", async () => {
+  it("looks as it opens, and again when it comes back into view a while on, not sooner", async () => {
     renderHook(() => useLookWhenOpened(true), { wrapper })
     expect(sent).toEqual(["update_check"])
     vi.setSystemTime(Date.now() + LOOK_AGAIN_MS - 1000)
     await act(async () => void document.dispatchEvent(new Event("visibilitychange")))
     expect(sent).toEqual(["update_check"])
     vi.setSystemTime(Date.now() + 2000)
+    await act(async () => void document.dispatchEvent(new Event("visibilitychange")))
+    expect(sent).toEqual(["update_check", "update_check"])
+  })
+
+  // 19 Nov, a user: "it looks like friday is CONSTANTLY checking for updates" ("Looked 17 minutes ago" at 2am); your
+  // choice "Look less often": coming back to the window looks at most every six hours
+  it("coming back to the window looks again only six hours after the last look", async () => {
+    renderHook(() => useLookWhenOpened(true), { wrapper })
+    for (const minutes of [10, 60, 5 * 60 + 59]) {
+      vi.setSystemTime(new Date("2026-11-15T12:00:00").getTime() + minutes * 60_000)
+      await act(async () => void document.dispatchEvent(new Event("visibilitychange")))
+    }
+    expect(sent).toEqual(["update_check"])
+    vi.setSystemTime(new Date("2026-11-15T18:00:00"))
     await act(async () => void document.dispatchEvent(new Event("visibilitychange")))
     expect(sent).toEqual(["update_check", "update_check"])
   })

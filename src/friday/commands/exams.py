@@ -12,7 +12,7 @@ from friday.core.db import rows
 from friday.core.guess import EXAM, course_word
 from friday.core.items import Item
 from friday.core.rows import item_from_row
-from friday.core.settings import exam_focus_of
+from friday.core.settings import exam_focus_days
 from friday.core.time import UNIT_MIN, format_utc, parse_utc
 from friday.planner.progress import minutes_by_item, remaining_minutes
 from friday.planner.store import current_plan
@@ -129,6 +129,7 @@ def exam_out(
         # late as the plan says (audit, 8 Nov: a finish known only by its day sorted before the exam's time that day,
         # so prep that didn't fit read as on track while the status said it would be late)
         status = "late" if last > start or any((p.id or 0) in late for p in open_prep) else "on_track"
+    each = ctx.settings["exam_focus_each"] or {}
     return ExamOut(
         item=item_out(ctx, exam),
         prep=[
@@ -140,6 +141,8 @@ def exam_out(
         planned_finish=last,
         status=status,  # type: ignore[arg-type]
         focus_from=focus_from(ctx, exam),
+        focus_days=each.get(str(exam.id), exam_focus_days(ctx.settings, exam.id, exam.title)),
+        focus_own=str(exam.id) in each,
     )
 
 
@@ -150,8 +153,8 @@ def done_minutes(prep: Item, done: dict[int, int]) -> int:
 
 
 def focus_from(ctx: Ctx, exam: Item) -> str | None:
-    """When exam focus starts for this exam: the rule's days before it, if the rule is on and the title is an exam's."""
-    focus = exam_focus_of(ctx.settings)
-    if not focus.on or not exam.start_utc or not focus.finds(exam.title):
+    """When exam focus starts for this exam: its own days before it, else the rule's (19 Nov: each exam its own)."""
+    days = exam_focus_days(ctx.settings, exam.id, exam.title)
+    if not days or not exam.start_utc:
         return None
-    return ctx.local(format_utc(parse_utc(exam.start_utc) - focus.days_before * 1440))
+    return ctx.local(format_utc(parse_utc(exam.start_utc) - days * 1440))

@@ -238,25 +238,29 @@ describe("the Projects & exams page", () => {
     await friday.c("edit", { id: prep.id, area: prep.area })
   })
 
-  it("says in plain words what happens before an exam, and sets it right there for every exam", async () => {
-    // 17 Nov: "what does exam focus even mean, its very confusing": a row saying what you'd see, set in place
+  // 19 Nov, a user's notes: "what is the point of this dropdown if it affects all classes' exams and not just this
+  // one?"; your answer: "do each exam". 17 Nov before it: "what does exam focus even mean", so the row says what you'd see
+  it("says in plain words what happens before this exam, and sets it for this exam alone", async () => {
+    const settings = () => friday.q<{ exam_focus_each: Record<string, number> }>("settings")
     const rules = () => friday.q<{ name: string; type: string; enabled: boolean }[]>("rules")
     const first = await examPanel()
+    const id = String((await friday.q<{ item: { id: number; title: string } }[]>("exams")).find((x) => x.item.title === "PHYS 1112 Prelim 2")!.item.id)
     expect(within(first.panel).queryByText(/Exam focus/)).toBeNull()
-    const row = within(first.panel).getByRole("button", { name: "Before an exam: Other classes' work goes on as usual" })
-    expect(within(first.panel).getByText(/^For all your exams\. Work for other classes due after the exam waits/)).toBeTruthy()
+    const row = within(first.panel).getByRole("button", { name: "Before this exam: Other classes' work goes on as usual" })
+    expect(within(first.panel).getByText(/^For this exam only\. Work for other classes due after it waits/)).toBeTruthy()
     await first.user.click(row)
     await first.user.click(within(first.panel).getByRole("radio", { name: /^3 days before/ }))
-    const added = await waitForSent("rule_add")
-    expect(added.body).toMatchObject({ text: "Focus on an exam's course 3 days before it", strength: "Always" })
-    expect(await within(first.panel).findByRole("button", { name: "Before an exam: Only its class's work, 3 days before" }, { timeout: 10_000 })).toBeTruthy()
-    expect((await rules()).find((r) => r.type === "exam_focus")?.enabled).toBe(true)
-    await first.user.click(within(first.panel).getByRole("button", { name: /^Before an exam:/ }))
-    await first.user.click(within(first.panel).getByRole("radio", { name: /^Off/ }))
-    expect((await waitForSent("rule_set")).body).toEqual({ name: "you:exam-focus", enabled: false })
-    expect(await within(first.panel).findByRole("button", { name: "Before an exam: Other classes' work goes on as usual" }, { timeout: 10_000 })).toBeTruthy()
+    const sent = await waitForSent("settings_set")
+    expect(sent.body).toEqual({ key: "exam_focus_each", value: { [id]: 3 } })
+    // at once, before the server answers
+    expect(within(first.panel).getByRole("button", { name: "Before this exam: Only its class's work, 3 days before" })).toBeTruthy()
+    await waitFor(async () => expect((await settings()).exam_focus_each[id]).toBe(3))
+    expect((await rules()).some((r) => r.type === "exam_focus" && r.enabled)).toBe(false) // no rule for every exam
+    await first.user.click(within(first.panel).getByRole("button", { name: /^Before this exam:/ }))
+    await first.user.click(within(first.panel).getByRole("radio", { name: /^As your other exams/ }))
+    await waitFor(async () => expect((await settings()).exam_focus_each[id]).toBeUndefined())
+    expect(await within(first.panel).findByRole("button", { name: "Before this exam: Other classes' work goes on as usual" }, { timeout: 10_000 })).toBeTruthy()
     first.unmount()
-    await friday.c("rule_remove", { name: "you:exam-focus" })
   })
 
   it("makes an ongoing project, opens it, and says each option's value", async () => {

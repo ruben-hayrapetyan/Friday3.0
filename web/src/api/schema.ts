@@ -5829,6 +5829,13 @@ export interface components {
             status: "no_prep" | "ready" | "on_track" | "late" | "unplanned";
             /** Focus From */
             focus_from: string | null;
+            /** Focus Days */
+            focus_days?: number | null;
+            /**
+             * Focus Own
+             * @default false
+             */
+            focus_own?: boolean;
         };
         /** ExamPrepOut */
         ExamPrepOut: {
@@ -6690,6 +6697,11 @@ export interface components {
              * @default true
              */
             planned?: boolean;
+            /**
+             * Waiting
+             * @default []
+             */
+            waiting?: components["schemas"]["WaitingStep"][];
         };
         /** LearnApplyResult */
         LearnApplyResult: {
@@ -8873,6 +8885,13 @@ export interface components {
              * @default []
              */
             any_time?: number[];
+            /**
+             * Waits For
+             * @default {}
+             */
+            waits_for?: {
+                [key: string]: number;
+            };
         };
         /** ProjectRef */
         ProjectRef: {
@@ -12388,6 +12407,13 @@ export interface components {
         VersionInput: {
             /** Version */
             version: number;
+        };
+        /** WaitingStep */
+        WaitingStep: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
         };
         /** WeekItem */
         WeekItem: {

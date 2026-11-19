@@ -72,8 +72,9 @@ export function testUserLine(user: TestUser, state: UpdateStatus["state"]): stri
 
 // Whenever Friday's window opens or comes back into view, the server looks for a new version (H208, 15 Nov: "whenever
 // there is a new version, the popup shows up"; it looked once a month). Quietly: a site that can't be reached is said
-// in Settings → Updates, not in a toast. At most once in ten minutes, however often the window comes and goes.
-export const LOOK_AGAIN_MS = 10 * 60_000
+// in Settings → Updates, not in a toast. At most once in six hours, however often the window comes and goes.
+// 19 Nov: every ten minutes read as "CONSTANTLY checking for updates"; your choice "Look less often": six hours
+export const LOOK_AGAIN_MS = 6 * 60 * 60_000
 let lookedAt = -Infinity
 
 export function useLookWhenOpened(checks: boolean | undefined) {

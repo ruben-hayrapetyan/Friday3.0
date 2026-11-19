@@ -173,12 +173,18 @@ class EffectOut(Model):
     later: list[EffectLate] = []  # work that would finish later for it
 
 
+class WaitingStep(Model):
+    id: int
+    title: str
+
+
 class LateItem(Model):
     item_id: int
     title: str
     due: str | None  # local
     hours: float  # how late the plan finishes it (0 when it isn't planned)
     planned: bool = True  # False: no time for it in the plan at all
+    waiting: list[WaitingStep] = []  # steps of its project that wait for it, unplanned while it has no room (19 Nov)
 
 
 class KindAccuracy(Model):
@@ -271,6 +277,7 @@ class ProjectOut(Model):
     status: Literal["done", "on_track", "late", "unplanned"]
     step_finish: dict[str, str] = {}  # each open step's planned finish, by id: a date when planned past the plan's days
     any_time: list[int] = []  # its steps that don't wait for the one above (the rest do: the order is the chain)
+    waits_for: dict[str, int] = {}  # a step waiting for one that has no room before its due: that step's id (19 Nov)
 
 
 class ExamPrepOut(Model):
@@ -285,7 +292,9 @@ class ExamOut(Model):
     remaining_min: int
     planned_finish: str | None  # when the last prep is planned to end, once all of it is planned
     status: Literal["no_prep", "ready", "on_track", "late", "unplanned"]
-    focus_from: str | None  # when exam focus starts for it (other courses wait), if that rule is on
+    focus_from: str | None  # when exam focus starts for it (other courses wait): its own days, else the rule's
+    focus_days: int | None = None  # its days of focus: its own (0 for none), else the rule's, else None (19 Nov)
+    focus_own: bool = False  # it has days of its own, not the rule's
 
 
 class WeekLoad(Model):

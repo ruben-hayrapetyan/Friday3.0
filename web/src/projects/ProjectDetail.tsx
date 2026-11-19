@@ -132,7 +132,7 @@ export function ProjectDetail({ p, all, onPick, top, after }: { p: Project; all:
         {steps.map((s, i) => (
           <div key={s.id} style={{ display: "contents" }}>
             {i > 0 && <Then step={s} above={steps[i - 1]} project={p} />}
-            <Step step={s} first={i === 0} last={i === steps.length - 1} next={blocks.find((b) => b.item_id === s.id)?.start ?? null} later={p.step_finish?.[String(s.id)] ?? null} onMove={(by) => move(i, by)} />
+            <Step step={s} first={i === 0} last={i === steps.length - 1} next={blocks.find((b) => b.item_id === s.id)?.start ?? null} later={p.step_finish?.[String(s.id)] ?? null} waitsFor={steps.find((x) => x.id === p.waits_for?.[String(s.id)])?.title ?? null} onMove={(by) => move(i, by)} />
           </div>
         ))}
         <div className="fr-row" style={{ display: "flex", gap: 8, alignItems: "center", padding: "10px 0" }}>
@@ -157,12 +157,14 @@ export function ProjectDetail({ p, all, onPick, top, after }: { p: Project; all:
 // under the name.
 const cols = (tight: boolean) => (tight ? "22px 18px minmax(0,1fr) auto 28px" : "22px 18px minmax(0,1fr) 96px 124px 28px")
 
-/** Between a step and the one above it: "then", it waits for that one, as steps do; or "any time", alongside the rest.
- * A click switches it, at once (17 Nov, your choice: a project's order is its chain, no "Waits on" of its own). */
+/** A step's link to the one above it, said on the step it belongs to, over its name: "after <the step above>", it
+ * waits for that one, as steps do; or "doesn't wait". A click switches it, at once (17 Nov, your choice: a project's
+ * order is its chain, no "Waits on" of its own). 19 Nov, a user's notes: "then" and "any time" between two steps read
+ * as the upper one's ("4 any time → 5" taken for 4 and 5 together after 3); your choice: "Say it on the waiting step". */
 function Then({ step, above, project }: { step: Item; above: Item; project: Project }) {
   const anyTime = (project.any_time ?? []).includes(step.id)
   const set = useCommand("step_any_time", {
-    label: (o) => `${step.title}: ${o.result.message === "Any time" ? "any time" : `after ${above.title}`}`,
+    label: (o) => `${step.title}: ${o.result.message === "Any time" ? "doesn't wait" : `after ${above.title}`}`,
     optimistic: (client, input) =>
       client.setQueryData<Project[]>(["projects"], (list) =>
         list?.map((x) => (x.item.id !== project.item.id ? x : { ...x, any_time: input.any_time ? [...(x.any_time ?? []).filter((id) => id !== input.id), input.id] : (x.any_time ?? []).filter((id) => id !== input.id) })),
@@ -172,17 +174,17 @@ function Then({ step, above, project }: { step: Item; above: Item; project: Proj
     <button
       className="fr-plain fr-hover-text"
       onClick={() => set({ id: step.id, any_time: !anyTime })}
-      aria-label={anyTime ? `${step.title}: any time. Make it wait for ${above.title}` : `${step.title}: after ${above.title}. Make it any time`}
-      title={anyTime ? `Any time: it doesn't wait for ${above.title}. Click to make it wait` : `Then: it starts once ${above.title} is done. Click to do it any time`}
-      style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 0 0 46px", height: 18, fontSize: 11, color: anyTime ? "var(--color-neutral-500)" : "var(--color-neutral-400)", alignSelf: "flex-start" }}
+      aria-label={anyTime ? `${step.title} doesn't wait for ${above.title}. Make it wait` : `${step.title} waits: after ${above.title}. Make it not wait`}
+      title={anyTime ? `${step.title} doesn't wait for ${above.title}: it can be done before it. Click to make it wait` : `${step.title} starts once ${above.title} is done. Click so it doesn't wait`}
+      style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0 0 46px", marginBottom: -8, minHeight: 18, fontSize: 11, color: anyTime ? "var(--color-neutral-500)" : "var(--color-neutral-400)", alignSelf: "flex-start", maxWidth: "100%", minWidth: 0, textAlign: "left" }}
     >
-      <Icon name={anyTime ? "arrows-split" : "arrow-down"} size={11} />
-      {anyTime ? "any time" : "then"}
+      <Icon name={anyTime ? "arrows-split" : "arrow-down"} size={11} style={{ flex: "none" }} />
+      <span style={{ overflowWrap: "anywhere" }}>{anyTime ? "doesn't wait" : `after ${above.title}`}</span>
     </button>
   )
 }
 
-function Step({ step, first, last, next, later, onMove }: { step: Item; first: boolean; last: boolean; next: string | null; later: string | null; onMove: (by: number) => void }) {
+function Step({ step, first, last, next, later, waitsFor, onMove }: { step: Item; first: boolean; last: boolean; next: string | null; later: string | null; waitsFor: string | null; onMove: (by: number) => void }) {
   const { today, layout } = useShell()
   const plannedWhen = usePlannedWhen()
   const done = useCommand("done", { label: () => `${step.title}: done` })
@@ -193,7 +195,8 @@ function Step({ step, first, last, next, later, onMove }: { step: Item; first: b
   const length = step.duration_min ?? 60
   // planned past the plan's two weeks, nearer its due, isn't "not planned" (17 Nov: "open subtasks say not planned
   // even with ample time")
-  const planned = isDone ? "Done" : next ? plannedWhen(next, today) : later ? `Later, by ${when(later, today)}` : "No room before its due"
+  // waiting for a step that has no room before its due says so, not "No room" of its own (19 Nov, a user's notes)
+  const planned = isDone ? "Done" : next ? plannedWhen(next, today) : later ? `Later, by ${when(later, today)}` : waitsFor ? `Waits for ${waitsFor}, which has no room before its due` : "No room before its due"
   return (
     <div className="fr-row" style={{ display: "grid", gridTemplateColumns: cols(layout.tight), gap: 12, alignItems: "center", padding: "10px 0", opacity: isDone ? 0.55 : 1 }}>
       <span style={{ display: "flex", flexDirection: "column" }}>

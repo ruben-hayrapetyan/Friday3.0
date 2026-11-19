@@ -23,7 +23,7 @@ from friday.engine.moves import chunk_around
 from friday.engine.problem import Plan, Problem
 from friday.engine.prune import demote_locks
 from friday.planner.assemble import AssembledPlan, assemble
-from friday.planner.build import BuildInput, build_problem, key_of
+from friday.planner.build import BuildInput, build_problem, expires, key_of
 from friday.planner.inputs import allocator_input, executor_input, now_settings
 from friday.planner.learning import learnable
 from friday.planner.prepare import build_input, day_of
@@ -393,7 +393,12 @@ def triage(
     before = sum(late.values())
     options = []
     candidates = candidate_actions(snapshot, inp, late)[:MAX_TRIAGE_ACTIONS]
-    candidates += skip_actions(snapshot, late, ratings or {}, going)
+    by_id = {i.id: i for i in snapshot.items}
+    # Work that's pointless once late (an exam's prep) can't be helped by a later due: then events you said you're
+    # going to are offered too, saying so (19 Nov, a user: "it could tell me to skip engineering seminar which is
+    # currently marked as 'im going'"); for other work "I'm going" still stops offering them.
+    pointless = any(k in by_id and expires(by_id[k], snapshot.settings) for k in late)
+    candidates += skip_actions(snapshot, late, ratings or {}, going, offer_going=pointless)
     for action, steps, change, effects, *rest in candidates:
         _, after = quick_late(change(inp), with_fallback=False)
         saved = round(before - sum(after.values()), 2)
@@ -403,10 +408,15 @@ def triage(
 
 
 def skip_actions(
-    snapshot: Snapshot, late: dict[int, float], ratings: Mapping[str, Mapping[str, str]], going: frozenset[str]
+    snapshot: Snapshot,
+    late: dict[int, float],
+    ratings: Mapping[str, Mapping[str, str]],
+    going: frozenset[str],
+    offer_going: bool = False,
 ) -> list[tuple]:
     """Events before the latest late due that aren't required, least important first, then the longest: skipping one
-    keeps it on your calendar and only stops it blocking time."""
+    keeps it on your calendar and only stops it blocking time. Events you said you're going to only with
+    `offer_going` (late work that's pointless once late), after the rest, saying so."""
     by_id = {i.id: i for i in snapshot.items}
     until = (
         max(parse_utc(by_id[k].due_utc) for k in late if by_id[k].due_utc)
@@ -423,11 +433,12 @@ def skip_actions(
         if event.id in snapshot.hidden:
             continue  # a calendar you hid isn't offered to skip: it isn't named (planner/hidden.py)
         start, end = parse_utc(event.start_utc), parse_utc(event.end_utc or event.start_utc)
-        if not snapshot.now_utc <= start < until or rating_key(event.title) in going:
+        said_going = rating_key(event.title) in going
+        if not snapshot.now_utc <= start < until or (said_going and not offer_going):
             continue
         level = (ratings.get(rating_key(event.title)) or {}).get("level") or fallback_level(event.title)
         if level in rank:
-            found.append((rank[level], -(end - start), start, event))
+            found.append((rank[level] + (2 if said_going else 0), -(end - start), start, event))
     out = []
     for _, _, start, event in sorted(found, key=lambda f: f[:3])[:MAX_SKIPS]:
         reason = (ratings.get(rating_key(event.title)) or {}).get("reason")
@@ -438,7 +449,11 @@ def skip_actions(
                 f"Skip {event.title} ({when})",
                 [("edit", {"id": event.id, "blocks_time": False})],
                 without_blocking(event.id or 0),
-                ["It stays on your calendar; Friday plans through it", *([reason] if reason else [])],
+                [
+                    "It stays on your calendar; Friday plans through it",
+                    *([reason] if reason else []),
+                    *(["You said you're going"] if rating_key(event.title) in going else []),
+                ],  # fmt: skip
                 event.title,
             )
         )
@@ -469,7 +484,7 @@ def candidate_actions(snapshot: Snapshot, inp: BuildInput, late: dict[int, float
                 [f"{other.title} won't be done"],
             )
         )
-    for days in (1, 3):
+    for days in () if expires(item, snapshot.settings) else (1, 3):  # pointless once late: a later due won't help
         later = due + days * 1440
         out.append(
             (
