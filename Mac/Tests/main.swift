@@ -805,5 +805,145 @@ test("a server that stops by itself is started again, but not a fourth time in f
     check(Server.restartAgain(after: three.map { $0.addingTimeInterval(-400) }, now: now), "long ago don't count")
 }
 
+// 19 Nov, a client's screenshot: "Friday's server isn't running. Another app is using Friday's port" (most likely
+// Anki's AnkiConnect, on 8765 too); you: "lets do that", "test this thoroughly w edge cases". Real processes here use
+// spare ports, never 8765, where your own Friday is.
+
+test("who holds a port, from lsof: each process once, whatever else lsof says") {
+    let two = "p501\ncpython3.12\nf24\np501\ncpython3.12\nf25\np777\ncAnki\nf9\n"
+    check(PortChoice.holders(two) == [.init(pid: 501, command: "python3.12"), .init(pid: 777, command: "Anki")], "IPv4 and IPv6 list a process twice: \(PortChoice.holders(two))")
+    check(PortChoice.holders("").isEmpty && PortChoice.holders("\n\n").isEmpty, "nothing listening: no one")
+    check(PortChoice.holders("cpython\np12\n").isEmpty, "a command before any process isn't anyone's")
+    check(PortChoice.holders("pnot-a-number\ncx\n").isEmpty, "a broken line is passed over")
+}
+
+test("a Friday server is told by its program; nothing else is ever taken for one") {
+    check(PortChoice.isFriday(arguments: "/Applications/Friday.app/Contents/Resources/friday/python/bin/python3.12 -m friday.server.main serve"), "the app's own, as it really runs")
+    check(PortChoice.isFriday(arguments: "/Users/a/.local/bin/fridayd serve --port 8765"), "started by hand")
+    check(PortChoice.isFriday(arguments: "/Users/a/code/.venv/bin/python /Users/a/code/.venv/bin/fridayd demo --port 8799"), "under uv, a demo")
+    check(!PortChoice.isFriday(arguments: "/usr/bin/python3 -m http.server 8765"), "someone's web server")
+    check(!PortChoice.isFriday(arguments: "/Applications/Anki.app/Contents/MacOS/anki"), "Anki")
+    check(!PortChoice.isFriday(arguments: "/usr/bin/python3 /Users/a/fridayd_notes.py"), "a file only named like it")
+    check(!PortChoice.isFriday(arguments: ""), "a process gone: nothing")
+}
+
+test("what holds the port is named in a sentence") {
+    check(PortChoice.name(.init(pid: 1, command: "Anki")) == "Anki" && PortChoice.name(.init(pid: 1, command: "anki")) == "Anki", "Anki, however lsof spells it")
+    check(PortChoice.name(.init(pid: 1, command: "node")) == "node", "else its command")
+    check(PortChoice.name(.init(pid: 1, command: " ")) == "Another app", "no name: another app")
+}
+
+test("the next port skips the busy ones, 8765 and Friday Test's") {
+    check(PortChoice.next(after: 8765, isFree: { _ in true }) == 8766, "the one after")
+    check(PortChoice.next(after: 8765, isFree: { $0 > 8767 }) == 8768, "past the busy ones")
+    check(PortChoice.next(after: 8769, isFree: { $0 > 8769 }) == 8800, "past Friday Test's 8770-8799: \(PortChoice.next(after: 8769, isFree: { $0 > 8769 }))")
+    check(PortChoice.next(after: 8766, isFree: { $0 != 8767 }) == 8768, "moved once already, moving again")
+    check(PortChoice.next(after: 65534, isFree: { $0 == 8766 }) == 8766, "from the top it starts again low")
+    check(PortChoice.next(after: 8765, isFree: { _ in false }) == 8765, "none free: stays, and says what holds it")
+}
+
+test("the friday command is told the port, and nothing of yours is lost") {
+    check(PortChoice.cliToml(nil, port: 8766) == "server = \"http://127.0.0.1:8766\"\n", "no file: made: \(PortChoice.cliToml(nil, port: 8766) ?? "nil")")
+    check(PortChoice.cliToml(nil, port: 8765) == nil, "on 8765 with no file: the command's own default, nothing written")
+    let mine = "token = \"abc\"\n\n[colors]\nlate = \"red\"\n"
+    check(PortChoice.cliToml(mine, port: 8766) == "token = \"abc\"\n\nserver = \"http://127.0.0.1:8766\"\n[colors]\nlate = \"red\"\n", "added before the first table, the rest as it was: \(PortChoice.cliToml(mine, port: 8766) ?? "nil")")
+    check(PortChoice.cliToml("server = \"http://localhost:8765\"\ntoken = \"abc\"", port: 8766) == "server = \"http://127.0.0.1:8766\"\ntoken = \"abc\"", "this Mac's: changed")
+    check(PortChoice.cliToml("server = \"http://127.0.0.1:8766\"\n", port: 8766) == nil, "already right: not written again")
+    check(PortChoice.cliToml("server = \"http://work-mac.tailnet.ts.net:8765\"\n", port: 8766) == nil, "a server on another machine is yours: left alone")
+    check(PortChoice.cliToml("server = 'http://localhost:8766'\n", port: 8765) == "server = \"http://127.0.0.1:8765\"\n", "back on 8765, single quotes and all")
+}
+
+test("tellCommand writes the friday command's file, making its folder") {
+    let folder = scratch()
+    let file = folder.appendingPathComponent("config/friday/cli.toml")
+    PortChoice.tellCommand(port: 8766, file: file)
+    check((try? String(contentsOf: file, encoding: .utf8)) == "server = \"http://127.0.0.1:8766\"\n", "written")
+    try? "server = \"http://elsewhere:9000\"\n".write(to: file, atomically: true, encoding: .utf8)
+    PortChoice.tellCommand(port: 8767, file: file)
+    check((try? String(contentsOf: file, encoding: .utf8)) == "server = \"http://elsewhere:9000\"\n", "yours elsewhere: untouched")
+}
+
+test("your Friday's port: 8765, or the one it moved to") {
+    let key = PortChoice.defaultsKey
+    UserDefaults.standard.removeObject(forKey: key)
+    check(Server.port == 8765, "nothing kept: 8765")
+    UserDefaults.standard.set(8766, forKey: key)
+    check(Server.port == 8766 && Server.base.absoluteString == "http://127.0.0.1:8766/", "moved: 8766, and the window asks there")
+    UserDefaults.standard.removeObject(forKey: key)
+    check(Server.port == 8765, "back")
+}
+
+test("when it can't start, the words name what holds the port") {
+    let log = "ERROR: [Errno 48] error while attempting to bind on address ('127.0.0.1', 8765): address already in use"
+    let named = Server.startupWords(started: true, log: log, heldBy: "Anki")
+    check(named.hasPrefix("Anki is using Friday's port, and no other port was free. Quit Anki, then press Try again"), named)
+    check(Server.startupWords(started: true, log: log).hasPrefix("Another app is using Friday's port."), "no name: as before")
+}
+
+/// A free port on this Mac, not 8765 nor Friday Test's.
+func sparePort() -> Int { PortChoice.next(after: 8840, isFree: TestUser.isFree) }
+
+/// A process from a script, holding `port`; ended by the caller.
+func holding(_ port: Int, as name: String, script: String) -> Process {
+    let folder = scratch()
+    let file = folder.appendingPathComponent(name)
+    try? script.write(to: file, atomically: true, encoding: .utf8)
+    chmod(file.path, 0o755)
+    let process = Process()
+    process.executableURL = file
+    process.arguments = [String(port)]
+    process.standardOutput = FileHandle.nullDevice
+    process.standardError = FileHandle.nullDevice
+    try? process.run()
+    for _ in 0 ..< 50 where TestUser.isFree(port) { usleep(100_000) }
+    return process
+}
+
+let listenForever = """
+#!/usr/bin/env python3
+import socket, sys, time
+s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(("127.0.0.1", int(sys.argv[1]))); s.listen(5)
+time.sleep(600)
+"""
+
+test("another app on the port, for real: found, not taken for Friday, never stopped, and Friday moves past it") {
+    let port = sparePort()
+    let other = holding(port, as: "notes-server", script: listenForever)
+    defer { other.terminate(); other.waitUntilExit() }
+    check(!TestUser.isFree(port), "it holds \(port)")
+    let found = PortChoice.listening(on: port)
+    check(found.map(\.pid) == [other.processIdentifier], "lsof finds it: \(found)")
+    check(!PortChoice.isFriday(arguments: PortChoice.arguments(of: other.processIdentifier)), "not Friday: \(PortChoice.arguments(of: other.processIdentifier))")
+    let moved = PortChoice.next(after: port, isFree: TestUser.isFree)
+    check(moved != port && TestUser.isFree(moved), "the next free port: \(moved)")
+    check(other.isRunning, "still running: another app's is never stopped")
+}
+
+test("a Friday server that holds the port and never answers, for real: found and stopped, and the port is free") {
+    let port = sparePort()
+    let stuck = holding(port, as: "fridayd", script: listenForever)  // named as Friday's server is, and silent
+    defer { if stuck.isRunning { stuck.terminate() } }
+    let found = PortChoice.listening(on: port)
+    check(found.count == 1 && PortChoice.isFriday(arguments: PortChoice.arguments(of: found[0].pid)), "taken for Friday: \(found)")
+    PortChoice.stop(found[0].pid) { TestUser.isFree(port) }
+    check(TestUser.isFree(port), "the port is free after")
+    stuck.waitUntilExit()
+    check(!stuck.isRunning, "and it's gone")
+}
+
+test("one that ignores being asked to stop is made to") {
+    let port = sparePort()
+    let stubborn = holding(port, as: "fridayd", script: listenForever.replacingOccurrences(of: "import socket, sys, time", with: "import signal, socket, sys, time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)"))
+    defer { if stubborn.isRunning { kill(stubborn.processIdentifier, SIGKILL) } }
+    PortChoice.stop(stubborn.processIdentifier) { TestUser.isFree(port) }
+    check(TestUser.isFree(port), "free after SIGKILL")
+}
+
+test("nothing listening: no one to stop or move for") {
+    let port = sparePort()
+    check(TestUser.isFree(port) && PortChoice.listening(on: port).isEmpty, "free and no holder")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)
