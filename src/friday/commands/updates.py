@@ -8,21 +8,29 @@ newer version's notes (H124, H139); Later puts that version off until the same t
 asks at once (H209). Update downloads it in the background, checks it and unpacks it beside the app, then the Mac app
 swaps it in, right away or when you quit (H146). The first time the new version opens, what changed is shown once
 (H118). Yours looks as a downloaded copy does (H169); a server without a feed (Friday Test, fridayd run from the
-code) never looks, and Settings says so."""
+code) never looks, and Settings says so.
+
+Test users (H224–H227): a code the hub made, typed in Settings → Updates, is kept with your data and sent with
+every look and download from then on; the site answers with the test users' feed (their version on top) and whose code
+it is, or that it doesn't know it. Leaving forgets the code: you keep the version you have, and are offered the next
+version everyone gets that's newer than it."""
 
 import logging
 import os
+import re
 import sqlite3
 import threading
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from friday.api.commands import TestUserJoinInput
 from friday.api.types import Empty
-from friday.api.views import UpdateStatusOut, UpdateVersionOut
+from friday.api.views import TestUserOut, UpdateStatusOut, UpdateVersionOut
 from friday.commands.connecting import data_file
 from friday.commands.registry import Ctx, command, query
-from friday.core.db import connect
+from friday.core.db import connect, transaction
 from friday.core.items import FieldError
 from friday.core.time import to_local
 from friday.planner.store import kv_get, kv_set
@@ -80,19 +88,35 @@ def run_for(conn: sqlite3.Connection) -> Run:
 # Looking
 
 
-def check(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> None:
-    """Read the feed and keep what's newer, with every version's notes (for what changed after updating)."""
+def test_code(conn: sqlite3.Connection, user_id: int) -> str | None:
+    found = kv_get(conn, "update_test_user", None, user_id)
+    return found["code"] if found else None
+
+
+def check(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> bool:
+    """Read the feed and keep what's newer, with every version's notes (for what changed after updating). A test
+    user's code goes with it, and what the site says of the code is kept. All of it is written at once, so the page
+    never sees the code known before the versions it brings; and only if the code is still the one sent (you may
+    have joined or left while it looked): False when the answer was for another code and was dropped."""
     url, mine = feed_url(), have()
     if not url or not mine:
-        return
-    feed = net.fetch_feed(url, version=mine)
-    notes = kv_get(conn, "update_notes", {}, user_id)
-    for entry in feed["versions"]:
-        notes[entry["version"]] = entry
-    kv_set(conn, "update_notes", notes, user_id)
-    kv_set(conn, "update_newer", [v["version"] for v in net.newer(feed, mine)], user_id)
-    kv_set(conn, "update_checked", now_utc, user_id)
+        return True
+    code = test_code(conn, user_id)
+    feed = net.fetch_feed(url, version=mine, test_code=code)
+    with transaction(conn) if not conn.in_transaction else nullcontext(conn):
+        if test_code(conn, user_id) != code:
+            return False
+        if code:  # a site that doesn't answer about the code (one from before test users) doesn't know it
+            name = feed.get("test_user") if isinstance(feed.get("test_user"), str) else None
+            kv_set(conn, "update_test_user", {"code": code, "name": name, "known": name is not None}, user_id)
+        notes = kv_get(conn, "update_notes", {}, user_id)
+        for entry in feed["versions"]:
+            notes[entry["version"]] = entry
+        kv_set(conn, "update_notes", notes, user_id)
+        kv_set(conn, "update_newer", [v["version"] for v in net.newer(feed, mine)], user_id)
+        kv_set(conn, "update_checked", now_utc, user_id)
     conn.commit()
+    return True
 
 
 def due(conn: sqlite3.Connection, now_utc: int, user_id: int = 1) -> bool:
@@ -136,6 +160,7 @@ def entry_out(entry: dict) -> UpdateVersionOut:
         new=notes.get("new", []),
         changed=notes.get("changed", []),
         fixed=notes.get("fixed", []),
+        test=bool(entry.get("test")),
     )
 
 
@@ -159,6 +184,7 @@ def status(ctx: Ctx) -> UpdateStatusOut:
     if mine:
         newer = [e for e in newer if net.version_key(e["version"]) > net.version_key(mine)]
     checked = kv_get(ctx.conn, "update_checked", None, ctx.user_id)
+    joined = kv_get(ctx.conn, "update_test_user", None, ctx.user_id)
     return UpdateStatusOut(
         checks=bool(feed_url() and mine),
         have=mine,
@@ -173,6 +199,7 @@ def status(ctx: Ctx) -> UpdateStatusOut:
         whats_new=[entry_out(e) for e in whats_new(ctx.conn, ctx.user_id)],
         restart=ctx.settings["updates"].restart,
         staged=run.staged if run.state == "ready" else None,
+        test_user=TestUserOut(**joined) if joined else None,
     )
 
 
@@ -194,7 +221,8 @@ def in_background(ctx: Ctx, run: Run, work: str) -> None:
         conn = connect(db)
         try:
             if work == "check":
-                check(conn, now, user_id)
+                if not check(conn, now, user_id):  # you joined or left while it looked: once more, with the code now
+                    check(conn, now, user_id)
                 run.state, run.message = "idle", None
             else:
                 fetch(conn, run, user_id)
@@ -214,15 +242,13 @@ def fetch(conn: sqlite3.Connection, run: Run, user_id: int) -> None:
         raise net.UpdateError("there's no newer version to download")
     folder = staging_folder() / newest[0]
     image = net.download(notes[newest[0]], folder, progress=lambda p: setattr(run, "progress", p),
-                         cancelled=lambda: run.stop, version=have())  # fmt: skip
+                         cancelled=lambda: run.stop, version=have(), test_code=test_code(conn, user_id))  # fmt: skip
     run.staged = str(net.unpack(image, folder))
     image.unlink(missing_ok=True)
     run.state, run.message = "ready", None
 
 
-@command("update_check", logged=False)
-def update_check(ctx: Ctx, inp: Empty) -> UpdateStatusOut:
-    """Look for a newer Friday now (Settings → Updates). Returns at once; `update_status` says how it went."""
+def look_now(ctx: Ctx) -> UpdateStatusOut:
     if not feed_url() or not have():
         raise FieldError("updates", "this Friday is built from its code here, so it doesn't look for updates")
     run = run_for(ctx.conn)
@@ -230,6 +256,42 @@ def update_check(ctx: Ctx, inp: Empty) -> UpdateStatusOut:
         run.state, run.message = "checking", None
         in_background(ctx, run, "check")
     return status(ctx)
+
+
+@command("update_check", logged=False)
+def update_check(ctx: Ctx, inp: Empty) -> UpdateStatusOut:
+    """Look for a newer Friday now (Settings → Updates). Returns at once; `update_status` says how it went."""
+    return look_now(ctx)
+
+
+CODE_LETTERS = re.compile(r"[A-Z0-9]{8}")
+
+
+@command("update_test_join", logged=False)
+def update_test_join(ctx: Ctx, inp: TestUserJoinInput) -> UpdateStatusOut:
+    """Become a test user with the code you were given (H224): kept, and checked with the site now; from then on
+    Friday is offered the versions released to test users. Returns at once; `update_status` says what the site said."""
+    if not feed_url() or not have():
+        raise FieldError("code", "this Friday doesn't look for updates, so it can't be a test user")
+    typed = re.sub(r"[\s-]", "", inp.code.upper())
+    if not CODE_LETTERS.fullmatch(typed):
+        raise FieldError("code", "a test user's code is eight letters and digits, like K7QF-29XM")
+    code = f"{typed[:4]}-{typed[4:]}"
+    kv_set(ctx.conn, "update_test_user", {"code": code, "name": None, "known": None}, ctx.user_id)
+    ctx.conn.commit()
+    return look_now(ctx)
+
+
+@command("update_test_leave", logged=False)
+def update_test_leave(ctx: Ctx, inp: Empty) -> UpdateStatusOut:
+    """Stop being a test user: the code is forgotten, you keep the version you have, and from now on you're offered
+    only everyone's versions (a newer one than yours)."""
+    notes = kv_get(ctx.conn, "update_notes", {}, ctx.user_id)
+    newer = [v for v in kv_get(ctx.conn, "update_newer", [], ctx.user_id) if not notes.get(v, {}).get("test")]
+    kv_set(ctx.conn, "update_test_user", None, ctx.user_id)
+    kv_set(ctx.conn, "update_newer", newer, ctx.user_id)  # the test users' version isn't offered now, even before
+    ctx.conn.commit()  # the look below answers
+    return look_now(ctx) if feed_url() and have() else status(ctx)
 
 
 @command("update_later", logged=False)

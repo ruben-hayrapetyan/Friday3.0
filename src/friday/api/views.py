@@ -527,6 +527,15 @@ class UpdateVersionOut(Model):
     new: list[str] = []
     changed: list[str] = []
     fixed: list[str] = []
+    test: bool = False  # offered to test users only, not yet to everyone (H224)
+
+
+class TestUserOut(Model):
+    """This Friday as a test user (H224): the code typed in Settings → Updates, and what the site said of it."""
+
+    code: str  # K7QF-29XM
+    name: str | None = None  # the name the hub has for them, once the site knows the code
+    known: bool | None = None  # the site knows it (True), doesn't (False), or hasn't been asked yet (None)
 
 
 class UpdateStatusOut(Model):
@@ -543,6 +552,7 @@ class UpdateStatusOut(Model):
     whats_new: list[UpdateVersionOut] = []  # what changed in the version you now have, until you've read it (H118)
     restart: Literal["now", "quit"] = "now"  # when the Mac app swaps a downloaded update in (H146)
     staged: str | None = None  # ready: the new Friday.app, for the Mac app to swap in
+    test_user: TestUserOut | None = None  # this Friday is a test user (H224)
 
 
 class SourceOut(Model):

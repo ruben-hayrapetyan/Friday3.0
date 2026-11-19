@@ -165,3 +165,15 @@ def test_friday_is_unpacked_from_a_real_disk_image_and_the_image_let_go(tmp_path
 def test_a_disk_image_without_friday_is_refused(tmp_path: Path) -> None:
     with pytest.raises(UpdateError, match="disk image"):
         updates.unpack(disk_image(tmp_path, with_friday=False), tmp_path / "out")
+
+
+def test_a_test_users_code_goes_in_its_own_header_and_only_when_there_is_one() -> None:
+    """H224: the site reads the code from X-Friday-Test-User; without one the request is as it always was."""
+    plain = updates.asking("https://site/updates.json", "0.5.3")
+    assert plain.get_header("X-friday-test-user") is None and plain.get_header("User-agent") == "Friday/0.5.3 (Mac)"
+    coded = updates.asking("https://site/updates.json", "0.5.3", "K7QF-29XM")
+    assert coded.get_header("X-friday-test-user") == "K7QF-29XM"
+    asked: list = []
+    feed = {"current": "0.2.0", "versions": [entry()]}
+    updates.fetch_feed("https://site/updates.json", answer(json.dumps(feed).encode(), asked), test_code="K7QF-29XM")
+    assert asked[0].get_header("X-friday-test-user") == "K7QF-29XM"

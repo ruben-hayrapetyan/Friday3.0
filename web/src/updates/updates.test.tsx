@@ -6,7 +6,7 @@ import { QueryClient } from "@tanstack/react-query"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { Toast } from "@/components/Toasts"
 import { Notes } from "./UpdateDialogs"
-import { headline, lookedAgo, macMessage, progressLine, runUpdateAct, type UpdateStatus } from "./updates"
+import { headline, lookedAgo, macMessage, progressLine, runUpdateAct, testCode, testUserLine, type UpdateStatus } from "./updates"
 
 const version = (v: string) => ({ version: v, released: "2026-11-07", summary: `About ${v}.`, new: [`New in ${v}`], changed: [], fixed: [] })
 const status = (over: Partial<UpdateStatus>): UpdateStatus => ({ checks: true, have: "0.1.0", state: "idle", progress: 0, versions: [], popup: false, whats_new: [], restart: "now", ...over }) as UpdateStatus
@@ -76,5 +76,42 @@ describe("the updater's commands", () => {
     const client = new QueryClient()
     expect(await runUpdateAct(client, () => {}, "update_start")).toEqual(now)
     expect(client.getQueryData(["updates"])).toEqual(now)
+  })
+})
+
+// Test users (H224): the code as typed, what the row says, and joining or leaving shown before the server answers.
+describe("test users", () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it("reads a code however it's typed, and refuses one that isn't eight letters and digits", () => {
+    expect(testCode("K7QF-29XM")).toBe("K7QF-29XM")
+    expect(testCode(" k7qf 29xm ")).toBe("K7QF-29XM")
+    expect(testCode("k7qf29xm")).toBe("K7QF-29XM")
+    for (const wrong of ["", "K7QF", "K7QF-29XM-1", "K7QF-29X!"]) expect(testCode(wrong)).toBeNull()
+  })
+
+  it("says whose code it is, that it's being checked, or that the site doesn't know it", () => {
+    expect(testUserLine({ code: "K7QF-29XM", name: "Ana", known: true }, "idle")).toBe("You're a test user, as Ana")
+    expect(testUserLine({ code: "K7QF-29XM", name: null, known: null }, "checking")).toBe("Checking your code…")
+    expect(testUserLine({ code: "K7QF-29XM", name: null, known: null }, "failed")).toBe("Your code is checked the next time Friday looks")
+    expect(testUserLine({ code: "K7QF-29XM", name: null, known: false }, "idle")).toBe("Friday's site doesn't know this code")
+  })
+
+  it("shows joining and leaving at once, and goes back if the server refuses", async () => {
+    let release: (r: Response) => void = () => {}
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((r) => (release = r))))
+    const client = new QueryClient()
+    const tester = status({ test_user: { code: "K7QF-29XM", name: "Ana", known: true }, versions: [{ ...version("0.3.0"), test: true }, version("0.2.0")] })
+    client.setQueryData(["updates"], status({}))
+    const joining = runUpdateAct(client, () => {}, "update_test_join", { code: "k7qf29xm" })
+    expect(client.getQueryData<UpdateStatus>(["updates"])).toMatchObject({ state: "checking", test_user: { code: "K7QF-29XM", name: null, known: null } })
+    release(new Response(JSON.stringify({ command_id: null, result: tester }), { status: 200 }))
+    await joining
+    const leaving = runUpdateAct(client, () => {}, "update_test_leave")
+    const left = client.getQueryData<UpdateStatus>(["updates"])
+    expect(left?.test_user).toBeNull()
+    expect(left?.versions?.map((v) => v.version)).toEqual(["0.2.0"]) // the test users' version isn't offered now
+    release(new Response(JSON.stringify({ detail: { field: "updates", message: "no" } }), { status: 422 }))
+    await leaving
   })
 })
